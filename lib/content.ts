@@ -85,6 +85,91 @@ export const siteContent = {
     tagline: "This site grows with me. Last updated April 22, 2026",
     copyright: "© 2026 Aaron Sulbaran",
   },
+  // Work items. `bodySections: []` means the detail page renders a quiet
+  // "case study in progress" block. Populate with { kind: 'paragraph', text }
+  // entries (more kinds added later). Keep `slug` URL-safe and unique.
+  workItems: [
+    {
+      slug: "capital-one-pm",
+      type: "experience" as const,
+      title: "Capital One",
+      role: "Product Manager Intern",
+      year: "2025",
+      logo: "/work/logos/capital-one.svg",
+      teaser: "Learned how real PM decisions get made when you're accountable to a team, not a deck.",
+      summary: "Product manager intern at Capital One, working on an internal tool used by analysts across the business.",
+      bodySections: [],
+      links: [],
+      featuredOnHome: true,
+    },
+    {
+      slug: "capital-one-ba",
+      type: "experience" as const,
+      title: "Capital One",
+      role: "Business Analyst Intern",
+      year: "2024",
+      logo: "/work/logos/capital-one.svg",
+      teaser: "First real taste of how product and business decisions actually get made inside a big bank.",
+      summary: "Business analyst intern on a customer-facing product team. Shipped analysis that fed directly into roadmap decisions.",
+      bodySections: [],
+      links: [],
+      featuredOnHome: true,
+    },
+    {
+      slug: "claude-ambassador",
+      type: "experience" as const,
+      title: "Anthropic",
+      role: "Claude Ambassador at UT Austin",
+      year: "2025",
+      logo: "/work/logos/anthropic.svg",
+      teaser: "Building an AI community on campus. Co-hosted the first Claude hackathon in Austin.",
+      summary: "Claude Ambassador at UT Austin. Running workshops, hackathons, and study groups focused on AI literacy for students.",
+      bodySections: [],
+      links: [],
+      featuredOnHome: true,
+    },
+    {
+      slug: "ieee-president",
+      type: "experience" as const,
+      title: "IEEE UT Austin",
+      role: "President",
+      year: "2025",
+      logo: "/work/logos/ieee.svg",
+      teaser: "Ran the chapter at scale. More operations lessons than any class I took.",
+      summary: "President of IEEE at UT Austin. Led event planning, sponsor relationships, and a growing exec team across ECE.",
+      bodySections: [],
+      links: [],
+      featuredOnHome: true,
+    },
+    {
+      slug: "aaronsulbaran-site",
+      type: "project" as const,
+      title: "aaronsulbaran.com",
+      role: "Built in public",
+      year: "2026",
+      logo: "/work/logos/site.svg",
+      teaser: "This site. A Phase 1 personal statement that grows with me.",
+      summary: "Next.js 14, Tailwind, Framer Motion. Scroll-driven photo ring, work surface, and a living-document voice.",
+      bodySections: [],
+      links: [
+        { label: "GitHub", href: "https://github.com/aaron-sulbaran" },
+      ],
+      featuredOnHome: false,
+    },
+    {
+      slug: "hackathon-builds",
+      type: "project" as const,
+      title: "Hackathon builds",
+      role: "Personal projects",
+      year: "Ongoing",
+      logo: "/work/logos/hackathon.svg",
+      teaser: "A running set of weekend builds. Rough, fast, and shipped.",
+      summary: "Hackathon projects across AI, hardware, and 3D printing. Updated every few months.",
+      bodySections: [],
+      links: [],
+      featuredOnHome: false,
+    },
+  ],
   // 14 photos on desktop, 6 on mobile. Each caption is what shows in the
   // click-to-expand modal — edit freely, first person, no em dashes.
   photos: [
@@ -168,3 +253,11 @@ export const siteContent = {
 
 export type SiteContent = typeof siteContent;
 export type Photo = (typeof siteContent.photos)[number];
+export type WorkItem = (typeof siteContent.workItems)[number];
+export type MenuItem = (typeof siteContent.menu.items)[number];
+
+// Body section shapes for work detail pages. When a workItem populates its
+// bodySections array, each element must match one of these. More kinds can be
+// added over time (image, quote, gallery, etc.).
+export type WorkBodySection =
+  | { kind: "paragraph"; text: string };
