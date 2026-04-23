@@ -6,10 +6,19 @@ export const siteContent = {
     url: "https://aaronsulbaran.com",
   },
   hero: {
-    name: "I'm Aaron.",
+    name: "Hi, I'm Aaron.",
     tagline:
-      "Third-year ECE at UT Austin. Pursuing product management. Building things with people, not just for them.",
+      "ECE at UT Austin. Pursuing product management. Building things with people, not just for them.",
     scrollLabel: "Scroll",
+  },
+  menu: {
+    ariaLabelOpen: "Open menu",
+    ariaLabelClose: "Close menu",
+    items: [
+      { key: "home", label: "Home", href: "/", kind: "route" as const },
+      { key: "work", label: "Work", href: "/work", kind: "route" as const },
+      { key: "about", label: "About", href: "/#who-i-am", kind: "anchor" as const },
+    ],
   },
   whoIAm: {
     label: "Who I am",
@@ -25,6 +34,17 @@ export const siteContent = {
       "Building out a public voice on AI literacy, product thinking, and whatever else I'm chewing on.",
       "Always open to chatting if you're working on something interesting or just want to trade notes.",
     ],
+  },
+  work: {
+    label: "Work",
+    heading: "Things I've built and shipped.",
+    lede: "Internships, projects, and communities I've poured real time into. More case studies rolling in over the next few weeks.",
+    cta: "See more →",
+    seeAll: "See everything →",
+    placeholderBody: "Case study in progress. Ping me on LinkedIn if you want to hear about it sooner.",
+    indexHeading: "Work.",
+    indexLede: "Every project, internship, and community I'm proud of. Click in for the story.",
+    backLabel: "← Work",
   },
   connect: {
     label: "Connect",
@@ -62,25 +82,89 @@ export const siteContent = {
     ],
   },
   footer: {
-    tagline: "This site grows with me.",
+    tagline: "This site grows with me. Last updated April 22, 2026",
     copyright: "© 2026 Aaron Sulbaran",
   },
+  // 14 photos on desktop, 6 on mobile. Each caption is what shows in the
+  // click-to-expand modal — edit freely, first person, no em dashes.
   photos: [
-    // TODO: Replace placeholder with drum major / marching band photo
-    { src: "/photos/photo-01.svg", alt: "Aaron as drum major, conducting the UT Austin marching band." },
-    // TODO: Replace placeholder with UT Austin campus photo
-    { src: "/photos/photo-02.svg", alt: "UT Austin campus at golden hour, the tower in the background." },
-    // TODO: Replace placeholder with Capital One internship photo
-    { src: "/photos/photo-03.svg", alt: "Capital One internship, whiteboard sketching during a product review." },
-    // TODO: Replace placeholder with hackathon photo
-    { src: "/photos/photo-04.svg", alt: "Mid-hackathon, laptops and sticky notes, the team heads-down on a build." },
-    // TODO: Replace placeholder with IEEE UT Austin group photo
-    { src: "/photos/photo-05.svg", alt: "IEEE UT Austin group photo after a general meeting." },
-    // TODO: Replace placeholder with Claude Ambassadors / AI community photo
-    { src: "/photos/photo-06.svg", alt: "Anthropic Claude Ambassadors meetup, community in a campus classroom." },
-    // TODO: Replace placeholder with Maracaibo / family / roots photo
-    { src: "/photos/photo-07.svg", alt: "A photo from Maracaibo, Venezuela, early roots." },
+    {
+      src: "/photos/hsf-speaking.jpeg",
+      alt: "Aaron speaking on stage at HSF Scholars.",
+      caption: "Speaking at the HSF Scholars summit. One of the first times I realized how much I love sharing what I'm learning with people earlier in the journey.",
+    },
+    {
+      src: "/photos/drum-major.jpeg",
+      alt: "Aaron in his drum major uniform during a performance.",
+      caption: "Drum major days. Leading a band is mostly about reading the room, staying calm when things break, and making sure everyone around you feels seen.",
+    },
+    {
+      src: "/photos/capital-one.jpeg",
+      alt: "Aaron at Capital One during his internship.",
+      caption: "Capital One, product manager intern. Learned how real PM decisions get made when you're accountable to a team, not just a deck.",
+    },
+    {
+      src: "/photos/yosemite-hiking.jpeg",
+      alt: "Aaron hiking in Yosemite.",
+      caption: "Yosemite. Long hikes with good people are where I do my best thinking.",
+    },
+    {
+      src: "/photos/uncs-grad.jpeg",
+      alt: "Aaron at a UNC-related graduation photo.",
+      caption: "Family graduation moment. My roots keep me grounded.",
+    },
+    {
+      src: "/photos/claude-hackathon.jpeg",
+      alt: "Aaron and co-ambassadors at the Claude hackathon.",
+      caption: "Me and my co-ambassadors Rohan and Jessica at the first-ever Claude hackathon in Austin. Watching students ship real AI tools in one weekend was the kind of thing that made me want to stay close to this community.",
+    },
+    {
+      src: "/photos/misuki.jpeg",
+      alt: "Aaron with family from Maracaibo.",
+      caption: "Venezuelan roots. Born in Maracaibo, raised with arepas and a lot of loud love. Carrying that into everything I build.",
+    },
+    // TODO: Replace placeholder with an IEEE UT Austin meeting / president photo
+    {
+      src: "/photos/photo-08.svg",
+      alt: "Placeholder for an IEEE UT Austin leadership moment.",
+      caption: "TODO caption: IEEE UT Austin as president. Running a student org at scale taught me more about operations than any class.",
+    },
+    {
+      src: "/photos/traveling.jpeg",
+      alt: "Aaron traveling.",
+      caption: "Traveling. Being away from home is one of the fastest ways I learn what I actually care about.",
+    },
+    // TODO: Replace placeholder with an Austin startup community / meetup photo
+    {
+      src: "/photos/photo-10.svg",
+      alt: "Placeholder for an Austin startup community moment.",
+      caption: "TODO caption: Austin startup community. Builders, late coffees, conversations that go for hours.",
+    },
+    // TODO: Replace placeholder with a 3D-printing / making photo
+    {
+      src: "/photos/photo-11.svg",
+      alt: "Placeholder for a 3D-printed project.",
+      caption: "TODO caption: 3D-printed fixes. If I can print the solution, I will.",
+    },
+    {
+      src: "/photos/mt-fuji.jpeg",
+      alt: "Aaron with Mt. Fuji in the background.",
+      caption: "Mt. Fuji. Standing in front of it reminded me how small our day-to-day loops can feel once you've looked at something that big.",
+    },
+    // TODO: Replace placeholder with a friends / community photo
+    {
+      src: "/photos/photo-13.svg",
+      alt: "Placeholder for a friends and community photo.",
+      caption: "TODO caption: The people who make building feel less lonely.",
+    },
+    // TODO: Replace placeholder with a reflective / portrait photo
+    {
+      src: "/photos/photo-14.svg",
+      alt: "Placeholder for a reflective portrait.",
+      caption: "TODO caption: Quiet moment. Keeping it close to the chest.",
+    },
   ],
 } as const;
 
 export type SiteContent = typeof siteContent;
+export type Photo = (typeof siteContent.photos)[number];
