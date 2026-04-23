@@ -27,19 +27,17 @@ export function Connect() {
                 href={link.href}
                 target={link.external ? "_blank" : undefined}
                 rel={link.external ? "noopener noreferrer" : undefined}
-                className="group flex min-h-[56px] items-center justify-between gap-6 py-5 text-foreground transition-colors duration-200 hover:text-accent"
+                className="group flex min-h-[56px] items-baseline gap-4 py-5 text-foreground transition-colors duration-200 hover:text-accent"
               >
-                <span className="flex flex-col gap-1">
-                  <span className="text-[11px] font-medium uppercase tracking-caps text-muted transition-colors duration-200 group-hover:text-accent">
-                    {link.label}
-                  </span>
-                  <span className="font-serif text-2xl italic md:text-3xl">
-                    {link.value}
-                  </span>
+                <span className="w-28 shrink-0 text-[11px] font-medium uppercase tracking-caps text-muted transition-colors duration-200 group-hover:text-accent md:w-32">
+                  {link.label}
+                </span>
+                <span className="flex-1 truncate font-serif text-2xl italic md:text-3xl">
+                  {link.value}
                 </span>
                 <ArrowUpRight
                   aria-hidden="true"
-                  className="h-5 w-5 shrink-0 text-muted transition-all duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-accent"
+                  className="h-5 w-5 shrink-0 translate-y-[3px] text-muted transition-all duration-200 group-hover:-translate-y-[1px] group-hover:translate-x-0.5 group-hover:text-accent"
                 />
               </a>
             </li>

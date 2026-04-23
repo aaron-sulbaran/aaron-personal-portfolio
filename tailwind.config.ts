@@ -26,7 +26,7 @@ const config: Config = {
       fontSize: {
         "display-sm": ["clamp(3rem, 8vw, 4.5rem)", { lineHeight: "1.05", letterSpacing: "-0.02em" }],
         "display": ["clamp(3.5rem, 10vw, 6rem)", { lineHeight: "1", letterSpacing: "-0.025em" }],
-        "display-lg": ["clamp(4rem, 12vw, 7.5rem)", { lineHeight: "0.95", letterSpacing: "-0.03em" }],
+        "display-lg": ["clamp(3.25rem, 9vw, 7.5rem)", { lineHeight: "0.95", letterSpacing: "-0.03em" }],
         "section": ["clamp(2rem, 5vw, 3.5rem)", { lineHeight: "1.1", letterSpacing: "-0.02em" }],
         "body-lg": ["1.25rem", { lineHeight: "1.6" }],
       },

@@ -31,7 +31,7 @@ export function ThemeToggle() {
       onClick={toggle}
       aria-label={label}
       title={label}
-      className="fixed right-4 top-4 z-40 inline-flex h-11 w-11 items-center justify-center rounded-full border border-border bg-glass-strong backdrop-blur-md text-foreground transition-colors duration-200 hover:text-accent md:right-6 md:top-6"
+      className="fixed right-4 top-4 z-40 inline-flex h-11 w-11 items-center justify-center rounded-full border border-border bg-background/90 text-foreground shadow-[0_2px_16px_-6px_rgba(10,10,10,0.22)] backdrop-blur-md transition-colors duration-200 hover:text-accent md:right-6 md:top-6"
     >
       <span className="sr-only">{label}</span>
       {theme === "dark" ? (

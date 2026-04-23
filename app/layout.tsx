@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter, Instrument_Serif } from "next/font/google";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { siteContent } from "@/lib/content";
-import { themeInitScript } from "@/lib/theme";
+import { THEME_BG_DARK, THEME_BG_LIGHT, themeInitScript } from "@/lib/theme";
 import "./globals.css";
 
 const inter = Inter({
@@ -43,8 +43,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#FAFAF7" },
-    { media: "(prefers-color-scheme: dark)", color: "#0E1419" },
+    { media: "(prefers-color-scheme: light)", color: THEME_BG_LIGHT },
+    { media: "(prefers-color-scheme: dark)", color: THEME_BG_DARK },
   ],
   width: "device-width",
   initialScale: 1,

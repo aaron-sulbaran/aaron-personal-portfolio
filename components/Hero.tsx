@@ -8,8 +8,10 @@ import { siteContent } from "@/lib/content";
 // Outer container is taller than the viewport. The inner content is pinned
 // (sticky) while the user scrolls through the container, which gives the ring
 // animation a scroll "arena" to play through without the hero leaving the
-// viewport.
-const SCROLL_ARENA = "h-[180vh] md:h-[200vh]";
+// viewport. Longer arena = more visible motion per scroll unit in the mid
+// range, so the gather has a readable transitional middle (not just start and
+// end).
+const SCROLL_ARENA = "h-[220vh] md:h-[260vh]";
 
 export function Hero() {
   const ref = useRef<HTMLElement | null>(null);
@@ -32,7 +34,7 @@ export function Hero() {
 
         <div className="relative z-20 mx-auto flex max-w-3xl flex-col items-center text-center">
           <h1 className="font-serif text-display-lg italic">{name}</h1>
-          <p className="mt-6 max-w-md text-base leading-relaxed text-muted md:text-body-lg md:leading-[1.55]">
+          <p className="mt-6 max-w-[420px] text-base leading-relaxed text-muted md:text-body-lg md:leading-[1.55]">
             {tagline}
           </p>
         </div>
