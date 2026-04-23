@@ -9,24 +9,35 @@ import { siteContent } from "@/lib/content";
 // viewport from the center) and a ring index. Values are tuned to avoid the
 // center text zone (~42% wide x 28% tall) and to feel organic, not grid-aligned.
 type ScatterPoint = { x: number; y: number; r: number };
+// Scatter positions sit radially outside each photo's ring position, so each
+// photo moves inward along its own axis during the gather instead of sweeping
+// across the viewport and crossing the central text zone. Small per-photo
+// asymmetry keeps the scatter from looking like a perfect circle.
+// x/y in vmin units, r in degrees.
 const SCATTER: ScatterPoint[] = [
-  { x: -52, y: -40, r: -22 }, // far top-left
-  { x:  48, y: -44, r:  18 }, // far top-right
-  { x: -58, y:  14, r:  -6 }, // far mid-left
-  { x:  56, y:  22, r:  12 }, // far mid-right
-  { x: -34, y:  46, r:  26 }, // lower-left
-  { x:  36, y:  42, r: -24 }, // lower-right
-  { x:  -4, y: -52, r:   8 }, // above center, slight left
+  { x:  -8, y: -78, r:  10 }, // 0  — top, drifts up and slightly left
+  { x:  64, y: -58, r:  22 }, // 1  — upper-right, drifts outward
+  { x:  82, y:   2, r:  -8 }, // 2  — right, drifts outward
+  { x:  42, y:  72, r: -24 }, // 3  — lower-right, drifts outward
+  { x: -40, y:  76, r:  28 }, // 4  — lower-left, drifts outward
+  { x: -82, y:   8, r:  -6 }, // 5  — left, drifts outward
+  { x: -62, y: -60, r: -26 }, // 6  — upper-left, drifts outward
 ];
 
-// Ring radius as % of min(vw, vh). Sized so even the photos on the
-// horizontal axis (angles 0° / 180°) clear the tagline text on desktop.
-const RING_RADIUS_VMIN = 50;
+// Ring radius as % of min(vw, vh). Sized generously so every photo sits
+// outside the central text zone throughout the gather, including the mid-
+// transition frames where photos are still drifting.
+const RING_RADIUS_VMIN = 56;
+const RING_RADIUS_VMIN_MOBILE = 56;
+
+// Indices of SCATTER/photos kept when rendering the smaller mobile ring.
+const MOBILE_KEEP = [0, 1, 3, 4, 6] as const;
 
 type PhotoAnimProps = {
   index: number;
   total: number;
   scatter: ScatterPoint;
+  ringRadiusVmin: number;
   progress: MotionValue<number>;
   continuousRotation: MotionValue<number>;
   src: string;
@@ -34,14 +45,14 @@ type PhotoAnimProps = {
   visible: boolean;
 };
 
-function PhotoFrame({ index, total, scatter, progress, continuousRotation, src, alt, visible }: PhotoAnimProps) {
+function PhotoFrame({ index, total, scatter, ringRadiusVmin, progress, continuousRotation, src, alt, visible }: PhotoAnimProps) {
   // Angle on the final ring, in radians. Start at -90deg so the first photo is
   // at top-center; distribute evenly from there going clockwise.
   const angle = -Math.PI / 2 + (index / total) * Math.PI * 2;
 
   // Ring target position in vmin units, converted to CSS later.
-  const ringX = Math.cos(angle) * RING_RADIUS_VMIN;
-  const ringY = Math.sin(angle) * RING_RADIUS_VMIN;
+  const ringX = Math.cos(angle) * ringRadiusVmin;
+  const ringY = Math.sin(angle) * ringRadiusVmin;
 
   // Ease-out cubic for the "gathered into place" feel, not a linear snap.
   // Input is already mapped to the sticky arena by useScroll offsets, so a
@@ -71,19 +82,23 @@ function PhotoFrame({ index, total, scatter, progress, continuousRotation, src, 
   // Gentle fade-in on initial mount so photos don't pop.
   const entryOpacity = visible ? 1 : 0;
 
+  // Scale shrinks slightly as photos gather in, adding a second dimension of
+  // visible change during the sticky scroll arena.
+  const scale = useTransform(eased, [0, 1], [1.08, 1]);
+
   return (
     // Static wrapper centers the motion.div at the viewport center; Framer
     // Motion's transform (x/y/rotate) would otherwise overwrite Tailwind's
     // -translate-1/2 utilities and the photo would drift from center.
     <div className="pointer-events-none absolute left-1/2 top-1/2 z-0 h-0 w-0">
       <motion.div
-        style={{ x, y, rotate, opacity: entryOpacity }}
+        style={{ x, y, rotate, scale, opacity: entryOpacity }}
         initial={{ opacity: 0 }}
         animate={{ opacity: entryOpacity }}
         transition={{ duration: 0.7, ease: "easeOut", delay: 0.1 + index * 0.05 }}
         className="will-change-transform"
       >
-        <div className="pointer-events-auto relative -ml-[9.5vmin] -mt-[12.5vmin] h-[25vmin] max-h-[190px] min-h-[130px] w-[19vmin] min-w-[96px] max-w-[144px] overflow-hidden rounded-[20px] border border-border/80 bg-glass-strong shadow-[0_12px_32px_-18px_rgba(10,10,10,0.35),0_0_0_1px_rgba(255,255,255,0.25)_inset] backdrop-blur-md transition-transform duration-200 hover:scale-[1.03]">
+        <div className="pointer-events-auto relative -ml-[9.5vmin] -mt-[12.5vmin] h-[25vmin] max-h-[190px] min-h-[130px] w-[19vmin] min-w-[96px] max-w-[144px] overflow-hidden rounded-[20px] bg-glass-strong shadow-[0_16px_40px_-20px_rgba(10,10,10,0.45),0_0_0_1px_rgba(255,255,255,0.12)_inset,0_1px_0_rgba(255,255,255,0.35)_inset] ring-1 ring-black/5 dark:ring-white/10 backdrop-blur-md transition-transform duration-200 hover:scale-[1.03]">
           <Image
             src={src}
             alt={alt}
@@ -99,15 +114,17 @@ function PhotoFrame({ index, total, scatter, progress, continuousRotation, src, 
   );
 }
 
-function StaticCluster() {
+type Photo = (typeof siteContent.photos)[number];
+
+function StaticCluster({ photos, ringRadiusVmin }: { photos: ReadonlyArray<Photo>; ringRadiusVmin: number }) {
   // Reduced-motion / no-JS fallback: photos composed in a static ring.
   return (
     <div className="pointer-events-none absolute inset-0">
-      {siteContent.photos.map((photo, i) => {
-        const total = siteContent.photos.length;
+      {photos.map((photo, i) => {
+        const total = photos.length;
         const angle = -Math.PI / 2 + (i / total) * Math.PI * 2;
-        const x = Math.cos(angle) * RING_RADIUS_VMIN;
-        const y = Math.sin(angle) * RING_RADIUS_VMIN;
+        const x = Math.cos(angle) * ringRadiusVmin;
+        const y = Math.sin(angle) * ringRadiusVmin;
         const tangent = (angle * 180) / Math.PI + 90;
         return (
           <div key={photo.src} className="absolute left-1/2 top-1/2 h-0 w-0">
@@ -165,21 +182,21 @@ export function PhotoRing({ containerRef }: { containerRef: React.RefObject<HTML
     return () => cancelAnimationFrame(raf);
   }, [continuous, prefersReducedMotion]);
 
-  // On mobile we show 5 photos instead of 7 for perf + readability.
-  const photos = useMemo(() => {
-    if (!isMobile) return siteContent.photos;
-    // Pick a balanced subset of indices.
-    const keep = [0, 1, 3, 4, 6];
-    return keep.map((i) => siteContent.photos[i]);
-  }, [isMobile]);
+  // On mobile we show 5 photos instead of 7 for perf + readability, and pull
+  // the ring in so it clears the narrower viewport width.
+  const photos: ReadonlyArray<Photo> = useMemo(
+    () => (isMobile ? MOBILE_KEEP.map((i) => siteContent.photos[i]) : siteContent.photos),
+    [isMobile],
+  );
 
-  const scatters = useMemo(() => {
-    if (!isMobile) return SCATTER;
-    const keep = [0, 1, 3, 4, 6];
-    return keep.map((i) => SCATTER[i]);
-  }, [isMobile]);
+  const scatters = useMemo(
+    () => (isMobile ? MOBILE_KEEP.map((i) => SCATTER[i]) : SCATTER),
+    [isMobile],
+  );
 
-  if (prefersReducedMotion) return <StaticCluster />;
+  const ringRadius = isMobile ? RING_RADIUS_VMIN_MOBILE : RING_RADIUS_VMIN;
+
+  if (prefersReducedMotion) return <StaticCluster photos={photos} ringRadiusVmin={ringRadius} />;
 
   return (
     <div className="pointer-events-none absolute inset-0">
@@ -189,6 +206,7 @@ export function PhotoRing({ containerRef }: { containerRef: React.RefObject<HTML
           index={i}
           total={photos.length}
           scatter={scatters[i]}
+          ringRadiusVmin={ringRadius}
           progress={scrollYProgress}
           continuousRotation={continuous}
           src={photo.src}
