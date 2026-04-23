@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Instrument_Serif } from "next/font/google";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { Menu } from "@/components/Menu";
 import { siteContent } from "@/lib/content";
 import { THEME_BG_DARK, THEME_BG_LIGHT, themeInitScript } from "@/lib/theme";
 import "./globals.css";
@@ -62,7 +62,7 @@ export default function RootLayout({
         <a href="#main" className="skip-link">
           Skip to content
         </a>
-        <ThemeToggle />
+        <Menu />
         {children}
       </body>
     </html>
