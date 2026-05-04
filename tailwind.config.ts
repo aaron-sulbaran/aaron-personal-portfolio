@@ -26,7 +26,10 @@ const config: Config = {
       fontSize: {
         "display-sm": ["clamp(3rem, 8vw, 4.5rem)", { lineHeight: "1.05", letterSpacing: "-0.02em" }],
         "display": ["clamp(3.5rem, 10vw, 6rem)", { lineHeight: "1", letterSpacing: "-0.025em" }],
-        "display-lg": ["clamp(3.25rem, 9vw, 7.5rem)", { lineHeight: "0.95", letterSpacing: "-0.03em" }],
+        // Hero headline scales by vmin so it stays inside the TileRing's
+        // safe zone (ring radius is also vmin-based). Tighter ceiling keeps
+        // the italic from crashing into side tiles on 13–15" laptops.
+        "display-lg": ["clamp(2.75rem, 9vmin, 6.25rem)", { lineHeight: "0.95", letterSpacing: "-0.03em" }],
         "section": ["clamp(2rem, 5vw, 3.5rem)", { lineHeight: "1.1", letterSpacing: "-0.02em" }],
         "body-lg": ["1.25rem", { lineHeight: "1.6" }],
       },

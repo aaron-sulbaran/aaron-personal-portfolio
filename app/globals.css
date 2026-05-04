@@ -72,6 +72,14 @@ body {
   top: 1rem;
 }
 
+@media (pointer: fine) {
+  html.cursor-none,
+  html.cursor-none body,
+  html.cursor-none * {
+    cursor: none !important;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;

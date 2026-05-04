@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, X } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
@@ -75,9 +74,13 @@ export function WorkModal({ item, onClose }: WorkModalProps) {
             </button>
 
             <div className="flex items-center gap-5 pr-12">
-              <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-glass shadow-[0_8px_20px_-12px_rgba(10,10,10,0.4)]">
-                <Image src={item.logo} alt={`${item.title} logo`} fill sizes="80px" className="object-contain p-3" />
-              </div>
+              {/* Logo slot — TileRing's FlyingTile sits here while the modal
+                  is open. No <Image> inside; the flown tile is the logo. */}
+              <div
+                data-tile-slot="work"
+                className="relative h-20 w-20 shrink-0 rounded-xl"
+                aria-hidden="true"
+              />
               <div className="flex flex-col gap-1">
                 <span className="text-[11px] font-medium uppercase tracking-caps text-muted">
                   {item.role} · {item.year}
