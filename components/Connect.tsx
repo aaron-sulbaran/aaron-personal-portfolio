@@ -5,8 +5,9 @@ export function Connect() {
   const { label, heading, lede, links } = siteContent.connect;
   return (
     <section
+      id="connect"
       aria-label={label}
-      className="relative w-full border-t border-border/70 px-6 py-24 md:px-10 md:py-40"
+      className="relative w-full border-t border-border/70 px-6 py-24 md:px-10 md:py-40 scroll-mt-24"
     >
       <div className="mx-auto grid max-w-6xl gap-12 md:grid-cols-12 md:gap-16">
         <div className="md:col-span-5">

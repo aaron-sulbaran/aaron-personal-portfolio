@@ -64,6 +64,7 @@ export function Menu() {
   return (
     <>
       <button
+        id="site-menu-trigger"
         type="button"
         onClick={() => setOpen(true)}
         aria-label={ariaLabelOpen}
@@ -117,14 +118,30 @@ export function Menu() {
               className="flex flex-1 flex-col items-start justify-center gap-6 py-12 md:gap-8"
             >
               <ul className="flex flex-col gap-2 md:gap-4">
-                {items.map((item) => (
+                {items.map((item, i) => (
                   <li key={item.key}>
                     <Link
                       href={item.href}
                       onClick={() => setOpen(false)}
-                      className="block font-serif text-[clamp(3.5rem,10vw,7rem)] italic leading-[0.95] tracking-tight text-foreground transition-colors duration-200 hover:text-accent focus-visible:text-accent"
+                      className="group relative flex items-start gap-4 focus:outline-none"
                     >
-                      {item.label}
+                      <span
+                        aria-hidden="true"
+                        className="mt-3 text-[11px] font-medium uppercase tracking-caps text-muted md:mt-4"
+                      >
+                        {String(i + 1).padStart(2, "0")}
+                      </span>
+                      <span className="relative block overflow-hidden px-[0.04em] pb-[0.14em] font-serif text-[clamp(3.5rem,10vw,7rem)] italic leading-[1] tracking-tight">
+                        <span className="block text-foreground transition-transform duration-[600ms] ease-[cubic-bezier(0.77,0,0.175,1)] group-hover:-translate-y-[110%] group-focus-visible:-translate-y-[110%]">
+                          {item.label}
+                        </span>
+                        <span
+                          aria-hidden="true"
+                          className="pointer-events-none absolute inset-0 flex translate-y-[110%] items-start px-[0.04em] pb-[0.14em] text-accent transition-transform duration-[600ms] ease-[cubic-bezier(0.77,0,0.175,1)] group-hover:translate-y-0 group-focus-visible:translate-y-0"
+                        >
+                          {item.label}
+                        </span>
+                      </span>
                     </Link>
                   </li>
                 ))}

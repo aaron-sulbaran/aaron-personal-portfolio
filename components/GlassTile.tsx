@@ -1,0 +1,274 @@
+"use client";
+
+import Image from "next/image";
+import { motion, useMotionValue, useTransform, type MotionValue } from "framer-motion";
+import { useState } from "react";
+import { siteContent, type HomeTile, type Photo, type WorkItem } from "@/lib/content";
+
+type ResolvedTile =
+  | { kind: "photo"; key: string; src: string; photo: Photo }
+  | { kind: "work"; key: string; slug: WorkItem["slug"]; workItem: WorkItem };
+
+export type TileActivatePayload =
+  | { kind: "photo"; photo: Photo }
+  | { kind: "work"; workItem: WorkItem };
+
+type Props = {
+  tile: HomeTile;
+  flipEnabled: boolean;
+  /** Proximity-driven X rotation (degrees) — driven by the parent TileSlot. */
+  flipRotateX: MotionValue<number>;
+  /** Proximity-driven Y rotation (degrees). */
+  flipRotateY: MotionValue<number>;
+  buttonRef?: React.Ref<HTMLButtonElement>;
+  onActivate: (payload: TileActivatePayload) => void;
+};
+
+// Card thickness in px. The front/back faces are pushed ±THICKNESS/2 along
+// Z and four edge strips fill the gap so the card reads as a 3D glass
+// object instead of flat paper. Kept subtle (5px) so the ring doesn't feel
+// chunky.
+const THICKNESS_PX = 5;
+
+function resolveTile(tile: HomeTile): ResolvedTile | null {
+  if (tile.kind === "photo") {
+    const photo = siteContent.photos.find((p) => p.src === tile.src);
+    if (!photo) return null;
+    return { kind: "photo", key: tile.key, src: tile.src, photo };
+  }
+  const workItem = siteContent.workItems.find((w) => w.slug === tile.slug);
+  if (!workItem) return null;
+  return { kind: "work", key: tile.key, slug: tile.slug, workItem };
+}
+
+function KindMark({ kind }: { kind: "photo" | "work" }) {
+  const glyph = kind === "photo" ? "○" : "▸";
+  const label = kind === "photo" ? "Photo" : "Work";
+  return (
+    <span
+      aria-hidden="true"
+      className="pointer-events-none absolute right-2 top-2 flex items-center gap-1 text-[9px] font-medium uppercase tracking-caps text-muted"
+    >
+      <span className="opacity-0 transition-opacity duration-200 group-hover:opacity-80 group-focus-visible:opacity-80">
+        {label}
+      </span>
+      <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-background/70 leading-none">
+        {glyph}
+      </span>
+    </span>
+  );
+}
+
+// A single tile in the ring. Instead of a paper-thin flat card, the tile is
+// a 3D box: front + back faces pushed apart by THICKNESS_PX along Z, and
+// four thin glass strips filling the gap around the rim. When the card
+// tilts (from proximity lean / hover interaction), viewers see the glass
+// edge catch light and the tile reads as a physical object.
+//
+// The card never fully flips — proximity drives X/Y rotations in the
+// ±30° range, which keeps text and imagery legible while still signaling
+// 3D depth. Focus-visible forces a full 180° Y rotation so keyboard users
+// still see the reveal gesture.
+export function GlassTile({
+  tile,
+  flipEnabled,
+  flipRotateX,
+  flipRotateY,
+  buttonRef,
+  onActivate,
+}: Props) {
+  const resolved = resolveTile(tile);
+
+  const focusedMV = useMotionValue(0);
+  const [, setFocusedState] = useState(false);
+
+  // Effective X: force 0 when disabled, else proximity value.
+  const effectiveRotateX = useTransform<number, number>(
+    [flipRotateX, focusedMV],
+    ([v, f]) => {
+      if (!flipEnabled) return 0;
+      if ((f as number) > 0.5) return 0; // focus forces Y flip only
+      return v as number;
+    },
+  );
+
+  // Effective Y: force 0 when disabled, force 180 on focus (keyboard flip),
+  // else proximity value.
+  const effectiveRotateY = useTransform<number, number>(
+    [flipRotateY, focusedMV],
+    ([v, f]) => {
+      if (!flipEnabled) return 0;
+      if ((f as number) > 0.5) return 180;
+      return v as number;
+    },
+  );
+
+  if (!resolved) return null;
+
+  const imageSrc = resolved.kind === "photo" ? resolved.photo.src : resolved.workItem.logo;
+  const imageAlt =
+    resolved.kind === "photo"
+      ? resolved.photo.alt
+      : `${resolved.workItem.title} logo`;
+  const ariaLabel =
+    resolved.kind === "photo"
+      ? `Open caption for ${resolved.photo.alt}`
+      : `Open preview for ${resolved.workItem.title}, ${resolved.workItem.role}`;
+
+  const handleClick = () => {
+    if (resolved.kind === "photo") onActivate({ kind: "photo", photo: resolved.photo });
+    else onActivate({ kind: "work", workItem: resolved.workItem });
+  };
+
+  // Only fire the 180° reveal flip for keyboard focus. Mouse clicks also
+  // focus the button in Chrome/Firefox, which would otherwise spin the tile
+  // through its mirrored back face right as the click-to-modal flight
+  // begins (causing a visible mirror flash on every card click).
+  const handleFocus = (e: React.FocusEvent<HTMLButtonElement>) => {
+    if (!e.target.matches(":focus-visible")) return;
+    focusedMV.set(1);
+    setFocusedState(true);
+  };
+  const handleBlur = () => {
+    focusedMV.set(0);
+    setFocusedState(false);
+  };
+
+  // Face surface (front + back): glass, tight corners, subtle inner
+  // hairline + shadow. Edges reuse the same bg-glass-strong so the rim
+  // reads as the same material as the faces.
+  const faceShadow =
+    "shadow-[0_10px_28px_-16px_rgba(10,10,10,0.4),0_0_0_1px_rgba(255,255,255,0.18)_inset]";
+  const faceBase = `overflow-hidden rounded-[10px] bg-glass-strong ${faceShadow} ring-1 ring-black/5 backdrop-blur-md dark:ring-white/10`;
+  const edgeBase = `rounded-[2px] bg-glass-strong backdrop-blur-md shadow-[inset_0_0_0_1px_rgba(255,255,255,0.18)]`;
+
+  return (
+    <button
+      ref={buttonRef}
+      type="button"
+      onClick={handleClick}
+      onFocus={handleFocus}
+      onBlur={handleBlur}
+      data-cursor-hover
+      aria-label={ariaLabel}
+      className="group relative block h-full w-full [perspective:1200px] focus:outline-none"
+    >
+      <motion.div
+        style={{
+          rotateX: effectiveRotateX,
+          rotateY: effectiveRotateY,
+          transformStyle: "preserve-3d",
+        }}
+        className="relative h-full w-full"
+      >
+        {/* Front face — pushed forward by THICKNESS/2 */}
+        <div
+          className={`absolute inset-0 ${faceBase} [backface-visibility:hidden]`}
+          style={{ transform: `translateZ(${THICKNESS_PX / 2}px)` }}
+        >
+          {resolved.kind === "photo" ? (
+            <Image
+              src={imageSrc}
+              alt={imageAlt}
+              fill
+              sizes="(max-width: 768px) 13vmin, 11vmin"
+              className="object-cover"
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center p-3">
+              <Image
+                src={imageSrc}
+                alt={imageAlt}
+                width={120}
+                height={120}
+                className="h-auto w-[78%] object-contain"
+              />
+            </div>
+          )}
+          <KindMark kind={resolved.kind} />
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 rounded-[10px] shadow-[inset_0_1px_0_rgba(255,255,255,0.22)]"
+          />
+        </div>
+
+        {/* Back face — pushed back (rotateY(180) then translateZ out so it
+            sits at z = -THICKNESS/2 in the parent frame). */}
+        <div
+          className={`absolute inset-0 ${faceBase} [backface-visibility:hidden]`}
+          style={{ transform: `rotateY(180deg) translateZ(${THICKNESS_PX / 2}px)` }}
+        >
+          {resolved.kind === "photo" ? (
+            <Image
+              src={imageSrc}
+              alt=""
+              fill
+              sizes="(max-width: 768px) 13vmin, 11vmin"
+              className="scale-x-[-1] object-cover"
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center p-3">
+              <Image
+                src={imageSrc}
+                alt=""
+                width={120}
+                height={120}
+                className="h-auto w-[78%] scale-x-[-1] object-contain"
+              />
+            </div>
+          )}
+          <KindMark kind={resolved.kind} />
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 rounded-[10px] shadow-[inset_0_1px_0_rgba(255,255,255,0.22)]"
+          />
+        </div>
+
+        {/* Right edge */}
+        <div
+          aria-hidden="true"
+          className={`absolute top-0 ${edgeBase}`}
+          style={{
+            right: 0,
+            width: `${THICKNESS_PX}px`,
+            height: "100%",
+            transform: `translateX(${THICKNESS_PX / 2}px) rotateY(90deg)`,
+          }}
+        />
+        {/* Left edge */}
+        <div
+          aria-hidden="true"
+          className={`absolute top-0 ${edgeBase}`}
+          style={{
+            left: 0,
+            width: `${THICKNESS_PX}px`,
+            height: "100%",
+            transform: `translateX(-${THICKNESS_PX / 2}px) rotateY(-90deg)`,
+          }}
+        />
+        {/* Top edge */}
+        <div
+          aria-hidden="true"
+          className={`absolute left-0 ${edgeBase}`}
+          style={{
+            top: 0,
+            width: "100%",
+            height: `${THICKNESS_PX}px`,
+            transform: `translateY(-${THICKNESS_PX / 2}px) rotateX(90deg)`,
+          }}
+        />
+        {/* Bottom edge */}
+        <div
+          aria-hidden="true"
+          className={`absolute left-0 ${edgeBase}`}
+          style={{
+            bottom: 0,
+            width: "100%",
+            height: `${THICKNESS_PX}px`,
+            transform: `translateY(${THICKNESS_PX / 2}px) rotateX(-90deg)`,
+          }}
+        />
+      </motion.div>
+    </button>
+  );
+}

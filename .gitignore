@@ -34,3 +34,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+.gstack/
+
+# Agent working documents and tooling — private per Living Document Protocol
+AGENTS.md
+CLAUDE.md
+CLAUDE.local.md
+.cursor/
+.claude/
+.vercel/

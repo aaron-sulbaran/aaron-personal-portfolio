@@ -5,11 +5,16 @@ export const siteContent = {
       "Third-year ECE at UT Austin. Pursuing product management. Building things with people, not just for them.",
     url: "https://aaronsulbaran.com",
   },
-  hero: {
+  home: {
     name: "Hi, I'm Aaron.",
     tagline:
       "ECE at UT Austin. Pursuing product management. Building things with people, not just for them.",
-    scrollLabel: "Scroll",
+    scrollHint: "Open the menu to explore",
+  },
+  about: {
+    label: "About",
+    heading: "About.",
+    lede: "The longer version of who I am, what I'm working on, and how to reach me.",
   },
   menu: {
     ariaLabelOpen: "Open menu",
@@ -17,7 +22,7 @@ export const siteContent = {
     items: [
       { key: "home", label: "Home", href: "/", kind: "route" as const },
       { key: "work", label: "Work", href: "/work", kind: "route" as const },
-      { key: "about", label: "About", href: "/#who-i-am", kind: "anchor" as const },
+      { key: "about", label: "About", href: "/about", kind: "route" as const },
     ],
   },
   whoIAm: {
@@ -249,12 +254,40 @@ export const siteContent = {
       caption: "TODO caption: Quiet moment. Keeping it close to the chest.",
     },
   ],
+  // Home-page tile ring. Order here is rendering order (index 0 sits at the
+  // top of the ring and tiles are distributed clockwise). Mix of photo tiles
+  // and work tiles interleaved so neither type clusters on one side. Photo
+  // tiles reference the `photos` array by src; work tiles reference the
+  // `workItems` array by slug, so the click handler can open the right modal.
+  homeTiles: [
+    { kind: "photo" as const, key: "hsf-speaking", src: "/photos/hsf-speaking.jpeg" },
+    { kind: "work"  as const, key: "capital-one-pm", slug: "capital-one-pm" },
+    { kind: "photo" as const, key: "drum-major", src: "/photos/drum-major.jpeg" },
+    { kind: "photo" as const, key: "yosemite-hiking", src: "/photos/yosemite-hiking.jpeg" },
+    { kind: "work"  as const, key: "claude-ambassador", slug: "claude-ambassador" },
+    { kind: "photo" as const, key: "capital-one", src: "/photos/capital-one.jpeg" },
+    { kind: "photo" as const, key: "uncs-grad", src: "/photos/uncs-grad.jpeg" },
+    { kind: "work"  as const, key: "ieee-president", slug: "ieee-president" },
+    { kind: "photo" as const, key: "claude-hackathon", src: "/photos/claude-hackathon.jpeg" },
+    { kind: "photo" as const, key: "misuki", src: "/photos/misuki.jpeg" },
+    { kind: "work"  as const, key: "aaronsulbaran-site", slug: "aaronsulbaran-site" },
+    { kind: "photo" as const, key: "photo-08", src: "/photos/photo-08.svg" },
+    { kind: "photo" as const, key: "traveling", src: "/photos/traveling.jpeg" },
+    { kind: "work"  as const, key: "capital-one-ba", slug: "capital-one-ba" },
+    { kind: "photo" as const, key: "photo-10", src: "/photos/photo-10.svg" },
+    { kind: "photo" as const, key: "photo-11", src: "/photos/photo-11.svg" },
+    { kind: "work"  as const, key: "hackathon-builds", slug: "hackathon-builds" },
+    { kind: "photo" as const, key: "mt-fuji", src: "/photos/mt-fuji.jpeg" },
+    { kind: "photo" as const, key: "photo-13", src: "/photos/photo-13.svg" },
+    { kind: "photo" as const, key: "photo-14", src: "/photos/photo-14.svg" },
+  ],
 } as const;
 
 export type SiteContent = typeof siteContent;
 export type Photo = (typeof siteContent.photos)[number];
 export type WorkItem = (typeof siteContent.workItems)[number];
 export type MenuItem = (typeof siteContent.menu.items)[number];
+export type HomeTile = (typeof siteContent.homeTiles)[number];
 
 // Body section shapes for work detail pages. When a workItem populates its
 // bodySections array, each element must match one of these. More kinds can be

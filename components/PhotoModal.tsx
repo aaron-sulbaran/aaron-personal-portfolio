@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { X } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useRef } from "react";
@@ -71,16 +70,15 @@ export function PhotoModal({ photo, onClose }: PhotoModalProps) {
               <X aria-hidden="true" className="h-4 w-4" />
             </button>
 
-            <div className="relative aspect-[3/4] w-full shrink-0 overflow-hidden rounded-xl bg-glass shadow-[0_16px_40px_-20px_rgba(10,10,10,0.45)] md:w-[46%]">
-              <Image
-                src={photo.src}
-                alt={photo.alt}
-                fill
-                sizes="(max-width: 768px) 90vw, 40vw"
-                className="object-cover"
-                priority
-              />
-            </div>
+            {/* Photo slot — the TileRing's FlyingTile physically lives here
+                while the modal is open. No <Image> rendered inside; the flown
+                tile is the image. aspect + sizing must match the tile's 3:4
+                proportions so the flight lands in the exact rect. */}
+            <div
+              data-tile-slot="photo"
+              className="relative aspect-[3/4] w-full shrink-0 rounded-xl md:w-[46%]"
+              aria-hidden="true"
+            />
 
             <div className="flex flex-1 flex-col justify-center pt-2 md:pt-0">
               <p className="font-serif text-2xl italic leading-[1.25] text-foreground md:text-3xl md:leading-[1.2]">

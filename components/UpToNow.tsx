@@ -4,8 +4,9 @@ export function UpToNow() {
   const { label, heading, items } = siteContent.upToNow;
   return (
     <section
+      id="up-to-now"
       aria-label={label}
-      className="relative w-full border-t border-border/70 px-6 py-24 md:px-10 md:py-40"
+      className="relative w-full border-t border-border/70 px-6 py-24 md:px-10 md:py-40 scroll-mt-24"
     >
       <div className="mx-auto max-w-6xl">
         <div className="mb-14 flex flex-col gap-6 md:mb-20 md:flex-row md:items-end md:justify-between">
