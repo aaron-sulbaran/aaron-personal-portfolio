@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, useMotionValue, useReducedMotion, useSpring, useTransform, type MotionValue } from "framer-motion";
+import { motion, useMotionValue, useReducedMotion, useSpring, useTransform, type Easing, type MotionValue } from "framer-motion";
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { siteContent, type HomeTile as HomeTileEntry, type Photo, type WorkItem } from "@/lib/content";
 import { useBodyScrollLock } from "@/lib/modal";
@@ -28,15 +28,25 @@ type Props = {
 const RING_RADIUS_VMIN = 41;
 const RING_RADIUS_VMIN_MOBILE = 42;
 const TILE_WIDTH_VMIN = 9;
-const TILE_WIDTH_VMIN_MOBILE = 11;
+const TILE_WIDTH_VMIN_MOBILE = 9; // matches desktop arc fill (~70%) so mobile tiles do not overlap
 
 // Entrance timing, in milliseconds.
 const FIRST_TILE_HOLD_MS = 260;   // one tile visible alone before the stack flashes in
 const STACK_FLASH_MS = 160;       // rest of the tiles pile on top of the first
-const SHUFFLE_TICK_MS = 70;       // how fast the top card cycles during shuffle
-const SHUFFLE_DURATION_MS = 620;  // total shuffle length (8-9 cuts at the tick rate)
-const TILE_FAN_DURATION_MS = 820; // per-tile travel time to its ring seat
-const TILE_FAN_STAGGER_MS = 55;   // gap between successive tiles beginning their fan
+const SHUFFLE_TICK_MS = 120;      // how fast the top card cycles during shuffle
+const SHUFFLE_DURATION_MS = 200;  // brief riffle before the fan (kept short; not in design.md)
+const TILE_FAN_DURATION_MS = 780; // per-tile travel time to its ring seat (design.md: 780)
+const TILE_FAN_STAGGER_MS = 10;   // near-simultaneous: tiles bloom outward together with a faint ripple
+
+// Curved fan-out (revolve). The fanning path is not a straight chord to the
+// seat; each tile blooms from the collapsed deck along a gently bowed arc while
+// rotating up to its tangent seat, so the ring "unfurls" from the deck. See
+// docs/design.md "Home-ring entrance choreography". The path is sampled at
+// FAN_SAMPLES points with the decelerate baked into the sample spacing (so a
+// single linear tween reads as one continuous ease-out, no mid-arc stall).
+const FAN_SWEEP_DEG = 36;      // gentle clockwise swing of the travel arc
+const FAN_ARC_LIFT_VMIN = 6;   // how far the travel path bows past the straight chord
+const FAN_SAMPLES = 7;         // arc sample count (smooth bow, still compositor-cheap)
 
 // Cursor parallax: 3D tilt on the ring container. The ring rotates on X/Y
 // axes in response to cursor position — it reads as "looking down into a
@@ -542,8 +552,14 @@ export function TileRing({ children }: Props) {
 
 type TargetSeat = { xVmin: number; yVmin: number; rotate: number };
 type TargetResult = {
-  animate: { x: string; y: string; rotate: number; scale: number; opacity: number };
-  transition: { duration: number; ease: [number, number, number, number]; delay?: number };
+  animate: {
+    x: string | string[];
+    y: string | string[];
+    rotate: number | number[];
+    scale: number;
+    opacity: number;
+  };
+  transition: { duration: number; ease: Easing; delay?: number };
 };
 
 const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
@@ -611,8 +627,54 @@ function computeTarget({
       transition: { duration: 0.12, ease: EASE },
     };
   }
-  // fanning OR ready — tiles sit at their seats with tangent rotation.
-  // Staggered delay makes the fan-out read as a revolving sweep.
+  if (phase === "fanning") {
+    // Curved revolve out to the seat, sampled as a smooth decelerating bloom.
+    // The tile expands from the collapsed deck along a quadratic-bezier arc
+    // (center, control, seat) and rotates from upright (deck) up to its tangent
+    // seat. The decelerate-out is baked into the sample spacing via easeOutQuint
+    // (which mirrors EASE's quint feel), so a single linear tween between samples
+    // reads as ONE continuous ease-out with no mid-arc velocity stall, no corner,
+    // and no rotation pop at launch (rotation starts at the deck's 0, matching
+    // the prior phase). Resting seat values are unchanged. See docs/design.md
+    // "Home-ring entrance choreography".
+    const seatAngle = Math.atan2(seat.yVmin, seat.xVmin);
+    const seatRadius = Math.hypot(seat.xVmin, seat.yVmin);
+    const sweepRad = (FAN_SWEEP_DEG * Math.PI) / 180;
+
+    // Control point: part way out, swung back (counter-clockwise) by half the
+    // sweep and pushed past the chord by FAN_ARC_LIFT_VMIN, so each tile arcs
+    // gently clockwise into its seat (a soft, symmetric unfurl).
+    const controlAngle = seatAngle - sweepRad / 2;
+    const controlRadius = seatRadius / 2 + FAN_ARC_LIFT_VMIN;
+    const controlX = Math.cos(controlAngle) * controlRadius;
+    const controlY = Math.sin(controlAngle) * controlRadius;
+
+    const xs: string[] = [];
+    const ys: string[] = [];
+    const rotates: number[] = [];
+    for (let k = 0; k < FAN_SAMPLES; k++) {
+      const t = k / (FAN_SAMPLES - 1);
+      const u = 1 - Math.pow(1 - t, 5); // easeOutQuint progress, mirrors EASE
+      const mx = 2 * (1 - u) * u * controlX + u * u * seat.xVmin;
+      const my = 2 * (1 - u) * u * controlY + u * u * seat.yVmin;
+      xs.push(`${mx}vmin`);
+      ys.push(`${my}vmin`);
+      rotates.push(seat.rotate * u);
+    }
+
+    return {
+      animate: { x: xs, y: ys, rotate: rotates, scale: 1, opacity: 1 },
+      transition: {
+        duration: TILE_FAN_DURATION_MS / 1000,
+        ease: "linear", // decelerate is baked into the sample spacing above
+        delay: (staggerIndex * TILE_FAN_STAGGER_MS) / 1000,
+      },
+    };
+  }
+
+  // ready — tiles rest at their seats with full tangent rotation. Scalar (not
+  // keyframe) values so the resting transform is a single static state that the
+  // proximity lean and the FlyingTile shared-element handoff can read exactly.
   return {
     animate: {
       x: `${seat.xVmin}vmin`,
@@ -624,7 +686,6 @@ function computeTarget({
     transition: {
       duration: TILE_FAN_DURATION_MS / 1000,
       ease: EASE,
-      delay: phase === "fanning" ? (staggerIndex * TILE_FAN_STAGGER_MS) / 1000 : 0,
     },
   };
 }
