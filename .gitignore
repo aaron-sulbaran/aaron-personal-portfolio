@@ -36,10 +36,13 @@ yarn-error.log*
 next-env.d.ts
 .gstack/
 
-# Agent working documents and tooling — private per Living Document Protocol
+# Agent working documents and tooling, private per Living Document Protocol
 AGENTS.md
 CLAUDE.md
 CLAUDE.local.md
 .cursor/
 .claude/
 .vercel/
+
+# Research and extraction artifacts, private and not public-facing
+docs/research/
