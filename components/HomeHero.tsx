@@ -5,7 +5,7 @@ import { useRingState } from "./TileRing";
 
 // Centered hero copy that sits inside the TileRing. Hidden until the ring's
 // entrance animation completes, then fades in. Purposefully does not drive
-// any scroll behavior — home is a single locked view, so the "explore" hint
+// any scroll behavior; home is a single locked view, so the "explore" hint
 // points users to the menu.
 export function HomeHero() {
   const state = useRingState();
@@ -32,7 +32,7 @@ export function HomeHero() {
 }
 
 // Small caps signpost. Clicking it opens the site menu via the hamburger's
-// id (no state plumbing needed — Menu owns its own open state). Becomes
+// id (no state plumbing needed; Menu owns its own open state). Becomes
 // clickable once the hero is visible.
 function MenuHint({ label }: { label: string }) {
   const openMenu = () => {

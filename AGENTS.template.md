@@ -12,8 +12,8 @@
 
 ## Source-of-truth docs
 
-- <!-- [`docs/PRD.md`](docs/PRD.md) — scope, features, acceptance criteria. -->
-- <!-- [`docs/design.md`](docs/design.md) — visual hierarchy, tokens, motion. -->
+- <!-- [`docs/PRD.md`](docs/PRD.md): scope, features, acceptance criteria. -->
+- <!-- [`docs/design.md`](docs/design.md): visual hierarchy, tokens, motion. -->
 
 ## Authority order
 
