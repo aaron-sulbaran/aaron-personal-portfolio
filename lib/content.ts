@@ -15,15 +15,33 @@ export const siteContent = {
     label: "About",
     heading: "About.",
     lede: "The longer version of who I am, what I'm working on, and how to reach me.",
+    metaDescription: "Who I am, what I'm working on, and how to reach me.",
   },
   menu: {
     ariaLabelOpen: "Open menu",
     ariaLabelClose: "Close menu",
+    themeToggleToDark: "Dark mode",
+    themeToggleToLight: "Light mode",
+    themeAriaLabelToDark: "Switch to dark mode",
+    themeAriaLabelToLight: "Switch to light mode",
     items: [
       { key: "home", label: "Home", href: "/", kind: "route" as const },
       { key: "work", label: "Work", href: "/work", kind: "route" as const },
       { key: "about", label: "About", href: "/about", kind: "route" as const },
     ],
+  },
+  modals: {
+    closeAriaLabel: "Close",
+  },
+  notFound: {
+    title: "Nothing here.",
+    body: "I moved things around while building this out. The page you're looking for doesn't exist.",
+    cta: "Back to home",
+  },
+  errorPage: {
+    title: "Something went wrong.",
+    body: "An unexpected error occurred. It's on my end, not yours.",
+    retry: "Try again",
   },
   whoIAm: {
     label: "Who I am",
@@ -47,9 +65,11 @@ export const siteContent = {
     cta: "See more →",
     seeAll: "See everything →",
     placeholderBody: "Case study in progress. Ping me on LinkedIn if you want to hear about it sooner.",
+    placeholderCta: "Ping me on LinkedIn",
     indexHeading: "Work.",
     indexLede: "Every project, internship, and community I'm proud of. Click in for the story.",
     backLabel: "← Work",
+    metaDescription: "Projects, internships, and communities I've poured real time into.",
   },
   connect: {
     label: "Connect",
@@ -87,7 +107,7 @@ export const siteContent = {
     ],
   },
   footer: {
-    tagline: "This site grows with me. Last updated April 22, 2026",
+    tagline: "This site grows with me. Last updated June 2026",
     copyright: "© 2026 Aaron Sulbaran",
   },
   // Work items. `bodySections: []` means the detail page renders a quiet
@@ -154,7 +174,7 @@ export const siteContent = {
       year: "2026",
       logo: "/work/logos/site.svg",
       teaser: "This site. A Phase 1 personal statement that grows with me.",
-      summary: "Next.js 14, Tailwind, Framer Motion. Scroll-driven photo ring, work surface, and a living-document voice.",
+      summary: "Next.js 14, Tailwind, Framer Motion. Cursor-driven tile ring with shared-element flight modals, a work surface, and a living-document voice.",
       bodySections: [],
       links: [
         { label: "GitHub", href: "https://github.com/aaron-sulbaran" },
@@ -176,7 +196,7 @@ export const siteContent = {
     },
   ],
   // 14 photos on desktop, 6 on mobile. Each caption is what shows in the
-  // click-to-expand modal — edit freely, first person, no em dashes.
+  // click-to-expand modal; edit freely, first person, no em dashes.
   photos: [
     {
       src: "/photos/hsf-speaking.jpeg",
@@ -185,7 +205,7 @@ export const siteContent = {
     },
     {
       src: "/photos/drum-major.jpeg",
-      alt: "Aaron in his drum major uniform during a performance.",
+      alt: "Me in my drum major uniform during a performance.",
       caption: "Drum major days. Leading a band is mostly about reading the room, staying calm when things break, and making sure everyone around you feels seen.",
     },
     {
@@ -283,7 +303,6 @@ export const siteContent = {
   ],
 } as const;
 
-export type SiteContent = typeof siteContent;
 export type Photo = (typeof siteContent.photos)[number];
 export type WorkItem = (typeof siteContent.workItems)[number];
 export type MenuItem = (typeof siteContent.menu.items)[number];

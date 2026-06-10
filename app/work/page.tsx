@@ -7,7 +7,7 @@ import { Footer } from "@/components/Footer";
 
 export const metadata: Metadata = {
   title: "Work",
-  description: "Projects, internships, and communities I've poured real time into.",
+  description: siteContent.work.metaDescription,
 };
 
 export default function WorkIndexPage() {

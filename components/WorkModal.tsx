@@ -67,14 +67,14 @@ export function WorkModal({ item, onClose }: WorkModalProps) {
             <button
               type="button"
               onClick={onClose}
-              aria-label="Close"
+              aria-label={siteContent.modals.closeAriaLabel}
               className="absolute right-3 top-3 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full border border-border/70 bg-background/80 text-foreground transition-colors duration-200 hover:text-accent"
             >
               <X aria-hidden="true" className="h-4 w-4" />
             </button>
 
             <div className="flex items-center gap-5 pr-12">
-              {/* Logo slot — TileRing's FlyingTile sits here while the modal
+              {/* Logo slot: TileRing's FlyingTile sits here while the modal
                   is open. No <Image> inside; the flown tile is the logo. */}
               <div
                 data-tile-slot="work"
