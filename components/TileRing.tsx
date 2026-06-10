@@ -129,8 +129,17 @@ export function TileRing({ children }: Props) {
     phase: FlightPhase;
   } | null>(null);
 
-  // Body locked through all entrance phases; released when ready.
-  useBodyScrollLock(phase !== "ready");
+  // Body locked only through the brief deck phases (hidden → shuffle). The
+  // lock is released the instant the fan-out begins, so the ~800ms unfurl and
+  // the settled ring no longer hold scroll hostage — that full-entrance lock
+  // was a big part of why returning to Home felt stuck. Reduced-motion users
+  // start at "ready" and never lock at all.
+  const entranceLocked =
+    phase === "hidden" ||
+    phase === "firstTile" ||
+    phase === "stacking" ||
+    phase === "shuffling";
+  useBodyScrollLock(entranceLocked);
 
   // Parallax motion values, spring-smoothed. pX/pY are normalized cursor
   // position in [-1..1] (0 = viewport center). Feed through springs so the
@@ -145,6 +154,11 @@ export function TileRing({ children }: Props) {
   // a local lean. Initial value is off-screen so tiles sit at rest on mount.
   const cursorPx = useMotionValue(-9999);
   const cursorPy = useMotionValue(-9999);
+
+  // Cached viewport dimensions, refreshed only on mount + resize. The per-tile
+  // proximity math used to call window.innerWidth/innerHeight on every tile on
+  // every pointer move (14 reads/move); now each tile reads this ref instead.
+  const viewportRef = useRef({ vw: 0, vh: 0, vmin: 0 });
 
   // 3D tilt: cursor X rotates the ring around the Y axis (yaw) — moving the
   // cursor right swings the right edge of the ring AWAY from the viewer.
@@ -164,6 +178,19 @@ export function TileRing({ children }: Props) {
     return () => mq.removeEventListener("change", update);
   }, []);
 
+  // Keep the cached viewport dims fresh. Read on mount and on resize only —
+  // never in the hot per-move proximity path.
+  useEffect(() => {
+    const read = () => {
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      viewportRef.current = { vw, vh, vmin: Math.min(vw, vh) };
+    };
+    read();
+    window.addEventListener("resize", read);
+    return () => window.removeEventListener("resize", read);
+  }, []);
+
   // Parallax listener: only active on fine-pointer devices, once the
   // entrance has completed, and only when NO flight is in progress. During
   // a flight we also reset parallax/proximity to 0 (below) so the ring
@@ -177,19 +204,44 @@ export function TileRing({ children }: Props) {
     const fine = window.matchMedia("(pointer: fine)");
     if (!fine.matches) return;
 
-    const onMove = (e: PointerEvent) => {
-      const cx = window.innerWidth / 2;
-      const cy = window.innerHeight / 2;
-      const nx = (e.clientX - cx) / cx;
-      const ny = (e.clientY - cy) / cy;
+    // Coalesce pointer moves to one write per animation frame. High-Hz mice
+    // and event coalescing can fire pointermove several times per frame; each
+    // write re-targets ~90 springs across the ring, so collapsing the burst
+    // into a single rAF flush cuts redundant per-frame work substantially.
+    let pendingX = 0;
+    let pendingY = 0;
+    let hasPending = false;
+    let raf = 0;
+
+    const flush = () => {
+      raf = 0;
+      if (!hasPending) return;
+      hasPending = false;
+      const { vw, vh } = viewportRef.current;
+      const w = vw || window.innerWidth;
+      const h = vh || window.innerHeight;
+      const cx = w / 2;
+      const cy = h / 2;
       // Ring moves AWAY from cursor: negate.
-      parallaxX.set(-nx);
-      parallaxY.set(-ny);
+      parallaxX.set(-((pendingX - cx) / cx));
+      parallaxY.set(-((pendingY - cy) / cy));
       // Raw pixel position for per-tile proximity.
-      cursorPx.set(e.clientX);
-      cursorPy.set(e.clientY);
+      cursorPx.set(pendingX);
+      cursorPy.set(pendingY);
+    };
+
+    const onMove = (e: PointerEvent) => {
+      pendingX = e.clientX;
+      pendingY = e.clientY;
+      hasPending = true;
+      if (!raf) raf = requestAnimationFrame(flush);
     };
     const onLeave = () => {
+      hasPending = false;
+      if (raf) {
+        cancelAnimationFrame(raf);
+        raf = 0;
+      }
       parallaxX.set(0);
       parallaxY.set(0);
       cursorPx.set(-9999);
@@ -198,6 +250,7 @@ export function TileRing({ children }: Props) {
     window.addEventListener("pointermove", onMove, { passive: true });
     document.addEventListener("pointerleave", onLeave);
     return () => {
+      if (raf) cancelAnimationFrame(raf);
       window.removeEventListener("pointermove", onMove);
       document.removeEventListener("pointerleave", onLeave);
     };
@@ -351,7 +404,9 @@ export function TileRing({ children }: Props) {
   };
 
   // Fly-out animation completed with the tile sitting in the modal's slot.
-  // Nothing to do — the tile stays put until the user closes the modal.
+  // Nothing to do — the ring stays live and static behind the translucent
+  // frosted modal (its parallax/lean listeners are already paused during
+  // flight), so the blurred ring reads through the glass as intended.
   const handleFlyOutComplete = () => {
     // intentionally empty
   };
@@ -519,6 +574,7 @@ export function TileRing({ children }: Props) {
                 flipEnabled={flipEnabled}
                 cursorPx={cursorPx}
                 cursorPy={cursorPy}
+                viewportRef={viewportRef}
                 onTileClick={handleTileClick}
               />
             );
@@ -708,6 +764,7 @@ type TileSlotProps = {
   flipEnabled: boolean;
   cursorPx: MotionValue<number>;
   cursorPy: MotionValue<number>;
+  viewportRef: React.RefObject<{ vw: number; vh: number; vmin: number }>;
   onTileClick: (
     payload: TileActivatePayload,
     tileIndex: number,
@@ -735,6 +792,7 @@ function TileSlot({
   flipEnabled,
   cursorPx,
   cursorPy,
+  viewportRef,
   onTileClick,
 }: TileSlotProps) {
   // Lean motion values (inner transform layer). Spring-smoothed so they
@@ -800,9 +858,9 @@ function TileSlot({
         flipRotateYRaw.set(baselineRotY);
         return;
       }
-      const vw = window.innerWidth;
-      const vh = window.innerHeight;
-      const vmin = Math.min(vw, vh);
+      const vp = viewportRef.current;
+      if (!vp || !vp.vmin) return; // viewport not measured yet
+      const { vw, vh, vmin } = vp;
       const ringCx = vw / 2;
       const ringCy = vh / 2;
       const seatPxX = ringCx + (seat.xVmin / 100) * vmin;
@@ -870,7 +928,7 @@ function TileSlot({
       unsubX();
       unsubY();
     };
-  }, [proximityEnabled, cursorPx, cursorPy, seat.xVmin, seat.yVmin, radiusVmin, leanX, leanY, leanRot, leanScale, flipRotateXRaw, flipRotateYRaw, baselineRotX, baselineRotY]);
+  }, [proximityEnabled, cursorPx, cursorPy, viewportRef, seat.xVmin, seat.yVmin, radiusVmin, leanX, leanY, leanRot, leanScale, flipRotateXRaw, flipRotateYRaw, baselineRotX, baselineRotY]);
 
   return (
     <div
@@ -898,7 +956,7 @@ function TileSlot({
           pointerEvents: hidden ? "none" : undefined,
           visibility: hidden ? "hidden" : undefined,
         }}
-        className="pointer-events-auto will-change-transform"
+        className="pointer-events-auto"
       >
         {/* Inner wrapper carries the proximity lean so it composes on top of
             the seat transform without fighting Framer's animate prop. */}
@@ -909,7 +967,7 @@ function TileSlot({
             rotate: smoothLeanRot,
             scale: smoothLeanScale,
           }}
-          className="h-full w-full will-change-transform"
+          className="h-full w-full"
         >
           <GlassTile
             tile={tile}

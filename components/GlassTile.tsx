@@ -137,10 +137,18 @@ export function GlassTile({
   // Face surface (front + back): glass, tight corners, subtle inner
   // hairline + shadow. Edges reuse the same bg-glass-strong so the rim
   // reads as the same material as the faces.
+  // NOTE: no backdrop-blur here. Each tile face + its 4 edges previously ran
+  // `backdrop-blur-md` (14 tiles x 6 = 84 live blur layers), all inside the
+  // ring's rotating preserve-3d context, so every one re-rasterized per frame.
+  // The blur was effectively invisible anyway — bg-glass-strong is ~78% opaque
+  // and the face is covered by an object-cover image — so it cost enormous GPU
+  // fill rate for no visible payoff. The translucent fill + inset highlight +
+  // ring below carry the glass read on their own. (Modal backdrops still blur;
+  // those are on-open only, not per-frame.)
   const faceShadow =
     "shadow-[0_10px_28px_-16px_rgba(10,10,10,0.4),0_0_0_1px_rgba(255,255,255,0.18)_inset]";
-  const faceBase = `overflow-hidden rounded-[10px] bg-glass-strong ${faceShadow} ring-1 ring-black/5 backdrop-blur-md dark:ring-white/10`;
-  const edgeBase = `rounded-[2px] bg-glass-strong backdrop-blur-md shadow-[inset_0_0_0_1px_rgba(255,255,255,0.18)]`;
+  const faceBase = `overflow-hidden rounded-[10px] bg-glass-strong ${faceShadow} ring-1 ring-black/5 dark:ring-white/10`;
+  const edgeBase = `rounded-[2px] bg-glass-strong shadow-[inset_0_0_0_1px_rgba(255,255,255,0.18)]`;
 
   return (
     <button
