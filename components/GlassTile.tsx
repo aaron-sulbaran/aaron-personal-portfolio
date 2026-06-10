@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import { motion, useMotionValue, useTransform, type MotionValue } from "framer-motion";
-import { useState } from "react";
 import { siteContent, type HomeTile, type Photo, type WorkItem } from "@/lib/content";
 
 type ResolvedTile =
@@ -21,7 +20,12 @@ type Props = {
   /** Proximity-driven Y rotation (degrees). */
   flipRotateY: MotionValue<number>;
   buttonRef?: React.Ref<HTMLButtonElement>;
-  onActivate: (payload: TileActivatePayload) => void;
+  /**
+   * keyboardFlipped is true when the focus-forced 180 degree flip is engaged
+   * at activation time, so the flight clone can start from the back face the
+   * user was actually looking at.
+   */
+  onActivate: (payload: TileActivatePayload, keyboardFlipped: boolean) => void;
 };
 
 // Card thickness in px. The front/back faces are pushed ±THICKNESS/2 along
@@ -80,25 +84,23 @@ export function GlassTile({
   const resolved = resolveTile(tile);
 
   const focusedMV = useMotionValue(0);
-  const [, setFocusedState] = useState(false);
 
-  // Effective X: force 0 when disabled, else proximity value.
+  // The spring-smoothed proximity values pass through untouched; the parent
+  // TileSlot relaxes the raw values when interaction is disabled, so the
+  // springs (not a hard 0 here) carry every transition and flight start/end
+  // never snaps the tilt. Keyboard focus forces the reveal flip on Y only.
   const effectiveRotateX = useTransform<number, number>(
     [flipRotateX, focusedMV],
     ([v, f]) => {
-      if (!flipEnabled) return 0;
-      if ((f as number) > 0.5) return 0; // focus forces Y flip only
+      if (flipEnabled && (f as number) > 0.5) return 0;
       return v as number;
     },
   );
 
-  // Effective Y: force 0 when disabled, force 180 on focus (keyboard flip),
-  // else proximity value.
   const effectiveRotateY = useTransform<number, number>(
     [flipRotateY, focusedMV],
     ([v, f]) => {
-      if (!flipEnabled) return 0;
-      if ((f as number) > 0.5) return 180;
+      if (flipEnabled && (f as number) > 0.5) return 180;
       return v as number;
     },
   );
@@ -110,14 +112,21 @@ export function GlassTile({
     resolved.kind === "photo"
       ? resolved.photo.alt
       : `${resolved.workItem.title} logo`;
+  // Work labels start with the tile's visible text (the logo's title) so the
+  // accessible name contains it; Lighthouse flags label-content-name-mismatch
+  // otherwise. Photo labels stay descriptive.
   const ariaLabel =
     resolved.kind === "photo"
       ? `Open caption for ${resolved.photo.alt}`
-      : `Open preview for ${resolved.workItem.title}, ${resolved.workItem.role}`;
+      : `${resolved.workItem.title} logo, open preview, ${resolved.workItem.role}`;
 
   const handleClick = () => {
-    if (resolved.kind === "photo") onActivate({ kind: "photo", photo: resolved.photo });
-    else onActivate({ kind: "work", workItem: resolved.workItem });
+    const keyboardFlipped = flipEnabled && focusedMV.get() > 0.5;
+    if (resolved.kind === "photo") {
+      onActivate({ kind: "photo", photo: resolved.photo }, keyboardFlipped);
+    } else {
+      onActivate({ kind: "work", workItem: resolved.workItem }, keyboardFlipped);
+    }
   };
 
   // Only fire the 180° reveal flip for keyboard focus. Mouse clicks also
@@ -127,11 +136,9 @@ export function GlassTile({
   const handleFocus = (e: React.FocusEvent<HTMLButtonElement>) => {
     if (!e.target.matches(":focus-visible")) return;
     focusedMV.set(1);
-    setFocusedState(true);
   };
   const handleBlur = () => {
     focusedMV.set(0);
-    setFocusedState(false);
   };
 
   // Face surface (front + back): glass, tight corners, subtle inner
@@ -159,7 +166,7 @@ export function GlassTile({
       onBlur={handleBlur}
       data-cursor-hover
       aria-label={ariaLabel}
-      className="group relative block h-full w-full [perspective:1200px] focus:outline-none"
+      className="group relative block h-full w-full rounded-[10px] [perspective:1200px] focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
     >
       <motion.div
         style={{

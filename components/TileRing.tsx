@@ -5,7 +5,7 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState } from 
 import { siteContent, type HomeTile as HomeTileEntry, type Photo, type WorkItem } from "@/lib/content";
 import { useBodyScrollLock } from "@/lib/modal";
 import { GlassTile, type TileActivatePayload } from "./GlassTile";
-import { FlyingTile, type FlightPhase, type FlightTarget } from "./FlyingTile";
+import { FlyingTile, type FlightPhase, type FlightSource, type FlightTarget } from "./FlyingTile";
 import { PhotoModal } from "./PhotoModal";
 import { WorkModal } from "./WorkModal";
 
@@ -18,6 +18,19 @@ export const useRingState = () => useContext(RingStateContext);
 
 type Props = {
   children: React.ReactNode; // HomeHero sits at the ring's center
+};
+
+// Live per-tile transform captured at activation time so the flight clone
+// can spawn exactly where the tile is on screen, plus the trigger button
+// for focus restoration when the modal closes.
+type TileCapture = {
+  leanX: number;
+  leanY: number;
+  leanRot: number;
+  leanScale: number;
+  rotX: number;
+  rotY: number;
+  button: HTMLButtonElement | null;
 };
 
 // Ring geometry (desktop). 20 tiles around a 41vmin ring give ~13vmin of arc
@@ -124,7 +137,7 @@ export function TileRing({ children }: Props) {
     homeTangentDeg: number; // ring tile's tangent Z rotation
     homeRestRotX: number;   // tile's baseline X tilt at rest
     homeRestRotY: number;   // tile's baseline Y tilt at rest
-    sourceAngle: number;    // flipRotateY at click time
+    source: FlightSource;   // live transform captured at click time
     target: FlightTarget;   // modal slot rect
     phase: FlightPhase;
   } | null>(null);
@@ -149,11 +162,15 @@ export function TileRing({ children }: Props) {
   const smoothX = useSpring(parallaxX, { stiffness: 60, damping: 20, mass: 0.9 });
   const smoothY = useSpring(parallaxY, { stiffness: 60, damping: 20, mass: 0.9 });
 
-  // Raw cursor pixel position (viewport-relative). Used by per-tile proximity
-  // handlers so each tile can compute its distance to the cursor and apply
-  // a local lean. Initial value is off-screen so tiles sit at rest on mount.
-  const cursorPx = useMotionValue(-9999);
-  const cursorPy = useMotionValue(-9999);
+  // Raw cursor pixel position (viewport-relative) for per-tile proximity,
+  // shared through a plain ref plus a tick MotionValue bumped exactly once
+  // per coalesced pointer frame. Tiles subscribe to the tick, a counter that
+  // never equality-short-circuits (pure horizontal or pure vertical movement
+  // still fires), and read coordinates from the ref; one compute per tile
+  // per frame instead of two. Initial position is off-screen so tiles rest
+  // on mount.
+  const cursorRef = useRef({ x: -9999, y: -9999 });
+  const proximityTick = useMotionValue(0);
 
   // Cached viewport dimensions, refreshed only on mount + resize. The per-tile
   // proximity math used to call window.innerWidth/innerHeight on every tile on
@@ -225,9 +242,10 @@ export function TileRing({ children }: Props) {
       // Ring moves AWAY from cursor: negate.
       parallaxX.set(-((pendingX - cx) / cx));
       parallaxY.set(-((pendingY - cy) / cy));
-      // Raw pixel position for per-tile proximity.
-      cursorPx.set(pendingX);
-      cursorPy.set(pendingY);
+      // Raw pixel position for per-tile proximity: one tick per frame.
+      cursorRef.current.x = pendingX;
+      cursorRef.current.y = pendingY;
+      proximityTick.set(proximityTick.get() + 1);
     };
 
     const onMove = (e: PointerEvent) => {
@@ -244,8 +262,9 @@ export function TileRing({ children }: Props) {
       }
       parallaxX.set(0);
       parallaxY.set(0);
-      cursorPx.set(-9999);
-      cursorPy.set(-9999);
+      cursorRef.current.x = -9999;
+      cursorRef.current.y = -9999;
+      proximityTick.set(proximityTick.get() + 1);
     };
     window.addEventListener("pointermove", onMove, { passive: true });
     document.addEventListener("pointerleave", onLeave);
@@ -254,21 +273,24 @@ export function TileRing({ children }: Props) {
       window.removeEventListener("pointermove", onMove);
       document.removeEventListener("pointerleave", onLeave);
     };
-  }, [parallaxX, parallaxY, cursorPx, cursorPy, phase, prefersReducedMotion, flight]);
+  }, [parallaxX, parallaxY, proximityTick, phase, prefersReducedMotion, flight]);
 
-  // When a flight starts, kick parallax back to 0 (and blank the cursor
-  // motion values so all per-tile lean/flip springs also relax to 0).
-  // Spring-smoothed so the ring eases to flat over ~400ms rather than
-  // snapping. By the time the user closes the modal, parallax is at 0 and
-  // the flying tile's closing animation lands at a position that exactly
-  // matches where the ring tile will sit when flight clears — no snap.
+  // When a flight starts, kick parallax back to 0 (and park the shared
+  // cursor off-screen, bumping the tick so all per-tile lean/flip springs
+  // relax to rest). Spring-smoothed so the ring eases to flat over ~400ms
+  // rather than snapping; the flight clone captured the live transform at
+  // click time, so the relaxation happens invisibly behind the modal. By
+  // the time the user closes the modal, the flying tile's closing animation
+  // lands at a position that exactly matches where the ring tile will sit
+  // when flight clears, with no snap.
   useEffect(() => {
     if (!flight) return;
     parallaxX.set(0);
     parallaxY.set(0);
-    cursorPx.set(-9999);
-    cursorPy.set(-9999);
-  }, [flight, parallaxX, parallaxY, cursorPx, cursorPy]);
+    cursorRef.current.x = -9999;
+    cursorRef.current.y = -9999;
+    proximityTick.set(proximityTick.get() + 1);
+  }, [flight, parallaxX, parallaxY, proximityTick]);
 
   // Drive the entrance sequence on mount. Each timer advances one phase.
   useEffect(() => {
@@ -349,17 +371,38 @@ export function TileRing({ children }: Props) {
     });
   }, [tiles, total, radius]);
 
+  // Originating tile button for the open modal; focused again when the
+  // modal fully closes so keyboard users do not lose their place.
+  const sourceButtonRef = useRef<HTMLButtonElement | null>(null);
+
+  const restoreSourceFocus = () => {
+    const button = sourceButtonRef.current;
+    sourceButtonRef.current = null;
+    if (!button) return;
+    // Next frame: the ring tile stays visibility:hidden until the
+    // flight-clear render paints, and a hidden button refuses focus.
+    requestAnimationFrame(() => {
+      if (button.isConnected) button.focus({ preventScroll: true });
+    });
+  };
+
   // Click on a ring tile: capture its intrinsic rect (from seat geometry,
   // NOT getBoundingClientRect which returns the axis-aligned bbox of the
-  // rotated tile and would distort the flown shape) and its tangent Z
-  // rotation. Start the modal mount and the flight on the same frame.
+  // rotated tile and would distort the flown shape), its tangent Z rotation,
+  // and the live transform the user is actually seeing. Start the modal
+  // mount and the flight on the same frame. Activation (pointer and
+  // keyboard both land here) is gated on the entrance being complete;
+  // mid-entrance clicks would spawn the clone at an empty seat.
   const handleTileClick = (
     payload: TileActivatePayload,
     tileIndex: number,
-    sourceAngle: number,
+    capture: TileCapture,
     homeTile: HomeTileEntry,
   ) => {
+    if (phase !== "ready") return;
     if (flight) return; // already flying
+
+    sourceButtonRef.current = capture.button;
 
     const home = computeHomeRect(tileIndex);
     const homeTangentDeg = seats[tileIndex].rotate;
@@ -371,7 +414,7 @@ export function TileRing({ children }: Props) {
       homeTangentDeg,
       homeRestRotX: tileBaselineRotX(tileIndex),
       homeRestRotY: tileBaselineRotY(tileIndex),
-      sourceAngle,
+      source: computeFlightSource(tileIndex, home, capture),
       // Initial target is the home rect itself; the useEffect below reads
       // the real modal slot rect once mounted and updates `target` so the
       // flight has a real destination.
@@ -403,6 +446,73 @@ export function TileRing({ children }: Props) {
     };
   };
 
+  // Latest computeHomeRect, re-captured every render so the modal-open
+  // resize handler (whose effect deliberately depends only on modalOpen)
+  // never calls a closure holding stale seat geometry after the viewport
+  // crosses the mobile breakpoint.
+  const computeHomeRectRef = useRef(computeHomeRect);
+  useEffect(() => {
+    computeHomeRectRef.current = computeHomeRect;
+  });
+
+  // Projects the clicked tile's live transform stack (proximity lean and
+  // flip springs, ring parallax with stage perspective) into the flat fixed
+  // coordinate space FlyingTile animates in, so the clone's first frame
+  // matches the tile the user sees instead of the untilted seat.
+  const computeFlightSource = (
+    tileIndex: number,
+    home: FlightTarget,
+    capture: TileCapture,
+  ): FlightSource => {
+    const vw = typeof window !== "undefined" ? window.innerWidth : 1280;
+    const vh = typeof window !== "undefined" ? window.innerHeight : 900;
+    const vmin = Math.min(vw, vh);
+    const seat = seats[tileIndex];
+
+    // The lean translation is applied inside the seat-rotated frame; rotate
+    // it back into ring-plane coordinates before projecting.
+    const theta = (seat.rotate * Math.PI) / 180;
+    const planeX =
+      (seat.xVmin / 100) * vmin +
+      capture.leanX * Math.cos(theta) -
+      capture.leanY * Math.sin(theta);
+    const planeY =
+      (seat.yVmin / 100) * vmin +
+      capture.leanX * Math.sin(theta) +
+      capture.leanY * Math.cos(theta);
+
+    const rotXDeg = -smoothY.get() * PARALLAX_MAX_TILT_DEG;
+    const rotYDeg = smoothX.get() * PARALLAX_MAX_TILT_DEG;
+    const rotZDeg = smoothX.get() * PARALLAX_MAX_ZROT_DEG;
+    const alpha = (rotXDeg * Math.PI) / 180;
+    const beta = (rotYDeg * Math.PI) / 180;
+    const gamma = (rotZDeg * Math.PI) / 180;
+
+    // CSS applies rotateX(a) rotateY(b) rotateZ(c) to a point as Rx*Ry*Rz*p;
+    // the stage perspective then projects it from the viewport center.
+    const x1 = planeX * Math.cos(gamma) - planeY * Math.sin(gamma);
+    const y1 = planeX * Math.sin(gamma) + planeY * Math.cos(gamma);
+    const x2 = x1 * Math.cos(beta);
+    const z2 = -x1 * Math.sin(beta);
+    const y2 = y1 * Math.cos(alpha) - z2 * Math.sin(alpha);
+    const z3 = y1 * Math.sin(alpha) + z2 * Math.cos(alpha);
+    const k = RING_PERSPECTIVE_PX / (RING_PERSPECTIVE_PX - z3);
+
+    const width = home.width * capture.leanScale * k;
+    const height = home.height * capture.leanScale * k;
+    return {
+      rect: {
+        left: vw / 2 + x2 * k - width / 2,
+        top: vh / 2 + y2 * k - height / 2,
+        width,
+        height,
+      },
+      rotX: rotXDeg + capture.rotX,
+      rotY: rotYDeg + capture.rotY,
+      rotZDelta: rotZDeg + capture.leanRot,
+    };
+  };
+
   // Fly-out animation completed with the tile sitting in the modal's slot.
   // Nothing to do — the ring stays live and static behind the translucent
   // frosted modal (its parallax/lean listeners are already paused during
@@ -418,16 +528,26 @@ export function TileRing({ children }: Props) {
   const handleModalClose = () => {
     setSelectedPhoto(null);
     setSelectedWork(null);
+    if (!flight) {
+      restoreSourceFocus();
+      return;
+    }
+    // The parallax springs have been targeting 0 since the flight started;
+    // jump clears any sub-pixel residue so the closing flight lands on a
+    // perfectly flat ring.
+    parallaxX.jump(0);
+    parallaxY.jump(0);
     setFlight((prev) => (prev ? { ...prev, phase: "closing" } : prev));
   };
 
   // Closing flight has landed at home. Because parallax/lean/flip have
-  // already been eased to 0 during the modal-open period, the flying
+  // already been eased to rest during the modal-open period, the flying
   // tile's resting geometry now matches the ring tile's pixel-perfectly.
-  // Clear the flight state and let the ring tile take over with no fade,
-  // no snap — just a seamless DOM handoff.
+  // Clear the flight state, let the ring tile take over with a seamless
+  // DOM handoff, and hand focus back to the originating tile button.
   const handleClosingComplete = () => {
     setFlight(null);
+    restoreSourceFocus();
   };
 
 
@@ -467,10 +587,12 @@ export function TileRing({ children }: Props) {
     const onResize = () => {
       measure();
       // Also re-compute the home rect so closing still lands correctly
-      // if the viewport was resized while the modal was open.
+      // if the viewport was resized while the modal was open. Read through
+      // the ref: this effect only depends on modalOpen, so a direct call
+      // would freeze the seat geometry captured at open time.
       setFlight((prev) => {
         if (!prev) return prev;
-        return { ...prev, homeRect: computeHomeRect(prev.tileIndex) };
+        return { ...prev, homeRect: computeHomeRectRef.current(prev.tileIndex) };
       });
     };
     window.addEventListener("resize", onResize);
@@ -554,6 +676,7 @@ export function TileRing({ children }: Props) {
               seat,
               staggerIndex: i,
               isShuffleTop: i === shuffleTopIndex,
+              reducedMotion: !!prefersReducedMotion,
             });
 
             return (
@@ -572,8 +695,8 @@ export function TileRing({ children }: Props) {
                 mounted={mounted}
                 prefersReducedMotion={!!prefersReducedMotion}
                 flipEnabled={flipEnabled}
-                cursorPx={cursorPx}
-                cursorPy={cursorPy}
+                cursorRef={cursorRef}
+                proximityTick={proximityTick}
                 viewportRef={viewportRef}
                 onTileClick={handleTileClick}
               />
@@ -590,7 +713,7 @@ export function TileRing({ children }: Props) {
           homeTangentDeg={flight.homeTangentDeg}
           homeRestRotX={flight.homeRestRotX}
           homeRestRotY={flight.homeRestRotY}
-          sourceAngle={flight.sourceAngle}
+          source={flight.source}
           target={flight.target}
           phase={flight.phase}
           onFlyOutComplete={handleFlyOutComplete}
@@ -630,13 +753,30 @@ function computeTarget({
   seat,
   staggerIndex,
   isShuffleTop,
+  reducedMotion,
 }: {
   phase: Phase;
   isFirst: boolean;
   seat: TargetSeat;
   staggerIndex: number;
   isShuffleTop: boolean;
+  reducedMotion: boolean;
 }): TargetResult {
+  // Reduced motion: tiles appear directly at their seats with a short
+  // opacity-only fade. TileSlot's initial state already sits at the seat
+  // (full seat transform, opacity 0), so nothing translates or rotates.
+  if (reducedMotion) {
+    return {
+      animate: {
+        x: `${seat.xVmin}vmin`,
+        y: `${seat.yVmin}vmin`,
+        rotate: seat.rotate,
+        scale: 1,
+        opacity: 1,
+      },
+      transition: { duration: 0.3, ease: EASE },
+    };
+  }
   if (phase === "hidden") {
     return {
       animate: { x: "0vmin", y: "0vmin", rotate: 0, scale: 0.92, opacity: 0 },
@@ -762,13 +902,13 @@ type TileSlotProps = {
   mounted: boolean;
   prefersReducedMotion: boolean;
   flipEnabled: boolean;
-  cursorPx: MotionValue<number>;
-  cursorPy: MotionValue<number>;
+  cursorRef: React.RefObject<{ x: number; y: number }>;
+  proximityTick: MotionValue<number>;
   viewportRef: React.RefObject<{ vw: number; vh: number; vmin: number }>;
   onTileClick: (
     payload: TileActivatePayload,
     tileIndex: number,
-    sourceAngle: number,
+    capture: TileCapture,
     tile: HomeTileEntry,
   ) => void;
 };
@@ -790,8 +930,8 @@ function TileSlot({
   mounted,
   prefersReducedMotion,
   flipEnabled,
-  cursorPx,
-  cursorPy,
+  cursorRef,
+  proximityTick,
   viewportRef,
   onTileClick,
 }: TileSlotProps) {
@@ -821,14 +961,29 @@ function TileSlot({
 
   const buttonRef = useRef<HTMLButtonElement>(null);
 
-  // Capture the current flip angle and hand off to the parent's flight
-  // orchestrator. The parent computes the home rect from seat geometry
-  // (not from DOM getBoundingClientRect, which returns the axis-aligned
-  // bbox of the rotated tile and would cause the flown tile to start with
-  // a distorted aspect ratio).
-  const handleActivate = (payload: TileActivatePayload) => {
-    const angle = flipRotateY.get();
-    onTileClick(payload, tileIndex, angle, tile);
+  // Capture the tile's full live transform (spring outputs, read before any
+  // flight-triggered relaxation runs) and hand off to the parent's flight
+  // orchestrator. When the keyboard reveal flip is engaged, the displayed
+  // rotation is the forced 0/180 pair, not the springs, so report that
+  // instead and the clone starts from the back face the user is looking at.
+  const handleActivate = (
+    payload: TileActivatePayload,
+    keyboardFlipped: boolean,
+  ) => {
+    onTileClick(
+      payload,
+      tileIndex,
+      {
+        leanX: smoothLeanX.get(),
+        leanY: smoothLeanY.get(),
+        leanRot: smoothLeanRot.get(),
+        leanScale: smoothLeanScale.get(),
+        rotX: keyboardFlipped ? 0 : flipRotateX.get(),
+        rotY: keyboardFlipped ? 180 : flipRotateY.get(),
+        button: buttonRef.current,
+      },
+      tile,
+    );
   };
 
   // Recompute lean targets whenever the cursor moves (or proximityEnabled
@@ -846,8 +1001,9 @@ function TileSlot({
     }
 
     const compute = () => {
-      const px = cursorPx.get();
-      const py = cursorPy.get();
+      const cursor = cursorRef.current;
+      const px = cursor ? cursor.x : -9999;
+      const py = cursor ? cursor.y : -9999;
       // Cursor parked off-screen (initial / pointer-left) → rest at baseline.
       if (px < -1000 || py < -1000) {
         leanX.set(0);
@@ -920,15 +1076,12 @@ function TileSlot({
       leanScale.set(1 + PROXIMITY_SCALE_BOOST * strength);
     };
 
-    // Compute now + whenever cursor changes.
+    // Compute now + once per coalesced cursor frame. A single tick
+    // subscription replaces the old dual cursorPx/cursorPy pair, which ran
+    // compute twice per frame on diagonal movement.
     compute();
-    const unsubX = cursorPx.on("change", compute);
-    const unsubY = cursorPy.on("change", compute);
-    return () => {
-      unsubX();
-      unsubY();
-    };
-  }, [proximityEnabled, cursorPx, cursorPy, viewportRef, seat.xVmin, seat.yVmin, radiusVmin, leanX, leanY, leanRot, leanScale, flipRotateXRaw, flipRotateYRaw, baselineRotX, baselineRotY]);
+    return proximityTick.on("change", compute);
+  }, [proximityEnabled, proximityTick, cursorRef, viewportRef, seat.xVmin, seat.yVmin, radiusVmin, leanX, leanY, leanRot, leanScale, flipRotateXRaw, flipRotateYRaw, baselineRotX, baselineRotY]);
 
   return (
     <div
@@ -936,13 +1089,25 @@ function TileSlot({
       style={{ zIndex }}
     >
       <motion.div
-        initial={{
-          x: "0vmin",
-          y: "0vmin",
-          rotate: 0,
-          scale: 0.92,
-          opacity: 0,
-        }}
+        initial={
+          // Reduced motion starts at the seat so the entrance is a pure
+          // opacity fade; the animated entrance starts from the center deck.
+          prefersReducedMotion
+            ? {
+                x: `${seat.xVmin}vmin`,
+                y: `${seat.yVmin}vmin`,
+                rotate: seat.rotate,
+                scale: 1,
+                opacity: 0,
+              }
+            : {
+                x: "0vmin",
+                y: "0vmin",
+                rotate: 0,
+                scale: 0.92,
+                opacity: 0,
+              }
+        }
         animate={target.animate}
         transition={target.transition}
         style={{
