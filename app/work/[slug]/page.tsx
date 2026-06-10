@@ -6,6 +6,8 @@ import { ArrowUpRight } from "lucide-react";
 import { siteContent, type WorkBodySection } from "@/lib/content";
 import { Footer } from "@/components/Footer";
 
+export const dynamicParams = false;
+
 type Params = { params: { slug: string } };
 
 export function generateStaticParams() {
@@ -19,7 +21,7 @@ export function generateMetadata({ params }: Params): Metadata {
     title: `${item.title} · ${item.role}`,
     description: item.summary,
     openGraph: {
-      title: `${item.title} — ${item.role}`,
+      title: `${item.title} · ${item.role}`,
       description: item.summary,
     },
   };
@@ -29,7 +31,7 @@ export default function WorkDetailPage({ params }: Params) {
   const item = siteContent.workItems.find((i) => i.slug === params.slug);
   if (!item) notFound();
 
-  const { backLabel, placeholderBody } = siteContent.work;
+  const { backLabel, placeholderBody, placeholderCta } = siteContent.work;
   const linkedinHref = siteContent.connect.links.find((l) => l.key === "linkedin")?.href;
 
   return (
@@ -80,7 +82,7 @@ export default function WorkDetailPage({ params }: Params) {
                     rel="noopener noreferrer"
                     className="mt-5 inline-flex items-center gap-2 text-base font-medium text-accent transition-colors duration-200 hover:text-accent-hover"
                   >
-                    Ping me on LinkedIn
+                    {placeholderCta}
                     <ArrowUpRight aria-hidden="true" className="h-4 w-4" />
                   </Link>
                 )}
