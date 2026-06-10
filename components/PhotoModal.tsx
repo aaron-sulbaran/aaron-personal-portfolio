@@ -4,7 +4,7 @@ import { X } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useRef } from "react";
 import { useBodyScrollLock, useEscapeKey, useFocusTrap } from "@/lib/modal";
-import type { Photo } from "@/lib/content";
+import { siteContent, type Photo } from "@/lib/content";
 
 type PhotoModalProps = {
   photo: Photo | null;
@@ -64,13 +64,13 @@ export function PhotoModal({ photo, onClose }: PhotoModalProps) {
             <button
               type="button"
               onClick={onClose}
-              aria-label="Close"
+              aria-label={siteContent.modals.closeAriaLabel}
               className="absolute right-3 top-3 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full border border-border/70 bg-background/80 text-foreground transition-colors duration-200 hover:text-accent"
             >
               <X aria-hidden="true" className="h-4 w-4" />
             </button>
 
-            {/* Photo slot — the TileRing's FlyingTile physically lives here
+            {/* Photo slot: the TileRing's FlyingTile physically lives here
                 while the modal is open. No <Image> rendered inside; the flown
                 tile is the image. aspect + sizing must match the tile's 3:4
                 proportions so the flight lands in the exact rect. */}

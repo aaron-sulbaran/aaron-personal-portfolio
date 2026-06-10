@@ -7,8 +7,7 @@ import { siteContent } from "@/lib/content";
 
 export const metadata: Metadata = {
   title: "About",
-  description:
-    "Who I am, what I'm working on, and how to reach me.",
+  description: siteContent.about.metaDescription,
 };
 
 export default function AboutPage() {

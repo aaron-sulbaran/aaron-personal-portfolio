@@ -6,8 +6,8 @@ import { Moon, Sun, X } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useBodyScrollLock, useEscapeKey, useFocusTrap } from "@/lib/modal";
-import { siteContent } from "@/lib/content";
-import { THEME_STORAGE_KEY, type Theme } from "@/lib/theme";
+import { siteContent, type MenuItem } from "@/lib/content";
+import { THEME_STORAGE_KEY, syncThemeColorMeta, type Theme } from "@/lib/theme";
 
 // Top-right menu. Collapsed state is just a two-bar hamburger icon. Expanded
 // state covers the viewport with a frosted backdrop, a big-serif item list,
@@ -18,7 +18,16 @@ export function Menu() {
   const pathname = usePathname();
   const dialogRef = useRef<HTMLDivElement | null>(null);
   const prefersReducedMotion = useReducedMotion();
-  const { items, ariaLabelOpen, ariaLabelClose } = siteContent.menu;
+  const {
+    items,
+    ariaLabelOpen,
+    ariaLabelClose,
+    themeToggleToDark,
+    themeToggleToLight,
+    themeAriaLabelToDark,
+    themeAriaLabelToLight,
+  } = siteContent.menu;
+  const navItems: readonly MenuItem[] = items;
 
   useEffect(() => {
     const current = (document.documentElement.getAttribute("data-theme") as Theme) ?? "light";
@@ -38,14 +47,16 @@ export function Menu() {
     const next: Theme = theme === "dark" ? "light" : "dark";
     setTheme(next);
     document.documentElement.setAttribute("data-theme", next);
+    syncThemeColorMeta(next);
     try {
       localStorage.setItem(THEME_STORAGE_KEY, next);
     } catch {
-      /* localStorage unavailable */
+      /* storage unavailable */
     }
   }, [theme]);
 
-  const themeLabel = theme === "dark" ? "Switch to light mode" : "Switch to dark mode";
+  const themeAriaLabel = theme === "dark" ? themeAriaLabelToLight : themeAriaLabelToDark;
+  const themeToggleLabel = theme === "dark" ? themeToggleToLight : themeToggleToDark;
 
   const overlayVariants = {
     hidden: { opacity: 0 },
@@ -70,7 +81,7 @@ export function Menu() {
         aria-label={ariaLabelOpen}
         aria-expanded={open}
         aria-controls="site-menu"
-        className="fixed right-4 top-4 z-40 inline-flex h-11 w-11 items-center justify-center rounded-full border border-border bg-background/90 text-foreground shadow-[0_2px_16px_-6px_rgba(10,10,10,0.22)] backdrop-blur-md transition-colors duration-200 hover:text-accent md:right-6 md:top-6"
+        className="fixed top-4 z-40 inline-flex h-11 w-11 items-center justify-center rounded-full border border-border bg-background/90 text-foreground shadow-[0_2px_16px_-6px_rgba(10,10,10,0.22)] backdrop-blur-md transition-colors duration-200 hover:text-accent [right:calc(1rem+var(--scrollbar-comp))] md:top-6 md:[right:calc(1.5rem+var(--scrollbar-comp))]"
       >
         <svg
           aria-hidden="true"
@@ -102,7 +113,7 @@ export function Menu() {
             className="fixed inset-0 z-50 flex flex-col bg-background/95 px-6 py-6 backdrop-blur-xl md:px-10 md:py-8"
           >
             <div className="flex items-center justify-between">
-              <span className="font-serif text-lg italic text-foreground">Aaron Sulbaran</span>
+              <span className="font-serif text-lg italic text-foreground">{siteContent.meta.title}</span>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
@@ -118,7 +129,7 @@ export function Menu() {
               className="flex flex-1 flex-col items-start justify-center gap-6 py-12 md:gap-8"
             >
               <ul className="flex flex-col gap-2 md:gap-4">
-                {items.map((item, i) => (
+                {navItems.map((item, i) => (
                   <li key={item.key}>
                     <Link
                       href={item.href}
@@ -151,7 +162,7 @@ export function Menu() {
                 <button
                   type="button"
                   onClick={toggleTheme}
-                  aria-label={themeLabel}
+                  aria-label={themeAriaLabel}
                   className="group inline-flex items-center gap-3 text-[11px] font-medium uppercase tracking-caps text-muted transition-colors duration-200 hover:text-accent"
                 >
                   <span className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border text-foreground transition-colors duration-200 group-hover:text-accent">
@@ -161,7 +172,7 @@ export function Menu() {
                       <Moon aria-hidden="true" className="h-[15px] w-[15px]" />
                     )}
                   </span>
-                  <span>{theme === "dark" ? "Light mode" : "Dark mode"}</span>
+                  <span>{themeToggleLabel}</span>
                 </button>
               </div>
             </motion.nav>
