@@ -34,7 +34,7 @@ type TileCapture = {
 };
 
 // Ring geometry (desktop). 20 tiles around a 41vmin ring give ~13vmin of arc
-// per tile; a 9vmin tile leaves a ~4vmin gap between each — the airy
+// per tile; a 9vmin tile leaves a ~4vmin gap between each, the airy
 // breathing the Inkwell reference has. Mobile keeps all 20 with slightly
 // smaller tiles and radius so the ring still reads as a ring on narrow
 // screens.
@@ -62,7 +62,7 @@ const FAN_ARC_LIFT_VMIN = 6;   // how far the travel path bows past the straight
 const FAN_SAMPLES = 7;         // arc sample count (smooth bow, still compositor-cheap)
 
 // Cursor parallax: 3D tilt on the ring container. The ring rotates on X/Y
-// axes in response to cursor position — it reads as "looking down into a
+// axes in response to cursor position; it reads as "looking down into a
 // crystal ball that leans with your gaze," not "the page is sliding."
 // Window/page frame stays still; only the ring plane is tilting in space.
 const PARALLAX_MAX_TILT_DEG = 14;   // max X/Y rotation in degrees
@@ -80,12 +80,12 @@ const PROXIMITY_TILT_DEG = 10;    // max rotation toward cursor
 const PROXIMITY_SCALE_BOOST = 0.08; // +8% at zero distance
 
 // Proximity-driven 3D flip. INVERTED curve: the hovered tile (cursor on
-// it) stays close to its baseline — the NEIGHBORS are the ones that tilt
+// it) stays close to its baseline; the NEIGHBORS are the ones that tilt
 // in 3D as the cursor passes near. A bell-shaped strength function peaks
 // at mid-distance and drops to 0 both at the tile center and at the
 // radius edge, producing the "cards parting around the cursor" motion.
 // Tiles also carry a small per-tile baseline rotation so none of them is
-// ever perfectly flat — always reads as a 3D glass card catching light.
+// ever perfectly flat; always reads as a 3D glass card catching light.
 const NEIGHBOR_FLIP_MAX_DEG = 26;      // max tilt on X/Y for mid-distance tiles
 const TILE_BASELINE_DEG = 6;           // per-tile deterministic resting tilt
 
@@ -144,7 +144,7 @@ export function TileRing({ children }: Props) {
 
   // Body locked only through the brief deck phases (hidden → shuffle). The
   // lock is released the instant the fan-out begins, so the ~800ms unfurl and
-  // the settled ring no longer hold scroll hostage — that full-entrance lock
+  // the settled ring no longer hold scroll hostage; that full-entrance lock
   // was a big part of why returning to Home felt stuck. Reduced-motion users
   // start at "ready" and never lock at all.
   const entranceLocked =
@@ -177,9 +177,9 @@ export function TileRing({ children }: Props) {
   // every pointer move (14 reads/move); now each tile reads this ref instead.
   const viewportRef = useRef({ vw: 0, vh: 0, vmin: 0 });
 
-  // 3D tilt: cursor X rotates the ring around the Y axis (yaw) — moving the
+  // 3D tilt: cursor X rotates the ring around the Y axis (yaw); moving the
   // cursor right swings the right edge of the ring AWAY from the viewer.
-  // Cursor Y rotates around the X axis (pitch) — moving the cursor up tips
+  // Cursor Y rotates around the X axis (pitch); moving the cursor up tips
   // the top of the ring TOWARD the viewer. Small Z roll layered on for
   // extra depth feel.
   const rotateY = useTransform(smoothX, (v) => `${v * PARALLAX_MAX_TILT_DEG}deg`);
@@ -195,7 +195,7 @@ export function TileRing({ children }: Props) {
     return () => mq.removeEventListener("change", update);
   }, []);
 
-  // Keep the cached viewport dims fresh. Read on mount and on resize only —
+  // Keep the cached viewport dims fresh. Read on mount and on resize only;
   // never in the hot per-move proximity path.
   useEffect(() => {
     const read = () => {
@@ -357,7 +357,7 @@ export function TileRing({ children }: Props) {
 
   // Seat = final position on the ring. Full tangent rotation: each tile's
   // local up-vector aligns with the radial vector from the center. Upside-
-  // down tiles at the bottom are deliberate — see docs/design.md
+  // down tiles at the bottom are deliberate; see docs/design.md
   // "Home-ring tile orientation (tangent-aligned, deliberately)".
   const seats = useMemo(() => {
     return tiles.map((_, i) => {
@@ -429,7 +429,7 @@ export function TileRing({ children }: Props) {
   // Computes the intrinsic (unrotated) rect of a ring tile at its seat
   // position in viewport pixels. Used for both the flight's initial state
   // and its closing target so the flown tile aligns exactly with the ring
-  // tile — no geometry mismatch when the DOM handoff happens.
+  // tile; no geometry mismatch when the DOM handoff happens.
   const computeHomeRect = (tileIndex: number): FlightTarget => {
     const vw = typeof window !== "undefined" ? window.innerWidth : 1280;
     const vh = typeof window !== "undefined" ? window.innerHeight : 900;
@@ -514,7 +514,7 @@ export function TileRing({ children }: Props) {
   };
 
   // Fly-out animation completed with the tile sitting in the modal's slot.
-  // Nothing to do — the ring stays live and static behind the translucent
+  // Nothing to do: the ring stays live and static behind the translucent
   // frosted modal (its parallax/lean listeners are already paused during
   // flight), so the blurred ring reads through the glass as intended.
   const handleFlyOutComplete = () => {
@@ -607,11 +607,11 @@ export function TileRing({ children }: Props) {
 
   // While any flight is active, the flown tile's key identifies the ring
   // tile that should stay hidden. When flight clears, the ring tile takes
-  // over at the flying tile's exact final geometry — no fade needed.
+  // over at the flying tile's exact final geometry; no fade needed.
   const hiddenRingKey = flight ? flight.tile.key : null;
 
   // Flip only enabled in the final ready state AND when no flight is in
-  // progress — during flight, cursor interactions on ring tiles are paused.
+  // progress; during flight, cursor interactions on ring tiles are paused.
   const flipEnabled = phase === "ready" && !prefersReducedMotion && !flight;
 
   return (
@@ -642,7 +642,7 @@ export function TileRing({ children }: Props) {
             perspectiveOrigin: "center center",
           }}
         >
-        {/* Ring container — tilts on X/Y (and a small Z) in response to the
+        {/* Ring container: tilts on X/Y (and a small Z) in response to the
             cursor. preserve-3d keeps each tile's own transform composable
             with the parent rotation so the ring reads as one solid plane
             in space, not flat elements that got skewed. */}
@@ -868,7 +868,7 @@ function computeTarget({
     };
   }
 
-  // ready — tiles rest at their seats with full tangent rotation. Scalar (not
+  // ready: tiles rest at their seats with full tangent rotation. Scalar (not
   // keyframe) values so the resting transform is a single static state that the
   // proximity lean and the FlyingTile shared-element handoff can read exactly.
   return {
@@ -1029,7 +1029,7 @@ function TileSlot({
       // Inverted bell curve for the 3D flip: 4t(1-t) peaks at t=0.5 with
       // value 1 and is 0 at t=0 (cursor on tile) and t=1 (cursor at edge).
       // Result: the hovered tile keeps its baseline (stays flat-ish); the
-      // tiles around it — neighbors at mid-distance — tilt away from the
+      // tiles around it, neighbors at mid-distance, tilt away from the
       // cursor direction. Far tiles are also at baseline.
       if (dist < PROXIMITY_RADIUS_PX) {
         const t = dist / PROXIMITY_RADIUS_PX;

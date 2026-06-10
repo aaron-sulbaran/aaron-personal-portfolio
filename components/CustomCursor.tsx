@@ -13,7 +13,7 @@ const HOVER_SELECTOR = "[data-cursor-hover], a, button, [role='button']";
 // own proximity springs every frame; routing the dot through framer-motion's
 // shared rAF render loop queued it behind all of that work, so it visibly
 // trailed the system cursor. A direct transform write happens on the same tick
-// the browser dispatches the move event — matching the native cursor exactly.
+// the browser dispatches the move event, matching the native cursor exactly.
 export function CustomCursor() {
   const [enabled, setEnabled] = useState(false);
   const [hovering, setHovering] = useState(false);
@@ -42,7 +42,7 @@ export function CustomCursor() {
 
     const handleMove = (event: MouseEvent) => {
       // Compositor-only transform (translate3d) written synchronously in the
-      // input handler. No layout, no animation loop, no spring — instant.
+      // input handler. No layout, no animation loop, no spring. Instant.
       const el = dotRef.current;
       if (el) {
         el.style.transform = `translate3d(${event.clientX}px, ${event.clientY}px, 0)`;

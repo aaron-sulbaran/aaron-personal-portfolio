@@ -15,7 +15,7 @@ export type TileActivatePayload =
 type Props = {
   tile: HomeTile;
   flipEnabled: boolean;
-  /** Proximity-driven X rotation (degrees) — driven by the parent TileSlot. */
+  /** Proximity-driven X rotation (degrees), driven by the parent TileSlot. */
   flipRotateX: MotionValue<number>;
   /** Proximity-driven Y rotation (degrees). */
   flipRotateY: MotionValue<number>;
@@ -69,7 +69,7 @@ function KindMark({ kind }: { kind: "photo" | "work" }) {
 // tilts (from proximity lean / hover interaction), viewers see the glass
 // edge catch light and the tile reads as a physical object.
 //
-// The card never fully flips — proximity drives X/Y rotations in the
+// The card never fully flips; proximity drives X/Y rotations in the
 // ±30° range, which keeps text and imagery legible while still signaling
 // 3D depth. Focus-visible forces a full 180° Y rotation so keyboard users
 // still see the reveal gesture.
@@ -147,8 +147,8 @@ export function GlassTile({
   // NOTE: no backdrop-blur here. Each tile face + its 4 edges previously ran
   // `backdrop-blur-md` (14 tiles x 6 = 84 live blur layers), all inside the
   // ring's rotating preserve-3d context, so every one re-rasterized per frame.
-  // The blur was effectively invisible anyway — bg-glass-strong is ~78% opaque
-  // and the face is covered by an object-cover image — so it cost enormous GPU
+  // The blur was effectively invisible anyway: bg-glass-strong is ~78% opaque
+  // and the face is covered by an object-cover image, so it cost enormous GPU
   // fill rate for no visible payoff. The translucent fill + inset highlight +
   // ring below carry the glass read on their own. (Modal backdrops still blur;
   // those are on-open only, not per-frame.)
@@ -176,7 +176,7 @@ export function GlassTile({
         }}
         className="relative h-full w-full"
       >
-        {/* Front face — pushed forward by THICKNESS/2 */}
+        {/* Front face: pushed forward by THICKNESS/2 */}
         <div
           className={`absolute inset-0 ${faceBase} [backface-visibility:hidden]`}
           style={{ transform: `translateZ(${THICKNESS_PX / 2}px)` }}
@@ -207,7 +207,7 @@ export function GlassTile({
           />
         </div>
 
-        {/* Back face — pushed back (rotateY(180) then translateZ out so it
+        {/* Back face: pushed back (rotateY(180) then translateZ out so it
             sits at z = -THICKNESS/2 in the parent frame). */}
         <div
           className={`absolute inset-0 ${faceBase} [backface-visibility:hidden]`}
