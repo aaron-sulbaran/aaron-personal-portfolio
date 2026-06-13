@@ -34,6 +34,14 @@ type Props = {
 // chunky.
 const THICKNESS_PX = 5;
 
+// The faces are rounded-[10px]. The four rim strips are straight rectangles,
+// so their square ends used to poke past the rounded face corners, reading as
+// four bright notches at each corner (most visible face-on, during the deck
+// stack/shuffle). Insetting every strip from the corners by the face radius
+// tucks its ends inside the rounded silhouette so nothing pokes out; at rest
+// the tile is tilted and the tiny corner gap in the rim is imperceptible.
+const EDGE_INSET_PX = 10;
+
 function resolveTile(tile: HomeTile): ResolvedTile | null {
   if (tile.kind === "photo") {
     const photo = siteContent.photos.find((p) => p.src === tile.src);
@@ -239,35 +247,39 @@ export function GlassTile({
           />
         </div>
 
-        {/* Right edge */}
+        {/* Right edge. Inset top/bottom by the face radius so the strip ends
+            tuck under the rounded corners instead of poking out as notches. */}
         <div
           aria-hidden="true"
-          className={`absolute top-0 ${edgeBase}`}
+          className={`absolute ${edgeBase}`}
           style={{
             right: 0,
+            top: `${EDGE_INSET_PX}px`,
             width: `${THICKNESS_PX}px`,
-            height: "100%",
+            height: `calc(100% - ${EDGE_INSET_PX * 2}px)`,
             transform: `translateX(${THICKNESS_PX / 2}px) rotateY(90deg)`,
           }}
         />
         {/* Left edge */}
         <div
           aria-hidden="true"
-          className={`absolute top-0 ${edgeBase}`}
+          className={`absolute ${edgeBase}`}
           style={{
             left: 0,
+            top: `${EDGE_INSET_PX}px`,
             width: `${THICKNESS_PX}px`,
-            height: "100%",
+            height: `calc(100% - ${EDGE_INSET_PX * 2}px)`,
             transform: `translateX(-${THICKNESS_PX / 2}px) rotateY(-90deg)`,
           }}
         />
         {/* Top edge */}
         <div
           aria-hidden="true"
-          className={`absolute left-0 ${edgeBase}`}
+          className={`absolute ${edgeBase}`}
           style={{
             top: 0,
-            width: "100%",
+            left: `${EDGE_INSET_PX}px`,
+            width: `calc(100% - ${EDGE_INSET_PX * 2}px)`,
             height: `${THICKNESS_PX}px`,
             transform: `translateY(-${THICKNESS_PX / 2}px) rotateX(90deg)`,
           }}
@@ -275,10 +287,11 @@ export function GlassTile({
         {/* Bottom edge */}
         <div
           aria-hidden="true"
-          className={`absolute left-0 ${edgeBase}`}
+          className={`absolute ${edgeBase}`}
           style={{
             bottom: 0,
-            width: "100%",
+            left: `${EDGE_INSET_PX}px`,
+            width: `calc(100% - ${EDGE_INSET_PX * 2}px)`,
             height: `${THICKNESS_PX}px`,
             transform: `translateY(${THICKNESS_PX / 2}px) rotateX(-90deg)`,
           }}
