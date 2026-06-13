@@ -40,6 +40,7 @@ next-env.d.ts
 AGENTS.md
 CLAUDE.md
 CLAUDE.local.md
+skills-lock.json
 .cursor/
 .claude/
 .vercel/
