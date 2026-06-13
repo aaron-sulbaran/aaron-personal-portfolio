@@ -2,14 +2,32 @@ export const siteContent = {
   meta: {
     title: "Aaron Sulbaran",
     description:
-      "Third-year ECE at UT Austin. Pursuing product management. Building things with people, not just for them.",
+      "Building products (and community) with people, not just for them.",
     url: "https://aaronsulbaran.com",
   },
   home: {
     name: "Hi, I'm Aaron.",
     tagline:
-      "ECE at UT Austin. Pursuing product management. Building things with people, not just for them.",
+      "Building products (and community) with people, not just for them.",
     scrollHint: "Open the menu to explore",
+  },
+  // Hero words that open a "My definition of <term>" modal. Keys must match the
+  // exact word as it appears in home.tagline so HomeHero can wire that word to
+  // its definition. Keep each body to one or two sentences; these are drafts in
+  // Aaron's voice to be tightened later.
+  definitions: {
+    products: {
+      term: "products",
+      titlePrefix: "My definition of",
+      body:
+        "To me, product is turning a real human need into something people actually reach for. Less about features, more about judgment: deciding what matters, what to cut, and why.",
+    },
+    community: {
+      term: "community",
+      titlePrefix: "My definition of",
+      body:
+        "Community, to me, is what happens when you build with people instead of just for them. It is the rooms where people show up, contribute, and leave more capable than they came.",
+    },
   },
   about: {
     label: "About",
@@ -307,6 +325,8 @@ export type Photo = (typeof siteContent.photos)[number];
 export type WorkItem = (typeof siteContent.workItems)[number];
 export type MenuItem = (typeof siteContent.menu.items)[number];
 export type HomeTile = (typeof siteContent.homeTiles)[number];
+export type Definition =
+  (typeof siteContent.definitions)[keyof typeof siteContent.definitions];
 
 // Body section shapes for work detail pages. When a workItem populates its
 // bodySections array, each element must match one of these. More kinds can be

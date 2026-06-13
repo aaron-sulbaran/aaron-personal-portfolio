@@ -1,33 +1,145 @@
 "use client";
 
+import { useRef, useState } from "react";
+import { LayoutGroup, motion, useReducedMotion } from "framer-motion";
 import { siteContent } from "@/lib/content";
 import { useRingState } from "./TileRing";
+import { DefinitionModal } from "./DefinitionModal";
+
+type DefinitionKey = keyof typeof siteContent.definitions;
 
 // Centered hero copy that sits inside the TileRing. Hidden until the ring's
-// entrance animation completes, then fades in. Purposefully does not drive
-// any scroll behavior; home is a single locked view, so the "explore" hint
-// points users to the menu.
+// entrance animation completes, then fades in. Two words in the tagline,
+// "products" and "community", open a "My definition of <term>" modal; the
+// clicked word shares a layoutId with the modal title so it flies up and
+// blooms into the heading.
 export function HomeHero() {
   const state = useRingState();
   const ready = state === "ready";
   const { name, tagline, scrollHint } = siteContent.home;
+  const definitions = siteContent.definitions;
+  const prefersReducedMotion = useReducedMotion();
+  const morph = !prefersReducedMotion;
+
+  const [openTerm, setOpenTerm] = useState<DefinitionKey | null>(null);
+  // Originating word button, refocused when the modal closes so keyboard users
+  // do not lose their place (mirrors the photo/work modal focus return).
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+
+  const openDefinition = (term: DefinitionKey, el: HTMLButtonElement) => {
+    if (!ready) return;
+    triggerRef.current = el;
+    setOpenTerm(term);
+  };
+
+  const closeDefinition = () => {
+    setOpenTerm(null);
+    const el = triggerRef.current;
+    triggerRef.current = null;
+    if (el) {
+      requestAnimationFrame(() => {
+        if (el.isConnected) el.focus({ preventScroll: true });
+      });
+    }
+  };
 
   const fadeClass = ready ? "opacity-100" : "opacity-0";
 
   return (
-    <div
-      // Width is capped to the ring's interior safe zone (ring diameter is
-      // ~82vmin, tiles eat ~9vmin per side, so ~60vmin gives breathing room).
-      // Padding keeps a guaranteed gutter even at the smallest viewports.
-      className={`flex w-full max-w-[60vmin] flex-col items-center px-4 transition-opacity duration-[420ms] ease-out ${fadeClass}`}
-      aria-hidden={!ready}
+    <LayoutGroup>
+      <div
+        // Width is capped to the ring's interior safe zone (ring diameter is
+        // ~82vmin, tiles eat ~9vmin per side, so ~60vmin gives breathing room).
+        // Padding keeps a guaranteed gutter even at the smallest viewports.
+        className={`flex w-full max-w-[60vmin] flex-col items-center px-4 transition-opacity duration-[420ms] ease-out ${fadeClass}`}
+        aria-hidden={!ready}
+      >
+        <h1 className="font-serif text-display-lg italic">{name}</h1>
+        <p className="mt-4 max-w-[44vmin] text-sm leading-relaxed text-muted sm:text-base md:mt-6 md:text-body-lg md:leading-[1.55]">
+          {renderTagline(tagline, definitions, { ready, morph, onOpen: openDefinition })}
+        </p>
+        <MenuHint label={scrollHint} />
+      </div>
+
+      <DefinitionModal
+        definition={openTerm ? definitions[openTerm] : null}
+        morph={morph}
+        onClose={closeDefinition}
+      />
+    </LayoutGroup>
+  );
+}
+
+// Split the tagline on the defined terms (whole word, case-insensitive) and
+// wrap each matched term in a trigger. Keeping the tagline a single editable
+// string in content.ts while auto-wiring any word that has a definition.
+function renderTagline(
+  tagline: string,
+  definitions: typeof siteContent.definitions,
+  opts: {
+    ready: boolean;
+    morph: boolean;
+    onOpen: (term: DefinitionKey, el: HTMLButtonElement) => void;
+  },
+) {
+  const terms = Object.keys(definitions);
+  const pattern = new RegExp(`\\b(${terms.join("|")})\\b`, "gi");
+  const segments = tagline.split(pattern);
+
+  return segments.map((segment, i) => {
+    const key = segment.toLowerCase();
+    if (terms.includes(key)) {
+      return (
+        <DefinitionTrigger
+          key={`${key}-${i}`}
+          term={key as DefinitionKey}
+          display={segment}
+          ready={opts.ready}
+          morph={opts.morph}
+          onOpen={opts.onOpen}
+        />
+      );
+    }
+    return <span key={i}>{segment}</span>;
+  });
+}
+
+// One interactive hero word. Accent color plus a subtle underline that
+// strengthens on hover (the "this word has a definition" affordance, not a raw
+// link). Inert until the hero is visible, so nothing is focusable while the
+// container is aria-hidden during the entrance.
+function DefinitionTrigger({
+  term,
+  display,
+  ready,
+  morph,
+  onOpen,
+}: {
+  term: DefinitionKey;
+  display: string;
+  ready: boolean;
+  morph: boolean;
+  onOpen: (term: DefinitionKey, el: HTMLButtonElement) => void;
+}) {
+  const def = siteContent.definitions[term];
+  return (
+    <button
+      type="button"
+      disabled={!ready}
+      onClick={(e) => onOpen(term, e.currentTarget)}
+      data-cursor-hover
+      aria-haspopup="dialog"
+      aria-label={`${def.titlePrefix} ${def.term}`}
+      className="text-accent underline decoration-accent/30 decoration-1 underline-offset-[3px] transition-[color,text-decoration-color] duration-200 hover:text-accent-hover hover:decoration-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-default"
     >
-      <h1 className="font-serif text-display-lg italic">{name}</h1>
-      <p className="mt-4 max-w-[44vmin] text-sm leading-relaxed text-muted sm:text-base md:mt-6 md:text-body-lg md:leading-[1.55]">
-        {tagline}
-      </p>
-      <MenuHint label={scrollHint} />
-    </div>
+      {morph ? (
+        <motion.span layoutId={`def-${term}`} className="inline-block">
+          {display}
+        </motion.span>
+      ) : (
+        display
+      )}
+    </button>
   );
 }
 
