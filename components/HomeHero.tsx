@@ -43,20 +43,32 @@ export function HomeHero() {
     }
   };
 
-  const fadeClass = ready ? "opacity-100" : "opacity-0";
+  const modalOpen = openTerm !== null;
+  // Hero recedes both before the entrance completes and while a definition
+  // modal is open. Receding on open matters because the centered card overlaps
+  // the centered hero: without it the sharp "Hi, I'm Aaron" text lingers behind
+  // the card until the deferred background blur finally covers it.
+  const heroVisible = ready && !modalOpen;
+  const interactive = ready && !modalOpen;
 
   return (
     <LayoutGroup>
       <div
         // Width is capped to the ring's interior safe zone (ring diameter is
         // ~82vmin, tiles eat ~9vmin per side, so ~60vmin gives breathing room).
-        // Padding keeps a guaranteed gutter even at the smallest viewports.
-        className={`flex w-full max-w-[60vmin] flex-col items-center px-4 transition-opacity duration-[420ms] ease-out ${fadeClass}`}
-        aria-hidden={!ready}
+        className="flex w-full max-w-[60vmin] flex-col items-center px-4 ease-out"
+        style={{
+          opacity: heroVisible ? 1 : 0,
+          // Quicker recede when a definition opens so the hero does not linger
+          // behind the card; the calmer 420ms is for the entrance and for the
+          // fade back in when the modal closes.
+          transition: `opacity ${modalOpen ? 240 : 420}ms ease-out`,
+        }}
+        aria-hidden={!heroVisible}
       >
         <h1 className="font-serif text-display-lg italic">{name}</h1>
         <p className="mt-4 max-w-[44vmin] text-sm leading-relaxed text-muted sm:text-base md:mt-6 md:text-body-lg md:leading-[1.55]">
-          {renderTagline(tagline, definitions, { ready, morph, onOpen: openDefinition })}
+          {renderTagline(tagline, definitions, { interactive, morph, onOpen: openDefinition })}
         </p>
         <MenuHint label={scrollHint} />
       </div>
@@ -77,7 +89,7 @@ function renderTagline(
   tagline: string,
   definitions: typeof siteContent.definitions,
   opts: {
-    ready: boolean;
+    interactive: boolean;
     morph: boolean;
     onOpen: (term: DefinitionKey, el: HTMLButtonElement) => void;
   },
@@ -94,7 +106,7 @@ function renderTagline(
           key={`${key}-${i}`}
           term={key as DefinitionKey}
           display={segment}
-          ready={opts.ready}
+          interactive={opts.interactive}
           morph={opts.morph}
           onOpen={opts.onOpen}
         />
@@ -104,20 +116,20 @@ function renderTagline(
   });
 }
 
-// One interactive hero word. Accent color plus a subtle underline that
-// strengthens on hover (the "this word has a definition" affordance, not a raw
-// link). Inert until the hero is visible, so nothing is focusable while the
-// container is aria-hidden during the entrance.
+// One interactive hero word. Accent serif italic (matching the modal title so
+// the shared-layout morph keeps one font) plus a subtle underline that
+// strengthens on hover. Inert until the hero is visible and no modal is open,
+// so nothing is focusable while the container is aria-hidden.
 function DefinitionTrigger({
   term,
   display,
-  ready,
+  interactive,
   morph,
   onOpen,
 }: {
   term: DefinitionKey;
   display: string;
-  ready: boolean;
+  interactive: boolean;
   morph: boolean;
   onOpen: (term: DefinitionKey, el: HTMLButtonElement) => void;
 }) {
@@ -125,7 +137,7 @@ function DefinitionTrigger({
   return (
     <button
       type="button"
-      disabled={!ready}
+      disabled={!interactive}
       onClick={(e) => onOpen(term, e.currentTarget)}
       data-cursor-hover
       aria-haspopup="dialog"
