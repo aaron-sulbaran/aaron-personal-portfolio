@@ -12,8 +12,11 @@ import { WorkModal } from "./WorkModal";
 // Context so the center content (HomeHero) can react to the ring's state.
 // Keeps state ownership in TileRing and avoids prop-drilling through children.
 // Default is "pre" so SSR + pre-hydration renders treat HomeHero as hidden;
-// once the provider mounts, real state flows in.
-const RingStateContext = createContext<"pre" | "entering" | "ready">("pre");
+// once the provider mounts, real state flows in. modalOpen reflects the
+// photo/work modals TileRing owns, so HomeHero can recede the hero when one
+// opens (the deferred background blur leaves the hero exposed otherwise).
+type RingState = { phase: "pre" | "entering" | "ready"; modalOpen: boolean };
+const RingStateContext = createContext<RingState>({ phase: "pre", modalOpen: false });
 export const useRingState = () => useContext(RingStateContext);
 
 type Props = {
@@ -615,7 +618,7 @@ export function TileRing({ children }: Props) {
   const flipEnabled = phase === "ready" && !prefersReducedMotion && !flight;
 
   return (
-    <RingStateContext.Provider value={publicState}>
+    <RingStateContext.Provider value={{ phase: publicState, modalOpen }}>
       <section
         aria-label="Home"
         className="relative flex min-h-screen w-full items-center justify-center overflow-hidden px-6 md:px-10"

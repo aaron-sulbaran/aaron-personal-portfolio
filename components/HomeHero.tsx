@@ -14,8 +14,8 @@ type DefinitionKey = keyof typeof siteContent.definitions;
 // clicked word shares a layoutId with the modal title so it flies up and
 // blooms into the heading.
 export function HomeHero() {
-  const state = useRingState();
-  const ready = state === "ready";
+  const ring = useRingState();
+  const ready = ring.phase === "ready";
   const { name, tagline, scrollHint } = siteContent.home;
   const definitions = siteContent.definitions;
   const prefersReducedMotion = useReducedMotion();
@@ -43,11 +43,12 @@ export function HomeHero() {
     }
   };
 
-  const modalOpen = openTerm !== null;
-  // Hero recedes both before the entrance completes and while a definition
-  // modal is open. Receding on open matters because the centered card overlaps
-  // the centered hero: without it the sharp "Hi, I'm Aaron" text lingers behind
-  // the card until the deferred background blur finally covers it.
+  // Any modal open (this hero's definition modal, or a photo/work modal that
+  // TileRing owns) recedes the hero. Receding on open matters because the
+  // centered card overlaps the centered hero: without it the sharp "Hi, I'm
+  // Aaron" text lingers behind the card until the deferred background blur
+  // finally covers it.
+  const modalOpen = openTerm !== null || ring.modalOpen;
   const heroVisible = ready && !modalOpen;
   const interactive = ready && !modalOpen;
 
