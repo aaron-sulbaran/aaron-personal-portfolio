@@ -130,7 +130,7 @@ function DefinitionTrigger({
       data-cursor-hover
       aria-haspopup="dialog"
       aria-label={`${def.titlePrefix} ${def.term}`}
-      className="text-accent underline decoration-accent/30 decoration-1 underline-offset-[3px] transition-[color,text-decoration-color] duration-200 hover:text-accent-hover hover:decoration-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-default"
+      className="font-serif italic text-accent underline decoration-accent/30 decoration-1 underline-offset-[3px] transition-[color,text-decoration-color] duration-200 hover:text-accent-hover hover:decoration-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-default"
     >
       {morph ? (
         <motion.span layoutId={`def-${term}`} className="inline-block">
