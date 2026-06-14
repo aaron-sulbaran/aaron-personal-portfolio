@@ -159,12 +159,13 @@ export function useFocusTrap(
 }
 
 // Shared modal-backdrop motion. Every modal uses these so the open language is
-// consistent: the background stays sharp while the shared element (a ring tile
-// or a hero word) flies, then the blur radius and the dim ease in as the
-// content lands, instead of snapping to blurred on click. `delaySeconds` is
-// tuned per modal to its flight length, and 0 under reduced motion. Returned as
-// plain objects (not annotated Variants) so vendor-prefixed WebkitBackdropFilter
-// stays assignable to the motion `variants` prop.
+// consistent: the blur RADIUS and the dim animate in from zero (not a
+// pre-blurred layer fading via opacity), which is what keeps the open from
+// snapping. Callers pass `delaySeconds` if they want to hold the blur before it
+// ramps; currently 0 everywhere, since a deferred hold read as laggy (the click
+// produced no background response for a beat). Returned as plain objects (not
+// annotated Variants) so vendor-prefixed WebkitBackdropFilter stays assignable
+// to the motion `variants` prop.
 
 // Full backdrop blur radius (matches Tailwind backdrop-blur-xl).
 export const MODAL_BLUR_PX = 24;
@@ -175,7 +176,7 @@ export function modalBackdropBlurVariants(delaySeconds: number) {
     visible: {
       backdropFilter: `blur(${MODAL_BLUR_PX}px)`,
       WebkitBackdropFilter: `blur(${MODAL_BLUR_PX}px)`,
-      transition: { delay: delaySeconds, duration: 0.4, ease: "easeOut" as const },
+      transition: { delay: delaySeconds, duration: 0.28, ease: "easeOut" as const },
     },
     exit: {
       backdropFilter: "blur(0px)",
@@ -188,7 +189,7 @@ export function modalBackdropBlurVariants(delaySeconds: number) {
 export function modalBackdropTintVariants(delaySeconds: number) {
   return {
     hidden: { opacity: 0 },
-    visible: { opacity: 1, transition: { delay: delaySeconds, duration: 0.4, ease: "easeOut" as const } },
+    visible: { opacity: 1, transition: { delay: delaySeconds, duration: 0.28, ease: "easeOut" as const } },
     exit: { opacity: 0, transition: { duration: 0.18, ease: "easeIn" as const } },
   };
 }

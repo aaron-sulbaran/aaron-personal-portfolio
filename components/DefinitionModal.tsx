@@ -37,10 +37,10 @@ export function DefinitionModal({ definition, morph, onClose }: DefinitionModalP
   useEscapeKey(open, onClose);
   useFocusTrap(dialogRef, open);
 
-  // Hold the ambient blur/dim until the word has begun flying up. Under reduced
-  // motion there is no morph, so there is nothing to wait for: no delay. Shares
-  // the deferred-blur language with the photo and work modals via lib/modal.
-  const ambientDelay = morph ? 0.22 : 0;
+  // Blur starts on click and ramps the radius in quickly (no defer); the radius
+  // animation alone keeps it from snapping. Shares the backdrop language with
+  // the photo and work modals via lib/modal.
+  const ambientDelay = 0;
 
   // The card itself appears immediately, so the word has a panel to fly into.
   const panelVariants = {
