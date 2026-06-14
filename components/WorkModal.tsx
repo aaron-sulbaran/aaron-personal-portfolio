@@ -27,10 +27,9 @@ export function WorkModal({ item, onClose }: WorkModalProps) {
   useEscapeKey(open, onClose);
   useFocusTrap(dialogRef, open);
 
-  // Deferred so the flown logo tile travels over a still-sharp ring, then the
-  // background blur and dim ease in as the tile lands (~0.52s flight). No defer
-  // under reduced motion.
-  const blurDelay = prefersReducedMotion ? 0 : 0.3;
+  // Blur starts on click (no defer) and ramps the radius in quickly so it reads
+  // as responsive without snapping; an earlier deferral felt laggy.
+  const blurDelay = 0;
 
   const panelVariants = prefersReducedMotion
     ? {
