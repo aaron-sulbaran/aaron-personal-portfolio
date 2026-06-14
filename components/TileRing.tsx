@@ -46,10 +46,10 @@ const TILE_WIDTH_VMIN_MOBILE = 9; // matches desktop arc fill (~70%) so mobile t
 // Entrance timing, in milliseconds.
 const FIRST_TILE_HOLD_MS = 260;   // one tile visible alone before the stack flashes in
 const STACK_FLASH_MS = 160;       // rest of the tiles pile on top of the first
-const SHUFFLE_TICK_MS = 120;      // how fast the top card cycles during shuffle
-const SHUFFLE_DURATION_MS = 200;  // brief riffle before the fan (kept short; not in design.md)
+const SHUFFLE_TICK_MS = 150;      // how fast the top card cycles during shuffle; slowed so each top card lifts, settles, and hands off cleanly
+const SHUFFLE_DURATION_MS = 470;  // riffle anticipation before the fan; ~3 distinct cards preview at the 150ms tick (deck is 20, so no repeats under 2.4s)
 const TILE_FAN_DURATION_MS = 780; // per-tile travel time to its ring seat (design.md: 780)
-const TILE_FAN_STAGGER_MS = 10;   // near-simultaneous: tiles bloom outward together with a faint ripple
+const TILE_FAN_STAGGER_MS = 17;   // staggered unfurl: tiles bloom in ring order so the fan sweeps around the circle in proportion to the shuffle build-up
 
 // Curved fan-out (revolve). The fanning path is not a straight chord to the
 // seat; each tile blooms from the collapsed deck along a gently bowed arc while
