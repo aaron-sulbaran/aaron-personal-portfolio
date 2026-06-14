@@ -3,7 +3,13 @@
 import { X } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useRef } from "react";
-import { useBodyScrollLock, useEscapeKey, useFocusTrap } from "@/lib/modal";
+import {
+  useBodyScrollLock,
+  useEscapeKey,
+  useFocusTrap,
+  modalBackdropBlurVariants,
+  modalBackdropTintVariants,
+} from "@/lib/modal";
 import { siteContent, type Definition } from "@/lib/content";
 
 type DefinitionModalProps = {
@@ -32,31 +38,9 @@ export function DefinitionModal({ definition, morph, onClose }: DefinitionModalP
   useFocusTrap(dialogRef, open);
 
   // Hold the ambient blur/dim until the word has begun flying up. Under reduced
-  // motion there is no morph, so there is nothing to wait for: no delay.
+  // motion there is no morph, so there is nothing to wait for: no delay. Shares
+  // the deferred-blur language with the photo and work modals via lib/modal.
   const ambientDelay = morph ? 0.22 : 0;
-
-  // Animate the blur RADIUS (not just opacity) so it eases in cleanly.
-  const blurVariants = {
-    hidden: { backdropFilter: "blur(0px)", WebkitBackdropFilter: "blur(0px)" },
-    visible: {
-      backdropFilter: "blur(24px)",
-      WebkitBackdropFilter: "blur(24px)",
-      transition: { delay: ambientDelay, duration: 0.4, ease: "easeOut" as const },
-    },
-    exit: {
-      backdropFilter: "blur(0px)",
-      WebkitBackdropFilter: "blur(0px)",
-      transition: { duration: 0.2, ease: "easeIn" as const },
-    },
-  };
-
-  // Dim tint, fades in alongside the blur (same delay) so the background dims
-  // and blurs together after the morph, not on click.
-  const tintVariants = {
-    hidden: { opacity: 0 },
-    visible: { opacity: 1, transition: { delay: ambientDelay, duration: 0.4, ease: "easeOut" as const } },
-    exit: { opacity: 0, transition: { duration: 0.18, ease: "easeIn" as const } },
-  };
 
   // The card itself appears immediately, so the word has a panel to fly into.
   const panelVariants = {
@@ -77,7 +61,7 @@ export function DefinitionModal({ definition, morph, onClose }: DefinitionModalP
           initial="hidden"
           animate="visible"
           exit="exit"
-          variants={blurVariants}
+          variants={modalBackdropBlurVariants(ambientDelay)}
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) onClose();
           }}
@@ -87,7 +71,7 @@ export function DefinitionModal({ definition, morph, onClose }: DefinitionModalP
               still reaches the backdrop and closes the modal. */}
           <motion.div
             aria-hidden="true"
-            variants={tintVariants}
+            variants={modalBackdropTintVariants(ambientDelay)}
             className="pointer-events-none absolute inset-0 bg-background/70"
           />
 

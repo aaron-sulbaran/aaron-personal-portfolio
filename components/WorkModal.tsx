@@ -4,7 +4,13 @@ import Link from "next/link";
 import { ArrowRight, X } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useRef } from "react";
-import { useBodyScrollLock, useEscapeKey, useFocusTrap } from "@/lib/modal";
+import {
+  useBodyScrollLock,
+  useEscapeKey,
+  useFocusTrap,
+  modalBackdropBlurVariants,
+  modalBackdropTintVariants,
+} from "@/lib/modal";
 import { siteContent, type WorkItem } from "@/lib/content";
 
 type WorkModalProps = {
@@ -21,11 +27,10 @@ export function WorkModal({ item, onClose }: WorkModalProps) {
   useEscapeKey(open, onClose);
   useFocusTrap(dialogRef, open);
 
-  const backdropVariants = {
-    hidden: { opacity: 0 },
-    visible: { opacity: 1, transition: { duration: 0.22, ease: "easeOut" as const } },
-    exit: { opacity: 0, transition: { duration: 0.18, ease: "easeIn" as const } },
-  };
+  // Deferred so the flown logo tile travels over a still-sharp ring, then the
+  // background blur and dim ease in as the tile lands (~0.52s flight). No defer
+  // under reduced motion.
+  const blurDelay = prefersReducedMotion ? 0 : 0.3;
 
   const panelVariants = prefersReducedMotion
     ? {
@@ -53,12 +58,17 @@ export function WorkModal({ item, onClose }: WorkModalProps) {
           initial="hidden"
           animate="visible"
           exit="exit"
-          variants={backdropVariants}
+          variants={modalBackdropBlurVariants(blurDelay)}
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) onClose();
           }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 px-4 py-6 backdrop-blur-xl md:px-10 md:py-14"
+          className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6 md:px-10 md:py-14"
         >
+          <motion.div
+            aria-hidden="true"
+            variants={modalBackdropTintVariants(blurDelay)}
+            className="pointer-events-none absolute inset-0 bg-background/70"
+          />
           <motion.div
             variants={panelVariants}
             className="relative flex w-full max-w-xl flex-col gap-6 overflow-hidden rounded-2xl border border-border/60 bg-background/85 p-6 shadow-[0_40px_80px_-20px_rgba(10,10,10,0.45)] backdrop-blur-xl md:p-10"
