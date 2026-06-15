@@ -142,13 +142,13 @@ export function Menu() {
                       >
                         {String(i + 1).padStart(2, "0")}
                       </span>
-                      <span className="relative block overflow-hidden px-[0.04em] pb-[0.14em] font-serif text-[clamp(3.5rem,10vw,7rem)] italic leading-[1] tracking-tight">
-                        <span className="block text-foreground transition-transform duration-[600ms] ease-[cubic-bezier(0.77,0,0.175,1)] group-hover:-translate-y-[110%] group-focus-visible:-translate-y-[110%]">
+                      <span className="relative grid items-end justify-items-start overflow-hidden px-[0.04em] pb-[0.14em] font-serif text-[clamp(3.5rem,10vw,7rem)] italic leading-[1] tracking-tight">
+                        <span className="col-start-1 row-start-1 block whitespace-nowrap text-foreground transition-transform duration-[600ms] ease-[cubic-bezier(0.77,0,0.175,1)] group-hover:-translate-y-[110%] group-focus-visible:-translate-y-[110%]">
                           {item.label}
                         </span>
                         <span
                           aria-hidden="true"
-                          className="pointer-events-none absolute inset-0 flex translate-y-[110%] items-start px-[0.04em] pb-[0.14em] text-accent transition-transform duration-[600ms] ease-[cubic-bezier(0.77,0,0.175,1)] group-hover:translate-y-0 group-focus-visible:translate-y-0"
+                          className="col-start-1 row-start-1 block translate-y-[110%] whitespace-nowrap font-grotesk not-italic text-accent transition-transform duration-[600ms] ease-[cubic-bezier(0.77,0,0.175,1)] group-hover:translate-y-0 group-focus-visible:translate-y-0"
                         >
                           {item.label}
                         </span>
