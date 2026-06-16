@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Instrument_Serif, Space_Grotesk } from "next/font/google";
 import { Menu } from "@/components/Menu";
+import { SiteNav } from "@/components/SiteNav";
 import { CustomCursor } from "@/components/CustomCursor";
 import { siteContent } from "@/lib/content";
 import { THEME_BG_DARK, THEME_BG_LIGHT, themeInitScript } from "@/lib/theme";
@@ -70,6 +71,7 @@ export default function RootLayout({
         <a href="#main" className="skip-link">
           Skip to content
         </a>
+        <SiteNav />
         <Menu />
         <CustomCursor />
         {children}
