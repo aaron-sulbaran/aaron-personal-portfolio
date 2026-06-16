@@ -19,6 +19,24 @@ type RingState = { phase: "pre" | "entering" | "ready"; modalOpen: boolean };
 const RingStateContext = createContext<RingState>({ phase: "pre", modalOpen: false });
 export const useRingState = () => useContext(RingStateContext);
 
+// Per-card collapse offset, the bridge that keeps the click -> flip -> modal
+// flight correct once the scroll layer rearranges the ring into a deck or
+// carousel. The scroll layer (GSAP) writes both the DOM transform on a card's
+// outer wrapper and this matching value; the flight geometry reads it. An
+// identity offset means "ring/hero state", where the flight math is byte-for-
+// byte what it was before this layer existed. dx/dy are viewport px, scale is
+// a multiplier, rotZ/rotX/rotY are degrees, applied in the ring plane.
+type CardCollapse = {
+  dx: number;
+  dy: number;
+  scale: number;
+  rotZ: number;
+  rotX: number;
+  rotY: number;
+};
+
+const IDENTITY_COLLAPSE: CardCollapse = { dx: 0, dy: 0, scale: 1, rotZ: 0, rotX: 0, rotY: 0 };
+
 type Props = {
   children: React.ReactNode; // HomeHero sits at the ring's center
 };
@@ -374,6 +392,19 @@ export function TileRing({ children }: Props) {
     });
   }, [tiles, total, radius]);
 
+  // Live per-card collapse offsets, one per tile, identity until the scroll
+  // layer drives them. Kept in a ref (not state) so the scroll layer can write
+  // it every frame without re-rendering; the flight geometry reads it on click.
+  const collapseRef = useRef<CardCollapse[]>([]);
+  if (collapseRef.current.length !== total) {
+    collapseRef.current = Array.from({ length: total }, () => ({ ...IDENTITY_COLLAPSE }));
+  }
+
+  // Outer wrapper element per tile (the seat-centering div), owned by the
+  // scroll layer for the collapse transform. Collected here so GSAP can target
+  // them; Framer keeps the inner seat/lean/flip layers untouched.
+  const collapseElsRef = useRef<(HTMLDivElement | null)[]>([]);
+
   // Originating tile button for the open modal; focused again when the
   // modal fully closes so keyboard users do not lose their place.
   const sourceButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -407,16 +438,20 @@ export function TileRing({ children }: Props) {
 
     sourceButtonRef.current = capture.button;
 
+    const c = collapseRef.current[tileIndex] ?? IDENTITY_COLLAPSE;
     const home = computeHomeRect(tileIndex);
-    const homeTangentDeg = seats[tileIndex].rotate;
+    // Collapse rotations join the seat tangent and resting tilt so the flight's
+    // start frame and its closing target both sit at the card's collapsed
+    // orientation. Identity offsets leave these at the original ring values.
+    const homeTangentDeg = seats[tileIndex].rotate + c.rotZ;
 
     setFlight({
       tile: homeTile,
       tileIndex,
       homeRect: home,
       homeTangentDeg,
-      homeRestRotX: tileBaselineRotX(tileIndex),
-      homeRestRotY: tileBaselineRotY(tileIndex),
+      homeRestRotX: tileBaselineRotX(tileIndex) + c.rotX,
+      homeRestRotY: tileBaselineRotY(tileIndex) + c.rotY,
       source: computeFlightSource(tileIndex, home, capture),
       // Initial target is the home rect itself; the useEffect below reads
       // the real modal slot rect once mounted and updates `target` so the
@@ -437,10 +472,20 @@ export function TileRing({ children }: Props) {
     const vw = typeof window !== "undefined" ? window.innerWidth : 1280;
     const vh = typeof window !== "undefined" ? window.innerHeight : 900;
     const vmin = Math.min(vw, vh);
-    const widthPx = (tileWidth / 100) * vmin;
-    const heightPx = (tileHeight / 100) * vmin;
-    const cx = vw / 2 + (seats[tileIndex].xVmin / 100) * vmin;
-    const cy = vh / 2 + (seats[tileIndex].yVmin / 100) * vmin;
+    // Collapse offset composes on the seat: the outer wrapper is translated by
+    // (dx, dy), scaled, and rotated about the viewport center. Identity leaves
+    // the rect exactly at the ring seat. Parallax is parked while collapsed, so
+    // this flat composition matches the on-screen card.
+    const c = collapseRef.current[tileIndex] ?? IDENTITY_COLLAPSE;
+    const seatX = (seats[tileIndex].xVmin / 100) * vmin;
+    const seatY = (seats[tileIndex].yVmin / 100) * vmin;
+    const rz = (c.rotZ * Math.PI) / 180;
+    const rotatedX = Math.cos(rz) * seatX - Math.sin(rz) * seatY;
+    const rotatedY = Math.sin(rz) * seatX + Math.cos(rz) * seatY;
+    const widthPx = (tileWidth / 100) * vmin * c.scale;
+    const heightPx = (tileHeight / 100) * vmin * c.scale;
+    const cx = vw / 2 + c.dx + c.scale * rotatedX;
+    const cy = vh / 2 + c.dy + c.scale * rotatedY;
     return {
       left: cx - widthPx / 2,
       top: cy - heightPx / 2,
@@ -471,18 +516,26 @@ export function TileRing({ children }: Props) {
     const vh = typeof window !== "undefined" ? window.innerHeight : 900;
     const vmin = Math.min(vw, vh);
     const seat = seats[tileIndex];
+    const c = collapseRef.current[tileIndex] ?? IDENTITY_COLLAPSE;
 
     // The lean translation is applied inside the seat-rotated frame; rotate
     // it back into ring-plane coordinates before projecting.
     const theta = (seat.rotate * Math.PI) / 180;
-    const planeX =
+    const planeX0 =
       (seat.xVmin / 100) * vmin +
       capture.leanX * Math.cos(theta) -
       capture.leanY * Math.sin(theta);
-    const planeY =
+    const planeY0 =
       (seat.yVmin / 100) * vmin +
       capture.leanX * Math.sin(theta) +
       capture.leanY * Math.cos(theta);
+
+    // Compose the collapse offset (translate, scale, rotate) in the ring plane,
+    // matching the outer wrapper's DOM transform. Identity leaves planeX0/Y0
+    // untouched, so the ring-state flight is byte-for-byte the original.
+    const cz = (c.rotZ * Math.PI) / 180;
+    const planeX = c.dx + c.scale * (Math.cos(cz) * planeX0 - Math.sin(cz) * planeY0);
+    const planeY = c.dy + c.scale * (Math.sin(cz) * planeX0 + Math.cos(cz) * planeY0);
 
     const rotXDeg = -smoothY.get() * PARALLAX_MAX_TILT_DEG;
     const rotYDeg = smoothX.get() * PARALLAX_MAX_TILT_DEG;
@@ -510,8 +563,10 @@ export function TileRing({ children }: Props) {
         width,
         height,
       },
-      rotX: rotXDeg + capture.rotX,
-      rotY: rotYDeg + capture.rotY,
+      rotX: rotXDeg + capture.rotX + c.rotX,
+      rotY: rotYDeg + capture.rotY + c.rotY,
+      // c.rotZ is folded into homeTangentDeg (the flight's rotation base), not
+      // here, so the closing target and the source share one rotation origin.
       rotZDelta: rotZDeg + capture.leanRot,
     };
   };
@@ -702,6 +757,9 @@ export function TileRing({ children }: Props) {
                 proximityTick={proximityTick}
                 viewportRef={viewportRef}
                 onTileClick={handleTileClick}
+                registerCollapseEl={(el) => {
+                  collapseElsRef.current[i] = el;
+                }}
               />
             );
           })}
@@ -914,6 +972,9 @@ type TileSlotProps = {
     capture: TileCapture,
     tile: HomeTileEntry,
   ) => void;
+  // Registers the tile's outer wrapper element with the parent so the scroll
+  // layer can drive its collapse transform. Framer keeps the inner layers.
+  registerCollapseEl: (el: HTMLDivElement | null) => void;
 };
 
 // Own-refs for per-tile proximity. Values are pixel-space offsets / degrees
@@ -937,6 +998,7 @@ function TileSlot({
   proximityTick,
   viewportRef,
   onTileClick,
+  registerCollapseEl,
 }: TileSlotProps) {
   // Lean motion values (inner transform layer). Spring-smoothed so they
   // glide toward targets rather than snap when the cursor moves.
@@ -1088,6 +1150,8 @@ function TileSlot({
 
   return (
     <div
+      ref={registerCollapseEl}
+      data-tile-index={tileIndex}
       className="absolute left-1/2 top-1/2 h-0 w-0"
       style={{ zIndex }}
     >
