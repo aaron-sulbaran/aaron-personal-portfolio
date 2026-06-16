@@ -43,9 +43,9 @@ export const siteContent = {
     themeAriaLabelToDark: "Switch to dark mode",
     themeAriaLabelToLight: "Switch to light mode",
     items: [
-      { key: "home", label: "Home", href: "/", kind: "route" as const },
-      { key: "work", label: "Work", href: "/work", kind: "route" as const },
-      { key: "about", label: "About", href: "/about", kind: "route" as const },
+      { key: "home", label: "Home", href: "#main", kind: "anchor" as const },
+      { key: "work", label: "Work", href: "#work", kind: "anchor" as const },
+      { key: "about", label: "About", href: "#about", kind: "anchor" as const },
     ],
   },
   modals: {

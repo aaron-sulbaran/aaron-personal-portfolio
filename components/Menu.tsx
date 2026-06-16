@@ -1,17 +1,18 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Moon, Sun, X } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useBodyScrollLock, useEscapeKey, useFocusTrap } from "@/lib/modal";
 import { siteContent, type MenuItem } from "@/lib/content";
+import { scrollToTarget } from "@/lib/scroll";
 import { THEME_STORAGE_KEY, syncThemeColorMeta, type Theme } from "@/lib/theme";
 
 // Top-right menu. Collapsed state is just a two-bar hamburger icon. Expanded
 // state covers the viewport with a frosted backdrop, a big-serif item list,
-// and the theme toggle below a thin rule. Auto-closes on route change.
+// and the theme toggle below a thin rule. Items smooth-scroll to in-page
+// sections (no route change); the menu still auto-closes if the route changes.
 export function Menu() {
   const [open, setOpen] = useState(false);
   const [theme, setTheme] = useState<Theme | null>(null);
@@ -42,6 +43,26 @@ export function Menu() {
   useBodyScrollLock(open);
   useEscapeKey(open, () => setOpen(false));
   useFocusTrap(dialogRef, open);
+
+  // Close the menu, then smooth-scroll to the section once the body-scroll lock
+  // has released. The lock is torn down in an effect on the next commit, so a
+  // synchronous scroll would run while body overflow is still hidden; two rAFs
+  // push the scroll past that. The hash is updated for shareable deep links.
+  const handleNavClick = useCallback(
+    (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+      e.preventDefault();
+      setOpen(false);
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => scrollToTarget(href, !!prefersReducedMotion)),
+      );
+      if (href === "#main") {
+        window.history.replaceState(null, "", window.location.pathname + window.location.search);
+      } else {
+        window.history.replaceState(null, "", href);
+      }
+    },
+    [prefersReducedMotion],
+  );
 
   const toggleTheme = useCallback(() => {
     const next: Theme = theme === "dark" ? "light" : "dark";
@@ -131,9 +152,9 @@ export function Menu() {
               <ul className="flex flex-col gap-2 md:gap-4">
                 {navItems.map((item, i) => (
                   <li key={item.key}>
-                    <Link
+                    <a
                       href={item.href}
-                      onClick={() => setOpen(false)}
+                      onClick={(e) => handleNavClick(e, item.href)}
                       className="group relative flex items-start gap-4 focus:outline-none"
                     >
                       <span
@@ -153,7 +174,7 @@ export function Menu() {
                           {item.label}
                         </span>
                       </span>
-                    </Link>
+                    </a>
                   </li>
                 ))}
               </ul>
