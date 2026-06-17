@@ -42,6 +42,7 @@ export function SiteNav() {
   const lastY = useRef(0);
   const [revealed, setRevealed] = useState(false);
   const [retracted, setRetracted] = useState(false);
+  const [activeId, setActiveId] = useState<string | null>(null);
 
   useEffect(() => {
     let ticking = false;
@@ -95,6 +96,25 @@ export function SiteNav() {
     return () => observer.disconnect();
   }, []);
 
+  // Scroll-spy: highlight the nav link for the section crossing the upper
+  // middle of the viewport. One observer over the section anchors.
+  useEffect(() => {
+    const sections = NAV_LINKS.map((l) => document.getElementById(l.href.slice(1))).filter(
+      (el): el is HTMLElement => el !== null,
+    );
+    if (!sections.length) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) setActiveId(entry.target.id);
+        });
+      },
+      { rootMargin: "-45% 0px -50% 0px", threshold: 0 },
+    );
+    sections.forEach((s) => observer.observe(s));
+    return () => observer.disconnect();
+  }, []);
+
   // inert when off-screen so the hidden links never take keyboard focus.
   const shown = revealed && !retracted;
   useEffect(() => {
@@ -141,21 +161,27 @@ export function SiteNav() {
         </button>
 
         <ul className="hidden items-center gap-7 md:flex">
-          {NAV_LINKS.map((link) => (
-            <li key={link.href}>
-              <a
-                href={link.href}
-                onClick={(e) => {
-                  e.preventDefault();
-                  navigate(link.href);
-                }}
-                data-cursor-hover
-                className="text-[11px] font-medium uppercase tracking-caps text-muted transition-colors duration-200 hover:text-accent focus-visible:text-accent"
-              >
-                {link.label}
-              </a>
-            </li>
-          ))}
+          {NAV_LINKS.map((link) => {
+            const active = activeId === link.href.slice(1);
+            return (
+              <li key={link.href}>
+                <a
+                  href={link.href}
+                  aria-current={active ? "true" : undefined}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    navigate(link.href);
+                  }}
+                  data-cursor-hover
+                  className={`text-[11px] font-medium uppercase tracking-caps transition-colors duration-200 hover:text-accent focus-visible:text-accent ${
+                    active ? "text-accent" : "text-muted"
+                  }`}
+                >
+                  {link.label}
+                </a>
+              </li>
+            );
+          })}
         </ul>
       </nav>
     </motion.header>

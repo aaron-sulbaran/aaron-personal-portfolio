@@ -9,7 +9,7 @@ export const siteContent = {
     name: "Hi, I'm Aaron.",
     tagline:
       "Building products (and community) with people, not just for them.",
-    scrollHint: "Open the menu to explore",
+    scrollHint: "Scroll to explore",
   },
   // Hero words that open a "My definition of <term>" modal. Keys must match the
   // exact word as it appears in home.tagline so HomeHero can wire that word to
