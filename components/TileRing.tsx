@@ -938,6 +938,14 @@ export function TileRing({ children }: Props) {
         };
       });
 
+      // Keep pin and scrub measurements correct after layout shifts that land
+      // after setup: the post-ready layout and async font swaps. Resize is
+      // refreshed by ScrollTrigger automatically.
+      ScrollTrigger.refresh();
+      if (typeof document !== "undefined" && document.fonts) {
+        document.fonts.ready.then(() => ScrollTrigger.refresh()).catch(() => {});
+      }
+
       return () => mm.revert();
     },
     { scope: sectionRef, dependencies: [ready, isMobile, prefersReducedMotion, total] },

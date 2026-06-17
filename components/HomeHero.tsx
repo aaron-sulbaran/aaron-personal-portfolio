@@ -71,7 +71,7 @@ export function HomeHero() {
         <p className="mt-4 max-w-[44vmin] text-sm leading-relaxed text-muted sm:text-base md:mt-6 md:text-body-lg md:leading-[1.55]">
           {renderTagline(tagline, definitions, { interactive, morph, onOpen: openDefinition })}
         </p>
-        <MenuHint label={scrollHint} />
+        <ScrollCue label={scrollHint} animate={!prefersReducedMotion} />
       </div>
 
       <DefinitionModal
@@ -156,36 +156,31 @@ function DefinitionTrigger({
   );
 }
 
-// Small caps signpost. Clicking it opens the site menu via the hamburger's
-// id (no state plumbing needed; Menu owns its own open state). Becomes
-// clickable once the hero is visible.
-function MenuHint({ label }: { label: string }) {
-  const openMenu = () => {
-    const trigger = document.getElementById("site-menu-trigger");
-    trigger?.click();
-  };
-
+// Minimal scroll affordance that replaces the old "open the menu" hint: scroll
+// is now the invitation. A small down chevron that gently bobs (still under
+// reduced motion, just static) with a screen-reader-only label. No teaching or
+// onboarding beyond this; richer navigation hints are a deferred feature.
+function ScrollCue({ label, animate }: { label: string; animate: boolean }) {
   return (
-    <button
-      type="button"
-      onClick={openMenu}
-      data-cursor-hover
-      className="group mt-6 inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-caps text-muted transition-colors duration-200 hover:text-accent focus-visible:text-accent md:mt-10"
+    <motion.div
+      aria-hidden="true"
+      className="mt-6 text-muted md:mt-10"
+      animate={animate ? { y: [0, 4, 0] } : undefined}
+      transition={animate ? { duration: 1.8, repeat: Infinity, ease: "easeInOut" } : undefined}
     >
-      <span>{label}</span>
+      <span className="sr-only">{label}</span>
       <svg
-        aria-hidden="true"
         viewBox="0 0 16 16"
-        className="h-3 w-3 -translate-y-px transition-transform duration-200 group-hover:-translate-y-[3px]"
+        className="h-4 w-4"
         fill="none"
         stroke="currentColor"
         strokeWidth="1.5"
         strokeLinecap="round"
         strokeLinejoin="round"
       >
-        <path d="M8 13V3" />
-        <path d="M4 7l4-4 4 4" />
+        <path d="M8 3v10" />
+        <path d="M4 9l4 4 4-4" />
       </svg>
-    </button>
+    </motion.div>
   );
 }
