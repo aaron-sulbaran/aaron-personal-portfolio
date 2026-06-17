@@ -4,6 +4,7 @@ import { motion, useMotionValue, useReducedMotion, useSpring, useTransform, type
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { siteContent, type HomeTile as HomeTileEntry, type Photo, type WorkItem } from "@/lib/content";
 import { useBodyScrollLock } from "@/lib/modal";
+import { gsap, ScrollTrigger, useGSAP } from "@/lib/gsap";
 import { GlassTile, type TileActivatePayload } from "./GlassTile";
 import { FlyingTile, type FlightPhase, type FlightSource, type FlightTarget } from "./FlyingTile";
 import { PhotoModal } from "./PhotoModal";
@@ -207,6 +208,15 @@ export function TileRing({ children }: Props) {
   const rotateX = useTransform(smoothY, (v) => `${-v * PARALLAX_MAX_TILT_DEG}deg`);
   const rotateZ = useTransform(smoothX, (v) => `${v * PARALLAX_MAX_ZROT_DEG}deg`);
 
+  // Scroll collapse plumbing. `collapseEngaged` flips true the moment the
+  // scrub leaves the hero so parallax and proximity stand down (the deck is
+  // flat). sectionRef scopes the useGSAP context; heroContentRef is the hero
+  // copy faded out as the ring gathers into the deck.
+  const [collapseEngaged, setCollapseEngaged] = useState(false);
+  const engagedRef = useRef(false);
+  const sectionRef = useRef<HTMLElement | null>(null);
+  const heroContentRef = useRef<HTMLDivElement | null>(null);
+
   useEffect(() => {
     setMounted(true);
     const mq = window.matchMedia("(max-width: 767px)");
@@ -239,6 +249,7 @@ export function TileRing({ children }: Props) {
     if (prefersReducedMotion) return;
     if (phase !== "ready") return;
     if (flight) return;
+    if (collapseEngaged) return;
     const fine = window.matchMedia("(pointer: fine)");
     if (!fine.matches) return;
 
@@ -294,7 +305,19 @@ export function TileRing({ children }: Props) {
       window.removeEventListener("pointermove", onMove);
       document.removeEventListener("pointerleave", onLeave);
     };
-  }, [parallaxX, parallaxY, proximityTick, phase, prefersReducedMotion, flight]);
+  }, [parallaxX, parallaxY, proximityTick, phase, prefersReducedMotion, flight, collapseEngaged]);
+
+  // While the scroll collapse is engaged, park parallax flat (springs ease to
+  // 0) so the deck reads flat and the flight projection stays identity. The
+  // listener above is already disabled; this only zeroes the resting target.
+  useEffect(() => {
+    if (!collapseEngaged) return;
+    parallaxX.set(0);
+    parallaxY.set(0);
+    cursorRef.current.x = -9999;
+    cursorRef.current.y = -9999;
+    proximityTick.set(proximityTick.get() + 1);
+  }, [collapseEngaged, parallaxX, parallaxY, proximityTick]);
 
   // When a flight starts, kick parallax back to 0 (and park the shared
   // cursor off-screen, bumping the tick so all per-tile lean/flip springs
@@ -663,6 +686,129 @@ export function TileRing({ children }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [modalOpen]);
 
+  // Desktop scroll collapse: pin the hero and scrub the ring into a tight
+  // horizontal overlapped deck, then release the pin so the deck is a normal
+  // lingering-friendly section. GSAP owns each tile's outer-wrapper transform
+  // and the matching collapseRef value; Framer keeps the inner seat/lean/flip
+  // layers. Gated on the entrance being ready so it never races the fan-out.
+  // Mobile and reduced-motion get their own branches in a later phase; until
+  // then they do nothing and the ring simply scrolls past as the hero.
+  const ready = phase === "ready";
+  useGSAP(
+    () => {
+      if (!ready) return;
+      const heroPin = document.getElementById("hero-pin");
+      if (!heroPin) return;
+
+      const DECK_SCALE = 1.35; // cards grow slightly as they gather
+      const DECK_OVERLAP = 0.3; // visible fraction of each card (front edge)
+      const ease = gsap.parseEase("power2.inOut");
+
+      const applyCollapse = (progress: number) => {
+        const e = ease(progress);
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        const vmin = Math.min(vw, vh);
+        const scale = 1 + e * (DECK_SCALE - 1);
+        const cardWpx = (tileWidth / 100) * vmin * DECK_SCALE;
+        const step = cardWpx * DECK_OVERLAP;
+        for (let i = 0; i < total; i++) {
+          const seatX = (seats[i].xVmin / 100) * vmin;
+          const seatY = (seats[i].yVmin / 100) * vmin;
+          const slotX = (i - (total - 1) / 2) * step;
+          // Counter-rotate the seat tangent to 0 so the deck cards stand
+          // upright instead of keeping their ring orientation. The seat layer
+          // (Framer) still applies seat.rotate; this wrapper rotation cancels
+          // it as the card gathers. Negative because it undoes the tangent.
+          const rotZDeg = -seats[i].rotate * e;
+          const rz = (rotZDeg * Math.PI) / 180;
+          const cos = Math.cos(rz);
+          const sin = Math.sin(rz);
+          // Interpolate the card center from its ring seat to its deck slot,
+          // then back out the wrapper translate given the live scale + rotation
+          // (matches the composition in computeHomeRect/computeFlightSource).
+          const centerX = (1 - e) * seatX + e * slotX;
+          const centerY = (1 - e) * seatY;
+          const dx = centerX - scale * (cos * seatX - sin * seatY);
+          const dy = centerY - scale * (sin * seatX + cos * seatY);
+          const c = collapseRef.current[i];
+          if (c) {
+            c.dx = dx;
+            c.dy = dy;
+            c.scale = scale;
+            c.rotZ = rotZDeg;
+            c.rotX = 0;
+            c.rotY = 0;
+          }
+          const el = collapseElsRef.current[i];
+          if (el) {
+            // translateZ orders the deck within the preserve-3d ring so later
+            // cards sit in front (front-edges-show overlap); scale is negligible.
+            el.style.transform = `translate(${dx}px, ${dy}px) translateZ(${e * i * 0.6}px) scale(${scale}) rotate(${rotZDeg}deg)`;
+          }
+        }
+        if (heroContentRef.current) {
+          heroContentRef.current.style.opacity = String(1 - Math.min(1, e * 1.4));
+          heroContentRef.current.style.pointerEvents = e > 0.02 ? "none" : "";
+        }
+      };
+
+      const resetCollapse = () => {
+        for (let i = 0; i < total; i++) {
+          const c = collapseRef.current[i];
+          if (c) {
+            c.dx = 0;
+            c.dy = 0;
+            c.scale = 1;
+            c.rotZ = 0;
+            c.rotX = 0;
+            c.rotY = 0;
+          }
+          const el = collapseElsRef.current[i];
+          if (el) el.style.transform = "";
+        }
+        if (heroContentRef.current) {
+          heroContentRef.current.style.opacity = "";
+          heroContentRef.current.style.pointerEvents = "";
+        }
+      };
+
+      const setEngaged = (v: boolean) => {
+        if (engagedRef.current === v) return;
+        engagedRef.current = v;
+        setCollapseEngaged(v);
+      };
+
+      const mm = gsap.matchMedia();
+      mm.add("(min-width: 768px) and (prefers-reduced-motion: no-preference)", () => {
+        const st = ScrollTrigger.create({
+          trigger: heroPin,
+          start: "top top",
+          end: "+=130%",
+          pin: heroPin,
+          pinType: "fixed",
+          pinSpacing: true,
+          anticipatePin: 1,
+          scrub: true,
+          invalidateOnRefresh: true,
+          onRefreshInit: resetCollapse,
+          onUpdate: (self) => {
+            applyCollapse(self.progress);
+            setEngaged(self.progress > 0.004);
+          },
+        });
+        return () => {
+          st.kill();
+          resetCollapse();
+          setEngaged(false);
+        };
+      });
+
+      return () => mm.revert();
+    },
+    { scope: sectionRef, dependencies: [ready, isMobile, prefersReducedMotion, total] },
+  );
+
   // While any flight is active, the flown tile's key identifies the ring
   // tile that should stay hidden. When flight clears, the ring tile takes
   // over at the flying tile's exact final geometry; no fade needed.
@@ -675,6 +821,7 @@ export function TileRing({ children }: Props) {
   return (
     <RingStateContext.Provider value={{ phase: publicState, modalOpen }}>
       <section
+        ref={sectionRef}
         aria-label="Home"
         className="relative flex min-h-screen w-full items-center justify-center overflow-hidden px-6 md:px-10"
         data-state={publicState}
@@ -685,8 +832,12 @@ export function TileRing({ children }: Props) {
           className="pointer-events-none absolute inset-0 opacity-80 [background:radial-gradient(ellipse_at_center,var(--color-glass)_0%,transparent_62%)]"
         />
 
-        {/* Center content (HomeHero). Fades in after entrance resolves. */}
-        <div className="relative z-20 mx-auto flex max-w-3xl flex-col items-center text-center">
+        {/* Center content (HomeHero). Fades in after entrance resolves, and
+            fades back out as the scroll collapse gathers the ring into a deck. */}
+        <div
+          ref={heroContentRef}
+          className="relative z-20 mx-auto flex max-w-3xl flex-col items-center text-center"
+        >
           {children}
         </div>
 
@@ -748,7 +899,7 @@ export function TileRing({ children }: Props) {
                 tileHeight={tileHeight}
                 zIndex={zIndex}
                 hidden={tile.key === hiddenRingKey}
-                proximityEnabled={phase === "ready" && !prefersReducedMotion && !flight}
+                proximityEnabled={phase === "ready" && !prefersReducedMotion && !flight && !collapseEngaged}
                 radiusVmin={radius}
                 mounted={mounted}
                 prefersReducedMotion={!!prefersReducedMotion}
