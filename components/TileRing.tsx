@@ -216,6 +216,8 @@ export function TileRing({ children }: Props) {
   const engagedRef = useRef(false);
   const sectionRef = useRef<HTMLElement | null>(null);
   const heroContentRef = useRef<HTMLDivElement | null>(null);
+  // Index of the deck card currently peeked up on hover, or -1.
+  const peekRef = useRef(-1);
   // Native horizontal scroll-snap rail (mobile only). It provides momentum and
   // snapping for the coverflow; its scrollLeft drives the per-card 3D layout.
   const railRef = useRef<HTMLDivElement | null>(null);
@@ -704,10 +706,13 @@ export function TileRing({ children }: Props) {
       if (!heroPin) return;
 
       const DECK_SCALE = 1.35; // cards grow slightly as they gather
-      const DECK_OVERLAP = 0.3; // visible fraction of each card (front edge)
+      const DECK_OVERLAP = 0.58; // fraction of card width between neighbors
       const ease = gsap.parseEase("power2.inOut");
 
       const applyCollapse = (progress: number) => {
+        // Any scrub cancels an in-progress hover peek so the dy bookkeeping
+        // stays balanced (the loop below rewrites each dy from scratch).
+        peekRef.current = -1;
         const e = ease(progress);
         const vw = window.innerWidth;
         const vh = window.innerHeight;
@@ -951,6 +956,30 @@ export function TileRing({ children }: Props) {
     { scope: sectionRef, dependencies: [ready, isMobile, prefersReducedMotion, total] },
   );
 
+  // Hover peek for the settled desktop deck: lift the hovered card up out of
+  // the stack and bring it forward. It adjusts the same collapseRef the flight
+  // reads, so a click still spawns the clone at the lifted position. No-op in
+  // the ring/hero state and on mobile (the coverflow has no hover).
+  const PEEK_PX = 28;
+  const peekTile = (i: number, up: boolean) => {
+    if (isMobile || !engagedRef.current) return;
+    const el = collapseElsRef.current[i];
+    const c = collapseRef.current[i];
+    if (!el || !c) return;
+    if (up) {
+      if (peekRef.current === i) return;
+      peekRef.current = i;
+      c.dy -= PEEK_PX;
+      el.style.transition = "transform 0.24s cubic-bezier(0.22,1,0.36,1)";
+      el.style.transform = `translate(${c.dx}px, ${c.dy}px) translateZ(${i * 0.6 + 40}px) scale(${c.scale}) rotate(${c.rotZ}deg)`;
+    } else {
+      if (peekRef.current !== i) return;
+      peekRef.current = -1;
+      c.dy += PEEK_PX;
+      el.style.transform = `translate(${c.dx}px, ${c.dy}px) translateZ(${i * 0.6}px) scale(${c.scale}) rotate(${c.rotZ}deg)`;
+    }
+  };
+
   // While any flight is active, the flown tile's key identifies the ring
   // tile that should stay hidden. When flight clears, the ring tile takes
   // over at the flying tile's exact final geometry; no fade needed.
@@ -1053,6 +1082,7 @@ export function TileRing({ children }: Props) {
                 registerCollapseEl={(el) => {
                   collapseElsRef.current[i] = el;
                 }}
+                onPeek={(up) => peekTile(i, up)}
               />
             );
           })}
@@ -1285,6 +1315,8 @@ type TileSlotProps = {
   // Registers the tile's outer wrapper element with the parent so the scroll
   // layer can drive its collapse transform. Framer keeps the inner layers.
   registerCollapseEl: (el: HTMLDivElement | null) => void;
+  // Hover peek for the deck (desktop). up=true on enter, false on leave.
+  onPeek: (up: boolean) => void;
 };
 
 // Own-refs for per-tile proximity. Values are pixel-space offsets / degrees
@@ -1309,6 +1341,7 @@ function TileSlot({
   viewportRef,
   onTileClick,
   registerCollapseEl,
+  onPeek,
 }: TileSlotProps) {
   // Lean motion values (inner transform layer). Spring-smoothed so they
   // glide toward targets rather than snap when the cursor moves.
@@ -1510,6 +1543,8 @@ function TileSlot({
             scale: smoothLeanScale,
           }}
           className="h-full w-full"
+          onMouseEnter={() => onPeek(true)}
+          onMouseLeave={() => onPeek(false)}
         >
           <GlassTile
             tile={tile}
