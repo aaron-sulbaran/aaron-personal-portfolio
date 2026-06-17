@@ -10,6 +10,8 @@ export const siteContent = {
     tagline:
       "Building products (and community) with people, not just for them.",
     scrollHint: "Scroll to explore",
+    deckTitle: "Explore my experiences",
+    deckHint: "Open any card to look closer, then keep scrolling",
   },
   // Hero words that open a "My definition of <term>" modal. Keys must match the
   // exact word as it appears in home.tagline so HomeHero can wire that word to

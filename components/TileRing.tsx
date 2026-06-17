@@ -34,9 +34,10 @@ type CardCollapse = {
   rotZ: number;
   rotX: number;
   rotY: number;
+  tz: number;
 };
 
-const IDENTITY_COLLAPSE: CardCollapse = { dx: 0, dy: 0, scale: 1, rotZ: 0, rotX: 0, rotY: 0 };
+const IDENTITY_COLLAPSE: CardCollapse = { dx: 0, dy: 0, scale: 1, rotZ: 0, rotX: 0, rotY: 0, tz: 0 };
 
 type Props = {
   children: React.ReactNode; // HomeHero sits at the ring's center
@@ -213,9 +214,15 @@ export function TileRing({ children }: Props) {
   // flat). sectionRef scopes the useGSAP context; heroContentRef is the hero
   // copy faded out as the ring gathers into the deck.
   const [collapseEngaged, setCollapseEngaged] = useState(false);
+  // Gate the scroll-collapse setup until just after the hero has faded in.
+  // Creating the ScrollTrigger pin reflows the hero subtree, which would snap
+  // the hero's opacity transition mid-fade (it would pop instead of fade).
+  const [scrollReady, setScrollReady] = useState(false);
   const engagedRef = useRef(false);
   const sectionRef = useRef<HTMLElement | null>(null);
   const heroContentRef = useRef<HTMLDivElement | null>(null);
+  // Invitation copy under the deck; fades in as the ring collapses.
+  const deckHintRef = useRef<HTMLDivElement | null>(null);
   // Index of the deck card currently peeked up on hover, or -1.
   const peekRef = useRef(-1);
   // Native horizontal scroll-snap rail (mobile only). It provides momentum and
@@ -340,6 +347,19 @@ export function TileRing({ children }: Props) {
     cursorRef.current.y = -9999;
     proximityTick.set(proximityTick.get() + 1);
   }, [flight, parallaxX, parallaxY, proximityTick]);
+
+  // Arm the scroll collapse a beat after the entrance completes so the hero
+  // fade (420ms) finishes before the pin's reflow lands. Reduced motion has no
+  // fade to protect, so it arms immediately.
+  useEffect(() => {
+    if (phase !== "ready") return;
+    if (prefersReducedMotion) {
+      setScrollReady(true);
+      return;
+    }
+    const t = window.setTimeout(() => setScrollReady(true), 520);
+    return () => window.clearTimeout(t);
+  }, [phase, prefersReducedMotion]);
 
   // Drive the entrance sequence on mount. Each timer advances one phase.
   useEffect(() => {
@@ -510,10 +530,15 @@ export function TileRing({ children }: Props) {
     const rz = (c.rotZ * Math.PI) / 180;
     const rotatedX = Math.cos(rz) * seatX - Math.sin(rz) * seatY;
     const rotatedY = Math.sin(rz) * seatX + Math.cos(rz) * seatY;
-    const widthPx = (tileWidth / 100) * vmin * c.scale;
-    const heightPx = (tileHeight / 100) * vmin * c.scale;
-    const cx = vw / 2 + c.dx + c.scale * rotatedX;
-    const cy = vh / 2 + c.dy + c.scale * rotatedY;
+    // The card center sits at depth c.tz; the stage perspective foreshortens
+    // its on-screen offset and size. kTz is 1 when tz is 0 (the ring state).
+    const kTz = RING_PERSPECTIVE_PX / (RING_PERSPECTIVE_PX - c.tz);
+    const planeX = c.dx + c.scale * rotatedX;
+    const planeY = c.dy + c.scale * rotatedY;
+    const widthPx = (tileWidth / 100) * vmin * c.scale * kTz;
+    const heightPx = (tileHeight / 100) * vmin * c.scale * kTz;
+    const cx = vw / 2 + planeX * kTz;
+    const cy = vh / 2 + planeY * kTz;
     return {
       left: cx - widthPx / 2,
       top: cy - heightPx / 2,
@@ -581,13 +606,17 @@ export function TileRing({ children }: Props) {
     const y2 = y1 * Math.cos(alpha) - z2 * Math.sin(alpha);
     const z3 = y1 * Math.sin(alpha) + z2 * Math.cos(alpha);
     const k = RING_PERSPECTIVE_PX / (RING_PERSPECTIVE_PX - z3);
+    // Additional foreshortening from the card's own collapse depth (c.tz). It
+    // is 1 in the ring state (tz 0); home.width already carries it for size, so
+    // it only scales the on-screen offset here.
+    const kTz = RING_PERSPECTIVE_PX / (RING_PERSPECTIVE_PX - c.tz);
 
     const width = home.width * capture.leanScale * k;
     const height = home.height * capture.leanScale * k;
     return {
       rect: {
-        left: vw / 2 + x2 * k - width / 2,
-        top: vh / 2 + y2 * k - height / 2,
+        left: vw / 2 + x2 * k * kTz - width / 2,
+        top: vh / 2 + y2 * k * kTz - height / 2,
         width,
         height,
       },
@@ -698,47 +727,47 @@ export function TileRing({ children }: Props) {
   // layers. Gated on the entrance being ready so it never races the fan-out.
   // Mobile and reduced-motion get their own branches in a later phase; until
   // then they do nothing and the ring simply scrolls past as the hero.
-  const ready = phase === "ready";
   useGSAP(
     () => {
-      if (!ready) return;
+      if (!scrollReady) return;
       const heroPin = document.getElementById("hero-pin");
       if (!heroPin) return;
 
-      const DECK_SCALE = 1.35; // cards grow slightly as they gather
-      const DECK_OVERLAP = 0.58; // fraction of card width between neighbors
+      const DECK_SCALE = 2.5; // cards grow into large panels as they gather
+      const DECK_ANGLE = 42; // uniform rotateY (deg) so the stack reads in 3D
+      const DEPTH_STEP = 11; // px each card recedes behind the previous
+      const SPAN_FRAC = 0.82; // deck spans this fraction of the viewport width
       const ease = gsap.parseEase("power2.inOut");
 
       const applyCollapse = (progress: number) => {
         // Any scrub cancels an in-progress hover peek so the dy bookkeeping
-        // stays balanced (the loop below rewrites each dy from scratch).
+        // stays balanced (the loop below rewrites each card from scratch).
         peekRef.current = -1;
         const e = ease(progress);
         const vw = window.innerWidth;
-        const vh = window.innerHeight;
-        const vmin = Math.min(vw, vh);
+        const vmin = Math.min(vw, window.innerHeight);
         const scale = 1 + e * (DECK_SCALE - 1);
+        const angle = e * DECK_ANGLE;
         const cardWpx = (tileWidth / 100) * vmin * DECK_SCALE;
-        const step = cardWpx * DECK_OVERLAP;
+        const step = total > 1 ? (vw * SPAN_FRAC - cardWpx) / (total - 1) : 0;
         for (let i = 0; i < total; i++) {
           const seatX = (seats[i].xVmin / 100) * vmin;
           const seatY = (seats[i].yVmin / 100) * vmin;
           const slotX = (i - (total - 1) / 2) * step;
           // Counter-rotate the seat tangent to 0 so the deck cards stand
-          // upright instead of keeping their ring orientation. The seat layer
-          // (Framer) still applies seat.rotate; this wrapper rotation cancels
-          // it as the card gathers. Negative because it undoes the tangent.
+          // upright; the uniform rotateY then angles the whole stack in depth.
           const rotZDeg = -seats[i].rotate * e;
           const rz = (rotZDeg * Math.PI) / 180;
           const cos = Math.cos(rz);
           const sin = Math.sin(rz);
-          // Interpolate the card center from its ring seat to its deck slot,
-          // then back out the wrapper translate given the live scale + rotation
-          // (matches the composition in computeHomeRect/computeFlightSource).
-          const centerX = (1 - e) * seatX + e * slotX;
-          const centerY = (1 - e) * seatY;
-          const dx = centerX - scale * (cos * seatX - sin * seatY);
-          const dy = centerY - scale * (sin * seatX + cos * seatY);
+          const tz = -e * i * DEPTH_STEP; // recede left-to-right for clean layering
+          // Interpolate the card CENTER from its ring seat to its deck slot.
+          const cxCard = (1 - e) * seatX + e * slotX;
+          const cyCard = (1 - e) * seatY;
+          // Back the wrapper translate out of scale + seat rotation so the card
+          // rotates about its own center (the trailing translate(-seat) below).
+          const dx = cxCard - scale * (cos * seatX - sin * seatY);
+          const dy = cyCard - scale * (sin * seatX + cos * seatY);
           const c = collapseRef.current[i];
           if (c) {
             c.dx = dx;
@@ -746,18 +775,20 @@ export function TileRing({ children }: Props) {
             c.scale = scale;
             c.rotZ = rotZDeg;
             c.rotX = 0;
-            c.rotY = 0;
+            c.rotY = angle;
+            c.tz = tz;
           }
           const el = collapseElsRef.current[i];
           if (el) {
-            // translateZ orders the deck within the preserve-3d ring so later
-            // cards sit in front (front-edges-show overlap); scale is negligible.
-            el.style.transform = `translate(${dx}px, ${dy}px) translateZ(${e * i * 0.6}px) scale(${scale}) rotate(${rotZDeg}deg)`;
+            el.style.transform = `translate(${cxCard}px, ${cyCard}px) translateZ(${tz}px) rotateY(${angle}deg) scale(${scale}) rotate(${rotZDeg}deg) translate(${-seatX}px, ${-seatY}px)`;
           }
         }
         if (heroContentRef.current) {
           heroContentRef.current.style.opacity = String(1 - Math.min(1, e * 1.4));
           heroContentRef.current.style.pointerEvents = e > 0.02 ? "none" : "";
+        }
+        if (deckHintRef.current) {
+          deckHintRef.current.style.opacity = String(Math.max(0, (e - 0.55) / 0.45));
         }
       };
 
@@ -771,6 +802,7 @@ export function TileRing({ children }: Props) {
             c.rotZ = 0;
             c.rotX = 0;
             c.rotY = 0;
+            c.tz = 0;
           }
           const el = collapseElsRef.current[i];
           if (el) {
@@ -785,6 +817,7 @@ export function TileRing({ children }: Props) {
           heroContentRef.current.style.pointerEvents = "";
           heroContentRef.current.style.transition = "";
         }
+        if (deckHintRef.current) deckHintRef.current.style.opacity = "";
         if (railRef.current) railRef.current.style.display = "";
       };
 
@@ -856,6 +889,7 @@ export function TileRing({ children }: Props) {
             c.rotZ = rotZDeg;
             c.rotX = 0;
             c.rotY = rotY;
+            c.tz = tz;
           }
           const el = collapseElsRef.current[i];
           if (el) {
@@ -865,6 +899,7 @@ export function TileRing({ children }: Props) {
           }
         }
         if (heroContentRef.current) heroContentRef.current.style.opacity = "0";
+        if (deckHintRef.current) deckHintRef.current.style.opacity = "1";
       };
 
       // Mobile: no pin, no scroll-jack. A native scroll-snap rail provides
@@ -953,30 +988,53 @@ export function TileRing({ children }: Props) {
 
       return () => mm.revert();
     },
-    { scope: sectionRef, dependencies: [ready, isMobile, prefersReducedMotion, total] },
+    { scope: sectionRef, dependencies: [scrollReady, isMobile, prefersReducedMotion, total] },
   );
 
-  // Hover peek for the settled desktop deck: lift the hovered card up out of
-  // the stack and bring it forward. It adjusts the same collapseRef the flight
-  // reads, so a click still spawns the clone at the lifted position. No-op in
-  // the ring/hero state and on mobile (the coverflow has no hover).
-  const PEEK_PX = 28;
+  // Hover peek for the settled desktop deck: pull the hovered card out of the
+  // angled stack so it faces the viewer head-on, lifts up, and comes forward
+  // above its neighbors. It adjusts the same collapseRef the flight reads, so a
+  // click still spawns the clone at the lifted position. No-op in the ring/hero
+  // state and on mobile (the coverflow has no hover). The deck values are
+  // snapshotted on enter and restored on leave (a scroll clears peek state).
+  const PEEK_PX = 40;
+  const PEEK_TZ = 140;
+  const peekBackupRef = useRef<{ dy: number; rotY: number; tz: number } | null>(null);
   const peekTile = (i: number, up: boolean) => {
     if (isMobile || !engagedRef.current) return;
     const el = collapseElsRef.current[i];
     const c = collapseRef.current[i];
     if (!el || !c) return;
+    const vmin = Math.min(window.innerWidth, window.innerHeight);
+    const seatX = (seats[i].xVmin / 100) * vmin;
+    const seatY = (seats[i].yVmin / 100) * vmin;
+    const rebuild = () => {
+      const rz = (c.rotZ * Math.PI) / 180;
+      const cos = Math.cos(rz);
+      const sin = Math.sin(rz);
+      const cxCard = c.dx + c.scale * (cos * seatX - sin * seatY);
+      const cyCard = c.dy + c.scale * (sin * seatX + cos * seatY);
+      el.style.transform = `translate(${cxCard}px, ${cyCard}px) translateZ(${c.tz}px) rotateY(${c.rotY}deg) scale(${c.scale}) rotate(${c.rotZ}deg) translate(${-seatX}px, ${-seatY}px)`;
+    };
     if (up) {
       if (peekRef.current === i) return;
       peekRef.current = i;
+      peekBackupRef.current = { dy: c.dy, rotY: c.rotY, tz: c.tz };
       c.dy -= PEEK_PX;
-      el.style.transition = "transform 0.24s cubic-bezier(0.22,1,0.36,1)";
-      el.style.transform = `translate(${c.dx}px, ${c.dy}px) translateZ(${i * 0.6 + 40}px) scale(${c.scale}) rotate(${c.rotZ}deg)`;
+      c.rotY = 0;
+      c.tz = PEEK_TZ;
+      el.style.transition = "transform 0.26s cubic-bezier(0.22,1,0.36,1)";
+      rebuild();
     } else {
       if (peekRef.current !== i) return;
       peekRef.current = -1;
-      c.dy += PEEK_PX;
-      el.style.transform = `translate(${c.dx}px, ${c.dy}px) translateZ(${i * 0.6}px) scale(${c.scale}) rotate(${c.rotZ}deg)`;
+      const b = peekBackupRef.current;
+      if (b) {
+        c.dy = b.dy;
+        c.rotY = b.rotY;
+        c.tz = b.tz;
+      }
+      rebuild();
     }
   };
 
@@ -1087,6 +1145,22 @@ export function TileRing({ children }: Props) {
             );
           })}
         </motion.div>
+        </div>
+
+        {/* Invitation under the deck. Hidden in the ring/hero state (opacity-0
+            class); the collapse drives its opacity imperatively so it fades in
+            as the deck settles. */}
+        <div
+          ref={deckHintRef}
+          aria-hidden={!collapseEngaged}
+          className="pointer-events-none absolute inset-x-0 bottom-[11%] z-20 flex flex-col items-center gap-2 px-6 text-center opacity-0"
+        >
+          <p className="font-serif text-2xl italic text-foreground md:text-3xl">
+            {siteContent.home.deckTitle}
+          </p>
+          <p className="text-[11px] font-medium uppercase tracking-caps text-muted">
+            {siteContent.home.deckHint}
+          </p>
         </div>
 
         {/* Mobile coverflow rail: a native horizontal scroll-snap track that
