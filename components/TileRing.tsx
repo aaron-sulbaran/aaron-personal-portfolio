@@ -216,6 +216,9 @@ export function TileRing({ children }: Props) {
   const engagedRef = useRef(false);
   const sectionRef = useRef<HTMLElement | null>(null);
   const heroContentRef = useRef<HTMLDivElement | null>(null);
+  // Native horizontal scroll-snap rail (mobile only). It provides momentum and
+  // snapping for the coverflow; its scrollLeft drives the per-card 3D layout.
+  const railRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -765,12 +768,19 @@ export function TileRing({ children }: Props) {
             c.rotY = 0;
           }
           const el = collapseElsRef.current[i];
-          if (el) el.style.transform = "";
+          if (el) {
+            el.style.transform = "";
+            el.style.transition = "";
+            el.style.zIndex = "";
+            el.style.opacity = "";
+          }
         }
         if (heroContentRef.current) {
           heroContentRef.current.style.opacity = "";
           heroContentRef.current.style.pointerEvents = "";
+          heroContentRef.current.style.transition = "";
         }
+        if (railRef.current) railRef.current.style.display = "";
       };
 
       const setEngaged = (v: boolean) => {
@@ -799,6 +809,130 @@ export function TileRing({ children }: Props) {
         });
         return () => {
           st.kill();
+          resetCollapse();
+          setEngaged(false);
+        };
+      });
+
+      // Coverflow layout for the mobile carousel. focusedFloat is the rail's
+      // scroll position in card units; the nearest integer is the front card.
+      // Each card rotates about its own center (shift the seat to the origin,
+      // transform, then place at the slot) so neighbors curve away in depth.
+      const applyCoverflow = (focusedFloat: number) => {
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        const vmin = Math.min(vw, vh);
+        const FOCUS_SCALE = 2.6; // grow the small ring tile into a real card
+        const GAP = vmin * 0.46; // spacing between adjacent card centers
+        const ANGLE = 50; // neighbor rotateY
+        const DEPTH = vmin * 0.16;
+        for (let i = 0; i < total; i++) {
+          const off = i - focusedFloat;
+          const aoff = Math.abs(off);
+          const sign = off === 0 ? 0 : off > 0 ? 1 : -1;
+          // Fan the first neighbor out by GAP, then tuck distant cards closer
+          // so they stack near the edges instead of flying off-screen.
+          const spread = Math.min(aoff, 1) * GAP + (aoff > 1 ? (aoff - 1) * GAP * 0.4 : 0);
+          const tx = sign * spread;
+          const rotY = -sign * Math.min(aoff, 1) * ANGLE;
+          const scale = FOCUS_SCALE * Math.max(0.62, 1 - aoff * 0.14);
+          const tz = -Math.min(aoff, 3) * DEPTH;
+          const rotZDeg = -seats[i].rotate;
+          const rz = (rotZDeg * Math.PI) / 180;
+          const cos = Math.cos(rz);
+          const sin = Math.sin(rz);
+          const seatX = (seats[i].xVmin / 100) * vmin;
+          const seatY = (seats[i].yVmin / 100) * vmin;
+          const c = collapseRef.current[i];
+          if (c) {
+            c.dx = tx - scale * (cos * seatX - sin * seatY);
+            c.dy = -scale * (sin * seatX + cos * seatY);
+            c.scale = scale;
+            c.rotZ = rotZDeg;
+            c.rotX = 0;
+            c.rotY = rotY;
+          }
+          const el = collapseElsRef.current[i];
+          if (el) {
+            el.style.zIndex = String(100 - Math.round(aoff * 10));
+            el.style.opacity = aoff > 3.3 ? "0" : "1";
+            el.style.transform = `translate(${tx}px, 0px) translateZ(${tz}px) rotateY(${rotY}deg) scale(${scale}) rotate(${rotZDeg}deg) translate(${-seatX}px, ${-seatY}px)`;
+          }
+        }
+        if (heroContentRef.current) heroContentRef.current.style.opacity = "0";
+      };
+
+      // Mobile: no pin, no scroll-jack. A native scroll-snap rail provides
+      // momentum + snap; its scrollLeft drives the coverflow. Tapping the rail
+      // activates the front card's existing flip into the modal.
+      mm.add("(max-width: 767px) and (prefers-reduced-motion: no-preference)", () => {
+        const rail = railRef.current;
+        if (!rail) return;
+        rail.style.display = "block";
+        setEngaged(true);
+
+        const mid = Math.floor(total / 2);
+        for (let i = 0; i < total; i++) {
+          const el = collapseElsRef.current[i];
+          if (el) el.style.transition = "transform 0.6s cubic-bezier(0.22,1,0.36,1)";
+        }
+        rail.scrollLeft = mid * window.innerWidth;
+        applyCoverflow(mid);
+        const clearT = window.setTimeout(() => {
+          for (let i = 0; i < total; i++) {
+            const el = collapseElsRef.current[i];
+            if (el) el.style.transition = "";
+          }
+        }, 640);
+
+        let raf = 0;
+        const onScroll = () => {
+          if (raf) return;
+          raf = requestAnimationFrame(() => {
+            raf = 0;
+            applyCoverflow(rail.scrollLeft / window.innerWidth);
+          });
+        };
+        const onTap = () => {
+          const focused = Math.round(rail.scrollLeft / window.innerWidth);
+          const el = collapseElsRef.current[focused];
+          const btn = el ? el.querySelector("button") : null;
+          if (btn) btn.click();
+        };
+        rail.addEventListener("scroll", onScroll, { passive: true });
+        rail.addEventListener("click", onTap);
+
+        return () => {
+          window.clearTimeout(clearT);
+          if (raf) cancelAnimationFrame(raf);
+          rail.removeEventListener("scroll", onScroll);
+          rail.removeEventListener("click", onTap);
+          resetCollapse();
+          setEngaged(false);
+        };
+      });
+
+      // Reduced motion: no scrub, no pin. Cross-fade the ring into the settled
+      // deck and stop; the user gets the destination state without the motion.
+      mm.add("(prefers-reduced-motion: reduce)", () => {
+        if (heroContentRef.current) {
+          heroContentRef.current.style.transition = "opacity 0.5s ease";
+        }
+        for (let i = 0; i < total; i++) {
+          const el = collapseElsRef.current[i];
+          if (el) el.style.transition = "transform 0.5s ease";
+        }
+        applyCollapse(1);
+        setEngaged(true);
+        const clearT = window.setTimeout(() => {
+          for (let i = 0; i < total; i++) {
+            const el = collapseElsRef.current[i];
+            if (el) el.style.transition = "";
+          }
+          if (heroContentRef.current) heroContentRef.current.style.transition = "";
+        }, 520);
+        return () => {
+          window.clearTimeout(clearT);
           resetCollapse();
           setEngaged(false);
         };
@@ -915,6 +1049,23 @@ export function TileRing({ children }: Props) {
             );
           })}
         </motion.div>
+        </div>
+
+        {/* Mobile coverflow rail: a native horizontal scroll-snap track that
+            overlays the hero. Each spacer is a full-width snap stop; the rail's
+            scrollLeft drives the 3D coverflow on the real tiles (mobile branch
+            of the useGSAP collapse). touch-action pan-x lets vertical gestures
+            fall through to the page. Hidden on desktop. */}
+        <div
+          ref={railRef}
+          aria-hidden="true"
+          className="absolute inset-0 z-30 hidden touch-pan-x snap-x snap-mandatory overflow-x-auto overflow-y-hidden [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+          <div className="flex h-full w-max">
+            {tiles.map((t) => (
+              <div key={t.key} className="h-full w-screen shrink-0 snap-center" />
+            ))}
+          </div>
         </div>
       </section>
 
