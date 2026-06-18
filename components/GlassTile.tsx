@@ -32,7 +32,7 @@ type Props = {
 // Z and four edge strips fill the gap so the card reads as a 3D glass
 // object instead of flat paper. Kept subtle (5px) so the ring doesn't feel
 // chunky.
-const THICKNESS_PX = 5;
+const THICKNESS_PX = 3;
 
 // The faces are rounded-[10px]. The four rim strips are straight rectangles,
 // so their square ends used to poke past the rounded face corners, reading as
@@ -174,7 +174,7 @@ export function GlassTile({
       onBlur={handleBlur}
       data-cursor-hover
       aria-label={ariaLabel}
-      className="group relative block h-full w-full rounded-[10px] [perspective:1200px] focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+      className="group relative block h-full w-full rounded-[10px] [transform-style:preserve-3d] focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
     >
       <motion.div
         style={{
