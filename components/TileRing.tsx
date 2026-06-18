@@ -165,17 +165,32 @@ export function TileRing({ children }: Props) {
     phase: FlightPhase;
   } | null>(null);
 
-  // Body locked only through the brief deck phases (hidden → shuffle). The
-  // lock is released the instant the fan-out begins, so the ~800ms unfurl and
-  // the settled ring no longer hold scroll hostage; that full-entrance lock
-  // was a big part of why returning to Home felt stuck. Reduced-motion users
-  // start at "ready" and never lock at all.
-  const entranceLocked =
-    phase === "hidden" ||
-    phase === "firstTile" ||
-    phase === "stacking" ||
-    phase === "shuffling";
+  // Gate the scroll-collapse setup until just after the hero has faded in.
+  // Creating the ScrollTrigger pin reflows the hero subtree, which would snap
+  // the hero's opacity transition mid-fade (it would pop instead of fade).
+  const [scrollReady, setScrollReady] = useState(false);
+
+  // Hold scroll through the WHOLE entrance (shuffle, fan-out, hero settle) so a
+  // fast flick can't blow past the intro and the ring-to-deck collapse before
+  // they ever play. The lock releases once the collapse pin is armed
+  // (scrollReady), so the user lands at the top with the animation ready to
+  // scrub. Reduced-motion users start at "ready" and are never locked.
+  const entranceLocked = !prefersReducedMotion && !scrollReady;
   useBodyScrollLock(entranceLocked);
+
+  // Belt-and-suspenders for the entrance freeze: the body overflow lock removes
+  // the scrollbar, but block wheel and touch outright too so a hard flick can't
+  // sneak any scroll through before the intro and the collapse have played.
+  useEffect(() => {
+    if (!entranceLocked) return;
+    const prevent = (e: Event) => e.preventDefault();
+    window.addEventListener("wheel", prevent, { passive: false });
+    window.addEventListener("touchmove", prevent, { passive: false });
+    return () => {
+      window.removeEventListener("wheel", prevent);
+      window.removeEventListener("touchmove", prevent);
+    };
+  }, [entranceLocked]);
 
   // Parallax motion values, spring-smoothed. pX/pY are normalized cursor
   // position in [-1..1] (0 = viewport center). Feed through springs so the
@@ -214,10 +229,6 @@ export function TileRing({ children }: Props) {
   // flat). sectionRef scopes the useGSAP context; heroContentRef is the hero
   // copy faded out as the ring gathers into the deck.
   const [collapseEngaged, setCollapseEngaged] = useState(false);
-  // Gate the scroll-collapse setup until just after the hero has faded in.
-  // Creating the ScrollTrigger pin reflows the hero subtree, which would snap
-  // the hero's opacity transition mid-fade (it would pop instead of fade).
-  const [scrollReady, setScrollReady] = useState(false);
   const engagedRef = useRef(false);
   const sectionRef = useRef<HTMLElement | null>(null);
   const heroContentRef = useRef<HTMLDivElement | null>(null);
@@ -733,11 +744,14 @@ export function TileRing({ children }: Props) {
       const heroPin = document.getElementById("hero-pin");
       if (!heroPin) return;
 
-      const DECK_SCALE = 2.2; // cards grow into large panels as they gather
-      const DECK_ANGLE = -40; // negative rotateY: cards face left (read L to R)
-      const DEPTH_STEP = 22; // px each card recedes into depth
-      const STEP_X_FRAC = 0.036; // horizontal march per card (fraction of vw)
-      const STEP_Y_FRAC = 0.02; // vertical rise per card (fraction of vmin)
+      const DECK_SCALE = 2.0; // cards grow into large panels as they gather
+      const DECK_ANGLE = -32; // negative rotateY: cards face left (read L to R)
+      // Each card recedes far enough that adjacent angled planes never cross
+      // (the cause of the 3D clipping); the strong recede also reads as the
+      // inkwell depth, with the back cards small and clustered by perspective.
+      const DEPTH_STEP = 85;
+      const STEP_X_FRAC = 0.038; // horizontal march per card (fraction of vw)
+      const STEP_Y_FRAC = 0.022; // vertical rise per card (fraction of vmin)
       const ease = gsap.parseEase("power2.inOut");
 
       const applyCollapse = (progress: number) => {
@@ -764,13 +778,11 @@ export function TileRing({ children }: Props) {
           // Diagonal march, inkwell-style: the front card sits lower-left (i 0)
           // and the stack recedes up and to the right into depth.
           const tz = e * -i * DEPTH_STEP;
-          const kTz = RING_PERSPECTIVE_PX / (RING_PERSPECTIVE_PX - tz);
-          const screenX = (i - mid) * stepX;
-          const screenY = -(i - mid) * stepY;
-          // Back the desired on-screen position out of the depth foreshortening
-          // so each card center lands exactly on the diagonal.
-          const slotCx = screenX / kTz;
-          const slotCy = screenY / kTz;
+          // Flat-plane slot positions; the stage perspective then foreshortens
+          // them, pulling the receding back cards toward center (the inkwell
+          // cluster) and shrinking them.
+          const slotCx = (i - mid) * stepX;
+          const slotCy = -(i - mid) * stepY;
           // Interpolate the card CENTER from its ring seat to its deck slot.
           const cxCard = (1 - e) * seatX + e * slotCx;
           const cyCard = (1 - e) * seatY + e * slotCy;
@@ -847,7 +859,9 @@ export function TileRing({ children }: Props) {
           pinType: "fixed",
           pinSpacing: true,
           anticipatePin: 1,
-          scrub: true,
+          // Smoothed scrub (not instant) so a fast flick still eases the
+          // collapse through over ~0.8s instead of snapping past it.
+          scrub: 0.8,
           invalidateOnRefresh: true,
           onRefreshInit: resetCollapse,
           onUpdate: (self) => {
@@ -1220,11 +1234,19 @@ type TargetResult = {
     rotate: number | number[];
     scale: number;
     opacity: number;
+    z: number;
   };
   transition: { duration: number; ease: Easing; delay?: number };
 };
 
 const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
+
+// Per-tile translateZ stagger (px) while the tiles are piled at center
+// (firstTile/stacking/shuffling). Without it the stacked glass slabs share a
+// depth and z-fight into a diagonal seam. It eases back to 0 as they fan out.
+const STACK_Z_STEP = 2.5;
+// The shuffle's top tile pops fully in front of the piled stack.
+const SHUFFLE_TOP_Z = 60;
 
 // Compute the animate target + transition for a tile given the current phase.
 // Kept as a pure function so phase transitions produce fresh object refs
@@ -1256,13 +1278,14 @@ function computeTarget({
         rotate: seat.rotate,
         scale: 1,
         opacity: 1,
+        z: 0,
       },
       transition: { duration: 0.3, ease: EASE },
     };
   }
   if (phase === "hidden") {
     return {
-      animate: { x: "0vmin", y: "0vmin", rotate: 0, scale: 0.92, opacity: 0 },
+      animate: { x: "0vmin", y: "0vmin", rotate: 0, scale: 0.92, opacity: 0, z: 0 },
       transition: { duration: 0.0001, ease: EASE },
     };
   }
@@ -1275,6 +1298,7 @@ function computeTarget({
         rotate: 0,
         scale: isFirst ? 1 : 0.92,
         opacity: isFirst ? 1 : 0,
+        z: staggerIndex * STACK_Z_STEP,
       },
       transition: { duration: 0.28, ease: EASE },
     };
@@ -1282,7 +1306,14 @@ function computeTarget({
   if (phase === "stacking") {
     // The rest of the tiles flash in on top of the first.
     return {
-      animate: { x: "0vmin", y: "0vmin", rotate: 0, scale: 1, opacity: 1 },
+      animate: {
+        x: "0vmin",
+        y: "0vmin",
+        rotate: 0,
+        scale: 1,
+        opacity: 1,
+        z: staggerIndex * STACK_Z_STEP,
+      },
       transition: { duration: 0.18, ease: EASE },
     };
   }
@@ -1302,6 +1333,9 @@ function computeTarget({
         rotate: isShuffleTop ? (staggerIndex % 2 === 0 ? 5 : -5) : 0,
         scale: isShuffleTop ? 1.04 : 1,
         opacity: 1,
+        // The top tile pops fully forward; the rest keep the index stagger so
+        // no two slabs share a depth.
+        z: isShuffleTop ? SHUFFLE_TOP_Z : staggerIndex * STACK_Z_STEP,
       },
       transition: { duration: 0.12, ease: EASE },
     };
@@ -1342,7 +1376,7 @@ function computeTarget({
     }
 
     return {
-      animate: { x: xs, y: ys, rotate: rotates, scale: 1, opacity: 1 },
+      animate: { x: xs, y: ys, rotate: rotates, scale: 1, opacity: 1, z: 0 },
       transition: {
         duration: TILE_FAN_DURATION_MS / 1000,
         ease: "linear", // decelerate is baked into the sample spacing above
@@ -1361,6 +1395,7 @@ function computeTarget({
       rotate: seat.rotate,
       scale: 1,
       opacity: 1,
+      z: 0,
     },
     transition: {
       duration: TILE_FAN_DURATION_MS / 1000,
