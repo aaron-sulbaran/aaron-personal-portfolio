@@ -733,10 +733,11 @@ export function TileRing({ children }: Props) {
       const heroPin = document.getElementById("hero-pin");
       if (!heroPin) return;
 
-      const DECK_SCALE = 2.5; // cards grow into large panels as they gather
-      const DECK_ANGLE = 42; // uniform rotateY (deg) so the stack reads in 3D
-      const DEPTH_STEP = 11; // px each card recedes behind the previous
-      const SPAN_FRAC = 0.82; // deck spans this fraction of the viewport width
+      const DECK_SCALE = 2.2; // cards grow into large panels as they gather
+      const DECK_ANGLE = -40; // negative rotateY: cards face left (read L to R)
+      const DEPTH_STEP = 22; // px each card recedes into depth
+      const STEP_X_FRAC = 0.036; // horizontal march per card (fraction of vw)
+      const STEP_Y_FRAC = 0.02; // vertical rise per card (fraction of vmin)
       const ease = gsap.parseEase("power2.inOut");
 
       const applyCollapse = (progress: number) => {
@@ -748,22 +749,31 @@ export function TileRing({ children }: Props) {
         const vmin = Math.min(vw, window.innerHeight);
         const scale = 1 + e * (DECK_SCALE - 1);
         const angle = e * DECK_ANGLE;
-        const cardWpx = (tileWidth / 100) * vmin * DECK_SCALE;
-        const step = total > 1 ? (vw * SPAN_FRAC - cardWpx) / (total - 1) : 0;
+        const stepX = vw * STEP_X_FRAC;
+        const stepY = vmin * STEP_Y_FRAC;
+        const mid = (total - 1) / 2;
         for (let i = 0; i < total; i++) {
           const seatX = (seats[i].xVmin / 100) * vmin;
           const seatY = (seats[i].yVmin / 100) * vmin;
-          const slotX = (i - (total - 1) / 2) * step;
           // Counter-rotate the seat tangent to 0 so the deck cards stand
           // upright; the uniform rotateY then angles the whole stack in depth.
           const rotZDeg = -seats[i].rotate * e;
           const rz = (rotZDeg * Math.PI) / 180;
           const cos = Math.cos(rz);
           const sin = Math.sin(rz);
-          const tz = -e * i * DEPTH_STEP; // recede left-to-right for clean layering
+          // Diagonal march, inkwell-style: the front card sits lower-left (i 0)
+          // and the stack recedes up and to the right into depth.
+          const tz = e * -i * DEPTH_STEP;
+          const kTz = RING_PERSPECTIVE_PX / (RING_PERSPECTIVE_PX - tz);
+          const screenX = (i - mid) * stepX;
+          const screenY = -(i - mid) * stepY;
+          // Back the desired on-screen position out of the depth foreshortening
+          // so each card center lands exactly on the diagonal.
+          const slotCx = screenX / kTz;
+          const slotCy = screenY / kTz;
           // Interpolate the card CENTER from its ring seat to its deck slot.
-          const cxCard = (1 - e) * seatX + e * slotX;
-          const cyCard = (1 - e) * seatY;
+          const cxCard = (1 - e) * seatX + e * slotCx;
+          const cyCard = (1 - e) * seatY + e * slotCy;
           // Back the wrapper translate out of scale + seat rotation so the card
           // rotates about its own center (the trailing translate(-seat) below).
           const dx = cxCard - scale * (cos * seatX - sin * seatY);
@@ -991,15 +1001,15 @@ export function TileRing({ children }: Props) {
     { scope: sectionRef, dependencies: [scrollReady, isMobile, prefersReducedMotion, total] },
   );
 
-  // Hover peek for the settled desktop deck: pull the hovered card out of the
-  // angled stack so it faces the viewer head-on, lifts up, and comes forward
-  // above its neighbors. It adjusts the same collapseRef the flight reads, so a
-  // click still spawns the clone at the lifted position. No-op in the ring/hero
-  // state and on mobile (the coverflow has no hover). The deck values are
-  // snapshotted on enter and restored on leave (a scroll clears peek state).
-  const PEEK_PX = 40;
-  const PEEK_TZ = 140;
-  const peekBackupRef = useRef<{ dy: number; rotY: number; tz: number } | null>(null);
+  // Hover peek for the settled desktop deck: slide the hovered card out of the
+  // angled stack toward the viewer (and lift it slightly) WITHOUT flattening it,
+  // so its glass edge shows and it reads as "selected". It adjusts the same
+  // collapseRef the flight reads, so a click still spawns the clone at the slid
+  // position. No-op in the ring/hero state and on mobile (no hover). The deck
+  // values are snapshotted on enter and restored on leave (a scroll clears it).
+  const PEEK_LIFT = 16;
+  const PEEK_FORWARD = 90;
+  const peekBackupRef = useRef<{ dy: number; tz: number } | null>(null);
   const peekTile = (i: number, up: boolean) => {
     if (isMobile || !engagedRef.current) return;
     const el = collapseElsRef.current[i];
@@ -1019,10 +1029,9 @@ export function TileRing({ children }: Props) {
     if (up) {
       if (peekRef.current === i) return;
       peekRef.current = i;
-      peekBackupRef.current = { dy: c.dy, rotY: c.rotY, tz: c.tz };
-      c.dy -= PEEK_PX;
-      c.rotY = 0;
-      c.tz = PEEK_TZ;
+      peekBackupRef.current = { dy: c.dy, tz: c.tz };
+      c.dy -= PEEK_LIFT;
+      c.tz += PEEK_FORWARD;
       el.style.transition = "transform 0.26s cubic-bezier(0.22,1,0.36,1)";
       rebuild();
     } else {
@@ -1031,7 +1040,6 @@ export function TileRing({ children }: Props) {
       const b = peekBackupRef.current;
       if (b) {
         c.dy = b.dy;
-        c.rotY = b.rotY;
         c.tz = b.tz;
       }
       rebuild();
@@ -1569,7 +1577,7 @@ function TileSlot({
     <div
       ref={registerCollapseEl}
       data-tile-index={tileIndex}
-      className="absolute left-1/2 top-1/2 h-0 w-0"
+      className="absolute left-1/2 top-1/2 h-0 w-0 [transform-style:preserve-3d]"
       style={{ zIndex }}
     >
       <motion.div
@@ -1595,6 +1603,7 @@ function TileSlot({
         animate={target.animate}
         transition={target.transition}
         style={{
+          transformStyle: "preserve-3d",
           width: `${tileWidth}vmin`,
           height: `${tileHeight}vmin`,
           marginLeft: `-${tileWidth / 2}vmin`,
@@ -1615,6 +1624,7 @@ function TileSlot({
             y: smoothLeanY,
             rotate: smoothLeanRot,
             scale: smoothLeanScale,
+            transformStyle: "preserve-3d",
           }}
           className="h-full w-full"
           onMouseEnter={() => onPeek(true)}
