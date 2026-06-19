@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, useMotionValue, useReducedMotion, useSpring, useTransform, type Easing, type MotionValue } from "framer-motion";
-import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { siteContent, type HomeTile as HomeTileEntry, type Photo, type WorkItem } from "@/lib/content";
 import { useBodyScrollLock } from "@/lib/modal";
 import { gsap, ScrollTrigger, useGSAP } from "@/lib/gsap";
@@ -236,6 +236,13 @@ export function TileRing({ children }: Props) {
   const deckHintRef = useRef<HTMLDivElement | null>(null);
   // Index of the deck card currently peeked up on hover, or -1.
   const peekRef = useRef(-1);
+  // Each settled deck card's on-screen center, used to pick the hovered card
+  // from the cursor position (a stable hit test, so peeking a card up doesn't
+  // re-fire enter/leave and jitter).
+  const deckHitRef = useRef<{ x: number; y: number }[]>([]);
+  // True only while the deck is settled AND on screen (the collapse dwell), so
+  // hover peeks fire there but not mid-scrub or after scrolling on to Work.
+  const deckHoverableRef = useRef(false);
   // Native horizontal scroll-snap rail (mobile only). It provides momentum and
   // snapping for the coverflow; its scrollLeft drives the per-card 3D layout.
   const railRef = useRef<HTMLDivElement | null>(null);
@@ -744,23 +751,27 @@ export function TileRing({ children }: Props) {
       const heroPin = document.getElementById("hero-pin");
       if (!heroPin) return;
 
-      const DECK_SCALE = 2.0; // cards grow into large panels as they gather
-      const DECK_ANGLE = -32; // negative rotateY: cards face left (read L to R)
-      // Each card recedes far enough that adjacent angled planes never cross
-      // (the cause of the 3D clipping); the strong recede also reads as the
-      // inkwell depth, with the back cards small and clustered by perspective.
-      const DEPTH_STEP = 85;
-      const STEP_X_FRAC = 0.038; // horizontal march per card (fraction of vw)
-      const STEP_Y_FRAC = 0.022; // vertical rise per card (fraction of vmin)
+      const DECK_SCALE = 1.7; // cards grow into panels as they gather
+      const DECK_ANGLE = -20; // gentle rotateY: faces left, reads L to R
+      // Depth recede: enough that adjacent angled planes never cross (no 3D
+      // clipping) but gentle, so the last card stays readable rather than tiny.
+      const DEPTH_STEP = 52;
+      const STEP_X_FRAC = 0.043; // horizontal march per card (fraction of vw)
+      const STEP_Y_FRAC = 0.012; // gentle vertical rise per card (fraction vmin)
+      // The collapse finishes at this fraction of the pinned scroll; the rest
+      // is a settled-deck dwell so a fast flick is held on the deck (with its
+      // caption) for a beat before it can scroll on to Work.
+      const COLLAPSE_PORTION = 0.72;
       const ease = gsap.parseEase("power2.inOut");
 
       const applyCollapse = (progress: number) => {
         // Any scrub cancels an in-progress hover peek so the dy bookkeeping
         // stays balanced (the loop below rewrites each card from scratch).
         peekRef.current = -1;
-        const e = ease(progress);
+        const e = ease(Math.min(1, progress / COLLAPSE_PORTION));
         const vw = window.innerWidth;
-        const vmin = Math.min(vw, window.innerHeight);
+        const vh = window.innerHeight;
+        const vmin = Math.min(vw, vh);
         const scale = 1 + e * (DECK_SCALE - 1);
         const angle = e * DECK_ANGLE;
         const stepX = vw * STEP_X_FRAC;
@@ -775,14 +786,15 @@ export function TileRing({ children }: Props) {
           const rz = (rotZDeg * Math.PI) / 180;
           const cos = Math.cos(rz);
           const sin = Math.sin(rz);
-          // Diagonal march, inkwell-style: the front card sits lower-left (i 0)
-          // and the stack recedes up and to the right into depth.
           const tz = e * -i * DEPTH_STEP;
-          // Flat-plane slot positions; the stage perspective then foreshortens
-          // them, pulling the receding back cards toward center (the inkwell
-          // cluster) and shrinking them.
-          const slotCx = (i - mid) * stepX;
-          const slotCy = -(i - mid) * stepY;
+          const kTz = RING_PERSPECTIVE_PX / (RING_PERSPECTIVE_PX - tz);
+          // Even on-screen march across the full width: back the perspective
+          // foreshortening out of the slot so each card lands at its screen x
+          // (front card far left, last card far right), only the SIZE recedes.
+          const screenX = (i - mid) * stepX;
+          const screenY = -(i - mid) * stepY;
+          const slotCx = screenX / kTz;
+          const slotCy = screenY / kTz;
           // Interpolate the card CENTER from its ring seat to its deck slot.
           const cxCard = (1 - e) * seatX + e * slotCx;
           const cyCard = (1 - e) * seatY + e * slotCy;
@@ -800,8 +812,11 @@ export function TileRing({ children }: Props) {
             c.rotY = angle;
             c.tz = tz;
           }
+          deckHitRef.current[i] = { x: vw / 2 + cxCard * kTz, y: vh / 2 + cyCard * kTz };
           const el = collapseElsRef.current[i];
           if (el) {
+            // Clear any hover transition so the scrub is instant (no lag).
+            el.style.transition = "";
             el.style.transform = `translate(${cxCard}px, ${cyCard}px) translateZ(${tz}px) rotateY(${angle}deg) scale(${scale}) rotate(${rotZDeg}deg) translate(${-seatX}px, ${-seatY}px)`;
           }
         }
@@ -854,7 +869,7 @@ export function TileRing({ children }: Props) {
         const st = ScrollTrigger.create({
           trigger: heroPin,
           start: "top top",
-          end: "+=130%",
+          end: "+=185%",
           pin: heroPin,
           pinType: "fixed",
           pinSpacing: true,
@@ -867,6 +882,12 @@ export function TileRing({ children }: Props) {
           onUpdate: (self) => {
             applyCollapse(self.progress);
             setEngaged(self.progress > 0.004);
+            // Hoverable only once settled (past the collapse portion) and still
+            // pinned in view.
+            deckHoverableRef.current = self.isActive && self.progress > 0.7;
+          },
+          onToggle: (self) => {
+            if (!self.isActive) deckHoverableRef.current = false;
           },
         });
         return () => {
@@ -1015,50 +1036,89 @@ export function TileRing({ children }: Props) {
     { scope: sectionRef, dependencies: [scrollReady, isMobile, prefersReducedMotion, total] },
   );
 
-  // Hover peek for the settled desktop deck: slide the hovered card out of the
-  // angled stack toward the viewer (and lift it slightly) WITHOUT flattening it,
-  // so its glass edge shows and it reads as "selected". It adjusts the same
-  // collapseRef the flight reads, so a click still spawns the clone at the slid
-  // position. No-op in the ring/hero state and on mobile (no hover). The deck
-  // values are snapshotted on enter and restored on leave (a scroll clears it).
-  const PEEK_LIFT = 16;
-  const PEEK_FORWARD = 90;
+  // Hover peek for the settled desktop deck. The hovered card is chosen from
+  // the CURSOR POSITION (deckHitRef), not per-card mouseenter, so lifting a card
+  // never moves it out from under the cursor and re-fires events (the old
+  // jitter). The card peeks UP and a touch forward (north, out of the stack)
+  // while keeping its angle, so its glass edge shows. It adjusts the same
+  // collapseRef the flight reads, so a click still spawns the clone there.
+  const PEEK_UP = 56;
+  const PEEK_FORWARD = 36;
   const peekBackupRef = useRef<{ dy: number; tz: number } | null>(null);
-  const peekTile = (i: number, up: boolean) => {
-    if (isMobile || !engagedRef.current) return;
-    const el = collapseElsRef.current[i];
-    const c = collapseRef.current[i];
-    if (!el || !c) return;
-    const vmin = Math.min(window.innerWidth, window.innerHeight);
-    const seatX = (seats[i].xVmin / 100) * vmin;
-    const seatY = (seats[i].yVmin / 100) * vmin;
-    const rebuild = () => {
+  const rebuildPeek = useCallback(
+    (i: number) => {
+      const el = collapseElsRef.current[i];
+      const c = collapseRef.current[i];
+      if (!el || !c) return;
+      const vmin = Math.min(window.innerWidth, window.innerHeight);
+      const seatX = (seats[i].xVmin / 100) * vmin;
+      const seatY = (seats[i].yVmin / 100) * vmin;
       const rz = (c.rotZ * Math.PI) / 180;
       const cos = Math.cos(rz);
       const sin = Math.sin(rz);
       const cxCard = c.dx + c.scale * (cos * seatX - sin * seatY);
       const cyCard = c.dy + c.scale * (sin * seatX + cos * seatY);
       el.style.transform = `translate(${cxCard}px, ${cyCard}px) translateZ(${c.tz}px) rotateY(${c.rotY}deg) scale(${c.scale}) rotate(${c.rotZ}deg) translate(${-seatX}px, ${-seatY}px)`;
-    };
-    if (up) {
+    },
+    [seats],
+  );
+  const setPeeked = useCallback(
+    (i: number) => {
       if (peekRef.current === i) return;
-      peekRef.current = i;
-      peekBackupRef.current = { dy: c.dy, tz: c.tz };
-      c.dy -= PEEK_LIFT;
-      c.tz += PEEK_FORWARD;
-      el.style.transition = "transform 0.26s cubic-bezier(0.22,1,0.36,1)";
-      rebuild();
-    } else {
-      if (peekRef.current !== i) return;
-      peekRef.current = -1;
-      const b = peekBackupRef.current;
-      if (b) {
-        c.dy = b.dy;
-        c.tz = b.tz;
+      const prev = peekRef.current;
+      if (prev >= 0) {
+        const c = collapseRef.current[prev];
+        const b = peekBackupRef.current;
+        if (c && b) {
+          c.dy = b.dy;
+          c.tz = b.tz;
+        }
+        rebuildPeek(prev);
       }
-      rebuild();
-    }
-  };
+      peekRef.current = i;
+      peekBackupRef.current = null;
+      if (i < 0) return;
+      const c = collapseRef.current[i];
+      const el = collapseElsRef.current[i];
+      if (!c || !el) return;
+      peekBackupRef.current = { dy: c.dy, tz: c.tz };
+      c.dy -= PEEK_UP;
+      c.tz += PEEK_FORWARD;
+      el.style.transition = "transform 0.22s cubic-bezier(0.22,1,0.36,1)";
+      rebuildPeek(i);
+    },
+    [rebuildPeek],
+  );
+
+  // Pick the hovered deck card from the cursor and peek it. Only active while
+  // the deck is settled and on screen (deckHoverableRef); otherwise nothing
+  // peeks. Stable hit test = no jitter.
+  useEffect(() => {
+    if (isMobile) return;
+    const PEEK_HIT_X = 110;
+    const PEEK_HIT_Y = 150;
+    const onMove = (e: PointerEvent) => {
+      if (!deckHoverableRef.current) {
+        if (peekRef.current >= 0) setPeeked(-1);
+        return;
+      }
+      const hits = deckHitRef.current;
+      let best = -1;
+      let bestD = Infinity;
+      for (let i = 0; i < hits.length; i++) {
+        const h = hits[i];
+        if (!h || Math.abs(e.clientY - h.y) > PEEK_HIT_Y) continue;
+        const d = Math.abs(e.clientX - h.x);
+        if (d < bestD) {
+          bestD = d;
+          best = i;
+        }
+      }
+      setPeeked(best >= 0 && bestD <= PEEK_HIT_X ? best : -1);
+    };
+    window.addEventListener("pointermove", onMove, { passive: true });
+    return () => window.removeEventListener("pointermove", onMove);
+  }, [isMobile, setPeeked]);
 
   // While any flight is active, the flown tile's key identifies the ring
   // tile that should stay hidden. When flight clears, the ring tile takes
@@ -1162,7 +1222,6 @@ export function TileRing({ children }: Props) {
                 registerCollapseEl={(el) => {
                   collapseElsRef.current[i] = el;
                 }}
-                onPeek={(up) => peekTile(i, up)}
               />
             );
           })}
@@ -1432,8 +1491,6 @@ type TileSlotProps = {
   // Registers the tile's outer wrapper element with the parent so the scroll
   // layer can drive its collapse transform. Framer keeps the inner layers.
   registerCollapseEl: (el: HTMLDivElement | null) => void;
-  // Hover peek for the deck (desktop). up=true on enter, false on leave.
-  onPeek: (up: boolean) => void;
 };
 
 // Own-refs for per-tile proximity. Values are pixel-space offsets / degrees
@@ -1458,7 +1515,6 @@ function TileSlot({
   viewportRef,
   onTileClick,
   registerCollapseEl,
-  onPeek,
 }: TileSlotProps) {
   // Lean motion values (inner transform layer). Spring-smoothed so they
   // glide toward targets rather than snap when the cursor moves.
@@ -1662,8 +1718,6 @@ function TileSlot({
             transformStyle: "preserve-3d",
           }}
           className="h-full w-full"
-          onMouseEnter={() => onPeek(true)}
-          onMouseLeave={() => onPeek(false)}
         >
           <GlassTile
             tile={tile}
