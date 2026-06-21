@@ -11,7 +11,7 @@ export const siteContent = {
       "Building products (and community) with people, not just for them.",
     scrollHint: "Scroll to explore",
     deckTitle: "Explore my experiences",
-    deckHint: "Open any card to look closer, then keep scrolling",
+    deckSubtitle: "Hover a card to preview it, then click to open.",
   },
   // Hero words that open a "My definition of <term>" modal. Keys must match the
   // exact word as it appears in home.tagline so HomeHero can wire that word to
@@ -299,27 +299,31 @@ export const siteContent = {
   // and work tiles interleaved so neither type clusters on one side. Photo
   // tiles reference the `photos` array by src; work tiles reference the
   // `workItems` array by slug, so the click handler can open the right modal.
+  // `title` is the short label the deck index shows for each card (card number =
+  // array index + 1). Keep titles 1 to 3 words. Titles marked PLACEHOLDER below
+  // belong to the placeholder SVG tiles and should be finalized when real photos
+  // replace them.
   homeTiles: [
-    { kind: "photo" as const, key: "hsf-speaking", src: "/photos/hsf-speaking.jpeg" },
-    { kind: "work"  as const, key: "capital-one-pm", slug: "capital-one-pm" },
-    { kind: "photo" as const, key: "drum-major", src: "/photos/drum-major.jpeg" },
-    { kind: "photo" as const, key: "yosemite-hiking", src: "/photos/yosemite-hiking.jpeg" },
-    { kind: "work"  as const, key: "claude-ambassador", slug: "claude-ambassador" },
-    { kind: "photo" as const, key: "capital-one", src: "/photos/capital-one.jpeg" },
-    { kind: "photo" as const, key: "uncs-grad", src: "/photos/uncs-grad.jpeg" },
-    { kind: "work"  as const, key: "ieee-president", slug: "ieee-president" },
-    { kind: "photo" as const, key: "claude-hackathon", src: "/photos/claude-hackathon.jpeg" },
-    { kind: "photo" as const, key: "misuki", src: "/photos/misuki.jpeg" },
-    { kind: "work"  as const, key: "aaronsulbaran-site", slug: "aaronsulbaran-site" },
-    { kind: "photo" as const, key: "photo-08", src: "/photos/photo-08.svg" },
-    { kind: "photo" as const, key: "traveling", src: "/photos/traveling.jpeg" },
-    { kind: "work"  as const, key: "capital-one-ba", slug: "capital-one-ba" },
-    { kind: "photo" as const, key: "photo-10", src: "/photos/photo-10.svg" },
-    { kind: "photo" as const, key: "photo-11", src: "/photos/photo-11.svg" },
-    { kind: "work"  as const, key: "hackathon-builds", slug: "hackathon-builds" },
-    { kind: "photo" as const, key: "mt-fuji", src: "/photos/mt-fuji.jpeg" },
-    { kind: "photo" as const, key: "photo-13", src: "/photos/photo-13.svg" },
-    { kind: "photo" as const, key: "photo-14", src: "/photos/photo-14.svg" },
+    { kind: "photo" as const, key: "hsf-speaking", src: "/photos/hsf-speaking.jpeg", title: "Public Speaking" },
+    { kind: "work"  as const, key: "capital-one-pm", slug: "capital-one-pm", title: "Capital One" },
+    { kind: "photo" as const, key: "drum-major", src: "/photos/drum-major.jpeg", title: "Drum Major" },
+    { kind: "photo" as const, key: "yosemite-hiking", src: "/photos/yosemite-hiking.jpeg", title: "Yosemite" },
+    { kind: "work"  as const, key: "claude-ambassador", slug: "claude-ambassador", title: "Anthropic" },
+    { kind: "photo" as const, key: "capital-one", src: "/photos/capital-one.jpeg", title: "Capital One" },
+    { kind: "photo" as const, key: "uncs-grad", src: "/photos/uncs-grad.jpeg", title: "Graduation" },
+    { kind: "work"  as const, key: "ieee-president", slug: "ieee-president", title: "IEEE" },
+    { kind: "photo" as const, key: "claude-hackathon", src: "/photos/claude-hackathon.jpeg", title: "Claude Hackathon" },
+    { kind: "photo" as const, key: "misuki", src: "/photos/misuki.jpeg", title: "Venezuelan Roots" },
+    { kind: "work"  as const, key: "aaronsulbaran-site", slug: "aaronsulbaran-site", title: "This Site" },
+    { kind: "photo" as const, key: "photo-08", src: "/photos/photo-08.svg", title: "IEEE President" }, // PLACEHOLDER
+    { kind: "photo" as const, key: "traveling", src: "/photos/traveling.jpeg", title: "Traveling" },
+    { kind: "work"  as const, key: "capital-one-ba", slug: "capital-one-ba", title: "Capital One" },
+    { kind: "photo" as const, key: "photo-10", src: "/photos/photo-10.svg", title: "Austin Builders" }, // PLACEHOLDER
+    { kind: "photo" as const, key: "photo-11", src: "/photos/photo-11.svg", title: "Making" }, // PLACEHOLDER
+    { kind: "work"  as const, key: "hackathon-builds", slug: "hackathon-builds", title: "Hackathon Builds" },
+    { kind: "photo" as const, key: "mt-fuji", src: "/photos/mt-fuji.jpeg", title: "Mt. Fuji" },
+    { kind: "photo" as const, key: "photo-13", src: "/photos/photo-13.svg", title: "Community" }, // PLACEHOLDER
+    { kind: "photo" as const, key: "photo-14", src: "/photos/photo-14.svg", title: "Quiet Moment" }, // PLACEHOLDER
   ],
 } as const;
 
