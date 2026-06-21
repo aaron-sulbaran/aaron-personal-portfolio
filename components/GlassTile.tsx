@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { motion, useMotionValue, useTransform, type MotionValue } from "framer-motion";
+import { motion, useMotionValue, type MotionValue } from "framer-motion";
 import { siteContent, type HomeTile, type Photo, type WorkItem } from "@/lib/content";
 
 type ResolvedTile =
@@ -14,6 +14,13 @@ export type TileActivatePayload =
 
 type Props = {
   tile: HomeTile;
+  /**
+   * True during the entrance (pile + fan, before `ready`). The translucent pane
+   * gets an opaque backing then, so the stacked/shuffling cards do not bleed
+   * through one another. Once `ready`, the pane goes translucent again for the
+   * deck/carousel layering.
+   */
+  entering: boolean;
   flipEnabled: boolean;
   /** Proximity-driven X rotation (degrees), driven by the parent TileSlot. */
   flipRotateX: MotionValue<number>;
@@ -28,19 +35,6 @@ type Props = {
   onActivate: (payload: TileActivatePayload, keyboardFlipped: boolean) => void;
 };
 
-// Card thickness in px. The front/back faces are pushed ±THICKNESS/2 along
-// Z and four edge strips fill the gap so the card reads as a 3D glass
-// object instead of flat paper. Kept subtle (5px) so the ring doesn't feel
-// chunky.
-const THICKNESS_PX = 3;
-
-// The faces are rounded-[10px]. The four rim strips are straight rectangles,
-// so their square ends used to poke past the rounded face corners, reading as
-// four bright notches at each corner (most visible face-on, during the deck
-// stack/shuffle). Insetting every strip from the corners by the face radius
-// tucks its ends inside the rounded silhouette so nothing pokes out; at rest
-// the tile is tilted and the tiny corner gap in the rim is imperceptible.
-const EDGE_INSET_PX = 10;
 
 function resolveTile(tile: HomeTile): ResolvedTile | null {
   if (tile.kind === "photo") {
@@ -53,21 +47,16 @@ function resolveTile(tile: HomeTile): ResolvedTile | null {
   return { kind: "work", key: tile.key, slug: tile.slug, workItem };
 }
 
-function KindMark({ kind }: { kind: "photo" | "work" }) {
-  const glyph = kind === "photo" ? "○" : "▸";
-  const label = kind === "photo" ? "Photo" : "Work";
+// Small, silent indicator shown ONLY on work cards: a single dot, no text. It
+// is the one quiet hint that a card opens a case study; photo cards carry no
+// indicator at all. No "Photo"/"Work" labels anywhere (they competed with the
+// image). The accessible name still lives on the button's aria-label.
+function WorkDot() {
   return (
     <span
       aria-hidden="true"
-      className="pointer-events-none absolute right-2 top-2 flex items-center gap-1 text-[9px] font-medium uppercase tracking-caps text-muted"
-    >
-      <span className="opacity-0 transition-opacity duration-200 group-hover:opacity-80 group-focus-visible:opacity-80">
-        {label}
-      </span>
-      <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-background/70 leading-none">
-        {glyph}
-      </span>
-    </span>
+      className="pointer-events-none absolute right-2.5 top-2.5 h-1.5 w-1.5 rounded-full bg-foreground/40"
+    />
   );
 }
 
@@ -83,6 +72,7 @@ function KindMark({ kind }: { kind: "photo" | "work" }) {
 // still see the reveal gesture.
 export function GlassTile({
   tile,
+  entering,
   flipEnabled,
   flipRotateX,
   flipRotateY,
@@ -91,27 +81,13 @@ export function GlassTile({
 }: Props) {
   const resolved = resolveTile(tile);
 
+  // Tracks whether the button is keyboard-focused (focus-visible). It no longer
+  // drives any visual flip: the card must NEVER rotate to its mirrored back face
+  // (photos would read as flipped/mirrored), so the proximity springs are the
+  // only thing that rotates the card. focusedMV is kept purely as the signal the
+  // parent uses to decide whether to restore focus on modal close (keyboard yes,
+  // tap no), which is what stops the focus ring from appearing on tap.
   const focusedMV = useMotionValue(0);
-
-  // The spring-smoothed proximity values pass through untouched; the parent
-  // TileSlot relaxes the raw values when interaction is disabled, so the
-  // springs (not a hard 0 here) carry every transition and flight start/end
-  // never snaps the tilt. Keyboard focus forces the reveal flip on Y only.
-  const effectiveRotateX = useTransform<number, number>(
-    [flipRotateX, focusedMV],
-    ([v, f]) => {
-      if (flipEnabled && (f as number) > 0.5) return 0;
-      return v as number;
-    },
-  );
-
-  const effectiveRotateY = useTransform<number, number>(
-    [flipRotateY, focusedMV],
-    ([v, f]) => {
-      if (flipEnabled && (f as number) > 0.5) return 180;
-      return v as number;
-    },
-  );
 
   if (!resolved) return null;
 
@@ -129,18 +105,19 @@ export function GlassTile({
       : `${resolved.workItem.title} logo, open preview, ${resolved.workItem.role}`;
 
   const handleClick = () => {
-    const keyboardFlipped = flipEnabled && focusedMV.get() > 0.5;
+    // wasKeyboard: the activation came from a keyboard-focused button. The parent
+    // uses it to restore focus on modal close only for keyboard users, so a tap
+    // never leaves a focus ring on the card.
+    const wasKeyboard = flipEnabled && focusedMV.get() > 0.5;
     if (resolved.kind === "photo") {
-      onActivate({ kind: "photo", photo: resolved.photo }, keyboardFlipped);
+      onActivate({ kind: "photo", photo: resolved.photo }, wasKeyboard);
     } else {
-      onActivate({ kind: "work", workItem: resolved.workItem }, keyboardFlipped);
+      onActivate({ kind: "work", workItem: resolved.workItem }, wasKeyboard);
     }
   };
 
-  // Only fire the 180° reveal flip for keyboard focus. Mouse clicks also
-  // focus the button in Chrome/Firefox, which would otherwise spin the tile
-  // through its mirrored back face right as the click-to-modal flight
-  // begins (causing a visible mirror flash on every card click).
+  // Track keyboard focus only (focus-visible). It no longer drives a flip; it is
+  // just the signal the parent reads for focus restoration on modal close.
   const handleFocus = (e: React.FocusEvent<HTMLButtonElement>) => {
     if (!e.target.matches(":focus-visible")) return;
     focusedMV.set(1);
@@ -149,21 +126,26 @@ export function GlassTile({
     focusedMV.set(0);
   };
 
-  // Face surface (front + back): glass, tight corners, subtle inner
-  // hairline + shadow. Edges reuse the same bg-glass-strong so the rim
-  // reads as the same material as the faces.
-  // NOTE: no backdrop-blur here. Each tile face + its 4 edges previously ran
-  // `backdrop-blur-md` (14 tiles x 6 = 84 live blur layers), all inside the
-  // ring's rotating preserve-3d context, so every one re-rasterized per frame.
-  // The blur was effectively invisible anyway: bg-glass-strong is ~78% opaque
-  // and the face is covered by an object-cover image, so it cost enormous GPU
-  // fill rate for no visible payoff. The translucent fill + inset highlight +
-  // ring below carry the glass read on their own. (Modal backdrops still blur;
-  // those are on-open only, not per-frame.)
-  const faceShadow =
-    "shadow-[0_10px_28px_-16px_rgba(10,10,10,0.4),0_0_0_1px_rgba(255,255,255,0.18)_inset]";
-  const faceBase = `overflow-hidden rounded-[10px] bg-glass-strong ${faceShadow} ring-1 ring-black/5 dark:ring-white/10`;
-  const edgeBase = `rounded-[2px] bg-glass-strong shadow-[inset_0_0_0_1px_rgba(255,255,255,0.18)]`;
+  // ----- Card material: a single translucent frosted-glass pane -----------
+  // ONE cohesive entity (no front/back/edge box -> no doubling, no "second
+  // panel"). The image lives INSIDE the pane at reduced opacity, so the card is
+  // see-through and overlapping cards layer through one another (inkwell-style);
+  // a soft diagonal sheen + a thin rim highlight give the frosted-glass read.
+  // NO backdrop-filter: it re-rasterizes every frame across the 20 rotating ring
+  // tiles and tanks FPS (Layer 2 perf note); the translucency carries the glass.
+  const paneFloat =
+    "shadow-[0_10px_30px_-14px_rgba(10,10,10,0.35)] ring-1 ring-white/25 dark:ring-white/15";
+  // Soft diagonal sheen across the pane (light catching the glass).
+  const sheenStyle: React.CSSProperties = {
+    backgroundImage:
+      "linear-gradient(135deg, rgba(255,255,255,0.13) 0%, transparent 42%, rgba(255,255,255,0.04) 100%)",
+  };
+  // Work cards: a faint accent-tinted glass wash + the logo, embedded in the same
+  // translucent pane (no separate panel). Tokens only via color-mix.
+  const workTintStyle: React.CSSProperties = {
+    backgroundImage:
+      "linear-gradient(135deg, color-mix(in srgb, var(--color-accent) 18%, transparent) 0%, color-mix(in srgb, var(--color-glass) 50%, transparent) 48%, color-mix(in srgb, var(--color-accent) 40%, transparent) 100%)",
+  };
 
   return (
     <button
@@ -174,128 +156,49 @@ export function GlassTile({
       onBlur={handleBlur}
       data-cursor-hover
       aria-label={ariaLabel}
-      className="group relative block h-full w-full rounded-[10px] [transform-style:preserve-3d] focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+      className="group relative block h-full w-full rounded-[8px] [transform-style:preserve-3d] focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
     >
+      {/* One translucent glass pane. overflow-hidden clips the embedded image to
+          the rounded corners; it cannot coexist with preserve-3d (overflow forces
+          a flatten), and the card no longer needs 3D depth of its own, the parent
+          chain still tilts it in the stage perspective. */}
       <motion.div
-        style={{
-          rotateX: effectiveRotateX,
-          rotateY: effectiveRotateY,
-          transformStyle: "preserve-3d",
-        }}
-        className="relative h-full w-full"
+        style={{ rotateX: flipRotateX, rotateY: flipRotateY }}
+        className={`relative h-full w-full overflow-hidden rounded-[8px] ${paneFloat} ${
+          entering ? "bg-background" : ""
+        }`}
       >
-        {/* Front face: pushed forward by THICKNESS/2 */}
-        <div
-          className={`absolute inset-0 ${faceBase} [backface-visibility:hidden]`}
-          style={{ transform: `translateZ(${THICKNESS_PX / 2}px)` }}
-        >
-          {resolved.kind === "photo" ? (
-            <Image
-              src={imageSrc}
-              alt={imageAlt}
-              fill
-              sizes="(max-width: 768px) 13vmin, 11vmin"
-              className="object-cover"
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center p-3">
+        {resolved.kind === "photo" ? (
+          <Image
+            src={imageSrc}
+            alt={imageAlt}
+            fill
+            quality={88}
+            sizes="(max-width: 768px) 62vw, 26vw"
+            className="object-cover opacity-[0.9]"
+          />
+        ) : (
+          <>
+            <span aria-hidden="true" className="absolute inset-0" style={workTintStyle} />
+            <div className="absolute inset-0 flex items-center justify-center p-[12%]">
               <Image
                 src={imageSrc}
                 alt={imageAlt}
                 width={120}
                 height={120}
-                className="h-auto w-[78%] object-contain"
+                className="h-auto w-[86%] object-contain opacity-90"
               />
             </div>
-          )}
-          <KindMark kind={resolved.kind} />
-          <span
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 rounded-[10px] shadow-[inset_0_1px_0_rgba(255,255,255,0.22)]"
-          />
-        </div>
-
-        {/* Back face: pushed back (rotateY(180) then translateZ out so it
-            sits at z = -THICKNESS/2 in the parent frame). */}
-        <div
-          className={`absolute inset-0 ${faceBase} [backface-visibility:hidden]`}
-          style={{ transform: `rotateY(180deg) translateZ(${THICKNESS_PX / 2}px)` }}
-        >
-          {resolved.kind === "photo" ? (
-            <Image
-              src={imageSrc}
-              alt=""
-              fill
-              sizes="(max-width: 768px) 13vmin, 11vmin"
-              className="scale-x-[-1] object-cover"
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center p-3">
-              <Image
-                src={imageSrc}
-                alt=""
-                width={120}
-                height={120}
-                className="h-auto w-[78%] scale-x-[-1] object-contain"
-              />
-            </div>
-          )}
-          <KindMark kind={resolved.kind} />
-          <span
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 rounded-[10px] shadow-[inset_0_1px_0_rgba(255,255,255,0.22)]"
-          />
-        </div>
-
-        {/* Right edge. Inset top/bottom by the face radius so the strip ends
-            tuck under the rounded corners instead of poking out as notches. */}
-        <div
+          </>
+        )}
+        {/* Glass sheen across the pane. */}
+        <span aria-hidden="true" className="pointer-events-none absolute inset-0" style={sheenStyle} />
+        {/* Thin rim highlight = the glass pane edge. */}
+        <span
           aria-hidden="true"
-          className={`absolute ${edgeBase}`}
-          style={{
-            right: 0,
-            top: `${EDGE_INSET_PX}px`,
-            width: `${THICKNESS_PX}px`,
-            height: `calc(100% - ${EDGE_INSET_PX * 2}px)`,
-            transform: `translateX(${THICKNESS_PX / 2}px) rotateY(90deg)`,
-          }}
+          className="pointer-events-none absolute inset-0 rounded-[8px] shadow-[inset_0_1px_0_rgba(255,255,255,0.4),inset_0_0_0_1px_rgba(255,255,255,0.14)]"
         />
-        {/* Left edge */}
-        <div
-          aria-hidden="true"
-          className={`absolute ${edgeBase}`}
-          style={{
-            left: 0,
-            top: `${EDGE_INSET_PX}px`,
-            width: `${THICKNESS_PX}px`,
-            height: `calc(100% - ${EDGE_INSET_PX * 2}px)`,
-            transform: `translateX(-${THICKNESS_PX / 2}px) rotateY(-90deg)`,
-          }}
-        />
-        {/* Top edge */}
-        <div
-          aria-hidden="true"
-          className={`absolute ${edgeBase}`}
-          style={{
-            top: 0,
-            left: `${EDGE_INSET_PX}px`,
-            width: `calc(100% - ${EDGE_INSET_PX * 2}px)`,
-            height: `${THICKNESS_PX}px`,
-            transform: `translateY(-${THICKNESS_PX / 2}px) rotateX(90deg)`,
-          }}
-        />
-        {/* Bottom edge */}
-        <div
-          aria-hidden="true"
-          className={`absolute ${edgeBase}`}
-          style={{
-            bottom: 0,
-            left: `${EDGE_INSET_PX}px`,
-            width: `calc(100% - ${EDGE_INSET_PX * 2}px)`,
-            height: `${THICKNESS_PX}px`,
-            transform: `translateY(${THICKNESS_PX / 2}px) rotateX(-90deg)`,
-          }}
-        />
+        {resolved.kind === "work" && <WorkDot />}
       </motion.div>
     </button>
   );
