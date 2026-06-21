@@ -67,7 +67,7 @@ export function HomeHero() {
         }}
         aria-hidden={!heroVisible}
       >
-        <h1 className="font-serif text-display-lg italic">{name}</h1>
+        <h1 className="font-serif text-display-lg italic">{renderName(name)}</h1>
         <p className="mt-4 max-w-[44vmin] text-sm leading-relaxed text-muted sm:text-base md:mt-6 md:text-body-lg md:leading-[1.55]">
           {renderTagline(tagline, definitions, { interactive, morph, onOpen: openDefinition })}
         </p>
@@ -80,6 +80,21 @@ export function HomeHero() {
         onClose={closeDefinition}
       />
     </LayoutGroup>
+  );
+}
+
+// Render the hero name with the first name accented. Split on "Aaron" so the
+// rest of the heading ("Hi, I'm" and the period) keeps the foreground color.
+function renderName(name: string) {
+  const word = "Aaron";
+  const idx = name.indexOf(word);
+  if (idx === -1) return name;
+  return (
+    <>
+      {name.slice(0, idx)}
+      <span className="text-accent">{word}</span>
+      {name.slice(idx + word.length)}
+    </>
   );
 }
 
@@ -135,6 +150,13 @@ function DefinitionTrigger({
   onOpen: (term: DefinitionKey, el: HTMLButtonElement) => void;
 }) {
   const def = siteContent.definitions[term];
+  // The underline lives on the inner span, not the button: the morph span is
+  // inline-block (an atomic inline box), and text-decoration is not painted
+  // across atomic inline descendants, so a button-level underline silently
+  // never draws over the word. group-hover carries the button's hover state
+  // down to the span's decoration color.
+  const underlineClasses =
+    "underline decoration-accent/40 decoration-1 underline-offset-[3.5px] [text-decoration-skip-ink:auto] transition-[text-decoration-color] duration-200 group-hover:decoration-accent";
   return (
     <button
       type="button"
@@ -143,14 +165,14 @@ function DefinitionTrigger({
       data-cursor-hover
       aria-haspopup="dialog"
       aria-label={`${def.titlePrefix} ${def.term}`}
-      className="font-serif italic text-accent underline decoration-accent/30 decoration-1 underline-offset-[3px] transition-[color,text-decoration-color] duration-200 hover:text-accent-hover hover:decoration-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-default"
+      className="group font-serif italic text-accent transition-colors duration-200 hover:text-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-default"
     >
       {morph ? (
-        <motion.span layoutId={`def-${term}`} className="inline-block">
+        <motion.span layoutId={`def-${term}`} className={`inline-block ${underlineClasses}`}>
           {display}
         </motion.span>
       ) : (
-        display
+        <span className={underlineClasses}>{display}</span>
       )}
     </button>
   );
