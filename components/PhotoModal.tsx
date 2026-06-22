@@ -12,6 +12,7 @@ import {
   modalBackdropTintVariants,
 } from "@/lib/modal";
 import { siteContent, type Photo } from "@/lib/content";
+import { Portal } from "./Portal";
 
 type PhotoModalProps = {
   photo: Photo | null;
@@ -48,8 +49,9 @@ export function PhotoModal({ photo, onClose, renderMedia = false }: PhotoModalPr
       };
 
   return (
-    <AnimatePresence>
-      {photo && (
+    <Portal>
+      <AnimatePresence>
+        {photo && (
         <motion.div
           key="photo-modal-backdrop"
           role="dialog"
@@ -118,12 +120,13 @@ export function PhotoModal({ photo, onClose, renderMedia = false }: PhotoModalPr
                 {photo.caption}
               </p>
               <p className="mt-5 text-[11px] font-medium uppercase tracking-caps text-muted">
-                Press esc to close
+                {renderMedia ? "Tap outside to close" : "Press esc to close"}
               </p>
             </div>
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>
+      </AnimatePresence>
+    </Portal>
   );
 }
