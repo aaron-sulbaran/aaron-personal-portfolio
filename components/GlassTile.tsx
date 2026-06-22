@@ -28,6 +28,16 @@ type Props = {
   flipRotateY: MotionValue<number>;
   buttonRef?: React.Ref<HTMLButtonElement>;
   /**
+   * Multiplies every fixed-pixel glass cue (corner radius, rim highlight, float
+   * shadow, ring border) so they survive a CSS transform scale-down. Mobile lays
+   * the card out at full size, then scales it DOWN into the ring (~0.2); a plain
+   * 8px radius / 1px rim would shrink to ~1.6px / 0.2px and vanish, leaving a
+   * bare sharp-cornered photo. Passing detailScale ~2.5 keeps the radius/card
+   * ratio matched to desktop (8px on a 72px desktop card) at every scale, since
+   * the ratio is scale invariant. Defaults to 1 so desktop stays pixel identical.
+   */
+  detailScale?: number;
+  /**
    * keyboardFlipped is true when the focus-forced 180 degree flip is engaged
    * at activation time, so the flight clone can start from the back face the
    * user was actually looking at.
@@ -77,6 +87,7 @@ export function GlassTile({
   flipRotateX,
   flipRotateY,
   buttonRef,
+  detailScale = 1,
   onActivate,
 }: Props) {
   const resolved = resolveTile(tile);
@@ -133,8 +144,22 @@ export function GlassTile({
   // a soft diagonal sheen + a thin rim highlight give the frosted-glass read.
   // NO backdrop-filter: it re-rasterizes every frame across the 20 rotating ring
   // tiles and tanks FPS (Layer 2 perf note); the translucency carries the glass.
-  const paneFloat =
-    "shadow-[0_10px_30px_-14px_rgba(10,10,10,0.35)] ring-1 ring-white/25 dark:ring-white/15";
+  // Glass cues are fixed-px, so they survive a CSS scale-down only if we scale
+  // the pixels up first by detailScale (see the prop doc). detailScale === 1 is
+  // the desktop path: keep the exact Tailwind classes so it stays byte-for-byte
+  // identical. Any other value drops to inline styles with multiplied pixels.
+  const scaled = detailScale !== 1;
+  const radiusPx = 8 * detailScale;
+  const rimShadow = `inset 0 ${1 * detailScale}px 0 rgba(255,255,255,0.4), inset 0 0 0 ${
+    1 * detailScale
+  }px rgba(255,255,255,0.14)`;
+  const floatShadow = `0 ${10 * detailScale}px ${30 * detailScale}px ${
+    -14 * detailScale
+  }px rgba(10,10,10,0.35)`;
+  const ringShadow = `0 0 0 ${1 * detailScale}px rgba(255,255,255,0.22)`;
+  const paneFloat = scaled
+    ? ""
+    : "shadow-[0_10px_30px_-14px_rgba(10,10,10,0.35)] ring-1 ring-white/25 dark:ring-white/15";
   // Soft diagonal sheen across the pane (light catching the glass).
   const sheenStyle: React.CSSProperties = {
     backgroundImage:
@@ -156,6 +181,7 @@ export function GlassTile({
       onBlur={handleBlur}
       data-cursor-hover
       aria-label={ariaLabel}
+      style={scaled ? { borderRadius: radiusPx } : undefined}
       className="group relative block h-full w-full rounded-[8px] [transform-style:preserve-3d] focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
     >
       {/* One translucent glass pane. overflow-hidden clips the embedded image to
@@ -163,7 +189,13 @@ export function GlassTile({
           a flatten), and the card no longer needs 3D depth of its own, the parent
           chain still tilts it in the stage perspective. */}
       <motion.div
-        style={{ rotateX: flipRotateX, rotateY: flipRotateY }}
+        style={{
+          rotateX: flipRotateX,
+          rotateY: flipRotateY,
+          ...(scaled
+            ? { borderRadius: radiusPx, boxShadow: `${floatShadow}, ${ringShadow}` }
+            : {}),
+        }}
         className={`relative h-full w-full overflow-hidden rounded-[8px] ${paneFloat} ${
           entering ? "bg-background" : ""
         }`}
@@ -196,6 +228,7 @@ export function GlassTile({
         {/* Thin rim highlight = the glass pane edge. */}
         <span
           aria-hidden="true"
+          style={scaled ? { borderRadius: radiusPx, boxShadow: rimShadow } : undefined}
           className="pointer-events-none absolute inset-0 rounded-[8px] shadow-[inset_0_1px_0_rgba(255,255,255,0.4),inset_0_0_0_1px_rgba(255,255,255,0.14)]"
         />
         {resolved.kind === "work" && <WorkDot />}

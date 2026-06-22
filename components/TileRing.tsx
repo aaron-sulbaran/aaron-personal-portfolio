@@ -11,7 +11,8 @@ import { GlassTile, type TileActivatePayload } from "./GlassTile";
 import { FlyingTile, type FlightPhase, type FlightSource, type FlightTarget } from "./FlyingTile";
 import { PhotoModal } from "./PhotoModal";
 import { WorkModal } from "./WorkModal";
-import { MobileCarousel, type CarouselOpenPayload } from "./MobileCarousel";
+import { MobileHome, type CarouselOpenPayload } from "./MobileHome";
+import { Portal } from "./Portal";
 
 // Layout effect on the client, no-op on the server. The refresh scroll recovery
 // determination must run before paint (so a deep reload never flashes the
@@ -125,10 +126,10 @@ const PEEK_SWITCH_MARGIN = 10;  // a neighbor must beat the armed card by this (
 const PEEK_HIT_X = 140;         // half-width of a card's cursor catch band (px)
 const PEEK_HIT_Y = 210;         // half-height of a card's cursor catch band (px)
 
-// Mobile coverflow lives in its own component (MobileCarousel): a dedicated 3D
-// stage with full-size cards, not the ring tiles. The ring stays put underneath;
-// the overlay fades in on the first downward intent and back out on exit. The
-// scroll layer below only detects that intent and toggles the overlay.
+// Mobile lives entirely in its own component (MobileHome): the same cards
+// scroll-scrub from the ring formation into a 3D coverflow, owning their own
+// GSAP context, pin, swipe browsing, and exit. Desktop never imports it, and
+// the constants/logic below are desktop-only.
 // The first collapse per load is a forced, un-skippable "wow moment" of this
 // duration, driven directly (not through the scrub) so it is snappy and never
 // lags; afterwards the scrub renders ring <-> collapsed 1:1 from scroll.
@@ -205,15 +206,10 @@ export function TileRing({ children }: Props) {
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
   const [selectedWork, setSelectedWork] = useState<WorkItem | null>(null);
 
-  // Mobile 3D carousel overlay. carouselActive mounts/animates MobileCarousel;
-  // modalFromCarousel tells the modals to render their own image (the mobile
-  // open path has no flight tile landing in the slot). mobileNavRef is the
-  // mobile-only nav state shared between the scroll-layer intent detector and
-  // the carousel exit callbacks: "ring" rests at top armed for the downward
-  // intent, "carousel" has the overlay open, "page" has scrolled past the hero.
-  const [carouselActive, setCarouselActive] = useState(false);
+  // Mobile coverflow taps open a modal with no flight tile landing in the slot,
+  // so modalFromCarousel tells the modals to render their own image. MobileHome
+  // owns all mobile scroll/swipe state internally; TileRing only needs this flag.
   const [modalFromCarousel, setModalFromCarousel] = useState(false);
-  const mobileNavRef = useRef<"ring" | "carousel" | "page">("ring");
 
   // Shared-element flight: a tile clone that animates from its ring seat
   // into the modal's image slot (and back on close). The modal mounts
@@ -943,45 +939,15 @@ export function TileRing({ children }: Props) {
     restoreSourceFocus();
   };
 
-  // ---- Mobile 3D carousel callbacks -----------------------------------------
-  // The carousel centers on the middle card when it opens (its "home" focus).
-  const carouselHomeFocus = Math.floor(siteContent.homeTiles.length / 2);
-
-  // Tap a card: open its modal over the carousel. No flight on mobile, so the
-  // modal renders its own image (modalFromCarousel). The carousel stays mounted
-  // underneath and resumes when the modal closes.
+  // ---- Mobile coverflow callback --------------------------------------------
+  // Tap a card: open its modal. No flight on mobile, so the modal renders its
+  // own image (modalFromCarousel). MobileHome stays mounted underneath and
+  // resumes its layout when the modal closes.
   const handleCarouselOpen = useCallback((payload: CarouselOpenPayload) => {
     setModalFromCarousel(true);
     if (payload.kind === "photo") setSelectedPhoto(payload.photo);
     else setSelectedWork(payload.workItem);
   }, []);
-
-  // Swipe down: dismiss the overlay back to the resting ring (already at the top
-  // and untouched underneath, so just fade the overlay out).
-  const handleCarouselExitToRing = useCallback(() => {
-    mobileNavRef.current = "ring";
-    setCarouselActive(false);
-  }, []);
-
-  // Swipe up: continue to the rest of the page. Smoothly scroll past the hero
-  // behind the still-covering overlay, then fade the overlay out to reveal the
-  // page already in place (no jump, no flash of the ring).
-  const handleCarouselExitToPage = useCallback(() => {
-    mobileNavRef.current = "page";
-    // Scroll past the hero. #hero-pin wraps the full-height hero block, so its
-    // height is exactly where the rest of the page begins.
-    const heroPin = document.getElementById("hero-pin");
-    const target = heroPin?.offsetHeight ?? sectionRef.current?.offsetHeight ?? window.innerHeight;
-    const o = { y: window.scrollY };
-    gsap.to(o, {
-      y: target,
-      duration: 0.6,
-      ease: "power2.inOut",
-      onUpdate: () => window.scrollTo(0, o.y),
-      onComplete: () => setCarouselActive(false),
-    });
-  }, []);
-
 
   // Once a modal mounts, its [data-tile-slot] div is in the DOM. Read its
   // viewport rect and update the flight target so the flown tile lands
@@ -1324,80 +1290,9 @@ export function TileRing({ children }: Props) {
         };
       });
 
-      // Mobile: the ring just rests at the top of the document at its natural
-      // height. The first downward intent opens the dedicated 3D carousel
-      // (MobileCarousel), a fullscreen overlay that owns its own swipe, snap,
-      // and exit gestures. This block only watches for that intent and keeps the
-      // ring/page nav state in sync; it never touches the tiles. Exit is handled
-      // by the carousel callbacks (handleCarouselExitToRing / ...ToPage).
-      mm.add("(max-width: 767px) and (prefers-reduced-motion: no-preference)", () => {
-        // Upward finger travel (a "scroll down" gesture) that commits to opening
-        // the carousel. Larger than a stray jiggle so the open feels deliberate.
-        const RING_INTENT_PX = 22;
-
-        const openCarousel = () => {
-          if (mobileNavRef.current !== "ring") return;
-          mobileNavRef.current = "carousel";
-          setCarouselActive(true);
-        };
-
-        // ---- ring: a pinned gateway -----------------------------------------
-        // While the ring rests at the top it owns the screen: every scroll
-        // gesture is blocked so the page can never slip past the hero, and a
-        // deliberate upward swipe (or wheel-down) opens the carousel instead.
-        // Blocking the scroll outright is what removes the old race, where the
-        // browser's scroll event flipped us to "page" before the touchmove could
-        // open the carousel, so the page just scrolled by and the carousel never
-        // appeared.
-        let ringStartY = 0;
-        const onRingWheel = (e: WheelEvent) => {
-          if (mobileNavRef.current !== "ring") return;
-          e.preventDefault();
-          if (e.deltaY > 0) openCarousel();
-        };
-        const onRingTouchStart = (e: TouchEvent) => {
-          ringStartY = e.touches[0]?.clientY ?? 0;
-        };
-        const onRingTouchMove = (e: TouchEvent) => {
-          if (mobileNavRef.current !== "ring") return;
-          e.preventDefault(); // pin the ring: no document scroll in this state
-          const y = e.touches[0]?.clientY ?? 0;
-          if (ringStartY - y > RING_INTENT_PX) openCarousel();
-        };
-
-        // ---- page <-> ring sync on real document scroll ---------------------
-        // Symmetric so a deep-reload restore (applyRestore scrolls AFTER this
-        // block sets the initial state) cannot strand us in "ring" while parked
-        // mid-page: in "ring" the downward intent is intercepted and never
-        // scrolls the document, so any real scroll there means we are actually
-        // past the hero. Returning to the very top re-arms the ring. While the
-        // carousel overlay is open the state is "carousel" and both branches are
-        // inert until its exit callback resets the state.
-        const onPageScroll = () => {
-          if (mobileNavRef.current === "page" && window.scrollY <= 2) {
-            mobileNavRef.current = "ring";
-          } else if (mobileNavRef.current === "ring" && window.scrollY > 4) {
-            mobileNavRef.current = "page";
-          }
-        };
-
-        // Initial state: a deep reload can land us already past the hero.
-        resetCollapse();
-        mobileNavRef.current = window.scrollY > 4 ? "page" : "ring";
-
-        window.addEventListener("wheel", onRingWheel, { passive: false });
-        window.addEventListener("touchstart", onRingTouchStart, { passive: true });
-        window.addEventListener("touchmove", onRingTouchMove, { passive: false });
-        window.addEventListener("scroll", onPageScroll, { passive: true });
-
-        return () => {
-          window.removeEventListener("wheel", onRingWheel);
-          window.removeEventListener("touchstart", onRingTouchStart);
-          window.removeEventListener("touchmove", onRingTouchMove);
-          window.removeEventListener("scroll", onPageScroll);
-          resetCollapse();
-        };
-      });
+      // Mobile owns its own GSAP context, pin, and scrub inside MobileHome
+      // (gated by matchMedia "(max-width: 767px)"), so this desktop useGSAP
+      // never sets up any mobile scroll behavior. Nothing to do here on mobile.
 
       // Reduced motion: no scrub, no pin. Cross-fade the ring into the settled
       // deck and stop; the user gets the destination state without the motion.
@@ -1466,7 +1361,7 @@ export function TileRing({ children }: Props) {
 
       return () => mm.revert();
     },
-    { scope: sectionRef, dependencies: [scrollReady, isMobile, prefersReducedMotion, total] },
+    { scope: sectionRef, dependencies: [scrollReady, prefersReducedMotion, total] },
   );
 
   // Hover peek for the settled desktop deck. The hovered card is chosen from
@@ -1618,6 +1513,13 @@ export function TileRing({ children }: Props) {
           {children}
         </div>
 
+        {/* Desktop ring subtree. Rendered only after mount and only on desktop
+            so a phone never mounts the ring perspective stage or its
+            ScrollTrigger collapse; mobile gets <MobileHome> instead. SSR and the
+            first client render emit neither (mounted is false), which keeps
+            hydration matched and avoids a tile flash. */}
+        {mounted && !isMobile && (
+        <>
         {/* Perspective stage: fixed in the viewport (no motion) so the window
             frame stays still while the ring plane tilts in 3D inside it. */}
         <div
@@ -1715,37 +1617,42 @@ export function TileRing({ children }: Props) {
             nextRef={deckIndexNextRef}
           />
         </div>
+        </>
+        )}
+
+        {/* Mobile coverflow. Self-contained: owns its own GSAP context, pin,
+            scroll-scrub ring->coverflow, swipe browsing, and reduced-motion
+            fallback. Fades the shared heroContentRef during the scrub. Rendered
+            only after mount and only on mobile, so the desktop ring above and
+            this never coexist. */}
+        {mounted && isMobile && (
+          <MobileHome
+            onOpen={handleCarouselOpen}
+            heroContentRef={heroContentRef}
+            scrollReady={scrollReady}
+            prefersReducedMotion={!!prefersReducedMotion}
+          />
+        )}
 
       </section>
 
       {flight && (
-        <FlyingTile
-          tile={flight.tile}
-          homeRect={flight.homeRect}
-          homeTangentDeg={flight.homeTangentDeg}
-          homeRestRotX={flight.homeRestRotX}
-          homeRestRotY={flight.homeRestRotY}
-          source={flight.source}
-          target={flight.target}
-          phase={flight.phase}
-          revealed={flight.reveal}
-          onFlyOutComplete={handleFlyOutComplete}
-          onClosingComplete={handleClosingComplete}
-        />
+        <Portal>
+          <FlyingTile
+            tile={flight.tile}
+            homeRect={flight.homeRect}
+            homeTangentDeg={flight.homeTangentDeg}
+            homeRestRotX={flight.homeRestRotX}
+            homeRestRotY={flight.homeRestRotY}
+            source={flight.source}
+            target={flight.target}
+            phase={flight.phase}
+            revealed={flight.reveal}
+            onFlyOutComplete={handleFlyOutComplete}
+            onClosingComplete={handleClosingComplete}
+          />
+        </Portal>
       )}
-
-      {/* Mobile-only 3D carousel overlay. Inert until carouselActive flips
-          (driven by the mobile scroll-layer intent detector); plays its own
-          enter/exit tweens and owns its swipe gestures. Tapping a card calls
-          handleCarouselOpen, which opens the modal with its own image (no
-          flight on mobile). */}
-      <MobileCarousel
-        active={carouselActive}
-        initialFocus={carouselHomeFocus}
-        onExitToRing={handleCarouselExitToRing}
-        onExitToPage={handleCarouselExitToPage}
-        onOpen={handleCarouselOpen}
-      />
 
       <PhotoModal photo={selectedPhoto} onClose={handleModalClose} renderMedia={modalFromCarousel} />
       <WorkModal item={selectedWork} onClose={handleModalClose} renderMedia={modalFromCarousel} />
