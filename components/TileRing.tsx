@@ -11,6 +11,7 @@ import { GlassTile, type TileActivatePayload } from "./GlassTile";
 import { FlyingTile, type FlightPhase, type FlightSource, type FlightTarget } from "./FlyingTile";
 import { PhotoModal } from "./PhotoModal";
 import { WorkModal } from "./WorkModal";
+import { MobileCarousel, type CarouselOpenPayload } from "./MobileCarousel";
 
 // Layout effect on the client, no-op on the server. The refresh scroll recovery
 // determination must run before paint (so a deep reload never flashes the
@@ -121,27 +122,13 @@ const PEEK_RIGHT = 24;          // rightward nudge of the lifted card (px, pre-p
 const PEEK_FORWARD = 64;        // forward pop (translateZ px) of the lifted card
 const PEEK_SCALE = 1.09;        // the lifted card grows about its own center so the lift reads clearly
 const PEEK_SWITCH_MARGIN = 10;  // a neighbor must beat the armed card by this (px) to take the lift
+const PEEK_HIT_X = 140;         // half-width of a card's cursor catch band (px)
+const PEEK_HIT_Y = 210;         // half-height of a card's cursor catch band (px)
 
-// Mobile cylinder carousel. The 20 ring cards roll onto a vertical-axis
-// cylinder: the front card faces the viewer head-on, its neighbors curve away
-// in depth left and right (showing their glass edges), the back cards recede to
-// the furthest point. Swiping rotates the whole cylinder infinitely, no end
-// wall. The morph maps the ring's bottom card to the front and its top card to
-// the back, so the existing ring tips into the carousel in place. See
-// applyCarousel / applyCarouselMorph in the scroll layer.
-// Coverflow: an evenly spaced horizontal row of big glass cards. The focused
-// (center) card faces the viewer head-on; cards to its left turn to face right
-// and cards to its right turn to face left, so the row fans open like flipping
-// through records. Cards recede in depth away from center; swiping shifts the
-// whole row and it wraps, so it loops forever.
-const CAROUSEL_SCALE = 4.2;           // card size; the 9vmin tile is tiny on mobile vmin
-const CAROUSEL_STEP_X_FRAC = 0.46;    // gap between adjacent card centers, fraction of vw
-const CAROUSEL_DEPTH = 120;           // px a card recedes per step -> perspective depth cascade
-const CAROUSEL_FACE_TILT_DEG = 44;    // how far the side cards turn to face center (0 at the center card)
-const CAROUSEL_Y_OFFSET_VMIN = -5;    // pull the row up from dead center
-const CAROUSEL_VISIBLE = 3;           // cards each side of focus before they cull out (more of the cascade shows)
-const CAROUSEL_DRAG_PX_PER_CARD = 110; // horizontal drag px to advance one card
-const CAROUSEL_TILT_MAX_DEG = 7;      // extra kinetic lean added in the swipe direction
+// Mobile coverflow lives in its own component (MobileCarousel): a dedicated 3D
+// stage with full-size cards, not the ring tiles. The ring stays put underneath;
+// the overlay fades in on the first downward intent and back out on exit. The
+// scroll layer below only detects that intent and toggles the overlay.
 // The first collapse per load is a forced, un-skippable "wow moment" of this
 // duration, driven directly (not through the scrub) so it is snappy and never
 // lags; afterwards the scrub renders ring <-> collapsed 1:1 from scroll.
@@ -217,6 +204,16 @@ export function TileRing({ children }: Props) {
 
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
   const [selectedWork, setSelectedWork] = useState<WorkItem | null>(null);
+
+  // Mobile 3D carousel overlay. carouselActive mounts/animates MobileCarousel;
+  // modalFromCarousel tells the modals to render their own image (the mobile
+  // open path has no flight tile landing in the slot). mobileNavRef is the
+  // mobile-only nav state shared between the scroll-layer intent detector and
+  // the carousel exit callbacks: "ring" rests at top armed for the downward
+  // intent, "carousel" has the overlay open, "page" has scrolled past the hero.
+  const [carouselActive, setCarouselActive] = useState(false);
+  const [modalFromCarousel, setModalFromCarousel] = useState(false);
+  const mobileNavRef = useRef<"ring" | "carousel" | "page">("ring");
 
   // Shared-element flight: a tile clone that animates from its ring seat
   // into the modal's image slot (and back on close). The modal mounts
@@ -325,16 +322,16 @@ export function TileRing({ children }: Props) {
   // True only while the deck is settled AND on screen (the collapse dwell), so
   // hover peeks fire there but not mid-scrub or after scrolling on to Work.
   const deckHoverableRef = useRef(false);
-  // Mobile coverflow carousel: a transparent full-bleed surface that captures
-  // touch gestures. A custom handler owns the swipe (horizontal rotates the
-  // coverflow, a deliberate vertical swipe exits up to the page or down to the
-  // ring), so nothing competes for the gesture and the carousel cannot freeze.
-  const dragSurfaceRef = useRef<HTMLDivElement | null>(null);
-  // Current coverflow focus (in card units; the centered card) and the eased
-  // kinetic tilt (deg) added in the swipe direction. Refs so the per-frame drag
-  // handler writes them without re-rendering.
-  const carouselRotationRef = useRef(0);
-  const carouselTiltRef = useRef(0);
+  // Live cursor in viewport px, tracked unconditionally (cursorRef gets parked
+  // off-screen during flight). Read at modal-close to decide where the closing
+  // card should settle, so it obeys the same hover/peek rules as a live hover.
+  const pointerRef = useRef({ x: -9999, y: -9999 });
+  // True while a tile is mid-flight (out OR closing). The hover-peek listener
+  // freezes while this is set so the flown card holds its place and background
+  // cards do not wander behind the modal; close resolution re-arms the peek.
+  const flightActiveRef = useRef(false);
+  // Cached #hero-pin element so the shared peek hit test does not re-query it.
+  const pinElRef = useRef<HTMLElement | null>(null);
   // True exactly once the forced first collapse ("wow moment") has played this
   // load; afterwards ring <-> collapsed transitions are quick and reversible.
   const forcedDoneRef = useRef(false);
@@ -457,6 +454,12 @@ export function TileRing({ children }: Props) {
     cursorRef.current.y = -9999;
     proximityTick.set(proximityTick.get() + 1);
   }, [flight, parallaxX, parallaxY, proximityTick]);
+
+  // Mirror flight presence into a ref the hover-peek listener can read without
+  // re-subscribing. While a tile flies (out or closing) the deck peek is frozen.
+  useEffect(() => {
+    flightActiveRef.current = flight !== null;
+  }, [flight]);
 
   // Arm the scroll collapse a beat after the entrance completes so the hero
   // fade (420ms) finishes before the pin's reflow lands. Fast-start loads have
@@ -882,7 +885,11 @@ export function TileRing({ children }: Props) {
   const handleModalClose = () => {
     setSelectedPhoto(null);
     setSelectedWork(null);
+    setModalFromCarousel(false);
     if (!flight) {
+      // Mobile carousel path (or any no-flight open): nothing flew, so just
+      // restore focus. The carousel overlay, if it was the opener, is still
+      // mounted underneath and takes over again.
       restoreSourceFocus();
       return;
     }
@@ -891,6 +898,35 @@ export function TileRing({ children }: Props) {
     // perfectly flat ring.
     parallaxX.jump(0);
     parallaxY.jump(0);
+
+    // On the desktop deck, make the close obey the LIVE hover/peek rules
+    // instead of returning to the position captured at click time. Re-pick the
+    // card under the cursor right now: if it is still the flown card, that card
+    // stays peeked; otherwise it settles back into the deck (and whatever card
+    // the cursor is now over peeks). Then recompute the home rect from the
+    // resulting collapse so the closing tile lands exactly where the ring tile
+    // will reappear, with no hover-then-snap. The peek is frozen (flightActive)
+    // until the flight clears, so this resolved state holds through the close.
+    if (deckHoverableRef.current) {
+      const i = flight.tileIndex;
+      setPeeked(pickPeek(pointerRef.current.x, pointerRef.current.y, peekRef.current));
+      const c = collapseRef.current[i] ?? IDENTITY_COLLAPSE;
+      const homeRect = computeHomeRect(i);
+      setFlight((prev) =>
+        prev
+          ? {
+              ...prev,
+              homeRect,
+              homeTangentDeg: seats[i].rotate + c.rotZ,
+              homeRestRotX: tileBaselineRotX(i) + c.rotX,
+              homeRestRotY: tileBaselineRotY(i) + c.rotY,
+              phase: "closing",
+            }
+          : prev,
+      );
+      return;
+    }
+
     setFlight((prev) => (prev ? { ...prev, phase: "closing" } : prev));
   };
 
@@ -904,58 +940,125 @@ export function TileRing({ children }: Props) {
     restoreSourceFocus();
   };
 
+  // ---- Mobile 3D carousel callbacks -----------------------------------------
+  // The carousel centers on the middle card when it opens (its "home" focus).
+  const carouselHomeFocus = Math.floor(siteContent.homeTiles.length / 2);
+
+  // Tap a card: open its modal over the carousel. No flight on mobile, so the
+  // modal renders its own image (modalFromCarousel). The carousel stays mounted
+  // underneath and resumes when the modal closes.
+  const handleCarouselOpen = useCallback((payload: CarouselOpenPayload) => {
+    setModalFromCarousel(true);
+    if (payload.kind === "photo") setSelectedPhoto(payload.photo);
+    else setSelectedWork(payload.workItem);
+  }, []);
+
+  // Swipe down: dismiss the overlay back to the resting ring (already at the top
+  // and untouched underneath, so just fade the overlay out).
+  const handleCarouselExitToRing = useCallback(() => {
+    mobileNavRef.current = "ring";
+    setCarouselActive(false);
+  }, []);
+
+  // Swipe up: continue to the rest of the page. Smoothly scroll past the hero
+  // behind the still-covering overlay, then fade the overlay out to reveal the
+  // page already in place (no jump, no flash of the ring).
+  const handleCarouselExitToPage = useCallback(() => {
+    mobileNavRef.current = "page";
+    // Scroll past the hero. #hero-pin wraps the full-height hero block, so its
+    // height is exactly where the rest of the page begins.
+    const heroPin = document.getElementById("hero-pin");
+    const target = heroPin?.offsetHeight ?? sectionRef.current?.offsetHeight ?? window.innerHeight;
+    const o = { y: window.scrollY };
+    gsap.to(o, {
+      y: target,
+      duration: 0.6,
+      ease: "power2.inOut",
+      onUpdate: () => window.scrollTo(0, o.y),
+      onComplete: () => setCarouselActive(false),
+    });
+  }, []);
+
 
   // Once a modal mounts, its [data-tile-slot] div is in the DOM. Read its
   // viewport rect and update the flight target so the flown tile lands
-  // exactly in the slot, not a CSS-approximated position. Re-measures if
-  // the viewport resizes while the modal is open.
+  // exactly in the slot, not a CSS-approximated position.
+  //
+  // The slot must be TRACKED, not measured once: the modal panel plays an
+  // entrance tween (y: 16 -> 0, scale: 0.97 -> 1), so a single measurement a
+  // frame after mount captures the slot mid-entrance and the tile lands on a
+  // transient position that is wrong by the time the panel settles (the tile
+  // pokes out above/beside the panel). So we re-read every frame until the
+  // rect holds still (entrance done), keeping the flight target locked to the
+  // FINAL slot. The query is scoped to the active modal's slot so a sibling
+  // modal still exiting (cross-fade) can never be measured by mistake.
   const modalOpen = selectedPhoto !== null || selectedWork !== null;
   useEffect(() => {
     if (!modalOpen) return;
     if (!flight || flight.phase !== "out") return;
 
+    const which = flight.tile.kind === "photo" ? "photo" : "work";
+    const selector = `[data-tile-slot="${which}"]`;
+
     let raf = 0;
-    const measure = () => {
-      const slot = document.querySelector<HTMLDivElement>("[data-tile-slot]");
-      if (!slot) {
-        raf = requestAnimationFrame(measure);
-        return;
+    let startTs = 0;
+    let stableFrames = 0;
+    let last: FlightTarget | null = null;
+
+    const same = (a: FlightTarget, b: FlightTarget) =>
+      Math.abs(a.left - b.left) < 0.5 &&
+      Math.abs(a.top - b.top) < 0.5 &&
+      Math.abs(a.width - b.width) < 0.5 &&
+      Math.abs(a.height - b.height) < 0.5;
+
+    const track = (ts: number) => {
+      if (!startTs) startTs = ts;
+      const slot = document.querySelector<HTMLDivElement>(selector);
+      if (slot) {
+        const rect = slot.getBoundingClientRect();
+        const next: FlightTarget = {
+          left: rect.left,
+          top: rect.top,
+          width: rect.width,
+          height: rect.height,
+        };
+        if (last && same(next, last)) {
+          stableFrames += 1;
+        } else {
+          stableFrames = 0;
+          last = next;
+          setFlight((prev) => (prev ? { ...prev, target: next } : prev));
+        }
       }
-      const rect = slot.getBoundingClientRect();
-      setFlight((prev) =>
-        prev
-          ? {
-              ...prev,
-              target: {
-                left: rect.left,
-                top: rect.top,
-                width: rect.width,
-                height: rect.height,
-              },
-            }
-          : prev,
-      );
+      // Stop once the slot has held still for a few frames (entrance settled),
+      // with a hard time cap so a stalled layout never loops forever.
+      if (stableFrames < 4 && ts - startTs < 900) {
+        raf = requestAnimationFrame(track);
+      }
     };
-    raf = requestAnimationFrame(measure);
+    raf = requestAnimationFrame(track);
 
     const onResize = () => {
-      measure();
-      // Also re-compute the home rect so closing still lands correctly
-      // if the viewport was resized while the modal was open. Read through
-      // the ref: this effect only depends on modalOpen, so a direct call
-      // would freeze the seat geometry captured at open time.
-      setFlight((prev) => {
-        if (!prev) return prev;
-        return { ...prev, homeRect: computeHomeRectRef.current(prev.tileIndex) };
-      });
+      // Re-arm tracking so the tile re-homes to the slot's new rect, and
+      // re-compute the home rect so closing still lands correctly. Read
+      // computeHomeRect through the ref: this effect only depends on modalOpen,
+      // so a direct call would freeze the seat geometry captured at open time.
+      startTs = 0;
+      stableFrames = 0;
+      last = null;
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(track);
+      setFlight((prev) =>
+        prev ? { ...prev, homeRect: computeHomeRectRef.current(prev.tileIndex) } : prev,
+      );
     };
     window.addEventListener("resize", onResize);
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", onResize);
     };
-    // Intentionally don't depend on `flight` so we don't trigger re-measure
-    // on every flight state update; only on modal open/close.
+    // Intentionally don't depend on `flight` so we don't re-arm on every flight
+    // state update; only on modal open/close.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [modalOpen]);
 
@@ -1081,7 +1184,6 @@ export function TileRing({ children }: Props) {
         if (deckHintRef.current) deckHintRef.current.style.opacity = "";
         // Clear the deck index so nothing stale survives a reform/refresh.
         writeActiveCard(null);
-        if (dragSurfaceRef.current) dragSurfaceRef.current.style.pointerEvents = "none";
       };
 
       const setEngaged = (v: boolean) => {
@@ -1089,137 +1191,6 @@ export function TileRing({ children }: Props) {
         engagedRef.current = v;
         setCollapseEngaged(v);
       };
-
-      // ---- Mobile cylinder carousel renderers -----------------------------
-      // Shared placement: write a card's outer-wrapper transform AND its
-      // matching collapseRef offset (the flight invariant). The trailing
-      // rotate(-seat)/translate(-seat) cancels the Framer seat so the card ends
-      // exactly at (sx, sy, tz) with rotateY(rotYDeg) and scale, about its own
-      // center. Mirrors the composition the desktop deck uses.
-      const placeCard = (
-        i: number,
-        sx: number,
-        sy: number,
-        tz: number,
-        rotYDeg: number,
-        scale: number,
-        rotZDeg: number,
-        vmin: number,
-      ) => {
-        const seatX = (seats[i].xVmin / 100) * vmin;
-        const seatY = (seats[i].yVmin / 100) * vmin;
-        const rz = (rotZDeg * Math.PI) / 180;
-        const cos = Math.cos(rz);
-        const sin = Math.sin(rz);
-        const c = collapseRef.current[i];
-        if (c) {
-          c.dx = sx - scale * (cos * seatX - sin * seatY);
-          c.dy = sy - scale * (sin * seatX + cos * seatY);
-          c.scale = scale;
-          c.rotZ = rotZDeg;
-          c.rotX = 0;
-          c.rotY = rotYDeg;
-          c.tz = tz;
-        }
-        const el = collapseElsRef.current[i];
-        if (el) {
-          el.style.transition = "";
-          el.style.transform = `translate(${sx}px, ${sy}px) translateZ(${tz}px) rotateY(${rotYDeg}deg) scale(${scale}) rotate(${rotZDeg}deg) translate(${-seatX}px, ${-seatY}px)`;
-        }
-      };
-
-      // Settled coverflow at a given focus (in card units; carouselRotationRef
-      // holds it). Cards sit in an evenly spaced horizontal row, ALL at the same
-      // constant tilt so each reads as an angled 3D slab, receding in depth away
-      // from the focused (center) card. The offset wraps to [-N/2, N/2) so the
-      // row loops forever. tiltDeg is the extra kinetic lean in the swipe dir.
-      const wrapOff = (off: number) => {
-        const half = total / 2;
-        return (((off + half) % total) + total) % total - half;
-      };
-      // Coverflow face angle for a card at signed offset `off` from the focus:
-      // cards left of center (off<0) turn to face right, cards to the right face
-      // left, the center card is flat. Ramps to the full angle by one card out,
-      // then holds, so the whole fan reads as turned-toward-you records.
-      const faceTilt = (off: number) => {
-        const dir = off === 0 ? 0 : off < 0 ? 1 : -1;
-        return dir * Math.min(Math.abs(off), 1) * CAROUSEL_FACE_TILT_DEG;
-      };
-      const applyCarousel = (focus: number, tiltDeg: number) => {
-        const vw = window.innerWidth;
-        const vh = window.innerHeight;
-        const vmin = Math.min(vw, vh);
-        const stepX = vw * CAROUSEL_STEP_X_FRAC;
-        const yOff = (CAROUSEL_Y_OFFSET_VMIN / 100) * vmin;
-        for (let i = 0; i < total; i++) {
-          const off = wrapOff(i - focus);
-          const aoff = Math.abs(off);
-          placeCard(
-            i,
-            off * stepX,
-            yOff,
-            -aoff * CAROUSEL_DEPTH,
-            faceTilt(off) + tiltDeg,
-            CAROUSEL_SCALE,
-            -seats[i].rotate,
-            vmin,
-          );
-          const el = collapseElsRef.current[i];
-          if (el) {
-            el.style.zIndex = String(1000 - Math.round(aoff * 10));
-            el.style.opacity = aoff > CAROUSEL_VISIBLE + 0.5 ? "0" : "1";
-          }
-        }
-        if (heroContentRef.current) {
-          heroContentRef.current.style.opacity = "0";
-          heroContentRef.current.style.pointerEvents = "none";
-        }
-        if (deckHintRef.current) deckHintRef.current.style.opacity = "1";
-      };
-
-      // Ring -> coverflow morph at p in [0,1]. Each card interpolates from its
-      // ring seat (p=0, identity wrapper = card at seat) to its coverflow slot
-      // centered on the middle card (p=1 == applyCarousel(CAROUSEL_HOME_FOCUS)).
-      // Cards that end off-screen fade as they travel so nothing pops at the edges.
-      const CAROUSEL_HOME_FOCUS = Math.floor(total / 2);
-      const applyCarouselMorph = (p: number) => {
-        const e = ease(p);
-        const vw = window.innerWidth;
-        const vh = window.innerHeight;
-        const vmin = Math.min(vw, vh);
-        const stepX = vw * CAROUSEL_STEP_X_FRAC;
-        const yOff = (CAROUSEL_Y_OFFSET_VMIN / 100) * vmin;
-        for (let i = 0; i < total; i++) {
-          const off = wrapOff(i - CAROUSEL_HOME_FOCUS);
-          const aoff = Math.abs(off);
-          const seatX = (seats[i].xVmin / 100) * vmin;
-          const seatY = (seats[i].yVmin / 100) * vmin;
-          const sx = (1 - e) * seatX + e * (off * stepX);
-          const sy = (1 - e) * seatY + e * yOff;
-          const tz = e * (-aoff * CAROUSEL_DEPTH);
-          const rotY = e * faceTilt(off);
-          const rotZ = e * -seats[i].rotate;
-          const scale = 1 + e * (CAROUSEL_SCALE - 1);
-          placeCard(i, sx, sy, tz, rotY, scale, rotZ, vmin);
-          const el = collapseElsRef.current[i];
-          if (el) {
-            el.style.zIndex = String(1000 - Math.round(aoff * 10));
-            el.style.opacity =
-              aoff > CAROUSEL_VISIBLE + 0.5 ? String(Math.max(0, 1 - e * 1.3)) : "1";
-          }
-        }
-        if (heroContentRef.current) {
-          heroContentRef.current.style.opacity = String(1 - Math.min(1, e * 1.4));
-          heroContentRef.current.style.pointerEvents = e > 0.02 ? "none" : "";
-        }
-        if (deckHintRef.current) {
-          deckHintRef.current.style.opacity = String(Math.max(0, (e - 0.5) / 0.5));
-        }
-      };
-
-      // Card currently centered (focused), used for tap.
-      const carouselFocusedIndex = () =>
-        ((Math.round(carouselRotationRef.current) % total) + total) % total;
 
       // ---- Forced first collapse ("wow moment") ---------------------------
       // The first scroll-down per load plays the collapse fully and a fast flick
@@ -1350,221 +1321,45 @@ export function TileRing({ children }: Props) {
         };
       });
 
-      // Mobile: a self-contained state machine. No ScrollTrigger pin and no
-      // GSAP Draggable. Both caused the freeze: the pinned scrub fought the
-      // horizontal swipe over one gesture stream, and a horizontal swipe leaks a
-      // little vertical scroll that drifted the scrub progress until the settle
-      // gate disabled the Draggable mid-gesture and stranded it dead. Here the
-      // hero just sits at the top of the document at its natural height; its
-      // resting look is the ring. A downward intent morphs the ring into the
-      // coverflow and locks the page: while in the carousel the swipe handler
-      // owns every touch (preventDefault), so nothing competes and it cannot
-      // freeze. A deliberate vertical swipe leaves, on a smooth tween instead of
-      // a raw scrub: swipe up continues to the page, swipe down reforms the ring.
+      // Mobile: the ring just rests at the top of the document at its natural
+      // height. The first downward intent opens the dedicated 3D carousel
+      // (MobileCarousel), a fullscreen overlay that owns its own swipe, snap,
+      // and exit gestures. This block only watches for that intent and keeps the
+      // ring/page nav state in sync; it never touches the tiles. Exit is handled
+      // by the carousel callbacks (handleCarouselExitToRing / ...ToPage).
       mm.add("(max-width: 767px) and (prefers-reduced-motion: no-preference)", () => {
-        const surface = dragSurfaceRef.current;
+        // Upward finger travel (a "scroll down" gesture) that commits to opening
+        // the carousel. Larger than a stray jiggle so the open feels deliberate.
+        const RING_INTENT_PX = 22;
 
-        // Tuning.
-        const MORPH_SECONDS = 0.55;  // ring <-> coverflow morph
-        const AXIS_LOCK_PX = 10;     // travel before we commit to swipe vs. exit
-        const EXIT_SWIPE_PX = 64;    // vertical travel that counts as "leave"
-        const MOMENTUM_MS = 240;     // flick projection horizon
-        const SNAP_SECONDS = 0.45;   // settle-to-card after a flick
-        const RING_INTENT_PX = 6;    // downward travel that opens the carousel
-
-        // "ring": resting at top, armed for the downward intent.
-        // "morphing": a transition tween owns the screen; input ignored.
-        // "carousel": locked fullscreen coverflow; the swipe handler owns touch.
-        // "page": scrolled past the hero; the document scrolls normally.
-        type MState = "ring" | "morphing" | "carousel" | "page";
-        let state: MState = "ring";
-        let activeTween: gsap.core.Tween | null = null;
-
-        const updateIndex = () => {
-          const f = carouselFocusedIndex();
-          if (f !== lastFocusRef.current) {
-            lastFocusRef.current = f;
-            writeActiveCard(f);
-          }
-        };
-        const armSurface = (on: boolean) => {
-          if (!surface) return;
-          surface.style.pointerEvents = on ? "auto" : "none";
-          // none = we own every touch (no native scroll); "" restores pan-y.
-          surface.style.touchAction = on ? "none" : "";
+        const openCarousel = () => {
+          if (mobileNavRef.current !== "ring") return;
+          mobileNavRef.current = "carousel";
+          setCarouselActive(true);
         };
 
-        // ---- transitions ----------------------------------------------------
-        const toCarousel = () => {
-          if (state !== "ring") return;
-          state = "morphing";
-          carouselRotationRef.current = CAROUSEL_HOME_FOCUS;
-          carouselTiltRef.current = 0;
-          setEngaged(true); // also stands proximity/parallax down
-          const o = { e: 0 };
-          activeTween?.kill();
-          activeTween = gsap.to(o, {
-            e: 1,
-            duration: MORPH_SECONDS,
-            ease: "none", // applyCarouselMorph eases internally
-            onUpdate: () => applyCarouselMorph(o.e),
-            onComplete: () => {
-              applyCarousel(carouselRotationRef.current, 0);
-              updateIndex();
-              armSurface(true);
-              state = "carousel";
-            },
-          });
-        };
-        const toRing = () => {
-          // Reform the ring in place (swipe down from the carousel).
-          state = "morphing";
-          armSurface(false);
-          const o = { e: 1 };
-          activeTween?.kill();
-          activeTween = gsap.to(o, {
-            e: 0,
-            duration: MORPH_SECONDS,
-            ease: "none",
-            onUpdate: () => applyCarouselMorph(o.e),
-            onComplete: () => {
-              resetCollapse();
-              setEngaged(false);
-              state = "ring";
-            },
-          });
-        };
-        const toPage = () => {
-          // Continue to the rest of the page (swipe up from the carousel). Tween
-          // the scroll ourselves (no ScrollToPlugin) so it is smooth, not a jump.
-          state = "morphing";
-          armSurface(false);
-          const o = { y: window.scrollY };
-          activeTween?.kill();
-          activeTween = gsap.to(o, {
-            y: heroPin.offsetHeight, // hero is the first, full-height block
-            duration: 0.6,
-            ease: "power2.inOut",
-            onUpdate: () => window.scrollTo(0, o.y),
-            onComplete: () => {
-              // Hero is off-screen now: reform the ring invisibly so a return to
-              // the top always shows the ring, never a stale coverflow.
-              resetCollapse();
-              setEngaged(false);
-              state = "page";
-            },
-          });
-        };
-
-        // ---- ring: intercept the first downward intent ----------------------
+        // ---- ring: a pinned gateway -----------------------------------------
+        // While the ring rests at the top it owns the screen: every scroll
+        // gesture is blocked so the page can never slip past the hero, and a
+        // deliberate upward swipe (or wheel-down) opens the carousel instead.
+        // Blocking the scroll outright is what removes the old race, where the
+        // browser's scroll event flipped us to "page" before the touchmove could
+        // open the carousel, so the page just scrolled by and the carousel never
+        // appeared.
         let ringStartY = 0;
         const onRingWheel = (e: WheelEvent) => {
-          if (state === "ring" && e.deltaY > 0) {
-            e.preventDefault();
-            toCarousel();
-          }
+          if (mobileNavRef.current !== "ring") return;
+          e.preventDefault();
+          if (e.deltaY > 0) openCarousel();
         };
         const onRingTouchStart = (e: TouchEvent) => {
           ringStartY = e.touches[0]?.clientY ?? 0;
         };
         const onRingTouchMove = (e: TouchEvent) => {
-          if (state !== "ring") return;
+          if (mobileNavRef.current !== "ring") return;
+          e.preventDefault(); // pin the ring: no document scroll in this state
           const y = e.touches[0]?.clientY ?? 0;
-          if (ringStartY - y > RING_INTENT_PX) {
-            e.preventDefault();
-            toCarousel();
-          }
-        };
-
-        // ---- carousel: custom horizontal swipe + vertical exit --------------
-        let startX = 0;
-        let startY = 0;
-        let lastX = 0;
-        let lastT = 0;
-        let vX = 0; // px/ms
-        let axis: "x" | "y" | null = null;
-        let baseFocus = CAROUSEL_HOME_FOCUS;
-        let moved = false;
-
-        const onSurfaceTouchStart = (e: TouchEvent) => {
-          if (state !== "carousel") return;
-          activeTween?.kill(); // stop a settle in progress so the grab is instant
-          const t = e.touches[0];
-          if (!t) return;
-          startX = lastX = t.clientX;
-          startY = t.clientY;
-          lastT = e.timeStamp;
-          vX = 0;
-          axis = null;
-          moved = false;
-          baseFocus = carouselRotationRef.current;
-        };
-        const onSurfaceTouchMove = (e: TouchEvent) => {
-          if (state !== "carousel") return;
-          const t = e.touches[0];
-          if (!t) return;
-          // We own the carousel surface entirely: never let the page scroll here.
-          e.preventDefault();
-          const dx = t.clientX - startX;
-          const dy = t.clientY - startY;
-          if (!axis) {
-            if (Math.abs(dx) < AXIS_LOCK_PX && Math.abs(dy) < AXIS_LOCK_PX) return;
-            axis = Math.abs(dx) >= Math.abs(dy) ? "x" : "y";
-            moved = true;
-          }
-          if (axis !== "x") return; // vertical is resolved on release (exit)
-          const now = e.timeStamp;
-          const dt = now - lastT;
-          if (dt > 0) vX = (t.clientX - lastX) / dt;
-          lastX = t.clientX;
-          lastT = now;
-          const focus = baseFocus - dx / CAROUSEL_DRAG_PX_PER_CARD;
-          carouselRotationRef.current = focus;
-          const tilt = Math.max(
-            -CAROUSEL_TILT_MAX_DEG,
-            Math.min(CAROUSEL_TILT_MAX_DEG, -vX * 40),
-          );
-          carouselTiltRef.current = tilt;
-          applyCarousel(focus, tilt);
-          updateIndex();
-        };
-        const onSurfaceTouchEnd = (e: TouchEvent) => {
-          if (state !== "carousel") return;
-          if (axis === "y") {
-            const dy = (e.changedTouches[0]?.clientY ?? startY) - startY;
-            if (dy <= -EXIT_SWIPE_PX) return toPage(); // swipe up -> page
-            if (dy >= EXIT_SWIPE_PX) return toRing(); // swipe down -> ring
-            return; // small vertical: stay put
-          }
-          if (!moved) {
-            // Tap: open the focused card (its button sits under this surface).
-            const focused = carouselFocusedIndex();
-            const btn = collapseElsRef.current[focused]?.querySelector("button");
-            if (btn) btn.click();
-            return;
-          }
-          // Horizontal flick: project momentum, then snap to the nearest card.
-          const projected =
-            carouselRotationRef.current - (vX * MOMENTUM_MS) / CAROUSEL_DRAG_PX_PER_CARD;
-          const target = Math.round(projected);
-          const o = { v: carouselRotationRef.current };
-          activeTween?.kill();
-          activeTween = gsap.to(o, {
-            v: target,
-            duration: SNAP_SECONDS,
-            ease: "power3.out",
-            onUpdate: () => {
-              carouselRotationRef.current = o.v;
-              applyCarousel(o.v, 0);
-              updateIndex();
-            },
-            onComplete: () => {
-              carouselRotationRef.current = target;
-              carouselTiltRef.current = 0;
-              applyCarousel(target, 0);
-              updateIndex();
-            },
-          });
+          if (ringStartY - y > RING_INTENT_PX) openCarousel();
         };
 
         // ---- page <-> ring sync on real document scroll ---------------------
@@ -1572,45 +1367,32 @@ export function TileRing({ children }: Props) {
         // block sets the initial state) cannot strand us in "ring" while parked
         // mid-page: in "ring" the downward intent is intercepted and never
         // scrolls the document, so any real scroll there means we are actually
-        // past the hero. Returning to the very top re-arms the ring.
+        // past the hero. Returning to the very top re-arms the ring. While the
+        // carousel overlay is open the state is "carousel" and both branches are
+        // inert until its exit callback resets the state.
         const onPageScroll = () => {
-          if (state === "page" && window.scrollY <= 2) {
-            carouselRotationRef.current = CAROUSEL_HOME_FOCUS;
-            carouselTiltRef.current = 0;
-            state = "ring"; // hero already shows the ring (reformed on exit)
-          } else if (state === "ring" && window.scrollY > 4) {
-            state = "page";
+          if (mobileNavRef.current === "page" && window.scrollY <= 2) {
+            mobileNavRef.current = "ring";
+          } else if (mobileNavRef.current === "ring" && window.scrollY > 4) {
+            mobileNavRef.current = "page";
           }
         };
 
         // Initial state: a deep reload can land us already past the hero.
         resetCollapse();
-        state = window.scrollY > 4 ? "page" : "ring";
+        mobileNavRef.current = window.scrollY > 4 ? "page" : "ring";
 
         window.addEventListener("wheel", onRingWheel, { passive: false });
         window.addEventListener("touchstart", onRingTouchStart, { passive: true });
         window.addEventListener("touchmove", onRingTouchMove, { passive: false });
         window.addEventListener("scroll", onPageScroll, { passive: true });
-        if (surface) {
-          surface.addEventListener("touchstart", onSurfaceTouchStart, { passive: true });
-          surface.addEventListener("touchmove", onSurfaceTouchMove, { passive: false });
-          surface.addEventListener("touchend", onSurfaceTouchEnd, { passive: true });
-        }
 
         return () => {
-          activeTween?.kill();
           window.removeEventListener("wheel", onRingWheel);
           window.removeEventListener("touchstart", onRingTouchStart);
           window.removeEventListener("touchmove", onRingTouchMove);
           window.removeEventListener("scroll", onPageScroll);
-          if (surface) {
-            surface.removeEventListener("touchstart", onSurfaceTouchStart);
-            surface.removeEventListener("touchmove", onSurfaceTouchMove);
-            surface.removeEventListener("touchend", onSurfaceTouchEnd);
-          }
-          armSurface(false);
           resetCollapse();
-          setEngaged(false);
         };
       });
 
@@ -1741,63 +1523,64 @@ export function TileRing({ children }: Props) {
     [rebuildPeek, writeActiveCard],
   );
 
+  // Pure hit test shared by the live hover listener and the modal-close
+  // resolver, so both obey ONE rule for "which card is the cursor over." `cur`
+  // is the currently armed card, factored into the anti-jitter hold below.
+  //
+  // deckHitRef holds each card's UNPEEKED screen center captured while the deck
+  // was pinned (section top = 0). Once the scroll passes the pin, #hero-pin
+  // scrolls up, so the live card y = stored y + the section's current top; one
+  // layout read per call (the pinned wrapper) keeps the hit test aligned. x is
+  // unaffected (vertical scroll only).
+  const pickPeek = useCallback((px: number, py: number, cur: number): number => {
+    const hits = deckHitRef.current;
+    if (!pinElRef.current) pinElRef.current = document.getElementById("hero-pin");
+    const offY = pinElRef.current ? pinElRef.current.getBoundingClientRect().top : 0;
+    let best = -1;
+    let bestD = Infinity;
+    for (let i = 0; i < hits.length; i++) {
+      const h = hits[i];
+      if (!h || Math.abs(py - (h.y + offY)) > PEEK_HIT_Y) continue;
+      const d = Math.abs(px - h.x);
+      if (d < bestD) {
+        bestD = d;
+        best = i;
+      }
+    }
+    // Light, uniform anti-jitter hold: keep the armed card unless a different
+    // card is at least PEEK_SWITCH_MARGIN closer. Slot centers are evenly spaced
+    // on screen, so this stickiness is identical for near and far cards.
+    if (cur >= 0 && best !== cur && hits[cur] && Math.abs(py - (hits[cur].y + offY)) <= PEEK_HIT_Y) {
+      const dCur = Math.abs(px - hits[cur].x);
+      if (dCur <= PEEK_HIT_X && dCur - bestD < PEEK_SWITCH_MARGIN) {
+        best = cur;
+        bestD = dCur;
+      }
+    }
+    return best >= 0 && bestD <= PEEK_HIT_X ? best : -1;
+  }, []);
+
   // Pick the hovered deck card from the cursor and peek it. Active whenever the
   // deck has formed and is visible (deckHoverableRef), including while it scrolls
   // up past the pin toward Work, so a user can hover the cards at any point they
-  // can see them, not only on the settled dwell. Stable hit test = no jitter.
+  // can see them. The pointer is tracked unconditionally (the close resolver
+  // reads it); the peek itself freezes during a flight so the flown card holds
+  // its place and background cards do not wander behind the modal.
   useEffect(() => {
     if (isMobile) return;
-    const PEEK_HIT_X = 140;
-    const PEEK_HIT_Y = 210;
-    // deckHitRef holds each card's UNPEEKED screen center captured while the deck
-    // was pinned (section top = 0). Once the scroll passes the pin, #hero-pin
-    // scrolls up, so the live card y = stored y + the section's current top. One
-    // layout read per move (the pinned wrapper), reused for all 20 cards, keeps
-    // the hit test aligned to where the cards actually are. x is unaffected
-    // (vertical scroll only).
-    let pinEl: HTMLElement | null = null;
     const onMove = (e: PointerEvent) => {
+      pointerRef.current.x = e.clientX;
+      pointerRef.current.y = e.clientY;
+      if (flightActiveRef.current) return;
       if (!deckHoverableRef.current) {
         if (peekRef.current >= 0) setPeeked(-1);
         return;
       }
-      const hits = deckHitRef.current;
-      const cur = peekRef.current;
-      if (!pinEl) pinEl = document.getElementById("hero-pin");
-      const offY = pinEl ? pinEl.getBoundingClientRect().top : 0;
-      let best = -1;
-      let bestD = Infinity;
-      for (let i = 0; i < hits.length; i++) {
-        const h = hits[i];
-        if (!h || Math.abs(e.clientY - (h.y + offY)) > PEEK_HIT_Y) continue;
-        const d = Math.abs(e.clientX - h.x);
-        if (d < bestD) {
-          bestD = d;
-          best = i;
-        }
-      }
-      // Light, uniform anti-jitter hold: keep the armed card unless a different
-      // card is at least PEEK_SWITCH_MARGIN closer. Slot centers are evenly
-      // spaced on screen, so this stickiness is identical for near and far cards
-      // (no perspective scaling). The small lateral peek keeps the lifted card
-      // under the cursor, so the click lands in place and the sweep stays clean.
-      if (
-        cur >= 0 &&
-        best !== cur &&
-        hits[cur] &&
-        Math.abs(e.clientY - (hits[cur].y + offY)) <= PEEK_HIT_Y
-      ) {
-        const dCur = Math.abs(e.clientX - hits[cur].x);
-        if (dCur <= PEEK_HIT_X && dCur - bestD < PEEK_SWITCH_MARGIN) {
-          best = cur;
-          bestD = dCur;
-        }
-      }
-      setPeeked(best >= 0 && bestD <= PEEK_HIT_X ? best : -1);
+      setPeeked(pickPeek(e.clientX, e.clientY, peekRef.current));
     };
     window.addEventListener("pointermove", onMove, { passive: true });
     return () => window.removeEventListener("pointermove", onMove);
-  }, [isMobile, setPeeked]);
+  }, [isMobile, setPeeked, pickPeek]);
 
   // While any flight is active, the flown tile's key identifies the ring
   // tile that should stay hidden. When flight clears, the ring tile takes
@@ -1929,17 +1712,6 @@ export function TileRing({ children }: Props) {
           />
         </div>
 
-        {/* Mobile carousel drag surface: a transparent full-bleed overlay that
-            the custom touch handler uses to capture coverflow swipes. touch-action
-            and pointer-events are driven from JS (armSurface): off in the ring and
-            on desktop so the flat ring stays tappable, on (touch-action none) only
-            once the coverflow is settled so the handler fully owns the gesture. */}
-        <div
-          ref={dragSurfaceRef}
-          aria-hidden="true"
-          className="absolute inset-0 z-30 [touch-action:pan-y]"
-          style={{ pointerEvents: "none" }}
-        />
       </section>
 
       {flight && (
@@ -1957,8 +1729,21 @@ export function TileRing({ children }: Props) {
         />
       )}
 
-      <PhotoModal photo={selectedPhoto} onClose={handleModalClose} />
-      <WorkModal item={selectedWork} onClose={handleModalClose} />
+      {/* Mobile-only 3D carousel overlay. Inert until carouselActive flips
+          (driven by the mobile scroll-layer intent detector); plays its own
+          enter/exit tweens and owns its swipe gestures. Tapping a card calls
+          handleCarouselOpen, which opens the modal with its own image (no
+          flight on mobile). */}
+      <MobileCarousel
+        active={carouselActive}
+        initialFocus={carouselHomeFocus}
+        onExitToRing={handleCarouselExitToRing}
+        onExitToPage={handleCarouselExitToPage}
+        onOpen={handleCarouselOpen}
+      />
+
+      <PhotoModal photo={selectedPhoto} onClose={handleModalClose} renderMedia={modalFromCarousel} />
+      <WorkModal item={selectedWork} onClose={handleModalClose} renderMedia={modalFromCarousel} />
     </RingStateContext.Provider>
   );
 }

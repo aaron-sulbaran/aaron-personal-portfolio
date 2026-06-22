@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, X } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
@@ -16,9 +17,20 @@ import { siteContent, type WorkItem } from "@/lib/content";
 type WorkModalProps = {
   item: WorkItem | null;
   onClose: () => void;
+  // On mobile the modal opens from the carousel with no flight tile landing in
+  // the slot, so renderMedia draws the logo (on its glass tint) here directly.
+  // Desktop leaves this false; the flown tile fills the slot.
+  renderMedia?: boolean;
 };
 
-export function WorkModal({ item, onClose }: WorkModalProps) {
+// Tinted glass wash behind the work logo, matching GlassTile / the carousel so
+// the logo reads as the same card when the modal opens without a flight.
+const workTintStyle: React.CSSProperties = {
+  backgroundImage:
+    "linear-gradient(135deg, color-mix(in srgb, var(--color-accent) 18%, transparent) 0%, color-mix(in srgb, var(--color-glass) 50%, transparent) 48%, color-mix(in srgb, var(--color-accent) 40%, transparent) 100%)",
+};
+
+export function WorkModal({ item, onClose, renderMedia = false }: WorkModalProps) {
   const open = item !== null;
   const dialogRef = useRef<HTMLDivElement | null>(null);
   const prefersReducedMotion = useReducedMotion();
@@ -83,13 +95,30 @@ export function WorkModal({ item, onClose }: WorkModalProps) {
             </button>
 
             <div className="flex items-center gap-5 pr-12">
-              {/* Logo slot: TileRing's FlyingTile sits here while the modal
-                  is open. No <Image> inside; the flown tile is the logo. */}
+              {/* Logo slot: on desktop TileRing's FlyingTile sits here while the
+                  modal is open (no <Image> inside; the flown tile is the logo).
+                  On mobile the modal opens from the carousel with no flight, so
+                  renderMedia draws the logo on its glass tint directly. */}
               <div
                 data-tile-slot="work"
-                className="relative h-20 w-20 shrink-0 rounded-xl"
-                aria-hidden="true"
-              />
+                className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl"
+                aria-hidden={!renderMedia}
+              >
+                {renderMedia && (
+                  <>
+                    <span aria-hidden="true" className="absolute inset-0" style={workTintStyle} />
+                    <div className="absolute inset-0 flex items-center justify-center p-2.5">
+                      <Image
+                        src={item.logo}
+                        alt={`${item.title} logo`}
+                        width={120}
+                        height={120}
+                        className="h-auto w-[86%] object-contain opacity-90"
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
               <div className="flex flex-col gap-1">
                 <span className="text-[11px] font-medium uppercase tracking-caps text-muted">
                   {item.role} · {item.year}

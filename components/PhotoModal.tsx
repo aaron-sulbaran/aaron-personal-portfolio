@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { X } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useRef } from "react";
@@ -15,9 +16,13 @@ import { siteContent, type Photo } from "@/lib/content";
 type PhotoModalProps = {
   photo: Photo | null;
   onClose: () => void;
+  // On mobile the modal is opened from the carousel, where no flight tile
+  // flies into the slot. When true the modal renders its own image so the slot
+  // is never empty. Desktop leaves this false; the flown tile fills the slot.
+  renderMedia?: boolean;
 };
 
-export function PhotoModal({ photo, onClose }: PhotoModalProps) {
+export function PhotoModal({ photo, onClose, renderMedia = false }: PhotoModalProps) {
   const open = photo !== null;
   const dialogRef = useRef<HTMLDivElement | null>(null);
   const prefersReducedMotion = useReducedMotion();
@@ -79,15 +84,34 @@ export function PhotoModal({ photo, onClose }: PhotoModalProps) {
               <X aria-hidden="true" className="h-4 w-4" />
             </button>
 
-            {/* Photo slot: the TileRing's FlyingTile physically lives here
-                while the modal is open. No <Image> rendered inside; the flown
-                tile is the image. aspect + sizing must match the tile's 3:4
-                proportions so the flight lands in the exact rect. */}
+            {/* Photo slot. On desktop the TileRing's FlyingTile physically
+                lives here while the modal is open (no <Image> inside; the flown
+                tile is the image), so the aspect + sizing must match the tile's
+                3:4 proportions for the flight to land in the exact rect. On
+                mobile the modal opens from the carousel with no flight, so
+                renderMedia draws the image here directly. The panel stacks
+                vertically on mobile, where the full-width image would tuck under
+                the top-right close button. The button sits at top-3 (12px) and is
+                h-10 (40px), so its bottom edge is 52px below the panel top; with
+                the panel's p-5 (20px), mt-12 (48px) starts the image at ~68px,
+                clear of the button. Desktop is a row with the image at 46% on the
+                left, so no clip (mt resets to 0). */}
             <div
               data-tile-slot="photo"
-              className="relative aspect-[3/4] w-full shrink-0 rounded-xl md:w-[46%]"
-              aria-hidden="true"
-            />
+              className="relative mt-12 aspect-[3/4] w-full shrink-0 overflow-hidden rounded-xl md:mt-0 md:w-[46%]"
+              aria-hidden={!renderMedia}
+            >
+              {renderMedia && (
+                <Image
+                  src={photo.src}
+                  alt={photo.alt}
+                  fill
+                  quality={90}
+                  sizes="(max-width: 768px) 92vw, 46vw"
+                  className="object-cover"
+                />
+              )}
+            </div>
 
             <div className="flex flex-1 flex-col justify-center pt-2 md:pt-0">
               <p className="font-serif text-2xl italic leading-[1.25] text-foreground md:text-3xl md:leading-[1.2]">
