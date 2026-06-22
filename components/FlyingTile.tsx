@@ -40,6 +40,13 @@ type Props = {
   /** Modal-slot target rect (where the flight lands during "out"). */
   target: FlightTarget;
   phase: FlightPhase;
+  /**
+   * Photo flights clear their frost to true color once parked in the modal
+   * (set by TileRing after the out flight lands, reset before the close flight).
+   * Work flights ignore this and stay tinted glass throughout, matching the deck
+   * and the mobile work modal.
+   */
+  revealed?: boolean;
   onFlyOutComplete: () => void;
   onClosingComplete: () => void;
 };
@@ -64,6 +71,7 @@ export function FlyingTile({
   source,
   target,
   phase,
+  revealed = false,
   onFlyOutComplete,
   onClosingComplete,
 }: Props) {
@@ -72,6 +80,12 @@ export function FlyingTile({
   if (!resolved) return null;
 
   const isClosing = phase === "closing";
+
+  // The flown card wears the deck's frosted-glass material so the deck <-> flight
+  // handoff is frosted-to-frosted (no color pop). Only photos defrost: once
+  // parked in the modal they clear to true color (revealed), and re-frost before
+  // the close flight. Work logos stay tinted glass everywhere.
+  const frosted = !(revealed && resolved.kind === "photo");
 
   // Reduced motion: no spatial flight. The clone fades in already sitting in
   // the modal slot (TileRing measures the slot a frame after the modal
@@ -96,7 +110,7 @@ export function FlyingTile({
           if (phase === "closing") onClosingComplete();
         }}
       >
-        <FlyingFaces resolved={resolved} />
+        <FlyingFaces resolved={resolved} frosted={frosted} />
       </motion.div>
     );
   }
@@ -110,15 +124,26 @@ export function FlyingTile({
   const normalizedTangent =
     ((homeTangentDeg + 180) % 360 + 360) % 360 - 180;
 
+  // Open: fly from the ring seat into the modal slot (the surfacing gesture, kept
+  // as-is). Close: DISSOLVE. Flying a translucent card all the way back across
+  // the translucent deck made overlapping glass panes read as clipping, so
+  // instead the card travels MOST of the way toward its slot (CLOSE_DRIFT) and
+  // then fades out only over the back third, as it nears home and is small. The
+  // whole return happens behind the modal frost, which TileRing's photo/work
+  // modals HOLD then clear on dismiss (lib/modal MODAL_DISMISS_HOLD/RAMP) so the
+  // deck stays masked while the card crosses it and resolves to sharp right as
+  // the card dissolves into its slot. homeRect is the resolved (peeked/deck) slot.
+  const CLOSE_DRIFT = 0.85; // fraction of the way home the card travels before it's gone
   const animate = isClosing
     ? {
-        x: homeRect.left,
-        y: homeRect.top,
-        width: homeRect.width,
-        height: homeRect.height,
-        rotateX: homeRestRotX,
-        rotateY: homeRestRotY,
-        rotateZ: normalizedTangent,
+        x: target.left + (homeRect.left - target.left) * CLOSE_DRIFT,
+        y: target.top + (homeRect.top - target.top) * CLOSE_DRIFT,
+        width: target.width + (homeRect.width - target.width) * CLOSE_DRIFT,
+        height: target.height + (homeRect.height - target.height) * CLOSE_DRIFT,
+        rotateX: homeRestRotX * CLOSE_DRIFT,
+        rotateY: homeRestRotY * CLOSE_DRIFT,
+        rotateZ: normalizedTangent * CLOSE_DRIFT,
+        opacity: 0,
       }
     : {
         x: target.left,
@@ -130,10 +155,16 @@ export function FlyingTile({
         rotateZ: 0,
       };
 
-  const transition = {
-    duration: 0.52,
-    ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
-  };
+  const transition = isClosing
+    ? {
+        duration: 0.46,
+        ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
+        // Hold full opacity while the frost still masks the deck (0.2s), then
+        // dissolve over the back third as the frost clears (0.26s) — matches
+        // lib/modal's MODAL_DISMISS_HOLD / MODAL_DISMISS_RAMP.
+        opacity: { delay: 0.2, duration: 0.26, ease: "easeInOut" as const },
+      }
+    : { duration: 0.52, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] };
 
   return (
     <motion.div
@@ -156,7 +187,7 @@ export function FlyingTile({
         if (phase === "closing") onClosingComplete();
       }}
     >
-      <FlyingFaces resolved={resolved} />
+      <FlyingFaces resolved={resolved} frosted={frosted} />
     </motion.div>
   );
 }
@@ -176,69 +207,105 @@ function resolveTile(tile: HomeTile): ResolvedTile | null {
   return { kind: "work", logo: workItem.logo, title: workItem.title };
 }
 
-// NOTE: no backdrop-blur on either face. The translucent bg-glass-strong
-// fill plus the covering image carry the glass read; a live blur on the
-// flying clone re-rasterizes every frame of the flight for no visible
-// payoff (same reasoning as the ring tiles; modal-panel blur is separate
-// and intentional).
-function FlyingFaces({ resolved }: { resolved: ResolvedTile }) {
+// Frosted-glass material, lifted from GlassTile so the flown card reads as the
+// SAME pane as the deck tile (no drift at the handoff): a soft diagonal sheen
+// plus, on work cards, an accent-tinted wash.
+const sheenStyle: React.CSSProperties = {
+  backgroundImage:
+    "linear-gradient(135deg, rgba(255,255,255,0.13) 0%, transparent 42%, rgba(255,255,255,0.04) 100%)",
+};
+const workTintStyle: React.CSSProperties = {
+  backgroundImage:
+    "linear-gradient(135deg, color-mix(in srgb, var(--color-accent) 18%, transparent) 0%, color-mix(in srgb, var(--color-glass) 50%, transparent) 48%, color-mix(in srgb, var(--color-accent) 40%, transparent) 100%)",
+};
+
+// One face of the flown card. It carries the deck tile's frosted-glass stack
+// (translucent image + diagonal sheen + rim highlight, plus an accent tint on
+// work cards), so every deck <-> flight handoff is frosted-to-frosted. `frosted`
+// crossfades: a photo clears to true color once parked in the modal; the image
+// goes 0.9 -> 1 opacity and the sheen/rim fade out. Work stays frosted always.
+//
+// NOTE: no backdrop-blur on either face. The translucent bg-glass-strong fill
+// plus the covering image carry the glass read; a live blur would re-rasterize
+// every frame of the flight for no payoff (modal-panel blur is separate).
+function FlyingFace({
+  resolved,
+  faceShadow,
+  frosted,
+  back = false,
+}: {
+  resolved: ResolvedTile;
+  faceShadow: string;
+  frosted: boolean;
+  back?: boolean;
+}) {
+  // Defrost (reveal) eases a touch slower so the photo "comes into focus"; the
+  // re-frost on the way out is a hair quicker.
+  const transition = { duration: frosted ? 0.22 : 0.34, ease: "easeOut" as const };
+  const mirror = back ? "scale-x-[-1]" : "";
+  return (
+    <div
+      className={`absolute inset-0 overflow-hidden rounded-[10px] bg-glass-strong ${faceShadow} ring-1 ring-black/5 [backface-visibility:hidden] dark:ring-white/10 ${
+        back ? "[transform:rotateY(180deg)]" : ""
+      }`}
+    >
+      {resolved.kind === "work" && (
+        <span aria-hidden="true" className="absolute inset-0" style={workTintStyle} />
+      )}
+      {/* Image/logo: muted to 0.9 like the deck tile when frosted, full color
+          when revealed. */}
+      <motion.div
+        className="absolute inset-0"
+        initial={false}
+        animate={{ opacity: frosted ? 0.9 : 1 }}
+        transition={transition}
+      >
+        {resolved.kind === "photo" ? (
+          <Image
+            src={resolved.src}
+            alt=""
+            fill
+            sizes="(max-width: 768px) 90vw, 500px"
+            className={`object-cover ${mirror}`}
+            priority={!back}
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center p-3">
+            <Image
+              src={resolved.logo}
+              alt=""
+              width={240}
+              height={240}
+              className={`h-auto w-[78%] object-contain ${mirror}`}
+              priority={!back}
+            />
+          </div>
+        )}
+      </motion.div>
+      {/* Frosted-glass overlays (sheen + rim), faded out as the photo reveals. */}
+      <motion.div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0"
+        initial={false}
+        animate={{ opacity: frosted ? 1 : 0 }}
+        transition={transition}
+      >
+        <span className="absolute inset-0" style={sheenStyle} />
+        <span className="absolute inset-0 rounded-[10px] shadow-[inset_0_1px_0_rgba(255,255,255,0.4),inset_0_0_0_1px_rgba(255,255,255,0.14)]" />
+      </motion.div>
+    </div>
+  );
+}
+
+function FlyingFaces({ resolved, frosted }: { resolved: ResolvedTile; frosted: boolean }) {
   const faceShadow =
     "shadow-[0_10px_28px_-16px_rgba(10,10,10,0.4),0_0_0_1px_rgba(255,255,255,0.18)_inset]";
   return (
-    <div
-      className="relative h-full w-full"
-      style={{ transformStyle: "preserve-3d" }}
-    >
+    <div className="relative h-full w-full" style={{ transformStyle: "preserve-3d" }}>
       {/* Front face */}
-      <div
-        className={`absolute inset-0 overflow-hidden rounded-[10px] bg-glass-strong ${faceShadow} ring-1 ring-black/5 [backface-visibility:hidden] dark:ring-white/10`}
-      >
-        {resolved.kind === "photo" ? (
-          <Image
-            src={resolved.src}
-            alt=""
-            fill
-            sizes="(max-width: 768px) 90vw, 500px"
-            className="object-cover"
-            priority
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center p-3">
-            <Image
-              src={resolved.logo}
-              alt=""
-              width={240}
-              height={240}
-              className="h-auto w-[78%] object-contain"
-              priority
-            />
-          </div>
-        )}
-      </div>
+      <FlyingFace resolved={resolved} faceShadow={faceShadow} frosted={frosted} />
       {/* Back face (mirrored), visible during keyboard-initiated flights */}
-      <div
-        className={`absolute inset-0 overflow-hidden rounded-[10px] bg-glass-strong ${faceShadow} ring-1 ring-black/5 [backface-visibility:hidden] [transform:rotateY(180deg)] dark:ring-white/10`}
-      >
-        {resolved.kind === "photo" ? (
-          <Image
-            src={resolved.src}
-            alt=""
-            fill
-            sizes="(max-width: 768px) 90vw, 500px"
-            className="scale-x-[-1] object-cover"
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center p-3">
-            <Image
-              src={resolved.logo}
-              alt=""
-              width={240}
-              height={240}
-              className="h-auto w-[78%] scale-x-[-1] object-contain"
-            />
-          </div>
-        )}
-      </div>
+      <FlyingFace resolved={resolved} faceShadow={faceShadow} frosted={frosted} back />
     </div>
   );
 }

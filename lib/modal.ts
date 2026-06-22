@@ -170,7 +170,16 @@ export function useFocusTrap(
 // Full backdrop blur radius (matches Tailwind backdrop-blur-xl).
 export const MODAL_BLUR_PX = 24;
 
-export function modalBackdropBlurVariants(delaySeconds: number) {
+// Photo/work modals pass `heldExit` so the frost HOLDS at full for a beat after
+// close, then clears. This keeps the deck masked while the flown card dissolves
+// back toward it (the reverse of the frost-in on open), so the return never
+// shows a translucent card clipping across the deck. FlyingTile's dissolve uses
+// matching hold/ramp timing. The definition modal (no flight) keeps the default
+// quick exit.
+export const MODAL_DISMISS_HOLD = 0.2; // frost stays full this long after close
+export const MODAL_DISMISS_RAMP = 0.26; // then clears over this long
+
+export function modalBackdropBlurVariants(delaySeconds: number, heldExit = false) {
   return {
     hidden: { backdropFilter: "blur(0px)", WebkitBackdropFilter: "blur(0px)" },
     visible: {
@@ -181,15 +190,22 @@ export function modalBackdropBlurVariants(delaySeconds: number) {
     exit: {
       backdropFilter: "blur(0px)",
       WebkitBackdropFilter: "blur(0px)",
-      transition: { duration: 0.2, ease: "easeIn" as const },
+      transition: heldExit
+        ? { delay: MODAL_DISMISS_HOLD, duration: MODAL_DISMISS_RAMP, ease: "easeInOut" as const }
+        : { duration: 0.2, ease: "easeIn" as const },
     },
   };
 }
 
-export function modalBackdropTintVariants(delaySeconds: number) {
+export function modalBackdropTintVariants(delaySeconds: number, heldExit = false) {
   return {
     hidden: { opacity: 0 },
     visible: { opacity: 1, transition: { delay: delaySeconds, duration: 0.28, ease: "easeOut" as const } },
-    exit: { opacity: 0, transition: { duration: 0.18, ease: "easeIn" as const } },
+    exit: {
+      opacity: 0,
+      transition: heldExit
+        ? { delay: MODAL_DISMISS_HOLD, duration: MODAL_DISMISS_RAMP, ease: "easeInOut" as const }
+        : { duration: 0.18, ease: "easeIn" as const },
+    },
   };
 }
