@@ -69,7 +69,7 @@ export function WorkModal({ item, onClose, renderMedia = false }: WorkModalProps
           initial="hidden"
           animate="visible"
           exit="exit"
-          variants={modalBackdropBlurVariants(blurDelay)}
+          variants={modalBackdropBlurVariants(blurDelay, true)}
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) onClose();
           }}
@@ -77,7 +77,7 @@ export function WorkModal({ item, onClose, renderMedia = false }: WorkModalProps
         >
           <motion.div
             aria-hidden="true"
-            variants={modalBackdropTintVariants(blurDelay)}
+            variants={modalBackdropTintVariants(blurDelay, true)}
             className="pointer-events-none absolute inset-0 bg-background/70"
           />
           <motion.div

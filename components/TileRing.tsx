@@ -229,6 +229,7 @@ export function TileRing({ children }: Props) {
     source: FlightSource;   // live transform captured at click time
     target: FlightTarget;   // modal slot rect
     phase: FlightPhase;
+    reveal: boolean;        // photo cleared its frost to true color in the modal
   } | null>(null);
 
   // Gate the scroll-collapse setup until just after the hero has faded in.
@@ -748,6 +749,9 @@ export function TileRing({ children }: Props) {
       // flight has a real destination.
       target: home,
       phase: "out",
+      // Starts frosted (matches the deck tile it left); a photo reveals to true
+      // color once it lands in the slot (handleFlyOutComplete).
+      reveal: false,
     });
 
     if (payload.kind === "photo") setSelectedPhoto(payload.photo);
@@ -870,18 +874,49 @@ export function TileRing({ children }: Props) {
     };
   };
 
-  // Fly-out animation completed with the tile sitting in the modal's slot.
-  // Nothing to do: the ring stays live and static behind the translucent
-  // frosted modal (its parallax/lean listeners are already paused during
-  // flight), so the blurred ring reads through the glass as intended.
+  // Fly-out animation completed with the tile sitting in the modal's slot. A
+  // photo now clears its frost to true color (work stays tinted glass). The ring
+  // stays live and static behind the translucent modal the whole time.
   const handleFlyOutComplete = () => {
-    // intentionally empty
+    setFlight((prev) =>
+      prev && prev.tile.kind === "photo" ? { ...prev, reveal: true } : prev,
+    );
   };
 
-  // Modal close: exit the modal immediately (its own exit variant runs), and
-  // reverse the flown tile back to its ring seat. The ring tile is hidden
-  // the whole time flight is non-null; when flight clears (via
-  // handleClosingComplete), the ring tile pops back.
+  // Start the closing flight back to the deck/ring. On the desktop deck, obey
+  // the LIVE hover/peek rules instead of the position captured at click time:
+  // re-pick the card under the cursor right now (if it is still the flown card
+  // it stays peeked, otherwise it settles into the deck), then recompute the
+  // home rect from the resulting collapse so the closing tile lands exactly
+  // where the ring tile reappears, with no hover-then-snap. The peek is frozen
+  // (flightActive) until the flight clears, so this resolved state holds.
+  const beginClosing = (tileIndex: number) => {
+    if (deckHoverableRef.current) {
+      setPeeked(pickPeek(pointerRef.current.x, pointerRef.current.y, peekRef.current));
+      const c = collapseRef.current[tileIndex] ?? IDENTITY_COLLAPSE;
+      const homeRect = computeHomeRect(tileIndex);
+      setFlight((prev) =>
+        prev
+          ? {
+              ...prev,
+              homeRect,
+              homeTangentDeg: seats[tileIndex].rotate + c.rotZ,
+              homeRestRotX: tileBaselineRotX(tileIndex) + c.rotX,
+              homeRestRotY: tileBaselineRotY(tileIndex) + c.rotY,
+              phase: "closing",
+            }
+          : prev,
+      );
+      return;
+    }
+    setFlight((prev) => (prev ? { ...prev, phase: "closing" } : prev));
+  };
+
+  // Modal close: exit the modal (its own exit variant runs) and DISSOLVE the
+  // flown card in place rather than flying it back across the deck (that clipped
+  // through the translucent cards). beginClosing resolves where the deck tile
+  // should rest from the live cursor and reveals it at its slot; the flown clone
+  // then fades + eases a touch toward that slot and is gone.
   const handleModalClose = () => {
     setSelectedPhoto(null);
     setSelectedWork(null);
@@ -894,47 +929,15 @@ export function TileRing({ children }: Props) {
       return;
     }
     // The parallax springs have been targeting 0 since the flight started;
-    // jump clears any sub-pixel residue so the closing flight lands on a
-    // perfectly flat ring.
+    // jump clears any sub-pixel residue so the revealed deck tile sits flat.
     parallaxX.jump(0);
     parallaxY.jump(0);
-
-    // On the desktop deck, make the close obey the LIVE hover/peek rules
-    // instead of returning to the position captured at click time. Re-pick the
-    // card under the cursor right now: if it is still the flown card, that card
-    // stays peeked; otherwise it settles back into the deck (and whatever card
-    // the cursor is now over peeks). Then recompute the home rect from the
-    // resulting collapse so the closing tile lands exactly where the ring tile
-    // will reappear, with no hover-then-snap. The peek is frozen (flightActive)
-    // until the flight clears, so this resolved state holds through the close.
-    if (deckHoverableRef.current) {
-      const i = flight.tileIndex;
-      setPeeked(pickPeek(pointerRef.current.x, pointerRef.current.y, peekRef.current));
-      const c = collapseRef.current[i] ?? IDENTITY_COLLAPSE;
-      const homeRect = computeHomeRect(i);
-      setFlight((prev) =>
-        prev
-          ? {
-              ...prev,
-              homeRect,
-              homeTangentDeg: seats[i].rotate + c.rotZ,
-              homeRestRotX: tileBaselineRotX(i) + c.rotX,
-              homeRestRotY: tileBaselineRotY(i) + c.rotY,
-              phase: "closing",
-            }
-          : prev,
-      );
-      return;
-    }
-
-    setFlight((prev) => (prev ? { ...prev, phase: "closing" } : prev));
+    beginClosing(flight.tileIndex);
   };
 
-  // Closing flight has landed at home. Because parallax/lean/flip have
-  // already been eased to rest during the modal-open period, the flying
-  // tile's resting geometry now matches the ring tile's pixel-perfectly.
-  // Clear the flight state, let the ring tile take over with a seamless
-  // DOM handoff, and hand focus back to the originating tile button.
+  // Dissolve finished: the flown clone has faded out and the deck tile is
+  // already showing in its slot. Clear the flight state (unmounts the clone) and
+  // hand focus back to the originating tile button.
   const handleClosingComplete = () => {
     setFlight(null);
     restoreSourceFocus();
@@ -1582,10 +1585,11 @@ export function TileRing({ children }: Props) {
     return () => window.removeEventListener("pointermove", onMove);
   }, [isMobile, setPeeked, pickPeek]);
 
-  // While any flight is active, the flown tile's key identifies the ring
-  // tile that should stay hidden. When flight clears, the ring tile takes
-  // over at the flying tile's exact final geometry; no fade needed.
-  const hiddenRingKey = flight ? flight.tile.key : null;
+  // Hide the source ring tile only while the card flies OUT and sits in the
+  // modal (phase "out"); the flown clone represents it there. On close (phase
+  // "closing") the card DISSOLVES in place, so the deck tile is revealed at its
+  // slot right away and the fading clone settles over it. No hard DOM handoff.
+  const hiddenRingKey = flight && flight.phase === "out" ? flight.tile.key : null;
 
   // Flip only enabled in the final ready state AND when no flight is in
   // progress; during flight, cursor interactions on ring tiles are paused.
@@ -1724,6 +1728,7 @@ export function TileRing({ children }: Props) {
           source={flight.source}
           target={flight.target}
           phase={flight.phase}
+          revealed={flight.reveal}
           onFlyOutComplete={handleFlyOutComplete}
           onClosingComplete={handleClosingComplete}
         />
