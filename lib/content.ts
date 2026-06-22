@@ -82,7 +82,7 @@ export const siteContent = {
     label: "Work",
     heading: "Things I've built and shipped.",
     lede: "Internships, projects, and communities I've poured real time into. More case studies rolling in over the next few weeks.",
-    cta: "See more →",
+    cta: "See more",
     seeAll: "See everything →",
     placeholderBody: "Case study in progress. Ping me on LinkedIn if you want to hear about it sooner.",
     placeholderCta: "Ping me on LinkedIn",

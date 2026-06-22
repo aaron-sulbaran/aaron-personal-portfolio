@@ -130,16 +130,37 @@ export function FlyingTile({
         rotateZ: 0,
       };
 
-  const transition = {
-    duration: 0.52,
-    ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
-  };
+  const EASE = [0.22, 1, 0.36, 1] as [number, number, number, number];
+  // Position and size glide over the whole flight. On the way back the tilt is
+  // HELD flat for most of the trip, then eases into the angled deck orientation
+  // only as the card settles: it shrinks toward its slot facing the viewer and
+  // resolves the angle right at the end, instead of an oversized angled card
+  // swinging across its neighbors and snapping into place. The out flight keeps
+  // the single curve (it un-tilts early while still small near the deck).
+  const transition = isClosing
+    ? {
+        duration: 0.52,
+        ease: EASE,
+        rotateX: { duration: 0.26, delay: 0.26, ease: "easeInOut" as const },
+        rotateY: { duration: 0.26, delay: 0.26, ease: "easeInOut" as const },
+        rotateZ: { duration: 0.26, delay: 0.26, ease: "easeInOut" as const },
+      }
+    : {
+        duration: 0.52,
+        ease: EASE,
+      };
 
   return (
     <motion.div
       aria-hidden="true"
       className="pointer-events-none fixed left-0 top-0 z-[55]"
-      style={{ perspective: "1400px" }}
+      // transformPerspective foreshortens THIS element's own rotateX/Y/Z (the
+      // `perspective` property only affects children), so the flown card reads
+      // as a real angled plane that matches the deck tile at handoff instead of
+      // a flat sheet that pops into the angle when the ring tile takes over. The
+      // value matches the ring stage's RING_PERSPECTIVE_PX (1400). The child
+      // `perspective` stays for the mirrored back face used on keyboard flights.
+      style={{ transformPerspective: 1400, perspective: "1400px" }}
       initial={{
         x: source.rect.left,
         y: source.rect.top,
