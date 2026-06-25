@@ -5,6 +5,7 @@ import { createContext, useCallback, useContext, useEffect, useLayoutEffect, use
 import { siteContent, type HomeTile as HomeTileEntry, type Photo, type WorkItem } from "@/lib/content";
 import { useBodyScrollLock } from "@/lib/modal";
 import { readScrollY, saveScrollY } from "@/lib/scroll";
+import { EASE } from "@/lib/motion";
 import { gsap, ScrollTrigger, useGSAP } from "@/lib/gsap";
 import { DeckIndex } from "./DeckIndex";
 import { GlassTile, type TileActivatePayload } from "./GlassTile";
@@ -1674,8 +1675,6 @@ type TargetResult = {
   };
   transition: { duration: number; ease: Easing; delay?: number };
 };
-
-const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
 
 // Per-tile translateZ stagger (px) while the tiles are piled at center
 // (firstTile/stacking/shuffling). Without it the stacked glass slabs share a

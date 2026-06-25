@@ -1,5 +1,7 @@
 import { ArrowUpRight } from "lucide-react";
 import { siteContent } from "@/lib/content";
+import { revealIndex } from "@/lib/motion";
+import { Reveal } from "./Reveal";
 
 export function Connect() {
   const { label, heading, lede, links } = siteContent.connect;
@@ -10,20 +12,34 @@ export function Connect() {
       className="relative w-full border-t border-border/70 px-6 py-24 md:px-10 md:py-40 scroll-mt-24"
     >
       <div className="mx-auto grid max-w-6xl gap-12 md:grid-cols-12 md:gap-16">
-        <div className="md:col-span-5">
-          <div className="flex items-center gap-3 text-[11px] font-medium uppercase tracking-caps text-muted">
+        <Reveal className="md:col-span-5">
+          <div
+            className="reveal-item flex items-center gap-3 text-[11px] font-medium uppercase tracking-caps text-muted"
+            style={revealIndex(0)}
+          >
             <span className="inline-block h-px w-8 bg-border" aria-hidden="true" />
             <span>{label}</span>
           </div>
-          <h2 className="mt-6 font-serif text-section italic">{heading}</h2>
-          <p className="mt-5 max-w-sm text-base leading-relaxed text-muted md:text-lg">
+          <div className="mt-6">
+            <h2 className="reveal-mask font-serif text-section italic" style={revealIndex(1)}>
+              <span className="block">{heading}</span>
+            </h2>
+          </div>
+          <p
+            className="reveal-item mt-5 max-w-sm text-base leading-relaxed text-muted md:text-lg"
+            style={revealIndex(2)}
+          >
             {lede}
           </p>
-        </div>
+        </Reveal>
 
-        <ul className="md:col-span-7">
-          {links.map((link) => (
-            <li key={link.key} className="border-b border-border/70 last:border-b-0">
+        <Reveal as="ul" className="md:col-span-7">
+          {links.map((link, i) => (
+            <li
+              key={link.key}
+              className="reveal-item border-b border-border/70 last:border-b-0"
+              style={revealIndex(i)}
+            >
               <a
                 href={link.href}
                 target={link.external ? "_blank" : undefined}
@@ -43,7 +59,7 @@ export function Connect() {
               </a>
             </li>
           ))}
-        </ul>
+        </Reveal>
       </div>
     </section>
   );
