@@ -130,6 +130,51 @@ export const siteContent = {
     tagline: "This site grows with me. Last updated June 2026",
     copyright: "© 2026 Aaron Sulbaran",
   },
+  soundtrack: {
+    invite: "Play the soundtrack",
+    inviteArtist: "A curated playlist for this site",
+    prompt: "Click to open player",
+    promptQuestion:
+      "I curated a playlist for this site. Mind if I put it on while you look around?",
+    promptYes: "Please do",
+    promptNo: "Maybe later",
+    statusPlaying: "Now playing",
+    statusPaused: "Paused",
+    statusReady: "Soundtrack ready",
+    openInSpotify: "Open in Spotify",
+    menuToggleOn: "Soundtrack on",
+    menuToggleOff: "Soundtrack off",
+    menuAriaLabelOn: "Turn soundtrack on",
+    menuAriaLabelOff: "Turn soundtrack off",
+    ariaOpen: "Open soundtrack player",
+    ariaCollapse: "Collapse player",
+    ariaSeek: "Seek track position",
+    ariaPrevious: "Previous track",
+    ariaPlay: "Play",
+    ariaPause: "Pause",
+    ariaNext: "Next track",
+    ariaVolume: "Volume",
+    tracks: [
+      {
+        title: "Sunset Lover",
+        artist: "Petit Biscuit",
+        spotifyUrl: "https://open.spotify.com/track/3WRQUvzRvBDr4ApMEDSkou",
+        cover: null,
+      },
+      {
+        title: "Electric Feel",
+        artist: "MGMT",
+        spotifyUrl: "https://open.spotify.com/track/3FtYVS7F667R3gRQXmOEFM",
+        cover: null,
+      },
+      {
+        title: "Intro",
+        artist: "The xx",
+        spotifyUrl: "https://open.spotify.com/track/5vjweffDHtJANseR4N4Nis",
+        cover: null,
+      },
+    ],
+  },
   // Work items. `bodySections: []` means the detail page renders a quiet
   // "case study in progress" block. Populate with { kind: 'paragraph', text }
   // entries (more kinds added later). Keep `slug` URL-safe and unique.
@@ -330,6 +375,7 @@ export const siteContent = {
 export type Photo = (typeof siteContent.photos)[number];
 export type WorkItem = (typeof siteContent.workItems)[number];
 export type MenuItem = (typeof siteContent.menu.items)[number];
+export type Track = (typeof siteContent.soundtrack.tracks)[number];
 export type HomeTile = (typeof siteContent.homeTiles)[number];
 export type Definition =
   (typeof siteContent.definitions)[keyof typeof siteContent.definitions];
