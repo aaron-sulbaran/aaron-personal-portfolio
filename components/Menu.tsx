@@ -1,13 +1,16 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { Moon, Sun, X } from "lucide-react";
+import { Moon, Sun, X, Music } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useBodyScrollLock, useEscapeKey, useFocusTrap } from "@/lib/modal";
 import { siteContent, type MenuItem } from "@/lib/content";
 import { scrollToTarget } from "@/lib/scroll";
 import { THEME_STORAGE_KEY, syncThemeColorMeta, type Theme } from "@/lib/theme";
+import { setSoundtrackState, useSoundtrack } from "@/lib/soundtrack";
+
+const MOBILE_MAX = 767;
 
 // Top-right menu. Collapsed state is just a two-bar hamburger icon. Expanded
 // state covers the viewport with a frosted backdrop, a big-serif item list,
@@ -16,6 +19,8 @@ import { THEME_STORAGE_KEY, syncThemeColorMeta, type Theme } from "@/lib/theme";
 export function Menu() {
   const [open, setOpen] = useState(false);
   const [theme, setTheme] = useState<Theme | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+  const music = useSoundtrack();
   const pathname = usePathname();
   const dialogRef = useRef<HTMLDivElement | null>(null);
   const prefersReducedMotion = useReducedMotion();
@@ -28,7 +33,16 @@ export function Menu() {
     themeAriaLabelToDark,
     themeAriaLabelToLight,
   } = siteContent.menu;
+  const soundtrack = siteContent.soundtrack;
   const navItems: readonly MenuItem[] = items;
+
+  useEffect(() => {
+    const mq = window.matchMedia(`(max-width: ${MOBILE_MAX}px)`);
+    const sync = () => setIsMobile(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
 
   useEffect(() => {
     const current = (document.documentElement.getAttribute("data-theme") as Theme) ?? "light";
@@ -78,6 +92,15 @@ export function Menu() {
 
   const themeAriaLabel = theme === "dark" ? themeAriaLabelToLight : themeAriaLabelToDark;
   const themeToggleLabel = theme === "dark" ? themeToggleToLight : themeToggleToDark;
+
+  const musicOn = music === "on" || music === "paused";
+  const musicToggleLabel = musicOn ? soundtrack.menuToggleOff : soundtrack.menuToggleOn;
+  const musicAriaLabel = musicOn ? soundtrack.menuAriaLabelOff : soundtrack.menuAriaLabelOn;
+
+  const toggleMusic = useCallback(() => {
+    if (music === "off" || music === "before") setSoundtrackState("on");
+    else setSoundtrackState("off");
+  }, [music]);
 
   const overlayVariants = {
     hidden: { opacity: 0 },
@@ -180,6 +203,20 @@ export function Menu() {
               </ul>
 
               <div className="mt-8 flex w-full max-w-md items-center gap-6 border-t border-border/70 pt-6">
+                {!isMobile && (
+                  <button
+                    type="button"
+                    onClick={toggleMusic}
+                    aria-label={musicAriaLabel}
+                    aria-pressed={musicOn}
+                    className="group inline-flex items-center gap-3 text-[11px] font-medium uppercase tracking-caps text-muted transition-colors duration-200 hover:text-accent"
+                  >
+                    <span className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border text-foreground transition-colors duration-200 group-hover:text-accent">
+                      <Music aria-hidden="true" className="h-[15px] w-[15px]" />
+                    </span>
+                    <span>{musicToggleLabel}</span>
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={toggleTheme}
