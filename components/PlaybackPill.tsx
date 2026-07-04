@@ -14,10 +14,13 @@ import {
 } from "lucide-react";
 import { Portal } from "./Portal";
 import { siteContent } from "@/lib/content";
+import { getSoundtrackPlayer } from "@/lib/audio";
 import {
   useSoundtrack,
   setSoundtrackState,
   initSoundtrackFromStorage,
+  startSoundtrack,
+  pauseSoundtrack,
   type SoundtrackState,
 } from "@/lib/soundtrack";
 
@@ -39,7 +42,6 @@ const MOBILE_MAX = 767;
 const PROMPT_DELAY = 500;
 const GRACE_MS = 2500;
 const SUPPRESS_MS = 180;
-const DURATION = 189; // placeholder track length (3:09) until Phase 4 wires real
 
 const glass: CSSProperties = {
   background: "var(--color-glass-strong)",
@@ -72,6 +74,19 @@ function PillInner() {
   const [trackIndex, setTrackIndex] = useState(0);
   const [volume, setVolume] = useState(70);
   const [position, setPosition] = useState(0);
+
+  const player = getSoundtrackPlayer();
+  const [duration, setDuration] = useState(0);
+
+  useEffect(() => {
+    const sync = () => {
+      const snap = player.getSnapshot();
+      setTrackIndex(snap.trackIndex);
+      setDuration(snap.duration);
+    };
+    sync();
+    return player.subscribe(sync);
+  }, [player]);
 
   const promptTimer = useRef<ReturnType<typeof setTimeout>>();
   const graceTimer = useRef<ReturnType<typeof setTimeout>>();
@@ -112,21 +127,12 @@ function PillInner() {
     }
   }, [music]);
 
-  // A fake playhead so the scrubber feels alive on the stub; Phase 4 replaces it
-  // with the real Spotify position.
+  // Poll the real playhead while playing; the player advances tracks on ended.
   useEffect(() => {
     if (music !== "on") return;
-    const id = setInterval(() => {
-      setPosition((p) => {
-        if (p + 1 >= DURATION) {
-          setTrackIndex((i) => (i + 1) % c.tracks.length);
-          return 0;
-        }
-        return p + 1;
-      });
-    }, 1000);
+    const id = setInterval(() => setPosition(player.getPosition()), 500);
     return () => clearInterval(id);
-  }, [music, c.tracks.length]);
+  }, [music, player]);
 
   useEffect(
     () => () => {
@@ -173,7 +179,7 @@ function PillInner() {
     clearTimeout(promptTimer.current);
     clearTimeout(graceTimer.current);
     recentExpanded.current = false;
-    if (music === "before") setSoundtrackState("on"); // the invite opts in
+    if (music === "before") startSoundtrack(); // the invite opts in
     setPill("expanded");
     setPromptVisible(false);
   };
@@ -195,9 +201,9 @@ function PillInner() {
     setPill("collapsed");
     setPromptVisible(false);
   };
-  const onPlayPause = () => setSoundtrackState(playing ? "paused" : "on");
+  const onPlayPause = () => (playing ? pauseSoundtrack() : startSoundtrack());
   const changeTrack = (dir: number) => {
-    setTrackIndex((i) => (i + dir + c.tracks.length) % c.tracks.length);
+    player.selectTrack(trackIndex + dir, music === "on");
     setPosition(0);
   };
 
@@ -390,14 +396,18 @@ function PillInner() {
             <input
               type="range"
               min={0}
-              max={DURATION}
+              max={Math.max(1, Math.round(duration))}
               value={position}
-              onChange={(e) => setPosition(Number(e.target.value))}
+              onChange={(e) => {
+                const v = Number(e.target.value);
+                player.seek(v);
+                setPosition(v);
+              }}
               aria-label={c.ariaSeek}
               style={{ flex: "1 1 auto", minWidth: 0, accentColor: "var(--color-accent)", cursor: "pointer" }}
             />
             <span style={{ fontSize: 10, fontVariantNumeric: "tabular-nums", color: "var(--color-muted)" }}>
-              {fmt(DURATION - position)}
+              {fmt(Math.max(0, duration - position))}
             </span>
           </div>
 
@@ -447,7 +457,11 @@ function PillInner() {
                 min={0}
                 max={100}
                 value={volume}
-                onChange={(e) => setVolume(Number(e.target.value))}
+                onChange={(e) => {
+                  const v = Number(e.target.value);
+                  setVolume(v);
+                  player.setVolume(v / 100);
+                }}
                 aria-label={c.ariaVolume}
                 style={{ flex: "1 1 auto", minWidth: 0, accentColor: "var(--color-accent)", cursor: "pointer" }}
               />
@@ -475,21 +489,23 @@ function PillInner() {
             >
               {footLabel}
             </span>
-            <a
-              href={track.spotifyUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-                fontSize: 11,
-                color: "var(--color-accent)",
-              }}
-            >
-              {c.openInSpotify}
-              <ExternalLink aria-hidden="true" size={12} />
-            </a>
+            {track.spotifyUrl && (
+              <a
+                href={track.spotifyUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  fontSize: 11,
+                  color: "var(--color-accent)",
+                }}
+              >
+                {c.openInSpotify}
+                <ExternalLink aria-hidden="true" size={12} />
+              </a>
+            )}
           </div>
         </div>
 
@@ -508,7 +524,7 @@ function PillInner() {
           <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
             <button
               type="button"
-              onClick={() => setSoundtrackState("on")}
+              onClick={startSoundtrack}
               style={{
                 flex: "1 1 0",
                 padding: "9px 14px",

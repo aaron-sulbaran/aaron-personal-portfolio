@@ -12,7 +12,7 @@
   --color-glass: rgba(255, 255, 255, 0.6);
   --color-glass-strong: rgba(255, 255, 255, 0.78);
   --scrollbar-comp: 0px;
-  /* Shared deceleration curve, mirrors EASE / EASE_CSS in lib/motion.ts. */
+  /* Shared deceleration curve, mirrors EASE in lib/motion.ts. */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -158,4 +158,21 @@ body {
   50% {
     transform: scaleY(1);
   }
+}
+
+/* Hero ScrollCue bob (components/HomeHero.tsx). Runs on the compositor
+   instead of the main thread; the global reduced-motion rule above already
+   collapses animation-duration/iteration-count, so this is disabled for
+   free under prefers-reduced-motion. */
+@keyframes scrollcue-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(4px);
+  }
+}
+.scrollcue-bob {
+  animation: scrollcue-bob 1.8s ease-in-out infinite;
 }

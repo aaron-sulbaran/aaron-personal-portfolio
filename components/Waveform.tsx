@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { useReducedMotion } from "framer-motion";
 import { ScrollTrigger } from "@/lib/gsap";
 import { Portal } from "./Portal";
-import { createStubAudioSource } from "@/lib/audio";
+import { getSoundtrackPlayer } from "@/lib/audio";
 import { getSoundtrackState, type SoundtrackState } from "@/lib/soundtrack";
 
 // Reactive twin-line particle waveform behind the back half, replacing the old
@@ -21,10 +21,10 @@ import { getSoundtrackState, type SoundtrackState } from "@/lib/soundtrack";
 // The wave is always a blend of three regimes (spec section 3.3): idle (the big
 // ambient drift, the only state Phase 1 shows), paused (a thin almost-flat
 // waiting line), and reactive (the audio-driven wave). The reactive energy comes
-// from an AudioFrame (lib/audio.ts), a stub synthesized signal for now and real
-// Spotify analysis in Phase 4; the renderer never changes when the source does.
-// The musicState seam below is pinned to "idle" until Phase 2 wires the
-// soundtrack state and flips the source's playback.
+// from an AudioFrame (lib/audio.ts getSoundtrackPlayer), a lazy AnalyserNode
+// over the self-hosted tracks; the renderer never changes when the source does.
+// regimeOf below maps the live soundtrack state (lib/soundtrack.ts) to the
+// three regimes, so the wave tracks real playback, not a placeholder.
 //
 // Mobile is deferred (spec section 9): the effect bails on narrow viewports so
 // no waveform runs there in v1.
@@ -78,7 +78,7 @@ function WaveCanvas() {
     if (!ctx) return;
 
     const fine = window.matchMedia("(pointer: fine)").matches;
-    const source = createStubAudioSource();
+    const source = getSoundtrackPlayer();
 
     // Deferred on mobile in v1 (spec section 9): the rAF / draw is gated off below
     // narrow viewports so the canvas stays inert there. Recomputed in build() on
@@ -199,7 +199,6 @@ function WaveCanvas() {
       pausedLevel += (pausedT - pausedLevel) * (pausedT ? 0.14 : 0.06);
       reactLevel += (reactT - reactLevel) * (reactT ? 0.05 : 0.11);
 
-      source.setPlaying(soundtrack === "on");
       const frame = source.sample(t, columns);
 
       // draw() receives the rAF timestamp in MILLISECONDS; every wave sine below
@@ -297,30 +296,35 @@ function WaveCanvas() {
     // tracks gradual scrolling; the leave/enter handlers keep it correct on jumps
     // (anchor clicks, the spine's section jumps) that skip the range in one step.
     const work = document.getElementById("work");
-    const st = work
-      ? ScrollTrigger.create({
-          trigger: work,
-          // Reveal only once the pinned ring/deck has cleared: #work reaching the
-          // top of the viewport is the moment the hero pin fully releases, so the
-          // wave blooms in as the last of the deck slides away, not during it.
-          start: "top 12%",
-          end: "top top",
-          invalidateOnRefresh: true,
-          onUpdate: (self) => {
-            alphaTarget = self.progress;
-            if (alphaTarget > 0.003) ensureRunning();
-          },
-          onEnter: ensureRunning,
-          onEnterBack: ensureRunning,
-          onLeave: () => {
-            alphaTarget = 1;
-            ensureRunning();
-          },
-          onLeaveBack: () => {
-            alphaTarget = 0;
-          },
-        })
-      : null;
+    const createTrigger = () =>
+      ScrollTrigger.create({
+        trigger: work as Element,
+        // Reveal only once the pinned ring/deck has cleared: #work reaching the
+        // top of the viewport is the moment the hero pin fully releases, so the
+        // wave blooms in as the last of the deck slides away, not during it.
+        start: "top 12%",
+        end: "top top",
+        invalidateOnRefresh: true,
+        onUpdate: (self) => {
+          alphaTarget = self.progress;
+          if (alphaTarget > 0.003) ensureRunning();
+        },
+        onEnter: ensureRunning,
+        onEnterBack: ensureRunning,
+        onLeave: () => {
+          alphaTarget = 1;
+          ensureRunning();
+        },
+        onLeaveBack: () => {
+          alphaTarget = 0;
+        },
+      });
+
+    // The wave never draws below MOBILE_MAX, so skip the trigger there; the
+    // resize handler below creates it if the viewport later crosses up to
+    // desktop width.
+    let st: ScrollTrigger | null =
+      work && window.innerWidth > MOBILE_MAX ? createTrigger() : null;
 
     if (work && work.getBoundingClientRect().top < window.innerHeight * 0.12) {
       alphaTarget = 1;
@@ -346,8 +350,11 @@ function WaveCanvas() {
           raf = 0;
         }
         ctx.clearRect(0, 0, w, h);
-      } else if (alphaTarget > 0.003) {
-        ensureRunning();
+      } else {
+        // Crossed from mobile to desktop with no trigger yet (it was skipped
+        // at setup): create it now so the scroll ramp comes alive.
+        if (work && !st) st = createTrigger();
+        if (alphaTarget > 0.003) ensureRunning();
       }
     };
     const onVisibility = () => {

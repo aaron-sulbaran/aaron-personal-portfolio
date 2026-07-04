@@ -1,3 +1,11 @@
+export interface SoundtrackTrack {
+  title: string;
+  artist: string;
+  src: string;
+  spotifyUrl: string | null;
+  cover: string | null;
+}
+
 export const siteContent = {
   meta: {
     title: "Aaron Sulbaran",
@@ -10,8 +18,37 @@ export const siteContent = {
     tagline:
       "Building products (and community) with people, not just for them.",
     scrollHint: "Scroll to explore",
-    deckTitle: "Explore my experiences",
-    deckSubtitle: "Hover a card to preview it, then click to open.",
+    // Left text panel copy for the settled ring-arc carousel (ArcIndex).
+    // panelHelper is the small "how to drive this" line under the divider;
+    // the kind/status labels name the focused card's type and explored
+    // state (see writeActiveCard in TileRing).
+    panelHelper:
+      "Click a card to open it, explored cards frost over. Scroll over the cards to browse, scroll here to keep moving down the page.",
+    panelKindPhoto: "Photo",
+    panelKindCaseStudy: "Case study",
+    panelExplored: "Explored",
+    panelUnexplored: "Unexplored",
+    // Reduced-motion static affordances (plan §3): visible prev/next buttons
+    // near the settled arc, since there is no wheel-driven rotation to feel
+    // for in that mode. Plain control labels, not first-person copy.
+    panelPrev: "Previous card",
+    panelNext: "Next card",
+  },
+  // Soundtrack invitation beat (components/ListenInvite.tsx): the in-flow
+  // typographic moment between the carousel and Work where the waveform
+  // introduces itself. Draft copy in my voice, to be tightened by Aaron.
+  listen: {
+    ariaLabel: "Soundtrack invitation",
+    kicker: "A note from me",
+    line: "This place has a soundtrack.",
+    body:
+      "I put together a short playlist that plays quietly while you look around. Your call entirely.",
+    accept: "Play it",
+    decline: "maybe later",
+    acceptedNote:
+      "It's on. The little player at the bottom of your screen is yours whenever you want it.",
+    declinedNote:
+      "No problem. If you change your mind, the soundtrack toggle lives in the menu up top.",
   },
   // Hero words that open a "My definition of <term>" modal. Keys must match the
   // exact word as it appears in home.tagline so HomeHero can wire that word to
@@ -35,7 +72,6 @@ export const siteContent = {
     label: "About",
     heading: "About.",
     lede: "The longer version of who I am, what I'm working on, and how to reach me.",
-    metaDescription: "Who I am, what I'm working on, and how to reach me.",
   },
   menu: {
     ariaLabelOpen: "Open menu",
@@ -83,13 +119,11 @@ export const siteContent = {
     heading: "Things I've built and shipped.",
     lede: "Internships, projects, and communities I've poured real time into. More case studies rolling in over the next few weeks.",
     cta: "See more",
-    seeAll: "See everything →",
     placeholderBody: "Case study in progress. Ping me on LinkedIn if you want to hear about it sooner.",
     placeholderCta: "Ping me on LinkedIn",
     indexHeading: "Work.",
     indexLede: "Every project, internship, and community I'm proud of. Click in for the story.",
     backLabel: "← Work",
-    metaDescription: "Projects, internships, and communities I've poured real time into.",
   },
   connect: {
     label: "Connect",
@@ -156,24 +190,27 @@ export const siteContent = {
     ariaVolume: "Volume",
     tracks: [
       {
-        title: "Sunset Lover",
-        artist: "Petit Biscuit",
-        spotifyUrl: "https://open.spotify.com/track/3WRQUvzRvBDr4ApMEDSkou",
+        title: "Small Steps",
+        artist: "Lee Rosevere",
+        src: "/audio/track-01.mp3",
+        spotifyUrl: null,
         cover: null,
       },
       {
-        title: "Electric Feel",
-        artist: "MGMT",
-        spotifyUrl: "https://open.spotify.com/track/3FtYVS7F667R3gRQXmOEFM",
+        title: "Waves of Sleep",
+        artist: "Lee Rosevere",
+        src: "/audio/track-02.mp3",
+        spotifyUrl: null,
         cover: null,
       },
       {
-        title: "Intro",
-        artist: "The xx",
-        spotifyUrl: "https://open.spotify.com/track/5vjweffDHtJANseR4N4Nis",
+        title: "Slow Lights",
+        artist: "Lee Rosevere",
+        src: "/audio/track-03.mp3",
+        spotifyUrl: null,
         cover: null,
       },
-    ],
+    ] satisfies SoundtrackTrack[],
   },
   // Work items. `bodySections: []` means the detail page renders a quiet
   // "case study in progress" block. Populate with { kind: 'paragraph', text }
@@ -181,7 +218,6 @@ export const siteContent = {
   workItems: [
     {
       slug: "capital-one-pm",
-      type: "experience" as const,
       title: "Capital One",
       role: "Product Manager Intern",
       year: "2025",
@@ -190,11 +226,9 @@ export const siteContent = {
       summary: "Product manager intern at Capital One, working on an internal tool used by analysts across the business.",
       bodySections: [],
       links: [],
-      featuredOnHome: true,
     },
     {
       slug: "capital-one-ba",
-      type: "experience" as const,
       title: "Capital One",
       role: "Business Analyst Intern",
       year: "2024",
@@ -203,11 +237,9 @@ export const siteContent = {
       summary: "Business analyst intern on a customer-facing product team. Shipped analysis that fed directly into roadmap decisions.",
       bodySections: [],
       links: [],
-      featuredOnHome: true,
     },
     {
       slug: "claude-ambassador",
-      type: "experience" as const,
       title: "Anthropic",
       role: "Claude Ambassador at UT Austin",
       year: "2025",
@@ -216,11 +248,9 @@ export const siteContent = {
       summary: "Claude Ambassador at UT Austin. Running workshops, hackathons, and study groups focused on AI literacy for students.",
       bodySections: [],
       links: [],
-      featuredOnHome: true,
     },
     {
       slug: "ieee-president",
-      type: "experience" as const,
       title: "IEEE UT Austin",
       role: "President",
       year: "2025",
@@ -229,11 +259,9 @@ export const siteContent = {
       summary: "President of IEEE at UT Austin. Led event planning, sponsor relationships, and a growing exec team across ECE.",
       bodySections: [],
       links: [],
-      featuredOnHome: true,
     },
     {
       slug: "aaronsulbaran-site",
-      type: "project" as const,
       title: "aaronsulbaran.com",
       role: "Built in public",
       year: "2026",
@@ -244,11 +272,9 @@ export const siteContent = {
       links: [
         { label: "GitHub", href: "https://github.com/aaron-sulbaran" },
       ],
-      featuredOnHome: false,
     },
     {
       slug: "hackathon-builds",
-      type: "project" as const,
       title: "Hackathon builds",
       role: "Personal projects",
       year: "Ongoing",
@@ -257,7 +283,6 @@ export const siteContent = {
       summary: "Hackathon projects across AI, hardware, and 3D printing. Updated every few months.",
       bodySections: [],
       links: [],
-      featuredOnHome: false,
     },
   ],
   // 14 photos on desktop, 6 on mobile. Each caption is what shows in the
@@ -344,41 +369,52 @@ export const siteContent = {
   // and work tiles interleaved so neither type clusters on one side. Photo
   // tiles reference the `photos` array by src; work tiles reference the
   // `workItems` array by slug, so the click handler can open the right modal.
-  // `title` is the short label the deck index shows for each card (card number =
-  // array index + 1). Keep titles 1 to 3 words. Titles marked PLACEHOLDER below
-  // belong to the placeholder SVG tiles and should be finalized when real photos
-  // replace them.
+  // `title` is the short label the left text panel (ArcIndex) shows for each
+  // card (card number = array index + 1). Keep titles 1 to 3 words. `blurb`
+  // is the one-line description shown under the title when the card is
+  // focused; keep each under ~90 characters, first person, no em dashes.
+  // Titles/blurbs marked PLACEHOLDER below belong to the placeholder SVG
+  // tiles and should be finalized when real photos replace them.
   homeTiles: [
-    { kind: "photo" as const, key: "hsf-speaking", src: "/photos/hsf-speaking.jpeg", title: "Public Speaking" },
-    { kind: "work"  as const, key: "capital-one-pm", slug: "capital-one-pm", title: "Capital One" },
-    { kind: "photo" as const, key: "drum-major", src: "/photos/drum-major.jpeg", title: "Drum Major" },
-    { kind: "photo" as const, key: "yosemite-hiking", src: "/photos/yosemite-hiking.jpeg", title: "Yosemite" },
-    { kind: "work"  as const, key: "claude-ambassador", slug: "claude-ambassador", title: "Anthropic" },
-    { kind: "photo" as const, key: "capital-one", src: "/photos/capital-one.jpeg", title: "Capital One" },
-    { kind: "photo" as const, key: "uncs-grad", src: "/photos/uncs-grad.jpeg", title: "Graduation" },
-    { kind: "work"  as const, key: "ieee-president", slug: "ieee-president", title: "IEEE" },
-    { kind: "photo" as const, key: "claude-hackathon", src: "/photos/claude-hackathon.jpeg", title: "Claude Hackathon" },
-    { kind: "photo" as const, key: "misuki", src: "/photos/misuki.jpeg", title: "Venezuelan Roots" },
-    { kind: "work"  as const, key: "aaronsulbaran-site", slug: "aaronsulbaran-site", title: "This Site" },
-    { kind: "photo" as const, key: "photo-08", src: "/photos/photo-08.svg", title: "IEEE President" }, // PLACEHOLDER
-    { kind: "photo" as const, key: "traveling", src: "/photos/traveling.jpeg", title: "Traveling" },
-    { kind: "work"  as const, key: "capital-one-ba", slug: "capital-one-ba", title: "Capital One" },
-    { kind: "photo" as const, key: "photo-10", src: "/photos/photo-10.svg", title: "Austin Builders" }, // PLACEHOLDER
-    { kind: "photo" as const, key: "photo-11", src: "/photos/photo-11.svg", title: "Making" }, // PLACEHOLDER
-    { kind: "work"  as const, key: "hackathon-builds", slug: "hackathon-builds", title: "Hackathon Builds" },
-    { kind: "photo" as const, key: "mt-fuji", src: "/photos/mt-fuji.jpeg", title: "Mt. Fuji" },
-    { kind: "photo" as const, key: "photo-13", src: "/photos/photo-13.svg", title: "Community" }, // PLACEHOLDER
-    { kind: "photo" as const, key: "photo-14", src: "/photos/photo-14.svg", title: "Quiet Moment" }, // PLACEHOLDER
+    { kind: "photo" as const, key: "hsf-speaking", src: "/photos/hsf-speaking.jpeg", title: "Public Speaking", blurb: "Speaking at HSF Scholars, where I realized how much I love teaching what I'm learning." },
+    { kind: "work"  as const, key: "capital-one-pm", slug: "capital-one-pm", title: "Capital One", blurb: "A summer as a PM intern, accountable to a team, not a deck." },
+    { kind: "photo" as const, key: "drum-major", src: "/photos/drum-major.jpeg", title: "Drum Major", blurb: "Leading the band from the podium, reading the room, staying calm under pressure." },
+    { kind: "photo" as const, key: "yosemite-hiking", src: "/photos/yosemite-hiking.jpeg", title: "Yosemite", blurb: "Long hikes in Yosemite, where I do my best thinking." },
+    { kind: "work"  as const, key: "claude-ambassador", slug: "claude-ambassador", title: "Anthropic", blurb: "Building an AI community on campus, co-hosting Austin's first Claude hackathon." },
+    { kind: "photo" as const, key: "capital-one", src: "/photos/capital-one.jpeg", title: "Capital One", blurb: "A candid from my PM internship at Capital One, learning how real decisions get made." },
+    { kind: "photo" as const, key: "uncs-grad", src: "/photos/uncs-grad.jpeg", title: "Graduation", blurb: "A family graduation moment. My roots keep me grounded." },
+    { kind: "work"  as const, key: "ieee-president", slug: "ieee-president", title: "IEEE", blurb: "Running IEEE at UT Austin taught me more about operations than any class did." },
+    { kind: "photo" as const, key: "claude-hackathon", src: "/photos/claude-hackathon.jpeg", title: "Claude Hackathon", blurb: "With my co-ambassadors at Austin's first Claude hackathon, watching students ship fast." },
+    { kind: "photo" as const, key: "misuki", src: "/photos/misuki.jpeg", title: "Venezuelan Roots", blurb: "Born in Maracaibo, raised with arepas and a lot of loud love." },
+    { kind: "work"  as const, key: "aaronsulbaran-site", slug: "aaronsulbaran-site", title: "This Site", blurb: "This site itself. A living personal statement that grows with me." },
+    { kind: "photo" as const, key: "photo-08", src: "/photos/photo-08.svg", title: "IEEE President", blurb: "Placeholder photo. An IEEE leadership shot is coming soon." }, // PLACEHOLDER
+    { kind: "photo" as const, key: "traveling", src: "/photos/traveling.jpeg", title: "Traveling", blurb: "Traveling teaches me fast what I actually care about." },
+    { kind: "work"  as const, key: "capital-one-ba", slug: "capital-one-ba", title: "Capital One", blurb: "My first taste of how product decisions get made inside a big bank." },
+    { kind: "photo" as const, key: "photo-10", src: "/photos/photo-10.svg", title: "Austin Builders", blurb: "Placeholder photo. An Austin startup community shot is coming soon." }, // PLACEHOLDER
+    { kind: "photo" as const, key: "photo-11", src: "/photos/photo-11.svg", title: "Making", blurb: "Placeholder photo. A making and 3D-printing shot is coming soon." }, // PLACEHOLDER
+    { kind: "work"  as const, key: "hackathon-builds", slug: "hackathon-builds", title: "Hackathon Builds", blurb: "A running set of weekend builds. Rough, fast, and shipped." },
+    { kind: "photo" as const, key: "mt-fuji", src: "/photos/mt-fuji.jpeg", title: "Mt. Fuji", blurb: "Standing in front of Mt. Fuji, a reminder of how small my daily loops can feel." },
+    { kind: "photo" as const, key: "photo-13", src: "/photos/photo-13.svg", title: "Community", blurb: "Placeholder photo. A friends and community shot is coming soon." }, // PLACEHOLDER
+    { kind: "photo" as const, key: "photo-14", src: "/photos/photo-14.svg", title: "Quiet Moment", blurb: "Placeholder photo. A quiet, reflective portrait is coming soon." }, // PLACEHOLDER
   ],
 } as const;
 
 export type Photo = (typeof siteContent.photos)[number];
 export type WorkItem = (typeof siteContent.workItems)[number];
 export type MenuItem = (typeof siteContent.menu.items)[number];
-export type Track = (typeof siteContent.soundtrack.tracks)[number];
+export type Track = SoundtrackTrack;
 export type HomeTile = (typeof siteContent.homeTiles)[number];
 export type Definition =
   (typeof siteContent.definitions)[keyof typeof siteContent.definitions];
+
+// O(1) lookups for the home-tile resolvers (GlassTile, MobileHome, FlyingTile),
+// built once at module load so per-render resolution never scans the arrays.
+export const photoBySrc: ReadonlyMap<string, Photo> = new Map(
+  siteContent.photos.map((p) => [p.src, p]),
+);
+export const workItemBySlug: ReadonlyMap<WorkItem["slug"], WorkItem> = new Map(
+  siteContent.workItems.map((w) => [w.slug, w]),
+);
 
 // Body section shapes for work detail pages. When a workItem populates its
 // bodySections array, each element must match one of these. More kinds can be

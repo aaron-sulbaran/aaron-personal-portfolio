@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { getSoundtrackPlayer } from "./audio";
 
 // The single source of truth for the soundtrack choice (spec sections 5 and 7).
 // A tiny module-level store rather than a Context provider: the readers are
@@ -42,15 +43,15 @@ export function setSoundtrackState(next: SoundtrackState): void {
 }
 
 // Restore the remembered choice on client mount, skipping the prompt for a
-// returning visitor. NOTE for Phase 4: restoring "on" here resumes the reactive
-// visual, but real Spotify playback cannot autostart without a user gesture, so
-// the audio wiring should restore an opted-in visitor to a ready/paused player
-// (a tap resumes) rather than autoplaying.
+// returning visitor.
 export function initSoundtrackFromStorage(): void {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved === "off") setSoundtrackState("off");
-    else if (saved === "on") setSoundtrackState("on");
+    // A remembered opt-in restores to the ready/paused player, not autoplay:
+    // browsers require a gesture for audio, and a silent "on" would lie (the
+    // wave reactive, the glyph bouncing, nothing audible). One tap resumes.
+    else if (saved === "on") setSoundtrackState("paused");
   } catch {
     /* storage unavailable */
   }
@@ -67,4 +68,46 @@ export function subscribeSoundtrack(listener: Listener): () => void {
 // client state ("before"), so there is no hydration mismatch.
 export function useSoundtrack(): SoundtrackState {
   return useSyncExternalStore(subscribeSoundtrack, getSoundtrackState, () => "before");
+}
+
+// Reconciler: the player is the source of truth for AUDIBLE playback, and its
+// play() is async (el.play() can reject: autoplay policy, decode error, the
+// ended -> next-track autoplay outside any gesture). setSoundtrackState("on")
+// is written optimistically in the same gesture, so on rejection the state
+// would otherwise stay "on" while nothing plays: equalizer glyph bouncing,
+// "Now Playing" label up, silence. This one-way downgrade (never an upgrade;
+// "on" is only ever entered through startSoundtrack) keeps the state layer
+// honest whenever the player reports it stopped. Attached lazily on the first
+// startSoundtrack call so merely importing this module never constructs the
+// player.
+let reconcilerAttached = false;
+function ensureReconciler(): void {
+  if (reconcilerAttached) return;
+  reconcilerAttached = true;
+  const player = getSoundtrackPlayer();
+  player.subscribe(() => {
+    if (!player.playing && getSoundtrackState() === "on") {
+      setSoundtrackState("paused");
+    }
+  });
+}
+
+// The three playback writers. Each runs inside a user-gesture handler (pill
+// buttons, prompt buttons, menu toggle), which is what lets the audio element
+// start under browser autoplay policy. State and playback move together so the
+// wave, the pill glyph, and the audible audio can never disagree.
+export function startSoundtrack(): void {
+  ensureReconciler();
+  getSoundtrackPlayer().play();
+  setSoundtrackState("on");
+}
+
+export function pauseSoundtrack(): void {
+  getSoundtrackPlayer().pause();
+  setSoundtrackState("paused");
+}
+
+export function stopSoundtrack(): void {
+  getSoundtrackPlayer().pause();
+  setSoundtrackState("off");
 }

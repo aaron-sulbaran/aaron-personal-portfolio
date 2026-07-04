@@ -167,8 +167,9 @@ export function useFocusTrap(
 // annotated Variants) so vendor-prefixed WebkitBackdropFilter stays assignable
 // to the motion `variants` prop.
 
-// Full backdrop blur radius (matches Tailwind backdrop-blur-xl).
-export const MODAL_BLUR_PX = 24;
+// Full backdrop blur radius (matches Tailwind backdrop-blur-xl). Internal to
+// the variant builders below; not exported (nothing outside this file uses it).
+const MODAL_BLUR_PX = 24;
 
 // Photo/work modals pass `heldExit` so the frost HOLDS at full for a beat after
 // close, then clears. This keeps the deck masked while the flown card dissolves

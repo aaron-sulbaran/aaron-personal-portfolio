@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { motion, useMotionValue, type MotionValue } from "framer-motion";
-import { siteContent, type HomeTile, type Photo, type WorkItem } from "@/lib/content";
+import { photoBySrc, workItemBySlug, type HomeTile, type Photo, type WorkItem } from "@/lib/content";
 
 type ResolvedTile =
   | { kind: "photo"; key: string; src: string; photo: Photo }
@@ -29,12 +29,13 @@ type Props = {
   buttonRef?: React.Ref<HTMLButtonElement>;
   /**
    * Multiplies every fixed-pixel glass cue (corner radius, rim highlight, float
-   * shadow, ring border) so they survive a CSS transform scale-down. Mobile lays
-   * the card out at full size, then scales it DOWN into the ring (~0.2); a plain
+   * shadow, ring border) so they survive a CSS transform scale-down. Both homes
+   * lay the card out large and scale it DOWN (mobile ~0.2 via RING_SCALE with
+   * detailScale ~2.5, desktop 0.3 via REST_SCALE with detailScale 10/3); a plain
    * 8px radius / 1px rim would shrink to ~1.6px / 0.2px and vanish, leaving a
-   * bare sharp-cornered photo. Passing detailScale ~2.5 keeps the radius/card
-   * ratio matched to desktop (8px on a 72px desktop card) at every scale, since
-   * the ratio is scale invariant. Defaults to 1 so desktop stays pixel identical.
+   * bare sharp-cornered photo. detailScale keeps the radius/card ratio matched
+   * to the 8px-on-9vmin design at every scale, since the ratio is scale
+   * invariant. Defaults to 1 (the plain Tailwind path).
    */
   detailScale?: number;
   /**
@@ -43,16 +44,24 @@ type Props = {
    * user was actually looking at.
    */
   onActivate: (payload: TileActivatePayload, keyboardFlipped: boolean) => void;
+  /**
+   * True once the card has been explored (opened and closed at least once).
+   * Fades a frost veil in over the pane so the photo/logo ghosts through
+   * rather than reading fully clear anymore. Defaults to false so every
+   * existing caller (MobileHome, and desktop before this prop existed) stays
+   * pixel-identical; only the desktop ring/carousel passes it.
+   */
+  frosted?: boolean;
 };
 
 
 function resolveTile(tile: HomeTile): ResolvedTile | null {
   if (tile.kind === "photo") {
-    const photo = siteContent.photos.find((p) => p.src === tile.src);
+    const photo = photoBySrc.get(tile.src);
     if (!photo) return null;
     return { kind: "photo", key: tile.key, src: tile.src, photo };
   }
-  const workItem = siteContent.workItems.find((w) => w.slug === tile.slug);
+  const workItem = workItemBySlug.get(tile.slug);
   if (!workItem) return null;
   return { kind: "work", key: tile.key, slug: tile.slug, workItem };
 }
@@ -89,6 +98,7 @@ export function GlassTile({
   buttonRef,
   detailScale = 1,
   onActivate,
+  frosted = false,
 }: Props) {
   const resolved = resolveTile(tile);
 
@@ -145,9 +155,9 @@ export function GlassTile({
   // NO backdrop-filter: it re-rasterizes every frame across the 20 rotating ring
   // tiles and tanks FPS (Layer 2 perf note); the translucency carries the glass.
   // Glass cues are fixed-px, so they survive a CSS scale-down only if we scale
-  // the pixels up first by detailScale (see the prop doc). detailScale === 1 is
-  // the desktop path: keep the exact Tailwind classes so it stays byte-for-byte
-  // identical. Any other value drops to inline styles with multiplied pixels.
+  // the pixels up first by detailScale (see the prop doc). detailScale === 1
+  // keeps the exact Tailwind classes; any other value (both homes today) drops
+  // to inline styles with multiplied pixels.
   const scaled = detailScale !== 1;
   const radiusPx = 8 * detailScale;
   const rimShadow = `inset 0 ${1 * detailScale}px 0 rgba(255,255,255,0.4), inset 0 0 0 ${
@@ -170,6 +180,24 @@ export function GlassTile({
   const workTintStyle: React.CSSProperties = {
     backgroundImage:
       "linear-gradient(135deg, color-mix(in srgb, var(--color-accent) 18%, transparent) 0%, color-mix(in srgb, var(--color-glass) 50%, transparent) 48%, color-mix(in srgb, var(--color-accent) 40%, transparent) 100%)",
+  };
+  // Explored-state frost veil (ring-arc redesign, plan §3 + §7 boundary point
+  // 3). Always mounted so `opacity` can transition both ways; `backdropFilter`
+  // itself only turns on once `frosted` is true, which keeps the per-frame
+  // compositing cost scoped to already-explored cards instead of all 20 ring
+  // tiles. AGENTS.md bans backdrop-filter on ring tiles (it re-rasterizes
+  // every frame while the ring/carousel rotates) -- this is a deliberate,
+  // plan-sanctioned exception: see
+  // docs/plans/Desktop card redesign exploration/ring-arc-carousel-implementation-plan.md
+  // §7 (boundary point 3), which relies on the blur so the background
+  // waveform shows through frosted cards.
+  const veilStyle: React.CSSProperties = {
+    ...(scaled ? { borderRadius: radiusPx } : {}),
+    backgroundColor: "color-mix(in srgb, var(--color-background) 58%, transparent)",
+    backdropFilter: frosted ? "blur(7px) saturate(0.75)" : "none",
+    WebkitBackdropFilter: frosted ? "blur(7px) saturate(0.75)" : "none",
+    opacity: frosted ? 1 : 0,
+    transition: "opacity 700ms ease",
   };
 
   return (
@@ -232,6 +260,8 @@ export function GlassTile({
           className="pointer-events-none absolute inset-0 rounded-[8px] shadow-[inset_0_1px_0_rgba(255,255,255,0.4),inset_0_0_0_1px_rgba(255,255,255,0.14)]"
         />
         {resolved.kind === "work" && <WorkDot />}
+        {/* Frost veil: topmost layer in the pane, nothing paints above it. */}
+        <span aria-hidden="true" className="pointer-events-none absolute inset-0 rounded-[8px]" style={veilStyle} />
       </motion.div>
     </button>
   );

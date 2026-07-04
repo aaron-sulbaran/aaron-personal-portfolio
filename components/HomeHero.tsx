@@ -186,9 +186,7 @@ function ScrollCue({ label, animate }: { label: string; animate: boolean }) {
   return (
     <motion.div
       aria-hidden="true"
-      className="mt-6 text-muted md:mt-10"
-      animate={animate ? { y: [0, 4, 0] } : undefined}
-      transition={animate ? { duration: 1.8, repeat: Infinity, ease: "easeInOut" } : undefined}
+      className={`mt-6 text-muted md:mt-10${animate ? " scrollcue-bob" : ""}`}
     >
       <span className="sr-only">{label}</span>
       <svg
