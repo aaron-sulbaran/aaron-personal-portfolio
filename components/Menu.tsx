@@ -8,7 +8,7 @@ import { useBodyScrollLock, useEscapeKey, useFocusTrap } from "@/lib/modal";
 import { siteContent, type MenuItem } from "@/lib/content";
 import { scrollToTarget } from "@/lib/scroll";
 import { THEME_STORAGE_KEY, syncThemeColorMeta, type Theme } from "@/lib/theme";
-import { setSoundtrackState, useSoundtrack } from "@/lib/soundtrack";
+import { startSoundtrack, stopSoundtrack, useSoundtrack } from "@/lib/soundtrack";
 
 const MOBILE_MAX = 767;
 
@@ -98,8 +98,8 @@ export function Menu() {
   const musicAriaLabel = musicOn ? soundtrack.menuAriaLabelOff : soundtrack.menuAriaLabelOn;
 
   const toggleMusic = useCallback(() => {
-    if (music === "off" || music === "before") setSoundtrackState("on");
-    else setSoundtrackState("off");
+    if (music === "off" || music === "before") startSoundtrack();
+    else stopSoundtrack();
   }, [music]);
 
   const overlayVariants = {

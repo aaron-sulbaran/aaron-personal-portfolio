@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMotionValue } from "framer-motion";
 import { gsap, ScrollTrigger, useGSAP } from "@/lib/gsap";
-import { siteContent, type HomeTile, type Photo, type WorkItem } from "@/lib/content";
+import { siteContent, photoBySrc, workItemBySlug, type HomeTile, type Photo, type WorkItem } from "@/lib/content";
 import { GlassTile } from "./GlassTile";
 
 // Payload handed back to the parent when a card is tapped, so it can open the
@@ -90,6 +90,13 @@ const ENTER_FAN_STAGGER_MS = 16; // tiles bloom in ring order so the fan sweeps 
 // Pile depth + riffle pop, in px (the deck is tiny on mobile, so a few px of Z
 // stagger is enough to keep the stacked glass slabs from z-fighting).
 const STACK_Z_STEP_PX = 3;       // per-card depth stagger while piled
+// Depth clearance for the popped riffle card ABOVE the deepest pile card.
+// zIndex alone cannot lift it: the cards live in the root's 3D rendering
+// context (perspective), where depth sorting beats z-index, so without a real
+// Z pop the "top" card renders behind the pile and gets sliced by the cards
+// in front (the mobile shuffle-clip bug, confirmed via runtime depth logs
+// 2026-07-03). Mirrors desktop's SHUFFLE_TOP_Z.
+const SHUFFLE_TOP_CLEARANCE_PX = 12;
 const SHUFFLE_LIFT_VMIN = 1.2;   // the popped card lifts this far
 const SHUFFLE_TILT_DEG = 4;      // and cants left/right by index parity
 const SHUFFLE_SCALE = 1.04;      // and grows slightly as it pops
@@ -108,11 +115,11 @@ type Resolved = {
 
 function resolve(tile: HomeTile): Resolved | null {
   if (tile.kind === "photo") {
-    const photo = siteContent.photos.find((p) => p.src === tile.src);
+    const photo = photoBySrc.get(tile.src);
     if (!photo) return null;
     return { key: tile.key, tile, title: tile.title, payload: { kind: "photo", photo } };
   }
-  const workItem = siteContent.workItems.find((w) => w.slug === tile.slug);
+  const workItem = workItemBySlug.get(tile.slug);
   if (!workItem) return null;
   return { key: tile.key, tile, title: tile.title, payload: { kind: "work", workItem } };
 }
@@ -243,10 +250,13 @@ export function MobileHome({ onOpen, heroContentRef, scrollReady, prefersReduced
           const y = 2 * (1 - u) * u * controlY + u * u * ringY;
           const rotZ = tangentDeg * u;
 
-          // Pile depth eases to 0 as the card fans; the popped card pops forward.
+          // Pile depth eases to 0 as the card fans; the popped card pops to a
+          // REAL depth above the whole pile (see SHUFFLE_TOP_CLEARANCE_PX).
           const isTop = i === shuffleTop;
           const pileZ = i * STACK_Z_STEP_PX;
-          const z = (1 - u) * pileZ;
+          const z = isTop
+            ? (total - 1) * STACK_Z_STEP_PX + SHUFFLE_TOP_CLEARANCE_PX
+            : (1 - u) * pileZ;
           const liftPx = isTop ? (SHUFFLE_LIFT_VMIN / 100) * vmin : 0;
           const tilt = isTop ? (i % 2 === 0 ? SHUFFLE_TILT_DEG : -SHUFFLE_TILT_DEG) : 0;
           const scale = RING_SCALE * (isTop ? SHUFFLE_SCALE : 1);

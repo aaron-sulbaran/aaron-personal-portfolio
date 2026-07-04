@@ -1,5 +1,6 @@
 import { TileRing } from "@/components/TileRing";
 import { HomeHero } from "@/components/HomeHero";
+import { ListenInvite } from "@/components/ListenInvite";
 import { WorkSection } from "@/components/WorkSection";
 import { AboutIntro } from "@/components/AboutIntro";
 import { WhoIAm } from "@/components/WhoIAm";
@@ -36,6 +37,7 @@ export default function Home() {
               <HomeHero />
             </TileRing>
           </div>
+          <ListenInvite />
           <WorkSection />
           <AboutIntro />
           <WhoIAm />

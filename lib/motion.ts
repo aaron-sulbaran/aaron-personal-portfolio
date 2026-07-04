@@ -3,10 +3,9 @@ import type { CSSProperties } from "react";
 // Shared deceleration ease for the site's motion. Mirrored from the TileRing
 // entrance and flight so the back-half scroll journey moves in the same hand:
 // a smooth ease-out with no overshoot. EASE is the Framer cubic-bezier tuple;
-// EASE_CSS is the same curve as a CSS transition-timing-function string (used by
-// the reveal classes in globals.css, where CSS owns the transition).
+// the same curve is written out as a CSS timing function where CSS owns the
+// transition (the --ease-out custom property in globals.css).
 export const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
-export const EASE_CSS = "cubic-bezier(0.22, 1, 0.36, 1)";
 
 // Stagger order for a .reveal-item or .reveal-mask descendant: the Nth one lands
 // N * 70ms after the first (see the reveal rules in globals.css). Lives here, not

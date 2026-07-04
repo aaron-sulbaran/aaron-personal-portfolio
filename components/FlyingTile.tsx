@@ -2,7 +2,9 @@
 
 import Image from "next/image";
 import { motion, useReducedMotion } from "framer-motion";
-import { siteContent, type HomeTile } from "@/lib/content";
+import { useEffect, useState } from "react";
+import { photoBySrc, workItemBySlug, type HomeTile } from "@/lib/content";
+import { MODAL_DISMISS_HOLD, MODAL_DISMISS_RAMP } from "@/lib/modal";
 
 export type FlightPhase = "out" | "closing";
 
@@ -37,7 +39,12 @@ type Props = {
   homeRestRotY: number;
   /** Captured live transform of the clicked tile, for first-frame fidelity. */
   source: FlightSource;
-  /** Modal-slot target rect (where the flight lands during "out"). */
+  /**
+   * Initial guess for the modal-slot rect (TileRing passes the home rect; the
+   * modal has not laid out yet at flight start). The REAL slot is tracked
+   * internally every frame (see the slot-tracking effect) so per-frame rect
+   * updates re-render only this small clone subtree, never the 20-tile ring.
+   */
   target: FlightTarget;
   phase: FlightPhase;
   /**
@@ -76,6 +83,74 @@ export function FlyingTile({
   onClosingComplete,
 }: Props) {
   const prefersReducedMotion = useReducedMotion();
+
+  // Live modal-slot rect. The slot must be TRACKED, not measured once: the
+  // modal panel plays an entrance tween (y: 16 -> 0, scale: 0.97 -> 1), so a
+  // single measurement a frame after mount captures the slot mid-entrance and
+  // the tile lands on a transient position that is wrong by the time the
+  // panel settles. So we re-read every frame until the rect holds still
+  // (entrance done), with a hard time cap so a stalled layout never loops
+  // forever; a resize re-arms tracking. The query is scoped to the active
+  // modal's slot so a sibling modal still exiting (cross-fade) can never be
+  // measured by mistake. This state lives HERE, not in TileRing's flight
+  // state, so the per-frame updates during the modal entrance re-render only
+  // this clone, not the whole ring (TileRing owns homeRect/phase/reveal).
+  const [slotRect, setSlotRect] = useState<FlightTarget>(target);
+  useEffect(() => {
+    if (phase !== "out") return;
+    const which = tile.kind === "photo" ? "photo" : "work";
+    const selector = `[data-tile-slot="${which}"]`;
+
+    let raf = 0;
+    let startTs = 0;
+    let stableFrames = 0;
+    let last: FlightTarget | null = null;
+
+    const same = (a: FlightTarget, b: FlightTarget) =>
+      Math.abs(a.left - b.left) < 0.5 &&
+      Math.abs(a.top - b.top) < 0.5 &&
+      Math.abs(a.width - b.width) < 0.5 &&
+      Math.abs(a.height - b.height) < 0.5;
+
+    const track = (ts: number) => {
+      if (!startTs) startTs = ts;
+      const slot = document.querySelector<HTMLDivElement>(selector);
+      if (slot) {
+        const rect = slot.getBoundingClientRect();
+        const next: FlightTarget = {
+          left: rect.left,
+          top: rect.top,
+          width: rect.width,
+          height: rect.height,
+        };
+        if (last && same(next, last)) {
+          stableFrames += 1;
+        } else {
+          stableFrames = 0;
+          last = next;
+          setSlotRect(next);
+        }
+      }
+      if (stableFrames < 4 && ts - startTs < 900) {
+        raf = requestAnimationFrame(track);
+      }
+    };
+    raf = requestAnimationFrame(track);
+
+    const onResize = () => {
+      startTs = 0;
+      stableFrames = 0;
+      last = null;
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(track);
+    };
+    window.addEventListener("resize", onResize);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", onResize);
+    };
+  }, [phase, tile.kind]);
+
   const resolved = resolveTile(tile);
   if (!resolved) return null;
 
@@ -97,10 +172,10 @@ export function FlyingTile({
         aria-hidden="true"
         className="pointer-events-none fixed left-0 top-0 z-[55]"
         style={{
-          x: target.left,
-          y: target.top,
-          width: target.width,
-          height: target.height,
+          x: slotRect.left,
+          y: slotRect.top,
+          width: slotRect.width,
+          height: slotRect.height,
         }}
         initial={{ opacity: 0 }}
         animate={{ opacity: isClosing ? 0 : 1 }}
@@ -136,20 +211,20 @@ export function FlyingTile({
   const CLOSE_DRIFT = 0.85; // fraction of the way home the card travels before it's gone
   const animate = isClosing
     ? {
-        x: target.left + (homeRect.left - target.left) * CLOSE_DRIFT,
-        y: target.top + (homeRect.top - target.top) * CLOSE_DRIFT,
-        width: target.width + (homeRect.width - target.width) * CLOSE_DRIFT,
-        height: target.height + (homeRect.height - target.height) * CLOSE_DRIFT,
+        x: slotRect.left + (homeRect.left - slotRect.left) * CLOSE_DRIFT,
+        y: slotRect.top + (homeRect.top - slotRect.top) * CLOSE_DRIFT,
+        width: slotRect.width + (homeRect.width - slotRect.width) * CLOSE_DRIFT,
+        height: slotRect.height + (homeRect.height - slotRect.height) * CLOSE_DRIFT,
         rotateX: homeRestRotX * CLOSE_DRIFT,
         rotateY: homeRestRotY * CLOSE_DRIFT,
         rotateZ: normalizedTangent * CLOSE_DRIFT,
         opacity: 0,
       }
     : {
-        x: target.left,
-        y: target.top,
-        width: target.width,
-        height: target.height,
+        x: slotRect.left,
+        y: slotRect.top,
+        width: slotRect.width,
+        height: slotRect.height,
         rotateX: 0,
         rotateY: 0,
         rotateZ: 0,
@@ -159,10 +234,15 @@ export function FlyingTile({
     ? {
         duration: 0.46,
         ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
-        // Hold full opacity while the frost still masks the deck (0.2s), then
-        // dissolve over the back third as the frost clears (0.26s) — matches
-        // lib/modal's MODAL_DISMISS_HOLD / MODAL_DISMISS_RAMP.
-        opacity: { delay: 0.2, duration: 0.26, ease: "easeInOut" as const },
+        // Hold full opacity while the frost still masks the deck, then
+        // dissolve over the back third as the frost clears. Imported from
+        // lib/modal so a retune of the frost timing can never desync the
+        // dissolve from the mask.
+        opacity: {
+          delay: MODAL_DISMISS_HOLD,
+          duration: MODAL_DISMISS_RAMP,
+          ease: "easeInOut" as const,
+        },
       }
     : { duration: 0.52, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] };
 
@@ -198,11 +278,11 @@ type ResolvedTile =
 
 function resolveTile(tile: HomeTile): ResolvedTile | null {
   if (tile.kind === "photo") {
-    const photo = siteContent.photos.find((p) => p.src === tile.src);
+    const photo = photoBySrc.get(tile.src);
     if (!photo) return null;
     return { kind: "photo", src: photo.src, alt: photo.alt };
   }
-  const workItem = siteContent.workItems.find((w) => w.slug === tile.slug);
+  const workItem = workItemBySlug.get(tile.slug);
   if (!workItem) return null;
   return { kind: "work", logo: workItem.logo, title: workItem.title };
 }

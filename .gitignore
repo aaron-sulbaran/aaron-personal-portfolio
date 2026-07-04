@@ -38,6 +38,7 @@ next-env.d.ts
 
 # Agent working documents and tooling, private per Living Document Protocol
 AGENTS.md
+AGENTS_ARCHIVE.md
 CLAUDE.md
 CLAUDE.local.md
 skills-lock.json
@@ -49,3 +50,4 @@ skills-lock.json
 docs/research/
 docs/plans/
 docs/archive/
+.superpowers/
