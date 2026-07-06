@@ -62,7 +62,7 @@ Derived from the same `cardState` loop the driver renders with: for each card wh
 
 ## Testing
 
-- Vitest: `visibleSpan` cases: p=1 spans expected extent at rotation 0; span shrinks/holds under rotation; empty below `HIT_OPACITY_MIN`; span at p=0 reports not visible (hero state).
+- Vitest: `visibleSpan` cases: p=1 agrees with a direct union over integer arc slots (fade rule included); span reaches across the viewport at arbitrary rotations; `cardSpan` centers the focused card at vh/2 with the projected arc height. Note: at p=0 the span is non-null (hero-seat opacity is 1); the gates never consult it there because `isSettled()` is false and `renderFrame` early-returns before caching at p <= 0.
 - Live QA (headless browse per project convention): wheel over a partially scrolled carousel rotates it; wheel below the span scrolls the page; auto-advance continues while partially visible and stops when fully off; no clip line at the section boundary; cards paint over ListenInvite but under SiteNav/pill; card click -> modal flight from a partially scrolled state lands correctly; reverse scroll into the pin and back to the hero still snaps and normalizes rotation.
 
 ## Out of scope
