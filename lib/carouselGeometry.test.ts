@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   CAROUSEL,
   arcSlot,
+  cardSpan,
   cardState,
   collapseTransform,
   heroSeat,
@@ -13,6 +14,7 @@ import {
   spinEase,
   tiltRamp,
   toCollapse,
+  visibleSpan,
   wrap,
   type SeatPx,
   type Viewport,
@@ -244,5 +246,43 @@ describe("collapseTransform", () => {
     );
     expect(t).toContain("translateZ(60px)");
     expect(t).toContain("rotateX(0deg)");
+  });
+});
+
+describe("cardSpan", () => {
+  it("centers the focused settled card at vh/2 with the projected arc height", () => {
+    const span = cardSpan(arcSlot(0, VP), VP);
+    const kTz =
+      CAROUSEL.PERSPECTIVE_PX / (CAROUSEL.PERSPECTIVE_PX - CAROUSEL.FOCUS_POP_PX);
+    const h = CAROUSEL.ARC_CARD_SIZE * VP.vh * (1 + CAROUSEL.FOCUS_SCALE_BOOST) * kTz;
+    expect((span.top + span.bottom) / 2).toBeCloseTo(VP.vh / 2, 6);
+    expect(span.bottom - span.top).toBeCloseTo(h, 6);
+  });
+});
+
+describe("visibleSpan", () => {
+  it("agrees with a direct union over integer arc slots at p = 1", () => {
+    let top = Infinity;
+    let bottom = -Infinity;
+    for (let off = -CAROUSEL.N / 2; off < CAROUSEL.N / 2; off++) {
+      const s = arcSlot(off, VP);
+      if (s.opacity < CAROUSEL.HIT_OPACITY_MIN) continue;
+      const sp = cardSpan(s, VP);
+      top = Math.min(top, sp.top);
+      bottom = Math.max(bottom, sp.bottom);
+    }
+    const span = visibleSpan(1, 0, VP);
+    expect(span).not.toBeNull();
+    expect(span!.top).toBeCloseTo(top, 6);
+    expect(span!.bottom).toBeCloseTo(bottom, 6);
+  });
+
+  it("keeps the settled span reaching across the viewport at any rotation", () => {
+    for (const r of [0, 0.5, 3.75, -2.25, 20]) {
+      const span = visibleSpan(1, r, VP);
+      expect(span).not.toBeNull();
+      expect(span!.top).toBeLessThan(VP.vh * 0.15);
+      expect(span!.bottom).toBeGreaterThan(VP.vh * 0.85);
+    }
   });
 });
