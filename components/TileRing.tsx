@@ -1964,7 +1964,7 @@ export function TileRing({ children }: Props) {
       <section
         ref={sectionRef}
         aria-label="Home"
-        className="relative flex min-h-screen w-full items-center justify-center overflow-hidden px-6 md:px-10"
+        className="relative flex min-h-screen w-full items-center justify-center overflow-hidden px-6 md:overflow-x-clip md:overflow-y-visible md:px-10"
         data-state={publicState}
       >
         {/* Ambient radial tint */}
