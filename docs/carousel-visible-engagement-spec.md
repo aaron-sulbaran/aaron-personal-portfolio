@@ -1,6 +1,6 @@
-# Carousel visible-engagement spec (2026-07-03)
+# Carousel visible-engagement spec (2026-07-03, amended 2026-07-05)
 
-Status: approved design, pre-implementation.
+Status: approved design, pre-implementation. Amended for the v3 rotation model (`d84cdc2`): the single-spring integrator this spec originally targeted was replaced by a closed-form wheel chase plus discrete step tweens plus the rasterHold anti-pop mechanism.
 Scope: desktop ring-arc carousel only (`TileRing.tsx` driver + `lib/carouselGeometry.ts`). Mobile (`MobileHome`) and the reduced-motion branch are untouched.
 
 ## Problem
@@ -19,7 +19,7 @@ The deck era solved the interaction half deliberately (commit `50b050f`: the hov
 - **Wheel zone = right zone bounded by the visible card span.** Cursor right of `WHEEL_ZONE_X_FRAC` AND vertically within the visible cards' extent routes wheel to rotation. Below the last visible card the page scrolls normally. Concretely: cards occupying only the top 25% of the screen leave the right side below them free for page scrolling; with roughly half the carousel on screen and the cursor over the card region, wheel rotates the carousel and leaving requires moving the cursor off the cards.
 - **Auto-advance runs while any card is visible**, and halts entirely once the last card scrolls off (no background work in About/Connect).
 - **Arrow keys stay gated on the pin being active.** Post-pin they scroll the page natively.
-- **Debug instrumentation stays.** The `#region agent log` blocks (dbgPost fetches, frame buffers, the on-screen overlay) in the driver are an active investigation surface; edits weave around them, never delete or relocate them.
+- **Debug instrumentation stays.** (Resolved 2026-07-05: the `#region agent log` blocks were removed by Aaron's own debugging commit `d84cdc2`; nothing left to preserve.)
 
 ## Design
 
@@ -35,11 +35,15 @@ Derived from the same `cardState` loop the driver renders with: for each card wh
 
 ### 2. Driver wiring (`TileRing.tsx`)
 
-- `renderFrame` caches the span in a ref each frame it renders (it already iterates every card; no second loop).
+- `renderFrame(p, rotation, rasterHold)` caches the span in a ref each frame it renders (it already iterates every card; no second loop). The rasterHold parameter is untouched.
 - Section offset without DOM reads: `offY = min(0, st.end - window.scrollY)`. Zero while pinned, negative as the section rides up. Same quantity `computeHomeRect` derives from `getBoundingClientRect`, but cheap enough for the ticker.
-- **Wheel gate** (replaces the `st.isActive` check): settled AND `atDwell()` AND `e.clientX > vw * WHEEL_ZONE_X_FRAC` AND `e.clientY` within `[span.top + offY, span.bottom + offY]` AND span visible. Modal/flight guards unchanged.
-- **Spring block gate** (replaces `st.isActive` at the integrator): settled AND `atDwell()` AND `span.bottom + offY > 0`. This is load-bearing: the 2026-07-03 spring rewrite routes ALL rotation motion (wheel impulses, keyboard steps, auto-advance, settling) through this one block. Un-gating the wheel handler without un-gating the integrator would accumulate `rotV` with nothing integrating it, then lurch on pin re-entry. One gate now controls all rotation life, in both places, from the same span ref.
-- `atDwell()` (`st.progress >= ARRIVE_PORTION`) and `isSettled()` both hold naturally post-pin (progress parks at 1, `clock.p` at 1), so no other gates change.
+- One shared predicate, `carouselReach()`: settled AND `atDwell()` AND `span.bottom + offY > 0` (some card still on screen). It replaces `st.isActive` at exactly THREE of the four sites in the interactive branch; the v3 rotation model split what was one spring block into separate mechanisms, and every mechanism that can move or hold rotation must live or die by the same visibility rule:
+  1. **Wheel handler** (`onWheel`): `carouselReach()` AND `e.clientX > vw * WHEEL_ZONE_X_FRAC` AND `e.clientY` within `[span.top + offY, span.bottom + offY]`. Modal/flight guards unchanged.
+  2. **Wheel chase block** (the closed-form critically damped scrub toward `scrubTarget`): un-gating the handler without the chase would move `scrubTarget` with nothing chasing it, then lurch on pin re-entry.
+  3. **Auto-advance block** (`requestStep(1, STEP_AUTO_S)` from full rest): runs while any card is visible, halts when the last card leaves.
+  4. NOT the keyboard handler (`onKey`): arrows stay pin-gated by decision; post-pin they scroll the page natively.
+- **`parkedAtRest` (rasterHold) swaps `st.isActive` for the same `carouselReach()`**: if rotation can animate post-pin but the anti-pop breathing hold stops at the pin boundary, the stop-of-motion re-raster (the arrival pop killed on 2026-07-03/04) returns exactly in the partially-scrolled state. The visibility gate also bounds its cost: the every-frame dirty flag stops once the carousel is fully off screen.
+- `atDwell()` (`st.progress >= ARRIVE_PORTION`) and `isSettled()` both hold naturally post-pin (progress parks at 1, `clock.p` at 1), so no other gates change. The leave-dwell reset (killing tweens, clearing `scrubTarget`/`chaseV`, rotation rounding) only fires when scrubbing back below the dwell and is unchanged.
 
 ### 3. Paint (`TileRing.tsx` section element)
 
@@ -49,7 +53,8 @@ Derived from the same `cardState` loop the driver renders with: for each card wh
 ## Invariants that must survive (see AGENTS.md LOAD-BEARING INVARIANTS)
 
 - GSAP writes BOTH the DOM wrapper transform and `collapseRef` every frame; the span capture adds reads, never a second writer.
-- The scoped `will-change` policy (set while engaged, cleared in `resetCollapse`) is a DPR-2 raster fix; do not disturb.
+- The scoped `will-change` policy (set while engaged, cleared in `resetCollapse`) and the rasterHold breathing scale are DPR-2 raster fixes; do not disturb either, and keep them alive wherever rotation can animate.
+- Wheel deltas never touch rotation or velocity directly (v3 model); the extension only changes WHEN the existing scrub applies, never HOW.
 - Wheel listener stays on `window`. The AGENTS.md follow-up suggesting scoping it to `#hero-pin` is now incompatible: wheel events over cards floating past the section boundary target the next section's DOM and would never reach a `#hero-pin`-scoped listener. Record this in AGENTS.md at session end.
 - Flight math already re-anchors post-release (`offY` in `computeHomeRect` / `computeFlightSource`); clicks while partially scrolled must keep working.
 - Fixed overlays keep Portaling to body; the pinned `#hero-pin` transform still traps `position: fixed` descendants.
@@ -65,4 +70,4 @@ Derived from the same `cardState` loop the driver renders with: for each card wh
 - Widening the arc fade window (`FADE_START_DEG`/`FADE_END_DEG`).
 - Arrow-key behavior post-pin.
 - Mobile coverflow, reduced-motion branch.
-- Removing the debug instrumentation.
+- Any change to the v3 rotation mechanics (chase constants, step queue, modal freeze).
