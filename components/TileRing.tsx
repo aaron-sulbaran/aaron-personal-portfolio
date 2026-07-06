@@ -10,6 +10,7 @@ import { EASE } from "@/lib/motion";
 import { gsap, ScrollTrigger, useGSAP } from "@/lib/gsap";
 import {
   CAROUSEL,
+  cardSpan,
   cardState,
   clamp01,
   collapseTransform,
@@ -1220,6 +1221,12 @@ export function TileRing({ children }: Props) {
       // alone (parallax/proximity own the pure ring again).
       let collapseActive = false;
 
+      // Visible-card vertical extent in stage coordinates, cached by
+      // renderFrame for the reach gates (docs/carousel-visible-engagement-
+      // spec.md). Stage coordinates equal viewport coordinates while
+      // pinned; sectionOffY() re-anchors them once the pin releases.
+      let spanCache: { top: number; bottom: number } | null = null;
+
       // Render every card, the hero copy fade, and the caption fade for a
       // transition progress p (0 hero, 1 settled arc) and carousel rotation
       // (float, card units). Writes the wrapper transform, the matching
@@ -1266,6 +1273,8 @@ export function TileRing({ children }: Props) {
         collapseActive = true;
         setEngaged(p > ENGAGE_MIN_P);
         const vp = readViewport();
+        let spanTop = Infinity;
+        let spanBottom = -Infinity;
         for (let i = 0; i < total; i++) {
           const seat: SeatPx = {
             seatX: (seats[i].xVmin / 100) * vp.vmin,
@@ -1286,6 +1295,11 @@ export function TileRing({ children }: Props) {
           }
           const opacity = clamp01(state.opacity);
           cardOpacityRef.current[i] = opacity;
+          if (opacity >= CARD_HIDE_OPACITY) {
+            const sp = cardSpan(state, vp);
+            if (sp.top < spanTop) spanTop = sp.top;
+            if (sp.bottom > spanBottom) spanBottom = sp.bottom;
+          }
           const el = collapseElsRef.current[i];
           if (el) {
             // DOM transform in the NATIVE frame: the wrapper carries the whole
@@ -1310,6 +1324,8 @@ export function TileRing({ children }: Props) {
             el.style.visibility = opacity < CARD_HIDE_OPACITY ? "hidden" : "";
           }
         }
+        spanCache =
+          spanTop === Infinity ? null : { top: spanTop, bottom: spanBottom };
         if (heroContentRef.current) {
           heroContentRef.current.style.opacity = String(clamp01(1 - p * HERO_FADE_RATE));
           heroContentRef.current.style.pointerEvents = p > ENGAGE_MIN_P ? "none" : "";
@@ -1361,6 +1377,7 @@ export function TileRing({ children }: Props) {
         }
         // Clear the panel so nothing stale survives a reform/refresh.
         writeActiveCard(null);
+        spanCache = null;
       };
 
       const setEngaged = (v: boolean) => {
@@ -1425,6 +1442,23 @@ export function TileRing({ children }: Props) {
         // dwell); wheel rotation, arrow steps, and auto-advance gate on it so
         // none of them fire while the user is scrubbing the transition.
         const atDwell = () => !!st && st.progress >= ARRIVE_PORTION;
+
+        // Reach model (docs/carousel-visible-engagement-spec.md): the
+        // carousel is interactive while ANY card is on screen, not while
+        // the pin is engaged. sectionOffY is the section's post-release
+        // upward travel (0 while pinned), the same re-anchor
+        // computeHomeRect makes with getBoundingClientRect, derived here
+        // from ScrollTrigger's own measurements so the ticker never forces
+        // layout. Replaces st.isActive at the wheel handler, the wheel
+        // chase, auto-advance, and the rasterHold park; NOT at onKey
+        // (arrows stay pin-gated so they scroll the page naturally once
+        // the section is leaving).
+        const sectionOffY = () => (st ? Math.min(0, st.end - window.scrollY) : 0);
+        const carouselReach = () =>
+          isSettled() &&
+          atDwell() &&
+          spanCache !== null &&
+          spanCache.bottom + sectionOffY() > 0;
 
         // Blend weight for the rotation normalization: 0 at p <= ROT_BLEND_
         // START_P (identity ring), 1 at p >= ROT_BLEND_END_P (the browsed
@@ -1519,14 +1553,18 @@ export function TileRing({ children }: Props) {
         });
 
         // The only input interception in the model: wheel over the cards
-        // rotates the settled carousel. Every other condition returns WITHOUT
-        // preventDefault so native scroll flows (scrubbing the transition or
-        // moving the page).
+        // rotates the settled carousel wherever its cards are still on
+        // screen, including past the pin release. Every other condition
+        // returns WITHOUT preventDefault so native scroll flows (scrubbing
+        // the transition or moving the page).
         const onWheel = (e: WheelEvent) => {
-          if (!st || !st.isActive) return;
           if (modalOpenRef.current || flightActiveRef.current) return;
-          if (!isSettled() || !atDwell()) return;
+          if (!carouselReach()) return;
           if (e.clientX <= window.innerWidth * CAROUSEL.WHEEL_ZONE_X_FRAC) return;
+          const span = spanCache;
+          const offY = sectionOffY();
+          if (!span || e.clientY < span.top + offY || e.clientY > span.bottom + offY)
+            return;
           e.preventDefault();
           let dy = e.deltaY;
           if (e.deltaMode === 1) dy *= WHEEL_LINE_DELTA_PX;
@@ -1681,9 +1719,7 @@ export function TileRing({ children }: Props) {
           // and goes idle.
           if (
             scrubTarget !== null &&
-            st.isActive &&
-            isSettled() &&
-            atDwell() &&
+            carouselReach() &&
             !rotBlendActive &&
             !modalOpenRef.current &&
             !flightActiveRef.current
@@ -1717,9 +1753,7 @@ export function TileRing({ children }: Props) {
           // Auto-advance: only from full rest (no scrub, no active step,
           // empty queue) after the idle window. One single-step request.
           if (
-            st.isActive &&
-            isSettled() &&
-            atDwell() &&
+            carouselReach() &&
             !rotBlendActive &&
             !modalOpenRef.current &&
             !flightActiveRef.current &&
@@ -1740,9 +1774,7 @@ export function TileRing({ children }: Props) {
           // frozen frame must hold perfectly still for the flight bridge.
           let rasterHold = 1;
           const parkedAtRest =
-            st.isActive &&
-            isSettled() &&
-            atDwell() &&
+            carouselReach() &&
             !rotBlendActive &&
             scrubTarget === null &&
             !rotTween &&
