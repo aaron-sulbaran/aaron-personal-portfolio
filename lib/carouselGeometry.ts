@@ -293,3 +293,37 @@ export function projectCollapse(
     h: (CAROUSEL.TILE_H_VMIN / 100) * vp.vmin * c.scale * kTz,
   };
 }
+
+// Vertical screen extent of one card: projected height about the card's
+// center, axis-aligned. rotZ/rotX are ignored (a tilted card's true box is
+// slightly taller); good enough for the scroll-routing reach zone.
+export function cardSpan(
+  state: CardState,
+  vp: Viewport,
+): { top: number; bottom: number } {
+  const kTz = CAROUSEL.PERSPECTIVE_PX / (CAROUSEL.PERSPECTIVE_PX - state.z);
+  const h = (CAROUSEL.TILE_H_VMIN / 100) * vp.vmin * state.scale * kTz;
+  return { top: state.y - h / 2, bottom: state.y + h / 2 };
+}
+
+// Union of cardSpan over every card at or above the interactive opacity
+// floor, in stage coordinates (equal to viewport coordinates while the pin
+// is engaged; the driver re-anchors with the section's post-release offset).
+// Null when no card clears the floor (defensive; real arc geometry always
+// keeps several cards inside the fade window).
+export function visibleSpan(
+  p: number,
+  rotation: number,
+  vp: Viewport,
+): { top: number; bottom: number } | null {
+  let top = Infinity;
+  let bottom = -Infinity;
+  for (let i = 0; i < CAROUSEL.N; i++) {
+    const state = cardState(wrap(i, rotation), p, vp);
+    if (clamp01(state.opacity) < CAROUSEL.HIT_OPACITY_MIN) continue;
+    const s = cardSpan(state, vp);
+    if (s.top < top) top = s.top;
+    if (s.bottom > bottom) bottom = s.bottom;
+  }
+  return top === Infinity ? null : { top, bottom };
+}
