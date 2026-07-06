@@ -24,6 +24,12 @@ import { ScrollProgress } from "@/components/ScrollProgress";
 // invisible through the hero, ramping in as #work approaches. The content
 // wrapper carries relative z-10 so it sits above the z-0 waveform, which then
 // shows faintly through the sections' transparent backgrounds.
+//
+// Post-pin the carousel cards overflow the hero section (spec:
+// docs/carousel-visible-engagement-spec.md), so #hero-pin carries z-20 to
+// paint them over the later sections; every fixed overlay (SiteNav z-30,
+// ScrollProgress z-[31], Menu z-40/50, modals z-50, FlyingTile z-[55])
+// portals to body and stays above.
 export default function Home() {
   return (
     <>
@@ -32,7 +38,7 @@ export default function Home() {
       <ScrollProgress />
       <div className="relative z-10">
         <main id="main" className="relative overflow-x-clip">
-          <div id="hero-pin" className="relative">
+          <div id="hero-pin" className="relative z-20">
             <TileRing>
               <HomeHero />
             </TileRing>
