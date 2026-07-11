@@ -51,3 +51,6 @@ docs/research/
 docs/plans/
 docs/archive/
 .superpowers/
+
+# Review sweep scratch state (not for commit)
+docs/review-sweep/

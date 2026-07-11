@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { scrollToTarget } from "@/lib/scroll";
+import { navigateToSection } from "@/lib/scroll";
 
 // Section jump targets mirrored from the in-page anchors. Shown inline on
 // desktop; mobile relies on the hamburger menu instead.
@@ -125,12 +125,7 @@ export function SiteNav() {
   }, [shown]);
 
   const navigate = (href: string) => {
-    scrollToTarget(href, !!prefersReducedMotion);
-    if (href === "#main") {
-      window.history.replaceState(null, "", window.location.pathname + window.location.search);
-    } else {
-      window.history.replaceState(null, "", href);
-    }
+    navigateToSection(href, !!prefersReducedMotion);
   };
 
   return (

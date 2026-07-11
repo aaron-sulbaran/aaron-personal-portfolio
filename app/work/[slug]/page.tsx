@@ -40,7 +40,7 @@ export default function WorkDetailPage({ params }: Params) {
         <article className="relative w-full px-6 pb-24 pt-32 md:px-10 md:pb-40 md:pt-40">
           <div className="mx-auto max-w-4xl">
             <Link
-              href="/work"
+              href="/#work"
               className="mb-12 inline-flex items-center gap-2 text-[12px] font-medium uppercase tracking-caps text-muted transition-colors duration-200 hover:text-accent md:mb-16"
             >
               {backLabel}

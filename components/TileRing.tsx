@@ -611,7 +611,12 @@ export function TileRing({ children }: Props) {
   // Mirror flight presence into a ref the carousel driver can read without
   // re-subscribing. While a tile flies (out or closing), wheel rotation and
   // auto-advance stay frozen so the card's home slot holds still.
-  useEffect(() => {
+  // Layout effect, not passive: the ring driver (wheel + auto-advance) reads
+  // this ref to freeze the card's home slot during a flight. A passive effect
+  // flushes after paint, leaving a window where a ticker tick or wheel event
+  // moves the slot AFTER FLIP geometry was captured. Syncing before paint closes
+  // it.
+  useIsoLayoutEffect(() => {
     flightActiveRef.current = flight !== null;
   }, [flight]);
 
@@ -1172,7 +1177,10 @@ export function TileRing({ children }: Props) {
   // on modalOpen, so a direct call would freeze the seat geometry captured at
   // open time.
   const modalOpen = selectedPhoto !== null || selectedWork !== null;
-  useEffect(() => {
+  // Layout effect, not passive: same freeze-before-paint reasoning as
+  // flightActiveRef above, so a tick between the state commit and the effect
+  // cannot shift the ring after the modal's FLIP geometry is captured.
+  useIsoLayoutEffect(() => {
     modalOpenRef.current = modalOpen;
   }, [modalOpen]);
   useEffect(() => {
@@ -1846,7 +1854,7 @@ export function TileRing({ children }: Props) {
       // settled arc renders statically (cross-faded in, rotation 0) and arrow
       // keys rotate it instantly with no tween. data-carousel-static is the
       // seam WS-D hangs the visible prev/next affordances on.
-      mm.add("(prefers-reduced-motion: reduce)", () => {
+      mm.add("(min-width: 768px) and (prefers-reduced-motion: reduce)", () => {
         let rotation = 0;
         if (heroContentRef.current) {
           heroContentRef.current.style.transition = "opacity 0.5s ease";
@@ -1882,6 +1890,20 @@ export function TileRing({ children }: Props) {
         staticStepRef.current = step;
         const onKey = (e: KeyboardEvent) => {
           if (modalOpenRef.current || flightActiveRef.current) return;
+          // Let browser/OS shortcuts (Cmd+Down = scroll to bottom, etc.) through.
+          if (e.metaKey || e.ctrlKey || e.altKey) return;
+          // Never hijack arrows typed into a form field (e.g. the Connect form).
+          const t = e.target;
+          if (
+            t instanceof HTMLElement &&
+            (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))
+          )
+            return;
+          // Reduced motion has no pin, so the page scrolls past the hero. Only
+          // steer the carousel while it is actually on screen; otherwise the
+          // arrows must fall through to native keyboard scrolling.
+          const r = heroPin.getBoundingClientRect();
+          if (r.bottom <= 0 || r.top >= window.innerHeight) return;
           if (e.key === "ArrowRight" || e.key === "ArrowDown") step(1);
           else if (e.key === "ArrowLeft" || e.key === "ArrowUp") step(-1);
           else return;
@@ -1921,8 +1943,13 @@ export function TileRing({ children }: Props) {
       restoreTargetRef.current = null;
       const applyRestore = () => {
         if (!restore) return;
+        // Resolve the fragment with getElementById, not querySelector: a hash
+        // like "#123" is a valid element id but an INVALID CSS selector, so
+        // querySelector would throw and abort this useGSAP callback after the
+        // ScrollTrigger and listeners were already created. getElementById never
+        // throws; a missing target falls through to the saved pixel position.
         const el = restore.selector
-          ? document.querySelector<HTMLElement>(restore.selector)
+          ? document.getElementById(decodeURIComponent(restore.selector.slice(1)))
           : null;
         if (el) {
           el.scrollIntoView({ block: "start", behavior: "auto" });
@@ -1933,18 +1960,41 @@ export function TileRing({ children }: Props) {
       };
       applyRestore();
 
+      // If the visitor scrolls or interacts before fonts settle, do NOT re-land
+      // the restore under them; a small font-reflow shift is far better than
+      // yanking them back to the load position.
+      let disposed = false;
+      let userMoved = false;
+      const markMoved = () => {
+        userMoved = true;
+      };
+      window.addEventListener("wheel", markMoved, { passive: true, once: true });
+      window.addEventListener("touchstart", markMoved, { passive: true, once: true });
+      window.addEventListener("keydown", markMoved, { once: true });
+      window.addEventListener("pointerdown", markMoved, { once: true });
+
       if (typeof document !== "undefined" && document.fonts) {
         // Re-measure after async font swaps; re-land the restore too, since a
-        // font reflow shifts content under a pixel-based scroll position.
+        // font reflow shifts content under a pixel-based scroll position. Guarded
+        // so a late resolve after unmount never refreshes/scrolls a route this
+        // scene no longer owns, and never re-lands once the user has moved.
         document.fonts.ready
           .then(() => {
+            if (disposed) return;
             ScrollTrigger.refresh();
-            applyRestore();
+            if (!userMoved) applyRestore();
           })
           .catch(() => {});
       }
 
-      return () => mm.revert();
+      return () => {
+        disposed = true;
+        window.removeEventListener("wheel", markMoved);
+        window.removeEventListener("touchstart", markMoved);
+        window.removeEventListener("keydown", markMoved);
+        window.removeEventListener("pointerdown", markMoved);
+        mm.revert();
+      };
     },
     { scope: sectionRef, dependencies: [scrollReady, prefersReducedMotion, total] },
   );

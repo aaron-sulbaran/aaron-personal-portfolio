@@ -47,7 +47,13 @@ export function CustomCursor() {
       if (el) {
         el.style.transform = `translate3d(${event.clientX}px, ${event.clientY}px, 0)`;
       }
-      if (!visible) setVisible(true);
+      // Reveal on the first move. handleMove writes the transform above BEFORE
+      // this flips visible, so the dot always appears at the live pointer, never
+      // a stale spot; no separate mouseenter handler (which would reveal at the
+      // previous coords) is needed. setVisible is unconditional: React bails on
+      // the unchanged value, so keeping `visible` out of this effect's deps
+      // avoids tearing down and re-registering every listener on each toggle.
+      setVisible(true);
 
       const target = event.target as Element | null;
       const hit = Boolean(target?.closest(HOVER_SELECTOR));
@@ -58,19 +64,16 @@ export function CustomCursor() {
     };
 
     const handleLeave = () => setVisible(false);
-    const handleEnter = () => setVisible(true);
 
     window.addEventListener("mousemove", handleMove, { passive: true });
     document.addEventListener("mouseleave", handleLeave);
-    document.addEventListener("mouseenter", handleEnter);
 
     return () => {
       document.documentElement.classList.remove("cursor-none");
       window.removeEventListener("mousemove", handleMove);
       document.removeEventListener("mouseleave", handleLeave);
-      document.removeEventListener("mouseenter", handleEnter);
     };
-  }, [enabled, visible]);
+  }, [enabled]);
 
   if (!enabled) return null;
 

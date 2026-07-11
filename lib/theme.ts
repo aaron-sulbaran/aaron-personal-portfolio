@@ -15,13 +15,14 @@ export function syncThemeColorMeta(theme: Theme): void {
 
 export const themeInitScript = `
 (function () {
+  var systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  var theme = systemDark ? 'dark' : 'light';
   try {
     var stored = localStorage.getItem('${THEME_STORAGE_KEY}');
-    var systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    var theme = stored === 'light' || stored === 'dark' ? stored : (systemDark ? 'dark' : 'light');
-    document.documentElement.setAttribute('data-theme', theme);
+    if (stored === 'light' || stored === 'dark') theme = stored;
   } catch (e) {
-    document.documentElement.setAttribute('data-theme', 'light');
+    // Storage blocked (privacy mode): keep the system preference, do not force light.
   }
+  document.documentElement.setAttribute('data-theme', theme);
 })();
 `;
