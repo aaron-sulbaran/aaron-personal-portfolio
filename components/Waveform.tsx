@@ -350,6 +350,11 @@ function WaveCanvas() {
           raf = 0;
         }
         ctx.clearRect(0, 0, w, h);
+        // The wave never draws below MOBILE_MAX; kill the trigger so it stops
+        // processing scroll for the rest of the mobile session. The desktop
+        // branch recreates it (its `!st` guard) if the viewport crosses back up.
+        st?.kill();
+        st = null;
       } else {
         // Crossed from mobile to desktop with no trigger yet (it was skipped
         // at setup): create it now so the scroll ramp comes alive.

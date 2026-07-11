@@ -11,6 +11,7 @@ import {
   modalBackdropTintVariants,
 } from "@/lib/modal";
 import { siteContent, type Definition } from "@/lib/content";
+import { Portal } from "./Portal";
 
 type DefinitionModalProps = {
   definition: Definition | null;
@@ -50,8 +51,9 @@ export function DefinitionModal({ definition, morph, onClose }: DefinitionModalP
   };
 
   return (
-    <AnimatePresence>
-      {definition && (
+    <Portal>
+      <AnimatePresence>
+        {definition && (
         <motion.div
           key="definition-modal-backdrop"
           role="dialog"
@@ -65,20 +67,20 @@ export function DefinitionModal({ definition, morph, onClose }: DefinitionModalP
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) onClose();
           }}
-          className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6 md:px-10 md:py-14"
+          className="fixed inset-0 z-50 flex justify-center overflow-y-auto overscroll-contain px-4 py-6 md:px-10 md:py-14"
         >
           {/* Dim tint. pointer-events-none so a click on the unblurred area
               still reaches the backdrop and closes the modal. */}
           <motion.div
             aria-hidden="true"
             variants={modalBackdropTintVariants(ambientDelay)}
-            className="pointer-events-none absolute inset-0 bg-background/70"
+            className="pointer-events-none fixed inset-0 bg-background/70"
           />
 
           <motion.div
             variants={panelVariants}
             onMouseDown={(e) => e.stopPropagation()}
-            className="relative flex w-full max-w-lg flex-col gap-4 rounded-2xl border border-border/60 bg-background/85 p-6 shadow-[0_40px_80px_-20px_rgba(10,10,10,0.45)] backdrop-blur-xl md:p-8"
+            className="relative my-auto flex w-full max-w-lg flex-col gap-4 rounded-2xl border border-border/60 bg-background/85 p-6 shadow-[0_40px_80px_-20px_rgba(10,10,10,0.45)] backdrop-blur-xl md:p-8"
           >
             <button
               type="button"
@@ -112,7 +114,8 @@ export function DefinitionModal({ definition, morph, onClose }: DefinitionModalP
             </p>
           </motion.div>
         </motion.div>
-      )}
-    </AnimatePresence>
+        )}
+      </AnimatePresence>
+    </Portal>
   );
 }

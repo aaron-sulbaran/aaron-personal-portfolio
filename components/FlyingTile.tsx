@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { motion, useReducedMotion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { photoBySrc, workItemBySlug, type HomeTile } from "@/lib/content";
 import { MODAL_DISMISS_HOLD, MODAL_DISMISS_RAMP } from "@/lib/modal";
 
@@ -149,6 +149,20 @@ export function FlyingTile({
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", onResize);
     };
+  }, [phase, tile.kind]);
+
+  // Closing flight: take one fresh synchronous measurement of the slot before
+  // the exit reads slotRect. The "out" tracking above stops once the rect holds
+  // still, so a late shift (slow image decode, entrance settling past the 900ms
+  // cap) could otherwise start the close flight from a stale rect. In the
+  // un-shifted common case this reads the identical rect, so it is a no-op.
+  useLayoutEffect(() => {
+    if (phase !== "closing") return;
+    const which = tile.kind === "photo" ? "photo" : "work";
+    const slot = document.querySelector<HTMLDivElement>(`[data-tile-slot="${which}"]`);
+    if (!slot) return;
+    const rect = slot.getBoundingClientRect();
+    setSlotRect({ left: rect.left, top: rect.top, width: rect.width, height: rect.height });
   }, [phase, tile.kind]);
 
   const resolved = resolveTile(tile);
