@@ -33,9 +33,9 @@ type Props = {
   tile: HomeTile;
   homeRect: FlightTarget;
   homeTangentDeg: number;
-  /** Baseline X rotation the ring tile rests at (non-zero, a few degrees). */
+  /** Resting X rotation of the ring tile (collapse arc rotX; 0 at focus). */
   homeRestRotX: number;
-  /** Baseline Y rotation the ring tile rests at (non-zero, a few degrees). */
+  /** Resting Y rotation of the ring tile (0; cards rest flat). */
   homeRestRotY: number;
   /** Captured live transform of the clicked tile, for first-frame fidelity. */
   source: FlightSource;
