@@ -3,12 +3,12 @@ import { parseSiteMode } from "./holding";
 import { siteContent } from "./content";
 
 describe("parseSiteMode", () => {
-  it("only the exact 'holding' value selects the holding page", () => {
+  it("holds by default; only the exact 'full' value opts into the full site", () => {
+    expect(parseSiteMode(undefined)).toBe("holding");
+    expect(parseSiteMode("")).toBe("holding");
     expect(parseSiteMode("holding")).toBe("holding");
+    expect(parseSiteMode("Full")).toBe("holding");
     expect(parseSiteMode("full")).toBe("full");
-    expect(parseSiteMode("Holding")).toBe("full");
-    expect(parseSiteMode("")).toBe("full");
-    expect(parseSiteMode(undefined)).toBe("full");
   });
 });
 

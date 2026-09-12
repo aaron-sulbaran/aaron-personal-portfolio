@@ -171,7 +171,7 @@ export const siteContent = {
     ],
   },
   // Holding page (components/Holding.tsx), served at / while
-  // NEXT_PUBLIC_SITE_MODE=holding (see lib/holding.ts). Recruiters arriving
+  // NEXT_PUBLIC_SITE_MODE=full opts out (see lib/holding.ts). Recruiters arriving
   // from the resume link land here until the full build ships.
   holding: {
     label: "Under remodeling",

@@ -4,7 +4,7 @@ import { revealIndex } from "@/lib/motion";
 import { BrandIcon } from "./BrandIcons";
 import { HoldingDeck } from "./HoldingDeck";
 
-// The "under remodeling" home, served at / while NEXT_PUBLIC_SITE_MODE=holding
+// The "under remodeling" home, served at / unless NEXT_PUBLIC_SITE_MODE=full
 // (lib/holding.ts). One viewport, no nav: the deck riffles up top, the serif
 // headline and body below, then the social links as icon pills.
 //
@@ -16,8 +16,8 @@ import { HoldingDeck } from "./HoldingDeck";
 // the final state.
 // Headline face: Profa Black, the display direction settled in the September
 // design-exploration rounds. Single upright cut, so no italic. The file lives
-// in app/fonts/, which is gitignored (licensed, not for redistribution); see
-// the deploy notes before shipping this from a git build.
+// in app/fonts/ and is allowlisted in .gitignore (owned face) so git builds
+// on Vercel can see it.
 const profaBlack = localFont({
   src: "../app/fonts/ProfaTrial-Black.ttf",
   weight: "900",
