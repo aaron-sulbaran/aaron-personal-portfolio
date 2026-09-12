@@ -4,6 +4,7 @@ import { Menu } from "@/components/Menu";
 import { SiteNav } from "@/components/SiteNav";
 import { CustomCursor } from "@/components/CustomCursor";
 import { siteContent } from "@/lib/content";
+import { HOLDING_MODE } from "@/lib/holding";
 import { THEME_BG_DARK, THEME_BG_LIGHT, themeInitScript } from "@/lib/theme";
 import "./globals.css";
 
@@ -71,8 +72,9 @@ export default function RootLayout({
         <a href="#main" className="skip-link">
           Skip to content
         </a>
-        <SiteNav />
-        <Menu />
+        {/* Holding mode has no sections to navigate; nav and menu stay out. */}
+        {!HOLDING_MODE && <SiteNav />}
+        {!HOLDING_MODE && <Menu />}
         <CustomCursor />
         {children}
       </body>
