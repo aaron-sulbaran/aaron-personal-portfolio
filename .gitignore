@@ -58,5 +58,7 @@ docs/archive/
 # Review sweep scratch state (not for commit)
 docs/review-sweep/
 
-# Licensed/trial font files, not for distribution
-app/fonts/
+# Font files stay out by default; only faces the shipped site uses are
+# allowlisted below (Profa Black, owned; the headline face).
+app/fonts/*
+!app/fonts/ProfaTrial-Black.ttf
