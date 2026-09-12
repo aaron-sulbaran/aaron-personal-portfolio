@@ -39,6 +39,9 @@ next-env.d.ts
 # Agent working documents and tooling, private per Living Document Protocol
 AGENTS.md
 AGENTS_ARCHIVE.md
+PRODUCT.md
+DESIGN.md
+.impeccable/
 CLAUDE.md
 CLAUDE.local.md
 skills-lock.json
@@ -51,3 +54,9 @@ docs/research/
 docs/plans/
 docs/archive/
 .superpowers/
+
+# Review sweep scratch state (not for commit)
+docs/review-sweep/
+
+# Licensed/trial font files, not for distribution
+app/fonts/

@@ -6,6 +6,16 @@ export interface SoundtrackTrack {
   cover: string | null;
 }
 
+// One link on the holding page. `icon` picks the brand mark in
+// components/BrandIcons.tsx. `href: null` keeps the entry defined but hides it
+// until the handle is filled in; the page never renders a dead link.
+export interface HoldingSocial {
+  key: string;
+  label: string;
+  icon: "linkedin" | "github" | "x" | "instagram" | "mail";
+  href: string | null;
+}
+
 export const siteContent = {
   meta: {
     title: "Aaron Sulbaran",
@@ -159,6 +169,39 @@ export const siteContent = {
         external: false,
       },
     ],
+  },
+  // Holding page (components/Holding.tsx), served at / while
+  // NEXT_PUBLIC_SITE_MODE=holding (see lib/holding.ts). Recruiters arriving
+  // from the resume link land here until the full build ships.
+  holding: {
+    label: "Under remodeling",
+    heading: "Pardon the dust.",
+    body: "I'm rebuilding this site from the ground up. The full build ships soon.",
+    interim: "In the meantime, here's what I've been up to:",
+    deckAriaLabel: "A small stack of photo cards from the site, shuffling",
+    socials: [
+      {
+        key: "linkedin",
+        label: "LinkedIn",
+        icon: "linkedin",
+        href: "https://www.linkedin.com/in/aaron-sulbaran/",
+      },
+      {
+        key: "github",
+        label: "GitHub",
+        icon: "github",
+        href: "https://github.com/aaron-sulbaran",
+      },
+      // Fill in the handles to show these; null hides the link entirely.
+      { key: "x", label: "X", icon: "x", href: null },
+      { key: "instagram", label: "Instagram", icon: "instagram", href: null },
+      {
+        key: "email",
+        label: "Email",
+        icon: "mail",
+        href: "mailto:aarondsulbaran@gmail.com",
+      },
+    ] as HoldingSocial[],
   },
   footer: {
     tagline: "This site grows with me. Last updated June 2026",

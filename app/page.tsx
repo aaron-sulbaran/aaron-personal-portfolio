@@ -10,6 +10,8 @@ import { Footer } from "@/components/Footer";
 import { Waveform } from "@/components/Waveform";
 import { PlaybackPill } from "@/components/PlaybackPill";
 import { ScrollProgress } from "@/components/ScrollProgress";
+import { Holding } from "@/components/Holding";
+import { HOLDING_MODE } from "@/lib/holding";
 
 // The whole site is one scrolling document: Hero (ring) then Work, About,
 // Connect, Footer. The hero keeps its own viewport-locked overflow-hidden
@@ -31,6 +33,10 @@ import { ScrollProgress } from "@/components/ScrollProgress";
 // ScrollProgress z-[31], Menu z-40/50, modals z-50, FlyingTile z-[55])
 // portals to body and stays above.
 export default function Home() {
+  // Holding mode (NEXT_PUBLIC_SITE_MODE=holding, see lib/holding.ts): the
+  // "under remodeling" page replaces the whole scroll journey.
+  if (HOLDING_MODE) return <Holding />;
+
   return (
     <>
       <Waveform />

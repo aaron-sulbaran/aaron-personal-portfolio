@@ -1,9 +1,10 @@
 import Link from "next/link";
 import Image from "next/image";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { ArrowUpRight } from "lucide-react";
 import { siteContent, type WorkBodySection } from "@/lib/content";
+import { HOLDING_MODE } from "@/lib/holding";
 import { Footer } from "@/components/Footer";
 
 export const dynamicParams = false;
@@ -28,6 +29,8 @@ export function generateMetadata({ params }: Params): Metadata {
 }
 
 export default function WorkDetailPage({ params }: Params) {
+  // Case studies are unpublished while the holding page is up.
+  if (HOLDING_MODE) redirect("/");
   const item = siteContent.workItems.find((i) => i.slug === params.slug);
   if (!item) notFound();
 
