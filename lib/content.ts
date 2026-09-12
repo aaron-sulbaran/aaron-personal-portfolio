@@ -176,7 +176,7 @@ export const siteContent = {
   holding: {
     label: "Under remodeling",
     heading: "Pardon the dust.",
-    body: "I'm rebuilding this site from the ground up. The full build ships soon.",
+    body: "I'm rebuilding the site from the ground up, check back soon!",
     interim: "In the meantime, here's what I've been up to:",
     deckAriaLabel: "A small stack of photo cards from the site, shuffling",
     socials: [
@@ -192,9 +192,13 @@ export const siteContent = {
         icon: "github",
         href: "https://github.com/aaron-sulbaran",
       },
-      // Fill in the handles to show these; null hides the link entirely.
-      { key: "x", label: "X", icon: "x", href: null },
-      { key: "instagram", label: "Instagram", icon: "instagram", href: null },
+      { key: "x", label: "X", icon: "x", href: "https://x.com/imaaronsulbaran" },
+      {
+        key: "instagram",
+        label: "Instagram",
+        icon: "instagram",
+        href: "https://www.instagram.com/aaron.sulbaran/",
+      },
       {
         key: "email",
         label: "Email",

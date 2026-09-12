@@ -1,3 +1,4 @@
+import localFont from "next/font/local";
 import { siteContent } from "@/lib/content";
 import { revealIndex } from "@/lib/motion";
 import { BrandIcon } from "./BrandIcons";
@@ -13,6 +14,16 @@ import { HoldingDeck } from "./HoldingDeck";
 // on a cold recruiter visit is the worst possible first frame. CSS plays as
 // soon as the HTML paints, and the global reduced-motion rule collapses it to
 // the final state.
+// Headline face: Profa Black, the display direction settled in the September
+// design-exploration rounds. Single upright cut, so no italic. The file lives
+// in app/fonts/, which is gitignored (licensed, not for redistribution); see
+// the deploy notes before shipping this from a git build.
+const profaBlack = localFont({
+  src: "../app/fonts/ProfaTrial-Black.ttf",
+  weight: "900",
+  display: "swap",
+});
+
 export function Holding() {
   const { label, heading, body, interim, socials } = siteContent.holding;
   const { copyright } = siteContent.footer;
@@ -39,7 +50,7 @@ export function Holding() {
       </div>
 
       <h1
-        className="holding-rise mt-5 font-serif text-display-sm italic text-foreground"
+        className={`holding-rise mt-5 text-display-sm text-foreground ${profaBlack.className}`}
         style={revealIndex(2)}
       >
         {heading}
