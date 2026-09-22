@@ -6,6 +6,11 @@
 // for branch previews. Going live is deleting the default here (one line),
 // tracked in git rather than in dashboard state. NEXT_PUBLIC_ so the value is
 // inlined at build time and the gate is a constant in every bundle.
+//
+// Exempt from the switch: /recruiting (app/recruiting, gated by middleware.ts
+// on its own signed cookie) never reads HOLDING_MODE, so it stays reachable
+// while production holds. Any new route that should also be exempt simply
+// does not consult this module.
 export type SiteMode = "full" | "holding";
 
 export function parseSiteMode(value: string | undefined): SiteMode {
