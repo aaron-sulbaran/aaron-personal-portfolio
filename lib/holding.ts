@@ -6,6 +6,9 @@
 // for branch previews. Going live is deleting the default here (one line),
 // tracked in git rather than in dashboard state. NEXT_PUBLIC_ so the value is
 // inlined at build time and the gate is a constant in every bundle.
+//
+// A route that should stay reachable while the holding page is up simply
+// does not consult this module.
 export type SiteMode = "full" | "holding";
 
 export function parseSiteMode(value: string | undefined): SiteMode {
