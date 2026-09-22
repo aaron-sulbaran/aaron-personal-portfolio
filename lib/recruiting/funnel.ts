@@ -26,6 +26,10 @@ export interface FunnelNode {
   id: FunnelNodeId;
   kind: "stage" | "terminal" | "source";
   order: number;
+  // Applications whose path touches this node. Becomes the node's fixedValue
+  // in d3-sankey so a stage where rows stop (still in play) is drawn at its
+  // true height, taller than its outflows.
+  count: number;
 }
 
 export interface FunnelLink {
@@ -97,7 +101,7 @@ export function pathFor(app: Application): FunnelNodeId[] {
 export function computeFunnel(apps: ReadonlyArray<Application>, filter: FunnelFilter): Funnel {
   const rows = filterApplications(apps, filter);
   const linkTotals = new Map<string, FunnelLink>();
-  const seen = new Set<FunnelNodeId>();
+  const seen = new Map<FunnelNodeId, number>();
   let counted = 0;
   let planned = 0;
 
@@ -109,7 +113,7 @@ export function computeFunnel(apps: ReadonlyArray<Application>, filter: FunnelFi
     const path = pathFor(app);
     if (path.length === 0) continue;
     counted += 1;
-    for (const id of path) seen.add(id);
+    for (const id of path) seen.set(id, (seen.get(id) ?? 0) + 1);
     for (let i = 0; i + 1 < path.length; i += 1) {
       const key = `${path[i]}>${path[i + 1]}>${app.lane}`;
       const link = linkTotals.get(key) ?? {
@@ -124,10 +128,11 @@ export function computeFunnel(apps: ReadonlyArray<Application>, filter: FunnelFi
   }
 
   const nodes: FunnelNode[] = [];
-  if (seen.has("outreach")) nodes.push({ id: "outreach", kind: "source", order: -1 });
-  STAGES.forEach((stage, i) => nodes.push({ id: stage, kind: "stage", order: i }));
+  const count = (id: FunnelNodeId) => seen.get(id) ?? 0;
+  if (seen.has("outreach")) nodes.push({ id: "outreach", kind: "source", order: -1, count: count("outreach") });
+  STAGES.forEach((stage, i) => nodes.push({ id: stage, kind: "stage", order: i, count: count(stage) }));
   TERMINAL_ORDER.forEach((terminal, i) => {
-    if (seen.has(terminal)) nodes.push({ id: terminal, kind: "terminal", order: 100 + i });
+    if (seen.has(terminal)) nodes.push({ id: terminal, kind: "terminal", order: 100 + i, count: count(terminal) });
   });
 
   const links = Array.from(linkTotals.values()).sort(

@@ -141,8 +141,8 @@ describe("computeFunnel", () => {
     const f = computeFunnel(ALL, THIS_SEASON);
     expect(f.counted).toBe(4);
     expect(f.planned).toBe(1);
-    expect(f.nodes.map((n) => n.id)).toEqual([
-      "applied", "oa", "screen", "interview", "final", "offer", "accepted", "rejected",
+    expect(f.nodes.map((n) => [n.id, n.count])).toEqual([
+      ["applied", 4], ["oa", 1], ["screen", 2], ["interview", 2], ["final", 0], ["offer", 0], ["accepted", 0], ["rejected", 1],
     ]);
     expect(f.links).toEqual([
       { source: "applied", target: "oa", lane: "internship", value: 1 },
@@ -157,7 +157,7 @@ describe("computeFunnel", () => {
   it("adds the outreach pair when the toggle is on", () => {
     const f = computeFunnel(ALL, { ...THIS_SEASON, includeOutreach: true });
     expect(f.counted).toBe(5);
-    expect(f.nodes[0]).toEqual({ id: "outreach", kind: "source", order: -1 });
+    expect(f.nodes[0]).toEqual({ id: "outreach", kind: "source", order: -1, count: 1 });
     expect(f.nodes.at(-1)?.id).toBe("ignored");
     expect(f.links[0]).toEqual({ source: "outreach", target: "ignored", lane: "full-time", value: 1 });
   });
