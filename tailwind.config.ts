@@ -18,6 +18,12 @@ const config: Config = {
         border: "var(--color-border)",
         glass: "var(--color-glass)",
         "glass-strong": "var(--color-glass-strong)",
+        "viz-lane-1": "var(--viz-lane-1)",
+        "viz-lane-2": "var(--viz-lane-2)",
+        "viz-lane-3": "var(--viz-lane-3)",
+        "viz-warm": "var(--viz-warm)",
+        "viz-cool": "var(--viz-cool)",
+        "viz-node": "var(--viz-node)",
       },
       fontFamily: {
         serif: ["var(--font-serif)", "Georgia", "serif"],

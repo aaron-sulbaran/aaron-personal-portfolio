@@ -1,6 +1,6 @@
-import localFont from "next/font/local";
 import { siteContent } from "@/lib/content";
 import { revealIndex } from "@/lib/motion";
+import { profaBlack } from "@/lib/fonts";
 import { BrandIcon } from "./BrandIcons";
 import { HoldingDeck } from "./HoldingDeck";
 
@@ -14,15 +14,7 @@ import { HoldingDeck } from "./HoldingDeck";
 // on a cold recruiter visit is the worst possible first frame. CSS plays as
 // soon as the HTML paints, and the global reduced-motion rule collapses it to
 // the final state.
-// Headline face: Profa Black, the display direction settled in the September
-// design-exploration rounds. Single upright cut, so no italic. The file lives
-// in app/fonts/ and is allowlisted in .gitignore (owned face) so git builds
-// on Vercel can see it.
-const profaBlack = localFont({
-  src: "../app/fonts/ProfaTrial-Black.ttf",
-  weight: "900",
-  display: "swap",
-});
+// Headline face: Profa Black via lib/fonts.ts (shared with /recruiting).
 
 export function Holding() {
   const { label, heading, body, interim, socials } = siteContent.holding;

@@ -14,6 +14,16 @@
   --scrollbar-comp: 0px;
   /* Shared deceleration curve, mirrors EASE in lib/motion.ts. */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  /* Data-viz encodings for /recruiting (components/recruiting). Not UI
+     accents: three categorical lane hues plus a warm/cool outcome pair,
+     validated with the dataviz skill's palette checks against each surface.
+     Stage nodes stay neutral (muted ink). */
+  --viz-lane-1: #2a78d6;
+  --viz-lane-2: #eb6834;
+  --viz-lane-3: #1baf7a;
+  --viz-warm: #eda100;
+  --viz-cool: #4a3aa7;
+  --viz-node: #6B6B6B;
 }
 
 [data-theme="dark"] {
@@ -25,6 +35,12 @@
   --color-border: #1F2830;
   --color-glass: rgba(20, 25, 30, 0.5);
   --color-glass-strong: rgba(20, 25, 30, 0.72);
+  --viz-lane-1: #3987e5;
+  --viz-lane-2: #d95926;
+  --viz-lane-3: #199e70;
+  --viz-warm: #c98500;
+  --viz-cool: #9085e9;
+  --viz-node: #8A8A8A;
 }
 
 html {
@@ -201,4 +217,27 @@ body {
   .holding-rise {
     animation-delay: 0s;
   }
+}
+
+/* Recruiting dashboard status chips (components/recruiting). Tailwind cannot
+   apply an alpha modifier to a var() color, so the tints are mixed here. */
+.chip-progress {
+  border-color: color-mix(in srgb, var(--color-accent) 40%, transparent);
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  color: var(--color-accent);
+}
+.chip-warm {
+  border-color: color-mix(in srgb, var(--viz-warm) 55%, transparent);
+  background: color-mix(in srgb, var(--viz-warm) 18%, transparent);
+  color: var(--color-foreground);
+}
+.chip-cool {
+  border-color: color-mix(in srgb, var(--viz-cool) 45%, transparent);
+  background: color-mix(in srgb, var(--viz-cool) 12%, transparent);
+  color: var(--color-foreground);
+}
+.chip-muted {
+  border-color: var(--color-border);
+  background: var(--color-glass);
+  color: var(--color-muted);
 }
