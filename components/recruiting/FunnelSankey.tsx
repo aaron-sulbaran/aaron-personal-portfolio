@@ -1,65 +1,54 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { sankey, sankeyLinkHorizontal, type SankeyLink, type SankeyNode } from "d3-sankey";
+import { sankey, sankeyLeft, sankeyLinkHorizontal, type SankeyLink, type SankeyNode } from "d3-sankey";
 import { siteContent } from "@/lib/content";
-import { laneOrder, stageIndex, type Funnel, type FunnelLink, type FunnelNode, type FunnelNodeId } from "@/lib/recruiting/funnel";
-import { laneTone } from "@/lib/recruiting/format";
-import { STAGES, type Lane } from "@/lib/recruiting/types";
+import { columnChain, stageBars, type Funnel, type FunnelLink, type FunnelNode } from "@/lib/recruiting/funnel";
+import type { Lane } from "@/lib/recruiting/types";
+import { TONES } from "./tones";
 
-// The funnel, laid out by d3-sankey. Conventions after sankeymatic: stages in
-// order left to right, sources left-aligned, terminal outcomes pinned to the
-// right edge, flows carry the lane color and a count, nodes stay muted.
+// The funnel chart. Wide containers get the Sankey; narrow ones (phones, a
+// docked pane) get stacked stage bars built from the same links, because a
+// Sankey needs horizontal room per column and would otherwise scroll.
 //
-// d3-sankey assigns columns by graph depth, so the seven stages are always
-// present (zero-value scaffold links keep the chain unbroken, see scaffold())
-// and terminals ask for the last column via nodeAlign. Their vertical layout
-// is d3's; the horizontal positions are then rewritten so terminals get a
-// column of their own at the right edge regardless of where each flow ended.
+// Sankey settings follow sankeymatic.com's Job Search recipe
+// (github.com/nowthis/sankeymatic build/constants.js): node_w 8, node spacing
+// near the middle of its range, flows colored by target, curvature 0.5 (the
+// d3 horizontal link), flow opacity around the 0.45 default, labels showing
+// name and value, ends not justified (d3 sankeyLeft) so exits sit next to the
+// stage they left.
 
-type NodeDatum = FunnelNode & { label: string; value?: number; fixedValue?: number };
-type LinkDatum = { lane: Lane; scaffold: boolean };
+type NodeDatum = FunnelNode & { fixedValue?: number };
+type LinkDatum = Pick<FunnelLink, "tone" | "byLane">;
 type LaidNode = SankeyNode<NodeDatum, LinkDatum>;
 type LaidLink = SankeyLink<NodeDatum, LinkDatum>;
 
-const NODE_WIDTH = 10;
-const NODE_PADDING = 22;
-const HEIGHT = 380;
-const MIN_WIDTH = 720;
-const MARGIN = { top: 34, right: 96, bottom: 14, left: 12 };
-
+const NODE_WIDTH = 8;
+const NARROW = 720;
+const MARGIN = { top: 18, right: 132, bottom: 18, left: 108 };
 const copy = siteContent.recruiting.funnel;
+const laneCopy = siteContent.recruiting.lanes;
 
-function scaffold(links: FunnelLink[]): Array<FunnelLink & { scaffold: boolean }> {
-  const real = links.map((l) => ({ ...l, scaffold: false }));
-  const present = new Set(real.map((l) => `${l.source}>${l.target}`));
-  const chain: Array<FunnelLink & { scaffold: boolean }> = [];
-  for (let i = 0; i + 1 < STAGES.length; i += 1) {
-    const key = `${STAGES[i]}>${STAGES[i + 1]}`;
-    if (!present.has(key)) {
-      chain.push({ source: STAGES[i], target: STAGES[i + 1], lane: "?", value: 0, scaffold: true });
-    }
+function nodeLabel(node: FunnelNode): string {
+  if (node.kind === "lane") return node.lane === "outreach" ? copy.outreach : laneCopy[node.lane as Lane];
+  if (node.kind === "stage" && node.stage) return copy.nodes[node.stage];
+  return node.exit ? copy.exits[node.exit] : node.id;
+}
+
+function nodeTone(node: FunnelNode) {
+  if (node.kind === "lane") {
+    const lane = node.lane as Lane | "outreach";
+    return lane === "full-time" ? TONES["lane-1"] : lane === "internship" ? TONES["lane-2"] : lane === "co-op" ? TONES["lane-3"] : TONES.node;
   }
-  return [...real, ...chain];
+  if (node.kind === "stage") return node.stage === "offer" || node.stage === "accepted" ? TONES.offer : TONES.node;
+  return TONES[node.exit ?? "noreply"];
 }
 
-// Stage names run along the top as column headers, so an empty stage still
-// shows where the road goes; terminals share one "Outcome" column.
-function columnHeaders(width: number) {
-  const columns = STAGES.length + 1;
-  const step = (width - MARGIN.left - MARGIN.right - NODE_WIDTH) / (columns - 1);
-  const labels = [...STAGES.map((s) => copy.nodes[s]), copy.outcomeHeader];
-  return labels.map((label, i) => ({
-    label,
-    x: MARGIN.left + i * step + (i === 0 ? 0 : i === columns - 1 ? NODE_WIDTH : NODE_WIDTH / 2),
-    anchor: (i === 0 ? "start" : i === columns - 1 ? "end" : "middle") as "start" | "end" | "middle",
-  }));
-}
-
-function columnOf(node: NodeDatum): number {
-  if (node.kind === "terminal") return STAGES.length;
-  if (node.kind === "source") return 0;
-  return stageIndex(node.id as (typeof STAGES)[number]);
+function laneBreakdown(byLane: Partial<Record<Lane, number>>): string {
+  const parts = (Object.entries(byLane) as Array<[Lane, number]>)
+    .filter(([, n]) => n > 0)
+    .map(([lane, n]) => `${n} ${laneCopy[lane]}`);
+  return parts.length > 1 ? ` (${parts.join(", ")})` : "";
 }
 
 function useMeasuredWidth<T extends HTMLElement>() {
@@ -76,181 +65,162 @@ function useMeasuredWidth<T extends HTMLElement>() {
 }
 
 export function FunnelSankey({ funnel }: { funnel: Funnel }) {
-  const { ref, width: measured } = useMeasuredWidth<HTMLDivElement>();
-  const width = Math.max(measured, MIN_WIDTH);
+  const { ref, width } = useMeasuredWidth<HTMLDivElement>();
+  const empty = funnel.counted === 0 && funnel.outreach === 0;
+  return (
+    <div ref={ref} className="relative">
+      {empty ? (
+        <p className="py-16 text-center text-sm text-muted">{copy.empty}</p>
+      ) : width === 0 ? (
+        <div style={{ height: 320 }} />
+      ) : width < NARROW ? (
+        <FunnelBars funnel={funnel} />
+      ) : (
+        <SankeyChart funnel={funnel} width={width} />
+      )}
+    </div>
+  );
+}
+
+function SankeyChart({ funnel, width }: { funnel: Funnel; width: number }) {
   const [hover, setHover] = useState<{ x: number; y: number; text: string } | null>(null);
-  const [focusNode, setFocusNode] = useState<FunnelNodeId | null>(null);
+  const [focus, setFocus] = useState<string | null>(null);
+  const applied = funnel.nodes.find((n) => n.id === "stage:applied")?.count ?? 0;
 
   const layout = useMemo(() => {
-    if (funnel.counted === 0) return null;
-    const nodes: NodeDatum[] = funnel.nodes.map((n) => ({
-      ...n,
-      label: copy.nodes[n.id],
-      fixedValue: n.count > 0 ? n.count : undefined,
-    }));
-    const links = scaffold(funnel.links);
+    // Height grows with the busiest column so labels never stack on each other.
+    const perColumn = new Map<string, number>();
+    for (const n of funnel.nodes) {
+      const key = n.kind === "lane" ? "lane" : n.kind === "exit" ? `after:${n.from}` : `stage:${n.stage}`;
+      perColumn.set(key, (perColumn.get(key) ?? 0) + 1);
+    }
+    const busiest = Math.max(...Array.from(perColumn.values()), 1);
+    const height = Math.min(620, Math.max(340, 150 + busiest * 58));
+    const padding = Math.max(18, Math.min(34, (height - MARGIN.top - MARGIN.bottom) * 0.09));
     const generator = sankey<NodeDatum, LinkDatum>()
       .nodeId((d) => d.id)
       .nodeWidth(NODE_WIDTH)
-      .nodePadding(NODE_PADDING)
+      .nodePadding(padding)
+      .nodeAlign(sankeyLeft)
+      .nodeSort((a, b) => a.rank - b.rank)
+      .linkSort((a, b) => (a.target as LaidNode).rank - (b.target as LaidNode).rank)
       .iterations(32)
-      .nodeAlign((node, n) => (node.kind === "terminal" ? n - 1 : node.depth ?? 0))
-      .nodeSort((a, b) => a.order - b.order)
-      .linkSort((a, b) => laneOrder(a.lane) - laneOrder(b.lane))
       .extent([
         [MARGIN.left, MARGIN.top],
-        [width - MARGIN.right, HEIGHT - MARGIN.bottom],
+        [width - MARGIN.right, height - MARGIN.bottom],
       ]);
     const graph = generator({
-      nodes: nodes.map((n) => ({ ...n })),
-      links: links.map((l) => ({ source: l.source, target: l.target, value: l.value, lane: l.lane, scaffold: l.scaffold })),
+      nodes: funnel.nodes.map((n) => ({ ...n, fixedValue: n.count })),
+      links: [...funnel.links, ...columnChain(funnel)].map((l) => ({
+        source: l.source,
+        target: l.target,
+        value: l.value,
+        tone: l.tone,
+        byLane: l.byLane,
+      })),
     });
-    const columns = STAGES.length + 1;
-    const step = (width - MARGIN.left - MARGIN.right - NODE_WIDTH) / (columns - 1);
-    for (const node of graph.nodes) {
-      node.x0 = MARGIN.left + columnOf(node) * step;
-      node.x1 = node.x0 + NODE_WIDTH;
-    }
-    return graph;
+    return { graph, height };
   }, [funnel, width]);
 
-  if (!layout) {
-    return (
-      <p className="py-16 text-center text-sm text-muted">{copy.empty}</p>
-    );
-  }
-
+  const { graph, height } = layout;
   const path = sankeyLinkHorizontal<NodeDatum, LinkDatum>();
-  const realLinks = layout.links.filter((l) => !l.scaffold && l.value > 0);
-  const connected = (link: LaidLink) => {
-    if (!focusNode) return true;
-    const s = link.source as LaidNode;
-    const t = link.target as LaidNode;
-    return s.id === focusNode || t.id === focusNode;
-  };
+  const touches = (link: LaidLink) =>
+    !focus || (link.source as LaidNode).id === focus || (link.target as LaidNode).id === focus;
+  const pct = (n: number) => (applied ? `${Math.round((n / applied) * 100)}%` : "");
 
   return (
-    <div ref={ref} className="relative -mx-2 overflow-x-auto px-2">
+    <>
       <svg
         width={width}
-        height={HEIGHT}
-        viewBox={`0 0 ${width} ${HEIGHT}`}
+        height={height}
+        viewBox={`0 0 ${width} ${height}`}
         className="block font-sans"
         role="img"
-        aria-label={copy.heading}
+        aria-label={`${copy.heading}: ${copy.countLabel(funnel.counted)}`}
         onMouseLeave={() => {
           setHover(null);
-          setFocusNode(null);
+          setFocus(null);
         }}
       >
         <g fill="none">
-          {realLinks.map((link) => {
+          {graph.links.filter((link) => link.value > 0).map((link) => {
             const s = link.source as LaidNode;
             const t = link.target as LaidNode;
-            const tone = laneTone(link.lane);
-            const active = connected(link);
+            const tone = TONES[link.tone];
+            const on = touches(link);
             return (
               <path
-                key={`${s.id}-${t.id}-${link.lane}`}
+                key={`${s.id}>${t.id}`}
                 d={path(link) ?? undefined}
-                stroke={`var(--viz-${tone})`}
-                strokeWidth={Math.max(1, link.width ?? 1)}
-                strokeOpacity={active ? 0.55 : 0.12}
+                stroke={tone.color}
+                strokeWidth={Math.max(1.5, link.width ?? 1)}
+                strokeOpacity={on ? tone.flowOpacity : tone.flowOpacity * 0.25}
                 className="transition-[stroke-opacity] duration-200"
                 onMouseMove={(e) => {
                   const box = (e.currentTarget.ownerSVGElement as SVGSVGElement).getBoundingClientRect();
                   setHover({
                     x: e.clientX - box.left,
                     y: e.clientY - box.top,
-                    text: `${s.label} to ${t.label}: ${link.value} ${siteContent.recruiting.lanes[link.lane]}`,
+                    text: `${nodeLabel(s)} to ${nodeLabel(t)}: ${link.value}${laneBreakdown(link.byLane)}`,
                   });
                 }}
+                onMouseLeave={() => setHover(null)}
               />
             );
           })}
         </g>
 
         <g>
-          {realLinks.map((link) => {
-            if ((link.width ?? 0) < 10) return null;
-            const s = link.source as LaidNode;
-            const t = link.target as LaidNode;
-            const x = ((s.x1 ?? 0) + (t.x0 ?? 0)) / 2;
-            const y = ((link.y0 ?? 0) + (link.y1 ?? 0)) / 2;
-            return (
-              <text
-                key={`n-${s.id}-${t.id}-${link.lane}`}
-                x={x}
-                y={y}
-                dy="0.35em"
-                textAnchor="middle"
-                className="fill-foreground text-[11px] font-medium"
-                style={{ paintOrder: "stroke", stroke: "var(--color-background)", strokeWidth: 3, opacity: connected(link) ? 1 : 0.2 }}
-                pointerEvents="none"
-              >
-                {link.value}
-              </text>
-            );
-          })}
-        </g>
-
-        <g>
-          {columnHeaders(width).map((header) => (
-            <text
-              key={header.label}
-              x={header.x}
-              y={12}
-              dy="0.35em"
-              textAnchor={header.anchor}
-              className="fill-muted text-[10px] font-medium uppercase tracking-caps"
-            >
-              {header.label}
-            </text>
-          ))}
-          {layout.nodes.map((node) => {
-            if (node.count === 0) return null;
+          {graph.nodes.map((node) => {
             const x0 = node.x0 ?? 0;
+            const x1 = node.x1 ?? 0;
             const y0 = node.y0 ?? 0;
-            const y1 = node.y1 ?? 0;
-            const terminal = node.kind === "terminal";
-            const tone = terminal ? (node.id === "ignored" ? "node" : "cool")
-              : node.id === "offer" || node.id === "accepted" ? "warm"
-              : "node";
+            const h = Math.max(3, (node.y1 ?? 0) - y0);
+            const tone = nodeTone(node);
+            const label = nodeLabel(node);
+            const left = node.kind === "lane";
+            const tall = h >= 30;
+            const cy = y0 + h / 2;
+            const x = left ? x0 - 8 : x1 + 8;
+            const anchor = left ? "end" : "start";
+            const share = node.kind === "lane" || node.id === "stage:applied" ? "" : ` · ${pct(node.count)}`;
+            const halo = { paintOrder: "stroke" as const, stroke: "var(--color-background)", strokeWidth: 4, strokeLinejoin: "round" as const };
+            const dim = focus && focus !== node.id ? 0.45 : 1;
             return (
               <g
                 key={node.id}
-                onMouseEnter={() => setFocusNode(node.id)}
-                onMouseLeave={() => setFocusNode(null)}
+                onMouseEnter={() => setFocus(node.id)}
+                onMouseLeave={() => setFocus(null)}
+                style={{ opacity: dim }}
+                className="transition-opacity duration-200"
               >
                 <rect
                   x={x0}
                   y={y0}
-                  width={NODE_WIDTH}
-                  height={Math.max(2, y1 - y0)}
+                  width={x1 - x0}
+                  height={h}
                   rx={2}
-                  fill={`var(--viz-${tone})`}
-                  fillOpacity={tone === "node" ? 0.55 : 0.9}
+                  fill={tone.hollow ? "none" : tone.color}
+                  fillOpacity={tone.nodeOpacity}
+                  stroke={tone.hollow ? tone.color : "none"}
+                  strokeWidth={tone.hollow ? 1.5 : 0}
+                  strokeDasharray={tone.hollow ? "3 2" : undefined}
                 />
-                <title>{`${node.label}: ${node.count}`}</title>
-                {terminal ? (
-                  <text
-                    x={x0 + NODE_WIDTH + 8}
-                    y={(y0 + y1) / 2}
-                    dy="0.35em"
-                    className="fill-foreground text-[12px] font-medium"
-                  >
-                    {node.label}
-                    <tspan className="fill-muted font-normal"> {node.count}</tspan>
+                <title>{`${label}: ${node.count}${share}`}</title>
+                {tall ? (
+                  <text x={x} y={cy} textAnchor={anchor} pointerEvents="none">
+                    <tspan x={x} dy="-0.25em" className="fill-foreground text-[12.5px] font-medium" style={halo}>
+                      {label}
+                    </tspan>
+                    <tspan x={x} dy="1.25em" className="fill-muted text-[11.5px]" style={halo}>
+                      {node.count}
+                      {share}
+                    </tspan>
                   </text>
                 ) : (
-                  <text
-                    x={x0 + NODE_WIDTH / 2}
-                    y={y0 - 5}
-                    textAnchor="middle"
-                    className="fill-foreground text-[12px] font-semibold"
-                    style={{ paintOrder: "stroke", stroke: "var(--color-background)", strokeWidth: 3 }}
-                  >
-                    {node.count}
+                  <text x={x} y={cy} dy="0.35em" textAnchor={anchor} pointerEvents="none" style={halo}>
+                    <tspan className="fill-foreground text-[12px] font-medium">{label}</tspan>
+                    <tspan className="fill-muted text-[11.5px]"> {node.count}</tspan>
                   </text>
                 )}
               </g>
@@ -262,12 +232,76 @@ export function FunnelSankey({ funnel }: { funnel: Funnel }) {
       {hover && (
         <div
           role="tooltip"
-          className="pointer-events-none absolute z-10 rounded-md border border-border bg-glass-strong px-2.5 py-1.5 text-[12px] text-foreground shadow-[0_8px_20px_-12px_rgba(10,10,10,0.35)] backdrop-blur-md"
-          style={{ left: hover.x + 14, top: hover.y + 14 }}
+          className="pointer-events-none absolute z-10 max-w-[280px] rounded-md border border-border bg-glass-strong px-2.5 py-1.5 text-[12px] text-foreground shadow-[0_8px_20px_-12px_rgba(10,10,10,0.35)] backdrop-blur-md"
+          style={{ left: Math.min(hover.x + 14, width - 290), top: hover.y + 14 }}
         >
           {hover.text}
         </div>
       )}
+    </>
+  );
+}
+
+// Narrow screens: one bar per stage reached, its length the share of
+// applications that got that far, split by what happened next. Same tones as
+// the Sankey, 2px surface gaps between segments, 4px rounded data ends.
+function FunnelBars({ funnel }: { funnel: Funnel }) {
+  const bars = stageBars(funnel);
+  const applied = bars.find((b) => b.stage === "applied")?.count ?? 0;
+  const lanes = funnel.nodes.filter((n) => n.kind === "lane" && n.lane !== "outreach");
+  const [tip, setTip] = useState<string | null>(null);
+
+  return (
+    <div className="flex flex-col gap-5 py-1">
+      <ul className="flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-muted" aria-label={copy.lanesLabel}>
+        {lanes.map((n) => (
+          <li key={n.id} className="inline-flex items-center gap-1.5">
+            <span aria-hidden="true" className="h-2 w-2 rounded-full" style={{ background: nodeTone(n).color }} />
+            <span className="text-foreground">{nodeLabel(n)}</span> {n.count}
+          </li>
+        ))}
+      </ul>
+      <ol className="flex flex-col gap-4">
+        {bars.map((bar) => {
+          const share = applied ? bar.count / applied : 0;
+          return (
+            <li key={bar.stage} className="flex flex-col gap-1.5">
+              <div className="flex items-baseline justify-between gap-3 text-[13px]">
+                <span className="font-medium text-foreground">{copy.nodes[bar.stage]}</span>
+                <span className="text-muted">
+                  {bar.count}
+                  {bar.stage !== "applied" && ` · ${Math.round(share * 100)}% ${copy.ofApplied}`}
+                </span>
+              </div>
+              <div className="flex h-3 gap-[2px]" style={{ width: `${Math.max(share * 100, 4)}%` }}>
+                {bar.segments.map((seg) => {
+                  const tone = TONES[seg.tone];
+                  const label = `${copy.tones[seg.tone as keyof typeof copy.tones] ?? seg.tone}: ${seg.value}`;
+                  return (
+                    <button
+                      key={seg.tone}
+                      type="button"
+                      aria-label={label}
+                      title={label}
+                      onClick={() => setTip(tip === `${bar.stage}:${label}` ? null : `${bar.stage}:${label}`)}
+                      className="h-full min-w-[4px] first:rounded-l-[4px] last:rounded-r-[4px]"
+                      style={{
+                        flex: `${seg.value} 0 0`,
+                        background: tone.hollow ? "transparent" : tone.color,
+                        opacity: tone.hollow ? 1 : Math.max(tone.nodeOpacity, 0.5),
+                        border: tone.hollow ? `1.5px dashed ${tone.color}` : undefined,
+                      }}
+                    />
+                  );
+                })}
+              </div>
+              {tip?.startsWith(`${bar.stage}:`) && (
+                <p className="text-[12px] text-muted">{tip.slice(bar.stage.length + 1)}</p>
+              )}
+            </li>
+          );
+        })}
+      </ol>
     </div>
   );
 }

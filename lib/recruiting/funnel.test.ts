@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { computeFunnel, computeStats, median, pathFor, stagesReached } from "./funnel";
+import {
+  columnChain,
+  computeFunnel,
+  computeStats,
+  exitFor,
+  exitNodeId,
+  median,
+  pathFor,
+  stageBars,
+  stagesReached,
+} from "./funnel";
 import type { Application } from "./types";
 
 function app(overrides: Partial<Application> & { id: string }): Application {
@@ -37,175 +47,164 @@ const rejectedAfterInterview = app({
     { date: "2026-09-12", kind: "rejected", note: "" },
   ],
 });
-const stillInOa = app({
-  id: "b",
-  lane: "internship",
-  furthest_stage: "oa",
-  status: "oa",
-  first_response_days: 3,
-  events: [
-    { date: "2026-09-01", kind: "applied", note: "" },
-    { date: "2026-09-04", kind: "oa", note: "" },
-  ],
-});
-const justApplied = app({ id: "c", lane: "co-op" });
-const referralNoAppliedEvent = app({
-  id: "d",
-  lane: "co-op",
-  applied: null,
-  furthest_stage: "interview",
-  status: "interview",
-  events: [
-    { date: "2026-09-09", kind: "screen", note: "" },
-    { date: "2026-09-10", kind: "interview", note: "" },
-  ],
-});
-const outreach = app({
-  id: "e",
-  tier: "outreach-ignored",
-  status: "ignored",
-  applied: null,
-  furthest_stage: null,
-  outcome: "ignored",
-  events: [{ date: "2026-09-07", kind: "outreach", note: "" }],
-});
-const planned = app({ id: "f", status: "planned", applied: null, furthest_stage: null });
-const lastSeason = app({
+const stillInOa = app({ id: "b", lane: "co-op", furthest_stage: "oa", status: "oa", first_response_days: 1 });
+const ghosted = app({ id: "c", lane: "internship", season: "2025-26", outcome: "ghosted", status: "ghosted" });
+const stale = app({ id: "d", lane: "internship", outcome: "stale", status: "stale" });
+const planned = app({ id: "e", furthest_stage: null, status: "planned", applied: null });
+const outreach = app({ id: "f", tier: "outreach-ignored", furthest_stage: null, outcome: "ignored", status: "ignored" });
+const offTrackAccepted = app({
   id: "g",
-  season: "2025-26",
-  furthest_stage: "final",
-  outcome: "ghosted",
-  status: "ghosted",
-  first_response_days: 11,
-  events: [
-    { date: "2025-10-01", kind: "applied", note: "" },
-    { date: "2025-10-08", kind: "oa", note: "" },
-    { date: "2025-10-20", kind: "interview", note: "" },
-    { date: "2025-11-02", kind: "final", note: "" },
-  ],
+  role: "Boutique Associate",
+  tier: "off-track",
+  furthest_stage: "accepted",
+  outcome: "accepted",
+  status: "accepted",
 });
-const offer = app({
-  id: "h",
-  season: "2025-26",
-  lane: "internship",
-  furthest_stage: "offer",
-  status: "offer",
-  first_response_days: 2,
-  events: [
-    { date: "2025-10-01", kind: "applied", note: "" },
-    { date: "2025-10-08", kind: "screen", note: "" },
-    { date: "2025-10-20", kind: "interview", note: "" },
-    { date: "2025-11-02", kind: "offer", note: "" },
-  ],
-});
+const accepted = app({ id: "h", furthest_stage: "accepted", outcome: "accepted", status: "accepted" });
 
-const ALL = [rejectedAfterInterview, stillInOa, justApplied, referralNoAppliedEvent, outreach, planned, lastSeason, offer];
-const THIS_SEASON = { seasons: ["2026-27"], lanes: null, includeOutreach: false };
+const all = [rejectedAfterInterview, stillInOa, ghosted, stale, planned, outreach, offTrackAccepted, accepted];
+const both = { seasons: ["2025-26", "2026-27"], lanes: null, includeOutreach: false };
 
-describe("stagesReached / pathFor", () => {
-  it("walks the stages actually hit, in order, then the terminal outcome", () => {
+describe("stagesReached", () => {
+  it("walks every stage the row touched, in order", () => {
     expect(stagesReached(rejectedAfterInterview)).toEqual(["applied", "screen", "interview"]);
-    expect(pathFor(rejectedAfterInterview)).toEqual(["applied", "screen", "interview", "rejected"]);
   });
-
-  it("implies Applied when a referral skipped the applied event", () => {
-    expect(pathFor(referralNoAppliedEvent)).toEqual(["applied", "screen", "interview"]);
+  it("is empty for a planned row", () => {
+    expect(stagesReached(planned)).toEqual([]);
   });
+});
 
-  it("ends at the furthest stage for a row still in play", () => {
-    expect(pathFor(stillInOa)).toEqual(["applied", "oa"]);
-    expect(pathFor(justApplied)).toEqual(["applied"]);
+describe("exitFor", () => {
+  it("folds stale into no reply and keeps in-play rows open", () => {
+    expect(exitFor(ghosted)).toBe("noreply");
+    expect(exitFor(stale)).toBe("noreply");
+    expect(exitFor(stillInOa)).toBe("open");
+    expect(exitFor(rejectedAfterInterview)).toBe("rejected");
+    expect(exitFor(accepted)).toBeNull();
+    expect(exitFor(app({ id: "x", furthest_stage: "accepted", status: "accepted", outcome: null }))).toBeNull();
   });
+});
 
-  it("ignores stage events past furthest_stage (the ledger field wins)", () => {
-    const capped = app({
-      id: "z",
-      furthest_stage: "oa",
-      events: [
-        { date: "2026-09-01", kind: "applied", note: "" },
-        { date: "2026-09-04", kind: "oa", note: "" },
-        { date: "2026-09-05", kind: "interview", note: "" },
-      ],
-    });
-    expect(pathFor(capped)).toEqual(["applied", "oa"]);
+describe("pathFor", () => {
+  it("starts at the lane, walks the stages, exits next to the last stage", () => {
+    expect(pathFor(rejectedAfterInterview).map((s) => s.id)).toEqual([
+      "lane:full-time",
+      "stage:applied",
+      "stage:screen",
+      "stage:interview",
+      exitNodeId("rejected", "interview"),
+    ]);
   });
-
-  it("routes ignored outreach through its own pair and planned rows nowhere", () => {
-    expect(pathFor(outreach)).toEqual(["outreach", "ignored"]);
-    expect(pathFor(planned)).toEqual([]);
+  it("gives each exit its own node per stage (sankeymatic job-search shape)", () => {
+    const early = pathFor(ghosted).at(-1)?.id;
+    const late = pathFor(rejectedAfterInterview).at(-1)?.id;
+    expect(early).toBe("exit:noreply@applied");
+    expect(late).toBe("exit:rejected@interview");
+  });
+  it("ends an accepted offer on the Accepted stage", () => {
+    expect(pathFor(accepted).at(-1)?.id).toBe("stage:accepted");
   });
 });
 
 describe("computeFunnel", () => {
-  it("aggregates lane-colored links with counts and excludes outreach by default", () => {
-    const f = computeFunnel(ALL, THIS_SEASON);
-    expect(f.counted).toBe(4);
-    expect(f.planned).toBe(1);
-    expect(f.nodes.map((n) => [n.id, n.count])).toEqual([
-      ["applied", 4], ["oa", 1], ["screen", 2], ["interview", 2], ["final", 0], ["offer", 0], ["accepted", 0], ["rejected", 1],
-    ]);
-    expect(f.links).toEqual([
-      { source: "applied", target: "oa", lane: "internship", value: 1 },
-      { source: "applied", target: "screen", lane: "full-time", value: 1 },
-      { source: "applied", target: "screen", lane: "co-op", value: 1 },
-      { source: "screen", target: "interview", lane: "full-time", value: 1 },
-      { source: "screen", target: "interview", lane: "co-op", value: 1 },
-      { source: "interview", target: "rejected", lane: "full-time", value: 1 },
-    ]);
+  const funnel = computeFunnel(all, both);
+
+  it("counts applications, planned and outreach separately", () => {
+    expect(funnel.counted).toBe(5);
+    expect(funnel.planned).toBe(1);
+    expect(funnel.outreach).toBe(0);
   });
 
-  it("adds the outreach pair when the toggle is on", () => {
-    const f = computeFunnel(ALL, { ...THIS_SEASON, includeOutreach: true });
-    expect(f.counted).toBe(5);
-    expect(f.nodes[0]).toEqual({ id: "outreach", kind: "source", order: -1, count: 1 });
-    expect(f.nodes.at(-1)?.id).toBe("ignored");
-    expect(f.links[0]).toEqual({ source: "outreach", target: "ignored", lane: "full-time", value: 1 });
+  it("never lets an off-track row into the chart", () => {
+    const ids = funnel.nodes.map((n) => n.id);
+    expect(funnel.nodes.find((n) => n.id === "stage:accepted")?.count).toBe(1);
+    expect(ids).toContain("stage:accepted");
   });
 
-  it("filters by lane and season, and merges rows of one lane on one edge", () => {
-    const f = computeFunnel(ALL, { seasons: ["2026-27"], lanes: ["co-op"], includeOutreach: false });
-    expect(f.counted).toBe(2);
-    expect(f.links).toEqual([
-      { source: "applied", target: "screen", lane: "co-op", value: 1 },
-      { source: "screen", target: "interview", lane: "co-op", value: 1 },
-    ]);
-
-    const both = computeFunnel(ALL, { seasons: ["2025-26", "2026-27"], lanes: null, includeOutreach: false });
-    expect(both.counted).toBe(6);
-    expect(both.nodes.filter((n) => n.kind === "terminal").map((n) => n.id)).toEqual(["rejected", "ghosted"]);
-    expect(both.links).toContainEqual({ source: "final", target: "ghosted", lane: "full-time", value: 1 });
-    expect(both.links).toContainEqual({ source: "interview", target: "offer", lane: "internship", value: 1 });
+  it("colors lane->applied flows by lane and later flows by what happened", () => {
+    const tone = (s: string, t: string) => funnel.links.find((l) => l.source === s && l.target === t)?.tone;
+    expect(tone("lane:co-op", "stage:applied")).toBe("lane-3");
+    expect(tone("stage:applied", "stage:screen")).toBe("forward");
+    expect(tone("stage:interview", "exit:rejected@interview")).toBe("rejected");
+    expect(tone("stage:applied", "exit:noreply@applied")).toBe("noreply");
+    expect(tone("stage:oa", "exit:open@oa")).toBe("open");
+    expect(tone("stage:final", "stage:offer") ?? "offer").toBe("offer");
   });
 
-  it("handles an empty season without throwing", () => {
-    const f = computeFunnel(ALL, { seasons: ["2024-25"], lanes: null, includeOutreach: true });
-    expect(f.counted).toBe(0);
-    expect(f.links).toEqual([]);
-    expect(f.nodes.map((n) => n.kind)).toEqual(Array(7).fill("stage"));
-    expect(computeStats(ALL, { seasons: ["2024-25"], lanes: null, includeOutreach: false })).toEqual({
-      applications: 0,
-      responseRate: null,
-      interviewRate: null,
-      offers: 0,
-      medianResponseDays: null,
-    });
+  it("aggregates one ribbon per source and target with a lane split", () => {
+    const toApplied = funnel.links.filter((l) => l.target === "stage:applied");
+    expect(toApplied.reduce((sum, l) => sum + l.value, 0)).toBe(5);
+    const noReply = funnel.links.find((l) => l.target === "exit:noreply@applied");
+    expect(noReply?.value).toBe(2);
+    expect(noReply?.byLane).toEqual({ internship: 2 });
+  });
+
+  it("conserves flow: every node's inflow matches its count", () => {
+    for (const node of funnel.nodes) {
+      if (node.kind === "lane") continue;
+      const inflow = funnel.links.filter((l) => l.target === node.id).reduce((s, l) => s + l.value, 0);
+      expect(inflow).toBe(node.count);
+    }
+  });
+
+  it("shows outreach only when the toggle is on", () => {
+    const withOutreach = computeFunnel(all, { ...both, includeOutreach: true });
+    expect(withOutreach.outreach).toBe(1);
+    expect(withOutreach.nodes.map((n) => n.id)).toContain("exit:ignored@outreach");
+  });
+
+  it("filters by lane and season", () => {
+    expect(computeFunnel(all, { ...both, lanes: ["co-op"] }).counted).toBe(1);
+    expect(computeFunnel(all, { ...both, seasons: ["2025-26"] }).counted).toBe(1);
+    expect(computeFunnel(all, { ...both, seasons: ["2027-28"] }).counted).toBe(0);
+  });
+});
+
+describe("stageBars", () => {
+  it("splits each stage by what happened next", () => {
+    const bars = stageBars(computeFunnel(all, both));
+    const applied = bars.find((b) => b.stage === "applied");
+    expect(applied?.count).toBe(5);
+    expect(applied?.segments.reduce((s, x) => s + x.value, 0)).toBe(5);
+    expect(applied?.segments[0].tone).toBe("forward");
   });
 });
 
 describe("computeStats", () => {
-  it("counts applications, rates, offers and the median first response", () => {
-    const s = computeStats(ALL, { seasons: ["2025-26", "2026-27"], lanes: null, includeOutreach: true });
-    expect(s.applications).toBe(6);
-    expect(s.responseRate).toBeCloseTo(5 / 6);
-    expect(s.interviewRate).toBeCloseTo(4 / 6);
-    expect(s.offers).toBe(1);
-    expect(s.medianResponseDays).toBe(4);
+  const stats = computeStats(all, both);
+  it("excludes planned, outreach and off-track rows", () => {
+    expect(stats.applications).toBe(5);
   });
+  it("counts only on-track offers", () => {
+    expect(stats.offers).toBe(1);
+  });
+  it("computes interview rate and median first reply", () => {
+    expect(stats.interviewRate).toBeCloseTo(2 / 5);
+    expect(stats.medianResponseDays).toBe(3);
+  });
+});
 
-  it("median handles odd and even lengths", () => {
+describe("median", () => {
+  it("handles empty, odd and even lists", () => {
     expect(median([])).toBeNull();
-    expect(median([7])).toBe(7);
+    expect(median([1, 2, 9])).toBe(2);
     expect(median([1, 3])).toBe(2);
-    expect(median([1, 2, 10])).toBe(2);
+  });
+});
+
+describe("columnChain", () => {
+  it("chains present stages in order with invisible zero links", () => {
+    const skipper = app({ id: "s", furthest_stage: "offer", status: "offer" });
+    const funnel = computeFunnel([skipper, stillInOa], both);
+    const chain = columnChain(funnel);
+    expect(chain.every((l) => l.value === 0)).toBe(true);
+    expect(chain.map((l) => `${l.source}>${l.target}`)).toContain("stage:oa>stage:offer");
+  });
+});
+
+describe("unapplied", () => {
+  it("counts rows that closed before ever applying", () => {
+    const withdrewEarly = app({ id: "w", furthest_stage: null, outcome: "withdrawn", status: "withdrawn" });
+    expect(computeFunnel([withdrewEarly, stillInOa], both).unapplied).toBe(1);
   });
 });

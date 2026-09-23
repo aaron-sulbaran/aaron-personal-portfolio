@@ -31,7 +31,7 @@ const STATUS_CHIP: Record<ReturnType<typeof statusTone>, string> = {
   muted: "chip-muted",
 };
 
-const LANE_DOT: Record<ReturnType<typeof laneTone>, string> = {
+const LANE_DOT: Partial<Record<ReturnType<typeof laneTone>, string>> = {
   "lane-1": "bg-viz-lane-1",
   "lane-2": "bg-viz-lane-2",
   "lane-3": "bg-viz-lane-3",
@@ -99,7 +99,7 @@ function download(rows: Application[]) {
   URL.revokeObjectURL(url);
 }
 
-export function ApplicationsTable({ rows }: { rows: Application[] }) {
+export function ApplicationsTable({ rows, note }: { rows: Application[]; note?: string }) {
   const [sortKey, setSortKey] = useState<SortKey>("lastEvent");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
@@ -139,6 +139,7 @@ export function ApplicationsTable({ rows }: { rows: Application[] }) {
         <h2 id="applications-heading" className="font-serif text-3xl italic leading-none text-foreground md:text-4xl">
           {copy.heading}
           <span className="ml-3 font-sans text-sm not-italic text-muted">{rows.length}</span>
+          {note && <span className="mt-2 block font-sans text-[12px] not-italic leading-snug text-muted">{note}</span>}
         </h2>
         <button
           type="button"

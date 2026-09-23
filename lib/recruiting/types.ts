@@ -21,7 +21,9 @@ export type Lane = (typeof LANES)[number];
 
 export type Season = string;
 
-export type Tier = "target" | "opportunistic" | "outreach-ignored";
+// off-track (2026-09-23): a row outside the search (a retail job that landed in
+// the recruiting label). Kept on the ledger, never in the funnel, tiles or table.
+export type Tier = "target" | "opportunistic" | "outreach-ignored" | "off-track";
 
 export interface LedgerEvent {
   date: string;
@@ -64,6 +66,10 @@ export function isStage(value: string | null | undefined): value is Stage {
 
 export function isTerminal(value: string | null | undefined): value is Terminal {
   return value != null && (TERMINALS as readonly string[]).includes(value);
+}
+
+export function isOffTrack(app: Application): boolean {
+  return app.tier === "off-track";
 }
 
 export function isOutreach(app: Application): boolean {

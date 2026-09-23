@@ -247,11 +247,12 @@ export const siteContent = {
     },
     funnel: {
       heading: "Funnel",
+      countLabel: (n: number) => `${n} ${n === 1 ? "application" : "applications"}`,
       empty: "Nothing in the funnel for this selection yet.",
       plannedNote: (n: number) => `${n} planned, not yet applied`,
-      outcomeHeader: "Outcome",
+      lanesLabel: "Lanes",
+      outcomesLabel: "What happened",
       nodes: {
-        outreach: "Outreach",
         applied: "Applied",
         oa: "OA",
         screen: "Screen",
@@ -259,13 +260,33 @@ export const siteContent = {
         final: "Final",
         offer: "Offer",
         accepted: "Accepted",
+      },
+      exits: {
+        open: "Still open",
         rejected: "Rejected",
-        ghosted: "Ghosted",
-        withdrawn: "Withdrawn",
-        stale: "Stale",
+        noreply: "No reply",
+        withdrew: "Withdrew",
         ignored: "Ignored",
       },
+      outreach: "Outreach",
+      tones: {
+        forward: "Moved forward",
+        open: "Still open",
+        rejected: "Rejected",
+        noreply: "No reply",
+        withdrew: "Withdrew",
+      },
+      ofApplied: "of applied",
     },
+    tableNote: (parts: { counted: number; planned: number; outreach: number; unapplied: number }) =>
+      [
+        `${parts.counted} in the funnel`,
+        parts.planned ? `${parts.planned} planned` : "",
+        parts.unapplied ? `${parts.unapplied} closed before applying` : "",
+        parts.outreach ? `${parts.outreach} ignored outreach` : "",
+      ]
+        .filter(Boolean)
+        .join(", "),
     table: {
       heading: "Applications",
       download: "Download CSV",

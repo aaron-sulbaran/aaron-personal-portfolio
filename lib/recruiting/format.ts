@@ -5,22 +5,8 @@ import { STAGES, isStage, type Application, type Lane } from "./types";
 
 const copy = siteContent.recruiting;
 
-export type LaneTone = "lane-1" | "lane-2" | "lane-3" | "node";
+export { laneTone } from "./funnel";
 export type StatusTone = "progress" | "warm" | "cool" | "muted";
-
-// Color follows the lane, never its position in a filtered list.
-export function laneTone(lane: Lane): LaneTone {
-  switch (lane) {
-    case "full-time":
-      return "lane-1";
-    case "internship":
-      return "lane-2";
-    case "co-op":
-      return "lane-3";
-    default:
-      return "node";
-  }
-}
 
 export function laneLabel(lane: Lane): string {
   return copy.lanes[lane] ?? lane;

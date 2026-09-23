@@ -15,11 +15,11 @@ export function StatTiles({ stats }: { stats: FunnelStats }) {
   ];
 
   return (
-    <dl className="grid grid-cols-2 gap-y-6 border-y border-border py-5 sm:grid-cols-3 md:grid-cols-5 md:gap-y-0">
+    <dl className="grid grid-cols-2 gap-x-6 gap-y-6 border-y border-border py-5 sm:grid-cols-3 md:grid-cols-5 md:gap-x-0 md:gap-y-0">
       {tiles.map((tile, i) => (
         <div
           key={tile.label}
-          className={`flex flex-col gap-1 px-4 first:pl-0 md:border-l md:border-border ${i === 0 ? "md:border-l-0" : ""}`}
+          className={`flex flex-col gap-1 md:border-l md:border-border md:px-4 ${i === 0 ? "md:border-l-0 md:pl-0" : ""}`}
         >
           <dd className="order-1 text-3xl font-semibold leading-none tracking-tight text-foreground md:text-4xl">
             {tile.value}
