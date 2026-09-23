@@ -38,11 +38,23 @@ function headers(token: string): HeadersInit {
   };
 }
 
-function explain(status: number): string {
-  if (status === 401) return "GitHub rejected VAULT_READ_TOKEN (expired, revoked, or mistyped).";
-  if (status === 403 || status === 404)
-    return "VAULT_READ_TOKEN cannot use issues on the vault repo. Edit the token on GitHub and set Issues to Read and write.";
-  return `GitHub issues API ${status}`;
+// GitHub's own message is kept: "Resource not accessible by personal access
+// token" means the Issues permission is missing, "Not Found" means the token
+// cannot see the repo at all, "Bad credentials" means the value is wrong.
+async function explain(res: Response): Promise<string> {
+  const detail = await res
+    .json()
+    .then((body: { message?: string }) => body.message ?? "")
+    .catch(() => "");
+  const hint =
+    res.status === 401
+      ? "The token value in Vercel is wrong, expired, or revoked."
+      : res.status === 403
+        ? "The token can see the repo but lacks Issues: Read and write."
+        : res.status === 404
+          ? "The token cannot see aaron-sulbaran/aarons-second-brain."
+          : "";
+  return `GitHub ${res.status}${detail ? ` (${detail})` : ""}. ${hint}`.trim();
 }
 
 export async function fileEdit(edit: LedgerEdit, company: string): Promise<Result<{ number: number }>> {
@@ -55,7 +67,7 @@ export async function fileEdit(edit: LedgerEdit, company: string): Promise<Resul
       body: JSON.stringify({ title: editTitle(edit, company), body: editBody(edit), labels: [EDIT_LABEL] }),
       cache: "no-store",
     });
-    if (!res.ok) return { data: null, error: explain(res.status) };
+    if (!res.ok) return { data: null, error: await explain(res) };
     const issue = (await res.json()) as IssueJson;
     return { data: { number: issue.number }, error: null };
   } catch (error) {
@@ -66,9 +78,11 @@ export async function fileEdit(edit: LedgerEdit, company: string): Promise<Resul
 async function listIssues(token: string, query: string): Promise<IssueJson[]> {
   const res = await fetch(`https://api.github.com/repos/${VAULT_REPO}/issues?${query}`, {
     headers: headers(token),
-    next: { revalidate: 900, tags: [FEED_TAG] },
+    // Always fresh: an edit must show as pending on the next load, and a
+    // failure must never be served from cache after the token is fixed.
+    cache: "no-store",
   });
-  if (!res.ok) throw new Error(explain(res.status));
+  if (!res.ok) throw new Error(await explain(res));
   return ((await res.json()) as IssueJson[]).filter((i) => !i.pull_request);
 }
 
