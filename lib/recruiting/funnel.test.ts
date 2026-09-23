@@ -139,6 +139,12 @@ describe("computeFunnel", () => {
     expect(noReply?.byLane).toEqual({ internship: 2 });
   });
 
+  it("carries the companies behind every flow and node", () => {
+    const noReply = funnel.links.find((l) => l.target === "exit:noreply@applied");
+    expect(noReply?.companies.sort()).toEqual(["c", "d"]);
+    expect(funnel.nodes.find((n) => n.id === "stage:applied")?.companies).toHaveLength(5);
+  });
+
   it("conserves flow: every node's inflow matches its count", () => {
     for (const node of funnel.nodes) {
       if (node.kind === "lane") continue;

@@ -46,6 +46,8 @@ export interface FunnelNode {
   rank: number;
   // Applications whose path touches this node (the node's fixedValue).
   count: number;
+  // Company of each of those applications (repeats kept), for the hover list.
+  companies: string[];
 }
 
 export interface FunnelLink {
@@ -55,6 +57,8 @@ export interface FunnelLink {
   tone: FlowTone;
   // How the flow splits by lane, for tooltips.
   byLane: Partial<Record<Lane, number>>;
+  // Company of each application in the flow (repeats kept), for tooltips.
+  companies: string[];
 }
 
 export interface Funnel {
@@ -156,7 +160,7 @@ export const exitNodeId = (exit: Exit, from: Stage | "outreach") => `exit:${exit
 
 interface PathStep {
   id: string;
-  node: Omit<FunnelNode, "count">;
+  node: Omit<FunnelNode, "count" | "companies">;
 }
 
 // One path per application: lane source, then every stage reached in order,
@@ -191,7 +195,7 @@ export function pathFor(app: Application): PathStep[] {
   return steps;
 }
 
-function toneFor(source: Omit<FunnelNode, "count">, target: Omit<FunnelNode, "count">): FlowTone {
+function toneFor(source: Omit<FunnelNode, "count" | "companies">, target: Omit<FunnelNode, "count" | "companies">): FlowTone {
   if (source.kind === "lane") return source.lane === "outreach" ? "node" : laneTone(source.lane as Lane);
   if (target.kind === "exit") return target.exit as Exit;
   if (target.stage === "offer" || target.stage === "accepted") return "offer";
@@ -220,8 +224,9 @@ export function computeFunnel(apps: ReadonlyArray<Application>, filter: FunnelFi
     if (isOutreach(app)) outreach += 1;
     else counted += 1;
     for (const step of path) {
-      const node = nodes.get(step.id) ?? { ...step.node, count: 0 };
+      const node = nodes.get(step.id) ?? { ...step.node, count: 0, companies: [] };
       node.count += 1;
+      node.companies.push(app.company);
       nodes.set(step.id, node);
     }
     for (let i = 0; i + 1 < path.length; i += 1) {
@@ -232,8 +237,10 @@ export function computeFunnel(apps: ReadonlyArray<Application>, filter: FunnelFi
         value: 0,
         tone: toneFor(path[i].node, path[i + 1].node),
         byLane: {},
+        companies: [],
       };
       link.value += 1;
+      link.companies.push(app.company);
       link.byLane[app.lane] = (link.byLane[app.lane] ?? 0) + 1;
       links.set(key, link);
     }
@@ -263,7 +270,7 @@ export function columnChain(funnel: Funnel): FunnelLink[] {
     const source = stageNodeId(present[i]);
     const target = stageNodeId(present[i + 1]);
     if (!funnel.links.some((l) => l.source === source && l.target === target)) {
-      chain.push({ source, target, value: 0, tone: "forward", byLane: {} });
+      chain.push({ source, target, value: 0, tone: "forward", byLane: {}, companies: [] });
     }
   }
   return chain;
@@ -274,7 +281,7 @@ export function columnChain(funnel: Funnel): FunnelLink[] {
 export interface StageBar {
   stage: Stage;
   count: number;
-  segments: Array<{ tone: FlowTone; value: number }>;
+  segments: Array<{ tone: FlowTone; value: number; companies: string[] }>;
 }
 
 export function stageBars(funnel: Funnel): StageBar[] {
@@ -283,15 +290,19 @@ export function stageBars(funnel: Funnel): StageBar[] {
     if (node.kind !== "stage" || !node.stage) continue;
     const out = funnel.links.filter((l) => l.source === node.id);
     const byTone = new Map<FlowTone, number>();
+    const namesByTone = new Map<FlowTone, string[]>();
     for (const link of out) {
       const tone = link.tone === "offer" ? "forward" : link.tone;
       byTone.set(tone, (byTone.get(tone) ?? 0) + link.value);
+      namesByTone.set(tone, [...(namesByTone.get(tone) ?? []), ...link.companies]);
     }
     const order: FlowTone[] = ["forward", "open", "rejected", "noreply", "withdrew"];
     bars.push({
       stage: node.stage,
       count: node.count,
-      segments: order.filter((t) => byTone.has(t)).map((t) => ({ tone: t, value: byTone.get(t) as number })),
+      segments: order
+        .filter((t) => byTone.has(t))
+        .map((t) => ({ tone: t, value: byTone.get(t) as number, companies: namesByTone.get(t) ?? [] })),
     });
   }
   return bars.sort((a, b) => stageIndex(a.stage) - stageIndex(b.stage));

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { sankey, sankeyLeft, sankeyLinkHorizontal, type SankeyLink, type SankeyNode } from "d3-sankey";
 import { siteContent } from "@/lib/content";
+import { summarizeCompanies } from "@/lib/recruiting/companies";
 import { columnChain, stageBars, type Funnel, type FunnelLink, type FunnelNode } from "@/lib/recruiting/funnel";
 import type { Lane } from "@/lib/recruiting/types";
 import { TONES } from "./tones";
@@ -19,7 +20,7 @@ import { TONES } from "./tones";
 // stage they left.
 
 type NodeDatum = FunnelNode & { fixedValue?: number };
-type LinkDatum = Pick<FunnelLink, "tone" | "byLane">;
+type LinkDatum = Pick<FunnelLink, "tone" | "byLane" | "companies">;
 type LaidNode = SankeyNode<NodeDatum, LinkDatum>;
 type LaidLink = SankeyLink<NodeDatum, LinkDatum>;
 
@@ -48,7 +49,51 @@ function laneBreakdown(byLane: Partial<Record<Lane, number>>): string {
   const parts = (Object.entries(byLane) as Array<[Lane, number]>)
     .filter(([, n]) => n > 0)
     .map(([lane, n]) => `${n} ${laneCopy[lane]}`);
-  return parts.length > 1 ? ` (${parts.join(", ")})` : "";
+  return parts.length > 1 ? parts.join(", ") : "";
+}
+
+interface Tip {
+  x: number;
+  y: number;
+  title: string;
+  detail: string;
+  companies: string[];
+}
+
+// The companies behind a flow or node. Kept to one short paragraph: repeats
+// collapse ("Google ×3") and long lists stop at a dozen with a count.
+function CompanyList({ names }: { names: string[] }) {
+  const { items, more } = summarizeCompanies(names);
+  if (items.length === 0) return null;
+  return (
+    <p className="mt-1 leading-snug text-foreground/80">
+      {items.join(" · ")}
+      {more > 0 && <span className="text-muted"> {copy.more(more)}</span>}
+    </p>
+  );
+}
+
+const TIP_WIDTH = 300;
+
+function FlowTooltip({ tip, width, height }: { tip: Tip; width: number; height: number }) {
+  const flipX = tip.x + 14 + TIP_WIDTH > width;
+  const flipY = tip.y > height * 0.55;
+  return (
+    <div
+      role="tooltip"
+      className="pointer-events-none absolute z-10 rounded-md border border-border bg-glass-strong px-3 py-2 text-[12px] text-foreground shadow-[0_8px_20px_-12px_rgba(10,10,10,0.35)] backdrop-blur-md"
+      style={{
+        width: TIP_WIDTH,
+        left: flipX ? Math.max(0, tip.x - 14 - TIP_WIDTH) : tip.x + 14,
+        top: flipY ? undefined : tip.y + 14,
+        bottom: flipY ? height - tip.y + 14 : undefined,
+      }}
+    >
+      <p className="font-medium">{tip.title}</p>
+      {tip.detail && <p className="text-muted">{tip.detail}</p>}
+      <CompanyList names={tip.companies} />
+    </div>
+  );
 }
 
 function useMeasuredWidth<T extends HTMLElement>() {
@@ -83,7 +128,7 @@ export function FunnelSankey({ funnel }: { funnel: Funnel }) {
 }
 
 function SankeyChart({ funnel, width }: { funnel: Funnel; width: number }) {
-  const [hover, setHover] = useState<{ x: number; y: number; text: string } | null>(null);
+  const [hover, setHover] = useState<Tip | null>(null);
   const [focus, setFocus] = useState<string | null>(null);
   const applied = funnel.nodes.find((n) => n.id === "stage:applied")?.count ?? 0;
 
@@ -117,6 +162,7 @@ function SankeyChart({ funnel, width }: { funnel: Funnel; width: number }) {
         value: l.value,
         tone: l.tone,
         byLane: l.byLane,
+        companies: l.companies,
       })),
     });
     return { graph, height };
@@ -161,7 +207,9 @@ function SankeyChart({ funnel, width }: { funnel: Funnel; width: number }) {
                   setHover({
                     x: e.clientX - box.left,
                     y: e.clientY - box.top,
-                    text: `${nodeLabel(s)} to ${nodeLabel(t)}: ${link.value}${laneBreakdown(link.byLane)}`,
+                    title: `${nodeLabel(s)} ${copy.flowTo} ${nodeLabel(t)}: ${link.value}`,
+                    detail: laneBreakdown(link.byLane),
+                    companies: link.companies,
                   });
                 }}
                 onMouseLeave={() => setHover(null)}
@@ -190,10 +238,25 @@ function SankeyChart({ funnel, width }: { funnel: Funnel; width: number }) {
               <g
                 key={node.id}
                 onMouseEnter={() => setFocus(node.id)}
-                onMouseLeave={() => setFocus(null)}
+                onMouseMove={(e) => {
+                  const box = (e.currentTarget.ownerSVGElement as SVGSVGElement).getBoundingClientRect();
+                  setHover({
+                    x: e.clientX - box.left,
+                    y: e.clientY - box.top,
+                    title: `${label}: ${node.count}${share}`,
+                    detail: "",
+                    companies: node.companies,
+                  });
+                }}
+                onMouseLeave={() => {
+                  setFocus(null);
+                  setHover(null);
+                }}
                 style={{ opacity: dim }}
                 className="transition-opacity duration-200"
               >
+                {/* Wider invisible hit area: the drawn node is only 8px wide. */}
+                <rect x={x0 - 8} y={y0} width={x1 - x0 + 16} height={h} fill="transparent" />
                 <rect
                   x={x0}
                   y={y0}
@@ -206,9 +269,8 @@ function SankeyChart({ funnel, width }: { funnel: Funnel; width: number }) {
                   strokeWidth={tone.hollow ? 1.5 : 0}
                   strokeDasharray={tone.hollow ? "3 2" : undefined}
                 />
-                <title>{`${label}: ${node.count}${share}`}</title>
                 {tall ? (
-                  <text x={x} y={cy} textAnchor={anchor} pointerEvents="none">
+                  <text x={x} y={cy} textAnchor={anchor} className="cursor-default">
                     <tspan x={x} dy="-0.25em" className="fill-foreground text-[12.5px] font-medium" style={halo}>
                       {label}
                     </tspan>
@@ -218,7 +280,7 @@ function SankeyChart({ funnel, width }: { funnel: Funnel; width: number }) {
                     </tspan>
                   </text>
                 ) : (
-                  <text x={x} y={cy} dy="0.35em" textAnchor={anchor} pointerEvents="none" style={halo}>
+                  <text x={x} y={cy} dy="0.35em" textAnchor={anchor} className="cursor-default" style={halo}>
                     <tspan className="fill-foreground text-[12px] font-medium">{label}</tspan>
                     <tspan className="fill-muted text-[11.5px]"> {node.count}</tspan>
                   </text>
@@ -229,15 +291,7 @@ function SankeyChart({ funnel, width }: { funnel: Funnel; width: number }) {
         </g>
       </svg>
 
-      {hover && (
-        <div
-          role="tooltip"
-          className="pointer-events-none absolute z-10 max-w-[280px] rounded-md border border-border bg-glass-strong px-2.5 py-1.5 text-[12px] text-foreground shadow-[0_8px_20px_-12px_rgba(10,10,10,0.35)] backdrop-blur-md"
-          style={{ left: Math.min(hover.x + 14, width - 290), top: hover.y + 14 }}
-        >
-          {hover.text}
-        </div>
-      )}
+      {hover && <FlowTooltip tip={hover} width={width} height={height} />}
     </>
   );
 }
@@ -249,7 +303,7 @@ function FunnelBars({ funnel }: { funnel: Funnel }) {
   const bars = stageBars(funnel);
   const applied = bars.find((b) => b.stage === "applied")?.count ?? 0;
   const lanes = funnel.nodes.filter((n) => n.kind === "lane" && n.lane !== "outreach");
-  const [tip, setTip] = useState<string | null>(null);
+  const [tip, setTip] = useState<{ stage: string; tone: string } | null>(null);
 
   return (
     <div className="flex flex-col gap-5 py-1">
@@ -277,13 +331,15 @@ function FunnelBars({ funnel }: { funnel: Funnel }) {
                 {bar.segments.map((seg) => {
                   const tone = TONES[seg.tone];
                   const label = `${copy.tones[seg.tone as keyof typeof copy.tones] ?? seg.tone}: ${seg.value}`;
+                  const open = tip?.stage === bar.stage && tip.tone === seg.tone;
                   return (
                     <button
                       key={seg.tone}
                       type="button"
                       aria-label={label}
                       title={label}
-                      onClick={() => setTip(tip === `${bar.stage}:${label}` ? null : `${bar.stage}:${label}`)}
+                      aria-expanded={open}
+                      onClick={() => setTip(open ? null : { stage: bar.stage, tone: seg.tone })}
                       className="h-full min-w-[4px] first:rounded-l-[4px] last:rounded-r-[4px]"
                       style={{
                         flex: `${seg.value} 0 0`,
@@ -295,9 +351,17 @@ function FunnelBars({ funnel }: { funnel: Funnel }) {
                   );
                 })}
               </div>
-              {tip?.startsWith(`${bar.stage}:`) && (
-                <p className="text-[12px] text-muted">{tip.slice(bar.stage.length + 1)}</p>
-              )}
+              {tip?.stage === bar.stage &&
+                bar.segments
+                  .filter((seg) => seg.tone === tip.tone)
+                  .map((seg) => (
+                    <div key={seg.tone} className="text-[12px]">
+                      <p className="text-muted">
+                        {copy.tones[seg.tone as keyof typeof copy.tones] ?? seg.tone}: {seg.value}
+                      </p>
+                      <CompanyList names={seg.companies} />
+                    </div>
+                  ))}
             </li>
           );
         })}

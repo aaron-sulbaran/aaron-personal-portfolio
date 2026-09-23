@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyPendingEdits, editBody, ledgerEditSchema, parseEditBody, type LedgerEdit } from "./edits";
+import { applyPendingEdits, editBody, editTitle, ledgerEditSchema, parseEditBody, type LedgerEdit } from "./edits";
 import type { Application } from "./types";
 
 function app(overrides: Partial<Application> & { id: string }): Application {
@@ -33,6 +33,12 @@ describe("ledgerEditSchema", () => {
     const parsed = ledgerEditSchema.safeParse(create);
     expect(parsed.success).toBe(true);
     expect(parsed.success && parsed.data.op === "create" && parsed.data.tier).toBe("target");
+  });
+  it("accepts field-only updates, a cleared next step, and a remove", () => {
+    expect(ledgerEditSchema.safeParse({ v: 1, op: "update", id: "js", role: "Strategy & Product Intern", date: "2026-09-23" }).success).toBe(true);
+    expect(ledgerEditSchema.safeParse({ v: 1, op: "update", id: "js", next: null, date: "2026-09-23" }).success).toBe(true);
+    expect(ledgerEditSchema.safeParse({ v: 1, op: "remove", id: "colorstack", date: "2026-09-23" }).success).toBe(true);
+    expect(ledgerEditSchema.safeParse({ v: 1, op: "update", id: "js", company: "  ", date: "2026-09-23" }).success).toBe(false);
   });
   it("refuses an empty edit, a bad status, a bad date, and a fence in the note", () => {
     expect(ledgerEditSchema.safeParse({ v: 1, op: "update", id: "js", date: "2026-09-23", note: "" }).success).toBe(false);
@@ -81,6 +87,23 @@ describe("applyPendingEdits", () => {
     const out = applyPendingEdits(rows, [{ number: 12, edit: create }]);
     expect(out).toHaveLength(3);
     expect(out[2]).toMatchObject({ id: "pending-12", furthest_stage: "applied", applied: "2026-09-23", pending: true });
+  });
+
+  it("renames, moves lanes and clears the next step without touching status", () => {
+    const rows2 = [app({ id: "de", company: "D. E. Shaw", role: "(role not in the mail)", next: { what: "follow up", due: "2026-10-01" } })];
+    const edit: LedgerEdit = {
+      v: 1, op: "update", id: "de", role: "Fundamental Research Analyst Intern", lane: "full-time", next: null,
+      date: "2026-09-23", note: "",
+    };
+    const [row] = applyPendingEdits(rows2, [{ number: 20, edit }]);
+    expect(row).toMatchObject({ role: "Fundamental Research Analyst Intern", lane: "full-time", next: null, status: "applied", pending: true });
+    expect(row.events.at(-1)?.note).toBe("Edited role, lane, next");
+    expect(editTitle(edit, "D. E. Shaw")).toBe("D. E. Shaw: role, lane, next");
+  });
+
+  it("takes a removed row off the page at once", () => {
+    const out = applyPendingEdits(rows, [{ number: 21, edit: { v: 1, op: "remove", id: "js", date: "2026-09-23", note: "" } }]);
+    expect(out.map((a) => a.id)).toEqual(["planned"]);
   });
 
   it("ignores an edit for a row the export does not have, and leaves inputs untouched", () => {
