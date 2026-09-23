@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { RecruitingDashboard } from "@/components/recruiting/RecruitingDashboard";
 import { siteContent } from "@/lib/content";
 import { profaBlack } from "@/lib/fonts";
-import { loadRecruitingFeed } from "@/lib/recruiting/data";
+import { lastFeedError, loadRecruitingFeed } from "@/lib/recruiting/data";
 import { formatStamp } from "@/lib/recruiting/format";
 
 // Private dashboard. middleware.ts gates every request under /recruiting on
@@ -44,6 +44,11 @@ export default async function RecruitingPage() {
           <p className="max-w-2xl text-base leading-relaxed text-muted md:text-lg">
             {feed ? copy.body : copy.unavailable.body}
           </p>
+          {!feed && lastFeedError() && (
+            <p className="max-w-2xl rounded-lg border border-border bg-glass px-3.5 py-2.5 font-mono text-[12.5px] leading-relaxed text-muted">
+              {lastFeedError()}
+            </p>
+          )}
         </header>
 
         {feed && <RecruitingDashboard data={feed.data} />}

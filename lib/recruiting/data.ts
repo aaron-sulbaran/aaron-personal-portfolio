@@ -26,6 +26,23 @@ export interface RecruitingFeed {
 }
 
 let lastGood: RecruitingFeed | null = null;
+let lastError: string | null = null;
+
+// Why the last refresh failed, in words the owner can act on. The page is
+// cookie-gated, so it is safe to show this to whoever can see it.
+export function lastFeedError(): string | null {
+  return lastError;
+}
+
+function explain(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  if (message.includes("not set")) return "VAULT_READ_TOKEN is not set in this deployment.";
+  if (/\b401\b/.test(message)) return "GitHub rejected VAULT_READ_TOKEN (expired, revoked, or mistyped).";
+  if (/\b404\b/.test(message))
+    return "VAULT_READ_TOKEN cannot see the vault repo. It needs read-only Contents access on aaron-sulbaran/aarons-second-brain.";
+  if (/\b403\b/.test(message)) return "GitHub refused the request (rate limit or missing Contents permission).";
+  return message;
+}
 
 async function fetchFromGitHub(token: string): Promise<RecruitingExport> {
   const url = `https://api.github.com/repos/${VAULT_REPO}/contents/${EXPORT_PATH}?ref=main`;
@@ -51,6 +68,7 @@ export async function loadRecruitingFeed(): Promise<RecruitingFeed | null> {
   try {
     if (!token && !useVaultFile) throw new Error("VAULT_READ_TOKEN is not set");
     const data = useVaultFile ? await readFromVault() : await fetchFromGitHub(token as string);
+    lastError = null;
     lastGood = {
       data,
       fetchedAt: new Date().toISOString(),
@@ -60,6 +78,7 @@ export async function loadRecruitingFeed(): Promise<RecruitingFeed | null> {
     return lastGood;
   } catch (error) {
     console.error("[recruiting] feed refresh failed:", error instanceof Error ? error.message : error);
+    lastError = explain(error);
     if (lastGood) return { ...lastGood, staleSince: lastGood.fetchedAt };
     return null;
   }
