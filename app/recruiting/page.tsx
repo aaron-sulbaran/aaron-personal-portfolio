@@ -4,6 +4,7 @@ import { siteContent } from "@/lib/content";
 import { profaBlack } from "@/lib/fonts";
 import { lastFeedError, loadRecruitingFeed } from "@/lib/recruiting/data";
 import { formatStamp } from "@/lib/recruiting/format";
+import { loadEdits } from "@/lib/recruiting/vault-issues";
 
 // Private dashboard. middleware.ts gates every request under /recruiting on
 // the signed cookie; this page never consults NEXT_PUBLIC_SITE_MODE, so it is
@@ -18,6 +19,7 @@ export const metadata: Metadata = {
 
 export default async function RecruitingPage() {
   const feed = await loadRecruitingFeed();
+  const edits = feed ? await loadEdits() : null;
   const copy = siteContent.recruiting;
 
   return (
@@ -51,7 +53,15 @@ export default async function RecruitingPage() {
           )}
         </header>
 
-        {feed && <RecruitingDashboard data={feed.data} />}
+        {feed && (
+          <RecruitingDashboard
+            data={feed.data}
+            pending={edits?.data?.pending ?? []}
+            failed={edits?.data?.failed ?? []}
+            editsError={edits?.error ?? null}
+            canEdit={Boolean(process.env.VAULT_READ_TOKEN) || process.env.NODE_ENV === "development"}
+          />
+        )}
       </div>
     </main>
   );

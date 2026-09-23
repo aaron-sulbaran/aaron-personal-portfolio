@@ -1,6 +1,7 @@
 import "server-only";
 import { readFile } from "node:fs/promises";
 import type { RecruitingExport } from "./types";
+import { FEED_TAG } from "./vault-issues";
 
 // The feed is wiki/roles/recruiting-export.json in the private vault mirror on
 // GitHub, read through the contents API with a fine-grained read-only token.
@@ -52,7 +53,7 @@ async function fetchFromGitHub(token: string): Promise<RecruitingExport> {
       Accept: "application/vnd.github.raw",
       "X-GitHub-Api-Version": "2022-11-28",
     },
-    next: { revalidate: 900 },
+    next: { revalidate: 900, tags: [FEED_TAG] },
   });
   if (!res.ok) throw new Error(`GitHub contents API ${res.status} for ${EXPORT_PATH}`);
   return (await res.json()) as RecruitingExport;

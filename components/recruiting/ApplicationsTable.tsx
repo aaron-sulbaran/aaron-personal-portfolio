@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, Download } from "lucide-react";
+import { ArrowDown, ArrowUp, Download, Pencil, Plus } from "lucide-react";
 import { siteContent } from "@/lib/content";
 import {
   formatDate,
@@ -23,6 +23,7 @@ type SortKey = "company" | "role" | "lane" | "season" | "status" | "applied" | "
 type SortDir = "asc" | "desc";
 
 const copy = siteContent.recruiting.table;
+const editCopy = siteContent.recruiting.edit;
 
 const STATUS_CHIP: Record<ReturnType<typeof statusTone>, string> = {
   progress: "chip-progress",
@@ -69,6 +70,34 @@ function StatusChip({ status }: { status: string }) {
   );
 }
 
+function PendingChip() {
+  return (
+    <span
+      title={editCopy.pendingTitle}
+      className="ml-1.5 inline-flex items-center rounded-full border border-dashed border-border px-2 py-0.5 text-[10px] font-medium uppercase tracking-caps text-muted"
+    >
+      {editCopy.pending}
+    </span>
+  );
+}
+
+function EditButton({ app, onEdit }: { app: Application; onEdit: (app: Application) => void }) {
+  // A row added from the dashboard has no ledger id until the sync applies it.
+  if (app.id.startsWith("pending-")) return null;
+  return (
+    <button
+      type="button"
+      onClick={() => onEdit(app)}
+      aria-label={editCopy.editRow(app.company)}
+      title={editCopy.editRow(app.company)}
+      data-cursor-hover
+      className="inline-flex h-8 w-8 items-center justify-center rounded-full text-muted transition-colors duration-200 hover:bg-glass hover:text-accent"
+    >
+      <Pencil aria-hidden="true" className="h-3.5 w-3.5" />
+    </button>
+  );
+}
+
 function LaneCell({ app }: { app: Application }) {
   return (
     <span className="inline-flex items-center gap-2">
@@ -99,7 +128,15 @@ function download(rows: Application[]) {
   URL.revokeObjectURL(url);
 }
 
-export function ApplicationsTable({ rows, note }: { rows: Application[]; note?: string }) {
+interface ApplicationsTableProps {
+  rows: Application[];
+  note?: string;
+  // Absent when this deployment cannot file edits; the controls then hide.
+  onEdit?: (app: Application) => void;
+  onAdd?: () => void;
+}
+
+export function ApplicationsTable({ rows, note, onEdit, onAdd }: ApplicationsTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>("lastEvent");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
@@ -135,22 +172,35 @@ export function ApplicationsTable({ rows, note }: { rows: Application[]; note?: 
 
   return (
     <section aria-labelledby="applications-heading" className="flex flex-col gap-4">
-      <div className="flex items-end justify-between gap-4">
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <h2 id="applications-heading" className="font-serif text-3xl italic leading-none text-foreground md:text-4xl">
           {copy.heading}
           <span className="ml-3 font-sans text-sm not-italic text-muted">{rows.length}</span>
           {note && <span className="mt-2 block font-sans text-[12px] not-italic leading-snug text-muted">{note}</span>}
         </h2>
+        <div className="flex shrink-0 items-center gap-2">
+        {onAdd && (
+          <button
+            type="button"
+            onClick={onAdd}
+            data-cursor-hover
+            className="inline-flex min-h-[36px] items-center gap-2 whitespace-nowrap rounded-full border border-foreground bg-foreground px-3.5 text-sm font-medium text-background transition-opacity duration-200 hover:opacity-85"
+          >
+            <Plus aria-hidden="true" className="h-4 w-4" />
+            {editCopy.add}
+          </button>
+        )}
         <button
           type="button"
           onClick={() => download(sorted)}
           disabled={rows.length === 0}
           data-cursor-hover
-          className="inline-flex min-h-[36px] shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-border bg-glass px-3.5 text-sm font-medium text-foreground transition-colors duration-200 hover:border-accent hover:text-accent disabled:opacity-40"
+          className="inline-flex min-h-[36px] items-center gap-2 whitespace-nowrap rounded-full border border-border bg-glass px-3.5 text-sm font-medium text-foreground transition-colors duration-200 hover:border-accent hover:text-accent disabled:opacity-40"
         >
           <Download aria-hidden="true" className="h-4 w-4" />
           {copy.download}
         </button>
+        </div>
       </div>
 
       {rows.length === 0 ? (
@@ -181,6 +231,7 @@ export function ApplicationsTable({ rows, note }: { rows: Application[]; note?: 
                       </th>
                     );
                   })}
+                  {onEdit && <th scope="col" className="w-8 py-2" aria-label={editCopy.updateHeading} />}
                 </tr>
               </thead>
               <tbody>
@@ -191,13 +242,14 @@ export function ApplicationsTable({ rows, note }: { rows: Application[]; note?: 
                     <td className="py-3 pr-4 text-foreground/85">{app.role}</td>
                     <td className="py-3 pr-4 whitespace-nowrap"><LaneCell app={app} /></td>
                     <td className="py-3 pr-4 whitespace-nowrap tabular-nums text-muted">{app.season}</td>
-                    <td className="py-3 pr-4"><StatusChip status={app.status} /></td>
+                    <td className="py-3 pr-4 whitespace-nowrap"><StatusChip status={app.status} />{app.pending && <PendingChip />}</td>
                     <td className="py-3 pr-4 whitespace-nowrap tabular-nums text-muted">{formatDate(app.applied)}</td>
                     <td className="py-3 pr-4 whitespace-nowrap tabular-nums text-muted">{formatDate(lastEventDate(app))}</td>
                     <td className="py-3 pr-0 text-foreground/85">
                       {app.next?.what}
                       {app.next?.due && <span className="ml-1.5 whitespace-nowrap tabular-nums text-muted">{formatDate(app.next.due)}</span>}
                     </td>
+                    {onEdit && <td className="py-2 pl-2"><EditButton app={app} onEdit={onEdit} /></td>}
                   </tr>
                 ))}
               </tbody>
@@ -212,7 +264,11 @@ export function ApplicationsTable({ rows, note }: { rows: Application[]; note?: 
                     <ActiveDot active={app.active} />
                     <span className="font-medium text-foreground">{app.company}</span>
                   </div>
-                  <StatusChip status={app.status} />
+                  <div className="flex items-center gap-1">
+                    <StatusChip status={app.status} />
+                    {app.pending && <PendingChip />}
+                    {onEdit && <EditButton app={app} onEdit={onEdit} />}
+                  </div>
                 </div>
                 <p className="mt-1.5 text-sm text-foreground/85">{app.role}</p>
                 <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-muted">

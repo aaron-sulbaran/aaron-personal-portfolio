@@ -2,10 +2,12 @@
 
 import { useMemo, useState } from "react";
 import { siteContent } from "@/lib/content";
+import { applyPendingEdits, type FailedEdit, type PendingEdit } from "@/lib/recruiting/edits";
 import { computeFunnel, computeStats, filterApplications } from "@/lib/recruiting/funnel";
 import type { RecruitingExport, Season } from "@/lib/recruiting/types";
 import { ApplicationsTable } from "./ApplicationsTable";
 import { Controls, type ControlState } from "./Controls";
+import { EditDialog, type EditTarget } from "./EditDialog";
 import { FunnelSankey } from "./FunnelSankey";
 import { StatTiles } from "./StatTiles";
 import { OUTCOME_TONES, TONES } from "./tones";
@@ -23,8 +25,24 @@ function defaultSeason(data: RecruitingExport): Season {
   return listed[listed.length - 1] ?? "";
 }
 
-export function RecruitingDashboard({ data }: { data: RecruitingExport }) {
+interface RecruitingDashboardProps {
+  data: RecruitingExport;
+  pending: PendingEdit[];
+  failed: FailedEdit[];
+  editsError: string | null;
+  canEdit: boolean;
+}
+
+export function RecruitingDashboard({ data, pending, failed, editsError, canEdit }: RecruitingDashboardProps) {
   const seasons = useMemo(() => [...data.seasons].sort(), [data.seasons]);
+  // Edits filed in this visit show at once; the server list catches up on the
+  // next render and the two are merged by issue number.
+  const [filed, setFiled] = useState<PendingEdit[]>([]);
+  const [editing, setEditing] = useState<EditTarget | null>(null);
+  const applications = useMemo(() => {
+    const known = new Set(pending.map((p) => p.number));
+    return applyPendingEdits(data.applications, [...pending, ...filed.filter((f) => !known.has(f.number))]);
+  }, [data.applications, pending, filed]);
   const [state, setState] = useState<ControlState>(() => ({
     season: defaultSeason(data),
     lane: "all",
@@ -40,9 +58,9 @@ export function RecruitingDashboard({ data }: { data: RecruitingExport }) {
     [state, seasons],
   );
 
-  const funnel = useMemo(() => computeFunnel(data.applications, filter), [data.applications, filter]);
-  const stats = useMemo(() => computeStats(data.applications, filter), [data.applications, filter]);
-  const rows = useMemo(() => filterApplications(data.applications, filter), [data.applications, filter]);
+  const funnel = useMemo(() => computeFunnel(applications, filter), [applications, filter]);
+  const stats = useMemo(() => computeStats(applications, filter), [applications, filter]);
+  const rows = useMemo(() => filterApplications(applications, filter), [applications, filter]);
   const copy = siteContent.recruiting;
 
   return (
@@ -67,10 +85,50 @@ export function RecruitingDashboard({ data }: { data: RecruitingExport }) {
         </div>
       </section>
 
+      {(failed.length > 0 || editsError) && <EditsNotice failed={failed} error={editsError} />}
+
       <ApplicationsTable
         rows={rows}
         note={copy.tableNote({ counted: funnel.counted, planned: funnel.planned, outreach: funnel.outreach, unapplied: funnel.unapplied })}
+        onEdit={canEdit ? (app) => setEditing({ kind: "update", app }) : undefined}
+        onAdd={canEdit ? () => setEditing({ kind: "create" }) : undefined}
       />
+
+      {editing && (
+        <EditDialog
+          target={editing}
+          seasons={seasons}
+          defaultSeason={defaultSeason(data)}
+          onClose={() => setEditing(null)}
+          onFiled={(edit) => setFiled((prev) => [...prev, edit])}
+        />
+      )}
+    </div>
+  );
+}
+
+function EditsNotice({ failed, error }: { failed: FailedEdit[]; error: string | null }) {
+  const copy = siteContent.recruiting.edit;
+  return (
+    <div role="status" className="rounded-2xl border border-border bg-glass px-4 py-3 text-[13px] leading-relaxed text-foreground">
+      {error && (
+        <p>
+          <span className="text-muted">{copy.loadError}</span> {error}
+        </p>
+      )}
+      {failed.length > 0 && (
+        <p>
+          {copy.failedHeading(failed.length)}:{" "}
+          {failed.map((f, i) => (
+            <span key={f.number}>
+              {i > 0 && ", "}
+              <a href={f.url} target="_blank" rel="noreferrer" className="underline decoration-border underline-offset-2 hover:text-accent">
+                {f.title}
+              </a>
+            </span>
+          ))}
+        </p>
+      )}
     </div>
   );
 }

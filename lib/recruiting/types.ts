@@ -49,6 +49,8 @@ export interface Application {
   events: LedgerEvent[];
   next: { what: string; due?: string } | null;
   people: string[];
+  // Set on the page only: a dashboard edit the vault has not applied yet.
+  pending?: boolean;
 }
 
 export interface RecruitingExport {
