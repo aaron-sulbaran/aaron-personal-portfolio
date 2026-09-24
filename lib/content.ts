@@ -231,6 +231,14 @@ export const siteContent = {
       laneUnknown: "Unassigned",
       outreach: "Include ignored outreach",
     },
+    refresh: {
+      button: "Refresh",
+      running: "Refreshing",
+      hint: "Read new mail and update the ledger now, instead of at the next hourly or overnight run",
+      queued: "Queued; the Mac picks it up within a minute",
+      stalled: "Still waiting for the Mac. It has to be awake for this to run.",
+      done: "Up to date",
+    },
     sort: {
       button: "Sort",
       heading: "Sort",

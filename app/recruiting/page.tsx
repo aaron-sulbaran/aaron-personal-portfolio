@@ -5,6 +5,8 @@ import { profaBlack } from "@/lib/fonts";
 import { lastFeedError, loadRecruitingFeed } from "@/lib/recruiting/data";
 import { formatStamp } from "@/lib/recruiting/format";
 import { loadEdits } from "@/lib/recruiting/vault-issues";
+import { openRefresh } from "@/lib/recruiting/refresh";
+import { RefreshButton } from "@/components/recruiting/RefreshButton";
 
 // Private dashboard. middleware.ts gates every request under /recruiting on
 // the signed cookie; this page never consults NEXT_PUBLIC_SITE_MODE, so it is
@@ -20,13 +22,15 @@ export const metadata: Metadata = {
 export default async function RecruitingPage() {
   const feed = await loadRecruitingFeed();
   const edits = feed ? await loadEdits() : null;
+  const canWrite = Boolean(process.env.VAULT_READ_TOKEN) || process.env.NODE_ENV === "development";
+  const refresh = feed && canWrite ? await openRefresh() : null;
   const copy = siteContent.recruiting;
 
   return (
     <main id="main" className="relative min-h-screen px-6 pb-24 pt-20 md:px-10 md:pb-32 md:pt-28">
       <div className="mx-auto flex max-w-6xl flex-col gap-10 md:gap-12">
         <header className="flex flex-col gap-4">
-          <div className="flex items-center gap-3 text-[11px] font-medium uppercase tracking-caps text-muted">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[11px] font-medium uppercase tracking-caps text-muted">
             <span className="inline-block h-px w-8 bg-border" aria-hidden="true" />
             <span>{copy.label}</span>
             {feed && (
@@ -37,6 +41,7 @@ export default async function RecruitingPage() {
                     ? `${copy.stalePrefix} ${formatStamp(feed.staleSince)}`
                     : `${copy.updatedPrefix} ${formatStamp(feed.data.generated)}`}
                 </span>
+                {canWrite && <RefreshButton initial={refresh} />}
               </>
             )}
           </div>
@@ -59,7 +64,7 @@ export default async function RecruitingPage() {
             pending={edits?.data?.pending ?? []}
             failed={edits?.data?.failed ?? []}
             editsError={edits?.error ?? null}
-            canEdit={Boolean(process.env.VAULT_READ_TOKEN) || process.env.NODE_ENV === "development"}
+            canEdit={canWrite}
           />
         )}
       </div>
