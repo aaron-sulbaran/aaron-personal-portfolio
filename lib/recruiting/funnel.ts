@@ -25,8 +25,33 @@ import {
 
 export interface FunnelFilter {
   seasons: ReadonlyArray<Season>;
+  // null or empty: every lane / every status group.
   lanes: ReadonlyArray<Lane> | null;
+  statuses?: ReadonlyArray<StatusGroup> | null;
   includeOutreach: boolean;
+}
+
+// Status groups for the filter, in the table's status order.
+export const STATUS_GROUPS = ["offers", "inProcess", "applied", "planned", "closed"] as const;
+export type StatusGroup = (typeof STATUS_GROUPS)[number];
+
+export function statusGroup(app: Application): StatusGroup {
+  switch (app.status) {
+    case "offer":
+    case "accepted":
+      return "offers";
+    case "oa":
+    case "screen":
+    case "interview":
+    case "final":
+      return "inProcess";
+    case "applied":
+      return "applied";
+    case "planned":
+      return "planned";
+    default:
+      return "closed";
+  }
 }
 
 export const EXITS = ["open", "rejected", "noreply", "withdrew", "ignored"] as const;
@@ -103,11 +128,13 @@ export function filterApplications(
   filter: FunnelFilter,
 ): Application[] {
   const seasons = new Set(filter.seasons);
-  const lanes = filter.lanes ? new Set(filter.lanes) : null;
+  const lanes = filter.lanes?.length ? new Set(filter.lanes) : null;
+  const statuses = filter.statuses?.length ? new Set(filter.statuses) : null;
   return apps.filter((app) => {
     if (isOffTrack(app)) return false;
     if (!seasons.has(app.season)) return false;
     if (lanes && !lanes.has(app.lane)) return false;
+    if (statuses && !statuses.has(statusGroup(app))) return false;
     if (!filter.includeOutreach && isOutreach(app)) return false;
     return true;
   });

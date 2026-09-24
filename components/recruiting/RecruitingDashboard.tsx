@@ -3,11 +3,18 @@
 import { useMemo, useState } from "react";
 import { siteContent } from "@/lib/content";
 import { applyPendingEdits, type FailedEdit, type PendingEdit } from "@/lib/recruiting/edits";
-import { computeFunnel, computeStats, filterApplications } from "@/lib/recruiting/funnel";
+import {
+  computeFunnel,
+  computeStats,
+  filterApplications,
+  statusGroup,
+  type FunnelFilter,
+} from "@/lib/recruiting/funnel";
 import type { RecruitingExport, Season } from "@/lib/recruiting/types";
 import { ApplicationsTable } from "./ApplicationsTable";
 import { Controls, type ControlState } from "./Controls";
 import { EditDialog, type EditTarget } from "./EditDialog";
+import type { FilterCounts, FilterValue } from "./FilterMenu";
 import { FunnelSankey } from "./FunnelSankey";
 import { StatTiles } from "./StatTiles";
 import { OUTCOME_TONES, TONES } from "./tones";
@@ -45,27 +52,49 @@ export function RecruitingDashboard({ data, pending, failed, editsError, canEdit
   }, [data.applications, pending, filed]);
   const [state, setState] = useState<ControlState>(() => ({
     season: defaultSeason(data),
-    lane: "all",
-    includeOutreach: false,
+    filter: { lanes: [], statuses: [], includeOutreach: false },
   }));
 
-  const filter = useMemo(
-    () => ({
-      seasons: state.season === "both" ? seasons : [state.season],
-      lanes: state.lane === "all" ? null : [state.lane],
-      includeOutreach: state.includeOutreach,
-    }),
-    [state, seasons],
+  const seasonList = useMemo(() => (state.season === "both" ? seasons : [state.season]), [state.season, seasons]);
+  const toFunnelFilter = useMemo(
+    () =>
+      (f: FilterValue): FunnelFilter => ({
+        seasons: seasonList,
+        lanes: f.lanes,
+        statuses: f.statuses,
+        includeOutreach: f.includeOutreach,
+      }),
+    [seasonList],
   );
+  const filter = useMemo(() => toFunnelFilter(state.filter), [toFunnelFilter, state.filter]);
 
   const funnel = useMemo(() => computeFunnel(applications, filter), [applications, filter]);
   const stats = useMemo(() => computeStats(applications, filter), [applications, filter]);
   const rows = useMemo(() => filterApplications(applications, filter), [applications, filter]);
   const copy = siteContent.recruiting;
 
+  // Counts shown next to each filter option: this season, before lane and
+  // status filtering, so every option says how much it would bring in.
+  const counts = useMemo<FilterCounts>(() => {
+    const inSeason = filterApplications(applications, { seasons: seasonList, lanes: null, includeOutreach: true });
+    const out: FilterCounts = { lanes: {}, statuses: {}, outreach: 0, total: 0 };
+    for (const app of inSeason) {
+      if (app.tier === "outreach-ignored" || app.outcome === "ignored") {
+        out.outreach += 1;
+        continue;
+      }
+      out.total += 1;
+      out.lanes[app.lane] = (out.lanes[app.lane] ?? 0) + 1;
+      const group = statusGroup(app);
+      out.statuses[group] = (out.statuses[group] ?? 0) + 1;
+    }
+    return out;
+  }, [applications, seasonList]);
+  const resultCount = (f: FilterValue) => filterApplications(applications, toFunnelFilter(f)).length;
+
   return (
     <div className="flex flex-col gap-10 md:gap-12">
-      <Controls seasons={seasons} state={state} onChange={setState} />
+      <Controls seasons={seasons} state={state} onChange={setState} counts={counts} resultCount={resultCount} />
 
       <StatTiles stats={stats} />
 

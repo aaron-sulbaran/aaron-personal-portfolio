@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   columnChain,
+  filterApplications,
   computeFunnel,
   computeStats,
   exitFor,
@@ -157,6 +158,13 @@ describe("computeFunnel", () => {
     const withOutreach = computeFunnel(all, { ...both, includeOutreach: true });
     expect(withOutreach.outreach).toBe(1);
     expect(withOutreach.nodes.map((n) => n.id)).toContain("exit:ignored@outreach");
+  });
+
+  it("filters by any combination of lanes and status groups", () => {
+    expect(computeFunnel(all, { ...both, lanes: ["internship", "co-op"] }).counted).toBe(3);
+    expect(computeFunnel(all, { ...both, statuses: ["inProcess"] }).counted).toBe(1);
+    expect(computeFunnel(all, { ...both, lanes: [], statuses: [] }).counted).toBe(5);
+    expect(filterApplications(all, { ...both, statuses: ["planned"] }).map((a) => a.id)).toEqual(["e"]);
   });
 
   it("filters by lane and season", () => {
