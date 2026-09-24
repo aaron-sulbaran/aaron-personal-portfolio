@@ -326,6 +326,14 @@ export const siteContent = {
       loadError: "Pending edits could not be loaded:",
     },
     table: {
+      sort: {
+        label: "Sort",
+        status: "Status",
+        applied: "Applied",
+        lastEvent: "Last event",
+        asc: "ascending",
+        desc: "descending",
+      },
       heading: "Applications",
       download: "Download CSV",
       empty: "No applications match this selection.",

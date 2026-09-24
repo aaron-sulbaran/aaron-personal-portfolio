@@ -166,7 +166,13 @@ function applyUpdate(app: Application, edit: UpdateEdit): Application {
     lane: edit.lane ?? app.lane,
     season: edit.season ?? app.season,
     tier: (edit.tier as Tier | undefined) ?? app.tier,
-    next: edit.next === undefined ? app.next : edit.next,
+    // A rejection or withdrawal drops the next step, as talos-ledger does.
+    next:
+      edit.next !== undefined
+        ? edit.next
+        : edit.status === "rejected" || edit.status === "withdrawn"
+          ? null
+          : app.next,
     status,
     applied: edit.applied ?? app.applied ?? (setsApplied(edit.status) ? edit.date : null),
     furthest_stage: furthest(app.furthest_stage, edit.status),

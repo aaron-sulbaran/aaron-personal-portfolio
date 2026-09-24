@@ -8,19 +8,17 @@ import {
   laneLabel,
   laneTone,
   lastEventDate,
-  stageRank,
   statusLabel,
   statusTone,
   toCsv,
 } from "@/lib/recruiting/format";
+import { DEFAULT_DIR, sortApplications, type SortDir, type SortKey } from "@/lib/recruiting/sort";
 import type { Application } from "@/lib/recruiting/types";
 
 // The Sheet replacement: one row per application, sortable, status as a
 // chip, CSV download of the current selection. Below md the same rows render
 // as cards; the table never squeezes onto a phone.
 
-type SortKey = "company" | "role" | "lane" | "season" | "status" | "applied" | "lastEvent" | "next";
-type SortDir = "asc" | "desc";
 
 const copy = siteContent.recruiting.table;
 const editCopy = siteContent.recruiting.edit;
@@ -38,27 +36,6 @@ const LANE_DOT: Partial<Record<ReturnType<typeof laneTone>, string>> = {
   "lane-3": "bg-viz-lane-3",
   node: "bg-viz-node",
 };
-
-function sortValue(app: Application, key: SortKey): string | number {
-  switch (key) {
-    case "company":
-      return app.company.toLowerCase();
-    case "role":
-      return app.role.toLowerCase();
-    case "lane":
-      return app.lane;
-    case "season":
-      return app.season;
-    case "status":
-      return app.status === "planned" ? -2 : stageRank(app.status) === -1 ? -1 : stageRank(app.status);
-    case "applied":
-      return app.applied ?? "";
-    case "lastEvent":
-      return lastEventDate(app) ?? "";
-    case "next":
-      return app.next?.due ?? "9999";
-  }
-}
 
 function StatusChip({ status }: { status: string }) {
   return (
@@ -137,25 +114,17 @@ interface ApplicationsTableProps {
 }
 
 export function ApplicationsTable({ rows, note, onEdit, onAdd }: ApplicationsTableProps) {
-  const [sortKey, setSortKey] = useState<SortKey>("lastEvent");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  // Status first, the Sheet's order: live processes up top, closed ones last.
+  const [sortKey, setSortKey] = useState<SortKey>("status");
+  const [sortDir, setSortDir] = useState<SortDir>(DEFAULT_DIR.status);
 
-  const sorted = useMemo(() => {
-    const dir = sortDir === "asc" ? 1 : -1;
-    return [...rows].sort((a, b) => {
-      const va = sortValue(a, sortKey);
-      const vb = sortValue(b, sortKey);
-      if (va < vb) return -1 * dir;
-      if (va > vb) return 1 * dir;
-      return a.company.localeCompare(b.company);
-    });
-  }, [rows, sortKey, sortDir]);
+  const sorted = useMemo(() => sortApplications(rows, sortKey, sortDir), [rows, sortKey, sortDir]);
 
   const toggleSort = (key: SortKey) => {
     if (key === sortKey) setSortDir(sortDir === "asc" ? "desc" : "asc");
     else {
       setSortKey(key);
-      setSortDir(key === "company" || key === "role" ? "asc" : "desc");
+      setSortDir(DEFAULT_DIR[key]);
     }
   };
 
@@ -202,6 +171,8 @@ export function ApplicationsTable({ rows, note, onEdit, onAdd }: ApplicationsTab
         </button>
         </div>
       </div>
+
+      <SortBar sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
 
       {rows.length === 0 ? (
         <p className="py-12 text-center text-sm text-muted">{copy.empty}</p>
@@ -290,5 +261,49 @@ export function ApplicationsTable({ rows, note, onEdit, onAdd }: ApplicationsTab
         </>
       )}
     </section>
+  );
+}
+
+// The three orders worth switching between, as pills that work on a phone too
+// (the column headers only exist on the desktop table). Pressing the active
+// one flips its direction.
+const SORT_CHOICES: Array<{ key: SortKey; label: string }> = [
+  { key: "status", label: copy.sort.status },
+  { key: "applied", label: copy.sort.applied },
+  { key: "lastEvent", label: copy.sort.lastEvent },
+];
+
+function SortBar({ sortKey, sortDir, onSort }: { sortKey: SortKey; sortDir: SortDir; onSort: (key: SortKey) => void }) {
+  return (
+    <div className="flex flex-wrap items-center gap-3">
+      <span className="text-[11px] font-medium uppercase tracking-caps text-muted">{copy.sort.label}</span>
+      <div role="group" aria-label={copy.sort.label} className="flex flex-wrap gap-1.5">
+        {SORT_CHOICES.map((choice) => {
+          const on = choice.key === sortKey;
+          return (
+            <button
+              key={choice.key}
+              type="button"
+              aria-pressed={on}
+              onClick={() => onSort(choice.key)}
+              data-cursor-hover
+              className={`inline-flex min-h-[32px] items-center gap-1 rounded-full border px-3 text-[13px] font-medium transition-colors duration-200 ${
+                on
+                  ? "border-foreground bg-foreground text-background"
+                  : "border-border bg-glass text-foreground hover:border-accent hover:text-accent"
+              }`}
+            >
+              {choice.label}
+              {on &&
+                (sortDir === "asc" ? (
+                  <ArrowUp aria-label={copy.sort.asc} className="h-3 w-3" />
+                ) : (
+                  <ArrowDown aria-label={copy.sort.desc} className="h-3 w-3" />
+                ))}
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
