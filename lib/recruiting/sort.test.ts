@@ -40,7 +40,7 @@ const rows = [jane, roblox, stripe, google, capitalOne, offer];
 
 describe("sortApplications by status", () => {
   it("puts offers and live processes first and rejections last, however recent", () => {
-    expect(sortApplications(rows, "status", "asc").map((a) => a.id)).toEqual([
+    expect(sortApplications(rows, [{ key: "status", dir: "asc" }]).map((a) => a.id)).toEqual([
       "offer-co",
       "capital-one",
       "google",
@@ -52,13 +52,13 @@ describe("sortApplications by status", () => {
 
   it("puts a row with a due next step first inside its group", () => {
     const due = app({ id: "zeta", next: { what: "send thank-you", due: "2026-09-25" } });
-    expect(sortApplications([google, due], "status", "asc").map((a) => a.id)).toEqual(["zeta", "google"]);
+    expect(sortApplications([google, due], [{ key: "status", dir: "asc" }]).map((a) => a.id)).toEqual(["zeta", "google"]);
   });
 });
 
 describe("sortApplications by date", () => {
   it("orders applied dates from the earliest, rows never applied last either way", () => {
-    expect(sortApplications(rows, "applied", "asc").map((a) => a.id)).toEqual([
+    expect(sortApplications(rows, [{ key: "applied", dir: "asc" }]).map((a) => a.id)).toEqual([
       "offer-co",
       "capital-one",
       "stripe",
@@ -66,10 +66,20 @@ describe("sortApplications by date", () => {
       "jane",
       "roblox",
     ]);
-    expect(sortApplications(rows, "applied", "desc").at(-1)?.id).toBe("roblox");
+    expect(sortApplications(rows, [{ key: "applied", dir: "desc" }]).at(-1)?.id).toBe("roblox");
   });
 
   it("orders last event newest first", () => {
-    expect(sortApplications([stripe, jane, google], "lastEvent", "desc").map((a) => a.id)).toEqual(["jane", "google", "stripe"]);
+    expect(sortApplications([stripe, jane, google], [{ key: "lastEvent", dir: "desc" }]).map((a) => a.id)).toEqual(["jane", "google", "stripe"]);
+  });
+});
+
+describe("sortApplications with a second rule", () => {
+  it("sorts by status, then by the earliest applied inside each group", () => {
+    const order = sortApplications(rows, [
+      { key: "status", dir: "asc" },
+      { key: "applied", dir: "asc" },
+    ]).map((a) => a.id);
+    expect(order).toEqual(["offer-co", "capital-one", "stripe", "google", "roblox", "jane"]);
   });
 });

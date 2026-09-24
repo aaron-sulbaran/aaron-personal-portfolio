@@ -37,8 +37,8 @@ function Segment<T extends string>({
 }) {
   return (
     <div className="flex items-center gap-3">
-      <span className="text-[11px] font-medium uppercase tracking-caps text-muted">{label}</span>
-      <div role="radiogroup" aria-label={label} className="flex flex-wrap gap-1.5">
+      <span className="hidden text-[11px] font-medium uppercase tracking-caps text-muted sm:inline">{label}</span>
+      <div role="radiogroup" aria-label={label} className="flex flex-wrap gap-1 sm:gap-1.5">
         {options.map((option) => {
           const selected = option.value === value;
           return (
@@ -49,7 +49,7 @@ function Segment<T extends string>({
               aria-checked={selected}
               data-cursor-hover
               onClick={() => onChange(option.value)}
-              className={`min-h-[36px] rounded-full border px-3.5 text-sm font-medium transition-colors duration-200 ${
+              className={`min-h-[36px] rounded-full border px-3 text-[13px] font-medium transition-colors duration-200 sm:px-3.5 sm:text-sm ${
                 selected
                   ? "border-foreground bg-foreground text-background"
                   : "border-border bg-glass text-foreground hover:border-accent hover:text-accent"
@@ -99,7 +99,7 @@ export function Controls({ seasons, state, onChange, counts, resultCount }: Cont
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-3 sm:gap-x-6">
         <Segment
           label={copy.season}
           value={state.season}

@@ -1,13 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { ListFilter, X } from "lucide-react";
-import { Portal } from "@/components/Portal";
+import { ListFilter } from "lucide-react";
 import { siteContent } from "@/lib/content";
-import { useBodyScrollLock, useEscapeKey, useFocusTrap } from "@/lib/modal";
 import { STATUS_GROUPS, type StatusGroup } from "@/lib/recruiting/funnel";
 import { laneLabel } from "@/lib/recruiting/format";
 import { LANES, type Lane } from "@/lib/recruiting/types";
+import { Menu, MenuButton } from "./Popover";
 
 // The dashboard's filter: a funnel-icon button that opens a checkbox panel
 // (lanes, status groups, ignored outreach) in any combination. After Stripe's
@@ -36,18 +35,6 @@ export function activeCount(value: FilterValue): number {
   return value.lanes.length + value.statuses.length + (value.includeOutreach ? 1 : 0);
 }
 
-function useNarrow(): boolean {
-  const [narrow, setNarrow] = useState(false);
-  useEffect(() => {
-    const query = window.matchMedia("(max-width: 767px)");
-    const update = () => setNarrow(query.matches);
-    update();
-    query.addEventListener("change", update);
-    return () => query.removeEventListener("change", update);
-  }, []);
-  return narrow;
-}
-
 function toggle<T>(list: T[], item: T): T[] {
   return list.includes(item) ? list.filter((x) => x !== item) : [...list, item];
 }
@@ -61,127 +48,68 @@ interface FilterMenuProps {
 }
 
 export function FilterMenu({ value, counts, resultCount, onApply }: FilterMenuProps) {
-  const [open, setOpen] = useState(false);
-  const narrow = useNarrow();
-  const wrapRef = useRef<HTMLDivElement>(null);
   const active = activeCount(value);
-
-  // Desktop popover closes on a click anywhere outside it.
-  useEffect(() => {
-    if (!open || narrow) return;
-    const onDown = (e: MouseEvent) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
-  }, [open, narrow]);
-
-  const panel = open && (
-    <FilterPanel
-      value={value}
-      counts={counts}
-      resultCount={resultCount}
-      sheet={narrow}
-      onClose={() => setOpen(false)}
-      onApply={(next) => {
-        onApply(next);
-        setOpen(false);
-      }}
-    />
-  );
-
   return (
-    <div ref={wrapRef} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-        aria-haspopup="dialog"
-        data-cursor-hover
-        className={`inline-flex min-h-[36px] items-center gap-2 rounded-full border px-3.5 text-sm font-medium transition-colors duration-200 ${
-          active > 0
-            ? "border-foreground bg-foreground text-background"
-            : "border-border bg-glass text-foreground hover:border-accent hover:text-accent"
-        }`}
-      >
-        <ListFilter aria-hidden="true" className="h-4 w-4" />
-        {copy.button}
-        {active > 0 && (
-          <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-background px-1.5 text-[11px] font-semibold text-foreground tabular-nums">
-            {active}
-          </span>
-        )}
-      </button>
-      {panel && (narrow ? <Portal>{panel}</Portal> : panel)}
-    </div>
+    <Menu
+      label={copy.heading}
+      trigger={({ open, toggle: flip }) => (
+        <MenuButton open={open} toggle={flip} active={active > 0}>
+          <ListFilter aria-hidden="true" className="h-4 w-4" />
+          {copy.button}
+          {active > 0 && (
+            <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-background px-1.5 text-[11px] font-semibold text-foreground tabular-nums">
+              {active}
+            </span>
+          )}
+        </MenuButton>
+      )}
+    >
+      {(close) => (
+        <FilterBody
+          value={value}
+          counts={counts}
+          resultCount={resultCount}
+          onApply={(next) => {
+            onApply(next);
+            close();
+          }}
+        />
+      )}
+    </Menu>
   );
 }
 
-interface PanelProps {
-  value: FilterValue;
-  counts: FilterCounts;
-  resultCount: (draft: FilterValue) => number;
-  sheet: boolean;
-  onClose: () => void;
-  onApply: (next: FilterValue) => void;
-}
-
-function FilterPanel({ value, counts, resultCount, sheet, onClose, onApply }: PanelProps) {
+// Mounted fresh on every open, so the staged draft always starts from what is applied.
+function FilterBody({
+  value,
+  counts,
+  resultCount,
+  onApply,
+}: Omit<FilterMenuProps, "onApply"> & { onApply: (next: FilterValue) => void }) {
   const [draft, setDraft] = useState<FilterValue>(value);
-  const panelRef = useRef<HTMLDivElement | null>(null);
-  const [mounted, setMounted] = useState(false);
-
-  useEscapeKey(true, onClose);
-  useFocusTrap(panelRef, mounted);
-  useBodyScrollLock(sheet);
-
   // Ticking every option in a section is the same as ticking none: store none.
   const setLanes = (lanes: Lane[]) => setDraft((d) => ({ ...d, lanes: lanes.length === LANES.length ? [] : lanes }));
   const setStatuses = (statuses: StatusGroup[]) =>
     setDraft((d) => ({ ...d, statuses: statuses.length === STATUS_GROUPS.length ? [] : statuses }));
 
-  const body = (
-    <div
-      ref={(el) => {
-        panelRef.current = el;
-        if (el && !mounted) setMounted(true);
-      }}
-      role="dialog"
-      aria-modal={sheet}
-      aria-label={copy.heading}
-      className={
-        sheet
-          ? "relative flex max-h-[85dvh] w-full flex-col rounded-t-2xl border border-border/60 bg-background shadow-[0_-20px_60px_-20px_rgba(10,10,10,0.45)]"
-          : "absolute left-0 top-full z-40 mt-2 flex w-[300px] flex-col rounded-2xl border border-border bg-background shadow-[0_24px_60px_-20px_rgba(10,10,10,0.4)]"
-      }
-    >
-      {sheet && <span aria-hidden="true" className="mx-auto mt-2.5 h-1 w-10 rounded-full bg-border" />}
+  return (
+    <>
       <div className="flex items-start justify-between gap-3 border-b border-border px-4 pb-3 pt-3.5">
         <div className="flex flex-col gap-0.5">
           <h2 className="font-serif text-xl italic leading-none">{copy.heading}</h2>
-          <p className="text-[12px] tabular-nums text-muted">{copy.results(resultCount(draft), counts.total + (draft.includeOutreach ? counts.outreach : 0))}</p>
+          <p className="text-[12px] tabular-nums text-muted">
+            {copy.results(resultCount(draft), counts.total + (draft.includeOutreach ? counts.outreach : 0))}
+          </p>
         </div>
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() => setDraft({ lanes: [], statuses: [], includeOutreach: false })}
-            disabled={activeCount(draft) === 0}
-            data-cursor-hover
-            className="min-h-[32px] rounded-full px-2 text-[13px] font-medium text-accent transition-opacity duration-200 disabled:opacity-40"
-          >
-            {copy.clearAll}
-          </button>
-          {sheet && (
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label={copy.close}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-full text-muted hover:text-foreground"
-            >
-              <X aria-hidden="true" className="h-4 w-4" />
-            </button>
-          )}
-        </div>
+        <button
+          type="button"
+          onClick={() => setDraft({ lanes: [], statuses: [], includeOutreach: false })}
+          disabled={activeCount(draft) === 0}
+          data-cursor-hover
+          className="min-h-[32px] rounded-full px-2 text-[13px] font-medium text-accent transition-opacity duration-200 disabled:opacity-40"
+        >
+          {copy.clearAll}
+        </button>
       </div>
 
       <div className="flex flex-col gap-4 overflow-y-auto px-4 py-3.5">
@@ -219,19 +147,7 @@ function FilterPanel({ value, counts, resultCount, sheet, onClose, onApply }: Pa
           {copy.apply}
         </button>
       </div>
-    </div>
-  );
-
-  if (!sheet) return body;
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-end bg-background/60 backdrop-blur-sm"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      {body}
-    </div>
+    </>
   );
 }
 

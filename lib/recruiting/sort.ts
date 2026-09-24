@@ -1,13 +1,19 @@
 import { STAGES, type Application } from "./types";
 
-// Table order. The default is by status, the way the old Sheet worked: offers
-// first, then processes in flight (furthest stage first), then plain
-// applications, then planned ones, and everything that closed at the bottom,
-// however recent. Inside a group, a pending next step comes first (soonest due),
-// then the latest activity.
+// Table order: one or two rules ("sort by status, then by applied date"). The
+// default is by status, the way the old Sheet worked: offers first, then
+// processes in flight (furthest stage first), then plain applications, then
+// planned ones, and everything that closed at the bottom, however recent.
+// After the rules, ties fall to: a pending next step (soonest due), the latest
+// activity, then company name.
 
 export type SortKey = "status" | "applied" | "lastEvent" | "company" | "role" | "lane" | "season" | "next";
 export type SortDir = "asc" | "desc";
+export interface SortRule {
+  key: SortKey;
+  dir: SortDir;
+}
+export const DEFAULT_SORT: SortRule[] = [{ key: "status", dir: "asc" }];
 
 // Lower is higher on the page.
 const STATUS_GROUP: Record<string, number> = {
@@ -56,11 +62,15 @@ function byString(a: string | null | undefined, b: string | null | undefined): n
 }
 
 function byStatus(a: Application, b: Application): number {
+  return (STATUS_GROUP[a.status] ?? 8) - (STATUS_GROUP[b.status] ?? 8) || stage(b) - stage(a);
+}
+
+// Fixed tiebreak after the chosen rules.
+function tiebreak(a: Application, b: Application): number {
   return (
-    (STATUS_GROUP[a.status] ?? 8) - (STATUS_GROUP[b.status] ?? 8) ||
-    stage(b) - stage(a) ||
     byString(a.next?.due ?? (a.next ? "9998" : "9999"), b.next?.due ?? (b.next ? "9998" : "9999")) ||
-    byString(lastEventDate(b), lastEventDate(a))
+    byString(lastEventDate(b), lastEventDate(a)) ||
+    a.company.localeCompare(b.company)
   );
 }
 
@@ -93,12 +103,15 @@ function missing(app: Application, key: SortKey): boolean {
   return false;
 }
 
-export function sortApplications(rows: ReadonlyArray<Application>, key: SortKey, dir: SortDir): Application[] {
-  const sign = dir === "asc" ? 1 : -1;
+export function sortApplications(rows: ReadonlyArray<Application>, rules: ReadonlyArray<SortRule>): Application[] {
   return [...rows].sort((a, b) => {
-    const ma = missing(a, key);
-    const mb = missing(b, key);
-    if (ma !== mb) return ma ? 1 : -1;
-    return sign * compare(a, b, key) || a.company.localeCompare(b.company);
+    for (const { key, dir } of rules) {
+      const ma = missing(a, key);
+      const mb = missing(b, key);
+      if (ma !== mb) return ma ? 1 : -1;
+      const c = (dir === "asc" ? 1 : -1) * compare(a, b, key);
+      if (c) return c;
+    }
+    return tiebreak(a, b);
   });
 }

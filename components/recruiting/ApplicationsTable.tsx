@@ -12,8 +12,9 @@ import {
   statusTone,
   toCsv,
 } from "@/lib/recruiting/format";
-import { DEFAULT_DIR, sortApplications, type SortDir, type SortKey } from "@/lib/recruiting/sort";
+import { DEFAULT_SORT, sortApplications, type SortKey, type SortRule } from "@/lib/recruiting/sort";
 import type { Application } from "@/lib/recruiting/types";
+import { SortMenu } from "./SortMenu";
 
 // The Sheet replacement: one row per application, sortable, status as a
 // chip, CSV download of the current selection. Below md the same rows render
@@ -115,20 +116,13 @@ interface ApplicationsTableProps {
 
 export function ApplicationsTable({ rows, note, onEdit, onAdd }: ApplicationsTableProps) {
   // Status first, the Sheet's order: live processes up top, closed ones last.
-  const [sortKey, setSortKey] = useState<SortKey>("status");
-  const [sortDir, setSortDir] = useState<SortDir>(DEFAULT_DIR.status);
+  // The Sort menu is the only control; column headers just show the result.
+  const [rules, setRules] = useState<SortRule[]>(DEFAULT_SORT);
+  const sorted = useMemo(() => sortApplications(rows, rules), [rows, rules]);
+  const sortKey = rules[0].key;
+  const sortDir = rules[0].dir;
 
-  const sorted = useMemo(() => sortApplications(rows, sortKey, sortDir), [rows, sortKey, sortDir]);
-
-  const toggleSort = (key: SortKey) => {
-    if (key === sortKey) setSortDir(sortDir === "asc" ? "desc" : "asc");
-    else {
-      setSortKey(key);
-      setSortDir(DEFAULT_DIR[key]);
-    }
-  };
-
-  const columns: Array<{ key: SortKey; label: string; className?: string }> = [
+  const columns: Array<{ key: SortKey | "role"; label: string; className?: string }> = [
     { key: "company", label: copy.columns.company },
     { key: "role", label: copy.columns.role, className: "w-[34%]" },
     { key: "lane", label: copy.columns.lane },
@@ -147,7 +141,8 @@ export function ApplicationsTable({ rows, note, onEdit, onAdd }: ApplicationsTab
           <span className="ml-3 font-sans text-sm not-italic text-muted">{rows.length}</span>
           {note && <span className="mt-2 block font-sans text-[12px] not-italic leading-snug text-muted">{note}</span>}
         </h2>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+        <SortMenu rules={rules} onChange={setRules} />
         {onAdd && (
           <button
             type="button"
@@ -172,8 +167,6 @@ export function ApplicationsTable({ rows, note, onEdit, onAdd }: ApplicationsTab
         </div>
       </div>
 
-      <SortBar sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
-
       {rows.length === 0 ? (
         <p className="py-12 text-center text-sm text-muted">{copy.empty}</p>
       ) : (
@@ -186,19 +179,23 @@ export function ApplicationsTable({ rows, note, onEdit, onAdd }: ApplicationsTab
                   {columns.map((col) => {
                     const on = col.key === sortKey;
                     return (
-                      <th key={col.key} scope="col" className={`py-2 pr-4 font-medium ${col.className ?? ""}`}
-                        aria-sort={on ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
-                        <button
-                          type="button"
-                          onClick={() => toggleSort(col.key)}
-                          data-cursor-hover
-                          className={`inline-flex items-center gap-1 text-[11px] uppercase tracking-caps transition-colors duration-200 hover:text-accent ${on ? "text-foreground" : "text-muted"}`}
+                      <th
+                        key={col.key}
+                        scope="col"
+                        className={`py-2 pr-4 font-medium ${col.className ?? ""}`}
+                        aria-sort={on ? (sortDir === "asc" ? "ascending" : "descending") : undefined}
+                      >
+                        <span
+                          className={`inline-flex items-center gap-1 text-[11px] uppercase tracking-caps ${on ? "text-foreground" : "text-muted"}`}
                         >
                           {col.label}
-                          {on && (sortDir === "asc"
-                            ? <ArrowUp aria-hidden="true" className="h-3 w-3" />
-                            : <ArrowDown aria-hidden="true" className="h-3 w-3" />)}
-                        </button>
+                          {on &&
+                            (sortDir === "asc" ? (
+                              <ArrowUp aria-hidden="true" className="h-3 w-3" />
+                            ) : (
+                              <ArrowDown aria-hidden="true" className="h-3 w-3" />
+                            ))}
+                        </span>
                       </th>
                     );
                   })}
@@ -264,46 +261,3 @@ export function ApplicationsTable({ rows, note, onEdit, onAdd }: ApplicationsTab
   );
 }
 
-// The three orders worth switching between, as pills that work on a phone too
-// (the column headers only exist on the desktop table). Pressing the active
-// one flips its direction.
-const SORT_CHOICES: Array<{ key: SortKey; label: string }> = [
-  { key: "status", label: copy.sort.status },
-  { key: "applied", label: copy.sort.applied },
-  { key: "lastEvent", label: copy.sort.lastEvent },
-];
-
-function SortBar({ sortKey, sortDir, onSort }: { sortKey: SortKey; sortDir: SortDir; onSort: (key: SortKey) => void }) {
-  return (
-    <div className="flex flex-wrap items-center gap-3">
-      <span className="text-[11px] font-medium uppercase tracking-caps text-muted">{copy.sort.label}</span>
-      <div role="group" aria-label={copy.sort.label} className="flex flex-wrap gap-1.5">
-        {SORT_CHOICES.map((choice) => {
-          const on = choice.key === sortKey;
-          return (
-            <button
-              key={choice.key}
-              type="button"
-              aria-pressed={on}
-              onClick={() => onSort(choice.key)}
-              data-cursor-hover
-              className={`inline-flex min-h-[32px] items-center gap-1 rounded-full border px-3 text-[13px] font-medium transition-colors duration-200 ${
-                on
-                  ? "border-foreground bg-foreground text-background"
-                  : "border-border bg-glass text-foreground hover:border-accent hover:text-accent"
-              }`}
-            >
-              {choice.label}
-              {on &&
-                (sortDir === "asc" ? (
-                  <ArrowUp aria-label={copy.sort.asc} className="h-3 w-3" />
-                ) : (
-                  <ArrowDown aria-label={copy.sort.desc} className="h-3 w-3" />
-                ))}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}

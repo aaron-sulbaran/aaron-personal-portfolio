@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { siteContent } from "@/lib/content";
+import { HOLDING_MODE } from "@/lib/holding";
 import { applyPendingEdits, type FailedEdit, type PendingEdit } from "@/lib/recruiting/edits";
 import {
   computeFunnel,
@@ -94,7 +95,9 @@ export function RecruitingDashboard({ data, pending, failed, editsError, canEdit
 
   return (
     <div className="flex flex-col gap-10 md:gap-12">
-      <Controls seasons={seasons} state={state} onChange={setState} counts={counts} resultCount={resultCount} />
+      <StickyBar>
+        <Controls seasons={seasons} state={state} onChange={setState} counts={counts} resultCount={resultCount} />
+      </StickyBar>
 
       <StatTiles stats={stats} />
 
@@ -159,6 +162,38 @@ function EditsNotice({ failed, error }: { failed: FailedEdit[]; error: string | 
         </p>
       )}
     </div>
+  );
+}
+
+// Season, Filter and the active chips scope the whole page, so they stay in
+// reach while reading the table: the bar pins to the top of the viewport and
+// only takes a surface (background, border, shadow) once it is stuck. Sits at
+// z-20, under the site nav (z-30). In full-site mode the fixed nav (about
+// 53-57px) owns the top edge, so the bar pins just below it; in holding mode
+// there is no nav and it pins near the top.
+function StickyBar({ children }: { children: ReactNode }) {
+  const sentinel = useRef<HTMLDivElement>(null);
+  const [stuck, setStuck] = useState(false);
+  useEffect(() => {
+    const el = sentinel.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(([entry]) => setStuck(!entry.isIntersecting), { threshold: 0 });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+  return (
+    <>
+      <div ref={sentinel} aria-hidden="true" className="-mb-10 h-px md:-mb-12" />
+      <div
+        className={`sticky ${HOLDING_MODE ? "top-2" : "top-16"} z-20 -mx-3 rounded-2xl border px-3 py-2.5 transition-[background-color,border-color,box-shadow] duration-200 ${
+          stuck
+            ? "border-border bg-background shadow-[0_12px_32px_-18px_rgba(10,10,10,0.35)]"
+            : "border-transparent"
+        }`}
+      >
+        {children}
+      </div>
+    </>
   );
 }
 
