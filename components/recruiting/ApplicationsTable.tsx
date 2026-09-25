@@ -103,7 +103,9 @@ function NextStep({ app, onComplete }: { app: Application; onComplete?: (app: Ap
   if (!next?.what) return null;
   const canComplete = onComplete && !app.id.startsWith("pending-");
   return (
-    <span className="inline-flex items-start gap-2">
+    // Block flex, not inline: an inline box sits on the cell's baseline and
+    // drops the check a few pixels below the first line. 16px check, 20px line.
+    <span className="flex items-start gap-2 leading-5">
       {canComplete && (
         <button
           type="button"
@@ -272,7 +274,14 @@ export function ApplicationsTable({ rows, note, onEdit, onAdd, onCompleteNext }:
                     <td className="py-3 pr-0 text-foreground/85">
                       <NextStep app={app} onComplete={onCompleteNext} />
                     </td>
-                    {onEdit && <td className="py-2 pl-2"><EditButton app={app} onEdit={onEdit} /></td>}
+                    {onEdit && (
+                      <td className="py-3 pl-2">
+                        {/* The 32px button centered on the row's first 20px line. */}
+                        <div className="-my-1.5">
+                          <EditButton app={app} onEdit={onEdit} />
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
