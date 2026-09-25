@@ -335,6 +335,8 @@ export const siteContent = {
       },
       ofApplied: "of applied",
       flowTo: "to",
+      referredLegend: "Referred",
+      referredCount: (n: number) => `${n} referred`,
       more: (n: number) => `and ${n} more`,
     },
     tableNote: (parts: { counted: number; planned: number; outreach: number; unapplied: number }) =>
@@ -366,6 +368,7 @@ export const siteContent = {
       lane: "Lane",
       season: "Season",
       tier: "Priority",
+      referral: "Applied with a referral",
       tiers: { target: "Target", opportunistic: "Opportunistic", "outreach-ignored": "Outreach" },
       submit: "Save",
       submitting: "Saving",
@@ -387,6 +390,7 @@ export const siteContent = {
       download: "Download CSV",
       empty: "No applications match this selection.",
       active: "Active",
+      referral: "Applied with a referral",
       columns: {
         company: "Company",
         role: "Role",

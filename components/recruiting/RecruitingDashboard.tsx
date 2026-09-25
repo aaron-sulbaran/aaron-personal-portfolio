@@ -69,7 +69,7 @@ export function RecruitingDashboard({ data, pending, failed, editsError, canEdit
   );
   const filter = useMemo(() => toFunnelFilter(state.filter), [toFunnelFilter, state.filter]);
 
-  const funnel = useMemo(() => computeFunnel(applications, filter), [applications, filter]);
+  const funnel = useMemo(() => computeFunnel(applications, filter, true), [applications, filter]);
   const stats = useMemo(() => computeStats(applications, filter), [applications, filter]);
   const rows = useMemo(() => filterApplications(applications, filter), [applications, filter]);
   const copy = siteContent.recruiting;
@@ -108,7 +108,7 @@ export function RecruitingDashboard({ data, pending, failed, editsError, canEdit
             <span className="ml-3 font-sans text-sm not-italic text-muted">{copy.funnel.countLabel(funnel.counted)}</span>
           </h2>
           <div className="flex flex-col items-start gap-1.5 text-[12px] text-muted md:items-end">
-            <OutcomeLegend />
+            <OutcomeLegend referrals={funnel.nodes.some((n) => n.referred > 0)} />
             {funnel.planned > 0 && <span>{copy.funnel.plannedNote(funnel.planned)}</span>}
           </div>
         </div>
@@ -198,8 +198,10 @@ function StickyBar({ children }: { children: ReactNode }) {
 }
 
 // Outcome legend: what a flow's color means. Lane colors are labeled on the
-// chart's own source nodes, so they need no second legend here.
-function OutcomeLegend() {
+// chart's own source nodes, so they need no second legend here. Referred
+// flows keep their outcome color and add stripes; that key shows only when the
+// selection has any.
+function OutcomeLegend({ referrals }: { referrals: boolean }) {
   const tones = siteContent.recruiting.funnel.tones;
   return (
     <ul className="flex flex-wrap items-center gap-x-4 gap-y-1" aria-label={siteContent.recruiting.funnel.outcomesLabel}>
@@ -220,6 +222,19 @@ function OutcomeLegend() {
           </li>
         );
       })}
+      {referrals && (
+        <li className="inline-flex items-center gap-1.5">
+          <span
+            aria-hidden="true"
+            className="h-2.5 w-2.5 rounded-[3px]"
+            style={{
+              background:
+                "repeating-linear-gradient(45deg, var(--viz-node) 0 2px, var(--color-background) 2px 3.5px)",
+            }}
+          />
+          {siteContent.recruiting.funnel.referredLegend}
+        </li>
+      )}
     </ul>
   );
 }

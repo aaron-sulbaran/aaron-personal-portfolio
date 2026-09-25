@@ -18,9 +18,13 @@ import { TONES } from "./tones";
 // d3 horizontal link), flow opacity around the 0.45 default, labels showing
 // name and value, ends not justified (d3 sankeyLeft) so exits sit next to the
 // stage they left.
+//
+// Referrals (2026-09-25): each flow splits into its referred and cold parts,
+// and the referred part keeps its outcome color with light stripes, so a
+// referral can be followed from its lane to wherever it ended.
 
 type NodeDatum = FunnelNode & { fixedValue?: number };
-type LinkDatum = Pick<FunnelLink, "tone" | "byLane" | "companies">;
+type LinkDatum = Pick<FunnelLink, "tone" | "byLane" | "companies" | "referred" | "referral">;
 type LaidNode = SankeyNode<NodeDatum, LinkDatum>;
 type LaidLink = SankeyLink<NodeDatum, LinkDatum>;
 
@@ -50,6 +54,11 @@ function laneBreakdown(byLane: Partial<Record<Lane, number>>): string {
     .filter(([, n]) => n > 0)
     .map(([lane, n]) => `${n} ${laneCopy[lane]}`);
   return parts.length > 1 ? parts.join(", ") : "";
+}
+
+// "2 internship, 1 co-op · 2 referred", either half optional.
+function flowDetail(byLane: Partial<Record<Lane, number>>, referred: number): string {
+  return [laneBreakdown(byLane), referred ? copy.referredCount(referred) : ""].filter(Boolean).join(" · ");
 }
 
 interface Tip {
@@ -163,6 +172,8 @@ function SankeyChart({ funnel, width }: { funnel: Funnel; width: number }) {
         tone: l.tone,
         byLane: l.byLane,
         companies: l.companies,
+        referred: l.referred,
+        referral: l.referral,
       })),
     });
     return { graph, height };
@@ -188,32 +199,44 @@ function SankeyChart({ funnel, width }: { funnel: Funnel; width: number }) {
           setFocus(null);
         }}
       >
+        <defs>
+          {/* Referred part of a split flow: the flow's own color with light stripes. */}
+          <pattern id="referral-stripes" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <rect width="2.5" height="6" fill="var(--color-background)" fillOpacity="0.55" />
+          </pattern>
+        </defs>
         <g fill="none">
           {graph.links.filter((link) => link.value > 0).map((link) => {
             const s = link.source as LaidNode;
             const t = link.target as LaidNode;
             const tone = TONES[link.tone];
             const on = touches(link);
+            const d = path(link) ?? undefined;
+            const strokeWidth = Math.max(1.5, link.width ?? 1);
             return (
-              <path
-                key={`${s.id}>${t.id}`}
-                d={path(link) ?? undefined}
-                stroke={tone.color}
-                strokeWidth={Math.max(1.5, link.width ?? 1)}
-                strokeOpacity={on ? tone.flowOpacity : tone.flowOpacity * 0.25}
-                className="transition-[stroke-opacity] duration-200"
-                onMouseMove={(e) => {
-                  const box = (e.currentTarget.ownerSVGElement as SVGSVGElement).getBoundingClientRect();
-                  setHover({
-                    x: e.clientX - box.left,
-                    y: e.clientY - box.top,
-                    title: `${nodeLabel(s)} ${copy.flowTo} ${nodeLabel(t)}: ${link.value}`,
-                    detail: laneBreakdown(link.byLane),
-                    companies: link.companies,
-                  });
-                }}
-                onMouseLeave={() => setHover(null)}
-              />
+              <g key={`${s.id}>${t.id}${link.referral ? "#referral" : ""}`}>
+                <path
+                  d={d}
+                  stroke={tone.color}
+                  strokeWidth={strokeWidth}
+                  strokeOpacity={on ? (link.referral ? Math.min(1, tone.flowOpacity + 0.3) : tone.flowOpacity) : tone.flowOpacity * 0.25}
+                  className="transition-[stroke-opacity] duration-200"
+                  onMouseMove={(e) => {
+                    const box = (e.currentTarget.ownerSVGElement as SVGSVGElement).getBoundingClientRect();
+                    setHover({
+                      x: e.clientX - box.left,
+                      y: e.clientY - box.top,
+                      title: `${nodeLabel(s)} ${copy.flowTo} ${nodeLabel(t)}: ${link.value}`,
+                      detail: flowDetail(link.byLane, link.referred),
+                      companies: link.companies,
+                    });
+                  }}
+                  onMouseLeave={() => setHover(null)}
+                />
+                {link.referral && on && (
+                  <path d={d} stroke="url(#referral-stripes)" strokeWidth={strokeWidth} className="pointer-events-none" />
+                )}
+              </g>
             );
           })}
         </g>
@@ -244,7 +267,7 @@ function SankeyChart({ funnel, width }: { funnel: Funnel; width: number }) {
                     x: e.clientX - box.left,
                     y: e.clientY - box.top,
                     title: `${label}: ${node.count}${share}`,
-                    detail: "",
+                    detail: node.referred ? copy.referredCount(node.referred) : "",
                     companies: node.companies,
                   });
                 }}

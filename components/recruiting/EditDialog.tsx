@@ -20,7 +20,7 @@ import {
   modalBackdropBlurVariants,
   modalBackdropTintVariants,
 } from "@/lib/modal";
-import { LANES, type Application, type Season } from "@/lib/recruiting/types";
+import { LANES, isReferral, type Application, type Season } from "@/lib/recruiting/types";
 
 // Edit dialog for the applications table: update any field a row shows, add an
 // application, or remove one. Built on the site's own modal primitives
@@ -67,6 +67,7 @@ type Draft = {
   nextWhat: string;
   nextDue: string;
   status: string;
+  referral: boolean;
 };
 
 function initialDraft(app: Application | null, defaultSeason: Season): Draft {
@@ -80,6 +81,7 @@ function initialDraft(app: Application | null, defaultSeason: Season): Draft {
     nextWhat: app?.next?.what ?? "",
     nextDue: app?.next?.due ?? "",
     status: app?.status ?? "applied",
+    referral: app ? isReferral(app) : false,
   };
 }
 
@@ -93,6 +95,7 @@ function updateFrom(app: Application, d: Draft, date: string, note: string) {
   if (d.tier !== app.tier) edit.tier = d.tier;
   if (d.applied && d.applied !== app.applied) edit.applied = d.applied;
   if (d.status !== app.status) edit.status = d.status;
+  if (d.referral !== isReferral(app)) edit.referral = d.referral;
   const nextWhat = d.nextWhat.trim();
   const nextDue = d.nextDue || undefined;
   if (!nextWhat && app.next) edit.next = null;
@@ -157,8 +160,8 @@ export function EditDialog({ target, seasons, defaultSeason, onClose, onFiled }:
     if (app) {
       void file(updateFrom(app, draft, date, note));
     } else {
-      const { company, role, lane, season, tier, status } = draft;
-      void file({ v: 1, op: "create", company, role, lane, season, tier, status, date, note });
+      const { company, role, lane, season, tier, status, referral } = draft;
+      void file({ v: 1, op: "create", company, role, lane, season, tier, status, referral, date, note });
     }
   }
 
@@ -285,6 +288,16 @@ export function EditDialog({ target, seasons, defaultSeason, onClose, onFiled }:
                   )}
                 </Field>
               </div>
+
+              <label className="flex min-h-[40px] cursor-pointer items-center gap-2.5 text-sm text-foreground" data-cursor-hover>
+                <input
+                  type="checkbox"
+                  checked={draft.referral}
+                  onChange={(e) => setDraft((d) => ({ ...d, referral: e.target.checked }))}
+                  className="h-4 w-4 rounded border-border accent-accent"
+                />
+                {copy.referral}
+              </label>
 
               {app && (
                 <div className="grid grid-cols-[1fr_auto] gap-3">

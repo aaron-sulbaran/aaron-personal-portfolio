@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, Download, Pencil, Plus } from "lucide-react";
+import { ArrowDown, ArrowUp, Download, Handshake, Pencil, Plus } from "lucide-react";
 import { siteContent } from "@/lib/content";
 import {
   formatDate,
@@ -13,7 +13,7 @@ import {
   toCsv,
 } from "@/lib/recruiting/format";
 import { DEFAULT_SORT, sortApplications, type SortKey, type SortRule } from "@/lib/recruiting/sort";
-import type { Application } from "@/lib/recruiting/types";
+import { isReferral, type Application } from "@/lib/recruiting/types";
 import { SortMenu } from "./SortMenu";
 
 // The Sheet replacement: one row per application, sortable, status as a
@@ -81,6 +81,15 @@ function LaneCell({ app }: { app: Application }) {
     <span className="inline-flex items-center gap-2">
       <span aria-hidden="true" className={`h-2 w-2 rounded-full ${LANE_DOT[laneTone(app.lane)]}`} />
       {laneLabel(app.lane)}
+    </span>
+  );
+}
+
+// A small mark after the company name, the Sheet's "Referred?" column.
+function ReferralMark() {
+  return (
+    <span role="img" aria-label={copy.referral} title={copy.referral} className="ml-1.5 inline-flex translate-y-[2px] text-accent">
+      <Handshake aria-hidden="true" className="h-3.5 w-3.5" />
     </span>
   );
 }
@@ -206,7 +215,10 @@ export function ApplicationsTable({ rows, note, onEdit, onAdd }: ApplicationsTab
                 {sorted.map((app) => (
                   <tr key={app.id} className="border-b border-border align-top transition-colors duration-150 hover:bg-glass">
                     <td className="py-3 pr-2"><ActiveDot active={app.active} /></td>
-                    <td className="py-3 pr-4 font-medium text-foreground">{app.company}</td>
+                    <td className="py-3 pr-4 font-medium text-foreground">
+                      {app.company}
+                      {isReferral(app) && <ReferralMark />}
+                    </td>
                     <td className="py-3 pr-4 text-foreground/85">{app.role}</td>
                     <td className="py-3 pr-4 whitespace-nowrap"><LaneCell app={app} /></td>
                     <td className="py-3 pr-4 whitespace-nowrap tabular-nums text-muted">{app.season}</td>
@@ -230,7 +242,10 @@ export function ApplicationsTable({ rows, note, onEdit, onAdd }: ApplicationsTab
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <ActiveDot active={app.active} />
-                    <span className="font-medium text-foreground">{app.company}</span>
+                    <span className="font-medium text-foreground">
+                      {app.company}
+                      {isReferral(app) && <ReferralMark />}
+                    </span>
                   </div>
                   <div className="flex items-center gap-1">
                     <StatusChip status={app.status} />

@@ -82,11 +82,31 @@ describe("applyPendingEdits", () => {
   it("adds a created application as a pending row", () => {
     const create: LedgerEdit = {
       v: 1, op: "create", company: "Mastercard", role: "APS", lane: "full-time", season: "2026-27",
-      tier: "target", status: "applied", date: "2026-09-23", note: "",
+      tier: "target", status: "applied", referral: true, date: "2026-09-23", note: "",
     };
     const out = applyPendingEdits(rows, [{ number: 12, edit: create }]);
     expect(out).toHaveLength(3);
-    expect(out[2]).toMatchObject({ id: "pending-12", furthest_stage: "applied", applied: "2026-09-23", pending: true });
+    expect(out[2]).toMatchObject({ id: "pending-12", furthest_stage: "applied", applied: "2026-09-23", channel: "referral", pending: true });
+  });
+
+  it("marks and unmarks a referral through the channel, as the ledger does", () => {
+    const marked = applyPendingEdits(rows, [
+      { number: 30, edit: { v: 1, op: "update", id: "js", referral: true, date: "2026-09-25", note: "" } },
+    ]).find((a) => a.id === "js");
+    expect(marked?.channel).toBe("referral");
+    expect(marked?.events.at(-1)?.note).toBe("Edited referral");
+    const unmarked = applyPendingEdits([{ ...rows[0], channel: "referral" }], [
+      { number: 31, edit: { v: 1, op: "update", id: rows[0].id, referral: false, date: "2026-09-25", note: "" } },
+    ])[0];
+    expect(unmarked.channel).toBe("direct");
+  });
+
+  it("accepts a create without the referral flag and defaults it to false", () => {
+    const parsed = parseEditBody(editBody({
+      v: 1, op: "create", company: "Adobe", role: "PM Intern", lane: "internship", season: "2026-27",
+      tier: "target", status: "applied", referral: false, date: "2026-09-25", note: "",
+    }).replace('"referral": false,', ""));
+    expect(parsed).toMatchObject({ op: "create", referral: false });
   });
 
   it("renames, moves lanes and clears the next step without touching status", () => {

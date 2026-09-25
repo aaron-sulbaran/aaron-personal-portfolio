@@ -222,3 +222,37 @@ describe("unapplied", () => {
     expect(computeFunnel([withdrewEarly, stillInOa], both).unapplied).toBe(1);
   });
 });
+
+describe("referrals in the funnel", () => {
+  const referredInterview = app({
+    id: "ref",
+    channel: "referral",
+    furthest_stage: "interview",
+    outcome: "rejected",
+    status: "rejected",
+    events: [{ date: "2026-09-10", kind: "interview", note: "" }],
+  });
+  const coldInterview = app({
+    id: "cold",
+    furthest_stage: "interview",
+    outcome: "rejected",
+    status: "rejected",
+    events: [{ date: "2026-09-10", kind: "interview", note: "" }],
+  });
+  const filter = { seasons: ["2026-27"], lanes: null, includeOutreach: false };
+
+  it("counts referred applications on every node and flow they touch", () => {
+    const funnel = computeFunnel([referredInterview, coldInterview], filter);
+    expect(funnel.nodes.find((n) => n.id === "stage:interview")).toMatchObject({ count: 2, referred: 1 });
+    expect(funnel.links.find((l) => l.target === "stage:interview")).toMatchObject({ value: 2, referred: 1 });
+  });
+
+  it("splits each flow into referred and cold parts, referred first", () => {
+    const funnel = computeFunnel([referredInterview, coldInterview], filter, true);
+    const intoInterview = funnel.links.filter((l) => l.target === "stage:interview");
+    expect(intoInterview.map((l) => [l.value, Boolean(l.referral)])).toEqual([
+      [1, true],
+      [1, false],
+    ]);
+  });
+});

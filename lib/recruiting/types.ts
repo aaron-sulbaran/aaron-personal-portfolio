@@ -74,6 +74,12 @@ export function isOffTrack(app: Application): boolean {
   return app.tier === "off-track";
 }
 
+// Applied with a referral. The ledger records it as the row's channel
+// (talos-ledger upsert --channel referral), the Sheet's "Referred?" column.
+export function isReferral(app: Application): boolean {
+  return app.channel === "referral";
+}
+
 export function isOutreach(app: Application): boolean {
   return app.tier === "outreach-ignored" || app.outcome === "ignored";
 }

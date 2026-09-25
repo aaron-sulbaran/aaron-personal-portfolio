@@ -3,6 +3,7 @@ import {
   isOffTrack,
   isOutreach,
   isPlanned,
+  isReferral,
   isStage,
   type Application,
   type Lane,
@@ -73,6 +74,8 @@ export interface FunnelNode {
   count: number;
   // Company of each of those applications (repeats kept), for the hover list.
   companies: string[];
+  // How many of them were applied with a referral.
+  referred: number;
 }
 
 export interface FunnelLink {
@@ -84,6 +87,9 @@ export interface FunnelLink {
   byLane: Partial<Record<Lane, number>>;
   // Company of each application in the flow (repeats kept), for tooltips.
   companies: string[];
+  referred: number;
+  // Set when referrals are split out: this flow is a split's referred part.
+  referral?: boolean;
 }
 
 export interface Funnel {
@@ -185,9 +191,11 @@ export const laneNodeId = (lane: Lane | "outreach") => `lane:${lane}`;
 export const stageNodeId = (stage: Stage) => `stage:${stage}`;
 export const exitNodeId = (exit: Exit, from: Stage | "outreach") => `exit:${exit}@${from}`;
 
+type NodeShape = Omit<FunnelNode, "count" | "companies" | "referred">;
+
 interface PathStep {
   id: string;
-  node: Omit<FunnelNode, "count" | "companies">;
+  node: NodeShape;
 }
 
 // One path per application: lane source, then every stage reached in order,
@@ -222,14 +230,22 @@ export function pathFor(app: Application): PathStep[] {
   return steps;
 }
 
-function toneFor(source: Omit<FunnelNode, "count" | "companies">, target: Omit<FunnelNode, "count" | "companies">): FlowTone {
+function toneFor(source: NodeShape, target: NodeShape): FlowTone {
   if (source.kind === "lane") return source.lane === "outreach" ? "node" : laneTone(source.lane as Lane);
   if (target.kind === "exit") return target.exit as Exit;
   if (target.stage === "offer" || target.stage === "accepted") return "offer";
   return "forward";
 }
 
-export function computeFunnel(apps: ReadonlyArray<Application>, filter: FunnelFilter): Funnel {
+// splitReferrals (2026-09-25): every flow splits into its referred and cold
+// parts, referred first, so the chart can stripe referrals all the way to
+// their outcome. Tested against a separate Referred / Applied cold column,
+// which crossed the lane flows and lost the referrals after Applied.
+export function computeFunnel(
+  apps: ReadonlyArray<Application>,
+  filter: FunnelFilter,
+  splitReferrals = false,
+): Funnel {
   const rows = filterApplications(apps, filter);
   const nodes = new Map<string, FunnelNode>();
   const links = new Map<string, FunnelLink>();
@@ -244,6 +260,7 @@ export function computeFunnel(apps: ReadonlyArray<Application>, filter: FunnelFi
       continue;
     }
     const path = pathFor(app);
+    const referred = isReferral(app);
     if (path.length === 0) {
       unapplied += 1;
       continue;
@@ -251,13 +268,15 @@ export function computeFunnel(apps: ReadonlyArray<Application>, filter: FunnelFi
     if (isOutreach(app)) outreach += 1;
     else counted += 1;
     for (const step of path) {
-      const node = nodes.get(step.id) ?? { ...step.node, count: 0, companies: [] };
+      const node = nodes.get(step.id) ?? { ...step.node, count: 0, companies: [], referred: 0 };
       node.count += 1;
+      if (referred) node.referred += 1;
       node.companies.push(app.company);
       nodes.set(step.id, node);
     }
     for (let i = 0; i + 1 < path.length; i += 1) {
-      const key = `${path[i].id}>${path[i + 1].id}`;
+      const split = splitReferrals && referred;
+      const key = `${path[i].id}>${path[i + 1].id}${split ? "#referral" : ""}`;
       const link = links.get(key) ?? {
         source: path[i].id,
         target: path[i + 1].id,
@@ -265,8 +284,11 @@ export function computeFunnel(apps: ReadonlyArray<Application>, filter: FunnelFi
         tone: toneFor(path[i].node, path[i + 1].node),
         byLane: {},
         companies: [],
+        referred: 0,
+        ...(split ? { referral: true } : {}),
       };
       link.value += 1;
+      if (referred) link.referred += 1;
       link.companies.push(app.company);
       link.byLane[app.lane] = (link.byLane[app.lane] ?? 0) + 1;
       links.set(key, link);
@@ -275,8 +297,12 @@ export function computeFunnel(apps: ReadonlyArray<Application>, filter: FunnelFi
 
   const nodeList = Array.from(nodes.values()).sort((a, b) => a.rank - b.rank);
   const rankOf = (id: string) => nodes.get(id)?.rank ?? 0;
+  // Inside a split flow the referred part comes first, so it rides on top.
   const linkList = Array.from(links.values()).sort(
-    (a, b) => rankOf(a.source) - rankOf(b.source) || rankOf(a.target) - rankOf(b.target),
+    (a, b) =>
+      rankOf(a.source) - rankOf(b.source) ||
+      rankOf(a.target) - rankOf(b.target) ||
+      Number(Boolean(b.referral)) - Number(Boolean(a.referral)),
   );
   return { nodes: nodeList, links: linkList, counted, planned, outreach, unapplied };
 }
@@ -297,7 +323,7 @@ export function columnChain(funnel: Funnel): FunnelLink[] {
     const source = stageNodeId(present[i]);
     const target = stageNodeId(present[i + 1]);
     if (!funnel.links.some((l) => l.source === source && l.target === target)) {
-      chain.push({ source, target, value: 0, tone: "forward", byLane: {}, companies: [] });
+      chain.push({ source, target, value: 0, tone: "forward", byLane: {}, companies: [], referred: 0 });
     }
   }
   return chain;

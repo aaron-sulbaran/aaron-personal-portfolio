@@ -11,7 +11,7 @@ import { isStage, isTerminal, LANES, STAGES, type Application, type Stage, type 
 //
 // Three ops. create adds an application. update changes any field the table
 // shows (company, role, lane, season, priority, applied date, next step,
-// status) and can carry a note. remove takes a row off the dashboard: the
+// status, referral) and can carry a note. remove takes a row off the dashboard: the
 // ledger keeps it as off-track so a later email about it cannot recreate it.
 
 export const EDIT_LABEL = "ledger-edit";
@@ -53,6 +53,7 @@ const createEdit = z.object({
   season,
   tier: z.enum(["target", "opportunistic"]).default("target"),
   status: z.enum(EDIT_STATUSES),
+  referral: z.boolean().default(false),
   date: isoDate,
   note: text(500).default(""),
 });
@@ -70,6 +71,7 @@ const updateEdit = z.object({
   applied: isoDate.optional(),
   next: nextStep.nullable().optional(),
   status: z.enum(EDIT_STATUSES).optional(),
+  referral: z.boolean().optional(),
   date: isoDate,
   note: text(500).default(""),
 });
@@ -82,7 +84,7 @@ const removeEdit = z.object({
   note: text(500).default(""),
 });
 
-const FIELDS = ["company", "role", "lane", "season", "tier", "applied", "next", "status"] as const;
+const FIELDS = ["company", "role", "lane", "season", "tier", "applied", "next", "status", "referral"] as const;
 
 export const ledgerEditSchema = z
   .discriminatedUnion("op", [createEdit, updateEdit, removeEdit])
@@ -155,6 +157,14 @@ function setsApplied(status: string | undefined): boolean {
   return status !== undefined && !["planned", "withdrawn", "ignored"].includes(status);
 }
 
+// A referral is the row's channel on the ledger. Unmarking one falls back to
+// direct, which is what talos-ledger writes too.
+function channelFor(current: string | null, referral: boolean | undefined): string | null {
+  if (referral === undefined) return current;
+  if (referral) return "referral";
+  return current === "referral" ? "direct" : current;
+}
+
 function applyUpdate(app: Application, edit: UpdateEdit): Application {
   const status = edit.status ?? app.status;
   const changed = changedFields(edit).filter((f) => f !== "status");
@@ -166,6 +176,7 @@ function applyUpdate(app: Application, edit: UpdateEdit): Application {
     lane: edit.lane ?? app.lane,
     season: edit.season ?? app.season,
     tier: (edit.tier as Tier | undefined) ?? app.tier,
+    channel: channelFor(app.channel, edit.referral),
     // A rejection or withdrawal drops the next step, as talos-ledger does.
     next:
       edit.next !== undefined
@@ -192,7 +203,7 @@ function fromCreate(number: number, edit: CreateEdit): Application {
     lane: edit.lane,
     resume: null,
     tier: edit.tier,
-    channel: null,
+    channel: edit.referral ? "referral" : null,
     status: edit.status,
     applied: setsApplied(edit.status) ? edit.date : null,
     furthest_stage: furthest(null, edit.status),
