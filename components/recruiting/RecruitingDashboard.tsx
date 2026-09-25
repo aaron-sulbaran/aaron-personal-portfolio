@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { siteContent } from "@/lib/content";
 import { HOLDING_MODE } from "@/lib/holding";
-import { applyPendingEdits, type FailedEdit, type PendingEdit } from "@/lib/recruiting/edits";
+import { applyPendingEdits, completeNextEdit, type FailedEdit, type PendingEdit } from "@/lib/recruiting/edits";
 import {
   computeFunnel,
   computeStats,
@@ -11,13 +11,14 @@ import {
   statusGroup,
   type FunnelFilter,
 } from "@/lib/recruiting/funnel";
-import type { RecruitingExport, Season } from "@/lib/recruiting/types";
+import type { Application, RecruitingExport, Season } from "@/lib/recruiting/types";
 import { ApplicationsTable } from "./ApplicationsTable";
 import { Controls, type ControlState } from "./Controls";
 import { EditDialog, type EditTarget } from "./EditDialog";
 import type { FilterCounts, FilterValue } from "./FilterMenu";
 import { FunnelSankey } from "./FunnelSankey";
 import { StatTiles } from "./StatTiles";
+import { submitEdit } from "./submitEdit";
 import { OUTCOME_TONES, TONES } from "./tones";
 
 // Client shell: one control row drives the tiles, the funnel and the table.
@@ -70,6 +71,15 @@ export function RecruitingDashboard({ data, pending, failed, editsError, canEdit
   const filter = useMemo(() => toFunnelFilter(state.filter), [toFunnelFilter, state.filter]);
 
   const funnel = useMemo(() => computeFunnel(applications, filter, true), [applications, filter]);
+
+  // One click in the Next column: file "done" and overlay it like any edit.
+  async function completeNext(app: Application): Promise<string | null> {
+    const edit = completeNextEdit(app, new Date().toLocaleDateString("en-CA"));
+    const result = await submitEdit(edit, app.company);
+    if (result.error !== null) return result.error;
+    setFiled((prev) => [...prev, { number: result.data.number, edit }]);
+    return null;
+  }
   const stats = useMemo(() => computeStats(applications, filter), [applications, filter]);
   const rows = useMemo(() => filterApplications(applications, filter), [applications, filter]);
   const copy = siteContent.recruiting;
@@ -124,6 +134,7 @@ export function RecruitingDashboard({ data, pending, failed, editsError, canEdit
         note={copy.tableNote({ counted: funnel.counted, planned: funnel.planned, outreach: funnel.outreach, unapplied: funnel.unapplied })}
         onEdit={canEdit ? (app) => setEditing({ kind: "update", app }) : undefined}
         onAdd={canEdit ? () => setEditing({ kind: "create" }) : undefined}
+        onCompleteNext={canEdit ? completeNext : undefined}
       />
 
       {editing && (

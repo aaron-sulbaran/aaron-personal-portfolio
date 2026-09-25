@@ -382,6 +382,8 @@ export const siteContent = {
       keep: "Keep it",
       pending: "Pending",
       pendingTitle: "Saved. The ledger applies it at the next hourly sync.",
+      nextDone: (what: string) => `Mark done: ${what}`,
+      nextDoneFailed: "Could not save; try again",
       failedHeading: (n: number) => `${n} ${n === 1 ? "edit" : "edits"} could not be applied in the last week`,
       loadError: "Pending edits could not be loaded:",
     },

@@ -21,6 +21,7 @@ import {
   modalBackdropTintVariants,
 } from "@/lib/modal";
 import { LANES, isReferral, type Application, type Season } from "@/lib/recruiting/types";
+import { submitEdit } from "./submitEdit";
 
 // Edit dialog for the applications table: update any field a row shows, add an
 // application, or remove one. Built on the site's own modal primitives
@@ -132,27 +133,14 @@ export function EditDialog({ target, seasons, defaultSeason, onClose, onFiled }:
     const edit: LedgerEdit = parsed.data;
     setSubmitting(true);
     setError(null);
-    try {
-      const res = await fetch("/recruiting/edit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ edit, company: app ? app.company : draft.company }),
-      });
-      const result = (await res.json().catch(() => null)) as
-        | { data: { number: number }; error: null }
-        | { data: null; error: string }
-        | null;
-      if (!result || result.error !== null) {
-        setError(result?.error ?? `Request failed (${res.status})`);
-        return;
-      }
-      onFiled({ number: result.data.number, edit });
-      onClose();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setSubmitting(false);
+    const result = await submitEdit(edit, app ? app.company : draft.company);
+    setSubmitting(false);
+    if (result.error !== null) {
+      setError(result.error);
+      return;
     }
+    onFiled({ number: result.data.number, edit });
+    onClose();
   }
 
   function submit(event: FormEvent) {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyPendingEdits, editBody, editTitle, ledgerEditSchema, parseEditBody, type LedgerEdit } from "./edits";
+import { applyPendingEdits, completeNextEdit, editBody, editTitle, ledgerEditSchema, parseEditBody, type LedgerEdit } from "./edits";
 import type { Application } from "./types";
 
 function app(overrides: Partial<Application> & { id: string }): Application {
@@ -130,5 +130,15 @@ describe("applyPendingEdits", () => {
     const out = applyPendingEdits(rows, [{ number: 3, edit: { ...reject, id: "gone" } }]);
     expect(out).toEqual(rows);
     expect(rows[0].status).toBe("applied");
+  });
+
+  it("marks a next step done in one click: clears it and keeps what it was as the note", () => {
+    const row = app({ id: "adobe", company: "Adobe", next: { what: "verify candidate account email", due: "2026-09-25" } });
+    const edit = completeNextEdit(row, "2026-09-25");
+    expect(ledgerEditSchema.safeParse(edit).success).toBe(true);
+    expect(editTitle(edit, "Adobe")).toBe("Adobe: next");
+    const [out] = applyPendingEdits([row], [{ number: 40, edit }]);
+    expect(out.next).toBeNull();
+    expect(out.events.at(-1)).toEqual({ date: "2026-09-25", kind: "note", note: "Done: verify candidate account email" });
   });
 });

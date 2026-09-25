@@ -108,6 +108,19 @@ export interface FailedEdit {
   url: string;
 }
 
+// One click on the table: the next step is done. Clears it and says what was
+// done, so the ledger keeps the step as a dated note instead of losing it.
+export function completeNextEdit(app: Application, date: string): LedgerEdit {
+  return {
+    v: 1,
+    op: "update",
+    id: app.id,
+    next: null,
+    date,
+    note: `Done: ${app.next?.what ?? "next step"}`.slice(0, 500),
+  };
+}
+
 // The fields an update changes, for the issue title and the ledger's note.
 export function changedFields(edit: UpdateEdit): string[] {
   return FIELDS.filter((f) => edit[f] !== undefined);

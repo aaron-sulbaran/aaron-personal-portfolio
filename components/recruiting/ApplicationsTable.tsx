@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, Download, Handshake, Pencil, Plus } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, Download, Handshake, Pencil, Plus } from "lucide-react";
 import { siteContent } from "@/lib/content";
 import {
   formatDate,
@@ -94,6 +94,48 @@ function ReferralMark() {
   );
 }
 
+// The next step, with a round check to mark it done in one click. The step
+// strikes through while the edit files; once filed, the pending overlay
+// clears it and it leaves the column.
+function NextStep({ app, onComplete }: { app: Application; onComplete?: (app: Application) => Promise<string | null> }) {
+  const [state, setState] = useState<"idle" | "busy" | "error">("idle");
+  const next = app.next;
+  if (!next?.what) return null;
+  const canComplete = onComplete && !app.id.startsWith("pending-");
+  return (
+    <span className="inline-flex items-start gap-2">
+      {canComplete && (
+        <button
+          type="button"
+          role="checkbox"
+          aria-checked={state === "busy"}
+          aria-label={editCopy.nextDone(next.what)}
+          title={editCopy.nextDone(next.what)}
+          disabled={state === "busy"}
+          onClick={async () => {
+            setState("busy");
+            const error = await onComplete(app);
+            setState(error ? "error" : "idle");
+          }}
+          data-cursor-hover
+          className={`mt-[2px] inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-colors duration-200 ${
+            state === "busy"
+              ? "border-accent bg-accent text-background"
+              : "border-border text-transparent hover:border-accent hover:text-accent"
+          }`}
+        >
+          <Check aria-hidden="true" className="h-3 w-3" strokeWidth={3} />
+        </button>
+      )}
+      <span className={state === "busy" ? "text-muted line-through" : undefined}>
+        {next.what}
+        {next.due && <span className="ml-1.5 whitespace-nowrap tabular-nums text-muted">{formatDate(next.due)}</span>}
+        {state === "error" && <span className="ml-1.5 text-[12px] text-muted">{editCopy.nextDoneFailed}</span>}
+      </span>
+    </span>
+  );
+}
+
 function ActiveDot({ active }: { active: boolean }) {
   return (
     <span
@@ -121,9 +163,11 @@ interface ApplicationsTableProps {
   // Absent when this deployment cannot file edits; the controls then hide.
   onEdit?: (app: Application) => void;
   onAdd?: () => void;
+  // Files "next step done"; resolves to an error message or null.
+  onCompleteNext?: (app: Application) => Promise<string | null>;
 }
 
-export function ApplicationsTable({ rows, note, onEdit, onAdd }: ApplicationsTableProps) {
+export function ApplicationsTable({ rows, note, onEdit, onAdd, onCompleteNext }: ApplicationsTableProps) {
   // Status first, the Sheet's order: live processes up top, closed ones last.
   // The Sort menu is the only control; column headers just show the result.
   const [rules, setRules] = useState<SortRule[]>(DEFAULT_SORT);
@@ -226,8 +270,7 @@ export function ApplicationsTable({ rows, note, onEdit, onAdd }: ApplicationsTab
                     <td className="py-3 pr-4 whitespace-nowrap tabular-nums text-muted">{formatDate(app.applied)}</td>
                     <td className="py-3 pr-4 whitespace-nowrap tabular-nums text-muted">{formatDate(lastEventDate(app))}</td>
                     <td className="py-3 pr-0 text-foreground/85">
-                      {app.next?.what}
-                      {app.next?.due && <span className="ml-1.5 whitespace-nowrap tabular-nums text-muted">{formatDate(app.next.due)}</span>}
+                      <NextStep app={app} onComplete={onCompleteNext} />
                     </td>
                     {onEdit && <td className="py-2 pl-2"><EditButton app={app} onEdit={onEdit} /></td>}
                   </tr>
@@ -261,10 +304,9 @@ export function ApplicationsTable({ rows, note, onEdit, onAdd }: ApplicationsTab
                   {lastEventDate(app) && <span className="tabular-nums">{copy.columns.lastEvent} {formatDate(lastEventDate(app))}</span>}
                 </div>
                 {app.next?.what && (
-                  <p className="mt-2 text-[13px] text-foreground/85">
-                    <span className="text-muted">{copy.columns.next}: </span>
-                    {app.next.what}
-                    {app.next.due && <span className="ml-1.5 tabular-nums text-muted">{formatDate(app.next.due)}</span>}
+                  <p className="mt-2 flex gap-1.5 text-[13px] text-foreground/85">
+                    <span className="text-muted">{copy.columns.next}:</span>
+                    <NextStep app={app} onComplete={onCompleteNext} />
                   </p>
                 )}
               </li>
