@@ -127,6 +127,10 @@ export function getSoundtrackPlayer(): SoundtrackPlayer {
   let bands = new Float32Array(0);
   let trackIndex = 0;
   let playing = false;
+  // Monotonic play token: a stale el.play() rejection (from a pause() or src
+  // swap that aborted an earlier request) must not clobber a newer request that
+  // has since taken over. Only the latest play()'s catch may clear `playing`.
+  let playGen = 0;
   let playStartSec = 0;
   let volume = 0.7;
   const listeners = new Set<() => void>();
@@ -147,7 +151,17 @@ export function getSoundtrackPlayer(): SoundtrackPlayer {
     el.volume = volume;
     el.addEventListener("ended", () => selectTrack(trackIndex + 1, true));
     el.addEventListener("durationchange", emit);
+    // Make the media element authoritative for `playing`. Native pause/play can
+    // originate outside our code (OS media keys, lockscreen, headphone unplug,
+    // a midstream decode error), so mirror the element's real state instead of
+    // trusting only our optimistic flip. The soundtrack reconciler reads these
+    // emits to keep the pill glyph and waveform honest in both directions.
+    el.addEventListener("play", () => { playing = true; emit(); });
+    el.addEventListener("playing", () => { playing = true; emit(); });
+    el.addEventListener("pause", () => { playing = false; emit(); });
+    el.addEventListener("error", () => { playing = false; emit(); });
     audioCtx = new AudioContext();
+    audioCtx.addEventListener("statechange", emit);
     const src = audioCtx.createMediaElementSource(el);
     analyser = audioCtx.createAnalyser();
     analyser.fftSize = FFT_SIZE;
@@ -159,27 +173,36 @@ export function getSoundtrackPlayer(): SoundtrackPlayer {
     fade.connect(audioCtx.destination);
   };
 
-  const play = () => {
+  const play = async () => {
     ensureGraph();
     if (!el || !audioCtx) return;
-    void audioCtx.resume();
-    rampFadeIn();
-    playStartSec = performance.now() / 1000;
-    // Optimistic: flip `playing` before the async el.play() settles, so any
-    // emit that fires in the pending window (durationchange on first load,
+    const gen = ++playGen;
+    // Optimistic: flip `playing` before the async work settles, so any emit
+    // that fires in the pending window (durationchange on first load,
     // selectTrack on the ended -> next-track path) never reads a false
     // "stopped" and never trips the state reconciler in lib/soundtrack.
     playing = true;
+    playStartSec = performance.now() / 1000;
     emit();
-    el.play().catch(() => {
-      // Rejection (autoplay policy, decode error, missing file, or a pause()
-      // racing the pending play): stay honest. The reconciler subscribed in
-      // lib/soundtrack sees playing=false and downgrades a lingering "on"
-      // SoundtrackState to "paused", so the pill glyph and the waveform can
-      // never claim music that is not audible.
-      playing = false;
-      emit();
-    });
+    // A suspended context (browser policy, iOS interruption) would leave the
+    // element playing into a silent graph, so wait for the resume before we
+    // trust playback. Failure here is caught below alongside el.play().
+    try {
+      await audioCtx.resume();
+      rampFadeIn();
+      await el.play();
+    } catch {
+      // Rejection (autoplay policy, decode error, missing file, or a pause()/
+      // src swap racing the pending play): stay honest, but only if THIS is
+      // still the current request. A stale rejection from a superseded play()
+      // must not clobber a newer one that already took over. The reconciler in
+      // lib/soundtrack then keeps the pill glyph and waveform from claiming
+      // music that is not audible.
+      if (gen === playGen) {
+        playing = false;
+        emit();
+      }
+    }
   };
 
   const pause = () => {

@@ -6,7 +6,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useBodyScrollLock, useEscapeKey, useFocusTrap } from "@/lib/modal";
 import { siteContent, type MenuItem } from "@/lib/content";
-import { scrollToTarget } from "@/lib/scroll";
+import { navigateToSection } from "@/lib/scroll";
 import { THEME_STORAGE_KEY, syncThemeColorMeta, type Theme } from "@/lib/theme";
 import { startSoundtrack, stopSoundtrack, useSoundtrack } from "@/lib/soundtrack";
 
@@ -67,13 +67,8 @@ export function Menu() {
       e.preventDefault();
       setOpen(false);
       requestAnimationFrame(() =>
-        requestAnimationFrame(() => scrollToTarget(href, !!prefersReducedMotion)),
+        requestAnimationFrame(() => navigateToSection(href, !!prefersReducedMotion)),
       );
-      if (href === "#main") {
-        window.history.replaceState(null, "", window.location.pathname + window.location.search);
-      } else {
-        window.history.replaceState(null, "", href);
-      }
     },
     [prefersReducedMotion],
   );
@@ -154,7 +149,7 @@ export function Menu() {
             animate="visible"
             exit="exit"
             variants={overlayVariants}
-            className="fixed inset-0 z-50 flex flex-col bg-background/95 px-6 py-6 backdrop-blur-xl md:px-10 md:py-8"
+            className="fixed inset-0 z-50 flex flex-col overflow-y-auto overscroll-contain bg-background/95 px-6 py-6 backdrop-blur-xl md:px-10 md:py-8"
           >
             <div className="flex items-center justify-between">
               <span className="font-serif text-lg italic text-foreground">{siteContent.meta.title}</span>
@@ -170,7 +165,7 @@ export function Menu() {
 
             <motion.nav
               variants={listVariants}
-              className="flex flex-1 flex-col items-start justify-center gap-6 py-12 md:gap-8"
+              className="flex flex-1 shrink-0 flex-col items-start justify-center gap-6 py-12 md:gap-8"
             >
               <ul className="flex flex-col gap-2 md:gap-4">
                 {navItems.map((item, i) => (

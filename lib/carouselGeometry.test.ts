@@ -19,6 +19,7 @@ import {
   type SeatPx,
   type Viewport,
 } from "./carouselGeometry";
+import { siteContent } from "./content";
 
 const VP: Viewport = { vw: 1440, vh: 900, vmin: 900 };
 
@@ -284,5 +285,19 @@ describe("visibleSpan", () => {
       expect(span!.top).toBeLessThan(VP.vh * 0.15);
       expect(span!.bottom).toBeGreaterThan(VP.vh * 0.85);
     }
+  });
+});
+
+// Guard the invariant the CAROUSEL constants only document in comments: the ring
+// seat math (N seats, 360/N deg apart) must match the actual home tile count.
+// Adding or removing a homeTiles entry without updating CAROUSEL.N would silently
+// desync focus, wrapping, and visible-span geometry from the rendered cards.
+describe("CAROUSEL invariants", () => {
+  it("N matches the home tile count", () => {
+    expect(siteContent.homeTiles.length).toBe(CAROUSEL.N);
+  });
+
+  it("STEP_DEG is the even angular step for N seats", () => {
+    expect(CAROUSEL.STEP_DEG).toBeCloseTo(360 / CAROUSEL.N, 12);
   });
 });

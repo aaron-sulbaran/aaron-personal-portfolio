@@ -75,16 +75,16 @@ export function WorkModal({ item, onClose, renderMedia = false }: WorkModalProps
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) onClose();
           }}
-          className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6 md:px-10 md:py-14"
+          className="fixed inset-0 z-50 flex justify-center overflow-y-auto overscroll-contain px-4 py-6 md:px-10 md:py-14"
         >
           <motion.div
             aria-hidden="true"
             variants={modalBackdropTintVariants(blurDelay, true)}
-            className="pointer-events-none absolute inset-0 bg-background/70"
+            className="pointer-events-none fixed inset-0 bg-background/70"
           />
           <motion.div
             variants={panelVariants}
-            className="relative flex w-full max-w-xl flex-col gap-6 overflow-hidden rounded-2xl border border-border/60 bg-background/85 p-6 shadow-[0_40px_80px_-20px_rgba(10,10,10,0.45)] backdrop-blur-xl md:p-10"
+            className="relative my-auto flex w-full max-w-xl flex-col gap-6 overflow-hidden rounded-2xl border border-border/60 bg-background/85 p-6 shadow-[0_40px_80px_-20px_rgba(10,10,10,0.45)] backdrop-blur-xl md:p-10"
             onMouseDown={(e) => e.stopPropagation()}
           >
             <button
