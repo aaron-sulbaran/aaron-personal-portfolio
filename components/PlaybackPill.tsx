@@ -102,20 +102,37 @@ function PillInner() {
   useEffect(() => {
     initSoundtrackFromStorage();
     const mq = window.matchMedia(`(max-width: ${MOBILE_MAX}px)`);
-    const sync = () => setIsMobile(mq.matches);
-    sync();
-    mq.addEventListener("change", sync);
-    const work = document.getElementById("work");
+    let rafId = 0;
+    // Re-query #work every evaluation, not once at mount: the section can mount
+    // after this effect, and a detached node's zero rect would satisfy
+    // `0 < 0.12 * innerHeight` and force the pill permanently revealed. Skip on
+    // mobile, where the pill renders null anyway.
     const evalReveal = () => {
+      if (mq.matches) return;
+      const work = document.getElementById("work");
       if (work) setRevealed(work.getBoundingClientRect().top < window.innerHeight * 0.12);
     };
-    evalReveal();
-    window.addEventListener("scroll", evalReveal, { passive: true });
-    window.addEventListener("resize", evalReveal);
+    // Coalesce scroll/resize bursts to one layout read per frame.
+    const onScroll = () => {
+      if (rafId) return;
+      rafId = requestAnimationFrame(() => {
+        rafId = 0;
+        evalReveal();
+      });
+    };
+    const sync = () => {
+      setIsMobile(mq.matches);
+      evalReveal();
+    };
+    sync();
+    mq.addEventListener("change", sync);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
     return () => {
+      if (rafId) cancelAnimationFrame(rafId);
       mq.removeEventListener("change", sync);
-      window.removeEventListener("scroll", evalReveal);
-      window.removeEventListener("resize", evalReveal);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
     };
   }, []);
 
@@ -124,15 +141,29 @@ function PillInner() {
     if (music === "off") {
       setPill("collapsed");
       setPromptVisible(false);
+      // Cancel any in-flight hover choreography so re-entry starts clean: a
+      // pending promptTimer must not surface a prompt over the collapsed pill,
+      // and the grace/suppress refs must not carry across the opt-out.
+      clearTimeout(promptTimer.current);
+      clearTimeout(graceTimer.current);
+      clearTimeout(suppressTimer.current);
+      promptTimer.current = undefined;
+      graceTimer.current = undefined;
+      suppressTimer.current = undefined;
+      recentExpanded.current = false;
+      suppressEnter.current = false;
     }
   }, [music]);
 
-  // Poll the real playhead while playing; the player advances tracks on ended.
+  // Sync the playhead immediately on any playback/track change (captures the
+  // exact pause position and a pill mounting over an already-paused player),
+  // then poll only while playing for continuous advancement.
   useEffect(() => {
+    setPosition(player.getPosition());
     if (music !== "on") return;
     const id = setInterval(() => setPosition(player.getPosition()), 500);
     return () => clearInterval(id);
-  }, [music, player]);
+  }, [music, player, trackIndex]);
 
   useEffect(
     () => () => {
@@ -203,7 +234,10 @@ function PillInner() {
   };
   const onPlayPause = () => (playing ? pauseSoundtrack() : startSoundtrack());
   const changeTrack = (dir: number) => {
-    player.selectTrack(trackIndex + dir, music === "on");
+    // Derive from the player's live index, not render-time `trackIndex` state:
+    // two rapid clicks before the subscription re-renders would otherwise both
+    // target the same base index and lose one. selectTrack wraps out-of-range.
+    player.selectTrack(player.getSnapshot().trackIndex + dir, music === "on");
     setPosition(0);
   };
 

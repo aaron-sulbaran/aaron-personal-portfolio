@@ -45,6 +45,12 @@ export function setSoundtrackState(next: SoundtrackState): void {
 // Restore the remembered choice on client mount, skipping the prompt for a
 // returning visitor.
 export function initSoundtrackFromStorage(): void {
+  // Idempotent: only seed from storage while the choice is still unanswered.
+  // Two components call this on mount and the home page can remount on client
+  // nav, so re-running once the user is live ("on"/"paused"/"off") would clobber
+  // real state — e.g. reapplying stored "on" as "paused" over a singleton that
+  // is still audibly playing.
+  if (state !== "before") return;
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved === "off") setSoundtrackState("off");
@@ -86,8 +92,16 @@ function ensureReconciler(): void {
   reconcilerAttached = true;
   const player = getSoundtrackPlayer();
   player.subscribe(() => {
-    if (!player.playing && getSoundtrackState() === "on") {
+    const s = getSoundtrackState();
+    // Downgrade: the player stopped (autoplay reject, error, native pause) while
+    // we still claim "on" -> drop to "paused" so nothing shows audible music.
+    if (!player.playing && s === "on") {
       setSoundtrackState("paused");
+    // Upgrade: the player resumed on its own (OS media key / lockscreen resume)
+    // while we sit at "paused" -> follow it back to "on". Never lifts "off": an
+    // opt-out is only re-entered through the menu.
+    } else if (player.playing && s === "paused") {
+      setSoundtrackState("on");
     }
   });
 }

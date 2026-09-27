@@ -251,23 +251,17 @@ const PROXIMITY_TILT_DEG = 10;    // max rotation toward cursor
 const PROXIMITY_SCALE_BOOST = 0.08; // +8% at zero distance
 
 // Proximity-driven 3D flip. INVERTED curve: the hovered tile (cursor on
-// it) stays close to its baseline; the NEIGHBORS are the ones that tilt
+// it) stays flat; the NEIGHBORS are the ones that tilt
 // in 3D as the cursor passes near. A bell-shaped strength function peaks
 // at mid-distance and drops to 0 both at the tile center and at the
 // radius edge, producing the "cards parting around the cursor" motion.
-// Tiles also carry a small per-tile baseline rotation so none of them is
-// ever perfectly flat; always reads as a 3D glass card catching light.
 const NEIGHBOR_FLIP_MAX_DEG = 26;      // max tilt on X/Y for mid-distance tiles
-const TILE_BASELINE_DEG = 6;           // per-tile deterministic resting tilt
 
-// Deterministic per-tile resting tilt. Shared between TileSlot (live
-// transforms) and TileRing's flight logic (closing-land state).
-function tileBaselineRotX(tileIndex: number) {
-  return Math.sin(tileIndex * 1.3 + 0.7) * TILE_BASELINE_DEG;
-}
-function tileBaselineRotY(tileIndex: number) {
-  return Math.cos(tileIndex * 1.7 + 0.2) * TILE_BASELINE_DEG;
-}
+// Cards rest FLAT (no per-tile resting tilt). An earlier per-tile baseline tilt
+// (~6deg on X/Y) was applied to every card including the focused one, so the
+// featured card wore a different pose per card and "popped" into a forced 3D
+// stage at each arrival instead of settling flat. Removed 2026-07-13. The
+// cursor-proximity flip below (hero ring only) is the intentional 3D interaction.
 
 // Internal phase machine. Exposed externally as "pre" | "entering" | "ready"
 // via context; the finer phases are an implementation detail of the
@@ -325,8 +319,8 @@ export function TileRing({ children }: Props) {
     tileIndex: number;      // index into `seats` for re-measuring home on resize
     homeRect: FlightTarget; // intrinsic rect centered on the tile's seat
     homeTangentDeg: number; // ring tile's tangent Z rotation
-    homeRestRotX: number;   // tile's baseline X tilt at rest
-    homeRestRotY: number;   // tile's baseline Y tilt at rest
+    homeRestRotX: number;   // tile's resting X tilt (arc rotX; 0 at focus)
+    homeRestRotY: number;   // tile's resting Y tilt (0; cards rest flat)
     source: FlightSource;   // live transform captured at click time
     target: FlightTarget;   // initial slot guess (home rect); FlyingTile tracks the live slot itself
     phase: FlightPhase;
@@ -611,7 +605,12 @@ export function TileRing({ children }: Props) {
   // Mirror flight presence into a ref the carousel driver can read without
   // re-subscribing. While a tile flies (out or closing), wheel rotation and
   // auto-advance stay frozen so the card's home slot holds still.
-  useEffect(() => {
+  // Layout effect, not passive: the ring driver (wheel + auto-advance) reads
+  // this ref to freeze the card's home slot during a flight. A passive effect
+  // flushes after paint, leaving a window where a ticker tick or wheel event
+  // moves the slot AFTER FLIP geometry was captured. Syncing before paint closes
+  // it.
+  useIsoLayoutEffect(() => {
     flightActiveRef.current = flight !== null;
   }, [flight]);
 
@@ -939,8 +938,8 @@ export function TileRing({ children }: Props) {
       tileIndex,
       homeRect: home,
       homeTangentDeg,
-      homeRestRotX: tileBaselineRotX(tileIndex) + c.rotX,
-      homeRestRotY: tileBaselineRotY(tileIndex) + c.rotY,
+      homeRestRotX: c.rotX,
+      homeRestRotY: c.rotY,
       source: computeFlightSource(tileIndex, home, capture),
       // Initial target is the home rect itself; FlyingTile's own slot-
       // tracking effect reads the real modal slot rect once mounted and
@@ -1103,8 +1102,8 @@ export function TileRing({ children }: Props) {
             ...prev,
             homeRect,
             homeTangentDeg: seats[tileIndex].rotate + c.rotZ,
-            homeRestRotX: tileBaselineRotX(tileIndex) + c.rotX,
-            homeRestRotY: tileBaselineRotY(tileIndex) + c.rotY,
+            homeRestRotX: c.rotX,
+            homeRestRotY: c.rotY,
             phase: "closing",
           }
         : prev,
@@ -1172,7 +1171,10 @@ export function TileRing({ children }: Props) {
   // on modalOpen, so a direct call would freeze the seat geometry captured at
   // open time.
   const modalOpen = selectedPhoto !== null || selectedWork !== null;
-  useEffect(() => {
+  // Layout effect, not passive: same freeze-before-paint reasoning as
+  // flightActiveRef above, so a tick between the state commit and the effect
+  // cannot shift the ring after the modal's FLIP geometry is captured.
+  useIsoLayoutEffect(() => {
     modalOpenRef.current = modalOpen;
   }, [modalOpen]);
   useEffect(() => {
@@ -1846,7 +1848,7 @@ export function TileRing({ children }: Props) {
       // settled arc renders statically (cross-faded in, rotation 0) and arrow
       // keys rotate it instantly with no tween. data-carousel-static is the
       // seam WS-D hangs the visible prev/next affordances on.
-      mm.add("(prefers-reduced-motion: reduce)", () => {
+      mm.add("(min-width: 768px) and (prefers-reduced-motion: reduce)", () => {
         let rotation = 0;
         if (heroContentRef.current) {
           heroContentRef.current.style.transition = "opacity 0.5s ease";
@@ -1882,6 +1884,20 @@ export function TileRing({ children }: Props) {
         staticStepRef.current = step;
         const onKey = (e: KeyboardEvent) => {
           if (modalOpenRef.current || flightActiveRef.current) return;
+          // Let browser/OS shortcuts (Cmd+Down = scroll to bottom, etc.) through.
+          if (e.metaKey || e.ctrlKey || e.altKey) return;
+          // Never hijack arrows typed into a form field (e.g. the Connect form).
+          const t = e.target;
+          if (
+            t instanceof HTMLElement &&
+            (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))
+          )
+            return;
+          // Reduced motion has no pin, so the page scrolls past the hero. Only
+          // steer the carousel while it is actually on screen; otherwise the
+          // arrows must fall through to native keyboard scrolling.
+          const r = heroPin.getBoundingClientRect();
+          if (r.bottom <= 0 || r.top >= window.innerHeight) return;
           if (e.key === "ArrowRight" || e.key === "ArrowDown") step(1);
           else if (e.key === "ArrowLeft" || e.key === "ArrowUp") step(-1);
           else return;
@@ -1921,8 +1937,13 @@ export function TileRing({ children }: Props) {
       restoreTargetRef.current = null;
       const applyRestore = () => {
         if (!restore) return;
+        // Resolve the fragment with getElementById, not querySelector: a hash
+        // like "#123" is a valid element id but an INVALID CSS selector, so
+        // querySelector would throw and abort this useGSAP callback after the
+        // ScrollTrigger and listeners were already created. getElementById never
+        // throws; a missing target falls through to the saved pixel position.
         const el = restore.selector
-          ? document.querySelector<HTMLElement>(restore.selector)
+          ? document.getElementById(decodeURIComponent(restore.selector.slice(1)))
           : null;
         if (el) {
           el.scrollIntoView({ block: "start", behavior: "auto" });
@@ -1933,18 +1954,41 @@ export function TileRing({ children }: Props) {
       };
       applyRestore();
 
+      // If the visitor scrolls or interacts before fonts settle, do NOT re-land
+      // the restore under them; a small font-reflow shift is far better than
+      // yanking them back to the load position.
+      let disposed = false;
+      let userMoved = false;
+      const markMoved = () => {
+        userMoved = true;
+      };
+      window.addEventListener("wheel", markMoved, { passive: true, once: true });
+      window.addEventListener("touchstart", markMoved, { passive: true, once: true });
+      window.addEventListener("keydown", markMoved, { once: true });
+      window.addEventListener("pointerdown", markMoved, { once: true });
+
       if (typeof document !== "undefined" && document.fonts) {
         // Re-measure after async font swaps; re-land the restore too, since a
-        // font reflow shifts content under a pixel-based scroll position.
+        // font reflow shifts content under a pixel-based scroll position. Guarded
+        // so a late resolve after unmount never refreshes/scrolls a route this
+        // scene no longer owns, and never re-lands once the user has moved.
         document.fonts.ready
           .then(() => {
+            if (disposed) return;
             ScrollTrigger.refresh();
-            applyRestore();
+            if (!userMoved) applyRestore();
           })
           .catch(() => {});
       }
 
-      return () => mm.revert();
+      return () => {
+        disposed = true;
+        window.removeEventListener("wheel", markMoved);
+        window.removeEventListener("touchstart", markMoved);
+        window.removeEventListener("keydown", markMoved);
+        window.removeEventListener("pointerdown", markMoved);
+        mm.revert();
+      };
     },
     { scope: sectionRef, dependencies: [scrollReady, prefersReducedMotion, total] },
   );
@@ -2182,10 +2226,9 @@ type TargetResult = {
 // Per-tile translateZ stagger (px) while the tiles are piled at center
 // (firstTile/stacking/shuffling). Without it the stacked glass panes share a
 // depth and z-fight into a diagonal seam. It eases back to 0 as they fan out.
-// The stagger only guarantees separation because the piled panes are held
-// FLAT: TileSlot zeroes the baseline tilt during the entrance (see the
-// flipRotateXRaw init note). A tilted native-large pane sweeps ~±23px of
-// depth, dwarfing this step, so re-tilting the pile brings the clipping back.
+// The stagger only guarantees separation because the panes stay FLAT (cards
+// carry no per-tile resting tilt). A tilted native-large pane sweeps ~±23px of
+// depth, dwarfing this step, so tilting the pile would bring the clipping back.
 const STACK_Z_STEP = 4.5;
 // The shuffle's top tile pops fully in front of the piled stack. Derived from
 // the pile's back depth ((total-1) * STACK_Z_STEP) plus clearance so the popped
@@ -2431,22 +2474,12 @@ function TileSlot({
   const renderLeanX = useTransform(smoothLeanX, (v) => v * TILE_NATIVE_SCALE);
   const renderLeanY = useTransform(smoothLeanY, (v) => v * TILE_NATIVE_SCALE);
 
-  // Per-tile baseline X/Y rotation so no tile is ever perfectly flat.
-  const baselineRotX = tileBaselineRotX(tileIndex);
-  const baselineRotY = tileBaselineRotY(tileIndex);
-
-  // Proximity-driven flip (both axes). Soft spring so the motion takes real
-  // time and a paused cursor leaves each tile suspended at its current
-  // angle. The animated entrance starts FLAT (0), not at the baseline tilt:
-  // while the cards are piled at center they sit only STACK_Z_STEP (4.5px)
-  // apart in Z, and a ±6° baseline tilt on the native-large 244x325px pane
-  // sweeps ~±23px of depth, so tilted neighbors physically intersect and the
-  // browser plane-splits them into diagonal clipping seams (the shuffle-clip
-  // bug, confirmed via runtime matrices 2026-07-03). The baseline eases in
-  // through the springs once the ring is ready and the seats are far apart.
-  // Reduced motion skips the pile entirely, so it starts at the baseline.
-  const flipRotateXRaw = useMotionValue(prefersReducedMotion ? baselineRotX : 0);
-  const flipRotateYRaw = useMotionValue(prefersReducedMotion ? baselineRotY : 0);
+  // Proximity-driven flip (both axes). Cards rest FLAT (0); the cursor tilts
+  // the neighbors around it (see the compute() bell curve below). Soft spring
+  // so the motion takes real time and a paused cursor leaves each tile
+  // suspended at its current angle.
+  const flipRotateXRaw = useMotionValue(0);
+  const flipRotateYRaw = useMotionValue(0);
   const flipRotateX = useSpring(flipRotateXRaw, { stiffness: 80, damping: 22, mass: 1.1 });
   const flipRotateY = useSpring(flipRotateYRaw, { stiffness: 80, damping: 22, mass: 1.1 });
 
@@ -2487,14 +2520,9 @@ function TileSlot({
       leanY.set(0);
       leanRot.set(0);
       leanScale.set(1);
-      // Entrance (pile/riffle/fan): hold the pane FLAT. The piled cards are
-      // only STACK_Z_STEP apart in Z, far less than the baseline tilt's depth
-      // sweep on the native-large pane, so any tilt makes neighbors intersect
-      // and clip (see the flipRotateXRaw init note). Everywhere else the
-      // resting baseline applies.
-      const flat = entering && !prefersReducedMotion;
-      flipRotateXRaw.set(flat ? 0 : baselineRotX);
-      flipRotateYRaw.set(flat ? 0 : baselineRotY);
+      // Not in the proximity phase (entrance or collapsed): pane rests flat.
+      flipRotateXRaw.set(0);
+      flipRotateYRaw.set(0);
       return;
     }
 
@@ -2502,14 +2530,14 @@ function TileSlot({
       const cursor = cursorRef.current;
       const px = cursor ? cursor.x : -9999;
       const py = cursor ? cursor.y : -9999;
-      // Cursor parked off-screen (initial / pointer-left) → rest at baseline.
+      // Cursor parked off-screen (initial / pointer-left) → rest flat.
       if (px < -1000 || py < -1000) {
         leanX.set(0);
         leanY.set(0);
         leanRot.set(0);
         leanScale.set(1);
-        flipRotateXRaw.set(baselineRotX);
-        flipRotateYRaw.set(baselineRotY);
+        flipRotateXRaw.set(0);
+        flipRotateYRaw.set(0);
         return;
       }
       const vp = viewportRef.current;
@@ -2526,9 +2554,8 @@ function TileSlot({
 
       // Inverted bell curve for the 3D flip: 4t(1-t) peaks at t=0.5 with
       // value 1 and is 0 at t=0 (cursor on tile) and t=1 (cursor at edge).
-      // Result: the hovered tile keeps its baseline (stays flat-ish); the
-      // tiles around it, neighbors at mid-distance, tilt away from the
-      // cursor direction. Far tiles are also at baseline.
+      // Result: the hovered tile stays flat; the tiles around it, neighbors at
+      // mid-distance, tilt away from the cursor direction. Far tiles stay flat.
       if (dist < PROXIMITY_RADIUS_PX) {
         const t = dist / PROXIMITY_RADIUS_PX;
         const bell = 4 * t * (1 - t);
@@ -2540,11 +2567,11 @@ function TileSlot({
         // depending on cursor above/below.
         const proxRotY = -ux * NEIGHBOR_FLIP_MAX_DEG * bell;
         const proxRotX = uy * NEIGHBOR_FLIP_MAX_DEG * bell;
-        flipRotateXRaw.set(baselineRotX + proxRotX);
-        flipRotateYRaw.set(baselineRotY + proxRotY);
+        flipRotateXRaw.set(proxRotX);
+        flipRotateYRaw.set(proxRotY);
       } else {
-        flipRotateXRaw.set(baselineRotX);
-        flipRotateYRaw.set(baselineRotY);
+        flipRotateXRaw.set(0);
+        flipRotateYRaw.set(0);
       }
 
       if (dist >= PROXIMITY_RADIUS_PX) {
@@ -2579,7 +2606,7 @@ function TileSlot({
     // compute twice per frame on diagonal movement.
     compute();
     return proximityTick.on("change", compute);
-  }, [proximityEnabled, entering, prefersReducedMotion, proximityTick, cursorRef, viewportRef, seat.xVmin, seat.yVmin, radiusVmin, leanX, leanY, leanRot, leanScale, flipRotateXRaw, flipRotateYRaw, baselineRotX, baselineRotY]);
+  }, [proximityEnabled, entering, prefersReducedMotion, proximityTick, cursorRef, viewportRef, seat.xVmin, seat.yVmin, radiusVmin, leanX, leanY, leanRot, leanScale, flipRotateXRaw, flipRotateYRaw]);
 
   return (
     <div

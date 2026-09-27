@@ -305,6 +305,12 @@ export function MobileHome({ onOpen, heroContentRef, scrollReady, prefersReduced
         // scrub so a tap never opens a half-collapsed card.
         const tappable = baseOpacity * fade > 0.05 && (p < 0.02 || settledRef.current);
         el.style.pointerEvents = tappable ? "auto" : "none";
+        // Keyboard/AT parity: pointerEvents only blocks the pointer, so a culled
+        // or mid-scrub card's GlassTile button would still be focusable and
+        // activatable. inert removes it from the focus + accessibility tree.
+        // Guarded because layout() runs every frame and toggling the attribute
+        // needlessly invalidates style.
+        if (el.inert !== !tappable) el.inert = !tappable;
       }
 
       // Fade the shared hero as the ring gathers into the coverflow, matching the
@@ -437,12 +443,23 @@ export function MobileHome({ onOpen, heroContentRef, scrollReady, prefersReduced
       // Keep pin/scrub measurements correct after the post-ready layout and async
       // font swaps. Also re-derives the scrub from a restored scroll position so a
       // deep reload mid-coverflow re-lays-out for free.
+      // Cancelled by the cleanup below: document.fonts.ready can resolve after
+      // this matchMedia context is reverted (unmount / dep change), and a stale
+      // global ScrollTrigger.refresh() would then run against the replaced page.
+      let disposed = false;
       ScrollTrigger.refresh();
       if (typeof document !== "undefined" && document.fonts) {
-        document.fonts.ready.then(() => ScrollTrigger.refresh()).catch(() => {});
+        document.fonts.ready
+          .then(() => {
+            if (!disposed) ScrollTrigger.refresh();
+          })
+          .catch(() => {});
       }
 
-      return () => mm.revert();
+      return () => {
+        disposed = true;
+        mm.revert();
+      };
     },
     { scope: rootRef, dependencies: [scrollReady, prefersReducedMotion, total] },
   );
@@ -477,9 +494,12 @@ export function MobileHome({ onOpen, heroContentRef, scrollReady, prefersReduced
     let axis: "x" | "y" | null = null;
     let base = rotationRef.current;
     let active = false; // a gesture that began settled and is browsing horizontally
+    let killedSnap = false; // onStart interrupted a live snap tween
 
     const onStart = (e: TouchEvent) => {
-      moveTweenRef.current?.kill();
+      const tw = moveTweenRef.current;
+      killedSnap = !!tw && tw.isActive();
+      tw?.kill();
       const t = e.touches[0];
       if (!t) return;
       startX = lastX = t.clientX;
@@ -516,10 +536,44 @@ export function MobileHome({ onOpen, heroContentRef, scrollReady, prefersReduced
       emitFocus();
     };
 
+    // Resnap to the nearest card when a snap tween was interrupted by a touch
+    // that never became a horizontal drag (a tap, or a vertical scroll). Without
+    // this the row rests permanently between cards at a fractional rotation.
+    const resnapNearest = () => {
+      const nearest = Math.round(rotationRef.current);
+      if (Math.abs(rotationRef.current - nearest) < 1e-3) return;
+      moveTweenRef.current?.kill();
+      const o = { v: rotationRef.current };
+      moveTweenRef.current = gsap.to(o, {
+        v: nearest,
+        duration: SNAP_SECONDS,
+        ease: "power3.out",
+        onUpdate: () => {
+          rotationRef.current = o.v;
+          layout(0);
+          emitFocus();
+        },
+        onComplete: () => {
+          rotationRef.current = nearest;
+          layout(0);
+          emitFocus();
+        },
+      });
+    };
+
     const onEnd = () => {
-      if (!active) return;
+      const wasKilled = killedSnap;
+      killedSnap = false;
+      if (!active) {
+        if (wasKilled) resnapNearest();
+        return;
+      }
       active = false;
-      if (axis !== "x") return; // vertical resolved by native scroll
+      if (axis !== "x") {
+        // vertical resolved by native scroll; a tap leaves rotation untouched
+        if (wasKilled) resnapNearest();
+        return;
+      }
       // Flick: project momentum, then snap to the nearest card.
       const projected = rotationRef.current - (vX * MOMENTUM_MS) / DRAG_PX_PER_CARD;
       const target = Math.round(projected);

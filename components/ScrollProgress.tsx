@@ -171,7 +171,10 @@ export function ScrollProgress() {
           visible ? "" : "pointer-events-none"
         }`}
       >
-        <ol className="relative flex flex-col gap-6">
+        {/* Relative wrapper carries the absolute track/fill bars so the <ol>
+            keeps only <li> children (valid list structure). Its border box
+            equals the ol's, so the bars sit exactly where they did. */}
+        <div className="relative">
           <span
             aria-hidden="true"
             className="absolute left-[3.5px] bottom-1 top-1 w-px bg-border"
@@ -182,6 +185,7 @@ export function ScrollProgress() {
             style={{ transform: "scaleY(0)" }}
             className="absolute left-[3.5px] bottom-1 top-1 w-px origin-top bg-accent"
           />
+          <ol className="flex flex-col gap-6">
           {SECTIONS.map((s) => {
             const isActive = active === s.id;
             return (
@@ -219,7 +223,8 @@ export function ScrollProgress() {
               </li>
             );
           })}
-        </ol>
+          </ol>
+        </div>
       </div>
 
       {/* Mobile top progress bar (progress-only) */}

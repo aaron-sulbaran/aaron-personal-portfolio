@@ -185,11 +185,11 @@ function DefinitionTrigger({
 function ScrollCue({ label, animate }: { label: string; animate: boolean }) {
   return (
     <motion.div
-      aria-hidden="true"
       className={`mt-6 text-muted md:mt-10${animate ? " scrollcue-bob" : ""}`}
     >
       <span className="sr-only">{label}</span>
       <svg
+        aria-hidden="true"
         viewBox="0 0 16 16"
         className="h-4 w-4"
         fill="none"
