@@ -12,23 +12,26 @@ How to use: tick `[x]` what you accept, write `change:` under anything you want 
 
 ## 1. The transformation: pick a variant (board, `board-variants.png`)
 
+> **Correction, 2026-09-28 (Aaron):** the coil is the hero at rest, not the band. The board's first frames (`*-01`, `*-02`) show a closed band because the 27 Sep spec ordered it band -> coil -> list; that order is superseded. Read `*-03` as the resting hero (idle spin, name behind, cursor tilt) and `*-01/02` as the entrance only. The background strip was drawn behind the band; judge the options as if behind the coil. The composed specimen will be built helix-first, so the board is not being re-rendered for this.
+
+
 - [ ] **V1 Spring** (`D-V1-01..06`): upright axis 0 to 4 degrees, "Aaron" scales up behind the coil and reads through the gaps, lands in one column right with greeting and contact left. Shows the transformation best.
 - [ ] **V2 Strand** (`D-V2-01..06`): 8 degree lean, lands two-column (work rows left, photos 3x3 right). Best recruiter landing; fits every desktop height; needs a stacked layout in iPad portrait; lean makes drag-to-spin ambiguous on phones.
 - [ ] **V3 Turntable** (`D-V3-01..06`): seen from 40 degrees above, camera lowers as it flattens. Weakest coil (photos at a steep angle, two motions at once, harder flight projection); gives the greeting the most room on phones.
 - [ ] **rec: V1 geometry with V2's landing** (upright spring and name-behind, landing as work rows plus a photo strip). Takes the best of both; solves the 720px height problem.
 
 Details inside the pick:
-- [ ] Name behind the coil: keep (`D-V1-02`, `D-V1-03`) / drop. rec keep, judge weight on the specimen.
+- [ ] Name behind the coil at rest, revealed through the gaps as it spins (`D-V1-03` as the resting frame). rec keep; judge the Profa weight on the specimen.
 - [ ] At landing the name appears twice ("Hi, I'm Aaron." block and the "Aaron" list heading, callout 9). rec: the heading becomes the greeting; the small block goes.
 - [ ] Photos at landing: single column (V1) / 3x3 grid (V2) / one horizontal strip row (fits 1280x720). rec strip.
 - [ ] Pinned distance 1.3 viewports, opening 0 to 40 percent, straightening 40 to 100, release at the list (scroll rulers under each strip). rec as drawn.
-- [ ] Entrance: 600ms riffle onto the band, then the greeting fades up, before scroll arms. rec as drawn.
+- [ ] Entrance: about 900ms, riffle out of the stack, gather into a ring for a beat, rise into the helix, name fades up behind; scroll arms after. The band is a transition, not a state.
 - [ ] Aspect checks: band never clips the greeting at 1280x720 / 1024x768 / 1920x1080 (`L-*`, `U-*`); list fits 720 tall only with the strip.
 
 ## 2. Mobile (`P-*` rows)
 
-- [ ] Band at load with a "drag the band to spin it" hint and a "View work" cue (`P-V1-01`).
-- [ ] Opening is timed (about 900ms), not scroll: a vertical scroll during the hold starts it immediately and is never hijacked (`P-V1-02`, `P-V1-04`, timeline under the row).
+- [ ] Coil at load (after the entrance) with a "drag to spin" hint and a "View work" cue (`P-V1-01` shows the band; read it as the coil).
+- [ ] On phones the entrance is timed (about 900ms) and lands on the resting coil; a vertical scroll straightens it into the list immediately and is never hijacked (`P-V1-02`, `P-V1-04`, timeline under the row).
 - [ ] The list is the resting state under normal page scroll (`P-V1-05`).
 - [ ] Easter egg: the "coil" pill returns to the coil, and on a phone the coil spins by dragging, releases and coasts, settles on a card; "list" returns (`P-V1-S`, callout 13). rec yes; lock the drag to horizontal.
 - [ ] Reduced motion: DOM list only, no scene (`P-V1-RM`).
@@ -48,7 +51,7 @@ Details inside the pick:
 
 - [ ] A fine grid (Pacôme's exact move; closest resemblance).
 - [ ] B grain (static noise, a few KB; muddy in dark mode above about 3 percent).
-- [ ] C single-hue light sweep following the coil's focus (one uniform in the Coil canvas; must stay one hue or it reads as a gradient).
+- [ ] C single-hue light behind the name and following the coil's focus (one uniform in the Coil canvas; one hue, so it reads as light on paper, not a color gradient). This is the closest to "the gradient behind the text" that keeps the Layer 1 rule.
 - [ ] D shader field (a second full-screen shader; needs the Layer 1 rule "no gradients on section backgrounds" changed; highest GPU and taste risk).
 - [ ] E the existing waveform behind everything (already on main; a moving sine behind a moving coil is two motions at once).
 - [ ] F waveform plus grain.
