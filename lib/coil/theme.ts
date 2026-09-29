@@ -150,11 +150,12 @@ export function watchTheme(onChange: (theme: CoilTheme) => void, root: HTMLEleme
 }
 
 // A theme change repaints every card, but never all in one frame: at most
-// `perFrame` items per drain, so a toggle never stalls the loop. Re-enqueuing
+// `perFrame` items per drain, and no new item once `budgetMs` has been spent
+// (the first always paints), so a toggle never stalls the loop. Re-enqueuing
 // an item already waiting keeps one entry (the latest theme wins at paint time).
 export type RepaintQueue<T> = {
   enqueue: (items: readonly T[]) => void;
-  drain: (paint: (item: T) => void) => number;
+  drain: (paint: (item: T) => void, budgetMs?: number, now?: () => number) => number;
   readonly size: number;
   clear: () => void;
 };
@@ -167,10 +168,14 @@ export function createRepaintQueue<T>(perFrame = 4): RepaintQueue<T> {
         if (!waiting.includes(item)) waiting.push(item);
       });
     },
-    drain(paint) {
-      const batch = waiting.splice(0, perFrame);
-      batch.forEach(paint);
-      return batch.length;
+    drain(paint, budgetMs = Infinity, now = () => performance.now()) {
+      const start = now();
+      let painted = 0;
+      while (waiting.length > 0 && painted < perFrame && (painted === 0 || now() - start < budgetMs)) {
+        paint(waiting.shift() as T);
+        painted += 1;
+      }
+      return painted;
     },
     get size() {
       return waiting.length;

@@ -95,6 +95,20 @@ describe("createRepaintQueue", () => {
     expect(q.size).toBe(0);
   });
 
+  it("stops starting new paints once the frame budget is spent, but always paints one", () => {
+    const q = createRepaintQueue<number>(4);
+    q.enqueue([0, 1, 2, 3]);
+    let clock = 0;
+    const painted: number[] = [];
+    const count = q.drain((i) => {
+      painted.push(i);
+      clock += 5;
+    }, 6, () => clock);
+    expect(count).toBe(2);
+    expect(painted).toEqual([0, 1]);
+    expect(q.drain(() => (clock += 50), 6, () => clock)).toBe(1);
+  });
+
   it("keeps one entry per item when a second toggle lands mid-drain", () => {
     const q = createRepaintQueue<number>(4);
     q.enqueue([0, 1, 2]);
