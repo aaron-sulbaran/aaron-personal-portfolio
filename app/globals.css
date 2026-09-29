@@ -102,7 +102,7 @@ html {
   color: var(--color-foreground);
   color-scheme: light;
   scroll-behavior: smooth;
-  /* Profa Black is one upright 900 cut: never fake an italic or a bolder
+  /* Profa Black is one upright 900 cut: never fake a slanted or a bolder
      weight on top of it. */
   font-synthesis: none;
 }
