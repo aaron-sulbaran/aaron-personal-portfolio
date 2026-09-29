@@ -13,23 +13,22 @@ const NAV_LINKS = [
   { label: "Connect", href: "#connect" },
 ] as const;
 
-// The favicon mark, inlined so the nav logo stays consistent with the browser
-// tab icon. Fixed brand colors by design (a small accent chip in both themes).
+// The AS bolt from public/brand/as-bolt-ink.svg, inlined in currentColor so it
+// reads ink in light and paper in dark through the text token. At the bar's
+// 28px the bolt stands alone; the full AS mark is for 32px and up.
 function BrandMark() {
   return (
-    <svg width="28" height="28" viewBox="0 0 32 32" aria-hidden="true">
-      <rect width="32" height="32" rx="7" fill="#1B3A5C" />
-      <text
-        x="16.5"
-        y="24.5"
-        textAnchor="middle"
-        fontFamily="Instrument Serif, Georgia, 'Times New Roman', serif"
-        fontStyle="italic"
-        fontSize="25"
-        fill="#FAFAF7"
-      >
-        A
-      </text>
+    <svg
+      width="28"
+      height="28"
+      viewBox="-5 -3.89 263.78 263.78"
+      aria-hidden="true"
+      className="text-foreground"
+    >
+      <path
+        d="M73.34 92.98L154.4 24.96L127.31 92L189.81 105.29L120.27 231.04L146.46 133.69L63.97 116.16Z"
+        fill="currentColor"
+      />
     </svg>
   );
 }
