@@ -496,6 +496,7 @@ export const siteContent = {
     statusReady: "Soundtrack ready",
     openInSpotify: "Open in Spotify",
     menuToggleOn: "Soundtrack on",
+    menuTogglePaused: "Soundtrack paused",
     menuToggleOff: "Soundtrack off",
     menuAriaLabelOn: "Turn soundtrack on",
     menuAriaLabelOff: "Turn soundtrack off",
