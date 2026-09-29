@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { navigateToSection } from "@/lib/scroll";
+import { whenHomeReady } from "@/lib/home/readiness";
 
 // Section jump targets mirrored from the in-page anchors. Shown inline on
 // desktop; mobile relies on the hamburger menu instead.
@@ -68,32 +69,26 @@ export function SiteNav() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Deep link on load: if the URL carries a section hash, hold until the ring's
-  // entrance reaches "ready" (it locks body scroll during the early phases),
-  // then scroll there. The hero section exposes its phase via data-state.
+  // Deep link on load: if the URL carries a section hash, hold until the home
+  // hero reports "ready" (it locks body scroll during its entrance), then
+  // scroll there. Readiness comes from the explicit store in lib/home; pages
+  // without a hero never claim it, so they scroll straight away.
   useEffect(() => {
     const hash = window.location.hash;
     if (!hash || hash === "#main") return;
     const target = document.getElementById(hash.slice(1));
     if (!target) return;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const hero = document.querySelector("[data-state]");
-    const go = () =>
-      requestAnimationFrame(() =>
+    let raf = 0;
+    const cancel = whenHomeReady(() => {
+      raf = requestAnimationFrame(() =>
         target.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" }),
       );
-    if (!hero || hero.getAttribute("data-state") === "ready") {
-      go();
-      return;
-    }
-    const observer = new MutationObserver(() => {
-      if (hero.getAttribute("data-state") === "ready") {
-        observer.disconnect();
-        go();
-      }
     });
-    observer.observe(hero, { attributes: true, attributeFilter: ["data-state"] });
-    return () => observer.disconnect();
+    return () => {
+      cancel();
+      if (raf) cancelAnimationFrame(raf);
+    };
   }, []);
 
   // Scroll-spy: highlight the nav link for the section crossing the upper
