@@ -94,23 +94,25 @@ function PillInner() {
   const recentExpanded = useRef(false);
   const suppressEnter = useRef(false);
 
-  // Desktop + back-half gating: the pill appears once the pinned ring/deck has
-  // cleared (spec 5.1), stays for the whole back half, and re-hides only if the
-  // visitor scrolls back up into the hero. Deferred on mobile in v1. Using #work's
-  // top vs the viewport (not an intersection flag) is what keeps it revealed past
-  // Work through About / Connect; an isIntersecting observer dropped it after Work.
+  // Desktop + back-half gating: the pill appears once the Listen invite has
+  // passed (the end of #listen, which on the ring home is exactly where #work
+  // starts, once the pinned ring/deck has cleared, spec 5.1), stays for the
+  // whole back half, and re-hides only if the visitor scrolls back up past it.
+  // Deferred on mobile in v1. Using the edge vs the viewport (not an
+  // intersection flag) keeps it revealed through About / Connect; an
+  // isIntersecting observer dropped it after the section.
   useEffect(() => {
     initSoundtrackFromStorage();
     const mq = window.matchMedia(`(max-width: ${MOBILE_MAX}px)`);
     let rafId = 0;
-    // Re-query #work every evaluation, not once at mount: the section can mount
+    // Re-query #listen every evaluation, not once at mount: the section can mount
     // after this effect, and a detached node's zero rect would satisfy
     // `0 < 0.12 * innerHeight` and force the pill permanently revealed. Skip on
     // mobile, where the pill renders null anyway.
     const evalReveal = () => {
       if (mq.matches) return;
-      const work = document.getElementById("work");
-      if (work) setRevealed(work.getBoundingClientRect().top < window.innerHeight * 0.12);
+      const listen = document.getElementById("listen");
+      if (listen) setRevealed(listen.getBoundingClientRect().bottom < window.innerHeight * 0.12);
     };
     // Coalesce scroll/resize bursts to one layout read per frame.
     const onScroll = () => {
@@ -285,7 +287,10 @@ function PillInner() {
     transformOrigin: "bottom center",
     transition: reduce ? "opacity 300ms ease" : `opacity 320ms ease, transform 360ms ${EASE}`,
     opacity: inviting ? 1 : 0,
-    pointerEvents: inviting ? "auto" : "none",
+    // Only while the pill itself is revealed: hidden, this invisible card
+    // would sit over the page's bottom center and swallow clicks (the book's
+    // lower rows on the Coil home).
+    pointerEvents: inviting && revealed ? "auto" : "none",
     transform: reduce
       ? "translateX(-50%)"
       : inviting

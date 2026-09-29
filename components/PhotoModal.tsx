@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { X } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { useRef } from "react";
+import { useRef, useSyncExternalStore } from "react";
 import {
   useBodyScrollLock,
   useEscapeKey,
@@ -17,16 +17,35 @@ import { Portal } from "./Portal";
 type PhotoModalProps = {
   photo: Photo | null;
   onClose: () => void;
-  // On mobile the modal is opened from the carousel, where no flight tile
-  // flies into the slot. When true the modal renders its own image so the slot
-  // is never empty. Desktop leaves this false; the flown tile fills the slot.
+  // Any open with no flight tile flying into the slot (the ring's mobile
+  // carousel; on the Coil a book row, a touch tap, or no scene) sets this, and
+  // the modal renders its own image so the slot is never empty. A flight
+  // leaves it false; the flown tile fills the slot.
   renderMedia?: boolean;
 };
+
+// The close hint by pointer type: "Press Esc" for a mouse, "Tap outside" for
+// a touch screen. A coarse primary pointer means touch.
+const COARSE_POINTER = "(pointer: coarse)";
+function subscribePointer(onChange: () => void) {
+  const list = window.matchMedia(COARSE_POINTER);
+  list.addEventListener("change", onChange);
+  return () => list.removeEventListener("change", onChange);
+}
+export function useCloseHint() {
+  const coarse = useSyncExternalStore(
+    subscribePointer,
+    () => window.matchMedia(COARSE_POINTER).matches,
+    () => false,
+  );
+  return coarse ? siteContent.modals.closeHintTouch : siteContent.modals.closeHintKeyboard;
+}
 
 export function PhotoModal({ photo, onClose, renderMedia = false }: PhotoModalProps) {
   const open = photo !== null;
   const dialogRef = useRef<HTMLDivElement | null>(null);
   const prefersReducedMotion = useReducedMotion();
+  const closeHint = useCloseHint();
 
   useBodyScrollLock(open);
   useEscapeKey(open, onClose);
@@ -120,7 +139,7 @@ export function PhotoModal({ photo, onClose, renderMedia = false }: PhotoModalPr
                 {photo.caption}
               </p>
               <p className="mt-5 text-sm text-muted">
-                {renderMedia ? "Tap outside to close" : "Press Esc to close"}
+                {closeHint}
               </p>
             </div>
           </motion.div>

@@ -72,6 +72,12 @@ import type { HeroOverlayHandle } from "./HeroOverlay";
 // Slice 4: the loader's tally and the name handoff.
 import { reportHomeLoad } from "@/lib/loader/progress";
 import type { NameTarget } from "@/lib/loader/handoff";
+// ---- slice 5 imports: the book, the unwind egg and the flight ----
+import { clamp01, helixRotation, smoothstep01, unprojectToPlane, type HelixFrame } from "@/lib/coil/geometry";
+import { hoverJumpTarget, startGlide, uAtScreenY } from "@/lib/coil/motion";
+import { settleUnwind, toggleUnwind, unwindDurationMs } from "@/lib/coil/unwind";
+import { isConvex } from "@/lib/coil/flight";
+// ---- end slice 5 imports ----
 
 // The Coil scene: the dynamic chunk CoilStage imports after first paint. It
 // owns the renderer, the two field passes, the helix of cards, the loop, the
@@ -89,9 +95,29 @@ import type { NameTarget } from "@/lib/loader/handoff";
 
 export type CoilCardRef = { key: string; slot: number };
 
+// ---- slice 5 api: the book, the unwind egg and the flight ----
+export type CoilCardFaces = { front: HTMLCanvasElement; back: HTMLCanvasElement };
+
+export type CoilFlightApi = {
+  // The flight's source: the slot's bent corners as last rendered, or the
+  // flat card's corners when a card nearly edge on folds them concave.
+  flightQuadOf: (slot: number) => Quad | null;
+  // The card's own painted faces (the canvases its textures upload).
+  facesOf: (slot: number) => CoilCardFaces | null;
+  // The slot showing a card: its latched copy while unwound, else the
+  // front-most visible copy. -1 when none is on screen.
+  slotOfKey: (key: string) => number;
+  // Hover-jump: glides the nearest copy of the card to the front of the
+  // visible helix (600ms, site ease); null ends the focus.
+  focusCard: (key: string | null) => void;
+  // The unwind egg: sets (or toggles) it; false winds the coil back.
+  unwind: (on?: boolean) => void;
+};
+// ---- end slice 5 api ----
+
 // For slices 4 and 5 (the entrance and the flight): the live scene, read
 // without a React render.
-export type CoilSceneApi = {
+export type CoilSceneApi = CoilFlightApi & {
   // Stops (true) or resumes (false) rendering at once; the last frame stays.
   // The flight freezes before its modal activates, so the blur sits over a
   // still scene and the card's rendered pose equals its flight pose.
@@ -701,8 +727,18 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       }
     }
     // ---- end slice 4 block ----
-    // ---- slice 5 wiring block: the unwind (progress 0 until then) ----
+    // ---- slice 5 wiring block: the unwind ----
+    // While latched the conveyor holds still, so every latched copy keeps its
+    // slot and the wind-back lands on the exact pose it left.
+    if (settleUnwind(unwind, now)) unwind.column = null;
+    if (unwind.latched) {
+      conveyor.offset = unwind.offset;
+      conveyor.target = unwind.offset;
+      conveyor.glide = null;
+      unwind.column = measureColumn(helix);
+    }
     const listProgress = unwindProgress(unwind, now);
+    unwindFrame(listProgress);
     // ---- end slice 5 block ----
 
     const seen = getSeen();
@@ -895,6 +931,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
 
   // ---- the api for slices 4 and 5
   const api: CoilSceneApi = {
+    ...slice5Api(),
     freeze(on) {
       frozenByApi = on;
       if (on) stop();
@@ -958,6 +995,190 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     });
   }
 
+  // ---- slice 5: the book, the unwind egg and the flight ----
+  // Hover-jump from a book row, the double-click unwind into a column beside
+  // the overlay's rows (the name moves to the list's lead), and the flight
+  // source for a card click. The frame work runs in update()'s slice 5 block.
+  let focusKey: string | null = null;
+  const tileIndex = new Map<string, number>(tiles.map((tile, i) => [tile.key, i]));
+  const nameRest = new Vector4();
+  const nameWritten = new Vector4(Number.NaN, 0, 0, 0);
+  let nameRestLod = 0;
+  let nameRestInk = 0;
+  let nameLodWritten = Number.NaN;
+  let nameInkWritten = Number.NaN;
+  const probe = document.createElement("canvas").getContext("2d");
+  const unwindEase = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+
+  function slice5Api(): CoilFlightApi {
+    return {
+      flightQuadOf(slot) {
+        const pose = rendered[slot];
+        if (!pose || !geoCamera) return null;
+        const rect = host.getBoundingClientRect();
+        const origin = { left: rect.left, top: rect.top };
+        const bent = projectQuad(pose, geoCamera, origin);
+        return isConvex(bent) ? bent : projectQuad({ ...pose, bend: 0 }, geoCamera, origin);
+      },
+      facesOf(slot) {
+        const tile = slots[slot]?.tile ?? -1;
+        const face = faces[tile];
+        if (!face) return null;
+        return { front: face.front.image as HTMLCanvasElement, back: face.back.image as HTMLCanvasElement };
+      },
+      slotOfKey(key) {
+        const tile = tileIndex.get(key);
+        if (tile === undefined || !geo) return -1;
+        let best = -1;
+        let bestDepth = -Infinity;
+        for (let j = 0; j < geo.slotCount; j++) {
+          const pose = poses[j];
+          if (!pose || slots[j].tile !== tile) continue;
+          if (unwind.latched) {
+            if (Math.round(pose.u - unwind.offset) === unwind.latched[tile]) return j;
+            continue;
+          }
+          if (pose.alpha > 0.5 && pose.depth > bestDepth) {
+            best = j;
+            bestDepth = pose.depth;
+          }
+        }
+        return best;
+      },
+      focusCard(key) {
+        focusKey = key;
+        if (key) hoverJump(key);
+      },
+      unwind(on) {
+        const next = on ?? !unwind.on;
+        if (next === unwind.on) return;
+        if (next && !canUnwind()) return;
+        toggleUnwind(unwind, performance.now(), conveyor.offset, tileCount, next);
+        if (debug) (debug as DebugStats & { unwindAt?: number[] }).unwindAt?.push(performance.now());
+        wake();
+      },
+    };
+  }
+
+  function canUnwind() {
+    const props = live.current;
+    return ready && props.interactive && props.input === "fine" && !props.frozen && !frozenByApi && window.scrollY <= 2;
+  }
+
+  // The row's card to the front of the visible part of the helix, the nearest
+  // copy by the shortest glide. Nothing while unwound or off screen.
+  function hoverJump(key: string) {
+    const props = live.current;
+    const tile = tileIndex.get(key);
+    if (tile === undefined || !geo || !sil || !ready) return;
+    if (unwind.latched || props.frozen || frozenByApi || !props.interactive) return;
+    const rect = host.getBoundingClientRect();
+    if (rect.bottom < 120 || rect.top > window.innerHeight - 120) return;
+    const top = Math.max(0, -rect.top);
+    const bottom = Math.min(view.height, window.innerHeight - rect.top);
+    const uAt = uAtScreenY(sil, geo, (top + bottom) / 2);
+    startGlide(conveyor, hoverJumpTarget(tile, conveyor.offset, tileCount, uAt, geo.cardsPerTurn), performance.now());
+    wake();
+  }
+
+  // Double-click open hero space (not a card, not a control) with the page at
+  // the top: the helix unwinds in place; again, it winds back.
+  const onDoubleClick = (event: MouseEvent) => {
+    if (!(event.target instanceof Node) || !host.contains(event.target)) return;
+    const x = event.clientX - (view.docLeft - window.scrollX);
+    const y = event.clientY - (view.docTop - window.scrollY);
+    if (pickAt(x, y) >= 0) return;
+    if (!unwind.on && !canUnwind()) return;
+    api.unwind(!unwind.on);
+  };
+  host.addEventListener("dblclick", onDoubleClick);
+  const slice5Dispose = () => host.removeEventListener("dblclick", onDoubleClick);
+  if (debug) {
+    Object.assign(debug, {
+      unwindAt: [] as number[],
+      unwindState: () => ({ on: unwind.on, latched: unwind.latched !== null, progress: unwindProgress(unwind, performance.now()) }),
+      unwindMs: () => unwindDurationMs(tileCount),
+      focusKey: () => focusKey,
+    });
+  }
+
+  // The rows' card boxes, measured from the overlay each latched frame (it
+  // moves with the page and relayouts on resize), onto the z = 0 plane.
+  function measureColumn(helix: HelixFrame) {
+    if (!geoCamera) return null;
+    const boxes = live.current.overlay.current?.listTargets();
+    if (!boxes) return null;
+    const rect = host.getBoundingClientRect();
+    const camera = geoCamera;
+    return {
+      axisCenter: helix.center,
+      axisDirection: helixRotation(helix).y,
+      targets: tiles.map((tile) => {
+        const box = boxes.get(tile.key);
+        if (!box || box.height <= 0) return null;
+        const x = box.left + box.width / 2 - rect.left;
+        const y = box.top + box.height / 2 - rect.top;
+        return { position: unprojectToPlane(camera, x, y, 0), scale: box.height * camera.worldPerPx };
+      }),
+    };
+  }
+
+  // Per frame: the overlay's fades, and the canvas name moving from its rest
+  // rect into the list's lead (lab 1327-1360), inked to full as it lands.
+  // A layout or theme change rewrites the rest values; they are recaptured
+  // whenever the uniforms hold something this block did not write.
+  function unwindFrame(progress: number) {
+    live.current.overlay.current?.unwindFrame(progress, unwind.on);
+    const cu = compMaterial.uniforms;
+    const rect = cu.uNameRect.value as Vector4;
+    if (!rect.equals(nameWritten)) nameRest.copy(rect);
+    if (cu.uLod.value !== nameLodWritten) nameRestLod = cu.uLod.value;
+    if (cu.uNameK.value !== nameInkWritten) nameRestInk = cu.uNameK.value;
+    const target = progress > 0 ? nameTarget() : null;
+    if (!target) {
+      rect.copy(nameRest);
+      cu.uLod.value = nameRestLod;
+      cu.uNameK.value = nameRestInk;
+    } else {
+      const t = unwindEase(clamp01((progress - 0.08) / 0.84));
+      const land = smoothstep01(clamp01((progress - 0.5) / 0.47));
+      rect.set(
+        nameRest.x + (target.x - nameRest.x) * t,
+        nameRest.y + (target.y - nameRest.y) * t,
+        nameRest.z + (target.z - nameRest.z) * t,
+        nameRest.w + (target.w - nameRest.w) * t,
+      );
+      const maskHeight = ((cu.uName.value as Texture | null)?.image as HTMLCanvasElement | undefined)?.height ?? 0;
+      cu.uLod.value = maskHeight ? Math.max(0, Math.log2(maskHeight / (rect.w * view.dpr))) : nameRestLod;
+      cu.uNameK.value = nameRestInk + (1 - nameRestInk) * land;
+    }
+    nameWritten.copy(rect);
+    nameLodWritten = cu.uLod.value;
+    nameInkWritten = cu.uNameK.value;
+  }
+
+  // The name mask's rect at the lead slot's font size: the rest mask scaled
+  // by the size ratio, its ink box on the slot's text (layoutName's sizing).
+  function nameTarget(): Vector4 | null {
+    const slot = live.current.overlay.current?.nameSlot();
+    if (!slot || !probe) return null;
+    const name = siteContent.hero.name;
+    probe.font = `900 100px ${nameFamily}`;
+    const w100 = probe.measureText(name).width || 1;
+    const restSize = ((view.width * (isNarrow(view) ? 0.9 : 0.7)) / w100) * 100;
+    const pad = Math.ceil(restSize * 0.04);
+    const k = slot.fontPx / restSize;
+    probe.font = `900 ${slot.fontPx}px ${nameFamily}`;
+    const m = probe.measureText(name);
+    const hostRect = host.getBoundingClientRect();
+    const left = slot.rect.left - hostRect.left - m.actualBoundingBoxLeft;
+    const baseline =
+      slot.rect.top - hostRect.top + (slot.fontPx - (m.fontBoundingBoxAscent + m.fontBoundingBoxDescent)) / 2 + m.fontBoundingBoxAscent;
+    const inkTop = baseline - m.actualBoundingBoxAscent;
+    return new Vector4(left - pad * k, inkTop - pad * k, nameRest.z * k, nameRest.w * k);
+  }
+  // ---- end slice 5 ----
+
   // ---- boot: the name's face and every card's sources, then the first frame
   const style = getComputedStyle(document.documentElement);
   nameFamily = style.getPropertyValue("--font-display").trim() || "sans-serif";
@@ -1019,6 +1240,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       host.removeEventListener("pointerdown", onPointerDown);
       host.removeEventListener("pointerup", onPointerUp);
       canvas.removeEventListener("webglcontextlost", onContextLost);
+      slice5Dispose();
       repaints.clear();
       setSceneHover(false);
       live.current.overlay.current?.nudge(null);

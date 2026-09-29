@@ -12,7 +12,7 @@ import { getSoundtrackState, type SoundtrackState } from "@/lib/soundtrack";
 // fuzzes with energy, reading as a soundwave. It inherits the ASCII field's
 // whole lifecycle: body level via Portal so the pinned #hero-pin transform never
 // captures this fixed canvas, z-0 / pointer-events-none / aria-hidden, a
-// ScrollTrigger keyed to #work that ramps the field in only once the journey
+// ScrollTrigger keyed to #listen that ramps the field in only once the journey
 // begins, rAF that runs only while visible and the tab is foregrounded, colors
 // read from the resolved theme tokens (re-read on the data-theme observer), and
 // a full unmount under reduced motion. The canvas + effect live in an inner
@@ -108,7 +108,7 @@ function WaveCanvas() {
     const cursor = { x: -9999, y: -9999, on: false };
 
     let fieldAlpha = 0; // global ramp-in, lerps toward alphaTarget
-    let alphaTarget = 0; // 0..1 from the #work scroll ramp
+    let alphaTarget = 0; // 0..1 from the #listen scroll ramp
     let raf = 0;
     let last = 0;
 
@@ -292,18 +292,19 @@ function WaveCanvas() {
     readColors();
     build();
 
-    // Scroll ramp keyed to #work, identical hardening to the old field: onUpdate
-    // tracks gradual scrolling; the leave/enter handlers keep it correct on jumps
-    // (anchor clicks, the spine's section jumps) that skip the range in one step.
-    const work = document.getElementById("work");
+    // Scroll ramp keyed to the end of #listen (the Listen invite's wrapper,
+    // always rendered, empty once a choice exists), identical hardening to the
+    // old field: onUpdate tracks gradual scrolling; the leave/enter handlers
+    // keep it correct on jumps (anchor clicks, section jumps) that skip the
+    // range in one step. The wave runs from the invite down: after the book on
+    // the Coil home; on the ring home #listen ends exactly where #work starts,
+    // the moment the hero pin has released, so nothing moves there.
+    const listen = document.getElementById("listen");
     const createTrigger = () =>
       ScrollTrigger.create({
-        trigger: work as Element,
-        // Reveal only once the pinned ring/deck has cleared: #work reaching the
-        // top of the viewport is the moment the hero pin fully releases, so the
-        // wave blooms in as the last of the deck slides away, not during it.
-        start: "top 12%",
-        end: "top top",
+        trigger: listen as Element,
+        start: "bottom 12%",
+        end: "bottom top",
         invalidateOnRefresh: true,
         onUpdate: (self) => {
           alphaTarget = self.progress;
@@ -324,9 +325,9 @@ function WaveCanvas() {
     // resize handler below creates it if the viewport later crosses up to
     // desktop width.
     let st: ScrollTrigger | null =
-      work && window.innerWidth > MOBILE_MAX ? createTrigger() : null;
+      listen && window.innerWidth > MOBILE_MAX ? createTrigger() : null;
 
-    if (work && work.getBoundingClientRect().top < window.innerHeight * 0.12) {
+    if (listen && listen.getBoundingClientRect().bottom < window.innerHeight * 0.12) {
       alphaTarget = 1;
       ensureRunning();
     }
@@ -358,7 +359,7 @@ function WaveCanvas() {
       } else {
         // Crossed from mobile to desktop with no trigger yet (it was skipped
         // at setup): create it now so the scroll ramp comes alive.
-        if (work && !st) st = createTrigger();
+        if (listen && !st) st = createTrigger();
         if (alphaTarget > 0.003) ensureRunning();
       }
     };
