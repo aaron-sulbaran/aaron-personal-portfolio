@@ -458,11 +458,18 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   // Real milliseconds since the entrance started (-Infinity before it,
   // Infinity for a fast start). A start the scene first sees late (it was
   // still loading) begins at that first sight, so no part of it is skipped.
+  // Slice 7: a scene that mounts with the hero already interactive (reduced
+  // motion switched off again, the remount after a lost context, a chunk
+  // that arrived after the lock gave up) starts at rest: the entrance plays
+  // once per load, never on a rebuild.
   function entranceElapsedMs(now: number) {
     const entrance = live.current.entrance;
     if (!entrance) return Number.NEGATIVE_INFINITY;
     if (entranceBase === null) {
-      entranceBase = Number.isFinite(entrance.startMs) ? Math.max(entrance.startMs, now) : Number.NEGATIVE_INFINITY;
+      entranceBase =
+        Number.isFinite(entrance.startMs) && !live.current.interactive
+          ? Math.max(entrance.startMs, now)
+          : Number.NEGATIVE_INFINITY;
     }
     return now - entranceBase;
   }
