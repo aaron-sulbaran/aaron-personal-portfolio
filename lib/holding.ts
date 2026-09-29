@@ -7,7 +7,7 @@
 // tracked in git rather than in dashboard state. NEXT_PUBLIC_ so the value is
 // inlined at build time and the gate is a constant in every bundle.
 //
-// Exempt from the switch: /recruiting (app/recruiting, gated by middleware.ts
+// Exempt from the switch: /recruiting (app/recruiting, gated by proxy.ts
 // on its own signed cookie) never reads HOLDING_MODE, so it stays reachable
 // while production holds. Any new route that should also be exempt simply
 // does not consult this module.
