@@ -301,7 +301,12 @@ export function HomeController({ hero, children }: Props) {
     [selection, flight, reducedMotion],
   );
 
-  const handleCardClick = useCallback((card: CoilCardRef) => openCard(card.key, card.slot, null), [openCard]);
+  // A tap on a touch screen opens the modal with no flight: the modal draws
+  // its own media (renderMedia), as from a book row.
+  const handleCardClick = useCallback(
+    (card: CoilCardRef) => openCard(card.key, card.tap ? -1 : card.slot, null),
+    [openCard],
+  );
   const handleRowOpen = useCallback(
     (key: string, origin: HTMLElement) => openCard(key, sceneApiRef.current?.slotOfKey(key) ?? -1, origin),
     [openCard],
