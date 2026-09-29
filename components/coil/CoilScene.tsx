@@ -52,7 +52,7 @@ import {
 } from "@/lib/coil/motion";
 import { entranceClock, entranceHelix, entrancePose } from "@/lib/coil/entrance";
 import { createUnwind, unwindPose, unwindProgress } from "@/lib/coil/unwind";
-import { fieldTime, FIELD_REST_TIME } from "@/lib/coil/drift";
+import { fieldTime } from "@/lib/coil/drift";
 import type { InputDriver } from "@/lib/coil/drivers";
 import { COMPOSITE_FRAG, COMPOSITE_VERT, FIELD, FIELD_FRAG, FULLSCREEN_VERT } from "@/lib/coil/field.glsl";
 import { createCardGeometry, createCardMaterial, type CardUniforms, type SharedCardUniforms } from "@/lib/coil/material";
@@ -209,7 +209,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     vertexShader: FULLSCREEN_VERT,
     fragmentShader: FIELD_FRAG,
     uniforms: {
-      uT: { value: FIELD_REST_TIME },
+      uT: { value: fieldTime(0) },
       uAspect: { value: 1.6 },
       uAmt: { value: FIELD.amount },
       uSec: { value: theme.field.secondStrength },
@@ -688,7 +688,8 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
 
   function render(dt: number) {
     if (!posterMode) fieldElapsed += dt;
-    const t = posterMode ? FIELD_REST_TIME : fieldTime(fieldElapsed);
+    // The poster is the live field's first frame, so the scene picks up where it left off.
+    const t = fieldTime(posterMode ? 0 : fieldElapsed);
     fieldMaterial.uniforms.uT.value = t;
     renderer.setRenderTarget(null);
     renderer.clear();
