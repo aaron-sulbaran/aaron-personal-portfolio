@@ -489,9 +489,10 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     pointer.y = pointer.clientY - (view.docTop - window.scrollY);
   }
 
+  // Only the canvas itself counts: the overlay's control, the mark, the Menu
+  // pill and its scrim all sit over the hero and must never pick a card.
   function pointerOverHero(target: EventTarget | null) {
-    const element = target instanceof Element ? target : null;
-    if (element?.closest("button, a, input, [data-cursor-hover]")) return false;
+    if (!(target instanceof Node) || !host.contains(target)) return false;
     return pointer.x >= 0 && pointer.x <= view.width && pointer.y >= 0 && pointer.y <= view.height;
   }
 
