@@ -13,7 +13,8 @@ import { navigateToSection } from "@/lib/scroll";
 // (top-right, components/menu) are on screen. Past the hero a 72px bar slides
 // in behind them with Work, About and Connect, scroll-spy on the section being
 // read. Headroom: after about 140px of scrolling down the bar tucks away, the
-// mark and the pill with it; any scroll up brings all three back.
+// mark and the pill with it; any scroll up (past 6px of jitter) brings all
+// three back.
 //
 // "During the hero" means the home hero is not yet ready (the readiness
 // store) or its sentinel (app/page.tsx, the first 90svh of #main) is still in
@@ -41,7 +42,7 @@ export function SiteNav() {
 
   const barRef = useRef(bar);
   const pinnedRef = useRef(pinned);
-  const track = useRef({ lastY: 0, down: 0, revealedAt: 0 });
+  const track = useRef({ lastY: 0, down: 0, up: 0, revealedAt: 0 });
 
   useEffect(() => {
     if (!home) return;
@@ -58,7 +59,7 @@ export function SiteNav() {
     barRef.current = bar;
     pinnedRef.current = pinned;
     const y = window.scrollY;
-    track.current = { lastY: y, down: 0, revealedAt: y };
+    track.current = { lastY: y, down: 0, up: 0, revealedAt: y };
     setHeaderHidden(false);
   }, [bar, pinned]);
 
@@ -81,10 +82,14 @@ export function SiteNav() {
       if (!barRef.current || pinnedRef.current) return;
       if (dy > 0) {
         t.down += dy;
+        t.up = 0;
         if (t.down > 140 && y > t.revealedAt + 220) setHeaderHidden(true);
-      } else if (dy < -6) {
+      } else if (dy < 0) {
+        // Summed, so a slow or smooth scroll up returns the bar as surely as
+        // a flick; 6px keeps trackpad jitter from flickering it.
+        t.up -= dy;
         t.down = 0;
-        setHeaderHidden(false);
+        if (t.up > 6) setHeaderHidden(false);
       }
     };
     const onScroll = () => {
