@@ -77,7 +77,7 @@ export default async function WorkDetailPage({ params }: Params) {
 
             {item.bodySections.length === 0 ? (
               <div className="rounded-2xl border border-border/70 bg-glass-strong px-6 py-8 backdrop-blur-md md:px-10 md:py-12">
-                <p className="font-display text-xl leading-[1.45] text-foreground md:text-2xl">
+                <p className="text-xl leading-[1.45] text-foreground md:text-2xl">
                   {placeholderBody}
                 </p>
                 {linkedinHref && (
