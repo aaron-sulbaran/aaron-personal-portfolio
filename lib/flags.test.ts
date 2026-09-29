@@ -2,12 +2,12 @@ import { describe, expect, it } from "vitest";
 import { parseHomeHero } from "@/lib/flags";
 
 describe("parseHomeHero", () => {
-  it("serves the ring by default; only the exact 'coil' value opts in", () => {
-    expect(parseHomeHero(undefined)).toBe("ring");
-    expect(parseHomeHero("")).toBe("ring");
-    expect(parseHomeHero("ring")).toBe("ring");
-    expect(parseHomeHero("Coil")).toBe("ring");
-    expect(parseHomeHero(" coil")).toBe("ring");
+  it("serves the Coil by default; only the exact 'ring' value opts back in", () => {
+    expect(parseHomeHero(undefined)).toBe("coil");
+    expect(parseHomeHero("")).toBe("coil");
     expect(parseHomeHero("coil")).toBe("coil");
+    expect(parseHomeHero("Ring")).toBe("coil");
+    expect(parseHomeHero(" ring")).toBe("coil");
+    expect(parseHomeHero("ring")).toBe("ring");
   });
 });
