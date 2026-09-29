@@ -630,7 +630,7 @@ export const siteContent = {
   photos: [
     {
       src: "/photos/hsf-speaking.jpeg",
-      alt: "Aaron speaking on stage at HSF Scholars.",
+      alt: "Me speaking on stage at HSF Scholars.",
       caption: "Speaking at the HSF Scholars summit. One of the first times I realized how much I love sharing what I'm learning with people earlier in the journey.",
     },
     {
@@ -640,27 +640,27 @@ export const siteContent = {
     },
     {
       src: "/photos/capital-one.jpeg",
-      alt: "Aaron at Capital One during his internship.",
+      alt: "Me at Capital One during my internship.",
       caption: "Capital One, product manager intern. Learned how real PM decisions get made when you're accountable to a team, not just a deck.",
     },
     {
       src: "/photos/yosemite-hiking.jpeg",
-      alt: "Aaron hiking in Yosemite.",
+      alt: "Me hiking in Yosemite.",
       caption: "Yosemite. Long hikes with good people are where I do my best thinking.",
     },
     {
       src: "/photos/uncs-grad.jpeg",
-      alt: "Aaron at a UNC-related graduation photo.",
+      alt: "Me at a UNC-related graduation.",
       caption: "Family graduation moment. My roots keep me grounded.",
     },
     {
       src: "/photos/claude-hackathon.jpeg",
-      alt: "Aaron and co-ambassadors at the Claude hackathon.",
+      alt: "Me with my co-ambassadors at the Claude hackathon.",
       caption: "Me and my co-ambassadors Rohan and Jessica at the first-ever Claude hackathon in Austin. Watching students ship real AI tools in one weekend was the kind of thing that made me want to stay close to this community.",
     },
     {
       src: "/photos/misuki.jpeg",
-      alt: "Aaron with family from Maracaibo.",
+      alt: "Me with family from Maracaibo.",
       caption: "Venezuelan roots. Born in Maracaibo, raised with arepas and a lot of loud love. Carrying that into everything I build.",
     },
     // TODO: Replace placeholder with an IEEE UT Austin meeting / president photo
@@ -671,7 +671,7 @@ export const siteContent = {
     },
     {
       src: "/photos/traveling.jpeg",
-      alt: "Aaron traveling.",
+      alt: "Me traveling.",
       caption: "Traveling. Being away from home is one of the fastest ways I learn what I actually care about.",
     },
     // TODO: Replace placeholder with an Austin startup community / meetup photo
@@ -688,7 +688,7 @@ export const siteContent = {
     },
     {
       src: "/photos/mt-fuji.jpeg",
-      alt: "Aaron with Mt. Fuji in the background.",
+      alt: "Me with Mt. Fuji in the background.",
       caption: "Mt. Fuji. Standing in front of it reminded me how small our day-to-day loops can feel once you've looked at something that big.",
     },
     // TODO: Replace placeholder with a friends / community photo
