@@ -81,6 +81,10 @@ import { hoverJumpTarget, siteEase, startGlide, type JumpBand } from "@/lib/coil
 import { settleUnwind, toggleUnwind, unwindDurationMs } from "@/lib/coil/unwind";
 import { isConvex } from "@/lib/coil/flight";
 // ---- end slice 5 imports ----
+// ---- fx-flight imports ----
+import { flightProbe } from "@/lib/coil/flightProbe";
+import { bendLocal as bendLocalPoint } from "@/lib/coil/geometry";
+// ---- end fx-flight imports ----
 
 // The Coil scene: the dynamic chunk CoilStage imports after first paint. It
 // owns the renderer, the two field passes, the helix of cards, the loop, the
@@ -1013,6 +1017,9 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       push(debug.intervals, interval);
       push(debug.work, performance.now() - started);
     }
+    // ---- fx-flight debug ----
+    flightLog?.mark("scene-frame", { dt, interval, ...probeState() });
+    // ---- end fx-flight debug ----
     if (!firstFrameSent) {
       firstFrameSent = true;
       live.current.onFirstFrame();
@@ -1038,6 +1045,9 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     if (!ready || contextLost || disposed) return;
     update(0, performance.now());
     render(0);
+    // ---- fx-flight debug ----
+    flightLog?.mark("scene-still", probeState());
+    // ---- end fx-flight debug ----
   }
 
   // ---- observers and listeners
@@ -1084,10 +1094,117 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     wake();
   });
 
+  // ---- fx-flight debug: ?coildebug=flight, the measurement hook ----
+  const flightLog = flightProbe();
+  let probeSlot = -1; // the slot the harness follows
+  function probeSlotInfo(j: number) {
+    const slot = slots[j];
+    const pose = rendered[j];
+    if (!slot || !pose || !geoCamera) return null;
+    const rect = host.getBoundingClientRect();
+    const origin = { left: rect.left, top: rect.top };
+    const camera = geoCamera;
+    const hw = COIL.cardAspect / 2;
+    const at = (x: number, y: number) => {
+      const b = bendLocalPoint(x, y, pose.bend, pose.beta);
+      const world: [number, number, number] = [
+        pose.position[0] + (pose.basis.x[0] * b[0] + pose.basis.y[0] * b[1] + pose.basis.z[0] * b[2]) * pose.scale,
+        pose.position[1] + (pose.basis.x[1] * b[0] + pose.basis.y[1] * b[1] + pose.basis.z[1] * b[2]) * pose.scale,
+        pose.position[2] + (pose.basis.x[2] * b[0] + pose.basis.y[2] * b[1] + pose.basis.z[2] * b[2]) * pose.scale,
+      ];
+      return projectPoint(camera, world, origin);
+    };
+    // The bent silhouette: 17 points along each edge, in corner order.
+    const steps = 16;
+    const edge = (x0: number, y0: number, x1: number, y1: number) =>
+      Array.from({ length: steps + 1 }, (_, i) => at(x0 + ((x1 - x0) * i) / steps, y0 + ((y1 - y0) * i) / steps));
+    const outline = [edge(-hw, 0.5, hw, 0.5), edge(hw, 0.5, hw, -0.5), edge(hw, -0.5, -hw, -0.5), edge(-hw, -0.5, -hw, 0.5)];
+    // The face itself: a 9 by 9 grid of card points (s across, t down, 0..1).
+    const grid = Array.from({ length: 81 }, (_, i) => {
+      const s = (i % 9) / 8;
+      const t = Math.floor(i / 9) / 8;
+      return { s, t, ...at((s - 0.5) * COIL.cardAspect, 0.5 - t) };
+    });
+    const tile = tiles[slot.tile];
+    return {
+      slot: j,
+      key: tile?.key,
+      kind: tile?.kind,
+      hover: slot.hover,
+      hovered: hoveredSlot === j,
+      hidden: hiddenSlot === j,
+      u: pose.u,
+      depth: pose.depth,
+      fade: pose.fade,
+      alpha: pose.alpha,
+      scale: pose.scale,
+      bend: pose.bend,
+      beta: pose.beta,
+      uniforms: {
+        uBend: slot.uniforms.uBend.value,
+        uFade: slot.uniforms.uFade.value,
+        uBright: slot.uniforms.uBright.value,
+        uShade: slot.uniforms.uShade.value,
+        uSeen: slot.uniforms.uSeen.value,
+        uAlpha: slot.uniforms.uAlpha.value,
+      },
+      quad: projectQuad(pose, camera, origin),
+      flatQuad: projectQuad({ ...pose, bend: 0 }, camera, origin),
+      center: at(0, 0),
+      outline,
+      grid,
+    };
+  }
+  function probeState() {
+    const followed = probeSlot >= 0 ? slots[probeSlot] : null;
+    const pose = probeSlot >= 0 ? rendered[probeSlot] : null;
+    return {
+      offset: conveyor.offset,
+      target: conveyor.target,
+      glide: conveyor.glide !== null,
+      envelope: envelope.value,
+      hoveredSlot,
+      hiddenSlot,
+      frozenByApi,
+      frozenByProps: live.current.frozen,
+      looping: raf !== 0,
+      slot: probeSlot,
+      hover: followed?.hover ?? null,
+      scale: pose?.scale ?? null,
+      fade: pose?.fade ?? null,
+      bright: followed?.uniforms.uBright.value ?? null,
+      seen: followed?.uniforms.uSeen.value ?? null,
+    };
+  }
+  if (flightLog) {
+    flightLog.scene = {
+      state: probeState,
+      follow: ((j: number) => {
+        probeSlot = j;
+      }) as never,
+      slot: probeSlotInfo as never,
+      slots: () =>
+        Array.from({ length: geo?.slotCount ?? 0 }, (_, j) => probeSlotInfo(j)).filter(
+          (info) => info !== null && info.alpha > 0.5,
+        ),
+      // Shows or hides a slot's mesh and redraws, with no other side effect.
+      hide: ((j: number | null) => {
+        hiddenSlot = j;
+        if (!raf) {
+          update(0, performance.now());
+          render(0);
+        }
+      }) as never,
+      seam: () => FIELD.seamFade,
+    };
+  }
+  // ---- end fx-flight debug ----
+
   // ---- the api for slices 4 and 5
   const api: CoilSceneApi = {
     ...slice5Api(),
     freeze(on) {
+      flightLog?.mark(on ? "freeze" : "unfreeze", probeState()); // fx-flight debug
       frozenByApi = on;
       if (on) stop();
       else wake();
@@ -1106,6 +1223,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       return projectQuad(pose, geoCamera, { left: rect.left, top: rect.top });
     },
     hideSlot(slot) {
+      flightLog?.mark(slot === null ? "mesh-show" : "mesh-hide", { slot }); // fx-flight debug
       hiddenSlot = slot;
       if (!raf) renderStill();
     },
