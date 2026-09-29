@@ -14,7 +14,7 @@ import {
 // the visitor sees the site's ordinary 404 and learns nothing. The site-mode
 // holding switch (lib/holding.ts) is never consulted here: the route is
 // exempt by construction.
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const secret = process.env.RECRUITING_KEY;
   const { pathname, searchParams } = request.nextUrl;
 

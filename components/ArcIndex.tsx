@@ -17,14 +17,14 @@ import { type RefObject } from "react";
 type ArcIndexProps = {
   total: number;
   helperLine: string;
-  numRef: RefObject<HTMLSpanElement>;
-  kindRef: RefObject<HTMLSpanElement>;
-  statusRef: RefObject<HTMLSpanElement>;
-  titleRef: RefObject<HTMLHeadingElement>;
-  blurbRef: RefObject<HTMLParagraphElement>;
+  numRef: RefObject<HTMLSpanElement | null>;
+  kindRef: RefObject<HTMLSpanElement | null>;
+  statusRef: RefObject<HTMLSpanElement | null>;
+  titleRef: RefObject<HTMLHeadingElement | null>;
+  blurbRef: RefObject<HTMLParagraphElement | null>;
   // The live region wrapper; TileRing dips its opacity for a beat when the
   // focused card changes so the text swap reads soft instead of hard.
-  swapRef: RefObject<HTMLDivElement>;
+  swapRef: RefObject<HTMLDivElement | null>;
 };
 
 export function ArcIndex({

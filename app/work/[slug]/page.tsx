@@ -9,14 +9,15 @@ import { Footer } from "@/components/Footer";
 
 export const dynamicParams = false;
 
-type Params = { params: { slug: string } };
+type Params = { params: Promise<{ slug: string }> };
 
 export function generateStaticParams() {
   return siteContent.workItems.map((item) => ({ slug: item.slug }));
 }
 
-export function generateMetadata({ params }: Params): Metadata {
-  const item = siteContent.workItems.find((i) => i.slug === params.slug);
+export async function generateMetadata({ params }: Params): Promise<Metadata> {
+  const { slug } = await params;
+  const item = siteContent.workItems.find((i) => i.slug === slug);
   if (!item) return { title: "Not found" };
   return {
     title: `${item.title} · ${item.role}`,
@@ -28,10 +29,11 @@ export function generateMetadata({ params }: Params): Metadata {
   };
 }
 
-export default function WorkDetailPage({ params }: Params) {
+export default async function WorkDetailPage({ params }: Params) {
   // Case studies are unpublished while the holding page is up.
   if (HOLDING_MODE) redirect("/");
-  const item = siteContent.workItems.find((i) => i.slug === params.slug);
+  const { slug } = await params;
+  const item = siteContent.workItems.find((i) => i.slug === slug);
   if (!item) notFound();
 
   const { backLabel, placeholderBody, placeholderCta } = siteContent.work;

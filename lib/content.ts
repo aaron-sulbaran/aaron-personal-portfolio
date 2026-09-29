@@ -523,7 +523,7 @@ export const siteContent = {
       year: "2026",
       logo: "/work/logos/site.svg",
       teaser: "This site. A Phase 1 personal statement that grows with me.",
-      summary: "Next.js 14, Tailwind, Framer Motion. Cursor-driven tile ring with shared-element flight modals, a work surface, and a living-document voice.",
+      summary: "Next.js 16, Tailwind, Framer Motion. Cursor-driven tile ring with shared-element flight modals, a work surface, and a living-document voice.",
       bodySections: [],
       links: [
         { label: "GitHub", href: "https://github.com/aaron-sulbaran" },

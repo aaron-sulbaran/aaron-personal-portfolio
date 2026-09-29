@@ -7,7 +7,7 @@ import { FEED_TAG } from "@/lib/recruiting/vault-issues";
 // POST /recruiting/refresh files (or reuses) a refresh request for the Mac.
 // GET /recruiting/refresh?number=N reports its progress; once it is closed the
 // feed cache is dropped so the next render reads the fresh export. Gated like
-// /recruiting/edit: middleware checks the cookie, and so does this handler.
+// /recruiting/edit: proxy checks the cookie, and so does this handler.
 
 function notFound() {
   return new NextResponse(null, { status: 404 });
@@ -32,6 +32,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ data: null, error: "number is required" }, { status: 400 });
   }
   const result = await refreshState(number);
-  if (result.error === null && !result.data.open) revalidateTag(FEED_TAG);
+  if (result.error === null && !result.data.open) revalidateTag(FEED_TAG, { expire: 0 });
   return NextResponse.json(result, { status: result.error === null ? 200 : 502 });
 }
