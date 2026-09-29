@@ -202,7 +202,7 @@ export function ScrollProgress() {
                       Inactive sits in a light, low-attention tone and only the
                       current section switches to the accent. */}
                   <span
-                    className={`hidden text-[10px] font-medium uppercase tracking-caps transition-colors duration-200 group-hover:inline group-focus-visible:inline min-[1400px]:inline ${
+                    className={`hidden text-xs transition-colors duration-200 group-hover:inline group-focus-visible:inline min-[1400px]:inline ${
                       isActive ? "text-accent" : "text-muted/50 group-hover:text-accent"
                     }`}
                   >
