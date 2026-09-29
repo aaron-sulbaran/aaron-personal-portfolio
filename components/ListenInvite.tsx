@@ -118,6 +118,7 @@ export function ListenInvite() {
             className="col-start-1 row-start-1 self-center text-sm leading-[1.55] text-muted transition-opacity duration-300 md:text-base"
             style={{
               opacity: answered ? 1 : 0,
+              pointerEvents: answered ? "auto" : "none",
               transitionDelay: answered ? "200ms" : "0ms",
             }}
             aria-hidden={!answered}
