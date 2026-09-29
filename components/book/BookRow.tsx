@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import type { PointerEvent } from "react";
 import { photoBySrc, siteContent, bookWorkTarget, type BookPhotoRow, type BookWorkRow } from "@/lib/content";
 import { useIsSeen } from "@/lib/home/seen";
 import { useHomeController } from "@/components/home/HomeController";
@@ -12,9 +13,21 @@ export type BookEntry = { kind: "work"; row: BookWorkRow } | { kind: "photo"; ro
 // have somewhere to go. Photo rows are buttons that open the photo modal
 // through the home controller, which marks them seen at close and returns
 // focus here. The seen ring sits inline after the title and never greys the
-// row. Hovering a list dims every other row's title (never the meta).
+// row. Hovering a list dims every other row's title (never the meta), and a
+// row under the mouse or keyboard focus glides its card to the front of the
+// visible helix (the hover-jump; the scene ignores it when the hero is off
+// screen, unwound, or absent).
 export function BookRow({ entry }: { entry: BookEntry }) {
   const controller = useHomeController();
+  const { key: rowKey } = entry.row;
+  const focusProps = {
+    onPointerEnter: (event: PointerEvent) => {
+      if (event.pointerType === "mouse" || event.pointerType === "pen") controller?.focusCard(rowKey);
+    },
+    onPointerLeave: () => controller?.focusCard(null),
+    onFocus: () => controller?.focusCard(rowKey),
+    onBlur: () => controller?.focusCard(null),
+  };
   const seen = useIsSeen(entry.row.key);
   const { seenLabel, externalLabel } = siteContent.book;
   const content = (
@@ -37,6 +50,7 @@ export function BookRow({ entry }: { entry: BookEntry }) {
       <button
         type="button"
         className={ROW_CLASS}
+        {...focusProps}
         onClick={(event) => {
           if (photo) controller?.openPhoto(photo, key, event.currentTarget);
         }}
@@ -50,7 +64,12 @@ export function BookRow({ entry }: { entry: BookEntry }) {
   const target = bookWorkTarget(row);
   if (target.kind === "case") {
     return (
-      <Link href={`/work/${target.slug}`} className={ROW_CLASS} onClick={() => controller?.markVisited(row.key)}>
+      <Link
+        href={`/work/${target.slug}`}
+        className={ROW_CLASS}
+        {...focusProps}
+        onClick={() => controller?.markVisited(row.key)}
+      >
         {content}
       </Link>
     );
@@ -62,6 +81,7 @@ export function BookRow({ entry }: { entry: BookEntry }) {
         target="_blank"
         rel="noopener noreferrer"
         className={ROW_CLASS}
+        {...focusProps}
         onClick={() => controller?.markVisited(row.key)}
       >
         {content}
