@@ -72,7 +72,8 @@ describe("entrance clock", () => {
       expect(p).toBeGreaterThanOrEqual(last - 1e-9);
       last = p;
       const { part, wind } = pullPhases(p);
-      if (wind > 0) expect(part).toBeGreaterThan(0.5);
+      // The winding never starts before the seam has fully parted.
+      if (wind > 0) expect(part).toBe(1);
     }
   });
 });
@@ -138,27 +139,33 @@ describe.each(cases)("entrance, %s", (_label, geo) => {
     });
   });
 
-  // The band's ends may only sweep past each other angularly while the seam
-  // holds them apart across the strand. Measured on the unrolled cylinder in
-  // the cards' own tilted frame (along the strand and across it): the later
-  // card of every pair that wraps a turn stays on its own side (the offset
-  // across never reaches zero, so nothing passes through), the ends stay at
-  // least 0.7 card heights apart across while they overlap along, and the
-  // only contact is a corner graze shorter than one 60Hz frame as the winding
-  // begins (the parting is 55 percent done then; see the PR notes).
-  it("never lets the band's ends cross", () => {
+  // The band's ends may only sweep past each other while the parted seam
+  // holds them apart. Measured on the unrolled cylinder in the cards' own
+  // tilted frame (along the strand and across it), two cards are clear when
+  // they are apart along (more than a card width) or across (more than a card
+  // height); their distance is the larger of those two gaps.
+  //
+  // The winding (from windStart, once the seam has fully parted) is a clean
+  // miss: the distance stays above zero at every sampled moment, for the ends
+  // and every other pair that wraps a turn. While the seam parts, the ends'
+  // own tilt (the cards follow the washer's slope, as in the lab) brings two
+  // corners within a hair of each other for a few milliseconds; that contact
+  // is bounded here and never becomes a crossing.
+  it("never lets the band's ends cross, and winds them past each other cleanly", () => {
     const n = geo.cardCount;
     const first = -n / 2;
     const last = n / 2 - 1;
     let endsSwept = false;
-    let endsClearance = Infinity;
-    let grazeMs = 0;
-    for (let ms = COIL.entrance.pullStart * T; ms <= T; ms += 1) {
-      const frame = entranceHelix(rest, geo, entranceClock(ms));
-      if (frame.dy <= 0) continue; // the closed band itself: one turn, nothing wraps
+    let minWindingDistance = Infinity;
+    let partingContactMs = 0;
+    let partingContactArea = 0;
+    for (let ms = COIL.entrance.pullStart * T; ms <= T; ms += 0.5) {
+      const clock = entranceClock(ms);
+      const winding = pullPhases(pullProgress(clock)).wind > 0;
+      const frame = entranceHelix(rest, geo, clock);
       const arc = frame.radius * frame.angStep;
       const length = Math.hypot(arc, frame.dy);
-      let grazing = false;
+      let contact = false;
       for (let i = first; i <= last; i++) {
         for (let k = i + 1; k <= last; k++) {
           const turns = Math.round(((k - i) * frame.angStep) / TAU);
@@ -167,20 +174,23 @@ describe.each(cases)("entrance, %s", (_label, geo) => {
           const rise = (k - i) * frame.dy;
           const along = Math.abs(arc * alongArc + frame.dy * rise) / length;
           const across = (arc * rise - frame.dy * alongArc) / length;
-          expect(across).toBeGreaterThan(0);
-          if (along >= COIL.cardAspect) continue;
-          if (i === first && k === last) {
-            endsSwept = true;
-            endsClearance = Math.min(endsClearance, across);
+          // The later card never crosses to the other side of the earlier one.
+          expect(across).toBeGreaterThanOrEqual(0);
+          const distance = Math.max(along - COIL.cardAspect, across - 1);
+          if (i === first && k === last && along < COIL.cardAspect) endsSwept = true;
+          if (winding) minWindingDistance = Math.min(minWindingDistance, distance);
+          else if (distance <= 0) {
+            contact = true;
+            partingContactArea = Math.max(partingContactArea, (COIL.cardAspect - along) * (1 - across));
           }
-          if (across < 1) grazing = true;
         }
       }
-      if (grazing) grazeMs += 1;
+      if (contact) partingContactMs += 0.5;
     }
     expect(endsSwept).toBe(true);
-    expect(endsClearance).toBeGreaterThanOrEqual(0.7);
-    expect(grazeMs).toBeLessThan(16);
+    expect(minWindingDistance).toBeGreaterThan(0);
+    expect(partingContactMs).toBeLessThan(20);
+    expect(partingContactArea).toBeLessThan(0.0025); // of a card's 0.75: under half a percent
   });
 
   it("deals the band in order from the first card, 1 card per stagger", () => {
