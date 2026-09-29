@@ -1,6 +1,6 @@
 # aaronsulbaran.com
 
-Personal portfolio for Aaron Sulbaran, a third-year ECE student at UT Austin pursuing product management. Built with Next.js 14 App Router, Tailwind CSS, and Framer Motion. The site is fully static with no backend: a home page anchored by an animated glass-tile ring with shared-element flight transitions into modal detail views, an `/about` page, and a `/work` index with detail pages per project. Fonts are Instrument Serif and Inter via `next/font/google`. Deploys on Vercel at [aaronsulbaran.com](https://aaronsulbaran.com).
+Personal portfolio for Aaron Sulbaran, a third-year ECE student at UT Austin pursuing product management. Built with Next.js 16 App Router and React 19, Tailwind CSS, and Framer Motion. The site is fully static with no backend: a home page anchored by an animated glass-tile ring with shared-element flight transitions into modal detail views, an `/about` page, and a `/work` index with detail pages per project. Fonts are Instrument Serif and Inter via `next/font/google`. Deploys on Vercel at [aaronsulbaran.com](https://aaronsulbaran.com).
 
 ## Development
 
