@@ -116,10 +116,10 @@ export function PhotoModal({ photo, onClose, renderMedia = false }: PhotoModalPr
             </div>
 
             <div className="flex flex-1 flex-col justify-center pt-2 md:pt-0">
-              <p className="font-serif text-2xl italic leading-[1.25] text-foreground md:text-3xl md:leading-[1.2]">
+              <p className="font-display text-2xl leading-[1.25] text-foreground md:text-3xl md:leading-[1.2]">
                 {photo.caption}
               </p>
-              <p className="mt-5 text-[11px] font-medium uppercase tracking-caps text-muted">
+              <p className="mt-5 text-sm text-muted">
                 {renderMedia ? "Tap outside to close" : "Press esc to close"}
               </p>
             </div>
