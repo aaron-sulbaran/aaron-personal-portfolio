@@ -202,6 +202,18 @@ export default function CoilScene(props: CoilSceneProps) {
 
 // ---------------------------------------------------------------- runtime
 
+// Slice 7: how much of a card may show under a narrow pane's clear top band:
+// 1 while its projected top edge stays a quarter card below the band, fading
+// to 0 as that edge reaches it, so no card ever crosses the mark, the Menu
+// pill or the greeting's line. Faded cards are never picked.
+const HEADER_FADE_CARDS = 0.25;
+function headerClearance(pose: CardPose, geo: CoilGeometry, camera: Camera) {
+  if (pose.alpha <= 0.001) return 1;
+  const quad = projectQuad(pose, camera);
+  const top = Math.min(quad[0].y, quad[1].y, quad[2].y, quad[3].y);
+  return smoothstep01(clamp01((top - geo.clearTopPx) / (HEADER_FADE_CARDS * geo.cardPx)));
+}
+
 type CoilRuntime = { wake: () => void; dispose: () => void };
 
 const TEXTURE_TIMEOUT_MS = 6000; // the loader's give-up time: a slow photo paints the plain pane
@@ -487,21 +499,32 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
 
     // The greeting and the control ride the name (lab 842-859): the greeting
     // just above the cap line, the control's text flush with the name's
-    // right edge, on the same line.
+    // right edge, on the same line. On a narrow pane the helix crosses the
+    // whole width, so they take their own line under the header instead, on
+    // the header's gutters, in the band no card enters (geo.clearTopPx).
     const greetingPx = narrow ? 16 : Math.min(21, Math.max(16, W * 0.0125));
     const greetingCapTop = capTop - greetingPx * 1.05 - mask.ascent * 0.07;
     const greetingLeft = left + size * 0.02;
+    const gutter = W >= 640 ? 24 : 16;
     live.current.overlay.current?.layout(
       posterMode
         ? null
-        : {
-            left: greetingLeft,
-            // Inter's cap line sits about 0.14em below a 1.0 line box's top.
-            top: greetingCapTop - 0.14 * greetingPx,
-            width: left + inkWidth - greetingLeft,
-            greetingPx,
-            controlPx: Math.round(greetingPx * 0.86),
-          },
+        : narrow
+          ? {
+              left: gutter,
+              top: COIL.narrow.headerClearPx + (COIL.narrow.introBandPx - greetingPx) / 2 - 4,
+              width: W - gutter * 2,
+              greetingPx,
+              controlPx: Math.round(greetingPx * 0.86),
+            }
+          : {
+              left: greetingLeft,
+              // Inter's cap line sits about 0.14em below a 1.0 line box's top.
+              top: greetingCapTop - 0.14 * greetingPx,
+              width: left + inkWidth - greetingLeft,
+              greetingPx,
+              controlPx: Math.round(greetingPx * 0.86),
+            },
     );
   }
 
@@ -756,6 +779,12 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       bindTile(slot, tile);
       pose = entrancePose(pose, { strandPosition, cardCount: tileCount }, geo, clock);
       if (listProgress > 0) pose = unwindPose(pose, tile, unwind, now, null);
+      // ---- slice 7: the narrow pane's clear top band (header and greeting) ----
+      if (geo.clearTopPx > 0 && listProgress < 1) {
+        const clear = headerClearance(pose, geo, geoCamera);
+        if (clear < 1) pose = { ...pose, alpha: pose.alpha * (clear + (1 - clear) * listProgress) };
+      }
+      // ---- end slice 7 ----
       if (posterMode || j === hiddenSlot) pose = { ...pose, alpha: 0 };
       poses[j] = pose;
 
