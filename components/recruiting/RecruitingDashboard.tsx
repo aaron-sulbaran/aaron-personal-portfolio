@@ -196,7 +196,7 @@ function StickyBar({ children }: { children: ReactNode }) {
     <>
       <div ref={sentinel} aria-hidden="true" className="-mb-10 h-px md:-mb-12" />
       <div
-        className={`sticky ${HOLDING_MODE ? "top-2" : "top-16"} z-20 -mx-3 rounded-2xl border px-3 py-2.5 transition-[background-color,border-color,box-shadow] duration-200 ${
+        className={`sticky ${HOLDING_MODE ? "top-2" : "top-20"} z-20 -mx-3 rounded-2xl border px-3 py-2.5 transition-[background-color,border-color,box-shadow] duration-200 ${
           stuck
             ? "border-border bg-background shadow-[0_12px_32px_-18px_rgba(10,10,10,0.35)]"
             : "border-transparent"
