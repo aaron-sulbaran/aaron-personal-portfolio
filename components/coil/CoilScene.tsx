@@ -917,7 +917,10 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
         : pose;
       rendered[j] = shown;
       applyPose(slot, shown, HOVER_BRIGHT * lift);
-      slot.uniforms.uSeen.value = seenLevel[tile];
+      // Unwound, the row's outline ring after the title is the one seen mark;
+      // the card's own ring fades with the unwind, since at thumb size it
+      // reads as a second, solid dot.
+      slot.uniforms.uSeen.value = seenLevel[tile] * (1 - listProgress);
     }
     sil = silhouette(helix, geoCamera, poses);
 
