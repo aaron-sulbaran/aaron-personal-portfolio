@@ -32,16 +32,15 @@ import type { CoilEntrance } from "@/components/coil/CoilScene";
 import { Loader, type LoaderMode } from "@/components/loader/Loader";
 import { FONT_ITEMS, SCENE_ITEMS, beginHomeLoad, coilDebugFlags, endHomeLoad } from "@/lib/loader/progress";
 import type { CoilCardFaces, CoilCardRef, CoilSceneApi } from "@/components/coil/CoilScene";
-import { CoilFlyingTile } from "@/components/FlyingTile";
+import { FlyingTile } from "@/components/FlyingTile";
 import { Portal } from "@/components/Portal";
 import { HERO_HEADING_ID } from "./HeroText";
 
 // The Coil's renderer-neutral home controller. It owns everything about the
 // home that is not drawing: readiness, the entrance scroll lock, which modal is
 // open, seen marking, focus restoration, deep-reload recovery, the flight's
-// state, driver selection, and live reduced motion. The scene (slice 3) and
-// the book talk to it through useHomeController(); TileRing keeps its own copy
-// of all this behind the ring flag until it retires.
+// state, driver selection, and live reduced motion. The scene and the book
+// talk to it through useHomeController().
 //
 // Nothing here renders per frame: the scene reads what it needs once per
 // change, and the per-frame state lives in the scene's own loop.
@@ -436,7 +435,7 @@ export function HomeController({ hero, children }: Props) {
       <WorkModal item={selection?.kind === "work" ? selection.item : null} onClose={closeModal} renderMedia={renderMedia} />
       <Portal>
         {flight && (
-          <CoilFlyingTile
+          <FlyingTile
             kind={flight.kind}
             faces={flight.faces}
             photoSrc={flight.photoSrc}
