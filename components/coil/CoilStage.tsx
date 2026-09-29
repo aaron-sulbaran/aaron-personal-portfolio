@@ -162,7 +162,7 @@ export function CoilStage({
           />
         </CoilErrorBoundary>
       ) : null}
-      <HeroOverlay ref={overlayRef} api={apiRef} onRowOpen={onRowOpen} />
+      <HeroOverlay ref={overlayRef} api={apiRef} onRowOpen={onRowOpen} entrance={entrance} />
     </div>
   );
 }
