@@ -3,6 +3,7 @@
 import { useState, type CSSProperties } from "react";
 import { motion, type Variants } from "framer-motion";
 import { Moon, Sun } from "lucide-react";
+import { NoteIcon } from "@/components/menu/NoteIcon";
 import { siteContent } from "@/lib/content";
 import { EASE } from "@/lib/motion";
 import { THEME_STORAGE_KEY, syncThemeColorMeta, type Theme } from "@/lib/theme";
@@ -85,9 +86,9 @@ export function MenuPanel({
     }
   };
 
-  // The chip opts in or out (the Listen dot beside the pill pauses and
+  // The chip opts in or out (the Listen note beside the pill pauses and
   // resumes). Its label says where the soundtrack stands (on, paused, off),
-  // so it always agrees with its dot, which fills only while music is audible.
+  // so it always agrees with its note, which fills only while music is audible.
   const optedIn = music === "on" || music === "paused";
   const toggleMusic = () => {
     if (optedIn) stopSoundtrack();
@@ -174,12 +175,12 @@ export function MenuPanel({
             data-cursor-hover
             className="inline-flex h-[34px] items-center gap-2 rounded-[17px] pl-2.5 pr-3.5 text-[13px] font-medium text-foreground shadow-[inset_0_0_0_1px_var(--color-border)] transition-shadow duration-200 hover:shadow-[inset_0_0_0_1px_var(--color-muted)]"
           >
-            <span
-              aria-hidden="true"
-              className={`mx-[3px] h-2 w-2 rounded-full ${
-                music === "on" ? "bg-accent" : "shadow-[inset_0_0_0_1.5px_var(--color-muted)]"
-              }`}
-            />
+            <span aria-hidden="true" className="flex h-4 w-4 items-center justify-center">
+              <NoteIcon
+                on={music === "on"}
+                className={`block h-[14px] w-[9px] ${music === "on" ? "text-accent" : "text-muted"}`}
+              />
+            </span>
             <span>{music === "on" ? menuToggleOn : music === "paused" ? menuTogglePaused : menuToggleOff}</span>
           </button>
         </div>
