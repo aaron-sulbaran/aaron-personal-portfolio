@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useReducedMotion } from "framer-motion";
 import { scrollToTarget } from "@/lib/scroll";
+import { whenHomeReady } from "@/lib/home/readiness";
 import { Portal } from "./Portal";
 
 // Four journey sections. Home is the entire hero: the entrance, the ring, and
@@ -106,27 +107,15 @@ export function ScrollProgress() {
     measure();
     update();
 
-    // Reveal the indicator once the hero entrance reaches "ready" (the hero
-    // exposes its phase via data-state), so Home is represented on the ring
-    // rather than the indicator only appearing at Work.
-    const hero = document.querySelector("[data-state]");
+    // Reveal the indicator once the home hero reports "ready" (the explicit
+    // readiness store in lib/home), so Home is represented on the hero rather
+    // than the indicator only appearing at Work.
     const reveal = () => {
       setVisible(true);
       measure();
       update();
     };
-    let mo: MutationObserver | null = null;
-    if (!hero || hero.getAttribute("data-state") === "ready") {
-      reveal();
-    } else {
-      mo = new MutationObserver(() => {
-        if (hero.getAttribute("data-state") === "ready") {
-          mo?.disconnect();
-          reveal();
-        }
-      });
-      mo.observe(hero, { attributes: true, attributeFilter: ["data-state"] });
-    }
+    const cancelReveal = whenHomeReady(reveal);
 
     // Re-measure after the pin spacer and font swaps settle (the hero pin is
     // created shortly after "ready", which shifts every section's top).
@@ -140,7 +129,7 @@ export function ScrollProgress() {
 
     return () => {
       if (raf) cancelAnimationFrame(raf);
-      mo?.disconnect();
+      cancelReveal();
       window.clearTimeout(settle);
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onResize);

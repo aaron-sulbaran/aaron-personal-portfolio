@@ -5,6 +5,7 @@ import { ChevronDown, ChevronUp } from "lucide-react";
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { siteContent, type HomeTile as HomeTileEntry, type Photo, type WorkItem } from "@/lib/content";
 import { useBodyScrollLock } from "@/lib/modal";
+import { useHomeReadinessPublisher } from "@/lib/home/readiness";
 import { readScrollY, saveScrollY } from "@/lib/scroll";
 import { EASE } from "@/lib/motion";
 import { gsap, ScrollTrigger, useGSAP } from "@/lib/gsap";
@@ -301,6 +302,9 @@ export function TileRing({ children }: Props) {
 
   const publicState: "pre" | "entering" | "ready" =
     phase === "ready" ? "ready" : phase === "hidden" ? "pre" : "entering";
+  // Publish the same phase to the explicit readiness store (lib/home) that
+  // SiteNav and ScrollProgress read; data-state below stays until slice 9.
+  useHomeReadinessPublisher(publicState);
 
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
   const [selectedWork, setSelectedWork] = useState<WorkItem | null>(null);
