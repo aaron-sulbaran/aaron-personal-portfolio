@@ -11,7 +11,7 @@ export function HeroText() {
   return (
     <h1
       id={HERO_HEADING_ID}
-      className="text-balance text-center font-serif text-display text-foreground group-data-[scene=on]/hero:sr-only"
+      className="text-balance text-center font-display text-display text-foreground group-data-[scene=on]/hero:sr-only"
     >
       {siteContent.hero.heading}
     </h1>

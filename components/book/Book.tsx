@@ -46,6 +46,6 @@ export function Book() {
 }
 
 const HEADING_CLASS =
-  "mb-[18px] font-serif text-[clamp(2.125rem,9vw,3rem)] leading-none tracking-[-0.02em] text-foreground min-[720px]:text-[clamp(2.125rem,3.2vw,3rem)]";
+  "mb-[18px] font-display text-[clamp(2.125rem,9vw,3rem)] leading-none tracking-[-0.02em] text-foreground min-[720px]:text-[clamp(2.125rem,3.2vw,3rem)]";
 
 const ITEM_CLASS = "reveal-item border-t border-border last:border-b";

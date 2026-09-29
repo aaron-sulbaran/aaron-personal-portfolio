@@ -78,6 +78,6 @@ const ROW_BASE =
 const ROW_CLASS = `${ROW_BASE} rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent`;
 
 const TITLE_CLASS =
-  "min-w-0 font-serif text-[clamp(1.125rem,1.5vw,1.375rem)] leading-[1.1] text-foreground transition-opacity duration-200 [.book-list:hover_.book-row:not(:hover)_&]:opacity-[0.55]";
+  "min-w-0 font-display text-[clamp(1.125rem,1.5vw,1.375rem)] leading-[1.1] text-foreground transition-opacity duration-200 [.book-list:hover_.book-row:not(:hover)_&]:opacity-[0.55]";
 
 const META_CLASS = "text-sm text-muted min-[720px]:whitespace-nowrap";
