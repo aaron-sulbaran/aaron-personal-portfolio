@@ -17,14 +17,14 @@ export function AboutIntro() {
     >
       <Reveal className="mx-auto flex max-w-6xl flex-col gap-6 md:gap-10">
         <div
-          className="reveal-item flex items-center gap-3 text-[11px] font-medium uppercase tracking-caps text-muted"
+          className="reveal-item flex items-center gap-3 text-sm text-muted"
           style={revealIndex(0)}
         >
           <span className="inline-block h-px w-8 bg-border" aria-hidden="true" />
           <span>{label}</span>
         </div>
         <h2
-          className="reveal-mask font-serif text-[clamp(4rem,10vw,8rem)] italic leading-[0.95] tracking-tight text-foreground"
+          className="reveal-mask font-display text-display-xl text-foreground"
           style={revealIndex(1)}
         >
           <span className="block">{heading}</span>

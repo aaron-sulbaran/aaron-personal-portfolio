@@ -62,7 +62,7 @@ export function ListenInvite() {
     >
       <Reveal className="mx-auto flex w-full max-w-2xl flex-col items-center gap-6 text-center">
         <p
-          className="reveal-item flex items-center gap-3 text-[11px] font-medium uppercase tracking-caps text-muted"
+          className="reveal-item flex items-center gap-3 text-sm text-muted"
           style={revealIndex(0)}
         >
           <span className="inline-block h-px w-8 bg-border" aria-hidden="true" />
@@ -70,7 +70,7 @@ export function ListenInvite() {
           <span className="inline-block h-px w-8 bg-border" aria-hidden="true" />
         </p>
         <p
-          className="reveal-mask font-serif text-[clamp(2.5rem,5vw,4.25rem)] italic leading-[1.05] tracking-tight text-foreground"
+          className="reveal-mask font-display text-display-md text-foreground"
           style={revealIndex(1)}
         >
           <span className="block">{c.line}</span>
@@ -96,9 +96,9 @@ export function ListenInvite() {
               onClick={() => startSoundtrack()}
               disabled={answered}
               data-cursor-hover
-              className="group font-serif text-2xl italic text-accent transition-colors duration-200 hover:text-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-default md:text-3xl"
+              className="group font-display text-2xl text-accent transition-colors duration-200 hover:text-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-default md:text-3xl"
             >
-              <span className="underline decoration-accent/40 decoration-1 underline-offset-[3.5px] [text-decoration-skip-ink:auto] transition-[text-decoration-color] duration-200 group-hover:decoration-accent">
+              <span className="underline decoration-accent decoration-1 underline-offset-[3.5px] [text-decoration-skip-ink:auto] transition-[text-decoration-color] duration-200 group-hover:decoration-accent">
                 {c.accept}
               </span>
             </button>

@@ -80,28 +80,28 @@ export function DefinitionModal({ definition, morph, onClose }: DefinitionModalP
           <motion.div
             variants={panelVariants}
             onMouseDown={(e) => e.stopPropagation()}
-            className="relative my-auto flex w-full max-w-lg flex-col gap-4 rounded-2xl border border-border/60 bg-background/85 p-6 shadow-[0_40px_80px_-20px_rgba(10,10,10,0.45)] backdrop-blur-xl md:p-8"
+            className="relative my-auto flex w-full max-w-lg flex-col gap-4 rounded-2xl border border-border bg-background/85 p-6 shadow-[0_40px_80px_-20px_rgba(10,10,10,0.45)] backdrop-blur-xl md:p-8"
           >
             <button
               type="button"
               onClick={onClose}
               aria-label={siteContent.modals.closeAriaLabel}
-              className="absolute right-3 top-3 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full border border-border/70 bg-background/80 text-foreground transition-colors duration-200 hover:text-accent"
+              className="absolute right-3 top-3 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-background/80 text-foreground transition-colors duration-200 hover:text-accent"
             >
               <X aria-hidden="true" className="h-4 w-4" />
             </button>
 
-            <h2 className="max-w-[85%] font-serif text-3xl leading-[1.15] text-foreground md:text-4xl">
+            <h2 className="max-w-[85%] font-display text-3xl leading-[1.15] text-foreground md:text-4xl">
               {definition.titlePrefix}{" "}
               {morph ? (
                 <motion.span
                   layoutId={`def-${definition.term}`}
-                  className="inline-block italic text-accent"
+                  className="inline-block text-accent"
                 >
                   {definition.term}
                 </motion.span>
               ) : (
-                <span className="italic text-accent">{definition.term}</span>
+                <span className="text-accent">{definition.term}</span>
               )}
             </h2>
 
@@ -109,8 +109,8 @@ export function DefinitionModal({ definition, morph, onClose }: DefinitionModalP
               {definition.body}
             </p>
 
-            <p className="mt-1 text-[11px] font-medium uppercase tracking-caps text-muted">
-              Press esc to close
+            <p className="mt-1 text-sm text-muted">
+              Press Esc to close
             </p>
           </motion.div>
         </motion.div>

@@ -13,23 +13,22 @@ const NAV_LINKS = [
   { label: "Connect", href: "#connect" },
 ] as const;
 
-// The favicon mark, inlined so the nav logo stays consistent with the browser
-// tab icon. Fixed brand colors by design (a small accent chip in both themes).
+// The AS bolt from public/brand/as-bolt-ink.svg, inlined in currentColor so it
+// reads ink in light and paper in dark through the text token. At the bar's
+// 28px the bolt stands alone; the full AS mark is for 32px and up.
 function BrandMark() {
   return (
-    <svg width="28" height="28" viewBox="0 0 32 32" aria-hidden="true">
-      <rect width="32" height="32" rx="7" fill="#1B3A5C" />
-      <text
-        x="16.5"
-        y="24.5"
-        textAnchor="middle"
-        fontFamily="Instrument Serif, Georgia, 'Times New Roman', serif"
-        fontStyle="italic"
-        fontSize="25"
-        fill="#FAFAF7"
-      >
-        A
-      </text>
+    <svg
+      width="28"
+      height="28"
+      viewBox="-5 -3.89 263.78 263.78"
+      aria-hidden="true"
+      className="text-foreground"
+    >
+      <path
+        d="M73.34 92.98L154.4 24.96L127.31 92L189.81 105.29L120.27 231.04L146.46 133.69L63.97 116.16Z"
+        fill="currentColor"
+      />
     </svg>
   );
 }
@@ -134,7 +133,7 @@ export function SiteNav() {
           : { duration: 0.4, ease: [0.22, 1, 0.36, 1] }
       }
       aria-hidden={!shown}
-      className="fixed inset-x-0 top-0 z-30 border-b border-border/60 bg-background/80 backdrop-blur-md"
+      className="fixed inset-x-0 top-0 z-30 border-b border-border bg-background/80 backdrop-blur-md"
     >
       <nav
         aria-label="Primary"
@@ -163,7 +162,7 @@ export function SiteNav() {
                     navigate(link.href);
                   }}
                   data-cursor-hover
-                  className={`text-[11px] font-medium uppercase tracking-caps transition-colors duration-200 hover:text-accent focus-visible:text-accent ${
+                  className={`text-sm transition-colors duration-200 hover:text-accent focus-visible:text-accent ${
                     active ? "text-accent" : "text-muted"
                   }`}
                 >

@@ -67,7 +67,7 @@ export function HomeHero() {
         }}
         aria-hidden={!heroVisible}
       >
-        <h1 className="font-serif text-display-lg italic">{renderName(name)}</h1>
+        <h1 className="font-display text-display-lg">{renderName(name)}</h1>
         <p className="mt-4 max-w-[44vmin] text-sm leading-relaxed text-muted sm:text-base md:mt-6 md:text-body-lg md:leading-[1.55]">
           {renderTagline(tagline, definitions, { interactive, morph, onOpen: openDefinition })}
         </p>
@@ -132,7 +132,7 @@ function renderTagline(
   });
 }
 
-// One interactive hero word. Accent serif italic (matching the modal title so
+// One interactive hero word. Accent display face (matching the modal title so
 // the shared-layout morph keeps one font) plus a subtle underline that
 // strengthens on hover. Inert until the hero is visible and no modal is open,
 // so nothing is focusable while the container is aria-hidden.
@@ -165,7 +165,7 @@ function DefinitionTrigger({
       data-cursor-hover
       aria-haspopup="dialog"
       aria-label={`${def.titlePrefix} ${def.term}`}
-      className="group font-serif italic text-accent transition-colors duration-200 hover:text-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-default"
+      className="group font-display text-accent transition-colors duration-200 hover:text-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-default"
     >
       {morph ? (
         <motion.span layoutId={`def-${term}`} className={`inline-block ${underlineClasses}`}>

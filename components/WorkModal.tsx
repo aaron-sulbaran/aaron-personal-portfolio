@@ -84,14 +84,14 @@ export function WorkModal({ item, onClose, renderMedia = false }: WorkModalProps
           />
           <motion.div
             variants={panelVariants}
-            className="relative my-auto flex w-full max-w-xl flex-col gap-6 overflow-hidden rounded-2xl border border-border/60 bg-background/85 p-6 shadow-[0_40px_80px_-20px_rgba(10,10,10,0.45)] backdrop-blur-xl md:p-10"
+            className="relative my-auto flex w-full max-w-xl flex-col gap-6 overflow-hidden rounded-2xl border border-border bg-background/85 p-6 shadow-[0_40px_80px_-20px_rgba(10,10,10,0.45)] backdrop-blur-xl md:p-10"
             onMouseDown={(e) => e.stopPropagation()}
           >
             <button
               type="button"
               onClick={onClose}
               aria-label={siteContent.modals.closeAriaLabel}
-              className="absolute right-3 top-3 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full border border-border/70 bg-background/80 text-foreground transition-colors duration-200 hover:text-accent"
+              className="absolute right-3 top-3 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-background/80 text-foreground transition-colors duration-200 hover:text-accent"
             >
               <X aria-hidden="true" className="h-4 w-4" />
             </button>
@@ -122,16 +122,16 @@ export function WorkModal({ item, onClose, renderMedia = false }: WorkModalProps
                 )}
               </div>
               <div className="flex flex-col gap-1">
-                <span className="text-[11px] font-medium uppercase tracking-caps text-muted">
+                <span className="text-sm text-muted">
                   {item.role} · {item.year}
                 </span>
-                <h2 className="font-serif text-3xl italic leading-tight text-foreground md:text-4xl">
+                <h2 className="font-display text-3xl leading-tight text-foreground md:text-4xl">
                   {item.title}
                 </h2>
               </div>
             </div>
 
-            <p className="text-base leading-relaxed text-foreground/90 md:text-lg md:leading-[1.55]">
+            <p className="text-base leading-relaxed text-foreground md:text-lg md:leading-[1.55]">
               {item.teaser}
             </p>
 
@@ -144,8 +144,8 @@ export function WorkModal({ item, onClose, renderMedia = false }: WorkModalProps
                 {cta}
                 <ArrowRight aria-hidden="true" className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
               </Link>
-              <span className="text-[11px] font-medium uppercase tracking-caps text-muted">
-                {renderMedia ? "Tap outside to close" : "Press esc to close"}
+              <span className="text-sm text-muted">
+                {renderMedia ? "Tap outside to close" : "Press Esc to close"}
               </span>
             </div>
           </motion.div>

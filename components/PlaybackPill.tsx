@@ -309,8 +309,7 @@ function PillInner() {
     borderRadius: 999,
     color: "var(--color-muted)",
     fontSize: 11,
-    fontFamily: "var(--font-grotesk)",
-    letterSpacing: "0.04em",
+    fontFamily: "var(--font-sans)",
   };
 
   const expandedStyle: CSSProperties = {
@@ -398,7 +397,7 @@ function PillInner() {
               <span
                 style={{
                   display: "block",
-                  fontFamily: "var(--font-serif)",
+                  fontFamily: "var(--font-display)",
                   fontSize: 19,
                   lineHeight: 1.15,
                   color: "var(--color-foreground)",
@@ -514,10 +513,8 @@ function PillInner() {
           >
             <span
               style={{
-                fontFamily: "var(--font-grotesk)",
-                fontSize: 10,
-                letterSpacing: "0.12em",
-                textTransform: "uppercase",
+                fontFamily: "var(--font-sans)",
+                fontSize: 12,
                 color: "var(--color-muted)",
               }}
             >
@@ -547,7 +544,7 @@ function PillInner() {
           <p
             style={{
               margin: 0,
-              fontFamily: "var(--font-serif)",
+              fontFamily: "var(--font-sans)",
               fontSize: 18,
               lineHeight: 1.35,
               color: "var(--color-foreground)",
