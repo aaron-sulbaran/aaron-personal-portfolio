@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { COIL } from "@/lib/coil/constants";
-import { mod } from "@/lib/coil/geometry";
+import { mod, poseAt, projectPoint, restHelix, solveGeometry } from "@/lib/coil/geometry";
 import {
   addWheel,
   createConveyor,
@@ -109,23 +109,73 @@ describe("hover-jump glide", () => {
     expect(conveyor.glide).toBeNull();
   });
 
-  it("brings the nearest copy of the tile to a front-facing whole turn near the row's height", () => {
-    const N = 14;
-    const cpt = 8;
-    for (const [tile, offset, uAt] of [
-      [0, 0, 0],
-      [5, -17.3, 4.1],
-      [13, 40.6, -9.5],
-      [7, -3.9, 12],
-    ]) {
-      const to = hoverJumpTarget(tile, offset, N, uAt, cpt);
-      // The copy that lands: some strand position p with p mod N = tile, at u = p + to.
-      const arrival = Math.round(uAt / cpt) * cpt;
-      const candidates = [-cpt, 0, cpt].map((k) => arrival + k);
-      const landed = candidates.find((u) => Math.abs(u - to - Math.round(u - to)) < 1e-9 && mod(Math.round(u - to), N) === tile);
-      expect(landed).toBeDefined();
-      expect(Math.abs(to - offset)).toBeLessThanOrEqual(N / 2 + cpt);
+  // The real rest helix at 1440x900 (the review's pane): whole turns of 8
+  // cards project to y 936, 407 and -58, so only the center turn's front is
+  // ever on the pane, at its middle.
+  const geo = solveGeometry({ width: 1440, height: 900 }, 14);
+  const frame = restHelix(geo);
+  const N = geo.cardCount;
+  const cpt = geo.cardsPerTurn;
+  const maxU = geo.slotCount / 2 - COIL.lab.endFadeSlots;
+  const project = (u: number) => projectPoint(geo.camera, poseAt(frame, u).position);
+  const pane = { left: 54, right: 1386 };
+  // The landing is a copy of the tile: the result's offset puts strand
+  // position (arrival - to), which is that tile mod N, at the arrival.
+  const landing = (tile: number, offset: number, band: typeof pane & { top: number; bottom: number }) => {
+    const { to, arrival } = hoverJumpTarget(tile, offset, N, cpt, maxU, project, band);
+    expect(arrival).not.toBeNull();
+    const copy = (arrival as number) - to;
+    expect(copy).toBeCloseTo(Math.round(copy), 9);
+    expect(mod(Math.round(copy), N)).toBe(tile);
+    return { to, u: arrival as number };
+  };
+
+  it("lands the copy whose center falls inside the visible band, front-facing when it can", () => {
+    // Hero fully on screen: the front of the center turn.
+    const full = { ...pane, top: 54, bottom: 720 };
+    for (const [tile, offset] of [[0, 0], [5, -17.3], [13, 40.6], [7, -3.9]]) {
+      expect(landing(tile, offset, full).u).toBe(0);
     }
+    // Scrolled 450px: only the lower half shows, and the center turn (y 407)
+    // is off screen, so a card near the front lands inside the band instead.
+    const lower = { ...pane, top: 504, bottom: 720 };
+    for (const [tile, offset] of [[0, 0], [5, -17.3], [13, 40.6]]) {
+      const { u } = landing(tile, offset, lower);
+      const y = project(u).y;
+      expect(y).toBeGreaterThanOrEqual(504);
+      expect(y).toBeLessThanOrEqual(720);
+      expect(Math.abs(u - cpt * Math.round(u / cpt))).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it("takes the shortest glide among copies that land equally well", () => {
+    const full = { ...pane, top: 54, bottom: 720 };
+    const offset = 3.2;
+    const { to } = landing(2, offset, full);
+    // Copies of tile 2 sit 14 apart, so the u = 0 arrival is reached from
+    // offset 3.2 by the nearest of -2, 12, -16: -2.
+    expect(to).toBe(-2);
+  });
+
+  it("glides to the landing nearest the band when none is inside it", () => {
+    // The hero has scrolled off the top: the band collapses to its bottom edge.
+    const gone = { ...pane, top: 1400, bottom: 720 };
+    const { u } = landing(4, 0, gone);
+    const best = Math.abs(project(u).y - 720);
+    for (let k = -2; k <= 2; k++) {
+      for (const step of [0, -0.5, 0.5, -1, 1]) {
+        const v = k * cpt + step;
+        if (Math.abs(v) > maxU) continue;
+        const p = project(v);
+        if (p.x < pane.left || p.x > pane.right) continue;
+        expect(Math.abs(p.y - 720)).toBeGreaterThanOrEqual(best - 1e-9);
+      }
+    }
+  });
+
+  it("stays put when no landing is on the pane", () => {
+    const nowhere = { top: 0, bottom: 900, left: 5000, right: 6000 };
+    expect(hoverJumpTarget(3, 7.25, N, cpt, maxU, project, nowhere)).toEqual({ to: 7.25, arrival: null });
   });
 });
 
