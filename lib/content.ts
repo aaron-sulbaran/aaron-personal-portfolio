@@ -133,6 +133,13 @@ export const siteContent = {
     listControl: "Work and photos",
     coilControl: "Coil",
   },
+  // The Coil's loader: the name it fills while the page loads (the same word
+  // the scene draws, so the exit hands one to the other) and the progress
+  // bar's accessible name. The number itself carries no status word.
+  loader: {
+    name: "Aaron",
+    progressLabel: "Loading the site",
+  },
   // The book under the Coil hero (#work): Work then Photos, text first. Keys
   // match homeTiles keys where a card exists, so "seen" is shared with the
   // cards. Work targets: "case" opens /work/[slug], "external" opens a live
