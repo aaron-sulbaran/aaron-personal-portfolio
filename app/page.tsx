@@ -70,8 +70,8 @@ export default function Home() {
 
 // The Coil home: the controller owns the hero (the server-rendered greeting,
 // and the scene from slice 3) and the book directly under it at #work, then
-// the surviving sections. No #hero-pin: nothing pins. The waveform, playback
-// pill keep their ring-era triggers until slice 5.
+// the surviving sections. No #hero-pin: nothing pins. The waveform and the
+// playback pill ramp in from the Listen invite (#listen, after the book).
 function CoilHome() {
   return (
     <>
