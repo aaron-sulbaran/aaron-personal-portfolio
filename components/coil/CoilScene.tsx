@@ -54,6 +54,7 @@ import { entranceClock, entranceHelix, entranceNameAlpha, entrancePose, isRested
 import { createUnwind, unwindPose, unwindProgress } from "@/lib/coil/unwind";
 import { fieldTime } from "@/lib/coil/drift";
 import { budgetFor, sameBudget, type InputDriver } from "@/lib/coil/drivers";
+import { Observer } from "@/lib/gsap";
 import { COMPOSITE_FRAG, COMPOSITE_VERT, FIELD, FIELD_FRAG, FULLSCREEN_VERT } from "@/lib/coil/field.glsl";
 import { createCardGeometry, createCardMaterial, type CardUniforms, type SharedCardUniforms } from "@/lib/coil/material";
 import { loadCardSource, paintCard, paintNameMask, type CardSource } from "@/lib/coil/textures";
@@ -217,6 +218,11 @@ function headerClearance(pose: CardPose, geo: CoilGeometry, camera: Camera) {
 // sync: the props changed (the input driver may have, and with it the budget).
 type CoilRuntime = { wake: () => void; sync: () => void; dispose: () => void };
 
+// Slice 7, the touch drag: a released flick coasts on this time constant (an
+// exponential throw, distance = velocity * tau) and settles on a card.
+const COAST_TAU_S = 0.325;
+const COAST_SETTLED_CARDS = 0.002;
+const DRAG_MINIMUM_PX = 4;
 const TEXTURE_TIMEOUT_MS = 6000; // the loader's give-up time: a slow photo paints the plain pane
 const GESTURE_GAP_MS = 260; // wheel events closer than this are one gesture (the lab's value)
 const CLICK_SLOP_PX = 6;
@@ -424,6 +430,10 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   let frozenByApi = false;
   let contextLost = false;
   let firstFrameSent = false;
+  // ---- slice 7 state: the touch drag and its coast ----
+  let dragging = false;
+  let coast: { rest: number } | null = null;
+  // ---- end slice 7 state ----
   // ---- slice 4 state: the entrance clock and the name handoff ----
   let nameBox: { left: number; baseline: number; inkWidth: number; size: number; maskTop: number; maskHeight: number } | null =
     null;
@@ -738,13 +748,19 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
 
     const previous = conveyor.offset;
     if (!posterMode) {
+      // Slice 7: a released drag's throw decays into the target, which the
+      // one smoothing stage and the speed cap then carry, as for the wheel.
+      if (coast) conveyor.target += (coast.rest - conveyor.target) * (1 - Math.exp(-dt / COAST_TAU_S));
       stepConveyor(conveyor, {
         dt,
         nowMs: now,
-        idleWeight: 1,
+        // The idle drift waits while a finger holds or throws the coil, so
+        // the coast lands exactly on its card.
+        idleWeight: dragging || coast ? 0 : 1,
         pageScrollPx: props.interactive ? scrollDelta : 0,
       });
       stepEnvelope(envelope, conveyor.excessVelocity, dt);
+      if (coast && Math.abs(coast.rest - conveyor.offset) < COAST_SETTLED_CARDS) coast = null;
     }
     if (debug) {
       push(debug.steps, conveyor.offset - previous);
@@ -764,6 +780,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       conveyor.velocity = 0;
       conveyor.excessVelocity = 0;
       conveyor.glide = null;
+      coast = null; // slice 7
     }
     helix = entranceHelix(helix, geo, clock);
     {
@@ -1239,6 +1256,68 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   }
   // ---- end slice 5 ----
 
+  // ---- slice 7: the coarse pointer's drag-to-spin ----
+  // The hero is touch-action: pan-y, so the browser keeps every vertical swipe
+  // (a swipe starting on a card scrolls the page, never hijacked) and hands
+  // horizontal ones to this Observer, which locks each gesture to its first
+  // axis. A horizontal drag moves the conveyor's target under the finger (the
+  // front card follows it); the release throws it, and the throw coasts
+  // through the same smoothing stage and speed cap and settles on a card. A
+  // new touch catches a coasting coil. Nothing before the entrance ends, while
+  // frozen or unwound, or on a fine pointer (its wheel and hover do the work).
+  let pressScrollY = 0;
+  function canDrag() {
+    const props = live.current;
+    return ready && props.interactive && props.input === "coarse" && !props.frozen && !frozenByApi && !unwind.on;
+  }
+  // Cards per px of horizontal finger travel: the front card's arc per card,
+  // across the screen.
+  function dragCardsPerPx() {
+    if (!geo) return 0;
+    return 1 / Math.max(1, geo.step * geo.cardPx * Math.cos(geo.axisRad));
+  }
+  const dragObserver = Observer.create({
+    target: host,
+    type: "touch",
+    lockAxis: true,
+    dragMinimum: DRAG_MINIMUM_PX,
+    onPress: () => {
+      pressScrollY = window.scrollY;
+      if (coast) {
+        conveyor.target = conveyor.offset;
+        coast = null;
+      }
+    },
+    onDrag: (self) => {
+      // The page moved: the browser took this gesture as a vertical pan.
+      if (self.axis !== "x" || Math.abs(window.scrollY - pressScrollY) > 2 || !canDrag()) return;
+      dragging = true;
+      conveyor.glide = null;
+      conveyor.target += self.deltaX * dragCardsPerPx();
+      wake();
+    },
+    onRelease: (self) => {
+      if (!dragging) return;
+      dragging = false;
+      if (!canDrag()) return;
+      const cap = COIL.spinCapCardsPerSecond;
+      const velocity = Math.min(cap, Math.max(-cap, self.velocityX * dragCardsPerPx()));
+      coast = { rest: Math.round(conveyor.target + velocity * COAST_TAU_S) };
+      wake();
+    },
+  });
+  if (debug) {
+    (debug as DebugStats & { drag?: () => object }).drag = () => ({
+      dragging,
+      coast: coast?.rest ?? null,
+      offset: conveyor.offset,
+      target: conveyor.target,
+      velocity: conveyor.velocity,
+      cardsPerPx: dragCardsPerPx(),
+    });
+  }
+  // ---- end slice 7 ----
+
   // ---- boot: the name's face and every card's sources, then the first frame
   const style = getComputedStyle(document.documentElement);
   nameFamily = style.getPropertyValue("--font-display").trim() || "sans-serif";
@@ -1318,6 +1397,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       host.removeEventListener("pointerup", onPointerUp);
       canvas.removeEventListener("webglcontextlost", onContextLost);
       slice5Dispose();
+      dragObserver.kill(); // slice 7
       repaints.clear();
       setSceneHover(false);
       live.current.overlay.current?.nudge(null);

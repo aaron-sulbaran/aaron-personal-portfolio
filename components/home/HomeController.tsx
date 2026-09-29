@@ -406,7 +406,9 @@ export function HomeController({ hero, children }: Props) {
         data-scene={sceneOn ? "on" : "off"}
         data-composition={drivers.composition}
         data-input={drivers.input}
-        className="group/hero relative flex min-h-[100svh] w-full items-center justify-center px-6 md:px-10"
+        // Slice 7: the browser keeps every vertical swipe (and pinch zoom);
+        // horizontal ones reach the scene's drag-to-spin.
+        className="group/hero relative flex min-h-[100svh] w-full items-center justify-center px-6 [touch-action:pan-y_pinch-zoom] md:px-10"
       >
         <CoilStage
           reducedMotion={reducedMotion}
