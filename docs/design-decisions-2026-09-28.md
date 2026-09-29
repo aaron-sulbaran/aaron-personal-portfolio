@@ -152,6 +152,16 @@ Picked by Aaron from hero lab 2, 2026-09-29 (the build starts on these; see `doc
 - [ ] "No gradients on section backgrounds": unchanged unless you pick D.
 - [ ] Glassmorphism paragraph: the Menu panel has no blur; the pill keeps its small blur.
 
+## 9a. Surfaced by the overnight build (2026-09-29), yours in the morning
+
+- [ ] The Profa file in `app/fonts/` is the trial cut: it draws a "personal use only" stamp for `*`, `;` and `@`. Slice 2 routes those three glyphs to the fallback font. Drop the full cut from your asset pack into `app/fonts/` (same filename or update `lib/fonts.ts`) and the workaround goes.
+- [ ] Codex reviews are off: the workspace spend cap was hit during the slice 0 review. Every PR tonight carries a Fable-only review, stated in each merge note. Raise the cap or accept Fable-only until launch.
+- [ ] Translucent token classes (`bg-background/70`, `/80`, `/85` in the three modals and SiteNav) generate no CSS under Tailwind 3 with `var()` colors, so those surfaces render transparent today. Slice 2 fixed the border and text cases; the background ones need an alpha-capable token (own small PR).
+- [ ] Case page meta reads "Product Manager Intern · 2025"; the label rule is "Capital One, product manager intern, 2025". Slice 8 (content).
+- [ ] Slice 2 removed the "01" to "04" markers in UpToNow per the numbers rule; the Menu's numbers go with slice 6. Say if you want any number back.
+- [ ] Vercel project Node version must be 20.9 or newer before the production flip (Next 16 floor).
+- [ ] Builder commits are credited to Claude Opus 5.5, the model that wrote them; Fable's line is on the docs commits.
+
 ## 9. Still yours
 
 - [ ] The logo code string (section 5).
