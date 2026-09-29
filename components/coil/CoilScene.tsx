@@ -348,6 +348,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     uInk: { value: new Color() },
     uPaper: { value: new Color() },
     uSheen: { value: theme.card.sheen },
+    uSeam: { value: FIELD.seamFade },
   };
   const cardGeometry = createCardGeometry();
   type Slot = { mesh: Mesh; uniforms: CardUniforms; tile: number; hover: number };
