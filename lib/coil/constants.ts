@@ -16,8 +16,6 @@ function deepFreeze<T extends object>(value: T): DeepReadonly<T> {
   return Object.freeze(value) as DeepReadonly<T>;
 }
 
-export type CaptureMode = "cards" | "silhouette";
-
 const values = {
   // Geometry. Card height and gaps are in card units (height 1, width `aspect`).
   axisDeg: 33,
@@ -61,9 +59,15 @@ const values = {
     cardsPerPixel: 0.0045,
     pageScrollCardsPerPixel: 1 / 150, // page scroll turns the coil (on)
   },
+  // Wheel capture, decided once per gesture (lib/coil/capture.ts): a gesture
+  // starting inside the helix silhouette (gaps between cards included) with
+  // the hero at least half in view is the coil's from its first event, with
+  // no hover intent. Aaron, 2026-09-29, superseding table 1.1's "cards only,
+  // 400ms hover intent" after testing the build.
   capture: {
-    mode: "cards" as CaptureMode, // pointer over a card, not the whole silhouette
-    hoverIntentMs: 400,
+    hoverIntentMs: 400, // retired with the scene wiring
+    gestureGapMs: 260, // wheel events closer than this are one gesture (the lab's value)
+    heroVisibleMin: 0.5,
     nudgeAfterMs: 2600,
   },
 
