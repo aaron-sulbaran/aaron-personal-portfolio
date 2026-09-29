@@ -123,6 +123,11 @@ export type CoilGeometry = {
   readonly bandCardWorld: number; // the closed entrance band's card size
   readonly axisDir: Vec2; // the axis on screen, toward the top left (y down)
   readonly axisPerp: Vec2;
+  // Narrow panes keep a band at the top free of cards (the header and the
+  // greeting's line): CSS px from the pane's top, 0 when wide. The coil is
+  // centered in the pane below it, so its center sits half the band lower.
+  readonly clearTopPx: number;
+  readonly center: Vec3; // the helix center in world units
 };
 
 // Distance from the pane center to its edge along (dx, dy).
@@ -136,6 +141,12 @@ export function isNarrow(viewport: Viewport, c: CoilConstants = COIL) {
   return viewport.width / viewport.height < c.narrow.aspectBelow;
 }
 
+// The card-free band at the top of a narrow pane: the header, then the
+// greeting's line.
+export function clearTopFor(viewport: Viewport, c: CoilConstants = COIL) {
+  return isNarrow(viewport, c) ? c.narrow.headerClearPx + c.narrow.introBandPx : 0;
+}
+
 export function solveGeometry(viewport: Viewport, cardCount: number, c: CoilConstants = COIL): CoilGeometry {
   const W = viewport.width;
   const H = viewport.height;
@@ -143,6 +154,10 @@ export function solveGeometry(viewport: Viewport, cardCount: number, c: CoilCons
   const narrow = isNarrow(viewport, c);
   // On a narrow pane the diagonal relaxes toward vertical with fewer cards per turn.
   const axisDeg = narrow ? c.axisDeg * c.narrow.axisFactor : c.axisDeg;
+  const strandFit = narrow ? c.narrow.strandFit : c.strandFit;
+  const clearTopPx = clearTopFor(viewport, c);
+  // The region the coil spans: the pane under the clear band.
+  const regionCenterY = clearTopPx + (H - clearTopPx) / 2;
   const cardsPerTurn = narrow ? Math.min(c.cardsPerTurn, c.narrow.maxCardsPerTurn) : c.cardsPerTurn;
   const axisRad = axisDeg * DEG;
   const leanRad = c.camera.leanDeg * DEG;
@@ -169,8 +184,8 @@ export function solveGeometry(viewport: Viewport, cardCount: number, c: CoilCons
         for (let i = 0; i <= 10; i++) {
           const s = -half + (2 * half * i) / 10;
           const x = W / 2 + sign * (t - inner) * axisDir.x + s * axisPerp.x;
-          const y = H / 2 + sign * (t - inner) * axisDir.y + s * axisPerp.y;
-          if (x > -margin && x < W + margin && y > -margin && y < H + margin) return false;
+          const y = regionCenterY + sign * (t - inner) * axisDir.y + s * axisPerp.y;
+          if (x > -margin && x < W + margin && y > clearTopPx - margin && y < H + margin) return false;
         }
       }
       return true;
@@ -189,7 +204,7 @@ export function solveGeometry(viewport: Viewport, cardCount: number, c: CoilCons
   let need = slotsFor(cardPx);
   let spans = true;
   let slotCount: number;
-  if (c.strandFit === "exact") {
+  if (strandFit === "exact") {
     // No repeats: grow the cards until N slots span the pane, or give up spanning.
     if (need > cardCount) {
       if (slotsFor(kPerp) > cardCount) {
@@ -207,12 +222,13 @@ export function solveGeometry(viewport: Viewport, cardCount: number, c: CoilCons
       }
       need = slotsFor(cardPx);
     }
+    // Exactly N, odd or even: an extra slot would repeat a card.
     slotCount = cardCount;
   } else {
     slotCount = Math.max(cardCount, need);
+    // Even, so the window is symmetric about the center slot.
+    if (slotCount % 2 === 1) slotCount += 1;
   }
-  // Even, so the window is symmetric about the center slot.
-  if (slotCount % 2 === 1) slotCount += 1;
 
   // The entrance's closed band: every card on one turn, sized to fit across the pane.
   const bandRadius = (cardCount * step) / TAU;
@@ -241,6 +257,8 @@ export function solveGeometry(viewport: Viewport, cardCount: number, c: CoilCons
     bandCardWorld: bandPx * camera.worldPerPx,
     axisDir,
     axisPerp,
+    clearTopPx,
+    center: [0, -(clearTopPx / 2) * camera.worldPerPx, 0],
   };
 }
 
@@ -270,7 +288,7 @@ export function restHelix(geo: CoilGeometry, recede: number = COIL.lab.recedeLig
     axisRad: geo.axisRad,
     leanRad: geo.leanRad,
     curvature: c.curvature,
-    center: [0, 0, 0],
+    center: geo.center,
     slotCount: geo.slotCount,
     recede,
   };
