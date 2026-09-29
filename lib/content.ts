@@ -271,7 +271,8 @@ export const siteContent = {
     ] as HoldingSocial[],
   },
   footer: {
-    tagline: "This site grows with me. Last updated June 2026",
+    // The month comes from the build (lib/buildDate.ts).
+    tagline: (month: string) => `This site grows with me. Last updated ${month}`,
     copyright: "© 2026 Aaron Sulbaran",
   },
   // Private recruiting dashboard at /recruiting (app/recruiting/page.tsx),
