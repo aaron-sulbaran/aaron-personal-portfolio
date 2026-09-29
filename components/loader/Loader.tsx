@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, useRef } from "react";
 import { siteContent } from "@/lib/content";
 import { gsap } from "@/lib/gsap";
 import { siteEase } from "@/lib/coil/motion";
-import { LOADER, displayPercent, homeLoad, reportHomeLoad } from "@/lib/loader/progress";
+import { LOADER, coilDebugFlags, displayPercent, homeLoad, reportHomeLoad } from "@/lib/loader/progress";
 import { landName, nameTarget } from "@/lib/loader/handoff";
 import { landing, landingGradient, landingOpacity, landingTransform, parseRgb } from "@/lib/loader/continuity";
 import { LOADER_CSS, LOADER_NOSCRIPT, LOADER_SKIP_SCRIPT } from "./loaderMarkup";
@@ -72,8 +72,23 @@ export function Loader({ mode, onReveal }: Props) {
     const home = root?.parentNode;
     if (!root || !home) return;
     mountedAtRef.current = performance.now();
+    // Re-inserting a node restarts its CSS animations, which would re-arm the
+    // guard (and flash a loader already showing), so they carry their clocks over.
+    const clocks = root.getAnimations?.({ subtree: true }).map((a) => ({
+      name: (a as CSSAnimation).animationName,
+      target: (a.effect as KeyframeEffect | null)?.target ?? null,
+      time: a.currentTime,
+    }));
     root.setAttribute("data-js", "");
     document.body.appendChild(root);
+    if (clocks?.length) {
+      root.getAnimations({ subtree: true }).forEach((a) => {
+        const name = (a as CSSAnimation).animationName;
+        const target = (a.effect as KeyframeEffect | null)?.target ?? null;
+        const before = clocks.find((c) => c.name === name && c.target === target);
+        if (before && typeof before.time === "number") a.currentTime = before.time;
+      });
+    }
     return () => {
       if (root.parentNode !== home) home.appendChild(root);
     };
@@ -172,6 +187,8 @@ function runLoader(
   let finishing = false;
   let timeline: gsap.core.Timeline | null = null;
   let holdTimer = 0;
+  const note = debugLog(root);
+  note("run", { reduced, items: tally ? tally.progress() : null });
 
   // The name's face: Profa's real metrics, once loaded, then the tally hears it.
   const family = getComputedStyle(document.documentElement).getPropertyValue("--font-display").trim() || "sans-serif";
@@ -188,6 +205,8 @@ function runLoader(
     const percent = displayPercent(shown, done && shown >= 1);
     num.textContent = String(percent);
     pane.setAttribute("aria-valuenow", String(percent));
+    // Full: the whole name in the accent (no paper hairline above the clip).
+    if (shown >= 1) root.setAttribute("data-full", "");
   };
 
   const guardPassed = () => {
@@ -207,21 +226,26 @@ function runLoader(
     tally?.check(now);
     const target = tally ? tally.progress() : 1;
     const done = tally ? tally.done() : true;
-    shown += (target - shown) * (1 - Math.exp(-dt * 12));
+    // A short, honest ease toward the tally, never slower than 1.5 per second.
+    shown += Math.max((target - shown) * (1 - Math.exp(-dt * 12)), Math.min(target - shown, 1.5 * dt));
     if (target - shown < 0.002) shown = target;
     paint(done);
+    note("frame", { tally: target, shown, done });
     if (done && !finishing) {
       finishing = true;
       if (!guardPassed()) {
         // Everything was ready inside the guard: straight to the hero.
         gone();
+        note("skipped");
         reveal(performance.now(), false);
         return;
       }
       const numberTime = animationTime(count, "coil-loader-count");
       if (numberTime !== null && numberTime < LOADER.numberAfterMs) count.setAttribute("data-hidden", "");
+      note("done", { numberTime, numberHidden: count.hasAttribute("data-hidden"), gaveUp: tally?.gaveUp() ?? false });
     }
     if (finishing && shown >= 1) {
+      note("100");
       holdTimer = window.setTimeout(exit, LOADER.holdMs);
       return;
     }
@@ -237,6 +261,7 @@ function runLoader(
     if (!target) {
       // Reduced motion, or no scene to land on: a plain fade.
       const fadeS = LOADER.reducedFadeMs / 1000;
+      note("fade");
       reveal(performance.now() + LOADER.reducedFadeMs, false);
       timeline = gsap.timeline({ onComplete: gone });
       timeline.to(root, { opacity: 0, duration: fadeS, ease: "none" });
@@ -279,19 +304,30 @@ function runLoader(
       count.style.opacity = String(state.count);
     };
     apply();
-    reveal(performance.now() + LOADER.exitMs - LOADER.entranceOverlapMs, true);
+    note("exit", { land });
+    // ?coildebug=handoff: the exit pauses on its last frame (cards held back)
+    // until window.__coilLoader.finish(), to compare the frames either side.
+    const holdHandoff = coilDebugFlags(window.location.search).has("handoff");
+    reveal(performance.now() + (holdHandoff ? 600000 : LOADER.exitMs - LOADER.entranceOverlapMs), true);
     timeline = gsap.timeline({
       onUpdate: apply,
       onComplete: () => {
         // One frame: the canvas draws its name now, the DOM name leaves now.
         landName();
         gone();
+        note("handoff");
       },
     });
     timeline.to(state, { e: 1, duration: durationS, ease: siteEase }, 0);
     timeline.to(state, { c: 1, duration: durationS * 0.85, ease: "power1.inOut" }, 0);
     timeline.to(state, { bg: 0, duration: durationS * 0.75, ease: "power1.out" }, 0);
     timeline.to(state, { count: 0, duration: durationS * 0.35, ease: "power1.out" }, 0);
+    if (holdHandoff) {
+      const running = timeline;
+      running.addPause(durationS - 1e-4);
+      const host = window as unknown as { __coilLoader?: { finish?: () => void } };
+      if (host.__coilLoader) host.__coilLoader.finish = () => running.play();
+    }
   }
 
   return () => {
@@ -325,4 +361,26 @@ function measureName(pane: HTMLElement, family: string) {
     const capTop = (baseline - m.actualBoundingBoxAscent) / 1000;
     if (capTop > 0 && capTop < 0.3) pane.style.setProperty("--capTop", capTop.toFixed(5));
   }
+}
+
+// QA behind ?coildebug: every loader event with its time, plus each time the
+// body scroll lock engages or releases, on window.__coilLoader.
+type LoaderEvent = { t: number; event: string; data?: unknown };
+function debugLog(root: HTMLElement): (event: string, data?: unknown) => void {
+  if (!new URLSearchParams(window.location.search).has("coildebug")) return () => {};
+  const events: LoaderEvent[] = [];
+  const host = window as unknown as { __coilLoader?: { events: LoaderEvent[]; locks: LoaderEvent[] } };
+  const locks: LoaderEvent[] = [];
+  let locked = document.body.style.overflow === "hidden";
+  locks.push({ t: performance.now(), event: locked ? "locked" : "unlocked" });
+  new MutationObserver(() => {
+    const now = document.body.style.overflow === "hidden";
+    if (now === locked) return;
+    locked = now;
+    locks.push({ t: performance.now(), event: now ? "locked" : "unlocked" });
+  }).observe(document.body, { attributes: true, attributeFilter: ["style"] });
+  host.__coilLoader = { events, locks };
+  const inAnimation = root.getAnimations?.().find((a) => (a as CSSAnimation).animationName === "coil-loader-in");
+  events.push({ t: performance.now(), event: "armed", data: { animationTime: inAnimation?.currentTime ?? null } });
+  return (event, data) => events.push({ t: performance.now(), event, data });
 }

@@ -55,7 +55,8 @@ export const LOADER_CSS = `
   .coil-loader__fill{clip-path:inset(0 calc((var(--pad) + (1 - var(--p)) * var(--inkW)) * 1em) 0 0)}
   .coil-loader__count{left:calc(var(--gut) + var(--cap) + (100cqw - var(--gut) - var(--cap)) / 2)}
 }
-@media (prefers-reduced-motion: reduce){.coil-loader__pane{--p:1!important}}
+.coil-loader[data-full] .coil-loader__base{color:var(--loader-fill)}
+@media (prefers-reduced-motion: reduce){.coil-loader__pane{--p:1!important}.coil-loader__base{color:var(--loader-fill)}}
 `;
 
 // Hides the loader before first paint on a deep load (a section hash, or a
