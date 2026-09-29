@@ -39,8 +39,8 @@ export default function Home() {
   // Holding mode (the default; NEXT_PUBLIC_SITE_MODE=full opts out, see
   // lib/holding.ts): the "under remodeling" page replaces the scroll journey.
   if (HOLDING_MODE) return <Holding />;
-  // The Coil home (NEXT_PUBLIC_HOME_HERO=coil, see lib/flags.ts); the ring
-  // below stays the default until the flip in slice 9.
+  // The Coil home, the default (lib/flags.ts); NEXT_PUBLIC_HOME_HERO=ring
+  // still serves the retiring ring below until its code is deleted.
   if (COIL_HOME) return <CoilHome />;
 
   return (
