@@ -88,9 +88,9 @@ function PillInner() {
     return player.subscribe(sync);
   }, [player]);
 
-  const promptTimer = useRef<ReturnType<typeof setTimeout>>();
-  const graceTimer = useRef<ReturnType<typeof setTimeout>>();
-  const suppressTimer = useRef<ReturnType<typeof setTimeout>>();
+  const promptTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const graceTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const suppressTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const recentExpanded = useRef(false);
   const suppressEnter = useRef(false);
 

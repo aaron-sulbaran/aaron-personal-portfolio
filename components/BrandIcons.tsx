@@ -1,3 +1,4 @@
+import type { JSX } from "react";
 import { Mail } from "lucide-react";
 import type { HoldingSocial } from "@/lib/content";
 
