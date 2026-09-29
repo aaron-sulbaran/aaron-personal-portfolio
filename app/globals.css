@@ -254,23 +254,6 @@ body {
   }
 }
 
-/* Hero ScrollCue bob (components/HomeHero.tsx). Runs on the compositor
-   instead of the main thread; the global reduced-motion rule above already
-   collapses animation-duration/iteration-count, so this is disabled for
-   free under prefers-reduced-motion. */
-@keyframes scrollcue-bob {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(4px);
-  }
-}
-.scrollcue-bob {
-  animation: scrollcue-bob 1.8s ease-in-out infinite;
-}
-
 /* The Listen dot's halo while the soundtrack plays (components/menu/
    ListenDot.tsx). Transform and opacity only, so it stays on the compositor;
    under reduced motion the global rule ends it at once and the dot stays a

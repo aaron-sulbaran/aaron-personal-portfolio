@@ -1,7 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Next 16 only serves qualities listed here (default [75]); GlassTile asks
-  // for 88 and PhotoModal for 90, which would otherwise fall back silently.
+  // Next 16 only serves qualities listed here (default [75]); PhotoModal and
+  // the flight's sharp copy ask for 90, which would otherwise fall back
+  // silently. 88 was the retired GlassTile's.
   images: {
     qualities: [75, 88, 90],
   },

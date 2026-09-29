@@ -17,8 +17,8 @@ import { Portal } from "./Portal";
 type PhotoModalProps = {
   photo: Photo | null;
   onClose: () => void;
-  // Any open with no flight tile flying into the slot (the ring's mobile
-  // carousel; on the Coil a book row, a touch tap, or no scene) sets this, and
+  // Any open with no flight tile flying into the slot (a book row, a touch
+  // tap, or no scene) sets this, and
   // the modal renders its own image so the slot is never empty. A flight
   // leaves it false; the flown tile fills the slot.
   renderMedia?: boolean;
@@ -112,12 +112,12 @@ export function PhotoModal({ photo, onClose, renderMedia = false }: PhotoModalPr
               <X aria-hidden="true" className="h-4 w-4" />
             </button>
 
-            {/* Photo slot. On desktop the TileRing's FlyingTile physically
+            {/* Photo slot. After a card click the flown card (FlyingTile)
                 lives here while the modal is open (no <Image> inside; the flown
-                tile is the image), so the aspect + sizing must match the tile's
-                3:4 proportions for the flight to land in the exact rect. On
-                mobile the modal opens from the carousel with no flight, so
-                renderMedia draws the image here directly. The panel stacks
+                card is the image), so the slot keeps the card's 3:4 proportions
+                for the flight to land in the exact rect. Opens with no flight
+                (a book row, a tap, no scene) set renderMedia, which draws the
+                image here directly. The panel stacks
                 vertically on mobile, where the full-width image would tuck under
                 the top-right close button. The button sits at top-3 (12px) and is
                 h-10 (40px), so its bottom edge is 52px below the panel top; with

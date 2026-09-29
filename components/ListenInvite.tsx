@@ -15,9 +15,8 @@ import {
 const MOBILE_MAX = 767;
 
 // The soundtrack invitation beat: an in-flow, non-blocking section where the
-// waveform introduces itself (before #work on the ring home, after the book on
-// the Coil home). It is page
-// content, never a modal; it must never capture or pause scrolling. "Play it"
+// waveform introduces itself, after the book. It is page content, never a
+// modal; it must never capture or pause scrolling. "Play it"
 // opts in (startSoundtrack), "maybe later" opts out (stopSoundtrack), and the
 // actions crossfade to a short confirmation while the section stays in flow.
 // A visitor with a stored prior choice (soundtrack state anything but "before"

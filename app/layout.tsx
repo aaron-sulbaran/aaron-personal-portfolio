@@ -58,8 +58,7 @@ export default function RootLayout({
         <a href="#main" className="skip-link">
           Skip to content
         </a>
-        {/* Holding mode has no sections to navigate; nav and menu stay out.
-            Menu.tsx stays in the tree, unmounted, until slice 9 retires it. */}
+        {/* Holding mode has no sections to navigate; nav and menu stay out. */}
         {!HOLDING_MODE && <SiteNav />}
         {!HOLDING_MODE && <MenuPill />}
         <CustomCursor />
