@@ -474,10 +474,11 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     const entrance = live.current.entrance;
     if (!entrance) return Number.NEGATIVE_INFINITY;
     if (entranceBase === null) {
-      entranceBase =
-        Number.isFinite(entrance.startMs) && !live.current.interactive
-          ? Math.max(entrance.startMs, now)
-          : Number.NEGATIVE_INFINITY;
+      const played = Number.isFinite(entrance.startMs);
+      const rebuilt = played && live.current.interactive;
+      entranceBase = played && !rebuilt ? Math.max(entrance.startMs, now) : Number.NEGATIVE_INFINITY;
+      // A rebuild fades its cards and name in over the poster (the rotation's fade).
+      if (rebuilt) rebuildAt = now;
     }
     return now - entranceBase;
   }
