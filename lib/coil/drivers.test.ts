@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { COIL } from "@/lib/coil/constants";
-import { compositionFor, inputFor, sameDrivers, selectDrivers } from "@/lib/coil/drivers";
+import { budgetFor, compositionFor, inputFor, sameBudget, sameDrivers, selectDrivers } from "@/lib/coil/drivers";
 import { solveGeometry } from "@/lib/coil/geometry";
 
 const desktop = { width: 1440, height: 900 };
@@ -74,5 +74,21 @@ describe("drivers", () => {
       expect(geo.slotCount).toBeGreaterThanOrEqual(14);
       expect(geo.clearTopPx).toBe(0);
     }
+  });
+
+  it("budgets by input: coarse pointers get 256 to 384px textures at 3:4 and a DPR cap of 2", () => {
+    const coarse = budgetFor("coarse");
+    expect(coarse.dprCap).toBe(2);
+    const [w, h] = coarse.textureSize;
+    for (const edge of [w, h]) {
+      expect(edge).toBeGreaterThanOrEqual(256);
+      expect(edge).toBeLessThanOrEqual(384);
+    }
+    expect(w / h).toBeCloseTo(COIL.cardAspect, 9);
+    const fine = budgetFor("fine");
+    expect(fine.dprCap).toBe(1.75);
+    expect(fine.textureSize).toEqual([384, 512]);
+    expect(sameBudget(fine, budgetFor("fine"))).toBe(true);
+    expect(sameBudget(fine, coarse)).toBe(false);
   });
 });

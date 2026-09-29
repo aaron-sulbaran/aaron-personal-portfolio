@@ -121,6 +121,12 @@ const values = {
     maxFrameSeconds: 0.1,
     dprCap: 1.75,
     textureSize: [384, 512] as const,
+    // Coarse pointers (phones, tablets): the decision record's budget, 256 to
+    // 384px textures and the device pixel ratio capped at 2.
+    coarse: {
+      dprCap: 2,
+      textureSize: [288, 384] as const,
+    },
   },
 };
 
