@@ -106,7 +106,7 @@ const META_CLASS = "text-sm text-muted min-[720px]:whitespace-nowrap";
 // so what has been opened reads at a glance; the meta stays full muted.
 // Hovering or keyboard focus brings the title back to full ink. The ring is
 // 1px of the muted token at 8px in both themes. The dimmed title measures
-// about 4.4:1 on the light paper and 5.6:1 on the dark, above 3:1, so the
+// about 4.3:1 on the light paper and 5.6:1 on the dark, above 3:1, so the
 // dim stays an opacity rather than the muted color.
 const SEEN_TITLE_CLASS =
   "opacity-[0.55] [.book-row:focus-visible_&]:opacity-100 [.book-row:hover_&]:opacity-100";
