@@ -65,10 +65,11 @@ export function pullProgress(clock: EntranceClock, c: CoilConstants = COIL) {
   return pullCurve(c)(seg(clock.elapsedS, c.entrance.pullStart * T, T));
 }
 
-// The two hands: the seam's axial parting leads the winding, so the ends are
-// already apart along the axis before they sweep past each other.
-export function pullPhases(pull: number) {
-  return { part: smooth(seg(pull, 0, 0.38)), wind: seg(pull, 0.2, 1) };
+// The two hands: the seam parts along the axis over the first 0.38 of the
+// pull, and the winding starts only once it has, so the ends are a full seam
+// apart before they sweep past each other.
+export function pullPhases(pull: number, c: CoilConstants = COIL) {
+  return { part: smooth(seg(pull, 0, 0.38)), wind: seg(pull, c.entrance.windStart, 1) };
 }
 
 // Frame level: the band's winding, radius, rise, card size and lean pulled
@@ -82,7 +83,7 @@ export function entranceHelix(
   if (isRested(clock)) return rest;
   const n = geo.cardCount;
   const pull = pullProgress(clock, c);
-  const { part, wind } = pullPhases(pull);
+  const { part, wind } = pullPhases(pull, c);
   const angStep = lerp(TAU / n, rest.angStep, wind);
   return {
     ...rest,

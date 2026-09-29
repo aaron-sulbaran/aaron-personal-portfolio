@@ -70,6 +70,9 @@ const values = {
     shutterStagger: 0.011,
     fly: 0.22,
     pullStart: 0.58,
+    // The winding waits for the seam to finish parting (the lab wound from 0.2,
+    // where the ends of a 14-card band graze for a frame): a fraction of the pull.
+    windStart: 0.38,
     pullCurve: [0.55, 0, 0.25, 1] as const,
   },
 
