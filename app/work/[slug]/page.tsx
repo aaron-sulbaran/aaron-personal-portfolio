@@ -20,10 +20,10 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const item = siteContent.workItems.find((i) => i.slug === slug);
   if (!item) return { title: "Not found" };
   return {
-    title: `${item.title} · ${item.role}`,
+    title: `${item.title} | ${item.role}`,
     description: item.summary,
     openGraph: {
-      title: `${item.title} · ${item.role}`,
+      title: `${item.title} | ${item.role}`,
       description: item.summary,
     },
   };
