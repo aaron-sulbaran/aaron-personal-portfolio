@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { getSceneHover, subscribeSceneHover } from "@/lib/cursor/hover";
 
 const HOVER_SELECTOR = "[data-cursor-hover], a, button, [role='button']";
 
@@ -23,6 +24,9 @@ export function CustomCursor() {
   // Mirror of `hovering` so the hot move handler can skip setState unless the
   // value actually flips (hover changes rarely; position changes every pixel).
   const hoverRef = useRef(false);
+  // A card in the Coil canvas under the pointer (lib/cursor/hover): it can
+  // arrive or leave while the pointer is still, so it is its own signal.
+  const sceneHover = useSyncExternalStore(subscribeSceneHover, getSceneHover, () => false);
 
   useEffect(() => {
     const mq = window.matchMedia("(pointer: fine)");
@@ -77,6 +81,8 @@ export function CustomCursor() {
 
   if (!enabled) return null;
 
+  const grown = hovering || sceneHover;
+
   return (
     <div
       ref={dotRef}
@@ -93,15 +99,15 @@ export function CustomCursor() {
           the fill→ring crossfade are cheap CSS transitions driven by hover
           state, which changes far too rarely to ever feel laggy. */}
       <span
-        style={{ width: hovering ? 22 : 10, height: hovering ? 22 : 10 }}
+        style={{ width: grown ? 22 : 10, height: grown ? 22 : 10 }}
         className="relative block -translate-x-1/2 -translate-y-1/2 rounded-full transition-[width,height] duration-200 ease-out"
       >
         <span
-          style={{ opacity: hovering ? 0 : 1 }}
+          style={{ opacity: grown ? 0 : 1 }}
           className="absolute inset-0 rounded-full bg-accent transition-opacity duration-150"
         />
         <span
-          style={{ opacity: hovering ? 1 : 0 }}
+          style={{ opacity: grown ? 1 : 0 }}
           className="absolute inset-0 rounded-full border-[1.5px] border-accent transition-opacity duration-150"
         />
       </span>
