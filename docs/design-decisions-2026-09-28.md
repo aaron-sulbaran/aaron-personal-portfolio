@@ -1,0 +1,136 @@
+# Design decisions, 2026-09-28: the whole site in one tick list
+
+How to use: tick `[x]` what you accept, write `change:` under anything you want different, and send the file back (or just reply with the section numbers and your picks). "rec" marks my recommendation. This supersedes `docs/coil-wireframe-checklist.md` (kept for its board frames) and feeds `docs/coil-hero-spec.md`, which gets revised from your ticks before any builder agent starts.
+
+Everything referenced lives under `docs/research/refresh-2026-09-27/prototypes/` (local, gitignored). Open the `.html` labs by double-click; they are self-contained.
+
+| Topic | Lab or sheet |
+|---|---|
+| Hero (helix, name behind, compositions, push and pull) | `labs/hero-lab.html` (pending, see section 2) |
+| Loader | `labs/loader-lab.html`, `labs/loader-shots/contact-desktop.png`, `phone-both-50.png`, the `.webm` |
+| Menu and header | `labs/menu-lab.html`, `labs/menu-shots/menus-sheet.png`, `headers-sheet.png`, `phones-sheet.png` |
+| Logo | `logo7/slider.html` (the picker), `logo7/sheet.png`, `logo6/sheet.png` |
+| Earlier boards | `wireframe/board.html`, `site-now-2026-09-28/` (the live site today) |
+
+## 1. Already decided (confirm or reopen)
+
+- [ ] The helix is the hero at rest, spinning slowly, the name large behind it; scroll straightens it into the recruiter list. The closed band exists only inside the entrance (optional, see 2.5).
+- [ ] Display face Profa Black, Inter body, sentence-case labels, no tracked caps, no numbered eyebrows; numbers only on the case rail.
+- [ ] One accent (deep sea blue / soft sea blue). Cards recede by brightness, never blur.
+- [ ] Recruiter list order: Talos, min/Max, Capital One, IEEE, Anthropic ambassador, hackathon builds, then photos; placeholders never appear.
+- [ ] Mobile is the same object with a touch and time driver, not a separate experience; MobileHome retires when the Coil ships.
+- [ ] Native scroll only. GSAP ScrollTrigger owns progress; no wheel hijack, no virtual scroll.
+- [ ] Nothing copied from Pacôme's top spiral-or-list toggle and list composition; no blur, no bounce.
+
+## 2. Hero (`labs/hero-lab.html`; presets `#p=V`, `#p=D`, `#p=H`, `#p=B`, `#p=L`, add `&t=dark`; sheets in `labs/hero-shots/`)
+
+What the lab proves: the mechanics all work at 60fps in headless Chrome (pin, straightening that lands on the DOM list within 1px, push and pull, hover-jump, name behind, seen state, reduced motion). What it does not yet prove: the helix as a hero object. At rest the coil is too small (cards about 17 percent of the viewport height, the object about a third of the pane) and too many cards face away as blank backs, so the stills read as a cluster of cards next to the name rather than a coil in front of it. Mobile vertical is the exception: the tall pane suits the column and it reads as a helix. The list landing is the best frame of the day and is close to final. So: tick orientation and extent as a direction, and the composed specimen carries a scale brief (cards 25 to 30 percent of the viewport height, three turns visible, the coil filling 60 to 70 percent of the pane, name centered behind, backs designed as real card backs).
+
+2.1 Orientation of the helix axis
+- [ ] Vertical: the clearest helix and the best name-through-gaps read; best on phones.
+- [ ] Diagonal (rec): the strongest silhouette; D in dark is the best frame of the set.
+- [ ] Horizontal: reject. Twenty cards cannot fill a spring across 1440px, and clipped horizontal cards streaming across the pane is Pacôme's desktop state.
+
+2.2 Where the coil ends
+- [ ] Trail off (rec with diagonal): the coil becomes an object with ends and frames the name.
+- [ ] Endless conveyor (rec with vertical only).
+- [ ] Clipped: reject, same card-count problem as horizontal.
+
+2.3 The name behind
+- [ ] "Aaron" in Profa Black at 70vw behind the helix, about 12 percent ink (lab slider 6 to 40); legible through the gaps in every preset, dark and light. rec keep at 12 dark / 10 light; judge on the scaled specimen.
+- [ ] Greeting "Hi, I'm" small in Inter above the name (rec) / docked lower-left / none.
+
+2.4 Composition
+- [ ] A (rec): helix centered, the list arrives only as the scroll destination. The hero stays the hero.
+- [ ] B: helix left, list beside it, hover-jump. Works and is the better recruiter page, but it demotes the helix to an illustration next to a list that repeats every card.
+
+2.5 Entrance
+- [ ] Riffle straight into the helix, 900ms (rec).
+- [ ] Band first, 1400ms: closed ring, hold, seam opens into the helix.
+
+2.6 Idle and interaction
+- [ ] Idle spin slow (rec) / medium / off. Bounded offset; unwinds to zero once straightening starts so the landed pose is always the same.
+- [ ] Scroll velocity pushes and pulls the cards (spring with overshoot plus a vertex shear capped at 12 degrees), both directions. The pin is 1.4 viewports with the first 16 percent as a push zone before straightening begins; no dead scroll.
+- [ ] Capture-on-hover (wheel spins the coil when the cursor is over it): in composition A it can only engage at the top of the page, otherwise it traps the scroll. rec off in A, on in B.
+- [ ] Hover lifts a card; click flies it to its modal or case page (not built in the lab; the flight contract is in the spec).
+
+2.7 Seen state: opened cards dim slightly and carry a small edge dot in the coil and in the list, session-scoped. rec keep.
+
+2.8 Content the lab surfaced
+- [ ] Talos and min/Max have no card art; the list uses accent monogram thumbs for them. Decide: monograms (rec until real artifacts exist) / product screenshots.
+- [ ] A "This site" (AS) row after Hackathon builds. rec keep.
+- [ ] List copy is placeholder; real titles and meta lines come from you (section 9).
+
+## 3. Loader
+
+- [ ] Concept: giant "Aaron" fills the pane; a fill line rises from the baseline as assets load; a small percentage at the top; all assets loaded before the reveal. (rec yes)
+- [ ] Two-tone mode: a, only the letters change tone (rec) / b, an accent band rises behind the name / c, a one-pixel line with accent below.
+- [ ] Base: the loader is always dark (#0E1419, paper letters, accent fill) and the light site fades in under it (rec). On the light base the two tones barely separate; fixing that needs a lighter tint, a second color.
+- [ ] Exit: continuity, the name shrinks and dims into its resting place behind the helix and the cards fade in over it (rec) / iris / garage up / screen down.
+- [ ] Exit duration 800ms on the site ease.
+- [ ] Number: top center, 12px, no status word; hidden when the load finishes under about 600ms (rec).
+- [ ] Flash guard: the loader appears only after 250ms; if everything is ready sooner, go straight to the hero (rec).
+- [ ] Phone: the name rotated up the left edge, the number in the free right column (rec) / single line.
+- [ ] Reduced motion: name shown fully in accent, number counts, 300ms fade.
+
+## 4. Menu and header
+
+- [ ] Menu: M1, the pill grows into a right-hand panel on the site ease, no overshoot, no blur; the coil keeps moving; Close lands where Menu was (rec).
+- [ ] Panel dim on the light theme: 45 percent as built / 30 percent (rec).
+- [ ] Links in the panel: raise them to about a third down the panel (as built they sit low with dead space above) (rec).
+- [ ] Full-page alternative kept as the fallback: M4, paper veil at 80 percent with the coil alive underneath.
+- [ ] Rejected: M2 (M1 without the morph), M3 (drawer from the mark; trigger and origin on opposite corners), M5 (takeover hides the hero and adds numbers).
+- [ ] Header: H1, mark and pill only during the hero; past the hero a bar with Work About Connect slides in, hides on scroll down, returns on scroll up (rec). Alternatives: H2 pill only everywhere; H3 no mark in the header.
+- [ ] Pill hover: "Menu" rolls up and the mark rolls in (rec) / accent dot grows.
+- [ ] Listen control lives inside the pill as its own button: hollow ring paused, filled pulsing dot playing (rec).
+- [ ] Phone: M1 as a bottom sheet with a grip bar; pill stays top-right as Close.
+- [ ] Retire the current left scroll-spy rail (duplicates the nav, tracked caps).
+
+## 5. Logo
+
+- [x] Recipe, chosen by Aaron 2026-09-28 in `logo7/slider.html`: `gap=8 apex=6 over=4 stroke=10 size=level` on the S2 bolt. Tips level so the A's right leg and the bolt's tail end on one point; hairline gap (0.92px at 32px on a 1x screen, so it reads grey at nav size on non-retina and clean at 2x); left foot 4 units below the right tip; A stroke 10. Exported by `logo-final/export.js`.
+- [x] Favicon and any use under 24px: the bolt alone at favicon weight (round 6 C2), paper on the accent tile. No variant holds an A at 16px.
+- [ ] Rendering rule: flat ink or paper, never outlined, slanted, or two-colored inside the letter (it tips into a sports crest).
+- [x] Delivered: `public/brand/` (SVG ink, paper, on-paper, on-dark, bolt alone; PNG 256 to 2048; JPEG 1024 and 2048), `app/icon.svg` and `app/apple-icon.png` replaced; vault `attachments/brand/` with `wiki/concepts/personal-mark.md` linked from the personal-brand playbook.
+- [ ] Nav mark size: 32px (rec, the gap survives at 2x) / 28px.
+
+## 6. Background
+
+- [ ] A fine grid (Pacôme's move; closest resemblance).
+- [ ] B grain (static, a few KB).
+- [ ] C single-hue light following the coil's focus (one uniform in the same canvas; light on paper, not a color gradient).
+- [ ] D shader field (a real gradient; needs the Layer 1 rule "no gradients on section backgrounds" changed by you).
+- [ ] E the existing waveform behind everything (already on main; two motions at once).
+- [ ] F waveform plus grain.
+- [ ] rec: B plus C in the hero; E stays from the Listen invite down. Say "D" and I draft the Layer 1 change.
+
+## 7. Mobile
+
+- [ ] Timed entrance to the resting helix; vertical scroll straightens it into the list at once and is never hijacked.
+- [ ] Drag-to-spin Easter egg on the coil, locked to horizontal; "coil" and "list" pills swap the two states.
+- [ ] Tablet portrait uses the phone driver with the list stacked under the greeting; landscape uses the desktop driver.
+- [ ] Budget: 256 to 384px textures, DPR capped at 2, verified on a real iPhone and a mid-range Android before merge.
+- [ ] Reduced motion: DOM list only.
+
+## 8. Layer 1 changes this implies (AGENTS.md; only on your instruction)
+
+- [ ] "Desktop and mobile are separate home experiences" becomes "one object, two drivers".
+- [ ] Fonts row: Profa Black is the display face site-wide; Instrument Serif and Space Grotesk retire; the italic clause goes.
+- [ ] Typography: sentence case for labels, no tracked caps.
+- [ ] The sticky nav paragraph becomes H1 as ticked above (mark and pill during the hero, bar after).
+- [ ] "No gradients on section backgrounds": unchanged unless you pick D.
+- [ ] Glassmorphism paragraph: the Menu panel has no blur; the pill keeps its small blur.
+
+## 9. Still yours
+
+- [ ] The logo code string (section 5).
+- [ ] Talos coming-soon copy; min/Max live link.
+- [ ] Which five placeholder photo slots get real photos, or get cut.
+- [ ] "apply" for the AGENTS.md Layer 2 diff proposed on 2026-09-27.
+- [ ] Push of the docs commits on main (three so far, plus this one).
+
+## What happens after you tick
+
+1. I revise `docs/coil-hero-spec.md` from this file and export the logo.
+2. One composed specimen (loader, hero with the chosen orientation and composition, name behind, list landing, section head, case title, header, menu, chosen background, light and dark, desktop and phone) by one Opus agent, reviewed by the design-review skill and Codex, judged by you.
+3. Builder agents on the spec's slices, one at a time: controller extraction and `lib/coilGeometry.ts` first, then the scene, the straightening, the flight adapter, the case template, the verification gate.

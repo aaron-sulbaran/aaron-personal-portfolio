@@ -1,5 +1,7 @@
 # Coil wireframe checklist (read, tick, change)
 
+> Superseded 2026-09-28 by `docs/design-decisions-2026-09-28.md`, the single tick list covering hero, loader, menu, logo, background, mobile, and Layer 1. This file stays for its board frame ids.
+
 How to use: tick `[x]` what you accept, write `change:` under anything you want different. Frame ids point at the board: `docs/research/refresh-2026-09-27/prototypes/wireframe/board.html` (or the four PNGs beside it). Logo tiles point at `prototypes/logo5/sheet.png`. Current-site captures for comparison: `prototypes/site-now-2026-09-28/`. My recommendation is marked "rec". Nothing below gets built until this file is ticked.
 
 ## 0. Already decided (confirm or reopen)
