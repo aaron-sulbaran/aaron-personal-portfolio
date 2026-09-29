@@ -126,7 +126,7 @@ export function WorkModal({ item, onClose, renderMedia = false }: WorkModalProps
               </div>
               <div className="flex flex-col gap-1">
                 <span className="text-sm text-muted">
-                  {item.role} · {item.year}
+                  {item.role}, {item.year}
                 </span>
                 <h2 className="font-display text-3xl leading-tight text-foreground md:text-4xl">
                   {item.title}

@@ -63,7 +63,7 @@ export default async function WorkDetailPage({ params }: Params) {
               </div>
               <div className="flex flex-col gap-2">
                 <span className="text-sm text-muted">
-                  {item.role} · {item.year}
+                  {item.role}, {item.year}
                 </span>
                 <h1 className="font-display text-display-page text-foreground">
                   {item.title}
