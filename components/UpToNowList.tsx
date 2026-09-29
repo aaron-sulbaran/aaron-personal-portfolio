@@ -7,8 +7,8 @@ import { revealIndex } from "@/lib/motion";
 
 // The UpToNow list as a client leaf. Two scroll behaviours kept on separate
 // elements so no element is ever driven by two systems:
-//   - entrance reveal: CSS .reveal-item on the number + text (data-armed/shown
-//     toggled here, same contract as <Reveal>), a number-then-text micro-stagger.
+//   - entrance reveal: CSS .reveal-item on each item's text (data-armed/shown
+//     toggled here, same contract as <Reveal>), staggered item by item.
 //   - parallax: GSAP scrubs translateY on the inner layer div (desktop only),
 //     odd/even columns drifting opposite so the editorial 2-up offset breathes.
 // The <li> keeps its static md:translate-y-12 offset (a third, untouched
@@ -97,18 +97,10 @@ export function UpToNowList({ items }: { items: readonly string[] }) {
             ref={(el) => {
               layerRefs.current[i] = el;
             }}
-            className="flex items-start gap-5"
           >
-            <span
-              className="reveal-item mt-2 font-display text-xl text-muted"
-              aria-hidden="true"
-              style={revealIndex(i * 2)}
-            >
-              {String(i + 1).padStart(2, "0")}
-            </span>
             <p
               className="reveal-item text-lg leading-[1.55] text-foreground md:text-xl"
-              style={revealIndex(i * 2 + 1)}
+              style={revealIndex(i)}
             >
               {item}
             </p>
