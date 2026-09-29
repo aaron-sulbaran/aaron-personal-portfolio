@@ -1,12 +1,17 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useEffect, useRef, useState, type ComponentType } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ComponentType } from "react";
 import { HOLDING_MODE } from "@/lib/holding";
 import type { InputDriver } from "@/lib/coil/drivers";
 import { CoilErrorBoundary } from "./CoilErrorBoundary";
 import { HeroOverlay, type HeroOverlayHandle } from "./HeroOverlay";
 import type { CoilSceneApi, CoilSceneProps } from "./CoilScene";
+// Slice 4: the entrance claim, the loader's tally and the name handoff.
+import { COIL } from "@/lib/coil/constants";
+import { useHomeController } from "@/components/home/HomeController";
+import { SCENE_ITEMS, reportHomeLoad, settleHomeLoad } from "@/lib/loader/progress";
+import { provideNameHandoff } from "@/lib/loader/handoff";
 
 // The Coil hero's stage: a layer filling the 100svh hero with the poster (the
 // field at its tuned moment, one per theme), the WebGL scene over it, and the
@@ -38,6 +43,42 @@ export function CoilStage({ reducedMotion, frozen, interactive, input, onSceneCh
 
   const eligible = !reducedMotion && !HOLDING_MODE && !failed && hasWebGL2();
 
+  // ---- slice 4: the entrance ----
+  // The scene claims the entrance before paint (this layout effect runs before
+  // the controller's) whenever it can run at all; the controller then plays
+  // the loader and the entrance under one scroll lock. The loader lands its
+  // name on the scene's through the handoff, and the lock releases when the
+  // scene's clock ends, or at once if the scene cannot finish (it failed,
+  // went away, or never drew within the fallback).
+  const controller = useHomeController();
+  const entrance = controller ? controller.entrance : AT_REST;
+  const completeEntrance = controller?.completeEntrance;
+  useIsoLayoutEffect(() => {
+    if (HOLDING_MODE || !hasWebGL2() || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    return controller?.claimEntrance();
+  }, []);
+  useEffect(
+    () =>
+      provideNameHandoff({
+        target: () => apiRef.current?.nameRect() ?? null,
+        land: () => apiRef.current?.landName(),
+      }),
+    [],
+  );
+  useEffect(() => {
+    if (eligible) return;
+    // No scene will draw: nothing left to wait for, nothing left to play.
+    settleHomeLoad(SCENE_ITEMS.filter((item) => item !== "fonts"));
+    completeEntrance?.();
+  }, [eligible, completeEntrance]);
+  useEffect(() => {
+    if (!entrance || !Number.isFinite(entrance.startMs) || !completeEntrance) return;
+    const endsIn = entrance.startMs + COIL.entrance.durationMs + ENTRANCE_FALLBACK_MS - performance.now();
+    const timer = window.setTimeout(completeEntrance, Math.max(0, endsIn));
+    return () => window.clearTimeout(timer);
+  }, [entrance, completeEntrance]);
+  // ---- end slice 4 ----
+
   useEffect(() => {
     if (!eligible || Scene) return;
     let cancelled = false;
@@ -45,6 +86,7 @@ export function CoilStage({ reducedMotion, frozen, interactive, input, onSceneCh
     const frame = requestAnimationFrame(() => {
       import("./CoilScene").then(
         (module) => {
+          reportHomeLoad("chunk"); // slice 4: the loader's tally
           if (!cancelled) setScene(() => module.default);
         },
         () => {
@@ -64,7 +106,10 @@ export function CoilStage({ reducedMotion, frozen, interactive, input, onSceneCh
     if (!mounted) onSceneChange(false);
   }, [mounted, onSceneChange]);
 
-  const handleFirstFrame = useCallback(() => onSceneChange(true), [onSceneChange]);
+  const handleFirstFrame = useCallback(() => {
+    reportHomeLoad("frame"); // slice 4: the loader's tally
+    onSceneChange(true);
+  }, [onSceneChange]);
 
   const handleError = useCallback(
     (error: unknown) => {
@@ -96,6 +141,8 @@ export function CoilStage({ reducedMotion, frozen, interactive, input, onSceneCh
             onFirstFrame={handleFirstFrame}
             onContextLost={handleContextLost}
             onError={handleError}
+            entrance={entrance}
+            onEntranceEnd={completeEntrance}
           />
         </CoilErrorBoundary>
       ) : null}
@@ -103,6 +150,15 @@ export function CoilStage({ reducedMotion, frozen, interactive, input, onSceneCh
     </div>
   );
 }
+
+// ---- slice 4 ----
+const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
+// No entrance (outside a controller): at rest from the first frame.
+const AT_REST = { startMs: Number.NEGATIVE_INFINITY, nameFromLoader: false };
+// A scene that has not ended its entrance this long after it should have
+// (a hidden tab, a stalled chunk) still releases the lock.
+const ENTRANCE_FALLBACK_MS = 3000;
+// ---- end slice 4 ----
 
 // The API check only; a context that still fails to start throws inside the
 // scene and lands on the poster through the boundary. The server renders no
