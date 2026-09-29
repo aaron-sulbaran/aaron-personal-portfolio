@@ -14,14 +14,18 @@ import {
 
 const MOBILE_MAX = 767;
 
-// The soundtrack invitation beat: an in-flow, non-blocking section between the
-// hero carousel and #work where the waveform introduces itself. It is page
+// The soundtrack invitation beat: an in-flow, non-blocking section where the
+// waveform introduces itself (before #work on the ring home, after the book on
+// the Coil home). It is page
 // content, never a modal; it must never capture or pause scrolling. "Play it"
 // opts in (startSoundtrack), "maybe later" opts out (stopSoundtrack), and the
 // actions crossfade to a short confirmation while the section stays in flow.
 // A visitor with a stored prior choice (soundtrack state anything but "before"
-// at mount) never sees the ask: the whole section renders null. Desktop-only in
-// v1, matching the rest of the soundtrack surface (PlaybackPill's gating).
+// at mount) never sees the ask: the section renders empty. Desktop-only in v1,
+// matching the rest of the soundtrack surface (PlaybackPill's gating).
+//
+// The #listen wrapper always renders, empty when there is no ask, because the
+// Waveform and PlaybackPill key their reveal to its end.
 export function ListenInvite() {
   const music = useSoundtrack();
   const c = siteContent.listen;
@@ -49,7 +53,7 @@ export function ListenInvite() {
     return () => mq.removeEventListener("change", sync);
   }, []);
 
-  if (isMobile === null || isMobile || stateAtMount.current !== "before") return null;
+  if (isMobile === null || isMobile || stateAtMount.current !== "before") return <div id="listen" />;
 
   const answered = music !== "before";
   const note = music === "off" ? c.declinedNote : c.acceptedNote;
