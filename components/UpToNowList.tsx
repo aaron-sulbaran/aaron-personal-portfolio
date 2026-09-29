@@ -100,7 +100,7 @@ export function UpToNowList({ items }: { items: readonly string[] }) {
             className="flex items-start gap-5"
           >
             <span
-              className="reveal-item mt-2 font-serif text-xl italic text-muted"
+              className="reveal-item mt-2 font-display text-xl text-muted"
               aria-hidden="true"
               style={revealIndex(i * 2)}
             >
