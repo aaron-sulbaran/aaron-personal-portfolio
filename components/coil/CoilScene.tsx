@@ -387,7 +387,10 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   let nameLanded = false;
   // ?coildebug=entrance=<ms> freezes the drawn entrance at that moment (the
   // real clock still ends it, so the page unlocks).
-  const forcedEntrance = debugMode?.match(/^entrance=(-?\d+(?:\.\d+)?)$/);
+  const forcedEntrance = debugMode
+    ?.split(",")
+    .map((token) => token.trim().match(/^entrance=(-?\d+(?:\.\d+)?)$/))
+    .find(Boolean);
   const forcedEntranceMs = forcedEntrance ? Number(forcedEntrance[1]) : null;
 
   // Real milliseconds since the entrance started (-Infinity before it,

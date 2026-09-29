@@ -148,6 +148,12 @@ export function slowDelay(item: LoadItem, fraction: number, sinceStartMs: number
   return Math.max(0, due - sinceStartMs);
 }
 
+// The ?coildebug tokens, comma separated ("slow,handoff").
+export function coilDebugFlags(search: string): Set<string> {
+  const value = new URLSearchParams(search).get("coildebug");
+  return new Set(value ? value.split(",").map((token) => token.trim()) : []);
+}
+
 export function beginHomeLoad(items: readonly LoadItem[], startMs: number, slow = false): LoadTally {
   const tally = createLoadTally({ items, startMs });
   if (!slow) {

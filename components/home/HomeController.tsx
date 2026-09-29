@@ -30,7 +30,7 @@ import { WorkModal } from "@/components/WorkModal";
 import { CoilStage } from "@/components/coil/CoilStage";
 import type { CoilEntrance } from "@/components/coil/CoilScene";
 import { Loader, type LoaderMode } from "@/components/loader/Loader";
-import { FONT_ITEMS, SCENE_ITEMS, beginHomeLoad, endHomeLoad } from "@/lib/loader/progress";
+import { FONT_ITEMS, SCENE_ITEMS, beginHomeLoad, coilDebugFlags, endHomeLoad } from "@/lib/loader/progress";
 import { HERO_HEADING_ID } from "./HeroText";
 
 // The Coil's renderer-neutral home controller. It owns everything about the
@@ -185,7 +185,7 @@ export function HomeController({ hero, children }: Props) {
     const stopReland = relandAfterFonts(recovery.target);
     const entering = !fast && entranceClaimsRef.current > 0;
     entranceExpectedRef.current = entering;
-    const slow = new URLSearchParams(window.location.search).get("coildebug") === "slow";
+    const slow = coilDebugFlags(window.location.search).has("slow");
     const tally = beginHomeLoad(entering ? SCENE_ITEMS : FONT_ITEMS, performance.now(), slow);
     publishHomeReadiness(entering ? "entering" : "ready");
     // A layout-effect state write re-renders before paint, which is the point:
