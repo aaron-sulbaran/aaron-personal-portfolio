@@ -12,6 +12,10 @@ import { PlaybackPill } from "@/components/PlaybackPill";
 import { ScrollProgress } from "@/components/ScrollProgress";
 import { Holding } from "@/components/Holding";
 import { HOLDING_MODE } from "@/lib/holding";
+import { COIL_HOME } from "@/lib/flags";
+import { HomeController } from "@/components/home/HomeController";
+import { HeroText } from "@/components/home/HeroText";
+import { Book } from "@/components/book/Book";
 
 // The whole site is one scrolling document: Hero (ring) then Work, About,
 // Connect, Footer. The hero keeps its own viewport-locked overflow-hidden
@@ -36,6 +40,9 @@ export default function Home() {
   // Holding mode (the default; NEXT_PUBLIC_SITE_MODE=full opts out, see
   // lib/holding.ts): the "under remodeling" page replaces the scroll journey.
   if (HOLDING_MODE) return <Holding />;
+  // The Coil home (NEXT_PUBLIC_HOME_HERO=coil, see lib/flags.ts); the ring
+  // below stays the default until the flip in slice 9.
+  if (COIL_HOME) return <CoilHome />;
 
   return (
     <>
@@ -51,6 +58,33 @@ export default function Home() {
           </div>
           <ListenInvite />
           <WorkSection />
+          <AboutIntro />
+          <WhoIAm />
+          <UpToNow />
+          <Connect />
+        </main>
+        <Footer />
+      </div>
+    </>
+  );
+}
+
+// The Coil home: the controller owns the hero (the server-rendered greeting,
+// and the scene from slice 3) and the book directly under it at #work, then
+// the surviving sections. No #hero-pin: nothing pins. The waveform, playback
+// pill and progress rail keep their ring-era triggers until slices 5 and 6.
+function CoilHome() {
+  return (
+    <>
+      <Waveform />
+      <PlaybackPill />
+      <ScrollProgress />
+      <div className="relative z-10">
+        <main id="main" className="relative overflow-x-clip">
+          <HomeController hero={<HeroText />}>
+            <Book />
+          </HomeController>
+          <ListenInvite />
           <AboutIntro />
           <WhoIAm />
           <UpToNow />
