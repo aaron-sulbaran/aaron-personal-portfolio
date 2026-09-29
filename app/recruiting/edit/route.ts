@@ -31,6 +31,6 @@ export async function POST(request: NextRequest) {
 
   const result = await fileEdit(parsed.data.edit, parsed.data.company);
   if (result.error !== null) return NextResponse.json(result, { status: 502 });
-  revalidateTag(FEED_TAG);
+  revalidateTag(FEED_TAG, { expire: 0 });
   return NextResponse.json(result);
 }

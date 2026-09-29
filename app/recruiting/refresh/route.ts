@@ -32,6 +32,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ data: null, error: "number is required" }, { status: 400 });
   }
   const result = await refreshState(number);
-  if (result.error === null && !result.data.open) revalidateTag(FEED_TAG);
+  if (result.error === null && !result.data.open) revalidateTag(FEED_TAG, { expire: 0 });
   return NextResponse.json(result, { status: result.error === null ? 200 : 502 });
 }
