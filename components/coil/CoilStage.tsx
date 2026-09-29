@@ -1,12 +1,12 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useEffect, useRef, useState, type ComponentType } from "react";
+import { useCallback, useEffect, useRef, useState, type ComponentType, type RefObject } from "react";
 import { HOLDING_MODE } from "@/lib/holding";
 import type { InputDriver } from "@/lib/coil/drivers";
 import { CoilErrorBoundary } from "./CoilErrorBoundary";
 import { HeroOverlay, type HeroOverlayHandle } from "./HeroOverlay";
-import type { CoilSceneApi, CoilSceneProps } from "./CoilScene";
+import type { CoilCardRef, CoilSceneApi, CoilSceneProps } from "./CoilScene";
 
 // The Coil hero's stage: a layer filling the 100svh hero with the poster (the
 // field at its tuned moment, one per theme), the WebGL scene over it, and the
@@ -26,15 +26,30 @@ type Props = {
   input: InputDriver;
   // The hero shows the canvas name (data-scene="on") only once it has drawn.
   onSceneChange: (drawn: boolean) => void;
+  // Slice 5: the controller's handle on the live scene (the flight, the book's
+  // hover-jump), a card click in the canvas, and a row of the unwound list.
+  api?: RefObject<CoilSceneApi | null>;
+  onCardClick?: (card: CoilCardRef) => void;
+  onRowOpen?: (key: string, origin: HTMLElement) => void;
 };
 
-export function CoilStage({ reducedMotion, frozen, interactive, input, onSceneChange }: Props) {
+export function CoilStage({
+  reducedMotion,
+  frozen,
+  interactive,
+  input,
+  onSceneChange,
+  api,
+  onCardClick,
+  onRowOpen,
+}: Props) {
   const [Scene, setScene] = useState<ComponentType<CoilSceneProps> | null>(null);
   const [generation, setGeneration] = useState(0);
   const [failed, setFailed] = useState(false);
   const lossesRef = useRef(0);
   const overlayRef = useRef<HeroOverlayHandle>(null);
-  const apiRef = useRef<CoilSceneApi>(null);
+  const ownApiRef = useRef<CoilSceneApi>(null);
+  const apiRef = api ?? ownApiRef;
 
   const eligible = !reducedMotion && !HOLDING_MODE && !failed && hasWebGL2();
 
@@ -96,10 +111,11 @@ export function CoilStage({ reducedMotion, frozen, interactive, input, onSceneCh
             onFirstFrame={handleFirstFrame}
             onContextLost={handleContextLost}
             onError={handleError}
+            onCardClick={onCardClick}
           />
         </CoilErrorBoundary>
       ) : null}
-      <HeroOverlay ref={overlayRef} />
+      <HeroOverlay ref={overlayRef} api={apiRef} onRowOpen={onRowOpen} />
     </div>
   );
 }
