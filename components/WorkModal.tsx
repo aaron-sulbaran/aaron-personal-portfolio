@@ -122,10 +122,10 @@ export function WorkModal({ item, onClose, renderMedia = false }: WorkModalProps
                 )}
               </div>
               <div className="flex flex-col gap-1">
-                <span className="text-[11px] font-medium uppercase tracking-caps text-muted">
+                <span className="text-sm text-muted">
                   {item.role} · {item.year}
                 </span>
-                <h2 className="font-serif text-3xl italic leading-tight text-foreground md:text-4xl">
+                <h2 className="font-display text-3xl leading-tight text-foreground md:text-4xl">
                   {item.title}
                 </h2>
               </div>
@@ -144,7 +144,7 @@ export function WorkModal({ item, onClose, renderMedia = false }: WorkModalProps
                 {cta}
                 <ArrowRight aria-hidden="true" className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
               </Link>
-              <span className="text-[11px] font-medium uppercase tracking-caps text-muted">
+              <span className="text-sm text-muted">
                 {renderMedia ? "Tap outside to close" : "Press esc to close"}
               </span>
             </div>
