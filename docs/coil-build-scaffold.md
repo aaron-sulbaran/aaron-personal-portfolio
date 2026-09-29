@@ -21,23 +21,24 @@ One scrolling document at `/`, light and dark, one object with input drivers.
 
 ### 1.1 Hero values (source: hero lab 2 notes and `DEFAULTS` in the lab source)
 
-Every value in this table is a default, pending Aaron's pick. They live in one typed object, `lib/coil/constants.ts`.
+Picked by Aaron on 2026-09-29 (decision record section 2.9). They live in one typed object, `lib/coil/constants.ts`; builders never retune them by eye.
 
-| Item | Default, pending Aaron's pick |
+| Item | Value (Aaron's pick) |
 |---|---|
 | O1 list integration | a2 Book plus (b) Unwind as double-click egg |
-| O2 back | slide held to light: mirrored photo under `--card-veil` |
-| Work card front / back | our pane, logo in brand color (paper in dark) / same pane, no logo |
-| O3 speed | Stretch, amount 0.6: turn gap times `1 + envelope` |
-| Palette / name | Dusk / solid fill, 12 percent ink both themes |
-| Sulbaran | shown |
-| Axis, cards per turn, turn gap | 32 degrees, 8, 1.5 card heights |
+| O2 back | duotone: the photo tinted in the accent (`duoDark` / `duoLight` tokens), front true color |
+| Work card front / back | our pane (`--card-work-pane`) with the logo in brand color (paper in dark) / same pane, no logo; brand-colored panes revisited once real logos land |
+| O3 speed | Stretch, amount 0.6: turn gap times `1 + envelope`. Noted for later: stretch plus light, flare plus light |
+| Palette | sea plus burnt orange (`#p=ut` preset) with the orange reduced to about 20 percent of the field, never 50/50; light and dark both approved |
+| Name fill | a gradient inside the letters, about 12 percent ink; explore a grain gradient in the fill during slice 3 (grain lives only inside the name, never on the field) |
+| Sulbaran | off (no surname anywhere in the hero) |
+| Axis, cards per turn, turn gap | 33 degrees, 8, 1.5 card heights |
 | Card height, curvature, gap | 24 percent of viewport, 0.7, 0.05 card widths |
-| Idle, spin cap | 0.09 cards/s, 14 cards/s |
+| Idle, spin cap | 0.09 cards/s, 12.5 cards/s |
 | Entrance | 1800ms; stack in 0.05, shutter from 0.06 at 0.011 stagger, fly 0.22, pull from 0.58; pull curve (0.55, 0, 0.25, 1) |
 | Camera | FOV 26, lean -12 degrees, band lean -22 degrees |
-| Wheel | one exponential stage, lambda 11 (about 90ms), 0.0045 cards/px, page 1/150 cards/px |
-| Capture | silhouette, 400ms intent, nudge at 2.6s |
+| Wheel | one exponential stage, lambda 11 (about 90ms), 0.0045 cards/px, page scroll turns the coil at 1/150 cards/px (on) |
+| Capture | cards only (pointer over a card, not the whole silhouette), 400ms hover intent, chevron nudge at 2.6s |
 | Hover-jump, unwind | 600ms site ease; 580ms per card, 8ms stagger |
 | Strand fit | repeats fill the pane (M slots over N cards) |
 | Mark, light panel dim | 32px, 30 percent |

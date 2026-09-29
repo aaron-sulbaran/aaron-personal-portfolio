@@ -80,12 +80,17 @@ Locked:
 - Seen state: never greyed. An outline dot in the card's upper corner instead of a solid dot.
 - On screen in the hero: the name, the helix, the menu, and one quiet way into the list view. Nothing else.
 
-Open, options owed (hero lab 2 builds each as a toggle; pick after viewing):
-- [ ] O1 How the list integrates with the helix.
-- [ ] O2 What is on the back of a card, and the curvature.
-- [ ] O3 How the helix reacts to scroll speed (no recoil; inspired by, not copied from, Pacôme's pulled-thread stretch).
-- [ ] "Sulbaran" beside the name: yes / no.
-- [ ] Shader palette: tones of the accent only / a second hue.
+Picked by Aaron from hero lab 2, 2026-09-29 (the build starts on these; see `docs/coil-build-scaffold.md` table 1.1):
+- [x] O1: the book (one-screen two-column table under the hero; users can scroll away); the double-click unwind stays as the Easter egg.
+- [x] O2: duotone backs (accent-tinted photo, not quite black and white). Curvature 0.7 as built.
+- [x] O3: stretch. Noted for later: stretch plus light, and flare plus light.
+- [x] Work cards: our pane (tone) with the logo; brand-colored panes revisited once real logos and assets are in the repo. Backs: same material, no logo.
+- [x] "Sulbaran": off.
+- [x] Name fill: a gradient (explore a grain gradient inside the letters during the build, not a flat fill).
+- [x] Palette: sea plus burnt orange, the orange reduced to about 20 percent of the field (the lab's 50/50 was too much). Light and dark both approved.
+- [x] Geometry: axis 33 degrees, 8 cards per turn, turn gap 1.5, card height 24 percent, neighbor gap 0.05, lean -12, curvature 0.7, repeats fill the pane.
+- [x] Wheel: capture in "cards only" mode, hover intent 400ms, chevron nudge after 2.6s, page scroll turns the coil (on), spin speed cap 12 to 13 cards/s (build at 12.5), idle slow as built.
+- [x] Build: autonomous overnight per the scaffold and section 10, Aaron's full permission (2026-09-29).
 
 ## 3. Loader
 
