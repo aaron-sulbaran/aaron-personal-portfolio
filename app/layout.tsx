@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
-import { Menu } from "@/components/Menu";
 import { SiteNav } from "@/components/SiteNav";
+import { MenuPill } from "@/components/menu/MenuPill";
 import { CustomCursor } from "@/components/CustomCursor";
 import { siteContent } from "@/lib/content";
 import { profaBlack } from "@/lib/fonts";
@@ -58,9 +58,10 @@ export default function RootLayout({
         <a href="#main" className="skip-link">
           Skip to content
         </a>
-        {/* Holding mode has no sections to navigate; nav and menu stay out. */}
+        {/* Holding mode has no sections to navigate; nav and menu stay out.
+            Menu.tsx stays in the tree, unmounted, until slice 9 retires it. */}
         {!HOLDING_MODE && <SiteNav />}
-        {!HOLDING_MODE && <Menu />}
+        {!HOLDING_MODE && <MenuPill />}
         <CustomCursor />
         {children}
       </body>

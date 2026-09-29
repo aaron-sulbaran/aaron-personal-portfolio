@@ -90,6 +90,24 @@ export const siteContent = {
     themeToggleToLight: "Light mode",
     themeAriaLabelToDark: "Switch to dark mode",
     themeAriaLabelToLight: "Switch to light mode",
+    // The pill (components/menu): its label rolls to "Close" while the panel
+    // is open, and the Listen dot sits beside it as its own button.
+    pillLabel: "Menu",
+    closeLabel: "Close",
+    dialogLabel: "Site menu",
+    listenAriaLabelPlay: "Play my soundtrack",
+    listenAriaLabelPause: "Pause my soundtrack",
+    // The header bar past the hero (components/SiteNav.tsx).
+    navAriaLabel: "Sections",
+    markAriaLabel: "Back to top",
+    // The panel's bottom row: email first, then the socials as text links.
+    email: { label: "aarondsulbaran@gmail.com", href: "mailto:aarondsulbaran@gmail.com" },
+    socials: [
+      { key: "linkedin", label: "LinkedIn", href: "https://www.linkedin.com/in/aaron-sulbaran/" },
+      { key: "github", label: "GitHub", href: "https://github.com/aaron-sulbaran" },
+      { key: "x", label: "X", href: "https://x.com/imaaronsulbaran" },
+      { key: "instagram", label: "Instagram", href: "https://www.instagram.com/aaron.sulbaran/" },
+    ],
     items: [
       { key: "home", label: "Home", href: "#main", kind: "anchor" as const },
       { key: "work", label: "Work", href: "#work", kind: "anchor" as const },
