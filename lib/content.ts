@@ -94,10 +94,63 @@ export const siteContent = {
       { key: "home", label: "Home", href: "#main", kind: "anchor" as const },
       { key: "work", label: "Work", href: "#work", kind: "anchor" as const },
       { key: "about", label: "About", href: "#about", kind: "anchor" as const },
+      { key: "connect", label: "Connect", href: "#connect", kind: "anchor" as const },
     ],
   },
   modals: {
     closeAriaLabel: "Close",
+  },
+  // The Coil hero (NEXT_PUBLIC_HOME_HERO=coil). The heading is the server-
+  // rendered h1; greeting and name are the two parts the scene draws.
+  hero: {
+    heading: "Hi, I'm Aaron.",
+    greeting: "Hi, I'm",
+    name: "Aaron",
+    listControl: "Work and photos",
+    coilControl: "Coil",
+  },
+  // The book under the Coil hero (#work): Work then Photos, text first. Keys
+  // match homeTiles keys where a card exists, so "seen" is shared with the
+  // cards. Work targets: "case" opens /work/[slug], "external" opens a live
+  // site in a new tab, "soon" renders the row without a link. Placeholder
+  // photos never get a row.
+  book: {
+    ariaLabel: "Work and photos",
+    workHeading: "Work",
+    photosHeading: "Photos",
+    seenLabel: "opened",
+    externalLabel: "opens in a new tab",
+    workRows: [
+      // TODO(Aaron): Talos copy, and whether it gets a case page or stays a coming-soon row.
+      { key: "talos", title: "Talos", meta: "Open source, coming soon", target: { kind: "soon" as const } },
+      // TODO(Aaron): min/Max's live URL; the row becomes { kind: "external", href } once it lands.
+      { key: "min-max", title: "min/Max", meta: "Live, link soon", target: { kind: "soon" as const } },
+      { key: "capital-one-pm", title: "Capital One", meta: "Product manager intern, 2025", target: { kind: "case" as const, slug: "capital-one-pm" } },
+      { key: "ieee-president", title: "IEEE UT Austin", meta: "President, 2025", target: { kind: "case" as const, slug: "ieee-president" } },
+      { key: "claude-ambassador", title: "Anthropic ambassador", meta: "Claude ambassador at UT Austin, 2025", target: { kind: "case" as const, slug: "claude-ambassador" } },
+      { key: "hackathon-builds", title: "Hackathon builds", meta: "Weekend builds, ongoing", target: { kind: "case" as const, slug: "hackathon-builds" } },
+      { key: "aaronsulbaran-site", title: "This site", meta: "Built in public, 2026", target: { kind: "case" as const, slug: "aaronsulbaran-site" } },
+    ],
+    photoRows: [
+      { key: "hsf-speaking", title: "Public speaking", meta: "HSF Scholars", src: "/photos/hsf-speaking.jpeg" },
+      { key: "drum-major", title: "Drum major", meta: "Leading the band", src: "/photos/drum-major.jpeg" },
+      { key: "yosemite-hiking", title: "Yosemite", meta: "Hiking", src: "/photos/yosemite-hiking.jpeg" },
+      { key: "capital-one", title: "Capital One summer", meta: "Internship", src: "/photos/capital-one.jpeg" },
+      { key: "uncs-grad", title: "Graduation", meta: "Family", src: "/photos/uncs-grad.jpeg" },
+      { key: "claude-hackathon", title: "Claude hackathon", meta: "Austin", src: "/photos/claude-hackathon.jpeg" },
+      { key: "misuki", title: "Venezuelan roots", meta: "Maracaibo", src: "/photos/misuki.jpeg" },
+      { key: "traveling", title: "Traveling", meta: "On the road", src: "/photos/traveling.jpeg" },
+      { key: "mt-fuji", title: "Mt. Fuji", meta: "Japan", src: "/photos/mt-fuji.jpeg" },
+    ],
+  },
+  // The Coil's strand: real cards only (design review item 9), interleaved by
+  // the pattern (P a photo, W a work card, in the orders below). Placeholders
+  // never enter the coil; they return here as real photos arrive. Keys are
+  // homeTiles keys; see strandTiles below.
+  strand: {
+    pattern: "PWPPWPPWPWPPWP",
+    photos: ["hsf-speaking", "drum-major", "yosemite-hiking", "capital-one", "uncs-grad", "claude-hackathon", "misuki", "traveling", "mt-fuji"],
+    work: ["capital-one-pm", "claude-ambassador", "ieee-president", "aaronsulbaran-site", "hackathon-builds"],
   },
   notFound: {
     title: "Nothing here.",
@@ -671,6 +724,37 @@ export const photoBySrc: ReadonlyMap<string, Photo> = new Map(
 export const workItemBySlug: ReadonlyMap<WorkItem["slug"], WorkItem> = new Map(
   siteContent.workItems.map((w) => [w.slug, w]),
 );
+
+export type BookWorkRow = (typeof siteContent.book.workRows)[number];
+export type BookPhotoRow = (typeof siteContent.book.photoRows)[number];
+
+// Placeholder photos are clearly marked SVGs in public/photos; they never
+// appear in the book or the strand.
+export function isPlaceholderPhoto(src: string) {
+  return src.endsWith(".svg");
+}
+
+export const homeTileByKey: ReadonlyMap<string, HomeTile> = new Map(
+  siteContent.homeTiles.map((tile) => [tile.key, tile]),
+);
+
+// The Coil's strand as tiles, in order: the pattern filled from the photo and
+// work key lists. Unknown keys and placeholders are dropped (the content test
+// asserts none are), so the scene only ever sees real cards.
+export const strandTiles: readonly HomeTile[] = (() => {
+  const { pattern, photos, work } = siteContent.strand;
+  let photo = 0;
+  let workIndex = 0;
+  const tiles: HomeTile[] = [];
+  for (const slot of pattern) {
+    const key = slot === "P" ? photos[photo++] : work[workIndex++];
+    const tile = key ? homeTileByKey.get(key) : undefined;
+    if (!tile) continue;
+    if (tile.kind === "photo" && isPlaceholderPhoto(tile.src)) continue;
+    tiles.push(tile);
+  }
+  return tiles;
+})();
 
 // Body section shapes for work detail pages. When a workItem populates its
 // bodySections array, each element must match one of these. More kinds can be
