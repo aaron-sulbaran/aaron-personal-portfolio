@@ -4,7 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import { usePathname } from "next/navigation";
 import { animate, motion, useReducedMotion } from "framer-motion";
 import { Portal } from "@/components/Portal";
-import { AsBolt } from "@/components/menu/BrandMark";
+import { AsMark } from "@/components/menu/BrandMark";
 import { ListenDot } from "@/components/menu/ListenDot";
 import { MenuPanel } from "@/components/menu/MenuPanel";
 import { siteContent } from "@/lib/content";
@@ -273,21 +273,21 @@ export function MenuPill() {
               engaged ? "pl-[14px]" : "pl-1.5"
             }`}
           >
-            <span aria-hidden="true" className="relative grid h-5 overflow-hidden">
+            <span aria-hidden="true" className="relative grid h-[22px] overflow-hidden">
               <span
-                className={`col-start-1 row-start-1 block h-5 overflow-hidden transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                className={`col-start-1 row-start-1 block h-[22px] overflow-hidden transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
                   engaged ? "-translate-y-[110%]" : ""
                 }`}
               >
-                <span className="block transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/pill:-translate-y-5 group-focus-visible/pill:-translate-y-5">
-                  <span className="flex h-5 items-center justify-end">{pillLabel}</span>
-                  <span className="flex h-5 items-center justify-center">
-                    <AsBolt className="h-[18px] w-[18px]" />
+                <span className="block transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/pill:-translate-y-[22px] group-focus-visible/pill:-translate-y-[22px]">
+                  <span className="flex h-[22px] items-center justify-end">{pillLabel}</span>
+                  <span className="flex h-[22px] items-center justify-center">
+                    <AsMark fit="tight" className="h-[22px] w-[15px]" />
                   </span>
                 </span>
               </span>
               <span
-                className={`col-start-1 row-start-1 flex h-5 items-center justify-end transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                className={`col-start-1 row-start-1 flex h-[22px] items-center justify-end transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
                   engaged ? "" : "translate-y-[110%]"
                 }`}
               >
