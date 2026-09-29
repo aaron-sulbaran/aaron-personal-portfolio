@@ -606,79 +606,109 @@ export const siteContent = {
   ],
   // 14 photos on desktop, 6 on mobile. Each caption is what shows in the
   // click-to-expand modal; edit freely, first person, no em dashes.
+  // width and height are the source file's pixels (checked by
+  // content.test.ts); the modal sizes its image request for the cover crop.
   photos: [
     {
       src: "/photos/hsf-speaking.jpeg",
+      width: 1084,
+      height: 724,
       alt: "Me speaking on stage at HSF Scholars.",
       caption: "Speaking at the HSF Scholars summit. One of the first times I realized how much I love sharing what I'm learning with people earlier in the journey.",
     },
     {
       src: "/photos/drum-major.jpeg",
+      width: 886,
+      height: 886,
       alt: "Me in my drum major uniform during a performance.",
       caption: "Drum major days. Leading a band is mostly about reading the room, staying calm when things break, and making sure everyone around you feels seen.",
     },
     {
       src: "/photos/capital-one.jpeg",
+      width: 768,
+      height: 1024,
       alt: "Me at Capital One during my internship.",
       caption: "Capital One, product manager intern. Learned how real PM decisions get made when you're accountable to a team, not just a deck.",
     },
     {
       src: "/photos/yosemite-hiking.jpeg",
+      width: 666,
+      height: 1182,
       alt: "Me hiking in Yosemite.",
       caption: "Yosemite. Long hikes with good people are where I do my best thinking.",
     },
     {
       src: "/photos/uncs-grad.jpeg",
+      width: 627,
+      height: 836,
       alt: "Me at a UNC-related graduation.",
       caption: "Family graduation moment. My roots keep me grounded.",
     },
     {
       src: "/photos/claude-hackathon.jpeg",
+      width: 768,
+      height: 1024,
       alt: "Me with my co-ambassadors at the Claude hackathon.",
       caption: "Me and my co-ambassadors Rohan and Jessica at the first-ever Claude hackathon in Austin. Watching students ship real AI tools in one weekend was the kind of thing that made me want to stay close to this community.",
     },
     {
       src: "/photos/misuki.jpeg",
+      width: 722,
+      height: 1088,
       alt: "Me with family from Maracaibo.",
       caption: "Venezuelan roots. Born in Maracaibo, raised with arepas and a lot of loud love. Carrying that into everything I build.",
     },
     // TODO: Replace placeholder with an IEEE UT Austin meeting / president photo
     {
       src: "/photos/photo-08.svg",
+      width: 480,
+      height: 640,
       alt: "Placeholder for an IEEE UT Austin leadership moment.",
       caption: "TODO caption: IEEE UT Austin as president. Running a student org at scale taught me more about operations than any class.",
     },
     {
       src: "/photos/traveling.jpeg",
+      width: 768,
+      height: 1024,
       alt: "Me traveling.",
       caption: "Traveling. Being away from home is one of the fastest ways I learn what I actually care about.",
     },
     // TODO: Replace placeholder with an Austin startup community / meetup photo
     {
       src: "/photos/photo-10.svg",
+      width: 480,
+      height: 640,
       alt: "Placeholder for an Austin startup community moment.",
       caption: "TODO caption: Austin startup community. Builders, late coffees, conversations that go for hours.",
     },
     // TODO: Replace placeholder with a 3D-printing / making photo
     {
       src: "/photos/photo-11.svg",
+      width: 480,
+      height: 640,
       alt: "Placeholder for a 3D-printed project.",
       caption: "TODO caption: 3D-printed fixes. If I can print the solution, I will.",
     },
     {
       src: "/photos/mt-fuji.jpeg",
+      width: 768,
+      height: 1024,
       alt: "Me with Mt. Fuji in the background.",
       caption: "Mt. Fuji. Standing in front of it reminded me how small our day-to-day loops can feel once you've looked at something that big.",
     },
     // TODO: Replace placeholder with a friends / community photo
     {
       src: "/photos/photo-13.svg",
+      width: 480,
+      height: 640,
       alt: "Placeholder for a friends and community photo.",
       caption: "TODO caption: The people who make building feel less lonely.",
     },
     // TODO: Replace placeholder with a reflective / portrait photo
     {
       src: "/photos/photo-14.svg",
+      width: 480,
+      height: 640,
       alt: "Placeholder for a reflective portrait.",
       caption: "TODO caption: Quiet moment. Keeping it close to the chest.",
     },
