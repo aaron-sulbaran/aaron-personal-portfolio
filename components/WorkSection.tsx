@@ -31,7 +31,7 @@ export function WorkSection() {
             <span>{label}</span>
           </div>
           <h2
-            className="reveal-mask font-serif text-[clamp(4rem,10vw,8rem)] italic leading-[0.95] tracking-tight text-foreground"
+            className="reveal-mask font-serif text-display-xl italic text-foreground"
             style={revealIndex(1)}
           >
             <span className="block">{indexHeading}</span>
