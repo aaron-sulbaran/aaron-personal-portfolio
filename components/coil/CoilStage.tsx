@@ -111,8 +111,9 @@ function hasWebGL2() {
   return typeof window === "undefined" || typeof WebGL2RenderingContext !== "undefined";
 }
 
-// The field at FIELD_REST_TIME with the bottom seam, rendered from the scene
-// itself (?coildebug=poster) at 1440x900, one file per theme.
+// The field at fieldTime(0), the live field's first frame, with the bottom
+// seam, rendered from the scene itself (?coildebug=poster) at 1440x900, one
+// file per theme.
 function Poster() {
   return (
     <div aria-hidden="true" className="absolute inset-0">
