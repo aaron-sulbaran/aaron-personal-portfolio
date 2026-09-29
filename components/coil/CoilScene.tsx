@@ -53,7 +53,7 @@ import {
 import { entranceClock, entranceHelix, entranceNameAlpha, entrancePose, isRested } from "@/lib/coil/entrance";
 import { createUnwind, unwindPose, unwindProgress } from "@/lib/coil/unwind";
 import { fieldTime } from "@/lib/coil/drift";
-import type { InputDriver } from "@/lib/coil/drivers";
+import { budgetFor, sameBudget, type InputDriver } from "@/lib/coil/drivers";
 import { COMPOSITE_FRAG, COMPOSITE_VERT, FIELD, FIELD_FRAG, FULLSCREEN_VERT } from "@/lib/coil/field.glsl";
 import { createCardGeometry, createCardMaterial, type CardUniforms, type SharedCardUniforms } from "@/lib/coil/material";
 import { loadCardSource, paintCard, paintNameMask, type CardSource } from "@/lib/coil/textures";
@@ -172,7 +172,7 @@ export default function CoilScene(props: CoilSceneProps) {
 
   useEffect(() => {
     liveRef.current = props;
-    runtimeRef.current?.wake();
+    runtimeRef.current?.sync();
   });
 
   useEffect(() => {
@@ -214,7 +214,8 @@ function headerClearance(pose: CardPose, geo: CoilGeometry, camera: Camera) {
   return smoothstep01(clamp01((top - geo.clearTopPx) / (HEADER_FADE_CARDS * geo.cardPx)));
 }
 
-type CoilRuntime = { wake: () => void; dispose: () => void };
+// sync: the props changed (the input driver may have, and with it the budget).
+type CoilRuntime = { wake: () => void; sync: () => void; dispose: () => void };
 
 const TEXTURE_TIMEOUT_MS = 6000; // the loader's give-up time: a slow photo paints the plain pane
 const GESTURE_GAP_MS = 260; // wheel events closer than this are one gesture (the lab's value)
@@ -239,6 +240,9 @@ type DebugStats = {
   hovered: () => number;
   capturing: () => boolean;
   api?: CoilSceneApi;
+  // Slice 7: what the scene spends, as live (the DPR in use, the buffer,
+  // the card textures actually uploaded).
+  budget?: () => object;
 };
 
 function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject<CoilSceneProps>): CoilRuntime {
@@ -255,6 +259,9 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   const tiles = strandTiles;
   const tileCount = tiles.length;
   let theme: CoilTheme = readCoilTheme();
+  // Slice 7: the render budget follows the input driver (coarse pointers cap
+  // the DPR at 2 and paint smaller card textures).
+  let budget = budgetFor(live.current.input);
 
   // ---- passes
   const orthoCamera = new OrthographicCamera(-1, 1, 1, -1, 0, 1);
@@ -359,7 +366,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
 
   // A fresh canvas pair into fresh textures; the old pair is disposed.
   function paintTile(tile: number) {
-    const painted = paintCard(sources[tile], theme);
+    const painted = paintCard(sources[tile], theme, budget.textureSize);
     const previous = faces[tile];
     faces[tile] = { front: makeTexture(painted.front), back: makeTexture(painted.back) };
     slots.forEach((slot) => {
@@ -457,6 +464,30 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       }
     : null;
   if (debug) (window as unknown as { __coil?: DebugStats }).__coil = debug;
+  if (debug) {
+    debug.budget = () => {
+      const buffer = renderer.getDrawingBufferSize(new Vector2());
+      const sizes = new Set(
+        faces.map((face) => {
+          const image = face.front.image as HTMLCanvasElement;
+          return `${image.width}x${image.height}`;
+        }),
+      );
+      return {
+        input: live.current.input,
+        dprCap: budget.dprCap,
+        devicePixelRatio: window.devicePixelRatio,
+        dpr: view.dpr,
+        css: [view.width, view.height],
+        buffer: [buffer.x, buffer.y],
+        field: [fieldTarget.width, fieldTarget.height],
+        textures: [...sizes],
+        narrow: geo?.narrow ?? null,
+        slots: geo?.slotCount ?? null,
+        cards: tileCount,
+      };
+    };
+  }
   const push = (list: number[], value: number) => {
     list.push(value);
     if (list.length > 6000) list.shift();
@@ -531,7 +562,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   function layout(width: number, height: number) {
     view.width = Math.max(1, width);
     view.height = Math.max(1, height);
-    view.dpr = Math.min(window.devicePixelRatio || 1, COIL.lab.dprCap);
+    view.dpr = Math.min(window.devicePixelRatio || 1, budget.dprCap);
     const rect = host.getBoundingClientRect();
     view.docTop = rect.top + window.scrollY;
     view.docLeft = rect.left + window.scrollX;
@@ -1230,7 +1261,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     Promise.all(
       tiles.map((tile) =>
         withTimeout<CardSource>(
-          loadCardSource(tile, logoFor),
+          loadCardSource(tile, logoFor, budget.textureSize),
           tile.kind === "photo" ? { kind: "photo", key: tile.key, image: null } : { kind: "work", key: tile.key, logo: null },
         ).then(countTexture), // slice 4: the loader's tally
       ),
@@ -1254,8 +1285,25 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       if (!disposed) live.current.onError(error);
     });
 
+  // Slice 7: an input change (a tablet gaining a trackpad, emulation) moves
+  // the budget: re-lay out at the new DPR cap and repaint every card at the
+  // new texture size, a few per frame as a theme change does.
+  function sync() {
+    const next = budgetFor(live.current.input);
+    if (!sameBudget(next, budget)) {
+      budget = next;
+      if (ready && !contextLost && !disposed) {
+        layout(view.width, view.height);
+        repaints.enqueue(tiles.map((_, i) => i));
+        if (!raf) renderStill();
+      }
+    }
+    wake();
+  }
+
   return {
     wake,
+    sync,
     dispose() {
       disposed = true;
       stop();

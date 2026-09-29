@@ -43,3 +43,17 @@ export function selectDrivers(capabilities: Capabilities, c: CoilConstants = COI
 export function sameDrivers(a: Drivers, b: Drivers) {
   return a.composition === b.composition && a.input === b.input && a.scene === b.scene;
 }
+
+// What the scene may spend: the device pixel ratio cap and the card texture
+// size. Fine pointers keep the desktop budget; coarse pointers (phones,
+// tablets) get the decision record's 256 to 384px textures and a DPR cap of 2.
+// The field pass stays at a third of the CSS resolution either way.
+export type RenderBudget = { dprCap: number; textureSize: readonly [number, number] };
+
+export function budgetFor(input: InputDriver, c: CoilConstants = COIL): RenderBudget {
+  return input === "coarse" ? c.lab.coarse : { dprCap: c.lab.dprCap, textureSize: c.lab.textureSize };
+}
+
+export function sameBudget(a: RenderBudget, b: RenderBudget) {
+  return a.dprCap === b.dprCap && a.textureSize[0] === b.textureSize[0] && a.textureSize[1] === b.textureSize[1];
+}
