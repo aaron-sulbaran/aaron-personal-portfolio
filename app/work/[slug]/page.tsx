@@ -46,7 +46,7 @@ export default async function WorkDetailPage({ params }: Params) {
           <div className="mx-auto max-w-4xl">
             <Link
               href="/#work"
-              className="mb-12 inline-flex items-center gap-2 text-[12px] font-medium uppercase tracking-caps text-muted transition-colors duration-200 hover:text-accent md:mb-16"
+              className="mb-12 inline-flex items-center gap-2 text-sm text-muted transition-colors duration-200 hover:text-accent md:mb-16"
             >
               {backLabel}
             </Link>
@@ -62,10 +62,10 @@ export default async function WorkDetailPage({ params }: Params) {
                 />
               </div>
               <div className="flex flex-col gap-2">
-                <span className="text-[11px] font-medium uppercase tracking-caps text-muted">
+                <span className="text-sm text-muted">
                   {item.role} · {item.year}
                 </span>
-                <h1 className="font-serif text-[clamp(3rem,8vw,6rem)] italic leading-[0.95] tracking-tight text-foreground">
+                <h1 className="font-display text-display-page text-foreground">
                   {item.title}
                 </h1>
               </div>
@@ -77,7 +77,7 @@ export default async function WorkDetailPage({ params }: Params) {
 
             {item.bodySections.length === 0 ? (
               <div className="rounded-2xl border border-border/70 bg-glass-strong px-6 py-8 backdrop-blur-md md:px-10 md:py-12">
-                <p className="font-serif text-xl italic leading-[1.45] text-foreground md:text-2xl">
+                <p className="font-display text-xl leading-[1.45] text-foreground md:text-2xl">
                   {placeholderBody}
                 </p>
                 {linkedinHref && (
