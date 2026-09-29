@@ -559,7 +559,7 @@ export const siteContent = {
     {
       slug: "capital-one-pm",
       title: "Capital One",
-      role: "Product Manager Intern",
+      role: "Product manager intern",
       year: "2025",
       logo: "/work/logos/capital-one.svg",
       teaser: "Learned how real PM decisions get made when you're accountable to a team, not a deck.",
@@ -570,7 +570,7 @@ export const siteContent = {
     {
       slug: "capital-one-ba",
       title: "Capital One",
-      role: "Business Analyst Intern",
+      role: "Business analyst intern",
       year: "2024",
       logo: "/work/logos/capital-one.svg",
       teaser: "First real taste of how product and business decisions actually get made inside a big bank.",
@@ -581,7 +581,7 @@ export const siteContent = {
     {
       slug: "claude-ambassador",
       title: "Anthropic",
-      role: "Claude Ambassador at UT Austin",
+      role: "Claude ambassador at UT Austin",
       year: "2025",
       logo: "/work/logos/anthropic.svg",
       teaser: "Building an AI community on campus. Co-hosted the first Claude hackathon in Austin.",
@@ -716,26 +716,26 @@ export const siteContent = {
   // Titles/blurbs marked PLACEHOLDER below belong to the placeholder SVG
   // tiles and should be finalized when real photos replace them.
   homeTiles: [
-    { kind: "photo" as const, key: "hsf-speaking", src: "/photos/hsf-speaking.jpeg", title: "Public Speaking", blurb: "Speaking at HSF Scholars, where I realized how much I love teaching what I'm learning." },
+    { kind: "photo" as const, key: "hsf-speaking", src: "/photos/hsf-speaking.jpeg", title: "Public speaking", blurb: "Speaking at HSF Scholars, where I realized how much I love teaching what I'm learning." },
     { kind: "work"  as const, key: "capital-one-pm", slug: "capital-one-pm", title: "Capital One", blurb: "A summer as a PM intern, accountable to a team, not a deck." },
-    { kind: "photo" as const, key: "drum-major", src: "/photos/drum-major.jpeg", title: "Drum Major", blurb: "Leading the band from the podium, reading the room, staying calm under pressure." },
+    { kind: "photo" as const, key: "drum-major", src: "/photos/drum-major.jpeg", title: "Drum major", blurb: "Leading the band from the podium, reading the room, staying calm under pressure." },
     { kind: "photo" as const, key: "yosemite-hiking", src: "/photos/yosemite-hiking.jpeg", title: "Yosemite", blurb: "Long hikes in Yosemite, where I do my best thinking." },
     { kind: "work"  as const, key: "claude-ambassador", slug: "claude-ambassador", title: "Anthropic", blurb: "Building an AI community on campus, co-hosting Austin's first Claude hackathon." },
     { kind: "photo" as const, key: "capital-one", src: "/photos/capital-one.jpeg", title: "Capital One", blurb: "A candid from my PM internship at Capital One, learning how real decisions get made." },
     { kind: "photo" as const, key: "uncs-grad", src: "/photos/uncs-grad.jpeg", title: "Graduation", blurb: "A family graduation moment. My roots keep me grounded." },
     { kind: "work"  as const, key: "ieee-president", slug: "ieee-president", title: "IEEE", blurb: "Running IEEE at UT Austin taught me more about operations than any class did." },
-    { kind: "photo" as const, key: "claude-hackathon", src: "/photos/claude-hackathon.jpeg", title: "Claude Hackathon", blurb: "With my co-ambassadors at Austin's first Claude hackathon, watching students ship fast." },
-    { kind: "photo" as const, key: "misuki", src: "/photos/misuki.jpeg", title: "Venezuelan Roots", blurb: "Born in Maracaibo, raised with arepas and a lot of loud love." },
-    { kind: "work"  as const, key: "aaronsulbaran-site", slug: "aaronsulbaran-site", title: "This Site", blurb: "This site itself. A living personal statement that grows with me." },
-    { kind: "photo" as const, key: "photo-08", src: "/photos/photo-08.svg", title: "IEEE President", blurb: "Placeholder photo. An IEEE leadership shot is coming soon." }, // PLACEHOLDER
+    { kind: "photo" as const, key: "claude-hackathon", src: "/photos/claude-hackathon.jpeg", title: "Claude hackathon", blurb: "With my co-ambassadors at Austin's first Claude hackathon, watching students ship fast." },
+    { kind: "photo" as const, key: "misuki", src: "/photos/misuki.jpeg", title: "Venezuelan roots", blurb: "Born in Maracaibo, raised with arepas and a lot of loud love." },
+    { kind: "work"  as const, key: "aaronsulbaran-site", slug: "aaronsulbaran-site", title: "This site", blurb: "This site itself. A living personal statement that grows with me." },
+    { kind: "photo" as const, key: "photo-08", src: "/photos/photo-08.svg", title: "IEEE president", blurb: "Placeholder photo. An IEEE leadership shot is coming soon." }, // PLACEHOLDER
     { kind: "photo" as const, key: "traveling", src: "/photos/traveling.jpeg", title: "Traveling", blurb: "Traveling teaches me fast what I actually care about." },
     { kind: "work"  as const, key: "capital-one-ba", slug: "capital-one-ba", title: "Capital One", blurb: "My first taste of how product decisions get made inside a big bank." },
-    { kind: "photo" as const, key: "photo-10", src: "/photos/photo-10.svg", title: "Austin Builders", blurb: "Placeholder photo. An Austin startup community shot is coming soon." }, // PLACEHOLDER
+    { kind: "photo" as const, key: "photo-10", src: "/photos/photo-10.svg", title: "Austin builders", blurb: "Placeholder photo. An Austin startup community shot is coming soon." }, // PLACEHOLDER
     { kind: "photo" as const, key: "photo-11", src: "/photos/photo-11.svg", title: "Making", blurb: "Placeholder photo. A making and 3D-printing shot is coming soon." }, // PLACEHOLDER
-    { kind: "work"  as const, key: "hackathon-builds", slug: "hackathon-builds", title: "Hackathon Builds", blurb: "A running set of weekend builds. Rough, fast, and shipped." },
+    { kind: "work"  as const, key: "hackathon-builds", slug: "hackathon-builds", title: "Hackathon builds", blurb: "A running set of weekend builds. Rough, fast, and shipped." },
     { kind: "photo" as const, key: "mt-fuji", src: "/photos/mt-fuji.jpeg", title: "Mt. Fuji", blurb: "Standing in front of Mt. Fuji, a reminder of how small my daily loops can feel." },
     { kind: "photo" as const, key: "photo-13", src: "/photos/photo-13.svg", title: "Community", blurb: "Placeholder photo. A friends and community shot is coming soon." }, // PLACEHOLDER
-    { kind: "photo" as const, key: "photo-14", src: "/photos/photo-14.svg", title: "Quiet Moment", blurb: "Placeholder photo. A quiet, reflective portrait is coming soon." }, // PLACEHOLDER
+    { kind: "photo" as const, key: "photo-14", src: "/photos/photo-14.svg", title: "Quiet moment", blurb: "Placeholder photo. A quiet, reflective portrait is coming soon." }, // PLACEHOLDER
   ],
 } as const;
 
