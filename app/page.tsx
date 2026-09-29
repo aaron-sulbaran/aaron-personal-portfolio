@@ -51,6 +51,7 @@ export default function Home() {
       <ScrollProgress />
       <div className="relative z-10">
         <main id="main" className="relative overflow-x-clip">
+          <HeroSentinel />
           <div id="hero-pin" className="relative z-20">
             <TileRing>
               <HomeHero />
@@ -81,6 +82,7 @@ function CoilHome() {
       <ScrollProgress />
       <div className="relative z-10">
         <main id="main" className="relative overflow-x-clip">
+          <HeroSentinel />
           <HomeController hero={<HeroText />}>
             <Book />
           </HomeController>
@@ -93,5 +95,18 @@ function CoilHome() {
         <Footer />
       </div>
     </>
+  );
+}
+
+// The header's hero sentinel: an invisible box over the first 90svh of #main
+// (the hero). SiteNav keeps the bar away while any of it is in view, so the
+// bar slides in once the reader is past the hero, on either home.
+function HeroSentinel() {
+  return (
+    <div
+      aria-hidden="true"
+      data-hero-sentinel
+      className="pointer-events-none absolute inset-x-0 top-0 h-[90vh] supports-[height:100svh]:h-[90svh]"
+    />
   );
 }
