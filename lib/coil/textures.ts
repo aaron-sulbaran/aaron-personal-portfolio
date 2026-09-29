@@ -130,6 +130,17 @@ function drawCover(g: CanvasRenderingContext2D, img: HTMLImageElement, x: number
 
 const INNER_RADIUS = Math.max(3, RADIUS - INSET * 0.6);
 
+// Where a photo front's picture sits inside the card, as fractions of the
+// card's width and height (radius as a fraction of the width), and how it is
+// cropped (drawCover's 42 percent). FlyingTile lays a sharp copy of the photo
+// exactly over the painted one once the flown card is parked in its modal.
+export const CARD_PHOTO_INSET = {
+  x: INSET / TEX_W,
+  y: INSET / TEX_H,
+  radius: INNER_RADIUS / TEX_W,
+  objectPosition: "50% 42%",
+} as const;
+
 function insetPhoto(g: CanvasRenderingContext2D, img: HTMLImageElement) {
   g.save();
   g.beginPath();
