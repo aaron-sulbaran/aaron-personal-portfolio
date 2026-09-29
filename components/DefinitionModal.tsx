@@ -110,7 +110,7 @@ export function DefinitionModal({ definition, morph, onClose }: DefinitionModalP
             </p>
 
             <p className="mt-1 text-sm text-muted">
-              Press esc to close
+              Press Esc to close
             </p>
           </motion.div>
         </motion.div>
