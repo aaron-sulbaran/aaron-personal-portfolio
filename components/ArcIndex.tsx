@@ -65,7 +65,7 @@ export function ArcIndex({
 
         <h2
           ref={titleRef}
-          className="text-balance font-serif text-[clamp(2.75rem,5vw,4.5rem)] italic leading-[1.02] text-foreground"
+          className="text-balance font-serif text-display-md italic leading-[1.02] text-foreground"
         />
       </div>
 
