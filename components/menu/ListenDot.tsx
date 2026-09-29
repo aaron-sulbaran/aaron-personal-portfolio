@@ -42,7 +42,7 @@ export function ListenDot({ hidden }: { hidden: boolean }) {
       aria-label={playing ? listenAriaLabelPause : listenAriaLabelPlay}
       aria-pressed={playing}
       data-cursor-hover
-      className={`relative h-10 w-[34px] items-center justify-center rounded-full focus-visible:outline-offset-[-3px] ${
+      className={`relative h-10 w-[34px] items-center justify-center rounded-full focus-visible:rounded-full focus-visible:outline-offset-[-3px] ${
         hidden ? "hidden" : "flex"
       }`}
     >

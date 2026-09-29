@@ -51,14 +51,6 @@ function currentSectionHref(pathname: string): string | null {
   return here;
 }
 
-function CloseGlyph() {
-  return (
-    <svg viewBox="0 0 10 10" aria-hidden="true" focusable="false" className="ml-2 h-2.5 w-2.5">
-      <path d="M0.76 0.76L9.24 9.24M9.24 0.76L0.76 9.24" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-    </svg>
-  );
-}
-
 export function MenuPill() {
   const open = useMenuOpen();
   const headerHidden = useHeaderHidden();
@@ -277,7 +269,7 @@ export function MenuPill() {
             aria-expanded={open}
             aria-controls={MENU_ID}
             data-cursor-hover
-            className={`group/pill flex h-10 items-center rounded-full pr-[17px] text-sm font-medium tracking-[0.005em] focus-visible:outline-offset-[-3px] ${
+            className={`group/pill flex h-10 items-center rounded-full pr-[17px] text-sm font-medium tracking-[0.005em] focus-visible:rounded-full focus-visible:outline-offset-[-3px] ${
               engaged ? "pl-[14px]" : "pl-1.5"
             }`}
           >
@@ -300,7 +292,6 @@ export function MenuPill() {
                 }`}
               >
                 {closeLabel}
-                <CloseGlyph />
               </span>
             </span>
           </button>
