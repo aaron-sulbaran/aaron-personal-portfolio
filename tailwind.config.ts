@@ -38,11 +38,8 @@ const config: Config = {
         "display": ["clamp(3.5rem, 10vw, 6rem)", { lineHeight: "1", letterSpacing: "-0.025em" }],
         // Case page title.
         "display-page": ["clamp(3rem, 8vw, 6rem)", { lineHeight: "0.95", letterSpacing: "-0.025em" }],
-        // Section openers (About, the ring-era Work index).
+        // Section openers (About).
         "display-xl": ["clamp(4rem, 10vw, 8rem)", { lineHeight: "0.95", letterSpacing: "-0.025em" }],
-        // Ring-era hero headline, vmin-scaled to stay inside the TileRing's
-        // safe zone. Retires with the ring.
-        "display-lg": ["clamp(2.75rem, 9vmin, 6.25rem)", { lineHeight: "0.95", letterSpacing: "-0.03em" }],
         // "Aaron" behind the coil: Profa Black sets the word at 2.816em, so
         // 24.86vw spans 70 percent of the pane (1008px at 1440). The scene
         // measures its own size; this is the DOM counterpart.

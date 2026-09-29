@@ -37,7 +37,10 @@ export const FIELD_DRIFT: PingPong = { low: 10, peak: 15, ease: 2 };
 // The lab starts the field clock 10.5s in and plays it at 0.55 speed.
 export const FIELD_CLOCK_START = 10.5;
 export const FIELD_SPEED = 0.55;
-// The still frame under reduced motion (and the poster's tuned moment).
+// A fixed field moment for a caller that asks fieldTime for a still. Nothing
+// on the site draws it today: reduced motion mounts no scene and shows the
+// posters, and the posters render fieldTime(0), the live field's first frame,
+// so the poster-to-scene swap is seamless (components/coil/CoilStage.tsx).
 export const FIELD_REST_TIME = 12.5;
 
 // The field's shader time for a clock that has run `elapsed` seconds.

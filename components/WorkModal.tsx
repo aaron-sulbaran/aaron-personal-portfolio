@@ -19,15 +19,15 @@ import { useCloseHint } from "./PhotoModal";
 type WorkModalProps = {
   item: WorkItem | null;
   onClose: () => void;
-  // Any open with no flight tile landing in the slot (the ring's mobile
-  // carousel; on the Coil a touch tap or no scene) sets this, and the modal
+  // Any open with no flight tile landing in the slot (a touch tap, a book
+  // row, or no scene) sets this, and the modal
   // draws the logo (on its glass tint) here directly. A flight leaves it
   // false; the flown tile fills the slot.
   renderMedia?: boolean;
 };
 
-// Tinted glass wash behind the work logo, matching GlassTile / the carousel so
-// the logo reads as the same card when the modal opens without a flight.
+// Tinted glass wash behind the work logo, so the logo reads as a card when the
+// modal opens without a flight.
 const workTintStyle: React.CSSProperties = {
   backgroundImage:
     "linear-gradient(135deg, color-mix(in srgb, var(--color-accent) 18%, transparent) 0%, color-mix(in srgb, var(--color-glass) 50%, transparent) 48%, color-mix(in srgb, var(--color-accent) 40%, transparent) 100%)",
@@ -100,10 +100,11 @@ export function WorkModal({ item, onClose, renderMedia = false }: WorkModalProps
             </button>
 
             <div className="flex items-center gap-5 pr-12">
-              {/* Logo slot: on desktop TileRing's FlyingTile sits here while the
-                  modal is open (no <Image> inside; the flown tile is the logo).
-                  On mobile the modal opens from the carousel with no flight, so
-                  renderMedia draws the logo on its glass tint directly. */}
+              {/* Logo slot: after a card click the flown card (FlyingTile) sits
+                  here while the modal is open (no <Image> inside; the flown
+                  card is the logo). Opens with no flight (a tap, a book row, no
+                  scene) set renderMedia, which draws the logo on its glass tint
+                  directly. */}
               <div
                 data-tile-slot="work"
                 className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl"
@@ -126,7 +127,7 @@ export function WorkModal({ item, onClose, renderMedia = false }: WorkModalProps
               </div>
               <div className="flex flex-col gap-1">
                 <span className="text-sm text-muted">
-                  {item.role} · {item.year}
+                  {item.role}, {item.year}
                 </span>
                 <h2 className="font-display text-3xl leading-tight text-foreground md:text-4xl">
                   {item.title}

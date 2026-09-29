@@ -6,9 +6,8 @@ import { BookRow } from "./BookRow";
 // The book: the accessible, text-first list of everything on the coil,
 // directly under the hero at #work (Menu, SiteNav, the case pages' back link
 // and the /work redirect all land here). One desktop screen, two ordered
-// columns, Work then Photos; one column under 720px. Adapted from WorkSection
-// (kept for the ring home until slice 9) and its reveal pattern. A Server
-// Component; only the rows are client leaves.
+// columns, Work then Photos; one column under 720px, with the Reveal pattern.
+// A Server Component; only the rows are client leaves.
 export function Book() {
   const { ariaLabel, workHeading, photosHeading, workRows, photoRows } = siteContent.book;
   const photos = photoRows.filter((row) => !isPlaceholderPhoto(row.src));

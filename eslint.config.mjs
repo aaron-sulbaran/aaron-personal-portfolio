@@ -7,9 +7,10 @@ const eslintConfig = defineConfig([
   ...nextTs,
   {
     // eslint-plugin-react-hooks 7 promotes two React Compiler checks to errors.
-    // They flag existing ring, modal and reveal patterns (render-time ref sync,
-    // setState in mount effects) that behave correctly without the compiler,
-    // so they stay visible as warnings until the Coil rebuild retires that code.
+    // They flag render-time ref syncs and setState in mount effects that behave
+    // correctly without the compiler. The ring's share retired with it; eight
+    // remain in surviving files (lib/modal.ts, Portal, Reveal, UpToNowList,
+    // PlaybackPill, ListenInvite), so both stay warnings until those are fixed.
     rules: {
       "react-hooks/refs": "warn",
       "react-hooks/set-state-in-effect": "warn",
