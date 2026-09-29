@@ -15,7 +15,7 @@ export default function Error({ reset }: Props) {
       id="main"
       className="flex min-h-screen flex-col items-center justify-center px-6 text-center"
     >
-      <h1 className="font-serif text-display italic leading-none tracking-tight text-foreground">
+      <h1 className="font-display text-display leading-none tracking-tight text-foreground">
         {title}
       </h1>
       <p className="mt-6 max-w-sm text-body-lg text-muted">{body}</p>

@@ -33,7 +33,7 @@ export function Holding() {
       </div>
 
       <div
-        className="holding-rise mt-8 flex items-center gap-3 text-[11px] font-medium uppercase tracking-caps text-muted md:mt-10"
+        className="holding-rise mt-8 flex items-center gap-3 text-sm text-muted md:mt-10"
         style={revealIndex(1)}
       >
         <span className="inline-block h-px w-8 bg-border" aria-hidden="true" />
