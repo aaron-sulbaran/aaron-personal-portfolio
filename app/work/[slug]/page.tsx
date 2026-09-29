@@ -76,7 +76,7 @@ export default async function WorkDetailPage({ params }: Params) {
             </p>
 
             {item.bodySections.length === 0 ? (
-              <div className="rounded-2xl border border-border/70 bg-glass-strong px-6 py-8 backdrop-blur-md md:px-10 md:py-12">
+              <div className="rounded-2xl border border-border bg-glass-strong px-6 py-8 backdrop-blur-md md:px-10 md:py-12">
                 <p className="text-xl leading-[1.45] text-foreground md:text-2xl">
                   {placeholderBody}
                 </p>
@@ -107,7 +107,7 @@ export default async function WorkDetailPage({ params }: Params) {
             )}
 
             {item.links.length > 0 && (
-              <div className="mt-14 flex flex-wrap gap-6 border-t border-border/70 pt-8">
+              <div className="mt-14 flex flex-wrap gap-6 border-t border-border pt-8">
                 {item.links.map((link) => (
                   <Link
                     key={link.href}

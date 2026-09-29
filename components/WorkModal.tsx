@@ -84,14 +84,14 @@ export function WorkModal({ item, onClose, renderMedia = false }: WorkModalProps
           />
           <motion.div
             variants={panelVariants}
-            className="relative my-auto flex w-full max-w-xl flex-col gap-6 overflow-hidden rounded-2xl border border-border/60 bg-background/85 p-6 shadow-[0_40px_80px_-20px_rgba(10,10,10,0.45)] backdrop-blur-xl md:p-10"
+            className="relative my-auto flex w-full max-w-xl flex-col gap-6 overflow-hidden rounded-2xl border border-border bg-background/85 p-6 shadow-[0_40px_80px_-20px_rgba(10,10,10,0.45)] backdrop-blur-xl md:p-10"
             onMouseDown={(e) => e.stopPropagation()}
           >
             <button
               type="button"
               onClick={onClose}
               aria-label={siteContent.modals.closeAriaLabel}
-              className="absolute right-3 top-3 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full border border-border/70 bg-background/80 text-foreground transition-colors duration-200 hover:text-accent"
+              className="absolute right-3 top-3 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-background/80 text-foreground transition-colors duration-200 hover:text-accent"
             >
               <X aria-hidden="true" className="h-4 w-4" />
             </button>
@@ -131,7 +131,7 @@ export function WorkModal({ item, onClose, renderMedia = false }: WorkModalProps
               </div>
             </div>
 
-            <p className="text-base leading-relaxed text-foreground/90 md:text-lg md:leading-[1.55]">
+            <p className="text-base leading-relaxed text-foreground md:text-lg md:leading-[1.55]">
               {item.teaser}
             </p>
 

@@ -74,14 +74,14 @@ export function PhotoModal({ photo, onClose, renderMedia = false }: PhotoModalPr
           />
           <motion.div
             variants={panelVariants}
-            className="relative my-auto flex w-full max-w-4xl flex-col gap-6 overflow-hidden rounded-2xl border border-border/60 bg-background/85 p-5 shadow-[0_40px_80px_-20px_rgba(10,10,10,0.45)] backdrop-blur-xl md:flex-row md:gap-10 md:p-8"
+            className="relative my-auto flex w-full max-w-4xl flex-col gap-6 overflow-hidden rounded-2xl border border-border bg-background/85 p-5 shadow-[0_40px_80px_-20px_rgba(10,10,10,0.45)] backdrop-blur-xl md:flex-row md:gap-10 md:p-8"
             onMouseDown={(e) => e.stopPropagation()}
           >
             <button
               type="button"
               onClick={onClose}
               aria-label={siteContent.modals.closeAriaLabel}
-              className="absolute right-3 top-3 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full border border-border/70 bg-background/80 text-foreground transition-colors duration-200 hover:text-accent"
+              className="absolute right-3 top-3 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-background/80 text-foreground transition-colors duration-200 hover:text-accent"
             >
               <X aria-hidden="true" className="h-4 w-4" />
             </button>

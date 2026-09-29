@@ -56,7 +56,7 @@ export function Holding() {
       </p>
 
       <p
-        className="holding-rise mt-8 text-sm text-foreground/80 md:text-base"
+        className="holding-rise mt-8 text-sm text-foreground md:text-base"
         style={revealIndex(4)}
       >
         {interim}

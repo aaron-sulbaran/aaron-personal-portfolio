@@ -133,7 +133,7 @@ export function SiteNav() {
           : { duration: 0.4, ease: [0.22, 1, 0.36, 1] }
       }
       aria-hidden={!shown}
-      className="fixed inset-x-0 top-0 z-30 border-b border-border/60 bg-background/80 backdrop-blur-md"
+      className="fixed inset-x-0 top-0 z-30 border-b border-border bg-background/80 backdrop-blur-md"
     >
       <nav
         aria-label="Primary"
