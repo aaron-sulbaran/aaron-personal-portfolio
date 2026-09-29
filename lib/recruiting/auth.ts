@@ -1,7 +1,7 @@
 // Gate for /recruiting. The cookie value is an HMAC-SHA256 over a fixed
 // payload keyed by RECRUITING_KEY, so it cannot be forged without the key and
-// a key rotation logs everyone out. Web Crypto only: this runs in the edge
-// middleware and in Node (vitest) unchanged.
+// a key rotation logs everyone out. Web Crypto only: this runs in the
+// proxy and in Node (vitest) unchanged.
 
 export const RECRUITING_COOKIE = "recruiting_session";
 export const RECRUITING_COOKIE_MAX_AGE = 60 * 60 * 24 * 180;

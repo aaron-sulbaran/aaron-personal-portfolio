@@ -5,7 +5,7 @@ import { RECRUITING_COOKIE, verifySession } from "@/lib/recruiting/auth";
 import { ledgerEditSchema } from "@/lib/recruiting/edits";
 import { FEED_TAG, fileEdit } from "@/lib/recruiting/vault-issues";
 
-// POST /recruiting/edit: file one dashboard edit as a vault issue. middleware.ts
+// POST /recruiting/edit: file one dashboard edit as a vault issue. proxy.ts
 // already gates this path on the session cookie; the check is repeated here so
 // the handler is safe on its own, and a cross-origin post is refused.
 

@@ -7,7 +7,7 @@ import { FEED_TAG } from "@/lib/recruiting/vault-issues";
 // POST /recruiting/refresh files (or reuses) a refresh request for the Mac.
 // GET /recruiting/refresh?number=N reports its progress; once it is closed the
 // feed cache is dropped so the next render reads the fresh export. Gated like
-// /recruiting/edit: middleware checks the cookie, and so does this handler.
+// /recruiting/edit: proxy checks the cookie, and so does this handler.
 
 function notFound() {
   return new NextResponse(null, { status: 404 });
