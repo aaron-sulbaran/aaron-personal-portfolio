@@ -1,0 +1,271 @@
+"use client";
+
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
+import type { Photo, WorkItem } from "@/lib/content";
+import { useBodyScrollLock } from "@/lib/modal";
+import { claimHomeReadiness, publishHomeReadiness, useHomeReadiness, type HomeReadiness } from "@/lib/home/readiness";
+import { markSeen } from "@/lib/home/seen";
+import {
+  applyRestore,
+  persistScrollPosition,
+  readRecovery,
+  relandAfterFonts,
+  takeManualScrollRestoration,
+} from "@/lib/home/recovery";
+import { sameDrivers, selectDrivers, type Drivers } from "@/lib/coil/drivers";
+import type { Quad } from "@/lib/coil/geometry";
+import { PhotoModal } from "@/components/PhotoModal";
+import { WorkModal } from "@/components/WorkModal";
+import { HERO_HEADING_ID } from "./HeroText";
+
+// The Coil's renderer-neutral home controller. It owns everything about the
+// home that is not drawing: readiness, the entrance scroll lock, which modal is
+// open, seen marking, focus restoration, deep-reload recovery, the flight's
+// state, driver selection, and live reduced motion. The scene (slice 3) and
+// the book talk to it through useHomeController(); TileRing keeps its own copy
+// of all this behind the ring flag until it retires.
+//
+// Nothing here renders per frame: the scene reads what it needs once per
+// change, and the per-frame state lives in the scene's own loop.
+
+const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
+
+type OpenOrigin = HTMLElement | null;
+
+type Selection =
+  | { kind: "photo"; key: string; photo: Photo; origin: OpenOrigin }
+  | { kind: "work"; key: string; item: WorkItem; origin: OpenOrigin };
+
+// The shared-element flight from a curved card into its modal (slice 5):
+// four bent corners at activation, and the home quad recomputed from the frozen
+// pose at close. Null whenever nothing flies, which is always true until the
+// scene exists; the modals then draw their own media (renderMedia).
+export type CoilFlight = {
+  key: string;
+  kind: "photo" | "work";
+  source: Quad;
+  home: Quad;
+  phase: "out" | "closing";
+  revealed: boolean;
+};
+
+export type HomeControllerValue = {
+  phase: HomeReadiness;
+  // This load skipped the entrance (a deep reload, a section hash, or reduced motion).
+  fastStart: boolean;
+  reducedMotion: boolean;
+  drivers: Drivers;
+  modalOpen: boolean;
+  flight: CoilFlight | null;
+  openPhoto: (photo: Photo, key: string, origin: OpenOrigin) => void;
+  openWork: (item: WorkItem, key: string, origin: OpenOrigin) => void;
+  // A work row or card that navigates away still counts as seen.
+  markVisited: (key: string) => void;
+  // The scene claims the entrance before paint (its layout effect runs before
+  // the controller's) and completes it once the band has opened; with no claim
+  // the controller goes straight to ready.
+  claimEntrance: () => () => void;
+  completeEntrance: () => void;
+};
+
+const HomeControllerContext = createContext<HomeControllerValue | null>(null);
+
+export function useHomeController() {
+  return useContext(HomeControllerContext);
+}
+
+// ---------------------------------------------------------------- capabilities
+
+type CapabilitySnapshot = { drivers: Drivers; reducedMotion: boolean };
+
+const SERVER_CAPABILITIES: CapabilitySnapshot = {
+  drivers: { composition: "wide", input: "fine", scene: true },
+  reducedMotion: false,
+};
+
+const QUERIES = {
+  reduce: "(prefers-reduced-motion: reduce)",
+  fine: "(pointer: fine)",
+  hover: "(hover: hover)",
+} as const;
+
+let cachedCapabilities: CapabilitySnapshot = SERVER_CAPABILITIES;
+
+function readCapabilities(): CapabilitySnapshot {
+  const reducedMotion = window.matchMedia(QUERIES.reduce).matches;
+  const drivers = selectDrivers({
+    viewport: { width: window.innerWidth, height: window.innerHeight },
+    finePointer: window.matchMedia(QUERIES.fine).matches,
+    canHover: window.matchMedia(QUERIES.hover).matches,
+    reducedMotion,
+  });
+  if (cachedCapabilities.reducedMotion !== reducedMotion || !sameDrivers(cachedCapabilities.drivers, drivers)) {
+    cachedCapabilities = { drivers, reducedMotion };
+  }
+  return cachedCapabilities;
+}
+
+function subscribeCapabilities(onChange: () => void) {
+  const lists = Object.values(QUERIES).map((query) => window.matchMedia(query));
+  lists.forEach((list) => list.addEventListener("change", onChange));
+  window.addEventListener("resize", onChange);
+  window.addEventListener("orientationchange", onChange);
+  return () => {
+    lists.forEach((list) => list.removeEventListener("change", onChange));
+    window.removeEventListener("resize", onChange);
+    window.removeEventListener("orientationchange", onChange);
+  };
+}
+
+const serverCapabilities = () => SERVER_CAPABILITIES;
+
+// ---------------------------------------------------------------- controller
+
+type Props = {
+  // The hero's server-rendered content (HeroText); the scene mounts beside it.
+  hero: ReactNode;
+  // What follows the hero and needs the controller (the book).
+  children?: ReactNode;
+};
+
+export function HomeController({ hero, children }: Props) {
+  const phase = useHomeReadiness();
+  const { drivers, reducedMotion } = useSyncExternalStore(subscribeCapabilities, readCapabilities, serverCapabilities);
+
+  const [fastStart, setFastStart] = useState(false);
+  const [selection, setSelection] = useState<Selection | null>(null);
+  const [flight] = useState<CoilFlight | null>(null);
+  const entranceClaimsRef = useRef(0);
+
+  // Before paint, once per load: own the readiness store, take manual scroll
+  // restoration, decide whether this load lands deep, land it, and pick the
+  // start phase. A deep load or reduced motion is a fast start: no entrance,
+  // no lock. Without a scene claiming the entrance the hero is ready at once.
+  useIsoLayoutEffect(() => {
+    const releaseReadiness = claimHomeReadiness();
+    const releaseRestoration = takeManualScrollRestoration();
+    const recovery = readRecovery();
+    const fast = recovery.deep || window.matchMedia(QUERIES.reduce).matches;
+    if (recovery.deep) applyRestore(recovery.target);
+    const stopReland = relandAfterFonts(recovery.target);
+    publishHomeReadiness(fast || entranceClaimsRef.current === 0 ? "ready" : "entering");
+    // A layout-effect state write re-renders before paint, which is the point:
+    // consumers of fastStart must see it on the first painted frame.
+    setFastStart(fast);
+    return () => {
+      stopReland();
+      releaseRestoration();
+      releaseReadiness();
+    };
+  }, []);
+
+  useEffect(() => persistScrollPosition(), []);
+
+  // Scroll stays locked for the whole entrance (the ref-counted lock, so an
+  // overlapping Menu cannot wedge the body), plus a hard block on wheel and
+  // touch so a flick cannot skip the intro. Fast starts never enter.
+  const entranceLocked = phase === "entering";
+  useBodyScrollLock(entranceLocked);
+  useEffect(() => {
+    if (!entranceLocked) return;
+    const prevent = (event: Event) => event.preventDefault();
+    window.addEventListener("wheel", prevent, { passive: false });
+    window.addEventListener("touchmove", prevent, { passive: false });
+    return () => {
+      window.removeEventListener("wheel", prevent);
+      window.removeEventListener("touchmove", prevent);
+    };
+  }, [entranceLocked]);
+
+  const claimEntrance = useCallback(() => {
+    entranceClaimsRef.current += 1;
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      entranceClaimsRef.current = Math.max(0, entranceClaimsRef.current - 1);
+    };
+  }, []);
+
+  const completeEntrance = useCallback(() => {
+    publishHomeReadiness("ready");
+  }, []);
+
+  const openPhoto = useCallback((photo: Photo, key: string, origin: OpenOrigin) => {
+    setSelection((current) => current ?? { kind: "photo", key, photo, origin });
+  }, []);
+
+  const openWork = useCallback((item: WorkItem, key: string, origin: OpenOrigin) => {
+    setSelection((current) => current ?? { kind: "work", key, item, origin });
+  }, []);
+
+  const markVisited = useCallback((key: string) => markSeen(key), []);
+
+  // Close: the card counts as seen now, at close, on every path (flight or
+  // not), and focus returns to the row or control that opened it. Next frame
+  // with preventScroll: the dialog's own focus return runs first, and a focus
+  // scroll must never move the page under the visitor.
+  const closeModal = useCallback(() => {
+    if (!selection) return;
+    markSeen(selection.key);
+    const origin = selection.origin;
+    setSelection(null);
+    if (!origin) return;
+    requestAnimationFrame(() => {
+      if (origin.isConnected) origin.focus({ preventScroll: true });
+    });
+  }, [selection]);
+
+  const modalOpen = selection !== null;
+  // No flight means the modal draws its own image in the slot.
+  const renderMedia = flight === null;
+
+  const value = useMemo<HomeControllerValue>(
+    () => ({
+      phase,
+      fastStart,
+      reducedMotion,
+      drivers,
+      modalOpen,
+      flight,
+      openPhoto,
+      openWork,
+      markVisited,
+      claimEntrance,
+      completeEntrance,
+    }),
+    [phase, fastStart, reducedMotion, drivers, modalOpen, flight, openPhoto, openWork, markVisited, claimEntrance, completeEntrance],
+  );
+
+  return (
+    <HomeControllerContext.Provider value={value}>
+      <section
+        aria-labelledby={HERO_HEADING_ID}
+        data-scene="off"
+        data-composition={drivers.composition}
+        data-input={drivers.input}
+        className="group/hero relative flex min-h-[100svh] w-full items-center justify-center px-6 md:px-10"
+      >
+        {hero}
+      </section>
+      {children}
+      <PhotoModal
+        photo={selection?.kind === "photo" ? selection.photo : null}
+        onClose={closeModal}
+        renderMedia={renderMedia}
+      />
+      <WorkModal item={selection?.kind === "work" ? selection.item : null} onClose={closeModal} renderMedia={renderMedia} />
+    </HomeControllerContext.Provider>
+  );
+}
