@@ -1,5 +1,4 @@
 import { COIL, type CoilConstants } from "./constants";
-import type { CoilGeometry, Silhouette } from "./geometry";
 
 // The Coil's motion model, ported from hero lab 2's update(): the conveyor
 // (idle drift, wheel and page-scroll input, one exponential smoothing stage,
@@ -127,31 +126,66 @@ export function startGlide(conveyor: Conveyor, to: number, nowMs: number, durati
   conveyor.target = conveyor.offset;
 }
 
-// The strand position (u) the helix shows at screen height y, from the
-// silhouette's axis: where a row's card should arrive.
-export function uAtScreenY(sil: Silhouette, geo: CoilGeometry, y: number) {
-  const along = Math.abs(sil.dy) > 1e-3 ? (y - sil.ay) / sil.dy : 0;
-  return along / (geo.dy * geo.cardPx * geo.cosLean);
-}
+// Where a hover-jump may land, in canvas px: the rows of the hero still on
+// screen at the current scroll (inset so the card shows) and the pane's
+// columns. A band whose top has passed its bottom (the hero scrolled away)
+// collapses to its bottom edge, the part that comes back first.
+export type JumpBand = { top: number; bottom: number; left: number; right: number };
 
-// The conveyor offset that puts the nearest copy of `tile` at a front-facing
-// position (a whole turn from 0) near uAt, choosing the copy that needs the
-// shortest glide from the current offset.
-export function hoverJumpTarget(tile: number, offset: number, cardCount: number, uAt: number, cardsPerTurn: number) {
-  const baseTurn = Math.round(uAt / cardsPerTurn);
+// Arrival positions around each front-facing turn, in cards: the front first,
+// then up to a card to either side, so a thin visible band still has a
+// landing that faces the viewer.
+export const JUMP_FACING_STEPS = [0, -0.5, 0.5, -1, 1] as const;
+
+// The conveyor offset that brings a copy of `tile` to where the visitor can
+// see it. Every candidate arrival (a strand position near a front-facing
+// turn, inside the strand's unfaded window |u| <= maxU) is projected to the
+// pane; the pick is the one whose center falls inside the visible band, the
+// most front-facing of those, then the copy that needs the shortest glide.
+// If no arrival's center is inside the band, it takes the one nearest to it.
+// Returns the glide's target offset and the strand position the card lands
+// on; the target is the current offset when nothing lands on the pane.
+export function hoverJumpTarget(
+  tile: number,
+  offset: number,
+  cardCount: number,
+  cardsPerTurn: number,
+  maxU: number,
+  project: (u: number) => { x: number; y: number },
+  band: JumpBand,
+) {
+  const top = Math.min(band.top, band.bottom);
   let best = offset;
+  let bestArrival: number | null = null;
+  let bestGap = Infinity;
+  let bestFacing = Infinity;
   let bestDistance = Infinity;
-  for (const k of [-1, 0, 1]) {
-    const arrival = cardsPerTurn * (baseTurn + k);
-    const copy = tile + cardCount * Math.round((arrival - offset - tile) / cardCount);
-    const to = arrival - copy;
-    const distance = Math.abs(to - offset);
-    if (distance < bestDistance) {
-      best = to;
-      bestDistance = distance;
+  const turns = Math.ceil(maxU / cardsPerTurn) + 1;
+  for (let k = -turns; k <= turns; k++) {
+    for (const step of JUMP_FACING_STEPS) {
+      const arrival = k * cardsPerTurn + step;
+      if (Math.abs(arrival) > maxU) continue;
+      const center = project(arrival);
+      if (center.x < band.left || center.x > band.right) continue;
+      const gap = center.y < top ? top - center.y : center.y > band.bottom ? center.y - band.bottom : 0;
+      const copy = tile + cardCount * Math.round((arrival - offset - tile) / cardCount);
+      const to = arrival - copy;
+      const facing = Math.abs(step);
+      const distance = Math.abs(to - offset);
+      const better =
+        gap < bestGap - 1e-6 ||
+        (Math.abs(gap - bestGap) <= 1e-6 &&
+          (facing < bestFacing || (facing === bestFacing && distance < bestDistance)));
+      if (better) {
+        best = to;
+        bestArrival = arrival;
+        bestGap = gap;
+        bestFacing = facing;
+        bestDistance = distance;
+      }
     }
   }
-  return best;
+  return { to: best, arrival: bestArrival };
 }
 
 // ---------------------------------------------------------------- stretch envelope

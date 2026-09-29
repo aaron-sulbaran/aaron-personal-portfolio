@@ -30,6 +30,8 @@ import {
   isNarrow,
   mod,
   pickCard,
+  poseAt,
+  projectPoint,
   projectQuad,
   rayThrough,
   restHelix,
@@ -75,7 +77,7 @@ import { reportHomeLoad } from "@/lib/loader/progress";
 import type { NameTarget } from "@/lib/loader/handoff";
 // ---- slice 5 imports: the book, the unwind egg and the flight ----
 import { clamp01, helixRotation, smoothstep01, unprojectToPlane, type HelixFrame } from "@/lib/coil/geometry";
-import { hoverJumpTarget, siteEase, startGlide, uAtScreenY } from "@/lib/coil/motion";
+import { hoverJumpTarget, siteEase, startGlide, type JumpBand } from "@/lib/coil/motion";
 import { settleUnwind, toggleUnwind, unwindDurationMs } from "@/lib/coil/unwind";
 import { isConvex } from "@/lib/coil/flight";
 // ---- end slice 5 imports ----
@@ -244,6 +246,9 @@ const SEEN_RATE = 8;
 const HOVER_SCALE = 0.045;
 const HOVER_BRIGHT = 0.05;
 const HOVER_UNFADE = 0.6;
+// A hover-jump lands a card's center at least a quarter card inside the
+// visible band, so most of the card shows.
+const JUMP_INSET_CARDS = 0.25;
 // A theme repaint starts no new card past this much of a frame (at most 4).
 const REPAINT_BUDGET_MS = 6;
 
@@ -1212,19 +1217,29 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     return ready && props.interactive && props.input === "fine" && !props.frozen && !frozenByApi && window.scrollY <= 2;
   }
 
-  // The row's card to the front of the visible part of the helix, the nearest
-  // copy by the shortest glide. Nothing while unwound or off screen.
+  // The row's card to the part of the helix still on screen: the copy whose
+  // projected center lands inside the hero's visible rows (clear of the
+  // narrow header band and the bottom seam fade), or the nearest that will
+  // be once the hero scrolls back. Nothing while unwound.
   function hoverJump(key: string) {
     const props = live.current;
     const tile = tileIndex.get(key);
-    if (tile === undefined || !geo || !sil || !ready) return;
+    if (tile === undefined || !geo || !geoCamera || !ready) return;
     if (unwind.latched || props.frozen || frozenByApi || !props.interactive) return;
     const rect = host.getBoundingClientRect();
-    if (rect.bottom < 120 || rect.top > window.innerHeight - 120) return;
-    const top = Math.max(0, -rect.top);
-    const bottom = Math.min(view.height, window.innerHeight - rect.top);
-    const uAt = uAtScreenY(sil, geo, (top + bottom) / 2);
-    startGlide(conveyor, hoverJumpTarget(tile, conveyor.offset, tileCount, uAt, geo.cardsPerTurn), performance.now());
+    const inset = JUMP_INSET_CARDS * geo.cardPx;
+    const band: JumpBand = {
+      top: Math.max(0, -rect.top, geo.clearTopPx) + inset,
+      bottom: Math.min(view.height, window.innerHeight - rect.top, view.height * (1 - FIELD.seamFade)) - inset,
+      left: inset,
+      right: view.width - inset,
+    };
+    const frame = restHelix(geo, theme.card.recede);
+    const camera = geoCamera;
+    const maxU = geo.slotCount / 2 - COIL.lab.endFadeSlots;
+    const { to } = hoverJumpTarget(tile, conveyor.offset, tileCount, geo.cardsPerTurn, maxU, (u) =>
+      projectPoint(camera, poseAt(frame, u).position), band);
+    startGlide(conveyor, to, performance.now());
     wake();
   }
 
