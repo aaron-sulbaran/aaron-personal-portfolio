@@ -287,7 +287,10 @@ function PillInner() {
     transformOrigin: "bottom center",
     transition: reduce ? "opacity 300ms ease" : `opacity 320ms ease, transform 360ms ${EASE}`,
     opacity: inviting ? 1 : 0,
-    pointerEvents: inviting ? "auto" : "none",
+    // Only while the pill itself is revealed: hidden, this invisible card
+    // would sit over the page's bottom center and swallow clicks (the book's
+    // lower rows on the Coil home).
+    pointerEvents: inviting && revealed ? "auto" : "none",
     transform: reduce
       ? "translateX(-50%)"
       : inviting
