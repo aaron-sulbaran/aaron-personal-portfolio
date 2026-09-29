@@ -189,10 +189,11 @@ body {
 
   [data-reveal][data-armed="true"] .reveal-mask {
     overflow: hidden;
-    /* Breathing room so the clip never shaves italic serif ascenders or
-       descenders at rest; the negative margin keeps layout unchanged. */
-    padding-block: 0.12em;
-    margin-block: -0.12em;
+    /* Profa Black's ink (0.69em up, 0.18em down) sits inside even a 0.95
+       line box, so the clip needs only an antialiasing margin; the negative
+       margin keeps layout unchanged. */
+    padding-block: 0.04em;
+    margin-block: -0.04em;
   }
   [data-reveal][data-armed="true"] .reveal-mask > * {
     transform: translateY(115%);
