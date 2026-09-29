@@ -49,7 +49,7 @@ describe("the book", () => {
       ...book.workRows.flatMap((row) => [row.title, row.meta]),
       ...book.photoRows.flatMap((row) => [row.title, row.meta]),
     ];
-    for (const text of strings) expect(text).not.toMatch(/—/);
+    for (const text of strings) expect(text).not.toMatch(/\u2014/);
     // Sentence case: after the first word, only proper nouns may be capitalized.
     const proper = new Set(["I'm", "Aaron.", "Aaron", "One", "UT", "Austin", "Fuji", "Scholars", "Maracaibo", "Japan", "Claude", "IEEE", "HSF", "Mt.", "Capital"]);
     for (const row of [...book.workRows, ...book.photoRows]) {
