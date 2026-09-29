@@ -94,7 +94,8 @@ import { isConvex } from "@/lib/coil/flight";
 // It renders only when needed: never while the tab is hidden, the hero is
 // off screen, a modal holds the scene frozen, or the context is lost.
 
-export type CoilCardRef = { key: string; slot: number };
+// tap: the card was touched (slice 7), so it opens with no flight.
+export type CoilCardRef = { key: string; slot: number; tap?: boolean };
 
 // ---- slice 5 api: the book, the unwind egg and the flight ----
 export type CoilCardFaces = { front: HTMLCanvasElement; back: HTMLCanvasElement };
@@ -433,6 +434,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   // ---- slice 7 state: the touch drag and its coast ----
   let dragging = false;
   let coast: { rest: number } | null = null;
+  let pressCaughtCoil = false; // this touch stopped a coast: it is a catch, not a tap
   // ---- end slice 7 state ----
   // ---- slice 4 state: the entrance clock and the name handoff ----
   let nameBox: { left: number; baseline: number; inkWidth: number; size: number; maskTop: number; maskHeight: number } | null =
@@ -725,10 +727,23 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   const onPointerDown = (event: PointerEvent) => {
     downAt = { x: event.clientX, y: event.clientY };
   };
+  // The browser took the touch as a pan (a vertical swipe): no tap.
+  const onPointerCancel = () => {
+    downAt = null;
+  };
   const onPointerUp = (event: PointerEvent) => {
     const start = downAt;
     downAt = null;
     if (!start || Math.hypot(event.clientX - start.x, event.clientY - start.y) > CLICK_SLOP_PX) return;
+    // ---- slice 7: a tap opens the card under the finger, with no flight ----
+    if (event.pointerType === "touch") {
+      const props = live.current;
+      if (!ready || dragging || pressCaughtCoil || !props.interactive || props.frozen || frozenByApi || unwind.on) return;
+      const card = api.cardAt(event.clientX, event.clientY);
+      if (card) props.onCardClick?.({ ...card, tap: true });
+      return;
+    }
+    // ---- end slice 7 ----
     if (!ready || hoveredSlot < 0 || live.current.input !== "fine") return;
     const slot = slots[hoveredSlot];
     const tile = tiles[slot.tile];
@@ -991,6 +1006,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   host.addEventListener("wheel", onWheel, { passive: false });
   host.addEventListener("pointerdown", onPointerDown);
   host.addEventListener("pointerup", onPointerUp);
+  host.addEventListener("pointercancel", onPointerCancel);
 
   const onContextLost = () => {
     contextLost = true;
@@ -1283,6 +1299,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     dragMinimum: DRAG_MINIMUM_PX,
     onPress: () => {
       pressScrollY = window.scrollY;
+      pressCaughtCoil = coast !== null;
       if (coast) {
         conveyor.target = conveyor.offset;
         coast = null;
@@ -1395,6 +1412,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       host.removeEventListener("wheel", onWheel);
       host.removeEventListener("pointerdown", onPointerDown);
       host.removeEventListener("pointerup", onPointerUp);
+      host.removeEventListener("pointercancel", onPointerCancel);
       canvas.removeEventListener("webglcontextlost", onContextLost);
       slice5Dispose();
       dragObserver.kill(); // slice 7
