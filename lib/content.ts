@@ -117,6 +117,12 @@ export const siteContent = {
   },
   modals: {
     closeAriaLabel: "Close",
+    // The close hint reads by pointer type: a mouse and keyboard get Esc, a
+    // touch screen gets the backdrop.
+    closeHintKeyboard: "Press Esc to close",
+    closeHintTouch: "Tap outside to close",
+    // The work modal's accessible name: "<title> preview".
+    workPreviewSuffix: "preview",
   },
   // The Coil hero (NEXT_PUBLIC_HOME_HERO=coil). The heading is the server-
   // rendered h1; greeting and name are the two parts the scene draws.

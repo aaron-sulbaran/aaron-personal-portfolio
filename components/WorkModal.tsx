@@ -14,13 +14,15 @@ import {
 } from "@/lib/modal";
 import { siteContent, type WorkItem } from "@/lib/content";
 import { Portal } from "./Portal";
+import { useCloseHint } from "./PhotoModal";
 
 type WorkModalProps = {
   item: WorkItem | null;
   onClose: () => void;
-  // On mobile the modal opens from the carousel with no flight tile landing in
-  // the slot, so renderMedia draws the logo (on its glass tint) here directly.
-  // Desktop leaves this false; the flown tile fills the slot.
+  // Any open with no flight tile landing in the slot (the ring's mobile
+  // carousel; on the Coil a touch tap or no scene) sets this, and the modal
+  // draws the logo (on its glass tint) here directly. A flight leaves it
+  // false; the flown tile fills the slot.
   renderMedia?: boolean;
 };
 
@@ -35,6 +37,7 @@ export function WorkModal({ item, onClose, renderMedia = false }: WorkModalProps
   const open = item !== null;
   const dialogRef = useRef<HTMLDivElement | null>(null);
   const prefersReducedMotion = useReducedMotion();
+  const closeHint = useCloseHint();
 
   useBodyScrollLock(open);
   useEscapeKey(open, onClose);
@@ -66,7 +69,7 @@ export function WorkModal({ item, onClose, renderMedia = false }: WorkModalProps
           key="work-modal-backdrop"
           role="dialog"
           aria-modal="true"
-          aria-label={`${item.title} preview`}
+          aria-label={`${item.title} ${siteContent.modals.workPreviewSuffix}`}
           ref={dialogRef}
           initial="hidden"
           animate="visible"
@@ -145,7 +148,7 @@ export function WorkModal({ item, onClose, renderMedia = false }: WorkModalProps
                 <ArrowRight aria-hidden="true" className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
               </Link>
               <span className="text-sm text-muted">
-                {renderMedia ? "Tap outside to close" : "Press Esc to close"}
+                {closeHint}
               </span>
             </div>
           </motion.div>
