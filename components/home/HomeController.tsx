@@ -12,7 +12,7 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from "react";
-import type { Photo, WorkItem } from "@/lib/content";
+import { homeTileByKey, photoBySrc, workItemBySlug, type Photo, type WorkItem } from "@/lib/content";
 import { useBodyScrollLock } from "@/lib/modal";
 import { claimHomeReadiness, publishHomeReadiness, useHomeReadiness, type HomeReadiness } from "@/lib/home/readiness";
 import { markSeen } from "@/lib/home/seen";
@@ -28,6 +28,9 @@ import type { Quad } from "@/lib/coil/geometry";
 import { PhotoModal } from "@/components/PhotoModal";
 import { WorkModal } from "@/components/WorkModal";
 import { CoilStage } from "@/components/coil/CoilStage";
+import type { CoilCardFaces, CoilCardRef, CoilSceneApi } from "@/components/coil/CoilScene";
+import { CoilFlyingTile } from "@/components/FlyingTile";
+import { Portal } from "@/components/Portal";
 import { HERO_HEADING_ID } from "./HeroText";
 
 // The Coil's renderer-neutral home controller. It owns everything about the
@@ -50,11 +53,14 @@ type Selection =
 
 // The shared-element flight from a curved card into its modal (slice 5):
 // four bent corners at activation, and the home quad recomputed from the frozen
-// pose at close. Null whenever nothing flies, which is always true until the
-// scene exists; the modals then draw their own media (renderMedia).
+// pose at close and after a resize. Null whenever nothing flies (a book row, no
+// scene, reduced motion); the modals then draw their own media (renderMedia).
 export type CoilFlight = {
   key: string;
   kind: "photo" | "work";
+  slot: number;
+  faces: CoilCardFaces;
+  photoSrc?: string;
   source: Quad;
   home: Quad;
   phase: "out" | "closing";
@@ -73,6 +79,9 @@ export type HomeControllerValue = {
   openWork: (item: WorkItem, key: string, origin: OpenOrigin) => void;
   // A work row or card that navigates away still counts as seen.
   markVisited: (key: string) => void;
+  // A book row under the pointer or focus: its card glides to the front of the
+  // visible helix (null when it leaves). Nothing without a scene.
+  focusCard: (key: string | null) => void;
   // The scene claims the entrance before paint (its layout effect runs before
   // the controller's) and completes it once the band has opened; with no claim
   // the controller goes straight to ready.
@@ -146,7 +155,8 @@ export function HomeController({ hero, children }: Props) {
 
   const [fastStart, setFastStart] = useState(false);
   const [selection, setSelection] = useState<Selection | null>(null);
-  const [flight] = useState<CoilFlight | null>(null);
+  const [flight, setFlight] = useState<CoilFlight | null>(null);
+  const sceneApiRef = useRef<CoilSceneApi>(null);
   // The scene has drawn its first frame: the canvas name replaces the DOM h1
   // (which stays for assistive tech) until the scene goes away.
   const [sceneOn, setSceneOn] = useState(false);
@@ -216,12 +226,98 @@ export function HomeController({ hero, children }: Props) {
 
   const markVisited = useCallback((key: string) => markSeen(key), []);
 
+  const focusCard = useCallback((key: string | null) => sceneApiRef.current?.focusCard(key), []);
+
+  // A card in the scene (or its row in the unwound list): freeze the scene so
+  // the rendered pose is the flight pose, take the card's corners and faces,
+  // and open its modal with the clone flying in. Without a scene or a slot on
+  // screen it opens like a book row, drawing its own media.
+  const openCard = useCallback(
+    (key: string, slot: number, origin: OpenOrigin) => {
+      if (selection || flight) return;
+      const tile = homeTileByKey.get(key);
+      if (!tile) return;
+      const photo = tile.kind === "photo" ? photoBySrc.get(tile.src) : undefined;
+      const item = tile.kind === "work" ? workItemBySlug.get(tile.slug) : undefined;
+      if (!photo && !item) return;
+      const api = sceneApiRef.current;
+      if (api && slot >= 0 && !reducedMotion) {
+        api.freeze(true);
+        const source = api.flightQuadOf(slot);
+        const faces = api.facesOf(slot);
+        if (source && faces) {
+          setFlight({
+            key,
+            kind: tile.kind,
+            slot,
+            faces,
+            photoSrc: photo?.src,
+            source,
+            home: source,
+            phase: "out",
+            revealed: false,
+          });
+        } else {
+          api.freeze(false);
+        }
+      }
+      if (photo) setSelection({ kind: "photo", key, photo, origin });
+      else if (item) setSelection({ kind: "work", key, item, origin });
+    },
+    [selection, flight, reducedMotion],
+  );
+
+  const handleCardClick = useCallback((card: CoilCardRef) => openCard(card.key, card.slot, null), [openCard]);
+  const handleRowOpen = useCallback(
+    (key: string, origin: HTMLElement) => openCard(key, sceneApiRef.current?.slotOfKey(key) ?? -1, origin),
+    [openCard],
+  );
+
+  const handleFlightMounted = useCallback(() => {
+    if (flight) sceneApiRef.current?.hideSlot(flight.slot);
+  }, [flight]);
+  const handleFlyOutComplete = useCallback(() => setFlight((f) => (f ? { ...f, revealed: true } : f)), []);
+  const handleClosingComplete = useCallback(() => {
+    const api = sceneApiRef.current;
+    api?.hideSlot(null);
+    api?.freeze(false);
+    setFlight(null);
+  }, []);
+
+  // A resize while a card is out: the frozen scene re-lays out, so its home
+  // quad moves. Read it once the scene's own resize has rendered.
+  const flying = flight !== null;
+  useEffect(() => {
+    if (!flying) return;
+    let raf = 0;
+    const onResize = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        raf = requestAnimationFrame(() => {
+          setFlight((f) => {
+            const home = f ? sceneApiRef.current?.flightQuadOf(f.slot) : null;
+            return f && home ? { ...f, home } : f;
+          });
+        });
+      });
+    };
+    window.addEventListener("resize", onResize);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", onResize);
+    };
+  }, [flying]);
+
   // Close: the card counts as seen now, at close, on every path (flight or
   // not), and focus returns to the row or control that opened it. Next frame
   // with preventScroll: the dialog's own focus return runs first, and a focus
   // scroll must never move the page under the visitor.
   const closeModal = useCallback(() => {
     if (!selection) return;
+    if (flight) {
+      const home = sceneApiRef.current?.flightQuadOf(flight.slot) ?? flight.home;
+      setFlight({ ...flight, home, phase: "closing", revealed: false });
+    }
     markSeen(selection.key);
     const origin = selection.origin;
     setSelection(null);
@@ -229,7 +325,7 @@ export function HomeController({ hero, children }: Props) {
     requestAnimationFrame(() => {
       if (origin.isConnected) origin.focus({ preventScroll: true });
     });
-  }, [selection]);
+  }, [selection, flight]);
 
   const modalOpen = selection !== null;
   // No flight means the modal draws its own image in the slot.
@@ -246,10 +342,24 @@ export function HomeController({ hero, children }: Props) {
       openPhoto,
       openWork,
       markVisited,
+      focusCard,
       claimEntrance,
       completeEntrance,
     }),
-    [phase, fastStart, reducedMotion, drivers, modalOpen, flight, openPhoto, openWork, markVisited, claimEntrance, completeEntrance],
+    [
+      phase,
+      fastStart,
+      reducedMotion,
+      drivers,
+      modalOpen,
+      flight,
+      openPhoto,
+      openWork,
+      markVisited,
+      focusCard,
+      claimEntrance,
+      completeEntrance,
+    ],
   );
 
   return (
@@ -263,10 +373,13 @@ export function HomeController({ hero, children }: Props) {
       >
         <CoilStage
           reducedMotion={reducedMotion}
-          frozen={modalOpen}
+          frozen={modalOpen || flight !== null}
           interactive={phase === "ready"}
           input={drivers.input}
           onSceneChange={setSceneOn}
+          api={sceneApiRef}
+          onCardClick={handleCardClick}
+          onRowOpen={handleRowOpen}
         />
         <div className="relative">{hero}</div>
       </section>
@@ -277,6 +390,22 @@ export function HomeController({ hero, children }: Props) {
         renderMedia={renderMedia}
       />
       <WorkModal item={selection?.kind === "work" ? selection.item : null} onClose={closeModal} renderMedia={renderMedia} />
+      <Portal>
+        {flight && (
+          <CoilFlyingTile
+            kind={flight.kind}
+            faces={flight.faces}
+            photoSrc={flight.photoSrc}
+            source={flight.source}
+            home={flight.home}
+            phase={flight.phase}
+            revealed={flight.revealed}
+            onMounted={handleFlightMounted}
+            onFlyOutComplete={handleFlyOutComplete}
+            onClosingComplete={handleClosingComplete}
+          />
+        )}
+      </Portal>
     </HomeControllerContext.Provider>
   );
 }
