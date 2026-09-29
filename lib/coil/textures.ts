@@ -2,6 +2,7 @@ import { getImageProps } from "next/image";
 import type { HomeTile } from "@/lib/content";
 import { COIL } from "./constants";
 import { toBytes, toCanvasColor, type CoilTheme } from "./theme";
+import { cardDims, type CardDims, type TextureSize } from "./cardFace";
 
 // Card faces, painted on 2D canvases from the theme tokens, ported from hero
 // lab 2 (391-516) at Aaron's picks: photo fronts in true color inside our
@@ -14,17 +15,9 @@ import { toBytes, toCanvasColor, type CoilTheme } from "./theme";
 // Every paint takes the texture size from the scene's render budget (see
 // lib/coil/drivers.ts): 384x512 on fine pointers, smaller on coarse ones.
 
-export type TextureSize = readonly [number, number];
-
-// A card's pixel dimensions at one texture size: the rim radius and the
-// photo inset scale with the width.
-type Dims = { w: number; h: number; radius: number; inset: number; innerRadius: number };
-
-function dimsFor([w, h]: TextureSize): Dims {
-  const radius = Math.round(0.05 * w);
-  const inset = Math.round(0.034 * w);
-  return { w, h, radius, inset, innerRadius: Math.max(3, radius - inset * 0.6) };
-}
+export type { TextureSize };
+type Dims = CardDims;
+const dimsFor = cardDims;
 
 const DESKTOP = dimsFor(COIL.lab.textureSize);
 
@@ -143,16 +136,6 @@ function drawCover(g: CanvasRenderingContext2D, img: HTMLImageElement, x: number
   // A touch above center: faces sit high in most of these photos.
   const sy = clamp((img.naturalHeight - sh) * 0.42, 0, img.naturalHeight - sh);
   g.drawImage(img, sx, sy, sw, sh, x, y, w, h);
-}
-
-// Where a photo front's picture sits inside a card painted at this size, as
-// fractions of the card's width and height (radius as a fraction of the
-// width), and how it is cropped (drawCover's 42 percent). FlyingTile lays a
-// sharp copy of the photo exactly over the painted one once the flown card is
-// parked in its modal, measured from the face canvas it flies.
-export function cardPhotoInset(size: TextureSize) {
-  const d = dimsFor(size);
-  return { x: d.inset / d.w, y: d.inset / d.h, radius: d.innerRadius / d.w, objectPosition: "50% 42%" } as const;
 }
 
 function insetPhoto(g: CanvasRenderingContext2D, d: Dims, img: HTMLImageElement) {

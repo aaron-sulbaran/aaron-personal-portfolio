@@ -9,7 +9,7 @@ import type { Quad } from "@/lib/coil/geometry";
 import { fitAspect, flightQuad, homography, matrix3d, rectQuad, type Face } from "@/lib/coil/flight";
 import { siteEase } from "@/lib/coil/motion";
 import { COIL } from "@/lib/coil/constants";
-import { cardPhotoInset } from "@/lib/coil/textures";
+import { cardPhotoInset } from "@/lib/coil/cardFace";
 
 export type FlightPhase = "out" | "closing";
 
