@@ -145,7 +145,7 @@ export function WorkModal({ item, onClose, renderMedia = false }: WorkModalProps
                 <ArrowRight aria-hidden="true" className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
               </Link>
               <span className="text-sm text-muted">
-                {renderMedia ? "Tap outside to close" : "Press esc to close"}
+                {renderMedia ? "Tap outside to close" : "Press Esc to close"}
               </span>
             </div>
           </motion.div>

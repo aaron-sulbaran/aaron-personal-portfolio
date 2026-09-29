@@ -120,7 +120,7 @@ export function PhotoModal({ photo, onClose, renderMedia = false }: PhotoModalPr
                 {photo.caption}
               </p>
               <p className="mt-5 text-sm text-muted">
-                {renderMedia ? "Tap outside to close" : "Press esc to close"}
+                {renderMedia ? "Tap outside to close" : "Press Esc to close"}
               </p>
             </div>
           </motion.div>
