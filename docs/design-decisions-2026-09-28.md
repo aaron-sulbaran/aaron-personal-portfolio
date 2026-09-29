@@ -155,6 +155,15 @@ Open, options owed (hero lab 2 builds each as a toggle; pick after viewing):
 - [ ] "apply" for the AGENTS.md Layer 2 diff proposed on 2026-09-27.
 - [ ] Push of the docs commits on main (three so far, plus this one).
 
+## 10. Build rules (Aaron, 2026-09-29; every builder agent reads these)
+
+- Nothing the builders do may trigger a Vercel production build. Production deploys only from `main` on Aaron's explicit push, and only after the verification gate and the design review.
+- Integration branch `coil` (created 2026-09-29 from `main`). Its first commit adds `vercel.json` with min/Max's `ignoreCommand`, so every branch carrying it skips its own preview build and never spends the daily Vercel deployment quota. Verification is a local production build (`pnpm build && pnpm start`), never a preview.
+- One slice = one branch off `coil` = one PR into `coil`, small commits with one logical change each, so any step can be reverted alone. Fable and Codex review each PR before merge; nothing is squashed away.
+- No agent pushes `main`. Merging `coil` into `main` is Aaron's call, once.
+- Optional, Aaron decides: adopt min/Max's `release` branch pattern (production tracks `release`; `main` stays free to move) by changing Production Branch in the Vercel dashboard. Not required while production holds the holding page.
+- Never run `pnpm dev` and `pnpm build` at the same time (shared `.next`). Builder agents that need a browser use agent-browser with a session name and per-command timeouts; at most two browser agents at once.
+
 ## What happens after you tick
 
 1. I revise `docs/coil-hero-spec.md` from this file and export the logo.
