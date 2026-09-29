@@ -9,7 +9,7 @@ export function Connect() {
     <section
       id="connect"
       aria-label={label}
-      className="relative w-full border-t border-border/70 px-6 py-24 md:px-10 md:py-40 scroll-mt-24"
+      className="relative w-full border-t border-border px-6 py-24 md:px-10 md:py-40 scroll-mt-24"
     >
       <div className="mx-auto grid max-w-6xl gap-12 md:grid-cols-12 md:gap-16">
         <Reveal className="md:col-span-5">
@@ -37,7 +37,7 @@ export function Connect() {
           {links.map((link, i) => (
             <li
               key={link.key}
-              className="reveal-item border-b border-border/70 last:border-b-0"
+              className="reveal-item border-b border-border last:border-b-0"
               style={revealIndex(i)}
             >
               <a

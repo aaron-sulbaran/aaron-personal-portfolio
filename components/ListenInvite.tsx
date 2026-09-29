@@ -98,7 +98,7 @@ export function ListenInvite() {
               data-cursor-hover
               className="group font-display text-2xl text-accent transition-colors duration-200 hover:text-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-default md:text-3xl"
             >
-              <span className="underline decoration-accent/40 decoration-1 underline-offset-[3.5px] [text-decoration-skip-ink:auto] transition-[text-decoration-color] duration-200 group-hover:decoration-accent">
+              <span className="underline decoration-accent decoration-1 underline-offset-[3.5px] [text-decoration-skip-ink:auto] transition-[text-decoration-color] duration-200 group-hover:decoration-accent">
                 {c.accept}
               </span>
             </button>
