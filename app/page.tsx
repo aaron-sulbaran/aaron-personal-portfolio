@@ -9,7 +9,6 @@ import { Connect } from "@/components/Connect";
 import { Footer } from "@/components/Footer";
 import { Waveform } from "@/components/Waveform";
 import { PlaybackPill } from "@/components/PlaybackPill";
-import { ScrollProgress } from "@/components/ScrollProgress";
 import { Holding } from "@/components/Holding";
 import { HOLDING_MODE } from "@/lib/holding";
 import { COIL_HOME } from "@/lib/flags";
@@ -24,7 +23,7 @@ import { Book } from "@/components/book/Book";
 // overflow-x is clipped to keep the entrance fan from spilling a horizontal
 // scrollbar (clip, not hidden, so no scroll container is created).
 //
-// Waveform, PlaybackPill, and ScrollProgress are the back-half scroll journey:
+// Waveform and PlaybackPill are the back-half scroll journey:
 // Waveform and PlaybackPill self-Portal to document.body (so the pinned
 // #hero-pin transform never captures their fixed positioning) and stay
 // invisible through the hero, ramping in as #work approaches. The content
@@ -34,8 +33,8 @@ import { Book } from "@/components/book/Book";
 // Post-pin the carousel cards overflow the hero section (spec:
 // docs/carousel-visible-engagement-spec.md), so #hero-pin carries z-20 to
 // paint them over the later sections; every fixed overlay (SiteNav z-30,
-// ScrollProgress z-[31], Menu z-40/50, modals z-50, FlyingTile z-[55])
-// portals to body and stays above.
+// menu scrim z-[35], Menu pill and panel z-40, PlaybackPill z-[45], modals
+// z-50, FlyingTile z-[55]) sits at body level and stays above.
 export default function Home() {
   // Holding mode (the default; NEXT_PUBLIC_SITE_MODE=full opts out, see
   // lib/holding.ts): the "under remodeling" page replaces the scroll journey.
@@ -48,7 +47,6 @@ export default function Home() {
     <>
       <Waveform />
       <PlaybackPill />
-      <ScrollProgress />
       <div className="relative z-10">
         <main id="main" className="relative overflow-x-clip">
           <HeroSentinel />
@@ -73,13 +71,12 @@ export default function Home() {
 // The Coil home: the controller owns the hero (the server-rendered greeting,
 // and the scene from slice 3) and the book directly under it at #work, then
 // the surviving sections. No #hero-pin: nothing pins. The waveform, playback
-// pill and progress rail keep their ring-era triggers until slices 5 and 6.
+// pill keep their ring-era triggers until slice 5.
 function CoilHome() {
   return (
     <>
       <Waveform />
       <PlaybackPill />
-      <ScrollProgress />
       <div className="relative z-10">
         <main id="main" className="relative overflow-x-clip">
           <HeroSentinel />
