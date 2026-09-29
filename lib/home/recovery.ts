@@ -77,8 +77,10 @@ export function takeManualScrollRestoration(
   };
 }
 
-// Lands on the target instantly (behavior "auto" overrides the global smooth
-// scroll-behavior). The fragment resolves with getElementById, never
+// Lands on the target instantly. It must be behavior "instant": "auto" means
+// "use the CSS value", and globals.css sets html { scroll-behavior: smooth },
+// so "auto" would animate the restore from the top (measured on the first
+// frame at y = 2 of 3000). The fragment resolves with getElementById, never
 // querySelector: "#123" is a valid id but an invalid CSS selector, and
 // querySelector would throw. A missing element falls back to the saved pixel.
 export function applyRestore(target: RestoreTarget | null) {
@@ -91,8 +93,8 @@ export function applyRestore(target: RestoreTarget | null) {
       element = null;
     }
   }
-  if (element) element.scrollIntoView({ block: "start", behavior: "auto" });
-  else if (target.y != null) window.scrollTo({ top: target.y, behavior: "auto" });
+  if (element) element.scrollIntoView({ block: "start", behavior: "instant" });
+  else if (target.y != null) window.scrollTo({ top: target.y, behavior: "instant" });
 }
 
 // Font swaps reflow the page under a pixel position, so the restore re-lands
