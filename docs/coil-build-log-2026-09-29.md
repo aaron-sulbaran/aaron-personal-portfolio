@@ -15,6 +15,9 @@ Orchestrated by Fable; every slice built by an Opus 5.5 agent in its own worktre
 | 7 | 5 | Book wired to the scene (hover-jump), double-click unwind egg, flight from a curved card into both modals (corners within 0.06px), Listen invite and pill re-anchored to `#listen` | 216 |
 | 8 | 7 | Touch and time driver (Observer drag with coast, taps without flight), narrow composition with repeats, header band clearance, live reduced motion, failure paths; fixed an entrance replay on rebuild and a three.js leak into the first load | 222 |
 | 9 | 9 | Verification gate (all headless-measurable items green, 10 minute theme soak with no leak, p99 16.8ms), sentence-case and first-person content fixes, flag flipped then removed, the ring retired (5,571 lines), AGENTS.md diffs proposed in the PR body | 198 |
+| 10 | review fixes | "Play it" mouse click fixed, photo modal sized for the cover crop (photos carry width and height), cards fade with the field at the hero's bottom edge, hover-jump picks an on-screen copy, name gradient widened, "Soundtrack paused" chip state, build-time footer date, tab titles joined with a pipe, unwind single seen marker, light poster re-rendered | 206 |
+
+State at the end of the night: `coil` at `3f6d129` holds the complete site; `main` is unchanged in code and 12 docs commits ahead of `origin/main`, unpushed. Not fixed by code: the orange share in light stays about 16 percent (`sec` 0.75; reaching a fifth needs the lobe itself moved), the phone greeting stays beside the band (no card-free window above the name exists), the apostrophe glyph is Profa's own.
 
 ## Decisions Fable took on Aaron's behalf (overturn any in the morning)
 
