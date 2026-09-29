@@ -23,27 +23,6 @@ export const siteContent = {
       "Building products (and community) with people, not just for them.",
     url: "https://aaronsulbaran.com",
   },
-  home: {
-    name: "Hi, I'm Aaron.",
-    tagline:
-      "Building products (and community) with people, not just for them.",
-    scrollHint: "Scroll to explore",
-    // Left text panel copy for the settled ring-arc carousel (ArcIndex).
-    // panelHelper is the small "how to drive this" line under the divider;
-    // the kind/status labels name the focused card's type and explored
-    // state (see writeActiveCard in TileRing).
-    panelHelper:
-      "Click a card to open it, explored cards frost over. Scroll over the cards to browse, scroll here to keep moving down the page.",
-    panelKindPhoto: "Photo",
-    panelKindCaseStudy: "Case study",
-    panelExplored: "Explored",
-    panelUnexplored: "Unexplored",
-    // Reduced-motion static affordances (plan §3): visible prev/next buttons
-    // near the settled arc, since there is no wheel-driven rotation to feel
-    // for in that mode. Plain control labels, not first-person copy.
-    panelPrev: "Previous card",
-    panelNext: "Next card",
-  },
   // Soundtrack invitation beat (components/ListenInvite.tsx): the in-flow
   // typographic moment between the carousel and Work where the waveform
   // introduces itself. Draft copy in my voice, to be tightened by Aaron.
@@ -60,10 +39,10 @@ export const siteContent = {
     declinedNote:
       "No problem. If you change your mind, the soundtrack toggle lives in the menu up top.",
   },
-  // Hero words that open a "My definition of <term>" modal. Keys must match the
-  // exact word as it appears in home.tagline so HomeHero can wire that word to
-  // its definition. Keep each body to one or two sentences; these are drafts in
-  // Aaron's voice to be tightened later.
+  // Words that open a "My definition of <term>" modal (DefinitionModal). The
+  // ring's hero tagline was their only trigger; the Coil hero has no tagline,
+  // so nothing opens them today. Kept, with the component, for a future home.
+  // Keep each body to one or two sentences; drafts in Aaron's voice.
   definitions: {
     products: {
       term: "products",
@@ -704,38 +683,32 @@ export const siteContent = {
       caption: "TODO caption: Quiet moment. Keeping it close to the chest.",
     },
   ],
-  // Home-page tile ring. Order here is rendering order (index 0 sits at the
-  // top of the ring and tiles are distributed clockwise). Mix of photo tiles
-  // and work tiles interleaved so neither type clusters on one side. Photo
-  // tiles reference the `photos` array by src; work tiles reference the
-  // `workItems` array by slug, so the click handler can open the right modal.
-  // `title` is the short label the left text panel (ArcIndex) shows for each
-  // card (card number = array index + 1). Keep titles 1 to 3 words. `blurb`
-  // is the one-line description shown under the title when the card is
-  // focused; keep each under ~90 characters, first person, no em dashes.
-  // Titles/blurbs marked PLACEHOLDER below belong to the placeholder SVG
-  // tiles and should be finalized when real photos replace them.
+  // Every card the home can show, by key: photo cards reference the `photos`
+  // array by src, work cards the `workItems` array by slug, so a card opens
+  // the right modal. The Coil's strand (below) picks its cards from here by
+  // key; placeholder SVG photos stay listed but never enter the strand or the
+  // book.
   homeTiles: [
-    { kind: "photo" as const, key: "hsf-speaking", src: "/photos/hsf-speaking.jpeg", title: "Public speaking", blurb: "Speaking at HSF Scholars, where I realized how much I love teaching what I'm learning." },
-    { kind: "work"  as const, key: "capital-one-pm", slug: "capital-one-pm", title: "Capital One", blurb: "A summer as a PM intern, accountable to a team, not a deck." },
-    { kind: "photo" as const, key: "drum-major", src: "/photos/drum-major.jpeg", title: "Drum major", blurb: "Leading the band from the podium, reading the room, staying calm under pressure." },
-    { kind: "photo" as const, key: "yosemite-hiking", src: "/photos/yosemite-hiking.jpeg", title: "Yosemite", blurb: "Long hikes in Yosemite, where I do my best thinking." },
-    { kind: "work"  as const, key: "claude-ambassador", slug: "claude-ambassador", title: "Anthropic", blurb: "Building an AI community on campus, co-hosting Austin's first Claude hackathon." },
-    { kind: "photo" as const, key: "capital-one", src: "/photos/capital-one.jpeg", title: "Capital One", blurb: "A candid from my PM internship at Capital One, learning how real decisions get made." },
-    { kind: "photo" as const, key: "uncs-grad", src: "/photos/uncs-grad.jpeg", title: "Graduation", blurb: "A family graduation moment. My roots keep me grounded." },
-    { kind: "work"  as const, key: "ieee-president", slug: "ieee-president", title: "IEEE", blurb: "Running IEEE at UT Austin taught me more about operations than any class did." },
-    { kind: "photo" as const, key: "claude-hackathon", src: "/photos/claude-hackathon.jpeg", title: "Claude hackathon", blurb: "With my co-ambassadors at Austin's first Claude hackathon, watching students ship fast." },
-    { kind: "photo" as const, key: "misuki", src: "/photos/misuki.jpeg", title: "Venezuelan roots", blurb: "Born in Maracaibo, raised with arepas and a lot of loud love." },
-    { kind: "work"  as const, key: "aaronsulbaran-site", slug: "aaronsulbaran-site", title: "This site", blurb: "This site itself. A living personal statement that grows with me." },
-    { kind: "photo" as const, key: "photo-08", src: "/photos/photo-08.svg", title: "IEEE president", blurb: "Placeholder photo. An IEEE leadership shot is coming soon." }, // PLACEHOLDER
-    { kind: "photo" as const, key: "traveling", src: "/photos/traveling.jpeg", title: "Traveling", blurb: "Traveling teaches me fast what I actually care about." },
-    { kind: "work"  as const, key: "capital-one-ba", slug: "capital-one-ba", title: "Capital One", blurb: "My first taste of how product decisions get made inside a big bank." },
-    { kind: "photo" as const, key: "photo-10", src: "/photos/photo-10.svg", title: "Austin builders", blurb: "Placeholder photo. An Austin startup community shot is coming soon." }, // PLACEHOLDER
-    { kind: "photo" as const, key: "photo-11", src: "/photos/photo-11.svg", title: "Making", blurb: "Placeholder photo. A making and 3D-printing shot is coming soon." }, // PLACEHOLDER
-    { kind: "work"  as const, key: "hackathon-builds", slug: "hackathon-builds", title: "Hackathon builds", blurb: "A running set of weekend builds. Rough, fast, and shipped." },
-    { kind: "photo" as const, key: "mt-fuji", src: "/photos/mt-fuji.jpeg", title: "Mt. Fuji", blurb: "Standing in front of Mt. Fuji, a reminder of how small my daily loops can feel." },
-    { kind: "photo" as const, key: "photo-13", src: "/photos/photo-13.svg", title: "Community", blurb: "Placeholder photo. A friends and community shot is coming soon." }, // PLACEHOLDER
-    { kind: "photo" as const, key: "photo-14", src: "/photos/photo-14.svg", title: "Quiet moment", blurb: "Placeholder photo. A quiet, reflective portrait is coming soon." }, // PLACEHOLDER
+    { kind: "photo" as const, key: "hsf-speaking", src: "/photos/hsf-speaking.jpeg" },
+    { kind: "work"  as const, key: "capital-one-pm", slug: "capital-one-pm" },
+    { kind: "photo" as const, key: "drum-major", src: "/photos/drum-major.jpeg" },
+    { kind: "photo" as const, key: "yosemite-hiking", src: "/photos/yosemite-hiking.jpeg" },
+    { kind: "work"  as const, key: "claude-ambassador", slug: "claude-ambassador" },
+    { kind: "photo" as const, key: "capital-one", src: "/photos/capital-one.jpeg" },
+    { kind: "photo" as const, key: "uncs-grad", src: "/photos/uncs-grad.jpeg" },
+    { kind: "work"  as const, key: "ieee-president", slug: "ieee-president" },
+    { kind: "photo" as const, key: "claude-hackathon", src: "/photos/claude-hackathon.jpeg" },
+    { kind: "photo" as const, key: "misuki", src: "/photos/misuki.jpeg" },
+    { kind: "work"  as const, key: "aaronsulbaran-site", slug: "aaronsulbaran-site" },
+    { kind: "photo" as const, key: "photo-08", src: "/photos/photo-08.svg" }, // PLACEHOLDER
+    { kind: "photo" as const, key: "traveling", src: "/photos/traveling.jpeg" },
+    { kind: "work"  as const, key: "capital-one-ba", slug: "capital-one-ba" },
+    { kind: "photo" as const, key: "photo-10", src: "/photos/photo-10.svg" }, // PLACEHOLDER
+    { kind: "photo" as const, key: "photo-11", src: "/photos/photo-11.svg" }, // PLACEHOLDER
+    { kind: "work"  as const, key: "hackathon-builds", slug: "hackathon-builds" },
+    { kind: "photo" as const, key: "mt-fuji", src: "/photos/mt-fuji.jpeg" },
+    { kind: "photo" as const, key: "photo-13", src: "/photos/photo-13.svg" }, // PLACEHOLDER
+    { kind: "photo" as const, key: "photo-14", src: "/photos/photo-14.svg" }, // PLACEHOLDER
   ],
 } as const;
 
@@ -747,7 +720,7 @@ export type HomeTile = (typeof siteContent.homeTiles)[number];
 export type Definition =
   (typeof siteContent.definitions)[keyof typeof siteContent.definitions];
 
-// O(1) lookups for the home-tile resolvers (GlassTile, MobileHome, FlyingTile),
+// O(1) lookups for the card and row resolvers (HomeController, BookRow),
 // built once at module load so per-render resolution never scans the arrays.
 export const photoBySrc: ReadonlyMap<string, Photo> = new Map(
   siteContent.photos.map((p) => [p.src, p]),
