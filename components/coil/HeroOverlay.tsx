@@ -5,7 +5,9 @@ import { siteContent, strandTiles } from "@/lib/content";
 import { useEscapeKey } from "@/lib/modal";
 import { useSeen } from "@/lib/home/seen";
 import { scrollToTarget } from "@/lib/scroll";
-import type { CoilSceneApi } from "./CoilScene";
+import { COIL } from "@/lib/coil/constants";
+import { LOADER } from "@/lib/loader/progress";
+import type { CoilEntrance, CoilSceneApi } from "./CoilScene";
 
 // The hero's DOM layer over the canvas: the greeting "Hi, I'm" above the
 // canvas-drawn name, the "Work and photos" control on the greeting's line
@@ -23,7 +25,9 @@ import type { CoilSceneApi } from "./CoilScene";
 //
 // It shows only while the scene draws (data-scene="on" on the hero); without
 // a scene the server-rendered h1 carries the greeting, so the greeting here
-// is aria-hidden.
+// is aria-hidden. After the loader, the greeting and its control fade in over
+// 350ms on the site ease from the middle of the loader's exit; a fast start
+// or an entrance at rest simply shows them.
 
 export type OverlayLayout = {
   left: number; // the greeting's left edge, CSS px in the hero
@@ -52,7 +56,19 @@ type Props = {
   api?: RefObject<CoilSceneApi | null>;
   // A row of the unwound list opens its card's modal (with the flight).
   onRowOpen?: (key: string, origin: HTMLElement) => void;
+  // The controller's entrance (slice 4): null while the loader holds the pane.
+  entrance?: CoilEntrance | null;
 };
+
+const GREETING_FADE_MS = 350;
+
+// When the greeting starts to fade in, on the performance.now() clock: the
+// middle of the loader's continuity exit (the entrance starts entranceOverlapMs
+// before that exit ends), or the entrance itself when no exit ran.
+function greetingStartMs(entrance: CoilEntrance) {
+  if (!entrance.nameFromLoader) return entrance.startMs;
+  return entrance.startMs - (LOADER.exitMs - LOADER.entranceOverlapMs) + LOADER.exitMs / 2;
+}
 
 // The nudge sits this far off the pointer, toward where the page scrolls.
 const NUDGE_OFFSET_PX = 42;
@@ -71,7 +87,8 @@ const LIST_GROUPS: { heading: string; rows: ListRow[] }[] = [
 ];
 const LIST_ROW_COUNT = LIST_GROUPS.reduce((sum, group) => sum + group.rows.length, 0);
 
-export function HeroOverlay({ ref, api, onRowOpen }: Props) {
+export function HeroOverlay({ ref, api, onRowOpen, entrance = null }: Props) {
+  const introRef = useRef<HTMLDivElement>(null);
   const rowRef = useRef<HTMLDivElement>(null);
   const greetingRef = useRef<HTMLSpanElement>(null);
   const controlRef = useRef<HTMLButtonElement>(null);
@@ -182,6 +199,21 @@ export function HeroOverlay({ ref, api, onRowOpen }: Props) {
     return () => observer.disconnect();
   }, []);
 
+  // The greeting's entrance fade, written imperatively (it runs on the
+  // performance.now() clock the loader hands over).
+  useEffect(() => {
+    const intro = introRef.current;
+    if (!intro || !entrance) return;
+    if (!Number.isFinite(entrance.startMs)) {
+      intro.style.transition = "none";
+      intro.style.opacity = "1";
+      return;
+    }
+    const delay = Math.max(0, greetingStartMs(entrance) - performance.now());
+    intro.style.transition = `opacity ${GREETING_FADE_MS}ms cubic-bezier(${COIL.siteEase.join(",")}) ${delay.toFixed(0)}ms`;
+    intro.style.opacity = "1";
+  }, [entrance]);
+
   const windBack = () => api?.current?.unwind(false);
   useEscapeKey(listOn, windBack);
 
@@ -193,18 +225,20 @@ export function HeroOverlay({ ref, api, onRowOpen }: Props) {
 
   return (
     <div className="pointer-events-none invisible absolute inset-0 group-data-[scene=on]/hero:visible">
-      <div
-        ref={rowRef}
-        inert={listOn}
-        className="absolute left-0 top-0 flex items-baseline justify-between font-sans leading-none text-[color:var(--hero-greeting)]"
-        style={{ visibility: "hidden" }}
-      >
-        <span ref={greetingRef} aria-hidden="true" className="whitespace-nowrap font-medium">
-          {greeting}
-        </span>
-        <button ref={controlRef} type="button" onClick={goToBook} className={`${CONTROL_CLASS} -my-[14px] -mr-2`}>
-          {listControl}
-        </button>
+      <div ref={introRef} className="absolute inset-0" style={{ opacity: 0 }}>
+        <div
+          ref={rowRef}
+          inert={listOn}
+          className="absolute left-0 top-0 flex items-baseline justify-between font-sans leading-none text-[color:var(--hero-greeting)]"
+          style={{ visibility: "hidden" }}
+        >
+          <span ref={greetingRef} aria-hidden="true" className="whitespace-nowrap font-medium">
+            {greeting}
+          </span>
+          <button ref={controlRef} type="button" onClick={goToBook} className={`${CONTROL_CLASS} -my-[14px] -mr-2`}>
+            {listControl}
+          </button>
+        </div>
       </div>
 
       <div
