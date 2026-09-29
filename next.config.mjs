@@ -5,6 +5,9 @@ const nextConfig = {
   images: {
     qualities: [75, 88, 90],
   },
+  // The Coil scene (components/coil/CoilScene.tsx) imports vanilla three as
+  // ES modules; transpiling keeps it on the app's own browser targets.
+  transpilePackages: ["three"],
   // The standalone /work and /about pages were folded into the single scrolling
   // home document. Redirect their old URLs to the in-page anchors so existing
   // links and shares still resolve. /work/[slug] case studies stay real routes
