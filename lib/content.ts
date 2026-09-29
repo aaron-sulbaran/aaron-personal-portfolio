@@ -727,6 +727,11 @@ export const workItemBySlug: ReadonlyMap<WorkItem["slug"], WorkItem> = new Map(
 
 export type BookWorkRow = (typeof siteContent.book.workRows)[number];
 export type BookPhotoRow = (typeof siteContent.book.photoRows)[number];
+// Every target a work row may have; the literal rows above use a subset.
+export type BookWorkTarget = { kind: "case"; slug: string } | { kind: "external"; href: string } | { kind: "soon" };
+export function bookWorkTarget(row: BookWorkRow): BookWorkTarget {
+  return row.target;
+}
 
 // Placeholder photos are clearly marked SVGs in public/photos; they never
 // appear in the book or the strand.
