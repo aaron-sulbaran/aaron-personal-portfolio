@@ -40,6 +40,17 @@ Orchestrated by Fable; every slice built by an Opus 5.5 agent in its own worktre
 - Known quirks carried: Back after a raw hash then a case page click keeps the case page on screen (App Router, predates the Coil); a plain `/` load in the same tab restores the last scroll position (suggested fix: restore only on real reloads and reserve ListenInvite's height); `bg-background/NN` classes emit nothing (need an alpha-capable token); the README is stale; `pnpm approve-builds` for sharp.
 - Merging `coil` into `main` and pushing is Aaron's, once, after the real-device pass and the design review below.
 
-## Pre-deploy design review
+## Pre-deploy design review (design-review skill on the built `coil` branch, 79f9114)
 
-Pending at the time of writing; appended when it lands.
+Verdict: the built hero matches the approved specimen (palette, duotone backs, tone panes, stretch, Sulbaran off, axis 33 and 8 per turn confirmed from the constants); all 15 lab review items are in code; no Pacôme or Aikawa lookalike; console clean everywhere. Nielsen health 28/40. Light-mode contrast over the live field: greeting 6.62:1, "Work and photos" 5.50:1, mark 13.15:1, pill 17.13:1 (all AA). Dark duotone backs read as intentional.
+
+Ship blockers found (slice 10 fixes the code ones):
+1. "Play it" ignores mouse clicks: the invisible confirmation paragraph sits over the buttons in `ListenInvite.tsx`. Predates the Coil; hidden in production by the holding page. Code fix.
+2. Placeholder work logos everywhere (italic serif C1, HK, AN, AS, IEEE on a beige tile), the brightest thing on dark panes. Needs Aaron's real marks; until then, upright wordmarks on the tone pane.
+3. The photo modal image is soft after the flight lands (a 384px request shown at 356x483 cover). Code fix.
+4. Cards clip on a hard line at the hero's bottom edge while the field fades. Code fix.
+5. Unfinished copy for a 60 second recruiter: the Capital One case page is a title and a "case study in progress" card; min/Max says "Live, link soon"; Talos says "coming soon"; the footer says "Last updated June 2026". Aaron for the first three; the date is a code fix.
+
+Fix soon (after launch): hover-jump can pick a copy that lands off screen (slice 10 fixes it); the waveform runs under body copy while playing (predates the Coil); phone greeting sits 310px above the name; plain light work backs read as blank slabs; the every-section eyebrows ("A note from me", "About", "Who I am", "What I'm up to", "Connect") are the last template cadence on the page (Aaron's call); the name gradient reads flat (slice 10 widens it); orange share in light is 14.8 percent, a little under the fifth (slice 10 raises `sec` to 0.75).
+
+Not verified by the review: the loader under real throttling, the touch drivers (the headless iPhone preset reports a fine pointer), flight in-between frames. These are on Aaron's real-device list.
