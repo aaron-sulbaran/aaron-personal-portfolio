@@ -65,7 +65,7 @@ export function MenuPanel({
 }) {
   const { items, themeToggleToDark, themeToggleToLight, themeAriaLabelToDark, themeAriaLabelToLight, email, socials } =
     siteContent.menu;
-  const { menuToggleOn, menuToggleOff, menuAriaLabelOn, menuAriaLabelOff } = siteContent.soundtrack;
+  const { menuToggleOn, menuTogglePaused, menuToggleOff, menuAriaLabelOn, menuAriaLabelOff } = siteContent.soundtrack;
   // The panel only ever mounts on the client (after a click), so it can read
   // the live theme straight off <html>.
   const [theme, setTheme] = useState<Theme>(() =>
@@ -86,8 +86,8 @@ export function MenuPanel({
   };
 
   // The chip opts in or out (the Listen dot beside the pill pauses and
-  // resumes). Its label says where the soundtrack stands; its dot fills only
-  // while music is audible.
+  // resumes). Its label says where the soundtrack stands (on, paused, off),
+  // so it always agrees with its dot, which fills only while music is audible.
   const optedIn = music === "on" || music === "paused";
   const toggleMusic = () => {
     if (optedIn) stopSoundtrack();
@@ -180,7 +180,7 @@ export function MenuPanel({
                 music === "on" ? "bg-accent" : "shadow-[inset_0_0_0_1.5px_var(--color-muted)]"
               }`}
             />
-            <span>{optedIn ? menuToggleOn : menuToggleOff}</span>
+            <span>{music === "on" ? menuToggleOn : music === "paused" ? menuTogglePaused : menuToggleOff}</span>
           </button>
         </div>
         <div

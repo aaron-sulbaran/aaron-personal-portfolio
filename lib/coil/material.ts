@@ -13,7 +13,11 @@ import { COIL } from "./constants";
 // a grey-out); a gentle falloff across the bend; the token-strength sheen; the
 // hover brightening toward paper; and the recede into the field by brightness,
 // never blur. The hairline and the flat 1px highlight are painted into the
-// textures, so they bend with the card.
+// textures, so they bend with the card. Last, the card dissolves over the
+// hero's bottom edge on the field's own seam curve (smoothstep(0, uSeam, y) in
+// canvas uv, the canvas being the hero): it blends toward what the composite
+// shows behind it there, the field faded to paper, so a card crossing the
+// hero's edge fades out with the field instead of clipping on a hard line.
 
 export const CARD_VERT = /* glsl */ `
   uniform float uBend;   // 1 / bend radius, in card heights
@@ -44,7 +48,7 @@ export const CARD_FRAG = /* glsl */ `
   uniform vec4 uView;
   uniform vec3 uInk, uPaper;
   uniform vec2 uSize;
-  uniform float uFade, uBright, uAlpha, uSeen, uShade, uSheen;
+  uniform float uFade, uBright, uAlpha, uSeen, uShade, uSheen, uSeam;
   varying vec2 vUv; varying vec3 vN; varying vec3 vViewPos;
   void main() {
     bool front = gl_FrontFacing;
@@ -72,18 +76,22 @@ export const CARD_FRAG = /* glsl */ `
     vec2 fuv = gl_FragCoord.xy * uView.zw + uView.xy;
     vec3 fc = texture2D(uField, clamp(fuv, 0.0, 1.0)).rgb;
     c = mix(c, fc, clamp(uFade, 0.0, 1.0));
+    float seam = smoothstep(0.0, uSeam, fuv.y);
+    c = mix(mix(uPaper, fc, seam), c, seam);
     gl_FragColor = vec4(c, uAlpha);
   }
 `;
 
 // Uniforms every card shares (one object each, so a theme or resize update
-// is one write): the field texture, the view mapping, ink, paper, sheen.
+// is one write): the field texture, the view mapping, ink, paper, sheen and
+// the seam fade.
 export type SharedCardUniforms = {
   uField: IUniform<Texture | null>;
   uView: IUniform;
   uInk: IUniform;
   uPaper: IUniform;
   uSheen: IUniform<number>;
+  uSeam: IUniform<number>;
 };
 
 export type CardUniforms = SharedCardUniforms & {

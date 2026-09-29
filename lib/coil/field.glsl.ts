@@ -22,7 +22,7 @@
 export const FIELD = {
   divisor: 3, // the field renders at a third of CSS resolution and is upsampled
   amount: 0.8, // fa
-  second: { light: 0.68, dark: 0.5 }, // sec: the orange lobe's strength
+  second: { light: 0.75, dark: 0.5 }, // sec: the orange lobe's strength; light 0.75 lands the warm share near a fifth
   secondAt: [1.0, 1.2] as const, // lobe center, in field uv (above the top right)
   secondScale: [0.7, 1.45] as const, // lobe falloff, x (times aspect) and y
   // The static grain inside the letters: plus or minus 4/255, one device px.

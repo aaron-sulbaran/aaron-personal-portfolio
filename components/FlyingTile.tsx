@@ -8,7 +8,7 @@ import { fitAspect, flightQuad, homography, matrix3d, rectQuad, type Face } from
 import { siteEase } from "@/lib/coil/motion";
 import { COIL } from "@/lib/coil/constants";
 import { cardPhotoInset } from "@/lib/coil/cardFace";
-import { PHOTO_SLOT_SIZES } from "@/components/PhotoModal";
+import { photoSlotSizes } from "@/lib/photoSizes";
 
 export type FlightPhase = "out" | "closing";
 
@@ -184,7 +184,7 @@ export function FlyingTile(props: FlyingTileProps) {
             alt=""
             fill
             quality={90}
-            sizes={PHOTO_SLOT_SIZES}
+            sizes={photoSlotSizes(props.photoSrc)}
             className="object-cover"
             style={{ objectPosition: inset.objectPosition }}
             onLoad={() => setSharpLoaded(true)}
