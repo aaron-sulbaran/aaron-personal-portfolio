@@ -28,6 +28,9 @@ import type { Quad } from "@/lib/coil/geometry";
 import { PhotoModal } from "@/components/PhotoModal";
 import { WorkModal } from "@/components/WorkModal";
 import { CoilStage } from "@/components/coil/CoilStage";
+import type { CoilEntrance } from "@/components/coil/CoilScene";
+import { Loader, type LoaderMode } from "@/components/loader/Loader";
+import { FONT_ITEMS, SCENE_ITEMS, beginHomeLoad, endHomeLoad } from "@/lib/loader/progress";
 import { HERO_HEADING_ID } from "./HeroText";
 
 // The Coil's renderer-neutral home controller. It owns everything about the
@@ -78,7 +81,13 @@ export type HomeControllerValue = {
   // the controller goes straight to ready.
   claimEntrance: () => () => void;
   completeEntrance: () => void;
+  // When the entrance plays (slice 4): null until the loader hands the pane
+  // over; at rest from the first frame on a fast start.
+  entrance: CoilEntrance | null;
 };
+
+// No entrance: the coil is at rest from its first frame.
+const AT_REST: CoilEntrance = { startMs: Number.NEGATIVE_INFINITY, nameFromLoader: false };
 
 const HomeControllerContext = createContext<HomeControllerValue | null>(null);
 
@@ -151,27 +160,52 @@ export function HomeController({ hero, children }: Props) {
   // (which stays for assistive tech) until the scene goes away.
   const [sceneOn, setSceneOn] = useState(false);
   const entranceClaimsRef = useRef(0);
+  // The loader: armed by the server's HTML, resolved before paint.
+  const [loaderMode, setLoaderMode] = useState<LoaderMode>({ kind: "pending" });
+  const [entrance, setEntrance] = useState<CoilEntrance | null>(null);
+  const entranceExpectedRef = useRef(false);
 
   // Before paint, once per load: own the readiness store, take manual scroll
   // restoration, decide whether this load lands deep, land it, and pick the
   // start phase. A deep load or reduced motion is a fast start: no entrance,
   // no lock. Without a scene claiming the entrance the hero is ready at once.
+  //
+  // The loader and the lock: a deep load skips the loader entirely. Any other
+  // load keeps it (reduced motion gets its plain form, the tally then only
+  // waits for the fonts), and when the scene will play the entrance the
+  // phase is "entering" from here, so the scroll lock covers the loader and
+  // the entrance together and releases once, when the entrance completes.
   useIsoLayoutEffect(() => {
     const releaseReadiness = claimHomeReadiness();
     const releaseRestoration = takeManualScrollRestoration();
     const recovery = readRecovery();
-    const fast = recovery.deep || window.matchMedia(QUERIES.reduce).matches;
+    const reduced = window.matchMedia(QUERIES.reduce).matches;
+    const fast = recovery.deep || reduced;
     if (recovery.deep) applyRestore(recovery.target);
     const stopReland = relandAfterFonts(recovery.target);
-    publishHomeReadiness(fast || entranceClaimsRef.current === 0 ? "ready" : "entering");
+    const entering = !fast && entranceClaimsRef.current > 0;
+    entranceExpectedRef.current = entering;
+    const slow = new URLSearchParams(window.location.search).get("coildebug") === "slow";
+    const tally = beginHomeLoad(entering ? SCENE_ITEMS : FONT_ITEMS, performance.now(), slow);
+    publishHomeReadiness(entering ? "entering" : "ready");
     // A layout-effect state write re-renders before paint, which is the point:
     // consumers of fastStart must see it on the first painted frame.
     setFastStart(fast);
+    setLoaderMode(recovery.deep ? { kind: "off" } : { kind: "on", reducedMotion: reduced });
+    if (!entering) setEntrance(AT_REST);
     return () => {
+      endHomeLoad(tally);
       stopReland();
       releaseRestoration();
       releaseReadiness();
     };
+  }, []);
+
+  // The loader hands the pane over: the entrance starts (possibly a little
+  // in the future, overlapping the loader's exit).
+  const revealHero = useCallback((startMs: number, nameFromLoader: boolean) => {
+    if (!entranceExpectedRef.current) return;
+    setEntrance((current) => current ?? { startMs, nameFromLoader });
   }, []);
 
   useEffect(() => persistScrollPosition(), []);
@@ -248,12 +282,27 @@ export function HomeController({ hero, children }: Props) {
       markVisited,
       claimEntrance,
       completeEntrance,
+      entrance,
     }),
-    [phase, fastStart, reducedMotion, drivers, modalOpen, flight, openPhoto, openWork, markVisited, claimEntrance, completeEntrance],
+    [
+      phase,
+      fastStart,
+      reducedMotion,
+      drivers,
+      modalOpen,
+      flight,
+      openPhoto,
+      openWork,
+      markVisited,
+      claimEntrance,
+      completeEntrance,
+      entrance,
+    ],
   );
 
   return (
     <HomeControllerContext.Provider value={value}>
+      <Loader mode={loaderMode} onReveal={revealHero} />
       <section
         aria-labelledby={HERO_HEADING_ID}
         data-scene={sceneOn ? "on" : "off"}
