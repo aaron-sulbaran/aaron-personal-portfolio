@@ -519,6 +519,15 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
         cards: tileCount,
       };
     };
+    // Slice 7: every visible card's bent corners in viewport px (for the
+    // header and greeting overlap checks).
+    (debug as DebugStats & { visibleQuads?: () => Quad[] }).visibleQuads = () => {
+      if (!geoCamera) return [];
+      const rect = host.getBoundingClientRect();
+      return rendered
+        .filter((pose) => pose && pose.alpha > 0.01)
+        .map((pose) => projectQuad(pose, geoCamera as Camera, { left: rect.left, top: rect.top }));
+    };
   }
   const push = (list: number[], value: number) => {
     list.push(value);
