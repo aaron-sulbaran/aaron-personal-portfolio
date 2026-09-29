@@ -24,6 +24,13 @@ type PhotoModalProps = {
   renderMedia?: boolean;
 };
 
+// The photo slot's rendered width, so next/image requests the slot and not
+// the viewport: under md the panel stacks and the slot spans it (the page's
+// px-4 and the panel's p-5 on each side); from md it is 46 percent of a panel
+// that tops out at max-w-4xl with p-8, about 384px. The flight's sharp copy
+// (components/FlyingTile.tsx) sits in the same slot and asks the same.
+export const PHOTO_SLOT_SIZES = "(max-width: 767px) calc(100vw - 72px), 384px";
+
 // The close hint by pointer type: "Press Esc" for a mouse, "Tap outside" for
 // a touch screen. A coarse primary pointer means touch.
 const COARSE_POINTER = "(pointer: coarse)";
@@ -128,7 +135,7 @@ export function PhotoModal({ photo, onClose, renderMedia = false }: PhotoModalPr
                   alt={photo.alt}
                   fill
                   quality={90}
-                  sizes="(max-width: 768px) 92vw, 46vw"
+                  sizes={PHOTO_SLOT_SIZES}
                   className="object-cover"
                 />
               )}
