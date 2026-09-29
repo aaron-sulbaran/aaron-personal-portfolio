@@ -34,6 +34,15 @@ const values = {
     aspectBelow: 0.8,
     axisFactor: 0.3, // the axis relaxes toward vertical
     maxCardsPerTurn: 6.2,
+    // Every real card once, no repeats (hero lab 2's phone read). With too few
+    // cards to span the pane the strand's ends show, softened by the end fade.
+    strandFit: "exact" as "repeat" | "exact",
+    // The phone header: the mark and the Menu pill sit in the top 64px, and no
+    // card may cross them (design review of lab 2, item 14).
+    headerClearPx: 64,
+    // The greeting and its control take one line under the header (a card
+    // never passes behind them); the coil lives below this band.
+    introBandPx: 40,
   },
 
   // Camera.

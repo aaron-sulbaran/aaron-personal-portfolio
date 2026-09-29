@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { COIL } from "@/lib/coil/constants";
 import { compositionFor, inputFor, sameDrivers, selectDrivers } from "@/lib/coil/drivers";
+import { solveGeometry } from "@/lib/coil/geometry";
 
 const desktop = { width: 1440, height: 900 };
 
@@ -43,5 +45,34 @@ describe("drivers", () => {
     const b = selectDrivers({ viewport: { width: 1920, height: 1080 }, finePointer: true, canHover: true, reducedMotion: false });
     expect(sameDrivers(a, b)).toBe(true);
     expect(sameDrivers(a, { ...b, scene: false })).toBe(false);
+  });
+
+  it("composes phones and tablet portrait narrow: every card once, the relaxed axis, at most 6.2 per turn", () => {
+    const panes = [
+      { width: 360, height: 780 }, // small Android
+      { width: 390, height: 844 }, // iPhone
+      { width: 430, height: 932 }, // iPhone Pro Max
+      { width: 412, height: 915 }, // Pixel
+      { width: 768, height: 1024 }, // iPad portrait
+    ];
+    for (const viewport of panes) {
+      expect(compositionFor(viewport)).toBe("narrow");
+      const geo = solveGeometry(viewport, 14);
+      expect(geo.narrow).toBe(true);
+      expect(geo.slotCount).toBe(14);
+      expect(geo.repeats).toBe(0);
+      expect(geo.cardsPerTurn).toBeLessThanOrEqual(COIL.narrow.maxCardsPerTurn);
+      expect(geo.axisRad).toBeCloseTo((COIL.axisDeg * COIL.narrow.axisFactor * Math.PI) / 180, 12);
+      expect(geo.clearTopPx).toBe(COIL.narrow.headerClearPx + COIL.narrow.introBandPx);
+    }
+  });
+
+  it("composes tablet landscape and phones on their side wide, repeats filling the pane", () => {
+    for (const viewport of [{ width: 1024, height: 768 }, { width: 844, height: 390 }]) {
+      expect(compositionFor(viewport)).toBe("wide");
+      const geo = solveGeometry(viewport, 14);
+      expect(geo.slotCount).toBeGreaterThanOrEqual(14);
+      expect(geo.clearTopPx).toBe(0);
+    }
   });
 });

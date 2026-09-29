@@ -137,9 +137,9 @@ export function entrancePose<P extends CardPose>(
   const rank = shutterRank(card.strandPosition, n);
   const flown = shutterProgress(rank, clock, c);
   if (flown >= 1) return pose;
-  // The stack: square to the camera at the center, the first card on top.
+  // The stack: square to the camera at the helix center, the first card on top.
   const stackAlpha = smooth(clamp01(clock.elapsedS / (c.entrance.stackIn * clock.durationS)));
-  const stackPosition: Vec3 = [0, 0, (n - rank) * 0.004 + 0.3];
+  const stackPosition: Vec3 = [geo.center[0], geo.center[1], geo.center[2] + (n - rank) * 0.004 + 0.3];
   return {
     ...pose,
     position: lerp3(stackPosition, pose.position, flown),
