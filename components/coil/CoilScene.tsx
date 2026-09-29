@@ -50,7 +50,7 @@ import {
   stretchedDy,
   wheelPixels,
 } from "@/lib/coil/motion";
-import { entranceClock, entranceHelix, entrancePose } from "@/lib/coil/entrance";
+import { entranceClock, entranceHelix, entranceNameAlpha, entrancePose, isRested } from "@/lib/coil/entrance";
 import { createUnwind, unwindPose, unwindProgress } from "@/lib/coil/unwind";
 import { fieldTime } from "@/lib/coil/drift";
 import type { InputDriver } from "@/lib/coil/drivers";
@@ -62,12 +62,16 @@ import {
   createRepaintQueue,
   disableColorManagement,
   readCoilTheme,
+  toBytes,
   watchTheme,
   type CoilTheme,
 } from "@/lib/coil/theme";
 import { getSeen } from "@/lib/home/seen";
 import { setSceneHover } from "@/lib/cursor/hover";
 import type { HeroOverlayHandle } from "./HeroOverlay";
+// Slice 4: the loader's tally and the name handoff.
+import { reportHomeLoad } from "@/lib/loader/progress";
+import type { NameTarget } from "@/lib/loader/handoff";
 
 // The Coil scene: the dynamic chunk CoilStage imports after first paint. It
 // owns the renderer, the two field passes, the helix of cards, the loop, the
@@ -98,7 +102,22 @@ export type CoilSceneApi = {
   quadOf: (slot: number) => Quad | null;
   // Hides one slot's mesh (the flown card) or none.
   hideSlot: (slot: number | null) => void;
+  // ---- slice 4: the loader's continuity exit ----
+  // The canvas name in viewport px (its ink box, baseline and gradient), for
+  // the loader to land its DOM name on; null until the scene has laid out.
+  nameRect: () => NameTarget | null;
+  // Shows the canvas name now, rendering this frame synchronously, so the
+  // loader can drop its DOM name in the same task with no frame between.
+  landName: () => void;
+  // ---- end slice 4 ----
 };
+
+// Slice 4: when the entrance plays. startMs is on the performance.now()
+// clock (it may be in the future: the loader overlaps its exit); -Infinity
+// means no entrance (a fast start), so the coil is at rest from its first
+// frame. nameFromLoader: the loader lands the name (the canvas name waits for
+// landName); otherwise it fades up behind the band as the band opens.
+export type CoilEntrance = { startMs: number; nameFromLoader: boolean };
 
 export type CoilSceneProps = {
   frozen: boolean; // a modal is open
@@ -111,6 +130,12 @@ export type CoilSceneProps = {
   onError: (error: unknown) => void;
   // Slice 5 flies the card into its modal; until then a click does nothing.
   onCardClick?: (card: CoilCardRef) => void;
+  // ---- slice 4: the entrance ----
+  // Null: not started (cards hidden, the name held by the loader).
+  entrance?: CoilEntrance | null;
+  // Once, when the entrance's clock has run out (at once for a fast start).
+  onEntranceEnd?: () => void;
+  // ---- end slice 4 ----
 };
 
 export default function CoilScene(props: CoilSceneProps) {
@@ -354,6 +379,29 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   let frozenByApi = false;
   let contextLost = false;
   let firstFrameSent = false;
+  // ---- slice 4 state: the entrance clock and the name handoff ----
+  let nameBox: { left: number; baseline: number; inkWidth: number; size: number; maskTop: number; maskHeight: number } | null =
+    null;
+  let entranceBase: number | null = null; // when this scene's entrance clock reads 0
+  let entranceEnded = false;
+  let nameLanded = false;
+  // ?coildebug=entrance=<ms> freezes the drawn entrance at that moment (the
+  // real clock still ends it, so the page unlocks).
+  const forcedEntrance = debugMode?.match(/^entrance=(-?\d+(?:\.\d+)?)$/);
+  const forcedEntranceMs = forcedEntrance ? Number(forcedEntrance[1]) : null;
+
+  // Real milliseconds since the entrance started (-Infinity before it,
+  // Infinity for a fast start). A start the scene first sees late (it was
+  // still loading) begins at that first sight, so no part of it is skipped.
+  function entranceElapsedMs(now: number) {
+    const entrance = live.current.entrance;
+    if (!entrance) return Number.NEGATIVE_INFINITY;
+    if (entranceBase === null) {
+      entranceBase = Number.isFinite(entrance.startMs) ? Math.max(entrance.startMs, now) : Number.NEGATIVE_INFINITY;
+    }
+    return now - entranceBase;
+  }
+  // ---- end slice 4 state ----
   const debug: DebugStats | null = debugMode
     ? {
         intervals: [],
@@ -398,6 +446,15 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     cu.uNameRect.value.set(left - mask.pad, capTop - mask.pad, mask.width, mask.height);
     cu.uLod.value = Math.max(0, Math.log2(mask.canvas.height / (mask.height * view.dpr)));
     cu.uNameA.value = posterMode ? 0 : 1;
+    // Slice 4: the name's geometry for the loader's handoff (canvas px).
+    nameBox = {
+      left,
+      baseline: capTop + mask.ascent,
+      inkWidth,
+      size,
+      maskTop: capTop - mask.pad,
+      maskHeight: mask.height,
+    };
 
     // The greeting and the control ride the name (lab 842-859): the greeting
     // just above the cap line, the control's text flush with the name's
@@ -613,9 +670,33 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
 
     let helix = restHelix(geo, theme.card.recede);
     helix = { ...helix, dy: stretchedDy(helix.dy, envelope) };
-    // ---- slice 4 wiring block: the entrance (identity until then) ----
-    const clock = entranceClock(Number.POSITIVE_INFINITY);
+    // ---- slice 4 wiring block: the entrance ----
+    const realElapsedMs = posterMode ? Number.POSITIVE_INFINITY : entranceElapsedMs(now);
+    const clock = entranceClock(forcedEntranceMs ?? realElapsedMs);
+    if (!isRested(clock)) {
+      // Idle, wheel and page scroll wait for the entrance: the strand holds
+      // still at its start until the band has opened.
+      conveyor.offset = 0;
+      conveyor.target = 0;
+      conveyor.velocity = 0;
+      conveyor.excessVelocity = 0;
+      conveyor.glide = null;
+    }
     helix = entranceHelix(helix, geo, clock);
+    {
+      const entrance = props.entrance;
+      // A loader that never lands the name still gives it up a second after the entrance.
+      const handedOff = entrance?.nameFromLoader
+        ? nameLanded || realElapsedMs > clock.durationS * 1000 + 1000
+        : null;
+      const nameAlpha = posterMode ? 0 : entranceNameAlpha(clock, handedOff);
+      compMaterial.uniforms.uNameA.value = nameAlpha;
+      compMaterial.uniforms.uGrain.value = FIELD.grain * nameAlpha;
+      if (entrance && !entranceEnded && realElapsedMs >= clock.durationS * 1000) {
+        entranceEnded = true;
+        props.onEntranceEnd?.();
+      }
+    }
     // ---- end slice 4 block ----
     // ---- slice 5 wiring block: the unwind (progress 0 until then) ----
     const listProgress = unwindProgress(unwind, now);
@@ -833,9 +914,46 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       hiddenSlot = slot;
       if (!raf) renderStill();
     },
+    // ---- slice 4: the loader's continuity exit ----
+    nameRect() {
+      if (!ready || !nameBox) return null;
+      const rect = host.getBoundingClientRect();
+      return {
+        left: rect.left + nameBox.left,
+        baseline: rect.top + nameBox.baseline,
+        width: nameBox.inkWidth,
+        fontPx: nameBox.size,
+        gradient: {
+          top: rect.top + nameBox.maskTop,
+          height: nameBox.maskHeight,
+          from: toBytes(theme.name.top),
+          to: toBytes(theme.name.bottom),
+        },
+        inkAlpha: Math.min(1, Math.max(0, theme.name.ink * FIELD.nameInkGain)),
+      };
+    },
+    landName() {
+      nameLanded = true;
+      if (!ready || contextLost || disposed || posterMode) return;
+      compMaterial.uniforms.uNameA.value = 1;
+      compMaterial.uniforms.uGrain.value = FIELD.grain;
+      render(0);
+    },
+    // ---- end slice 4 ----
   };
   if (live.current.api) live.current.api.current = api;
   if (debug) debug.api = api;
+  // Slice 4: the entrance clock and the name, for QA behind ?coildebug.
+  if (debug) {
+    (debug as DebugStats & { entrance?: () => object }).entrance = () => ({
+      base: entranceBase,
+      elapsedMs: entranceBase === null ? null : performance.now() - entranceBase,
+      ended: entranceEnded,
+      nameLanded,
+      nameA: compMaterial.uniforms.uNameA.value,
+      offset: conveyor.offset,
+    });
+  }
 
   // ---- boot: the name's face and every card's sources, then the first frame
   const style = getComputedStyle(document.documentElement);
@@ -843,6 +961,13 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   const withTimeout = <T,>(promise: Promise<T>, fallback: T) =>
     Promise.race([promise, new Promise<T>((resolve) => window.setTimeout(() => resolve(fallback), TEXTURE_TIMEOUT_MS))]);
   const logoFor = (slug: string) => siteContent.workItems.find((item) => item.slug === slug)?.logo ?? null;
+  // Slice 4: each card source (or its timeout) moves the loader's tally.
+  let texturesSettled = 0;
+  const countTexture = (source: CardSource) => {
+    texturesSettled += 1;
+    reportHomeLoad("textures", texturesSettled / tileCount);
+    return source;
+  };
 
   Promise.all([
     withTimeout(
@@ -854,7 +979,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
         withTimeout<CardSource>(
           loadCardSource(tile, logoFor),
           tile.kind === "photo" ? { kind: "photo", key: tile.key, image: null } : { kind: "work", key: tile.key, logo: null },
-        ),
+        ).then(countTexture), // slice 4: the loader's tally
       ),
     ),
   ])
