@@ -13,7 +13,7 @@ import { startSoundtrack, stopSoundtrack, useSoundtrack } from "@/lib/soundtrack
 const MOBILE_MAX = 767;
 
 // Top-right menu. Collapsed state is just a two-bar hamburger icon. Expanded
-// state covers the viewport with a frosted backdrop, a big-serif item list,
+// state covers the viewport with a frosted backdrop, a big display-face item list,
 // and the theme toggle below a thin rule. Items smooth-scroll to in-page
 // sections (no route change); the menu still auto-closes if the route changes.
 export function Menu() {
@@ -152,7 +152,7 @@ export function Menu() {
             className="fixed inset-0 z-50 flex flex-col overflow-y-auto overscroll-contain bg-background/95 px-6 py-6 backdrop-blur-xl md:px-10 md:py-8"
           >
             <div className="flex items-center justify-between">
-              <span className="font-serif text-lg italic text-foreground">{siteContent.meta.title}</span>
+              <span className="font-display text-lg text-foreground">{siteContent.meta.title}</span>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
@@ -177,20 +177,12 @@ export function Menu() {
                     >
                       <span
                         aria-hidden="true"
-                        className="mt-3 text-[11px] font-medium uppercase tracking-caps text-muted md:mt-4"
+                        className="mt-3 text-sm tabular-nums text-muted md:mt-4"
                       >
                         {String(i + 1).padStart(2, "0")}
                       </span>
-                      <span className="relative grid items-end justify-items-start overflow-hidden px-[0.04em] pb-[0.14em] font-serif text-[clamp(3.5rem,10vw,7rem)] italic leading-[1] tracking-tight">
-                        <span className="col-start-1 row-start-1 block whitespace-nowrap text-foreground transition-transform duration-[600ms] ease-[cubic-bezier(0.77,0,0.175,1)] group-hover:-translate-y-[110%] group-focus-visible:-translate-y-[110%]">
-                          {item.label}
-                        </span>
-                        <span
-                          aria-hidden="true"
-                          className="col-start-1 row-start-1 block translate-y-[110%] whitespace-nowrap font-grotesk not-italic text-accent transition-transform duration-[600ms] ease-[cubic-bezier(0.77,0,0.175,1)] group-hover:translate-y-0 group-focus-visible:translate-y-0"
-                        >
-                          {item.label}
-                        </span>
+                      <span className="block whitespace-nowrap font-display text-[clamp(3.5rem,10vw,7rem)] leading-[1] tracking-tight text-foreground transition-colors duration-200 group-hover:text-accent group-focus-visible:text-accent">
+                        {item.label}
                       </span>
                     </a>
                   </li>
@@ -204,7 +196,7 @@ export function Menu() {
                     onClick={toggleMusic}
                     aria-label={musicAriaLabel}
                     aria-pressed={musicOn}
-                    className="group inline-flex items-center gap-3 text-[11px] font-medium uppercase tracking-caps text-muted transition-colors duration-200 hover:text-accent"
+                    className="group inline-flex items-center gap-3 text-sm text-muted transition-colors duration-200 hover:text-accent"
                   >
                     <span className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border text-foreground transition-colors duration-200 group-hover:text-accent">
                       <Music aria-hidden="true" className="h-[15px] w-[15px]" />
@@ -216,7 +208,7 @@ export function Menu() {
                   type="button"
                   onClick={toggleTheme}
                   aria-label={themeAriaLabel}
-                  className="group inline-flex items-center gap-3 text-[11px] font-medium uppercase tracking-caps text-muted transition-colors duration-200 hover:text-accent"
+                  className="group inline-flex items-center gap-3 text-sm text-muted transition-colors duration-200 hover:text-accent"
                 >
                   <span className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border text-foreground transition-colors duration-200 group-hover:text-accent">
                     {theme === "dark" ? (
