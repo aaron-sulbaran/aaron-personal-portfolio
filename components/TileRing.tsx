@@ -303,7 +303,7 @@ export function TileRing({ children }: Props) {
   const publicState: "pre" | "entering" | "ready" =
     phase === "ready" ? "ready" : phase === "hidden" ? "pre" : "entering";
   // Publish the same phase to the explicit readiness store (lib/home) that
-  // SiteNav and ScrollProgress read; data-state below stays until slice 9.
+  // SiteNav reads; data-state below stays until slice 9.
   useHomeReadinessPublisher(publicState);
 
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);

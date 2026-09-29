@@ -1,178 +1,175 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import { usePathname } from "next/navigation";
+import { useReducedMotion } from "framer-motion";
+import { AsMark } from "@/components/menu/BrandMark";
+import { siteContent } from "@/lib/content";
+import { useHomeReadiness } from "@/lib/home/readiness";
+import { closeMenu, getMenuOpen, setHeaderHidden, useHeaderHidden, useMenuOpen } from "@/lib/menu";
 import { navigateToSection } from "@/lib/scroll";
-import { whenHomeReady } from "@/lib/home/readiness";
 
-// Section jump targets mirrored from the in-page anchors. Shown inline on
-// desktop; mobile relies on the hamburger menu instead.
-const NAV_LINKS = [
-  { label: "Work", href: "#work" },
-  { label: "About", href: "#about" },
-  { label: "Connect", href: "#connect" },
-] as const;
+// H1. During the hero only the AS mark (top-left) and the Menu pill
+// (top-right, components/menu) are on screen. Past the hero a 72px bar slides
+// in behind them with Work, About and Connect, scroll-spy on the section being
+// read. Headroom: after about 140px of scrolling down the bar tucks away, the
+// mark and the pill with it; any scroll up (past 6px of jitter) brings all
+// three back.
+//
+// "During the hero" means the home hero is not yet ready (the readiness
+// store) or its sentinel (app/page.tsx, the first 90svh of #main) is still in
+// view. Pages without a hero show the bar from the top; /recruiting keeps it
+// pinned, since its sticky filter bar sits right under it.
+//
+// The mark lives in the pill's layer (z-40), above the menu scrim, so it
+// stays sharp and clickable while the menu is open; the bar sits at z-30.
+const NAV_ITEMS = siteContent.menu.items.filter((item) => item.key !== "home");
+const SPY_IDS = NAV_ITEMS.map((item) => item.href.slice(1));
+const EASE_CLASS = "ease-[cubic-bezier(0.22,1,0.36,1)]";
 
-// The AS bolt from public/brand/as-bolt-ink.svg, inlined in currentColor so it
-// reads ink in light and paper in dark through the text token. At the bar's
-// 28px the bolt stands alone; the full AS mark is for 32px and up.
-function BrandMark() {
-  return (
-    <svg
-      width="28"
-      height="28"
-      viewBox="-5 -3.89 263.78 263.78"
-      aria-hidden="true"
-      className="text-foreground"
-    >
-      <path
-        d="M73.34 92.98L154.4 24.96L127.31 92L189.81 105.29L120.27 231.04L146.46 133.69L63.97 116.16Z"
-        fill="currentColor"
-      />
-    </svg>
-  );
-}
-
-// Sticky top nav, the second navigation channel alongside the hamburger. It is
-// absent during the hero (Apple-style), slides in once scrolled past it, then
-// follows the headroom pattern: hides on scroll-down, reappears on scroll-up.
 export function SiteNav() {
-  const prefersReducedMotion = useReducedMotion();
-  const headerRef = useRef<HTMLElement | null>(null);
-  const lastY = useRef(0);
-  const [revealed, setRevealed] = useState(false);
-  const [retracted, setRetracted] = useState(false);
-  const [activeId, setActiveId] = useState<string | null>(null);
+  const pathname = usePathname();
+  const readiness = useHomeReadiness();
+  const menuOpen = useMenuOpen();
+  const headerHidden = useHeaderHidden();
+  const reducedMotion = !!useReducedMotion();
+  const [heroInView, setHeroInView] = useState(true);
+  const [activeHref, setActiveHref] = useState<string | null>(null);
+
+  const home = pathname === "/";
+  const pinned = pathname.startsWith("/recruiting");
+  const bar = !(home && (readiness !== "ready" || heroInView));
+
+  const barRef = useRef(bar);
+  const pinnedRef = useRef(pinned);
+  const track = useRef({ lastY: 0, down: 0, up: 0, revealedAt: 0 });
 
   useEffect(() => {
-    let ticking = false;
-    const onScroll = () => {
-      if (ticking) return;
-      ticking = true;
-      requestAnimationFrame(() => {
-        const y = window.scrollY;
-        const revealAt = window.innerHeight * 0.6;
-        const past = y > revealAt;
-        setRevealed(past);
-        if (!past) {
-          setRetracted(false);
-        } else if (Math.abs(y - lastY.current) > 4) {
-          setRetracted(y > lastY.current);
-        }
-        lastY.current = y;
-        ticking = false;
-      });
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    onScroll();
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
-  // Deep link on load: if the URL carries a section hash, hold until the home
-  // hero reports "ready" (it locks body scroll during its entrance), then
-  // scroll there. Readiness comes from the explicit store in lib/home; pages
-  // without a hero never claim it, so they scroll straight away.
-  useEffect(() => {
-    const hash = window.location.hash;
-    if (!hash || hash === "#main") return;
-    const target = document.getElementById(hash.slice(1));
-    if (!target) return;
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    let raf = 0;
-    const cancel = whenHomeReady(() => {
-      raf = requestAnimationFrame(() =>
-        target.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" }),
-      );
-    });
-    return () => {
-      cancel();
-      if (raf) cancelAnimationFrame(raf);
-    };
-  }, []);
-
-  // Scroll-spy: highlight the nav link for the section crossing the upper
-  // middle of the viewport. One observer over the section anchors.
-  useEffect(() => {
-    const sections = NAV_LINKS.map((l) => document.getElementById(l.href.slice(1))).filter(
-      (el): el is HTMLElement => el !== null,
-    );
-    if (!sections.length) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) setActiveId(entry.target.id);
-        });
-      },
-      { rootMargin: "-45% 0px -50% 0px", threshold: 0 },
-    );
-    sections.forEach((s) => observer.observe(s));
+    if (!home) return;
+    const sentinel = document.querySelector("[data-hero-sentinel]");
+    if (!sentinel) return;
+    const observer = new IntersectionObserver(([entry]) => setHeroInView(entry.isIntersecting));
+    observer.observe(sentinel);
     return () => observer.disconnect();
-  }, []);
+  }, [home]);
 
-  // inert when off-screen so the hidden links never take keyboard focus.
-  const shown = revealed && !retracted;
+  // Every time the bar arrives (or the route changes) headroom starts fresh:
+  // the bar shows, and it may only tuck away 220px below where it arrived.
   useEffect(() => {
-    const el = headerRef.current;
-    if (!el) return;
-    if (shown) el.removeAttribute("inert");
-    else el.setAttribute("inert", "");
-  }, [shown]);
+    barRef.current = bar;
+    pinnedRef.current = pinned;
+    const y = window.scrollY;
+    track.current = { lastY: y, down: 0, up: 0, revealedAt: y };
+    setHeaderHidden(false);
+  }, [bar, pinned]);
 
-  const navigate = (href: string) => {
-    navigateToSection(href, !!prefersReducedMotion);
+  useEffect(() => {
+    let frame = 0;
+    const measure = () => {
+      frame = 0;
+      const y = window.scrollY;
+      const line = y + window.innerHeight * 0.4;
+      let here: string | null = null;
+      for (const id of SPY_IDS) {
+        const el = document.getElementById(id);
+        if (el && el.getBoundingClientRect().top + y <= line) here = `#${id}`;
+      }
+      setActiveHref(here);
+
+      const t = track.current;
+      const dy = y - t.lastY;
+      t.lastY = y;
+      if (!barRef.current || pinnedRef.current) return;
+      if (dy > 0) {
+        t.down += dy;
+        t.up = 0;
+        if (t.down > 140 && y > t.revealedAt + 220) setHeaderHidden(true);
+      } else if (dy < 0) {
+        // Summed, so a slow or smooth scroll up returns the bar as surely as
+        // a flick; 6px keeps trackpad jitter from flickering it.
+        t.up -= dy;
+        t.down = 0;
+        if (t.up > 6) setHeaderHidden(false);
+      }
+    };
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(measure);
+    };
+    frame = requestAnimationFrame(measure);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      if (frame) cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
+  }, [pathname]);
+
+  const tucked = headerHidden && !menuOpen;
+  const navShown = bar && !headerHidden;
+
+  const goTo = (href: string) => {
+    const jump = () => navigateToSection(href, reducedMotion);
+    if (getMenuOpen()) closeMenu(jump);
+    else jump();
   };
 
   return (
-    <motion.header
-      ref={headerRef}
-      initial={false}
-      animate={{ y: shown ? 0 : "-100%", opacity: shown ? 1 : 0 }}
-      transition={
-        prefersReducedMotion
-          ? { duration: 0 }
-          : { duration: 0.4, ease: [0.22, 1, 0.36, 1] }
-      }
-      aria-hidden={!shown}
-      className="fixed inset-x-0 top-0 z-30 border-b border-border bg-background/80 backdrop-blur-md"
-    >
-      <nav
-        aria-label="Primary"
-        className="flex items-center gap-8 px-6 py-3 md:px-10"
+    <>
+      <button
+        type="button"
+        onClick={() => goTo("#main")}
+        aria-label={siteContent.menu.markAriaLabel}
+        data-cursor-hover
+        className={`fixed left-4 top-[18px] z-40 block h-[26px] w-[26px] text-foreground transition-transform duration-[450ms] ${EASE_CLASS} focus-visible:translate-y-0 sm:left-6 sm:top-5 sm:h-8 sm:w-8 ${
+          tucked ? "-translate-y-[90px]" : ""
+        }`}
       >
-        <button
-          type="button"
-          onClick={() => navigate("#main")}
-          aria-label="Back to top"
-          data-cursor-hover
-          className="inline-flex shrink-0 items-center rounded-md transition-opacity duration-200 hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-        >
-          <BrandMark />
-        </button>
+        <AsMark className="block h-full w-full" />
+      </button>
 
-        <ul className="hidden items-center gap-7 md:flex">
-          {NAV_LINKS.map((link) => {
-            const active = activeId === link.href.slice(1);
+      <header
+        className={`pointer-events-none fixed left-0 right-[var(--scrollbar-comp)] top-0 z-30 h-[72px] transition-transform duration-[450ms] ${EASE_CLASS} ${
+          headerHidden ? "-translate-y-full" : ""
+        }`}
+      >
+        <div
+          aria-hidden="true"
+          className={`absolute inset-0 border-b border-border bg-[var(--nav-bar)] transition-transform duration-500 ${EASE_CLASS} ${
+            bar ? "" : "-translate-y-full"
+          }`}
+        />
+        <nav
+          aria-label={siteContent.menu.navAriaLabel}
+          inert={!navShown}
+          className={`absolute left-1/2 top-0 hidden h-[72px] -translate-x-1/2 items-center gap-8 text-sm font-medium transition-opacity duration-300 md:flex ${
+            bar ? "pointer-events-auto opacity-100" : "opacity-0"
+          }`}
+        >
+          {NAV_ITEMS.map((item) => {
+            const active = activeHref === item.href;
             return (
-              <li key={link.href}>
-                <a
-                  href={link.href}
-                  aria-current={active ? "true" : undefined}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    navigate(link.href);
-                  }}
-                  data-cursor-hover
-                  className={`text-sm transition-colors duration-200 hover:text-accent focus-visible:text-accent ${
-                    active ? "text-accent" : "text-muted"
-                  }`}
-                >
-                  {link.label}
-                </a>
-              </li>
+              <a
+                key={item.key}
+                href={item.href}
+                aria-current={active ? "location" : undefined}
+                onClick={(e) => {
+                  e.preventDefault();
+                  goTo(item.href);
+                }}
+                data-cursor-hover
+                className={`relative transition-colors duration-200 hover:text-foreground ${
+                  active
+                    ? "text-foreground after:absolute after:-bottom-2 after:left-1/2 after:-ml-0.5 after:h-1 after:w-1 after:rounded-full after:bg-accent after:content-['']"
+                    : "text-muted"
+                }`}
+              >
+                {item.label}
+              </a>
             );
           })}
-        </ul>
-      </nav>
-    </motion.header>
+        </nav>
+      </header>
+    </>
   );
 }

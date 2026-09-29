@@ -97,7 +97,7 @@ const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : use
 
 // For a hero that tracks its phase in React state (TileRing): claims the store
 // before paint on mount and publishes every phase change before paint, so
-// passive effects elsewhere (SiteNav, ScrollProgress) already see the owner.
+// passive effects elsewhere (SiteNav) already see the owner.
 export function useHomeReadinessPublisher(current: HomeReadiness) {
   useIsoLayoutEffect(() => claimHomeReadiness(), []);
   useIsoLayoutEffect(() => {
