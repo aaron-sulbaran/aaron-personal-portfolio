@@ -178,7 +178,7 @@ export function MenuPanel({
             <span aria-hidden="true" className="flex h-4 w-4 items-center justify-center">
               <NoteIcon
                 on={music === "on"}
-                className={`block h-[14px] w-[9px] ${music === "on" ? "text-accent" : "text-muted"}`}
+                className={`block h-[15px] w-[9.5px] ${music === "on" ? "text-accent" : "text-muted"}`}
               />
             </span>
             <span>{music === "on" ? menuToggleOn : music === "paused" ? menuTogglePaused : menuToggleOff}</span>
