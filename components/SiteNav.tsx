@@ -162,7 +162,7 @@ export function SiteNav() {
                     navigate(link.href);
                   }}
                   data-cursor-hover
-                  className={`text-[11px] font-medium uppercase tracking-caps transition-colors duration-200 hover:text-accent focus-visible:text-accent ${
+                  className={`text-sm transition-colors duration-200 hover:text-accent focus-visible:text-accent ${
                     active ? "text-accent" : "text-muted"
                   }`}
                 >
