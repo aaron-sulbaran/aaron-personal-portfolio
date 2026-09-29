@@ -124,8 +124,8 @@ export const siteContent = {
     // The work modal's accessible name: "<title> preview".
     workPreviewSuffix: "preview",
   },
-  // The Coil hero (NEXT_PUBLIC_HOME_HERO=coil). The heading is the server-
-  // rendered h1; greeting and name are the two parts the scene draws.
+  // The Coil hero. The heading is the server-rendered h1; greeting and name
+  // are the two parts the scene draws.
   hero: {
     heading: "Hi, I'm Aaron.",
     greeting: "Hi, I'm",
