@@ -24,6 +24,42 @@
   --viz-warm: #eda100;
   --viz-cool: #4a3aa7;
   --viz-node: #6B6B6B;
+
+  /* Coil scene tokens (slices 3 and 4). A canvas or shader reads these through
+     getComputedStyle, so every color is a hex value, never var() or
+     color-mix(); only the three card rgba() paints below are canvas fills.
+     They stay out of tailwind.config.ts on purpose: components never style
+     DOM with them. */
+  /* Dusk field: sea plus a burnt orange second lobe at about 20 percent. */
+  --shader-top: #C0D5E8;
+  --shader-bottom: #F1F3F3;
+  --shader-glow: #8AAFD1;
+  --shader-second: #DC9562;
+  /* Card panes, rim hairline, highlight (paper, never white), slide veil. */
+  --card-pane: #EFF1F1;
+  --card-work-pane: #F7F7F3;
+  --card-hair: rgba(10, 10, 10, 0.18);
+  --card-hi: rgba(250, 250, 247, 0.75);
+  --card-veil: rgba(243, 245, 245, 0.56);
+  /* Duotone back endpoints (the shadow and the highlight of the tint), not
+     theme names. In light, plain work backs paint --card-duo-light; the dark
+     theme adds --card-work-back-dark for them. */
+  --card-duo-dark: #2A4B6D;
+  --card-duo-light: #E2E9F0;
+  /* Scalars: rear-card brightness drop and sheen strength. */
+  --card-recede: 0.3;
+  --card-sheen: 0.1;
+  /* "Aaron" behind the coil: a vertical gradient inside the letters mixed at
+     --name-ink (the scene mixes at ink * 2.2), plus the "Hi, I'm" color. */
+  --name-ink: 0.12;
+  --name-grad-top: #3A6289;
+  --name-grad-bottom: #1B3A5C;
+  --hero-greeting: #3E4B59;
+  /* Loader: always dark, whatever the theme. */
+  --loader-bg: #0E1419;
+  --loader-name: #F5F2EC;
+  --loader-fill: #7FA8C9;
+  --loader-muted: #8A8A8A;
 }
 
 [data-theme="dark"] {
@@ -41,6 +77,24 @@
   --viz-warm: #c98500;
   --viz-cool: #9085e9;
   --viz-node: #8A8A8A;
+
+  --shader-top: #0A0F13;
+  --shader-bottom: #132436;
+  --shader-glow: #2E5475;
+  --shader-second: #7A3512;
+  --card-pane: #1A232B;
+  --card-work-pane: #18212A;
+  --card-hair: rgba(245, 242, 236, 0.16);
+  --card-hi: rgba(245, 242, 236, 0.09);
+  --card-veil: rgba(17, 24, 30, 0.56);
+  --card-duo-dark: #15293C;
+  --card-duo-light: #A3BFD6;
+  --card-work-back-dark: #40566A;
+  --card-recede: 0.38;
+  --card-sheen: 0.07;
+  --name-grad-top: #5C87AD;
+  --name-grad-bottom: #9AC0DD;
+  --hero-greeting: #A9B4BF;
 }
 
 html {
