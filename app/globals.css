@@ -52,8 +52,8 @@
   /* "Aaron" behind the coil: a vertical gradient inside the letters mixed at
      --name-ink (the scene mixes at ink * 2.2), plus the "Hi, I'm" color. */
   --name-ink: 0.12;
-  --name-grad-top: #3A6289;
-  --name-grad-bottom: #1B3A5C;
+  --name-grad-top: #4C7098;
+  --name-grad-bottom: #16324F;
   --hero-greeting: #3E4B59;
   /* Loader: always dark, whatever the theme. */
   --loader-bg: #0E1419;
@@ -92,8 +92,8 @@
   --card-work-back-dark: #40566A;
   --card-recede: 0.38;
   --card-sheen: 0.07;
-  --name-grad-top: #5C87AD;
-  --name-grad-bottom: #9AC0DD;
+  --name-grad-top: #6C93B6;
+  --name-grad-bottom: #A6CCE6;
   --hero-greeting: #A9B4BF;
 }
 
