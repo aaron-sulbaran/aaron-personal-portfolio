@@ -161,6 +161,8 @@ const SEEN_RATE = 8;
 const HOVER_SCALE = 0.045;
 const HOVER_BRIGHT = 0.05;
 const HOVER_UNFADE = 0.6;
+// A theme repaint starts no new card past this much of a frame (at most 4).
+const REPAINT_BUDGET_MS = 6;
 
 type DebugStats = {
   intervals: number[];
@@ -171,6 +173,9 @@ type DebugStats = {
   released: number;
   geo?: CoilGeometry;
   offset: () => number;
+  hovered: () => number;
+  capturing: () => boolean;
+  api?: CoilSceneApi;
 };
 
 function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject<CoilSceneProps>): CoilRuntime {
@@ -350,7 +355,17 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   let contextLost = false;
   let firstFrameSent = false;
   const debug: DebugStats | null = debugMode
-    ? { intervals: [], work: [], steps: [], envelope: [], captured: 0, released: 0, offset: () => conveyor.offset }
+    ? {
+        intervals: [],
+        work: [],
+        steps: [],
+        envelope: [],
+        captured: 0,
+        released: 0,
+        offset: () => conveyor.offset,
+        hovered: () => hoveredSlot,
+        capturing: () => capturing,
+      }
     : null;
   if (debug) (window as unknown as { __coil?: DebugStats }).__coil = debug;
   const push = (list: number[], value: number) => {
@@ -526,10 +541,15 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       return;
     }
     const now = performance.now();
-    pointer.clientX = event.clientX;
-    pointer.clientY = event.clientY;
+    // Some synthesized wheels carry no position (0, 0); the last pointer
+    // position stands in, as in the lab.
+    if (event.clientX !== 0 || event.clientY !== 0 || !pointer.known) {
+      pointer.clientX = event.clientX;
+      pointer.clientY = event.clientY;
+    }
     updatePointerLocal();
-    const inGesture = capturing && now - lastCaptureAt < GESTURE_GAP_MS;
+    if (capturing && now - lastCaptureAt >= GESTURE_GAP_MS) capturing = false;
+    const inGesture = capturing;
     let capture = false;
     if (inGesture) {
       capture = sil !== null && insideSilhouette(sil, pointer.x, pointer.y);
@@ -662,7 +682,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       overlay?.nudge(null);
     }
 
-    repaints.drain(paintTile);
+    repaints.drain(paintTile, REPAINT_BUDGET_MS);
   }
 
   function render(dt: number) {
@@ -813,6 +833,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     },
   };
   if (live.current.api) live.current.api.current = api;
+  if (debug) debug.api = api;
 
   // ---- boot: the name's face and every card's sources, then the first frame
   const style = getComputedStyle(document.documentElement);
