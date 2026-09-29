@@ -9,6 +9,7 @@ import { siteEase } from "@/lib/coil/motion";
 import { COIL } from "@/lib/coil/constants";
 import { cardPhotoInset } from "@/lib/coil/cardFace";
 import { photoSlotSizes } from "@/lib/photoSizes";
+import { flightProbe } from "@/lib/coil/flightProbe";
 
 export type FlightPhase = "out" | "closing";
 
@@ -95,31 +96,41 @@ export function FlyingTile(props: FlyingTileProps) {
       target.getContext("2d")?.drawImage(face, 0, 0);
     });
     apply(source, flightQuad(source, source, 0).face);
+    flightProbe()?.mark("clone-mount", { quad: source });
     onMounted();
+    return () => flightProbe()?.mark("clone-unmount");
   }, []);
 
   useEffect(() => {
     let raf = 0;
     let done = false;
     const duration = prefersReducedMotion ? 0 : FLIGHT_MS;
-    const start = performance.now();
+    // The flight's own clock: real time, which ?coildebug=flight can hold.
+    const probe = flightProbe();
+    let elapsed = 0;
+    let last = performance.now();
     const { kind, phase } = liveRef.current;
+    probe?.mark("flight-start", { phase });
     // Home from wherever the clone is: parked in the slot, or still on its
     // way out when the modal closes early.
     const from = phase === "out" ? liveRef.current.source : (lastRef.current ?? liveRef.current.home);
 
     const step = (now: number) => {
       const live = liveRef.current;
-      const t = duration ? Math.min(1, (now - start) / duration) : 1;
+      elapsed += Math.max(0, now - last) * (probe ? probe.rate : 1);
+      last = now;
+      const t = duration ? Math.min(1, elapsed / duration) : 1;
       const eased = siteEase(t);
       if (phase === "out") {
         const to = slotQuad(kind) ?? live.home;
         const { quad, face } = flightQuad(from, to, eased);
         apply(quad, face);
+        probe?.mark("clone-frame", { phase, t, quad, face });
         if (t >= 1) {
           parkedRef.current = to;
           if (!done) {
             done = true;
+            probe?.mark("clone-parked", { quad });
             live.onFlyOutComplete();
           }
           return;
@@ -127,9 +138,11 @@ export function FlyingTile(props: FlyingTileProps) {
       } else {
         const { quad, face } = flightQuad(from, live.home, eased);
         apply(quad, face);
-        if (t >= 1) {
+        probe?.mark("clone-frame", { phase, t, quad, face });
+        if (t >= 1 && !probe?.holdLanding) {
           if (!done) {
             done = true;
+            probe?.mark("clone-landed", { quad });
             live.onClosingComplete();
           }
           return;
@@ -162,6 +175,7 @@ export function FlyingTile(props: FlyingTileProps) {
     <div
       ref={rootRef}
       aria-hidden="true"
+      data-flying-tile=""
       className="pointer-events-none fixed left-0 top-0 z-[55] origin-top-left will-change-transform"
       style={{ width: BOX_W, height: BOX_H, visibility: "hidden" }}
     >
