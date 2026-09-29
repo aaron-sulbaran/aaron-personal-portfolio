@@ -10,7 +10,7 @@ import { getSoundtrackState, type SoundtrackState } from "@/lib/soundtrack";
 // Reactive twin-line particle waveform behind the back half, replacing the old
 // ASCII glyph drift. A horizontal centerline of fine round dots displaces and
 // fuzzes with energy, reading as a soundwave. It inherits the ASCII field's
-// whole lifecycle: body level via Portal so the pinned #hero-pin transform never
+// whole lifecycle: body level via Portal so no transformed ancestor ever
 // captures this fixed canvas, z-0 / pointer-events-none / aria-hidden, a
 // ScrollTrigger keyed to #listen that ramps the field in only once the journey
 // begins, rAF that runs only while visible and the tab is foregrounded, colors
@@ -296,9 +296,7 @@ function WaveCanvas() {
     // always rendered, empty once a choice exists), identical hardening to the
     // old field: onUpdate tracks gradual scrolling; the leave/enter handlers
     // keep it correct on jumps (anchor clicks, section jumps) that skip the
-    // range in one step. The wave runs from the invite down: after the book on
-    // the Coil home; on the ring home #listen ends exactly where #work starts,
-    // the moment the hero pin has released, so nothing moves there.
+    // range in one step. The wave runs from the invite down, after the book.
     const listen = document.getElementById("listen");
     const createTrigger = () =>
       ScrollTrigger.create({

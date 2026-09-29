@@ -29,7 +29,7 @@ import {
 // dynamic-island style. It is the visible half of the soundtrack feature and the
 // in-flow entry choice (spec section 5): clicking the "Play the soundtrack" invite
 // opts in. Opted out (music off) removes the pill entirely; re-entry is the menu's
-// Soundtrack control. Portaled to body so the pinned #hero-pin transform never
+// Soundtrack control. Portaled to body so no transformed ancestor ever
 // captures this fixed element. It reads and writes lib/soundtrack.ts, the same
 // state the waveform reads, so the pill glyph and the background never disagree.
 //
@@ -95,8 +95,7 @@ function PillInner() {
   const suppressEnter = useRef(false);
 
   // Desktop + back-half gating: the pill appears once the Listen invite has
-  // passed (the end of #listen, which on the ring home is exactly where #work
-  // starts, once the pinned ring/deck has cleared, spec 5.1), stays for the
+  // passed (the end of #listen, after the book), stays for the
   // whole back half, and re-hides only if the visitor scrolls back up past it.
   // Deferred on mobile in v1. Using the edge vs the viewport (not an
   // intersection flag) keeps it revealed through About / Connect; an

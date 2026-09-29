@@ -1,7 +1,8 @@
 // Canonical GSAP entry point. Import gsap, ScrollTrigger, Observer, and
 // useGSAP from here so plugin registration happens exactly once and only in
 // the browser. ScrollTrigger and useGSAP are client-only; the window guard
-// keeps SSR safe. ScrollTrigger drives the ring home's scroll layer; Observer
+// keeps SSR safe. ScrollTrigger drives the back half's scroll effects
+// (the waveform, read-along and Up to now); Observer
 // is the Coil's touch drag-to-spin on coarse pointers (touch only: the wheel
 // is a raw listener in the scene, never Observer). No Draggable or
 // InertiaPlugin: the scene coasts the conveyor itself.

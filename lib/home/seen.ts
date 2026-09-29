@@ -2,9 +2,9 @@
 
 import { useSyncExternalStore } from "react";
 
-// Which cards the visitor has opened this visit, keyed by home tile key. The
-// same sessionStorage key and per-visit scope TileRing has always used, so a
-// card opened on either hero reads as seen on the other. One store serves both
+// Which cards the visitor has opened this visit, keyed by home tile key, in
+// sessionStorage ("aaron-explored-tiles", the key the retired ring used, so a
+// visitor mid-visit keeps their marks across the switch). One store serves both
 // Coil drivers and the book: the scene reads getSeen() per frame without a
 // React render, and components subscribe through useSeen / useIsSeen.
 //
