@@ -75,7 +75,7 @@ import { reportHomeLoad } from "@/lib/loader/progress";
 import type { NameTarget } from "@/lib/loader/handoff";
 // ---- slice 5 imports: the book, the unwind egg and the flight ----
 import { clamp01, helixRotation, smoothstep01, unprojectToPlane, type HelixFrame } from "@/lib/coil/geometry";
-import { hoverJumpTarget, startGlide, uAtScreenY } from "@/lib/coil/motion";
+import { hoverJumpTarget, siteEase, startGlide, uAtScreenY } from "@/lib/coil/motion";
 import { settleUnwind, toggleUnwind, unwindDurationMs } from "@/lib/coil/unwind";
 import { isConvex } from "@/lib/coil/flight";
 // ---- end slice 5 imports ----
@@ -224,6 +224,10 @@ type CoilRuntime = { wake: () => void; sync: () => void; dispose: () => void };
 const COAST_TAU_S = 0.325;
 const COAST_SETTLED_CARDS = 0.002;
 const DRAG_MINIMUM_PX = 4;
+// Slice 7: a rotation (or a resize across the narrow line) rebuilds the whole
+// frame; the cards and the name fade back in over this, so nothing pops.
+const REBUILD_FADE_MS = 450;
+const REBUILD_WIDTH_CHANGE = 0.2;
 const TEXTURE_TIMEOUT_MS = 6000; // the loader's give-up time: a slow photo paints the plain pane
 const GESTURE_GAP_MS = 260; // wheel events closer than this are one gesture (the lab's value)
 const CLICK_SLOP_PX = 6;
@@ -435,6 +439,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   let dragging = false;
   let coast: { rest: number } | null = null;
   let pressCaughtCoil = false; // this touch stopped a coast: it is a catch, not a tap
+  let rebuildAt: number | null = null; // when the last rebuild began
   // ---- end slice 7 state ----
   // ---- slice 4 state: the entrance clock and the name handoff ----
   let nameBox: { left: number; baseline: number; inkWidth: number; size: number; maskTop: number; maskHeight: number } | null =
@@ -595,7 +600,19 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     compMaterial.uniforms.uFull.value.set(view.width, view.height);
     compMaterial.uniforms.uDpr.value = buffer.y / view.height;
     lastFieldTime = Number.NaN;
+    const before = geo;
     geo = solveGeometry(view, tileCount);
+    // Slice 7: a new composition or a rotation lays every card out afresh;
+    // fade the new frame in rather than jump (only while the loop runs: a
+    // still frame behind a modal just re-lays out).
+    if (
+      before &&
+      shouldRun() &&
+      (before.narrow !== geo.narrow ||
+        Math.abs(view.width - before.viewport.width) > REBUILD_WIDTH_CHANGE * before.viewport.width)
+    ) {
+      rebuildAt = performance.now();
+    }
     ensureSlots(geo.slotCount);
     poses.length = geo.slotCount;
     rendered.length = geo.slotCount;
@@ -813,6 +830,13 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       }
     }
     // ---- end slice 4 block ----
+    // Slice 7: the rebuild fade (1 when none is running).
+    let rebuilt = 1;
+    if (rebuildAt !== null) {
+      rebuilt = siteEase(clamp01((now - rebuildAt) / REBUILD_FADE_MS));
+      if (rebuilt >= 1) rebuildAt = null;
+      compMaterial.uniforms.uNameA.value *= rebuilt;
+    }
     // ---- slice 5 wiring block: the unwind ----
     // While latched the conveyor holds still, so every latched copy keeps its
     // slot and the wind-back lands on the exact pose it left.
@@ -847,6 +871,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
         const clear = headerClearance(pose, geo, geoCamera);
         if (clear < 1) pose = { ...pose, alpha: pose.alpha * (clear + (1 - clear) * listProgress) };
       }
+      if (rebuilt < 1) pose = { ...pose, alpha: pose.alpha * rebuilt };
       // ---- end slice 7 ----
       if (posterMode || j === hiddenSlot) pose = { ...pose, alpha: 0 };
       poses[j] = pose;
