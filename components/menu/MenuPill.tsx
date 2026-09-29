@@ -256,9 +256,9 @@ export function MenuPill() {
         role={engaged ? "dialog" : undefined}
         aria-modal={engaged ? true : undefined}
         aria-label={engaged ? dialogLabel : undefined}
-        className={`fixed right-[calc(12px+var(--scrollbar-comp))] top-3 z-40 min-h-10 overflow-hidden rounded-[20px] text-foreground transition-transform duration-[450ms] ease-[cubic-bezier(0.22,1,0.36,1)] sm:right-[calc(20px+var(--scrollbar-comp))] sm:top-4 ${surface} ${
-          tucked ? "-translate-y-[90px] focus-within:translate-y-0" : ""
-        }`}
+        className={`fixed right-[calc(12px+var(--scrollbar-comp))] top-3 z-40 min-h-10 rounded-[20px] text-foreground transition-transform duration-[450ms] ease-[cubic-bezier(0.22,1,0.36,1)] sm:right-[calc(20px+var(--scrollbar-comp))] sm:top-4 ${surface} ${
+          engaged ? "overflow-hidden" : ""
+        } ${tucked ? "-translate-y-[90px] focus-within:translate-y-0" : ""}`}
       >
         <div className="relative z-[2] flex h-10 items-center justify-end">
           <ListenDot hidden={engaged} />
