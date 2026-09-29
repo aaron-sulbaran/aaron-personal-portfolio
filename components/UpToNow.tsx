@@ -16,14 +16,14 @@ export function UpToNow() {
       <div className="mx-auto max-w-6xl">
         <Reveal className="mb-14 flex flex-col gap-6 md:mb-20 md:flex-row md:items-end md:justify-between">
           <div
-            className="reveal-item flex items-center gap-3 text-[11px] font-medium uppercase tracking-caps text-muted"
+            className="reveal-item flex items-center gap-3 text-sm text-muted"
             style={revealIndex(0)}
           >
             <span className="inline-block h-px w-8 bg-border" aria-hidden="true" />
             <span>{label}</span>
           </div>
           <h2
-            className="reveal-mask font-serif text-section italic md:max-w-[12ch]"
+            className="reveal-mask font-display text-section md:max-w-[12ch]"
             style={revealIndex(1)}
           >
             <span className="block">{heading}</span>
