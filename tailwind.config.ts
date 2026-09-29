@@ -26,9 +26,11 @@ const config: Config = {
         "viz-node": "var(--viz-node)",
       },
       fontFamily: {
-        serif: ["var(--font-serif)", "Georgia", "serif"],
+        display: ["var(--font-display)", "system-ui", "sans-serif"],
+        // Alias of display so /recruiting (still on font-serif) renders Profa
+        // without touching its files. New code uses font-display.
+        serif: ["var(--font-display)", "system-ui", "sans-serif"],
         sans: ["var(--font-sans)", "system-ui", "sans-serif"],
-        grotesk: ["var(--font-grotesk)", "system-ui", "sans-serif"],
       },
       fontSize: {
         "display-sm": ["clamp(3rem, 8vw, 4.5rem)", { lineHeight: "1.05", letterSpacing: "-0.02em" }],
