@@ -34,6 +34,16 @@ const values = {
     aspectBelow: 0.8,
     axisFactor: 0.3, // the axis relaxes toward vertical
     maxCardsPerTurn: 6.2,
+    // Repeats fill the pane, as on desktop (Aaron, PR 8): the strand reaches
+    // both ends of a phone and tablet-portrait cards keep the table's height.
+    // Twenty real cards would span a phone with fewer repeats on their own.
+    strandFit: "repeat" as "repeat" | "exact",
+    // The phone header: the mark and the Menu pill sit in the top 64px, and no
+    // card may cross them (design review of lab 2, item 14).
+    headerClearPx: 64,
+    // The greeting and its control take one line under the header (a card
+    // never passes behind them); the coil lives below this band.
+    introBandPx: 40,
   },
 
   // Camera.
@@ -112,6 +122,12 @@ const values = {
     maxFrameSeconds: 0.1,
     dprCap: 1.75,
     textureSize: [384, 512] as const,
+    // Coarse pointers (phones, tablets): the decision record's budget, 256 to
+    // 384px textures and the device pixel ratio capped at 2.
+    coarse: {
+      dprCap: 2,
+      textureSize: [288, 384] as const,
+    },
   },
 };
 

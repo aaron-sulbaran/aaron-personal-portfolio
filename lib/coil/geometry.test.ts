@@ -3,6 +3,8 @@ import { COIL } from "@/lib/coil/constants";
 import {
   cameraFor,
   cardHit,
+  clearTopFor,
+  isNarrow,
   coilPose,
   endFade,
   insideSilhouette,
@@ -75,15 +77,56 @@ describe("solveGeometry", () => {
     { width: 360, height: 640 },
   ];
 
-  it("gives an even slot count of at least N for every viewport and strand size", () => {
+  it("gives every pane an even slot count of at least N that fills it", () => {
     for (const viewport of viewports) {
       for (const n of [5, 13, 14, 15, 20, 29]) {
         const geo = solveGeometry(viewport, n);
         expect(geo.slotCount % 2).toBe(0);
         expect(geo.slotCount).toBeGreaterThanOrEqual(n);
         expect(geo.slotCount).toBeGreaterThanOrEqual(geo.need - 1);
+        expect(geo.spans).toBe(true);
       }
     }
+  });
+
+  it("repeats to fill a narrow pane, never growing the cards past the table height", () => {
+    for (const viewport of viewports.filter((v) => isNarrow(v))) {
+      const geo = solveGeometry(viewport, STRAND);
+      expect(geo.cardPx).toBeLessThanOrEqual(viewport.height * COIL.cardHeightFrac + 1e-9);
+      expect(geo.slotCount).toBeGreaterThanOrEqual(geo.need - 1);
+    }
+    // Tablet portrait keeps the table's card height (24 percent), not a stretched fit.
+    const tablet = solveGeometry({ width: 768, height: 1024 }, STRAND);
+    expect(tablet.cardPx).toBeCloseTo(1024 * COIL.cardHeightFrac, 6);
+  });
+
+  it("fits a narrow pane exactly, every card once, when the fit is exact", () => {
+    const exact = { ...COIL, narrow: { ...COIL.narrow, strandFit: "exact" as const } };
+    for (const viewport of viewports.filter((v) => isNarrow(v))) {
+      for (const n of [13, 14, 15]) {
+        const geo = solveGeometry(viewport, n, exact);
+        expect(geo.slotCount).toBe(n);
+        expect(geo.repeats).toBe(0);
+        const cards = Array.from({ length: geo.slotCount }, (_, j) => strandIndex(j, 0.37, n, geo.slotCount));
+        expect(new Set(cards).size).toBe(n);
+      }
+    }
+  });
+
+  it("keeps the header and the greeting's line clear on a narrow pane", () => {
+    const geo = solveGeometry(PHONE, STRAND);
+    const clear = COIL.narrow.headerClearPx + COIL.narrow.introBandPx;
+    expect(clearTopFor(PHONE)).toBe(clear);
+    expect(geo.clearTopPx).toBe(clear);
+    // The helix centers in the pane under the band: half the band lower.
+    const center = projectPoint(geo.camera, geo.center);
+    expect(center.y).toBeCloseTo(PHONE.height / 2 + clear / 2, 6);
+    expect(center.x).toBeCloseTo(PHONE.width / 2, 6);
+    expect(restHelix(geo).center).toEqual(geo.center);
+    // Wide panes keep the pane's center and no band.
+    const wide = solveGeometry(DESKTOP, STRAND);
+    expect(wide.clearTopPx).toBe(0);
+    expect(projectPoint(wide.camera, wide.center).y).toBeCloseTo(DESKTOP.height / 2, 6);
   });
 
   it("uses the picked wide composition on a desktop pane", () => {

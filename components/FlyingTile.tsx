@@ -9,7 +9,7 @@ import type { Quad } from "@/lib/coil/geometry";
 import { fitAspect, flightQuad, homography, matrix3d, rectQuad, type Face } from "@/lib/coil/flight";
 import { siteEase } from "@/lib/coil/motion";
 import { COIL } from "@/lib/coil/constants";
-import { CARD_PHOTO_INSET } from "@/lib/coil/textures";
+import { cardPhotoInset } from "@/lib/coil/cardFace";
 
 export type FlightPhase = "out" | "closing";
 
@@ -554,7 +554,8 @@ export function CoilFlyingTile(props: CoilFlightProps) {
     };
   }, [props.phase, prefersReducedMotion]);
 
-  const inset = CARD_PHOTO_INSET;
+  // The inset at the size the card was painted (the scene's render budget).
+  const inset = cardPhotoInset([props.faces.front.width, props.faces.front.height]);
   const showSharp = props.revealed && props.kind === "photo" && sharpLoaded;
 
   return (

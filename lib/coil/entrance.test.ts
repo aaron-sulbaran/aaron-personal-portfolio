@@ -127,13 +127,13 @@ describe.each(cases)("entrance, %s", (_label, geo) => {
     }
   });
 
-  it("starts from a stack at the center, square to the camera", () => {
+  it("starts from a stack at the helix center, square to the camera", () => {
     const ms = COIL.entrance.shutterStart * T - 1;
     const frame = entranceHelix(rest, geo, entranceClock(ms));
     slotsOf(geo, frame, ms).forEach((pose, j) => {
       const s = coilPose(frame, j, 0).strandPosition;
       if (!inBand(s, geo.cardCount)) return;
-      expect(Math.hypot(pose.position[0], pose.position[1])).toBeLessThan(1e-9);
+      expect(Math.hypot(pose.position[0] - geo.center[0], pose.position[1] - geo.center[1])).toBeLessThan(1e-9);
       expect(pose.basis.z[2]).toBeCloseTo(1, 9);
       expect(pose.alpha).toBeGreaterThan(0.99);
     });
