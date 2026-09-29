@@ -27,6 +27,7 @@ import { sameDrivers, selectDrivers, type Drivers } from "@/lib/coil/drivers";
 import type { Quad } from "@/lib/coil/geometry";
 import { PhotoModal } from "@/components/PhotoModal";
 import { WorkModal } from "@/components/WorkModal";
+import { CoilStage } from "@/components/coil/CoilStage";
 import { HERO_HEADING_ID } from "./HeroText";
 
 // The Coil's renderer-neutral home controller. It owns everything about the
@@ -146,6 +147,9 @@ export function HomeController({ hero, children }: Props) {
   const [fastStart, setFastStart] = useState(false);
   const [selection, setSelection] = useState<Selection | null>(null);
   const [flight] = useState<CoilFlight | null>(null);
+  // The scene has drawn its first frame: the canvas name replaces the DOM h1
+  // (which stays for assistive tech) until the scene goes away.
+  const [sceneOn, setSceneOn] = useState(false);
   const entranceClaimsRef = useRef(0);
 
   // Before paint, once per load: own the readiness store, take manual scroll
@@ -252,12 +256,19 @@ export function HomeController({ hero, children }: Props) {
     <HomeControllerContext.Provider value={value}>
       <section
         aria-labelledby={HERO_HEADING_ID}
-        data-scene="off"
+        data-scene={sceneOn ? "on" : "off"}
         data-composition={drivers.composition}
         data-input={drivers.input}
         className="group/hero relative flex min-h-[100svh] w-full items-center justify-center px-6 md:px-10"
       >
-        {hero}
+        <CoilStage
+          reducedMotion={reducedMotion}
+          frozen={modalOpen}
+          interactive={phase === "ready"}
+          input={drivers.input}
+          onSceneChange={setSceneOn}
+        />
+        <div className="relative">{hero}</div>
       </section>
       {children}
       <PhotoModal
