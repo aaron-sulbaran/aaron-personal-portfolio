@@ -544,7 +544,7 @@ function PillInner() {
           <p
             style={{
               margin: 0,
-              fontFamily: "var(--font-display)",
+              fontFamily: "var(--font-sans)",
               fontSize: 18,
               lineHeight: 1.35,
               color: "var(--color-foreground)",
