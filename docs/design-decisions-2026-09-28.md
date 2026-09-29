@@ -61,6 +61,32 @@ What the lab proves: the mechanics all work at 60fps in headless Chrome (pin, st
 - [ ] A "This site" (AS) row after Hackathon builds. rec keep.
 - [ ] List copy is placeholder; real titles and meta lines come from you (section 9).
 
+### 2.9 Aaron's green light, 2026-09-29 (supersedes the ticks above where they differ)
+
+Locked:
+- Diagonal, steeper than the lab's 22 degrees: start at 30, tune toward 45 in the build. The helix spans the whole pane, not the middle third.
+- Endless conveyor. Uniform spacing: cards per turn on the high side (8 to 10 at 22 degrees; fewer as the angle steepens), gap between turns on the high side. Never convoluted.
+- Wheel over the helix spins it, forever, both directions (images loop, nothing visually snaps). Wheel outside the helix scrolls the page away. A fast scroll must never turn the helix jagged.
+- Every card the same portrait aspect; photos are cropped to the card, never the card to the photo.
+- Cards are curved along the coil (a curved-monitor bend) so the eye reads one continuous helix instead of flat rectangles with sharp edges.
+- No cursor parallax on the helix. No recoil or jiggle on scroll.
+- Entrance: band first. Cards shutter out of the stack into a uniform band, then the band is stretched open as if two ends were pulled; may run longer than 1400ms; it plays after the loader. Motion must be clean.
+- Idle: slow, possibly slower than the lab's slow.
+- Name behind: keep, at the lab's weight. A gradient or shader over the type is welcome, not required. Option to try: "Sulbaran" small in Inter to the lower right, starting near the middle of the o, always readable (undecided).
+- Background: the shader field, moving slowly, never fighting the helix. Not paper, not grain, not grid. Layer 1 changed 2026-09-29.
+- Composition: the helix is the hero. Not B. The list beside the helix is too much; every card getting its own row is too much. How the list integrates is OPEN (options below).
+- Hover-jump from a list row to its card: keep, slower and softer.
+- Light and dark both.
+- Seen state: never greyed. An outline dot in the card's upper corner instead of a solid dot.
+- On screen in the hero: the name, the helix, the menu, and one quiet way into the list view. Nothing else.
+
+Open, options owed (hero lab 2 builds each as a toggle; pick after viewing):
+- [ ] O1 How the list integrates with the helix.
+- [ ] O2 What is on the back of a card, and the curvature.
+- [ ] O3 How the helix reacts to scroll speed (no recoil; inspired by, not copied from, Pacôme's pulled-thread stretch).
+- [ ] "Sulbaran" beside the name: yes / no.
+- [ ] Shader palette: tones of the accent only / a second hue.
+
 ## 3. Loader
 
 - [ ] Concept: giant "Aaron" fills the pane; a fill line rises from the baseline as assets load; a small percentage at the top; all assets loaded before the reveal. (rec yes)
