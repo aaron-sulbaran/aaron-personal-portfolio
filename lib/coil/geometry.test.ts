@@ -77,36 +77,40 @@ describe("solveGeometry", () => {
     { width: 360, height: 640 },
   ];
 
-  it("gives a wide pane an even slot count of at least N that fills it", () => {
-    for (const viewport of viewports.filter((v) => !isNarrow(v))) {
+  it("gives every pane an even slot count of at least N that fills it", () => {
+    for (const viewport of viewports) {
       for (const n of [5, 13, 14, 15, 20, 29]) {
         const geo = solveGeometry(viewport, n);
         expect(geo.slotCount % 2).toBe(0);
         expect(geo.slotCount).toBeGreaterThanOrEqual(n);
         expect(geo.slotCount).toBeGreaterThanOrEqual(geo.need - 1);
+        expect(geo.spans).toBe(true);
       }
     }
   });
 
-  it("shows every card exactly once on a narrow pane, odd or even N", () => {
+  it("repeats to fill a narrow pane, never growing the cards past the table height", () => {
     for (const viewport of viewports.filter((v) => isNarrow(v))) {
-      for (const n of [5, 13, 14, 15, 20, 29]) {
-        const geo = solveGeometry(viewport, n);
+      const geo = solveGeometry(viewport, STRAND);
+      expect(geo.cardPx).toBeLessThanOrEqual(viewport.height * COIL.cardHeightFrac + 1e-9);
+      expect(geo.slotCount).toBeGreaterThanOrEqual(geo.need - 1);
+    }
+    // Tablet portrait keeps the table's card height (24 percent), not a stretched fit.
+    const tablet = solveGeometry({ width: 768, height: 1024 }, STRAND);
+    expect(tablet.cardPx).toBeCloseTo(1024 * COIL.cardHeightFrac, 6);
+  });
+
+  it("fits a narrow pane exactly, every card once, when the fit is exact", () => {
+    const exact = { ...COIL, narrow: { ...COIL.narrow, strandFit: "exact" as const } };
+    for (const viewport of viewports.filter((v) => isNarrow(v))) {
+      for (const n of [13, 14, 15]) {
+        const geo = solveGeometry(viewport, n, exact);
         expect(geo.slotCount).toBe(n);
         expect(geo.repeats).toBe(0);
-        // Slots cover distinct strand positions: no card twice in one frame.
-        for (const offset of [0, 0.37, -5.5, 41.2]) {
-          const cards = Array.from({ length: geo.slotCount }, (_, j) => strandIndex(j, offset, n, geo.slotCount));
-          expect(new Set(cards).size).toBe(n);
-        }
+        const cards = Array.from({ length: geo.slotCount }, (_, j) => strandIndex(j, 0.37, n, geo.slotCount));
+        expect(new Set(cards).size).toBe(n);
       }
     }
-  });
-
-  it("grows the cards on a tall tablet until the N cards span it, never past the width", () => {
-    const geo = solveGeometry({ width: 768, height: 1024 }, 14);
-    expect(geo.cardPx).toBeGreaterThanOrEqual(1024 * COIL.cardHeightFrac - 1e-9);
-    expect(geo.spans).toBe(true);
   });
 
   it("keeps the header and the greeting's line clear on a narrow pane", () => {

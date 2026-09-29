@@ -47,7 +47,7 @@ describe("drivers", () => {
     expect(sameDrivers(a, { ...b, scene: false })).toBe(false);
   });
 
-  it("composes phones and tablet portrait narrow: every card once, the relaxed axis, at most 6.2 per turn", () => {
+  it("composes phones and tablet portrait narrow: repeats fill, the relaxed axis, at most 6.2 per turn", () => {
     const panes = [
       { width: 360, height: 780 }, // small Android
       { width: 390, height: 844 }, // iPhone
@@ -59,8 +59,10 @@ describe("drivers", () => {
       expect(compositionFor(viewport)).toBe("narrow");
       const geo = solveGeometry(viewport, 14);
       expect(geo.narrow).toBe(true);
-      expect(geo.slotCount).toBe(14);
-      expect(geo.repeats).toBe(0);
+      expect(geo.slotCount).toBeGreaterThanOrEqual(14);
+      expect(geo.slotCount % 2).toBe(0);
+      expect(geo.spans).toBe(true);
+      expect(geo.cardPx).toBeLessThanOrEqual(viewport.height * COIL.cardHeightFrac + 1e-9);
       expect(geo.cardsPerTurn).toBeLessThanOrEqual(COIL.narrow.maxCardsPerTurn);
       expect(geo.axisRad).toBeCloseTo((COIL.axisDeg * COIL.narrow.axisFactor * Math.PI) / 180, 12);
       expect(geo.clearTopPx).toBe(COIL.narrow.headerClearPx + COIL.narrow.introBandPx);
