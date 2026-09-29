@@ -167,6 +167,9 @@ export type CoilSceneProps = {
 };
 
 export default function CoilScene(props: CoilSceneProps) {
+  // Slice 7, QA only: ?coildebug=throw=render throws here, into the error
+  // boundary (the poster and the book carry on).
+  if (typeof window !== "undefined" && debugTokens().has("throw=render")) throw new Error("coildebug: scene render");
   const hostRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const liveRef = useRef(props);
@@ -203,6 +206,11 @@ export default function CoilScene(props: CoilSceneProps) {
 }
 
 // ---------------------------------------------------------------- runtime
+
+function debugTokens() {
+  const value = new URLSearchParams(window.location.search).get("coildebug");
+  return new Set(value ? value.split(",").map((token) => token.trim()) : []);
+}
 
 // Slice 7: how much of a card may show under a narrow pane's clear top band:
 // 1 while its projected top edge stays a quarter card below the band, fading
@@ -777,8 +785,11 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   };
 
   // ---- the frame
+  // Slice 7, QA only: ?coildebug=throw=frame throws from the loop a second in.
+  const throwFrameAt = debugTokens().has("throw=frame") ? performance.now() + 1000 : Number.POSITIVE_INFINITY;
   function update(dt: number, now: number) {
     if (!geo || !geoCamera) return;
+    if (now > throwFrameAt) throw new Error("coildebug: scene frame");
     const props = live.current;
     const scrollY = window.scrollY;
     const scrollDelta = scrollY - lastScrollY;
