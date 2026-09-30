@@ -43,7 +43,7 @@ Every module is a factory: `createX(ctx, ...parts it calls, loop)` returns the f
 
 ## Shared state: who writes what
 
-`ctx.st` is readable by every module. Writes stay with their owners:
+`ctx.st` is readable by every module. The objects in it that are created once and only mutated (`conveyor`, `envelope`, `pointer`, `view`, `poses`, `rendered`, `rowHold`, `unwind`) are bound to locals at a module's creation; the fields that are reassigned are always read through `st`. Writes stay with their owners:
 
 | Field(s) | Written by |
 |---|---|
