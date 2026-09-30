@@ -29,6 +29,10 @@ const eslintConfig = defineConfig([
     ".gstack/**",
     ".vercel/**",
     "docs/**",
+    // Playwright's run output (traces, screenshots, the HTML report).
+    "test-results/**",
+    "playwright-report/**",
+    "blob-report/**",
   ]),
 ]);
 
