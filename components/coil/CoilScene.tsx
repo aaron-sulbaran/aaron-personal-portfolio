@@ -54,12 +54,12 @@ import {
 } from "@/lib/coil/motion";
 import { entranceClock, entranceHelix, entranceNameAlpha, entrancePose, isRested } from "@/lib/coil/entrance";
 import { createUnwind, unwindPose, unwindProgress } from "@/lib/coil/unwind";
-import { fieldTime } from "@/lib/coil/drift";
 import { budgetFor, sameBudget, type InputDriver } from "@/lib/coil/drivers";
 import { Observer } from "@/lib/gsap";
 import { COMPOSITE_FRAG, COMPOSITE_VERT, FIELD, FIELD_FRAG, FULLSCREEN_VERT } from "@/lib/coil/field.glsl";
 import { createCardGeometry, createCardMaterial, type CardUniforms, type SharedCardUniforms } from "@/lib/coil/material";
-import { loadCardSource, paintCard, paintNameMask, type CardSource } from "@/lib/coil/textures";
+import { seenRingDpr } from "@/lib/coil/material"; // fx-hero
+import { loadCardSource, paintCard, type CardSource } from "@/lib/coil/textures";
 import {
   applyColor,
   createRepaintQueue,
@@ -93,6 +93,13 @@ import { hoverJumpTarget, siteEase, startGlide, type JumpBand } from "@/lib/coil
 import { settleUnwind, toggleUnwind, unwindDurationMs } from "@/lib/coil/unwind";
 import { isConvex } from "@/lib/coil/flight";
 // ---- end slice 5 imports ----
+// ---- fx-hero imports: the greeting in the name, the name's fill and repel, the drift presets ----
+// (DataTexture, RGBAFormat and UnsignedByteType come in with the fx-flight imports.)
+import { DRIFT_PRESETS, fieldClocks, parseDriftPreset, type DriftPreset } from "@/lib/coil/drift";
+import { COIL_FX_EVENT, NAME_FILL, NAME_FILLS, parseNameFill, type CoilFxDetail, type NameFill } from "@/lib/coil/field.glsl";
+import { REPEL, createRepelField, encodeRepel, injectStroke, maxOffset, stepRepel } from "@/lib/coil/repel";
+import { LOADER } from "@/lib/loader/progress";
+// ---- end fx-hero imports ----
 // ---- fx-flight imports ----
 import { DataTexture, DoubleSide, GreaterDepth, RGBAFormat, UnsignedByteType } from "three";
 import { flightProbe } from "@/lib/coil/flightProbe";
@@ -317,6 +324,82 @@ const JUMP_INSET_CARDS = 0.25;
 // A theme repaint starts no new card past this much of a frame (at most 4).
 const REPAINT_BUDGET_MS = 6;
 
+// ---- fx-hero: the name lockup and the greeting's fade ----
+// "Hi, I'm" and "Aaron" in one mask, both Profa Black in white on clear: the
+// greeting small (its cap height NAME_FILL.greetingCap of the name's), on the
+// name's left edge, its lowest ink a fraction of its own cap height above the
+// top of the "A". Everything in CSS px; the canvas is `scale` times that.
+type NameLockup = {
+  canvas: HTMLCanvasElement;
+  width: number;
+  height: number;
+  pad: number;
+  nameInkWidth: number;
+  ascent: number; // the name's
+  descent: number;
+  greetBlock: number; // the greeting's band above the name's own mask
+  split: number; // where the greeting's alpha gives way to the name's
+};
+
+function paintNameLockup(greeting: string, name: string, family: string, sizePx: number, scale: number): NameLockup {
+  const canvas = document.createElement("canvas");
+  const g = canvas.getContext("2d");
+  if (!g) throw new Error("2d context unavailable");
+  g.font = `900 100px ${family}`;
+  const cap100 = g.measureText("H").actualBoundingBoxAscent || 70;
+  const nameFont = `900 ${sizePx}px ${family}`;
+  g.font = nameFont;
+  const nm = g.measureText(name);
+  const greetPx = ((NAME_FILL.greetingCap * nm.actualBoundingBoxAscent) / cap100) * 100;
+  const greetFont = `900 ${greetPx}px ${family}`;
+  g.font = greetFont;
+  const gm = g.measureText(greeting);
+  const gAscent = gm.actualBoundingBoxAscent;
+  const gDescent = Math.max(0, gm.actualBoundingBoxDescent);
+  const gap = NAME_FILL.greetingGap * gAscent;
+  const greetBlock = gAscent + gDescent + gap;
+  const pad = Math.ceil(sizePx * 0.04);
+  const nameInkWidth = nm.actualBoundingBoxLeft + nm.actualBoundingBoxRight;
+  const greetInkWidth = gm.actualBoundingBoxLeft + gm.actualBoundingBoxRight;
+  // The greeting's stem sits a hair inside the A's foot, as the lab's did.
+  const greetShift = sizePx * 0.02;
+  const width = Math.ceil(Math.max(nameInkWidth, greetShift + greetInkWidth) + pad * 2);
+  const height = Math.ceil(greetBlock + nm.actualBoundingBoxAscent + nm.actualBoundingBoxDescent + pad * 2);
+  canvas.width = Math.ceil(width * scale);
+  canvas.height = Math.ceil(height * scale);
+  g.setTransform(scale, 0, 0, scale, 0, 0);
+  g.clearRect(0, 0, width, height);
+  g.fillStyle = "white";
+  g.textBaseline = "alphabetic";
+  g.font = greetFont;
+  g.fillText(greeting, pad + greetShift + gm.actualBoundingBoxLeft, pad + gAscent);
+  g.font = nameFont;
+  g.fillText(name, pad + nm.actualBoundingBoxLeft, pad + greetBlock + nm.actualBoundingBoxAscent);
+  return {
+    canvas,
+    width,
+    height,
+    pad,
+    nameInkWidth,
+    ascent: nm.actualBoundingBoxAscent,
+    descent: nm.actualBoundingBoxDescent,
+    greetBlock,
+    split: pad + gAscent + gDescent + gap / 2,
+  };
+}
+
+// The greeting's alpha. After the loader it fades up over NAME_FILL.
+// greetingFadeMs from the middle of the loader's exit (the loader lands on
+// "Aaron" only); otherwise it rises with the name as the band opens.
+function greetingAlpha(entrance: CoilEntrance | null, nowMs: number, nameAlpha: number) {
+  if (!entrance || !entrance.nameFromLoader || !Number.isFinite(entrance.startMs)) return nameAlpha;
+  const startMs = entrance.startMs - (LOADER.exitMs - LOADER.entranceOverlapMs) + LOADER.exitMs / 2;
+  const x = clamp01((nowMs - startMs) / NAME_FILL.greetingFadeMs);
+  return siteEase(x);
+}
+
+// ---- end fx-hero ----
+
 type DebugStats = {
   intervals: number[];
   work: number[];
@@ -336,6 +419,10 @@ type DebugStats = {
   // Slice 7: what the scene spends, as live (the DPR in use, the buffer,
   // the card textures actually uploaded).
   budget?: () => object;
+  // ---- fx-hero debug: CPU ms of the name pass (the fill's clock and the repel) per frame ----
+  namePass?: number[];
+  nameFx?: () => object;
+  // ---- end fx-hero debug ----
 };
 
 function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject<CoilSceneProps>): CoilRuntime {
@@ -366,13 +453,45 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   const uView = { value: new Vector4(0, 0, 1, 1) };
   const quad = new PlaneGeometry(2, 2);
 
+  // ---- fx-hero state: the fill, the drift preset and the repel buffer ----
+  let nameFill: NameFill = parseNameFill(params.get("name"));
+  let driftPreset: DriftPreset = parseDriftPreset(params.get("drift"));
+  const repel = createRepelField();
+  const repelBytes = new Uint8Array(REPEL.cols * REPEL.rows * 4);
+  encodeRepel(repel, repelBytes);
+  const repelTexture = new DataTexture(repelBytes, REPEL.cols, REPEL.rows, RGBAFormat, UnsignedByteType);
+  repelTexture.minFilter = LinearFilter;
+  repelTexture.magFilter = LinearFilter;
+  repelTexture.needsUpdate = true;
+  let repelUploaded = true; // the texture holds the buffer's rest state
+  const repelLast = { clientX: Number.NaN, clientY: Number.NaN };
+  let nameClock = 0; // seconds of the fill's idle motion
+  let greetBlock = 0; // the greeting's band above the name's mask, CSS px at rest
+  let fillInFrom: number | null = null; // when the loader's solid name landed
+  const repelRect = { x: 0, y: 0, w: 0, h: 0 };
+  const strokeFrom = { x: 0, y: 0 };
+  const strokeTo = { x: 0, y: 0 };
+  // QA only: ?coildebug=nocards hides the helix and noname the name (contrast
+  // and warm-share reads); at=<seconds> holds the field and the fill on one
+  // moment.
+  const qaTokens = debugTokens();
+  const hideCards = qaTokens.has("nocards");
+  const hideName = qaTokens.has("noname");
+  const heldAtToken = [...qaTokens].map((token) => token.match(/^at=(\d+(?:\.\d+)?)$/)).find(Boolean);
+  const heldAt = heldAtToken ? Number(heldAtToken[1]) : null;
+  // ---- end fx-hero state ----
+
   const fieldMaterial = new ShaderMaterial({
     depthTest: false,
     depthWrite: false,
     vertexShader: FULLSCREEN_VERT,
     fragmentShader: FIELD_FRAG,
     uniforms: {
-      uT: { value: fieldTime(0) },
+      uT: { value: 0 }, // fx-hero: set by render from fieldClocks
+      // ---- fx-hero: the weather clock and warp (drift presets) ----
+      uTw: { value: 0 },
+      uWarp: { value: DRIFT_PRESETS[driftPreset].warp },
+      // ---- end fx-hero ----
       uAspect: { value: 1.6 },
       uAmt: { value: FIELD.amount },
       uSec: { value: theme.field.secondStrength },
@@ -409,6 +528,19 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       uGrain: { value: FIELD.grain },
       uDpr: { value: 1 },
       uSeam: { value: FIELD.seamFade },
+      // ---- fx-hero: the greeting, the fill and the repel ----
+      uNameSpan: { value: new Vector2(0, 1) },
+      uGreetSplit: { value: 0 },
+      uGreetA: { value: 0 },
+      uWarm: { value: new Color() },
+      uFlowDir: { value: new Vector2(Math.cos(0.58), -Math.sin(0.58)) },
+      uMode: { value: NAME_FILLS.indexOf(nameFill) },
+      uFillMix: { value: 1 },
+      uNameT: { value: 0 },
+      uRepel: { value: repelTexture },
+      uRepelOn: { value: 0 },
+      uRepelMax: { value: REPEL.maxPush },
+      // ---- end fx-hero ----
     },
   });
   const compMesh = new Mesh(quad, compMaterial);
@@ -483,6 +615,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     applyColor(cu.uGradTop.value, theme.name.top);
     applyColor(cu.uGradBottom.value, theme.name.bottom);
     cu.uNameK.value = theme.name.ink * FIELD.nameInkGain;
+    applyColor(cu.uWarm.value, theme.field.second); // fx-hero: grain-warm's second tone
     applyColor(shared.uInk.value, theme.ink);
     applyColor(shared.uPaper.value, theme.paper);
     shared.uSheen.value = theme.card.sheen;
@@ -509,6 +642,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   // ---- end fx-input state ----
   let fieldElapsed = 0;
   let lastFieldTime = Number.NaN;
+  let lastWeatherTime = Number.NaN; // fx-hero
   let lastScrollY = window.scrollY;
   let lastTime = performance.now();
   let raf = 0;
@@ -628,60 +762,47 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     probe.font = `900 100px ${nameFamily}`;
     const w100 = probe.measureText(siteContent.hero.name).width || 1;
     const size = ((W * (narrow ? 0.9 : 0.7)) / w100) * 100;
-    const mask = paintNameMask(siteContent.hero.name, nameFamily, size, Math.min(2, window.devicePixelRatio || 1));
+    // ---- fx-hero: "Hi, I'm" drawn with the name, one mask ----
+    const mask = paintNameLockup(
+      siteContent.hero.greeting,
+      siteContent.hero.name,
+      nameFamily,
+      size,
+      Math.min(2, window.devicePixelRatio || 1),
+    );
     nameTexture?.dispose();
     const texture = new CanvasTexture(mask.canvas);
     texture.generateMipmaps = true;
     texture.minFilter = LinearMipmapLinearFilter;
     texture.anisotropy = 4;
     nameTexture = texture;
-    const inkWidth = mask.width - 2 * mask.pad;
+    const inkWidth = mask.nameInkWidth;
     const capTop = H / 2 - mask.ascent / 2;
     const left = (W - inkWidth) / 2;
+    const span = mask.ascent + mask.descent + 2 * mask.pad;
     const cu = compMaterial.uniforms;
     cu.uName.value = texture;
-    cu.uNameRect.value.set(left - mask.pad, capTop - mask.pad, mask.width, mask.height);
+    cu.uNameRect.value.set(left - mask.pad, capTop - mask.pad - mask.greetBlock, mask.width, mask.height);
+    cu.uNameSpan.value.set(mask.greetBlock / mask.height, span / mask.height);
+    cu.uGreetSplit.value = mask.split / mask.height;
+    greetBlock = mask.greetBlock;
     cu.uLod.value = Math.max(0, Math.log2(mask.canvas.height / (mask.height * view.dpr)));
     cu.uNameA.value = posterMode ? 0 : 1;
-    // Slice 4: the name's geometry for the loader's handoff (canvas px).
+    // Slice 4: the name's geometry for the loader's handoff (canvas px): the
+    // name alone, never the greeting.
     nameBox = {
       left,
       baseline: capTop + mask.ascent,
       inkWidth,
       size,
       maskTop: capTop - mask.pad,
-      maskHeight: mask.height,
+      maskHeight: span,
     };
-
-    // The greeting and the control ride the name (lab 842-859): the greeting
-    // just above the cap line, the control's text flush with the name's
-    // right edge, on the same line. On a narrow pane the helix crosses the
-    // whole width, so they take their own line under the header instead, on
-    // the header's gutters, in the band no card enters (geo.clearTopPx).
+    // The overlay keeps only the unwound list's "Coil" control, sized off the
+    // greeting's old size.
     const greetingPx = narrow ? 16 : Math.min(21, Math.max(16, W * 0.0125));
-    const greetingCapTop = capTop - greetingPx * 1.05 - mask.ascent * 0.07;
-    const greetingLeft = left + size * 0.02;
-    const gutter = W >= 640 ? 24 : 16;
-    live.current.overlay.current?.layout(
-      posterMode
-        ? null
-        : narrow
-          ? {
-              left: gutter,
-              top: COIL.narrow.headerClearPx + (COIL.narrow.introBandPx - greetingPx) / 2 - 4,
-              width: W - gutter * 2,
-              greetingPx,
-              controlPx: Math.round(greetingPx * 0.86),
-            }
-          : {
-              left: greetingLeft,
-              // Inter's cap line sits about 0.14em below a 1.0 line box's top.
-              top: greetingCapTop - 0.14 * greetingPx,
-              width: left + inkWidth - greetingLeft,
-              greetingPx,
-              controlPx: Math.round(greetingPx * 0.86),
-            },
-    );
+    live.current.overlay.current?.layout(posterMode ? null : { controlPx: Math.round(greetingPx * 0.86) });
+    // ---- end fx-hero ----
   }
 
   function layout(width: number, height: number) {
@@ -707,6 +828,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     fieldMaterial.uniforms.uAspect.value = view.width / view.height;
     compMaterial.uniforms.uFull.value.set(view.width, view.height);
     compMaterial.uniforms.uDpr.value = buffer.y / view.height;
+    seenRingDpr.value = buffer.y / view.height; // fx-hero: the seen ring stays one CSS px wide
     lastFieldTime = Number.NaN;
     const before = geo;
     geo = solveGeometry(view, tileCount);
@@ -727,6 +849,75 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     if (debug) debug.geo = geo;
     layoutName();
   }
+
+  // ---- fx-hero: the fill's idle clock and the cursor repel, once per frame ----
+  // A fine pointer's movement since the last frame (in client px, so page
+  // scroll alone never counts) is one stroke across the name's rect, whether
+  // or not a card sits between it and the name. The buffer relaxes every
+  // frame and uploads only while it moves. Nothing while unwound or solid.
+  function stepNameFill(dt: number, listProgress: number) {
+    const started = debug ? performance.now() : 0;
+    const cu = compMaterial.uniforms;
+    nameClock = heldAt ?? nameClock + dt;
+    cu.uNameT.value = nameClock;
+    const props = live.current;
+    const repelLive = props.input === "fine" && listProgress === 0 && nameFill !== "solid" && !posterMode;
+    if (repelLive && pointer.known && Number.isFinite(repelLast.clientX) && dt > 0) {
+      const dx = pointer.clientX - repelLast.clientX;
+      const dy = pointer.clientY - repelLast.clientY;
+      if (dx !== 0 || dy !== 0) {
+        const rect = cu.uNameRect.value as Vector4;
+        repelRect.x = rect.x;
+        repelRect.y = rect.y;
+        repelRect.w = rect.z;
+        repelRect.h = rect.w;
+        strokeFrom.x = pointer.x - dx;
+        strokeFrom.y = pointer.y - dy;
+        strokeTo.x = pointer.x;
+        strokeTo.y = pointer.y;
+        injectStroke(repel, repelRect, strokeFrom, strokeTo, dt);
+      }
+    }
+    repelLast.clientX = pointer.known ? pointer.clientX : Number.NaN;
+    repelLast.clientY = pointer.known ? pointer.clientY : Number.NaN;
+    if (!repelLive && repel.active) {
+      repel.d.fill(0);
+      repel.v.fill(0);
+      repel.active = false;
+    } else {
+      stepRepel(repel, dt);
+    }
+    if (repel.active || !repelUploaded) {
+      encodeRepel(repel, repelBytes);
+      repelTexture.needsUpdate = true;
+      repelUploaded = !repel.active;
+    }
+    cu.uRepelOn.value = repel.active ? 1 : 0;
+    if (debug) {
+      if (!debug.namePass) debug.namePass = [];
+      push(debug.namePass, performance.now() - started);
+    }
+  }
+
+  // The switcher (?coildebug=name) and ?name / ?drift picks, live.
+  const onFx = (event: Event) => {
+    const detail = (event as CustomEvent<CoilFxDetail>).detail ?? {};
+    if (detail.name !== undefined) {
+      nameFill = parseNameFill(detail.name);
+      compMaterial.uniforms.uMode.value = NAME_FILLS.indexOf(nameFill);
+    }
+    if (detail.drift !== undefined) {
+      driftPreset = parseDriftPreset(detail.drift);
+      fieldMaterial.uniforms.uWarp.value = DRIFT_PRESETS[driftPreset].warp;
+      lastFieldTime = Number.NaN;
+    }
+    if (raf) return;
+    renderStill();
+  };
+  if (debug) {
+    debug.nameFx = () => ({ nameFill, driftPreset, repelActive: repel.active, repelMax: maxOffset(repel), nameClock });
+  }
+  // ---- end fx-hero ----
 
   // ---- pose application
   const basis = new Matrix4();
@@ -967,6 +1158,15 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       const nameAlpha = posterMode ? 0 : entranceNameAlpha(clock, handedOff);
       compMaterial.uniforms.uNameA.value = nameAlpha;
       compMaterial.uniforms.uGrain.value = FIELD.grain * nameAlpha;
+      // ---- fx-hero: the greeting's own fade; the fill grows in after the loader's solid name lands ----
+      compMaterial.uniforms.uGreetA.value = posterMode ? 0 : greetingAlpha(entrance ?? null, now, nameAlpha);
+      if (entrance?.nameFromLoader && fillInFrom === null && handedOff) fillInFrom = now;
+      compMaterial.uniforms.uFillMix.value = !entrance?.nameFromLoader
+        ? 1
+        : fillInFrom === null
+          ? 0
+          : siteEase(clamp01((now - fillInFrom) / NAME_FILL.fillInMs));
+      // ---- end fx-hero ----
       if (entrance && !entranceEnded && realElapsedMs >= clock.durationS * 1000) {
         entranceEnded = true;
         props.onEntranceEnd?.();
@@ -979,6 +1179,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       rebuilt = siteEase(clamp01((now - rebuildAt) / REBUILD_FADE_MS));
       if (rebuilt >= 1) rebuildAt = null;
       compMaterial.uniforms.uNameA.value *= rebuilt;
+      compMaterial.uniforms.uGreetA.value *= rebuilt; // fx-hero
     }
     // ---- slice 5 wiring block: the unwind ----
     // While latched the conveyor holds still, so every latched copy keeps its
@@ -993,6 +1194,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     const listProgress = unwindProgress(unwind, now);
     unwindFrame(listProgress);
     // ---- end slice 5 block ----
+    stepNameFill(dt, listProgress); // fx-hero: the fill's idle clock and the repel
 
     const seen = getSeen();
     const hoverStep = 1 - Math.exp(-dt * HOVER_RATE);
@@ -1032,6 +1234,14 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       slot.uniforms.uSeen.value = seenLevel[tile] * (1 - listProgress);
     }
     sil = silhouette(helix, geoCamera, poses);
+    // ---- fx-hero: sand drifts along the helix's axis; QA can hide the cards ----
+    if (sil) compMaterial.uniforms.uFlowDir.value.set(sil.dx, sil.dy);
+    if (hideCards) for (let j = 0; j < geo.slotCount; j++) slots[j].mesh.visible = false;
+    if (hideName) {
+      compMaterial.uniforms.uNameA.value = 0;
+      compMaterial.uniforms.uGreetA.value = 0;
+    }
+    // ---- end fx-hero ----
 
     // Hover: picked every frame, since cards move under a still pointer.
     const pickable = pointer.inside && pointer.known && props.interactive && props.input === "fine";
@@ -1070,16 +1280,20 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   function render(dt: number) {
     if (!posterMode) fieldElapsed += dt;
     // The poster is the live field's first frame, so the scene picks up where it left off.
-    const t = fieldTime(posterMode ? 0 : fieldElapsed);
-    fieldMaterial.uniforms.uT.value = t;
+    // ---- fx-hero: two clocks, the orange and the weather (drift presets) ----
+    const clocks = fieldClocks(posterMode ? 0 : (heldAt ?? fieldElapsed), false, driftPreset);
+    fieldMaterial.uniforms.uT.value = clocks.orange;
+    fieldMaterial.uniforms.uTw.value = clocks.weather;
     renderer.setRenderTarget(null);
     renderer.clear();
-    if (t !== lastFieldTime) {
+    if (clocks.orange !== lastFieldTime || clocks.weather !== lastWeatherTime) {
       renderer.setRenderTarget(fieldTarget);
       renderer.render(fieldScene, orthoCamera);
       renderer.setRenderTarget(null);
-      lastFieldTime = t;
+      lastFieldTime = clocks.orange;
+      lastWeatherTime = clocks.weather;
     }
+    // ---- end fx-hero ----
     renderer.render(compScene, orthoCamera);
     renderer.clearDepth();
     renderer.render(cardScene, camera);
@@ -1192,6 +1406,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   window.addEventListener("pointerout", onPointerOut);
   host.addEventListener("wheel", onWheel, { passive: false });
   window.addEventListener("wheel", onWindowWheel, { passive: true }); // fx-input
+  window.addEventListener(COIL_FX_EVENT, onFx); // fx-hero
   host.addEventListener("pointerdown", onPointerDown);
   host.addEventListener("pointerup", onPointerUp);
   host.addEventListener("pointercancel", onPointerCancel);
@@ -1606,7 +1821,8 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     const baseline =
       slot.rect.top - hostRect.top + (slot.fontPx - (m.fontBoundingBoxAscent + m.fontBoundingBoxDescent)) / 2 + m.fontBoundingBoxAscent;
     const inkTop = baseline - m.actualBoundingBoxAscent;
-    return new Vector4(left - pad * k, inkTop - pad * k, nameRest.z * k, nameRest.w * k);
+    // fx-hero: the mask carries the greeting's band above the name's pad.
+    return new Vector4(left - pad * k, inkTop - (pad + greetBlock) * k, nameRest.z * k, nameRest.w * k);
   }
   // ---- end slice 5 ----
 
@@ -2279,6 +2495,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       window.removeEventListener("pointerout", onPointerOut);
       host.removeEventListener("wheel", onWheel);
       window.removeEventListener("wheel", onWindowWheel); // fx-input
+      window.removeEventListener(COIL_FX_EVENT, onFx); // fx-hero
       host.removeEventListener("pointerdown", onPointerDown);
       host.removeEventListener("pointerup", onPointerUp);
       host.removeEventListener("pointercancel", onPointerCancel);
@@ -2300,6 +2517,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       fieldMaterial.dispose();
       compMaterial.dispose();
       nameTexture?.dispose();
+      repelTexture.dispose(); // fx-hero
       fieldTarget.dispose();
       renderer.dispose();
       if (debug) delete (window as unknown as { __coil?: DebugStats }).__coil;

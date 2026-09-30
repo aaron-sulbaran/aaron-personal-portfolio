@@ -42,7 +42,7 @@ describe("the book", () => {
 
   it("writes titles in sentence case and never uses an em dash", () => {
     const strings = [
-      ...Object.values(siteContent.hero),
+      ...Object.values(siteContent.hero).flatMap((value) => (typeof value === "string" ? [value] : Object.values(value))),
       book.ariaLabel,
       book.workHeading,
       book.photosHeading,
