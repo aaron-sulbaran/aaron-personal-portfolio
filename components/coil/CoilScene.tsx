@@ -41,12 +41,9 @@ import {
   type CardPose,
   type CoilGeometry,
   type Quad,
-  type Silhouette,
 } from "@/lib/coil/geometry";
 import {
   addWheel,
-  createConveyor,
-  createEnvelope,
   stepConveyor,
   stepEnvelope,
   stretchedDy,
@@ -54,7 +51,7 @@ import {
 } from "@/lib/coil/motion";
 import { entranceClock, entranceHelix, entranceNameAlpha, entrancePose, isRested, type EntranceClock } from "@/lib/coil/entrance";
 import { runRender, runUpdate, type RenderSteps, type UpdateSteps } from "@/lib/coil/frame";
-import { createUnwind, unwindPose, unwindProgress } from "@/lib/coil/unwind";
+import { unwindPose, unwindProgress } from "@/lib/coil/unwind";
 import { budgetFor, sameBudget } from "@/lib/coil/drivers";
 import { Observer } from "@/lib/gsap";
 import { COMPOSITE_FRAG, COMPOSITE_VERT, FIELD, FIELD_FRAG, FULLSCREEN_VERT } from "@/lib/coil/field.glsl";
@@ -68,7 +65,6 @@ import {
   readCoilTheme,
   toBytes,
   watchTheme,
-  type CoilTheme,
 } from "@/lib/coil/theme";
 import { getSeen } from "@/lib/home/seen";
 import {
@@ -79,9 +75,9 @@ import {
   removeDebugStats,
   throwFrameAt as throwFrameAtFromTokens,
 } from "./scene/debug";
+import { createSceneState } from "./scene/state";
 // ---- fx-input imports: wheel ownership and the row hold ----
 import {
-  createCapture,
   decideWheel,
   feedsPageScroll,
   gestureOwner,
@@ -89,7 +85,7 @@ import {
   nudgeShown,
   pointerMoved,
 } from "@/lib/coil/capture";
-import { createRowHold, rowHoldWeight, setRowHold } from "@/lib/coil/motion";
+import { rowHoldWeight, setRowHold } from "@/lib/coil/motion";
 // ---- end fx-input imports ----
 import { setSceneHover } from "@/lib/cursor/hover";
 // Slice 4: the loader's tally and the name handoff.
@@ -326,10 +322,8 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
 
   const tiles = strandTiles;
   const tileCount = tiles.length;
-  let theme: CoilTheme = readCoilTheme();
-  // Slice 7: the render budget follows the input driver (coarse pointers cap
-  // the DPR at 2 and paint smaller card textures).
-  let budget = budgetFor(live.current.input);
+  // The state more than one part of the scene reads (scene/state.ts).
+  const st = createSceneState(readCoilTheme(), budgetFor(live.current.input));
 
   // ---- passes
   const orthoCamera = new OrthographicCamera(-1, 1, 1, -1, 0, 1);
@@ -374,7 +368,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       // ---- end fx-hero ----
       uAspect: { value: 1.6 },
       uAmt: { value: FIELD.amount },
-      uSec: { value: theme.field.secondStrength },
+      uSec: { value: st.theme.field.secondStrength },
       uSecAt: { value: new Vector2(...FIELD.secondAt) },
       uSecScale: { value: new Vector2(...FIELD.secondScale) },
       uTop: { value: new Color() },
@@ -433,7 +427,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     uView,
     uInk: { value: new Color() },
     uPaper: { value: new Color() },
-    uSheen: { value: theme.card.sheen },
+    uSheen: { value: st.theme.card.sheen },
     uSeam: { value: FIELD.seamFade },
   };
   const cardGeometry = createCardGeometry();
@@ -472,7 +466,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
 
   // A fresh canvas pair into fresh textures; the old pair is disposed.
   function paintTile(tile: number) {
-    const painted = paintCard(sources[tile], theme, budget.textureSize);
+    const painted = paintCard(sources[tile], st.theme, st.budget.textureSize);
     const previous = faces[tile];
     faces[tile] = { front: makeTexture(painted.front), back: makeTexture(painted.back) };
     slots.forEach((slot) => {
@@ -485,63 +479,26 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
 
   function applyTheme() {
     const fu = fieldMaterial.uniforms;
-    applyColor(fu.uTop.value, theme.field.top);
-    applyColor(fu.uBottom.value, theme.field.bottom);
-    applyColor(fu.uGlow.value, theme.field.glow);
-    applyColor(fu.uSecond.value, theme.field.second);
-    fu.uSec.value = theme.field.secondStrength;
+    applyColor(fu.uTop.value, st.theme.field.top);
+    applyColor(fu.uBottom.value, st.theme.field.bottom);
+    applyColor(fu.uGlow.value, st.theme.field.glow);
+    applyColor(fu.uSecond.value, st.theme.field.second);
+    fu.uSec.value = st.theme.field.secondStrength;
     const cu = compMaterial.uniforms;
-    applyColor(cu.uPaper.value, theme.paper);
-    applyColor(cu.uGradTop.value, theme.name.top);
-    applyColor(cu.uGradBottom.value, theme.name.bottom);
-    cu.uNameK.value = theme.name.ink * FIELD.nameInkGain;
-    applyColor(cu.uWarm.value, theme.field.second); // fx-hero: grain-warm's second tone
-    applyColor(shared.uInk.value, theme.ink);
-    applyColor(shared.uPaper.value, theme.paper);
-    shared.uSheen.value = theme.card.sheen;
-    lastFieldTime = Number.NaN;
+    applyColor(cu.uPaper.value, st.theme.paper);
+    applyColor(cu.uGradTop.value, st.theme.name.top);
+    applyColor(cu.uGradBottom.value, st.theme.name.bottom);
+    cu.uNameK.value = st.theme.name.ink * FIELD.nameInkGain;
+    applyColor(cu.uWarm.value, st.theme.field.second); // fx-hero: grain-warm's second tone
+    applyColor(shared.uInk.value, st.theme.ink);
+    applyColor(shared.uPaper.value, st.theme.paper);
+    shared.uSheen.value = st.theme.card.sheen;
+    st.lastFieldTime = Number.NaN;
   }
 
   // ---- state
-  const view = { width: 1, height: 1, dpr: 1, docTop: 0, docLeft: 0 };
-  let geo: CoilGeometry | null = null;
-  let geoCamera: Camera | null = null;
-  let nameFamily = "";
-  const conveyor = createConveyor(0);
-  const envelope = createEnvelope();
-  const unwind = createUnwind();
-  const poses: CardPose[] = [];
-  const rendered: CardPose[] = [];
-  let sil: Silhouette | null = null;
-  let hoveredSlot = -1;
-  let hiddenSlot: number | null = null;
-  const pointer = { clientX: -1, clientY: -1, x: -1, y: -1, inside: false, known: false };
-  // ---- fx-input state: who owns the wheel gesture, and the book row hold ----
-  let capture = createCapture();
-  const rowHold = createRowHold();
-  // ---- end fx-input state ----
   let fieldElapsed = 0;
-  let lastFieldTime = Number.NaN;
   let lastWeatherTime = Number.NaN; // fx-hero
-  let lastScrollY = window.scrollY;
-  let lastTime = performance.now();
-  let raf = 0;
-  let ready = false;
-  let disposed = false;
-  let visible = true;
-  let frozenByApi = false;
-  let contextLost = false;
-  let firstFrameSent = false;
-  // ---- fx-flight state ----
-  let resuming = false; // the next frame is the first after a stop
-  let landedAhead = false; // a flight landed; the frozen prop has yet to follow
-  // ---- end fx-flight state ----
-  // ---- slice 7 state: the touch drag and its coast ----
-  let dragging = false;
-  let coast: { rest: number } | null = null;
-  let pressCaughtCoil = false; // this touch stopped a coast: it is a catch, not a tap
-  let rebuildAt: number | null = null; // when the last rebuild began
-  // ---- end slice 7 state ----
   // ---- slice 4 state: the entrance clock and the name handoff ----
   let nameBox: { left: number; baseline: number; inkWidth: number; size: number; maskTop: number; maskHeight: number } | null =
     null;
@@ -564,18 +521,18 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       const rebuilt = played && live.current.interactive;
       entranceBase = played && !rebuilt ? Math.max(entrance.startMs, now) : Number.NEGATIVE_INFINITY;
       // A rebuild fades its cards and name in over the poster (the rotation's fade).
-      if (rebuilt) rebuildAt = now;
+      if (rebuilt) st.rebuildAt = now;
     }
     return now - entranceBase;
   }
   // ---- end slice 4 state ----
   const debug = createDebugStats(flags, {
-    offset: () => conveyor.offset,
-    hovered: () => hoveredSlot,
+    offset: () => st.conveyor.offset,
+    hovered: () => st.hoveredSlot,
     // ---- fx-input debug ----
-    capturing: () => gestureOwner(capture, performance.now()) === "coil",
-    owner: () => gestureOwner(capture, performance.now()) ?? "none",
-    silhouette: () => sil,
+    capturing: () => gestureOwner(st.capture, performance.now()) === "coil",
+    owner: () => gestureOwner(st.capture, performance.now()) ?? "none",
+    silhouette: () => st.sil,
     // ---- end fx-input debug ----
   });
   if (debug) {
@@ -589,45 +546,45 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       );
       return {
         input: live.current.input,
-        dprCap: budget.dprCap,
+        dprCap: st.budget.dprCap,
         devicePixelRatio: window.devicePixelRatio,
-        dpr: view.dpr,
-        css: [view.width, view.height],
+        dpr: st.view.dpr,
+        css: [st.view.width, st.view.height],
         buffer: [buffer.x, buffer.y],
         field: [fieldTarget.width, fieldTarget.height],
         textures: [...sizes],
-        narrow: geo?.narrow ?? null,
-        slots: geo?.slotCount ?? null,
+        narrow: st.geo?.narrow ?? null,
+        slots: st.geo?.slotCount ?? null,
         cards: tileCount,
       };
     };
     // Slice 7: every visible card's bent corners in viewport px (for the
     // header and greeting overlap checks).
     debug.visibleQuads = () => {
-      if (!geoCamera) return [];
+      if (!st.geoCamera) return [];
       const rect = host.getBoundingClientRect();
-      return rendered
+      return st.rendered
         .filter((pose) => pose && pose.alpha > 0.01)
-        .map((pose) => projectQuad(pose, geoCamera as Camera, { left: rect.left, top: rect.top }));
+        .map((pose) => projectQuad(pose, st.geoCamera as Camera, { left: rect.left, top: rect.top }));
     };
   }
   const push = pushStat;
 
   // ---- layout
   function layoutName() {
-    if (!geo) return;
-    const { width: W, height: H } = view;
-    const narrow = isNarrow(view);
+    if (!st.geo) return;
+    const { width: W, height: H } = st.view;
+    const narrow = isNarrow(st.view);
     const probe = document.createElement("canvas").getContext("2d");
     if (!probe) return;
-    probe.font = `900 100px ${nameFamily}`;
+    probe.font = `900 100px ${st.nameFamily}`;
     const w100 = probe.measureText(siteContent.hero.name).width || 1;
     const size = ((W * (narrow ? 0.9 : 0.7)) / w100) * 100;
     // ---- fx-hero: "Hi, I'm" drawn with the name, one mask ----
     const mask = paintNameLockup(
       siteContent.hero.greeting,
       siteContent.hero.name,
-      nameFamily,
+      st.nameFamily,
       size,
       Math.min(2, window.devicePixelRatio || 1),
     );
@@ -647,7 +604,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     cu.uNameSpan.value.set(mask.greetBlock / mask.height, span / mask.height);
     cu.uGreetSplit.value = mask.split / mask.height;
     greetBlock = mask.greetBlock;
-    cu.uLod.value = Math.max(0, Math.log2(mask.canvas.height / (mask.height * view.dpr)));
+    cu.uLod.value = Math.max(0, Math.log2(mask.canvas.height / (mask.height * st.view.dpr)));
     cu.uNameA.value = posterMode ? 0 : 1;
     // Slice 4: the name's geometry for the loader's handoff (canvas px): the
     // name alone, never the greeting.
@@ -667,47 +624,47 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   }
 
   function layout(width: number, height: number) {
-    view.width = Math.max(1, width);
-    view.height = Math.max(1, height);
-    view.dpr = Math.min(window.devicePixelRatio || 1, budget.dprCap);
+    st.view.width = Math.max(1, width);
+    st.view.height = Math.max(1, height);
+    st.view.dpr = Math.min(window.devicePixelRatio || 1, st.budget.dprCap);
     const rect = host.getBoundingClientRect();
-    view.docTop = rect.top + window.scrollY;
-    view.docLeft = rect.left + window.scrollX;
-    renderer.setPixelRatio(view.dpr);
-    renderer.setSize(view.width, view.height, false);
+    st.view.docTop = rect.top + window.scrollY;
+    st.view.docLeft = rect.left + window.scrollX;
+    renderer.setPixelRatio(st.view.dpr);
+    renderer.setSize(st.view.width, st.view.height, false);
     const buffer = renderer.getDrawingBufferSize(new Vector2());
     uView.value.set(0, 0, 1 / buffer.x, 1 / buffer.y);
-    camera.aspect = view.width / view.height;
-    geoCamera = cameraFor(view);
-    camera.position.set(0, 0, geoCamera.distance);
+    camera.aspect = st.view.width / st.view.height;
+    st.geoCamera = cameraFor(st.view);
+    camera.position.set(0, 0, st.geoCamera.distance);
     camera.lookAt(0, 0, 0);
     camera.updateProjectionMatrix();
     fieldTarget.setSize(
-      Math.max(8, Math.round(view.width / FIELD.divisor)),
-      Math.max(8, Math.round(view.height / FIELD.divisor)),
+      Math.max(8, Math.round(st.view.width / FIELD.divisor)),
+      Math.max(8, Math.round(st.view.height / FIELD.divisor)),
     );
-    fieldMaterial.uniforms.uAspect.value = view.width / view.height;
-    compMaterial.uniforms.uFull.value.set(view.width, view.height);
-    compMaterial.uniforms.uDpr.value = buffer.y / view.height;
-    seenRingDpr.value = buffer.y / view.height; // fx-hero: the seen ring stays one CSS px wide
-    lastFieldTime = Number.NaN;
-    const before = geo;
-    geo = solveGeometry(view, tileCount);
+    fieldMaterial.uniforms.uAspect.value = st.view.width / st.view.height;
+    compMaterial.uniforms.uFull.value.set(st.view.width, st.view.height);
+    compMaterial.uniforms.uDpr.value = buffer.y / st.view.height;
+    seenRingDpr.value = buffer.y / st.view.height; // fx-hero: the seen ring stays one CSS px wide
+    st.lastFieldTime = Number.NaN;
+    const before = st.geo;
+    st.geo = solveGeometry(st.view, tileCount);
     // Slice 7: a new composition or a rotation lays every card out afresh;
     // fade the new frame in rather than jump (only while the loop runs: a
     // still frame behind a modal just re-lays out).
     if (
       before &&
       shouldRun() &&
-      (before.narrow !== geo.narrow ||
-        Math.abs(view.width - before.viewport.width) > REBUILD_WIDTH_CHANGE * before.viewport.width)
+      (before.narrow !== st.geo.narrow ||
+        Math.abs(st.view.width - before.viewport.width) > REBUILD_WIDTH_CHANGE * before.viewport.width)
     ) {
-      rebuildAt = performance.now();
+      st.rebuildAt = performance.now();
     }
-    ensureSlots(geo.slotCount);
-    poses.length = geo.slotCount;
-    rendered.length = geo.slotCount;
-    if (debug) debug.geo = geo;
+    ensureSlots(st.geo.slotCount);
+    st.poses.length = st.geo.slotCount;
+    st.rendered.length = st.geo.slotCount;
+    if (debug) debug.geo = st.geo;
     layoutName();
   }
 
@@ -723,24 +680,24 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     cu.uNameT.value = nameClock;
     const props = live.current;
     const repelLive = props.input === "fine" && listProgress === 0 && nameFill !== "solid" && !posterMode;
-    if (repelLive && pointer.known && Number.isFinite(repelLast.clientX) && dt > 0) {
-      const dx = pointer.clientX - repelLast.clientX;
-      const dy = pointer.clientY - repelLast.clientY;
+    if (repelLive && st.pointer.known && Number.isFinite(repelLast.clientX) && dt > 0) {
+      const dx = st.pointer.clientX - repelLast.clientX;
+      const dy = st.pointer.clientY - repelLast.clientY;
       if (dx !== 0 || dy !== 0) {
         const rect = cu.uNameRect.value as Vector4;
         repelRect.x = rect.x;
         repelRect.y = rect.y;
         repelRect.w = rect.z;
         repelRect.h = rect.w;
-        strokeFrom.x = pointer.x - dx;
-        strokeFrom.y = pointer.y - dy;
-        strokeTo.x = pointer.x;
-        strokeTo.y = pointer.y;
+        strokeFrom.x = st.pointer.x - dx;
+        strokeFrom.y = st.pointer.y - dy;
+        strokeTo.x = st.pointer.x;
+        strokeTo.y = st.pointer.y;
         injectStroke(repel, repelRect, strokeFrom, strokeTo, dt);
       }
     }
-    repelLast.clientX = pointer.known ? pointer.clientX : Number.NaN;
-    repelLast.clientY = pointer.known ? pointer.clientY : Number.NaN;
+    repelLast.clientX = st.pointer.known ? st.pointer.clientX : Number.NaN;
+    repelLast.clientY = st.pointer.known ? st.pointer.clientY : Number.NaN;
     if (!repelLive && repel.active) {
       repel.d.fill(0);
       repel.v.fill(0);
@@ -770,9 +727,9 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     if (detail.drift !== undefined) {
       driftPreset = parseDriftPreset(detail.drift);
       fieldMaterial.uniforms.uWarp.value = DRIFT_PRESETS[driftPreset].warp;
-      lastFieldTime = Number.NaN;
+      st.lastFieldTime = Number.NaN;
     }
-    if (raf) return;
+    if (st.raf) return;
     renderStill();
   };
   if (debug) {
@@ -809,20 +766,20 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
 
   // ---- picking and the pointer
   function pickAt(x: number, y: number) {
-    if (!geoCamera || poses.length === 0) return -1;
-    return pickCard(poses, rayThrough(geoCamera, x, y));
+    if (!st.geoCamera || st.poses.length === 0) return -1;
+    return pickCard(st.poses, rayThrough(st.geoCamera, x, y));
   }
 
   function updatePointerLocal() {
-    pointer.x = pointer.clientX - (view.docLeft - window.scrollX);
-    pointer.y = pointer.clientY - (view.docTop - window.scrollY);
+    st.pointer.x = st.pointer.clientX - (st.view.docLeft - window.scrollX);
+    st.pointer.y = st.pointer.clientY - (st.view.docTop - window.scrollY);
   }
 
   // Only the canvas itself counts: the overlay's control, the mark, the Menu
   // pill and its scrim all sit over the hero and must never pick a card.
   function pointerOverHero(target: EventTarget | null) {
     if (!(target instanceof Node) || !host.contains(target)) return false;
-    return pointer.x >= 0 && pointer.x <= view.width && pointer.y >= 0 && pointer.y <= view.height;
+    return st.pointer.x >= 0 && st.pointer.x <= st.view.width && st.pointer.y >= 0 && st.pointer.y <= st.view.height;
   }
 
   // ---- fx-input: wheel ownership (lib/coil/capture.ts) ----
@@ -831,20 +788,20 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   function wheelInteractive(event: WheelEvent) {
     const props = live.current;
     return (
-      ready &&
+      st.ready &&
       !props.frozen &&
-      !frozenByApi &&
+      !st.frozenByApi &&
       props.interactive &&
       props.input === "fine" &&
       !event.ctrlKey &&
-      !unwind.on
+      !st.unwind.on
     );
   }
 
   // The pointer over the canvas and inside the helix's projected hull (gaps
   // between cards included), from the last rendered frame.
   function pointerInsideHelix() {
-    return pointer.inside && sil !== null && insideSilhouette(sil, pointer.x, pointer.y);
+    return st.pointer.inside && st.sil !== null && insideSilhouette(st.sil, st.pointer.x, st.pointer.y);
   }
 
   function heroVisible() {
@@ -852,32 +809,32 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     return heroVisibleFraction(rect.top, rect.height, window.innerHeight);
   }
 
-  function setCapture(next: typeof capture, nowMs: number) {
-    if (debug && gestureOwner(capture, nowMs) === "coil" && next.owner === "page") debug.released += 1;
-    capture = next;
+  function setCapture(next: typeof st.capture, nowMs: number) {
+    if (debug && gestureOwner(st.capture, nowMs) === "coil" && next.owner === "page") debug.released += 1;
+    st.capture = next;
   }
 
   // Only a real move counts: a card or a gap passing under a still pointer is
   // not a move, so it never releases a coil gesture.
   const onPointerMove = (event: PointerEvent) => {
     if (event.pointerType !== "mouse" && event.pointerType !== "pen") return;
-    const moved = !pointer.known || event.clientX !== pointer.clientX || event.clientY !== pointer.clientY;
-    pointer.clientX = event.clientX;
-    pointer.clientY = event.clientY;
-    pointer.known = true;
+    const moved = !st.pointer.known || event.clientX !== st.pointer.clientX || event.clientY !== st.pointer.clientY;
+    st.pointer.clientX = event.clientX;
+    st.pointer.clientY = event.clientY;
+    st.pointer.known = true;
     updatePointerLocal();
-    pointer.inside = pointerOverHero(event.target);
+    st.pointer.inside = pointerOverHero(event.target);
     const now = performance.now();
-    if (moved) setCapture(pointerMoved(capture, { nowMs: now, insideSilhouette: pointerInsideHelix() }), now);
+    if (moved) setCapture(pointerMoved(st.capture, { nowMs: now, insideSilhouette: pointerInsideHelix() }), now);
     wake();
   };
 
   const onPointerOut = (event: PointerEvent) => {
     if (event.relatedTarget) return;
-    pointer.inside = false;
-    pointer.known = false;
+    st.pointer.inside = false;
+    st.pointer.known = false;
     const now = performance.now();
-    setCapture(pointerMoved(capture, { nowMs: now, insideSilhouette: false }), now);
+    setCapture(pointerMoved(st.capture, { nowMs: now, insideSilhouette: false }), now);
   };
 
   // Decided once per gesture (events under COIL.capture.gestureGapMs apart,
@@ -888,19 +845,19 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   // smoothing stage and the spin cap, nothing before the first motion).
   const onWheel = (event: WheelEvent) => {
     const now = performance.now();
-    const fresh = gestureOwner(capture, now) === null;
+    const fresh = gestureOwner(st.capture, now) === null;
     if (fresh) {
       // Some synthesized wheels carry no position (0, 0); the last pointer
       // position stands in, as in the lab.
-      if (event.clientX !== 0 || event.clientY !== 0 || !pointer.known) {
-        pointer.clientX = event.clientX;
-        pointer.clientY = event.clientY;
+      if (event.clientX !== 0 || event.clientY !== 0 || !st.pointer.known) {
+        st.pointer.clientX = event.clientX;
+        st.pointer.clientY = event.clientY;
       }
       updatePointerLocal();
-      pointer.inside = pointerOverHero(event.target);
+      st.pointer.inside = pointerOverHero(event.target);
     }
     setCapture(
-      decideWheel(capture, {
+      decideWheel(st.capture, {
         nowMs: now,
         interactive: wheelInteractive(event),
         heroVisible: fresh ? heroVisible() : 1,
@@ -908,10 +865,10 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       }),
       now,
     );
-    if (capture.owner !== "coil") return;
+    if (st.capture.owner !== "coil") return;
     event.preventDefault();
     if (fresh && debug) debug.captured += 1;
-    addWheel(conveyor, wheelPixels(event.deltaX, event.deltaY, event.deltaMode, view.height));
+    addWheel(st.conveyor, wheelPixels(event.deltaX, event.deltaY, event.deltaMode, st.view.height));
     wake();
   };
 
@@ -921,7 +878,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   const onWindowWheel = (event: WheelEvent) => {
     if (event.target instanceof Node && host.contains(event.target)) return;
     const now = performance.now();
-    setCapture(decideWheel(capture, { nowMs: now, interactive: false, heroVisible: 0, insideSilhouette: false }), now);
+    setCapture(decideWheel(st.capture, { nowMs: now, interactive: false, heroVisible: 0, insideSilhouette: false }), now);
   };
   // ---- end fx-input ----
 
@@ -940,18 +897,18 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     // ---- slice 7: a tap opens the card under the finger, with no flight ----
     if (event.pointerType === "touch") {
       const props = live.current;
-      if (!ready || dragging || pressCaughtCoil || !props.interactive || props.frozen || frozenByApi || unwind.on) return;
+      if (!st.ready || st.dragging || st.pressCaughtCoil || !props.interactive || props.frozen || st.frozenByApi || st.unwind.on) return;
       const card = api.cardAt(event.clientX, event.clientY);
       if (card) props.onCardClick?.({ ...card, tap: true });
       return;
     }
     // ---- end slice 7 ----
-    if (!ready || hoveredSlot < 0 || live.current.input !== "fine") return;
-    const slot = slots[hoveredSlot];
+    if (!st.ready || st.hoveredSlot < 0 || live.current.input !== "fine") return;
+    const slot = slots[st.hoveredSlot];
     const tile = tiles[slot.tile];
     // Slice 5 wiring block (the flight): the handler freezes, projects the
     // card's quad through the api and opens the modal. Until then it is unset.
-    live.current.onCardClick?.({ key: tile.key, slot: hoveredSlot });
+    live.current.onCardClick?.({ key: tile.key, slot: st.hoveredSlot });
   };
 
   // ---- the frame
@@ -974,14 +931,14 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   };
 
   function update(dt: number, now: number) {
-    if (!geo || !geoCamera) return;
+    if (!st.geo || !st.geoCamera) return;
     if (now > throwFrameAt) throw new Error("coildebug: scene frame");
     runUpdate(updateSteps, {
       dt,
       now,
       props: live.current,
-      geo,
-      camera: geoCamera,
+      geo: st.geo,
+      camera: st.geoCamera,
       scrollDelta: 0,
       helix: null,
       clock: null,
@@ -994,43 +951,43 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   const updateSteps: UpdateSteps<Frame> = {
     scroll(f) {
       const scrollY = window.scrollY;
-      f.scrollDelta = scrollY - lastScrollY;
-      lastScrollY = scrollY;
+      f.scrollDelta = scrollY - st.lastScrollY;
+      st.lastScrollY = scrollY;
       updatePointerLocal();
     },
     conveyor(f) {
       const { dt, now, props } = f;
-      const previous = conveyor.offset;
+      const previous = st.conveyor.offset;
       if (!posterMode) {
         // Slice 7: a released drag's throw decays into the target, which the
         // one smoothing stage and the speed cap then carry, as for the wheel.
-        if (coast) conveyor.target += (coast.rest - conveyor.target) * (1 - Math.exp(-dt / COAST_TAU_S));
+        if (st.coast) st.conveyor.target += (st.coast.rest - st.conveyor.target) * (1 - Math.exp(-dt / COAST_TAU_S));
         // ---- fx-input: the conveyor's feeds ----
         // A held book row stills the idle drift and the page-scroll feed (and
         // eases them back after it lets go); page scroll turns the coil only
         // during page gestures, keyboard and scrollbar scrolling.
-        const holdWeight = rowHoldWeight(rowHold, now);
-        const pageFeed = props.interactive && feedsPageScroll(capture, now) ? f.scrollDelta * holdWeight : 0;
-        stepConveyor(conveyor, {
+        const holdWeight = rowHoldWeight(st.rowHold, now);
+        const pageFeed = props.interactive && feedsPageScroll(st.capture, now) ? f.scrollDelta * holdWeight : 0;
+        stepConveyor(st.conveyor, {
           dt,
           nowMs: now,
           // The idle drift waits while a finger holds or throws the coil, so
           // the coast lands exactly on its card.
-          idleWeight: dragging || coast ? 0 : holdWeight,
+          idleWeight: st.dragging || st.coast ? 0 : holdWeight,
           pageScrollPx: pageFeed,
         });
         // ---- end fx-input ----
-        stepEnvelope(envelope, conveyor.excessVelocity, dt);
-        if (coast && Math.abs(coast.rest - conveyor.offset) < COAST_SETTLED_CARDS) coast = null;
+        stepEnvelope(st.envelope, st.conveyor.excessVelocity, dt);
+        if (st.coast && Math.abs(st.coast.rest - st.conveyor.offset) < COAST_SETTLED_CARDS) st.coast = null;
       }
       if (debug) {
-        push(debug.steps, conveyor.offset - previous);
-        push(debug.envelope, envelope.value);
+        push(debug.steps, st.conveyor.offset - previous);
+        push(debug.envelope, st.envelope.value);
       }
     },
     helix(f) {
-      const helix = restHelix(f.geo, theme.card.recede);
-      f.helix = { ...helix, dy: stretchedDy(helix.dy, envelope) };
+      const helix = restHelix(f.geo, st.theme.card.recede);
+      f.helix = { ...helix, dy: stretchedDy(helix.dy, st.envelope) };
     },
     // ---- slice 4 wiring block: the entrance ----
     entrance(f) {
@@ -1042,12 +999,12 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       if (!isRested(clock)) {
         // Idle, wheel and page scroll wait for the entrance: the strand holds
         // still at its start until the band has opened.
-        conveyor.offset = 0;
-        conveyor.target = 0;
-        conveyor.velocity = 0;
-        conveyor.excessVelocity = 0;
-        conveyor.glide = null;
-        coast = null; // slice 7
+        st.conveyor.offset = 0;
+        st.conveyor.target = 0;
+        st.conveyor.velocity = 0;
+        st.conveyor.excessVelocity = 0;
+        st.conveyor.glide = null;
+        st.coast = null; // slice 7
       }
       f.helix = entranceHelix(f.helix as HelixFrame, f.geo, clock);
       const entrance = props.entrance;
@@ -1075,10 +1032,10 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     // ---- end slice 4 block ----
     // Slice 7: the rebuild fade (1 when none is running).
     rebuild(f) {
-      if (rebuildAt === null) return;
-      const rebuilt = siteEase(clamp01((f.now - rebuildAt) / REBUILD_FADE_MS));
+      if (st.rebuildAt === null) return;
+      const rebuilt = siteEase(clamp01((f.now - st.rebuildAt) / REBUILD_FADE_MS));
       f.rebuilt = rebuilt;
-      if (rebuilt >= 1) rebuildAt = null;
+      if (rebuilt >= 1) st.rebuildAt = null;
       compMaterial.uniforms.uNameA.value *= rebuilt;
       compMaterial.uniforms.uGreetA.value *= rebuilt; // fx-hero
     },
@@ -1087,14 +1044,14 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     // slot and the wind-back lands on the exact pose it left.
     unwind(f) {
       const { now } = f;
-      if (settleUnwind(unwind, now)) unwind.column = null;
-      if (unwind.latched) {
-        conveyor.offset = unwind.offset;
-        conveyor.target = unwind.offset;
-        conveyor.glide = null;
-        unwind.column = measureColumn(f.helix as HelixFrame);
+      if (settleUnwind(st.unwind, now)) st.unwind.column = null;
+      if (st.unwind.latched) {
+        st.conveyor.offset = st.unwind.offset;
+        st.conveyor.target = st.unwind.offset;
+        st.conveyor.glide = null;
+        st.unwind.column = measureColumn(f.helix as HelixFrame);
       }
-      f.listProgress = unwindProgress(unwind, now);
+      f.listProgress = unwindProgress(st.unwind, now);
       unwindFrame(f.listProgress);
     },
     // ---- end slice 5 block ----
@@ -1115,12 +1072,12 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       const hoverStep = 1 - Math.exp(-f.dt * HOVER_RATE);
       for (let j = 0; j < geo.slotCount; j++) {
         const slot = slots[j];
-        let pose: CardPose = coilPose(helix, j, conveyor.offset);
-        const strandPosition = Math.round(pose.u - conveyor.offset);
+        let pose: CardPose = coilPose(helix, j, st.conveyor.offset);
+        const strandPosition = Math.round(pose.u - st.conveyor.offset);
         const tile = mod(strandPosition, tileCount);
         bindTile(slot, tile);
         pose = entrancePose(pose, { strandPosition, cardCount: tileCount }, geo, clock);
-        if (listProgress > 0) pose = unwindPose(pose, tile, unwind, now, null);
+        if (listProgress > 0) pose = unwindPose(pose, tile, st.unwind, now, null);
         // ---- slice 7: the narrow pane's clear top band (header and greeting) ----
         if (geo.clearTopPx > 0 && listProgress < 1) {
           const clear = headerClearance(pose, geo, f.camera);
@@ -1128,15 +1085,15 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
         }
         if (rebuilt < 1) pose = { ...pose, alpha: pose.alpha * rebuilt };
         // ---- end slice 7 ----
-        if (posterMode || j === hiddenSlot) pose = { ...pose, alpha: 0 };
-        poses[j] = pose;
+        if (posterMode || j === st.hiddenSlot) pose = { ...pose, alpha: 0 };
+        st.poses[j] = pose;
 
-        slot.hover += ((j === hoveredSlot ? 1 : 0) - slot.hover) * hoverStep;
+        slot.hover += ((j === st.hoveredSlot ? 1 : 0) - slot.hover) * hoverStep;
         const lift = slot.hover > 0.001 ? slot.hover : 0;
         const shown: CardPose = lift
           ? { ...pose, scale: pose.scale * (1 + HOVER_SCALE * lift), fade: pose.fade * (1 - HOVER_UNFADE * lift) }
           : pose;
-        rendered[j] = shown;
+        st.rendered[j] = shown;
         applyPose(slot, shown, HOVER_BRIGHT * lift);
         // Unwound, the row's outline ring after the title is the one seen mark;
         // the card's own ring fades with the unwind, since at thumb size it
@@ -1145,9 +1102,9 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       }
     },
     silhouette(f) {
-      sil = silhouette(f.helix as HelixFrame, f.camera, poses);
+      st.sil = silhouette(f.helix as HelixFrame, f.camera, st.poses);
       // ---- fx-hero: sand drifts along the helix's axis; QA can hide the cards ----
-      if (sil) compMaterial.uniforms.uFlowDir.value.set(sil.dx, sil.dy);
+      if (st.sil) compMaterial.uniforms.uFlowDir.value.set(st.sil.dx, st.sil.dy);
       if (hideCards) for (let j = 0; j < f.geo.slotCount; j++) slots[j].mesh.visible = false;
       if (hideName) {
         compMaterial.uniforms.uNameA.value = 0;
@@ -1158,9 +1115,9 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     // Hover: picked every frame, since cards move under a still pointer.
     picking(f) {
       const { props } = f;
-      const pickable = pointer.inside && pointer.known && props.interactive && props.input === "fine";
-      const nextHover = pickable ? pickAt(pointer.x, pointer.y) : -1;
-      hoveredSlot = nextHover;
+      const pickable = st.pointer.inside && st.pointer.known && props.interactive && props.input === "fine";
+      const nextHover = pickable ? pickAt(st.pointer.x, st.pointer.y) : -1;
+      st.hoveredSlot = nextHover;
       setSceneHover(nextHover >= 0);
     },
     // ---- fx-input: the nudge ----
@@ -1169,21 +1126,21 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     // the helix.
     nudge(f) {
       const overlay = f.props.overlay.current;
-      if (sil && pointer.known && nudgeShown(capture, f.now)) {
-        const px = pointer.x - sil.ax;
-        const py = pointer.y - sil.ay;
-        const along = px * sil.dx + py * sil.dy;
-        let nx = px - along * sil.dx;
-        let ny = py - along * sil.dy;
+      if (st.sil && st.pointer.known && nudgeShown(st.capture, f.now)) {
+        const px = st.pointer.x - st.sil.ax;
+        const py = st.pointer.y - st.sil.ay;
+        const along = px * st.sil.dx + py * st.sil.dy;
+        let nx = px - along * st.sil.dx;
+        let ny = py - along * st.sil.dy;
         const length = Math.hypot(nx, ny);
         if (length < 1) {
-          nx = -sil.dy;
-          ny = sil.dx;
+          nx = -st.sil.dy;
+          ny = st.sil.dx;
         } else {
           nx /= length;
           ny /= length;
         }
-        overlay?.nudge({ x: pointer.x, y: pointer.y, angle: Math.atan2(ny, nx) });
+        overlay?.nudge({ x: st.pointer.x, y: st.pointer.y, angle: Math.atan2(ny, nx) });
       } else {
         overlay?.nudge(null);
       }
@@ -1208,11 +1165,11 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       fieldMaterial.uniforms.uTw.value = clocks.weather;
       renderer.setRenderTarget(null);
       renderer.clear();
-      if (clocks.orange !== lastFieldTime || clocks.weather !== lastWeatherTime) {
+      if (clocks.orange !== st.lastFieldTime || clocks.weather !== lastWeatherTime) {
         renderer.setRenderTarget(fieldTarget);
         renderer.render(fieldScene, orthoCamera);
         renderer.setRenderTarget(null);
-        lastFieldTime = clocks.orange;
+        st.lastFieldTime = clocks.orange;
         lastWeatherTime = clocks.weather;
       }
       // ---- end fx-hero ----
@@ -1228,33 +1185,33 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
 
   function shouldRun() {
     return (
-      ready &&
-      !disposed &&
-      !contextLost &&
-      visible &&
+      st.ready &&
+      !st.disposed &&
+      !st.contextLost &&
+      st.visible &&
       !document.hidden &&
       // fx-flight freeze: a landed flight resumes the scene itself, ahead of
       // the props that still name it.
-      (!live.current.frozen || landedAhead) &&
-      !frozenByApi
+      (!live.current.frozen || st.landedAhead) &&
+      !st.frozenByApi
     );
   }
 
   function frame(now: number) {
-    raf = 0;
+    st.raf = 0;
     if (!shouldRun()) {
       setSceneHover(false);
       return;
     }
-    raf = requestAnimationFrame(frame);
-    const interval = now - lastTime;
+    st.raf = requestAnimationFrame(frame);
+    const interval = now - st.lastTime;
     // ---- fx-flight freeze: the first frame after a freeze steps one frame at most ----
     const step = Math.min(Math.max(interval, 0) / 1000, COIL.lab.maxFrameSeconds);
-    const dt = resuming ? resumeStep(step) : step;
-    resuming = false;
+    const dt = st.resuming ? resumeStep(step) : step;
+    st.resuming = false;
     flightFrame();
     // ---- end fx-flight freeze ----
-    lastTime = now;
+    st.lastTime = now;
     const started = performance.now();
     try {
       update(dt, now);
@@ -1271,34 +1228,34 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     // ---- fx-flight debug ----
     flightLog?.mark("scene-frame", { dt, interval, ...probeState() });
     // ---- end fx-flight debug ----
-    if (!firstFrameSent) {
-      firstFrameSent = true;
+    if (!st.firstFrameSent) {
+      st.firstFrameSent = true;
       live.current.onFirstFrame();
     }
   }
 
   function stop() {
-    if (raf) cancelAnimationFrame(raf);
-    raf = 0;
+    if (st.raf) cancelAnimationFrame(st.raf);
+    st.raf = 0;
   }
 
   function wake() {
-    if (raf || !shouldRun()) return;
+    if (st.raf || !shouldRun()) return;
     // ---- fx-flight freeze: a stopped scene holds its clocks ----
-    holdClocks(performance.now() - lastTime);
+    holdClocks(performance.now() - st.lastTime);
     // ---- end fx-flight freeze ----
-    lastTime = performance.now();
+    st.lastTime = performance.now();
     // A return from off screen or a hidden tab must not read as one huge scroll.
-    lastScrollY = window.scrollY;
-    raf = requestAnimationFrame(frame);
+    st.lastScrollY = window.scrollY;
+    st.raf = requestAnimationFrame(frame);
   }
 
   // One frame outside the loop (a resize while frozen or off screen), so
   // the canvas never shows a stretched stale buffer.
   function renderStill() {
-    if (!ready || contextLost || disposed) return;
+    if (!st.ready || st.contextLost || st.disposed) return;
     // fx-flight freeze: a still frame of a stopped scene is drawn at the moment it stopped.
-    update(0, raf ? performance.now() : lastTime);
+    update(0, st.raf ? performance.now() : st.lastTime);
     render(0);
     // ---- fx-flight: a card in flight follows the new layout in the same frame ----
     flightStill();
@@ -1310,17 +1267,16 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   const resizeObserver = new ResizeObserver((entries) => {
     const box = entries[entries.length - 1]?.contentRect;
     if (!box) return;
-    pendingSize = { width: box.width, height: box.height };
-    if (!ready) return;
+    st.pendingSize = { width: box.width, height: box.height };
+    if (!st.ready) return;
     layout(box.width, box.height);
-    if (!raf) renderStill();
+    if (!st.raf) renderStill();
   });
-  let pendingSize: { width: number; height: number } | null = null;
   resizeObserver.observe(host);
 
   const intersectionObserver = new IntersectionObserver(
     (entries) => {
-      visible = entries[entries.length - 1]?.isIntersecting ?? true;
+      st.visible = entries[entries.length - 1]?.isIntersecting ?? true;
       wake();
     },
     { threshold: 0 },
@@ -1339,14 +1295,14 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   host.addEventListener("pointercancel", onPointerCancel);
 
   const onContextLost = () => {
-    contextLost = true;
+    st.contextLost = true;
     stop();
     live.current.onContextLost();
   };
   canvas.addEventListener("webglcontextlost", onContextLost);
 
   const stopWatchingTheme = watchTheme((next) => {
-    theme = next;
+    st.theme = next;
     applyTheme();
     repaints.enqueue(tiles.map((_, i) => i));
     wake();
@@ -1356,10 +1312,10 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   const flightLog = flightProbe();
   let probeSlot = -1; // the slot the harness follows
   function probePoseInfo(pose: CardPose) {
-    if (!geoCamera) return null;
+    if (!st.geoCamera) return null;
     const rect = host.getBoundingClientRect();
     const origin = { left: rect.left, top: rect.top };
-    const camera = geoCamera;
+    const camera = st.geoCamera;
     const hw = COIL.cardAspect / 2;
     const at = (x: number, y: number) => {
       const b = bendLocalPoint(x, y, pose.bend, pose.beta);
@@ -1391,7 +1347,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   }
   function probeSlotInfo(j: number) {
     const slot = slots[j];
-    const pose = rendered[j];
+    const pose = st.rendered[j];
     const drawn = pose ? probePoseInfo(pose) : null;
     if (!slot || !pose || !drawn) return null;
     const tile = tiles[slot.tile];
@@ -1401,8 +1357,8 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       key: tile?.key,
       kind: tile?.kind,
       hover: slot.hover,
-      hovered: hoveredSlot === j,
-      hidden: hiddenSlot === j,
+      hovered: st.hoveredSlot === j,
+      hidden: st.hiddenSlot === j,
       u: pose.u,
       depth: pose.depth,
       fade: pose.fade,
@@ -1422,17 +1378,17 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   }
   function probeState() {
     const followed = probeSlot >= 0 ? slots[probeSlot] : null;
-    const pose = probeSlot >= 0 ? rendered[probeSlot] : null;
+    const pose = probeSlot >= 0 ? st.rendered[probeSlot] : null;
     return {
-      offset: conveyor.offset,
-      target: conveyor.target,
-      glide: conveyor.glide !== null,
-      envelope: envelope.value,
-      hoveredSlot,
-      hiddenSlot,
-      frozenByApi,
+      offset: st.conveyor.offset,
+      target: st.conveyor.target,
+      glide: st.conveyor.glide !== null,
+      envelope: st.envelope.value,
+      hoveredSlot: st.hoveredSlot,
+      hiddenSlot: st.hiddenSlot,
+      frozenByApi: st.frozenByApi,
       frozenByProps: live.current.frozen,
-      looping: raf !== 0,
+      looping: st.raf !== 0,
       slot: probeSlot,
       hover: followed?.hover ?? null,
       scale: pose?.scale ?? null,
@@ -1449,13 +1405,13 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       }) as never,
       slot: probeSlotInfo as never,
       slots: () =>
-        Array.from({ length: geo?.slotCount ?? 0 }, (_, j) => probeSlotInfo(j)).filter(
+        Array.from({ length: st.geo?.slotCount ?? 0 }, (_, j) => probeSlotInfo(j)).filter(
           (info) => info !== null && info.alpha > 0.5,
         ),
       // Shows or hides a slot's mesh and redraws, with no other side effect.
       hide: ((j: number | null) => {
-        hiddenSlot = j;
-        if (!raf) {
+        st.hiddenSlot = j;
+        if (!st.raf) {
           update(0, performance.now());
           render(0);
         }
@@ -1471,31 +1427,31 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     ...flownApi(), // fx-flight
     freeze(on) {
       flightLog?.mark(on ? "freeze" : "unfreeze", probeState()); // fx-flight debug
-      frozenByApi = on;
+      st.frozenByApi = on;
       if (on) stop();
       else wake();
     },
     cardAt(clientX, clientY) {
-      const x = clientX - (view.docLeft - window.scrollX);
-      const y = clientY - (view.docTop - window.scrollY);
+      const x = clientX - (st.view.docLeft - window.scrollX);
+      const y = clientY - (st.view.docTop - window.scrollY);
       const slot = pickAt(x, y);
       if (slot < 0) return null;
       return { key: tiles[slots[slot].tile].key, slot };
     },
     quadOf(slot) {
-      const pose = rendered[slot];
-      if (!pose || !geoCamera) return null;
+      const pose = st.rendered[slot];
+      if (!pose || !st.geoCamera) return null;
       const rect = host.getBoundingClientRect();
-      return projectQuad(pose, geoCamera, { left: rect.left, top: rect.top });
+      return projectQuad(pose, st.geoCamera, { left: rect.left, top: rect.top });
     },
     hideSlot(slot) {
       flightLog?.mark(slot === null ? "mesh-show" : "mesh-hide", { slot }); // fx-flight debug
-      hiddenSlot = slot;
-      if (!raf) renderStill();
+      st.hiddenSlot = slot;
+      if (!st.raf) renderStill();
     },
     // ---- slice 4: the loader's continuity exit ----
     nameRect() {
-      if (!ready || !nameBox) return null;
+      if (!st.ready || !nameBox) return null;
       const rect = host.getBoundingClientRect();
       return {
         left: rect.left + nameBox.left,
@@ -1505,15 +1461,15 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
         gradient: {
           top: rect.top + nameBox.maskTop,
           height: nameBox.maskHeight,
-          from: toBytes(theme.name.top),
-          to: toBytes(theme.name.bottom),
+          from: toBytes(st.theme.name.top),
+          to: toBytes(st.theme.name.bottom),
         },
-        inkAlpha: Math.min(1, Math.max(0, theme.name.ink * FIELD.nameInkGain)),
+        inkAlpha: Math.min(1, Math.max(0, st.theme.name.ink * FIELD.nameInkGain)),
       };
     },
     landName() {
       nameLanded = true;
-      if (!ready || contextLost || disposed || posterMode) return;
+      if (!st.ready || st.contextLost || st.disposed || posterMode) return;
       compMaterial.uniforms.uNameA.value = 1;
       compMaterial.uniforms.uGrain.value = FIELD.grain;
       render(0);
@@ -1530,7 +1486,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       ended: entranceEnded,
       nameLanded,
       nameA: compMaterial.uniforms.uNameA.value,
-      offset: conveyor.offset,
+      offset: st.conveyor.offset,
     });
   }
 
@@ -1552,12 +1508,12 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   function slice5Api(): CoilFlightApi {
     return {
       flightQuadOf(slot) {
-        const pose = rendered[slot];
-        if (!pose || !geoCamera) return null;
+        const pose = st.rendered[slot];
+        if (!pose || !st.geoCamera) return null;
         const rect = host.getBoundingClientRect();
         const origin = { left: rect.left, top: rect.top };
-        const bent = projectQuad(pose, geoCamera, origin);
-        return isConvex(bent) ? bent : projectQuad({ ...pose, bend: 0 }, geoCamera, origin);
+        const bent = projectQuad(pose, st.geoCamera, origin);
+        return isConvex(bent) ? bent : projectQuad({ ...pose, bend: 0 }, st.geoCamera, origin);
       },
       facesOf(slot) {
         const tile = slots[slot]?.tile ?? -1;
@@ -1567,14 +1523,14 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       },
       slotOfKey(key) {
         const tile = tileIndex.get(key);
-        if (tile === undefined || !geo) return -1;
+        if (tile === undefined || !st.geo) return -1;
         let best = -1;
         let bestDepth = -Infinity;
-        for (let j = 0; j < geo.slotCount; j++) {
-          const pose = poses[j];
+        for (let j = 0; j < st.geo.slotCount; j++) {
+          const pose = st.poses[j];
           if (!pose || slots[j].tile !== tile) continue;
-          if (unwind.latched) {
-            if (Math.round(pose.u - unwind.offset) === unwind.latched[tile]) return j;
+          if (st.unwind.latched) {
+            if (Math.round(pose.u - st.unwind.offset) === st.unwind.latched[tile]) return j;
             continue;
           }
           if (pose.alpha > 0.5 && pose.depth > bestDepth) {
@@ -1593,16 +1549,16 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
         // nothing to the coil.
         const now = performance.now();
         const hold = key !== null && canRowHold();
-        setRowHold(rowHold, hold, now);
+        setRowHold(st.rowHold, hold, now);
         if (hold && key) hoverJump(key);
         wake();
         // ---- end fx-input ----
       },
       unwind(on) {
-        const next = on ?? !unwind.on;
-        if (next === unwind.on) return;
+        const next = on ?? !st.unwind.on;
+        if (next === st.unwind.on) return;
         if (next && !canUnwind()) return;
-        toggleUnwind(unwind, performance.now(), conveyor.offset, tileCount, next);
+        toggleUnwind(st.unwind, performance.now(), st.conveyor.offset, tileCount, next);
         if (debug) debug.unwindAt?.push(performance.now());
         wake();
       },
@@ -1613,11 +1569,11 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   function canRowHold() {
     const props = live.current;
     return (
-      ready &&
+      st.ready &&
       props.interactive &&
       !props.frozen &&
-      !frozenByApi &&
-      !unwind.latched &&
+      !st.frozenByApi &&
+      !st.unwind.latched &&
       heroVisible() >= COIL.rowHold.minHeroVisible
     );
   }
@@ -1625,7 +1581,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
 
   function canUnwind() {
     const props = live.current;
-    return ready && props.interactive && props.input === "fine" && !props.frozen && !frozenByApi && window.scrollY <= 2;
+    return st.ready && props.interactive && props.input === "fine" && !props.frozen && !st.frozenByApi && window.scrollY <= 2;
   }
 
   // The row's card to the part of the helix still on screen: the copy whose
@@ -1635,22 +1591,22 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   function hoverJump(key: string) {
     const props = live.current;
     const tile = tileIndex.get(key);
-    if (tile === undefined || !geo || !geoCamera || !ready) return;
-    if (unwind.latched || props.frozen || frozenByApi || !props.interactive) return;
+    if (tile === undefined || !st.geo || !st.geoCamera || !st.ready) return;
+    if (st.unwind.latched || props.frozen || st.frozenByApi || !props.interactive) return;
     const rect = host.getBoundingClientRect();
-    const inset = JUMP_INSET_CARDS * geo.cardPx;
+    const inset = JUMP_INSET_CARDS * st.geo.cardPx;
     const band: JumpBand = {
-      top: Math.max(0, -rect.top, geo.clearTopPx) + inset,
-      bottom: Math.min(view.height, window.innerHeight - rect.top, view.height * (1 - FIELD.seamFade)) - inset,
+      top: Math.max(0, -rect.top, st.geo.clearTopPx) + inset,
+      bottom: Math.min(st.view.height, window.innerHeight - rect.top, st.view.height * (1 - FIELD.seamFade)) - inset,
       left: inset,
-      right: view.width - inset,
+      right: st.view.width - inset,
     };
-    const frame = restHelix(geo, theme.card.recede);
-    const camera = geoCamera;
-    const maxU = geo.slotCount / 2 - COIL.lab.endFadeSlots;
-    const { to } = hoverJumpTarget(tile, conveyor.offset, tileCount, geo.cardsPerTurn, maxU, (u) =>
+    const frame = restHelix(st.geo, st.theme.card.recede);
+    const camera = st.geoCamera;
+    const maxU = st.geo.slotCount / 2 - COIL.lab.endFadeSlots;
+    const { to } = hoverJumpTarget(tile, st.conveyor.offset, tileCount, st.geo.cardsPerTurn, maxU, (u) =>
       projectPoint(camera, poseAt(frame, u).position), band);
-    startGlide(conveyor, to, performance.now());
+    startGlide(st.conveyor, to, performance.now());
     wake();
   }
 
@@ -1658,18 +1614,18 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   // the top: the helix unwinds in place; again, it winds back.
   const onDoubleClick = (event: MouseEvent) => {
     if (!(event.target instanceof Node) || !host.contains(event.target)) return;
-    const x = event.clientX - (view.docLeft - window.scrollX);
-    const y = event.clientY - (view.docTop - window.scrollY);
+    const x = event.clientX - (st.view.docLeft - window.scrollX);
+    const y = event.clientY - (st.view.docTop - window.scrollY);
     if (pickAt(x, y) >= 0) return;
-    if (!unwind.on && !canUnwind()) return;
-    api.unwind(!unwind.on);
+    if (!st.unwind.on && !canUnwind()) return;
+    api.unwind(!st.unwind.on);
   };
   host.addEventListener("dblclick", onDoubleClick);
   const slice5Dispose = () => host.removeEventListener("dblclick", onDoubleClick);
   if (debug) {
     Object.assign(debug, {
       unwindAt: [] as number[],
-      unwindState: () => ({ on: unwind.on, latched: unwind.latched !== null, progress: unwindProgress(unwind, performance.now()) }),
+      unwindState: () => ({ on: st.unwind.on, latched: st.unwind.latched !== null, progress: unwindProgress(st.unwind, performance.now()) }),
       unwindMs: () => unwindDurationMs(tileCount),
       focusKey: () => focusKey,
     });
@@ -1678,11 +1634,11 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   // The rows' card boxes, measured from the overlay each latched frame (it
   // moves with the page and relayouts on resize), onto the z = 0 plane.
   function measureColumn(helix: HelixFrame) {
-    if (!geoCamera) return null;
+    if (!st.geoCamera) return null;
     const boxes = live.current.overlay.current?.listTargets();
     if (!boxes) return null;
     const rect = host.getBoundingClientRect();
-    const camera = geoCamera;
+    const camera = st.geoCamera;
     return {
       axisCenter: helix.center,
       axisDirection: helixRotation(helix).y,
@@ -1701,7 +1657,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   // A layout or theme change rewrites the rest values; they are recaptured
   // whenever the uniforms hold something this block did not write.
   function unwindFrame(progress: number) {
-    live.current.overlay.current?.unwindFrame(progress, unwind.on);
+    live.current.overlay.current?.unwindFrame(progress, st.unwind.on);
     const cu = compMaterial.uniforms;
     const rect = cu.uNameRect.value as Vector4;
     if (!rect.equals(nameWritten)) nameRest.copy(rect);
@@ -1722,7 +1678,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
         nameRest.w + (target.w - nameRest.w) * t,
       );
       const maskHeight = ((cu.uName.value as Texture | null)?.image as HTMLCanvasElement | undefined)?.height ?? 0;
-      cu.uLod.value = maskHeight ? Math.max(0, Math.log2(maskHeight / (rect.w * view.dpr))) : nameRestLod;
+      cu.uLod.value = maskHeight ? Math.max(0, Math.log2(maskHeight / (rect.w * st.view.dpr))) : nameRestLod;
       cu.uNameK.value = nameRestInk + (1 - nameRestInk) * land;
     }
     nameWritten.copy(rect);
@@ -1736,12 +1692,12 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     const slot = live.current.overlay.current?.nameSlot();
     if (!slot || !probe) return null;
     const name = siteContent.hero.name;
-    probe.font = `900 100px ${nameFamily}`;
+    probe.font = `900 100px ${st.nameFamily}`;
     const w100 = probe.measureText(name).width || 1;
-    const restSize = ((view.width * (isNarrow(view) ? 0.9 : 0.7)) / w100) * 100;
+    const restSize = ((st.view.width * (isNarrow(st.view) ? 0.9 : 0.7)) / w100) * 100;
     const pad = Math.ceil(restSize * 0.04);
     const k = slot.fontPx / restSize;
-    probe.font = `900 ${slot.fontPx}px ${nameFamily}`;
+    probe.font = `900 ${slot.fontPx}px ${st.nameFamily}`;
     const m = probe.measureText(name);
     const hostRect = host.getBoundingClientRect();
     const left = slot.rect.left - hostRect.left - m.actualBoundingBoxLeft;
@@ -1758,11 +1714,11 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   // hover-jump's glide, the unwind, the rebuild fade) carries on from where
   // the stop caught it, and the first frame steps one frame at most.
   function holdClocks(stoppedMs: number) {
-    resuming = true;
-    if (!ready || !(stoppedMs > 0)) return;
-    conveyor.glide = afterPause(conveyor.glide, stoppedMs);
-    if (unwind.latched) unwind.startMs += stoppedMs;
-    if (rebuildAt !== null) rebuildAt += stoppedMs;
+    st.resuming = true;
+    if (!st.ready || !(stoppedMs > 0)) return;
+    st.conveyor.glide = afterPause(st.conveyor.glide, stoppedMs);
+    if (st.unwind.latched) st.unwind.startMs += stoppedMs;
+    if (st.rebuildAt !== null) st.rebuildAt += stoppedMs;
   }
   // ---- end fx-flight freeze ----
 
@@ -1963,11 +1919,11 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   // canvas's buffer pixels from its origin, and looks through a window of the
   // scene camera's own projection: the two canvases share one pixel grid.
   function fitOverlay(o: Overlay) {
-    if (!geoCamera) return;
+    if (!st.geoCamera) return;
     const rect = host.getBoundingClientRect();
     const buffer = renderer.getDrawingBufferSize(new Vector2());
-    const sx = buffer.x / view.width;
-    const sy = buffer.y / view.height;
+    const sx = buffer.x / st.view.width;
+    const sy = buffer.y / st.view.height;
     // Both canvases also land on the same device pixels: the offset is a
     // whole number of device pixels too, or none at all.
     const device = window.devicePixelRatio || 1;
@@ -1978,7 +1934,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     const width = gridSize((window.innerWidth - left) * sx, device / sx);
     const height = gridSize((window.innerHeight - top) * sy, device / sy);
     o.origin = { left: rect.left, top: rect.top };
-    const fitted = [left, top, width, height, buffer.x, buffer.y, view.width, view.height, lastFieldTime].join(",");
+    const fitted = [left, top, width, height, buffer.x, buffer.y, st.view.width, st.view.height, st.lastFieldTime].join(",");
     if (fitted === o.fitted) return;
     o.fitted = fitted;
     o.renderer.setSize(width, height, false);
@@ -2021,9 +1977,9 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   // scene last rendered: they cover the flown card as they covered the mesh.
   function placeCovers(o: Overlay, slot: number, on: boolean, mapF: Texture) {
     let used = 0;
-    if (on && geo) {
-      for (let j = 0; j < geo.slotCount; j++) {
-        const pose = rendered[j];
+    if (on && st.geo) {
+      for (let j = 0; j < st.geo.slotCount; j++) {
+        const pose = st.rendered[j];
         if (j === slot || !pose || pose.alpha < 0.995) continue;
         let cover = o.covers[used];
         if (!cover) {
@@ -2086,7 +2042,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
 
   // The card on its seat, as the scene would draw it now.
   function seatOf(f: Flight): FlightPose | null {
-    const pose = rendered[f.slot];
+    const pose = st.rendered[f.slot];
     const slot = slots[f.slot];
     if (!pose || !slot) return null;
     return seatPose(
@@ -2104,13 +2060,13 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   // card counted on its seat.
   function liftTarget(f: Flight) {
     const props = live.current;
-    if (!geoCamera || !pointer.inside || !pointer.known || !props.interactive || props.input !== "fine") return 0;
-    const seats = poses.map((pose, j) => (j === f.slot ? { ...pose, alpha: f.alpha } : pose));
-    return pickCard(seats, rayThrough(geoCamera, pointer.x, pointer.y)) === f.slot ? 1 : 0;
+    if (!st.geoCamera || !st.pointer.inside || !st.pointer.known || !props.interactive || props.input !== "fine") return 0;
+    const seats = st.poses.map((pose, j) => (j === f.slot ? { ...pose, alpha: f.alpha } : pose));
+    return pickCard(seats, rayThrough(st.geoCamera, st.pointer.x, st.pointer.y)) === f.slot ? 1 : 0;
   }
 
   function still() {
-    update(0, lastTime);
+    update(0, st.lastTime);
     render(0);
     flightLog?.mark("scene-still", probeState());
   }
@@ -2130,11 +2086,11 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
         }
       } else if (action === "hide-mesh") {
         flightLog?.mark("mesh-hide", { slot: f.slot });
-        hiddenSlot = f.slot;
+        st.hiddenSlot = f.slot;
         still();
       } else if (action === "show-mesh") {
         flightLog?.mark("mesh-show", { slot: f.slot, gap: f.gap });
-        hiddenSlot = null;
+        st.hiddenSlot = null;
         still();
       } else if (action === "clear-card") {
         if (overlay && !overlay.lost) {
@@ -2155,23 +2111,23 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
 
   function layoutStamp() {
     const rect = host.getBoundingClientRect();
-    return [view.width, view.height, view.dpr, rect.left, rect.top].join(",");
+    return [st.view.width, st.view.height, st.view.dpr, rect.left, rect.top].join(",");
   }
 
   // The flown card at its progress, between the seat as the scene would draw
   // it now and the slot as last given. Returns the flat card's corners.
   function flightDraw(f: Flight, o: Overlay): Quad | null {
-    if (!geoCamera || f.state === "landed" || f.state === "rest") return null;
+    if (!st.geoCamera || f.state === "landed" || f.state === "rest") return null;
     const seat = seatOf(f);
     if (!seat) return null;
     const rect = host.getBoundingClientRect();
     const origin = { left: rect.left, top: rect.top };
-    if (f.rect) f.lastSlot = slotPose(geoCamera, f.rect, origin);
+    if (f.rect) f.lastSlot = slotPose(st.geoCamera, f.rect, origin);
     const pose = flightPoseAt(seat, f.lastSlot ?? seat, f.e);
     f.pose = pose;
     f.gap = poseGap(pose, seat);
     drawFlown(o, f.slot, pose);
-    return projectQuad({ ...pose, bend: 0 }, geoCamera, origin);
+    return projectQuad({ ...pose, bend: 0 }, st.geoCamera, origin);
   }
 
   // The scene drew a still frame (a resize re-laid it out): the card in
@@ -2190,13 +2146,13 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   function flownApi(): CoilFlownApi {
     return {
       beginFlight(slot, mount) {
-        const pose = rendered[slot];
-        if (!ready || contextLost || disposed || !geoCamera || !pose || !slots[slot] || pose.alpha <= 0.01) return null;
+        const pose = st.rendered[slot];
+        if (!st.ready || st.contextLost || st.disposed || !st.geoCamera || !pose || !slots[slot] || pose.alpha <= 0.01) return null;
         const o = liveOverlay();
         if (!o) return null;
         if (flight) act(flight, "abort");
-        frozenByApi = true;
-        landedAhead = false;
+        st.frozenByApi = true;
+        st.landedAhead = false;
         stop();
         const f: Flight = { slot, state: "rest", alpha: pose.alpha, e: 0, rect: null, lastSlot: null, pose: null, gap: 0 };
         flight = f;
@@ -2213,11 +2169,11 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
           // A landing resumes the scene itself, on the next frame, ahead of
           // the props (the modal has closed; the flight was the one thing
           // holding it). A flight torn down under an open modal stays frozen.
-          frozenByApi = false;
-          landedAhead = event === "land";
+          st.frozenByApi = false;
+          st.landedAhead = event === "land";
           wake();
           // No frame to come (a modal is open, the hero is off screen): done.
-          if (!raf) {
+          if (!st.raf) {
             act(f, "frame");
             flight = null;
           }
@@ -2230,7 +2186,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
               // own rate, so the card lands as the scene would draw it next.
               const lifted = slots[f.slot];
               lifted.hover += (liftTarget(f) - lifted.hover) * (1 - Math.exp(-Math.min(dt, COIL.lab.maxFrameSeconds) * HOVER_RATE));
-              update(0, lastTime);
+              update(0, st.lastTime);
             }
             f.e = e;
             if (rect) f.rect = rect;
@@ -2267,7 +2223,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     prewarm = window.setTimeout(() => {
       prewarm = 0;
       // Only a fine pointer flies cards (a tap opens its modal directly).
-      if (disposed || contextLost || overlay || live.current.input !== "fine") return;
+      if (st.disposed || st.contextLost || overlay || live.current.input !== "fine") return;
       const o = liveOverlay();
       if (o) o.renderer.compile(o.scene, o.camera);
     }, 1200);
@@ -2292,13 +2248,13 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   let pressScrollY = 0;
   function canDrag() {
     const props = live.current;
-    return ready && props.interactive && props.input === "coarse" && !props.frozen && !frozenByApi && !unwind.on;
+    return st.ready && props.interactive && props.input === "coarse" && !props.frozen && !st.frozenByApi && !st.unwind.on;
   }
   // Cards per px of horizontal finger travel: the front card's arc per card,
   // across the screen.
   function dragCardsPerPx() {
-    if (!geo) return 0;
-    return 1 / Math.max(1, geo.step * geo.cardPx * Math.cos(geo.axisRad));
+    if (!st.geo) return 0;
+    return 1 / Math.max(1, st.geo.step * st.geo.cardPx * Math.cos(st.geo.axisRad));
   }
   const dragObserver = Observer.create({
     target: host,
@@ -2307,37 +2263,37 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     dragMinimum: DRAG_MINIMUM_PX,
     onPress: () => {
       pressScrollY = window.scrollY;
-      pressCaughtCoil = coast !== null;
-      if (coast) {
-        conveyor.target = conveyor.offset;
-        coast = null;
+      st.pressCaughtCoil = st.coast !== null;
+      if (st.coast) {
+        st.conveyor.target = st.conveyor.offset;
+        st.coast = null;
       }
     },
     onDrag: (self) => {
       // The page moved: the browser took this gesture as a vertical pan.
       if (self.axis !== "x" || Math.abs(window.scrollY - pressScrollY) > 2 || !canDrag()) return;
-      dragging = true;
-      conveyor.glide = null;
-      conveyor.target += self.deltaX * dragCardsPerPx();
+      st.dragging = true;
+      st.conveyor.glide = null;
+      st.conveyor.target += self.deltaX * dragCardsPerPx();
       wake();
     },
     onRelease: (self) => {
-      if (!dragging) return;
-      dragging = false;
+      if (!st.dragging) return;
+      st.dragging = false;
       if (!canDrag()) return;
       const cap = COIL.spinCapCardsPerSecond;
       const velocity = Math.min(cap, Math.max(-cap, self.velocityX * dragCardsPerPx()));
-      coast = { rest: Math.round(conveyor.target + velocity * COAST_TAU_S) };
+      st.coast = { rest: Math.round(st.conveyor.target + velocity * COAST_TAU_S) };
       wake();
     },
   });
   if (debug) {
     debug.drag = () => ({
-      dragging,
-      coast: coast?.rest ?? null,
-      offset: conveyor.offset,
-      target: conveyor.target,
-      velocity: conveyor.velocity,
+      dragging: st.dragging,
+      coast: st.coast?.rest ?? null,
+      offset: st.conveyor.offset,
+      target: st.conveyor.target,
+      velocity: st.conveyor.velocity,
       cardsPerPx: dragCardsPerPx(),
     });
   }
@@ -2345,7 +2301,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
 
   // ---- boot: the name's face and every card's sources, then the first frame
   const style = getComputedStyle(document.documentElement);
-  nameFamily = style.getPropertyValue("--font-display").trim() || "sans-serif";
+  st.nameFamily = style.getPropertyValue("--font-display").trim() || "sans-serif";
   const withTimeout = <T,>(promise: Promise<T>, fallback: T) =>
     Promise.race([promise, new Promise<T>((resolve) => window.setTimeout(() => resolve(fallback), TEXTURE_TIMEOUT_MS))]);
   const logoFor = (slug: string) => siteContent.workItems.find((item) => item.slug === slug)?.logo ?? null;
@@ -2359,20 +2315,20 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
 
   Promise.all([
     withTimeout(
-      document.fonts.load(`900 100px ${nameFamily}`).then(() => undefined),
+      document.fonts.load(`900 100px ${st.nameFamily}`).then(() => undefined),
       undefined,
     ),
     Promise.all(
       tiles.map((tile) =>
         withTimeout<CardSource>(
-          loadCardSource(tile, logoFor, budget.textureSize),
+          loadCardSource(tile, logoFor, st.budget.textureSize),
           tile.kind === "photo" ? { kind: "photo", key: tile.key, image: null } : { kind: "work", key: tile.key, logo: null },
         ).then(countTexture), // slice 4: the loader's tally
       ),
     ),
   ])
     .then(([, loaded]) => {
-      if (disposed) return;
+      if (st.disposed) return;
       sources = loaded;
       const seen = getSeen();
       tiles.forEach((tile, i) => {
@@ -2380,14 +2336,14 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       });
       applyTheme();
       tiles.forEach((_, i) => paintTile(i));
-      ready = true;
-      const box = pendingSize ?? host.getBoundingClientRect();
+      st.ready = true;
+      const box = st.pendingSize ?? host.getBoundingClientRect();
       layout(box.width, box.height);
       wake();
       warmOverlay(); // fx-flight
     })
     .catch((error) => {
-      if (!disposed) live.current.onError(error);
+      if (!st.disposed) live.current.onError(error);
     });
 
   // Slice 7: an input change (a tablet gaining a trackpad, emulation) moves
@@ -2395,14 +2351,14 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   // new texture size, a few per frame as a theme change does.
   function sync() {
     // fx-flight freeze: the props have caught up with the landing (or name a new modal).
-    landedAhead = false;
+    st.landedAhead = false;
     const next = budgetFor(live.current.input);
-    if (!sameBudget(next, budget)) {
-      budget = next;
-      if (ready && !contextLost && !disposed) {
-        layout(view.width, view.height);
+    if (!sameBudget(next, st.budget)) {
+      st.budget = next;
+      if (st.ready && !st.contextLost && !st.disposed) {
+        layout(st.view.width, st.view.height);
         repaints.enqueue(tiles.map((_, i) => i));
-        if (!raf) renderStill();
+        if (!st.raf) renderStill();
       }
     }
     wake();
@@ -2412,7 +2368,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     wake,
     sync,
     dispose() {
-      disposed = true;
+      st.disposed = true;
       stop();
       resizeObserver.disconnect();
       intersectionObserver.disconnect();
