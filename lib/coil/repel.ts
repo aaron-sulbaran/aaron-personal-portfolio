@@ -21,6 +21,10 @@ export const REPEL = {
   fast: { speed: 2600, radius: 220, push: 28 },
   // Below this speed the push fades toward zero (a still pointer does nothing).
   creepSpeed: 60,
+  // The push rises from zero on the path itself to its full strength this far
+  // out (a fraction of the radius), so the grain parts and thins along the
+  // path instead of tearing open in a blank swath.
+  core: 0.3,
   maxPush: 28,
   // Critically damped return: from rest at d0, d(t) = d0 (1 + wt) e^(-wt),
   // under 1 percent of d0 at 0.9s for w = 7.5.
@@ -63,7 +67,9 @@ export function strokeStrength(speed: number): { radius: number; push: number } 
 // One pointer segment (from, to) that took `dt` seconds, in the same CSS px
 // space as `rect`. Cells within the stroke's radius of the segment are raised
 // to at least its push along the direction away from the path (never beyond:
-// a slow drift repeated over one spot stays a small nudge), then clamped.
+// a slow drift repeated over one spot stays a small nudge), then clamped. The
+// push profile is zero on the path, full at REPEL.core of the radius and zero
+// again at the radius.
 export function injectStroke(field: RepelField, rect: RepelRect, from: RepelPoint, to: RepelPoint, dt: number) {
   const sx = to.x - from.x;
   const sy = to.y - from.y;
@@ -102,7 +108,9 @@ export function injectStroke(field: RepelField, rect: RepelRect, from: RepelPoin
         ox = -uy;
         oy = ux;
       }
-      const amount = push * (1 - smooth(dist / radius));
+      const s = dist / radius;
+      const amount = push * (1 - smooth(s)) * smooth(Math.min(1, s / REPEL.core));
+      if (amount <= 0) continue;
       const i = 2 * (row * cols + col);
       const current = d[i] * ox + d[i + 1] * oy;
       if (current >= amount) continue;

@@ -80,6 +80,26 @@ describe("injectStroke", () => {
     }
   });
 
+  it("parts the grain without tearing it: the texture stretches at most 2x and never folds", () => {
+    // Down any column across a swipe, the pushed positions (bilinear between
+    // cell centers, as the shader samples them) keep their order and spread
+    // at most twice as far apart as at rest: the grain thins along the path
+    // instead of opening a blank swath.
+    for (const speed of [120, 800, 3200]) {
+      const field = strokeAt(speed);
+      const ch = rect.h / field.rows;
+      for (const col of [20, 48, 70]) {
+        for (let row = 0; row + 1 < field.rows; row++) {
+          const a = field.d[2 * (row * field.cols + col) + 1];
+          const b = field.d[2 * ((row + 1) * field.cols + col) + 1];
+          const stretch = (ch + b - a) / ch;
+          expect(stretch).toBeGreaterThan(0);
+          expect(stretch).toBeLessThan(2);
+        }
+      }
+    }
+  });
+
   it("holds the clamps however often the same swipe repeats", () => {
     const field = createRepelField();
     const cy = rect.y + rect.h / 2;
