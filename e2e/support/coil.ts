@@ -54,6 +54,29 @@ export async function nextFrames(page: Page, count = 1) {
   );
 }
 
+// Page scroll turns the coil through one smoothing stage, so a jump in scroll
+// keeps it moving for a moment: waits until it is back to its idle pace
+// (under `perFrame` cards a frame for `frames` frames in a row).
+export async function waitForCoilSettled(page: Page, perFrame = 0.003, frames = 10) {
+  await page.evaluate(
+    ({ perFrame, frames }) =>
+      new Promise<void>((resolve) => {
+        const coil = (window as HookWindow).__coil!;
+        let last = coil.offset();
+        let calm = 0;
+        const tick = () => {
+          const now = coil.offset();
+          calm = Math.abs(now - last) < perFrame ? calm + 1 : 0;
+          last = now;
+          if (calm >= frames) resolve();
+          else requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      }),
+    { perFrame, frames },
+  );
+}
+
 export async function heroVisible(page: Page) {
   return page.evaluate(() => {
     const rect = document.querySelector("section[data-scene]")!.getBoundingClientRect();
