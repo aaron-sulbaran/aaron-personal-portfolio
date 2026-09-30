@@ -1,5 +1,4 @@
 import type { CDPSession, Page } from "@playwright/test";
-import { NAME_FILLS } from "@/lib/coil/field.glsl";
 import { test, expect } from "./support/fixtures";
 import { coilPoints, nextFrames, openHome, type Point } from "./support/coil";
 import type { HookWindow } from "./support/hooks";
@@ -120,59 +119,3 @@ async function nameRegion(page: Page): Promise<CardRegion> {
 async function hideCursor(page: Page) {
   await page.addStyleTag({ content: ".z-\\[100\\]{visibility:hidden!important}" });
 }
-
-test("name: every fill draws a name that stands out from the field", async ({ page }) => {
-  // The field alone at one held moment, then each fill over the same moment.
-  await openHome(page, { debug: "nocards,noname,at=4" });
-  await hideCursor(page);
-  const region = await nameRegion(page);
-  const field = await shoot(page, region.box);
-
-  await openHome(page, { debug: "name,nocards,at=4" });
-  await hideCursor(page);
-  const switcher = page.getByRole("group", { name: "Hero options" });
-  for (const fill of NAME_FILLS) {
-    await switcher.getByRole("button", { name: fill, exact: true }).click();
-    await expect(switcher.getByRole("button", { name: fill, exact: true })).toHaveAttribute("aria-pressed", "true");
-    await page.mouse.move(4, 4);
-    await nextFrames(page, 3);
-    const drawn = await shoot(page, region.box);
-    const diff = pixelDiff(field, drawn, field, region);
-    test.info().annotations.push({ type: "measure", description: `${fill}: ${diff.insideMean.toFixed(2)} of 255 from the field` });
-    expect.soft(diff.insideMean, `${fill}: mean difference from the field inside the name box, of 255`).toBeGreaterThan(6);
-  }
-});
-
-test("name: a fast swipe parts the fill, and it closes back to rest after the pointer leaves", async ({ page, cdp }) => {
-  await openHome(page, { debug: "nocards,at=4" });
-  await hideCursor(page);
-  const region = await nameRegion(page);
-  const away = { x: 6, y: page.viewportSize()!.height - 6 };
-  await pointerTo(cdp, away);
-  await nextFrames(page, 3);
-  const rest = await shoot(page, region.box);
-
-  // Left to right through the name's middle in ten frames.
-  const { box } = region;
-  const y = box.y + box.height * 0.55;
-  for (let i = 0; i <= 10; i++) {
-    await pointerTo(cdp, { x: box.x + (box.width * i) / 10, y });
-    await nextFrames(page, 1);
-  }
-  const parted = await shoot(page, region.box);
-  const fx = await page.evaluate(() => (window as HookWindow).__coil!.nameFx());
-  expect(fx.repelActive).toBe(true);
-  const partedBy = pixelDiff(rest, parted, rest, region).insideMean;
-  test.info().annotations.push({ type: "measure", description: `parted: ${partedBy.toFixed(2)} of 255, repel ${fx.repelMax}` });
-  expect(partedBy, "change inside the name while parted, of 255").toBeGreaterThan(2);
-
-  await pointerTo(cdp, away);
-  const left = Date.now();
-  await page.waitForFunction(() => !(window as HookWindow).__coil!.nameFx().repelActive, null, { timeout: 5000 });
-  const settleMs = Date.now() - left;
-  const closed = await shoot(page, region.box);
-  const closedBy = pixelDiff(rest, closed, rest, region).insideMean;
-  test.info().annotations.push({ type: "measure", description: `closed in ${settleMs}ms, ${closedBy.toFixed(2)} of 255 from rest` });
-  expect(settleMs, "ms from leaving to rest").toBeLessThan(2500);
-  expect(closedBy, "difference from the rest frame, of 255").toBeLessThan(2);
-});

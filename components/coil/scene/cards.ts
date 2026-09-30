@@ -66,7 +66,7 @@ type CardFrame = {
   listProgress: number;
 };
 
-type NameFlow = { flowAlong: (dx: number, dy: number) => void; hide: () => void };
+type NameHide = { hide: () => void };
 
 export function createCards(ctx: SceneCtx, gl: Gl) {
   const { st, host, tiles, tileCount, flags } = ctx;
@@ -235,12 +235,11 @@ export function createCards(ctx: SceneCtx, gl: Gl) {
     }
   }
 
-  // Update step: the helix's projected hull (wheel capture, the nudge, the
-  // name's flow direction); QA can hide the cards and the name.
-  function hull(f: CardFrame, name: NameFlow) {
+  // Update step: the helix's projected hull (wheel capture, the nudge); QA
+  // can hide the cards and the name.
+  function hull(f: CardFrame, name: NameHide) {
     st.sil = silhouette(f.helix as HelixFrame, f.camera, poses);
-    // ---- fx-hero: sand drifts along the helix's axis; QA can hide the cards ----
-    if (st.sil) name.flowAlong(st.sil.dx, st.sil.dy);
+    // ---- fx-hero: QA can hide the cards and the name ----
     if (hideCards) for (let j = 0; j < f.geo.slotCount; j++) slots[j].mesh.visible = false;
     if (hideName) name.hide();
     // ---- end fx-hero ----

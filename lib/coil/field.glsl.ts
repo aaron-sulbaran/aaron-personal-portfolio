@@ -7,15 +7,18 @@
 //              (review item 1: moved outward, shrunk, with a portrait term, so
 //              orange holds about a fifth of the field on desktop and phone).
 //   composite  the field upsampled at full resolution, "Aaron" drawn inside
-//              its mask with explicit LOD (derivative sampling drew seams), a
-//              vertical gradient in the letters (item 4), one of the name
-//              fills below (fx-hero; solid is item 5's static grain), the
-//              bottom seam fading to paper (item 8), and a sub-1/255 dither.
+//              its mask with explicit LOD (derivative sampling drew seams),
+//              the lit surface below seen through the letters (the loader
+//              lands on item 4's vertical gradient, which the surface grows
+//              over), the bottom seam fading to paper (item 8), and a
+//              sub-1/255 dither.
 //              The lab's uHeroShift is gone: the canvas is sized from the
 //              hero, so the hero is the whole view. "Hi, I'm" is part of the
 //              name's mask, drawn with it (fx-hero).
 //
 // Strings only, no three import: the scene builds the materials.
+
+import { WAKE } from "./wake";
 
 // Field tuning from the design review (scaffold-inputs/design-review-lab2.md,
 // "For slice 3" item 1). Colors come from the --shader-* tokens; these are
@@ -91,76 +94,373 @@ export const COMPOSITE_VERT = /* glsl */ `
   void main() { gl_Position = vec4(position.xy, 0.0, 1.0); }
 `;
 
-// ---- fx-hero: the name's fill (Aaron, 2026-09-29) ----
+// ---- the name: a lit shadergradient surface seen through the letters ----
 //
-// "Hi, I'm" and "Aaron" are one mask (the greeting a small line above the
-// name's left edge); the letters take one of these fills, picked live by
-// ?name=<key> (and a switcher under ?coildebug=name). Every textured fill
-// idles by a slow advection (the texture drifts, it never re-seeds, so it
-// never shimmers against the field) and is pushed aside by the cursor through
-// the repel buffer (lib/coil/repel.ts). solid is the shipped gradient.
-export const NAME_FILLS = ["grain", "stipple", "halftone", "grain-field", "grain-warm", "sand", "solid"] as const;
-export type NameFill = (typeof NAME_FILLS)[number];
-export const DEFAULT_NAME_FILL: NameFill = "grain";
+// Ported from the winning name lab (Opus "Tide", labs/name-lab-opus-build/
+// name-surface.js) with the design review's verdict (2026-09-30) and Aaron's
+// answers of the same day:
+//   surface    @shadergradient/react 2.4.20's "defaults" noise (MIT, ruucm and
+//              stone-skipper; cnoise from hughsk/glsl-noise), as a fragment-only
+//              pass (the runner-up Fable lab's approach): the analytic height
+//              and finite-difference normals at half the name's device
+//              resolution, in place of the lab's 32k-vertex mesh. The Tide
+//              lab's color law (c1 to c2 across x, the pale crest c3 by height,
+//              the stops clamped to a hull) and min/Max's relief and sheen.
+//   wake       the pointer's wake grid (lib/coil/wake.ts) as a domain offset
+//              of at most 0.6 plane units (it drags the weather along the
+//              stroke), a swell, a press and a faster local clock, all scaling
+//              with the wake so all of it settles with the wake. Sampled with
+//              a cubic B-spline, so the offset has no seams at the grid's cells.
+//   composite  the letters' lightness moves from the field's toward the
+//              surface's in OKLab at the ink, the surface's own relief on top,
+//              a floor so no crest dissolves a letter, the hue following the
+//              surface faster; the wake raises the ink where it swells. Film
+//              grain after the mix, scaled by the square root of the ink.
+// "Hi, I'm" and "Aaron" are one mask, one lockup.
 
-export function parseNameFill(raw: string | null | undefined): NameFill {
-  return NAME_FILLS.find((key) => key === raw) ?? DEFAULT_NAME_FILL;
-}
-
-// The live switch for the fill and the drift (the ?coildebug=name switcher
-// dispatches it on window; the scene listens).
-export const COIL_FX_EVENT = "coil:fx";
-export type CoilFxDetail = { name?: string; drift?: string };
-
-// The fill's scalars, in CSS px and seconds.
-export const NAME_FILL = {
-  // The greeting's cap height as a fraction of the name's, and the gap from
-  // its lowest ink to the top of the "A" as a fraction of its cap height.
-  greetingCap: 0.22,
+// The lockup and its fades, in CSS px and ms.
+export const NAME = {
+  // The greeting's cap height as a fraction of the name's (Aaron and the
+  // builder, 2026-09-30: 0.22 read heavy), and the gap from its lowest ink to
+  // the top of the "A" as a fraction of its own cap height.
+  greetingCap: 0.18,
   greetingGap: 0.45,
   greetingFadeMs: 350,
-  // After the loader lands its solid DOM name, the texture grows in over this.
-  fillInMs: 900,
-  grainPx: 1.35, // grain: one grain about this wide
-  stipplePx: 3.2, // stipple: one dot per cell this wide
-  halftonePx: 5.5, // halftone: the screen's pitch
-  halftoneDeg: 15,
-  sandPx: 1.9,
-  sandSpeed: 5, // px per second along the helix axis
-  idlePx: 9, // the idle drift's reach
-  idleScalePx: 190, // and the size of its eddies
-  idleRate: 0.045, // how fast the eddies change
-  warmShare: 0.4, // grain-warm: raises the orange grains' threshold at the corner (value noise sits near 0.5)
+  // The greeting's strokes are thin: its contrast floor is this times the name's.
+  greetingFloor: 1.8,
+  // After the loader lands its solid DOM name, the surface grows in over this.
+  surfaceInMs: 900,
+  // s: the per-letter minimum follows the drifting surface over about this.
+  glyphEaseS: 0.4,
+  // OKLab L the letters stay within: never pure black or white, even at full
+  // ink (the unwound list's lead draws the whole surface).
+  lightness: [0.22, 0.95] as const,
+  // The composite holds up to this many letters' centers (the per-letter minimum).
+  maxGlyphs: 8,
 } as const;
-// ---- end fx-hero ----
+
+// The surface pass: the lab's water plane (Dusk: fov 45 at distance 5, so the
+// view at z = 0 is 4.14 plane units tall over the lockup), seen straight on.
+export const NAME_SURFACE = {
+  rtScale: 0.5, // half the name rect's device resolution
+  rtMaxWidth: 1400,
+  viewHeight: 4.142, // plane units across the lockup's height
+  rotZ: -58, // degrees: the plane's turn in the view
+  density: 0.7,
+  strength: 2.2,
+  speed: 0.1, // plane time per second
+  start: 3, // plane time at clock 0
+  crestBias: 0.35,
+  relief: 0.55,
+  sheen: 0.45,
+  gloss: 14,
+  bright: 0.96,
+  eps: 0.05, // plane units: the normals' finite difference (the lab's)
+  lightRest: [-0.45, 0.55] as const, // min/Max's REST_LIGHT
+  lightDrift: 0.16, // the key light circles slowly: the idle breath catches it
+  lightPeriod: 26, // s
+} as const;
+
+// What the wake does to the surface (the lab's "both", with the review's cuts:
+// drag 4.0 to 2.0 as a bounded domain offset, churn 0.6 to 0.25).
+export const NAME_DISTURB = {
+  drag: 2,
+  maxDrag: 0.6, // plane units
+  swell: 1.4,
+  churn: 0.25,
+  shift: 1.2,
+} as const;
+
+// The wake's press (the cloth pushed back, or raised when negative) and its
+// crest lift, per theme, tuned so a fast swipe moves the letters by 0.08 of
+// lightness or more in light and 0.07 or more in dark: in light the touched
+// cloth is pressed back into the deep stop, the way the rising ink already
+// moves it; in dark it rises toward the pale crest, the way the ink moves it
+// there. Either way the two never cancel.
+export function nameDisturb(dark: boolean) {
+  return dark ? { press: -0.6, lift: 0.8 } : { press: 1.4, lift: 0 };
+}
+
+// The composite's per-theme scalars. floor: the letters sit at least this
+// far (OKLab L) from the field, darker in light, lighter in dark (dark keeps
+// it low so the letters stay free to answer the wake; the per-letter minimum
+// holds them off the night field). detail: the
+// surface's own relief on top of the ink. reveal: how far the wake raises the
+// ink. chroma: how much faster than the lightness the hue follows the surface.
+// grain: film grain's amplitude at full ink. glyphRel: no letter's
+// glyph-scale contrast falls under this share of the strongest letter's (the
+// review's "A" fix, 2026-09-30); glyphAbs: nor under this (dark: the letters
+// about +0.14 over the night field).
+export function nameComposite(dark: boolean) {
+  return dark
+    ? { floor: 0.04, floorSign: -1, detail: 1.3, reveal: 2.2, chroma: 1.7, grain: 0.055 * 0.7, glyphRel: 0.72, glyphAbs: 0.11 }
+    : { floor: 0.08, floorSign: 1, detail: 1, reveal: 1.8, chroma: 2.4, grain: 0.055, glyphRel: 0.72, glyphAbs: 0 };
+}
+export const NAME_GRAIN = { size: 1, chroma: 0.35 } as const; // device px, and its color share
+
+const f = (x: number) => x.toFixed(4);
+const GLYPH_GRID = 24; // points a side on each letter's box, in the reduction
+
+// A cubic B-spline lookup through four bilinear taps (Sigg and Hadwiger): C2
+// smooth, so the wake's cells never show as creases.
+const WAKE_SAMPLE_GLSL = /* glsl */ `
+  uniform sampler2D uWake;
+  uniform vec2 uWakeSize;
+  uniform float uWakeOn;
+  vec4 wakeAt(vec2 g) {
+    vec2 uv = (g - 0.5) / ${f(1 + 2 * WAKE.margin)} + 0.5;
+    uv.y = 1.0 - uv.y;
+    vec2 st = uv * uWakeSize - 0.5;
+    vec2 i = floor(st);
+    vec2 t = st - i;
+    vec2 t2 = t * t, t3 = t2 * t;
+    vec2 w0 = (-t3 + 3.0 * t2 - 3.0 * t + 1.0) / 6.0;
+    vec2 w1 = (3.0 * t3 - 6.0 * t2 + 4.0) / 6.0;
+    vec2 w2 = (-3.0 * t3 + 3.0 * t2 + 3.0 * t + 1.0) / 6.0;
+    vec2 w3 = t3 / 6.0;
+    vec2 g0 = w0 + w1, g1 = w2 + w3;
+    vec2 h0 = (i - 0.5 + w1 / g0) / uWakeSize;
+    vec2 h1 = (i + 1.5 + w3 / g1) / uWakeSize;
+    return g0.y * (g0.x * texture2D(uWake, h0) + g1.x * texture2D(uWake, vec2(h1.x, h0.y)))
+         + g1.y * (g0.x * texture2D(uWake, vec2(h0.x, h1.y)) + g1.x * texture2D(uWake, h1));
+  }
+`;
+
+export const CNOISE_GLSL = /* glsl */ `
+  // @shadergradient/react 2.4.20 (MIT), from hughsk/glsl-noise periodic/3d.glsl, unchanged.
+  vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+  vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+  vec4 permute(vec4 x) { return mod289(((x * 34.0) + 1.0) * x); }
+  vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
+  vec3 fade(vec3 t) { return t * t * t * (t * (t * 6.0 - 15.0) + 10.0); }
+  float cnoise(vec3 P) {
+    vec3 Pi0 = floor(P); vec3 Pi1 = Pi0 + vec3(1.0);
+    Pi0 = mod289(Pi0); Pi1 = mod289(Pi1);
+    vec3 Pf0 = fract(P); vec3 Pf1 = Pf0 - vec3(1.0);
+    vec4 ix = vec4(Pi0.x, Pi1.x, Pi0.x, Pi1.x); vec4 iy = vec4(Pi0.yy, Pi1.yy);
+    vec4 iz0 = Pi0.zzzz; vec4 iz1 = Pi1.zzzz;
+    vec4 ixy = permute(permute(ix) + iy); vec4 ixy0 = permute(ixy + iz0); vec4 ixy1 = permute(ixy + iz1);
+    vec4 gx0 = ixy0 * (1.0 / 7.0); vec4 gy0 = fract(floor(gx0) * (1.0 / 7.0)) - 0.5; gx0 = fract(gx0);
+    vec4 gz0 = vec4(0.5) - abs(gx0) - abs(gy0); vec4 sz0 = step(gz0, vec4(0.0));
+    gx0 -= sz0 * (step(0.0, gx0) - 0.5); gy0 -= sz0 * (step(0.0, gy0) - 0.5);
+    vec4 gx1 = ixy1 * (1.0 / 7.0); vec4 gy1 = fract(floor(gx1) * (1.0 / 7.0)) - 0.5; gx1 = fract(gx1);
+    vec4 gz1 = vec4(0.5) - abs(gx1) - abs(gy1); vec4 sz1 = step(gz1, vec4(0.0));
+    gx1 -= sz1 * (step(0.0, gx1) - 0.5); gy1 -= sz1 * (step(0.0, gy1) - 0.5);
+    vec3 g000 = vec3(gx0.x, gy0.x, gz0.x); vec3 g100 = vec3(gx0.y, gy0.y, gz0.y);
+    vec3 g010 = vec3(gx0.z, gy0.z, gz0.z); vec3 g110 = vec3(gx0.w, gy0.w, gz0.w);
+    vec3 g001 = vec3(gx1.x, gy1.x, gz1.x); vec3 g101 = vec3(gx1.y, gy1.y, gz1.y);
+    vec3 g011 = vec3(gx1.z, gy1.z, gz1.z); vec3 g111 = vec3(gx1.w, gy1.w, gz1.w);
+    vec4 norm0 = taylorInvSqrt(vec4(dot(g000, g000), dot(g010, g010), dot(g100, g100), dot(g110, g110)));
+    g000 *= norm0.x; g010 *= norm0.y; g100 *= norm0.z; g110 *= norm0.w;
+    vec4 norm1 = taylorInvSqrt(vec4(dot(g001, g001), dot(g011, g011), dot(g101, g101), dot(g111, g111)));
+    g001 *= norm1.x; g011 *= norm1.y; g101 *= norm1.z; g111 *= norm1.w;
+    float n000 = dot(g000, Pf0); float n100 = dot(g100, vec3(Pf1.x, Pf0.yz));
+    float n010 = dot(g010, vec3(Pf0.x, Pf1.y, Pf0.z)); float n110 = dot(g110, vec3(Pf1.xy, Pf0.z));
+    float n001 = dot(g001, vec3(Pf0.xy, Pf1.z)); float n101 = dot(g101, vec3(Pf1.x, Pf0.y, Pf1.z));
+    float n011 = dot(g011, vec3(Pf0.x, Pf1.yz)); float n111 = dot(g111, Pf1);
+    vec3 fade_xyz = fade(Pf0);
+    vec4 n_z = mix(vec4(n000, n100, n010, n110), vec4(n001, n101, n011, n111), fade_xyz.z);
+    vec2 n_yz = mix(n_z.xy, n_z.zw, fade_xyz.y);
+    return 2.2 * mix(n_yz.x, n_yz.y, fade_xyz.x);
+  }
+`;
+
+// The surface pass: one quad over the name's lockup rect into a half
+// resolution target. vUv is the rect's uv, y up. uExt is the rect's half size
+// in plane units; uRot the plane's turn (cos, sin).
+export const SURFACE_FRAG = /* glsl */ `
+  uniform float uT, uStrength, uCrestBias, uRelief, uSheen, uGloss, uBright;
+  uniform float uDrag, uMaxDrag, uSwell, uPress, uChurn, uShift, uLift;
+  uniform vec2 uExt, uRot, uLight;
+  uniform vec3 uC1, uC2, uC3, uShadow, uSheenC;
+  varying vec2 vUv;
+  ${WAKE_SAMPLE_GLSL}
+  ${CNOISE_GLSL}
+  // The screen (world) to the plane's own axes, and back.
+  vec2 toPlane(vec2 v) { return vec2(uRot.x * v.x + uRot.y * v.y, -uRot.y * v.x + uRot.x * v.y); }
+  vec2 toScreen(vec2 v) { return vec2(uRot.x * v.x - uRot.y * v.y, uRot.y * v.x + uRot.x * v.y); }
+  // @shadergradient/react: distortion = 0.75 * cnoise(0.43 * position * density + t).
+  float lift(vec2 p, float t) { return 0.75 * cnoise(vec3(p * ${f(0.43 * NAME_SURFACE.density)}, 0.0) + t); }
+  void main() {
+    vec2 p = toPlane((vUv * 2.0 - 1.0) * uExt);
+    float e = 0.0;
+    vec2 drag = vec2(0.0);
+    if (uWakeOn > 0.5) {
+      vec4 wk = wakeAt(vec2(vUv.x, 1.0 - vUv.y));
+      e = wk.r;
+      // The hand drags the weather along the stroke, as a bounded domain offset.
+      drag = toPlane(wk.gb * 2.0 - 1.0) * e * uDrag;
+      float dl = length(drag);
+      if (dl > uMaxDrag) drag *= uMaxDrag / dl;
+    }
+    // Its folds swell, it is pressed back, and its weather runs a little
+    // faster where it was touched; all of it scales with the wake.
+    float t = uT + e * uChurn;
+    float k = uStrength * (1.0 + e * uSwell);
+    float press = e * uPress;
+    vec2 q = p - drag;
+    float h = lift(q, t) * k - press;
+    float hx = (lift(q + vec2(${f(NAME_SURFACE.eps)}, 0.0), t) * k - press - h) / ${f(NAME_SURFACE.eps)};
+    float hy = (lift(q + vec2(0.0, ${f(NAME_SURFACE.eps)}), t) * k - press - h) / ${f(NAME_SURFACE.eps)};
+    // The lab's color: c1 to c2 along the plane's x, the pale crest c3 by
+    // height, clamped to the stops' hull.
+    vec3 base = mix(uC1, uC2, smoothstep(-3.0, 3.0, p.x + e * uShift));
+    float crest = clamp(h - uCrestBias + e * uLift, 0.0, 1.0);
+    vec3 col = mix(base, uC3, crest) * uBright;
+    // min/Max's relief and sheen: a key light shading toward the shadow stop,
+    // and a broad sheen, screened on so no channel clips before another.
+    vec3 N = normalize(vec3(toScreen(vec2(-hx, -hy)), 1.0));
+    vec3 L = normalize(vec3(uLight, 1.0));
+    float diffuse = max(dot(N, L), 0.0);
+    float spec = pow(max(dot(N, normalize(L + vec3(0.0, 0.0, 1.0))), 0.0), uGloss);
+    col = mix(col, uShadow, uRelief * 0.7 * (1.0 - diffuse));
+    col = 1.0 - (1.0 - col) * (1.0 - uSheenC * spec * uSheen);
+    gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
+  }
+`;
+
+const OKLAB_GLSL = /* glsl */ `
+  // OKLab with the exact sRGB transfer (the lab's pow 2.2 read the night
+  // field's darks about 0.02 L low), so the floors are true L.
+  vec3 toLinear(vec3 c) { c = clamp(c, 0.0, 1.0); return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(0.04045, c)); }
+  vec3 toSrgb(vec3 c) { c = max(c, 0.0); return mix(c * 12.92, 1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055, step(0.0031308, c)); }
+  vec3 oklab(vec3 c) {
+    c = toLinear(c);
+    float l = pow(0.4122214708 * c.r + 0.5363325363 * c.g + 0.0514459929 * c.b, 1.0 / 3.0);
+    float m = pow(0.2119034982 * c.r + 0.6806995451 * c.g + 0.1073969566 * c.b, 1.0 / 3.0);
+    float s = pow(0.0883024619 * c.r + 0.2817188376 * c.g + 0.6299787005 * c.b, 1.0 / 3.0);
+    return vec3(0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s,
+                1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
+                0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s);
+  }
+  vec3 fromOklab(vec3 o) {
+    float l = o.x + 0.3963377774 * o.y + 0.2158037573 * o.z;
+    float m = o.x - 0.1055613458 * o.y - 0.0638541728 * o.z;
+    float s = o.x - 0.0894841775 * o.y - 1.2914855480 * o.z;
+    l = l * l * l; m = m * m * m; s = s * s * s;
+    vec3 c = vec3(4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+                  -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+                  -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s);
+    return toSrgb(c);
+  }
+`;
+
+// The per-letter reduction: one fragment per letter (a target NAME.maxGlyphs
+// wide, one tall), each averaging its letter's contrast against the field at
+// the rest ink (the floor applied) over a grid of points on its ink. The
+// composite lifts any letter whose mean falls short of glyphRel of the
+// strongest letter's (or of glyphAbs) by the shortfall, the whole letter at
+// once, so it keeps its relief. Encoded c * 2 + 0.5 (c in -0.25..0.25). The
+// result eases from the last one at uGlyphBlend (0 holds it: while the wake
+// is live, so the lift never cancels what a gesture does to a letter).
+export const GLYPH_FRAG = /* glsl */ `
+  uniform sampler2D uField, uName, uSurf, uGlyphPrev;
+  uniform float uGlyphBlend;
+  uniform vec4 uNameRect;
+  uniform vec2 uFull;
+  uniform vec3 uSurfMean;
+  uniform float uNameK, uDetail, uFloor, uFloorSign, uGlyphN;
+  uniform vec4 uGlyphBox[${NAME.maxGlyphs}];
+  ${OKLAB_GLSL}
+  void main() {
+    int i = int(gl_FragCoord.x);
+    if (float(i) >= uGlyphN) { gl_FragColor = vec4(0.5, 0.0, 0.0, 1.0); return; }
+    vec4 box = uGlyphBox[i];
+    float k = clamp(uNameK, 0.0, 1.0);
+    float meanL = oklab(uSurfMean).x;
+    float sum = 0.0, count = 0.0;
+    for (int y = 0; y < ${GLYPH_GRID}; y++) {
+      for (int x = 0; x < ${GLYPH_GRID}; x++) {
+        vec2 g = mix(box.xy, box.zw, (vec2(float(x), float(y)) + 0.5) / ${f(GLYPH_GRID)});
+        vec2 uv = vec2(g.x, 1.0 - g.y);
+        if (textureLod(uName, uv, 0.0).a < 0.5) continue;
+        vec2 px = uNameRect.xy + g * uNameRect.zw;
+        float fieldL = oklab(texture2D(uField, vec2(px.x / uFull.x, 1.0 - px.y / uFull.y)).rgb).x;
+        float surfL = oklab(textureLod(uSurf, uv, 0.0).rgb).x;
+        float L = mix(fieldL, surfL, k) + (surfL - meanL) * k * uDetail;
+        L = uFloorSign > 0.0 ? min(L, fieldL - uFloor) : max(L, fieldL + uFloor);
+        sum += uFloorSign * (fieldL - L);
+        count += 1.0;
+      }
+    }
+    float c = count > 0.0 ? sum / count : 0.0;
+    float previous = texture2D(uGlyphPrev, vec2((float(i) + 0.5) / ${f(NAME.maxGlyphs)}, 0.5)).r;
+    gl_FragColor = vec4(mix(previous, clamp(c * 2.0 + 0.5, 0.0, 1.0), uGlyphBlend), step(0.5, count), 0.0, 1.0);
+  }
+`;
+
+// The composite's name block: the letters from the field, the surface and the wake.
+const NAME_COMPOSITE_GLSL = /* glsl */ `
+  uniform sampler2D uSurf;
+  uniform vec3 uSurfMean;
+  uniform float uSurfIn, uDetail, uChroma, uFloor, uFloorSign, uReveal, uGrainAmt;
+  // The per-letter minimum: each letter's box (the rect's uv, x0 y0 x1 y1)
+  // and its mean contrast from the reduction (GLYPH_FRAG).
+  uniform sampler2D uGlyph;
+  uniform vec4 uGlyphBox[${NAME.maxGlyphs}];
+  uniform float uGlyphN, uGlyphRel, uGlyphAbs;
+  ${WAKE_SAMPLE_GLSL}
+  ${OKLAB_GLSL}
+  vec3 h32(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * vec3(0.1031, 0.1030, 0.0973)); p3 += dot(p3, p3.yxz + 33.33); return fract((p3.xxy + p3.yzz) * p3.zyx); }
+
+  vec2 surfUv(vec2 g) { return vec2(clamp(g.x, 0.0, 1.0), 1.0 - clamp(g.y, 0.0, 1.0)); }
+  float glyphMean(int i) { return (texture2D(uGlyph, vec2((float(i) + 0.5) / ${f(NAME.maxGlyphs)}, 0.5)).r - 0.5) * 0.5; }
+
+  vec3 nameLetters(vec3 field, vec2 g, float greeting) {
+    vec3 surf = textureLod(uSurf, surfUv(g), 0.0).rgb;
+    // The wake raises the ink where it swells: the touched region surfaces
+    // out of the field, then sinks back with the wake (same envelope).
+    float wake = uWakeOn > 0.5 ? wakeAt(g).r : 0.0;
+    float k = clamp(uNameK * (1.0 + uReveal * wake), 0.0, 1.0);
+    vec3 fl = oklab(field), s = oklab(surf), sm = oklab(uSurfMean);
+    float L = mix(fl.x, s.x, k) + (s.x - sm.x) * k * uDetail;
+    // No letter's mean contrast falls under glyphRel of the strongest
+    // letter's (nor under glyphAbs): a letter that does moves by its
+    // shortfall, all of it at once, so it keeps its relief.
+    float strongest = 0.0, mine = 1.0;
+    for (int i = 0; i < ${NAME.maxGlyphs}; i++) {
+      if (float(i) >= uGlyphN) break;
+      float c = glyphMean(i);
+      strongest = max(strongest, c);
+      vec4 box = uGlyphBox[i];
+      if (g.x >= box.x && g.x < box.z) mine = c;
+    }
+    float floorL = uFloor * mix(1.0, ${f(NAME.greetingFloor)}, greeting);
+    L = uFloorSign > 0.0 ? min(L, fl.x - floorL) : max(L, fl.x + floorL);
+    // After the floor, as the reduction measured it, so the letter's mean
+    // moves by exactly its shortfall.
+    L -= uFloorSign * max(0.0, max(uGlyphRel * strongest, uGlyphAbs) - mine) * (1.0 - greeting);
+    L = clamp(L, ${f(NAME.lightness[0])}, ${f(NAME.lightness[1])});
+    vec2 ab = mix(fl.yz, s.yz, clamp(k * uChroma, 0.0, 1.0));
+    vec3 letters = clamp(fromOklab(vec3(L, ab)), 0.0, 1.0);
+    // Film grain after the mix (the Fable lab's): zero-mean triangular noise
+    // locked to the device pixels, scaled by the ink's visibility and capped
+    // by headroom, so it reads at a low ink, never dominates at full ink and
+    // never moves the mean.
+    vec2 cell = floor(gl_FragCoord.xy / ${f(NAME_GRAIN.size)});
+    vec3 n = h32(cell) + h32(cell + 91.7) - 1.0;
+    vec3 grain = mix(vec3(n.g), n, ${f(NAME_GRAIN.chroma)});
+    vec3 room = max(min(letters, 1.0 - letters), 0.0);
+    letters += grain * min(vec3(uGrainAmt * sqrt(k)), room);
+    return letters;
+  }
+`;
 
 // uView maps gl_FragCoord to canvas uv (1 / drawing buffer size). uFull is
 // the canvas in CSS px; uNameRect is the name mask's rect in CSS px (x, y
 // from the top left, w, h; the greeting included); uDpr is device px per CSS
 // px. uNameSpan is the name's own band in the mask (top, height, as fractions
-// of the mask's height): the gradient spans it, the greeting above it takes
-// the gradient's top color and its own alpha (uGreetA).
+// of the mask's height): the handoff gradient spans it. The greeting (above
+// uGreetSplit) takes its own alpha (uGreetA). uSurfIn grows the surface over
+// the solid gradient the loader lands on.
 export const COMPOSITE_FRAG = /* glsl */ `
-  uniform sampler2D uField, uName, uRepel;
+  uniform sampler2D uField, uName;
   uniform vec4 uView, uNameRect;
-  uniform vec2 uFull, uNameSpan, uFlowDir;
-  uniform vec3 uPaper, uGradTop, uGradBottom, uWarm;
+  uniform vec2 uFull, uNameSpan;
+  uniform vec3 uPaper, uGradTop, uGradBottom;
   uniform float uNameK, uNameA, uGreetA, uGreetSplit, uLod, uGrain, uDpr, uSeam;
-  uniform float uMode, uFillMix, uNameT, uRepelOn, uRepelMax;
   float h12(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
-  vec2 h22(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * vec3(0.1031, 0.1030, 0.0973)); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.xx + p3.yz) * p3.zy); }
-  float vnoise(vec2 p) {
-    vec2 i = floor(p), f = fract(p); vec2 u = f * f * (3.0 - 2.0 * f);
-    return mix(mix(h12(i), h12(i + vec2(1.0, 0.0)), u.x), mix(h12(i + vec2(0.0, 1.0)), h12(i + vec2(1.0, 1.0)), u.x), u.y);
-  }
-  // Zero-mean grain in [-1, 1] that moves smoothly (value noise, two taps).
-  float grain(vec2 p) { return vnoise(p) + vnoise(p + vec2(91.7, 37.3)) - 1.0; }
-  vec2 repelAt(vec2 uv) {
-    vec4 r = texture2D(uRepel, clamp(uv, 0.0, 1.0));
-    return (r.xy * 255.0 - 128.0) / 127.0 * uRepelMax;
-  }
-  // A round dot of radius r at distance d, antialiased over one device px.
-  float dotCover(float d, float r) { float aa = 0.6 / uDpr; return 1.0 - smoothstep(r - aa, r + aa, d); }
+  ${NAME_COMPOSITE_GLSL}
 
   void main() {
     vec2 fuv = gl_FragCoord.xy * uView.zw + uView.xy;
@@ -174,99 +474,13 @@ export const COMPOSITE_FRAG = /* glsl */ `
     float greeting = 1.0 - step(uGreetSplit, g.y);
     float m = cover * mix(uNameA, uGreetA, greeting);
     if (m > 0.0) {
-      // A vertical gradient over the name's band against the field's vertical
-      // gradient keeps a contrast floor everywhere, including over the orange.
+      // The loader's solid name: a vertical gradient over the name's band
+      // with static grain locked to the name's own device pixels.
       float gy = clamp((g.y - uNameSpan.x) / uNameSpan.y, 0.0, 1.0);
       vec3 gc = mix(uGradTop, uGradBottom, smoothstep(0.0, 1.0, gy));
-      float k = clamp(uNameK, 0.0, 1.0);
-      // The shipped fill: the gradient with static grain locked to the name's
-      // own device pixels.
       vec2 cell = floor((px - uNameRect.xy) * uDpr);
-      vec3 solid = gc + (h12(cell + 17.0) - 0.5) * 2.0 * uGrain;
-      vec3 letters = mix(field, solid, k);
-      int mode = int(uMode + 0.5);
-      if (mode != 6 && uFillMix > 0.0) {
-        // Name space in CSS px. The repel buffer moves the texture: a pixel
-        // shows the point that was pushed onto it (fixed-point steps of the
-        // inverse). The buffer never stretches the texture past 2x, so they
-        // converge; where overlapping strokes still leave a residual, the
-        // grain thins there by at most half.
-        vec2 np = px - uNameRect.xy;
-        vec2 q = np;
-        float clearing = 0.0;
-        if (uRepelOn > 0.5) {
-          vec2 p1 = np - repelAt(g);
-          vec2 p2 = np - repelAt(p1 / uNameRect.zw);
-          vec2 p3 = np - repelAt(p2 / uNameRect.zw);
-          clearing = 0.5 * smoothstep(2.0, 8.0, length(p3 - p2));
-          q = p3;
-        }
-        // The greeting's strokes are thin: its texture runs finer, so it reads.
-        q *= mix(1.0, 1.7, greeting);
-        // Idle: slow eddies advect the texture a few px; never re-seeded.
-        float tt = uNameT * ${NAME_FILL.idleRate.toFixed(4)};
-        vec2 e = q / ${NAME_FILL.idleScalePx.toFixed(1)};
-        q += (vec2(vnoise(e + vec2(0.0, tt)), vnoise(e + vec2(5.2, 1.3) - tt)) - 0.5) * ${(2 * NAME_FILL.idlePx).toFixed(1)};
-        vec3 fill = letters;
-        if (mode == 0 || mode == 4) {
-          // grain (and grain-warm): fine film grain modulating the ink, the
-          // shadergradient look, over the vertical gradient.
-          float gn = grain(q / ${NAME_FILL.grainPx.toFixed(3)});
-          float ink = k * (1.0 + 0.9 * gn);
-          vec3 tone = gc * (1.0 + 0.14 * gn);
-          if (mode == 4) {
-            // Two tones: a share of the grains turn burnt orange toward the
-            // name's upper right corner (the field's own second hue).
-            float corner = 1.0 - smoothstep(0.0, 0.62, length((g - vec2(1.0, 0.0)) * vec2(1.0, 0.8)));
-            // Value noise sits near 0.5, so the threshold rises from under its
-            // floor (no orange) to about warmShare's quantile at the corner.
-            float pick = step(vnoise(q / ${NAME_FILL.grainPx.toFixed(3)} + vec2(13.1, 71.9)), 0.2 + corner * ${NAME_FILL.warmShare.toFixed(3)});
-            tone = mix(tone, uWarm, pick);
-            ink *= 1.0 + 0.35 * pick;
-          }
-          fill = mix(field, tone, clamp(ink, 0.0, 1.0) * (1.0 - clearing));
-        } else if (mode == 1) {
-          // stipple: one dot per jittered cell (blue-noise-like spacing), of
-          // varying size and tone, denser toward the bottom of the letters.
-          float s = ${NAME_FILL.stipplePx.toFixed(3)};
-          vec2 c = floor(q / s);
-          vec2 j = h22(c);
-          vec2 center = (c + 0.2 + 0.6 * j) * s;
-          float r3 = h12(c + 41.0);
-          float density = mix(0.62, 1.0, gy);
-          float present = step(r3, density);
-          float radius = s * mix(0.27, 0.42, h12(c + 7.0)) * mix(0.88, 1.12, gy);
-          float d = dotCover(length(q - center), radius) * present;
-          float ink = min(1.0, k * 3.0) * mix(0.7, 1.0, j.x);
-          fill = mix(field, gc, ink * d * (1.0 - clearing));
-        } else if (mode == 2) {
-          // halftone: a regular screen rotated 15 degrees, the dot size
-          // following a slow noise and the gradient.
-          float a = radians(${NAME_FILL.halftoneDeg.toFixed(1)});
-          vec2 rq = mat2(cos(a), -sin(a), sin(a), cos(a)) * q;
-          float s = ${NAME_FILL.halftonePx.toFixed(3)};
-          vec2 cc = (floor(rq / s) + 0.5) * s;
-          float tone = clamp(0.3 + 0.45 * vnoise(cc / 140.0 + vec2(tt * 1.6, 0.0)) + 0.18 * gy, 0.08, 0.9);
-          float d = dotCover(length(rq - cc), 0.5 * s * sqrt(tone) * 1.05);
-          fill = mix(field, gc, min(1.0, k * 1.7) * d * (1.0 - clearing));
-        } else if (mode == 3) {
-          // grain-field: the letters as a window onto a stronger field, grain
-          // on top.
-          vec3 win = clamp(field + (field - uPaper) * 0.9, 0.0, 1.0);
-          win = mix(win, gc, 0.3);
-          float gn = grain(q / ${NAME_FILL.grainPx.toFixed(3)});
-          // The window's ink is high, so the thinning is halved again here.
-          fill = mix(field, win * (1.0 + 0.22 * gn), clamp(0.8 + 0.6 * gn, 0.0, 1.0) * (1.0 - 0.5 * clearing));
-        } else if (mode == 5) {
-          // sand: coarse grains drifting slowly along the helix's axis.
-          vec2 sq = q - uFlowDir * uNameT * ${NAME_FILL.sandSpeed.toFixed(2)};
-          float sn = vnoise(sq / ${NAME_FILL.sandPx.toFixed(3)});
-          float grainy = smoothstep(0.38, 0.66, sn) * mix(0.85, 1.1, vnoise(sq / 23.0));
-          float ink = min(1.0, k * 2.0) * grainy;
-          fill = mix(field, gc * (0.92 + 0.16 * sn), ink * (1.0 - clearing));
-        }
-        letters = mix(letters, fill, uFillMix);
-      }
+      vec3 letters = mix(field, gc + (h12(cell + 17.0) - 0.5) * 2.0 * uGrain, clamp(uNameK, 0.0, 1.0));
+      if (uSurfIn > 0.0) letters = mix(letters, nameLetters(field, g, greeting), uSurfIn);
       col = mix(col, letters, m);
     }
     // The hero's bottom edge fades to paper, so the field never meets the page in a seam.
