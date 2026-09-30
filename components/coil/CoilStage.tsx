@@ -6,6 +6,7 @@ import { HOLDING_MODE } from "@/lib/holding";
 import type { InputDriver } from "@/lib/coil/drivers";
 import { CoilErrorBoundary } from "./CoilErrorBoundary";
 import { HeroOverlay, type HeroOverlayHandle } from "./HeroOverlay";
+import { canCreateWebGL2 } from "./webglProbe";
 import type { CoilCardRef, CoilSceneApi, CoilSceneProps } from "./CoilScene";
 // Slice 4: the entrance claim, the loader's tally and the name handoff.
 import { COIL } from "@/lib/coil/constants";
@@ -18,10 +19,11 @@ import { provideNameHandoff } from "@/lib/loader/handoff";
 // DOM overlay. The canvas is sized from this container, never the viewport.
 //
 // The scene chunk (three and all) is imported only after first paint and only
-// when it can run: not under reduced motion, not in holding mode, and with
-// WebGL 2 present. Until its first frame, and forever when it cannot run or
-// fails, the poster and the server-rendered h1 carry the hero. A lost context
-// shows the poster and remounts once; a second loss stays on the poster.
+// when it can run: not under reduced motion, not in holding mode, and with a
+// WebGL 2 context this browser can actually create. Until its first frame,
+// and forever when it cannot run or fails, the poster and the server-rendered
+// h1 carry the hero. A lost context shows the poster and remounts once; a
+// second loss stays on the poster.
 // Reduced motion is live: turning it on tears the scene down, off rebuilds it.
 
 type Props = {
@@ -99,6 +101,11 @@ export function CoilStage({
     let cancelled = false;
     // After first paint: the poster and the greeting are already on screen.
     const frame = requestAnimationFrame(() => {
+      // No real context, no chunk: the poster carries the hero.
+      if (!canCreateWebGL2()) {
+        setFailed(true);
+        return;
+      }
       import("./CoilScene").then(
         (module) => {
           reportHomeLoad("chunk"); // slice 4: the loader's tally
@@ -176,9 +183,10 @@ const AT_REST = { startMs: Number.NEGATIVE_INFINITY, nameFromLoader: false };
 const ENTRANCE_FALLBACK_MS = 3000;
 // ---- end slice 4 ----
 
-// The API check only; a context that still fails to start throws inside the
-// scene and lands on the poster through the boundary. The server renders no
-// scene either way, so this never changes the markup.
+// The API check only, cheap enough for render; the chunk import also probes
+// for a real context first (webglProbe.ts). A context that still fails to
+// start throws inside the scene and lands on the poster through the boundary.
+// The server renders no scene either way, so this never changes the markup.
 function hasWebGL2() {
   return typeof window === "undefined" || typeof WebGL2RenderingContext !== "undefined";
 }
