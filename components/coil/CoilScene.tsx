@@ -471,10 +471,12 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   const repelRect = { x: 0, y: 0, w: 0, h: 0 };
   const strokeFrom = { x: 0, y: 0 };
   const strokeTo = { x: 0, y: 0 };
-  // QA only: ?coildebug=nocards hides the helix (contrast reads of the name);
-  // ?coildebug=at=<seconds> holds the field and the fill on one moment.
+  // QA only: ?coildebug=nocards hides the helix and noname the name (contrast
+  // and warm-share reads); at=<seconds> holds the field and the fill on one
+  // moment.
   const qaTokens = debugTokens();
   const hideCards = qaTokens.has("nocards");
+  const hideName = qaTokens.has("noname");
   const heldAtToken = [...qaTokens].map((token) => token.match(/^at=(\d+(?:\.\d+)?)$/)).find(Boolean);
   const heldAt = heldAtToken ? Number(heldAtToken[1]) : null;
   // ---- end fx-hero state ----
@@ -1235,6 +1237,10 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     // ---- fx-hero: sand drifts along the helix's axis; QA can hide the cards ----
     if (sil) compMaterial.uniforms.uFlowDir.value.set(sil.dx, sil.dy);
     if (hideCards) for (let j = 0; j < geo.slotCount; j++) slots[j].mesh.visible = false;
+    if (hideName) {
+      compMaterial.uniforms.uNameA.value = 0;
+      compMaterial.uniforms.uGreetA.value = 0;
+    }
     // ---- end fx-hero ----
 
     // Hover: picked every frame, since cards move under a still pointer.
