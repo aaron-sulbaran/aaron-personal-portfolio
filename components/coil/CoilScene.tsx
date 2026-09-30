@@ -1,28 +1,13 @@
 "use client";
 
 import { useEffect, useRef, type RefObject } from "react";
-import {
-  CanvasTexture,
-  Color,
-  LinearFilter,
-  LinearSRGBColorSpace,
-  Mesh,
-  PerspectiveCamera,
-  Scene,
-  ShaderMaterial,
-  Vector2,
-  Vector4,
-  WebGLRenderer,
-  type Texture,
-} from "three";
+import { Vector2 } from "three";
 import { siteContent, strandTiles } from "@/lib/content";
 import { COIL } from "@/lib/coil/constants";
-import { projectQuad, restHelix, type Camera, type Quad } from "@/lib/coil/geometry";
+import { projectQuad, restHelix, type Camera } from "@/lib/coil/geometry";
 import { stretchedDy } from "@/lib/coil/motion";
 import { runRender, runUpdate, type RenderSteps, type UpdateSteps } from "@/lib/coil/frame";
 import { budgetFor, sameBudget } from "@/lib/coil/drivers";
-import { FIELD } from "@/lib/coil/field.glsl";
-import { createCardMaterial, type CardUniforms, type SharedCardUniforms } from "@/lib/coil/material";
 import { loadCardSource, type CardSource } from "@/lib/coil/textures";
 import { readCoilTheme, watchTheme } from "@/lib/coil/theme";
 import {
@@ -33,10 +18,12 @@ import {
   removeDebugStats,
   throwFrameAt as throwFrameAtFromTokens,
 } from "./scene/debug";
-import { HOVER_RATE, createCards } from "./scene/cards";
+import { createCards } from "./scene/cards";
 import { createEntrance } from "./scene/entrance";
 import { createProbe } from "./scene/debugProbe";
 import { createField } from "./scene/field";
+import { createFlight } from "./scene/flight";
+import { createFlightOverlay } from "./scene/flightOverlay";
 import { createUnwindWiring } from "./scene/unwind";
 import { createInput } from "./scene/input";
 import { createHover } from "./scene/hover";
@@ -56,23 +43,8 @@ import { reportHomeLoad } from "@/lib/loader/progress";
 import { NAME_FILLS } from "@/lib/coil/field.glsl";
 // ---- end fx-hero imports ----
 // ---- fx-flight imports ----
-import { DataTexture, DoubleSide, GreaterDepth, RGBAFormat, UnsignedByteType } from "three";
 import { flightProbe } from "@/lib/coil/flightProbe";
-import {
-  afterPause,
-  flightPoseAt,
-  handoff,
-  poseGap,
-  resumeStep,
-  seatPose,
-  slotPose,
-  type FlightPose,
-  type HandoffAction,
-  type HandoffEvent,
-  type HandoffState,
-  type Rect,
-} from "@/lib/coil/flight";
-import { CARD_VERT } from "@/lib/coil/material";
+import { afterPause, resumeStep } from "@/lib/coil/flight";
 // ---- end fx-flight imports ----
 
 // The Coil scene: the dynamic chunk CoilStage imports after first paint. It
@@ -89,7 +61,7 @@ import { CARD_VERT } from "@/lib/coil/material";
 // It renders only when needed: never while the tab is hidden, the hero is
 // off screen, a modal holds the scene frozen, or the context is lost.
 
-import type { CoilFlightApi, CoilFlownApi, CoilRuntime, CoilSceneApi, CoilSceneProps } from "./scene/types";
+import type { CoilFlightApi, CoilRuntime, CoilSceneApi, CoilSceneProps } from "./scene/types";
 
 export type {
   CoilCardFaces,
@@ -178,7 +150,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
 
   // ---- passes
   const gl = createPasses(renderer);
-  const { camera, fieldTarget, quad } = gl;
+  const { fieldTarget, quad } = gl;
 
   // ---- fx-hero: the name's fill and repel buffer, made before the composite that holds them ----
   const nameFx = createNameFill(flags.nameParam);
@@ -188,7 +160,6 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
 
   // ---- cards
   const cards = createCards(ctx, gl);
-  const { shared, cardGeometry, slots, faces } = cards;
 
   function applyTheme() {
     field.applyTheme();
@@ -253,6 +224,8 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
 
   const input = createInput(ctx, cards, hover, loop);
   const probe = createProbe(ctx, cards, loop);
+  // ---- fx-flight: the flown card's canvas and the handoff ----
+  const flyer = createFlight(ctx, cards, hover, createFlightOverlay(ctx, gl, cards), probe, loop);
   const unwinder = createUnwindWiring(ctx, compMaterial, heroName, hover, loop);
 
   // ---- the frame
@@ -336,7 +309,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     const step = Math.min(Math.max(interval, 0) / 1000, COIL.lab.maxFrameSeconds);
     const dt = st.resuming ? resumeStep(step) : step;
     st.resuming = false;
-    flightFrame();
+    flyer.flightFrame();
     // ---- end fx-flight freeze ----
     st.lastTime = now;
     const started = performance.now();
@@ -385,7 +358,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     update(0, st.raf ? performance.now() : st.lastTime);
     render(0);
     // ---- fx-flight: a card in flight follows the new layout in the same frame ----
-    flightStill();
+    flyer.flightStill();
     flightLog?.mark("scene-still", probe.state());
     // ---- end fx-flight ----
   }
@@ -424,20 +397,11 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   // ---- the api for slices 4 and 5
   const api: CoilSceneApi = {
     ...slice5Api(),
-    ...flownApi(), // fx-flight
-    freeze(on) {
-      flightLog?.mark(on ? "freeze" : "unfreeze", probe.state()); // fx-flight debug
-      st.frozenByApi = on;
-      if (on) stop();
-      else wake();
-    },
+    beginFlight: flyer.beginFlight, // fx-flight
+    freeze: flyer.freeze,
     cardAt: hover.cardAt,
     quadOf: cards.quadOf,
-    hideSlot(slot) {
-      flightLog?.mark(slot === null ? "mesh-show" : "mesh-hide", { slot }); // fx-flight debug
-      st.hiddenSlot = slot;
-      if (!st.raf) renderStill();
-    },
+    hideSlot: flyer.hideSlot,
     // ---- slice 4: the loader's continuity exit ----
     nameRect: heroName.nameRect,
     landName: heroName.landName,
@@ -495,501 +459,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   // ---- end fx-flight freeze ----
 
   // ---- fx-flight: the flown card ----
-  // A clicked card flies into its modal as itself. The scene draws that one
-  // card with the card shader (its bend, its shading, its lift, the seam, the
-  // seen ring, and the cards that cover it) into a second canvas mounted above
-  // the modal, on the scene canvas's own pixel grid and through the same
-  // projection, so the frame the mesh hides and the frame it shows again are
-  // the same pixels drawn twice. Between the seat and the slot the pose is
-  // flightPoseAt(): the card travels and turns as a body while the bend
-  // flattens and the shading releases. The order of every swap is handoff().
-  const COVER_FRAG = /* glsl */ `
-    uniform sampler2D mapF;
-    varying vec2 vUv; varying vec3 vN; varying vec3 vViewPos;
-    void main() {
-      if (texture2D(mapF, vUv).a < 0.5) discard;
-      gl_FragColor = vec4(0.0);
-    }
-  `;
-  type Cover = { mesh: Mesh; uBend: { value: number }; uAxis: { value: Vector2 }; mapF: { value: Texture | null } };
-  type Overlay = {
-    canvas: HTMLCanvasElement;
-    renderer: WebGLRenderer;
-    camera: PerspectiveCamera;
-    scene: Scene;
-    shared: SharedCardUniforms;
-    card: Mesh;
-    cardUniforms: CardUniforms;
-    under: Mesh;
-    underAlpha: { value: number };
-    covers: Cover[];
-    field: DataTexture | null;
-    fitted: string;
-    origin: { left: number; top: number };
-    faces: Map<number, { of: Texture; front: Texture; back: Texture }>;
-    lost: boolean;
-    onLost: () => void;
-  };
-  type Flight = {
-    slot: number;
-    state: HandoffState;
-    alpha: number; // the mesh's own alpha on its seat (the hidden mesh reads 0)
-    e: number; // as last drawn
-    rect: Rect | null; // the slot, as last given
-    lastSlot: FlightPose | null;
-    pose: FlightPose | null; // as last drawn
-    gap: number; // how far the last drawn pose was from the seat
-  };
-  let overlay: Overlay | null = null;
-  let flight: Flight | null = null;
-  let prewarm = 0;
-
-  function createOverlay(): Overlay | null {
-    try {
-      const flownCanvas = document.createElement("canvas");
-      const flownRenderer = new WebGLRenderer({
-        canvas: flownCanvas,
-        antialias: true,
-        alpha: true,
-        powerPreference: "high-performance",
-      });
-      flownRenderer.outputColorSpace = LinearSRGBColorSpace;
-      flownRenderer.setClearColor(new Color(0, 0, 0), 0);
-      flownRenderer.autoClear = false;
-      flownRenderer.setPixelRatio(1);
-      flownCanvas.style.position = "fixed";
-      flownCanvas.style.pointerEvents = "none";
-      flownCanvas.style.display = "block";
-      const flownShared: SharedCardUniforms = {
-        uField: { value: null },
-        uView: { value: new Vector4(0, 0, 1, 1) },
-        uInk: { value: new Color() },
-        uPaper: { value: new Color() },
-        uSheen: { value: 0 },
-        uSeam: { value: FIELD.seamFade },
-      };
-      const geometry = cardGeometry;
-      // The card: blended, so its soft edge and its alpha show over the modal;
-      // at full alpha it writes exactly what the coil's opaque card writes.
-      const { material, uniforms } = createCardMaterial(flownShared);
-      material.transparent = true;
-      material.depthWrite = true;
-      const card = new Mesh(geometry, material);
-      card.frustumCulled = false;
-      card.renderOrder = 1;
-      // The same card again, only where a nearer card covers it, fading in
-      // as the card leaves the coil.
-      const underAlpha = { value: 0 };
-      const under = new Mesh(
-        geometry,
-        new ShaderMaterial({
-          vertexShader: material.vertexShader,
-          fragmentShader: material.fragmentShader,
-          side: DoubleSide,
-          transparent: true,
-          depthWrite: false,
-          depthFunc: GreaterDepth,
-          uniforms: { ...(uniforms as unknown as Record<string, { value: unknown }>), uAlpha: underAlpha },
-        }),
-      );
-      under.frustumCulled = false;
-      under.renderOrder = 2;
-      const flownScene = new Scene();
-      flownScene.add(card, under);
-      const created: Overlay = {
-        canvas: flownCanvas,
-        renderer: flownRenderer,
-        camera: new PerspectiveCamera(COIL.camera.fovDeg, 1, 0.1, 100),
-        scene: flownScene,
-        shared: flownShared,
-        card,
-        cardUniforms: uniforms,
-        under,
-        underAlpha,
-        covers: [],
-        field: null,
-        fitted: "",
-        origin: { left: 0, top: 0 },
-        faces: new Map(),
-        lost: false,
-        onLost: () => {
-          created.lost = true;
-        },
-      };
-      flownCanvas.addEventListener("webglcontextlost", created.onLost);
-      return created;
-    } catch {
-      return null;
-    }
-  }
-
-  function disposeOverlay(o: Overlay) {
-    o.canvas.removeEventListener("webglcontextlost", o.onLost);
-    o.canvas.remove();
-    o.faces.forEach((face) => {
-      face.front.dispose();
-      face.back.dispose();
-    });
-    (o.card.material as ShaderMaterial).dispose();
-    (o.under.material as ShaderMaterial).dispose();
-    o.covers.forEach((cover) => (cover.mesh.material as ShaderMaterial).dispose());
-    o.field?.dispose();
-    o.renderer.dispose();
-    o.renderer.forceContextLoss();
-  }
-
-  function liveOverlay() {
-    if (overlay?.lost) {
-      disposeOverlay(overlay);
-      overlay = null;
-    }
-    overlay ??= createOverlay();
-    return overlay;
-  }
-
-  // The flown card's own copies of a tile's two faces (a texture belongs to
-  // the context that uploaded it), repainted faces included.
-  function flownFaces(o: Overlay, tile: number) {
-    const of = faces[tile].front;
-    const held = o.faces.get(tile);
-    if (held && held.of === of) return held;
-    held?.front.dispose();
-    held?.back.dispose();
-    const copy = (source: Texture) => {
-      const texture = new CanvasTexture(source.image as HTMLCanvasElement);
-      texture.anisotropy = Math.min(8, o.renderer.capabilities.getMaxAnisotropy());
-      return texture;
-    };
-    const next = { of, front: copy(faces[tile].front), back: copy(faces[tile].back) };
-    o.faces.set(tile, next);
-    return next;
-  }
-
-  // The largest whole offset (in buffer px) up to `most` that is also a
-  // whole number of device px; 0 when there is none near.
-  function gridOffset(most: number, devicePerBuffer: number) {
-    const from = Math.floor(most);
-    for (let k = from; k > 0 && k > from - 64; k--) {
-      const onDevice = k * devicePerBuffer;
-      if (Math.abs(onDevice - Math.round(onDevice)) < 1e-4) return k;
-    }
-    return 0;
-  }
-
-  // The smallest whole size (in buffer px) from `least` up that is also a
-  // whole number of device px, so the browser scales both canvases alike.
-  function gridSize(least: number, devicePerBuffer: number) {
-    const from = Math.max(1, Math.ceil(least));
-    for (let k = from; k < from + 64; k++) {
-      const onDevice = k * devicePerBuffer;
-      if (Math.abs(onDevice - Math.round(onDevice)) < 1e-4) return k;
-    }
-    return from;
-  }
-
-  // The flown canvas covers the viewport, a whole number of the scene
-  // canvas's buffer pixels from its origin, and looks through a window of the
-  // scene camera's own projection: the two canvases share one pixel grid.
-  function fitOverlay(o: Overlay) {
-    if (!st.geoCamera) return;
-    const rect = host.getBoundingClientRect();
-    const buffer = renderer.getDrawingBufferSize(new Vector2());
-    const sx = buffer.x / st.view.width;
-    const sy = buffer.y / st.view.height;
-    // Both canvases also land on the same device pixels: the offset is a
-    // whole number of device pixels too, or none at all.
-    const device = window.devicePixelRatio || 1;
-    const kx = gridOffset(-rect.left * sx, device / sx);
-    const ky = gridOffset(-rect.top * sy, device / sy);
-    const left = rect.left + kx / sx;
-    const top = rect.top + ky / sy;
-    const width = gridSize((window.innerWidth - left) * sx, device / sx);
-    const height = gridSize((window.innerHeight - top) * sy, device / sy);
-    o.origin = { left: rect.left, top: rect.top };
-    const fitted = [left, top, width, height, buffer.x, buffer.y, st.view.width, st.view.height, st.lastFieldTime].join(",");
-    if (fitted === o.fitted) return;
-    o.fitted = fitted;
-    o.renderer.setSize(width, height, false);
-    o.canvas.style.left = `${left}px`;
-    o.canvas.style.top = `${top}px`;
-    o.canvas.style.width = `${width / sx}px`;
-    o.canvas.style.height = `${height / sy}px`;
-    o.camera.fov = camera.fov;
-    o.camera.aspect = camera.aspect;
-    o.camera.position.copy(camera.position);
-    o.camera.quaternion.copy(camera.quaternion);
-    o.camera.setViewOffset(buffer.x, buffer.y, kx, ky, width, height);
-    o.camera.updateMatrixWorld();
-    (o.shared.uView.value as Vector4).set(kx / buffer.x, (buffer.y - ky - height) / buffer.y, 1 / buffer.x, 1 / buffer.y);
-    // The field as the scene last drew it: the recede and the seam read it.
-    const w = fieldTarget.width;
-    const h = fieldTarget.height;
-    const bytes = new Uint8Array(w * h * 4);
-    renderer.readRenderTargetPixels(fieldTarget, 0, 0, w, h, bytes);
-    o.field?.dispose();
-    const field = new DataTexture(bytes, w, h, RGBAFormat, UnsignedByteType);
-    field.minFilter = LinearFilter;
-    field.magFilter = LinearFilter;
-    field.needsUpdate = true;
-    o.field = field;
-    o.shared.uField.value = field;
-    (o.shared.uInk.value as Color).copy(shared.uInk.value as Color);
-    (o.shared.uPaper.value as Color).copy(shared.uPaper.value as Color);
-    o.shared.uSeam.value = shared.uSeam.value;
-  }
-
-  const placeFlown = cards.placeMesh;
-
-  // The cards nearer than the flown one, drawn to depth only at the poses the
-  // scene last rendered: they cover the flown card as they covered the mesh.
-  function placeCovers(o: Overlay, slot: number, on: boolean, mapF: Texture) {
-    let used = 0;
-    if (on && st.geo) {
-      for (let j = 0; j < st.geo.slotCount; j++) {
-        const pose = st.rendered[j];
-        if (j === slot || !pose || pose.alpha < 0.995) continue;
-        let cover = o.covers[used];
-        if (!cover) {
-          const uBend = { value: 0 };
-          const uAxis = { value: new Vector2(0, 1) };
-          const map = { value: null as Texture | null };
-          const mesh = new Mesh(
-            cardGeometry,
-            new ShaderMaterial({
-              vertexShader: CARD_VERT,
-              fragmentShader: COVER_FRAG,
-              side: DoubleSide,
-              colorWrite: false,
-              uniforms: { uBend, uAxis, mapF: map },
-            }),
-          );
-          mesh.frustumCulled = false;
-          mesh.renderOrder = 0;
-          o.scene.add(mesh);
-          cover = { mesh, uBend, uAxis, mapF: map };
-          o.covers.push(cover);
-        }
-        placeFlown(cover.mesh, { ...pose } as FlightPose);
-        cover.uBend.value = pose.bend;
-        cover.uAxis.value.set(Math.sin(pose.beta), Math.cos(pose.beta));
-        cover.mapF.value = mapF;
-        cover.mesh.visible = true;
-        used += 1;
-      }
-    }
-    for (let i = used; i < o.covers.length; i++) o.covers[i].mesh.visible = false;
-  }
-
-  function drawFlown(o: Overlay, slot: number, pose: FlightPose) {
-    fitOverlay(o);
-    const textures = flownFaces(o, slots[slot].tile);
-    const u = o.cardUniforms;
-    u.mapF.value = textures.front;
-    u.mapB.value = textures.back;
-    u.uBend.value = pose.bend;
-    (u.uAxis.value as Vector2).set(Math.sin(pose.beta), Math.cos(pose.beta));
-    u.uFade.value = pose.fade;
-    u.uBright.value = pose.bright;
-    u.uAlpha.value = pose.alpha;
-    u.uSeen.value = pose.seen;
-    u.uShade.value = pose.shade;
-    u.uSeamMix.value = pose.seam;
-    u.uSoft.value = pose.soft;
-    o.shared.uSheen.value = pose.sheen;
-    placeFlown(o.card, pose);
-    placeFlown(o.under, pose);
-    const covered = pose.reveal < 1;
-    o.underAlpha.value = pose.alpha * pose.reveal;
-    o.under.visible = covered && pose.reveal > 0;
-    placeCovers(o, slot, covered, textures.front);
-    o.renderer.setRenderTarget(null);
-    o.renderer.clear();
-    o.renderer.render(o.scene, o.camera);
-  }
-
-  // The card on its seat, as the scene would draw it now.
-  function seatOf(f: Flight): FlightPose | null {
-    const pose = st.rendered[f.slot];
-    const slot = slots[f.slot];
-    if (!pose || !slot) return null;
-    return seatPose(
-      { ...pose, alpha: f.alpha },
-      {
-        bright: slot.uniforms.uBright.value,
-        shade: slot.uniforms.uShade.value,
-        sheen: shared.uSheen.value,
-        seen: slot.uniforms.uSeen.value,
-      },
-    );
-  }
-
-  // Where the lift is heading: the scene's own hover rule, with the flown
-  // card counted on its seat.
-  function still() {
-    update(0, st.lastTime);
-    render(0);
-    flightLog?.mark("scene-still", probe.state());
-  }
-
-  function act(f: Flight, event: HandoffEvent) {
-    const next = handoff(f.state, event);
-    f.state = next.state;
-    next.actions.forEach((action: HandoffAction) => {
-      if (action === "draw-card") {
-        const seat = seatOf(f);
-        const o = liveOverlay();
-        if (seat && o) {
-          f.pose = seat;
-          f.gap = 0;
-          drawFlown(o, f.slot, seat);
-          flightLog?.mark("clone-mount", { slot: f.slot });
-        }
-      } else if (action === "hide-mesh") {
-        flightLog?.mark("mesh-hide", { slot: f.slot });
-        st.hiddenSlot = f.slot;
-        still();
-      } else if (action === "show-mesh") {
-        flightLog?.mark("mesh-show", { slot: f.slot, gap: f.gap });
-        st.hiddenSlot = null;
-        still();
-      } else if (action === "clear-card") {
-        if (overlay && !overlay.lost) {
-          overlay.renderer.setRenderTarget(null);
-          overlay.renderer.clear();
-          // Its buffers go back until the next flight.
-          overlay.renderer.setSize(1, 1, false);
-          overlay.fitted = "";
-        }
-        overlay?.canvas.remove();
-        flightLog?.mark("clone-unmount", { slot: f.slot });
-      } else if (action === "resume") {
-        // The loop is already stepping this frame (one frame's step, see wake).
-        flightLog?.mark("unfreeze", probe.state());
-      }
-    });
-  }
-
-  function layoutStamp() {
-    const rect = host.getBoundingClientRect();
-    return [st.view.width, st.view.height, st.view.dpr, rect.left, rect.top].join(",");
-  }
-
-  // The flown card at its progress, between the seat as the scene would draw
-  // it now and the slot as last given. Returns the flat card's corners.
-  function flightDraw(f: Flight, o: Overlay): Quad | null {
-    if (!st.geoCamera || f.state === "landed" || f.state === "rest") return null;
-    const seat = seatOf(f);
-    if (!seat) return null;
-    const rect = host.getBoundingClientRect();
-    const origin = { left: rect.left, top: rect.top };
-    if (f.rect) f.lastSlot = slotPose(st.geoCamera, f.rect, origin);
-    const pose = flightPoseAt(seat, f.lastSlot ?? seat, f.e);
-    f.pose = pose;
-    f.gap = poseGap(pose, seat);
-    drawFlown(o, f.slot, pose);
-    return projectQuad({ ...pose, bend: 0 }, st.geoCamera, origin);
-  }
-
-  // The scene drew a still frame (a resize re-laid it out): the card in
-  // flight is drawn again through the new layout, in the same frame.
-  function flightStill() {
-    if (flight && flight.pose && overlay && !overlay.lost) flightDraw(flight, overlay);
-  }
-
-  // The frame after a landing is the scene's first live one.
-  function flightFrame() {
-    if (!flight || flight.state !== "landed") return;
-    act(flight, "frame");
-    flight = null;
-  }
-
-  function flownApi(): CoilFlownApi {
-    return {
-      beginFlight(slot, mount) {
-        const pose = st.rendered[slot];
-        if (!st.ready || st.contextLost || st.disposed || !st.geoCamera || !pose || !slots[slot] || pose.alpha <= 0.01) return null;
-        const o = liveOverlay();
-        if (!o) return null;
-        if (flight) act(flight, "abort");
-        st.frozenByApi = true;
-        st.landedAhead = false;
-        stop();
-        const f: Flight = { slot, state: "rest", alpha: pose.alpha, e: 0, rect: null, lastSlot: null, pose: null, gap: 0 };
-        flight = f;
-        mount.appendChild(o.canvas);
-        act(f, "open");
-        if (!f.pose) {
-          flight = null;
-          return null;
-        }
-        const finish = (event: "land" | "abort") => {
-          if (flight !== f || (f.state !== "home" && event === "land")) return;
-          act(f, event);
-          if (f.state !== "landed") return;
-          // A landing resumes the scene itself, on the next frame, ahead of
-          // the props (the modal has closed; the flight was the one thing
-          // holding it). A flight torn down under an open modal stays frozen.
-          st.frozenByApi = false;
-          st.landedAhead = event === "land";
-          wake();
-          // No frame to come (a modal is open, the hero is off screen): done.
-          if (!st.raf) {
-            act(f, "frame");
-            flight = null;
-          }
-        };
-        return {
-          draw(e, rect, dt) {
-            if (flight !== f || liveOverlay() !== o) return null;
-            if (f.state === "home" && dt > 0) {
-              // The lift follows the pointer on the way home, at the scene's
-              // own rate, so the card lands as the scene would draw it next.
-              const lifted = slots[f.slot];
-              lifted.hover += (hover.liftTarget(f.slot, f.alpha) - lifted.hover) * (1 - Math.exp(-Math.min(dt, COIL.lab.maxFrameSeconds) * HOVER_RATE));
-              update(0, st.lastTime);
-            }
-            f.e = e;
-            if (rect) f.rect = rect;
-            return flightDraw(f, o);
-          },
-          stamp: layoutStamp,
-          arrive() {
-            if (flight === f) act(f, "arrive");
-          },
-          close() {
-            if (flight === f) act(f, "close");
-          },
-          land() {
-            flightLog?.mark("clone-landed", { slot: f.slot, gap: f.gap });
-            finish("land");
-          },
-          abort() {
-            finish("abort");
-          },
-        };
-      },
-    };
-  }
-
-  function flownDispose() {
-    if (prewarm) window.clearTimeout(prewarm);
-    if (overlay) disposeOverlay(overlay);
-    overlay = null;
-    flight = null;
-  }
-
-  // The flown canvas and its program are made ahead of the first click.
-  function warmOverlay() {
-    prewarm = window.setTimeout(() => {
-      prewarm = 0;
-      // Only a fine pointer flies cards (a tap opens its modal directly).
-      if (st.disposed || st.contextLost || overlay || live.current.input !== "fine") return;
-      const o = liveOverlay();
-      if (o) o.renderer.compile(o.scene, o.camera);
-    }, 1200);
-  }
-
-  probe.installFlight(() => flight); // fx-flight debug
+  probe.installFlight(flyer.current); // fx-flight debug
   // ---- end fx-flight ----
 
   // ---- slice 7: the coarse pointer's drag-to-spin ----
@@ -1034,7 +504,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       const box = st.pendingSize ?? host.getBoundingClientRect();
       layout(box.width, box.height);
       wake();
-      warmOverlay(); // fx-flight
+      flyer.warm(); // fx-flight
     })
     .catch((error) => {
       if (!st.disposed) live.current.onError(error);
@@ -1073,7 +543,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       unlistenTaps();
       unwatchContext();
       slice5Dispose();
-      flownDispose(); // fx-flight
+      flyer.dispose(); // fx-flight
       unlistenDrag(); // slice 7
       setSceneHover(false);
       live.current.overlay.current?.nudge(null);
