@@ -487,7 +487,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     vertexShader: FULLSCREEN_VERT,
     fragmentShader: FIELD_FRAG,
     uniforms: {
-      uT: { value: 0 },
+      uT: { value: 0 }, // fx-hero: set by render from fieldClocks
       // ---- fx-hero: the weather clock and warp (drift presets) ----
       uTw: { value: 0 },
       uWarp: { value: DRIFT_PRESETS[driftPreset].warp },
@@ -1194,7 +1194,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     const listProgress = unwindProgress(unwind, now);
     unwindFrame(listProgress);
     // ---- end slice 5 block ----
-    stepNameFill(dt, listProgress);
+    stepNameFill(dt, listProgress); // fx-hero: the fill's idle clock and the repel
 
     const seen = getSeen();
     const hoverStep = 1 - Math.exp(-dt * HOVER_RATE);
