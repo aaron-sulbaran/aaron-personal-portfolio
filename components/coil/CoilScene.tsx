@@ -2,15 +2,15 @@
 
 import { useEffect, useRef, type RefObject } from "react";
 import { Vector2 } from "three";
-import { siteContent, strandTiles } from "@/lib/content";
+import { strandTiles } from "@/lib/content";
 import { projectQuad, type Camera } from "@/lib/coil/geometry";
-import { budgetFor, sameBudget } from "@/lib/coil/drivers";
-import { loadCardSource, type CardSource } from "@/lib/coil/textures";
+import { budgetFor } from "@/lib/coil/drivers";
 import { readCoilTheme, watchTheme } from "@/lib/coil/theme";
 import { createDebugStats, debugTokens, readDebugFlags, removeDebugStats } from "./scene/debug";
 import { createCards } from "./scene/cards";
 import { createEntrance } from "./scene/entrance";
 import { createProbe } from "./scene/debugProbe";
+import { boot, resync } from "./scene/boot";
 import { createField } from "./scene/field";
 import { createLoop } from "./scene/loop";
 import { createFlight } from "./scene/flight";
@@ -26,7 +26,6 @@ import { gestureOwner } from "@/lib/coil/capture";
 // ---- end fx-input imports ----
 import { setSceneHover } from "@/lib/cursor/hover";
 // Slice 4: the loader's tally and the name handoff.
-import { reportHomeLoad } from "@/lib/loader/progress";
 // ---- slice 5 imports: the book, the unwind egg and the flight ----
 // ---- end slice 5 imports ----
 // ---- fx-hero imports: the greeting in the name, the name's fill and repel, the drift presets ----
@@ -104,8 +103,6 @@ export default function CoilScene(props: CoilSceneProps) {
 }
 
 // ---------------------------------------------------------------- runtime
-
-const TEXTURE_TIMEOUT_MS = 6000; // the loader's give-up time: a slow photo paints the plain pane
 
 function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject<CoilSceneProps>): CoilRuntime {
   const flags = readDebugFlags();
@@ -238,7 +235,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     { field: field.field, composite: field.composite, cards: cards.draw },
     { flightFrame: flyer.flightFrame, flightStill: flyer.flightStill, probeState: probe.state },
   );
-  const { wake, stop, renderStill } = core;
+  const { wake, stop } = core;
 
   // ---- observers and listeners
   const unobserveResize = observeResize(ctx, layout, loop);
@@ -322,70 +319,11 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   if (debug) debug.drag = input.dragState;
   // ---- end slice 7 ----
 
-  // ---- boot: the name's face and every card's sources, then the first frame
-  const style = getComputedStyle(document.documentElement);
-  st.nameFamily = style.getPropertyValue("--font-display").trim() || "sans-serif";
-  const withTimeout = <T,>(promise: Promise<T>, fallback: T) =>
-    Promise.race([promise, new Promise<T>((resolve) => window.setTimeout(() => resolve(fallback), TEXTURE_TIMEOUT_MS))]);
-  const logoFor = (slug: string) => siteContent.workItems.find((item) => item.slug === slug)?.logo ?? null;
-  // Slice 4: each card source (or its timeout) moves the loader's tally.
-  let texturesSettled = 0;
-  const countTexture = (source: CardSource) => {
-    texturesSettled += 1;
-    reportHomeLoad("textures", texturesSettled / tileCount);
-    return source;
-  };
-
-  Promise.all([
-    withTimeout(
-      document.fonts.load(`900 100px ${st.nameFamily}`).then(() => undefined),
-      undefined,
-    ),
-    Promise.all(
-      tiles.map((tile) =>
-        withTimeout<CardSource>(
-          loadCardSource(tile, logoFor, st.budget.textureSize),
-          tile.kind === "photo" ? { kind: "photo", key: tile.key, image: null } : { kind: "work", key: tile.key, logo: null },
-        ).then(countTexture), // slice 4: the loader's tally
-      ),
-    ),
-  ])
-    .then(([, loaded]) => {
-      if (st.disposed) return;
-      cards.setSources(loaded);
-      applyTheme();
-      tiles.forEach((_, i) => cards.paintTile(i));
-      st.ready = true;
-      const box = st.pendingSize ?? host.getBoundingClientRect();
-      layout(box.width, box.height);
-      wake();
-      flyer.warm(); // fx-flight
-    })
-    .catch((error) => {
-      if (!st.disposed) live.current.onError(error);
-    });
-
-  // Slice 7: an input change (a tablet gaining a trackpad, emulation) moves
-  // the budget: re-lay out at the new DPR cap and repaint every card at the
-  // new texture size, a few per frame as a theme change does.
-  function sync() {
-    // fx-flight freeze: the props have caught up with the landing (or name a new modal).
-    st.landedAhead = false;
-    const next = budgetFor(live.current.input);
-    if (!sameBudget(next, st.budget)) {
-      st.budget = next;
-      if (st.ready && !st.contextLost && !st.disposed) {
-        layout(st.view.width, st.view.height);
-        cards.repaintAll();
-        if (!st.raf) renderStill();
-      }
-    }
-    wake();
-  }
+  boot(ctx, cards, { applyTheme, layout, warm: flyer.warm }, loop);
 
   return {
     wake,
-    sync,
+    sync: () => resync(ctx, cards, layout, loop),
     dispose() {
       st.disposed = true;
       stop();
