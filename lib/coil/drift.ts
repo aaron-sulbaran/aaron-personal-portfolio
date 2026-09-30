@@ -70,8 +70,8 @@ export const DEFAULT_DRIFT: DriftPreset = "visible";
 type DriftValues = { pingPong: PingPong; speed: number; warp: number };
 export const DRIFT_PRESETS: Readonly<Record<DriftPreset, DriftValues>> = {
   calm: { pingPong: FIELD_DRIFT, speed: FIELD_SPEED, warp: FIELD_WARP_TUNED },
-  visible: { pingPong: { low: 5, peak: 21, ease: 3 }, speed: 1.4, warp: 0.7 },
-  lively: { pingPong: { low: 3, peak: 27, ease: 3 }, speed: 2, warp: 0.82 },
+  visible: { pingPong: { low: 4, peak: 24, ease: 3 }, speed: 2, warp: 0.8 },
+  lively: { pingPong: { low: 2, peak: 30, ease: 3 }, speed: 2.8, warp: 0.95 },
 };
 
 export function parseDriftPreset(raw: string | null | undefined): DriftPreset {
