@@ -10,5 +10,7 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["lib/**/*.test.ts"],
+    // The Playwright suite (e2e/, pnpm test:e2e) runs in real browsers, never here.
+    exclude: ["e2e/**", "node_modules/**"],
   },
 });
