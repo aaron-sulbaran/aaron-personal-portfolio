@@ -126,8 +126,6 @@ export const NAME = {
   greetingCap: 0.18,
   greetingGap: 0.45,
   greetingFadeMs: 350,
-  // The greeting's strokes are thin: its contrast floor is this times the name's.
-  greetingFloor: 1.8,
   // After the loader lands its solid DOM name, the surface grows in over this.
   surfaceInMs: 900,
   // s: the per-letter minimum follows the drifting surface over about this.
@@ -135,7 +133,8 @@ export const NAME = {
   // OKLab L the letters stay within: never pure black or white, even at full
   // ink (the unwound list's lead draws the whole surface).
   lightness: [0.22, 0.95] as const,
-  // The composite holds up to this many letters' centers (the per-letter minimum).
+  // The per-letter reduction's slots: the name's letters from 0, the
+  // greeting in the last.
   maxGlyphs: 8,
 } as const;
 
@@ -190,12 +189,29 @@ export function nameDisturb(dark: boolean) {
 // grain: film grain's amplitude at full ink. glyphRel: no letter's
 // glyph-scale contrast falls under this share of the strongest letter's (the
 // review's "A" fix, 2026-09-30); glyphAbs: nor under this (dark: the letters
-// about +0.14 over the night field).
+// about +0.14 over the night field). greetFloor: the greeting's floor as a
+// multiple of the name's (its strokes are thin). greetCap: when above 0, the
+// greeting's mean contrast is held at or under this share of the name's mean
+// (dark: the small line outshone the name). Measured against the field under
+// it, which reads a little stronger than the field around it, hence just
+// over 1: the greeting lands at or just under the name's mean.
 export function nameComposite(dark: boolean) {
   return dark
-    ? { floor: 0.04, floorSign: -1, detail: 1.3, reveal: 2.2, chroma: 1.7, grain: 0.055 * 0.7, glyphRel: 0.72, glyphAbs: 0.11 }
-    : { floor: 0.08, floorSign: 1, detail: 1, reveal: 1.8, chroma: 2.4, grain: 0.055, glyphRel: 0.72, glyphAbs: 0 };
+    ? {
+        floor: 0.04,
+        floorSign: -1,
+        detail: 1.3,
+        reveal: 2.2,
+        chroma: 1.7,
+        grain: 0.055 * 0.7,
+        glyphRel: 0.72,
+        glyphAbs: 0.11,
+        greetFloor: 1,
+        greetCap: 1.05,
+      }
+    : { floor: 0.08, floorSign: 1, detail: 1, reveal: 1.8, chroma: 2.4, grain: 0.055, glyphRel: 0.72, glyphAbs: 0, greetFloor: 1.8, greetCap: 0 };
 }
+const GREET_SLOT = NAME.maxGlyphs - 1;
 export const NAME_GRAIN = { size: 1, chroma: 0.35 } as const; // device px, and its color share
 
 const f = (x: number) => x.toFixed(4);
@@ -359,13 +375,15 @@ export const GLYPH_FRAG = /* glsl */ `
   uniform vec4 uNameRect;
   uniform vec2 uFull;
   uniform vec3 uSurfMean;
-  uniform float uNameK, uDetail, uFloor, uFloorSign, uGlyphN;
+  uniform float uNameK, uDetail, uFloor, uFloorSign, uGlyphN, uGreetFloor;
   uniform vec4 uGlyphBox[${NAME.maxGlyphs}];
   ${OKLAB_GLSL}
   void main() {
     int i = int(gl_FragCoord.x);
-    if (float(i) >= uGlyphN) { gl_FragColor = vec4(0.5, 0.0, 0.0, 1.0); return; }
+    bool greeting = i == ${GREET_SLOT};
+    if (float(i) >= uGlyphN && !greeting) { gl_FragColor = vec4(0.5, 0.0, 0.0, 1.0); return; }
     vec4 box = uGlyphBox[i];
+    float floorL = greeting ? uFloor * uGreetFloor : uFloor;
     float k = clamp(uNameK, 0.0, 1.0);
     float meanL = oklab(uSurfMean).x;
     float sum = 0.0, count = 0.0;
@@ -378,7 +396,7 @@ export const GLYPH_FRAG = /* glsl */ `
         float fieldL = oklab(texture2D(uField, vec2(px.x / uFull.x, 1.0 - px.y / uFull.y)).rgb).x;
         float surfL = oklab(textureLod(uSurf, uv, 0.0).rgb).x;
         float L = mix(fieldL, surfL, k) + (surfL - meanL) * k * uDetail;
-        L = uFloorSign > 0.0 ? min(L, fieldL - uFloor) : max(L, fieldL + uFloor);
+        L = uFloorSign > 0.0 ? min(L, fieldL - floorL) : max(L, fieldL + floorL);
         sum += uFloorSign * (fieldL - L);
         count += 1.0;
       }
@@ -398,7 +416,7 @@ const NAME_COMPOSITE_GLSL = /* glsl */ `
   // and its mean contrast from the reduction (GLYPH_FRAG).
   uniform sampler2D uGlyph;
   uniform vec4 uGlyphBox[${NAME.maxGlyphs}];
-  uniform float uGlyphN, uGlyphRel, uGlyphAbs;
+  uniform float uGlyphN, uGlyphRel, uGlyphAbs, uGreetFloor, uGreetCap;
   ${WAKE_SAMPLE_GLSL}
   ${OKLAB_GLSL}
   vec3 h32(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * vec3(0.1031, 0.1030, 0.0973)); p3 += dot(p3, p3.yxz + 33.33); return fract((p3.xxy + p3.yzz) * p3.zyx); }
@@ -417,19 +435,27 @@ const NAME_COMPOSITE_GLSL = /* glsl */ `
     // No letter's mean contrast falls under glyphRel of the strongest
     // letter's (nor under glyphAbs): a letter that does moves by its
     // shortfall, all of it at once, so it keeps its relief.
-    float strongest = 0.0, mine = 1.0;
+    float strongest = 0.0, mine = 1.0, total = 0.0;
     for (int i = 0; i < ${NAME.maxGlyphs}; i++) {
       if (float(i) >= uGlyphN) break;
       float c = glyphMean(i);
       strongest = max(strongest, c);
+      total += c;
       vec4 box = uGlyphBox[i];
       if (g.x >= box.x && g.x < box.z) mine = c;
     }
-    float floorL = uFloor * mix(1.0, ${f(NAME.greetingFloor)}, greeting);
+    float floorL = uFloor * mix(1.0, uGreetFloor, greeting);
     L = uFloorSign > 0.0 ? min(L, fl.x - floorL) : max(L, fl.x + floorL);
     // After the floor, as the reduction measured it, so the letter's mean
     // moves by exactly its shortfall.
     L -= uFloorSign * max(0.0, max(uGlyphRel * strongest, uGlyphAbs) - mine) * (1.0 - greeting);
+    // The greeting's mean held at or under greetCap of the name's (the same
+    // move the other way, never past the plain floor).
+    if (uGreetCap > 0.0 && greeting > 0.0) {
+      float excess = max(0.0, glyphMean(${GREET_SLOT}) - uGreetCap * total / max(1.0, uGlyphN));
+      L += uFloorSign * excess * greeting;
+      L = uFloorSign > 0.0 ? min(L, fl.x - uFloor) : max(L, fl.x + uFloor);
+    }
     L = clamp(L, ${f(NAME.lightness[0])}, ${f(NAME.lightness[1])});
     vec2 ab = mix(fl.yz, s.yz, clamp(k * uChroma, 0.0, 1.0));
     vec3 letters = clamp(fromOklab(vec3(L, ab)), 0.0, 1.0);

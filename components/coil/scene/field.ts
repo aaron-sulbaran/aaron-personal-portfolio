@@ -88,6 +88,8 @@ export function createField(ctx: SceneCtx, gl: Gl, init: CompositeInit) {
       uGlyphN: { value: 0 },
       uGlyphRel: { value: 0 },
       uGlyphAbs: { value: 0 },
+      uGreetFloor: { value: 1 },
+      uGreetCap: { value: 0 },
       // ---- end the name ----
     },
   });
@@ -122,6 +124,8 @@ export function createField(ctx: SceneCtx, gl: Gl, init: CompositeInit) {
     cu.uGrainAmt.value = name.grain;
     cu.uGlyphRel.value = name.glyphRel;
     cu.uGlyphAbs.value = name.glyphAbs;
+    cu.uGreetFloor.value = name.greetFloor;
+    cu.uGreetCap.value = name.greetCap;
   }
 
   function resizePasses(buffer: Vector2) {

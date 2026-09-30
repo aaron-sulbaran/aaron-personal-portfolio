@@ -196,13 +196,16 @@ for (const colorScheme of ["light", "dark"] as const) {
   });
 }
 
-test("name (dark): the letters sit about +0.14 L over the night field at rest", async ({ page }) => {
+test("name (dark): the letters sit about +0.14 L over the night field at rest, the greeting at or just under them", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "dark" });
   await openHome(page, { debug: "nocards,at=4" });
   const read = await contrast(page);
-  test.info().annotations.push({ type: "measure", description: `dark letters ${read.meanDL.toFixed(3)} L over the field` });
+  test.info().annotations.push({ type: "measure", description: `dark letters ${read.meanDL.toFixed(3)}, greeting ${read.greetDL.toFixed(3)} L over the field` });
   expect(read.meanDL).toBeGreaterThan(0.11);
   expect(read.meanDL).toBeLessThan(0.2);
+  // The small line never outshines the name.
+  expect(read.greetDL, "the greeting against the field, L").toBeGreaterThan(0.1);
+  expect(read.greetDL, "the greeting, at or under the name's mean").toBeLessThanOrEqual(read.meanDL + 0.005);
 });
 
 test("name: a fast swipe stirs the letters by 0.08 or more, and they return to rest within 2/255 about 4s after the pointer leaves", async ({ page, cdp }) => {
