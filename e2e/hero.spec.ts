@@ -240,3 +240,28 @@ test("name: a slow pass (300 px/s) stirs the letters faintly, about 0.02", async
   expect(peak).toBeGreaterThan(0.012);
   expect(peak).toBeLessThan(0.035);
 });
+
+for (const colorScheme of ["light", "dark"] as const) {
+  test(`name (${colorScheme}): the unwound list's lead lands on the solid gradient, and the surface returns on the way back`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme });
+    await openHome(page, { debug: "nocards,at=4" });
+    const unwound = (on: boolean) => page.waitForFunction((on) => {
+      const s = (window as HookWindow).__coil!.unwindState();
+      return on ? s.progress >= 1 : !s.latched && s.progress === 0;
+    }, on, { timeout: 10_000 });
+    await page.evaluate(() => (window as HookWindow).__coil!.api.unwind(true));
+    await unwound(true);
+    await nextFrames(page, 2);
+    const lead = await page.evaluate(() => (window as HookWindow).__coil!.nameProbe.solidDelta());
+    test.info().annotations.push({ type: "measure", description: `unwound lead: ${lead!.mean.toFixed(2)} of 255 from the solid gradient (max ${lead!.max}, ${lead!.letters} px)` });
+    expect(lead!.letters, "letter pixels in the lead").toBeGreaterThan(500);
+    expect(lead!.mean, "the lead's letters against the solid gradient, of 255").toBeLessThan(2);
+
+    await page.evaluate(() => (window as HookWindow).__coil!.api.unwind(false));
+    await unwound(false);
+    await nextFrames(page, 2);
+    const back = await page.evaluate(() => (window as HookWindow).__coil!.nameProbe.solidDelta());
+    test.info().annotations.push({ type: "measure", description: `wound back: ${back!.mean.toFixed(2)} of 255 from the solid gradient` });
+    expect(back!.mean, "the surface is back in the letters, of 255").toBeGreaterThan(4);
+  });
+}
