@@ -111,6 +111,7 @@ export type DebugStats = {
     delta: (a: string, b: string) => NameDelta | null;
     drop: (key: string) => boolean;
     clear: () => void;
+    solidDelta: NameProbe["solidDelta"];
   };
   // The Fable lab's timing: the surface pass on the GPU (batched) and the wake on the CPU.
   nameBench?: (n?: number) => Promise<{ gpu: Awaited<ReturnType<NameSurface["benchGpu"]>>; cpuMs: number }>;

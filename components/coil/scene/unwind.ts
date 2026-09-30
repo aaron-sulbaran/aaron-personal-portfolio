@@ -78,7 +78,8 @@ export function createUnwindWiring(ctx: SceneCtx, comp: ShaderMaterial, name: Na
   }
 
   // Per frame: the overlay's fades, and the canvas name moving from its rest
-  // rect into the list's lead (lab 1327-1360), inked to full as it lands.
+  // rect into the list's lead (lab 1327-1360), inked to full as it lands on
+  // the solid gradient.
   // A layout or theme change rewrites the rest values; they are recaptured
   // whenever the uniforms hold something this block did not write.
   function unwindFrame(progress: number) {
@@ -106,6 +107,10 @@ export function createUnwindWiring(ctx: SceneCtx, comp: ShaderMaterial, name: Na
       cu.uLod.value = maskHeight ? Math.max(0, Math.log2(maskHeight / (rect.w * view.dpr))) : nameRestLod;
       cu.uNameK.value = nameRestInk + (1 - nameRestInk) * land;
     }
+    // The lead lands on the loader's solid gradient: the surface fades out
+    // over the unwind (gone before the ink reaches full) and back in on the
+    // way home. The entrance step writes uSurfIn fresh every frame.
+    cu.uSurfIn.value *= 1 - smoothstep01(clamp01(progress / 0.9));
     nameWritten.copy(rect);
     nameLodWritten = cu.uLod.value;
     nameInkWritten = cu.uNameK.value;

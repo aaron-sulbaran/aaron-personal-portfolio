@@ -11,6 +11,7 @@ import type { SceneCtx } from "./state";
 // hook is called.
 
 type Frame = {
+  bytes: Uint8Array; // RGBA, GL rows (bottom up)
   L: Float32Array;
   cover: Float32Array;
   width: number;
@@ -75,6 +76,7 @@ export function createNameProbe(ctx: SceneCtx, gl: Gl, comp: ShaderMaterial, nam
       }
     }
     return {
+      bytes,
       L,
       cover,
       width,
@@ -112,7 +114,37 @@ export function createNameProbe(ctx: SceneCtx, gl: Gl, comp: ShaderMaterial, nam
     return { mean, p95: at(0.95), p99: at(0.99), max: values[values.length - 1] ?? Number.NaN, letters: values.length };
   }
 
-  return { contrast, snap, delta, drop: (key: string) => snaps.delete(key), clear: () => snaps.clear() };
+  // The name as drawn now against the same frame with the loader's solid
+  // gradient in place of the surface: the mean and largest byte difference
+  // over the letters (the whole mask), of 255.
+  function solidDelta(): { mean: number; max: number; letters: number } | null {
+    const u = comp.uniforms.uSurfIn;
+    const drawn = frame();
+    const was = u.value;
+    u.value = 0;
+    const solid = frame();
+    u.value = was;
+    if (!drawn || !solid || drawn.bytes.length !== solid.bytes.length) return null;
+    const { width, height, cover } = drawn;
+    let sum = 0;
+    let max = 0;
+    let count = 0;
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        if (cover[y * width + x] <= 0.98) continue;
+        const i = ((height - 1 - y) * width + x) * 4;
+        for (let c = 0; c < 3; c++) {
+          const d = Math.abs(drawn.bytes[i + c] - solid.bytes[i + c]);
+          sum += d;
+          max = Math.max(max, d);
+        }
+        count++;
+      }
+    }
+    return { mean: count ? sum / (count * 3) : Number.NaN, max, letters: count };
+  }
+
+  return { contrast, snap, delta, solidDelta, drop: (key: string) => snaps.delete(key), clear: () => snaps.clear() };
 }
 
 export type NameProbe = ReturnType<typeof createNameProbe>;

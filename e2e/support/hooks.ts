@@ -37,10 +37,12 @@ export type CoilHooks = {
     delta: (a: string, b: string) => { mean: number; p95: number; p99: number; max: number; letters: number } | null;
     drop: (key: string) => boolean;
     clear: () => void;
+    solidDelta: () => { mean: number; max: number; letters: number } | null;
   };
   nameBench: (n?: number) => Promise<{ gpu: { perPassMs: number; n: number; surf: number[]; method: string }; cpuMs: number }>;
   namePass?: number[];
   api: {
+    unwind: (on?: boolean) => void;
     cardAt: (clientX: number, clientY: number) => { key: string; slot: number } | null;
     slotOfKey: (key: string) => number;
     nameRect: () => { left: number; baseline: number; width: number; fontPx: number; gradient: { top: number; height: number } } | null;
