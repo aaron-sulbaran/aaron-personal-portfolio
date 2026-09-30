@@ -104,13 +104,26 @@ export const siteContent = {
     workPreviewSuffix: "preview",
   },
   // The Coil hero. The heading is the server-rendered h1; greeting and name
-  // are the two parts the scene draws.
+  // are the two parts the scene draws, together, in the canvas.
   hero: {
     heading: "Hi, I'm Aaron.",
     greeting: "Hi, I'm",
     name: "Aaron",
-    listControl: "Work and photos",
     coilControl: "Coil",
+    // First visit only, decorative (aria-hidden): the cursor's pill over a
+    // card until the first card opens, the one line after that first card
+    // flies home, and the touch screen's one line after the entrance.
+    hints: {
+      openMe: "Open me",
+      keepExploring: "Keep exploring",
+      tapCard: "Tap a card",
+    },
+    // The name fill and drift switcher, shown only with ?coildebug=name.
+    fxSwitcher: {
+      label: "Hero options",
+      name: "Name",
+      drift: "Drift",
+    },
   },
   // The Coil's loader: the name it fills while the page loads (the same word
   // the scene draws, so the exit hands one to the other) and the progress

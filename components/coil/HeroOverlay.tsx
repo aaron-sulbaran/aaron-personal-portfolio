@@ -1,40 +1,34 @@
 "use client";
 
-import { useEffect, useImperativeHandle, useRef, useState, type RefObject, type Ref } from "react";
+import { useEffect, useImperativeHandle, useRef, useState, useSyncExternalStore, type RefObject, type Ref } from "react";
 import { siteContent, strandTiles } from "@/lib/content";
 import { useEscapeKey } from "@/lib/modal";
 import { useSeen } from "@/lib/home/seen";
-import { scrollToTarget } from "@/lib/scroll";
-import { COIL } from "@/lib/coil/constants";
-import { LOADER } from "@/lib/loader/progress";
+import { useHomeController } from "@/components/home/HomeController";
+import { hintStore } from "@/lib/cursor/hover";
+import { COIL_FX_EVENT, NAME_FILLS, parseNameFill, type CoilFxDetail } from "@/lib/coil/field.glsl";
+import { DRIFT_PRESET_KEYS, parseDriftPreset } from "@/lib/coil/drift";
 import type { CoilEntrance, CoilSceneApi } from "./CoilScene";
 
-// The hero's DOM layer over the canvas: the greeting "Hi, I'm" above the
-// canvas-drawn name, the "Work and photos" control on the greeting's line
-// flush with the name's right edge (it scrolls to the book at #work), and the
-// chevron nudge that points off the helix after a few seconds of captured
-// wheeling. The scene positions all of it from its own rAF through the handle
-// (layout on resize, the nudge per frame), so nothing lags the canvas; the
-// layer sits in the hero beside the canvas and scrolls with it natively.
+// The hero's DOM layer over the canvas. The greeting and the name are both
+// drawn in the canvas (fx-hero), so at rest this layer holds only the chevron
+// nudge that points off the helix after a few seconds of captured wheeling,
+// and the first-visit lines ("Keep exploring" once the first card has flown
+// home, "Tap a card" once on a touch screen). The scene positions the nudge
+// from its own rAF through the handle, so it never lags the canvas.
 //
-// The unwind egg's list lives here too: a lead (the greeting and a slot the
-// canvas name moves into) and one column of rows, each with an empty 3:4 box
-// the scene lands that card in, its title and its meta. The scene measures the
-// boxes and fades the layer per frame; while unwound the rows open their
-// card's modal, and "Coil" or Esc winds the helix back (lab 1327-1360).
+// The unwind egg's list lives here too: a lead (a slot the canvas name, and
+// the greeting above it, move into) and one column of rows, each with an
+// empty 3:4 box the scene lands that card in, its title and its meta. The
+// scene measures the boxes and fades the layer per frame; while unwound the
+// rows open their card's modal, and "Coil" or Esc winds the helix back (lab
+// 1327-1360).
 //
 // It shows only while the scene draws (data-scene="on" on the hero); without
-// a scene the server-rendered h1 carries the greeting, so the greeting here
-// is aria-hidden. After the loader, the greeting and its control fade in over
-// 350ms on the site ease from the middle of the loader's exit; a fast start
-// or an entrance at rest simply shows them.
+// a scene the server-rendered h1 carries the greeting.
 
 export type OverlayLayout = {
-  left: number; // the greeting's left edge, CSS px in the hero
-  top: number; // the greeting line's top
-  width: number; // to the name's right edge
-  greetingPx: number;
-  controlPx: number;
+  controlPx: number; // the "Coil" control's size
 };
 
 export type OverlayNudge = { x: number; y: number; angle: number };
@@ -56,22 +50,22 @@ type Props = {
   api?: RefObject<CoilSceneApi | null>;
   // A row of the unwound list opens its card's modal (with the flight).
   onRowOpen?: (key: string, origin: HTMLElement) => void;
-  // The controller's entrance (slice 4): null while the loader holds the pane.
+  // The controller's entrance: null while the loader holds the pane. The
+  // touch line waits for it.
   entrance?: CoilEntrance | null;
 };
 
-const GREETING_FADE_MS = 350;
-
-// When the greeting starts to fade in, on the performance.now() clock: the
-// middle of the loader's continuity exit (the entrance starts entranceOverlapMs
-// before that exit ends), or the entrance itself when no exit ran.
-function greetingStartMs(entrance: CoilEntrance) {
-  if (!entrance.nameFromLoader) return entrance.startMs;
-  return entrance.startMs - (LOADER.exitMs - LOADER.entranceOverlapMs) + LOADER.exitMs / 2;
-}
-
 // The nudge sits this far off the pointer, toward where the page scrolls.
 const NUDGE_OFFSET_PX = 42;
+
+// ---- fx-hero: the one-time lines ----
+const KEEP_EXPLORING_KEY = "aaron-hint-keep";
+const TAP_CARD_KEY = "aaron-hint-tap";
+const LINE_IN_MS = 420;
+const LINE_OUT_MS = 320;
+const KEEP_HOLD_MS = 2500;
+const TAP_HOLD_MS = 5000;
+// ---- end fx-hero ----
 
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
 const seg = (x: number, a: number, b: number) => clamp01((x - a) / (b - a));
@@ -88,10 +82,7 @@ const LIST_GROUPS: { heading: string; rows: ListRow[] }[] = [
 const LIST_ROW_COUNT = LIST_GROUPS.reduce((sum, group) => sum + group.rows.length, 0);
 
 export function HeroOverlay({ ref, api, onRowOpen, entrance = null }: Props) {
-  const introRef = useRef<HTMLDivElement>(null);
-  const rowRef = useRef<HTMLDivElement>(null);
-  const greetingRef = useRef<HTMLSpanElement>(null);
-  const controlRef = useRef<HTMLButtonElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
   const nudgeRef = useRef<HTMLDivElement>(null);
   const nudgeOnRef = useRef(false);
   const listRef = useRef<HTMLDivElement>(null);
@@ -106,18 +97,7 @@ export function HeroOverlay({ ref, api, onRowOpen, entrance = null }: Props) {
     ref,
     () => ({
       layout(layout) {
-        const row = rowRef.current;
-        if (!row) return;
-        if (!layout) {
-          row.style.visibility = "hidden";
-          return;
-        }
-        row.style.visibility = "";
-        row.style.transform = `translate3d(${layout.left.toFixed(1)}px, ${layout.top.toFixed(1)}px, 0)`;
-        row.style.width = `${layout.width.toFixed(1)}px`;
-        if (greetingRef.current) greetingRef.current.style.fontSize = `${layout.greetingPx.toFixed(1)}px`;
-        if (controlRef.current) controlRef.current.style.fontSize = `${layout.controlPx.toFixed(1)}px`;
-        if (coilControlRef.current) coilControlRef.current.style.fontSize = `${layout.controlPx.toFixed(1)}px`;
+        if (layout && coilControlRef.current) coilControlRef.current.style.fontSize = `${layout.controlPx.toFixed(1)}px`;
       },
       nudge(nudge) {
         const el = nudgeRef.current;
@@ -140,10 +120,8 @@ export function HeroOverlay({ ref, api, onRowOpen, entrance = null }: Props) {
         if (on !== last.on) setListOn(on);
         if (Math.abs(progress - last.progress) < 1e-4 && on === last.on) return;
         frameRef.current = { progress, on };
-        // The greeting and its control step aside; the list's text and the
-        // Coil control come in once the cards have mostly landed.
-        const away = 1 - smooth(seg(progress, 0, 0.3));
-        if (rowRef.current) rowRef.current.style.opacity = away.toFixed(3);
+        // The list's text and the Coil control come in once the cards have
+        // mostly landed (the canvas carries the name and the greeting).
         const list = listRef.current;
         if (list) {
           list.style.setProperty("--text-on", smooth(seg(progress, 0.62, 0.97)).toFixed(3));
@@ -202,48 +180,13 @@ export function HeroOverlay({ ref, api, onRowOpen, entrance = null }: Props) {
     return () => observer.disconnect();
   }, []);
 
-  // The greeting's entrance fade, written imperatively (it runs on the
-  // performance.now() clock the loader hands over).
-  useEffect(() => {
-    const intro = introRef.current;
-    if (!intro || !entrance) return;
-    if (!Number.isFinite(entrance.startMs)) {
-      intro.style.transition = "none";
-      intro.style.opacity = "1";
-      return;
-    }
-    const delay = Math.max(0, greetingStartMs(entrance) - performance.now());
-    intro.style.transition = `opacity ${GREETING_FADE_MS}ms cubic-bezier(${COIL.siteEase.join(",")}) ${delay.toFixed(0)}ms`;
-    intro.style.opacity = "1";
-  }, [entrance]);
-
   const windBack = () => api?.current?.unwind(false);
   useEscapeKey(listOn, windBack);
 
-  const { greeting, listControl, coilControl, name } = siteContent.hero;
-
-  const goToBook = () => {
-    scrollToTarget("#work", window.matchMedia("(prefers-reduced-motion: reduce)").matches);
-  };
+  const { coilControl, name } = siteContent.hero;
 
   return (
-    <div className="pointer-events-none invisible absolute inset-0 group-data-[scene=on]/hero:visible">
-      <div ref={introRef} className="absolute inset-0" style={{ opacity: 0 }}>
-        <div
-          ref={rowRef}
-          inert={listOn}
-          className="absolute left-0 top-0 flex items-baseline justify-between font-sans leading-none text-[color:var(--hero-greeting)]"
-          style={{ visibility: "hidden" }}
-        >
-          <span ref={greetingRef} aria-hidden="true" className="whitespace-nowrap font-medium">
-            {greeting}
-          </span>
-          <button ref={controlRef} type="button" onClick={goToBook} className={`${CONTROL_CLASS} -my-[14px] -mr-2`}>
-            {listControl}
-          </button>
-        </div>
-      </div>
-
+    <div ref={rootRef} className="pointer-events-none invisible absolute inset-0 group-data-[scene=on]/hero:visible">
       <div
         ref={listRef}
         inert={!listOn}
@@ -252,9 +195,9 @@ export function HeroOverlay({ ref, api, onRowOpen, entrance = null }: Props) {
         role="region"
         className="group/list pointer-events-none absolute inset-0 grid grid-cols-[minmax(0,34fr)_minmax(0,66fr)] content-start items-start gap-x-[4vw] px-[6vw] pt-[var(--list-top,14vh)] data-[narrow=true]:grid-cols-1"
       >
-        <div aria-hidden="true" className="text-[color:var(--hero-greeting)] group-data-[narrow=true]/list:mb-6">
-          <p className="mb-3 text-base font-medium leading-none opacity-[var(--text-on,0)]">{greeting}</p>
-          {/* The canvas name lands here; this text only holds the slot. */}
+        <div aria-hidden="true" className="group-data-[narrow=true]/list:mb-6">
+          {/* The canvas greeting lands in this band, the canvas name in the slot below. */}
+          <span className="mb-3 block h-4" />
           <span
             ref={nameSlotRef}
             className="block whitespace-nowrap font-display text-[length:var(--name,96px)] leading-none tracking-[-0.02em] text-transparent"
@@ -333,9 +276,150 @@ export function HeroOverlay({ ref, api, onRowOpen, entrance = null }: Props) {
           />
         </svg>
       </div>
+
+      <HintLine rootRef={rootRef} entrance={entrance} />
+      <FxSwitcher />
     </div>
   );
 }
+
+// ---- fx-hero: the first-visit lines ----
+// Once ever each, decorative (the cards stay reachable through the book).
+// Fine pointer: when the first card ever opened has flown home, "Keep
+// exploring" fades in at the hero's bottom center, holds, and goes (the
+// cursor's "Open me" pill retires with that first open, in CustomCursor).
+// Touch: "Tap a card" after the entrance, gone on the first tap or after 5s.
+// Written imperatively, like the rest of this layer: a plain opacity fade,
+// which is also the reduced-motion version.
+function HintLine({ rootRef, entrance }: { rootRef: RefObject<HTMLDivElement | null>; entrance: CoilEntrance | null }) {
+  const controller = useHomeController();
+  const lineRef = useRef<HTMLParagraphElement>(null);
+  const firstOpenRef = useRef(false);
+  const hideRef = useRef<() => void>(() => {});
+  const modalOpen = controller?.modalOpen ?? false;
+  const flying = (controller?.flight ?? null) !== null;
+  const input = controller?.drivers.input;
+  const ready = controller?.phase === "ready" && entrance !== null;
+
+  // Shows `text`, holds, fades out; hideRef dismisses it early.
+  const show = (text: string, holdMs: number) => {
+    const line = lineRef.current;
+    if (!line) return;
+    hideRef.current();
+    line.textContent = text;
+    line.style.transitionDuration = `${LINE_IN_MS}ms`;
+    line.style.opacity = "0";
+    let timer = 0;
+    const hide = () => {
+      window.clearTimeout(timer);
+      line.style.transitionDuration = `${LINE_OUT_MS}ms`;
+      line.style.opacity = "0";
+      hideRef.current = () => {};
+    };
+    const frame = requestAnimationFrame(() => {
+      line.style.opacity = "1";
+    });
+    timer = window.setTimeout(hide, LINE_IN_MS + holdMs);
+    hideRef.current = () => {
+      cancelAnimationFrame(frame);
+      hide();
+    };
+  };
+
+  // The first card ever opened: the cursor's pill retires for good.
+  useEffect(() => {
+    if (!modalOpen) return;
+    hideRef.current();
+    const store = hintStore();
+    if (store.opened()) return;
+    firstOpenRef.current = true;
+    store.markOpened();
+  }, [modalOpen]);
+
+  // That card has flown home: one line, if the hero is still in view.
+  useEffect(() => {
+    if (modalOpen || flying || !firstOpenRef.current) return;
+    firstOpenRef.current = false;
+    if (input !== "fine") return;
+    const rect = rootRef.current?.getBoundingClientRect();
+    if (!rect || rect.bottom < window.innerHeight * 0.5 || rect.top > window.innerHeight * 0.5) return;
+    if (hintStore().takeOnce(KEEP_EXPLORING_KEY)) show(siteContent.hero.hints.keepExploring, KEEP_HOLD_MS);
+  });
+
+  // Touch: once, after the entrance, until the first tap or 5s.
+  useEffect(() => {
+    if (!ready || input !== "coarse") return;
+    const store = hintStore();
+    if (store.opened() || !store.takeOnce(TAP_CARD_KEY)) return;
+    show(siteContent.hero.hints.tapCard, TAP_HOLD_MS);
+    const onTap = () => hideRef.current();
+    window.addEventListener("pointerdown", onTap, { once: true });
+    return () => window.removeEventListener("pointerdown", onTap);
+  }, [ready, input]);
+
+  return (
+    <p
+      ref={lineRef}
+      aria-hidden="true"
+      className="absolute bottom-[max(32px,7svh)] left-1/2 -translate-x-1/2 whitespace-nowrap font-sans text-[14px] leading-none text-[color:var(--hero-greeting)] opacity-0 transition-opacity [transition-timing-function:var(--ease-out)]"
+    />
+  );
+}
+
+// The name fill and drift switcher: only with ?coildebug=name, so production
+// never shows it. A pick rewrites the URL (so a reload keeps it) and tells the
+// live scene.
+const noSubscribe = () => () => {};
+function readDebugName() {
+  const value = new URLSearchParams(window.location.search).get("coildebug");
+  return value ? value.split(",").some((token) => token.trim() === "name") : false;
+}
+
+function FxSwitcher() {
+  const on = useSyncExternalStore(noSubscribe, readDebugName, () => false);
+  const [picked, setPicked] = useState<{ name: string; drift: string } | null>(null);
+  if (!on) return null;
+  const params = new URLSearchParams(window.location.search);
+  const current = picked ?? { name: parseNameFill(params.get("name")), drift: parseDriftPreset(params.get("drift")) };
+  const pick = (kind: "name" | "drift", key: string) => {
+    const next = new URLSearchParams(window.location.search);
+    next.set(kind, key);
+    window.history.replaceState(window.history.state, "", `${window.location.pathname}?${next.toString()}${window.location.hash}`);
+    const detail: CoilFxDetail = { [kind]: key };
+    window.dispatchEvent(new CustomEvent(COIL_FX_EVENT, { detail }));
+    setPicked({ ...current, [kind]: key });
+  };
+  const { label, name, drift } = siteContent.hero.fxSwitcher;
+  const groups: { kind: "name" | "drift"; title: string; keys: readonly string[] }[] = [
+    { kind: "name", title: name, keys: NAME_FILLS },
+    { kind: "drift", title: drift, keys: DRIFT_PRESET_KEYS },
+  ];
+  return (
+    <div
+      role="group"
+      aria-label={label}
+      className="pointer-events-auto absolute bottom-4 left-4 z-10 flex max-w-[calc(100%-32px)] flex-col gap-2 rounded-lg border border-border bg-background px-3 py-2 font-sans text-[12px] leading-none text-foreground"
+    >
+      {groups.map((group) => (
+        <div key={group.kind} className="flex flex-wrap items-center gap-1">
+          <span className="mr-1 text-[color:var(--hero-greeting)]">{group.title}</span>
+          {group.keys.map((key) => (
+            <button
+              key={key}
+              type="button"
+              aria-pressed={current[group.kind] === key}
+              onClick={() => pick(group.kind, key)}
+              className="rounded px-2 py-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent aria-pressed:bg-accent aria-pressed:text-background"
+            >
+              {key}
+            </button>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+// ---- end fx-hero ----
 
 const CONTROL_CLASS =
   "pointer-events-auto whitespace-nowrap rounded px-2 py-[14px] leading-none transition-colors duration-200 [transition-timing-function:var(--ease-out)] hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-accent";
