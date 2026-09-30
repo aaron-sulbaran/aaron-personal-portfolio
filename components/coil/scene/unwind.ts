@@ -16,6 +16,7 @@ const unwindEase = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x
 
 export function createUnwindWiring(ctx: SceneCtx, comp: ShaderMaterial, name: Name, hover: Hover, loop: LoopLink) {
   const { st, host, live, tiles, tileCount, debug } = ctx;
+  const { unwind, conveyor, view } = st;
   const nameRest = new Vector4();
   const nameWritten = new Vector4(Number.NaN, 0, 0, 0);
   let nameRestLod = 0;
@@ -30,11 +31,11 @@ export function createUnwindWiring(ctx: SceneCtx, comp: ShaderMaterial, name: Na
   }
 
   // api.unwind: sets (or toggles) the unwind; false winds the coil back.
-  function unwind(on?: boolean) {
-    const next = on ?? !st.unwind.on;
-    if (next === st.unwind.on) return;
+  function toggle(on?: boolean) {
+    const next = on ?? !unwind.on;
+    if (next === unwind.on) return;
     if (next && !canUnwind()) return;
-    toggleUnwind(st.unwind, performance.now(), st.conveyor.offset, tileCount, next);
+    toggleUnwind(unwind, performance.now(), conveyor.offset, tileCount, next);
     if (debug) debug.unwindAt?.push(performance.now());
     loop.wake();
   }
@@ -43,11 +44,11 @@ export function createUnwindWiring(ctx: SceneCtx, comp: ShaderMaterial, name: Na
   // the top: the helix unwinds in place; again, it winds back.
   const onDoubleClick = (event: MouseEvent) => {
     if (!(event.target instanceof Node) || !host.contains(event.target)) return;
-    const x = event.clientX - (st.view.docLeft - window.scrollX);
-    const y = event.clientY - (st.view.docTop - window.scrollY);
+    const x = event.clientX - (view.docLeft - window.scrollX);
+    const y = event.clientY - (view.docTop - window.scrollY);
     if (hover.pickAt(x, y) >= 0) return;
-    if (!st.unwind.on && !canUnwind()) return;
-    unwind(!st.unwind.on);
+    if (!unwind.on && !canUnwind()) return;
+    toggle(!unwind.on);
   };
 
   function listen() {
@@ -81,7 +82,7 @@ export function createUnwindWiring(ctx: SceneCtx, comp: ShaderMaterial, name: Na
   // A layout or theme change rewrites the rest values; they are recaptured
   // whenever the uniforms hold something this block did not write.
   function unwindFrame(progress: number) {
-    live.current.overlay.current?.unwindFrame(progress, st.unwind.on);
+    live.current.overlay.current?.unwindFrame(progress, unwind.on);
     const cu = comp.uniforms;
     const rect = cu.uNameRect.value as Vector4;
     if (!rect.equals(nameWritten)) nameRest.copy(rect);
@@ -102,7 +103,7 @@ export function createUnwindWiring(ctx: SceneCtx, comp: ShaderMaterial, name: Na
         nameRest.w + (target.w - nameRest.w) * t,
       );
       const maskHeight = ((cu.uName.value as Texture | null)?.image as HTMLCanvasElement | undefined)?.height ?? 0;
-      cu.uLod.value = maskHeight ? Math.max(0, Math.log2(maskHeight / (rect.w * st.view.dpr))) : nameRestLod;
+      cu.uLod.value = maskHeight ? Math.max(0, Math.log2(maskHeight / (rect.w * view.dpr))) : nameRestLod;
       cu.uNameK.value = nameRestInk + (1 - nameRestInk) * land;
     }
     nameWritten.copy(rect);
@@ -118,7 +119,7 @@ export function createUnwindWiring(ctx: SceneCtx, comp: ShaderMaterial, name: Na
     const text = siteContent.hero.name;
     probe.font = `900 100px ${st.nameFamily}`;
     const w100 = probe.measureText(text).width || 1;
-    const restSize = ((st.view.width * (isNarrow(st.view) ? 0.9 : 0.7)) / w100) * 100;
+    const restSize = ((view.width * (isNarrow(view) ? 0.9 : 0.7)) / w100) * 100;
     const pad = Math.ceil(restSize * 0.04);
     const k = slot.fontPx / restSize;
     probe.font = `900 ${slot.fontPx}px ${st.nameFamily}`;
@@ -137,24 +138,24 @@ export function createUnwindWiring(ctx: SceneCtx, comp: ShaderMaterial, name: Na
   // copy keeps its slot and the wind-back lands on the exact pose it left.
   function step(f: SceneFrame) {
     const { now } = f;
-    if (settleUnwind(st.unwind, now)) st.unwind.column = null;
-    if (st.unwind.latched) {
-      st.conveyor.offset = st.unwind.offset;
-      st.conveyor.target = st.unwind.offset;
-      st.conveyor.glide = null;
-      st.unwind.column = measureColumn(f.helix as HelixFrame);
+    if (settleUnwind(unwind, now)) unwind.column = null;
+    if (unwind.latched) {
+      conveyor.offset = unwind.offset;
+      conveyor.target = unwind.offset;
+      conveyor.glide = null;
+      unwind.column = measureColumn(f.helix as HelixFrame);
     }
-    f.listProgress = unwindProgress(st.unwind, now);
+    f.listProgress = unwindProgress(unwind, now);
     unwindFrame(f.listProgress);
   }
   // ---- end slice 5 block ----
 
   // QA: the unwind's state and its length.
   function unwindState() {
-    return { on: st.unwind.on, latched: st.unwind.latched !== null, progress: unwindProgress(st.unwind, performance.now()) };
+    return { on: unwind.on, latched: unwind.latched !== null, progress: unwindProgress(unwind, performance.now()) };
   }
 
-  return { unwind, listen, step, unwindState, unwindMs: () => unwindDurationMs(tileCount) };
+  return { unwind: toggle, listen, step, unwindState, unwindMs: () => unwindDurationMs(tileCount) };
 }
 
 export type UnwindWiring = ReturnType<typeof createUnwindWiring>;

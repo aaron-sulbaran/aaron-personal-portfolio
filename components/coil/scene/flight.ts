@@ -50,6 +50,7 @@ export function createFlight(
   loop: LoopLink,
 ) {
   const { st, host, live, flightLog } = ctx;
+  const { view, rendered } = st;
   const { slots, shared } = cards;
   let flight: Flight | null = null;
   let prewarm = 0;
@@ -71,7 +72,7 @@ export function createFlight(
 
   // The card on its seat, as the scene would draw it now.
   function seatOf(f: Flight): FlightPose | null {
-    const pose = st.rendered[f.slot];
+    const pose = rendered[f.slot];
     const slot = slots[f.slot];
     if (!pose || !slot) return null;
     return seatPose(
@@ -124,7 +125,7 @@ export function createFlight(
 
   function layoutStamp() {
     const rect = host.getBoundingClientRect();
-    return [st.view.width, st.view.height, st.view.dpr, rect.left, rect.top].join(",");
+    return [view.width, view.height, view.dpr, rect.left, rect.top].join(",");
   }
 
   // The flown card at its progress, between the seat as the scene would draw
@@ -161,7 +162,7 @@ export function createFlight(
   // api.beginFlight: mounts the flown card's canvas in `mount`, draws the
   // card on its seat and hides the mesh before it returns.
   function beginFlight(slot: number, mount: HTMLElement): CoilFlightHandle | null {
-    const pose = st.rendered[slot];
+    const pose = rendered[slot];
     if (!st.ready || st.contextLost || st.disposed || !st.geoCamera || !pose || !slots[slot] || pose.alpha <= 0.01) return null;
     const o = overlay.liveOverlay();
     if (!o) return null;

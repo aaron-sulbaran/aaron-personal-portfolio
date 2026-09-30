@@ -74,32 +74,33 @@ export type LayoutParts = {
 export function createLayout(ctx: SceneCtx, gl: Gl, parts: LayoutParts, loop: LoopLink) {
   const { st, host, tileCount, debug } = ctx;
   const { renderer, camera, fieldTarget, uView } = gl;
+  const { view } = st;
 
   return function layout(width: number, height: number) {
-    st.view.width = Math.max(1, width);
-    st.view.height = Math.max(1, height);
-    st.view.dpr = Math.min(window.devicePixelRatio || 1, st.budget.dprCap);
+    view.width = Math.max(1, width);
+    view.height = Math.max(1, height);
+    view.dpr = Math.min(window.devicePixelRatio || 1, st.budget.dprCap);
     const rect = host.getBoundingClientRect();
-    st.view.docTop = rect.top + window.scrollY;
-    st.view.docLeft = rect.left + window.scrollX;
-    renderer.setPixelRatio(st.view.dpr);
-    renderer.setSize(st.view.width, st.view.height, false);
+    view.docTop = rect.top + window.scrollY;
+    view.docLeft = rect.left + window.scrollX;
+    renderer.setPixelRatio(view.dpr);
+    renderer.setSize(view.width, view.height, false);
     const buffer = renderer.getDrawingBufferSize(new Vector2());
     uView.value.set(0, 0, 1 / buffer.x, 1 / buffer.y);
-    camera.aspect = st.view.width / st.view.height;
-    st.geoCamera = cameraFor(st.view);
+    camera.aspect = view.width / view.height;
+    st.geoCamera = cameraFor(view);
     camera.position.set(0, 0, st.geoCamera.distance);
     camera.lookAt(0, 0, 0);
     camera.updateProjectionMatrix();
     fieldTarget.setSize(
-      Math.max(8, Math.round(st.view.width / FIELD.divisor)),
-      Math.max(8, Math.round(st.view.height / FIELD.divisor)),
+      Math.max(8, Math.round(view.width / FIELD.divisor)),
+      Math.max(8, Math.round(view.height / FIELD.divisor)),
     );
     parts.resizePasses(buffer);
-    seenRingDpr.value = buffer.y / st.view.height; // fx-hero: the seen ring stays one CSS px wide
+    seenRingDpr.value = buffer.y / view.height; // fx-hero: the seen ring stays one CSS px wide
     st.lastFieldTime = Number.NaN;
     const before = st.geo;
-    st.geo = solveGeometry(st.view, tileCount);
+    st.geo = solveGeometry(view, tileCount);
     // Slice 7: a new composition or a rotation lays every card out afresh;
     // fade the new frame in rather than jump (only while the loop runs: a
     // still frame behind a modal just re-lays out).
@@ -107,7 +108,7 @@ export function createLayout(ctx: SceneCtx, gl: Gl, parts: LayoutParts, loop: Lo
       before &&
       loop.shouldRun() &&
       (before.narrow !== st.geo.narrow ||
-        Math.abs(st.view.width - before.viewport.width) > REBUILD_WIDTH_CHANGE * before.viewport.width)
+        Math.abs(view.width - before.viewport.width) > REBUILD_WIDTH_CHANGE * before.viewport.width)
     ) {
       st.rebuildAt = performance.now();
     }

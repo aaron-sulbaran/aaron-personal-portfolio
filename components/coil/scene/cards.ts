@@ -70,6 +70,7 @@ type NameFlow = { flowAlong: (dx: number, dy: number) => void; hide: () => void 
 
 export function createCards(ctx: SceneCtx, gl: Gl) {
   const { st, host, tiles, tileCount, flags } = ctx;
+  const { conveyor, poses, rendered, unwind } = st;
   const { posterMode, hideCards, hideName } = flags;
   const { renderer, camera, cardScene, fieldTarget, uView } = gl;
 
@@ -204,12 +205,12 @@ export function createCards(ctx: SceneCtx, gl: Gl) {
     const hoverStep = 1 - Math.exp(-f.dt * HOVER_RATE);
     for (let j = 0; j < geo.slotCount; j++) {
       const slot = slots[j];
-      let pose: CardPose = coilPose(helix, j, st.conveyor.offset);
-      const strandPosition = Math.round(pose.u - st.conveyor.offset);
+      let pose: CardPose = coilPose(helix, j, conveyor.offset);
+      const strandPosition = Math.round(pose.u - conveyor.offset);
       const tile = mod(strandPosition, tileCount);
       bindTile(slot, tile);
       pose = entrancePose(pose, { strandPosition, cardCount: tileCount }, geo, clock);
-      if (listProgress > 0) pose = unwindPose(pose, tile, st.unwind, now, null);
+      if (listProgress > 0) pose = unwindPose(pose, tile, unwind, now, null);
       // ---- slice 7: the narrow pane's clear top band (header and greeting) ----
       if (geo.clearTopPx > 0 && listProgress < 1) {
         const clear = headerClearance(pose, geo, f.camera);
@@ -218,14 +219,14 @@ export function createCards(ctx: SceneCtx, gl: Gl) {
       if (rebuilt < 1) pose = { ...pose, alpha: pose.alpha * rebuilt };
       // ---- end slice 7 ----
       if (posterMode || j === st.hiddenSlot) pose = { ...pose, alpha: 0 };
-      st.poses[j] = pose;
+      poses[j] = pose;
 
       slot.hover += ((j === st.hoveredSlot ? 1 : 0) - slot.hover) * hoverStep;
       const lift = slot.hover > 0.001 ? slot.hover : 0;
       const shown: CardPose = lift
         ? { ...pose, scale: pose.scale * (1 + HOVER_SCALE * lift), fade: pose.fade * (1 - HOVER_UNFADE * lift) }
         : pose;
-      st.rendered[j] = shown;
+      rendered[j] = shown;
       applyPose(slot, shown, HOVER_BRIGHT * lift);
       // Unwound, the row's outline ring after the title is the one seen mark;
       // the card's own ring fades with the unwind, since at thumb size it
@@ -237,7 +238,7 @@ export function createCards(ctx: SceneCtx, gl: Gl) {
   // Update step: the helix's projected hull (wheel capture, the nudge, the
   // name's flow direction); QA can hide the cards and the name.
   function hull(f: CardFrame, name: NameFlow) {
-    st.sil = silhouette(f.helix as HelixFrame, f.camera, st.poses);
+    st.sil = silhouette(f.helix as HelixFrame, f.camera, poses);
     // ---- fx-hero: sand drifts along the helix's axis; QA can hide the cards ----
     if (st.sil) name.flowAlong(st.sil.dx, st.sil.dy);
     if (hideCards) for (let j = 0; j < f.geo.slotCount; j++) slots[j].mesh.visible = false;
@@ -263,7 +264,7 @@ export function createCards(ctx: SceneCtx, gl: Gl) {
 
   // A slot's four bent corners in viewport px, as last rendered (lift included).
   function quadOf(slot: number): Quad | null {
-    const pose = st.rendered[slot];
+    const pose = rendered[slot];
     if (!pose || !st.geoCamera) return null;
     return projectQuad(pose, st.geoCamera, origin());
   }
@@ -271,7 +272,7 @@ export function createCards(ctx: SceneCtx, gl: Gl) {
   // The flight's source: the bent corners, or the flat card's when a card
   // nearly edge on folds them concave.
   function flightQuadOf(slot: number): Quad | null {
-    const pose = st.rendered[slot];
+    const pose = rendered[slot];
     if (!pose || !st.geoCamera) return null;
     const at = origin();
     const bent = projectQuad(pose, st.geoCamera, at);
@@ -293,10 +294,10 @@ export function createCards(ctx: SceneCtx, gl: Gl) {
     let best = -1;
     let bestDepth = -Infinity;
     for (let j = 0; j < st.geo.slotCount; j++) {
-      const pose = st.poses[j];
+      const pose = poses[j];
       if (!pose || slots[j].tile !== tile) continue;
-      if (st.unwind.latched) {
-        if (Math.round(pose.u - st.unwind.offset) === st.unwind.latched[tile]) return j;
+      if (unwind.latched) {
+        if (Math.round(pose.u - unwind.offset) === unwind.latched[tile]) return j;
         continue;
       }
       if (pose.alpha > 0.5 && pose.depth > bestDepth) {

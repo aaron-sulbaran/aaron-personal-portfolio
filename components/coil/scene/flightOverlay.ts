@@ -87,6 +87,7 @@ function gridSize(least: number, devicePerBuffer: number) {
 
 export function createFlightOverlay(ctx: SceneCtx, gl: Gl, cards: Cards) {
   const { st, host } = ctx;
+  const { view, rendered } = st;
   const { renderer, camera, fieldTarget } = gl;
   const { cardGeometry, faces, slots, shared, placeMesh } = cards;
   let overlay: Overlay | null = null;
@@ -220,8 +221,8 @@ export function createFlightOverlay(ctx: SceneCtx, gl: Gl, cards: Cards) {
     if (!st.geoCamera) return;
     const rect = host.getBoundingClientRect();
     const buffer = renderer.getDrawingBufferSize(new Vector2());
-    const sx = buffer.x / st.view.width;
-    const sy = buffer.y / st.view.height;
+    const sx = buffer.x / view.width;
+    const sy = buffer.y / view.height;
     // Both canvases also land on the same device pixels: the offset is a
     // whole number of device pixels too, or none at all.
     const device = window.devicePixelRatio || 1;
@@ -232,7 +233,7 @@ export function createFlightOverlay(ctx: SceneCtx, gl: Gl, cards: Cards) {
     const width = gridSize((window.innerWidth - left) * sx, device / sx);
     const height = gridSize((window.innerHeight - top) * sy, device / sy);
     o.origin = { left: rect.left, top: rect.top };
-    const fitted = [left, top, width, height, buffer.x, buffer.y, st.view.width, st.view.height, st.lastFieldTime].join(",");
+    const fitted = [left, top, width, height, buffer.x, buffer.y, view.width, view.height, st.lastFieldTime].join(",");
     if (fitted === o.fitted) return;
     o.fitted = fitted;
     o.renderer.setSize(width, height, false);
@@ -270,7 +271,7 @@ export function createFlightOverlay(ctx: SceneCtx, gl: Gl, cards: Cards) {
     let used = 0;
     if (on && st.geo) {
       for (let j = 0; j < st.geo.slotCount; j++) {
-        const pose = st.rendered[j];
+        const pose = rendered[j];
         if (j === slot || !pose || pose.alpha < 0.995) continue;
         let cover = o.covers[used];
         if (!cover) {

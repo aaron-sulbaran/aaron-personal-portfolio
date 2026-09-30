@@ -16,6 +16,7 @@ export type CompositeInit = { mode: number; repel: Texture };
 
 export function createField(ctx: SceneCtx, gl: Gl, init: CompositeInit) {
   const { st, flags } = ctx;
+  const { view } = st;
   const { posterMode, heldAt } = flags;
   const { renderer, orthoCamera, fieldScene, compScene, fieldTarget, uView, quad } = gl;
   let driftPreset: DriftPreset = parseDriftPreset(flags.driftParam);
@@ -105,9 +106,9 @@ export function createField(ctx: SceneCtx, gl: Gl, init: CompositeInit) {
   }
 
   function resizePasses(buffer: Vector2) {
-    fieldMaterial.uniforms.uAspect.value = st.view.width / st.view.height;
-    compMaterial.uniforms.uFull.value.set(st.view.width, st.view.height);
-    compMaterial.uniforms.uDpr.value = buffer.y / st.view.height;
+    fieldMaterial.uniforms.uAspect.value = view.width / view.height;
+    compMaterial.uniforms.uFull.value.set(view.width, view.height);
+    compMaterial.uniforms.uDpr.value = buffer.y / view.height;
   }
 
   // The ?drift pick, live (the switcher's event).

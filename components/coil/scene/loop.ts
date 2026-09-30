@@ -32,6 +32,7 @@ export function createLoop(
   hooks: LoopHooks,
 ) {
   const { st, host, live, debug, flightLog } = ctx;
+  const { conveyor, unwind } = st;
   // Slice 7, QA only: ?coildebug=throw=frame throws from the loop a second in.
   const throwFrameAt = throwFrameAtFromTokens();
 
@@ -120,8 +121,8 @@ export function createLoop(
   function holdClocks(stoppedMs: number) {
     st.resuming = true;
     if (!st.ready || !(stoppedMs > 0)) return;
-    st.conveyor.glide = afterPause(st.conveyor.glide, stoppedMs);
-    if (st.unwind.latched) st.unwind.startMs += stoppedMs;
+    conveyor.glide = afterPause(conveyor.glide, stoppedMs);
+    if (unwind.latched) unwind.startMs += stoppedMs;
     if (st.rebuildAt !== null) st.rebuildAt += stoppedMs;
   }
   // ---- end fx-flight freeze ----
