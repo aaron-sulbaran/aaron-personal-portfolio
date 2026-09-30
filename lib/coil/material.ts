@@ -9,8 +9,8 @@ import { COIL } from "./constants";
 //
 // Fragment: the front texture, or the back (the duotone for photos, the plain
 // pane for work cards, both painted in textures.ts); the seen ring (a 1px
-// outline dot in the upper corner, ink or paper by what sits under it, never
-// a grey-out); a gentle falloff across the bend; the token-strength sheen; the
+// outline dot in the upper corner, about 2.2:1 against what sits under it,
+// never a grey-out); a gentle falloff across the bend; the token-strength sheen; the
 // hover brightening toward paper; and the recede into the field by brightness,
 // never blur. The hairline and the flat 1px highlight are painted into the
 // textures, so they bend with the card. Last, the card dissolves over the
@@ -43,12 +43,21 @@ export const CARD_VERT = /* glsl */ `
   }
 `;
 
+// ---- fx-hero: the seen ring's size, in card heights (a rest card is 24
+// percent of the viewport, 216px at 900: 7px across is a radius of 0.0162),
+// and the luminance contrast it keeps against what lies under it. ----
+export const SEEN_RING = { radius: 0.0162, inset: 0.072, contrast: 2.2 } as const;
+// One uniform shared by every card: device px per CSS px, so the ring stays
+// one CSS px wide. The scene writes it on layout.
+export const seenRingDpr = { value: 1 };
+// ---- end fx-hero ----
+
 export const CARD_FRAG = /* glsl */ `
   uniform sampler2D mapF, mapB, uField;
   uniform vec4 uView;
   uniform vec3 uInk, uPaper;
   uniform vec2 uSize;
-  uniform float uFade, uBright, uAlpha, uSeen, uShade, uSheen, uSeam;
+  uniform float uFade, uBright, uAlpha, uSeen, uShade, uSheen, uSeam, uSeenDpr;
   varying vec2 vUv; varying vec3 vN; varying vec3 vViewPos;
   void main() {
     bool front = gl_FrontFacing;
@@ -56,16 +65,40 @@ export const CARD_FRAG = /* glsl */ `
     vec4 t = front ? texture2D(mapF, uv) : texture2D(mapB, uv);
     if (t.a < 0.5) discard;
     vec3 c = t.rgb;
+    // ---- fx-hero: the seen ring, discreet and the same on every card ----
+    // One CSS px wide (uSeenDpr device px), about 7px across at the card's
+    // rest size, in the same upper right corner of every front face. Its color
+    // is what lies under it, moved to a luminance about 2.2:1 away (darker
+    // whenever there is room, so it is never the brightest thing on a card),
+    // hue kept; it then shades, sheens and recedes with the card.
     if (front && uSeen > 0.001) {
       vec2 p = vUv * uSize;
-      vec2 cen = vec2(uSize.x - 0.085, uSize.y - 0.085);
+      vec2 cen = uSize - vec2(${SEEN_RING.inset.toFixed(4)});
+      float rr = ${SEEN_RING.radius.toFixed(4)};
       float d = length(p - cen);
-      float fw = fwidth(d);
-      float ring = 1.0 - smoothstep(0.35, 1.0, abs(d - 0.028) / fw);
-      vec3 under = texture2D(mapF, cen / uSize).rgb;
-      vec3 rc = dot(under, vec3(0.299, 0.587, 0.114)) > 0.55 ? uInk : uPaper;
-      c = mix(c, rc, ring * uSeen);
+      float fw = max(fwidth(d), 1e-5);
+      float ring = 1.0 - smoothstep(0.5 * fw * (uSeenDpr - 1.0), 0.5 * fw * (uSeenDpr + 1.0), abs(d - rr));
+      if (ring > 0.0) {
+        vec2 o = vec2(rr * 1.4, 0.0) / uSize;
+        vec2 cu = cen / uSize;
+        vec3 under = (texture2D(mapF, cu).rgb + texture2D(mapF, cu + o).rgb + texture2D(mapF, cu - o).rgb
+          + texture2D(mapF, cu + o.yx * uSize.x).rgb + texture2D(mapF, cu - o.yx * uSize.x).rgb) / 5.0;
+        vec3 ul = pow(max(under, vec3(0.0)), vec3(2.2));
+        float yu = dot(ul, vec3(0.2126, 0.7152, 0.0722));
+        float darker = (yu + 0.05) / ${SEEN_RING.contrast.toFixed(2)} - 0.05;
+        vec3 rl;
+        if (darker >= 0.004) {
+          rl = ul * (darker / max(yu, 1e-4));
+        } else {
+          vec3 pl = pow(uPaper, vec3(2.2));
+          float yp = dot(pl, vec3(0.2126, 0.7152, 0.0722));
+          float lighter = min(yp, ${SEEN_RING.contrast.toFixed(2)} * (yu + 0.05) - 0.05);
+          rl = mix(ul, pl, clamp((lighter - yu) / max(yp - yu, 1e-4), 0.0, 1.0));
+        }
+        c = mix(c, pow(rl, vec3(1.0 / 2.2)), ring * uSeen);
+      }
     }
+    // ---- end fx-hero ----
     vec3 N = normalize(vN); if (!front) N = -N;
     vec3 V = normalize(-vViewPos);
     float ndv = clamp(dot(N, V), 0.0, 1.0);
@@ -105,6 +138,7 @@ export type CardUniforms = SharedCardUniforms & {
   uAlpha: IUniform<number>;
   uSeen: IUniform<number>;
   uShade: IUniform<number>;
+  uSeenDpr: IUniform<number>; // fx-hero
 };
 
 // One plane, shared by every card: 28 by 8 segments carry the bend smoothly.
@@ -125,6 +159,7 @@ export function createCardMaterial(shared: SharedCardUniforms) {
     uAlpha: { value: 1 },
     uSeen: { value: 0 },
     uShade: { value: 1 },
+    uSeenDpr: seenRingDpr, // fx-hero
   };
   const material = new ShaderMaterial({
     vertexShader: CARD_VERT,
