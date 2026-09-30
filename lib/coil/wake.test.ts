@@ -90,6 +90,31 @@ describe("the wake's rhythm", () => {
     expect(peak).toBeLessThan(WAKE.slowPeak[1]);
   });
 
+  it("reads a jittery pass (the pointer's events and the frames out of step) about as a smooth one", () => {
+    const smooth = createWake();
+    const jittery = createWake();
+    const speed = 300;
+    const frames = Math.round((right.x - left.x) / speed / FRAME);
+    const step = speed * FRAME;
+    let peakSmooth = 0;
+    let peakJittery = 0;
+    for (let i = 0; i < frames + 120; i++) {
+      if (i < frames) {
+        const x = left.x + i * step;
+        injectStroke(smooth, rect, x, middle, x + step, middle, FRAME);
+        // Every other frame sees no move, the next sees two frames' worth.
+        if (i % 2 === 1) injectStroke(jittery, rect, x - step, middle, x + step, middle, FRAME);
+        else injectStroke(jittery, rect, x, middle, x, middle, FRAME);
+      }
+      stepWake(smooth, FRAME);
+      stepWake(jittery, FRAME);
+      peakSmooth = Math.max(peakSmooth, maxWake(smooth));
+      peakJittery = Math.max(peakJittery, maxWake(jittery));
+    }
+    expect(peakJittery / peakSmooth).toBeGreaterThan(0.8);
+    expect(peakJittery / peakSmooth).toBeLessThan(1.25);
+  });
+
   it("never overshoots: one rise, one fall, and no cell passes the most its stir ever asked", () => {
     const wake = createWake();
     const most = new Float32Array(wake.E.length);
