@@ -20,15 +20,11 @@ import { COIL } from "@/lib/coil/constants";
 import {
   insideSilhouette,
   isNarrow,
-  pickCard,
-  poseAt,
   projectPoint,
   projectQuad,
-  rayThrough,
   restHelix,
   type Camera,
   type CardPose,
-  type CoilGeometry,
   type Quad,
 } from "@/lib/coil/geometry";
 import {
@@ -38,7 +34,7 @@ import {
   stretchedDy,
   wheelPixels,
 } from "@/lib/coil/motion";
-import { entranceClock, entranceHelix, isRested, type EntranceClock } from "@/lib/coil/entrance";
+import { entranceClock, entranceHelix, isRested } from "@/lib/coil/entrance";
 import { runRender, runUpdate, type RenderSteps, type UpdateSteps } from "@/lib/coil/frame";
 import { unwindProgress } from "@/lib/coil/unwind";
 import { budgetFor, sameBudget } from "@/lib/coil/drivers";
@@ -57,26 +53,20 @@ import {
 } from "./scene/debug";
 import { HOVER_RATE, createCards } from "./scene/cards";
 import { createField } from "./scene/field";
+import { createHover, heroVisible } from "./scene/hover";
 import { createName, createNameFill } from "./scene/name";
 import { createLayout, createPasses, createRenderer, observeResize, watchContext } from "./scene/renderer";
-import { createSceneState, type LoopLink, type SceneCtx } from "./scene/state";
+import { createSceneState, type LoopLink, type SceneCtx, type SceneFrame } from "./scene/state";
 // ---- fx-input imports: wheel ownership and the row hold ----
-import {
-  decideWheel,
-  feedsPageScroll,
-  gestureOwner,
-  heroVisibleFraction,
-  nudgeShown,
-  pointerMoved,
-} from "@/lib/coil/capture";
-import { rowHoldWeight, setRowHold } from "@/lib/coil/motion";
+import { decideWheel, feedsPageScroll, gestureOwner, nudgeShown, pointerMoved } from "@/lib/coil/capture";
+import { rowHoldWeight } from "@/lib/coil/motion";
 // ---- end fx-input imports ----
 import { setSceneHover } from "@/lib/cursor/hover";
 // Slice 4: the loader's tally and the name handoff.
 import { reportHomeLoad } from "@/lib/loader/progress";
 // ---- slice 5 imports: the book, the unwind egg and the flight ----
 import { clamp01, helixRotation, smoothstep01, unprojectToPlane, type HelixFrame } from "@/lib/coil/geometry";
-import { hoverJumpTarget, siteEase, startGlide, type JumpBand } from "@/lib/coil/motion";
+import { siteEase } from "@/lib/coil/motion";
 import { settleUnwind, toggleUnwind, unwindDurationMs } from "@/lib/coil/unwind";
 // ---- end slice 5 imports ----
 // ---- fx-hero imports: the greeting in the name, the name's fill and repel, the drift presets ----
@@ -182,9 +172,6 @@ const DRAG_MINIMUM_PX = 4;
 const REBUILD_FADE_MS = 450;
 const TEXTURE_TIMEOUT_MS = 6000; // the loader's give-up time: a slow photo paints the plain pane
 const CLICK_SLOP_PX = 6;
-// A hover-jump lands a card's center at least a quarter card inside the
-// visible band, so most of the card shows.
-const JUMP_INSET_CARDS = 0.25;
 
 function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject<CoilSceneProps>): CoilRuntime {
   const flags = readDebugFlags();
@@ -313,10 +300,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   }
 
   // ---- picking and the pointer
-  function pickAt(x: number, y: number) {
-    if (!st.geoCamera || st.poses.length === 0) return -1;
-    return pickCard(st.poses, rayThrough(st.geoCamera, x, y));
-  }
+  const hover = createHover(ctx, cards, loop);
 
   function updatePointerLocal() {
     st.pointer.x = st.pointer.clientX - (st.view.docLeft - window.scrollX);
@@ -350,11 +334,6 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   // between cards included), from the last rendered frame.
   function pointerInsideHelix() {
     return st.pointer.inside && st.sil !== null && insideSilhouette(st.sil, st.pointer.x, st.pointer.y);
-  }
-
-  function heroVisible() {
-    const rect = host.getBoundingClientRect();
-    return heroVisibleFraction(rect.top, rect.height, window.innerHeight);
   }
 
   function setCapture(next: typeof st.capture, nowMs: number) {
@@ -408,7 +387,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       decideWheel(st.capture, {
         nowMs: now,
         interactive: wheelInteractive(event),
-        heroVisible: fresh ? heroVisible() : 1,
+        heroVisible: fresh ? heroVisible(host) : 1,
         insideSilhouette: fresh ? pointerInsideHelix() : true,
       }),
       now,
@@ -462,21 +441,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   // ---- the frame
   // Slice 7, QA only: ?coildebug=throw=frame throws from the loop a second in.
   const throwFrameAt = throwFrameAtFromTokens();
-  // One frame's record: the props as the frame began, the geometry it runs
-  // on, and what each step hands the next (lib/coil/frame.ts holds the order).
-  type Frame = {
-    dt: number;
-    now: number;
-    props: CoilSceneProps;
-    geo: CoilGeometry;
-    camera: Camera;
-    scrollDelta: number;
-    helix: HelixFrame | null;
-    clock: EntranceClock | null;
-    realElapsedMs: number;
-    rebuilt: number;
-    listProgress: number;
-  };
+  type Frame = SceneFrame;
 
   function update(dt: number, now: number) {
     if (!st.geo || !st.geoCamera) return;
@@ -594,13 +559,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     slots: cards.poseSlots,
     silhouette: (f) => cards.hull(f, heroName),
     // Hover: picked every frame, since cards move under a still pointer.
-    picking(f) {
-      const { props } = f;
-      const pickable = st.pointer.inside && st.pointer.known && props.interactive && props.input === "fine";
-      const nextHover = pickable ? pickAt(st.pointer.x, st.pointer.y) : -1;
-      st.hoveredSlot = nextHover;
-      setSceneHover(nextHover >= 0);
-    },
+    picking: hover.picking,
     // ---- fx-input: the nudge ----
     // Only while a coil gesture has been held 2.6s; gone the instant the
     // gesture ends or passes to the page. A caret by the cursor points off
@@ -874,13 +833,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       if (on) stop();
       else wake();
     },
-    cardAt(clientX, clientY) {
-      const x = clientX - (st.view.docLeft - window.scrollX);
-      const y = clientY - (st.view.docTop - window.scrollY);
-      const slot = pickAt(x, y);
-      if (slot < 0) return null;
-      return { key: tiles[slots[slot].tile].key, slot };
-    },
+    cardAt: hover.cardAt,
     quadOf: cards.quadOf,
     hideSlot(slot) {
       flightLog?.mark(slot === null ? "mesh-show" : "mesh-hide", { slot }); // fx-flight debug
@@ -910,8 +863,6 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   // Hover-jump from a book row, the double-click unwind into a column beside
   // the overlay's rows (the name moves to the list's lead), and the flight
   // source for a card click. The frame work runs in update()'s slice 5 block.
-  let focusKey: string | null = null;
-  const { tileIndex } = cards;
   const nameRest = new Vector4();
   const nameWritten = new Vector4(Number.NaN, 0, 0, 0);
   let nameRestLod = 0;
@@ -926,20 +877,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       flightQuadOf: cards.flightQuadOf,
       facesOf: cards.facesOf,
       slotOfKey: cards.slotOfKey,
-      focusCard(key) {
-        focusKey = key;
-        // ---- fx-input: the row hold ----
-        // A held row stills the coil on its card (idle and page scroll at
-        // zero) after one glide; letting go resumes the idle after a beat. A
-        // hero under a quarter in view has nothing to show: the row does
-        // nothing to the coil.
-        const now = performance.now();
-        const hold = key !== null && canRowHold();
-        setRowHold(st.rowHold, hold, now);
-        if (hold && key) hoverJump(key);
-        wake();
-        // ---- end fx-input ----
-      },
+      focusCard: hover.focusCard,
       unwind(on) {
         const next = on ?? !st.unwind.on;
         if (next === st.unwind.on) return;
@@ -951,49 +889,9 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     };
   }
 
-  // ---- fx-input: the row hold ----
-  function canRowHold() {
-    const props = live.current;
-    return (
-      st.ready &&
-      props.interactive &&
-      !props.frozen &&
-      !st.frozenByApi &&
-      !st.unwind.latched &&
-      heroVisible() >= COIL.rowHold.minHeroVisible
-    );
-  }
-  // ---- end fx-input ----
-
   function canUnwind() {
     const props = live.current;
     return st.ready && props.interactive && props.input === "fine" && !props.frozen && !st.frozenByApi && window.scrollY <= 2;
-  }
-
-  // The row's card to the part of the helix still on screen: the copy whose
-  // projected center lands inside the hero's visible rows (clear of the
-  // narrow header band and the bottom seam fade), or the nearest that will
-  // be once the hero scrolls back. Nothing while unwound.
-  function hoverJump(key: string) {
-    const props = live.current;
-    const tile = tileIndex.get(key);
-    if (tile === undefined || !st.geo || !st.geoCamera || !st.ready) return;
-    if (st.unwind.latched || props.frozen || st.frozenByApi || !props.interactive) return;
-    const rect = host.getBoundingClientRect();
-    const inset = JUMP_INSET_CARDS * st.geo.cardPx;
-    const band: JumpBand = {
-      top: Math.max(0, -rect.top, st.geo.clearTopPx) + inset,
-      bottom: Math.min(st.view.height, window.innerHeight - rect.top, st.view.height * (1 - FIELD.seamFade)) - inset,
-      left: inset,
-      right: st.view.width - inset,
-    };
-    const frame = restHelix(st.geo, st.theme.card.recede);
-    const camera = st.geoCamera;
-    const maxU = st.geo.slotCount / 2 - COIL.lab.endFadeSlots;
-    const { to } = hoverJumpTarget(tile, st.conveyor.offset, tileCount, st.geo.cardsPerTurn, maxU, (u) =>
-      projectPoint(camera, poseAt(frame, u).position), band);
-    startGlide(st.conveyor, to, performance.now());
-    wake();
   }
 
   // Double-click open hero space (not a card, not a control) with the page at
@@ -1002,7 +900,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     if (!(event.target instanceof Node) || !host.contains(event.target)) return;
     const x = event.clientX - (st.view.docLeft - window.scrollX);
     const y = event.clientY - (st.view.docTop - window.scrollY);
-    if (pickAt(x, y) >= 0) return;
+    if (hover.pickAt(x, y) >= 0) return;
     if (!st.unwind.on && !canUnwind()) return;
     api.unwind(!st.unwind.on);
   };
@@ -1013,7 +911,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       unwindAt: [] as number[],
       unwindState: () => ({ on: st.unwind.on, latched: st.unwind.latched !== null, progress: unwindProgress(st.unwind, performance.now()) }),
       unwindMs: () => unwindDurationMs(tileCount),
-      focusKey: () => focusKey,
+      focusKey: hover.focusKey,
     });
   }
 
@@ -1439,13 +1337,6 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
 
   // Where the lift is heading: the scene's own hover rule, with the flown
   // card counted on its seat.
-  function liftTarget(f: Flight) {
-    const props = live.current;
-    if (!st.geoCamera || !st.pointer.inside || !st.pointer.known || !props.interactive || props.input !== "fine") return 0;
-    const seats = st.poses.map((pose, j) => (j === f.slot ? { ...pose, alpha: f.alpha } : pose));
-    return pickCard(seats, rayThrough(st.geoCamera, st.pointer.x, st.pointer.y)) === f.slot ? 1 : 0;
-  }
-
   function still() {
     update(0, st.lastTime);
     render(0);
@@ -1566,7 +1457,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
               // The lift follows the pointer on the way home, at the scene's
               // own rate, so the card lands as the scene would draw it next.
               const lifted = slots[f.slot];
-              lifted.hover += (liftTarget(f) - lifted.hover) * (1 - Math.exp(-Math.min(dt, COIL.lab.maxFrameSeconds) * HOVER_RATE));
+              lifted.hover += (hover.liftTarget(f.slot, f.alpha) - lifted.hover) * (1 - Math.exp(-Math.min(dt, COIL.lab.maxFrameSeconds) * HOVER_RATE));
               update(0, st.lastTime);
             }
             f.e = e;
