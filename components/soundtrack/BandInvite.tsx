@@ -72,7 +72,7 @@ export function BandInvite() {
           </Layer>
         </div>
       </div>
-      <div className="mt-2 grid max-w-[46ch] text-sm leading-[1.5] text-muted" aria-live="polite">
+      <div className="mt-2 grid max-w-[42rem] text-sm leading-[1.5] text-muted" aria-live="polite">
         <Layer shown={music === "before"}>
           <p>{c.body}</p>
         </Layer>

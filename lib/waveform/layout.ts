@@ -11,7 +11,9 @@ export const DPR_CAP = 1.5;
 
 const SPACING_DESKTOP = 13;
 const SPACING_PHONE = 16;
-const AMPLITUDE = 0.27; // max amplitude as a share of the band's height
+// Max amplitude as a share of the band's height: the idle drift fills about
+// a fifth of the band, as in Aaron's sketch; the loudest peaks may clip.
+const AMPLITUDE = 0.42;
 
 // Column grid for a canvas of `width` by `height` css px: columns run the full
 // width, centered, on the band's horizontal midline.
