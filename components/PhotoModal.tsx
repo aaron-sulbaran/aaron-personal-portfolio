@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { X } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { useRef } from "react";
+import { useRef, useSyncExternalStore } from "react";
 import {
   useBodyScrollLock,
   useEscapeKey,
@@ -12,21 +12,41 @@ import {
   modalBackdropTintVariants,
 } from "@/lib/modal";
 import { siteContent, type Photo } from "@/lib/content";
+import { photoSlotSizes } from "@/lib/photoSizes";
 import { Portal } from "./Portal";
 
 type PhotoModalProps = {
   photo: Photo | null;
   onClose: () => void;
-  // On mobile the modal is opened from the carousel, where no flight tile
-  // flies into the slot. When true the modal renders its own image so the slot
-  // is never empty. Desktop leaves this false; the flown tile fills the slot.
+  // Any open with no flight tile flying into the slot (a book row, a touch
+  // tap, or no scene) sets this, and
+  // the modal renders its own image so the slot is never empty. A flight
+  // leaves it false; the flown tile fills the slot.
   renderMedia?: boolean;
 };
+
+// The close hint by pointer type: "Press Esc" for a mouse, "Tap outside" for
+// a touch screen. A coarse primary pointer means touch.
+const COARSE_POINTER = "(pointer: coarse)";
+function subscribePointer(onChange: () => void) {
+  const list = window.matchMedia(COARSE_POINTER);
+  list.addEventListener("change", onChange);
+  return () => list.removeEventListener("change", onChange);
+}
+export function useCloseHint() {
+  const coarse = useSyncExternalStore(
+    subscribePointer,
+    () => window.matchMedia(COARSE_POINTER).matches,
+    () => false,
+  );
+  return coarse ? siteContent.modals.closeHintTouch : siteContent.modals.closeHintKeyboard;
+}
 
 export function PhotoModal({ photo, onClose, renderMedia = false }: PhotoModalProps) {
   const open = photo !== null;
   const dialogRef = useRef<HTMLDivElement | null>(null);
   const prefersReducedMotion = useReducedMotion();
+  const closeHint = useCloseHint();
 
   useBodyScrollLock(open);
   useEscapeKey(open, onClose);
@@ -74,24 +94,24 @@ export function PhotoModal({ photo, onClose, renderMedia = false }: PhotoModalPr
           />
           <motion.div
             variants={panelVariants}
-            className="relative my-auto flex w-full max-w-4xl flex-col gap-6 overflow-hidden rounded-2xl border border-border/60 bg-background/85 p-5 shadow-[0_40px_80px_-20px_rgba(10,10,10,0.45)] backdrop-blur-xl md:flex-row md:gap-10 md:p-8"
+            className="relative my-auto flex w-full max-w-4xl flex-col gap-6 overflow-hidden rounded-2xl border border-border bg-background/85 p-5 shadow-[0_40px_80px_-20px_rgba(10,10,10,0.45)] backdrop-blur-xl md:flex-row md:gap-10 md:p-8"
             onMouseDown={(e) => e.stopPropagation()}
           >
             <button
               type="button"
               onClick={onClose}
               aria-label={siteContent.modals.closeAriaLabel}
-              className="absolute right-3 top-3 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full border border-border/70 bg-background/80 text-foreground transition-colors duration-200 hover:text-accent"
+              className="absolute right-3 top-3 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-background/80 text-foreground transition-colors duration-200 hover:text-accent"
             >
               <X aria-hidden="true" className="h-4 w-4" />
             </button>
 
-            {/* Photo slot. On desktop the TileRing's FlyingTile physically
+            {/* Photo slot. After a card click the flown card (FlyingTile)
                 lives here while the modal is open (no <Image> inside; the flown
-                tile is the image), so the aspect + sizing must match the tile's
-                3:4 proportions for the flight to land in the exact rect. On
-                mobile the modal opens from the carousel with no flight, so
-                renderMedia draws the image here directly. The panel stacks
+                card is the image), so the slot keeps the card's 3:4 proportions
+                for the flight to land in the exact rect. Opens with no flight
+                (a book row, a tap, no scene) set renderMedia, which draws the
+                image here directly. The panel stacks
                 vertically on mobile, where the full-width image would tuck under
                 the top-right close button. The button sits at top-3 (12px) and is
                 h-10 (40px), so its bottom edge is 52px below the panel top; with
@@ -109,18 +129,18 @@ export function PhotoModal({ photo, onClose, renderMedia = false }: PhotoModalPr
                   alt={photo.alt}
                   fill
                   quality={90}
-                  sizes="(max-width: 768px) 92vw, 46vw"
+                  sizes={photoSlotSizes(photo.src)}
                   className="object-cover"
                 />
               )}
             </div>
 
             <div className="flex flex-1 flex-col justify-center pt-2 md:pt-0">
-              <p className="font-serif text-2xl italic leading-[1.25] text-foreground md:text-3xl md:leading-[1.2]">
+              <p className="text-2xl leading-[1.25] text-foreground md:text-3xl md:leading-[1.2]">
                 {photo.caption}
               </p>
-              <p className="mt-5 text-[11px] font-medium uppercase tracking-caps text-muted">
-                {renderMedia ? "Tap outside to close" : "Press esc to close"}
+              <p className="mt-5 text-sm text-muted">
+                {closeHint}
               </p>
             </div>
           </motion.div>

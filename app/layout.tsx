@@ -1,9 +1,10 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Instrument_Serif, Space_Grotesk } from "next/font/google";
-import { Menu } from "@/components/Menu";
+import { Inter } from "next/font/google";
 import { SiteNav } from "@/components/SiteNav";
+import { MenuPill } from "@/components/menu/MenuPill";
 import { CustomCursor } from "@/components/CustomCursor";
 import { siteContent } from "@/lib/content";
+import { profaBlack } from "@/lib/fonts";
 import { HOLDING_MODE } from "@/lib/holding";
 import { THEME_BG_DARK, THEME_BG_LIGHT, themeInitScript } from "@/lib/theme";
 import "./globals.css";
@@ -14,26 +15,11 @@ const inter = Inter({
   variable: "--font-sans",
 });
 
-const instrumentSerif = Instrument_Serif({
-  subsets: ["latin"],
-  weight: "400",
-  style: ["normal", "italic"],
-  display: "swap",
-  variable: "--font-serif",
-});
-
-const spaceGrotesk = Space_Grotesk({
-  subsets: ["latin"],
-  weight: ["400", "500", "700"],
-  display: "swap",
-  variable: "--font-grotesk",
-});
-
 export const metadata: Metadata = {
   metadataBase: new URL(siteContent.meta.url),
   title: {
     default: siteContent.meta.title,
-    template: `%s · ${siteContent.meta.title}`,
+    template: `%s | ${siteContent.meta.title}`,
   },
   description: siteContent.meta.description,
   openGraph: {
@@ -64,7 +50,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${instrumentSerif.variable} ${spaceGrotesk.variable}`}>
+    <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning className={`${inter.variable} ${profaBlack.variable}`}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
@@ -74,7 +60,7 @@ export default function RootLayout({
         </a>
         {/* Holding mode has no sections to navigate; nav and menu stay out. */}
         {!HOLDING_MODE && <SiteNav />}
-        {!HOLDING_MODE && <Menu />}
+        {!HOLDING_MODE && <MenuPill />}
         <CustomCursor />
         {children}
       </body>

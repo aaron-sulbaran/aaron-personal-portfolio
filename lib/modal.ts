@@ -9,7 +9,7 @@ const FOCUSABLE_SELECTOR =
   'a[href], area[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), iframe, object, embed, [tabindex]:not([tabindex="-1"]), [contenteditable="true"]';
 
 // Module-level lock reference count. Overlapping locks (e.g. the Menu opening
-// during the ring-entrance lock) must not each save and restore the body style
+// during the entrance lock) must not each save and restore the body style
 // independently: with nested locks the inner cleanup would restore the
 // already-locked style and the outer cleanup would restore an unlock that no
 // longer reflects reality, leaving the body wedged at overflow:hidden. Instead

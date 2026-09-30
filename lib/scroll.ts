@@ -36,7 +36,7 @@ export function navigateToSection(href: string, prefersReducedMotion: boolean) {
 }
 
 // Refresh scroll recovery. We take manual control of scroll restoration (see
-// TileRing) so the hero entrance freeze never strands a visitor who reloaded
+// lib/home/recovery.ts) so the entrance lock never strands a visitor who reloaded
 // deep in the document. To restore their place ourselves we persist the scroll
 // position to sessionStorage and read it back on the next load.
 const SCROLL_KEY = "aps:home-scroll-y";

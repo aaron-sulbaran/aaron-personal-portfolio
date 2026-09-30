@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 
-// Shared deceleration ease for the site's motion. Mirrored from the TileRing
-// entrance and flight so the back-half scroll journey moves in the same hand:
+// Shared deceleration ease for the site's motion, so the back-half scroll
+// journey moves in the same hand as the hero:
 // a smooth ease-out with no overshoot. EASE is the Framer cubic-bezier tuple;
 // the same curve is written out as a CSS timing function where CSS owns the
 // transition (the --ease-out custom property in globals.css).
