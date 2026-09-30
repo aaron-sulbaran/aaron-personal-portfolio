@@ -98,7 +98,10 @@ export const CARD_FRAG = /* glsl */ `
         if (darker >= 0.004) {
           rl = ul * (darker / max(yu, 1e-4));
         } else {
-          vec3 pl = pow(uPaper, vec3(2.2));
+          // Lighter: toward the brighter of the two theme ends (paper in
+          // light, ink in dark).
+          vec3 hi = dot(uInk, vec3(0.299, 0.587, 0.114)) > dot(uPaper, vec3(0.299, 0.587, 0.114)) ? uInk : uPaper;
+          vec3 pl = pow(hi, vec3(2.2));
           float yp = dot(pl, vec3(0.2126, 0.7152, 0.0722));
           float lighter = min(yp, ${SEEN_RING.contrast.toFixed(2)} * (yu + 0.05) - 0.05);
           rl = mix(ul, pl, clamp((lighter - yu) / max(yp - yu, 1e-4), 0.0, 1.0));
