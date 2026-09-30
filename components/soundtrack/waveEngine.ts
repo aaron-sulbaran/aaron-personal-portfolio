@@ -3,7 +3,7 @@ import { getSoundtrackState, subscribeSoundtrack } from "@/lib/soundtrack";
 import { FLOOR, createField, regimeOf, stepField, type Field } from "@/lib/waveform/field";
 import { buildDots, carveTargets, reachOf, type Cursor } from "@/lib/waveform/dots";
 import { DPR_CAP, PHONE_MAX_PX, bandLayout } from "@/lib/waveform/layout";
-import { columnWeights, type Rect } from "@/lib/waveform/weights";
+import { blendWeights, columnWeights, type Rect, type WeightLayout } from "@/lib/waveform/weights";
 
 // The imperative side of the band's waveform: sizing, weights, colors, the
 // cursor and the loop. The math lives in lib/waveform; this file only feeds it
@@ -38,6 +38,8 @@ export function createWaveEngine(canvas: HTMLCanvasElement, still: boolean): Wav
   let layout = bandLayout(0, 0);
   let field: Field = createField(0, regimeOf(getSoundtrackState()));
   let weights: Float32Array = new Float32Array(0);
+  let calmWeights: Float32Array = new Float32Array(0);
+  let loudWeights: Float32Array = new Float32Array(0);
   let carve: Float32Array = new Float32Array(0);
   const muted: number[] = [];
   const accent: number[] = [];
@@ -104,6 +106,7 @@ export function createWaveEngine(canvas: HTMLCanvasElement, still: boolean): Wav
     syncCursor();
     carveTargets(layout, cursor, carve);
     const frame = player.sample(t, layout.columns);
+    blendWeights(calmWeights, loudWeights, field.levels.reactive, weights);
     const { settled } = stepField(field, {
       time,
       dt,
@@ -114,7 +117,7 @@ export function createWaveEngine(canvas: HTMLCanvasElement, still: boolean): Wav
       carve,
     });
     paint(time);
-    return settled && !cursor.on;
+    return settled;
   };
 
   const running = () => active && !frozen && !still && !document.hidden;
@@ -167,13 +170,19 @@ export function createWaveEngine(canvas: HTMLCanvasElement, still: boolean): Wav
         bottom: r.bottom - origin.top + AVOID_PAD,
       });
     });
-    weights = columnWeights({
+    // The band's own top and bottom edges count as boxes too, so the loudest
+    // music scales to fit the band instead of clipping at its edges.
+    rects.push({ left: -1e6, right: 1e6, top: -1e6, bottom: 0 }, { left: -1e6, right: 1e6, top: height, bottom: 1e6 });
+    const base: Omit<WeightLayout, "reach"> = {
       ...layout,
-      reach: reachOf(layout.maxAmp),
       feather: FEATHER,
       edgeTaper: width <= PHONE_MAX_PX ? 24 : 96,
       rects,
-    });
+    };
+    calmWeights = columnWeights({ ...base, reach: reachOf(layout.maxAmp, "calm") });
+    loudWeights = columnWeights({ ...base, reach: reachOf(layout.maxAmp, "loud") });
+    weights = new Float32Array(layout.columns);
+    blendWeights(calmWeights, loudWeights, field.levels.reactive, weights);
     // Repaint at once so a resize never leaves the canvas blank while paused.
     paint(lastTime);
   };
