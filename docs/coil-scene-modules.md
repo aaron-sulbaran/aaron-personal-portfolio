@@ -8,7 +8,7 @@ The map of `components/coil/scene/`, the modules behind the Coil hero's WebGL sc
 CoilStage.tsx ──import() after first paint──> CoilScene.tsx (composition root, 220 lines)
                                                  │ creates, in the old closure's order:
    state.ts   SceneCtx { host, canvas, live, tiles, flags, debug, flightLog, st: SceneState }
-   renderer.ts ─> field.ts ─> name.ts ─> cards.ts ─> entrance.ts
+   renderer.ts ─> nameSurface.ts ─> field.ts ─> name.ts ─> cards.ts ─> entrance.ts
                   layout (renderer.ts) ─> hover.ts ─> input.ts ─> debugProbe.ts
                   flightOverlay.ts ─> flight.ts ─> unwind.ts ─> loop.ts
                                                  │ then listeners, api.ts, debug hooks, boot.ts
@@ -25,12 +25,14 @@ Every module is a factory: `createX(ctx, ...parts it calls, loop)` returns the f
 | `CoilScene.tsx` | The React component (mount, sync, dispose), `startCoil()`: creates the parts, maps each frame step to its part, registers listeners, builds the api, installs QA hooks, boots | every module below |
 | `scene/types.ts` | Public types: `CoilSceneProps`, `CoilSceneApi`, `CoilFlightApi`, `CoilFlownApi`, `CoilFlightHandle`, `CoilCardRef`, `CoilCardFaces`, `CoilEntrance`, `CoilRuntime` | none |
 | `scene/state.ts` | `SceneState` (shared state), `SceneCtx` (handles), `SceneFrame` (one frame's record), `LoopLink` (the loop's late-bound entry points) | none |
-| `scene/debug.ts` | Every `?coildebug` token and the `?name` / `?drift` picks (`readDebugFlags`), `window.__coil` (create, hooks, remove), `pushStat` | types of the parts it reads |
+| `scene/debug.ts` | Every `?coildebug` token (`ink=`, `name` included) and the `?drift` pick (`readDebugFlags`), `window.__coil` (create, hooks, remove), `pushStat` | types of the parts it reads |
 | `scene/debugProbe.ts` | `window.__coilFlight.scene` (follow, slot, slots, hide, seam, flown, flight) and the state every probe mark carries | cards, loop |
-| `scene/renderer.ts` | The scene canvas's `WebGLRenderer`, cameras, scenes, field target, `uView`, the shared quad (`Gl`); the layout (host sized, DPR capped, rebuild trigger); the resize observer; the lost context | loop |
-| `scene/field.ts` | The field pass (drift preset, its two clocks, only redrawn when a clock moved) and the composite pass (material, theme colors, size uniforms) | none |
-| `scene/name.ts` | The lockup mask (greeting and name), its layout, the entrance, loader, rebuild and QA fades, the fill clock and the cursor repel buffer, the `?name`/`?drift` switcher event, `nameRect` and `landName` | loop |
-| `scene/cards.ts` | Slot meshes, shared card uniforms, painted faces and the repaint queue, seen levels, the helix frame, per slot poses (entrance, unwind, header band, rebuild, hidden, hover lift, seen ring), the silhouette, the card pass; `quadOf`, `flightQuadOf`, `facesOf`, `slotOfKey` | name (flow direction, QA hide) |
+| `scene/renderer.ts` | The scene canvas's `WebGLRenderer`, cameras, scenes, the field's and the name surface's targets, `uView`, the shared quad (`Gl`); the layout (host sized, DPR capped, rebuild trigger); the resize observer; the lost context | loop |
+| `scene/nameSurface.ts` | The name's lit surface pass (half the lockup's device resolution, drawn only when its clock, the wake, the layout or the theme moved), its clock and light orbit, the pointer's wake (`lib/coil/wake.ts`) stepped and uploaded, `nameBench()` | none |
+| `scene/field.ts` | The field pass (drift preset, its two clocks, only redrawn when a clock moved) and the composite pass (material, theme colors and the name's per-theme scalars, size uniforms) | none |
+| `scene/name.ts` | The lockup mask (greeting and name, one mask), its layout, the entrance, loader, rebuild and QA fades, the surface growing over the loader's name, the per-letter reduction pass (each letter's contrast, the lift), `nameRect` and `landName` | nameSurface, loop |
+| `scene/nameProbe.ts` | QA only: the composite without the cards read back, the per-letter readout (`lib/coil/letterContrast.ts`) and lightness snapshots (`window.__coil.nameProbe`) | name |
+| `scene/cards.ts` | Slot meshes, shared card uniforms, painted faces and the repaint queue, seen levels, the helix frame, per slot poses (entrance, unwind, header band, rebuild, hidden, hover lift, seen ring), the silhouette, the card pass; `quadOf`, `flightQuadOf`, `facesOf`, `slotOfKey` | name (QA hide) |
 | `scene/hover.ts` | Picking (`pickAt`, `cardAt`), the per frame hover and the cursor bridge (`lib/cursor/hover.ts`), the flown card's lift target, the row hold and hover-jump (`focusCard`), `heroVisible` | cards, loop |
 | `scene/input.ts` | Pointer and wheel handlers over `lib/coil/capture.ts`, click and tap opening, the touch drag and its coast, the scroll, conveyor and nudge steps | cards, hover, loop |
 | `scene/entrance.ts` | The entrance clock on the scene's time (a rebuild starts at rest), the strand held until the band opens, the end reported once, the rebuild fade | name |
@@ -76,14 +78,16 @@ Every module is a factory: `createX(ctx, ...parts it calls, loop)` returns the f
 | entrance | entrance (and name's fades) | `clock`, `realElapsedMs`, `helix` |
 | rebuild | entrance (and name's fade) | `rebuilt` |
 | unwind | unwind | `listProgress` |
-| name | name | |
+| name | name (nameSurface: the surface's clock, the pointer's stroke, the wake's step and upload) | |
 | seen | cards | |
 | slots | cards | (writes `st.poses`, `st.rendered`) |
 | silhouette | cards (and name's flow) | (writes `st.sil`) |
 | picking | hover | (writes `st.hoveredSlot`) |
 | nudge | input | |
 | repaint | cards | |
-| field, composite | field | |
+| field | field | |
+| surface | name (the surface pass, then the per-letter reduction) | (reads the field target; the composite reads both) |
+| composite | field | |
 | cards | cards | |
 
 `lib/coil/frame.test.ts` fails if a step moves, is added out of place, or runs twice. It checks order, not data flow: a new step that reads what a later step writes still passes, so read the table's right column before placing one.

@@ -158,6 +158,7 @@ Picked by Aaron from hero lab 2, 2026-09-29 (the build starts on these; see `doc
 - [x] The Listen control is a single quarter note: filled accent when playing, outlined with a drawn slash when off.
 - [x] "Work and photos" is removed from the hero. "Hi, I'm" is drawn in the canvas in the name's own style, as one lockup with "Aaron".
 - [x] The name's fill is grain (the shadergradient look), alive at idle, pushed aside by the cursor in proportion to its speed, refilling within about a second. Options are built behind `?name=`; Aaron picks. Not green.
+- [x] Ruled 2026-09-30 (design review of the Tide and Fabric labs, then Aaron's answers): the name is a lit shadergradient surface (the Tide lab's color law and pale crest in both themes, never orange in the letters) seen through the letters at ink 12 light and 14 dark, stirred by a museum-rhythm wake that swells about 0.75s after a swipe and settles over about three seconds (a faint stir at 300 px/s, up to about 20 percent ink where touched), every letter held within 1.5x of the strongest, the greeting at 0.18 of the cap height in the same mask; the seven fills, the repel and `?name=` are gone.
 - [x] The background field's drift is raised until the movement is visible within a few seconds.
 - [x] The seen ring in the coil is discreet and constant in contrast on every card. Seen rows in the book dim their title like non-hovered siblings.
 - [x] Hovering a book row brings its card forward once and holds the coil still.
