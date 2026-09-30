@@ -188,6 +188,31 @@ export function hoverJumpTarget(
   return { to: best, arrival: bestArrival };
 }
 
+// ---------------------------------------------------------------- row hold
+
+// A book row hovered or keyboard focused holds the coil still on its card:
+// the idle drift and the page-scroll feed weigh 0 while held. Letting go
+// waits resumeDelayMs, then eases the weight back in over resumeMs, so the
+// drift never jumps. Only a real release (held to not held) starts the wait.
+export type RowHold = { held: boolean; releasedAtMs: number };
+
+export function createRowHold(): RowHold {
+  return { held: false, releasedAtMs: Number.NEGATIVE_INFINITY };
+}
+
+export function setRowHold(hold: RowHold, held: boolean, nowMs: number): RowHold {
+  if (hold.held && !held) hold.releasedAtMs = nowMs;
+  hold.held = held;
+  return hold;
+}
+
+// The weight (0 to 1) on the idle drift and the page-scroll feed.
+export function rowHoldWeight(hold: RowHold, nowMs: number, c: CoilConstants = COIL) {
+  if (hold.held) return 0;
+  const t = clamp((nowMs - hold.releasedAtMs - c.rowHold.resumeDelayMs) / c.rowHold.resumeMs, 0, 1);
+  return t * t; // ease-in
+}
+
 // ---------------------------------------------------------------- stretch envelope
 
 export type Envelope = { value: number; velocity: number };
