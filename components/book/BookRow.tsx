@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import type { PointerEvent } from "react";
+import type { FocusEvent, PointerEvent } from "react";
 import { photoBySrc, siteContent, bookWorkTarget, type BookPhotoRow, type BookWorkRow } from "@/lib/content";
 import { useIsSeen } from "@/lib/home/seen";
 import { useHomeController } from "@/components/home/HomeController";
@@ -20,13 +20,17 @@ export type BookEntry = { kind: "work"; row: BookWorkRow } | { kind: "photo"; ro
 export function BookRow({ entry }: { entry: BookEntry }) {
   const controller = useHomeController();
   const { key: rowKey } = entry.row;
+  // fx-input: the row hover signal. Keyboard focus only (a mouse click that
+  // focuses the row is not a keyboard focus).
   const focusProps = {
     onPointerEnter: (event: PointerEvent) => {
-      if (event.pointerType === "mouse" || event.pointerType === "pen") controller?.focusCard(rowKey);
+      if (event.pointerType === "mouse" || event.pointerType === "pen") controller?.focusCard(rowKey, "pointer");
     },
-    onPointerLeave: () => controller?.focusCard(null),
-    onFocus: () => controller?.focusCard(rowKey),
-    onBlur: () => controller?.focusCard(null),
+    onPointerLeave: () => controller?.focusCard(null, "pointer"),
+    onFocus: (event: FocusEvent<HTMLElement>) => {
+      if (event.currentTarget.matches(":focus-visible")) controller?.focusCard(rowKey, "focus");
+    },
+    onBlur: () => controller?.focusCard(null, "focus"),
   };
   const seen = useIsSeen(entry.row.key);
   const { seenLabel, externalLabel } = siteContent.book;
