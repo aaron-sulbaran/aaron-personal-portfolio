@@ -49,7 +49,7 @@ import { runRender, runUpdate, type RenderSteps, type UpdateSteps } from "@/lib/
 import { unwindPose, unwindProgress } from "@/lib/coil/unwind";
 import { budgetFor, sameBudget } from "@/lib/coil/drivers";
 import { Observer } from "@/lib/gsap";
-import { COMPOSITE_FRAG, COMPOSITE_VERT, FIELD, FIELD_FRAG, FULLSCREEN_VERT } from "@/lib/coil/field.glsl";
+import { FIELD } from "@/lib/coil/field.glsl";
 import { createCardGeometry, createCardMaterial, type CardUniforms, type SharedCardUniforms } from "@/lib/coil/material";
 import { loadCardSource, paintCard, type CardSource } from "@/lib/coil/textures";
 import { applyColor, createRepaintQueue, readCoilTheme, toBytes, watchTheme } from "@/lib/coil/theme";
@@ -62,6 +62,7 @@ import {
   removeDebugStats,
   throwFrameAt as throwFrameAtFromTokens,
 } from "./scene/debug";
+import { createField } from "./scene/field";
 import { createLayout, createPasses, createRenderer, observeResize, watchContext } from "./scene/renderer";
 import { createSceneState, type LoopLink, type SceneCtx } from "./scene/state";
 // ---- fx-input imports: wheel ownership and the row hold ----
@@ -86,7 +87,6 @@ import { isConvex } from "@/lib/coil/flight";
 // ---- end slice 5 imports ----
 // ---- fx-hero imports: the greeting in the name, the name's fill and repel, the drift presets ----
 // (DataTexture, RGBAFormat and UnsignedByteType come in with the fx-flight imports.)
-import { DRIFT_PRESETS, fieldClocks, parseDriftPreset, type DriftPreset } from "@/lib/coil/drift";
 import { COIL_FX_EVENT, NAME_FILL, NAME_FILLS, parseNameFill, type CoilFxDetail, type NameFill } from "@/lib/coil/field.glsl";
 import { REPEL, createRepelField, encodeRepel, injectStroke, maxOffset, stepRepel } from "@/lib/coil/repel";
 import { LOADER } from "@/lib/loader/progress";
@@ -307,14 +307,34 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   const tileCount = tiles.length;
   // The state more than one part of the scene reads (scene/state.ts).
   const st = createSceneState(readCoilTheme(), budgetFor(live.current.input));
+  const debug = createDebugStats(flags, {
+    offset: () => st.conveyor.offset,
+    hovered: () => st.hoveredSlot,
+    // ---- fx-input debug ----
+    capturing: () => gestureOwner(st.capture, performance.now()) === "coil",
+    owner: () => gestureOwner(st.capture, performance.now()) ?? "none",
+    silhouette: () => st.sil,
+    // ---- end fx-input debug ----
+  });
+  // ---- fx-flight debug: ?coildebug=flight, the measurement hook ----
+  const flightLog = flightProbe();
+  const ctx: SceneCtx = { host, canvas, live, tiles, tileCount, flags, debug, flightLog, st };
+  // The loop's entry points for the parts made before it.
+  const loop: LoopLink = {
+    wake: () => wake(),
+    stop: () => stop(),
+    renderStill: () => renderStill(),
+    shouldRun: () => shouldRun(),
+    update: (dt, now) => update(dt, now),
+    render: (dt) => render(dt),
+  };
 
   // ---- passes
   const gl = createPasses(renderer);
-  const { orthoCamera, camera, fieldScene, compScene, cardScene, fieldTarget, uView, quad } = gl;
+  const { camera, cardScene, fieldTarget, uView, quad } = gl;
 
   // ---- fx-hero state: the fill, the drift preset and the repel buffer ----
   let nameFill: NameFill = parseNameFill(flags.nameParam);
-  let driftPreset: DriftPreset = parseDriftPreset(flags.driftParam);
   const repel = createRepelField();
   const repelBytes = new Uint8Array(REPEL.cols * REPEL.rows * 4);
   encodeRepel(repel, repelBytes);
@@ -332,71 +352,9 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   const strokeTo = { x: 0, y: 0 };
   // ---- end fx-hero state ----
 
-  const fieldMaterial = new ShaderMaterial({
-    depthTest: false,
-    depthWrite: false,
-    vertexShader: FULLSCREEN_VERT,
-    fragmentShader: FIELD_FRAG,
-    uniforms: {
-      uT: { value: 0 }, // fx-hero: set by render from fieldClocks
-      // ---- fx-hero: the weather clock and warp (drift presets) ----
-      uTw: { value: 0 },
-      uWarp: { value: DRIFT_PRESETS[driftPreset].warp },
-      // ---- end fx-hero ----
-      uAspect: { value: 1.6 },
-      uAmt: { value: FIELD.amount },
-      uSec: { value: st.theme.field.secondStrength },
-      uSecAt: { value: new Vector2(...FIELD.secondAt) },
-      uSecScale: { value: new Vector2(...FIELD.secondScale) },
-      uTop: { value: new Color() },
-      uBottom: { value: new Color() },
-      uGlow: { value: new Color() },
-      uSecond: { value: new Color() },
-    },
-  });
-  const fieldMesh = new Mesh(quad, fieldMaterial);
-  fieldMesh.frustumCulled = false;
-  fieldScene.add(fieldMesh);
-
   let nameTexture: Texture | null = null;
-  const compMaterial = new ShaderMaterial({
-    depthTest: false,
-    depthWrite: false,
-    vertexShader: COMPOSITE_VERT,
-    fragmentShader: COMPOSITE_FRAG,
-    uniforms: {
-      uField: { value: fieldTarget.texture },
-      uName: { value: null },
-      uView,
-      uNameRect: { value: new Vector4(0, 0, 1, 1) },
-      uFull: { value: new Vector2(1, 1) },
-      uPaper: { value: new Color() },
-      uGradTop: { value: new Color() },
-      uGradBottom: { value: new Color() },
-      uNameK: { value: 0 },
-      uNameA: { value: 0 },
-      uLod: { value: 0 },
-      uGrain: { value: FIELD.grain },
-      uDpr: { value: 1 },
-      uSeam: { value: FIELD.seamFade },
-      // ---- fx-hero: the greeting, the fill and the repel ----
-      uNameSpan: { value: new Vector2(0, 1) },
-      uGreetSplit: { value: 0 },
-      uGreetA: { value: 0 },
-      uWarm: { value: new Color() },
-      uFlowDir: { value: new Vector2(Math.cos(0.58), -Math.sin(0.58)) },
-      uMode: { value: NAME_FILLS.indexOf(nameFill) },
-      uFillMix: { value: 1 },
-      uNameT: { value: 0 },
-      uRepel: { value: repelTexture },
-      uRepelOn: { value: 0 },
-      uRepelMax: { value: REPEL.maxPush },
-      // ---- end fx-hero ----
-    },
-  });
-  const compMesh = new Mesh(quad, compMaterial);
-  compMesh.frustumCulled = false;
-  compScene.add(compMesh);
+  const field = createField(ctx, gl, { mode: NAME_FILLS.indexOf(nameFill), repel: repelTexture });
+  const { compMaterial } = field;
 
   // ---- cards
   const shared: SharedCardUniforms = {
@@ -455,18 +413,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   const repaints = createRepaintQueue<number>(4);
 
   function applyTheme() {
-    const fu = fieldMaterial.uniforms;
-    applyColor(fu.uTop.value, st.theme.field.top);
-    applyColor(fu.uBottom.value, st.theme.field.bottom);
-    applyColor(fu.uGlow.value, st.theme.field.glow);
-    applyColor(fu.uSecond.value, st.theme.field.second);
-    fu.uSec.value = st.theme.field.secondStrength;
-    const cu = compMaterial.uniforms;
-    applyColor(cu.uPaper.value, st.theme.paper);
-    applyColor(cu.uGradTop.value, st.theme.name.top);
-    applyColor(cu.uGradBottom.value, st.theme.name.bottom);
-    cu.uNameK.value = st.theme.name.ink * FIELD.nameInkGain;
-    applyColor(cu.uWarm.value, st.theme.field.second); // fx-hero: grain-warm's second tone
+    field.applyTheme();
     applyColor(shared.uInk.value, st.theme.ink);
     applyColor(shared.uPaper.value, st.theme.paper);
     shared.uSheen.value = st.theme.card.sheen;
@@ -474,8 +421,6 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   }
 
   // ---- state
-  let fieldElapsed = 0;
-  let lastWeatherTime = Number.NaN; // fx-hero
   // ---- slice 4 state: the entrance clock and the name handoff ----
   let nameBox: { left: number; baseline: number; inkWidth: number; size: number; maskTop: number; maskHeight: number } | null =
     null;
@@ -503,27 +448,6 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     return now - entranceBase;
   }
   // ---- end slice 4 state ----
-  const debug = createDebugStats(flags, {
-    offset: () => st.conveyor.offset,
-    hovered: () => st.hoveredSlot,
-    // ---- fx-input debug ----
-    capturing: () => gestureOwner(st.capture, performance.now()) === "coil",
-    owner: () => gestureOwner(st.capture, performance.now()) ?? "none",
-    silhouette: () => st.sil,
-    // ---- end fx-input debug ----
-  });
-  // ---- fx-flight debug: ?coildebug=flight, the measurement hook ----
-  const flightLog = flightProbe();
-  const ctx: SceneCtx = { host, canvas, live, tiles, tileCount, flags, debug, flightLog, st };
-  // The loop's entry points for the parts made before it.
-  const loop: LoopLink = {
-    wake: () => wake(),
-    stop: () => stop(),
-    renderStill: () => renderStill(),
-    shouldRun: () => shouldRun(),
-    update: (dt, now) => update(dt, now),
-    render: (dt) => render(dt),
-  };
   if (debug) {
     debug.budget = () => {
       const buffer = renderer.getDrawingBufferSize(new Vector2());
@@ -616,11 +540,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     ctx,
     gl,
     {
-      resizePasses: (buffer) => {
-        fieldMaterial.uniforms.uAspect.value = st.view.width / st.view.height;
-        compMaterial.uniforms.uFull.value.set(st.view.width, st.view.height);
-        compMaterial.uniforms.uDpr.value = buffer.y / st.view.height;
-      },
+      resizePasses: field.resizePasses,
       ensureSlots,
       layoutName,
     },
@@ -684,15 +604,13 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       compMaterial.uniforms.uMode.value = NAME_FILLS.indexOf(nameFill);
     }
     if (detail.drift !== undefined) {
-      driftPreset = parseDriftPreset(detail.drift);
-      fieldMaterial.uniforms.uWarp.value = DRIFT_PRESETS[driftPreset].warp;
-      st.lastFieldTime = Number.NaN;
+      field.setDrift(detail.drift);
     }
     if (st.raf) return;
     renderStill();
   };
   if (debug) {
-    debug.nameFx = () => ({ nameFill, driftPreset, repelActive: repel.active, repelMax: maxOffset(repel), nameClock });
+    debug.nameFx = () => ({ nameFill, driftPreset: field.driftPreset(), repelActive: repel.active, repelMax: maxOffset(repel), nameClock });
   }
   // ---- end fx-hero ----
 
@@ -1115,27 +1033,8 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   }
 
   const renderSteps: RenderSteps<{ dt: number }> = {
-    field({ dt }) {
-      if (!posterMode) fieldElapsed += dt;
-      // The poster is the live field's first frame, so the scene picks up where it left off.
-      // ---- fx-hero: two clocks, the orange and the weather (drift presets) ----
-      const clocks = fieldClocks(posterMode ? 0 : (heldAt ?? fieldElapsed), false, driftPreset);
-      fieldMaterial.uniforms.uT.value = clocks.orange;
-      fieldMaterial.uniforms.uTw.value = clocks.weather;
-      renderer.setRenderTarget(null);
-      renderer.clear();
-      if (clocks.orange !== st.lastFieldTime || clocks.weather !== lastWeatherTime) {
-        renderer.setRenderTarget(fieldTarget);
-        renderer.render(fieldScene, orthoCamera);
-        renderer.setRenderTarget(null);
-        st.lastFieldTime = clocks.orange;
-        lastWeatherTime = clocks.weather;
-      }
-      // ---- end fx-hero ----
-    },
-    composite() {
-      renderer.render(compScene, orthoCamera);
-    },
+    field: field.field,
+    composite: field.composite,
     cards() {
       renderer.clearDepth();
       renderer.render(cardScene, camera);
@@ -2342,8 +2241,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       slots.forEach((slot) => (slot.mesh.material as ShaderMaterial).dispose());
       cardGeometry.dispose();
       quad.dispose();
-      fieldMaterial.dispose();
-      compMaterial.dispose();
+      field.dispose();
       nameTexture?.dispose();
       repelTexture.dispose(); // fx-hero
       fieldTarget.dispose();
