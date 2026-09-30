@@ -84,6 +84,7 @@ import { isConvex } from "@/lib/coil/flight";
 // ---- fx-flight imports ----
 import { flightProbe } from "@/lib/coil/flightProbe";
 import { bendLocal as bendLocalPoint } from "@/lib/coil/geometry";
+import { afterPause, resumeStep } from "@/lib/coil/flight";
 // ---- end fx-flight imports ----
 
 // The Coil scene: the dynamic chunk CoilStage imports after first paint. It
@@ -453,6 +454,9 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   let frozenByApi = false;
   let contextLost = false;
   let firstFrameSent = false;
+  // ---- fx-flight state ----
+  let resuming = false; // the next frame is the first after a stop
+  // ---- end fx-flight state ----
   // ---- slice 7 state: the touch drag and its coast ----
   let dragging = false;
   let coast: { rest: number } | null = null;
@@ -1002,7 +1006,11 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     }
     raf = requestAnimationFrame(frame);
     const interval = now - lastTime;
-    const dt = Math.min(Math.max(interval, 0) / 1000, COIL.lab.maxFrameSeconds);
+    // ---- fx-flight freeze: the first frame after a freeze steps one frame at most ----
+    const step = Math.min(Math.max(interval, 0) / 1000, COIL.lab.maxFrameSeconds);
+    const dt = resuming ? resumeStep(step) : step;
+    resuming = false;
+    // ---- end fx-flight freeze ----
     lastTime = now;
     const started = performance.now();
     try {
@@ -1033,6 +1041,9 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
 
   function wake() {
     if (raf || !shouldRun()) return;
+    // ---- fx-flight freeze: a stopped scene holds its clocks ----
+    holdClocks(performance.now() - lastTime);
+    // ---- end fx-flight freeze ----
     lastTime = performance.now();
     // A return from off screen or a hidden tab must not read as one huge scroll.
     lastScrollY = window.scrollY;
@@ -1043,7 +1054,8 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   // the canvas never shows a stretched stale buffer.
   function renderStill() {
     if (!ready || contextLost || disposed) return;
-    update(0, performance.now());
+    // fx-flight freeze: a still frame of a stopped scene is drawn at the moment it stopped.
+    update(0, raf ? performance.now() : lastTime);
     render(0);
     // ---- fx-flight debug ----
     flightLog?.mark("scene-still", probeState());
@@ -1461,6 +1473,19 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     return new Vector4(left - pad * k, inkTop - pad * k, nameRest.z * k, nameRest.w * k);
   }
   // ---- end slice 5 ----
+
+  // ---- fx-flight freeze ----
+  // A stopped scene holds its clocks: whatever runs from a start time (the
+  // hover-jump's glide, the unwind, the rebuild fade) carries on from where
+  // the stop caught it, and the first frame steps one frame at most.
+  function holdClocks(stoppedMs: number) {
+    resuming = true;
+    if (!ready || !(stoppedMs > 0)) return;
+    conveyor.glide = afterPause(conveyor.glide, stoppedMs);
+    if (unwind.latched) unwind.startMs += stoppedMs;
+    if (rebuildAt !== null) rebuildAt += stoppedMs;
+  }
+  // ---- end fx-flight freeze ----
 
   // ---- slice 7: the coarse pointer's drag-to-spin ----
   // The hero is touch-action: pan-y, so the browser keeps every vertical swipe
