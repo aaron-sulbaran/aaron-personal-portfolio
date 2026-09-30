@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { NoteIcon } from "@/components/menu/NoteIcon";
 import { siteContent } from "@/lib/content";
 import {
   initSoundtrackFromStorage,
@@ -9,14 +10,16 @@ import {
   useSoundtrack,
 } from "@/lib/soundtrack";
 
-// The Listen control inside the Menu pill: a hollow ring while nothing plays
-// (before, paused, off), a filled accent dot with a pulsing halo while the
-// soundtrack plays. It mirrors lib/soundtrack, the same store the playback
-// pill and the waveform read, so the three can never disagree.
+// The Listen control inside the Menu pill: a quarter note, outlined in muted
+// ink with a slash through it while nothing plays (before, paused, off),
+// filled in the accent and gently swaying while the soundtrack plays; the
+// slash drawing through or retracting is the transition (NoteIcon). It
+// mirrors lib/soundtrack, the same store the playback pill and the waveform
+// read, so the three can never disagree.
 //
 // The pill is layout-mounted, so on a case page (where neither ListenInvite
 // nor PlaybackPill mounts) this is the only reader: it seeds the stored
-// choice itself, and a returning visitor who opted in sees the paused ring,
+// choice itself, and a returning visitor who opted in sees the crossed note,
 // one tap from playing. Seeding is idempotent, so the home page's own calls
 // stay no-ops.
 export function ListenDot({ hidden }: { hidden: boolean }) {
@@ -35,6 +38,9 @@ export function ListenDot({ hidden }: { hidden: boolean }) {
     else startSoundtrack();
   };
 
+  // The button keeps the pill's visual size (34 by 40); the before element
+  // widens the hit area to 44 by 44. It spills past the pill, which only
+  // clips its content while the menu is engaged, when this button is hidden.
   return (
     <button
       type="button"
@@ -42,22 +48,15 @@ export function ListenDot({ hidden }: { hidden: boolean }) {
       aria-label={playing ? listenAriaLabelPause : listenAriaLabelPlay}
       aria-pressed={playing}
       data-cursor-hover
-      className={`relative h-10 w-[34px] items-center justify-center rounded-full focus-visible:rounded-full focus-visible:outline-offset-[-3px] ${
+      className={`relative h-10 w-[34px] items-center justify-center rounded-full before:absolute before:-bottom-0.5 before:-left-2 before:-right-0.5 before:-top-0.5 before:content-[''] focus-visible:rounded-full focus-visible:outline-offset-[-3px] ${
         hidden ? "hidden" : "flex"
       }`}
     >
-      <span
-        aria-hidden="true"
-        className={`block h-2 w-2 rounded-full transition-[background-color,box-shadow] duration-300 ${
-          playing ? "bg-accent" : "shadow-[inset_0_0_0_1.5px_var(--color-muted)]"
-        }`}
+      <NoteIcon
+        on={playing}
+        living
+        className={`block h-[15px] w-[9.5px] ${playing ? "text-accent" : "text-muted"}`}
       />
-      {playing && (
-        <span
-          aria-hidden="true"
-          className="listen-pulse pointer-events-none absolute left-1/2 top-1/2 -ml-1 -mt-1 h-2 w-2 rounded-full bg-accent"
-        />
-      )}
     </button>
   );
 }

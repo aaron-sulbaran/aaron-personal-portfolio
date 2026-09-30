@@ -254,22 +254,65 @@ body {
   }
 }
 
-/* The Listen dot's halo while the soundtrack plays (components/menu/
-   ListenDot.tsx). Transform and opacity only, so it stays on the compositor;
-   under reduced motion the global rule ends it at once and the dot stays a
-   plain filled dot. */
-@keyframes listen-pulse {
+/* The soundtrack note (components/menu/NoteIcon.tsx), in the Menu pill and
+   the panel's chip. Off: the silhouette drains to an outline while the slash
+   (and its knockout in the mask) draws from the top left, 240ms on the site
+   ease. On: the slash retracts, then hides, and the note fills. The slash
+   paths use pathLength=1, so a dashoffset of 1 is fully retracted. While on
+   in the pill the note sways 2.5 degrees about its head. */
+.note-icon {
+  overflow: visible;
+  transition: color 240ms var(--ease-out);
+}
+.note-icon .note-body {
+  fill: currentColor;
+  fill-opacity: 0;
+  transition: fill-opacity 240ms var(--ease-out);
+}
+.note-icon[data-on="true"] .note-body {
+  fill-opacity: 1;
+}
+.note-icon .note-slash {
+  stroke-dasharray: 1 1;
+  stroke-dashoffset: 0;
+  opacity: 1;
+  transition: stroke-dashoffset 240ms var(--ease-out), opacity 0s;
+}
+.note-icon[data-on="true"] .note-slash {
+  stroke-dashoffset: 1;
+  opacity: 0;
+  transition: stroke-dashoffset 240ms var(--ease-out), opacity 0s linear 240ms;
+}
+.note-icon .note-sway {
+  transform-box: fill-box;
+  transform-origin: 45% 88%;
+}
+@keyframes note-sway {
   from {
-    transform: scale(1);
-    opacity: 0.45;
+    transform: rotate(-2.5deg);
   }
   to {
-    transform: scale(3.2);
-    opacity: 0;
+    transform: rotate(2.5deg);
   }
 }
-.listen-pulse {
-  animation: listen-pulse 1.8s var(--ease-out) infinite;
+.note-icon[data-living="true"] .note-sway {
+  animation: note-sway 1.6s ease-in-out infinite alternate;
+}
+@media (prefers-reduced-motion: reduce) {
+  /* A plain 150ms fade between the two states; beats the global zeroing
+     rule on specificity. */
+  .note-icon,
+  .note-icon .note-body {
+    transition-duration: 150ms !important;
+  }
+  .note-icon .note-slash,
+  .note-icon[data-on="true"] .note-slash {
+    stroke-dashoffset: 0;
+    transition: opacity 150ms linear !important;
+  }
+  .note-icon[data-living="true"] .note-sway {
+    animation: none !important;
+  }
 }
 
 /* Holding page entrance (components/Holding.tsx): a staggered fade + rise
