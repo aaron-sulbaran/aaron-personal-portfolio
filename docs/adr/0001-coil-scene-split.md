@@ -1,6 +1,6 @@
 # ADR 0001: Split the Coil scene into modules by concern, with no behavior change
 
-**Status:** Proposed (accepted when PR `coil-split` merges into `coil`)
+**Status:** Proposed (accepted when the `coil-split` pull request merges into `coil`)
 **Date:** 2026-09-29
 **Deciders:** Aaron (approved the split on 2026-09-29 for repo hygiene), Fable (review)
 
@@ -94,11 +94,13 @@ Contracts:
 
 - Easier: adding a feature means a new module (or a step) and one line in the root, not another fenced block in a 2,500 line closure; each concern can be read and reviewed alone; the frame order is a tested contract rather than a comment.
 - Harder: following one interaction end to end now crosses files (a wheel event goes input, then loop, then cards). The module map and the frame order test are the guide.
-- Unchanged: bundle size, frame cost, pixels, the public api, every debug hook.
+- Unchanged: frame cost (p99 CPU work per frame within 0.1ms, at rest and under wheel input), pixels (deterministic frames identical to the pre-split build), the public api, every debug hook.
+- Slightly larger: the scene chunk grows 1.4% raw and 2.1% gzip (593,294 B against 585,049 B; 152,794 B against 149,609 B gzip), because shared state is now read as object properties the minifier cannot rename and the parts call each other through named functions. Initial JS is unchanged (within 30 B).
 
 ## What we would revisit
 
 - `SceneState` is wide. If a second scene or a second author arrives, narrow it: give each module an accessor surface and make the record private to the root.
 - `flight.ts` and `flightOverlay.ts` still share the most state with the loop (freeze, landedAhead, resuming). If the flight grows again, give it an explicit state machine owner in `lib/coil/flight.ts`.
+- If the scene chunk's size matters more than the split's readability, the shared record's hottest scalars (`raf`, `ready`, `theme`, `geoCamera`) could move behind module-local variables with accessors; that is where most of the 2% went.
 - The debug hooks are installed by one function that reaches into several modules. If QA hooks keep growing, let each module register its own hook through a small registry.
 - The frame sequencer asserts order, not data flow. A future step that reads a value a later step writes would pass the order test; the module map documents each step's inputs to guard that.
