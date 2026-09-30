@@ -130,7 +130,7 @@ export const NAME_FILL = {
   idlePx: 9, // the idle drift's reach
   idleScalePx: 190, // and the size of its eddies
   idleRate: 0.045, // how fast the eddies change
-  warmShare: 0.34, // grain-warm: about this share of grains turn orange at the corner
+  warmShare: 0.4, // grain-warm: raises the orange grains' threshold at the corner (value noise sits near 0.5)
 } as const;
 // ---- end fx-hero ----
 
@@ -187,8 +187,10 @@ export const COMPOSITE_FRAG = /* glsl */ `
       int mode = int(uMode + 0.5);
       if (mode != 6 && uFillMix > 0.0) {
         // Name space in CSS px. The repel buffer moves the texture: a pixel
-        // shows the point that was pushed onto it (two fixed-point steps of
-        // the inverse); where none was, the residual opens a clearing.
+        // shows the point that was pushed onto it (fixed-point steps of the
+        // inverse). The buffer never stretches the texture past 2x, so they
+        // converge; where overlapping strokes still leave a residual, the
+        // grain thins there by at most half.
         vec2 np = px - uNameRect.xy;
         vec2 q = np;
         float clearing = 0.0;
@@ -196,7 +198,7 @@ export const COMPOSITE_FRAG = /* glsl */ `
           vec2 p1 = np - repelAt(g);
           vec2 p2 = np - repelAt(p1 / uNameRect.zw);
           vec2 p3 = np - repelAt(p2 / uNameRect.zw);
-          clearing = smoothstep(1.5, 6.0, length(p3 - p2));
+          clearing = 0.5 * smoothstep(2.0, 8.0, length(p3 - p2));
           q = p3;
         }
         // The greeting's strokes are thin: its texture runs finer, so it reads.
@@ -218,7 +220,7 @@ export const COMPOSITE_FRAG = /* glsl */ `
             float corner = 1.0 - smoothstep(0.0, 0.62, length((g - vec2(1.0, 0.0)) * vec2(1.0, 0.8)));
             // Value noise sits near 0.5, so the threshold rises from under its
             // floor (no orange) to about warmShare's quantile at the corner.
-            float pick = step(vnoise(q / ${NAME_FILL.grainPx.toFixed(3)} + vec2(13.1, 71.9)), 0.18 + corner * ${NAME_FILL.warmShare.toFixed(3)});
+            float pick = step(vnoise(q / ${NAME_FILL.grainPx.toFixed(3)} + vec2(13.1, 71.9)), 0.2 + corner * ${NAME_FILL.warmShare.toFixed(3)});
             tone = mix(tone, uWarm, pick);
             ink *= 1.0 + 0.35 * pick;
           }
@@ -235,7 +237,7 @@ export const COMPOSITE_FRAG = /* glsl */ `
           float present = step(r3, density);
           float radius = s * mix(0.22, 0.36, h12(c + 7.0)) * mix(0.85, 1.12, gy);
           float d = dotCover(length(q - center), radius) * present;
-          float ink = min(1.0, k * 2.4) * mix(0.7, 1.0, j.x);
+          float ink = min(1.0, k * 3.0) * mix(0.7, 1.0, j.x);
           fill = mix(field, gc, ink * d * (1.0 - clearing));
         } else if (mode == 2) {
           // halftone: a regular screen rotated 15 degrees, the dot size

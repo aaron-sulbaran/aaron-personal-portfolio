@@ -97,7 +97,7 @@ import { isConvex } from "@/lib/coil/flight";
 // (DataTexture, RGBAFormat and UnsignedByteType come in with the fx-flight imports.)
 import { DRIFT_PRESETS, fieldClocks, parseDriftPreset, type DriftPreset } from "@/lib/coil/drift";
 import { COIL_FX_EVENT, NAME_FILL, NAME_FILLS, parseNameFill, type CoilFxDetail, type NameFill } from "@/lib/coil/field.glsl";
-import { REPEL, createRepelField, encodeRepel, injectStroke, stepRepel } from "@/lib/coil/repel";
+import { REPEL, createRepelField, encodeRepel, injectStroke, maxOffset, stepRepel } from "@/lib/coil/repel";
 import { LOADER } from "@/lib/loader/progress";
 // ---- end fx-hero imports ----
 // ---- fx-flight imports ----
@@ -913,7 +913,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     renderStill();
   };
   if (debug) {
-    debug.nameFx = () => ({ nameFill, driftPreset, repelActive: repel.active, nameClock });
+    debug.nameFx = () => ({ nameFill, driftPreset, repelActive: repel.active, repelMax: maxOffset(repel), nameClock });
   }
   // ---- end fx-hero ----
 
