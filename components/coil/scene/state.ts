@@ -3,7 +3,8 @@ import type { HomeTile } from "@/lib/content";
 import type { CaptureState } from "@/lib/coil/capture";
 import type { RenderBudget } from "@/lib/coil/drivers";
 import type { FlightProbe } from "@/lib/coil/flightProbe";
-import type { Camera, CardPose, CoilGeometry, Silhouette } from "@/lib/coil/geometry";
+import type { EntranceClock } from "@/lib/coil/entrance";
+import type { Camera, CardPose, CoilGeometry, HelixFrame, Silhouette } from "@/lib/coil/geometry";
 import { createEnvelope, createConveyor, createRowHold, type Conveyor, type Envelope, type RowHold } from "@/lib/coil/motion";
 import type { CoilTheme } from "@/lib/coil/theme";
 import { createUnwind, type UnwindState } from "@/lib/coil/unwind";
@@ -73,6 +74,22 @@ export type SceneCtx = {
   debug: DebugStats | null;
   flightLog: FlightProbe | null;
   st: SceneState;
+};
+
+// One frame's record: the props as the frame began, the geometry it runs
+// on, and what each step hands the next (lib/coil/frame.ts holds the order).
+export type SceneFrame = {
+  dt: number;
+  now: number;
+  props: CoilSceneProps;
+  geo: CoilGeometry;
+  camera: Camera;
+  scrollDelta: number;
+  helix: HelixFrame | null;
+  clock: EntranceClock | null;
+  realElapsedMs: number;
+  rebuilt: number;
+  listProgress: number;
 };
 
 // The loop's entry points, for modules created before it (bound late: none
