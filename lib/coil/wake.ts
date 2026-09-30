@@ -25,17 +25,21 @@ export const WAKE = {
   rise: 2.6, // 1/s: the coil's envelopeRise
   relax: 1.6, // 1/s: and its envelopeRelax
   spread: 0.9, // 1/s: the stir diffuses, so the swell widens as it settles (water, not a halo)
-  slow: { speed: 120, radius: 80 }, // CSS px/s and px: a slow pass stirs a small area
-  fast: { speed: 2200, radius: 320 }, // a fast swipe stirs fully, wide and soft
-  // The stir a pass at the slow speed leaves. Raised from the lab's 0.05 (Aaron,
-  // 2026-09-30: a slow pass should give a faint but visible stir).
-  creep: 0.14,
+  slow: { speed: 120, radius: 140 }, // CSS px/s and px: a slow pass stirs a band about a letter's height
+  fast: { speed: 2200, radius: 440 }, // a fast swipe stirs fully, wide and soft (the lab's 320 widened so one swipe reaches the whole name)
+  // The stir a pass at the slow speed leaves. Raised from the lab's 0.05 and
+  // the slow radius from 80 (Aaron, 2026-09-30: a slow pass should give a
+  // faint but visible stir, about 0.02 to 0.03 of lightness in the letters).
+  creep: 0.36,
   teleportPx: 320, // a segment longer than this in one frame is a jump, not a stroke
+  // s: the stroke's speed is smoothed over about this, so a frame that saw no
+  // pointer event and the next that saw two do not read as a stop and a dash.
+  speedTau: 0.07,
   rest: 0.002,
   dirBlur: 2, // cells: the direction's low-pass radius at upload
   // The peak a 300 px/s pass reaches (the unit test's window; the e2e suite
   // holds the lightness it makes inside the letters).
-  slowPeak: [0.05, 0.14] as const,
+  slowPeak: [0.15, 0.25] as const,
 } as const;
 
 export type WakeRect = { x: number; y: number; w: number; h: number };
@@ -52,12 +56,13 @@ export type Wake = {
   readonly BY: Float32Array;
   readonly tmp: Float32Array;
   active: boolean; // any cell away from rest
+  speed: number; // the pointer's smoothed speed, CSS px/s
 };
 
 export function createWake(cols: number = WAKE.cols, rows: number = WAKE.rows): Wake {
   const n = cols * rows;
   const f = () => new Float32Array(n);
-  return { cols, rows, S: f(), E: f(), V: f(), DX: f(), DY: f(), BX: f(), BY: f(), tmp: f(), active: false };
+  return { cols, rows, S: f(), E: f(), V: f(), DX: f(), DY: f(), BX: f(), BY: f(), tmp: f(), active: false, speed: 0 };
 }
 
 // The grid's rect over the name's lockup rect (CSS px), written into `out`.
@@ -85,18 +90,21 @@ export function strokeAmount(speed: number): { readonly amount: number; readonly
   return stroke;
 }
 
-// One pointer segment (x0, y0) to (x1, y1) that took `dt` seconds, in the
-// same CSS px space as `rect` (the grid's). Raises each cell's stir toward
-// the stroke's amount (never lowers it) with a soft bell over the radius, and
-// turns the cells' direction toward the stroke's, weighted the same.
+// One frame's pointer segment (x0, y0) to (x1, y1) over `dt` seconds (a
+// still pointer is a segment of length 0), in the same CSS px space as `rect`
+// (the grid's). Raises each cell's stir toward the stroke's amount (never
+// lowers it) with a soft bell over the radius, and turns the cells' direction
+// toward the stroke's, weighted the same.
 export function injectStroke(wake: Wake, rect: WakeRect, x0: number, y0: number, x1: number, y1: number, dt: number) {
   const sx = x1 - x0;
   const sy = y1 - y0;
   const len = Math.hypot(sx, sy);
   // A jump longer than any hand makes in one frame is the pointer re-entering
-  // or teleporting: no stroke.
-  if (!(dt > 0) || !(len >= 0.5) || len > WAKE.teleportPx || !(rect.w > 0) || !(rect.h > 0)) return;
-  const { amount, radius } = strokeAmount(len / dt);
+  // or teleporting: no stroke, and it says nothing about the hand's speed.
+  if (!(dt > 0) || !Number.isFinite(len) || len > WAKE.teleportPx) return;
+  wake.speed += (len / dt - wake.speed) * (1 - Math.exp(-dt / WAKE.speedTau));
+  if (!(len >= 0.5) || !(rect.w > 0) || !(rect.h > 0)) return;
+  const { amount, radius } = strokeAmount(wake.speed);
   if (amount <= 0.001) return;
   const { cols, rows, S, DX, DY } = wake;
   const cw = rect.w / cols;
@@ -249,4 +257,5 @@ export function clearWake(wake: Wake) {
   wake.BX.fill(0);
   wake.BY.fill(0);
   wake.active = false;
+  wake.speed = 0;
 }
