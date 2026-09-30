@@ -1,11 +1,9 @@
-import { ListenInvite } from "@/components/ListenInvite";
 import { AboutIntro } from "@/components/AboutIntro";
 import { WhoIAm } from "@/components/WhoIAm";
 import { UpToNow } from "@/components/UpToNow";
 import { Connect } from "@/components/Connect";
 import { Footer } from "@/components/Footer";
-import { Waveform } from "@/components/Waveform";
-import { PlaybackPill } from "@/components/PlaybackPill";
+import { SoundtrackBand } from "@/components/soundtrack/SoundtrackBand";
 import { Holding } from "@/components/Holding";
 import { HOLDING_MODE } from "@/lib/holding";
 import { HomeController } from "@/components/home/HomeController";
@@ -13,18 +11,16 @@ import { HeroText } from "@/components/home/HeroText";
 import { Book } from "@/components/book/Book";
 
 // The whole site is one scrolling document: the Coil hero, the book (#work),
-// the Listen invite (#listen), About, Connect, Footer. The controller owns the
+// the soundtrack band (#listen), About, Connect, Footer. The controller owns the
 // hero (the server-rendered greeting, the scene, the loader) and the book
 // directly under it. Nothing pins, so the page scrolls natively; overflow-x is
 // clipped (clip, not hidden, so no scroll container is created).
 //
-// Waveform and PlaybackPill self-Portal to document.body and stay invisible
-// through the hero and the book, ramping in once #listen has passed. The
-// content wrapper carries relative z-10 so it sits above the z-0 waveform,
-// which then shows faintly through the sections' transparent backgrounds.
-// Every fixed overlay (SiteNav z-30, menu scrim z-[35], the Menu pill and
-// panel z-40, PlaybackPill z-[45], modals z-50, the flight z-[55], the loader
-// z-60) sits at body level above it.
+// The soundtrack band sits in flow directly under the book: the waveform runs
+// through it and nowhere else, so nothing ever moves behind body text. Its
+// playback pill self-Portals to document.body. Every fixed overlay (SiteNav
+// z-30, menu scrim z-[35], the Menu pill and panel z-40, the playback pill
+// z-[45], modals z-50, the flight z-[55], the loader z-60) sits at body level.
 export default function Home() {
   // Holding mode (the default; NEXT_PUBLIC_SITE_MODE=full opts out, see
   // lib/holding.ts): the "under remodeling" page replaces the scroll journey.
@@ -32,15 +28,13 @@ export default function Home() {
 
   return (
     <>
-      <Waveform />
-      <PlaybackPill />
       <div className="relative z-10">
         <main id="main" className="relative overflow-x-clip">
           <HeroSentinel />
           <HomeController hero={<HeroText />}>
             <Book />
           </HomeController>
-          <ListenInvite />
+          <SoundtrackBand />
           <AboutIntro />
           <WhoIAm />
           <UpToNow />
