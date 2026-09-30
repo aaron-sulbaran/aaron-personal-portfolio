@@ -22,7 +22,7 @@ describe("the soundtrack band's copy", () => {
   it("uses sentence case and no em dash", () => {
     const strings: string[] = [...Object.values(listen), soundtrack.creditLead, soundtrack.creditJoin];
     for (const text of strings) {
-      expect(text).not.toMatch(/—/);
+      expect(text).not.toMatch(/\u2014/);
       expect(text[0]).toBe(text[0].toUpperCase());
     }
   });
