@@ -336,7 +336,10 @@ function HintLine({ rootRef, entrance }: { rootRef: RefObject<HTMLDivElement | n
     store.markOpened();
   }, [modalOpen]);
 
-  // That card has flown home: one line, if the hero is still in view.
+  // That card has flown home: one line, if the hero is still in view. The
+  // controller drops its flight in the same task as the scene's handoff lands
+  // the card (FlyingTile calls land(), then onClosingComplete), so this runs
+  // on the landing itself, never on a timer; with no flight, at the close.
   useEffect(() => {
     if (modalOpen || flying || !firstOpenRef.current) return;
     firstOpenRef.current = false;

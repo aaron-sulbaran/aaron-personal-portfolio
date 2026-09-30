@@ -10,14 +10,20 @@ import { COIL } from "./constants";
 // Fragment: the front texture, or the back (the duotone for photos, the plain
 // pane for work cards, both painted in textures.ts); the seen ring (a 1px
 // outline dot in the upper corner, about 2.2:1 against what sits under it,
-// never a grey-out); a gentle falloff across the bend; the token-strength sheen; the
-// hover brightening toward paper; and the recede into the field by brightness,
+// never a grey-out); a gentle falloff across the bend; the token-strength
+// sheen; the hover brightening toward paper; and the recede into the field by brightness,
 // never blur. The hairline and the flat 1px highlight are painted into the
 // textures, so they bend with the card. Last, the card dissolves over the
 // hero's bottom edge on the field's own seam curve (smoothstep(0, uSeam, y) in
 // canvas uv, the canvas being the hero): it blends toward what the composite
 // shows behind it there, the field faded to paper, so a card crossing the
 // hero's edge fades out with the field instead of clipping on a hard line.
+//
+// Two uniforms exist for the flight (the scene draws the flown card with this
+// same shader above the modal): uSeamMix releases the seam dissolve as the card
+// leaves the hero (1 in the coil), and uSoft trades the coil's hard alpha edge
+// for the painted edge's own alpha as the card grows to the modal's size (0 in
+// the coil). At their coil values the shader is the one the coil always had.
 
 export const CARD_VERT = /* glsl */ `
   uniform float uBend;   // 1 / bend radius, in card heights
@@ -57,13 +63,15 @@ export const CARD_FRAG = /* glsl */ `
   uniform vec4 uView;
   uniform vec3 uInk, uPaper;
   uniform vec2 uSize;
-  uniform float uFade, uBright, uAlpha, uSeen, uShade, uSheen, uSeam, uSeenDpr;
+  uniform float uFade, uBright, uAlpha, uSeen, uShade, uSheen, uSeam, uSeamMix, uSoft;
+  uniform float uSeenDpr; // fx-hero
   varying vec2 vUv; varying vec3 vN; varying vec3 vViewPos;
   void main() {
     bool front = gl_FrontFacing;
     vec2 uv = front ? vUv : vec2(1.0 - vUv.x, vUv.y);
     vec4 t = front ? texture2D(mapF, uv) : texture2D(mapB, uv);
-    if (t.a < 0.5) discard;
+    float edge = mix(step(0.5, t.a), t.a, uSoft);
+    if (edge < 0.004) discard;
     vec3 c = t.rgb;
     // ---- fx-hero: the seen ring, discreet and the same on every card ----
     // One CSS px wide (uSeenDpr device px), about 7px across at the card's
@@ -109,9 +117,9 @@ export const CARD_FRAG = /* glsl */ `
     vec2 fuv = gl_FragCoord.xy * uView.zw + uView.xy;
     vec3 fc = texture2D(uField, clamp(fuv, 0.0, 1.0)).rgb;
     c = mix(c, fc, clamp(uFade, 0.0, 1.0));
-    float seam = smoothstep(0.0, uSeam, fuv.y);
+    float seam = mix(1.0, smoothstep(0.0, uSeam, fuv.y), uSeamMix);
     c = mix(mix(uPaper, fc, seam), c, seam);
-    gl_FragColor = vec4(c, uAlpha);
+    gl_FragColor = vec4(c, uAlpha * edge);
   }
 `;
 
@@ -138,6 +146,8 @@ export type CardUniforms = SharedCardUniforms & {
   uAlpha: IUniform<number>;
   uSeen: IUniform<number>;
   uShade: IUniform<number>;
+  uSeamMix: IUniform<number>;
+  uSoft: IUniform<number>;
   uSeenDpr: IUniform<number>; // fx-hero
 };
 
@@ -159,6 +169,8 @@ export function createCardMaterial(shared: SharedCardUniforms) {
     uAlpha: { value: 1 },
     uSeen: { value: 0 },
     uShade: { value: 1 },
+    uSeamMix: { value: 1 },
+    uSoft: { value: 0 },
     uSeenDpr: seenRingDpr, // fx-hero
   };
   const material = new ShaderMaterial({
