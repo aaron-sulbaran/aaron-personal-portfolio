@@ -22,10 +22,6 @@ test("a browser without WebGL 2 never fetches the scene chunk", async ({ page })
 });
 
 test("a context that cannot be created never fetches the scene chunk", async ({ page }) => {
-  test.fail(
-    true,
-    "Known gap, not fixed here (see the PR's Needs a decision): CoilStage only checks that WebGL2RenderingContext exists, so with getContext returning null the chunk loads and the scene then fails into the poster.",
-  );
   await page.addInitScript(() => {
     const original = HTMLCanvasElement.prototype.getContext;
     HTMLCanvasElement.prototype.getContext = function (this: HTMLCanvasElement, kind: string, ...rest: unknown[]) {
