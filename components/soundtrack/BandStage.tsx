@@ -26,7 +26,11 @@ export function BandStage() {
   useEffect(() => {
     const band = stageRef.current?.closest("section");
     if (!band) return;
-    const observer = new IntersectionObserver(([entry]) => setInView(entry.isIntersecting));
+    // The top margin is the header bar's height: a band tucked under the bar
+    // is already out of reach, so the pill takes over there.
+    const observer = new IntersectionObserver(([entry]) => setInView(entry.isIntersecting), {
+      rootMargin: "-72px 0px 0px 0px",
+    });
     observer.observe(band);
     return () => observer.disconnect();
   }, []);

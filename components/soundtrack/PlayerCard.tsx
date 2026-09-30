@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { ChevronDown, ExternalLink, Pause, Play, SkipBack, SkipForward, Volume2 } from "lucide-react";
 import { siteContent } from "@/lib/content";
 import { getSoundtrackPlayer, type PlayerSnapshot } from "@/lib/audio";
+import { useEscapeKey } from "@/lib/modal";
 import { pauseSoundtrack, startSoundtrack, type SoundtrackState } from "@/lib/soundtrack";
 import { Cover, EASE, formatTime, glass, iconButton } from "./PillParts";
 
@@ -18,7 +19,7 @@ type Props = {
 
 // The pill's open state: now playing, a seek bar, transport and volume. Every
 // value comes from the player; the playhead is polled only while the card is
-// open and playing.
+// open and playing. Escape closes it.
 export function PlayerCard({ music, expanded, reduce, focusOnOpen, onCardLeave, onCollapse }: Props) {
   const c = siteContent.soundtrack;
   const player = getSoundtrackPlayer();
@@ -48,6 +49,10 @@ export function PlayerCard({ music, expanded, reduce, focusOnOpen, onCardLeave, 
   useEffect(() => {
     if (expanded && focusOnOpen) playRef.current?.focus({ preventScroll: true });
   }, [expanded, focusOnOpen]);
+
+  // A mouse open leaves focus on the page (the capsule turns inert under the
+  // card), so Escape listens at the window, on the shared layered stack.
+  useEscapeKey(expanded, onCollapse);
 
   // Derive from the player's live index, not render state, so two rapid
   // clicks never target the same base index and lose one.
@@ -81,9 +86,6 @@ export function PlayerCard({ music, expanded, reduce, focusOnOpen, onCardLeave, 
     <div
       inert={!expanded}
       onMouseLeave={onCardLeave}
-      onKeyDown={(event) => {
-        if (event.key === "Escape") onCollapse();
-      }}
       style={style}
       role="group"
       aria-label={c.ariaOpen}
