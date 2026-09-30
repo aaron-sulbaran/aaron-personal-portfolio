@@ -160,7 +160,7 @@ test("name: a fast swipe parts the fill, and it closes back to rest after the po
     await nextFrames(page, 1);
   }
   const parted = await shoot(page, region.box);
-  const fx = await page.evaluate(() => (window as HookWindow & { __coil: { nameFx: () => { repelActive: boolean; repelMax: number } } }).__coil.nameFx());
+  const fx = await page.evaluate(() => (window as HookWindow).__coil!.nameFx());
   expect(fx.repelActive).toBe(true);
   const partedBy = pixelDiff(rest, parted, rest, region).insideMean;
   test.info().annotations.push({ type: "measure", description: `parted: ${partedBy.toFixed(2)} of 255, repel ${fx.repelMax}` });
@@ -168,9 +168,7 @@ test("name: a fast swipe parts the fill, and it closes back to rest after the po
 
   await pointerTo(cdp, away);
   const left = Date.now();
-  await page.waitForFunction(() => !(window as unknown as { __coil: { nameFx: () => { repelActive: boolean } } }).__coil.nameFx().repelActive, null, {
-    timeout: 5000,
-  });
+  await page.waitForFunction(() => !(window as HookWindow).__coil!.nameFx().repelActive, null, { timeout: 5000 });
   const settleMs = Date.now() - left;
   const closed = await shoot(page, region.box);
   const closedBy = pixelDiff(rest, closed, rest, region).insideMean;
