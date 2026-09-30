@@ -32,19 +32,20 @@ const CLICK_SLOP_PX = 6;
 
 export function createInput(ctx: SceneCtx, cards: Cards, hover: Hover, loop: LoopLink) {
   const { st, host, live, tiles, debug, flags } = ctx;
+  const { pointer, view, conveyor, envelope, rowHold, unwind } = st;
   const { posterMode } = flags;
   const { slots } = cards;
 
   function updatePointerLocal() {
-    st.pointer.x = st.pointer.clientX - (st.view.docLeft - window.scrollX);
-    st.pointer.y = st.pointer.clientY - (st.view.docTop - window.scrollY);
+    pointer.x = pointer.clientX - (view.docLeft - window.scrollX);
+    pointer.y = pointer.clientY - (view.docTop - window.scrollY);
   }
 
   // Only the canvas itself counts: the overlay's control, the mark, the Menu
   // pill and its scrim all sit over the hero and must never pick a card.
   function pointerOverHero(target: EventTarget | null) {
     if (!(target instanceof Node) || !host.contains(target)) return false;
-    return st.pointer.x >= 0 && st.pointer.x <= st.view.width && st.pointer.y >= 0 && st.pointer.y <= st.view.height;
+    return pointer.x >= 0 && pointer.x <= view.width && pointer.y >= 0 && pointer.y <= view.height;
   }
 
   // ---- fx-input: wheel ownership (lib/coil/capture.ts) ----
@@ -59,14 +60,14 @@ export function createInput(ctx: SceneCtx, cards: Cards, hover: Hover, loop: Loo
       props.interactive &&
       props.input === "fine" &&
       !event.ctrlKey &&
-      !st.unwind.on
+      !unwind.on
     );
   }
 
   // The pointer over the canvas and inside the helix's projected hull (gaps
   // between cards included), from the last rendered frame.
   function pointerInsideHelix() {
-    return st.pointer.inside && st.sil !== null && insideSilhouette(st.sil, st.pointer.x, st.pointer.y);
+    return pointer.inside && st.sil !== null && insideSilhouette(st.sil, pointer.x, pointer.y);
   }
 
   function setCapture(next: CaptureState, nowMs: number) {
@@ -78,12 +79,12 @@ export function createInput(ctx: SceneCtx, cards: Cards, hover: Hover, loop: Loo
   // not a move, so it never releases a coil gesture.
   const onPointerMove = (event: PointerEvent) => {
     if (event.pointerType !== "mouse" && event.pointerType !== "pen") return;
-    const moved = !st.pointer.known || event.clientX !== st.pointer.clientX || event.clientY !== st.pointer.clientY;
-    st.pointer.clientX = event.clientX;
-    st.pointer.clientY = event.clientY;
-    st.pointer.known = true;
+    const moved = !pointer.known || event.clientX !== pointer.clientX || event.clientY !== pointer.clientY;
+    pointer.clientX = event.clientX;
+    pointer.clientY = event.clientY;
+    pointer.known = true;
     updatePointerLocal();
-    st.pointer.inside = pointerOverHero(event.target);
+    pointer.inside = pointerOverHero(event.target);
     const now = performance.now();
     if (moved) setCapture(pointerMoved(st.capture, { nowMs: now, insideSilhouette: pointerInsideHelix() }), now);
     loop.wake();
@@ -91,8 +92,8 @@ export function createInput(ctx: SceneCtx, cards: Cards, hover: Hover, loop: Loo
 
   const onPointerOut = (event: PointerEvent) => {
     if (event.relatedTarget) return;
-    st.pointer.inside = false;
-    st.pointer.known = false;
+    pointer.inside = false;
+    pointer.known = false;
     const now = performance.now();
     setCapture(pointerMoved(st.capture, { nowMs: now, insideSilhouette: false }), now);
   };
@@ -109,12 +110,12 @@ export function createInput(ctx: SceneCtx, cards: Cards, hover: Hover, loop: Loo
     if (fresh) {
       // Some synthesized wheels carry no position (0, 0); the last pointer
       // position stands in, as in the lab.
-      if (event.clientX !== 0 || event.clientY !== 0 || !st.pointer.known) {
-        st.pointer.clientX = event.clientX;
-        st.pointer.clientY = event.clientY;
+      if (event.clientX !== 0 || event.clientY !== 0 || !pointer.known) {
+        pointer.clientX = event.clientX;
+        pointer.clientY = event.clientY;
       }
       updatePointerLocal();
-      st.pointer.inside = pointerOverHero(event.target);
+      pointer.inside = pointerOverHero(event.target);
     }
     setCapture(
       decideWheel(st.capture, {
@@ -128,7 +129,7 @@ export function createInput(ctx: SceneCtx, cards: Cards, hover: Hover, loop: Loo
     if (st.capture.owner !== "coil") return;
     event.preventDefault();
     if (fresh && debug) debug.captured += 1;
-    addWheel(st.conveyor, wheelPixels(event.deltaX, event.deltaY, event.deltaMode, st.view.height));
+    addWheel(conveyor, wheelPixels(event.deltaX, event.deltaY, event.deltaMode, view.height));
     loop.wake();
   };
 
@@ -170,7 +171,7 @@ export function createInput(ctx: SceneCtx, cards: Cards, hover: Hover, loop: Loo
     // ---- slice 7: a tap opens the card under the finger, with no flight ----
     if (event.pointerType === "touch") {
       const props = live.current;
-      if (!st.ready || st.dragging || st.pressCaughtCoil || !props.interactive || props.frozen || st.frozenByApi || st.unwind.on) return;
+      if (!st.ready || st.dragging || st.pressCaughtCoil || !props.interactive || props.frozen || st.frozenByApi || unwind.on) return;
       const card = hover.cardAt(event.clientX, event.clientY);
       if (card) props.onCardClick?.({ ...card, tap: true });
       return;
@@ -207,7 +208,7 @@ export function createInput(ctx: SceneCtx, cards: Cards, hover: Hover, loop: Loo
   let pressScrollY = 0;
   function canDrag() {
     const props = live.current;
-    return st.ready && props.interactive && props.input === "coarse" && !props.frozen && !st.frozenByApi && !st.unwind.on;
+    return st.ready && props.interactive && props.input === "coarse" && !props.frozen && !st.frozenByApi && !unwind.on;
   }
   // Cards per px of horizontal finger travel: the front card's arc per card,
   // across the screen.
@@ -225,7 +226,7 @@ export function createInput(ctx: SceneCtx, cards: Cards, hover: Hover, loop: Loo
         pressScrollY = window.scrollY;
         st.pressCaughtCoil = st.coast !== null;
         if (st.coast) {
-          st.conveyor.target = st.conveyor.offset;
+          conveyor.target = conveyor.offset;
           st.coast = null;
         }
       },
@@ -233,8 +234,8 @@ export function createInput(ctx: SceneCtx, cards: Cards, hover: Hover, loop: Loo
         // The page moved: the browser took this gesture as a vertical pan.
         if (self.axis !== "x" || Math.abs(window.scrollY - pressScrollY) > 2 || !canDrag()) return;
         st.dragging = true;
-        st.conveyor.glide = null;
-        st.conveyor.target += self.deltaX * dragCardsPerPx();
+        conveyor.glide = null;
+        conveyor.target += self.deltaX * dragCardsPerPx();
         loop.wake();
       },
       onRelease: (self) => {
@@ -243,7 +244,7 @@ export function createInput(ctx: SceneCtx, cards: Cards, hover: Hover, loop: Loo
         if (!canDrag()) return;
         const cap = COIL.spinCapCardsPerSecond;
         const velocity = Math.min(cap, Math.max(-cap, self.velocityX * dragCardsPerPx()));
-        st.coast = { rest: Math.round(st.conveyor.target + velocity * COAST_TAU_S) };
+        st.coast = { rest: Math.round(conveyor.target + velocity * COAST_TAU_S) };
         loop.wake();
       },
     });
@@ -260,20 +261,20 @@ export function createInput(ctx: SceneCtx, cards: Cards, hover: Hover, loop: Loo
   }
 
   // Update step: the conveyor's feeds, its one smoothing stage and spin cap, and the stretch envelope.
-  function conveyor(f: SceneFrame) {
+  function feedConveyor(f: SceneFrame) {
     const { dt, now, props } = f;
-    const previous = st.conveyor.offset;
+    const previous = conveyor.offset;
     if (!posterMode) {
       // Slice 7: a released drag's throw decays into the target, which the
       // one smoothing stage and the speed cap then carry, as for the wheel.
-      if (st.coast) st.conveyor.target += (st.coast.rest - st.conveyor.target) * (1 - Math.exp(-dt / COAST_TAU_S));
+      if (st.coast) conveyor.target += (st.coast.rest - conveyor.target) * (1 - Math.exp(-dt / COAST_TAU_S));
       // ---- fx-input: the conveyor's feeds ----
       // A held book row stills the idle drift and the page-scroll feed (and
       // eases them back after it lets go); page scroll turns the coil only
       // during page gestures, keyboard and scrollbar scrolling.
-      const holdWeight = rowHoldWeight(st.rowHold, now);
+      const holdWeight = rowHoldWeight(rowHold, now);
       const pageFeed = props.interactive && feedsPageScroll(st.capture, now) ? f.scrollDelta * holdWeight : 0;
-      stepConveyor(st.conveyor, {
+      stepConveyor(conveyor, {
         dt,
         nowMs: now,
         // The idle drift waits while a finger holds or throws the coil, so
@@ -282,12 +283,12 @@ export function createInput(ctx: SceneCtx, cards: Cards, hover: Hover, loop: Loo
         pageScrollPx: pageFeed,
       });
       // ---- end fx-input ----
-      stepEnvelope(st.envelope, st.conveyor.excessVelocity, dt);
-      if (st.coast && Math.abs(st.coast.rest - st.conveyor.offset) < COAST_SETTLED_CARDS) st.coast = null;
+      stepEnvelope(envelope, conveyor.excessVelocity, dt);
+      if (st.coast && Math.abs(st.coast.rest - conveyor.offset) < COAST_SETTLED_CARDS) st.coast = null;
     }
     if (debug) {
-      pushStat(debug.steps, st.conveyor.offset - previous);
-      pushStat(debug.envelope, st.envelope.value);
+      pushStat(debug.steps, conveyor.offset - previous);
+      pushStat(debug.envelope, envelope.value);
     }
   }
 
@@ -298,9 +299,9 @@ export function createInput(ctx: SceneCtx, cards: Cards, hover: Hover, loop: Loo
   function nudge(f: SceneFrame) {
     const overlay = f.props.overlay.current;
     const sil = st.sil;
-    if (sil && st.pointer.known && nudgeShown(st.capture, f.now)) {
-      const px = st.pointer.x - sil.ax;
-      const py = st.pointer.y - sil.ay;
+    if (sil && pointer.known && nudgeShown(st.capture, f.now)) {
+      const px = pointer.x - sil.ax;
+      const py = pointer.y - sil.ay;
       const along = px * sil.dx + py * sil.dy;
       let nx = px - along * sil.dx;
       let ny = py - along * sil.dy;
@@ -312,7 +313,7 @@ export function createInput(ctx: SceneCtx, cards: Cards, hover: Hover, loop: Loo
         nx /= length;
         ny /= length;
       }
-      overlay?.nudge({ x: st.pointer.x, y: st.pointer.y, angle: Math.atan2(ny, nx) });
+      overlay?.nudge({ x: pointer.x, y: pointer.y, angle: Math.atan2(ny, nx) });
     } else {
       overlay?.nudge(null);
     }
@@ -324,14 +325,14 @@ export function createInput(ctx: SceneCtx, cards: Cards, hover: Hover, loop: Loo
     return {
       dragging: st.dragging,
       coast: st.coast?.rest ?? null,
-      offset: st.conveyor.offset,
-      target: st.conveyor.target,
-      velocity: st.conveyor.velocity,
+      offset: conveyor.offset,
+      target: conveyor.target,
+      velocity: conveyor.velocity,
       cardsPerPx: dragCardsPerPx(),
     };
   }
 
-  return { listenPointer, listenTaps, listenDrag, scroll, conveyor, nudge, dragState };
+  return { listenPointer, listenTaps, listenDrag, scroll, conveyor: feedConveyor, nudge, dragState };
 }
 
 export type Input = ReturnType<typeof createInput>;

@@ -16,6 +16,7 @@ const REBUILD_FADE_MS = 450;
 
 export function createEntrance(ctx: SceneCtx, name: Name) {
   const { st, live, flags } = ctx;
+  const { conveyor } = st;
   const { posterMode, forcedEntranceMs } = flags;
   // ---- slice 4 state: the entrance clock ----
   let entranceBase: number | null = null; // when this scene's entrance clock reads 0
@@ -52,11 +53,11 @@ export function createEntrance(ctx: SceneCtx, name: Name) {
     if (!isRested(clock)) {
       // Idle, wheel and page scroll wait for the entrance: the strand holds
       // still at its start until the band has opened.
-      st.conveyor.offset = 0;
-      st.conveyor.target = 0;
-      st.conveyor.velocity = 0;
-      st.conveyor.excessVelocity = 0;
-      st.conveyor.glide = null;
+      conveyor.offset = 0;
+      conveyor.target = 0;
+      conveyor.velocity = 0;
+      conveyor.excessVelocity = 0;
+      conveyor.glide = null;
       st.coast = null; // slice 7
     }
     f.helix = entranceHelix(f.helix as HelixFrame, f.geo, clock);

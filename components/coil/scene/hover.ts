@@ -26,19 +26,20 @@ export function heroVisible(host: HTMLElement) {
 
 export function createHover(ctx: SceneCtx, cards: Cards, loop: LoopLink) {
   const { st, host, live, tiles, tileCount } = ctx;
+  const { pointer, view, poses, conveyor, unwind } = st;
   const { slots, tileIndex } = cards;
   let focusKey: string | null = null;
 
   // The slot under a canvas point, from the last rendered frame.
   function pickAt(x: number, y: number) {
-    if (!st.geoCamera || st.poses.length === 0) return -1;
-    return pickCard(st.poses, rayThrough(st.geoCamera, x, y));
+    if (!st.geoCamera || poses.length === 0) return -1;
+    return pickCard(poses, rayThrough(st.geoCamera, x, y));
   }
 
   // The card under a viewport point.
   function cardAt(clientX: number, clientY: number): CoilCardRef | null {
-    const x = clientX - (st.view.docLeft - window.scrollX);
-    const y = clientY - (st.view.docTop - window.scrollY);
+    const x = clientX - (view.docLeft - window.scrollX);
+    const y = clientY - (view.docTop - window.scrollY);
     const slot = pickAt(x, y);
     if (slot < 0) return null;
     return { key: tiles[slots[slot].tile].key, slot };
@@ -47,8 +48,8 @@ export function createHover(ctx: SceneCtx, cards: Cards, loop: LoopLink) {
   // Update step: the hovered slot, picked every frame, since cards move under a still pointer.
   function picking(f: SceneFrame) {
     const { props } = f;
-    const pickable = st.pointer.inside && st.pointer.known && props.interactive && props.input === "fine";
-    const nextHover = pickable ? pickAt(st.pointer.x, st.pointer.y) : -1;
+    const pickable = pointer.inside && pointer.known && props.interactive && props.input === "fine";
+    const nextHover = pickable ? pickAt(pointer.x, pointer.y) : -1;
     st.hoveredSlot = nextHover;
     setSceneHover(nextHover >= 0);
   }
@@ -57,9 +58,9 @@ export function createHover(ctx: SceneCtx, cards: Cards, loop: LoopLink) {
   // flown card counted on its seat at its own alpha.
   function liftTarget(slot: number, alpha: number) {
     const props = live.current;
-    if (!st.geoCamera || !st.pointer.inside || !st.pointer.known || !props.interactive || props.input !== "fine") return 0;
-    const seats = st.poses.map((pose, j) => (j === slot ? { ...pose, alpha } : pose));
-    return pickCard(seats, rayThrough(st.geoCamera, st.pointer.x, st.pointer.y)) === slot ? 1 : 0;
+    if (!st.geoCamera || !pointer.inside || !pointer.known || !props.interactive || props.input !== "fine") return 0;
+    const seats = poses.map((pose, j) => (j === slot ? { ...pose, alpha } : pose));
+    return pickCard(seats, rayThrough(st.geoCamera, pointer.x, pointer.y)) === slot ? 1 : 0;
   }
 
   // ---- fx-input: the row hold ----
@@ -70,7 +71,7 @@ export function createHover(ctx: SceneCtx, cards: Cards, loop: LoopLink) {
       props.interactive &&
       !props.frozen &&
       !st.frozenByApi &&
-      !st.unwind.latched &&
+      !unwind.latched &&
       heroVisible(host) >= COIL.rowHold.minHeroVisible
     );
   }
@@ -84,21 +85,21 @@ export function createHover(ctx: SceneCtx, cards: Cards, loop: LoopLink) {
     const props = live.current;
     const tile = tileIndex.get(key);
     if (tile === undefined || !st.geo || !st.geoCamera || !st.ready) return;
-    if (st.unwind.latched || props.frozen || st.frozenByApi || !props.interactive) return;
+    if (unwind.latched || props.frozen || st.frozenByApi || !props.interactive) return;
     const rect = host.getBoundingClientRect();
     const inset = JUMP_INSET_CARDS * st.geo.cardPx;
     const band: JumpBand = {
       top: Math.max(0, -rect.top, st.geo.clearTopPx) + inset,
-      bottom: Math.min(st.view.height, window.innerHeight - rect.top, st.view.height * (1 - FIELD.seamFade)) - inset,
+      bottom: Math.min(view.height, window.innerHeight - rect.top, view.height * (1 - FIELD.seamFade)) - inset,
       left: inset,
-      right: st.view.width - inset,
+      right: view.width - inset,
     };
     const frame = restHelix(st.geo, st.theme.card.recede);
     const camera = st.geoCamera;
     const maxU = st.geo.slotCount / 2 - COIL.lab.endFadeSlots;
-    const { to } = hoverJumpTarget(tile, st.conveyor.offset, tileCount, st.geo.cardsPerTurn, maxU, (u) =>
+    const { to } = hoverJumpTarget(tile, conveyor.offset, tileCount, st.geo.cardsPerTurn, maxU, (u) =>
       projectPoint(camera, poseAt(frame, u).position), band);
-    startGlide(st.conveyor, to, performance.now());
+    startGlide(conveyor, to, performance.now());
     loop.wake();
   }
 

@@ -16,6 +16,7 @@ type FlightView = { slot: number; state: string; gap: number; pose: FlightPose |
 
 export function createProbe(ctx: SceneCtx, cards: Cards, loop: LoopLink) {
   const { st, host, live, tiles, flightLog } = ctx;
+  const { conveyor, envelope, rendered } = st;
   const { slots } = cards;
   let probeSlot = -1; // the slot the harness follows
 
@@ -56,7 +57,7 @@ export function createProbe(ctx: SceneCtx, cards: Cards, loop: LoopLink) {
 
   function slotInfo(j: number) {
     const slot = slots[j];
-    const pose = st.rendered[j];
+    const pose = rendered[j];
     const drawn = pose ? poseInfo(pose) : null;
     if (!slot || !pose || !drawn) return null;
     const tile = tiles[slot.tile];
@@ -89,12 +90,12 @@ export function createProbe(ctx: SceneCtx, cards: Cards, loop: LoopLink) {
   // What every mark carries: the conveyor, the hover, the freeze and the followed slot.
   function state() {
     const followed = probeSlot >= 0 ? slots[probeSlot] : null;
-    const pose = probeSlot >= 0 ? st.rendered[probeSlot] : null;
+    const pose = probeSlot >= 0 ? rendered[probeSlot] : null;
     return {
-      offset: st.conveyor.offset,
-      target: st.conveyor.target,
-      glide: st.conveyor.glide !== null,
-      envelope: st.envelope.value,
+      offset: conveyor.offset,
+      target: conveyor.target,
+      glide: conveyor.glide !== null,
+      envelope: envelope.value,
       hoveredSlot: st.hoveredSlot,
       hiddenSlot: st.hiddenSlot,
       frozenByApi: st.frozenByApi,

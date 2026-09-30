@@ -128,6 +128,7 @@ type NameFrame = {
 
 export function createName(ctx: SceneCtx, comp: ShaderMaterial, fx: NameFx, loop: LoopLink) {
   const { st, host, live, debug, flags } = ctx;
+  const { view, pointer } = st;
   const { posterMode, heldAt } = flags;
   const { repel, repelBytes, repelTexture } = fx;
   let nameFill = fx.fill;
@@ -147,8 +148,8 @@ export function createName(ctx: SceneCtx, comp: ShaderMaterial, fx: NameFx, loop
 
   function layoutName() {
     if (!st.geo) return;
-    const { width: W, height: H } = st.view;
-    const narrow = isNarrow(st.view);
+    const { width: W, height: H } = view;
+    const narrow = isNarrow(view);
     const probe = document.createElement("canvas").getContext("2d");
     if (!probe) return;
     probe.font = `900 100px ${st.nameFamily}`;
@@ -178,7 +179,7 @@ export function createName(ctx: SceneCtx, comp: ShaderMaterial, fx: NameFx, loop
     cu.uNameSpan.value.set(mask.greetBlock / mask.height, span / mask.height);
     cu.uGreetSplit.value = mask.split / mask.height;
     greetBlock = mask.greetBlock;
-    cu.uLod.value = Math.max(0, Math.log2(mask.canvas.height / (mask.height * st.view.dpr)));
+    cu.uLod.value = Math.max(0, Math.log2(mask.canvas.height / (mask.height * view.dpr)));
     cu.uNameA.value = posterMode ? 0 : 1;
     // Slice 4: the name's geometry for the loader's handoff (canvas px): the
     // name alone, never the greeting.
@@ -249,7 +250,6 @@ export function createName(ctx: SceneCtx, comp: ShaderMaterial, fx: NameFx, loop
     nameClock = heldAt ?? nameClock + dt;
     cu.uNameT.value = nameClock;
     const props = live.current;
-    const pointer = st.pointer;
     const repelLive = props.input === "fine" && listProgress === 0 && nameFill !== "solid" && !posterMode;
     if (repelLive && pointer.known && Number.isFinite(repelLast.clientX) && dt > 0) {
       const dx = pointer.clientX - repelLast.clientX;
