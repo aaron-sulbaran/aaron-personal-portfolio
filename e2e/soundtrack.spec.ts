@@ -109,9 +109,11 @@ test("band: a real click on \"Play it\" starts playback", async ({ page }) => {
   await page.locator("#listen").getByRole("button", { name: "Play it" }).click();
 
   await expect.poll(async () => (await media(page)).some((el) => !el.paused), { message: "a playing media element" }).toBe(true);
-  const first = (await media(page)).find((el) => !el.paused)!;
+  // Followed by index: currentSrc can still be empty on the first read.
+  const index = (await media(page)).findIndex((el) => !el.paused);
+  const startedAt = (await media(page))[index].time;
   await expect
-    .poll(async () => ((await media(page)).find((el) => el.src === first.src)?.time ?? 0) - first.time, { message: "seconds played" })
+    .poll(async () => (await media(page))[index].time - startedAt, { message: "seconds played" })
     .toBeGreaterThan(0.2);
 });
 
