@@ -2,106 +2,96 @@
 
 import Image from "next/image";
 import { useReducedMotion } from "framer-motion";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import type { Quad } from "@/lib/coil/geometry";
-import { fitAspect, flightQuad, homography, matrix3d, rectQuad, type Face } from "@/lib/coil/flight";
+import { homography, matrix3d, type Rect } from "@/lib/coil/flight";
 import { siteEase } from "@/lib/coil/motion";
 import { COIL } from "@/lib/coil/constants";
 import { cardPhotoInset } from "@/lib/coil/cardFace";
 import { photoSlotSizes } from "@/lib/photoSizes";
 import { flightProbe } from "@/lib/coil/flightProbe";
+import type { CoilFlightHandle, CoilSceneApi } from "@/components/coil/CoilScene";
 
 export type FlightPhase = "out" | "closing";
 
 // The shared-element flight: a curved card in the WebGL helix into the
-// modal's [data-tile-slot] and back. The source is a projected quad (the
-// card's four bent corners in viewport px, from the frozen scene), and the
-// clone draws the card's own painted front (and back, for a card seen from
-// behind), so its first frame is the rendered card. One progress value runs the site ease;
-// every frame the in-between quad becomes a matrix3d homography on a fixed 3:4
-// box. The slot is tracked live on the way out (the panel tweens in), and the
-// home quad is read from props on every frame of the way back, so a resize
-// mid-flight still lands on the recomputed pose.
+// modal's [data-tile-slot] and back. The flown card is the mesh itself: the
+// scene draws the clicked card, with the card shader, into a canvas mounted
+// here above the modal, so the frame the mesh hides and the frame it shows
+// again are the same pixels (its bend, its shading, its lift, the cards that
+// cover it). This component owns the clock and the layer: one progress value
+// runs the site ease, and every frame the scene draws the card at that
+// progress between its seat and the slot, flattening the bend and releasing
+// the shading on the way. The slot is tracked live on the way out (the panel
+// tweens in) and while parked (a resize, the dialog scrolling); the seat is
+// read from the frozen scene on every frame, so a resize still lands.
 //
 // Once parked, a photo lays a sharp copy of itself exactly over the painted
 // one (the texture is 384px wide; the modal slot is larger), and takes it away
-// before flying home.
+// as the card leaves.
 
 export type FlyingTileProps = {
   kind: "photo" | "work";
-  faces: { front: HTMLCanvasElement; back: HTMLCanvasElement };
+  slot: number;
+  scene: RefObject<CoilSceneApi | null>;
   photoSrc?: string;
-  source: Quad;
-  home: Quad;
   phase: FlightPhase;
   revealed: boolean;
-  // The clone is on screen: the scene hides the card's mesh now.
-  onMounted: () => void;
   onFlyOutComplete: () => void;
   onClosingComplete: () => void;
+  // The scene cannot fly this card: the modal draws its own media.
+  onUnavailable: () => void;
 };
 
 const BOX_W = 300;
 const BOX_H = BOX_W / COIL.cardAspect;
 const FLIGHT_MS = 520;
+// The sharp copy comes in as the card settles and is gone before the card
+// has bent again on its way home.
+const SHARP_IN_MS = 300;
+const SHARP_OUT_MS = 110;
 
-function slotQuad(kind: "photo" | "work"): Quad | null {
+function slotRect(kind: "photo" | "work"): Rect | null {
   const slot = document.querySelector<HTMLElement>(`[data-tile-slot="${kind}"]`);
   if (!slot) return null;
   const r = slot.getBoundingClientRect();
   if (r.width <= 0 || r.height <= 0) return null;
-  return rectQuad(fitAspect({ left: r.left, top: r.top, width: r.width, height: r.height }, COIL.cardAspect));
+  return { left: r.left, top: r.top, width: r.width, height: r.height };
 }
 
 export function FlyingTile(props: FlyingTileProps) {
   const prefersReducedMotion = useReducedMotion();
-  const rootRef = useRef<HTMLDivElement>(null);
-  const frontRef = useRef<HTMLCanvasElement>(null);
-  const backRef = useRef<HTMLCanvasElement>(null);
+  const mountRef = useRef<HTMLDivElement>(null);
+  const sharpRef = useRef<HTMLDivElement>(null);
+  const handleRef = useRef<CoilFlightHandle | null>(null);
+  const progressRef = useRef(0);
   const liveRef = useRef(props);
-  const parkedRef = useRef<Quad | null>(null);
-  const lastRef = useRef<Quad | null>(null);
   const [sharpLoaded, setSharpLoaded] = useState(false);
 
   useLayoutEffect(() => {
     liveRef.current = props;
   });
 
-  const apply = (quad: Quad, face: Face) => {
-    const root = rootRef.current;
-    if (!root) return;
-    lastRef.current = quad;
-    const m = homography(quad, BOX_W, BOX_H);
-    if (!m) {
-      root.style.visibility = "hidden";
+  // Before paint on mount: the scene draws the card on its seat in the flown
+  // canvas, then hides its mesh, in one frame.
+  useLayoutEffect(() => {
+    const mount = mountRef.current;
+    const { scene, slot, onUnavailable } = liveRef.current;
+    const handle = mount ? (scene.current?.beginFlight(slot, mount) ?? null) : null;
+    handleRef.current = handle;
+    if (!handle) {
+      onUnavailable();
       return;
     }
-    root.style.visibility = "visible";
-    root.style.transform = matrix3d(m);
-    if (frontRef.current) frontRef.current.style.display = face === "front" ? "block" : "none";
-    if (backRef.current) backRef.current.style.display = face === "back" ? "block" : "none";
-  };
-
-  // Before paint on mount: copy the card's faces, sit exactly on the rendered
-  // card, then let the scene hide its mesh, all in one frame.
-  useLayoutEffect(() => {
-    const { faces, source, onMounted } = liveRef.current;
-    [
-      [frontRef.current, faces.front],
-      [backRef.current, faces.back],
-    ].forEach(([target, face]) => {
-      if (!target || !face) return;
-      target.width = face.width;
-      target.height = face.height;
-      target.getContext("2d")?.drawImage(face, 0, 0);
-    });
-    apply(source, flightQuad(source, source, 0).face);
-    flightProbe()?.mark("clone-mount", { quad: source });
-    onMounted();
-    return () => flightProbe()?.mark("clone-unmount");
+    return () => {
+      handle.abort();
+      handleRef.current = null;
+    };
   }, []);
 
   useEffect(() => {
+    const handle = handleRef.current;
+    if (!handle) return;
     let raf = 0;
     let done = false;
     const duration = prefersReducedMotion ? 0 : FLIGHT_MS;
@@ -109,40 +99,72 @@ export function FlyingTile(props: FlyingTileProps) {
     const probe = flightProbe();
     let elapsed = 0;
     let last = performance.now();
+    let parkedAt = "";
     const { kind, phase } = liveRef.current;
-    probe?.mark("flight-start", { phase });
-    // Home from wherever the clone is: parked in the slot, or still on its
+    // Home from wherever the card is: parked in the slot, or still on its
     // way out when the modal closes early.
-    const from = phase === "out" ? liveRef.current.source : (lastRef.current ?? liveRef.current.home);
+    const from = progressRef.current;
+    probe?.mark("flight-start", { phase, from });
+    if (phase === "closing") handle.close();
+
+    // The sharp copy rides the card's four corners.
+    const place = (quad: Quad | null) => {
+      const sharp = sharpRef.current;
+      if (!sharp) return;
+      const m = quad ? homography(quad, BOX_W, BOX_H) : null;
+      sharp.style.visibility = m ? "visible" : "hidden";
+      if (m) sharp.style.transform = matrix3d(m);
+    };
+    const lost = () => {
+      cancelAnimationFrame(raf);
+      liveRef.current.onUnavailable();
+    };
 
     const step = (now: number) => {
       const live = liveRef.current;
-      elapsed += Math.max(0, now - last) * (probe ? probe.rate : 1);
+      const dt = Math.max(0, now - last) / 1000;
+      elapsed += dt * 1000 * (probe ? probe.rate : 1);
       last = now;
       const t = duration ? Math.min(1, elapsed / duration) : 1;
       const eased = siteEase(t);
       if (phase === "out") {
-        const to = slotQuad(kind) ?? live.home;
-        const { quad, face } = flightQuad(from, to, eased);
-        apply(quad, face);
-        probe?.mark("clone-frame", { phase, t, quad, face });
-        if (t >= 1) {
-          parkedRef.current = to;
-          if (!done) {
+        const rect = slotRect(kind);
+        if (!done) {
+          const e = from + (1 - from) * eased;
+          progressRef.current = e;
+          const quad = handle.draw(e, rect, dt);
+          if (!quad) return lost();
+          place(quad);
+          probe?.mark("clone-frame", { phase, t, quad, face: "front" });
+          if (t >= 1) {
             done = true;
+            handle.arrive();
             probe?.mark("clone-parked", { quad });
             live.onFlyOutComplete();
           }
-          return;
+        } else {
+          // Parked: the card follows its slot.
+          const at = rect ? [rect.left, rect.top, rect.width, rect.height, handle.stamp()].join(",") : "";
+          if (at !== parkedAt) {
+            parkedAt = at;
+            const quad = handle.draw(1, rect, dt);
+            if (!quad) return lost();
+            place(quad);
+          }
         }
       } else {
-        const { quad, face } = flightQuad(from, live.home, eased);
-        apply(quad, face);
-        probe?.mark("clone-frame", { phase, t, quad, face });
+        const e = t >= 1 ? 0 : from * (1 - eased);
+        progressRef.current = e;
+        // The slot end of the path holds where the card left it (the panel
+        // is on its way out).
+        const quad = handle.draw(e, null, dt);
+        if (!quad) return lost();
+        place(quad);
+        probe?.mark("clone-frame", { phase, t, quad, face: "front" });
         if (t >= 1 && !probe?.holdLanding) {
           if (!done) {
             done = true;
-            probe?.mark("clone-landed", { quad });
+            handle.land();
             live.onClosingComplete();
           }
           return;
@@ -151,58 +173,45 @@ export function FlyingTile(props: FlyingTileProps) {
       raf = requestAnimationFrame(step);
     };
     raf = requestAnimationFrame(step);
-
-    // Parked in the modal: follow the slot through a resize.
-    const onResize = () => {
-      if (liveRef.current.phase !== "out" || !parkedRef.current) return;
-      const to = slotQuad(kind);
-      if (!to) return;
-      parkedRef.current = to;
-      apply(to, "front");
-    };
-    window.addEventListener("resize", onResize);
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener("resize", onResize);
-    };
+    return () => cancelAnimationFrame(raf);
   }, [props.phase, prefersReducedMotion]);
 
   // The inset at the size the card was painted (the scene's render budget).
-  const inset = cardPhotoInset([props.faces.front.width, props.faces.front.height]);
+  const inset = cardPhotoInset(COIL.lab.textureSize);
   const showSharp = props.revealed && props.kind === "photo" && sharpLoaded;
 
   return (
-    <div
-      ref={rootRef}
-      aria-hidden="true"
-      data-flying-tile=""
-      className="pointer-events-none fixed left-0 top-0 z-[55] origin-top-left will-change-transform"
-      style={{ width: BOX_W, height: BOX_H, visibility: "hidden" }}
-    >
-      <canvas ref={frontRef} className="absolute inset-0 block h-full w-full" />
-      <canvas ref={backRef} className="absolute inset-0 hidden h-full w-full [transform:scaleX(-1)]" />
+    <div aria-hidden="true" data-flying-tile="" className="pointer-events-none fixed inset-0 z-[55]">
+      <div ref={mountRef} />
       {props.kind === "photo" && props.photoSrc && (
         <div
-          className="absolute overflow-hidden transition-opacity duration-300 [transition-timing-function:var(--ease-out)]"
-          style={{
-            left: `${inset.x * 100}%`,
-            top: `${inset.y * 100}%`,
-            right: `${inset.x * 100}%`,
-            bottom: `${inset.y * 100}%`,
-            borderRadius: inset.radius * BOX_W,
-            opacity: showSharp ? 1 : 0,
-          }}
+          ref={sharpRef}
+          className="fixed left-0 top-0 origin-top-left will-change-transform"
+          style={{ width: BOX_W, height: BOX_H, visibility: "hidden" }}
         >
-          <Image
-            src={props.photoSrc}
-            alt=""
-            fill
-            quality={90}
-            sizes={photoSlotSizes(props.photoSrc)}
-            className="object-cover"
-            style={{ objectPosition: inset.objectPosition }}
-            onLoad={() => setSharpLoaded(true)}
-          />
+          <div
+            className="absolute overflow-hidden transition-opacity [transition-timing-function:var(--ease-out)]"
+            style={{
+              left: `${inset.x * 100}%`,
+              top: `${inset.y * 100}%`,
+              right: `${inset.x * 100}%`,
+              bottom: `${inset.y * 100}%`,
+              borderRadius: inset.radius * BOX_W,
+              opacity: showSharp ? 1 : 0,
+              transitionDuration: `${showSharp ? SHARP_IN_MS : SHARP_OUT_MS}ms`,
+            }}
+          >
+            <Image
+              src={props.photoSrc}
+              alt=""
+              fill
+              quality={90}
+              sizes={photoSlotSizes(props.photoSrc)}
+              className="object-cover"
+              style={{ objectPosition: inset.objectPosition }}
+              onLoad={() => setSharpLoaded(true)}
+            />
+          </div>
         </div>
       )}
     </div>
