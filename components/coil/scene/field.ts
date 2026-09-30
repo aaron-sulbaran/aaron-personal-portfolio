@@ -1,7 +1,6 @@
-import { Color, Mesh, ShaderMaterial, Vector2, Vector4, type Texture } from "three";
+import { Color, Mesh, ShaderMaterial, Vector2, Vector4, type IUniform, type Texture } from "three";
 import { DRIFT_PRESETS, fieldClocks, parseDriftPreset, type DriftPreset } from "@/lib/coil/drift";
-import { COMPOSITE_FRAG, COMPOSITE_VERT, FIELD, FIELD_FRAG, FULLSCREEN_VERT } from "@/lib/coil/field.glsl";
-import { REPEL } from "@/lib/coil/repel";
+import { COMPOSITE_FRAG, COMPOSITE_VERT, FIELD, FIELD_FRAG, FULLSCREEN_VERT, NAME, nameComposite } from "@/lib/coil/field.glsl";
 import { applyColor } from "@/lib/coil/theme";
 import type { Gl } from "./renderer";
 import type { SceneCtx } from "./state";
@@ -9,17 +8,20 @@ import type { SceneCtx } from "./state";
 // The two fullscreen passes. The field (the shader weather behind the coil)
 // renders into its own low-resolution target, and only when one of its two
 // clocks moved; the composite draws that target to the canvas with the name
-// masked over it (the name's uniforms are written by name.ts). ?drift picks
-// the preset; ?coildebug=poster draws the field's first frame, the posters'.
+// masked over it (the name's uniforms are written by name.ts; its surface is
+// nameSurface.ts's target). ?drift picks the preset; ?coildebug=poster draws
+// the field's first frame, the posters'.
 
-export type CompositeInit = { mode: number; repel: Texture };
+// The name surface's target and the wake's uniforms, shared with its pass.
+// And the per-letter reduction's target (name.ts renders it).
+export type CompositeInit = { surface: Texture; wake: Record<string, IUniform>; glyph: Texture };
 
 export function createField(ctx: SceneCtx, gl: Gl, init: CompositeInit) {
   const { st, flags } = ctx;
   const { view } = st;
   const { posterMode, heldAt } = flags;
   const { renderer, orthoCamera, fieldScene, compScene, fieldTarget, uView, quad } = gl;
-  let driftPreset: DriftPreset = parseDriftPreset(flags.driftParam);
+  const driftPreset: DriftPreset = parseDriftPreset(flags.driftParam);
 
   const fieldMaterial = new ShaderMaterial({
     depthTest: false,
@@ -67,19 +69,26 @@ export function createField(ctx: SceneCtx, gl: Gl, init: CompositeInit) {
       uGrain: { value: FIELD.grain },
       uDpr: { value: 1 },
       uSeam: { value: FIELD.seamFade },
-      // ---- fx-hero: the greeting, the fill and the repel ----
+      // ---- the greeting, the name's surface and its wake ----
       uNameSpan: { value: new Vector2(0, 1) },
       uGreetSplit: { value: 0 },
       uGreetA: { value: 0 },
-      uWarm: { value: new Color() },
-      uFlowDir: { value: new Vector2(Math.cos(0.58), -Math.sin(0.58)) },
-      uMode: { value: init.mode },
-      uFillMix: { value: 1 },
-      uNameT: { value: 0 },
-      uRepel: { value: init.repel },
-      uRepelOn: { value: 0 },
-      uRepelMax: { value: REPEL.maxPush },
-      // ---- end fx-hero ----
+      uSurf: { value: init.surface },
+      ...init.wake,
+      uSurfIn: { value: 1 },
+      uSurfMean: { value: new Color() },
+      uDetail: { value: 1 },
+      uChroma: { value: 1 },
+      uFloor: { value: 0 },
+      uFloorSign: { value: 1 },
+      uReveal: { value: 0 },
+      uGrainAmt: { value: 0 },
+      uGlyph: { value: init.glyph },
+      uGlyphBox: { value: Array.from({ length: NAME.maxGlyphs }, () => new Vector4(0, 0, 0, 0)) },
+      uGlyphN: { value: 0 },
+      uGlyphRel: { value: 0 },
+      uGlyphAbs: { value: 0 },
+      // ---- end the name ----
     },
   });
   const compMesh = new Mesh(quad, compMaterial);
@@ -101,21 +110,24 @@ export function createField(ctx: SceneCtx, gl: Gl, init: CompositeInit) {
     applyColor(cu.uPaper.value, st.theme.paper);
     applyColor(cu.uGradTop.value, st.theme.name.top);
     applyColor(cu.uGradBottom.value, st.theme.name.bottom);
-    cu.uNameK.value = st.theme.name.ink * FIELD.nameInkGain;
-    applyColor(cu.uWarm.value, st.theme.field.second); // fx-hero: grain-warm's second tone
+    // QA (?coildebug=ink=100): the whole surface through the letters.
+    cu.uNameK.value = flags.inkOverride === null ? st.theme.name.ink * FIELD.nameInkGain : Math.min(1, flags.inkOverride * FIELD.nameInkGain);
+    applyColor(cu.uSurfMean.value, st.theme.name.surface.mean);
+    const name = nameComposite(st.theme.dark);
+    cu.uFloor.value = name.floor;
+    cu.uFloorSign.value = name.floorSign;
+    cu.uDetail.value = name.detail;
+    cu.uReveal.value = name.reveal;
+    cu.uChroma.value = name.chroma;
+    cu.uGrainAmt.value = name.grain;
+    cu.uGlyphRel.value = name.glyphRel;
+    cu.uGlyphAbs.value = name.glyphAbs;
   }
 
   function resizePasses(buffer: Vector2) {
     fieldMaterial.uniforms.uAspect.value = view.width / view.height;
     compMaterial.uniforms.uFull.value.set(view.width, view.height);
     compMaterial.uniforms.uDpr.value = buffer.y / view.height;
-  }
-
-  // The ?drift pick, live (the switcher's event).
-  function setDrift(raw: string) {
-    driftPreset = parseDriftPreset(raw);
-    fieldMaterial.uniforms.uWarp.value = DRIFT_PRESETS[driftPreset].warp;
-    st.lastFieldTime = Number.NaN;
   }
 
   // Render step: the field's clocks, the canvas cleared, the field pass only when a clock moved.
@@ -153,7 +165,6 @@ export function createField(ctx: SceneCtx, gl: Gl, init: CompositeInit) {
     compMaterial,
     applyTheme,
     resizePasses,
-    setDrift,
     field,
     composite,
     driftPreset: () => driftPreset,

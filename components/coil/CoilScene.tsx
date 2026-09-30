@@ -3,7 +3,6 @@
 import { useEffect, useRef, type RefObject } from "react";
 import { strandTiles } from "@/lib/content";
 import { budgetFor } from "@/lib/coil/drivers";
-import { NAME_FILLS } from "@/lib/coil/field.glsl";
 import { flightProbe } from "@/lib/coil/flightProbe";
 import { readCoilTheme, watchTheme } from "@/lib/coil/theme";
 import { setSceneHover } from "@/lib/cursor/hover";
@@ -19,7 +18,9 @@ import { createFlightOverlay } from "./scene/flightOverlay";
 import { createHover } from "./scene/hover";
 import { createInput } from "./scene/input";
 import { createLoop } from "./scene/loop";
-import { createName, createNameFill } from "./scene/name";
+import { createGlyphTargets, createName } from "./scene/name";
+import { createNameProbe } from "./scene/nameProbe";
+import { createNameSurface } from "./scene/nameSurface";
 import { createLayout, createPasses, createRenderer, observeResize, watchContext } from "./scene/renderer";
 import { createSceneState, type LoopLink, type SceneCtx } from "./scene/state";
 import type { CoilRuntime, CoilSceneProps } from "./scene/types";
@@ -35,9 +36,10 @@ import { createUnwindWiring } from "./scene/unwind";
 // Frame order (lib/coil/frame.ts runs it; its test holds it): scroll delta,
 // conveyor (idle, wheel, page scroll; one smoothing stage and the spin cap;
 // the stretch envelope), helix frame, entrance, rebuild fade, unwind, name
-// fill, seen levels, slots (pose, entrance, unwind, header band, hover lift,
-// seen ring), silhouette, picking, nudge, repaint; then field (only when its
-// clock moved), composite, cards.
+// (the surface's clock and the wake), seen levels, slots (pose, entrance,
+// unwind, header band, hover lift, seen ring), silhouette, picking, nudge,
+// repaint; then field (only when its clock moved), the name's surface, the
+// composite, cards.
 //
 // It renders only when needed: never while the tab is hidden, the hero is
 // off screen, a modal holds the scene frozen, or the context is lost.
@@ -121,10 +123,11 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
 
   // ---- the parts
   const gl = createPasses(renderer);
-  // fx-hero: the name's fill and repel buffer, made before the composite that holds them.
-  const nameFx = createNameFill(flags.nameParam);
-  const field = createField(ctx, gl, { mode: NAME_FILLS.indexOf(nameFx.fill), repel: nameFx.repelTexture });
-  const heroName = createName(ctx, field.compMaterial, nameFx, loop);
+  // The name's surface and wake, made before the composite that reads them.
+  const surface = createNameSurface(ctx, gl);
+  const glyphTargets = createGlyphTargets();
+  const field = createField(ctx, gl, { surface: surface.texture, wake: surface.wakeUniforms, glyph: glyphTargets[0].texture });
+  const heroName = createName(ctx, gl, field.compMaterial, surface, glyphTargets, loop);
   const cards = createCards(ctx, gl);
   const entrance = createEntrance(ctx, heroName);
   const parts = { resizePasses: field.resizePasses, ensureSlots: cards.ensureSlots, layoutName: heroName.layoutName };
@@ -137,6 +140,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   const unwinder = createUnwindWiring(ctx, field.compMaterial, heroName, hover, loop);
   const applyTheme = () => {
     field.applyTheme();
+    surface.applyTheme();
     cards.applyTheme();
     st.lastFieldTime = Number.NaN;
   };
@@ -159,7 +163,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       nudge: input.nudge,
       repaint: cards.repaint,
     },
-    { field: field.field, composite: field.composite, cards: cards.draw },
+    { field: field.field, surface: heroName.renderSurface, composite: field.composite, cards: cards.draw },
     { flightFrame: flyer.flightFrame, flightStill: flyer.flightStill, probeState: probe.state },
   );
 
@@ -167,7 +171,6 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   const unobserveResize = observeResize(ctx, layout, loop);
   const visibility = core.observeVisibility();
   const unlistenPointer = input.listenPointer();
-  const unlistenFx = heroName.listenFx(field.setDrift); // fx-hero
   const unlistenTaps = input.listenTaps();
   const unwatchContext = watchContext(ctx, loop);
   const stopWatchingTheme = watchTheme((next) => {
@@ -183,7 +186,8 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   const api = createApi({ cards, hover, unwinder, flyer, name: heroName });
   if (live.current.api) live.current.api.current = api;
   probe.install();
-  installSceneHooks(ctx, { gl, cards, field, name: heroName, entrance, hover, input, unwinder, api });
+  const nameProbe = createNameProbe(ctx, gl, field.compMaterial, heroName);
+  installSceneHooks(ctx, { gl, cards, field, name: heroName, surface, probe: nameProbe, entrance, hover, input, unwinder, api });
   probe.installFlight(flyer.current);
 
   boot(ctx, cards, { applyTheme, layout, warm: flyer.warm }, loop);
@@ -199,7 +203,6 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       stopWatchingTheme();
       visibility.unlisten();
       unlistenPointer();
-      unlistenFx(); // fx-hero
       unlistenTaps();
       unwatchContext();
       unlistenDoubleClick();
@@ -213,6 +216,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       field.dispose();
       heroName.dispose();
       gl.fieldTarget.dispose();
+      gl.surfaceTarget.dispose();
       renderer.dispose();
       removeDebugStats(debug);
     },

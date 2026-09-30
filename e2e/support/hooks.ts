@@ -19,7 +19,27 @@ export type CoilHooks = {
   drag: () => { dragging: boolean; coast: number | null; offset: number; target: number; velocity: number; cardsPerPx: number };
   unwindState: () => { on: boolean; latched: boolean; progress: number };
   focusKey: () => string | null;
-  nameFx: () => { nameFill: string; driftPreset: string; repelActive: boolean; repelMax: number; nameClock: number };
+  nameFx: () => {
+    driftPreset: string;
+    clock: number;
+    wakeActive: boolean;
+    wakeMax: number;
+    surf: number[];
+    surfIn: number;
+    greetCap: number;
+    nameCap: number;
+    greetingInMask: boolean;
+  };
+  nameWake: () => { cols: number; rows: number; rect: { x: number; y: number; w: number; h: number }; wake: number[] };
+  nameProbe: {
+    contrast: () => { letters: number[]; spread: number; meanDL: number; rangeP5P95: number; greetDL: number } | null;
+    snap: (key: string) => boolean;
+    delta: (a: string, b: string) => { mean: number; p95: number; p99: number; max: number; letters: number } | null;
+    drop: (key: string) => boolean;
+    clear: () => void;
+  };
+  nameBench: (n?: number) => Promise<{ gpu: { perPassMs: number; n: number; surf: number[]; method: string }; cpuMs: number }>;
+  namePass?: number[];
   api: {
     cardAt: (clientX: number, clientY: number) => { key: string; slot: number } | null;
     slotOfKey: (key: string) => number;

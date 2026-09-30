@@ -123,11 +123,15 @@ export const siteContent = {
       keepExploring: "Keep exploring",
       tapCard: "Tap a card",
     },
-    // The name fill and drift switcher, shown only with ?coildebug=name.
-    fxSwitcher: {
-      label: "Hero options",
-      name: "Name",
-      drift: "Drift",
+    // QA only, shown with ?coildebug=name: the wake grid over the name and
+    // each letter's contrast against the field.
+    nameReadout: {
+      label: "Name readout",
+      wake: "Wake",
+      letters: "Letters",
+      spread: "Spread",
+      range: "Range",
+      greeting: "Greeting",
     },
   },
   // The Coil's loader: the name it fills while the page loads (the same word

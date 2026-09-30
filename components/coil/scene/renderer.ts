@@ -20,8 +20,8 @@ import type { LoopLink, SceneCtx } from "./state";
 
 // The renderer and what every pass draws with: the scene canvas's WebGL
 // renderer (linear output, no color management, so token hex maps 1:1), the
-// two cameras, the three scenes, the field's render target, the shared
-// fullscreen quad. Also the layout (sized from the host, never the viewport),
+// two cameras, the four scenes, the field's and the name surface's render
+// targets, the shared fullscreen quad. Also the layout (sized from the host, never the viewport),
 // its resize observer, and the lost context.
 
 export type Gl = {
@@ -31,7 +31,10 @@ export type Gl = {
   fieldScene: Scene;
   compScene: Scene;
   cardScene: Scene;
+  // The name's lit surface, at half the name rect's device resolution (scene/nameSurface.ts sizes it).
+  surfaceScene: Scene;
   fieldTarget: WebGLRenderTarget;
+  surfaceTarget: WebGLRenderTarget;
   // The scene canvas's buffer origin and texel size, read by the composite and the cards.
   uView: { value: Vector4 };
   quad: PlaneGeometry;
@@ -54,7 +57,9 @@ export function createPasses(renderer: WebGLRenderer): Gl {
     fieldScene: new Scene(),
     compScene: new Scene(),
     cardScene: new Scene(),
+    surfaceScene: new Scene(),
     fieldTarget: new WebGLRenderTarget(4, 4, { depthBuffer: false, minFilter: LinearFilter, magFilter: LinearFilter }),
+    surfaceTarget: new WebGLRenderTarget(8, 8, { depthBuffer: false, minFilter: LinearFilter, magFilter: LinearFilter }),
     uView: { value: new Vector4(0, 0, 1, 1) },
     quad: new PlaneGeometry(2, 2),
   };
