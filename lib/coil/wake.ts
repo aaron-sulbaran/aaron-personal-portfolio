@@ -155,13 +155,16 @@ export function stepWake(wake: Wake, dt: number): boolean {
     }
   }
   let live = false;
+  const ewRise = Math.exp(-WAKE.rise * h);
+  const ewRelax = Math.exp(-WAKE.relax * h);
   for (let i = 0; i < S.length; i++) {
     const target = S[i];
-    const w = target > E[i] ? WAKE.rise : WAKE.relax;
+    const rising = target > E[i];
+    const w = rising ? WAKE.rise : WAKE.relax;
     const x = E[i] - target;
     const v = V[i];
     const c = v + w * x;
-    const ew = Math.exp(-w * h);
+    const ew = rising ? ewRise : ewRelax;
     let nx = (x + c * h) * ew;
     let nv = (v - w * c * h) * ew;
     if (x !== 0 && Math.sign(nx) !== Math.sign(x)) {
