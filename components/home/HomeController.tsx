@@ -24,14 +24,13 @@ import {
   takeManualScrollRestoration,
 } from "@/lib/home/recovery";
 import { sameDrivers, selectDrivers, type Drivers } from "@/lib/coil/drivers";
-import type { Quad } from "@/lib/coil/geometry";
 import { PhotoModal } from "@/components/PhotoModal";
 import { WorkModal } from "@/components/WorkModal";
 import { CoilStage } from "@/components/coil/CoilStage";
 import type { CoilEntrance } from "@/components/coil/CoilScene";
 import { Loader, type LoaderMode } from "@/components/loader/Loader";
 import { FONT_ITEMS, SCENE_ITEMS, beginHomeLoad, coilDebugFlags, endHomeLoad } from "@/lib/loader/progress";
-import type { CoilCardFaces, CoilCardRef, CoilSceneApi } from "@/components/coil/CoilScene";
+import type { CoilCardRef, CoilSceneApi } from "@/components/coil/CoilScene";
 import { FlyingTile } from "@/components/FlyingTile";
 import { Portal } from "@/components/Portal";
 import { HERO_HEADING_ID } from "./HeroText";
@@ -53,18 +52,16 @@ type Selection =
   | { kind: "photo"; key: string; photo: Photo; origin: OpenOrigin }
   | { kind: "work"; key: string; item: WorkItem; origin: OpenOrigin };
 
-// The shared-element flight from a curved card into its modal (slice 5):
-// four bent corners at activation, and the home quad recomputed from the frozen
-// pose at close and after a resize. Null whenever nothing flies (a book row, no
-// scene, reduced motion); the modals then draw their own media (renderMedia).
+// The shared-element flight from a curved card into its modal: which card
+// flies and which way. The scene draws the flown card itself and reads its
+// seat from the frozen pose on every frame (see FlyingTile). Null whenever
+// nothing flies (a book row, no scene, reduced motion); the modals then draw
+// their own media (renderMedia).
 export type CoilFlight = {
   key: string;
   kind: "photo" | "work";
   slot: number;
-  faces: CoilCardFaces;
   photoSrc?: string;
-  source: Quad;
-  home: Quad;
   phase: "out" | "closing";
   revealed: boolean;
 };
@@ -262,9 +259,9 @@ export function HomeController({ hero, children }: Props) {
   const focusCard = useCallback((key: string | null) => sceneApiRef.current?.focusCard(key), []);
 
   // A card in the scene (or its row in the unwound list): freeze the scene so
-  // the rendered pose is the flight pose, take the card's corners and faces,
-  // and open its modal with the clone flying in. Without a scene or a slot on
-  // screen it opens like a book row, drawing its own media.
+  // the rendered pose is the flight pose, and open its modal with the card
+  // flying in. Without a scene or a slot on screen it opens like a book row,
+  // drawing its own media.
   const openCard = useCallback(
     (key: string, slot: number, origin: OpenOrigin) => {
       if (selection || flight) return;
@@ -274,25 +271,9 @@ export function HomeController({ hero, children }: Props) {
       const item = tile.kind === "work" ? workItemBySlug.get(tile.slug) : undefined;
       if (!photo && !item) return;
       const api = sceneApiRef.current;
-      if (api && slot >= 0 && !reducedMotion) {
+      if (api && slot >= 0 && !reducedMotion && api.flightQuadOf(slot)) {
         api.freeze(true);
-        const source = api.flightQuadOf(slot);
-        const faces = api.facesOf(slot);
-        if (source && faces) {
-          setFlight({
-            key,
-            kind: tile.kind,
-            slot,
-            faces,
-            photoSrc: photo?.src,
-            source,
-            home: source,
-            phase: "out",
-            revealed: false,
-          });
-        } else {
-          api.freeze(false);
-        }
+        setFlight({ key, kind: tile.kind, slot, photoSrc: photo?.src, phase: "out", revealed: false });
       }
       if (photo) setSelection({ kind: "photo", key, photo, origin });
       else if (item) setSelection({ kind: "work", key, item, origin });
@@ -311,40 +292,15 @@ export function HomeController({ hero, children }: Props) {
     [openCard],
   );
 
-  const handleFlightMounted = useCallback(() => {
-    if (flight) sceneApiRef.current?.hideSlot(flight.slot);
-  }, [flight]);
   const handleFlyOutComplete = useCallback(() => setFlight((f) => (f ? { ...f, revealed: true } : f)), []);
-  const handleClosingComplete = useCallback(() => {
-    const api = sceneApiRef.current;
-    api?.hideSlot(null);
-    api?.freeze(false);
+  // The scene has already put the mesh back and resumed itself (the landing
+  // never waits on a render); this only lets the flight's layer go.
+  const handleClosingComplete = useCallback(() => setFlight(null), []);
+  // The scene could not fly the card: the modal draws its own media.
+  const handleFlightUnavailable = useCallback(() => {
+    sceneApiRef.current?.freeze(false);
     setFlight(null);
   }, []);
-
-  // A resize while a card is out: the frozen scene re-lays out, so its home
-  // quad moves. Read it once the scene's own resize has rendered.
-  const flying = flight !== null;
-  useEffect(() => {
-    if (!flying) return;
-    let raf = 0;
-    const onResize = () => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => {
-        raf = requestAnimationFrame(() => {
-          setFlight((f) => {
-            const home = f ? sceneApiRef.current?.flightQuadOf(f.slot) : null;
-            return f && home ? { ...f, home } : f;
-          });
-        });
-      });
-    };
-    window.addEventListener("resize", onResize);
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener("resize", onResize);
-    };
-  }, [flying]);
 
   // Close: the card counts as seen now, at close, on every path (flight or
   // not), and focus returns to the row or control that opened it. Next frame
@@ -352,10 +308,7 @@ export function HomeController({ hero, children }: Props) {
   // scroll must never move the page under the visitor.
   const closeModal = useCallback(() => {
     if (!selection) return;
-    if (flight) {
-      const home = sceneApiRef.current?.flightQuadOf(flight.slot) ?? flight.home;
-      setFlight({ ...flight, home, phase: "closing", revealed: false });
-    }
+    if (flight) setFlight({ ...flight, phase: "closing", revealed: false });
     markSeen(selection.key);
     const origin = selection.origin;
     setSelection(null);
@@ -436,16 +389,16 @@ export function HomeController({ hero, children }: Props) {
       <Portal>
         {flight && (
           <FlyingTile
+            key={flight.key}
             kind={flight.kind}
-            faces={flight.faces}
+            slot={flight.slot}
+            scene={sceneApiRef}
             photoSrc={flight.photoSrc}
-            source={flight.source}
-            home={flight.home}
             phase={flight.phase}
             revealed={flight.revealed}
-            onMounted={handleFlightMounted}
             onFlyOutComplete={handleFlyOutComplete}
             onClosingComplete={handleClosingComplete}
+            onUnavailable={handleFlightUnavailable}
           />
         )}
       </Portal>
