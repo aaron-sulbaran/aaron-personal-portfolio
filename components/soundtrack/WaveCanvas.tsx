@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useReducedMotion } from "framer-motion";
 import { createWaveEngine, type WaveEngine } from "./waveEngine";
+import { useReducedMotionLive } from "./useReducedMotionLive";
 
 // The band's waveform: a decorative canvas that fills its parent. `active` is
 // the band's own visibility (its IntersectionObserver) and `frozen` the
@@ -10,7 +10,7 @@ import { createWaveEngine, type WaveEngine } from "./waveEngine";
 export function WaveCanvas({ active, frozen }: { active: boolean; frozen: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const engineRef = useRef<WaveEngine | null>(null);
-  const still = useReducedMotion() ?? false;
+  const still = useReducedMotionLive();
 
   useEffect(() => {
     const canvas = canvasRef.current;
