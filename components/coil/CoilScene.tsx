@@ -5,7 +5,6 @@ import {
   CanvasTexture,
   Color,
   LinearFilter,
-  LinearMipmapLinearFilter,
   LinearSRGBColorSpace,
   Matrix4,
   Mesh,
@@ -44,7 +43,7 @@ import {
   stretchedDy,
   wheelPixels,
 } from "@/lib/coil/motion";
-import { entranceClock, entranceHelix, entranceNameAlpha, entrancePose, isRested, type EntranceClock } from "@/lib/coil/entrance";
+import { entranceClock, entranceHelix, entrancePose, isRested, type EntranceClock } from "@/lib/coil/entrance";
 import { runRender, runUpdate, type RenderSteps, type UpdateSteps } from "@/lib/coil/frame";
 import { unwindPose, unwindProgress } from "@/lib/coil/unwind";
 import { budgetFor, sameBudget } from "@/lib/coil/drivers";
@@ -52,7 +51,7 @@ import { Observer } from "@/lib/gsap";
 import { FIELD } from "@/lib/coil/field.glsl";
 import { createCardGeometry, createCardMaterial, type CardUniforms, type SharedCardUniforms } from "@/lib/coil/material";
 import { loadCardSource, paintCard, type CardSource } from "@/lib/coil/textures";
-import { applyColor, createRepaintQueue, readCoilTheme, toBytes, watchTheme } from "@/lib/coil/theme";
+import { applyColor, createRepaintQueue, readCoilTheme, watchTheme } from "@/lib/coil/theme";
 import { getSeen } from "@/lib/home/seen";
 import {
   createDebugStats,
@@ -63,6 +62,7 @@ import {
   throwFrameAt as throwFrameAtFromTokens,
 } from "./scene/debug";
 import { createField } from "./scene/field";
+import { createName, createNameFill } from "./scene/name";
 import { createLayout, createPasses, createRenderer, observeResize, watchContext } from "./scene/renderer";
 import { createSceneState, type LoopLink, type SceneCtx } from "./scene/state";
 // ---- fx-input imports: wheel ownership and the row hold ----
@@ -87,9 +87,7 @@ import { isConvex } from "@/lib/coil/flight";
 // ---- end slice 5 imports ----
 // ---- fx-hero imports: the greeting in the name, the name's fill and repel, the drift presets ----
 // (DataTexture, RGBAFormat and UnsignedByteType come in with the fx-flight imports.)
-import { COIL_FX_EVENT, NAME_FILL, NAME_FILLS, parseNameFill, type CoilFxDetail, type NameFill } from "@/lib/coil/field.glsl";
-import { REPEL, createRepelField, encodeRepel, injectStroke, maxOffset, stepRepel } from "@/lib/coil/repel";
-import { LOADER } from "@/lib/loader/progress";
+import { NAME_FILLS } from "@/lib/coil/field.glsl";
 // ---- end fx-hero imports ----
 // ---- fx-flight imports ----
 import { DataTexture, DoubleSide, GreaterDepth, RGBAFormat, UnsignedByteType } from "three";
@@ -126,14 +124,7 @@ import { CARD_VERT } from "@/lib/coil/material";
 // It renders only when needed: never while the tab is hidden, the hero is
 // off screen, a modal holds the scene frozen, or the context is lost.
 
-import type {
-  CoilEntrance,
-  CoilFlightApi,
-  CoilFlownApi,
-  CoilRuntime,
-  CoilSceneApi,
-  CoilSceneProps,
-} from "./scene/types";
+import type { CoilFlightApi, CoilFlownApi, CoilRuntime, CoilSceneApi, CoilSceneProps } from "./scene/types";
 
 export type {
   CoilCardFaces,
@@ -221,85 +212,9 @@ const JUMP_INSET_CARDS = 0.25;
 // A theme repaint starts no new card past this much of a frame (at most 4).
 const REPAINT_BUDGET_MS = 6;
 
-// ---- fx-hero: the name lockup and the greeting's fade ----
-// "Hi, I'm" and "Aaron" in one mask, both Profa Black in white on clear: the
-// greeting small (its cap height NAME_FILL.greetingCap of the name's), on the
-// name's left edge, its lowest ink a fraction of its own cap height above the
-// top of the "A". Everything in CSS px; the canvas is `scale` times that.
-type NameLockup = {
-  canvas: HTMLCanvasElement;
-  width: number;
-  height: number;
-  pad: number;
-  nameInkWidth: number;
-  ascent: number; // the name's
-  descent: number;
-  greetBlock: number; // the greeting's band above the name's own mask
-  split: number; // where the greeting's alpha gives way to the name's
-};
-
-function paintNameLockup(greeting: string, name: string, family: string, sizePx: number, scale: number): NameLockup {
-  const canvas = document.createElement("canvas");
-  const g = canvas.getContext("2d");
-  if (!g) throw new Error("2d context unavailable");
-  g.font = `900 100px ${family}`;
-  const cap100 = g.measureText("H").actualBoundingBoxAscent || 70;
-  const nameFont = `900 ${sizePx}px ${family}`;
-  g.font = nameFont;
-  const nm = g.measureText(name);
-  const greetPx = ((NAME_FILL.greetingCap * nm.actualBoundingBoxAscent) / cap100) * 100;
-  const greetFont = `900 ${greetPx}px ${family}`;
-  g.font = greetFont;
-  const gm = g.measureText(greeting);
-  const gAscent = gm.actualBoundingBoxAscent;
-  const gDescent = Math.max(0, gm.actualBoundingBoxDescent);
-  const gap = NAME_FILL.greetingGap * gAscent;
-  const greetBlock = gAscent + gDescent + gap;
-  const pad = Math.ceil(sizePx * 0.04);
-  const nameInkWidth = nm.actualBoundingBoxLeft + nm.actualBoundingBoxRight;
-  const greetInkWidth = gm.actualBoundingBoxLeft + gm.actualBoundingBoxRight;
-  // The greeting's stem sits a hair inside the A's foot, as the lab's did.
-  const greetShift = sizePx * 0.02;
-  const width = Math.ceil(Math.max(nameInkWidth, greetShift + greetInkWidth) + pad * 2);
-  const height = Math.ceil(greetBlock + nm.actualBoundingBoxAscent + nm.actualBoundingBoxDescent + pad * 2);
-  canvas.width = Math.ceil(width * scale);
-  canvas.height = Math.ceil(height * scale);
-  g.setTransform(scale, 0, 0, scale, 0, 0);
-  g.clearRect(0, 0, width, height);
-  g.fillStyle = "white";
-  g.textBaseline = "alphabetic";
-  g.font = greetFont;
-  g.fillText(greeting, pad + greetShift + gm.actualBoundingBoxLeft, pad + gAscent);
-  g.font = nameFont;
-  g.fillText(name, pad + nm.actualBoundingBoxLeft, pad + greetBlock + nm.actualBoundingBoxAscent);
-  return {
-    canvas,
-    width,
-    height,
-    pad,
-    nameInkWidth,
-    ascent: nm.actualBoundingBoxAscent,
-    descent: nm.actualBoundingBoxDescent,
-    greetBlock,
-    split: pad + gAscent + gDescent + gap / 2,
-  };
-}
-
-// The greeting's alpha. After the loader it fades up over NAME_FILL.
-// greetingFadeMs from the middle of the loader's exit (the loader lands on
-// "Aaron" only); otherwise it rises with the name as the band opens.
-function greetingAlpha(entrance: CoilEntrance | null, nowMs: number, nameAlpha: number) {
-  if (!entrance || !entrance.nameFromLoader || !Number.isFinite(entrance.startMs)) return nameAlpha;
-  const startMs = entrance.startMs - (LOADER.exitMs - LOADER.entranceOverlapMs) + LOADER.exitMs / 2;
-  const x = clamp01((nowMs - startMs) / NAME_FILL.greetingFadeMs);
-  return siteEase(x);
-}
-
-// ---- end fx-hero ----
-
 function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject<CoilSceneProps>): CoilRuntime {
   const flags = readDebugFlags();
-  const { posterMode, hideCards, hideName, heldAt, forcedEntranceMs } = flags;
+  const { posterMode, hideCards, hideName, forcedEntranceMs } = flags;
 
   const renderer = createRenderer(canvas);
 
@@ -333,28 +248,11 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   const gl = createPasses(renderer);
   const { camera, cardScene, fieldTarget, uView, quad } = gl;
 
-  // ---- fx-hero state: the fill, the drift preset and the repel buffer ----
-  let nameFill: NameFill = parseNameFill(flags.nameParam);
-  const repel = createRepelField();
-  const repelBytes = new Uint8Array(REPEL.cols * REPEL.rows * 4);
-  encodeRepel(repel, repelBytes);
-  const repelTexture = new DataTexture(repelBytes, REPEL.cols, REPEL.rows, RGBAFormat, UnsignedByteType);
-  repelTexture.minFilter = LinearFilter;
-  repelTexture.magFilter = LinearFilter;
-  repelTexture.needsUpdate = true;
-  let repelUploaded = true; // the texture holds the buffer's rest state
-  const repelLast = { clientX: Number.NaN, clientY: Number.NaN };
-  let nameClock = 0; // seconds of the fill's idle motion
-  let greetBlock = 0; // the greeting's band above the name's mask, CSS px at rest
-  let fillInFrom: number | null = null; // when the loader's solid name landed
-  const repelRect = { x: 0, y: 0, w: 0, h: 0 };
-  const strokeFrom = { x: 0, y: 0 };
-  const strokeTo = { x: 0, y: 0 };
-  // ---- end fx-hero state ----
-
-  let nameTexture: Texture | null = null;
-  const field = createField(ctx, gl, { mode: NAME_FILLS.indexOf(nameFill), repel: repelTexture });
+  // ---- fx-hero: the name's fill and repel buffer, made before the composite that holds them ----
+  const nameFx = createNameFill(flags.nameParam);
+  const field = createField(ctx, gl, { mode: NAME_FILLS.indexOf(nameFx.fill), repel: nameFx.repelTexture });
   const { compMaterial } = field;
+  const heroName = createName(ctx, compMaterial, nameFx, loop);
 
   // ---- cards
   const shared: SharedCardUniforms = {
@@ -422,11 +320,8 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
 
   // ---- state
   // ---- slice 4 state: the entrance clock and the name handoff ----
-  let nameBox: { left: number; baseline: number; inkWidth: number; size: number; maskTop: number; maskHeight: number } | null =
-    null;
   let entranceBase: number | null = null; // when this scene's entrance clock reads 0
   let entranceEnded = false;
-  let nameLanded = false;
 
   // Real milliseconds since the entrance started (-Infinity before it,
   // Infinity for a fast start). A start the scene first sees late (it was
@@ -484,135 +379,23 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   const push = pushStat;
 
   // ---- layout
-  function layoutName() {
-    if (!st.geo) return;
-    const { width: W, height: H } = st.view;
-    const narrow = isNarrow(st.view);
-    const probe = document.createElement("canvas").getContext("2d");
-    if (!probe) return;
-    probe.font = `900 100px ${st.nameFamily}`;
-    const w100 = probe.measureText(siteContent.hero.name).width || 1;
-    const size = ((W * (narrow ? 0.9 : 0.7)) / w100) * 100;
-    // ---- fx-hero: "Hi, I'm" drawn with the name, one mask ----
-    const mask = paintNameLockup(
-      siteContent.hero.greeting,
-      siteContent.hero.name,
-      st.nameFamily,
-      size,
-      Math.min(2, window.devicePixelRatio || 1),
-    );
-    nameTexture?.dispose();
-    const texture = new CanvasTexture(mask.canvas);
-    texture.generateMipmaps = true;
-    texture.minFilter = LinearMipmapLinearFilter;
-    texture.anisotropy = 4;
-    nameTexture = texture;
-    const inkWidth = mask.nameInkWidth;
-    const capTop = H / 2 - mask.ascent / 2;
-    const left = (W - inkWidth) / 2;
-    const span = mask.ascent + mask.descent + 2 * mask.pad;
-    const cu = compMaterial.uniforms;
-    cu.uName.value = texture;
-    cu.uNameRect.value.set(left - mask.pad, capTop - mask.pad - mask.greetBlock, mask.width, mask.height);
-    cu.uNameSpan.value.set(mask.greetBlock / mask.height, span / mask.height);
-    cu.uGreetSplit.value = mask.split / mask.height;
-    greetBlock = mask.greetBlock;
-    cu.uLod.value = Math.max(0, Math.log2(mask.canvas.height / (mask.height * st.view.dpr)));
-    cu.uNameA.value = posterMode ? 0 : 1;
-    // Slice 4: the name's geometry for the loader's handoff (canvas px): the
-    // name alone, never the greeting.
-    nameBox = {
-      left,
-      baseline: capTop + mask.ascent,
-      inkWidth,
-      size,
-      maskTop: capTop - mask.pad,
-      maskHeight: span,
-    };
-    // The overlay keeps only the unwound list's "Coil" control, sized off the
-    // greeting's old size.
-    const greetingPx = narrow ? 16 : Math.min(21, Math.max(16, W * 0.0125));
-    live.current.overlay.current?.layout(posterMode ? null : { controlPx: Math.round(greetingPx * 0.86) });
-    // ---- end fx-hero ----
-  }
-
   const layout = createLayout(
     ctx,
     gl,
     {
       resizePasses: field.resizePasses,
       ensureSlots,
-      layoutName,
+      layoutName: heroName.layoutName,
     },
     loop,
   );
 
-  // ---- fx-hero: the fill's idle clock and the cursor repel, once per frame ----
-  // A fine pointer's movement since the last frame (in client px, so page
-  // scroll alone never counts) is one stroke across the name's rect, whether
-  // or not a card sits between it and the name. The buffer relaxes every
-  // frame and uploads only while it moves. Nothing while unwound or solid.
-  function stepNameFill(dt: number, listProgress: number) {
-    const started = debug ? performance.now() : 0;
-    const cu = compMaterial.uniforms;
-    nameClock = heldAt ?? nameClock + dt;
-    cu.uNameT.value = nameClock;
-    const props = live.current;
-    const repelLive = props.input === "fine" && listProgress === 0 && nameFill !== "solid" && !posterMode;
-    if (repelLive && st.pointer.known && Number.isFinite(repelLast.clientX) && dt > 0) {
-      const dx = st.pointer.clientX - repelLast.clientX;
-      const dy = st.pointer.clientY - repelLast.clientY;
-      if (dx !== 0 || dy !== 0) {
-        const rect = cu.uNameRect.value as Vector4;
-        repelRect.x = rect.x;
-        repelRect.y = rect.y;
-        repelRect.w = rect.z;
-        repelRect.h = rect.w;
-        strokeFrom.x = st.pointer.x - dx;
-        strokeFrom.y = st.pointer.y - dy;
-        strokeTo.x = st.pointer.x;
-        strokeTo.y = st.pointer.y;
-        injectStroke(repel, repelRect, strokeFrom, strokeTo, dt);
-      }
-    }
-    repelLast.clientX = st.pointer.known ? st.pointer.clientX : Number.NaN;
-    repelLast.clientY = st.pointer.known ? st.pointer.clientY : Number.NaN;
-    if (!repelLive && repel.active) {
-      repel.d.fill(0);
-      repel.v.fill(0);
-      repel.active = false;
-    } else {
-      stepRepel(repel, dt);
-    }
-    if (repel.active || !repelUploaded) {
-      encodeRepel(repel, repelBytes);
-      repelTexture.needsUpdate = true;
-      repelUploaded = !repel.active;
-    }
-    cu.uRepelOn.value = repel.active ? 1 : 0;
-    if (debug) {
-      if (!debug.namePass) debug.namePass = [];
-      push(debug.namePass, performance.now() - started);
-    }
-  }
-
-  // The switcher (?coildebug=name) and ?name / ?drift picks, live.
-  const onFx = (event: Event) => {
-    const detail = (event as CustomEvent<CoilFxDetail>).detail ?? {};
-    if (detail.name !== undefined) {
-      nameFill = parseNameFill(detail.name);
-      compMaterial.uniforms.uMode.value = NAME_FILLS.indexOf(nameFill);
-    }
-    if (detail.drift !== undefined) {
-      field.setDrift(detail.drift);
-    }
-    if (st.raf) return;
-    renderStill();
-  };
   if (debug) {
-    debug.nameFx = () => ({ nameFill, driftPreset: field.driftPreset(), repelActive: repel.active, repelMax: maxOffset(repel), nameClock });
+    debug.nameFx = () => {
+      const fx = heroName.fx();
+      return { nameFill: fx.nameFill, driftPreset: field.driftPreset(), repelActive: fx.repelActive, repelMax: fx.repelMax, nameClock: fx.nameClock };
+    };
   }
-  // ---- end fx-hero ----
 
   // ---- pose application
   const basis = new Matrix4();
@@ -884,23 +667,8 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
         st.coast = null; // slice 7
       }
       f.helix = entranceHelix(f.helix as HelixFrame, f.geo, clock);
+      heroName.entranceFade(f);
       const entrance = props.entrance;
-      // A loader that never lands the name still gives it up a second after the entrance.
-      const handedOff = entrance?.nameFromLoader
-        ? nameLanded || realElapsedMs > clock.durationS * 1000 + 1000
-        : null;
-      const nameAlpha = posterMode ? 0 : entranceNameAlpha(clock, handedOff);
-      compMaterial.uniforms.uNameA.value = nameAlpha;
-      compMaterial.uniforms.uGrain.value = FIELD.grain * nameAlpha;
-      // ---- fx-hero: the greeting's own fade; the fill grows in after the loader's solid name lands ----
-      compMaterial.uniforms.uGreetA.value = posterMode ? 0 : greetingAlpha(entrance ?? null, now, nameAlpha);
-      if (entrance?.nameFromLoader && fillInFrom === null && handedOff) fillInFrom = now;
-      compMaterial.uniforms.uFillMix.value = !entrance?.nameFromLoader
-        ? 1
-        : fillInFrom === null
-          ? 0
-          : siteEase(clamp01((now - fillInFrom) / NAME_FILL.fillInMs));
-      // ---- end fx-hero ----
       if (entrance && !entranceEnded && realElapsedMs >= clock.durationS * 1000) {
         entranceEnded = true;
         props.onEntranceEnd?.();
@@ -913,8 +681,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       const rebuilt = siteEase(clamp01((f.now - st.rebuildAt) / REBUILD_FADE_MS));
       f.rebuilt = rebuilt;
       if (rebuilt >= 1) st.rebuildAt = null;
-      compMaterial.uniforms.uNameA.value *= rebuilt;
-      compMaterial.uniforms.uGreetA.value *= rebuilt; // fx-hero
+      heroName.fade(rebuilt);
     },
     // ---- slice 5 wiring block: the unwind ----
     // While latched the conveyor holds still, so every latched copy keeps its
@@ -933,7 +700,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     },
     // ---- end slice 5 block ----
     name(f) {
-      stepNameFill(f.dt, f.listProgress); // fx-hero: the fill's idle clock and the repel
+      heroName.stepNameFill(f.dt, f.listProgress); // fx-hero: the fill's idle clock and the repel
     },
     seen(f) {
       const seen = getSeen();
@@ -981,12 +748,9 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     silhouette(f) {
       st.sil = silhouette(f.helix as HelixFrame, f.camera, st.poses);
       // ---- fx-hero: sand drifts along the helix's axis; QA can hide the cards ----
-      if (st.sil) compMaterial.uniforms.uFlowDir.value.set(st.sil.dx, st.sil.dy);
+      if (st.sil) heroName.flowAlong(st.sil.dx, st.sil.dy);
       if (hideCards) for (let j = 0; j < f.geo.slotCount; j++) slots[j].mesh.visible = false;
-      if (hideName) {
-        compMaterial.uniforms.uNameA.value = 0;
-        compMaterial.uniforms.uGreetA.value = 0;
-      }
+      if (hideName) heroName.hide();
       // ---- end fx-hero ----
     },
     // Hover: picked every frame, since cards move under a still pointer.
@@ -1139,7 +903,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   window.addEventListener("pointerout", onPointerOut);
   host.addEventListener("wheel", onWheel, { passive: false });
   window.addEventListener("wheel", onWindowWheel, { passive: true }); // fx-input
-  window.addEventListener(COIL_FX_EVENT, onFx); // fx-hero
+  const unlistenFx = heroName.listenFx(field.setDrift); // fx-hero
   host.addEventListener("pointerdown", onPointerDown);
   host.addEventListener("pointerup", onPointerUp);
   host.addEventListener("pointercancel", onPointerCancel);
@@ -1294,30 +1058,8 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       if (!st.raf) renderStill();
     },
     // ---- slice 4: the loader's continuity exit ----
-    nameRect() {
-      if (!st.ready || !nameBox) return null;
-      const rect = host.getBoundingClientRect();
-      return {
-        left: rect.left + nameBox.left,
-        baseline: rect.top + nameBox.baseline,
-        width: nameBox.inkWidth,
-        fontPx: nameBox.size,
-        gradient: {
-          top: rect.top + nameBox.maskTop,
-          height: nameBox.maskHeight,
-          from: toBytes(st.theme.name.top),
-          to: toBytes(st.theme.name.bottom),
-        },
-        inkAlpha: Math.min(1, Math.max(0, st.theme.name.ink * FIELD.nameInkGain)),
-      };
-    },
-    landName() {
-      nameLanded = true;
-      if (!st.ready || st.contextLost || st.disposed || posterMode) return;
-      compMaterial.uniforms.uNameA.value = 1;
-      compMaterial.uniforms.uGrain.value = FIELD.grain;
-      render(0);
-    },
+    nameRect: heroName.nameRect,
+    landName: heroName.landName,
     // ---- end slice 4 ----
   };
   if (live.current.api) live.current.api.current = api;
@@ -1328,7 +1070,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       base: entranceBase,
       elapsedMs: entranceBase === null ? null : performance.now() - entranceBase,
       ended: entranceEnded,
-      nameLanded,
+      nameLanded: heroName.landed(),
       nameA: compMaterial.uniforms.uNameA.value,
       offset: st.conveyor.offset,
     });
@@ -1549,7 +1291,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       slot.rect.top - hostRect.top + (slot.fontPx - (m.fontBoundingBoxAscent + m.fontBoundingBoxDescent)) / 2 + m.fontBoundingBoxAscent;
     const inkTop = baseline - m.actualBoundingBoxAscent;
     // fx-hero: the mask carries the greeting's band above the name's pad.
-    return new Vector4(left - pad * k, inkTop - (pad + greetBlock) * k, nameRest.z * k, nameRest.w * k);
+    return new Vector4(left - pad * k, inkTop - (pad + heroName.greetBlock()) * k, nameRest.z * k, nameRest.w * k);
   }
   // ---- end slice 5 ----
 
@@ -2222,7 +1964,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       window.removeEventListener("pointerout", onPointerOut);
       host.removeEventListener("wheel", onWheel);
       window.removeEventListener("wheel", onWindowWheel); // fx-input
-      window.removeEventListener(COIL_FX_EVENT, onFx); // fx-hero
+      unlistenFx(); // fx-hero
       host.removeEventListener("pointerdown", onPointerDown);
       host.removeEventListener("pointerup", onPointerUp);
       host.removeEventListener("pointercancel", onPointerCancel);
@@ -2242,8 +1984,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       cardGeometry.dispose();
       quad.dispose();
       field.dispose();
-      nameTexture?.dispose();
-      repelTexture.dispose(); // fx-hero
+      heroName.dispose();
       fieldTarget.dispose();
       renderer.dispose();
       removeDebugStats(debug);
