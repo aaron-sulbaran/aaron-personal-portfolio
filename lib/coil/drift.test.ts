@@ -1,5 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { FIELD_DRIFT, FIELD_REST_TIME, fieldTime, shaderDrift, type PingPong } from "@/lib/coil/drift";
+import {
+  DEFAULT_DRIFT,
+  DRIFT_PRESETS,
+  DRIFT_PRESET_KEYS,
+  FIELD_DRIFT,
+  FIELD_REST_TIME,
+  FIELD_WARP_TUNED,
+  fieldClocks,
+  fieldTime,
+  parseDriftPreset,
+  shaderDrift,
+  type DriftPreset,
+  type PingPong,
+} from "@/lib/coil/drift";
 
 // Ported with the function from min/Max's shader-drift.test.ts.
 const dusk: PingPong = { low: 10, peak: 15, ease: 2 };
@@ -49,6 +62,64 @@ describe("fieldTime", () => {
       expect(f).toBeLessThanOrEqual(FIELD_DRIFT.peak * 0.55 + 1e-9);
       expect(f).toBeGreaterThanOrEqual(FIELD_DRIFT.low * 0.55 - 1e-9);
       expect(Math.abs(fieldTime(t + 0.1) - f)).toBeLessThanOrEqual(0.055 + 1e-9);
+    }
+  });
+});
+
+describe("drift presets", () => {
+  it("defaults to visible and parses only the known keys", () => {
+    expect(DEFAULT_DRIFT).toBe("visible");
+    expect(parseDriftPreset("calm")).toBe("calm");
+    expect(parseDriftPreset("lively")).toBe("lively");
+    expect(parseDriftPreset("visible")).toBe("visible");
+    for (const junk of [null, "", "LIVELY", "wild", "calm "]) expect(parseDriftPreset(junk)).toBe(DEFAULT_DRIFT);
+  });
+
+  it("keeps the orange clock on the tuned window in every preset, so the warm share holds", () => {
+    for (const preset of DRIFT_PRESET_KEYS) {
+      for (let t = 0; t < 300; t += 0.37) expect(fieldClocks(t, false, preset).orange).toBe(fieldTime(t));
+    }
+  });
+
+  it("calm is today's field: the weather rides the orange clock", () => {
+    for (let t = 0; t < 120; t += 0.5) {
+      const clocks = fieldClocks(t, false, "calm");
+      expect(clocks.weather).toBe(clocks.orange);
+      expect(DRIFT_PRESETS.calm.warp).toBe(FIELD_WARP_TUNED);
+    }
+  });
+
+  it("moves the weather more with each step up, inside its own window, never faster than its speed", () => {
+    const span = (preset: DriftPreset) => {
+      let min = Infinity;
+      let max = -Infinity;
+      let fastest = 0;
+      for (let t = 0; t < 400; t += 0.05) {
+        const w = fieldClocks(t, false, preset).weather;
+        min = Math.min(min, w);
+        max = Math.max(max, w);
+        fastest = Math.max(fastest, Math.abs(fieldClocks(t + 0.05, false, preset).weather - w) / 0.05);
+      }
+      const { pingPong, speed } = DRIFT_PRESETS[preset];
+      expect(max).toBeLessThanOrEqual(pingPong.peak * speed + 1e-9);
+      expect(min).toBeGreaterThanOrEqual(pingPong.low * speed - 1e-9);
+      expect(fastest).toBeLessThanOrEqual(speed + 1e-6);
+      return { range: max - min, fastest };
+    };
+    const calm = span("calm");
+    const visible = span("visible");
+    const lively = span("lively");
+    expect(visible.range).toBeGreaterThan(calm.range);
+    expect(lively.range).toBeGreaterThan(visible.range);
+    expect(visible.fastest).toBeGreaterThan(calm.fastest * 1.5);
+    expect(lively.fastest).toBeGreaterThan(visible.fastest);
+    expect(DRIFT_PRESETS.visible.warp).toBeGreaterThan(DRIFT_PRESETS.calm.warp);
+    expect(DRIFT_PRESETS.lively.warp).toBeGreaterThan(DRIFT_PRESETS.visible.warp);
+  });
+
+  it("holds both clocks on the tuned still under reduced motion", () => {
+    for (const preset of DRIFT_PRESET_KEYS) {
+      expect(fieldClocks(42, true, preset)).toEqual({ orange: FIELD_REST_TIME, weather: FIELD_REST_TIME });
     }
   });
 });
