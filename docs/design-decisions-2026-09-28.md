@@ -89,7 +89,7 @@ Picked by Aaron from hero lab 2, 2026-09-29 (the build starts on these; see `doc
 - [x] Name fill: a gradient (explore a grain gradient inside the letters during the build, not a flat fill).
 - [x] Palette: sea plus burnt orange, the orange reduced to about 20 percent of the field (the lab's 50/50 was too much). Light and dark both approved.
 - [x] Geometry: axis 33 degrees, 8 cards per turn, turn gap 1.5, card height 24 percent, neighbor gap 0.05, lean -12, curvature 0.7, repeats fill the pane.
-- [x] Wheel: capture in "cards only" mode, hover intent 400ms, chevron nudge after 2.6s, page scroll turns the coil (on), spin speed cap 12 to 13 cards/s (build at 12.5), idle slow as built.
+- [x] Wheel (revised 2026-09-29 after Aaron's hands-on pass; see `docs/coil-input-model.md`): ownership is decided once per wheel gesture. Pointer inside the helix silhouette (gaps included) with the hero at least half in view: the coil owns the gesture, both directions, no delay, the page does not move. Otherwise the page owns it. Released only when the pointer itself leaves the silhouette. No hover intent, no "cards only", no "top of page only" (those three rules broke capture). Chevron nudge after 2.6s, gone the instant the coil lets go. Page scroll turns the coil gently. Spin cap 12.5 cards/s, idle slow as built.
 - [x] Build: autonomous overnight per the scaffold and section 10, Aaron's full permission (2026-09-29).
 
 ## 3. Loader
@@ -151,6 +151,30 @@ Picked by Aaron from hero lab 2, 2026-09-29 (the build starts on these; see `doc
 - [ ] The sticky nav paragraph becomes H1 as ticked above (mark and pill during the hero, bar after).
 - [ ] "No gradients on section backgrounds": unchanged unless you pick D.
 - [ ] Glassmorphism paragraph: the Menu panel has no blur; the pill keeps its small blur.
+
+## 2.10 Aaron's hands-on pass, 2026-09-29 evening (fix PRs 11 onward)
+
+- [x] The mark is the full AS mark everywhere, including the favicon and the pill's hover (overrides "bolt alone under 24px" for those two places; the A is a smudge at 16px and that is accepted).
+- [x] The Listen control is a single quarter note: filled accent when playing, outlined with a drawn slash when off.
+- [x] "Work and photos" is removed from the hero. "Hi, I'm" is drawn in the canvas in the name's own style, as one lockup with "Aaron".
+- [x] The name's fill is grain (the shadergradient look), alive at idle, pushed aside by the cursor in proportion to its speed, refilling within about a second. Options are built behind `?name=`; Aaron picks. Not green.
+- [x] The background field's drift is raised until the movement is visible within a few seconds.
+- [x] The seen ring in the coil is discreet and constant in contrast on every card. Seen rows in the book dim their title like non-hovered siblings.
+- [x] Hovering a book row brings its card forward once and holds the coil still.
+- [x] Clickability hint: first visit only, the cursor swells to "Open me" over a card until the first card is opened; then "Keep exploring" once. No orbiting text.
+- [x] The flight to and from the modal must be seamless at both ends (Fable debug agent).
+- [x] The waveform moves into a full-width band directly under the book, where the Listen invite and the pill are introduced; nothing animates behind body text. The music interaction gets its own session later.
+- [x] Playwright is approved as a dev dependency for real-input and visual tests.
+
+## 9a. Surfaced by the overnight build (2026-09-29), yours in the morning
+
+- [ ] The Profa file in `app/fonts/` is the trial cut: it draws a "personal use only" stamp for `*`, `;` and `@`. Slice 2 routes those three glyphs to the fallback font. Drop the full cut from your asset pack into `app/fonts/` (same filename or update `lib/fonts.ts`) and the workaround goes.
+- [ ] Codex reviews are off: the workspace spend cap was hit during the slice 0 review. Every PR tonight carries a Fable-only review, stated in each merge note. Raise the cap or accept Fable-only until launch.
+- [ ] Translucent token classes (`bg-background/70`, `/80`, `/85` in the three modals and SiteNav) generate no CSS under Tailwind 3 with `var()` colors, so those surfaces render transparent today. Slice 2 fixed the border and text cases; the background ones need an alpha-capable token (own small PR).
+- [ ] Case page meta reads "Product Manager Intern · 2025"; the label rule is "Capital One, product manager intern, 2025". Slice 8 (content).
+- [ ] Slice 2 removed the "01" to "04" markers in UpToNow per the numbers rule; the Menu's numbers go with slice 6. Say if you want any number back.
+- [ ] Vercel project Node version must be 20.9 or newer before the production flip (Next 16 floor).
+- [ ] Builder commits are credited to Claude Opus 5.5, the model that wrote them; Fable's line is on the docs commits.
 
 ## 9. Still yours
 
