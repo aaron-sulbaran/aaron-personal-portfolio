@@ -65,7 +65,6 @@ const values = {
   // no hover intent. Aaron, 2026-09-29, superseding table 1.1's "cards only,
   // 400ms hover intent" after testing the build.
   capture: {
-    hoverIntentMs: 400, // retired with the scene wiring
     gestureGapMs: 260, // wheel events closer than this are one gesture (the lab's value)
     heroVisibleMin: 0.5,
     nudgeAfterMs: 2600,
