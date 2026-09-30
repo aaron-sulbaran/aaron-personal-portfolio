@@ -89,7 +89,7 @@ Picked by Aaron from hero lab 2, 2026-09-29 (the build starts on these; see `doc
 - [x] Name fill: a gradient (explore a grain gradient inside the letters during the build, not a flat fill).
 - [x] Palette: sea plus burnt orange, the orange reduced to about 20 percent of the field (the lab's 50/50 was too much). Light and dark both approved.
 - [x] Geometry: axis 33 degrees, 8 cards per turn, turn gap 1.5, card height 24 percent, neighbor gap 0.05, lean -12, curvature 0.7, repeats fill the pane.
-- [x] Wheel: capture in "cards only" mode, hover intent 400ms, chevron nudge after 2.6s, page scroll turns the coil (on), spin speed cap 12 to 13 cards/s (build at 12.5), idle slow as built.
+- [x] Wheel (revised 2026-09-29 after Aaron's hands-on pass; see `docs/coil-input-model.md`): ownership is decided once per wheel gesture. Pointer inside the helix silhouette (gaps included) with the hero at least half in view: the coil owns the gesture, both directions, no delay, the page does not move. Otherwise the page owns it. Released only when the pointer itself leaves the silhouette. No hover intent, no "cards only", no "top of page only" (those three rules broke capture). Chevron nudge after 2.6s, gone the instant the coil lets go. Page scroll turns the coil gently. Spin cap 12.5 cards/s, idle slow as built.
 - [x] Build: autonomous overnight per the scaffold and section 10, Aaron's full permission (2026-09-29).
 
 ## 3. Loader
@@ -151,6 +151,20 @@ Picked by Aaron from hero lab 2, 2026-09-29 (the build starts on these; see `doc
 - [ ] The sticky nav paragraph becomes H1 as ticked above (mark and pill during the hero, bar after).
 - [ ] "No gradients on section backgrounds": unchanged unless you pick D.
 - [ ] Glassmorphism paragraph: the Menu panel has no blur; the pill keeps its small blur.
+
+## 2.10 Aaron's hands-on pass, 2026-09-29 evening (fix PRs 11 onward)
+
+- [x] The mark is the full AS mark everywhere, including the favicon and the pill's hover (overrides "bolt alone under 24px" for those two places; the A is a smudge at 16px and that is accepted).
+- [x] The Listen control is a single quarter note: filled accent when playing, outlined with a drawn slash when off.
+- [x] "Work and photos" is removed from the hero. "Hi, I'm" is drawn in the canvas in the name's own style, as one lockup with "Aaron".
+- [x] The name's fill is grain (the shadergradient look), alive at idle, pushed aside by the cursor in proportion to its speed, refilling within about a second. Options are built behind `?name=`; Aaron picks. Not green.
+- [x] The background field's drift is raised until the movement is visible within a few seconds.
+- [x] The seen ring in the coil is discreet and constant in contrast on every card. Seen rows in the book dim their title like non-hovered siblings.
+- [x] Hovering a book row brings its card forward once and holds the coil still.
+- [x] Clickability hint: first visit only, the cursor swells to "Open me" over a card until the first card is opened; then "Keep exploring" once. No orbiting text.
+- [x] The flight to and from the modal must be seamless at both ends (Fable debug agent).
+- [x] The waveform moves into a full-width band directly under the book, where the Listen invite and the pill are introduced; nothing animates behind body text. The music interaction gets its own session later.
+- [x] Playwright is approved as a dev dependency for real-input and visual tests.
 
 ## 9a. Surfaced by the overnight build (2026-09-29), yours in the morning
 
