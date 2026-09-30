@@ -25,7 +25,7 @@ function flat(outline: ProbePoint[][]) {
   return outline.flatMap((edge) => edge.slice(0, -1));
 }
 
-function signedArea(quad: ProbePoint[]) {
+function signedArea(quad: readonly ProbePoint[]) {
   let sum = 0;
   for (let i = 0; i < 4; i++) {
     const a = quad[i];

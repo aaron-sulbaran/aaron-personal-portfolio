@@ -19,6 +19,7 @@ export type CoilHooks = {
   drag: () => { dragging: boolean; coast: number | null; offset: number; target: number; velocity: number; cardsPerPx: number };
   unwindState: () => { on: boolean; latched: boolean; progress: number };
   focusKey: () => string | null;
+  nameFx: () => { nameFill: string; driftPreset: string; repelActive: boolean; repelMax: number; nameClock: number };
   api: {
     cardAt: (clientX: number, clientY: number) => { key: string; slot: number } | null;
     slotOfKey: (key: string) => number;
