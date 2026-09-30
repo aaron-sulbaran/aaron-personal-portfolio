@@ -17,7 +17,7 @@ import {
 } from "three";
 import { siteContent, strandTiles } from "@/lib/content";
 import { COIL } from "@/lib/coil/constants";
-import { projectPoint, projectQuad, restHelix, type Camera, type CardPose, type Quad } from "@/lib/coil/geometry";
+import { projectQuad, restHelix, type Camera, type Quad } from "@/lib/coil/geometry";
 import { stretchedDy } from "@/lib/coil/motion";
 import { runRender, runUpdate, type RenderSteps, type UpdateSteps } from "@/lib/coil/frame";
 import { budgetFor, sameBudget } from "@/lib/coil/drivers";
@@ -35,6 +35,7 @@ import {
 } from "./scene/debug";
 import { HOVER_RATE, createCards } from "./scene/cards";
 import { createEntrance } from "./scene/entrance";
+import { createProbe } from "./scene/debugProbe";
 import { createField } from "./scene/field";
 import { createUnwindWiring } from "./scene/unwind";
 import { createInput } from "./scene/input";
@@ -57,7 +58,6 @@ import { NAME_FILLS } from "@/lib/coil/field.glsl";
 // ---- fx-flight imports ----
 import { DataTexture, DoubleSide, GreaterDepth, RGBAFormat, UnsignedByteType } from "three";
 import { flightProbe } from "@/lib/coil/flightProbe";
-import { bendLocal as bendLocalPoint } from "@/lib/coil/geometry";
 import {
   afterPause,
   flightPoseAt,
@@ -252,6 +252,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   const hover = createHover(ctx, cards, loop);
 
   const input = createInput(ctx, cards, hover, loop);
+  const probe = createProbe(ctx, cards, loop);
   const unwinder = createUnwindWiring(ctx, compMaterial, heroName, hover, loop);
 
   // ---- the frame
@@ -352,7 +353,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       push(debug.work, performance.now() - started);
     }
     // ---- fx-flight debug ----
-    flightLog?.mark("scene-frame", { dt, interval, ...probeState() });
+    flightLog?.mark("scene-frame", { dt, interval, ...probe.state() });
     // ---- end fx-flight debug ----
     if (!st.firstFrameSent) {
       st.firstFrameSent = true;
@@ -385,7 +386,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     render(0);
     // ---- fx-flight: a card in flight follows the new layout in the same frame ----
     flightStill();
-    flightLog?.mark("scene-still", probeState());
+    flightLog?.mark("scene-still", probe.state());
     // ---- end fx-flight ----
   }
 
@@ -417,115 +418,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   });
 
   // ---- fx-flight debug: ?coildebug=flight, the measurement hook ----
-  let probeSlot = -1; // the slot the harness follows
-  function probePoseInfo(pose: CardPose) {
-    if (!st.geoCamera) return null;
-    const rect = host.getBoundingClientRect();
-    const origin = { left: rect.left, top: rect.top };
-    const camera = st.geoCamera;
-    const hw = COIL.cardAspect / 2;
-    const at = (x: number, y: number) => {
-      const b = bendLocalPoint(x, y, pose.bend, pose.beta);
-      const world: [number, number, number] = [
-        pose.position[0] + (pose.basis.x[0] * b[0] + pose.basis.y[0] * b[1] + pose.basis.z[0] * b[2]) * pose.scale,
-        pose.position[1] + (pose.basis.x[1] * b[0] + pose.basis.y[1] * b[1] + pose.basis.z[1] * b[2]) * pose.scale,
-        pose.position[2] + (pose.basis.x[2] * b[0] + pose.basis.y[2] * b[1] + pose.basis.z[2] * b[2]) * pose.scale,
-      ];
-      return projectPoint(camera, world, origin);
-    };
-    // The bent silhouette: 17 points along each edge, in corner order.
-    const steps = 16;
-    const edge = (x0: number, y0: number, x1: number, y1: number) =>
-      Array.from({ length: steps + 1 }, (_, i) => at(x0 + ((x1 - x0) * i) / steps, y0 + ((y1 - y0) * i) / steps));
-    const outline = [edge(-hw, 0.5, hw, 0.5), edge(hw, 0.5, hw, -0.5), edge(hw, -0.5, -hw, -0.5), edge(-hw, -0.5, -hw, 0.5)];
-    // The face itself: a 9 by 9 grid of card points (s across, t down, 0..1).
-    const grid = Array.from({ length: 81 }, (_, i) => {
-      const s = (i % 9) / 8;
-      const t = Math.floor(i / 9) / 8;
-      return { s, t, ...at((s - 0.5) * COIL.cardAspect, 0.5 - t) };
-    });
-    return {
-      quad: projectQuad(pose, camera, origin),
-      flatQuad: projectQuad({ ...pose, bend: 0 }, camera, origin),
-      center: at(0, 0),
-      outline,
-      grid,
-    };
-  }
-  function probeSlotInfo(j: number) {
-    const slot = slots[j];
-    const pose = st.rendered[j];
-    const drawn = pose ? probePoseInfo(pose) : null;
-    if (!slot || !pose || !drawn) return null;
-    const tile = tiles[slot.tile];
-    return {
-      ...drawn,
-      slot: j,
-      key: tile?.key,
-      kind: tile?.kind,
-      hover: slot.hover,
-      hovered: st.hoveredSlot === j,
-      hidden: st.hiddenSlot === j,
-      u: pose.u,
-      depth: pose.depth,
-      fade: pose.fade,
-      alpha: pose.alpha,
-      scale: pose.scale,
-      bend: pose.bend,
-      beta: pose.beta,
-      uniforms: {
-        uBend: slot.uniforms.uBend.value,
-        uFade: slot.uniforms.uFade.value,
-        uBright: slot.uniforms.uBright.value,
-        uShade: slot.uniforms.uShade.value,
-        uSeen: slot.uniforms.uSeen.value,
-        uAlpha: slot.uniforms.uAlpha.value,
-      },
-    };
-  }
-  function probeState() {
-    const followed = probeSlot >= 0 ? slots[probeSlot] : null;
-    const pose = probeSlot >= 0 ? st.rendered[probeSlot] : null;
-    return {
-      offset: st.conveyor.offset,
-      target: st.conveyor.target,
-      glide: st.conveyor.glide !== null,
-      envelope: st.envelope.value,
-      hoveredSlot: st.hoveredSlot,
-      hiddenSlot: st.hiddenSlot,
-      frozenByApi: st.frozenByApi,
-      frozenByProps: live.current.frozen,
-      looping: st.raf !== 0,
-      slot: probeSlot,
-      hover: followed?.hover ?? null,
-      scale: pose?.scale ?? null,
-      fade: pose?.fade ?? null,
-      bright: followed?.uniforms.uBright.value ?? null,
-      seen: followed?.uniforms.uSeen.value ?? null,
-    };
-  }
-  if (flightLog) {
-    flightLog.scene = {
-      state: probeState,
-      follow: ((j: number) => {
-        probeSlot = j;
-      }) as never,
-      slot: probeSlotInfo as never,
-      slots: () =>
-        Array.from({ length: st.geo?.slotCount ?? 0 }, (_, j) => probeSlotInfo(j)).filter(
-          (info) => info !== null && info.alpha > 0.5,
-        ),
-      // Shows or hides a slot's mesh and redraws, with no other side effect.
-      hide: ((j: number | null) => {
-        st.hiddenSlot = j;
-        if (!st.raf) {
-          update(0, performance.now());
-          render(0);
-        }
-      }) as never,
-      seam: () => FIELD.seamFade,
-    };
-  }
+  probe.install();
   // ---- end fx-flight debug ----
 
   // ---- the api for slices 4 and 5
@@ -533,7 +426,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     ...slice5Api(),
     ...flownApi(), // fx-flight
     freeze(on) {
-      flightLog?.mark(on ? "freeze" : "unfreeze", probeState()); // fx-flight debug
+      flightLog?.mark(on ? "freeze" : "unfreeze", probe.state()); // fx-flight debug
       st.frozenByApi = on;
       if (on) stop();
       else wake();
@@ -935,7 +828,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   function still() {
     update(0, st.lastTime);
     render(0);
-    flightLog?.mark("scene-still", probeState());
+    flightLog?.mark("scene-still", probe.state());
   }
 
   function act(f: Flight, event: HandoffEvent) {
@@ -971,7 +864,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
         flightLog?.mark("clone-unmount", { slot: f.slot });
       } else if (action === "resume") {
         // The loop is already stepping this frame (one frame's step, see wake).
-        flightLog?.mark("unfreeze", probeState());
+        flightLog?.mark("unfreeze", probe.state());
       }
     });
   }
@@ -1096,11 +989,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     }, 1200);
   }
 
-  if (flightLog) {
-    // The flown card as last drawn: its corners, its outline and its face grid.
-    flightLog.scene.flown = () => (flight?.pose ? probePoseInfo(flight.pose) : null);
-    flightLog.scene.flight = () => (flight ? { slot: flight.slot, state: flight.state, gap: flight.gap, pose: flight.pose } : null);
-  }
+  probe.installFlight(() => flight); // fx-flight debug
   // ---- end fx-flight ----
 
   // ---- slice 7: the coarse pointer's drag-to-spin ----
