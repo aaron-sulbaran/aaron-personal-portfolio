@@ -76,6 +76,27 @@ describe("themeFromTokens", () => {
     expect(d.card.recede).toBeCloseTo(0.38);
   });
 
+  it("reads the name's surface stops, its mean and the ink per theme", () => {
+    const tokens: Record<string, string> = {
+      ...light,
+      "--name-surface-1": "#3d6a96",
+      "--name-surface-2": "#10283f",
+      "--name-surface-3": "#93b2d1",
+      "--name-surface-shadow": "#0e2236",
+      "--name-surface-sheen": "#e9f0f5",
+      "--name-surface-mean": "#4a6f93",
+    };
+    const t = themeFromTokens((n) => tokens[n] ?? "", false);
+    expect(t.name.surface.c1).toEqual(parseColor("#3d6a96"));
+    expect(t.name.surface.c2).toEqual(parseColor("#10283f"));
+    expect(t.name.surface.c3).toEqual(parseColor("#93b2d1"));
+    expect(t.name.surface.shadow).toEqual(parseColor("#0e2236"));
+    expect(t.name.surface.sheen).toEqual(parseColor("#e9f0f5"));
+    expect(t.name.surface.mean).toEqual(parseColor("#4a6f93"));
+    expect(t.name.ink).toBeCloseTo(0.12);
+    expect(themeFromTokens((n) => ({ ...tokens, "--name-ink": ".14" })[n] ?? "", true).name.ink).toBeCloseTo(0.14);
+  });
+
   it("falls back to paper for a missing color, never throws", () => {
     const t = themeFromTokens((n) => light[n] ?? "", false);
     expect(t.card.pane).toEqual(t.paper);

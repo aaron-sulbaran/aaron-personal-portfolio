@@ -75,7 +75,23 @@ export type CoilTheme = {
     readonly recede: number;
     readonly sheen: number;
   };
-  readonly name: { readonly ink: number; readonly top: Rgba; readonly bottom: Rgba };
+  // The name: its ink, the solid gradient the loader lands on (and the
+  // canvas draws until its surface grows in), and the lit surface's stops
+  // (c1 to c2 across the surface, c3 its crests, the relief's shadow, the
+  // sheen) with the surface's mean color, measured at rest.
+  readonly name: {
+    readonly ink: number;
+    readonly top: Rgba;
+    readonly bottom: Rgba;
+    readonly surface: {
+      readonly c1: Rgba;
+      readonly c2: Rgba;
+      readonly c3: Rgba;
+      readonly shadow: Rgba;
+      readonly sheen: Rgba;
+      readonly mean: Rgba;
+    };
+  };
 };
 
 type TokenReader = (name: string) => string;
@@ -113,6 +129,14 @@ export function themeFromTokens(read: TokenReader, dark: boolean): CoilTheme {
       ink: parseScalar(read("--name-ink"), 0.12),
       top: color("--name-grad-top"),
       bottom: color("--name-grad-bottom"),
+      surface: {
+        c1: color("--name-surface-1"),
+        c2: color("--name-surface-2"),
+        c3: color("--name-surface-3"),
+        shadow: color("--name-surface-shadow"),
+        sheen: color("--name-surface-sheen"),
+        mean: color("--name-surface-mean"),
+      },
     },
   };
 }
