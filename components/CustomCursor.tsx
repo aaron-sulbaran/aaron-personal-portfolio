@@ -1,7 +1,19 @@
 "use client";
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { getSceneHover, subscribeSceneHover } from "@/lib/cursor/hover";
+import { getSceneHover, hintStore, subscribeSceneHover } from "@/lib/cursor/hover";
+import { siteContent } from "@/lib/content";
+
+// ---- fx-hero: the first-visit "Open me" pill ----
+// Until the visitor's first card opens, a card under a fine pointer swells the
+// cursor into a small accent pill that pops in with a 3 degree tilt settling
+// flat (no overshoot in size); it shrinks back off the card, and after that
+// first open it never appears again (lib/cursor/hover's hint store).
+const subscribeHint = (listener: () => void) => hintStore().subscribe(listener);
+const readHintOpened = () => hintStore().opened();
+const PILL_POP_MS = 380;
+const PILL_POP_EASE = "cubic-bezier(0.16, 1, 0.3, 1)";
+// ---- end fx-hero ----
 
 const HOVER_SELECTOR = "[data-cursor-hover], a, button, [role='button']";
 
@@ -27,6 +39,27 @@ export function CustomCursor() {
   // A card in the Coil canvas under the pointer (lib/cursor/hover): it can
   // arrive or leave while the pointer is still, so it is its own signal.
   const sceneHover = useSyncExternalStore(subscribeSceneHover, getSceneHover, () => false);
+  // ---- fx-hero ----
+  const hintOpened = useSyncExternalStore(subscribeHint, readHintOpened, () => true);
+  const pillRef = useRef<HTMLSpanElement>(null);
+  const pill = sceneHover && !hintOpened;
+  useEffect(() => {
+    const el = pillRef.current;
+    if (!el || !pill) return;
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const animation = el.animate(
+      reduced
+        ? [{ opacity: 0 }, { opacity: 1 }]
+        : [
+            { opacity: 0, transform: "translate(-50%, -50%) scale(0.45) rotate(0deg)" },
+            { opacity: 1, transform: "translate(-50%, -50%) scale(1) rotate(-3deg)", offset: 0.55 },
+            { opacity: 1, transform: "translate(-50%, -50%) scale(1) rotate(0deg)" },
+          ],
+      { duration: reduced ? 160 : PILL_POP_MS, easing: PILL_POP_EASE, fill: "none" },
+    );
+    return () => animation.cancel();
+  }, [pill]);
+  // ---- end fx-hero ----
 
   useEffect(() => {
     const mq = window.matchMedia("(pointer: fine)");
@@ -81,7 +114,7 @@ export function CustomCursor() {
 
   if (!enabled) return null;
 
-  const grown = hovering || sceneHover;
+  const grown = (hovering || sceneHover) && !pill;
 
   return (
     <div
@@ -103,13 +136,21 @@ export function CustomCursor() {
         className="relative block -translate-x-1/2 -translate-y-1/2 rounded-full transition-[width,height] duration-200 ease-out"
       >
         <span
-          style={{ opacity: grown ? 0 : 1 }}
+          style={{ opacity: grown || pill ? 0 : 1 }}
           className="absolute inset-0 rounded-full bg-accent transition-opacity duration-150"
         />
         <span
           style={{ opacity: grown ? 1 : 0 }}
           className="absolute inset-0 rounded-full border-[1.5px] border-accent transition-opacity duration-150"
         />
+      </span>
+      {/* fx-hero: the first-visit pill, centered on the pointer. */}
+      <span
+        ref={pillRef}
+        style={{ opacity: pill ? 1 : 0, transform: `translate(-50%, -50%) scale(${pill ? 1 : 0.45})` }}
+        className="absolute left-0 top-0 whitespace-nowrap rounded-full bg-accent px-3 py-[7px] font-sans text-[13px] font-medium leading-none text-background transition-[opacity,transform] duration-200 ease-out"
+      >
+        {siteContent.hero.hints.openMe}
       </span>
     </div>
   );
