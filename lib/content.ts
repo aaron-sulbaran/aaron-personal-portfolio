@@ -23,47 +23,31 @@ export const siteContent = {
       "Building products (and community) with people, not just for them.",
     url: "https://aaronsulbaran.com",
   },
-  home: {
-    name: "Hi, I'm Aaron.",
-    tagline:
-      "Building products (and community) with people, not just for them.",
-    scrollHint: "Scroll to explore",
-    // Left text panel copy for the settled ring-arc carousel (ArcIndex).
-    // panelHelper is the small "how to drive this" line under the divider;
-    // the kind/status labels name the focused card's type and explored
-    // state (see writeActiveCard in TileRing).
-    panelHelper:
-      "Click a card to open it, explored cards frost over. Scroll over the cards to browse, scroll here to keep moving down the page.",
-    panelKindPhoto: "Photo",
-    panelKindCaseStudy: "Case study",
-    panelExplored: "Explored",
-    panelUnexplored: "Unexplored",
-    // Reduced-motion static affordances (plan §3): visible prev/next buttons
-    // near the settled arc, since there is no wheel-driven rotation to feel
-    // for in that mode. Plain control labels, not first-person copy.
-    panelPrev: "Previous card",
-    panelNext: "Next card",
-  },
-  // Soundtrack invitation beat (components/ListenInvite.tsx): the in-flow
-  // typographic moment between the carousel and Work where the waveform
-  // introduces itself. Draft copy in my voice, to be tightened by Aaron.
+  // The soundtrack band under the book (components/soundtrack): the one place
+  // the music is offered and controlled, with the waveform running through
+  // it. Each note describes what is on screen when it shows. Draft copy in my
+  // voice, to be tightened by Aaron.
   listen: {
-    ariaLabel: "Soundtrack invitation",
+    ariaLabel: "Soundtrack",
     kicker: "A note from me",
     line: "This place has a soundtrack.",
     body:
       "I put together a short playlist that plays quietly while you look around. Your call entirely.",
     accept: "Play it",
-    decline: "maybe later",
-    acceptedNote:
-      "It's on. The little player at the bottom of your screen is yours whenever you want it.",
-    declinedNote:
-      "No problem. If you change your mind, the soundtrack toggle lives in the menu up top.",
+    decline: "Maybe later",
+    acceptedNote: "It's on, and the wave below is moving with it.",
+    declinedNote: "No problem. The wave stays still unless you change your mind.",
+    pausedNote: "Paused. The wave below is resting until you resume.",
+    pause: "Pause",
+    resume: "Resume",
+    replay: "Play my soundtrack",
+    freeze: "Freeze the wave",
+    unfreeze: "Let the wave move",
   },
-  // Hero words that open a "My definition of <term>" modal. Keys must match the
-  // exact word as it appears in home.tagline so HomeHero can wire that word to
-  // its definition. Keep each body to one or two sentences; these are drafts in
-  // Aaron's voice to be tightened later.
+  // Words that open a "My definition of <term>" modal (DefinitionModal). The
+  // ring's hero tagline was their only trigger; the Coil hero has no tagline,
+  // so nothing opens them today. Kept, with the component, for a future home.
+  // Keep each body to one or two sentences; drafts in Aaron's voice.
   definitions: {
     products: {
       term: "products",
@@ -90,14 +74,111 @@ export const siteContent = {
     themeToggleToLight: "Light mode",
     themeAriaLabelToDark: "Switch to dark mode",
     themeAriaLabelToLight: "Switch to light mode",
+    // The pill (components/menu): its label rolls to "Close" while the panel
+    // is open, and the Listen dot sits beside it as its own button.
+    pillLabel: "Menu",
+    closeLabel: "Close",
+    dialogLabel: "Site menu",
+    listenAriaLabelPlay: "Play my soundtrack",
+    listenAriaLabelPause: "Pause my soundtrack",
+    // The header bar past the hero (components/SiteNav.tsx).
+    navAriaLabel: "Sections",
+    markAriaLabel: "Back to top",
+    // The panel's bottom row: email first, then the socials as text links.
+    email: { label: "aarondsulbaran@gmail.com", href: "mailto:aarondsulbaran@gmail.com" },
+    socials: [
+      { key: "linkedin", label: "LinkedIn", href: "https://www.linkedin.com/in/aaron-sulbaran/" },
+      { key: "github", label: "GitHub", href: "https://github.com/aaron-sulbaran" },
+      { key: "x", label: "X", href: "https://x.com/imaaronsulbaran" },
+      { key: "instagram", label: "Instagram", href: "https://www.instagram.com/aaron.sulbaran/" },
+    ],
     items: [
       { key: "home", label: "Home", href: "#main", kind: "anchor" as const },
       { key: "work", label: "Work", href: "#work", kind: "anchor" as const },
       { key: "about", label: "About", href: "#about", kind: "anchor" as const },
+      { key: "connect", label: "Connect", href: "#connect", kind: "anchor" as const },
     ],
   },
   modals: {
     closeAriaLabel: "Close",
+    // The close hint reads by pointer type: a mouse and keyboard get Esc, a
+    // touch screen gets the backdrop.
+    closeHintKeyboard: "Press Esc to close",
+    closeHintTouch: "Tap outside to close",
+    // The work modal's accessible name: "<title> preview".
+    workPreviewSuffix: "preview",
+  },
+  // The Coil hero. The heading is the server-rendered h1; greeting and name
+  // are the two parts the scene draws, together, in the canvas.
+  hero: {
+    heading: "Hi, I'm Aaron.",
+    greeting: "Hi, I'm",
+    name: "Aaron",
+    coilControl: "Coil",
+    // First visit only, decorative (aria-hidden): the cursor's pill over a
+    // card until the first card opens, the one line after that first card
+    // flies home, and the touch screen's one line after the entrance.
+    hints: {
+      openMe: "Open me",
+      keepExploring: "Keep exploring",
+      tapCard: "Tap a card",
+    },
+    // The name fill and drift switcher, shown only with ?coildebug=name.
+    fxSwitcher: {
+      label: "Hero options",
+      name: "Name",
+      drift: "Drift",
+    },
+  },
+  // The Coil's loader: the name it fills while the page loads (the same word
+  // the scene draws, so the exit hands one to the other) and the progress
+  // bar's accessible name. The number itself carries no status word.
+  loader: {
+    name: "Aaron",
+    progressLabel: "Loading the site",
+  },
+  // The book under the Coil hero (#work): Work then Photos, text first. Keys
+  // match homeTiles keys where a card exists, so "seen" is shared with the
+  // cards. Work targets: "case" opens /work/[slug], "external" opens a live
+  // site in a new tab, "soon" renders the row without a link. Placeholder
+  // photos never get a row.
+  book: {
+    ariaLabel: "Work and photos",
+    workHeading: "Work",
+    photosHeading: "Photos",
+    seenLabel: "opened",
+    externalLabel: "opens in a new tab",
+    workRows: [
+      // TODO(Aaron): Talos copy, and whether it gets a case page or stays a coming-soon row.
+      { key: "talos", title: "Talos", meta: "Open source, coming soon", target: { kind: "soon" as const } },
+      // TODO(Aaron): min/Max's live URL; the row becomes { kind: "external", href } once it lands.
+      { key: "min-max", title: "min/Max", meta: "Live, link soon", target: { kind: "soon" as const } },
+      { key: "capital-one-pm", title: "Capital One", meta: "Product manager intern, 2025", target: { kind: "case" as const, slug: "capital-one-pm" } },
+      { key: "ieee-president", title: "IEEE UT Austin", meta: "President, 2025", target: { kind: "case" as const, slug: "ieee-president" } },
+      { key: "claude-ambassador", title: "Anthropic ambassador", meta: "Claude ambassador at UT Austin, 2025", target: { kind: "case" as const, slug: "claude-ambassador" } },
+      { key: "hackathon-builds", title: "Hackathon builds", meta: "Weekend builds, ongoing", target: { kind: "case" as const, slug: "hackathon-builds" } },
+      { key: "aaronsulbaran-site", title: "This site", meta: "Built in public, 2026", target: { kind: "case" as const, slug: "aaronsulbaran-site" } },
+    ],
+    photoRows: [
+      { key: "hsf-speaking", title: "Public speaking", meta: "HSF Scholars", src: "/photos/hsf-speaking.jpeg" },
+      { key: "drum-major", title: "Drum major", meta: "Leading the band", src: "/photos/drum-major.jpeg" },
+      { key: "yosemite-hiking", title: "Yosemite", meta: "Hiking", src: "/photos/yosemite-hiking.jpeg" },
+      { key: "capital-one", title: "Capital One summer", meta: "Internship", src: "/photos/capital-one.jpeg" },
+      { key: "uncs-grad", title: "Graduation", meta: "Family", src: "/photos/uncs-grad.jpeg" },
+      { key: "claude-hackathon", title: "Claude hackathon", meta: "Austin", src: "/photos/claude-hackathon.jpeg" },
+      { key: "misuki", title: "Venezuelan roots", meta: "Maracaibo", src: "/photos/misuki.jpeg" },
+      { key: "traveling", title: "Traveling", meta: "On the road", src: "/photos/traveling.jpeg" },
+      { key: "mt-fuji", title: "Mt. Fuji", meta: "Japan", src: "/photos/mt-fuji.jpeg" },
+    ],
+  },
+  // The Coil's strand: real cards only (design review item 9), interleaved by
+  // the pattern (P a photo, W a work card, in the orders below). Placeholders
+  // never enter the coil; they return here as real photos arrive. Keys are
+  // homeTiles keys; see strandTiles below.
+  strand: {
+    pattern: "PWPPWPPWPWPPWP",
+    photos: ["hsf-speaking", "drum-major", "yosemite-hiking", "capital-one", "uncs-grad", "claude-hackathon", "misuki", "traveling", "mt-fuji"],
+    work: ["capital-one-pm", "claude-ambassador", "ieee-president", "aaronsulbaran-site", "hackathon-builds"],
   },
   notFound: {
     title: "Nothing here.",
@@ -208,7 +289,8 @@ export const siteContent = {
     ] as HoldingSocial[],
   },
   footer: {
-    tagline: "This site grows with me. Last updated June 2026",
+    // The month comes from the build (lib/buildDate.ts).
+    tagline: (month: string) => `This site grows with me. Last updated ${month}`,
     copyright: "© 2026 Aaron Sulbaran",
   },
   // Private recruiting dashboard at /recruiting (app/recruiting/page.tsx),
@@ -433,6 +515,7 @@ export const siteContent = {
     statusReady: "Soundtrack ready",
     openInSpotify: "Open in Spotify",
     menuToggleOn: "Soundtrack on",
+    menuTogglePaused: "Soundtrack paused",
     menuToggleOff: "Soundtrack off",
     menuAriaLabelOn: "Turn soundtrack on",
     menuAriaLabelOff: "Turn soundtrack off",
@@ -444,6 +527,14 @@ export const siteContent = {
     ariaPause: "Pause",
     ariaNext: "Next track",
     ariaVolume: "Volume",
+    // Visible CC BY 4.0 attribution for the three tracks, on the band's lower
+    // right (facts from public/audio/LICENSES.md).
+    creditLead: "\u201cSmall Steps\u201d, \u201cWaves of Sleep\u201d and \u201cSlow Lights\u201d by",
+    creditArtist: "Lee Rosevere",
+    creditArtistUrl: "https://freemusicarchive.org/music/lee-rosevere/",
+    creditJoin: ", licensed",
+    creditLicense: "CC BY 4.0",
+    creditLicenseUrl: "https://creativecommons.org/licenses/by/4.0/",
     tracks: [
       {
         title: "Small Steps",
@@ -475,7 +566,7 @@ export const siteContent = {
     {
       slug: "capital-one-pm",
       title: "Capital One",
-      role: "Product Manager Intern",
+      role: "Product manager intern",
       year: "2025",
       logo: "/work/logos/capital-one.svg",
       teaser: "Learned how real PM decisions get made when you're accountable to a team, not a deck.",
@@ -486,7 +577,7 @@ export const siteContent = {
     {
       slug: "capital-one-ba",
       title: "Capital One",
-      role: "Business Analyst Intern",
+      role: "Business analyst intern",
       year: "2024",
       logo: "/work/logos/capital-one.svg",
       teaser: "First real taste of how product and business decisions actually get made inside a big bank.",
@@ -497,7 +588,7 @@ export const siteContent = {
     {
       slug: "claude-ambassador",
       title: "Anthropic",
-      role: "Claude Ambassador at UT Austin",
+      role: "Claude ambassador at UT Austin",
       year: "2025",
       logo: "/work/logos/anthropic.svg",
       teaser: "Building an AI community on campus. Co-hosted the first Claude hackathon in Austin.",
@@ -523,7 +614,7 @@ export const siteContent = {
       year: "2026",
       logo: "/work/logos/site.svg",
       teaser: "This site. A Phase 1 personal statement that grows with me.",
-      summary: "Next.js 14, Tailwind, Framer Motion. Cursor-driven tile ring with shared-element flight modals, a work surface, and a living-document voice.",
+      summary: "Next.js 16, Tailwind, Framer Motion. Cursor-driven tile ring with shared-element flight modals, a work surface, and a living-document voice.",
       bodySections: [],
       links: [
         { label: "GitHub", href: "https://github.com/aaron-sulbaran" },
@@ -543,115 +634,139 @@ export const siteContent = {
   ],
   // 14 photos on desktop, 6 on mobile. Each caption is what shows in the
   // click-to-expand modal; edit freely, first person, no em dashes.
+  // width and height are the source file's pixels (checked by
+  // content.test.ts); the modal sizes its image request for the cover crop.
   photos: [
     {
       src: "/photos/hsf-speaking.jpeg",
-      alt: "Aaron speaking on stage at HSF Scholars.",
+      width: 1084,
+      height: 724,
+      alt: "Me speaking on stage at HSF Scholars.",
       caption: "Speaking at the HSF Scholars summit. One of the first times I realized how much I love sharing what I'm learning with people earlier in the journey.",
     },
     {
       src: "/photos/drum-major.jpeg",
+      width: 886,
+      height: 886,
       alt: "Me in my drum major uniform during a performance.",
       caption: "Drum major days. Leading a band is mostly about reading the room, staying calm when things break, and making sure everyone around you feels seen.",
     },
     {
       src: "/photos/capital-one.jpeg",
-      alt: "Aaron at Capital One during his internship.",
+      width: 768,
+      height: 1024,
+      alt: "Me at Capital One during my internship.",
       caption: "Capital One, product manager intern. Learned how real PM decisions get made when you're accountable to a team, not just a deck.",
     },
     {
       src: "/photos/yosemite-hiking.jpeg",
-      alt: "Aaron hiking in Yosemite.",
+      width: 666,
+      height: 1182,
+      alt: "Me hiking in Yosemite.",
       caption: "Yosemite. Long hikes with good people are where I do my best thinking.",
     },
     {
       src: "/photos/uncs-grad.jpeg",
-      alt: "Aaron at a UNC-related graduation photo.",
+      width: 627,
+      height: 836,
+      alt: "Me at a UNC-related graduation.",
       caption: "Family graduation moment. My roots keep me grounded.",
     },
     {
       src: "/photos/claude-hackathon.jpeg",
-      alt: "Aaron and co-ambassadors at the Claude hackathon.",
+      width: 768,
+      height: 1024,
+      alt: "Me with my co-ambassadors at the Claude hackathon.",
       caption: "Me and my co-ambassadors Rohan and Jessica at the first-ever Claude hackathon in Austin. Watching students ship real AI tools in one weekend was the kind of thing that made me want to stay close to this community.",
     },
     {
       src: "/photos/misuki.jpeg",
-      alt: "Aaron with family from Maracaibo.",
+      width: 722,
+      height: 1088,
+      alt: "Me with family from Maracaibo.",
       caption: "Venezuelan roots. Born in Maracaibo, raised with arepas and a lot of loud love. Carrying that into everything I build.",
     },
     // TODO: Replace placeholder with an IEEE UT Austin meeting / president photo
     {
       src: "/photos/photo-08.svg",
+      width: 480,
+      height: 640,
       alt: "Placeholder for an IEEE UT Austin leadership moment.",
       caption: "TODO caption: IEEE UT Austin as president. Running a student org at scale taught me more about operations than any class.",
     },
     {
       src: "/photos/traveling.jpeg",
-      alt: "Aaron traveling.",
+      width: 768,
+      height: 1024,
+      alt: "Me traveling.",
       caption: "Traveling. Being away from home is one of the fastest ways I learn what I actually care about.",
     },
     // TODO: Replace placeholder with an Austin startup community / meetup photo
     {
       src: "/photos/photo-10.svg",
+      width: 480,
+      height: 640,
       alt: "Placeholder for an Austin startup community moment.",
       caption: "TODO caption: Austin startup community. Builders, late coffees, conversations that go for hours.",
     },
     // TODO: Replace placeholder with a 3D-printing / making photo
     {
       src: "/photos/photo-11.svg",
+      width: 480,
+      height: 640,
       alt: "Placeholder for a 3D-printed project.",
       caption: "TODO caption: 3D-printed fixes. If I can print the solution, I will.",
     },
     {
       src: "/photos/mt-fuji.jpeg",
-      alt: "Aaron with Mt. Fuji in the background.",
+      width: 768,
+      height: 1024,
+      alt: "Me with Mt. Fuji in the background.",
       caption: "Mt. Fuji. Standing in front of it reminded me how small our day-to-day loops can feel once you've looked at something that big.",
     },
     // TODO: Replace placeholder with a friends / community photo
     {
       src: "/photos/photo-13.svg",
+      width: 480,
+      height: 640,
       alt: "Placeholder for a friends and community photo.",
       caption: "TODO caption: The people who make building feel less lonely.",
     },
     // TODO: Replace placeholder with a reflective / portrait photo
     {
       src: "/photos/photo-14.svg",
+      width: 480,
+      height: 640,
       alt: "Placeholder for a reflective portrait.",
       caption: "TODO caption: Quiet moment. Keeping it close to the chest.",
     },
   ],
-  // Home-page tile ring. Order here is rendering order (index 0 sits at the
-  // top of the ring and tiles are distributed clockwise). Mix of photo tiles
-  // and work tiles interleaved so neither type clusters on one side. Photo
-  // tiles reference the `photos` array by src; work tiles reference the
-  // `workItems` array by slug, so the click handler can open the right modal.
-  // `title` is the short label the left text panel (ArcIndex) shows for each
-  // card (card number = array index + 1). Keep titles 1 to 3 words. `blurb`
-  // is the one-line description shown under the title when the card is
-  // focused; keep each under ~90 characters, first person, no em dashes.
-  // Titles/blurbs marked PLACEHOLDER below belong to the placeholder SVG
-  // tiles and should be finalized when real photos replace them.
+  // Every card the home can show, by key: photo cards reference the `photos`
+  // array by src, work cards the `workItems` array by slug, so a card opens
+  // the right modal. The Coil's strand (below) picks its cards from here by
+  // key; placeholder SVG photos stay listed but never enter the strand or the
+  // book.
   homeTiles: [
-    { kind: "photo" as const, key: "hsf-speaking", src: "/photos/hsf-speaking.jpeg", title: "Public Speaking", blurb: "Speaking at HSF Scholars, where I realized how much I love teaching what I'm learning." },
-    { kind: "work"  as const, key: "capital-one-pm", slug: "capital-one-pm", title: "Capital One", blurb: "A summer as a PM intern, accountable to a team, not a deck." },
-    { kind: "photo" as const, key: "drum-major", src: "/photos/drum-major.jpeg", title: "Drum Major", blurb: "Leading the band from the podium, reading the room, staying calm under pressure." },
-    { kind: "photo" as const, key: "yosemite-hiking", src: "/photos/yosemite-hiking.jpeg", title: "Yosemite", blurb: "Long hikes in Yosemite, where I do my best thinking." },
-    { kind: "work"  as const, key: "claude-ambassador", slug: "claude-ambassador", title: "Anthropic", blurb: "Building an AI community on campus, co-hosting Austin's first Claude hackathon." },
-    { kind: "photo" as const, key: "capital-one", src: "/photos/capital-one.jpeg", title: "Capital One", blurb: "A candid from my PM internship at Capital One, learning how real decisions get made." },
-    { kind: "photo" as const, key: "uncs-grad", src: "/photos/uncs-grad.jpeg", title: "Graduation", blurb: "A family graduation moment. My roots keep me grounded." },
-    { kind: "work"  as const, key: "ieee-president", slug: "ieee-president", title: "IEEE", blurb: "Running IEEE at UT Austin taught me more about operations than any class did." },
-    { kind: "photo" as const, key: "claude-hackathon", src: "/photos/claude-hackathon.jpeg", title: "Claude Hackathon", blurb: "With my co-ambassadors at Austin's first Claude hackathon, watching students ship fast." },
-    { kind: "photo" as const, key: "misuki", src: "/photos/misuki.jpeg", title: "Venezuelan Roots", blurb: "Born in Maracaibo, raised with arepas and a lot of loud love." },
-    { kind: "work"  as const, key: "aaronsulbaran-site", slug: "aaronsulbaran-site", title: "This Site", blurb: "This site itself. A living personal statement that grows with me." },
-    { kind: "photo" as const, key: "photo-08", src: "/photos/photo-08.svg", title: "IEEE President", blurb: "Placeholder photo. An IEEE leadership shot is coming soon." }, // PLACEHOLDER
-    { kind: "photo" as const, key: "traveling", src: "/photos/traveling.jpeg", title: "Traveling", blurb: "Traveling teaches me fast what I actually care about." },
-    { kind: "work"  as const, key: "capital-one-ba", slug: "capital-one-ba", title: "Capital One", blurb: "My first taste of how product decisions get made inside a big bank." },
-    { kind: "photo" as const, key: "photo-10", src: "/photos/photo-10.svg", title: "Austin Builders", blurb: "Placeholder photo. An Austin startup community shot is coming soon." }, // PLACEHOLDER
-    { kind: "photo" as const, key: "photo-11", src: "/photos/photo-11.svg", title: "Making", blurb: "Placeholder photo. A making and 3D-printing shot is coming soon." }, // PLACEHOLDER
-    { kind: "work"  as const, key: "hackathon-builds", slug: "hackathon-builds", title: "Hackathon Builds", blurb: "A running set of weekend builds. Rough, fast, and shipped." },
-    { kind: "photo" as const, key: "mt-fuji", src: "/photos/mt-fuji.jpeg", title: "Mt. Fuji", blurb: "Standing in front of Mt. Fuji, a reminder of how small my daily loops can feel." },
-    { kind: "photo" as const, key: "photo-13", src: "/photos/photo-13.svg", title: "Community", blurb: "Placeholder photo. A friends and community shot is coming soon." }, // PLACEHOLDER
-    { kind: "photo" as const, key: "photo-14", src: "/photos/photo-14.svg", title: "Quiet Moment", blurb: "Placeholder photo. A quiet, reflective portrait is coming soon." }, // PLACEHOLDER
+    { kind: "photo" as const, key: "hsf-speaking", src: "/photos/hsf-speaking.jpeg" },
+    { kind: "work"  as const, key: "capital-one-pm", slug: "capital-one-pm" },
+    { kind: "photo" as const, key: "drum-major", src: "/photos/drum-major.jpeg" },
+    { kind: "photo" as const, key: "yosemite-hiking", src: "/photos/yosemite-hiking.jpeg" },
+    { kind: "work"  as const, key: "claude-ambassador", slug: "claude-ambassador" },
+    { kind: "photo" as const, key: "capital-one", src: "/photos/capital-one.jpeg" },
+    { kind: "photo" as const, key: "uncs-grad", src: "/photos/uncs-grad.jpeg" },
+    { kind: "work"  as const, key: "ieee-president", slug: "ieee-president" },
+    { kind: "photo" as const, key: "claude-hackathon", src: "/photos/claude-hackathon.jpeg" },
+    { kind: "photo" as const, key: "misuki", src: "/photos/misuki.jpeg" },
+    { kind: "work"  as const, key: "aaronsulbaran-site", slug: "aaronsulbaran-site" },
+    { kind: "photo" as const, key: "photo-08", src: "/photos/photo-08.svg" }, // PLACEHOLDER
+    { kind: "photo" as const, key: "traveling", src: "/photos/traveling.jpeg" },
+    { kind: "work"  as const, key: "capital-one-ba", slug: "capital-one-ba" },
+    { kind: "photo" as const, key: "photo-10", src: "/photos/photo-10.svg" }, // PLACEHOLDER
+    { kind: "photo" as const, key: "photo-11", src: "/photos/photo-11.svg" }, // PLACEHOLDER
+    { kind: "work"  as const, key: "hackathon-builds", slug: "hackathon-builds" },
+    { kind: "photo" as const, key: "mt-fuji", src: "/photos/mt-fuji.jpeg" },
+    { kind: "photo" as const, key: "photo-13", src: "/photos/photo-13.svg" }, // PLACEHOLDER
+    { kind: "photo" as const, key: "photo-14", src: "/photos/photo-14.svg" }, // PLACEHOLDER
   ],
 } as const;
 
@@ -663,7 +778,7 @@ export type HomeTile = (typeof siteContent.homeTiles)[number];
 export type Definition =
   (typeof siteContent.definitions)[keyof typeof siteContent.definitions];
 
-// O(1) lookups for the home-tile resolvers (GlassTile, MobileHome, FlyingTile),
+// O(1) lookups for the card and row resolvers (HomeController, BookRow),
 // built once at module load so per-render resolution never scans the arrays.
 export const photoBySrc: ReadonlyMap<string, Photo> = new Map(
   siteContent.photos.map((p) => [p.src, p]),
@@ -671,6 +786,42 @@ export const photoBySrc: ReadonlyMap<string, Photo> = new Map(
 export const workItemBySlug: ReadonlyMap<WorkItem["slug"], WorkItem> = new Map(
   siteContent.workItems.map((w) => [w.slug, w]),
 );
+
+export type BookWorkRow = (typeof siteContent.book.workRows)[number];
+export type BookPhotoRow = (typeof siteContent.book.photoRows)[number];
+// Every target a work row may have; the literal rows above use a subset.
+export type BookWorkTarget = { kind: "case"; slug: string } | { kind: "external"; href: string } | { kind: "soon" };
+export function bookWorkTarget(row: BookWorkRow): BookWorkTarget {
+  return row.target;
+}
+
+// Placeholder photos are clearly marked SVGs in public/photos; they never
+// appear in the book or the strand.
+export function isPlaceholderPhoto(src: string) {
+  return src.endsWith(".svg");
+}
+
+export const homeTileByKey: ReadonlyMap<string, HomeTile> = new Map(
+  siteContent.homeTiles.map((tile) => [tile.key, tile]),
+);
+
+// The Coil's strand as tiles, in order: the pattern filled from the photo and
+// work key lists. Unknown keys and placeholders are dropped (the content test
+// asserts none are), so the scene only ever sees real cards.
+export const strandTiles: readonly HomeTile[] = (() => {
+  const { pattern, photos, work } = siteContent.strand;
+  let photo = 0;
+  let workIndex = 0;
+  const tiles: HomeTile[] = [];
+  for (const slot of pattern) {
+    const key = slot === "P" ? photos[photo++] : work[workIndex++];
+    const tile = key ? homeTileByKey.get(key) : undefined;
+    if (!tile) continue;
+    if (tile.kind === "photo" && isPlaceholderPhoto(tile.src)) continue;
+    tiles.push(tile);
+  }
+  return tiles;
+})();
 
 // Body section shapes for work detail pages. When a workItem populates its
 // bodySections array, each element must match one of these. More kinds can be

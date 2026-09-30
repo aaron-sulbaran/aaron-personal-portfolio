@@ -26,22 +26,26 @@ const config: Config = {
         "viz-node": "var(--viz-node)",
       },
       fontFamily: {
-        serif: ["var(--font-serif)", "Georgia", "serif"],
+        display: ["var(--font-display)", "system-ui", "sans-serif"],
+        // Alias of display so /recruiting (still on font-serif) renders Profa
+        // without touching its files. New code uses font-display.
+        serif: ["var(--font-display)", "system-ui", "sans-serif"],
         sans: ["var(--font-sans)", "system-ui", "sans-serif"],
-        grotesk: ["var(--font-grotesk)", "system-ui", "sans-serif"],
       },
       fontSize: {
         "display-sm": ["clamp(3rem, 8vw, 4.5rem)", { lineHeight: "1.05", letterSpacing: "-0.02em" }],
+        "display-md": ["clamp(2.5rem, 5vw, 4.25rem)", { lineHeight: "1.05", letterSpacing: "-0.025em" }],
         "display": ["clamp(3.5rem, 10vw, 6rem)", { lineHeight: "1", letterSpacing: "-0.025em" }],
-        // Hero headline scales by vmin so it stays inside the TileRing's
-        // safe zone (ring radius is also vmin-based). Tighter ceiling keeps
-        // the italic from crashing into side tiles on 13–15" laptops.
-        "display-lg": ["clamp(2.75rem, 9vmin, 6.25rem)", { lineHeight: "0.95", letterSpacing: "-0.03em" }],
+        // Case page title.
+        "display-page": ["clamp(3rem, 8vw, 6rem)", { lineHeight: "0.95", letterSpacing: "-0.025em" }],
+        // Section openers (About).
+        "display-xl": ["clamp(4rem, 10vw, 8rem)", { lineHeight: "0.95", letterSpacing: "-0.025em" }],
+        // "Aaron" behind the coil: Profa Black sets the word at 2.816em, so
+        // 24.86vw spans 70 percent of the pane (1008px at 1440). The scene
+        // measures its own size; this is the DOM counterpart.
+        "display-name": ["clamp(5.5rem, 24.86vw, 32rem)", { lineHeight: "0.8", letterSpacing: "0" }],
         "section": ["clamp(2rem, 5vw, 3.5rem)", { lineHeight: "1.1", letterSpacing: "-0.02em" }],
         "body-lg": ["1.25rem", { lineHeight: "1.6" }],
-      },
-      letterSpacing: {
-        caps: "0.14em",
       },
       screens: {
         xs: "400px",

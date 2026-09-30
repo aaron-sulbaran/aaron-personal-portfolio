@@ -7,8 +7,8 @@ import { gsap, ScrollTrigger } from "@/lib/gsap";
 // The WhoIAm signature: the long bio "reads along" as you scroll. On desktop it
 // adds the .read-along clip-gradient (globals.css) and scrubs --read-pos from a
 // low value to 100%, so the bright foreground band sweeps down the muted
-// paragraph in step with the scroll, the way the ring's deliberateness is
-// applied to reading. Mobile keeps the paragraph plain foreground (the scrub
+// paragraph in step with the scroll, the hero's deliberateness applied to
+// reading. Mobile keeps the paragraph plain foreground (the scrub
 // would compete with reading on a small screen); so do reduced-motion and a
 // JS-disabled load, since the class is only added imperatively after mount.
 export function ReadAlong({ text, className }: { text: string; className?: string }) {

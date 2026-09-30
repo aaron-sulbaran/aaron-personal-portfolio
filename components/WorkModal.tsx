@@ -14,18 +14,20 @@ import {
 } from "@/lib/modal";
 import { siteContent, type WorkItem } from "@/lib/content";
 import { Portal } from "./Portal";
+import { useCloseHint } from "./PhotoModal";
 
 type WorkModalProps = {
   item: WorkItem | null;
   onClose: () => void;
-  // On mobile the modal opens from the carousel with no flight tile landing in
-  // the slot, so renderMedia draws the logo (on its glass tint) here directly.
-  // Desktop leaves this false; the flown tile fills the slot.
+  // Any open with no flight tile landing in the slot (a touch tap, a book
+  // row, or no scene) sets this, and the modal
+  // draws the logo (on its glass tint) here directly. A flight leaves it
+  // false; the flown tile fills the slot.
   renderMedia?: boolean;
 };
 
-// Tinted glass wash behind the work logo, matching GlassTile / the carousel so
-// the logo reads as the same card when the modal opens without a flight.
+// Tinted glass wash behind the work logo, so the logo reads as a card when the
+// modal opens without a flight.
 const workTintStyle: React.CSSProperties = {
   backgroundImage:
     "linear-gradient(135deg, color-mix(in srgb, var(--color-accent) 18%, transparent) 0%, color-mix(in srgb, var(--color-glass) 50%, transparent) 48%, color-mix(in srgb, var(--color-accent) 40%, transparent) 100%)",
@@ -35,6 +37,7 @@ export function WorkModal({ item, onClose, renderMedia = false }: WorkModalProps
   const open = item !== null;
   const dialogRef = useRef<HTMLDivElement | null>(null);
   const prefersReducedMotion = useReducedMotion();
+  const closeHint = useCloseHint();
 
   useBodyScrollLock(open);
   useEscapeKey(open, onClose);
@@ -66,7 +69,7 @@ export function WorkModal({ item, onClose, renderMedia = false }: WorkModalProps
           key="work-modal-backdrop"
           role="dialog"
           aria-modal="true"
-          aria-label={`${item.title} preview`}
+          aria-label={`${item.title} ${siteContent.modals.workPreviewSuffix}`}
           ref={dialogRef}
           initial="hidden"
           animate="visible"
@@ -84,23 +87,24 @@ export function WorkModal({ item, onClose, renderMedia = false }: WorkModalProps
           />
           <motion.div
             variants={panelVariants}
-            className="relative my-auto flex w-full max-w-xl flex-col gap-6 overflow-hidden rounded-2xl border border-border/60 bg-background/85 p-6 shadow-[0_40px_80px_-20px_rgba(10,10,10,0.45)] backdrop-blur-xl md:p-10"
+            className="relative my-auto flex w-full max-w-xl flex-col gap-6 overflow-hidden rounded-2xl border border-border bg-background/85 p-6 shadow-[0_40px_80px_-20px_rgba(10,10,10,0.45)] backdrop-blur-xl md:p-10"
             onMouseDown={(e) => e.stopPropagation()}
           >
             <button
               type="button"
               onClick={onClose}
               aria-label={siteContent.modals.closeAriaLabel}
-              className="absolute right-3 top-3 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full border border-border/70 bg-background/80 text-foreground transition-colors duration-200 hover:text-accent"
+              className="absolute right-3 top-3 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-background/80 text-foreground transition-colors duration-200 hover:text-accent"
             >
               <X aria-hidden="true" className="h-4 w-4" />
             </button>
 
             <div className="flex items-center gap-5 pr-12">
-              {/* Logo slot: on desktop TileRing's FlyingTile sits here while the
-                  modal is open (no <Image> inside; the flown tile is the logo).
-                  On mobile the modal opens from the carousel with no flight, so
-                  renderMedia draws the logo on its glass tint directly. */}
+              {/* Logo slot: after a card click the flown card (FlyingTile) sits
+                  here while the modal is open (no <Image> inside; the flown
+                  card is the logo). Opens with no flight (a tap, a book row, no
+                  scene) set renderMedia, which draws the logo on its glass tint
+                  directly. */}
               <div
                 data-tile-slot="work"
                 className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl"
@@ -122,16 +126,16 @@ export function WorkModal({ item, onClose, renderMedia = false }: WorkModalProps
                 )}
               </div>
               <div className="flex flex-col gap-1">
-                <span className="text-[11px] font-medium uppercase tracking-caps text-muted">
-                  {item.role} · {item.year}
+                <span className="text-sm text-muted">
+                  {item.role}, {item.year}
                 </span>
-                <h2 className="font-serif text-3xl italic leading-tight text-foreground md:text-4xl">
+                <h2 className="font-display text-3xl leading-tight text-foreground md:text-4xl">
                   {item.title}
                 </h2>
               </div>
             </div>
 
-            <p className="text-base leading-relaxed text-foreground/90 md:text-lg md:leading-[1.55]">
+            <p className="text-base leading-relaxed text-foreground md:text-lg md:leading-[1.55]">
               {item.teaser}
             </p>
 
@@ -144,8 +148,8 @@ export function WorkModal({ item, onClose, renderMedia = false }: WorkModalProps
                 {cta}
                 <ArrowRight aria-hidden="true" className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
               </Link>
-              <span className="text-[11px] font-medium uppercase tracking-caps text-muted">
-                {renderMedia ? "Tap outside to close" : "Press esc to close"}
+              <span className="text-sm text-muted">
+                {closeHint}
               </span>
             </div>
           </motion.div>

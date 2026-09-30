@@ -24,6 +24,42 @@
   --viz-warm: #eda100;
   --viz-cool: #4a3aa7;
   --viz-node: #6B6B6B;
+
+  /* Coil scene tokens (slices 3 and 4). A canvas or shader reads these through
+     getComputedStyle, so every color is a hex value, never var() or
+     color-mix(); only the three card rgba() paints below are canvas fills.
+     They stay out of tailwind.config.ts on purpose: components never style
+     DOM with them. */
+  /* Dusk field: sea plus a burnt orange second lobe at about 20 percent. */
+  --shader-top: #C0D5E8;
+  --shader-bottom: #F1F3F3;
+  --shader-glow: #8AAFD1;
+  --shader-second: #DC9562;
+  /* Card panes, rim hairline, highlight (paper, never white), slide veil. */
+  --card-pane: #EFF1F1;
+  --card-work-pane: #F7F7F3;
+  --card-hair: rgba(10, 10, 10, 0.18);
+  --card-hi: rgba(250, 250, 247, 0.75);
+  --card-veil: rgba(243, 245, 245, 0.56);
+  /* Duotone back endpoints (the shadow and the highlight of the tint), not
+     theme names. In light, plain work backs paint --card-duo-light; the dark
+     theme adds --card-work-back-dark for them. */
+  --card-duo-dark: #2A4B6D;
+  --card-duo-light: #E2E9F0;
+  /* Scalars: rear-card brightness drop and sheen strength. */
+  --card-recede: 0.3;
+  --card-sheen: 0.1;
+  /* "Aaron" behind the coil: a vertical gradient inside the letters mixed at
+     --name-ink (the scene mixes at ink * 2.2), plus the "Hi, I'm" color. */
+  --name-ink: 0.12;
+  --name-grad-top: #4C7098;
+  --name-grad-bottom: #16324F;
+  --hero-greeting: #3E4B59;
+  /* Loader: always dark, whatever the theme. */
+  --loader-bg: #0E1419;
+  --loader-name: #F5F2EC;
+  --loader-fill: #7FA8C9;
+  --loader-muted: #8A8A8A;
 }
 
 [data-theme="dark"] {
@@ -41,6 +77,47 @@
   --viz-warm: #c98500;
   --viz-cool: #9085e9;
   --viz-node: #8A8A8A;
+
+  --shader-top: #0A0F13;
+  --shader-bottom: #132436;
+  --shader-glow: #2E5475;
+  --shader-second: #7A3512;
+  --card-pane: #1A232B;
+  --card-work-pane: #18212A;
+  --card-hair: rgba(245, 242, 236, 0.16);
+  --card-hi: rgba(245, 242, 236, 0.09);
+  --card-veil: rgba(17, 24, 30, 0.56);
+  --card-duo-dark: #15293C;
+  --card-duo-light: #A3BFD6;
+  --card-work-back-dark: #40566A;
+  --card-recede: 0.38;
+  --card-sheen: 0.07;
+  --name-grad-top: #6C93B6;
+  --name-grad-bottom: #A6CCE6;
+  --hero-greeting: #A9B4BF;
+}
+
+/* Header and menu chrome (components/SiteNav.tsx, components/menu). The pill
+   is paper at 0.82 behind its sanctioned 8px blur; grown into the panel it
+   turns solid, drops the blur and takes the soft shadow. The scrim dims the
+   page (the coil keeps moving under it); the bar is paper at 0.94. */
+:root {
+  --menu-pill: rgba(250, 250, 247, 0.82);
+  --menu-panel: #FAFAF7;
+  --menu-scrim: rgba(14, 20, 25, 0.3);
+  --menu-shadow: 0 40px 90px -30px rgba(10, 10, 10, 0.35), 0 2px 10px rgba(10, 10, 10, 0.06);
+  --nav-bar: rgba(250, 250, 247, 0.94);
+  /* The soundtrack mini-player's float shadow (components/soundtrack). */
+  --pill-shadow: 0 12px 40px rgba(10, 10, 10, 0.22);
+}
+
+[data-theme="dark"] {
+  --menu-pill: rgba(14, 20, 25, 0.82);
+  --menu-panel: #121920;
+  --menu-scrim: rgba(0, 0, 0, 0.55);
+  --menu-shadow: 0 40px 90px -30px rgba(0, 0, 0, 0.7), 0 2px 10px rgba(0, 0, 0, 0.3);
+  --nav-bar: rgba(14, 20, 25, 0.94);
+  --pill-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
 }
 
 html {
@@ -48,6 +125,9 @@ html {
   color: var(--color-foreground);
   color-scheme: light;
   scroll-behavior: smooth;
+  /* Profa Black is one upright 900 cut: never fake a slanted or a bolder
+     weight on top of it. */
+  font-synthesis: none;
 }
 
 html[data-theme="dark"] {
@@ -132,10 +212,11 @@ body {
 
   [data-reveal][data-armed="true"] .reveal-mask {
     overflow: hidden;
-    /* Breathing room so the clip never shaves italic serif ascenders or
-       descenders at rest; the negative margin keeps layout unchanged. */
-    padding-block: 0.12em;
-    margin-block: -0.12em;
+    /* Profa Black's ink (0.69em up, 0.18em down) sits inside even a 0.95
+       line box, so the clip needs only an antialiasing margin; the negative
+       margin keeps layout unchanged. */
+    padding-block: 0.04em;
+    margin-block: -0.04em;
   }
   [data-reveal][data-armed="true"] .reveal-mask > * {
     transform: translateY(115%);
@@ -165,7 +246,7 @@ body {
   }
 }
 
-/* Playback pill equalizer glyph (components/PlaybackPill.tsx). */
+/* Playback pill equalizer glyph (components/soundtrack/PillParts.tsx). */
 @keyframes eqbar {
   0%,
   100% {
@@ -176,21 +257,65 @@ body {
   }
 }
 
-/* Hero ScrollCue bob (components/HomeHero.tsx). Runs on the compositor
-   instead of the main thread; the global reduced-motion rule above already
-   collapses animation-duration/iteration-count, so this is disabled for
-   free under prefers-reduced-motion. */
-@keyframes scrollcue-bob {
-  0%,
-  100% {
-    transform: translateY(0);
+/* The soundtrack note (components/menu/NoteIcon.tsx), in the Menu pill and
+   the panel's chip. Off: the silhouette drains to an outline while the slash
+   (and its knockout in the mask) draws from the top left, 240ms on the site
+   ease. On: the slash retracts, then hides, and the note fills. The slash
+   paths use pathLength=1, so a dashoffset of 1 is fully retracted. While on
+   in the pill the note sways 2.5 degrees about its head. */
+.note-icon {
+  overflow: visible;
+  transition: color 240ms var(--ease-out);
+}
+.note-icon .note-body {
+  fill: currentColor;
+  fill-opacity: 0;
+  transition: fill-opacity 240ms var(--ease-out);
+}
+.note-icon[data-on="true"] .note-body {
+  fill-opacity: 1;
+}
+.note-icon .note-slash {
+  stroke-dasharray: 1 1;
+  stroke-dashoffset: 0;
+  opacity: 1;
+  transition: stroke-dashoffset 240ms var(--ease-out), opacity 0s;
+}
+.note-icon[data-on="true"] .note-slash {
+  stroke-dashoffset: 1;
+  opacity: 0;
+  transition: stroke-dashoffset 240ms var(--ease-out), opacity 0s linear 240ms;
+}
+.note-icon .note-sway {
+  transform-box: fill-box;
+  transform-origin: 45% 88%;
+}
+@keyframes note-sway {
+  from {
+    transform: rotate(-2.5deg);
   }
-  50% {
-    transform: translateY(4px);
+  to {
+    transform: rotate(2.5deg);
   }
 }
-.scrollcue-bob {
-  animation: scrollcue-bob 1.8s ease-in-out infinite;
+.note-icon[data-living="true"] .note-sway {
+  animation: note-sway 1.6s ease-in-out infinite alternate;
+}
+@media (prefers-reduced-motion: reduce) {
+  /* A plain 150ms fade between the two states; beats the global zeroing
+     rule on specificity. */
+  .note-icon,
+  .note-icon .note-body {
+    transition-duration: 150ms !important;
+  }
+  .note-icon .note-slash,
+  .note-icon[data-on="true"] .note-slash {
+    stroke-dashoffset: 0;
+    transition: opacity 150ms linear !important;
+  }
+  .note-icon[data-living="true"] .note-sway {
+    animation: none !important;
+  }
 }
 
 /* Holding page entrance (components/Holding.tsx): a staggered fade + rise

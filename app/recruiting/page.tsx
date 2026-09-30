@@ -8,7 +8,7 @@ import { loadEdits } from "@/lib/recruiting/vault-issues";
 import { openRefresh } from "@/lib/recruiting/refresh";
 import { RefreshButton } from "@/components/recruiting/RefreshButton";
 
-// Private dashboard. middleware.ts gates every request under /recruiting on
+// Private dashboard. proxy.ts gates every request under /recruiting on
 // the signed cookie; this page never consults NEXT_PUBLIC_SITE_MODE, so it is
 // reachable while the holding page is up. ISR every 15 minutes (the feed is
 // re-fetched on that cadence in lib/recruiting/data.ts); never indexed.

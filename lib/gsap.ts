@@ -1,16 +1,18 @@
-// Canonical GSAP entry point. Import gsap, ScrollTrigger, and useGSAP from
-// here so plugin registration happens exactly once and only in the browser.
-// ScrollTrigger and useGSAP are client-only; the window guard keeps SSR safe.
-// ScrollTrigger pins the desktop hero; the ring-arc carousel scrubs from its
-// native scroll progress (no Observer: the free-scroll model never captures
-// input). The mobile coverflow carousel uses a custom touch handler (no
-// Draggable/InertiaPlugin), so those plugins are not registered either.
+// Canonical GSAP entry point. Import gsap, ScrollTrigger, Observer, and
+// useGSAP from here so plugin registration happens exactly once and only in
+// the browser. ScrollTrigger and useGSAP are client-only; the window guard
+// keeps SSR safe. ScrollTrigger drives the back half's scroll effects
+// (the waveform, read-along and Up to now); Observer
+// is the Coil's touch drag-to-spin on coarse pointers (touch only: the wheel
+// is a raw listener in the scene, never Observer). No Draggable or
+// InertiaPlugin: the scene coasts the conveyor itself.
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { Observer } from "gsap/Observer";
 import { useGSAP } from "@gsap/react";
 
 if (typeof window !== "undefined") {
-  gsap.registerPlugin(useGSAP, ScrollTrigger);
+  gsap.registerPlugin(useGSAP, ScrollTrigger, Observer);
 }
 
-export { gsap, ScrollTrigger, useGSAP };
+export { gsap, ScrollTrigger, Observer, useGSAP };
