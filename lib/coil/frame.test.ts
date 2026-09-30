@@ -21,7 +21,7 @@ const UPDATE = [
   "nudge",
   "repaint",
 ] as const;
-const RENDER = ["field", "composite", "cards"] as const;
+const RENDER = ["field", "surface", "composite", "cards"] as const;
 
 function recorder<K extends string>(names: readonly K[], calls: string[], frames: unknown[]) {
   return Object.fromEntries(
