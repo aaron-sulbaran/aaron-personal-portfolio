@@ -81,9 +81,11 @@ export type HomeControllerValue = {
   openWork: (item: WorkItem, key: string, origin: OpenOrigin) => void;
   // A work row or card that navigates away still counts as seen.
   markVisited: (key: string) => void;
-  // A book row under the pointer or focus: its card glides to the front of the
-  // visible helix (null when it leaves). Nothing without a scene.
-  focusCard: (key: string | null) => void;
+  // A book row under the pointer or keyboard focus: its card glides to the
+  // front of the visible helix and the coil holds still on it (null when it
+  // leaves). The pointer's row wins over the focused one. Nothing without a
+  // scene.
+  focusCard: (key: string | null, source?: RowSource) => void;
   // The scene claims the entrance before paint (its layout effect runs before
   // the controller's) and completes it once the band has opened; with no claim
   // the controller goes straight to ready.
@@ -93,6 +95,9 @@ export type HomeControllerValue = {
   // over; at rest from the first frame on a fast start.
   entrance: CoilEntrance | null;
 };
+
+// Which signal a book row sent: the pointer over it, or keyboard focus on it.
+export type RowSource = "pointer" | "focus";
 
 // No entrance: the coil is at rest from its first frame.
 const AT_REST: CoilEntrance = { startMs: Number.NEGATIVE_INFINITY, nameFromLoader: false };
@@ -259,7 +264,24 @@ export function HomeController({ hero, children }: Props) {
 
   const markVisited = useCallback((key: string) => markSeen(key), []);
 
-  const focusCard = useCallback((key: string | null) => sceneApiRef.current?.focusCard(key), []);
+  // ---- fx-input: the row hover signal ----
+  // The pointer's row and the focused row are tracked apart, and the scene
+  // hears only a change of the row that wins (a click that also focuses the
+  // hovered row starts no second glide).
+  const rowsRef = useRef<{ pointer: string | null; focus: string | null; sent: string | null }>({
+    pointer: null,
+    focus: null,
+    sent: null,
+  });
+  const focusCard = useCallback((key: string | null, source: RowSource = "pointer") => {
+    const rows = rowsRef.current;
+    rows[source] = key;
+    const next = rows.pointer ?? rows.focus;
+    if (next === rows.sent) return;
+    rows.sent = next;
+    sceneApiRef.current?.focusCard(next);
+  }, []);
+  // ---- end fx-input ----
 
   // A card in the scene (or its row in the unwound list): freeze the scene so
   // the rendered pose is the flight pose, take the card's corners and faces,

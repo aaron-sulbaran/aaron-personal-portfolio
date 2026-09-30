@@ -70,6 +70,18 @@ import {
   type CoilTheme,
 } from "@/lib/coil/theme";
 import { getSeen } from "@/lib/home/seen";
+// ---- fx-input imports: wheel ownership and the row hold ----
+import {
+  createCapture,
+  decideWheel,
+  feedsPageScroll,
+  gestureOwner,
+  heroVisibleFraction,
+  nudgeShown,
+  pointerMoved,
+} from "@/lib/coil/capture";
+import { createRowHold, rowHoldWeight, setRowHold } from "@/lib/coil/motion";
+// ---- end fx-input imports ----
 import { setSceneHover } from "@/lib/cursor/hover";
 import type { HeroOverlayHandle } from "./HeroOverlay";
 // Slice 4: the loader's tally and the name handoff.
@@ -239,7 +251,6 @@ const DRAG_MINIMUM_PX = 4;
 const REBUILD_FADE_MS = 450;
 const REBUILD_WIDTH_CHANGE = 0.2;
 const TEXTURE_TIMEOUT_MS = 6000; // the loader's give-up time: a slow photo paints the plain pane
-const GESTURE_GAP_MS = 260; // wheel events closer than this are one gesture (the lab's value)
 const CLICK_SLOP_PX = 6;
 const HOVER_RATE = 6.5; // 1/s, the lift's soft approach (no overshoot)
 const SEEN_RATE = 8;
@@ -263,6 +274,10 @@ type DebugStats = {
   offset: () => number;
   hovered: () => number;
   capturing: () => boolean;
+  // ---- fx-input debug: the live wheel owner and the helix hull ----
+  owner?: () => "coil" | "page" | "none";
+  silhouette?: () => Silhouette | null;
+  // ---- end fx-input debug ----
   api?: CoilSceneApi;
   // Slice 7: what the scene spends, as live (the DPR in use, the buffer,
   // the card textures actually uploaded).
@@ -434,10 +449,10 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   let hoveredSlot = -1;
   let hiddenSlot: number | null = null;
   const pointer = { clientX: -1, clientY: -1, x: -1, y: -1, inside: false, known: false };
-  let overCardsSince: number | null = null;
-  let capturing = false;
-  let lastCaptureAt = -Infinity;
-  let capturedSeconds = 0;
+  // ---- fx-input state: who owns the wheel gesture, and the book row hold ----
+  let capture = createCapture();
+  const rowHold = createRowHold();
+  // ---- end fx-input state ----
   let fieldElapsed = 0;
   let lastFieldTime = Number.NaN;
   let lastScrollY = window.scrollY;
@@ -499,7 +514,11 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
         released: 0,
         offset: () => conveyor.offset,
         hovered: () => hoveredSlot,
-        capturing: () => capturing,
+        // ---- fx-input debug ----
+        capturing: () => gestureOwner(capture, performance.now()) === "coil",
+        owner: () => gestureOwner(capture, performance.now()) ?? "none",
+        silhouette: () => sil,
+        // ---- end fx-input debug ----
       }
     : null;
   if (debug) (window as unknown as { __coil?: DebugStats }).__coil = debug;
@@ -696,23 +715,50 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     return pointer.x >= 0 && pointer.x <= view.width && pointer.y >= 0 && pointer.y <= view.height;
   }
 
+  // ---- fx-input: wheel ownership (lib/coil/capture.ts) ----
+  // The hero may take a wheel gesture: ready, entrance over, not frozen, not
+  // unwound, a fine pointer, and not a pinch (ctrl + wheel).
+  function wheelInteractive(event: WheelEvent) {
+    const props = live.current;
+    return (
+      ready &&
+      !props.frozen &&
+      !frozenByApi &&
+      props.interactive &&
+      props.input === "fine" &&
+      !event.ctrlKey &&
+      !unwind.on
+    );
+  }
+
+  // The pointer over the canvas and inside the helix's projected hull (gaps
+  // between cards included), from the last rendered frame.
+  function pointerInsideHelix() {
+    return pointer.inside && sil !== null && insideSilhouette(sil, pointer.x, pointer.y);
+  }
+
+  function heroVisible() {
+    const rect = host.getBoundingClientRect();
+    return heroVisibleFraction(rect.top, rect.height, window.innerHeight);
+  }
+
+  function setCapture(next: typeof capture, nowMs: number) {
+    if (debug && gestureOwner(capture, nowMs) === "coil" && next.owner === "page") debug.released += 1;
+    capture = next;
+  }
+
+  // Only a real move counts: a card or a gap passing under a still pointer is
+  // not a move, so it never releases a coil gesture.
   const onPointerMove = (event: PointerEvent) => {
     if (event.pointerType !== "mouse" && event.pointerType !== "pen") return;
+    const moved = !pointer.known || event.clientX !== pointer.clientX || event.clientY !== pointer.clientY;
     pointer.clientX = event.clientX;
     pointer.clientY = event.clientY;
     pointer.known = true;
     updatePointerLocal();
     pointer.inside = pointerOverHero(event.target);
-    // Capture ends the moment the pointer itself leaves the card set; a card
-    // passing out from under a still pointer does not end it.
-    const over = pointer.inside && live.current.input === "fine" ? pickAt(pointer.x, pointer.y) >= 0 : false;
-    if (!over) {
-      overCardsSince = null;
-      if (capturing && debug) debug.released += 1;
-      capturing = false;
-    } else if (overCardsSince === null) {
-      overCardsSince = performance.now();
-    }
+    const now = performance.now();
+    if (moved) setCapture(pointerMoved(capture, { nowMs: now, insideSilhouette: pointerInsideHelix() }), now);
     wake();
   };
 
@@ -720,56 +766,54 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     if (event.relatedTarget) return;
     pointer.inside = false;
     pointer.known = false;
-    overCardsSince = null;
-    capturing = false;
+    const now = performance.now();
+    setCapture(pointerMoved(capture, { nowMs: now, insideSilhouette: false }), now);
   };
 
-  // Wheel capture, decided per event (lab 1383-1394, plus the 400ms hover
-  // intent the lab lacked). A new gesture spins the coil only with the page
-  // at the top, the hero ready, the pointer on a card, and the pointer resting
-  // on the cards for the intent delay; an ongoing captured gesture (events
-  // under 260ms apart, trackpad inertia included) keeps the coil while the
-  // pointer stays inside the helix, so the page never scrolls mid-spin.
-  // Everything else is native page scroll.
+  // Decided once per gesture (events under COIL.capture.gestureGapMs apart,
+  // trackpad inertia included): a gesture that starts inside the helix with
+  // the hero at least half in view spins the coil from its first event, in
+  // both directions, and the page does not move; any other gesture scrolls
+  // the page natively. The coil responds on the frame after the event (one
+  // smoothing stage and the spin cap, nothing before the first motion).
   const onWheel = (event: WheelEvent) => {
-    const props = live.current;
-    if (!ready || props.frozen || frozenByApi || !props.interactive || props.input !== "fine" || event.ctrlKey) {
-      capturing = false;
-      return;
-    }
-    if (window.scrollY > 2 || unwind.on) {
-      capturing = false;
-      return;
-    }
     const now = performance.now();
-    // Some synthesized wheels carry no position (0, 0); the last pointer
-    // position stands in, as in the lab.
-    if (event.clientX !== 0 || event.clientY !== 0 || !pointer.known) {
-      pointer.clientX = event.clientX;
-      pointer.clientY = event.clientY;
+    const fresh = gestureOwner(capture, now) === null;
+    if (fresh) {
+      // Some synthesized wheels carry no position (0, 0); the last pointer
+      // position stands in, as in the lab.
+      if (event.clientX !== 0 || event.clientY !== 0 || !pointer.known) {
+        pointer.clientX = event.clientX;
+        pointer.clientY = event.clientY;
+      }
+      updatePointerLocal();
+      pointer.inside = pointerOverHero(event.target);
     }
-    updatePointerLocal();
-    if (capturing && now - lastCaptureAt >= GESTURE_GAP_MS) capturing = false;
-    const inGesture = capturing;
-    let capture = false;
-    if (inGesture) {
-      capture = sil !== null && insideSilhouette(sil, pointer.x, pointer.y);
-    } else {
-      const intent = overCardsSince !== null && now - overCardsSince >= COIL.capture.hoverIntentMs;
-      capture = intent && pickAt(pointer.x, pointer.y) >= 0;
-    }
-    if (!capture) {
-      if (capturing && debug) debug.released += 1;
-      capturing = false;
-      return;
-    }
+    setCapture(
+      decideWheel(capture, {
+        nowMs: now,
+        interactive: wheelInteractive(event),
+        heroVisible: fresh ? heroVisible() : 1,
+        insideSilhouette: fresh ? pointerInsideHelix() : true,
+      }),
+      now,
+    );
+    if (capture.owner !== "coil") return;
     event.preventDefault();
-    if (!capturing && debug) debug.captured += 1;
-    capturing = true;
-    lastCaptureAt = now;
+    if (fresh && debug) debug.captured += 1;
     addWheel(conveyor, wheelPixels(event.deltaX, event.deltaY, event.deltaMode, view.height));
     wake();
   };
+
+  // Wheels elsewhere on the page (the host never sees them) still belong to
+  // the running gesture: a gesture that left the hero stays the page's, and
+  // one that began outside it never becomes the coil's on arrival.
+  const onWindowWheel = (event: WheelEvent) => {
+    if (event.target instanceof Node && host.contains(event.target)) return;
+    const now = performance.now();
+    setCapture(decideWheel(capture, { nowMs: now, interactive: false, heroVisible: 0, insideSilhouette: false }), now);
+  };
+  // ---- end fx-input ----
 
   let downAt: { x: number; y: number } | null = null;
   const onPointerDown = (event: PointerEvent) => {
@@ -817,14 +861,21 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       // Slice 7: a released drag's throw decays into the target, which the
       // one smoothing stage and the speed cap then carry, as for the wheel.
       if (coast) conveyor.target += (coast.rest - conveyor.target) * (1 - Math.exp(-dt / COAST_TAU_S));
+      // ---- fx-input: the conveyor's feeds ----
+      // A held book row stills the idle drift and the page-scroll feed (and
+      // eases them back after it lets go); page scroll turns the coil only
+      // during page gestures, keyboard and scrollbar scrolling.
+      const holdWeight = rowHoldWeight(rowHold, now);
+      const pageFeed = props.interactive && feedsPageScroll(capture, now) ? scrollDelta * holdWeight : 0;
       stepConveyor(conveyor, {
         dt,
         nowMs: now,
         // The idle drift waits while a finger holds or throws the coil, so
         // the coast lands exactly on its card.
-        idleWeight: dragging || coast ? 0 : 1,
-        pageScrollPx: props.interactive ? scrollDelta : 0,
+        idleWeight: dragging || coast ? 0 : holdWeight,
+        pageScrollPx: pageFeed,
       });
+      // ---- end fx-input ----
       stepEnvelope(envelope, conveyor.excessVelocity, dt);
       if (coast && Math.abs(coast.rest - conveyor.offset) < COAST_SETTLED_CARDS) coast = null;
     }
@@ -929,16 +980,13 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     const nextHover = pickable ? pickAt(pointer.x, pointer.y) : -1;
     hoveredSlot = nextHover;
     setSceneHover(nextHover >= 0);
-    if (nextHover >= 0) overCardsSince ??= now;
-    else if (!capturing && now - lastCaptureAt > 600) overCardsSince = null;
 
-    // The nudge: after 2.6s of captured wheeling with the pointer still on the
-    // helix, a caret by the cursor points off it; it goes when the pointer leaves.
-    const onHelix = pickable && scrollY <= 2 && sil !== null && insideSilhouette(sil, pointer.x, pointer.y);
-    if (!onHelix) capturedSeconds = 0;
-    else if (now - lastCaptureAt < GESTURE_GAP_MS) capturedSeconds += dt;
+    // ---- fx-input: the nudge ----
+    // Only while a coil gesture has been held 2.6s; gone the instant the
+    // gesture ends or passes to the page. A caret by the cursor points off
+    // the helix.
     const overlay = props.overlay.current;
-    if (onHelix && capturedSeconds * 1000 > COIL.capture.nudgeAfterMs && sil) {
+    if (sil && pointer.known && nudgeShown(capture, now)) {
       const px = pointer.x - sil.ax;
       const py = pointer.y - sil.ay;
       const along = px * sil.dx + py * sil.dy;
@@ -956,6 +1004,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     } else {
       overlay?.nudge(null);
     }
+    // ---- end fx-input ----
 
     repaints.drain(paintTile, REPAINT_BUDGET_MS);
   }
@@ -1066,6 +1115,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   window.addEventListener("pointermove", onPointerMove, { passive: true });
   window.addEventListener("pointerout", onPointerOut);
   host.addEventListener("wheel", onWheel, { passive: false });
+  window.addEventListener("wheel", onWindowWheel, { passive: true }); // fx-input
   host.addEventListener("pointerdown", onPointerDown);
   host.addEventListener("pointerup", onPointerUp);
   host.addEventListener("pointercancel", onPointerCancel);
@@ -1202,7 +1252,17 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       },
       focusCard(key) {
         focusKey = key;
-        if (key) hoverJump(key);
+        // ---- fx-input: the row hold ----
+        // A held row stills the coil on its card (idle and page scroll at
+        // zero) after one glide; letting go resumes the idle after a beat. A
+        // hero under a quarter in view has nothing to show: the row does
+        // nothing to the coil.
+        const now = performance.now();
+        const hold = key !== null && canRowHold();
+        setRowHold(rowHold, hold, now);
+        if (hold && key) hoverJump(key);
+        wake();
+        // ---- end fx-input ----
       },
       unwind(on) {
         const next = on ?? !unwind.on;
@@ -1214,6 +1274,20 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       },
     };
   }
+
+  // ---- fx-input: the row hold ----
+  function canRowHold() {
+    const props = live.current;
+    return (
+      ready &&
+      props.interactive &&
+      !props.frozen &&
+      !frozenByApi &&
+      !unwind.latched &&
+      heroVisible() >= COIL.rowHold.minHeroVisible
+    );
+  }
+  // ---- end fx-input ----
 
   function canUnwind() {
     const props = live.current;
@@ -1482,6 +1556,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("pointerout", onPointerOut);
       host.removeEventListener("wheel", onWheel);
+      window.removeEventListener("wheel", onWindowWheel); // fx-input
       host.removeEventListener("pointerdown", onPointerDown);
       host.removeEventListener("pointerup", onPointerUp);
       host.removeEventListener("pointercancel", onPointerCancel);

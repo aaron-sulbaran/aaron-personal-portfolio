@@ -125,6 +125,9 @@ export function HeroOverlay({ ref, api, onRowOpen, entrance = null }: Props) {
         const on = nudge !== null;
         if (on !== nudgeOnRef.current) {
           nudgeOnRef.current = on;
+          // fx-input: it fades in, and goes the instant the coil lets go of
+          // the wheel (no fade out while the page already scrolls).
+          el.style.transitionDuration = on ? "" : "0ms";
           el.style.opacity = on ? "0.7" : "0";
         }
         if (!nudge) return;
