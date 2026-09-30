@@ -71,6 +71,14 @@ import {
   type CoilTheme,
 } from "@/lib/coil/theme";
 import { getSeen } from "@/lib/home/seen";
+import {
+  createDebugStats,
+  debugTokens,
+  pushStat,
+  readDebugFlags,
+  removeDebugStats,
+  throwFrameAt as throwFrameAtFromTokens,
+} from "./scene/debug";
 // ---- fx-input imports: wheel ownership and the row hold ----
 import {
   createCapture,
@@ -195,11 +203,6 @@ export default function CoilScene(props: CoilSceneProps) {
 
 // ---------------------------------------------------------------- runtime
 
-function debugTokens() {
-  const value = new URLSearchParams(window.location.search).get("coildebug");
-  return new Set(value ? value.split(",").map((token) => token.trim()) : []);
-}
-
 // Slice 7: how much of a card may show under a narrow pane's clear top band:
 // 1 while its projected top edge stays a quarter card below the band, fading
 // to 0 as that edge reaches it, so no card ever crosses the mark, the Menu
@@ -311,35 +314,9 @@ function greetingAlpha(entrance: CoilEntrance | null, nowMs: number, nameAlpha: 
 
 // ---- end fx-hero ----
 
-type DebugStats = {
-  intervals: number[];
-  work: number[];
-  steps: number[];
-  envelope: number[];
-  captured: number;
-  released: number;
-  geo?: CoilGeometry;
-  offset: () => number;
-  hovered: () => number;
-  capturing: () => boolean;
-  // ---- fx-input debug: the live wheel owner and the helix hull ----
-  owner?: () => "coil" | "page" | "none";
-  silhouette?: () => Silhouette | null;
-  // ---- end fx-input debug ----
-  api?: CoilSceneApi;
-  // Slice 7: what the scene spends, as live (the DPR in use, the buffer,
-  // the card textures actually uploaded).
-  budget?: () => object;
-  // ---- fx-hero debug: CPU ms of the name pass (the fill's clock and the repel) per frame ----
-  namePass?: number[];
-  nameFx?: () => object;
-  // ---- end fx-hero debug ----
-};
-
 function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject<CoilSceneProps>): CoilRuntime {
-  const params = new URLSearchParams(window.location.search);
-  const debugMode = params.get("coildebug");
-  const posterMode = debugMode === "poster";
+  const flags = readDebugFlags();
+  const { posterMode, hideCards, hideName, heldAt, forcedEntranceMs } = flags;
 
   disableColorManagement();
   const renderer = new WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: "high-performance" });
@@ -365,8 +342,8 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   const quad = new PlaneGeometry(2, 2);
 
   // ---- fx-hero state: the fill, the drift preset and the repel buffer ----
-  let nameFill: NameFill = parseNameFill(params.get("name"));
-  let driftPreset: DriftPreset = parseDriftPreset(params.get("drift"));
+  let nameFill: NameFill = parseNameFill(flags.nameParam);
+  let driftPreset: DriftPreset = parseDriftPreset(flags.driftParam);
   const repel = createRepelField();
   const repelBytes = new Uint8Array(REPEL.cols * REPEL.rows * 4);
   encodeRepel(repel, repelBytes);
@@ -382,14 +359,6 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   const repelRect = { x: 0, y: 0, w: 0, h: 0 };
   const strokeFrom = { x: 0, y: 0 };
   const strokeTo = { x: 0, y: 0 };
-  // QA only: ?coildebug=nocards hides the helix and noname the name (contrast
-  // and warm-share reads); at=<seconds> holds the field and the fill on one
-  // moment.
-  const qaTokens = debugTokens();
-  const hideCards = qaTokens.has("nocards");
-  const hideName = qaTokens.has("noname");
-  const heldAtToken = [...qaTokens].map((token) => token.match(/^at=(\d+(?:\.\d+)?)$/)).find(Boolean);
-  const heldAt = heldAtToken ? Number(heldAtToken[1]) : null;
   // ---- end fx-hero state ----
 
   const fieldMaterial = new ShaderMaterial({
@@ -579,13 +548,6 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   let entranceBase: number | null = null; // when this scene's entrance clock reads 0
   let entranceEnded = false;
   let nameLanded = false;
-  // ?coildebug=entrance=<ms> freezes the drawn entrance at that moment (the
-  // real clock still ends it, so the page unlocks).
-  const forcedEntrance = debugMode
-    ?.split(",")
-    .map((token) => token.trim().match(/^entrance=(-?\d+(?:\.\d+)?)$/))
-    .find(Boolean);
-  const forcedEntranceMs = forcedEntrance ? Number(forcedEntrance[1]) : null;
 
   // Real milliseconds since the entrance started (-Infinity before it,
   // Infinity for a fast start). A start the scene first sees late (it was
@@ -607,24 +569,15 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     return now - entranceBase;
   }
   // ---- end slice 4 state ----
-  const debug: DebugStats | null = debugMode
-    ? {
-        intervals: [],
-        work: [],
-        steps: [],
-        envelope: [],
-        captured: 0,
-        released: 0,
-        offset: () => conveyor.offset,
-        hovered: () => hoveredSlot,
-        // ---- fx-input debug ----
-        capturing: () => gestureOwner(capture, performance.now()) === "coil",
-        owner: () => gestureOwner(capture, performance.now()) ?? "none",
-        silhouette: () => sil,
-        // ---- end fx-input debug ----
-      }
-    : null;
-  if (debug) (window as unknown as { __coil?: DebugStats }).__coil = debug;
+  const debug = createDebugStats(flags, {
+    offset: () => conveyor.offset,
+    hovered: () => hoveredSlot,
+    // ---- fx-input debug ----
+    capturing: () => gestureOwner(capture, performance.now()) === "coil",
+    owner: () => gestureOwner(capture, performance.now()) ?? "none",
+    silhouette: () => sil,
+    // ---- end fx-input debug ----
+  });
   if (debug) {
     debug.budget = () => {
       const buffer = renderer.getDrawingBufferSize(new Vector2());
@@ -650,7 +603,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     };
     // Slice 7: every visible card's bent corners in viewport px (for the
     // header and greeting overlap checks).
-    (debug as DebugStats & { visibleQuads?: () => Quad[] }).visibleQuads = () => {
+    debug.visibleQuads = () => {
       if (!geoCamera) return [];
       const rect = host.getBoundingClientRect();
       return rendered
@@ -658,10 +611,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
         .map((pose) => projectQuad(pose, geoCamera as Camera, { left: rect.left, top: rect.top }));
     };
   }
-  const push = (list: number[], value: number) => {
-    list.push(value);
-    if (list.length > 6000) list.shift();
-  };
+  const push = pushStat;
 
   // ---- layout
   function layoutName() {
@@ -1006,7 +956,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
 
   // ---- the frame
   // Slice 7, QA only: ?coildebug=throw=frame throws from the loop a second in.
-  const throwFrameAt = debugTokens().has("throw=frame") ? performance.now() + 1000 : Number.POSITIVE_INFINITY;
+  const throwFrameAt = throwFrameAtFromTokens();
   // One frame's record: the props as the frame began, the geometry it runs
   // on, and what each step hands the next (lib/coil/frame.ts holds the order).
   type Frame = {
@@ -1574,7 +1524,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   if (debug) debug.api = api;
   // Slice 4: the entrance clock and the name, for QA behind ?coildebug.
   if (debug) {
-    (debug as DebugStats & { entrance?: () => object }).entrance = () => ({
+    debug.entrance = () => ({
       base: entranceBase,
       elapsedMs: entranceBase === null ? null : performance.now() - entranceBase,
       ended: entranceEnded,
@@ -1653,7 +1603,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
         if (next === unwind.on) return;
         if (next && !canUnwind()) return;
         toggleUnwind(unwind, performance.now(), conveyor.offset, tileCount, next);
-        if (debug) (debug as DebugStats & { unwindAt?: number[] }).unwindAt?.push(performance.now());
+        if (debug) debug.unwindAt?.push(performance.now());
         wake();
       },
     };
@@ -2382,7 +2332,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     },
   });
   if (debug) {
-    (debug as DebugStats & { drag?: () => object }).drag = () => ({
+    debug.drag = () => ({
       dragging,
       coast: coast?.rest ?? null,
       offset: conveyor.offset,
@@ -2497,7 +2447,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       repelTexture.dispose(); // fx-hero
       fieldTarget.dispose();
       renderer.dispose();
-      if (debug) delete (window as unknown as { __coil?: DebugStats }).__coil;
+      removeDebugStats(debug);
     },
   };
 }
