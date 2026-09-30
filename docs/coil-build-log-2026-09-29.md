@@ -57,3 +57,23 @@ Ship blockers found (slice 10 fixes the code ones):
 Fix soon (after launch): hover-jump can pick a copy that lands off screen (slice 10 fixes it); the waveform runs under body copy while playing (predates the Coil); phone greeting sits 310px above the name; plain light work backs read as blank slabs; the every-section eyebrows ("A note from me", "About", "Who I am", "What I'm up to", "Connect") are the last template cadence on the page (Aaron's call); the name gradient reads flat (slice 10 widens it); orange share in light is 14.8 percent, a little under the fifth (slice 10 raises `sec` to 0.75).
 
 Not verified by the review: the loader under real throttling, the touch drivers (the headless iPhone preset reports a fine pointer), flight in-between frames. These are on Aaron's real-device list.
+
+## Aaron's hands-on pass, 2026-09-29 evening to 2026-09-30
+
+Eleven defects and directions from Aaron's first hands-on session, plus the follow-ups they opened. All merged into `coil` and `main`.
+
+| PR | What landed |
+|---|---|
+| 11 | Full AS mark in the favicon and the pill's hover; quarter-note Listen control with a drawn slash; seen rows dimmed |
+| 12 | Wheel capture rebuilt as ownership per gesture (`lib/coil/capture.ts`, recorded trackpad streams as fixtures); row hover holds the coil |
+| 13 | Seamless modal flight: the scene draws the flown card with its own shader in an overlay canvas; every swap 0.00/255 |
+| 14 | The waveform as an in-flow band under the book; the pill as a mini-player; seven review defects fixed |
+| 15 | "Work and photos" removed; the greeting drawn in the name's style; first-visit "Open me" and "Keep exploring"; discreet seen ring; visible drift (the seven grain fills here were later rejected) |
+| 16 | Playwright suite (55 tests, proven to fail on the pre-fix builds) |
+| 17 | Official logos: Anthropic and Claude (press kit), min/Max (rendered from the CDO repo); Capital One and IEEE need Aaron |
+| 18 | CoilScene split into 18 modules with no behavior change (pixel-identical, tests unchanged); WebGL 2 probe |
+| 19 | The name as a lit shader surface (Opus Tide color law on Fable's surface pass) with a museum-rhythm wake; greeting 0.18 inside the mask; ink 12 light and 14 dark |
+
+Rulings recorded in `docs/design-decisions-2026-09-28.md` 2.10 and `docs/coil-input-model.md`. Two labs and a judge produced the name surface: `prototypes/labs/name-lab-opus.html`, `name-lab-fable.html`, verdict in the PR 19 body.
+
+Open: Capital One assets (private Brandfolder), the IEEE toolkit agreement, the Talos mark pick, real-device checks, the soundtrack e2e test that fails only on this machine, the Codex spend cap.
