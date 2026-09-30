@@ -43,11 +43,20 @@ function PillInner({ bandInView }: { bandInView: boolean | null }) {
   const [hover, send] = usePillHover(reduce, shown);
   const [keyboardOpen, setKeyboardOpen] = useState(false);
   const capsuleRef = useRef<HTMLButtonElement | null>(null);
+  const restoreFocus = useRef(false);
   const c = siteContent.soundtrack;
 
   const player = getSoundtrackPlayer();
   const [trackIndex, setTrackIndex] = useState(() => player.getSnapshot().trackIndex);
   useEffect(() => player.subscribe(() => setTrackIndex(player.getSnapshot().trackIndex)), [player]);
+
+  // Closing the card from inside it hands focus back to the capsule, once the
+  // commit has lifted the capsule's inert.
+  useEffect(() => {
+    if (hover.mode !== "collapsed" || !restoreFocus.current) return;
+    restoreFocus.current = false;
+    capsuleRef.current?.focus({ preventScroll: true });
+  }, [hover.mode]);
 
   if (phone) return null;
 
@@ -61,9 +70,8 @@ function PillInner({ bandInView }: { bandInView: boolean | null }) {
     send("open");
   };
   const collapse = () => {
-    const hadFocus = Boolean(document.activeElement?.closest("[data-pill]"));
+    restoreFocus.current = Boolean(document.activeElement?.closest("[data-pill]"));
     send("collapse");
-    if (hadFocus) requestAnimationFrame(() => capsuleRef.current?.focus({ preventScroll: true }));
   };
 
   // maxHeight collapses with maxWidth: without it the hidden two-line title
