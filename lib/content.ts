@@ -23,21 +23,26 @@ export const siteContent = {
       "Building products (and community) with people, not just for them.",
     url: "https://aaronsulbaran.com",
   },
-  // Soundtrack invitation beat (components/ListenInvite.tsx): the in-flow
-  // typographic moment between the carousel and Work where the waveform
-  // introduces itself. Draft copy in my voice, to be tightened by Aaron.
+  // The soundtrack band under the book (components/soundtrack): the one place
+  // the music is offered and controlled, with the waveform running through
+  // it. Each note describes what is on screen when it shows. Draft copy in my
+  // voice, to be tightened by Aaron.
   listen: {
-    ariaLabel: "Soundtrack invitation",
+    ariaLabel: "Soundtrack",
     kicker: "A note from me",
     line: "This place has a soundtrack.",
     body:
       "I put together a short playlist that plays quietly while you look around. Your call entirely.",
     accept: "Play it",
-    decline: "maybe later",
-    acceptedNote:
-      "It's on. The little player at the bottom of your screen is yours whenever you want it.",
-    declinedNote:
-      "No problem. If you change your mind, the soundtrack toggle lives in the menu up top.",
+    decline: "Maybe later",
+    acceptedNote: "It's on, and the wave below is moving with it.",
+    declinedNote: "No problem. The wave stays still unless you change your mind.",
+    pausedNote: "Paused. The wave below is resting until you resume.",
+    pause: "Pause",
+    resume: "Resume",
+    replay: "Play my soundtrack",
+    freeze: "Freeze the wave",
+    unfreeze: "Let the wave move",
   },
   // Words that open a "My definition of <term>" modal (DefinitionModal). The
   // ring's hero tagline was their only trigger; the Coil hero has no tagline,
@@ -522,6 +527,14 @@ export const siteContent = {
     ariaPause: "Pause",
     ariaNext: "Next track",
     ariaVolume: "Volume",
+    // Visible CC BY 4.0 attribution for the three tracks, on the band's lower
+    // right (facts from public/audio/LICENSES.md).
+    creditLead: "\u201cSmall Steps\u201d, \u201cWaves of Sleep\u201d and \u201cSlow Lights\u201d by",
+    creditArtist: "Lee Rosevere",
+    creditArtistUrl: "https://freemusicarchive.org/music/lee-rosevere/",
+    creditJoin: ", licensed",
+    creditLicense: "CC BY 4.0",
+    creditLicenseUrl: "https://creativecommons.org/licenses/by/4.0/",
     tracks: [
       {
         title: "Small Steps",
