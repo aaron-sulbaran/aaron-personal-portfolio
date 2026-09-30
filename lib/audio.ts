@@ -15,6 +15,7 @@
 //                 renderer does not change.
 
 import { siteContent } from "./content";
+import { bandEdgesFor, computeBands } from "./waveform/bands";
 
 export interface AudioFrame {
   // 0..1 overall loudness at the current playhead. Carries the intro envelope,
@@ -100,13 +101,6 @@ export interface SoundtrackPlayer extends AudioSource {
 
 const FFT_SIZE = 2048;
 const ANALYSER_SMOOTHING = 0.78;
-const BAND_MIN_HZ = 40;
-const BAND_MAX_HZ = 8000;
-// Shape byte-frequency energy (0..1) into the dynamic range the renderer was
-// tuned against on the stub: idle ceiling ~0.25, reactive peaks past the 0.36
-// accent gate. Tune these two live in Task 7, nothing else.
-const BAND_EXPONENT = 1.35;
-const BAND_GAIN = 1.9;
 const AUDIBLE_FADE_SECONDS = 0.6;
 
 let playerSingleton: SoundtrackPlayer | null = null;
@@ -261,23 +255,11 @@ export function getSoundtrackPlayer(): SoundtrackPlayer {
         return { level: 0, bands, playing };
       }
       analyser.getByteFrequencyData(freq);
-      const nyquist = audioCtx.sampleRate / 2;
       // Visual counterpart of the stub's intro envelope: the wave springs up
       // from the thin line over ~1.3s after play (spec 3.3).
       const intro = clamp01((performance.now() / 1000 - playStartSec) / 1.3);
-      let sum = 0;
-      for (let i = 0; i < columns; i++) {
-        const f0 = BAND_MIN_HZ * Math.pow(BAND_MAX_HZ / BAND_MIN_HZ, i / columns);
-        const f1 = BAND_MIN_HZ * Math.pow(BAND_MAX_HZ / BAND_MIN_HZ, (i + 1) / columns);
-        const b0 = Math.min(freq.length - 1, Math.floor((f0 / nyquist) * freq.length));
-        const b1 = Math.min(freq.length, Math.max(b0 + 1, Math.ceil((f1 / nyquist) * freq.length)));
-        let acc = 0;
-        for (let b = b0; b < b1; b++) acc += freq[b];
-        const v = acc / ((b1 - b0) * 255);
-        bands[i] = clamp01(Math.pow(v, BAND_EXPONENT) * BAND_GAIN) * intro;
-        sum += bands[i];
-      }
-      const level = clamp01((sum / columns) * 2.2) * intro;
+      const edges = bandEdgesFor(columns, freq.length, audioCtx.sampleRate);
+      const level = computeBands(freq, edges, bands, intro);
       return { level, bands, playing };
     },
   };
