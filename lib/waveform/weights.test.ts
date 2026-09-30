@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { columnWeights, type WeightLayout } from "@/lib/waveform/weights";
+import { blendWeights, columnWeights, type WeightLayout } from "@/lib/waveform/weights";
 
 // 40 columns, 10px apart, starting at x = 5: column i sits at x = 5 + 10i.
 const layout = (overrides: Partial<WeightLayout> = {}): WeightLayout => ({
@@ -75,5 +75,20 @@ describe("column weights", () => {
     expect(w[39]).toBeLessThan(w[36]);
     expect(w[20]).toBe(1);
     expect(w[0]).toBeGreaterThan(0);
+  });
+});
+
+describe("blendWeights", () => {
+  it("moves from the calm set to the loud set with the reactive level", () => {
+    const calm = new Float32Array([1, 0.8, 0.5]);
+    const loud = new Float32Array([1, 0.4, 0.1]);
+    const out = new Float32Array(3);
+    blendWeights(calm, loud, 0, out);
+    expect(Array.from(out)).toEqual(Array.from(calm));
+    blendWeights(calm, loud, 1, out);
+    expect(Array.from(out)).toEqual(Array.from(loud));
+    blendWeights(calm, loud, 0.5, out);
+    expect(out[1]).toBeCloseTo(0.6, 6);
+    expect(out[2]).toBeCloseTo(0.3, 6);
   });
 });

@@ -34,7 +34,7 @@ describe("buildDots", () => {
     const cursor = { x: 10 + 13 * 7, y: 150, on: true };
     buildDots(field, layout, 4, weights, cursor, muted, accent);
     const all = [...muted, ...accent];
-    const reach = reachOf(layout.maxAmp);
+    const reach = reachOf(layout.maxAmp, "loud");
     // The repel can slide a dot up to two columns sideways, so bound it by the
     // strongest weight within two columns of where it landed.
     for (let k = 0; k < all.length; k += 3) {
@@ -59,6 +59,14 @@ describe("buildDots", () => {
     buildDots(field, layout, 4, new Float32Array(30).fill(1), NO_CURSOR, muted, accent);
     expect(accent.length).toBeGreaterThan(0);
     for (const x of xs(accent)) expect(x).toBe(10 + 13 * 4);
+  });
+});
+
+describe("reachOf", () => {
+  it("gives the calm regimes a shorter reach than the loudest music", () => {
+    expect(reachOf(70, "calm")).toBeLessThan(reachOf(70, "loud"));
+    // The idle drift peaks near 0.41 max amplitudes (0.16 swing + 0.246 thickness).
+    expect(reachOf(70, "calm")).toBeGreaterThanOrEqual(0.41 * 70);
   });
 });
 
