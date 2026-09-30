@@ -20,7 +20,7 @@ describe("the soundtrack band's copy", () => {
   });
 
   it("uses sentence case and no em dash", () => {
-    const strings = Object.values(listen).concat([soundtrack.creditLead, soundtrack.creditJoin]);
+    const strings: string[] = [...Object.values(listen), soundtrack.creditLead, soundtrack.creditJoin];
     for (const text of strings) {
       expect(text).not.toMatch(/—/);
       expect(text[0]).toBe(text[0].toUpperCase());
