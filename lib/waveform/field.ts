@@ -108,8 +108,9 @@ export function createField(columns: number, regime: Regime = "idle"): Field {
 }
 
 // Advance the field one step. `settled` is true once nothing would visibly
-// change on the next step, which only happens in the still regime; the canvas
-// then stops its loop until something wakes it.
+// change on the next step, which only happens in the still regime (a resting
+// cursor's carve included); the canvas then stops its loop until the music,
+// the cursor or the band wakes it.
 export function stepField(field: Field, input: FieldInput): { settled: boolean } {
   const { time, dt, regime, bands, audioLevel, weights, carve } = input;
   const levels = stepLevels(field.levels, regime, dt);
@@ -123,12 +124,13 @@ export function stepField(field: Field, input: FieldInput): { settled: boolean }
   for (let i = 0; i < field.mag.length; i++) {
     const weight = weights[i] ?? 1;
     let target = FLOOR + (columnTarget(i, time, levels, bands[i] ?? 0) - FLOOR) * weight;
-    field.carve[i] = easeToward(field.carve[i], carve ? carve[i] : 0, 0.1, dt);
+    const carveTarget = carve ? carve[i] : 0;
+    field.carve[i] = easeToward(field.carve[i], carveTarget, 0.1, dt);
     target *= 1 - field.carve[i] * 0.9;
     const before = field.mag[i];
     field.mag[i] = easeToward(before, target, target > before ? 0.35 : 0.12, dt);
     field.disp[i] = columnDisplacement(i, time, levels, audioLevel) * weight;
-    if (settled && (Math.abs(field.mag[i] - target) > SETTLE_EPSILON || field.carve[i] > SETTLE_EPSILON || Math.abs(field.disp[i]) > SETTLE_EPSILON)) {
+    if (settled && (Math.abs(field.mag[i] - target) > SETTLE_EPSILON || Math.abs(field.carve[i] - carveTarget) > SETTLE_EPSILON || Math.abs(field.disp[i]) > SETTLE_EPSILON)) {
       settled = false;
     }
   }
