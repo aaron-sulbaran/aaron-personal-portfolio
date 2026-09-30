@@ -6,13 +6,11 @@ import {
   Color,
   LinearFilter,
   LinearSRGBColorSpace,
-  Matrix4,
   Mesh,
   PerspectiveCamera,
   Scene,
   ShaderMaterial,
   Vector2,
-  Vector3,
   Vector4,
   WebGLRenderer,
   type Texture,
@@ -20,17 +18,14 @@ import {
 import { siteContent, strandTiles } from "@/lib/content";
 import { COIL } from "@/lib/coil/constants";
 import {
-  coilPose,
   insideSilhouette,
   isNarrow,
-  mod,
   pickCard,
   poseAt,
   projectPoint,
   projectQuad,
   rayThrough,
   restHelix,
-  silhouette,
   type Camera,
   type CardPose,
   type CoilGeometry,
@@ -43,16 +38,15 @@ import {
   stretchedDy,
   wheelPixels,
 } from "@/lib/coil/motion";
-import { entranceClock, entranceHelix, entrancePose, isRested, type EntranceClock } from "@/lib/coil/entrance";
+import { entranceClock, entranceHelix, isRested, type EntranceClock } from "@/lib/coil/entrance";
 import { runRender, runUpdate, type RenderSteps, type UpdateSteps } from "@/lib/coil/frame";
-import { unwindPose, unwindProgress } from "@/lib/coil/unwind";
+import { unwindProgress } from "@/lib/coil/unwind";
 import { budgetFor, sameBudget } from "@/lib/coil/drivers";
 import { Observer } from "@/lib/gsap";
 import { FIELD } from "@/lib/coil/field.glsl";
-import { createCardGeometry, createCardMaterial, type CardUniforms, type SharedCardUniforms } from "@/lib/coil/material";
-import { loadCardSource, paintCard, type CardSource } from "@/lib/coil/textures";
-import { applyColor, createRepaintQueue, readCoilTheme, watchTheme } from "@/lib/coil/theme";
-import { getSeen } from "@/lib/home/seen";
+import { createCardMaterial, type CardUniforms, type SharedCardUniforms } from "@/lib/coil/material";
+import { loadCardSource, type CardSource } from "@/lib/coil/textures";
+import { readCoilTheme, watchTheme } from "@/lib/coil/theme";
 import {
   createDebugStats,
   debugTokens,
@@ -61,6 +55,7 @@ import {
   removeDebugStats,
   throwFrameAt as throwFrameAtFromTokens,
 } from "./scene/debug";
+import { HOVER_RATE, createCards } from "./scene/cards";
 import { createField } from "./scene/field";
 import { createName, createNameFill } from "./scene/name";
 import { createLayout, createPasses, createRenderer, observeResize, watchContext } from "./scene/renderer";
@@ -83,7 +78,6 @@ import { reportHomeLoad } from "@/lib/loader/progress";
 import { clamp01, helixRotation, smoothstep01, unprojectToPlane, type HelixFrame } from "@/lib/coil/geometry";
 import { hoverJumpTarget, siteEase, startGlide, type JumpBand } from "@/lib/coil/motion";
 import { settleUnwind, toggleUnwind, unwindDurationMs } from "@/lib/coil/unwind";
-import { isConvex } from "@/lib/coil/flight";
 // ---- end slice 5 imports ----
 // ---- fx-hero imports: the greeting in the name, the name's fill and repel, the drift presets ----
 // (DataTexture, RGBAFormat and UnsignedByteType come in with the fx-flight imports.)
@@ -178,19 +172,6 @@ export default function CoilScene(props: CoilSceneProps) {
 
 // ---------------------------------------------------------------- runtime
 
-// Slice 7: how much of a card may show under a narrow pane's clear top band:
-// 1 while its projected top edge stays a quarter card below the band, fading
-// to 0 as that edge reaches it, so no card ever crosses the mark, the Menu
-// pill or the greeting's line. Faded cards are never picked.
-const HEADER_FADE_CARDS = 0.25;
-function headerClearance(pose: CardPose, geo: CoilGeometry, camera: Camera) {
-  if (pose.alpha <= 0.001) return 1;
-  const quad = projectQuad(pose, camera);
-  const top = Math.min(quad[0].y, quad[1].y, quad[2].y, quad[3].y);
-  return smoothstep01(clamp01((top - geo.clearTopPx) / (HEADER_FADE_CARDS * geo.cardPx)));
-}
-
-
 // Slice 7, the touch drag: a released flick coasts on this time constant (an
 // exponential throw, distance = velocity * tau) and settles on a card.
 const COAST_TAU_S = 0.325;
@@ -201,20 +182,13 @@ const DRAG_MINIMUM_PX = 4;
 const REBUILD_FADE_MS = 450;
 const TEXTURE_TIMEOUT_MS = 6000; // the loader's give-up time: a slow photo paints the plain pane
 const CLICK_SLOP_PX = 6;
-const HOVER_RATE = 6.5; // 1/s, the lift's soft approach (no overshoot)
-const SEEN_RATE = 8;
-const HOVER_SCALE = 0.045;
-const HOVER_BRIGHT = 0.05;
-const HOVER_UNFADE = 0.6;
 // A hover-jump lands a card's center at least a quarter card inside the
 // visible band, so most of the card shows.
 const JUMP_INSET_CARDS = 0.25;
-// A theme repaint starts no new card past this much of a frame (at most 4).
-const REPAINT_BUDGET_MS = 6;
 
 function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject<CoilSceneProps>): CoilRuntime {
   const flags = readDebugFlags();
-  const { posterMode, hideCards, hideName, forcedEntranceMs } = flags;
+  const { posterMode, forcedEntranceMs } = flags;
 
   const renderer = createRenderer(canvas);
 
@@ -246,7 +220,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
 
   // ---- passes
   const gl = createPasses(renderer);
-  const { camera, cardScene, fieldTarget, uView, quad } = gl;
+  const { camera, fieldTarget, quad } = gl;
 
   // ---- fx-hero: the name's fill and repel buffer, made before the composite that holds them ----
   const nameFx = createNameFill(flags.nameParam);
@@ -255,66 +229,12 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   const heroName = createName(ctx, compMaterial, nameFx, loop);
 
   // ---- cards
-  const shared: SharedCardUniforms = {
-    uField: { value: fieldTarget.texture },
-    uView,
-    uInk: { value: new Color() },
-    uPaper: { value: new Color() },
-    uSheen: { value: st.theme.card.sheen },
-    uSeam: { value: FIELD.seamFade },
-  };
-  const cardGeometry = createCardGeometry();
-  type Slot = { mesh: Mesh; uniforms: CardUniforms; tile: number; hover: number };
-  const slots: Slot[] = [];
-  const faces: { front: Texture; back: Texture }[] = [];
-  let sources: CardSource[] = [];
-  const seenLevel = new Float32Array(tileCount);
-
-  function makeTexture(source: HTMLCanvasElement) {
-    const texture = new CanvasTexture(source);
-    texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
-    return texture;
-  }
-
-  function ensureSlots(count: number) {
-    while (slots.length < count) {
-      const { material, uniforms } = createCardMaterial(shared);
-      const mesh = new Mesh(cardGeometry, material);
-      mesh.frustumCulled = false;
-      cardScene.add(mesh);
-      slots.push({ mesh, uniforms, tile: -1, hover: 0 });
-    }
-    slots.forEach((slot, j) => {
-      slot.mesh.visible = j < count;
-    });
-  }
-
-  function bindTile(slot: Slot, tile: number) {
-    const face = faces[tile];
-    if (slot.tile === tile && slot.uniforms.mapF.value === face.front && slot.uniforms.mapB.value === face.back) return;
-    slot.tile = tile;
-    slot.uniforms.mapF.value = face.front;
-    slot.uniforms.mapB.value = face.back;
-  }
-
-  // A fresh canvas pair into fresh textures; the old pair is disposed.
-  function paintTile(tile: number) {
-    const painted = paintCard(sources[tile], st.theme, st.budget.textureSize);
-    const previous = faces[tile];
-    faces[tile] = { front: makeTexture(painted.front), back: makeTexture(painted.back) };
-    slots.forEach((slot) => {
-      if (slot.tile === tile) bindTile(slot, tile);
-    });
-    previous?.front.dispose();
-    previous?.back.dispose();
-  }
-  const repaints = createRepaintQueue<number>(4);
+  const cards = createCards(ctx, gl);
+  const { shared, cardGeometry, slots, faces } = cards;
 
   function applyTheme() {
     field.applyTheme();
-    applyColor(shared.uInk.value, st.theme.ink);
-    applyColor(shared.uPaper.value, st.theme.paper);
-    shared.uSheen.value = st.theme.card.sheen;
+    cards.applyTheme();
     st.lastFieldTime = Number.NaN;
   }
 
@@ -346,12 +266,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   if (debug) {
     debug.budget = () => {
       const buffer = renderer.getDrawingBufferSize(new Vector2());
-      const sizes = new Set(
-        faces.map((face) => {
-          const image = face.front.image as HTMLCanvasElement;
-          return `${image.width}x${image.height}`;
-        }),
-      );
+      const sizes = cards.textureSizes();
       return {
         input: live.current.input,
         dprCap: st.budget.dprCap,
@@ -384,7 +299,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     gl,
     {
       resizePasses: field.resizePasses,
-      ensureSlots,
+      ensureSlots: cards.ensureSlots,
       layoutName: heroName.layoutName,
     },
     loop,
@@ -395,33 +310,6 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       const fx = heroName.fx();
       return { nameFill: fx.nameFill, driftPreset: field.driftPreset(), repelActive: fx.repelActive, repelMax: fx.repelMax, nameClock: fx.nameClock };
     };
-  }
-
-  // ---- pose application
-  const basis = new Matrix4();
-  const bx = new Vector3();
-  const by = new Vector3();
-  const bz = new Vector3();
-
-  function applyPose(slot: Slot, pose: CardPose, bright: number) {
-    const { mesh, uniforms } = slot;
-    mesh.position.set(pose.position[0], pose.position[1], pose.position[2]);
-    basis.makeBasis(bx.set(...pose.basis.x), by.set(...pose.basis.y), bz.set(...pose.basis.z));
-    mesh.quaternion.setFromRotationMatrix(basis);
-    mesh.scale.setScalar(pose.scale);
-    uniforms.uBend.value = pose.bend;
-    (uniforms.uAxis.value as Vector2).set(Math.sin(pose.beta), Math.cos(pose.beta));
-    uniforms.uFade.value = pose.fade;
-    uniforms.uBright.value = bright;
-    uniforms.uAlpha.value = pose.alpha;
-    const material = mesh.material as ShaderMaterial;
-    const translucent = pose.alpha < 0.995;
-    if (material.transparent !== translucent) {
-      material.transparent = translucent;
-      material.depthWrite = !translucent;
-      material.needsUpdate = true;
-    }
-    mesh.visible = pose.alpha > 0.01;
   }
 
   // ---- picking and the pointer
@@ -702,57 +590,9 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     name(f) {
       heroName.stepNameFill(f.dt, f.listProgress); // fx-hero: the fill's idle clock and the repel
     },
-    seen(f) {
-      const seen = getSeen();
-      const seenStep = 1 - Math.exp(-f.dt * SEEN_RATE);
-      for (let i = 0; i < tileCount; i++) {
-        seenLevel[i] += ((seen.has(tiles[i].key) ? 1 : 0) - seenLevel[i]) * seenStep;
-      }
-    },
-    slots(f) {
-      const { now, geo, listProgress, rebuilt } = f;
-      const helix = f.helix as HelixFrame;
-      const clock = f.clock as EntranceClock;
-      const hoverStep = 1 - Math.exp(-f.dt * HOVER_RATE);
-      for (let j = 0; j < geo.slotCount; j++) {
-        const slot = slots[j];
-        let pose: CardPose = coilPose(helix, j, st.conveyor.offset);
-        const strandPosition = Math.round(pose.u - st.conveyor.offset);
-        const tile = mod(strandPosition, tileCount);
-        bindTile(slot, tile);
-        pose = entrancePose(pose, { strandPosition, cardCount: tileCount }, geo, clock);
-        if (listProgress > 0) pose = unwindPose(pose, tile, st.unwind, now, null);
-        // ---- slice 7: the narrow pane's clear top band (header and greeting) ----
-        if (geo.clearTopPx > 0 && listProgress < 1) {
-          const clear = headerClearance(pose, geo, f.camera);
-          if (clear < 1) pose = { ...pose, alpha: pose.alpha * (clear + (1 - clear) * listProgress) };
-        }
-        if (rebuilt < 1) pose = { ...pose, alpha: pose.alpha * rebuilt };
-        // ---- end slice 7 ----
-        if (posterMode || j === st.hiddenSlot) pose = { ...pose, alpha: 0 };
-        st.poses[j] = pose;
-
-        slot.hover += ((j === st.hoveredSlot ? 1 : 0) - slot.hover) * hoverStep;
-        const lift = slot.hover > 0.001 ? slot.hover : 0;
-        const shown: CardPose = lift
-          ? { ...pose, scale: pose.scale * (1 + HOVER_SCALE * lift), fade: pose.fade * (1 - HOVER_UNFADE * lift) }
-          : pose;
-        st.rendered[j] = shown;
-        applyPose(slot, shown, HOVER_BRIGHT * lift);
-        // Unwound, the row's outline ring after the title is the one seen mark;
-        // the card's own ring fades with the unwind, since at thumb size it
-        // reads as a second, solid dot.
-        slot.uniforms.uSeen.value = seenLevel[tile] * (1 - listProgress);
-      }
-    },
-    silhouette(f) {
-      st.sil = silhouette(f.helix as HelixFrame, f.camera, st.poses);
-      // ---- fx-hero: sand drifts along the helix's axis; QA can hide the cards ----
-      if (st.sil) heroName.flowAlong(st.sil.dx, st.sil.dy);
-      if (hideCards) for (let j = 0; j < f.geo.slotCount; j++) slots[j].mesh.visible = false;
-      if (hideName) heroName.hide();
-      // ---- end fx-hero ----
-    },
+    seen: cards.seen,
+    slots: cards.poseSlots,
+    silhouette: (f) => cards.hull(f, heroName),
     // Hover: picked every frame, since cards move under a still pointer.
     picking(f) {
       const { props } = f;
@@ -787,9 +627,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       }
     },
     // ---- end fx-input ----
-    repaint() {
-      repaints.drain(paintTile, REPAINT_BUDGET_MS);
-    },
+    repaint: cards.repaint,
   };
 
   function render(dt: number) {
@@ -799,10 +637,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   const renderSteps: RenderSteps<{ dt: number }> = {
     field: field.field,
     composite: field.composite,
-    cards() {
-      renderer.clearDepth();
-      renderer.render(cardScene, camera);
-    },
+    cards: cards.draw,
   };
 
   function shouldRun() {
@@ -913,7 +748,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   const stopWatchingTheme = watchTheme((next) => {
     st.theme = next;
     applyTheme();
-    repaints.enqueue(tiles.map((_, i) => i));
+    cards.repaintAll();
     wake();
   });
 
@@ -1046,12 +881,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       if (slot < 0) return null;
       return { key: tiles[slots[slot].tile].key, slot };
     },
-    quadOf(slot) {
-      const pose = st.rendered[slot];
-      if (!pose || !st.geoCamera) return null;
-      const rect = host.getBoundingClientRect();
-      return projectQuad(pose, st.geoCamera, { left: rect.left, top: rect.top });
-    },
+    quadOf: cards.quadOf,
     hideSlot(slot) {
       flightLog?.mark(slot === null ? "mesh-show" : "mesh-hide", { slot }); // fx-flight debug
       st.hiddenSlot = slot;
@@ -1081,7 +911,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   // the overlay's rows (the name moves to the list's lead), and the flight
   // source for a card click. The frame work runs in update()'s slice 5 block.
   let focusKey: string | null = null;
-  const tileIndex = new Map<string, number>(tiles.map((tile, i) => [tile.key, i]));
+  const { tileIndex } = cards;
   const nameRest = new Vector4();
   const nameWritten = new Vector4(Number.NaN, 0, 0, 0);
   let nameRestLod = 0;
@@ -1093,39 +923,9 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
 
   function slice5Api(): CoilFlightApi {
     return {
-      flightQuadOf(slot) {
-        const pose = st.rendered[slot];
-        if (!pose || !st.geoCamera) return null;
-        const rect = host.getBoundingClientRect();
-        const origin = { left: rect.left, top: rect.top };
-        const bent = projectQuad(pose, st.geoCamera, origin);
-        return isConvex(bent) ? bent : projectQuad({ ...pose, bend: 0 }, st.geoCamera, origin);
-      },
-      facesOf(slot) {
-        const tile = slots[slot]?.tile ?? -1;
-        const face = faces[tile];
-        if (!face) return null;
-        return { front: face.front.image as HTMLCanvasElement, back: face.back.image as HTMLCanvasElement };
-      },
-      slotOfKey(key) {
-        const tile = tileIndex.get(key);
-        if (tile === undefined || !st.geo) return -1;
-        let best = -1;
-        let bestDepth = -Infinity;
-        for (let j = 0; j < st.geo.slotCount; j++) {
-          const pose = st.poses[j];
-          if (!pose || slots[j].tile !== tile) continue;
-          if (st.unwind.latched) {
-            if (Math.round(pose.u - st.unwind.offset) === st.unwind.latched[tile]) return j;
-            continue;
-          }
-          if (pose.alpha > 0.5 && pose.depth > bestDepth) {
-            best = j;
-            bestDepth = pose.depth;
-          }
-        }
-        return best;
-      },
+      flightQuadOf: cards.flightQuadOf,
+      facesOf: cards.facesOf,
+      slotOfKey: cards.slotOfKey,
       focusCard(key) {
         focusKey = key;
         // ---- fx-input: the row hold ----
@@ -1552,12 +1352,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     o.shared.uSeam.value = shared.uSeam.value;
   }
 
-  function placeFlown(mesh: Mesh, pose: FlightPose) {
-    mesh.position.set(pose.position[0], pose.position[1], pose.position[2]);
-    basis.makeBasis(bx.set(...pose.basis.x), by.set(...pose.basis.y), bz.set(...pose.basis.z));
-    mesh.quaternion.setFromRotationMatrix(basis);
-    mesh.scale.setScalar(pose.scale);
-  }
+  const placeFlown = cards.placeMesh;
 
   // The cards nearer than the flown one, drawn to depth only at the poses the
   // scene last rendered: they cover the flown card as they covered the mesh.
@@ -1915,13 +1710,9 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   ])
     .then(([, loaded]) => {
       if (st.disposed) return;
-      sources = loaded;
-      const seen = getSeen();
-      tiles.forEach((tile, i) => {
-        seenLevel[i] = seen.has(tile.key) ? 1 : 0;
-      });
+      cards.setSources(loaded);
       applyTheme();
-      tiles.forEach((_, i) => paintTile(i));
+      tiles.forEach((_, i) => cards.paintTile(i));
       st.ready = true;
       const box = st.pendingSize ?? host.getBoundingClientRect();
       layout(box.width, box.height);
@@ -1943,7 +1734,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       st.budget = next;
       if (st.ready && !st.contextLost && !st.disposed) {
         layout(st.view.width, st.view.height);
-        repaints.enqueue(tiles.map((_, i) => i));
+        cards.repaintAll();
         if (!st.raf) renderStill();
       }
     }
@@ -1972,16 +1763,10 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       slice5Dispose();
       flownDispose(); // fx-flight
       dragObserver.kill(); // slice 7
-      repaints.clear();
       setSceneHover(false);
       live.current.overlay.current?.nudge(null);
       if (live.current.api && live.current.api.current === api) live.current.api.current = null;
-      faces.forEach((face) => {
-        face.front.dispose();
-        face.back.dispose();
-      });
-      slots.forEach((slot) => (slot.mesh.material as ShaderMaterial).dispose());
-      cardGeometry.dispose();
+      cards.dispose();
       quad.dispose();
       field.dispose();
       heroName.dispose();
