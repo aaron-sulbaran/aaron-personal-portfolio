@@ -27,7 +27,6 @@ import {
   type Quad,
 } from "@/lib/coil/geometry";
 import { stretchedDy } from "@/lib/coil/motion";
-import { entranceClock, entranceHelix, isRested } from "@/lib/coil/entrance";
 import { runRender, runUpdate, type RenderSteps, type UpdateSteps } from "@/lib/coil/frame";
 import { unwindProgress } from "@/lib/coil/unwind";
 import { budgetFor, sameBudget } from "@/lib/coil/drivers";
@@ -44,6 +43,7 @@ import {
   throwFrameAt as throwFrameAtFromTokens,
 } from "./scene/debug";
 import { HOVER_RATE, createCards } from "./scene/cards";
+import { createEntrance } from "./scene/entrance";
 import { createField } from "./scene/field";
 import { createInput } from "./scene/input";
 import { createHover } from "./scene/hover";
@@ -58,7 +58,6 @@ import { setSceneHover } from "@/lib/cursor/hover";
 import { reportHomeLoad } from "@/lib/loader/progress";
 // ---- slice 5 imports: the book, the unwind egg and the flight ----
 import { clamp01, helixRotation, smoothstep01, unprojectToPlane, type HelixFrame } from "@/lib/coil/geometry";
-import { siteEase } from "@/lib/coil/motion";
 import { settleUnwind, toggleUnwind, unwindDurationMs } from "@/lib/coil/unwind";
 // ---- end slice 5 imports ----
 // ---- fx-hero imports: the greeting in the name, the name's fill and repel, the drift presets ----
@@ -154,14 +153,10 @@ export default function CoilScene(props: CoilSceneProps) {
 
 // ---------------------------------------------------------------- runtime
 
-// Slice 7: a rotation (or a resize across the narrow line) rebuilds the whole
-// frame; the cards and the name fade back in over this, so nothing pops.
-const REBUILD_FADE_MS = 450;
 const TEXTURE_TIMEOUT_MS = 6000; // the loader's give-up time: a slow photo paints the plain pane
 
 function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject<CoilSceneProps>): CoilRuntime {
   const flags = readDebugFlags();
-  const { posterMode, forcedEntranceMs } = flags;
 
   const renderer = createRenderer(canvas);
 
@@ -211,31 +206,9 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
     st.lastFieldTime = Number.NaN;
   }
 
-  // ---- state
-  // ---- slice 4 state: the entrance clock and the name handoff ----
-  let entranceBase: number | null = null; // when this scene's entrance clock reads 0
-  let entranceEnded = false;
+  // ---- the entrance (slice 4) and the rebuild fade (slice 7)
+  const entrance = createEntrance(ctx, heroName);
 
-  // Real milliseconds since the entrance started (-Infinity before it,
-  // Infinity for a fast start). A start the scene first sees late (it was
-  // still loading) begins at that first sight, so no part of it is skipped.
-  // Slice 7: a scene that mounts with the hero already interactive (reduced
-  // motion switched off again, the remount after a lost context, a chunk
-  // that arrived after the lock gave up) starts at rest: the entrance plays
-  // once per load, never on a rebuild.
-  function entranceElapsedMs(now: number) {
-    const entrance = live.current.entrance;
-    if (!entrance) return Number.NEGATIVE_INFINITY;
-    if (entranceBase === null) {
-      const played = Number.isFinite(entrance.startMs);
-      const rebuilt = played && live.current.interactive;
-      entranceBase = played && !rebuilt ? Math.max(entrance.startMs, now) : Number.NEGATIVE_INFINITY;
-      // A rebuild fades its cards and name in over the poster (the rotation's fade).
-      if (rebuilt) st.rebuildAt = now;
-    }
-    return now - entranceBase;
-  }
-  // ---- end slice 4 state ----
   if (debug) {
     debug.budget = () => {
       const buffer = renderer.getDrawingBufferSize(new Vector2());
@@ -320,40 +293,8 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       const helix = restHelix(f.geo, st.theme.card.recede);
       f.helix = { ...helix, dy: stretchedDy(helix.dy, st.envelope) };
     },
-    // ---- slice 4 wiring block: the entrance ----
-    entrance(f) {
-      const { now, props } = f;
-      const realElapsedMs = posterMode ? Number.POSITIVE_INFINITY : entranceElapsedMs(now);
-      const clock = entranceClock(forcedEntranceMs ?? realElapsedMs);
-      f.realElapsedMs = realElapsedMs;
-      f.clock = clock;
-      if (!isRested(clock)) {
-        // Idle, wheel and page scroll wait for the entrance: the strand holds
-        // still at its start until the band has opened.
-        st.conveyor.offset = 0;
-        st.conveyor.target = 0;
-        st.conveyor.velocity = 0;
-        st.conveyor.excessVelocity = 0;
-        st.conveyor.glide = null;
-        st.coast = null; // slice 7
-      }
-      f.helix = entranceHelix(f.helix as HelixFrame, f.geo, clock);
-      heroName.entranceFade(f);
-      const entrance = props.entrance;
-      if (entrance && !entranceEnded && realElapsedMs >= clock.durationS * 1000) {
-        entranceEnded = true;
-        props.onEntranceEnd?.();
-      }
-    },
-    // ---- end slice 4 block ----
-    // Slice 7: the rebuild fade (1 when none is running).
-    rebuild(f) {
-      if (st.rebuildAt === null) return;
-      const rebuilt = siteEase(clamp01((f.now - st.rebuildAt) / REBUILD_FADE_MS));
-      f.rebuilt = rebuilt;
-      if (rebuilt >= 1) st.rebuildAt = null;
-      heroName.fade(rebuilt);
-    },
+    entrance: entrance.entrance,
+    rebuild: entrance.rebuild,
     // ---- slice 5 wiring block: the unwind ----
     // While latched the conveyor holds still, so every latched copy keeps its
     // slot and the wind-back lands on the exact pose it left.
@@ -638,9 +579,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   // Slice 4: the entrance clock and the name, for QA behind ?coildebug.
   if (debug) {
     debug.entrance = () => ({
-      base: entranceBase,
-      elapsedMs: entranceBase === null ? null : performance.now() - entranceBase,
-      ended: entranceEnded,
+      ...entrance.clockState(),
       nameLanded: heroName.landed(),
       nameA: compMaterial.uniforms.uNameA.value,
       offset: st.conveyor.offset,
