@@ -100,6 +100,19 @@ describe("the four regimes", () => {
     }
   });
 
+  it("settles in the still regime under a cursor that has stopped moving", () => {
+    const field = createField(24);
+    const carve = new Float32Array(24);
+    carve[10] = 1;
+    carve[11] = 0.5;
+    let settled = false;
+    for (let f = 0; f < 60 * 20 && !settled; f++) {
+      settled = stepField(field, input({ regime: "still", time: 1 + f / 60, carve })).settled;
+    }
+    expect(settled).toBe(true);
+    expect(field.carve[10]).toBeCloseTo(1, 2);
+  });
+
   it("never settles while the idle wave drifts", () => {
     const field = createField(24);
     let settledOnce = false;
