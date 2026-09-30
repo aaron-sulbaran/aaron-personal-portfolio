@@ -1,0 +1,138 @@
+import type { Page } from "@playwright/test";
+import type { HookWindow, SlotInfo } from "./hooks";
+
+// Loading the home and reading the scene through its QA hooks. Every wait is
+// on the page's own state (readiness, the entrance clock, the scene's first
+// frame), never on a fixed time.
+
+export type Point = { x: number; y: number };
+
+// `debug` is the ?coildebug value: "1" for the scene and loader hooks,
+// "flight" adds the flight probe (and still exposes window.__coil).
+export async function openHome(page: Page, { debug = "1", path = "/" }: { debug?: string; path?: string } = {}) {
+  const separator = path.includes("?") ? "&" : "?";
+  await page.goto(`${path}${separator}coildebug=${debug}`);
+  await waitForCoil(page);
+}
+
+// The hero is interactive: readiness "ready", the entrance clock has ended,
+// the scene draws (data-scene="on") and the body scroll lock is gone.
+export async function waitForCoil(page: Page) {
+  await page.waitForFunction(
+    () => {
+      const w = window as HookWindow;
+      const hero = document.querySelector<HTMLElement>("section[data-scene]");
+      return (
+        !!w.__coil?.api &&
+        document.documentElement.dataset.home === "ready" &&
+        hero?.dataset.scene === "on" &&
+        w.__coil.entrance().ended &&
+        document.body.style.overflow !== "hidden"
+      );
+    },
+    null,
+    { timeout: 30_000 },
+  );
+}
+
+export async function scrollToY(page: Page, y: number) {
+  await page.evaluate((top) => window.scrollTo({ top, behavior: "instant" }), y);
+  await page.waitForFunction((top) => Math.abs(window.scrollY - top) < 1, y);
+  // Two frames, so the scene has drawn (and measured its silhouette) at the new position.
+  await nextFrames(page, 2);
+}
+
+export async function nextFrames(page: Page, count = 1) {
+  await page.evaluate(
+    (n) =>
+      new Promise<void>((resolve) => {
+        let left = n;
+        const tick = () => (--left <= 0 ? resolve() : requestAnimationFrame(tick));
+        requestAnimationFrame(tick);
+      }),
+    count,
+  );
+}
+
+export async function heroVisible(page: Page) {
+  return page.evaluate(() => {
+    const rect = document.querySelector("section[data-scene]")!.getBoundingClientRect();
+    const visible = Math.min(window.innerHeight, rect.bottom) - Math.max(0, rect.top);
+    return Math.min(1, Math.max(0, visible / rect.height));
+  });
+}
+
+// Signed distance of a viewport point from the helix hull's axis, less the
+// hull's half width: negative inside the silhouette, positive outside.
+export async function silhouetteDistance(page: Page, point: Point) {
+  return page.evaluate(({ x, y }) => {
+    const w = window as HookWindow;
+    const sil = w.__coil!.silhouette()!;
+    const rect = document.querySelector("section[data-scene]")!.getBoundingClientRect();
+    const lx = x - rect.left;
+    const ly = y - rect.top;
+    return Math.abs((lx - sil.ax) * -sil.dy + (ly - sil.ay) * sil.dx) - sil.half;
+  }, point);
+}
+
+export type CoilPoints = {
+  // A card near the hero's middle, well inside the silhouette.
+  card: Point;
+  // No card under it, but inside the silhouette (a gap between cards).
+  gap: Point | null;
+  // Inside the hero, well outside the silhouette.
+  outside: Point;
+};
+
+// Sampled from the scene's own picking and hull at this moment.
+export async function coilPoints(page: Page): Promise<CoilPoints> {
+  return page.evaluate(() => {
+    const w = window as HookWindow;
+    const coil = w.__coil!;
+    // Builds before the ownership rule had no hull: cards only, then.
+    const sil = coil.silhouette?.() ?? null;
+    const rect = document.querySelector("section[data-scene]")!.getBoundingClientRect();
+    const top = Math.max(rect.top, 0) + 80;
+    const bottom = Math.min(rect.bottom, window.innerHeight) - 40;
+    const distance = (x: number, y: number) =>
+      sil ? Math.abs((x - rect.left - sil.ax) * -sil.dy + (y - rect.top - sil.ay) * sil.dx) - sil.half : Number.NaN;
+    const middle = { x: rect.left + rect.width / 2, y: (top + bottom) / 2 };
+    const near = (p: { x: number; y: number }) => Math.hypot(p.x - middle.x, p.y - middle.y);
+    const cards: { x: number; y: number }[] = [];
+    const gaps: { x: number; y: number }[] = [];
+    const outside: { x: number; y: number }[] = [];
+    for (let y = top; y < bottom; y += 10) {
+      for (let x = 100; x < window.innerWidth - 100; x += 10) {
+        const d = distance(x, y);
+        const hit = coil.api.cardAt(x, y);
+        // A card point with cards all around it (it stays a card for a while).
+        if (hit && !(d >= -120) && [[-24, 0], [24, 0], [0, -24], [0, 24]].every(([dx, dy]) => coil.api.cardAt(x + dx, y + dy)?.slot === hit.slot))
+          cards.push({ x, y });
+        else if (!hit && d < -40) gaps.push({ x, y });
+        else if (!hit && d > 80) outside.push({ x, y });
+      }
+    }
+    cards.sort((a, b) => near(a) - near(b));
+    gaps.sort((a, b) => near(a) - near(b));
+    outside.sort((a, b) => near(a) - near(b));
+    return { card: cards[0], gap: gaps[0] ?? null, outside: outside[0] };
+  });
+}
+
+// The on-screen slots (alpha over a half) with their projected geometry; needs ?coildebug=flight.
+export async function visibleSlots(page: Page): Promise<SlotInfo[]> {
+  return page.evaluate(() => (window as HookWindow).__coilFlight!.scene.slots());
+}
+
+export async function offset(page: Page) {
+  return page.evaluate(() => (window as HookWindow).__coil!.offset());
+}
+
+export async function owner(page: Page) {
+  return page.evaluate(() => (window as HookWindow).__coil!.owner());
+}
+
+// Waits until no wheel gesture is live (the gesture gap has passed).
+export async function waitForGestureEnd(page: Page) {
+  await page.waitForFunction(() => (window as HookWindow).__coil!.owner() === "none");
+}
