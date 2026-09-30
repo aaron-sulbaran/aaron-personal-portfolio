@@ -255,7 +255,8 @@ export const COMPOSITE_FRAG = /* glsl */ `
           vec3 win = clamp(field + (field - uPaper) * 0.9, 0.0, 1.0);
           win = mix(win, gc, 0.3);
           float gn = grain(q / ${NAME_FILL.grainPx.toFixed(3)});
-          fill = mix(field, win * (1.0 + 0.22 * gn), clamp(0.8 + 0.6 * gn, 0.0, 1.0) * (1.0 - clearing));
+          // The window's ink is high, so the thinning is halved again here.
+          fill = mix(field, win * (1.0 + 0.22 * gn), clamp(0.8 + 0.6 * gn, 0.0, 1.0) * (1.0 - 0.5 * clearing));
         } else if (mode == 5) {
           // sand: coarse grains drifting slowly along the helix's axis.
           vec2 sq = q - uFlowDir * uNameT * ${NAME_FILL.sandSpeed.toFixed(2)};
