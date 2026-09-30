@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type MouseEvent } from "react";
-import { useReducedMotion } from "framer-motion";
 import { Music } from "lucide-react";
 import { Portal } from "@/components/Portal";
 import { siteContent } from "@/lib/content";
@@ -12,6 +11,7 @@ import { pillVisible } from "@/lib/waveform/pill";
 import { Cover, EASE, Glyph, glass } from "./PillParts";
 import { PlayerCard } from "./PlayerCard";
 import { usePillHover } from "./usePillHover";
+import { useReducedMotionLive } from "./useReducedMotionLive";
 
 // The glass playback pill, a mini-player. The band under the book introduces
 // the music; once music is chosen (on or paused) and the band is off screen,
@@ -37,7 +37,7 @@ const isPhone = () => window.matchMedia(PHONE_QUERY).matches;
 
 function PillInner({ bandInView }: { bandInView: boolean | null }) {
   const music = useSoundtrack();
-  const reduce = useReducedMotion() ?? false;
+  const reduce = useReducedMotionLive();
   const phone = useSyncExternalStore(subscribePhone, isPhone, () => true);
   const shown = !phone && bandInView !== null && pillVisible({ music, bandInView });
   const [hover, send] = usePillHover(reduce, shown);

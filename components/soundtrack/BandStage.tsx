@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useReducedMotion } from "framer-motion";
 import { siteContent } from "@/lib/content";
 import { useSoundtrack } from "@/lib/soundtrack";
 import { PlaybackPill } from "./PlaybackPill";
 import { WaveCanvas } from "./WaveCanvas";
+import { useReducedMotionLive } from "./useReducedMotionLive";
 
 // The band's live half: the waveform, the freeze toggle, the credit, and the
 // pill it hands the music to. One IntersectionObserver on the band decides
@@ -19,7 +19,7 @@ export function BandStage() {
   const [inView, setInView] = useState<boolean | null>(null);
   const [frozen, setFrozen] = useState(false);
   const music = useSoundtrack();
-  const reduce = useReducedMotion() ?? false;
+  const reduce = useReducedMotionLive();
   const c = siteContent.listen;
   const s = siteContent.soundtrack;
 
