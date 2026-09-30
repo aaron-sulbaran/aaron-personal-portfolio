@@ -5,9 +5,12 @@ import {
   addWheel,
   createConveyor,
   createEnvelope,
+  createRowHold,
   cubicBezier,
   envelopeTarget,
   hoverJumpTarget,
+  rowHoldWeight,
+  setRowHold,
   siteEase,
   startGlide,
   stepConveyor,
@@ -240,5 +243,83 @@ describe("easing", () => {
     expect(siteEase(0)).toBe(0);
     expect(siteEase(1)).toBe(1);
     expect(cubicBezier(0, 0, 1, 1)(0.3)).toBeCloseTo(0.3, 4);
+  });
+});
+
+describe("row hover hold", () => {
+  const { resumeDelayMs, resumeMs } = COIL.rowHold;
+
+  it("idles at full weight when no row was ever held", () => {
+    expect(rowHoldWeight(createRowHold(), 0)).toBe(1);
+    expect(rowHoldWeight(createRowHold(), 123456)).toBe(1);
+  });
+
+  it("holds idle and page scroll at zero while a row is hovered or focused", () => {
+    const hold = setRowHold(createRowHold(), true, 1000);
+    for (let t = 1000; t < 60000; t += 997) expect(rowHoldWeight(hold, t)).toBe(0);
+  });
+
+  it("resumes after the delay with an ease-in and no jump", () => {
+    const hold = setRowHold(setRowHold(createRowHold(), true, 0), false, 5000);
+    expect(rowHoldWeight(hold, 5000)).toBe(0);
+    expect(rowHoldWeight(hold, 5000 + resumeDelayMs)).toBe(0);
+    let last = 0;
+    for (let t = 5000; t <= 5000 + resumeDelayMs + resumeMs + 50; t += 1) {
+      const weight = rowHoldWeight(hold, t);
+      expect(weight).toBeGreaterThanOrEqual(last - 1e-12);
+      expect(weight - last).toBeLessThan(0.01);
+      last = weight;
+    }
+    expect(last).toBe(1);
+    // An ease-in: slower than linear through the first half.
+    expect(rowHoldWeight(hold, 5000 + resumeDelayMs + resumeMs / 2)).toBeLessThan(0.5);
+    expect(rowHoldWeight(hold, 5000 + resumeDelayMs + resumeMs)).toBe(1);
+  });
+
+  it("drops back to zero at once when a row is held again mid-resume", () => {
+    const hold = setRowHold(setRowHold(createRowHold(), true, 0), false, 1000);
+    expect(rowHoldWeight(hold, 1000 + resumeDelayMs + resumeMs / 2)).toBeGreaterThan(0);
+    setRowHold(hold, true, 1000 + resumeDelayMs + resumeMs / 2);
+    expect(rowHoldWeight(hold, 1000 + resumeDelayMs + resumeMs / 2)).toBe(0);
+  });
+
+  it("restarts the delay only on a real release", () => {
+    const hold = createRowHold();
+    setRowHold(hold, false, 3000); // nothing was held: the idle keeps its full weight
+    expect(rowHoldWeight(hold, 3001)).toBe(1);
+    setRowHold(hold, true, 4000);
+    setRowHold(hold, true, 4500); // still held: nothing changes
+    setRowHold(hold, false, 5000);
+    setRowHold(hold, false, 5300); // a second release does not push the resume back
+    expect(rowHoldWeight(hold, 5000 + resumeDelayMs + resumeMs)).toBe(1);
+  });
+
+  it("holds the coil still on the row's card after its glide, under idle and page scroll", () => {
+    const conveyor = createConveyor(0.37);
+    const hold = setRowHold(createRowHold(), true, 0);
+    startGlide(conveyor, 4, 0);
+    let now = 0;
+    for (let i = 0; i < 60 * 4; i++) {
+      now += 1000 / 60;
+      const weight = rowHoldWeight(hold, now);
+      stepConveyor(conveyor, { dt: 1 / 60, nowMs: now, idleWeight: weight, pageScrollPx: 12 * weight });
+    }
+    expect(conveyor.offset).toBe(4);
+  });
+
+  it("glides between rows over the row glide time on the site ease, without overshoot", () => {
+    expect(COIL.hoverJumpMs).toBe(700);
+    const conveyor = createConveyor(4);
+    startGlide(conveyor, -2.5, 0);
+    let last = conveyor.offset;
+    for (let t = 1000 / 60; t < COIL.hoverJumpMs; t += 1000 / 60) {
+      stepConveyor(conveyor, { dt: 1 / 60, nowMs: t, idleWeight: 0, pageScrollPx: 0 });
+      expect(conveyor.offset).toBeLessThanOrEqual(last + 1e-12);
+      expect(conveyor.offset).toBeGreaterThanOrEqual(-2.5 - 1e-9);
+      last = conveyor.offset;
+    }
+    expect(conveyor.glide).not.toBeNull();
+    stepConveyor(conveyor, { dt: 1 / 60, nowMs: COIL.hoverJumpMs, idleWeight: 0, pageScrollPx: 0 });
+    expect(conveyor.offset).toBe(-2.5);
   });
 });
