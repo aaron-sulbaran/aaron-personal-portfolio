@@ -69,6 +69,12 @@ const values = {
     heroVisibleMin: 0.5,
     nudgeAfterMs: 2600,
   },
+  // A book row hovered or focused holds the coil still on its card.
+  rowHold: {
+    resumeDelayMs: 400,
+    resumeMs: 600, // ease-in of the idle weight after the delay
+    minHeroVisible: 0.25, // below this the hero is out of sight: a row does nothing
+  },
 
   // Stretch (O3): the turn gap times 1 + envelope.
   stretch: {
@@ -94,7 +100,7 @@ const values = {
     perCardMs: 580,
     staggerMs: 8,
   },
-  hoverJumpMs: 600,
+  hoverJumpMs: 700, // the row glide, site ease, no overshoot
   siteEase: [0.22, 1, 0.36, 1] as const,
 
   // Name behind the helix.

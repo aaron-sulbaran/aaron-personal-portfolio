@@ -80,6 +80,7 @@ import {
   nudgeShown,
   pointerMoved,
 } from "@/lib/coil/capture";
+import { createRowHold, rowHoldWeight, setRowHold } from "@/lib/coil/motion";
 // ---- end fx-input imports ----
 import { setSceneHover } from "@/lib/cursor/hover";
 import type { HeroOverlayHandle } from "./HeroOverlay";
@@ -448,8 +449,9 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   let hoveredSlot = -1;
   let hiddenSlot: number | null = null;
   const pointer = { clientX: -1, clientY: -1, x: -1, y: -1, inside: false, known: false };
-  // ---- fx-input state: who owns the wheel gesture ----
+  // ---- fx-input state: who owns the wheel gesture, and the book row hold ----
   let capture = createCapture();
+  const rowHold = createRowHold();
   // ---- end fx-input state ----
   let fieldElapsed = 0;
   let lastFieldTime = Number.NaN;
@@ -860,15 +862,17 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       // one smoothing stage and the speed cap then carry, as for the wheel.
       if (coast) conveyor.target += (coast.rest - conveyor.target) * (1 - Math.exp(-dt / COAST_TAU_S));
       // ---- fx-input: the conveyor's feeds ----
-      // Page scroll turns the coil only during page gestures, keyboard and
-      // scrollbar scrolling.
-      const pageFeed = props.interactive && feedsPageScroll(capture, now) ? scrollDelta : 0;
+      // A held book row stills the idle drift and the page-scroll feed (and
+      // eases them back after it lets go); page scroll turns the coil only
+      // during page gestures, keyboard and scrollbar scrolling.
+      const holdWeight = rowHoldWeight(rowHold, now);
+      const pageFeed = props.interactive && feedsPageScroll(capture, now) ? scrollDelta * holdWeight : 0;
       stepConveyor(conveyor, {
         dt,
         nowMs: now,
         // The idle drift waits while a finger holds or throws the coil, so
         // the coast lands exactly on its card.
-        idleWeight: dragging || coast ? 0 : 1,
+        idleWeight: dragging || coast ? 0 : holdWeight,
         pageScrollPx: pageFeed,
       });
       // ---- end fx-input ----
@@ -1248,7 +1252,17 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       },
       focusCard(key) {
         focusKey = key;
-        if (key) hoverJump(key);
+        // ---- fx-input: the row hold ----
+        // A held row stills the coil on its card (idle and page scroll at
+        // zero) after one glide; letting go resumes the idle after a beat. A
+        // hero under a quarter in view has nothing to show: the row does
+        // nothing to the coil.
+        const now = performance.now();
+        const hold = key !== null && canRowHold();
+        setRowHold(rowHold, hold, now);
+        if (hold && key) hoverJump(key);
+        wake();
+        // ---- end fx-input ----
       },
       unwind(on) {
         const next = on ?? !unwind.on;
@@ -1260,6 +1274,20 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       },
     };
   }
+
+  // ---- fx-input: the row hold ----
+  function canRowHold() {
+    const props = live.current;
+    return (
+      ready &&
+      props.interactive &&
+      !props.frozen &&
+      !frozenByApi &&
+      !unwind.latched &&
+      heroVisible() >= COIL.rowHold.minHeroVisible
+    );
+  }
+  // ---- end fx-input ----
 
   function canUnwind() {
     const props = live.current;
