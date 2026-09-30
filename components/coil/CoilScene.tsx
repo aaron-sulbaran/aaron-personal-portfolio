@@ -3,25 +3,16 @@
 import { useEffect, useRef, type RefObject } from "react";
 import { Vector2 } from "three";
 import { siteContent, strandTiles } from "@/lib/content";
-import { COIL } from "@/lib/coil/constants";
-import { projectQuad, restHelix, type Camera } from "@/lib/coil/geometry";
-import { stretchedDy } from "@/lib/coil/motion";
-import { runRender, runUpdate, type RenderSteps, type UpdateSteps } from "@/lib/coil/frame";
+import { projectQuad, type Camera } from "@/lib/coil/geometry";
 import { budgetFor, sameBudget } from "@/lib/coil/drivers";
 import { loadCardSource, type CardSource } from "@/lib/coil/textures";
 import { readCoilTheme, watchTheme } from "@/lib/coil/theme";
-import {
-  createDebugStats,
-  debugTokens,
-  pushStat,
-  readDebugFlags,
-  removeDebugStats,
-  throwFrameAt as throwFrameAtFromTokens,
-} from "./scene/debug";
+import { createDebugStats, debugTokens, readDebugFlags, removeDebugStats } from "./scene/debug";
 import { createCards } from "./scene/cards";
 import { createEntrance } from "./scene/entrance";
 import { createProbe } from "./scene/debugProbe";
 import { createField } from "./scene/field";
+import { createLoop } from "./scene/loop";
 import { createFlight } from "./scene/flight";
 import { createFlightOverlay } from "./scene/flightOverlay";
 import { createUnwindWiring } from "./scene/unwind";
@@ -29,7 +20,7 @@ import { createInput } from "./scene/input";
 import { createHover } from "./scene/hover";
 import { createName, createNameFill } from "./scene/name";
 import { createLayout, createPasses, createRenderer, observeResize, watchContext } from "./scene/renderer";
-import { createSceneState, type LoopLink, type SceneCtx, type SceneFrame } from "./scene/state";
+import { createSceneState, type LoopLink, type SceneCtx } from "./scene/state";
 // ---- fx-input imports: wheel ownership and the row hold ----
 import { gestureOwner } from "@/lib/coil/capture";
 // ---- end fx-input imports ----
@@ -44,7 +35,6 @@ import { NAME_FILLS } from "@/lib/coil/field.glsl";
 // ---- end fx-hero imports ----
 // ---- fx-flight imports ----
 import { flightProbe } from "@/lib/coil/flightProbe";
-import { afterPause, resumeStep } from "@/lib/coil/flight";
 // ---- end fx-flight imports ----
 
 // The Coil scene: the dynamic chunk CoilStage imports after first paint. It
@@ -140,12 +130,12 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   const ctx: SceneCtx = { host, canvas, live, tiles, tileCount, flags, debug, flightLog, st };
   // The loop's entry points for the parts made before it.
   const loop: LoopLink = {
-    wake: () => wake(),
-    stop: () => stop(),
-    renderStill: () => renderStill(),
-    shouldRun: () => shouldRun(),
-    update: (dt, now) => update(dt, now),
-    render: (dt) => render(dt),
+    wake: () => core.wake(),
+    stop: () => core.stop(),
+    renderStill: () => core.renderStill(),
+    shouldRun: () => core.shouldRun(),
+    update: (dt, now) => core.update(dt, now),
+    render: (dt) => core.render(dt),
   };
 
   // ---- passes
@@ -198,7 +188,6 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
         .map((pose) => projectQuad(pose, st.geoCamera as Camera, { left: rect.left, top: rect.top }));
     };
   }
-  const push = pushStat;
 
   // ---- layout
   const layout = createLayout(
@@ -228,155 +217,33 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   const flyer = createFlight(ctx, cards, hover, createFlightOverlay(ctx, gl, cards), probe, loop);
   const unwinder = createUnwindWiring(ctx, compMaterial, heroName, hover, loop);
 
-  // ---- the frame
-  // Slice 7, QA only: ?coildebug=throw=frame throws from the loop a second in.
-  const throwFrameAt = throwFrameAtFromTokens();
-  type Frame = SceneFrame;
-
-  function update(dt: number, now: number) {
-    if (!st.geo || !st.geoCamera) return;
-    if (now > throwFrameAt) throw new Error("coildebug: scene frame");
-    runUpdate(updateSteps, {
-      dt,
-      now,
-      props: live.current,
-      geo: st.geo,
-      camera: st.geoCamera,
-      scrollDelta: 0,
-      helix: null,
-      clock: null,
-      realElapsedMs: 0,
-      rebuilt: 1,
-      listProgress: 0,
-    });
-  }
-
-  const updateSteps: UpdateSteps<Frame> = {
-    scroll: input.scroll,
-    conveyor: input.conveyor,
-    helix(f) {
-      const helix = restHelix(f.geo, st.theme.card.recede);
-      f.helix = { ...helix, dy: stretchedDy(helix.dy, st.envelope) };
+  // ---- the frame: which part runs each step (lib/coil/frame.ts fixes the order)
+  const core = createLoop(
+    ctx,
+    {
+      scroll: input.scroll,
+      conveyor: input.conveyor,
+      helix: cards.helix,
+      entrance: entrance.entrance,
+      rebuild: entrance.rebuild,
+      unwind: unwinder.step,
+      name: heroName.step,
+      seen: cards.seen,
+      slots: cards.poseSlots,
+      silhouette: (f) => cards.hull(f, heroName),
+      picking: hover.picking,
+      nudge: input.nudge,
+      repaint: cards.repaint,
     },
-    entrance: entrance.entrance,
-    rebuild: entrance.rebuild,
-    unwind: unwinder.step,
-    name(f) {
-      heroName.stepNameFill(f.dt, f.listProgress); // fx-hero: the fill's idle clock and the repel
-    },
-    seen: cards.seen,
-    slots: cards.poseSlots,
-    silhouette: (f) => cards.hull(f, heroName),
-    // Hover: picked every frame, since cards move under a still pointer.
-    picking: hover.picking,
-    nudge: input.nudge,
-    repaint: cards.repaint,
-  };
-
-  function render(dt: number) {
-    runRender(renderSteps, { dt });
-  }
-
-  const renderSteps: RenderSteps<{ dt: number }> = {
-    field: field.field,
-    composite: field.composite,
-    cards: cards.draw,
-  };
-
-  function shouldRun() {
-    return (
-      st.ready &&
-      !st.disposed &&
-      !st.contextLost &&
-      st.visible &&
-      !document.hidden &&
-      // fx-flight freeze: a landed flight resumes the scene itself, ahead of
-      // the props that still name it.
-      (!live.current.frozen || st.landedAhead) &&
-      !st.frozenByApi
-    );
-  }
-
-  function frame(now: number) {
-    st.raf = 0;
-    if (!shouldRun()) {
-      setSceneHover(false);
-      return;
-    }
-    st.raf = requestAnimationFrame(frame);
-    const interval = now - st.lastTime;
-    // ---- fx-flight freeze: the first frame after a freeze steps one frame at most ----
-    const step = Math.min(Math.max(interval, 0) / 1000, COIL.lab.maxFrameSeconds);
-    const dt = st.resuming ? resumeStep(step) : step;
-    st.resuming = false;
-    flyer.flightFrame();
-    // ---- end fx-flight freeze ----
-    st.lastTime = now;
-    const started = performance.now();
-    try {
-      update(dt, now);
-      render(dt);
-    } catch (error) {
-      stop();
-      live.current.onError(error);
-      return;
-    }
-    if (debug) {
-      push(debug.intervals, interval);
-      push(debug.work, performance.now() - started);
-    }
-    // ---- fx-flight debug ----
-    flightLog?.mark("scene-frame", { dt, interval, ...probe.state() });
-    // ---- end fx-flight debug ----
-    if (!st.firstFrameSent) {
-      st.firstFrameSent = true;
-      live.current.onFirstFrame();
-    }
-  }
-
-  function stop() {
-    if (st.raf) cancelAnimationFrame(st.raf);
-    st.raf = 0;
-  }
-
-  function wake() {
-    if (st.raf || !shouldRun()) return;
-    // ---- fx-flight freeze: a stopped scene holds its clocks ----
-    holdClocks(performance.now() - st.lastTime);
-    // ---- end fx-flight freeze ----
-    st.lastTime = performance.now();
-    // A return from off screen or a hidden tab must not read as one huge scroll.
-    st.lastScrollY = window.scrollY;
-    st.raf = requestAnimationFrame(frame);
-  }
-
-  // One frame outside the loop (a resize while frozen or off screen), so
-  // the canvas never shows a stretched stale buffer.
-  function renderStill() {
-    if (!st.ready || st.contextLost || st.disposed) return;
-    // fx-flight freeze: a still frame of a stopped scene is drawn at the moment it stopped.
-    update(0, st.raf ? performance.now() : st.lastTime);
-    render(0);
-    // ---- fx-flight: a card in flight follows the new layout in the same frame ----
-    flyer.flightStill();
-    flightLog?.mark("scene-still", probe.state());
-    // ---- end fx-flight ----
-  }
+    { field: field.field, composite: field.composite, cards: cards.draw },
+    { flightFrame: flyer.flightFrame, flightStill: flyer.flightStill, probeState: probe.state },
+  );
+  const { wake, stop, renderStill } = core;
 
   // ---- observers and listeners
   const unobserveResize = observeResize(ctx, layout, loop);
 
-  const intersectionObserver = new IntersectionObserver(
-    (entries) => {
-      st.visible = entries[entries.length - 1]?.isIntersecting ?? true;
-      wake();
-    },
-    { threshold: 0 },
-  );
-  intersectionObserver.observe(host);
-
-  const onVisibility = () => wake();
-  document.addEventListener("visibilitychange", onVisibility);
+  const visibility = core.observeVisibility();
   const unlistenPointer = input.listenPointer();
   const unlistenFx = heroName.listenFx(field.setDrift); // fx-hero
   const unlistenTaps = input.listenTaps();
@@ -445,18 +312,6 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
 
   // ---- end slice 5 ----
 
-  // ---- fx-flight freeze ----
-  // A stopped scene holds its clocks: whatever runs from a start time (the
-  // hover-jump's glide, the unwind, the rebuild fade) carries on from where
-  // the stop caught it, and the first frame steps one frame at most.
-  function holdClocks(stoppedMs: number) {
-    st.resuming = true;
-    if (!st.ready || !(stoppedMs > 0)) return;
-    st.conveyor.glide = afterPause(st.conveyor.glide, stoppedMs);
-    if (st.unwind.latched) st.unwind.startMs += stoppedMs;
-    if (st.rebuildAt !== null) st.rebuildAt += stoppedMs;
-  }
-  // ---- end fx-flight freeze ----
 
   // ---- fx-flight: the flown card ----
   probe.installFlight(flyer.current); // fx-flight debug
@@ -535,9 +390,9 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       st.disposed = true;
       stop();
       unobserveResize();
-      intersectionObserver.disconnect();
+      visibility.disconnect();
       stopWatchingTheme();
-      document.removeEventListener("visibilitychange", onVisibility);
+      visibility.unlisten();
       unlistenPointer();
       unlistenFx(); // fx-hero
       unlistenTaps();
