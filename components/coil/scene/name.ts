@@ -44,6 +44,7 @@ type NameLockup = {
   split: number; // where the greeting's alpha gives way to the name's
   greetCap: number; // the greeting's cap height (its "H")
   glyphs: { x0: number; x1: number }[]; // each letter's advance box, from the mask's left
+  greetX: { x0: number; x1: number }; // the greeting's ink, from the mask's left
 };
 
 function paintNameLockup(greeting: string, name: string, family: string, sizePx: number, scale: number): NameLockup {
@@ -77,7 +78,8 @@ function paintNameLockup(greeting: string, name: string, family: string, sizePx:
   g.fillStyle = "white";
   g.textBaseline = "alphabetic";
   g.font = greetFont;
-  g.fillText(greeting, pad + greetShift + gm.actualBoundingBoxLeft, pad + gAscent);
+  const greetX0 = pad + greetShift;
+  g.fillText(greeting, greetX0 + gm.actualBoundingBoxLeft, pad + gAscent);
   g.font = nameFont;
   const penX = pad + nm.actualBoundingBoxLeft;
   g.fillText(name, penX, pad + greetBlock + nm.actualBoundingBoxAscent);
@@ -97,6 +99,7 @@ function paintNameLockup(greeting: string, name: string, family: string, sizePx:
     split: pad + gAscent + gDescent + gap / 2,
     greetCap: (greetPx * cap100) / 100,
     glyphs,
+    greetX: { x0: greetX0, x1: greetX0 + greetInkWidth },
   };
 }
 
@@ -158,6 +161,7 @@ export function createName(
       uFloorSign: cu.uFloorSign,
       uGlyphN: cu.uGlyphN,
       uGlyphBox: cu.uGlyphBox,
+      uGreetFloor: cu.uGreetFloor,
       uGlyphPrev: { value: glyphTargets[1].texture },
       uGlyphBlend: { value: 1 },
     },
@@ -210,11 +214,13 @@ export function createName(
     // the rect's uv for the per-letter minimum.
     surface.layout({ x: left - mask.pad, y: capTop - mask.pad - mask.greetBlock, w: mask.width, h: mask.height }, view.dpr);
     const boxes = cu.uGlyphBox.value as Vector4[];
-    const glyphs = mask.glyphs.slice(0, NAME.maxGlyphs);
+    const glyphs = mask.glyphs.slice(0, NAME.maxGlyphs - 1);
     const nameTop = (mask.greetBlock + mask.pad) / mask.height;
     const nameBottom = (mask.greetBlock + mask.pad + mask.ascent + mask.descent) / mask.height;
     glyphs.forEach((glyph, i) => boxes[i].set(glyph.x0 / mask.width, nameTop, glyph.x1 / mask.width, nameBottom));
     cu.uGlyphN.value = glyphs.length;
+    // The greeting in the last slot (its mean, for the greeting's cap).
+    boxes[NAME.maxGlyphs - 1].set(mask.greetX.x0 / mask.width, mask.pad / mask.height, mask.greetX.x1 / mask.width, mask.split / mask.height);
     // Slice 4: the name's geometry for the loader's handoff (canvas px): the
     // name alone, never the greeting.
     nameBox = {

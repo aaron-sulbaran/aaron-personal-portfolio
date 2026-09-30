@@ -51,7 +51,19 @@ describe("nameComposite", () => {
     expect(light.floorSign).toBe(1);
     expect(light.reveal).toBe(1.8);
     expect(light.detail).toBe(1);
-    expect(NAME.greetingFloor).toBe(1.8);
+    expect(light.greetFloor).toBe(1.8);
+    expect(light.greetCap).toBe(0);
+  });
+
+  it("dark: the greeting's floor comes down and its mean is held at or just under the name's", () => {
+    const dark = nameComposite(true);
+    expect(dark.greetFloor).toBeLessThan(nameComposite(false).greetFloor);
+    // Against the field under it the greeting reads a little stronger than
+    // against the field around it (the review's ring), so the cap sits just
+    // over 1 to land the greeting at or just under the name.
+    expect(dark.greetCap).toBeGreaterThanOrEqual(1);
+    expect(dark.greetCap).toBeLessThanOrEqual(1.1);
+    expect(COMPOSITE_FRAG).toContain("uGreetCap");
   });
 
   it("dark: the touched cloth rises toward the pale crest (it is pressed back in light)", () => {
