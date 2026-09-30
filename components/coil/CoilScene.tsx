@@ -52,7 +52,8 @@ import {
   stretchedDy,
   wheelPixels,
 } from "@/lib/coil/motion";
-import { entranceClock, entranceHelix, entranceNameAlpha, entrancePose, isRested } from "@/lib/coil/entrance";
+import { entranceClock, entranceHelix, entranceNameAlpha, entrancePose, isRested, type EntranceClock } from "@/lib/coil/entrance";
+import { runRender, runUpdate, type RenderSteps, type UpdateSteps } from "@/lib/coil/frame";
 import { createUnwind, unwindPose, unwindProgress } from "@/lib/coil/unwind";
 import { budgetFor, sameBudget, type InputDriver } from "@/lib/coil/drivers";
 import { Observer } from "@/lib/gsap";
@@ -1096,60 +1097,99 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   // ---- the frame
   // Slice 7, QA only: ?coildebug=throw=frame throws from the loop a second in.
   const throwFrameAt = debugTokens().has("throw=frame") ? performance.now() + 1000 : Number.POSITIVE_INFINITY;
+  // One frame's record: the props as the frame began, the geometry it runs
+  // on, and what each step hands the next (lib/coil/frame.ts holds the order).
+  type Frame = {
+    dt: number;
+    now: number;
+    props: CoilSceneProps;
+    geo: CoilGeometry;
+    camera: Camera;
+    scrollDelta: number;
+    helix: HelixFrame | null;
+    clock: EntranceClock | null;
+    realElapsedMs: number;
+    rebuilt: number;
+    listProgress: number;
+  };
+
   function update(dt: number, now: number) {
     if (!geo || !geoCamera) return;
     if (now > throwFrameAt) throw new Error("coildebug: scene frame");
-    const props = live.current;
-    const scrollY = window.scrollY;
-    const scrollDelta = scrollY - lastScrollY;
-    lastScrollY = scrollY;
-    updatePointerLocal();
+    runUpdate(updateSteps, {
+      dt,
+      now,
+      props: live.current,
+      geo,
+      camera: geoCamera,
+      scrollDelta: 0,
+      helix: null,
+      clock: null,
+      realElapsedMs: 0,
+      rebuilt: 1,
+      listProgress: 0,
+    });
+  }
 
-    const previous = conveyor.offset;
-    if (!posterMode) {
-      // Slice 7: a released drag's throw decays into the target, which the
-      // one smoothing stage and the speed cap then carry, as for the wheel.
-      if (coast) conveyor.target += (coast.rest - conveyor.target) * (1 - Math.exp(-dt / COAST_TAU_S));
-      // ---- fx-input: the conveyor's feeds ----
-      // A held book row stills the idle drift and the page-scroll feed (and
-      // eases them back after it lets go); page scroll turns the coil only
-      // during page gestures, keyboard and scrollbar scrolling.
-      const holdWeight = rowHoldWeight(rowHold, now);
-      const pageFeed = props.interactive && feedsPageScroll(capture, now) ? scrollDelta * holdWeight : 0;
-      stepConveyor(conveyor, {
-        dt,
-        nowMs: now,
-        // The idle drift waits while a finger holds or throws the coil, so
-        // the coast lands exactly on its card.
-        idleWeight: dragging || coast ? 0 : holdWeight,
-        pageScrollPx: pageFeed,
-      });
-      // ---- end fx-input ----
-      stepEnvelope(envelope, conveyor.excessVelocity, dt);
-      if (coast && Math.abs(coast.rest - conveyor.offset) < COAST_SETTLED_CARDS) coast = null;
-    }
-    if (debug) {
-      push(debug.steps, conveyor.offset - previous);
-      push(debug.envelope, envelope.value);
-    }
-
-    let helix = restHelix(geo, theme.card.recede);
-    helix = { ...helix, dy: stretchedDy(helix.dy, envelope) };
+  const updateSteps: UpdateSteps<Frame> = {
+    scroll(f) {
+      const scrollY = window.scrollY;
+      f.scrollDelta = scrollY - lastScrollY;
+      lastScrollY = scrollY;
+      updatePointerLocal();
+    },
+    conveyor(f) {
+      const { dt, now, props } = f;
+      const previous = conveyor.offset;
+      if (!posterMode) {
+        // Slice 7: a released drag's throw decays into the target, which the
+        // one smoothing stage and the speed cap then carry, as for the wheel.
+        if (coast) conveyor.target += (coast.rest - conveyor.target) * (1 - Math.exp(-dt / COAST_TAU_S));
+        // ---- fx-input: the conveyor's feeds ----
+        // A held book row stills the idle drift and the page-scroll feed (and
+        // eases them back after it lets go); page scroll turns the coil only
+        // during page gestures, keyboard and scrollbar scrolling.
+        const holdWeight = rowHoldWeight(rowHold, now);
+        const pageFeed = props.interactive && feedsPageScroll(capture, now) ? f.scrollDelta * holdWeight : 0;
+        stepConveyor(conveyor, {
+          dt,
+          nowMs: now,
+          // The idle drift waits while a finger holds or throws the coil, so
+          // the coast lands exactly on its card.
+          idleWeight: dragging || coast ? 0 : holdWeight,
+          pageScrollPx: pageFeed,
+        });
+        // ---- end fx-input ----
+        stepEnvelope(envelope, conveyor.excessVelocity, dt);
+        if (coast && Math.abs(coast.rest - conveyor.offset) < COAST_SETTLED_CARDS) coast = null;
+      }
+      if (debug) {
+        push(debug.steps, conveyor.offset - previous);
+        push(debug.envelope, envelope.value);
+      }
+    },
+    helix(f) {
+      const helix = restHelix(f.geo, theme.card.recede);
+      f.helix = { ...helix, dy: stretchedDy(helix.dy, envelope) };
+    },
     // ---- slice 4 wiring block: the entrance ----
-    const realElapsedMs = posterMode ? Number.POSITIVE_INFINITY : entranceElapsedMs(now);
-    const clock = entranceClock(forcedEntranceMs ?? realElapsedMs);
-    if (!isRested(clock)) {
-      // Idle, wheel and page scroll wait for the entrance: the strand holds
-      // still at its start until the band has opened.
-      conveyor.offset = 0;
-      conveyor.target = 0;
-      conveyor.velocity = 0;
-      conveyor.excessVelocity = 0;
-      conveyor.glide = null;
-      coast = null; // slice 7
-    }
-    helix = entranceHelix(helix, geo, clock);
-    {
+    entrance(f) {
+      const { now, props } = f;
+      const realElapsedMs = posterMode ? Number.POSITIVE_INFINITY : entranceElapsedMs(now);
+      const clock = entranceClock(forcedEntranceMs ?? realElapsedMs);
+      f.realElapsedMs = realElapsedMs;
+      f.clock = clock;
+      if (!isRested(clock)) {
+        // Idle, wheel and page scroll wait for the entrance: the strand holds
+        // still at its start until the band has opened.
+        conveyor.offset = 0;
+        conveyor.target = 0;
+        conveyor.velocity = 0;
+        conveyor.excessVelocity = 0;
+        conveyor.glide = null;
+        coast = null; // slice 7
+      }
+      f.helix = entranceHelix(f.helix as HelixFrame, f.geo, clock);
       const entrance = props.entrance;
       // A loader that never lands the name still gives it up a second after the entrance.
       const handedOff = entrance?.nameFromLoader
@@ -1171,133 +1211,160 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
         entranceEnded = true;
         props.onEntranceEnd?.();
       }
-    }
+    },
     // ---- end slice 4 block ----
     // Slice 7: the rebuild fade (1 when none is running).
-    let rebuilt = 1;
-    if (rebuildAt !== null) {
-      rebuilt = siteEase(clamp01((now - rebuildAt) / REBUILD_FADE_MS));
+    rebuild(f) {
+      if (rebuildAt === null) return;
+      const rebuilt = siteEase(clamp01((f.now - rebuildAt) / REBUILD_FADE_MS));
+      f.rebuilt = rebuilt;
       if (rebuilt >= 1) rebuildAt = null;
       compMaterial.uniforms.uNameA.value *= rebuilt;
       compMaterial.uniforms.uGreetA.value *= rebuilt; // fx-hero
-    }
+    },
     // ---- slice 5 wiring block: the unwind ----
     // While latched the conveyor holds still, so every latched copy keeps its
     // slot and the wind-back lands on the exact pose it left.
-    if (settleUnwind(unwind, now)) unwind.column = null;
-    if (unwind.latched) {
-      conveyor.offset = unwind.offset;
-      conveyor.target = unwind.offset;
-      conveyor.glide = null;
-      unwind.column = measureColumn(helix);
-    }
-    const listProgress = unwindProgress(unwind, now);
-    unwindFrame(listProgress);
-    // ---- end slice 5 block ----
-    stepNameFill(dt, listProgress); // fx-hero: the fill's idle clock and the repel
-
-    const seen = getSeen();
-    const hoverStep = 1 - Math.exp(-dt * HOVER_RATE);
-    const seenStep = 1 - Math.exp(-dt * SEEN_RATE);
-    for (let i = 0; i < tileCount; i++) {
-      seenLevel[i] += ((seen.has(tiles[i].key) ? 1 : 0) - seenLevel[i]) * seenStep;
-    }
-
-    for (let j = 0; j < geo.slotCount; j++) {
-      const slot = slots[j];
-      let pose: CardPose = coilPose(helix, j, conveyor.offset);
-      const strandPosition = Math.round(pose.u - conveyor.offset);
-      const tile = mod(strandPosition, tileCount);
-      bindTile(slot, tile);
-      pose = entrancePose(pose, { strandPosition, cardCount: tileCount }, geo, clock);
-      if (listProgress > 0) pose = unwindPose(pose, tile, unwind, now, null);
-      // ---- slice 7: the narrow pane's clear top band (header and greeting) ----
-      if (geo.clearTopPx > 0 && listProgress < 1) {
-        const clear = headerClearance(pose, geo, geoCamera);
-        if (clear < 1) pose = { ...pose, alpha: pose.alpha * (clear + (1 - clear) * listProgress) };
+    unwind(f) {
+      const { now } = f;
+      if (settleUnwind(unwind, now)) unwind.column = null;
+      if (unwind.latched) {
+        conveyor.offset = unwind.offset;
+        conveyor.target = unwind.offset;
+        conveyor.glide = null;
+        unwind.column = measureColumn(f.helix as HelixFrame);
       }
-      if (rebuilt < 1) pose = { ...pose, alpha: pose.alpha * rebuilt };
-      // ---- end slice 7 ----
-      if (posterMode || j === hiddenSlot) pose = { ...pose, alpha: 0 };
-      poses[j] = pose;
+      f.listProgress = unwindProgress(unwind, now);
+      unwindFrame(f.listProgress);
+    },
+    // ---- end slice 5 block ----
+    name(f) {
+      stepNameFill(f.dt, f.listProgress); // fx-hero: the fill's idle clock and the repel
+    },
+    seen(f) {
+      const seen = getSeen();
+      const seenStep = 1 - Math.exp(-f.dt * SEEN_RATE);
+      for (let i = 0; i < tileCount; i++) {
+        seenLevel[i] += ((seen.has(tiles[i].key) ? 1 : 0) - seenLevel[i]) * seenStep;
+      }
+    },
+    slots(f) {
+      const { now, geo, listProgress, rebuilt } = f;
+      const helix = f.helix as HelixFrame;
+      const clock = f.clock as EntranceClock;
+      const hoverStep = 1 - Math.exp(-f.dt * HOVER_RATE);
+      for (let j = 0; j < geo.slotCount; j++) {
+        const slot = slots[j];
+        let pose: CardPose = coilPose(helix, j, conveyor.offset);
+        const strandPosition = Math.round(pose.u - conveyor.offset);
+        const tile = mod(strandPosition, tileCount);
+        bindTile(slot, tile);
+        pose = entrancePose(pose, { strandPosition, cardCount: tileCount }, geo, clock);
+        if (listProgress > 0) pose = unwindPose(pose, tile, unwind, now, null);
+        // ---- slice 7: the narrow pane's clear top band (header and greeting) ----
+        if (geo.clearTopPx > 0 && listProgress < 1) {
+          const clear = headerClearance(pose, geo, f.camera);
+          if (clear < 1) pose = { ...pose, alpha: pose.alpha * (clear + (1 - clear) * listProgress) };
+        }
+        if (rebuilt < 1) pose = { ...pose, alpha: pose.alpha * rebuilt };
+        // ---- end slice 7 ----
+        if (posterMode || j === hiddenSlot) pose = { ...pose, alpha: 0 };
+        poses[j] = pose;
 
-      slot.hover += ((j === hoveredSlot ? 1 : 0) - slot.hover) * hoverStep;
-      const lift = slot.hover > 0.001 ? slot.hover : 0;
-      const shown: CardPose = lift
-        ? { ...pose, scale: pose.scale * (1 + HOVER_SCALE * lift), fade: pose.fade * (1 - HOVER_UNFADE * lift) }
-        : pose;
-      rendered[j] = shown;
-      applyPose(slot, shown, HOVER_BRIGHT * lift);
-      // Unwound, the row's outline ring after the title is the one seen mark;
-      // the card's own ring fades with the unwind, since at thumb size it
-      // reads as a second, solid dot.
-      slot.uniforms.uSeen.value = seenLevel[tile] * (1 - listProgress);
-    }
-    sil = silhouette(helix, geoCamera, poses);
-    // ---- fx-hero: sand drifts along the helix's axis; QA can hide the cards ----
-    if (sil) compMaterial.uniforms.uFlowDir.value.set(sil.dx, sil.dy);
-    if (hideCards) for (let j = 0; j < geo.slotCount; j++) slots[j].mesh.visible = false;
-    if (hideName) {
-      compMaterial.uniforms.uNameA.value = 0;
-      compMaterial.uniforms.uGreetA.value = 0;
-    }
-    // ---- end fx-hero ----
-
+        slot.hover += ((j === hoveredSlot ? 1 : 0) - slot.hover) * hoverStep;
+        const lift = slot.hover > 0.001 ? slot.hover : 0;
+        const shown: CardPose = lift
+          ? { ...pose, scale: pose.scale * (1 + HOVER_SCALE * lift), fade: pose.fade * (1 - HOVER_UNFADE * lift) }
+          : pose;
+        rendered[j] = shown;
+        applyPose(slot, shown, HOVER_BRIGHT * lift);
+        // Unwound, the row's outline ring after the title is the one seen mark;
+        // the card's own ring fades with the unwind, since at thumb size it
+        // reads as a second, solid dot.
+        slot.uniforms.uSeen.value = seenLevel[tile] * (1 - listProgress);
+      }
+    },
+    silhouette(f) {
+      sil = silhouette(f.helix as HelixFrame, f.camera, poses);
+      // ---- fx-hero: sand drifts along the helix's axis; QA can hide the cards ----
+      if (sil) compMaterial.uniforms.uFlowDir.value.set(sil.dx, sil.dy);
+      if (hideCards) for (let j = 0; j < f.geo.slotCount; j++) slots[j].mesh.visible = false;
+      if (hideName) {
+        compMaterial.uniforms.uNameA.value = 0;
+        compMaterial.uniforms.uGreetA.value = 0;
+      }
+      // ---- end fx-hero ----
+    },
     // Hover: picked every frame, since cards move under a still pointer.
-    const pickable = pointer.inside && pointer.known && props.interactive && props.input === "fine";
-    const nextHover = pickable ? pickAt(pointer.x, pointer.y) : -1;
-    hoveredSlot = nextHover;
-    setSceneHover(nextHover >= 0);
-
+    picking(f) {
+      const { props } = f;
+      const pickable = pointer.inside && pointer.known && props.interactive && props.input === "fine";
+      const nextHover = pickable ? pickAt(pointer.x, pointer.y) : -1;
+      hoveredSlot = nextHover;
+      setSceneHover(nextHover >= 0);
+    },
     // ---- fx-input: the nudge ----
     // Only while a coil gesture has been held 2.6s; gone the instant the
     // gesture ends or passes to the page. A caret by the cursor points off
     // the helix.
-    const overlay = props.overlay.current;
-    if (sil && pointer.known && nudgeShown(capture, now)) {
-      const px = pointer.x - sil.ax;
-      const py = pointer.y - sil.ay;
-      const along = px * sil.dx + py * sil.dy;
-      let nx = px - along * sil.dx;
-      let ny = py - along * sil.dy;
-      const length = Math.hypot(nx, ny);
-      if (length < 1) {
-        nx = -sil.dy;
-        ny = sil.dx;
+    nudge(f) {
+      const overlay = f.props.overlay.current;
+      if (sil && pointer.known && nudgeShown(capture, f.now)) {
+        const px = pointer.x - sil.ax;
+        const py = pointer.y - sil.ay;
+        const along = px * sil.dx + py * sil.dy;
+        let nx = px - along * sil.dx;
+        let ny = py - along * sil.dy;
+        const length = Math.hypot(nx, ny);
+        if (length < 1) {
+          nx = -sil.dy;
+          ny = sil.dx;
+        } else {
+          nx /= length;
+          ny /= length;
+        }
+        overlay?.nudge({ x: pointer.x, y: pointer.y, angle: Math.atan2(ny, nx) });
       } else {
-        nx /= length;
-        ny /= length;
+        overlay?.nudge(null);
       }
-      overlay?.nudge({ x: pointer.x, y: pointer.y, angle: Math.atan2(ny, nx) });
-    } else {
-      overlay?.nudge(null);
-    }
+    },
     // ---- end fx-input ----
-
-    repaints.drain(paintTile, REPAINT_BUDGET_MS);
-  }
+    repaint() {
+      repaints.drain(paintTile, REPAINT_BUDGET_MS);
+    },
+  };
 
   function render(dt: number) {
-    if (!posterMode) fieldElapsed += dt;
-    // The poster is the live field's first frame, so the scene picks up where it left off.
-    // ---- fx-hero: two clocks, the orange and the weather (drift presets) ----
-    const clocks = fieldClocks(posterMode ? 0 : (heldAt ?? fieldElapsed), false, driftPreset);
-    fieldMaterial.uniforms.uT.value = clocks.orange;
-    fieldMaterial.uniforms.uTw.value = clocks.weather;
-    renderer.setRenderTarget(null);
-    renderer.clear();
-    if (clocks.orange !== lastFieldTime || clocks.weather !== lastWeatherTime) {
-      renderer.setRenderTarget(fieldTarget);
-      renderer.render(fieldScene, orthoCamera);
-      renderer.setRenderTarget(null);
-      lastFieldTime = clocks.orange;
-      lastWeatherTime = clocks.weather;
-    }
-    // ---- end fx-hero ----
-    renderer.render(compScene, orthoCamera);
-    renderer.clearDepth();
-    renderer.render(cardScene, camera);
+    runRender(renderSteps, { dt });
   }
+
+  const renderSteps: RenderSteps<{ dt: number }> = {
+    field({ dt }) {
+      if (!posterMode) fieldElapsed += dt;
+      // The poster is the live field's first frame, so the scene picks up where it left off.
+      // ---- fx-hero: two clocks, the orange and the weather (drift presets) ----
+      const clocks = fieldClocks(posterMode ? 0 : (heldAt ?? fieldElapsed), false, driftPreset);
+      fieldMaterial.uniforms.uT.value = clocks.orange;
+      fieldMaterial.uniforms.uTw.value = clocks.weather;
+      renderer.setRenderTarget(null);
+      renderer.clear();
+      if (clocks.orange !== lastFieldTime || clocks.weather !== lastWeatherTime) {
+        renderer.setRenderTarget(fieldTarget);
+        renderer.render(fieldScene, orthoCamera);
+        renderer.setRenderTarget(null);
+        lastFieldTime = clocks.orange;
+        lastWeatherTime = clocks.weather;
+      }
+      // ---- end fx-hero ----
+    },
+    composite() {
+      renderer.render(compScene, orthoCamera);
+    },
+    cards() {
+      renderer.clearDepth();
+      renderer.render(cardScene, camera);
+    },
+  };
 
   function shouldRun() {
     return (
