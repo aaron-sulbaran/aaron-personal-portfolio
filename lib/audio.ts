@@ -86,6 +86,7 @@ export interface PlayerSnapshot {
   trackIndex: number;
   playing: boolean;
   duration: number;
+  volume: number; // 0..1
 }
 
 export interface SoundtrackPlayer extends AudioSource {
@@ -228,12 +229,13 @@ export function getSoundtrackPlayer(): SoundtrackPlayer {
     setVolume(v: number) {
       volume = v < 0 ? 0 : v > 1 ? 1 : v;
       if (el) el.volume = volume;
+      emit();
     },
     getPosition() {
       return el ? el.currentTime : 0;
     },
     getSnapshot(): PlayerSnapshot {
-      return { trackIndex, playing, duration: el && Number.isFinite(el.duration) ? el.duration : 0 };
+      return { trackIndex, playing, volume, duration: el && Number.isFinite(el.duration) ? el.duration : 0 };
     },
     subscribe(listener: () => void) {
       listeners.add(listener);
