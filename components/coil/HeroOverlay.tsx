@@ -1,14 +1,13 @@
 "use client";
 
-import { useEffect, useImperativeHandle, useRef, useState, useSyncExternalStore, type RefObject, type Ref } from "react";
+import { useEffect, useImperativeHandle, useRef, useState, type RefObject, type Ref } from "react";
 import { siteContent, strandTiles } from "@/lib/content";
 import { useEscapeKey } from "@/lib/modal";
 import { useSeen } from "@/lib/home/seen";
 import { useHomeController } from "@/components/home/HomeController";
 import { hintStore } from "@/lib/cursor/hover";
-import { COIL_FX_EVENT, NAME_FILLS, parseNameFill, type CoilFxDetail } from "@/lib/coil/field.glsl";
-import { DRIFT_PRESET_KEYS, parseDriftPreset } from "@/lib/coil/drift";
 import type { CoilEntrance, CoilSceneApi } from "./CoilScene";
+import { NameReadout } from "./NameReadout";
 
 // The hero's DOM layer over the canvas. The greeting and the name are both
 // drawn in the canvas (fx-hero), so at rest this layer holds only the chevron
@@ -278,7 +277,7 @@ export function HeroOverlay({ ref, api, onRowOpen, entrance = null }: Props) {
       </div>
 
       <HintLine rootRef={rootRef} entrance={entrance} />
-      <FxSwitcher />
+      <NameReadout />
     </div>
   );
 }
@@ -369,59 +368,6 @@ function HintLine({ rootRef, entrance }: { rootRef: RefObject<HTMLDivElement | n
   );
 }
 
-// The name fill and drift switcher: only with ?coildebug=name, so production
-// never shows it. A pick rewrites the URL (so a reload keeps it) and tells the
-// live scene.
-const noSubscribe = () => () => {};
-function readDebugName() {
-  const value = new URLSearchParams(window.location.search).get("coildebug");
-  return value ? value.split(",").some((token) => token.trim() === "name") : false;
-}
-
-function FxSwitcher() {
-  const on = useSyncExternalStore(noSubscribe, readDebugName, () => false);
-  const [picked, setPicked] = useState<{ name: string; drift: string } | null>(null);
-  if (!on) return null;
-  const params = new URLSearchParams(window.location.search);
-  const current = picked ?? { name: parseNameFill(params.get("name")), drift: parseDriftPreset(params.get("drift")) };
-  const pick = (kind: "name" | "drift", key: string) => {
-    const next = new URLSearchParams(window.location.search);
-    next.set(kind, key);
-    window.history.replaceState(window.history.state, "", `${window.location.pathname}?${next.toString()}${window.location.hash}`);
-    const detail: CoilFxDetail = { [kind]: key };
-    window.dispatchEvent(new CustomEvent(COIL_FX_EVENT, { detail }));
-    setPicked({ ...current, [kind]: key });
-  };
-  const { label, name, drift } = siteContent.hero.fxSwitcher;
-  const groups: { kind: "name" | "drift"; title: string; keys: readonly string[] }[] = [
-    { kind: "name", title: name, keys: NAME_FILLS },
-    { kind: "drift", title: drift, keys: DRIFT_PRESET_KEYS },
-  ];
-  return (
-    <div
-      role="group"
-      aria-label={label}
-      className="pointer-events-auto absolute bottom-4 left-4 z-10 flex max-w-[calc(100%-32px)] flex-col gap-2 rounded-lg border border-border bg-background px-3 py-2 font-sans text-[12px] leading-none text-foreground"
-    >
-      {groups.map((group) => (
-        <div key={group.kind} className="flex flex-wrap items-center gap-1">
-          <span className="mr-1 text-[color:var(--hero-greeting)]">{group.title}</span>
-          {group.keys.map((key) => (
-            <button
-              key={key}
-              type="button"
-              aria-pressed={current[group.kind] === key}
-              onClick={() => pick(group.kind, key)}
-              className="rounded px-2 py-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent aria-pressed:bg-accent aria-pressed:text-background"
-            >
-              {key}
-            </button>
-          ))}
-        </div>
-      ))}
-    </div>
-  );
-}
 // ---- end fx-hero ----
 
 const CONTROL_CLASS =

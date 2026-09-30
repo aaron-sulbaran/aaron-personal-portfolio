@@ -49,11 +49,21 @@
   /* Scalars: rear-card brightness drop and sheen strength. */
   --card-recede: 0.3;
   --card-sheen: 0.1;
-  /* "Aaron" behind the coil: a vertical gradient inside the letters mixed at
-     --name-ink (the scene mixes at ink * 2.2), plus the "Hi, I'm" color. */
+  /* "Aaron" behind the coil: a lit shadergradient surface seen through the
+     letters at --name-ink (the scene mixes at ink * 2.2). The surface's stops:
+     1 to 2 across it, 3 its crests (pale, never the orange), the relief's
+     shadow and the sheen; -mean is the surface's mean at rest. The loader
+     lands on the vertical gradient (-grad-*), which the surface grows over.
+     Plus the "Hi, I'm" color for the DOM layer. */
   --name-ink: 0.12;
   --name-grad-top: #4C7098;
   --name-grad-bottom: #16324F;
+  --name-surface-1: #3D6A96;
+  --name-surface-2: #10283F;
+  --name-surface-3: #93B2D1;
+  --name-surface-shadow: #0E2236;
+  --name-surface-sheen: #E9F0F5;
+  --name-surface-mean: #3B5773;
   --hero-greeting: #3E4B59;
   /* Loader: always dark, whatever the theme. */
   --loader-bg: #0E1419;
@@ -92,8 +102,15 @@
   --card-work-back-dark: #40566A;
   --card-recede: 0.38;
   --card-sheen: 0.07;
+  --name-ink: 0.14;
   --name-grad-top: #6C93B6;
   --name-grad-bottom: #A6CCE6;
+  --name-surface-1: #9CC0DC;
+  --name-surface-2: #5E8AB0;
+  --name-surface-3: #D6E7F2;
+  --name-surface-shadow: #3A5F85;
+  --name-surface-sheen: #E4EEF4;
+  --name-surface-mean: #80A2BF;
   --hero-greeting: #A9B4BF;
 }
 
