@@ -31,13 +31,15 @@ const ACCENT_PEAK = 0.36;
 const REPEL_RADIUS = 92;
 const REPEL_FORCE = 26;
 const CARVE_RADIUS = 74;
-// |displacement| + magnitude peaks near 1.62 max amplitudes on the loudest
-// music; 1.7 leaves headroom.
-const EXTENT = 1.7;
+// |displacement| + magnitude, in max amplitudes: the idle drift peaks near
+// 0.41 (the paused wave far lower), the loudest music near 1.62. Each leaves
+// a little headroom.
+const EXTENT = { calm: 0.45, loud: 1.7 };
 
-// The farthest a column's dots can sit from the midline at weight 1, px.
-export function reachOf(maxAmp: number): number {
-  return EXTENT * maxAmp + REPEL_FORCE;
+// The farthest a column's dots can sit from the midline at weight 1, px, for
+// the calm regimes (idle, paused, still) or for music at full level.
+export function reachOf(maxAmp: number, loudness: keyof typeof EXTENT): number {
+  return EXTENT[loudness] * maxAmp + REPEL_FORCE;
 }
 
 export function carveTargets(layout: DotLayout, cursor: Cursor, out: Float32Array): void {
