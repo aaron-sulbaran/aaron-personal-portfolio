@@ -89,3 +89,5 @@ export function createEntrance(ctx: SceneCtx, name: Name) {
 
   return { entrance, rebuild, clockState };
 }
+
+export type Entrance = ReturnType<typeof createEntrance>;

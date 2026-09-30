@@ -156,3 +156,5 @@ export function createUnwindWiring(ctx: SceneCtx, comp: ShaderMaterial, name: Na
 
   return { unwind, listen, step, unwindState, unwindMs: () => unwindDurationMs(tileCount) };
 }
+
+export type UnwindWiring = ReturnType<typeof createUnwindWiring>;
