@@ -7,6 +7,7 @@ import {
   coilPose,
   mod,
   projectQuad,
+  restHelix,
   silhouette,
   smoothstep01,
   type Camera,
@@ -16,6 +17,7 @@ import {
   type Quad,
 } from "@/lib/coil/geometry";
 import { createCardGeometry, createCardMaterial, type CardUniforms, type SharedCardUniforms } from "@/lib/coil/material";
+import { stretchedDy } from "@/lib/coil/motion";
 import { paintCard, type CardSource } from "@/lib/coil/textures";
 import { applyColor, createRepaintQueue } from "@/lib/coil/theme";
 import { unwindPose } from "@/lib/coil/unwind";
@@ -177,6 +179,12 @@ export function createCards(ctx: SceneCtx, gl: Gl) {
     mesh.visible = pose.alpha > 0.01;
   }
 
+  // Update step: the helix frame the slots pose on, stretched by the envelope.
+  function helix(f: { geo: CoilGeometry; helix: HelixFrame | null }) {
+    const rest = restHelix(f.geo, st.theme.card.recede);
+    f.helix = { ...rest, dy: stretchedDy(rest.dy, st.envelope) };
+  }
+
   // Update step: the seen levels ease toward the store.
   function seen(f: { dt: number }) {
     const stored = getSeen();
@@ -331,6 +339,7 @@ export function createCards(ctx: SceneCtx, gl: Gl) {
     repaintAll,
     applyTheme,
     placeMesh,
+    helix,
     seen,
     poseSlots,
     hull,

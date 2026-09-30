@@ -288,6 +288,11 @@ export function createName(ctx: SceneCtx, comp: ShaderMaterial, fx: NameFx, loop
     }
   }
 
+  // Update step (name): the fill's idle clock and the repel.
+  function step(f: { dt: number; listProgress: number }) {
+    stepNameFill(f.dt, f.listProgress); // fx-hero: the fill's idle clock and the repel
+  }
+
   // The switcher (?coildebug=name) and ?name / ?drift picks, live.
   function listenFx(setDrift: (raw: string) => void) {
     const onFx = (event: Event) => {
@@ -345,7 +350,7 @@ export function createName(ctx: SceneCtx, comp: ShaderMaterial, fx: NameFx, loop
     fade,
     hide,
     flowAlong,
-    stepNameFill,
+    step,
     listenFx,
     nameRect,
     landName,
