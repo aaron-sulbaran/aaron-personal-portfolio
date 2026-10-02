@@ -167,6 +167,15 @@ Picked by Aaron from hero lab 2, 2026-09-29 (the build starts on these; see `doc
 - [x] The waveform moves into a full-width band directly under the book, where the Listen invite and the pill are introduced; nothing animates behind body text. The music interaction gets its own session later.
 - [x] Playwright is approved as a dev dependency for real-input and visual tests.
 
+## 2.11 The music interaction session, 2026-10-02 (spec: `docs/waveform-follows-spec.md`)
+
+- [x] Supersedes the 2.10 line "nothing animates behind body text". The waveform is introduced in the band under the book, then follows the reader down the page as a fixed strip along the bottom of the viewport. It may pass behind text only ducked to a still line under a contrast ceiling (4.5 to 1 for muted body text, tested from the tokens).
+- [x] The ask stays in the band, with the waveform's introduction: "Want some music while you scroll?" The pill is what leaves with the reader: it condenses down from the control they pressed (or rises from the bottom when the band is off screen), lands open with one line saying the music lives there, then collapses to the capsule.
+- [x] Yes: the wave reacts to the music and follows. No: the wave follows as a calm background that moves with the scroll and reacts to nothing, and the pill stays within reach ("Here if you change your mind."). "Not now" is never asked twice.
+- [x] The handoff is a snake: the wave leaves the band at one edge and the same ribbon arrives from the other edge, lower down, driven by scroll and reversible.
+- [x] Phones unchanged this pass (the band is the ask and the control).
+- [ ] Later, Aaron's idea: once it is background, the wave reshapes into other forms (a helix echoing the hero).
+
 ## 9a. Surfaced by the overnight build (2026-09-29), yours in the morning
 
 - [ ] The Profa file in `app/fonts/` is the trial cut: it draws a "personal use only" stamp for `*`, `;` and `@`. Slice 2 routes those three glyphs to the fallback font. Drop the full cut from your asset pack into `app/fonts/` (same filename or update `lib/fonts.ts`) and the workaround goes.
