@@ -248,6 +248,7 @@ export function createHorizonView(
     },
     // Empty when the last paint drew nothing (the train all back in the band).
     columns: () => (painted ? Array.from(xs, (x, i) => ({ x, duck: env[i], alpha: probeAlpha[i] })) : []),
+    rects: () => rects.map((r) => ({ ...r })),
   });
 
   return view;
