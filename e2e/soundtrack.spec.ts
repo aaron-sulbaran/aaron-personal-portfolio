@@ -152,7 +152,7 @@ test("band: in flow directly under the book; the one fixed canvas is the horizon
       );
       await scrollToY(page, Math.round(y));
       const hit = await page.evaluate(
-        ({ selector, i, stepAside }) => {
+        ({ selector, i }) => {
           const el = document.querySelectorAll(selector)[i];
           const r = el.getBoundingClientRect();
           const host = document.querySelector<HTMLElement>('[data-wave="horizon"]')!;
@@ -160,25 +160,57 @@ test("band: in flow directly under the book; the one fixed canvas is the horizon
           const strip = host.getBoundingClientRect();
           // elementFromPoint skips pointer-events: none, so the strip is made
           // hit testable for this one read: paint order alone must give the point to the text.
-          // The pill docks on the strip at the bottom centre by design (z 45); at the
-          // foot of the page it sits over the footer row's centre, so for that row
-          // alone it steps aside for the read.
-          const pill = stepAside ? document.querySelector<HTMLElement>("[data-pill]") : null;
           host.style.pointerEvents = "auto";
           canvas.style.pointerEvents = "auto";
-          if (pill) pill.style.visibility = "hidden";
           const at = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
           host.style.pointerEvents = "";
           canvas.style.pointerEvents = "";
-          if (pill) pill.style.visibility = "";
           return { overStrip: r.top < strip.bottom && r.bottom > strip.top, owned: !!at && el.contains(at) };
         },
-        { selector, i, stepAside: block === "footer" },
+        { selector, i },
       );
       expect(hit, `${selector} #${i} over the strip`).toEqual({ overStrip: true, owned: true });
     }
   }
 });
+
+// The pill docks at the bottom centre (z 45), so at the foot of the page the
+// footer's bottom padding keeps its last row clear of the capsule from md up.
+for (const viewport of [
+  { width: 1440, height: 900 },
+  { width: 1024, height: 768 },
+]) {
+  test(`footer: at the page end the docked capsule covers no footer text at ${viewport.width}`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await armDock(page);
+    await openHome(page, { path: HOME });
+    await scrollBandIntoView(page);
+    await toAbout(page);
+    await dockLanded(page);
+    await scrollToY(page, await page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight));
+    await dockLanded(page);
+    const read = await page.evaluate(() => {
+      const capsule = document.querySelector("[data-pill] .pill-hit")!.getBoundingClientRect();
+      const row = document.querySelector("footer [data-wave-avoid]")!;
+      const walker = document.createTreeWalker(row, NodeFilter.SHOW_TEXT);
+      const boxes: { left: number; top: number; right: number; bottom: number }[] = [];
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        if (!node.textContent?.trim()) continue;
+        const range = document.createRange();
+        range.selectNodeContents(node);
+        for (const r of range.getClientRects()) boxes.push({ left: r.left, top: r.top, right: r.right, bottom: r.bottom });
+      }
+      const atEnd = Math.abs(window.scrollY - (document.documentElement.scrollHeight - window.innerHeight)) < 2;
+      const overlaps = boxes.filter(
+        (b) => b.left < capsule.right && b.right > capsule.left && b.top < capsule.bottom && b.bottom > capsule.top,
+      );
+      return { atEnd, boxes: boxes.length, overlaps, capsule: { top: capsule.top, bottom: capsule.bottom } };
+    });
+    expect(read.atEnd, "scrolled to the page end").toBe(true);
+    expect(read.boxes, "text boxes in the footer row").toBeGreaterThan(0);
+    expect(read.overlaps, `footer text under the capsule ${JSON.stringify(read.capsule)}`).toEqual([]);
+  });
+}
 
 test("band: a real click on \"Play it\" starts playback", async ({ page }) => {
   await instrument(page);
