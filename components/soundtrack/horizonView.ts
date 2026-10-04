@@ -39,7 +39,7 @@ export function createHorizonView(
   const ctx = canvas.getContext("2d");
   const host = canvas.parentElement;
   if (!ctx || !host) return null;
-  const { still } = options;
+  const { still, avoidRoot } = options;
   const probe = waveProbe();
 
   let layout = horizonLayout(0);
@@ -208,7 +208,7 @@ export function createHorizonView(
     track = { ...layout, baselineOffset: offsets };
     Object.assign(carveLayout, layout);
     open = columnWeights({ ...layout, reach: 1, feather: 0, edgeTaper: 96, rects: [] });
-    rects = measureAvoidRects(AVOID_SELECTOR, DUCK.padPx);
+    rects = measureAvoidRects(avoidRoot, AVOID_SELECTOR, DUCK.padPx);
     refresh();
   };
 
