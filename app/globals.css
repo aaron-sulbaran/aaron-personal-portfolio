@@ -270,15 +270,15 @@ body {
   mask-image: linear-gradient(to top, #000 65%, transparent);
 }
 
-/* The playback pill's capsule (components/soundtrack/PlaybackPill.tsx): a
-   36px capsule whose hit area reaches 44px. */
+/* The playback pill's capsule (components/soundtrack/PlaybackPill.tsx): the
+   hit area reaches DOCK.hitPx; the capsule sets --pill-hit-inset from DOCK. */
 .pill-hit {
   position: relative;
 }
 .pill-hit::before {
   content: "";
   position: absolute;
-  inset: -4px;
+  inset: calc(-1 * var(--pill-hit-inset, 4px));
 }
 
 /* The soundtrack note (components/menu/NoteIcon.tsx), in the Menu pill and
