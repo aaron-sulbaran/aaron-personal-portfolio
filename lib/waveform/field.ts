@@ -82,7 +82,7 @@ export function columnTarget(i: number, time: number, levels: Levels, band: numb
 export function columnDisplacement(i: number, time: number, levels: Levels, audioLevel: number): number {
   const ambient = Math.sin(i * 0.25 + time * 0.6) * 0.16;
   const thin = Math.sin(i * 0.4 + time * 1.0) * 0.02;
-  const music = (Math.sin(i * 0.3 + time * 3) * 0.42 + Math.sin(i * 0.13 - time * 1.5) * 0.2) * audioLevel;
+  const music = (Math.sin(i * 0.3 + time * 3) * 0.42 + Math.sin(i * 0.13 + time * 1.5) * 0.2) * audioLevel;
   return ambient * levels.idle + thin * levels.paused + music * levels.reactive;
 }
 
