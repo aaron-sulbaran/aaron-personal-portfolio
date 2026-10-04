@@ -66,6 +66,7 @@ const avoidCount = (page: Page, selector: string) => page.locator(selector).coun
 
 async function expectBlocksDucked(page: Page, ceiling: number) {
   const vh = page.viewportSize()!.height;
+  let read = 0;
   for (const block of AVOID_BLOCKS) {
     const selector = `${block} [data-wave-avoid]`;
     const count = await avoidCount(page, selector);
@@ -76,10 +77,19 @@ async function expectBlocksDucked(page: Page, ceiling: number) {
       await page.waitForTimeout(SETTLE_MS);
       const report = await duckReport(page, selector, i, ceiling);
       expect(report.overStrip, `${selector} #${i} over the strip`).toBe(true);
-      expect(report.under, `${selector} #${i} columns under its words`).toBeGreaterThan(0);
+      // The About block sits just under the band: its words cross the strip
+      // while the train is still arriving from the right, so at rest no column
+      // reaches them yet (only the eased sweep's lag, after a scroll back up,
+      // brings columns under them).
+      if (report.under === 0) {
+        expect(report.ahead, `${selector} #${i} no columns under its words, and the train not yet there`).toBe(true);
+        continue;
+      }
+      read += 1;
       expect(report.loud, `${selector} #${i} columns painting loud under its words`).toEqual([]);
     }
   }
+  expect(read, "boxes with columns under their words").toBeGreaterThan(0);
 }
 
 test("horizon: the sweep follows scroll, out to the strip and back", async ({ page }) => {
