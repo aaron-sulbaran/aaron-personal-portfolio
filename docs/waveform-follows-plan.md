@@ -642,7 +642,7 @@ git commit -m "feat(waveform): sweep easing and the train geometry"
 
 ```ts
 export const DUCK = { padPx: 20, lookAheadPx: 160, attackRate: 0.4, releaseRate: 0.06 };
-export const DUCK_ALPHA = { light: 0.09, dark: 0.15 }; // alpha ceiling for ducked dots
+export const DUCK_ALPHA = { light: 0.07, dark: 0.11 }; // alpha ceiling for ducked dots (0.09/0.15 failed the 4.5 ratio over an accent dot)
 // `rects` are document-space boxes (already padded); `strip` is the horizon's viewport box
 // as document-space top/bottom for this frame (scrollY + viewport offsets). Writes 1 for a
 // column that must duck (a rect overlaps the strip or sits within lookAhead below it and

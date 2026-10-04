@@ -55,7 +55,7 @@ This is the rule that replaces "nothing animates behind body text". Think of a s
 
 - The text blocks of About, Who I am, Up to now, Connect and the footer carry `data-wave-avoid`. The horizon view measures their document rects once per layout (ScrollTrigger refresh, `document.fonts.ready`, a ResizeObserver on `main`), pads them 20px, and each frame subtracts `scrollY` with no layout read.
 - Any column under a text box, or within 160px of one about to enter from below, ducks to a still centreline with no fuzz. Attack about 60ms, release about 450ms.
-- Ducked dots have an alpha ceiling of 0.09 in light and 0.15 in dark. Those values keep muted body text at 4.5 to 1 or better against the darkest dot pixel. A pure test, `lib/waveform/contrast.test.ts`, computes this from the token hexes, so a palette change fails a test before it fails a reader.
+- Ducked dots have an alpha ceiling of 0.07 in light and 0.11 in dark (measured 2026-10-03 against the tokens: the spec first said 0.09 and 0.15, which left muted text over an accent dot at 4.36 and 4.22 to 1). Those values keep muted body text at 4.5 to 1 or better against the darkest dot pixel. A pure test, `lib/waveform/contrast.test.ts`, computes this from the token hexes, so a palette change fails a test before it fails a reader.
 - In open air (gutters, the gaps between sections) the dots paint at muted 0.30 and accent 0.50 in light, muted 0.40 and accent 0.70 in dark, lower than the band's values. The strip's top edge fades out with a CSS mask.
 - The horizon caps column thickness at 6, so the loudest passage is a dense column, never a wall.
 - The strip's baseline sits 72px above the bottom of the viewport. The pill sits on that line with a small carve around it.
