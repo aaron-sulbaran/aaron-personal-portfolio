@@ -5,6 +5,11 @@ import type { SoundtrackState } from "@/lib/soundtrack";
 // midline), both in units of the band's max amplitude. The canvas
 // (components/soundtrack/WaveCanvas.tsx) only turns these into dots.
 //
+// Column weights are applied at paint time (lib/waveform/dots.ts), not here,
+// so two views with different weights can share one field. `phase` comes from
+// the scroll conveyor (lib/waveform/conveyor.ts) and slides the shape along
+// the columns; the analyser bands stay bound to the integer column.
+//
 // Every clock here runs in SECONDS. The canvas converts the rAF timestamp once
 // (`t / 1000`); feeding raw milliseconds aliases the sines about 1000 times too
 // fast, which is the jitter the AGENTS.md invariant exists to prevent.
@@ -65,7 +70,7 @@ export function stepLevels(levels: Levels, regime: Regime, dt: number): Levels {
 }
 
 // Where column i's magnitude is heading at `time` seconds, before weights and
-// the cursor carve.
+// the cursor carve. i is a float: the caller adds the conveyor's phase.
 export function columnTarget(i: number, time: number, levels: Levels, band: number): number {
   const ambient = 0.11 + 0.07 * Math.sin(time * 0.5 + i * 0.35) + 0.05 * Math.sin(time * 0.21 + i * 0.12);
   const thin = 0.035 + 0.015 * Math.sin(time * 1.3 + i * 0.6);
@@ -77,7 +82,7 @@ export function columnTarget(i: number, time: number, levels: Levels, band: numb
 export function columnDisplacement(i: number, time: number, levels: Levels, audioLevel: number): number {
   const ambient = Math.sin(i * 0.25 + time * 0.6) * 0.16;
   const thin = Math.sin(i * 0.4 + time * 1.0) * 0.02;
-  const music = (Math.sin(i * 0.3 - time * 3) * 0.42 + Math.sin(i * 0.13 - time * 1.5) * 0.2) * audioLevel;
+  const music = (Math.sin(i * 0.3 + time * 3) * 0.42 + Math.sin(i * 0.13 - time * 1.5) * 0.2) * audioLevel;
   return ambient * levels.idle + thin * levels.paused + music * levels.reactive;
 }
 
@@ -94,7 +99,7 @@ export interface FieldInput {
   regime: Regime;
   bands: Float32Array; // analyser energy per column, 0..1
   audioLevel: number; // 0..1
-  weights: Float32Array; // 0..1 per column (columnWeights)
+  phase: number; // columns, from the conveyor
   carve: Float32Array | null; // cursor carve target per column, 0..1
 }
 
@@ -112,7 +117,7 @@ export function createField(columns: number, regime: Regime = "idle"): Field {
 // cursor's carve included); the canvas then stops its loop until the music,
 // the cursor or the band wakes it.
 export function stepField(field: Field, input: FieldInput): { settled: boolean } {
-  const { time, dt, regime, bands, audioLevel, weights, carve } = input;
+  const { time, dt, regime, bands, audioLevel, phase, carve } = input;
   const levels = stepLevels(field.levels, regime, dt);
   field.levels = levels;
   const goal = levelTargets(regime);
@@ -122,14 +127,14 @@ export function stepField(field: Field, input: FieldInput): { settled: boolean }
     Math.abs(levels.reactive - goal.reactive) < SETTLE_EPSILON;
 
   for (let i = 0; i < field.mag.length; i++) {
-    const weight = weights[i] ?? 1;
-    let target = FLOOR + (columnTarget(i, time, levels, bands[i] ?? 0) - FLOOR) * weight;
+    const j = i + phase;
+    let target = columnTarget(j, time, levels, bands[i] ?? 0);
     const carveTarget = carve ? carve[i] : 0;
     field.carve[i] = easeToward(field.carve[i], carveTarget, 0.1, dt);
     target *= 1 - field.carve[i] * 0.9;
     const before = field.mag[i];
     field.mag[i] = easeToward(before, target, target > before ? 0.35 : 0.12, dt);
-    field.disp[i] = columnDisplacement(i, time, levels, audioLevel) * weight;
+    field.disp[i] = columnDisplacement(j, time, levels, audioLevel);
     if (settled && (Math.abs(field.mag[i] - target) > SETTLE_EPSILON || Math.abs(field.carve[i] - carveTarget) > SETTLE_EPSILON || Math.abs(field.disp[i]) > SETTLE_EPSILON)) {
       settled = false;
     }

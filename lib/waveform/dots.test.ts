@@ -25,10 +25,6 @@ describe("buildDots", () => {
     field.mag.fill(1);
     field.disp.forEach((_, i) => (field.disp[i] = i % 2 ? 0.62 : -0.62));
     const weights = new Float32Array(30).map((_, i) => (i % 5) / 4);
-    for (let i = 0; i < 30; i++) {
-      field.mag[i] = FLOOR + (1 - FLOOR) * weights[i];
-      field.disp[i] *= weights[i];
-    }
     const muted: number[] = [];
     const accent: number[] = [];
     const cursor = { x: 10 + 13 * 7, y: 150, on: true };
@@ -59,6 +55,30 @@ describe("buildDots", () => {
     buildDots(field, layout, 4, new Float32Array(30).fill(1), NO_CURSOR, muted, accent);
     expect(accent.length).toBeGreaterThan(0);
     for (const x of xs(accent)) expect(x).toBe(10 + 13 * 4);
+  });
+});
+
+describe("buildDots with paint-time weights", () => {
+  const small = { columns: 3, spacing: 10, startX: 5, baseline: 50, maxAmp: 20 };
+  const cursor = { x: -1e4, y: -1e4, on: false };
+
+  it("a weight of 0 pins the column to the floor on the midline", () => {
+    const field = createField(3);
+    field.mag.fill(0.5);
+    field.disp.fill(0.5);
+    const muted: number[] = [];
+    const accent: number[] = [];
+    buildDots(field, small, 0, new Float32Array([0, 1, 1]), cursor, muted, accent);
+    expect(muted.slice(0, 3)).toEqual([5, 50, 2.2]);
+  });
+
+  it("columnX places each column", () => {
+    const field = createField(3);
+    field.mag.fill(FLOOR);
+    const muted: number[] = [];
+    const accent: number[] = [];
+    buildDots(field, small, 0, new Float32Array([1, 1, 1]), cursor, muted, accent, (i) => 100 + i);
+    expect([muted[0], muted[3], muted[6]]).toEqual([100, 101, 102]);
   });
 });
 

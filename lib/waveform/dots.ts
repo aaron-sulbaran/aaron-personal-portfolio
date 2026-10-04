@@ -1,12 +1,14 @@
-import type { Field } from "./field";
+import { FLOOR, type Field } from "./field";
 
 // Turns the field into dots: each column is a centerline dot displaced off the
 // midline, with a stack of fuzz dots above and below it as thick as the
 // column's magnitude. Presence comes from size and density, not opacity; the
-// one accent only paints the loud columns. The cursor both hollows the columns
-// under it (carve, fed back into the field) and pushes nearby dots away
-// (repel, applied here). Both scale with the column weight, so a column held
-// still under the band's copy stays still even with the cursor on it.
+// one accent only paints the loud columns. The column weight scales magnitude
+// and displacement here, at paint time, so two views can share one field. The
+// cursor both hollows the columns under it (carve, fed back into the field)
+// and pushes nearby dots away (repel, applied here). Both scale with the
+// column weight, so a column held still under the band's copy stays still
+// even with the cursor on it.
 
 export interface DotLayout {
   columns: number;
@@ -75,15 +77,16 @@ export function buildDots(
   cursor: Cursor,
   muted: number[],
   accent: number[],
+  columnX: (i: number) => number = (i) => layout.startX + i * layout.spacing,
 ): void {
   muted.length = 0;
   accent.length = 0;
-  const { columns, startX, spacing, baseline, maxAmp } = layout;
+  const { columns, baseline, maxAmp } = layout;
   for (let i = 0; i < columns; i++) {
-    const x = startX + i * spacing;
+    const x = columnX(i);
     const weight = weights[i] ?? 1;
-    const magnitude = field.mag[i];
-    const cy = baseline - field.disp[i] * maxAmp;
+    const magnitude = FLOOR + (field.mag[i] - FLOOR) * weight;
+    const cy = baseline - field.disp[i] * weight * maxAmp;
     const peak = magnitude > ACCENT_PEAK;
     pushDot(magnitude > ACCENT_LINE ? accent : muted, x, cy, CENTER_RADIUS, cursor, weight);
 
