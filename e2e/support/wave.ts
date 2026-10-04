@@ -63,6 +63,7 @@ export async function paintsOver(page: Page, ms: number) {
 export type DuckReport = {
   overStrip: boolean; // the words overlap the strip
   under: number; // columns whose x falls inside the words
+  ahead: boolean; // the train's leading column is still right of the words (nothing painted under them yet)
   loud: { x: number; duck: number; alpha: number }[]; // of those, the ones not ducked
 };
 
@@ -98,6 +99,7 @@ export async function duckReport(page: Page, selector: string, index: number, ce
       return {
         overStrip: top < strip.bottom && bottom > strip.top,
         under: under.length,
+        ahead: columns.length > 0 && columns.every((c) => c.x > right),
         loud: under.filter((c) => !(c.duck > split && c.alpha <= ceiling + 1e-6)),
       };
     },
