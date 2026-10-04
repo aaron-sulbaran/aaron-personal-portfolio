@@ -2,6 +2,7 @@ import { getSoundtrackPlayer } from "@/lib/audio";
 import { getSoundtrackState, subscribeSoundtrack } from "@/lib/soundtrack";
 import { createConveyor, feedScroll, stepConveyor, type ConveyorState } from "@/lib/waveform/conveyor";
 import { FLOOR, createField, levelTargets, regimeOf, stepField, type Field, type Regime } from "@/lib/waveform/field";
+import { createSweep, stepSweep, type SweepState } from "@/lib/waveform/sweep";
 
 // The waveform's one engine: the field, the loop, the audio sample, the
 // regime, the clock, the scroll conveyor and the sweep. Views (waveView.ts)
@@ -27,10 +28,6 @@ const SLOW_FRAME_MS = 1000 / 30 - 2;
 const MAX_STEP_S = 0.1;
 const LEVEL_EPSILON = 1e-3;
 
-// Stand-in until the sweep lands in Task 5, which steps it by dt here.
-type SweepState = { value: number; target: number };
-const stepSweep = (): boolean => false;
-
 export interface WaveView {
   // Called once per conductor frame before the field steps: sync the cursor,
   // blend the weights from the field's current levels, and raise
@@ -49,7 +46,7 @@ export interface WaveConductor {
   columns: number;
   carve: Float32Array; // this frame's carve targets, the max over the views
   conveyor: ConveyorState;
-  sweep: SweepState; // { value: 0, target: 0 } until Task 5
+  sweep: SweepState; // 0 all in the band, 1 all on the horizon
   time: number; // seconds, last stepped
   attach(view: WaveView): void;
   detach(view: WaveView): void;
@@ -120,7 +117,7 @@ function createInstance(still: boolean): Instance {
     const frame = player.sample(t, conductor.columns);
     const idle = regime === "idle" && !still;
     const { moving } = stepConveyor(conductor.conveyor, dt, idle);
-    const sweeping = stepSweep();
+    const sweeping = stepSweep(conductor.sweep, dt);
     const { settled } = stepField(conductor.field, {
       time,
       dt,
@@ -182,7 +179,7 @@ function createInstance(still: boolean): Instance {
     columns: 0,
     carve: new Float32Array(0),
     conveyor: createConveyor(),
-    sweep: { value: 0, target: 0 },
+    sweep: createSweep(),
     time: 0,
     attach(view) {
       if (!views.includes(view)) views.push(view);
@@ -200,7 +197,8 @@ function createInstance(still: boolean): Instance {
     },
     setSweepTarget(target, snap = false) {
       conductor.sweep.target = target;
-      if (snap) conductor.sweep.value = target;
+      // Reduced motion never steps, so the train lands without travel.
+      if (snap || still) conductor.sweep.value = target;
       wake();
     },
     setFrozen(next) {
