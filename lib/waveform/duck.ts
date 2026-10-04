@@ -11,14 +11,14 @@ import type { Rect } from "./weights";
 //
 // DUCK_ALPHA is the alpha ceiling for ducked dots; contrast.test.ts checks it
 // against the token hexes so muted body text over the darkest dot stays at
-// 4.5 to 1 or better. The spec's 0.09 and 0.15 fail on the accent dot; these
-// are the largest values that pass.
+// 4.5 to 1 or better.
 
 export const DUCK = { padPx: 20, lookAheadPx: 160, attackRate: 0.4, releaseRate: 0.06 };
 export const DUCK_ALPHA = { light: 0.07, dark: 0.11 };
 
 const REST_EPSILON = 1e-3;
 
+// `rects` must be sorted by `top`: the scan stops at the first one below the look-ahead.
 export function duckTargets(
   rects: Rect[],
   columnXs: ArrayLike<number>,
