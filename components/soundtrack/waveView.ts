@@ -1,10 +1,11 @@
 import { buildDots, carveTargets, reachOf, type Cursor, type DotLayout } from "@/lib/waveform/dots";
 import { PHONE_MAX_PX, bandLayout } from "@/lib/waveform/layout";
 import { trainX } from "@/lib/waveform/sweep";
+import { layTrack } from "@/lib/waveform/track";
 import { blendWeights, columnWeights, type Rect, type WeightLayout } from "@/lib/waveform/weights";
 import { createHorizonView } from "./horizonView";
 import type { WaveConductor, WaveView } from "./waveConductor";
-import { createDotPainter, layTrack, sizeCanvas, themeNow, trackPointer, type Alphas } from "./viewParts";
+import { createDotPainter, sizeCanvas, themeNow, trackPointer, type Alphas } from "./viewParts";
 
 // One canvas that paints the conductor's field: sizing, weights, colors, the
 // cursor and the dots. The conductor (waveConductor.ts) owns the field and the

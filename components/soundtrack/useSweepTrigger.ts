@@ -2,6 +2,7 @@
 
 import type { RefObject } from "react";
 import { gsap, ScrollTrigger, useGSAP } from "@/lib/gsap";
+import { PHONE_QUERY } from "@/lib/waveform/layout";
 import type { WaveConductor } from "./waveConductor";
 import { useReducedMotionLive } from "./useReducedMotionLive";
 
@@ -11,11 +12,12 @@ import { useReducedMotionLive } from "./useReducedMotionLive";
 // onLeaveBack pin the ends for jumps, and creation and refresh snap, so a
 // deep load past the band starts on the horizon with no glide.
 //
-// Phones have no horizon this pass, so below md there is no trigger and the
+// Phones have no horizon this pass, so on the phone query (the one the strip
+// is gated by, so the two agree at any width) there is no trigger and the
 // train stays in the band. The ref must be filled in a layout effect declared
 // before this hook (BandStage does), since useGSAP runs as a layout effect. A
-// live reduced-motion toggle rebuilds the conductor, so it rebuilds the
-// trigger too.
+// live reduced-motion toggle rebuilds the conductor, so it reverts the old
+// trigger and builds one on the new conductor (revertOnUpdate).
 export function useSweepTrigger(conductorRef: RefObject<WaveConductor | null>) {
   const still = useReducedMotionLive();
 
@@ -24,7 +26,7 @@ export function useSweepTrigger(conductorRef: RefObject<WaveConductor | null>) {
       const conductor = conductorRef.current;
       if (!conductor) return;
       const mm = gsap.matchMedia();
-      mm.add("(min-width: 768px)", () => {
+      mm.add(`not all and ${PHONE_QUERY}`, () => {
         const st = ScrollTrigger.create({
           trigger: "#listen",
           start: "center 60%",
@@ -42,6 +44,6 @@ export function useSweepTrigger(conductorRef: RefObject<WaveConductor | null>) {
       });
       return () => mm.revert();
     },
-    { dependencies: [still] },
+    { dependencies: [still], revertOnUpdate: true },
   );
 }
