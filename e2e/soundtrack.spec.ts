@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test";
 import { test, expect } from "./support/fixtures";
+import { siteContent } from "@/lib/content";
 import { HORIZON } from "@/lib/waveform/layout";
 import { openHome, scrollToY } from "./support/coil";
 import { settled } from "./support/fallback";
@@ -7,9 +8,14 @@ import { AVOID_BLOCKS, hasProbe, parkBand, sweep } from "./support/wave";
 
 // The soundtrack band (#listen): in flow under the book, where the waveform
 // starts before it follows the reader onto the horizon strip (horizon.spec.ts);
-// "Play it" really plays, "Maybe later" leaves a still line in the band, and
-// the playback pill takes over once the band is off screen with music chosen.
-// A deep load into the page keeps its layout still.
+// "Play it" really plays, "Not now" leaves a still line in the band, and the
+// playback pill condenses out of the band onto the wave's line at the bottom
+// centre once the reader scrolls on (the dock tests below, spec sections 2
+// and 5). A deep load into the page keeps its layout still.
+
+const L = siteContent.listen;
+const S = siteContent.soundtrack;
+const HOME = "/?wavedebug";
 
 // Counts every repaint of each 2D canvas (the wave clears once per paint) and
 // remembers every media element that was asked to play.
@@ -38,8 +44,8 @@ async function instrument(page: Page) {
 }
 
 const bandPaints = (page: Page) => page.evaluate(() => (window as unknown as { __e2eBandPaints: () => number }).__e2eBandPaints());
-const media = (page: Page) =>
-  page.evaluate(() => (window as unknown as { __e2eMedia: () => { paused: boolean; time: number; src: string }[] }).__e2eMedia());
+type MediaRead = { paused: boolean; time: number; src: string };
+const media = (page: Page) => page.evaluate(() => (window as unknown as { __e2eMedia: () => MediaRead[] }).__e2eMedia());
 
 // The band fully in view with its centre at 70 percent of the viewport, below
 // the sweep trigger's start (centre at 60 percent): the whole train is still
@@ -78,7 +84,7 @@ async function focusLastBeforePill(page: Page) {
 // horizon strip, behind the content (z 0 under 10) with no pointer events, so
 // every text box that crosses it still owns the point at its centre.
 test("band: in flow directly under the book; the one fixed canvas is the horizon, behind the text", async ({ page }) => {
-  await openHome(page, { path: "/?wavedebug" });
+  await openHome(page, { path: HOME });
   const layout = await page.evaluate(() => {
     const band = document.getElementById("listen")!;
     const book = document.getElementById("work")!;
@@ -134,11 +140,16 @@ test("band: in flow directly under the book; the one fixed canvas is the horizon
           const strip = host.getBoundingClientRect();
           // elementFromPoint skips pointer-events: none, so the strip is made
           // hit testable for this one read: paint order alone must give the point to the text.
+          // The pill docks on the strip at the bottom centre by design (z 45, over
+          // the footer row's centre at the foot of the page); it steps aside for the read.
+          const pill = document.querySelector<HTMLElement>("[data-pill]");
           host.style.pointerEvents = "auto";
           canvas.style.pointerEvents = "auto";
+          if (pill) pill.style.visibility = "hidden";
           const at = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
           host.style.pointerEvents = "";
           canvas.style.pointerEvents = "";
+          if (pill) pill.style.visibility = "";
           return { overStrip: r.top < strip.bottom && r.bottom > strip.top, owned: !!at && el.contains(at) };
         },
         { selector, i },
@@ -150,10 +161,10 @@ test("band: in flow directly under the book; the one fixed canvas is the horizon
 
 test("band: a real click on \"Play it\" starts playback", async ({ page }) => {
   await instrument(page);
-  await openHome(page, { path: "/?wavedebug" });
+  await openHome(page, { path: HOME });
   await scrollBandIntoView(page);
 
-  await page.locator("#listen").getByRole("button", { name: "Play it" }).click();
+  await page.locator("#listen").getByRole("button", { name: L.accept, exact: true }).click();
 
   await expect.poll(async () => (await media(page)).some((el) => !el.paused), { message: "a playing media element" }).toBe(true);
   // Followed by index: currentSrc can still be empty on the first read.
@@ -164,14 +175,14 @@ test("band: a real click on \"Play it\" starts playback", async ({ page }) => {
     .toBeGreaterThan(0.2);
 });
 
-test("band: the wave draws while the band is in view, and \"Maybe later\" brings it to a stop", async ({ page }) => {
+test("band: the wave draws while the band is in view, and \"Not now\" brings it to a stop", async ({ page }) => {
   await instrument(page);
-  await openHome(page, { path: "/?wavedebug" });
+  await openHome(page, { path: HOME });
   await scrollBandIntoView(page);
   const moving = await bandPaints(page);
   await expect.poll(async () => (await bandPaints(page)) - moving, { message: "repaints while in view" }).toBeGreaterThan(10);
 
-  await page.locator("#listen").getByRole("button", { name: "Maybe later" }).click();
+  await page.locator("#listen").getByRole("button", { name: L.decline, exact: true }).click();
   await page.mouse.move(4, 4);
 
   // It eases to a still line, then stops painting: a whole second with no repaint.
@@ -213,7 +224,7 @@ test("band: the still line under reduced motion is pixel identical to the baseli
 // weight blend or a frozen field moves one of them out of it.
 test("band: idle drift paints the same dot count and extent as before the split", async ({ page }) => {
   await instrument(page);
-  await openHome(page, { path: "/?wavedebug" });
+  await openHome(page, { path: HOME });
   await scrollBandIntoView(page);
   await page.waitForTimeout(1200);
   const stats = await page.evaluate(() => {
@@ -242,11 +253,11 @@ test("band: idle drift paints the same dot count and extent as before the split"
 });
 
 test("band: the pill shows once the band is off screen with music on, and only then takes keyboard focus", async ({ page }) => {
-  await openHome(page, { path: "/?wavedebug" });
+  await openHome(page, { path: HOME });
   await scrollBandIntoView(page);
   const pill = page.locator("[data-pill]");
-  const capsule = page.getByRole("button", { name: "Open soundtrack player" });
-  await page.locator("#listen").getByRole("button", { name: "Play it" }).click();
+  const capsule = page.getByRole("button", { name: S.ariaOpen });
+  await page.locator("#listen").getByRole("button", { name: L.accept, exact: true }).click();
   // Music on, band in view: the band holds the controls, the pill stays away.
   await expect(pill).toHaveAttribute("inert", "");
 
