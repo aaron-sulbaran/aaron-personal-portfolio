@@ -24,8 +24,8 @@ function input(overrides: Partial<FieldInput> = {}): FieldInput {
     regime: "idle",
     bands: new Float32Array(columns),
     audioLevel: 0,
-    weights: new Float32Array(columns).fill(1),
     carve: null,
+    phase: 0,
     ...overrides,
   };
 }
@@ -152,20 +152,48 @@ describe("frame-rate independence", () => {
   it("reaches the same field state at 60Hz and 120Hz", () => {
     const at60 = createField(16);
     const at120 = createField(16);
-    for (let f = 0; f < 120; f++) stepField(at60, input({ bands: new Float32Array(16), weights: new Float32Array(16).fill(1), regime: "still", time: f / 60, dt: 1 / 60 }));
-    for (let f = 0; f < 240; f++) stepField(at120, input({ bands: new Float32Array(16), weights: new Float32Array(16).fill(1), regime: "still", time: f / 120, dt: 1 / 120 }));
+    for (let f = 0; f < 120; f++) stepField(at60, input({ bands: new Float32Array(16), regime: "still", time: f / 60, dt: 1 / 60 }));
+    for (let f = 0; f < 240; f++) stepField(at120, input({ bands: new Float32Array(16), regime: "still", time: f / 120, dt: 1 / 120 }));
     expect(at60.levels.idle).toBeCloseTo(at120.levels.idle, 6);
   });
 });
 
-describe("column weights in the field", () => {
-  it("flattens a zero-weight column to the floor line while its neighbours move", () => {
-    const weights = new Float32Array(24).fill(1);
-    weights[5] = 0;
-    const field = createField(24);
-    for (let f = 0; f < 240; f++) stepField(field, input({ weights, time: 1 + f / 60 }));
-    expect(field.mag[5]).toBeCloseTo(FLOOR, 4);
-    expect(Math.abs(field.disp[5])).toBe(0);
-    expect(field.mag[12]).toBeGreaterThan(FLOOR * 2);
+describe("field with phase", () => {
+  const phaseInput = (over: Partial<FieldInput> = {}): FieldInput => ({
+    time: 1,
+    dt: 1 / 60,
+    regime: "idle" as const,
+    bands: new Float32Array(8),
+    audioLevel: 0,
+    carve: null,
+    phase: 0,
+    ...over,
+  });
+
+  it("a phase of one column shifts the shape by one column", () => {
+    expect(columnTarget(3 + 1, 2, levelTargets("idle"), 0)).toBeCloseTo(columnTarget(4, 2, levelTargets("idle"), 0), 12);
+    expect(columnDisplacement(2.5, 2, levelTargets("idle"), 0)).not.toBeCloseTo(columnDisplacement(2, 2, levelTargets("idle"), 0), 3);
+  });
+
+  it("stepField no longer takes weights: magnitude eases toward the unweighted target", () => {
+    const field = createField(8);
+    for (let k = 0; k < 400; k++) stepField(field, phaseInput());
+    const target = columnTarget(0, 1, levelTargets("idle"), 0);
+    expect(field.mag[0]).toBeCloseTo(target, 3);
+  });
+
+  it("applying a constant weight at paint time equals the old weighted field", () => {
+    // The old engine eased toward FLOOR + (target - FLOOR) * w. Easing is
+    // affine, so scaling the unweighted magnitude after easing is identical.
+    const w = 0.4;
+    const unweighted = createField(4);
+    let old = FLOOR;
+    for (let k = 0; k < 50; k++) {
+      stepField(unweighted, phaseInput({ time: k / 60 }));
+      const target = columnTarget(0, k / 60, unweighted.levels, 0);
+      const scaled = FLOOR + (target - FLOOR) * w;
+      old = scaled + (old - scaled) * Math.pow(1 - (scaled > old ? 0.35 : 0.12), (1 / 60) * 45);
+    }
+    expect(FLOOR + (unweighted.mag[0] - FLOOR) * w).toBeCloseTo(old, 6);
   });
 });
