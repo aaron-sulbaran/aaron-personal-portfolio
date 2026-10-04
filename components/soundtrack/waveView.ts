@@ -26,7 +26,7 @@ const FEATHER = 48;
 export interface ViewOptions {
   kind: "band" | "horizon";
   still: boolean;
-  avoidRoot: ParentNode; // where [data-wave-avoid] is queried
+  avoidRoot: ParentNode; // where [data-wave-avoid] is queried (the horizon keeps to main and the footer under it)
   alphas: Alphas | ((theme: "light" | "dark") => Alphas);
 }
 

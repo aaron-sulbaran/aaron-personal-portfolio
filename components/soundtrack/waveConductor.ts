@@ -209,6 +209,7 @@ function createInstance(still: boolean): Instance {
     },
     // The sweep's domain is [0, 1]: all in the band to all on the horizon.
     setSweepTarget(target, snap = false) {
+      if (!Number.isFinite(target)) return;
       const previous = conductor.sweep.target;
       conductor.sweep.target = Math.min(1, Math.max(0, target));
       // Reduced motion never steps, so the train lands without travel.
