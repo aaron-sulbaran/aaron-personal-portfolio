@@ -57,7 +57,7 @@ export function initSoundtrackFromStorage(): void {
   // Idempotent: only seed from storage while the choice is still unanswered.
   // Two components call this on mount and the home page can remount on client
   // nav, so re-running once the user is live ("on"/"paused"/"off") would clobber
-  // real state — e.g. reapplying stored "on" as "paused" over a singleton that
+  // real state, for example reapplying stored "on" as "paused" over a singleton that
   // is still audibly playing.
   if (state !== "before") return;
   try {
