@@ -2,6 +2,8 @@
 // query, `/?wavedebug#about`, or after the fragment, `/#about?wavedebug`) and
 // exposed as `window.__waveProbe`. Without the flag `waveProbe()` returns null
 // and every caller's per-frame cost is one null check; nothing is written.
+// For a deep link the query must precede the hash: `/#about?wavedebug` makes
+// the fragment `about?wavedebug`, which no element matches, so it lands at the top.
 //
 // The horizon view registers its readers once (`attachWaveSource`) and bumps
 // `horizonPaints` per paint; the readers build their answers only when called.
