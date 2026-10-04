@@ -1,7 +1,7 @@
 import { getSoundtrackPlayer } from "@/lib/audio";
 import { getSoundtrackState, subscribeSoundtrack } from "@/lib/soundtrack";
 import { createConveyor, feedScroll, stepConveyor, type ConveyorState } from "@/lib/waveform/conveyor";
-import { FLOOR, createField, regimeOf, stepField, type Field, type Regime } from "@/lib/waveform/field";
+import { FLOOR, createField, levelTargets, regimeOf, stepField, type Field, type Regime } from "@/lib/waveform/field";
 
 // The waveform's one engine: the field, the loop, the audio sample, the
 // regime, the clock, the scroll conveyor and the sweep. Views (waveView.ts)
@@ -25,6 +25,7 @@ import { FLOOR, createField, regimeOf, stepField, type Field, type Regime } from
 const FAST_FRAME_MS = 1000 / 60 - 2;
 const SLOW_FRAME_MS = 1000 / 30 - 2;
 const MAX_STEP_S = 0.1;
+const LEVEL_EPSILON = 1e-3;
 
 // Stand-in until the sweep lands in Task 5, which steps it by dt here.
 type SweepState = { value: number; target: number };
@@ -37,7 +38,7 @@ export interface WaveView {
   prepare(): void;
   // Called once per conductor frame after the field steps; paint the field.
   paint(time: number): void;
-  // True while this view should be painted (in view, not frozen).
+  // True while this view should be painted: in view. Freezing is global, on the conductor.
   active(): boolean;
   // True if this view has anything still easing of its own; keeps the loop awake.
   busy(): boolean;
@@ -131,7 +132,15 @@ function createInstance(still: boolean): Instance {
     });
     for (const view of views) if (view.active()) view.paint(time);
     listeners.forEach((listener) => listener());
-    const calm = regime !== "reactive" && !moving && !sweeping;
+    // 30fps only in a steady state: a regime change (pausing, "Maybe later")
+    // eases at 60fps as it always did, and drops once the levels arrive.
+    const goal = levelTargets(regime);
+    const levels = conductor.field.levels;
+    const arrived =
+      Math.abs(levels.idle - goal.idle) < LEVEL_EPSILON &&
+      Math.abs(levels.paused - goal.paused) < LEVEL_EPSILON &&
+      Math.abs(levels.reactive - goal.reactive) < LEVEL_EPSILON;
+    const calm = regime !== "reactive" && arrived && !moving && !sweeping;
     minFrameMs = calm ? SLOW_FRAME_MS : FAST_FRAME_MS;
     return settled && !moving && !sweeping && !views.some((view) => view.busy());
   };

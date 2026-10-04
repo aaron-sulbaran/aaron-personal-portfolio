@@ -198,6 +198,8 @@ export function createWaveView(canvas: HTMLCanvasElement, conductor: WaveConduct
   };
   const onPointerLeave = () => {
     pointer.on = false;
+    // Wake a stopped loop so a carve under a cursor that left the window eases out.
+    conductor.wake();
   };
   if (fine) {
     window.addEventListener("pointermove", onPointerMove, { passive: true });
