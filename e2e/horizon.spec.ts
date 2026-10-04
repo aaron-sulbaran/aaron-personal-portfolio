@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { DUCK_ALPHA } from "@/lib/waveform/duck";
+import { DUCK, DUCK_ALPHA } from "@/lib/waveform/duck";
 import { HORIZON } from "@/lib/waveform/layout";
 import { THEME_STORAGE_KEY } from "@/lib/theme";
 import { test, expect } from "./support/fixtures";
@@ -172,7 +172,8 @@ for (const theme of ["light", "dark"] as const) {
 }
 
 // The last right-column item of Up to now sits 48px low (md:translate-y-12)
-// and drifts with its parallax, so its words reach past the list's own box.
+// and drifts with its parallax, so its words reach past the list's own box;
+// the list pads its avoid box for them (data-wave-avoid-pad).
 test("horizon: Up to now's last right-column item is ducked while its words cross the strip", async ({ page }) => {
   await openHome(page, { path: HOME });
   const items = page.locator("#up-to-now ol > li");
@@ -201,6 +202,25 @@ test("horizon: Up to now's last right-column item is ducked while its words cros
       await page.waitForTimeout(600);
     }
     await page.waitForTimeout(SETTLE_MS);
+    // The list's own avoid box covers the item's words with the default pad to
+    // spare, so the duck does not lean on Connect's look-ahead below it.
+    const cover = await page.evaluate(
+      ({ selector, last }) => {
+        const range = document.createRange();
+        range.selectNodeContents(document.querySelectorAll(selector)[last]);
+        const words = range.getBoundingClientRect().bottom + window.scrollY;
+        const ol = document.querySelector("#up-to-now ol")!.getBoundingClientRect();
+        const olTop = ol.top + window.scrollY;
+        const olBottom = ol.bottom + window.scrollY;
+        const boxes = window.__waveProbe!.rects().filter((r) => r.top <= olTop && r.bottom >= olBottom);
+        return { words, boxes: boxes.length, bottom: boxes.length === 1 ? boxes[0].bottom : Number.NaN };
+      },
+      { selector, last },
+    );
+    expect(cover.boxes, "one avoid box spans the list").toBe(1);
+    expect(cover.bottom, `the list's avoid box bottom against the words, ${into}px into the strip`).toBeGreaterThanOrEqual(
+      cover.words + DUCK.padPx,
+    );
     const report = await duckReport(page, selector, last, DUCK_ALPHA.light);
     expect(report.overStrip, `words ${into}px into the strip`).toBe(true);
     expect(report.under).toBeGreaterThan(0);
