@@ -151,11 +151,19 @@ test("band: the still line under reduced motion is pixel identical to the baseli
   await settled(page);
   await scrollBandIntoView(page);
   await page.waitForTimeout(300);
-  await expect(page.locator("#listen canvas")).toHaveScreenshot("band-still.png", { maxDiffPixels: 0, threshold: 0 });
+  // The band's copy and controls are masked, so a copy change cannot break the wave guard.
+  await expect(page.locator("#listen canvas")).toHaveScreenshot("band-still.png", {
+    maxDiffPixels: 0,
+    threshold: 0,
+    mask: [page.locator("#listen [data-wave-avoid]")],
+  });
 });
 
 // The idle drift runs on a real clock, so frames differ run to run; its dot
-// count and vertical extent stand in for the pixels.
+// count and vertical extent stand in for the pixels. The band around them is
+// pinned to main before the split (b18e2e6, 1440 by 270 canvas): 4716 and 4730
+// painted pixels, extents of 76 and 68px. A sign error in the phase, a wrong
+// weight blend or a frozen field moves one of them out of it.
 test("band: idle drift paints the same dot count and extent as before the split", async ({ page }) => {
   await instrument(page);
   await openHome(page);
@@ -179,8 +187,11 @@ test("band: idle drift paints the same dot count and extent as before the split"
     }
     return { painted, top, bottom, width, height };
   });
-  expect(stats.painted).toBeGreaterThan(2000);
-  expect(stats.bottom - stats.top).toBeLessThan(stats.height * 0.5);
+  const MAIN_PAINTED = 4720;
+  expect(stats.painted).toBeGreaterThan(MAIN_PAINTED * 0.85);
+  expect(stats.painted).toBeLessThan(MAIN_PAINTED * 1.15);
+  expect(stats.bottom - stats.top).toBeGreaterThanOrEqual(60);
+  expect(stats.bottom - stats.top).toBeLessThanOrEqual(100);
 });
 
 test("band: the pill shows once the band is off screen with music on, and only then takes keyboard focus", async ({ page }) => {
