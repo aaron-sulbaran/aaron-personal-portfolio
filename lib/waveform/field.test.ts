@@ -228,16 +228,24 @@ describe("field with phase", () => {
 
   it("applying a constant weight at paint time equals the old weighted field", () => {
     // The old engine eased toward FLOOR + (target - FLOOR) * w. Easing is
-    // affine, so scaling the unweighted magnitude after easing is identical.
+    // affine, so scaling the unweighted magnitude after easing is identical,
+    // rising (0.35) and falling (0.12) alike. The field stores float32, which
+    // bounds the agreement near 1e-8.
     const w = 0.4;
     const unweighted = createField(4);
-    let old = FLOOR;
-    for (let k = 0; k < 50; k++) {
-      stepField(unweighted, phaseInput({ time: k / 60 }));
+    let old = FLOOR + (0 - FLOOR) * w;
+    let falling = 0;
+    let worst = 0;
+    for (let k = 0; k < 150; k++) {
+      const regime = k < 50 ? "idle" : "still";
+      stepField(unweighted, phaseInput({ time: k / 60, regime }));
       const target = columnTarget(0, k / 60, unweighted.levels, 0);
       const scaled = FLOOR + (target - FLOOR) * w;
+      if (scaled < old) falling++;
       old = scaled + (old - scaled) * Math.pow(1 - (scaled > old ? 0.35 : 0.12), (1 / 60) * 45);
+      worst = Math.max(worst, Math.abs(FLOOR + (unweighted.mag[0] - FLOOR) * w - old));
     }
-    expect(FLOOR + (unweighted.mag[0] - FLOOR) * w).toBeCloseTo(old, 6);
+    expect(falling).toBeGreaterThan(50);
+    expect(worst).toBeLessThan(2e-8);
   });
 });
