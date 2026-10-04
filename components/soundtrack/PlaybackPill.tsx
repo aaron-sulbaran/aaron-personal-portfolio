@@ -202,7 +202,7 @@ function PillInner({ reached }: { reached: boolean }) {
             onClick={press}
             onMouseEnter={() => previewable && send("enter")}
             onMouseLeave={() => send("leave")}
-            aria-label={startsMusic ? c.invite : c.ariaOpen}
+            aria-label={`${capsuleText(music, track.title)}. ${startsMusic ? c.invite : c.ariaOpen}`}
             data-cursor-hover
             style={{ ...capsule, ["--pill-hit-inset" as string]: `${(DOCK.hitPx - DOCK.capsulePx) / 2}px` }}
           >

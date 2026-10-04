@@ -414,8 +414,8 @@ test("dock: unanswered, the pill arrives as \"Music?\" with no label and nothing
   const samples = await stopDock(page);
   const texts = new Set(samples.filter((s) => !s.inert).map((s) => s.text));
   expect([...texts], "the pill's text from its arrival on").toEqual([S.capsuleUnanswered]);
-  // One click is a yes: the capsule's name is the invitation.
-  await expect(page.locator(CAPSULE)).toHaveAccessibleName(S.invite);
+  // One click is a yes: the capsule's name is its visible text, then the invitation.
+  await expect(page.locator(CAPSULE)).toHaveAccessibleName(`${S.capsuleUnanswered}. ${S.invite}`);
   expect(await storedChoice(page)).toBeNull();
 });
 
@@ -454,8 +454,8 @@ test("dock: when the audio cannot start, the pill says so and the state is pause
 
   await toAbout(page);
   await expect.poll(() => dockText(page), { timeout: 1000, message: "the failure label" }).toBe(S.dockFailed);
-  // One press retries: the capsule's name is the invitation while the start has failed.
-  await expect(page.locator(CAPSULE)).toHaveAccessibleName(S.invite);
+  // One press retries: the capsule's name ends with the invitation while the start has failed.
+  await expect(page.locator(CAPSULE)).toHaveAccessibleName(`${S.capsulePaused}. ${S.invite}`);
   await expect.poll(() => dockText(page), { timeout: 4000, message: "the collapsed capsule" }).toBe(S.capsulePaused);
   // Paused persists as the opt-in; nothing claims audible music, and nothing
   // is audible: the element asked to play failed its source and never played
@@ -483,7 +483,7 @@ test("dock: pausing in the band inside the start window is the visitor's pause, 
   await expect.poll(() => dockText(page), { timeout: 4000, message: "the collapsed capsule" }).toBe(S.capsulePaused);
   const texts = new Set((await stopDock(page)).map((s) => s.text));
   expect(texts.has(S.dockFailed), "the failure label at any point").toBe(false);
-  await expect(page.locator(CAPSULE)).toHaveAccessibleName(S.ariaOpen);
+  await expect(page.locator(CAPSULE)).toHaveAccessibleName(`${S.capsulePaused}. ${S.ariaOpen}`);
 });
 
 // Scrolls just past the arrival threshold (sweep target 0.35) with the band
