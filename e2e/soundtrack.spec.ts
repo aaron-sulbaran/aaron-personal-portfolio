@@ -102,7 +102,10 @@ async function focusLastBeforePill(page: Page) {
 
 // The rule that replaced "no canvas behind text": the one fixed canvas is the
 // horizon strip, behind the content (z 0 under 10) with no pointer events, so
-// every text box that crosses it still owns the point at its centre.
+// every text box that crosses it paints above the strip at its centre. The
+// docked pill may sit over that point (it docks on the strip by design); it is
+// neither text nor strip, so the read is the order of those two in the stack,
+// and the footer test below proves the pill leaves the footer's words clear.
 test("band: in flow directly under the book; the one fixed canvas is the horizon, behind the text", async ({ page }) => {
   await openHome(page, { path: HOME });
   const layout = await page.evaluate(() => {
@@ -158,14 +161,16 @@ test("band: in flow directly under the book; the one fixed canvas is the horizon
           const host = document.querySelector<HTMLElement>('[data-wave="horizon"]')!;
           const canvas = host.querySelector("canvas")!;
           const strip = host.getBoundingClientRect();
-          // elementFromPoint skips pointer-events: none, so the strip is made
-          // hit testable for this one read: paint order alone must give the point to the text.
+          // elementsFromPoint skips pointer-events: none, so the strip is made
+          // hit testable for this one read: paint order alone must put the text above the strip.
           host.style.pointerEvents = "auto";
           canvas.style.pointerEvents = "auto";
-          const at = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+          const stack = document.elementsFromPoint(r.left + r.width / 2, r.top + r.height / 2);
           host.style.pointerEvents = "";
           canvas.style.pointerEvents = "";
-          return { overStrip: r.top < strip.bottom && r.bottom > strip.top, owned: !!at && el.contains(at) };
+          const text = stack.findIndex((node) => el.contains(node));
+          const below = stack.findIndex((node) => host.contains(node));
+          return { overStrip: r.top < strip.bottom && r.bottom > strip.top, owned: text >= 0 && below >= 0 && text < below };
         },
         { selector, i },
       );
