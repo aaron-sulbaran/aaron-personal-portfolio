@@ -64,11 +64,13 @@ function PillInner({ reached }: { reached: boolean }) {
     if (failed && labelsShown.has("failed")) setLabelsShown(new Set([...labelsShown].filter((k) => k !== "failed")));
   }
 
-  // A restored opt-in is greeted once per session; a restored opt-out gets the quiet capsule.
+  // A restored opt-in is greeted once per session and lands as the quiet
+  // "Paused" capsule on later loads; a restored opt-out gets the quiet capsule.
   const restored = getRestoredSoundtrack();
   const input = { music, reached, phone, failed, returning: restored === "paused" && !greetedAtLoad, labelShown: false };
   const kind = dockLabel(input);
-  const labelShown = labelsShown.has(kind) || (kind === "declined" && restored === "off");
+  const quietRestore = (restored === "off" && kind === "declined") || (restored === "paused" && greetedAtLoad && kind === "accepted");
+  const labelShown = labelsShown.has(kind) || quietRestore;
   const mode = dockMode({ ...input, labelShown });
   const shown = mode !== "hidden";
   const line = labelLine(kind);
@@ -120,6 +122,11 @@ function PillInner({ reached }: { reached: boolean }) {
   const collapse = () => {
     restoreFocus.current = Boolean(document.activeElement?.closest("[data-pill]"));
     send("collapse");
+  };
+  // Only keyboard focus holds the label: a mouse click focuses the capsule too,
+  // and that must not pin the label open.
+  const focus = (event: FocusEvent<HTMLDivElement>) => {
+    if (event.target.matches(":focus-visible")) setHeld((h) => ({ ...h, focus: true }));
   };
   const blur = (event: FocusEvent<HTMLDivElement>) => {
     if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setHeld((h) => ({ ...h, focus: false }));
@@ -180,7 +187,7 @@ function PillInner({ reached }: { reached: boolean }) {
           ref={wrapperRef}
           onMouseEnter={() => setHeld((h) => ({ ...h, pointer: true }))}
           onMouseLeave={() => setHeld((h) => ({ ...h, pointer: false }))}
-          onFocus={() => setHeld((h) => ({ ...h, focus: true }))}
+          onFocus={focus}
           onBlur={blur}
           style={{ position: "relative", pointerEvents: shown ? "auto" : "none" }}
         >
@@ -197,7 +204,7 @@ function PillInner({ reached }: { reached: boolean }) {
             onMouseLeave={() => send("leave")}
             aria-label={startsMusic ? c.invite : c.ariaOpen}
             data-cursor-hover
-            style={capsule}
+            style={{ ...capsule, ["--pill-hit-inset" as string]: `${(DOCK.hitPx - DOCK.capsulePx) / 2}px` }}
           >
             <span style={reveal(preview, "40px", reduce)}>
               <Cover size={38} cover={track.cover} />

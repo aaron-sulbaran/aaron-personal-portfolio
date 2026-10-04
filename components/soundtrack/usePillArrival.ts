@@ -10,9 +10,10 @@ import { DOCK, setDocked, takeDockSource } from "@/lib/waveform/dock";
 // transitions own the capsule again.
 //
 //   Arrival: born at the band control the visitor pressed (or the one it
-//   last returned into), while that is on screen: from its centre at 0.6
-//   scale and 0.4 opacity to the dock over DOCK.arriveMs on the site's ease
-//   (--ease-out is a quint out, GSAP's power4.out). Otherwise a 12px rise.
+//   last returned into; with neither, the band's controls) while that is on
+//   screen: from its centre at 0.6 scale and 0.4 opacity to the dock over
+//   DOCK.arriveMs on the site's ease (--ease-out is a quint out, GSAP's
+//   power4.out). A source off screen (a deep link, an anchor jump) rises 12px.
 //   Return: back into that control (or the band's controls) if on screen,
 //   shrinking and fading as it goes; otherwise a fade down. The band's
 //   controls fade out while the pill is out (setDocked) and back once it is in.
@@ -94,8 +95,10 @@ export function usePillArrival(target: RefObject<HTMLElement | null>, shown: boo
         tween.current = gsap.to(el, { x: 0, y: 0, scale: 1, opacity: 1, duration: DOCK.arriveMs / 1000, ease: "power4.out", onComplete: land });
         return;
       }
-      const source = home.current ? toViewport(home.current) : null;
-      if (source && onScreen(source)) {
+      const page = home.current ?? bandControls();
+      const source = page ? toViewport(page) : null;
+      if (page && source && onScreen(source)) {
+        home.current = page;
         gsap.set(el, { clearProps: "transform,opacity" });
         const from = centre(source);
         const to = centre(el.getBoundingClientRect());
