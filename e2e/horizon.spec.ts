@@ -13,8 +13,12 @@ import {
   paintsOver,
   paintedColumns,
   parkBand,
+  scrollHeld,
+  stripPixelsUnder,
   sweep,
   sweepTriggers,
+  sweepTriggersCreated,
+  themeOf,
 } from "./support/wave";
 
 // The horizon strip: the wave leaves the band as the reader scrolls on and
@@ -106,6 +110,7 @@ test("horizon: the sweep follows scroll, out to the strip and back", async ({ pa
   await expect
     .poll(() => paintsOver(page, 1000), { timeout: 10_000, intervals: [0], message: "horizon repaints in a quiet second" })
     .toBe(0);
+  expect(await paintsOver(page, 1000), "horizon repaints in the next second").toBe(0);
 });
 
 test("horizon: a jump past the band lands the train on the strip within 1.5s", async ({ page }) => {
@@ -168,6 +173,18 @@ for (const theme of ["light", "dark"] as const) {
     await scrollToY(page, Math.round(await documentTop(page, "#about")));
     await expect.poll(() => sweep(page)).toBeGreaterThan(0.99);
     await expectBlocksDucked(page, DUCK_ALPHA[theme]);
+
+    // The canvas itself, under the About heading's words: no pixel carries more
+    // alpha than the ceiling. One ducked dot's full coverage is
+    // round(DUCK_ALPHA * 255); the 2 levels of tolerance cover the 8-bit
+    // rounding of the premultiplied store and antialiased edges where two
+    // dots of one fill meet.
+    const vh = page.viewportSize()!.height;
+    await placeBottom(page, "#about h2[data-wave-avoid]", 0, vh - HORIZON.lift);
+    await page.waitForTimeout(SETTLE_MS);
+    const pixels = await stripPixelsUnder(page, "#about h2[data-wave-avoid]", 0);
+    expect(pixels.painted, "dots painted under the heading").toBeGreaterThan(0);
+    expect(pixels.max, "the strongest alpha under the heading (0 to 255)").toBeLessThanOrEqual(Math.round(DUCK_ALPHA[theme] * 255) + 2);
   });
 }
 
@@ -180,15 +197,18 @@ test("horizon: Up to now's last right-column item is ducked while its words cros
   const count = await items.count();
   const last = count % 2 === 0 ? count - 1 : count - 2;
   const selector = "#up-to-now ol > li";
+  const theme = await themeOf(page);
   await scrollToY(page, Math.round(await documentTop(page, "#up-to-now")));
   await expect.poll(() => sweep(page)).toBeGreaterThan(0.99);
   const vh = page.viewportSize()!.height;
   // From the words just entering the strip's top to their bottom on its floor.
   for (const into of [8, 24, 48, HORIZON.height - HORIZON.lift, HORIZON.height - 8]) {
     const wordsBottom = vh - HORIZON.height + into;
-    // The words' own bottom, as painted (translate and parallax included), at wordsBottom.
-    for (let attempt = 0; attempt < 3; attempt++) {
-      const delta = await page.evaluate(
+    // The words' own bottom, as painted (translate and parallax included), at
+    // wordsBottom. The parallax is scrubbed, so each correction waits for the
+    // item's layer transform to read the same twice before measuring again.
+    const depth = () =>
+      page.evaluate(
         ({ selector, last, wordsBottom }) => {
           const range = document.createRange();
           range.selectNodeContents(document.querySelectorAll(selector)[last]);
@@ -196,11 +216,31 @@ test("horizon: Up to now's last right-column item is ducked while its words cros
         },
         { selector, last, wordsBottom },
       );
+    const layerHeld = async () => {
+      let previous: string | null = null;
+      await expect
+        .poll(
+          async () => {
+            const now = await page.evaluate(
+              ({ selector, last }) => (document.querySelectorAll(selector)[last].firstElementChild as HTMLElement).style.transform,
+              { selector, last },
+            );
+            const held = now === previous;
+            previous = now;
+            return held;
+          },
+          { intervals: [100], message: "the parallax layer at rest" },
+        )
+        .toBe(true);
+    };
+    await layerHeld();
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const delta = await depth();
       if (Math.abs(delta) < 1) break;
       await scrollToY(page, Math.round((await page.evaluate(() => window.scrollY)) + delta));
-      // The parallax is scrubbed (0.5s): let it catch up before measuring again.
-      await page.waitForTimeout(600);
+      await layerHeld();
     }
+    expect(Math.abs(await depth()), `the words' bottom ${into}px into the strip`).toBeLessThan(1);
     await page.waitForTimeout(SETTLE_MS);
     // The list's own avoid box covers the item's words with the default pad to
     // spare, so the duck does not lean on Connect's look-ahead below it.
@@ -221,7 +261,7 @@ test("horizon: Up to now's last right-column item is ducked while its words cros
     expect(cover.bottom, `the list's avoid box bottom against the words, ${into}px into the strip`).toBeGreaterThanOrEqual(
       cover.words + DUCK.padPx,
     );
-    const report = await duckReport(page, selector, last, DUCK_ALPHA.light);
+    const report = await duckReport(page, selector, last, DUCK_ALPHA[theme]);
     expect(report.overStrip, `words ${into}px into the strip`).toBe(true);
     expect(report.under).toBeGreaterThan(0);
     expect(report.loud, `columns painting loud under the last item, words ${into}px into the strip`).toEqual([]);
@@ -236,7 +276,9 @@ test("horizon: a fast flick lands with the text over the strip already ducked", 
     await page.mouse.wheel(0, 120);
     await page.waitForTimeout(8);
   }
+  await scrollHeld(page);
   await page.waitForTimeout(SETTLE_MS);
+  const theme = await themeOf(page);
   const reports = await page.evaluate(() => {
     const strip = document.querySelector('[data-wave="horizon"]')!.getBoundingClientRect();
     return [...document.querySelectorAll("main [data-wave-avoid], footer [data-wave-avoid]")]
@@ -247,7 +289,7 @@ test("horizon: a fast flick lands with the text over the strip already ducked", 
   expect(reports.length, "text boxes over the strip after the flick").toBeGreaterThan(0);
   let checked = 0;
   for (const index of reports) {
-    const report = await duckReport(page, "main [data-wave-avoid], footer [data-wave-avoid]", index, DUCK_ALPHA.light);
+    const report = await duckReport(page, "main [data-wave-avoid], footer [data-wave-avoid]", index, DUCK_ALPHA[theme]);
     if (!report.overStrip) continue; // the box reaches the strip, its words do not
     checked++;
     expect(report.under).toBeGreaterThan(0);
@@ -267,13 +309,22 @@ test("horizon: the strip sits behind the text and takes no pointer", async ({ pa
     const canvas = host.querySelector("canvas")!;
     const lede = document.querySelector("#about p[data-wave-avoid]")!;
     const r = lede.getBoundingClientRect();
-    const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
     const strip = host.getBoundingClientRect();
-    return {
+    const styles = {
       zIndex: getComputedStyle(host).zIndex,
       position: getComputedStyle(host).position,
       hostEvents: getComputedStyle(host).pointerEvents,
       canvasEvents: getComputedStyle(canvas).pointerEvents,
+    };
+    // elementFromPoint skips pointer-events: none, so the strip is made hit
+    // testable for this one read: paint order alone must give the point to the text.
+    host.style.pointerEvents = "auto";
+    canvas.style.pointerEvents = "auto";
+    const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    host.style.pointerEvents = "";
+    canvas.style.pointerEvents = "";
+    return {
+      ...styles,
       overStrip: r.top < strip.bottom && r.bottom > strip.top,
       hitIsText: !!hit && lede.contains(hit),
     };
@@ -301,6 +352,7 @@ test("horizon: reduced motion shows the still strip past the band and never loop
 test("horizon: a live reduced-motion toggle keeps exactly one sweep trigger", async ({ page }) => {
   await openHome(page, { path: HOME });
   expect(await sweepTriggers(page)).toBe(1);
+  const created = await sweepTriggersCreated(page);
   for (let round = 0; round < 2; round++) {
     await page.emulateMedia({ reducedMotion: "reduce" });
     await expect.poll(() => page.locator("section[data-scene]").getAttribute("data-scene")).toBe("off");
@@ -311,6 +363,8 @@ test("horizon: a live reduced-motion toggle keeps exactly one sweep trigger", as
     await nextFrames(page, 2);
     expect(await sweepTriggers(page), `triggers with motion, round ${round + 1}`).toBe(1);
   }
+  // Each of the four toggles rebuilt the trigger (a dropped dependency would leave this at 0).
+  expect((await sweepTriggersCreated(page)) - created, "triggers created across the toggles").toBe(4);
 });
 
 test("horizon: a phone has no strip and keeps the band's controls", async ({ page }) => {

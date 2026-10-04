@@ -1,3 +1,4 @@
+import { DUCK_SPLIT } from "./duck";
 import { FLOOR, type Field } from "./field";
 
 // Turns the field into dots: each column is a centerline dot displaced off the
@@ -23,7 +24,7 @@ export interface DotLayout {
   baselineOffset?: Float32Array;
 }
 
-// Columns whose duck is past half paint into their own arrays, so a view can
+// Columns whose duck is past DUCK_SPLIT paint into their own arrays, so a view can
 // fill them at a lower alpha than the open air.
 export interface DuckSplit {
   duck: ArrayLike<number>;
@@ -103,7 +104,7 @@ export function buildDots(
   for (let i = 0; i < columns; i++) {
     const x = columnX(i);
     const weight = weights[i] ?? 1;
-    const under = ducked !== undefined && ducked.duck[i] > 0.5;
+    const under = ducked !== undefined && ducked.duck[i] > DUCK_SPLIT;
     const toMuted = under ? ducked.muted : muted;
     const toAccent = under ? ducked.accent : accent;
     // Under a carve at weight below 1 this differs slightly from the old

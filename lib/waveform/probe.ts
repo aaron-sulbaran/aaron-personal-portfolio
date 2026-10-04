@@ -17,6 +17,7 @@ export type WaveProbe = {
   columns: () => { x: number; duck: number; alpha: number }[]; // last painted frame, horizon
   rects: () => { left: number; right: number; top: number; bottom: number }[]; // the horizon's padded avoid boxes, document px
   triggers: () => number; // live sweep ScrollTriggers on #listen
+  triggersCreated: () => number; // every sweep ScrollTrigger created, never decremented
 };
 
 export type WaveSource = Pick<WaveProbe, "sweep" | "strip" | "columns" | "rects">;
@@ -30,6 +31,7 @@ declare global {
 let probe: WaveProbe | null | undefined;
 let source: WaveSource | null = null;
 let liveTriggers = 0;
+let createdTriggers = 0;
 
 const flagged = () => /wavedebug/.test(window.location.search) || /wavedebug/.test(window.location.hash);
 
@@ -43,6 +45,7 @@ export function waveProbe(): WaveProbe | null {
     columns: () => source?.columns() ?? [],
     rects: () => source?.rects() ?? [],
     triggers: () => liveTriggers,
+    triggersCreated: () => createdTriggers,
   };
   window.__waveProbe = probe;
   return probe;
@@ -59,5 +62,7 @@ export function attachWaveSource(next: WaveSource): () => void {
 
 // +1 when the sweep trigger is created, -1 when it is killed.
 export function countSweepTrigger(delta: 1 | -1): void {
-  if (waveProbe()) liveTriggers += delta;
+  if (!waveProbe()) return;
+  liveTriggers += delta;
+  if (delta > 0) createdTriggers++;
 }
