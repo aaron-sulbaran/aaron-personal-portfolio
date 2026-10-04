@@ -1,7 +1,7 @@
 // The playback pill's hover rules, pure. Where and when the pill shows is
 // lib/waveform/dock.ts.
 //
-// Hover choreography (spec 6.4): hover grows the capsule into a preview with a
+// Hover choreography: hover grows the capsule into a preview with a
 // delayed tooltip, a click opens the card, leaving the card minimizes it but
 // remembers it briefly (`recent`) so a quick re-hover snaps back, and a short
 // `suppress` window stops the leave from bouncing straight back open. Timers
