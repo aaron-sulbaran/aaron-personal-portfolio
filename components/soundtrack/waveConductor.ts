@@ -60,7 +60,7 @@ export interface WaveConductor {
   setColumns(columns: number, from?: WaveView): void;
   setSweepTarget(target: number, snap?: boolean): void;
   setFrozen(frozen: boolean): void;
-  subscribe(listener: () => void): () => void; // fires after each step
+  subscribe(listener: () => void): () => void; // fires after each step and on a new sweep target
   wake(): void;
   release(): void; // ref counted; the last release destroys it
 }
@@ -209,10 +209,14 @@ function createInstance(still: boolean): Instance {
     },
     // The sweep's domain is [0, 1]: all in the band to all on the horizon.
     setSweepTarget(target, snap = false) {
+      const previous = conductor.sweep.target;
       conductor.sweep.target = Math.min(1, Math.max(0, target));
       // Reduced motion never steps, so the train lands without travel.
       if (snap || still) conductor.sweep.value = conductor.sweep.target;
       wake();
+      // A still or frozen conductor never steps, so a reader of the target
+      // (the pill's dock) hears about it here too.
+      if (conductor.sweep.target !== previous) listeners.forEach((listener) => listener());
     },
     setFrozen(next) {
       frozen = next;

@@ -50,7 +50,9 @@ export function capsuleText(music: SoundtrackState, trackTitle: string): string 
 }
 
 // The arrival source: the band records the control the visitor pressed and
-// the pill takes it once, when it next arrives, to condense out of it.
+// the pill takes it once, when it next arrives, to condense out of it. The
+// band records it in page coordinates (the viewport rect plus the scroll at
+// the press), since the reader scrolls between the press and the arrival.
 let source: DOMRect | null = null;
 
 export function setDockSource(rect: DOMRect | null): void {
@@ -61,4 +63,27 @@ export function takeDockSource(): DOMRect | null {
   const taken = source;
   source = null;
   return taken;
+}
+
+// While the pill is out on the dock the band's controls fade, so the pill
+// reads as the control that left and came back. The pill writes it; the band
+// reads it through useSyncExternalStore.
+let docked = false;
+const dockListeners = new Set<() => void>();
+
+export function getDocked(): boolean {
+  return docked;
+}
+
+export function setDocked(next: boolean): void {
+  if (next === docked) return;
+  docked = next;
+  dockListeners.forEach((listener) => listener());
+}
+
+export function subscribeDocked(listener: () => void): () => void {
+  dockListeners.add(listener);
+  return () => {
+    dockListeners.delete(listener);
+  };
 }
