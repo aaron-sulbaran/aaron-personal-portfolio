@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { siteContent } from "@/lib/content";
 import { DUCK, DUCK_ALPHA } from "@/lib/waveform/duck";
 import { HORIZON } from "@/lib/waveform/layout";
 import { THEME_STORAGE_KEY } from "@/lib/theme";
@@ -87,7 +88,7 @@ test("horizon: the sweep follows scroll, out to the strip and back", async ({ pa
   expect(await sweepAtRest(page)).toBeLessThan(0.05);
   expect(await paintsOver(page, 500), "horizon repaints with the wave in the band").toBe(0);
 
-  await page.locator("#listen").getByRole("button", { name: "Play it" }).click();
+  await page.locator("#listen").getByRole("button", { name: siteContent.listen.accept, exact: true }).click();
 
   // Three positions through the trigger's range (band centre from 60 percent of the viewport to its bottom at 15).
   const readings: number[] = [];
@@ -376,6 +377,7 @@ test("horizon: a phone has no strip and keeps the band's controls", async ({ pag
   // Nothing on a phone touches the probe (no strip, no trigger), so it is never created.
   expect(await page.evaluate(() => window.__waveProbe?.triggers() ?? 0), "sweep triggers on a phone").toBe(0);
   const band = page.locator("#listen");
-  await expect(band.getByRole("button", { name: "Play it" })).toBeAttached();
-  await expect(band.getByRole("button", { name: "Maybe later" })).toBeAttached();
+  // The band's own Play it (a second one waits, inert, beside the declined note).
+  await expect(band.locator('[data-control="before"]')).toHaveText(siteContent.listen.accept);
+  await expect(band.getByRole("button", { name: siteContent.listen.decline, exact: true })).toBeAttached();
 });
