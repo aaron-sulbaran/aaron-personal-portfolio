@@ -6,10 +6,10 @@ import { smoothstep01 } from "./weights";
 // speed capped, closes the gap, so an anchor jump plays as a short glide and
 // reversing the scroll reverses the train for free.
 //
-// The train is as long as its columns (floor(width / spacing) of them, as
-// bandLayout lays them), not the view's width: shifting both tracks by that
-// length puts the horizon's head exactly one spacing past the band's last
-// column at every sweep, whatever the centering margin. The junction curl and
+// The train is as long as its columns (the view's layout.columns times the
+// spacing), not the view's width: shifting both tracks by that length puts
+// the horizon's head exactly one spacing past the band's last column at every
+// sweep, whatever the centering margin. The junction curl and
 // the swell only exist in transit and are identities at rest.
 
 export const SWEEP = { lambda: 8, capPerSecond: 1.5, curlColumns: 10, swell: 0.6 };
@@ -43,11 +43,11 @@ export function stepSweep(state: SweepState, dt: number): boolean {
 export function trainX(
   i: number,
   layout: { startX: number; spacing: number },
-  width: number,
+  columns: number,
   sweep: number,
   side: "band" | "horizon",
 ): number {
-  const length = Math.floor(width / layout.spacing) * layout.spacing;
+  const length = columns * layout.spacing;
   const x = layout.startX + i * layout.spacing;
   return side === "band" ? x - sweep * length : x + (1 - sweep) * length;
 }

@@ -23,14 +23,25 @@ describe("sweep", () => {
     expect(t).toBeLessThan(0.85);
   });
 
+  it("one exact step in the exponential regime pins lambda 8", () => {
+    const s = createSweep();
+    s.value = 0.95;
+    s.target = 1;
+    stepSweep(s, 1 / 60);
+    expect(s.value).toBeCloseTo(0.95 + 0.05 * (1 - Math.exp(-8 / 60)), 9);
+  });
+
   it("the band's tail and the horizon's head meet at the same x for any width and sweep", () => {
     for (const width of [390, 1024, 1440, 2560]) {
       const columns = Math.floor(width / 13);
-      for (const sweep of [0, 0.2, 0.5, 0.83, 1]) {
-        const tail = trainX(columns, layout, width, sweep, "band");
-        const head = trainX(0, layout, width, sweep, "horizon");
-        expect(tail).toBeCloseTo(head, 6);
-        expect(Number.isFinite(trainX(columns - 1, layout, width, sweep, "band"))).toBe(true);
+      const centered = { startX: (width - columns * 13) / 2 + 13 / 2, spacing: 13 };
+      for (const l of [layout, centered]) {
+        for (const sweep of [0, 0.2, 0.5, 0.83, 1]) {
+          const tail = trainX(columns, l, columns, sweep, "band");
+          const head = trainX(0, l, columns, sweep, "horizon");
+          expect(tail).toBeCloseTo(head, 6);
+          expect(Number.isFinite(trainX(columns - 1, l, columns, sweep, "band"))).toBe(true);
+        }
       }
     }
   });
@@ -44,6 +55,13 @@ describe("sweep", () => {
     expect(head.dy).toBeCloseTo(-60, 6);
     expect(head.scale).toBeCloseTo(0.3, 6);
     expect(junction(10, 110, 0.5, "horizon", 60)).toEqual({ dy: 0, scale: 1 });
+  });
+
+  it("partway through the sweep the curl scales with sin(pi * sweep)", () => {
+    const t = 0.9;
+    const smooth = t * t * (3 - 2 * t);
+    expect(junction(109, 110, 0.25, "band", 60).dy).toBeCloseTo(60 * smooth * Math.sin(Math.PI / 4), 9);
+    expect(junction(1, 110, 0.25, "horizon", 60).dy).toBeCloseTo(-60 * smooth * Math.sin(Math.PI / 4), 9);
   });
 
   it("at rest the junction is an identity, so the band at 0 and the horizon at 1 paint flat", () => {

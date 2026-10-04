@@ -195,10 +195,11 @@ function createInstance(still: boolean): Instance {
       requests.set(key, from ? columns : Math.max(requests.get(key) ?? 0, columns));
       resize();
     },
+    // The sweep's domain is [0, 1]: all in the band to all on the horizon.
     setSweepTarget(target, snap = false) {
-      conductor.sweep.target = target;
+      conductor.sweep.target = Math.min(1, Math.max(0, target));
       // Reduced motion never steps, so the train lands without travel.
-      if (snap || still) conductor.sweep.value = target;
+      if (snap || still) conductor.sweep.value = conductor.sweep.target;
       wake();
     },
     setFrozen(next) {
