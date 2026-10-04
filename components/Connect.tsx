@@ -14,6 +14,7 @@ export function Connect() {
       <div className="mx-auto grid max-w-6xl gap-12 md:grid-cols-12 md:gap-16">
         <Reveal className="md:col-span-5">
           <div
+            data-wave-avoid
             className="reveal-item flex items-center gap-3 text-sm text-muted"
             style={revealIndex(0)}
           >
