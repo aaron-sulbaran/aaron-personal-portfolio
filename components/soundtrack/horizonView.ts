@@ -1,13 +1,15 @@
 import { ScrollTrigger } from "@/lib/gsap";
-import { buildDots, carveTargets, type Cursor, type DotLayout } from "@/lib/waveform/dots";
+import { ACCENT_LINE, buildDots, carveTargets, type Cursor, type DotLayout } from "@/lib/waveform/dots";
 import { DUCK, DUCK_ALPHA, duckTargets, stepDuck } from "@/lib/waveform/duck";
-import { HORIZON, PHONE_MAX_PX, horizonLayout } from "@/lib/waveform/layout";
+import { FLOOR } from "@/lib/waveform/field";
+import { HORIZON, horizonLayout } from "@/lib/waveform/layout";
 import { attachWaveSource, waveProbe } from "@/lib/waveform/probe";
 import { trainX } from "@/lib/waveform/sweep";
+import { layTrack } from "@/lib/waveform/track";
 import { columnWeights, type Rect } from "@/lib/waveform/weights";
 import type { WaveConductor } from "./waveConductor";
 import type { ViewOptions, WaveViewHandle } from "./waveView";
-import { createDotPainter, layTrack, sizeCanvas, themeNow, trackPointer, type Alphas, type Theme } from "./viewParts";
+import { createDotPainter, sizeCanvas, themeNow, trackPointer, type Alphas, type Theme } from "./viewParts";
 
 // The horizon view: the train's second track, a strip fixed along the bottom
 // of the viewport (HorizonCanvas.tsx). It paints column i at
@@ -51,6 +53,7 @@ export function createHorizonView(
   let env = new Float32Array(0);
   let targets = new Float32Array(0);
   let carve = new Float32Array(0);
+  let probeAlpha = new Float32Array(0); // only written with ?wavedebug
   const scratch = { dy: 0, scale: 1 };
   const atX = (i: number) => xs[i];
   const muted: number[] = [];
@@ -110,7 +113,15 @@ export function createHorizonView(
     painter.fill(ducked.accent, painter.colors.accent, floor);
     ctx.globalAlpha = 1;
     painted = true;
-    if (probe) probe.horizonPaints++;
+    if (probe) {
+      probe.horizonPaints++;
+      // The alpha each column's centre dot was filled with, as buildDots split it.
+      const mag = conductor.field.mag;
+      for (let i = 0; i < probeAlpha.length; i++) {
+        const accentCentre = FLOOR + (mag[i] - FLOOR) * weights[i] > ACCENT_LINE;
+        probeAlpha[i] = env[i] > 0.5 ? floor : accentCentre ? alphas.accent : alphas.muted;
+      }
+    }
   };
 
   const { pointer, dispose: disposePointer } = trackPointer(!still && window.matchMedia("(pointer: fine)").matches, () =>
@@ -197,17 +208,22 @@ export function createHorizonView(
     layout = horizonLayout(width);
     conductor.setColumns(layout.columns, view);
     const n = layout.columns;
-    xs = new Float32Array(n);
-    offsets = new Float32Array(n);
-    weights = new Float32Array(n);
-    env = new Float32Array(n);
-    targets = new Float32Array(n);
-    carve = new Float32Array(n);
-    ducked.duck = env;
-    primed = false;
+    // A resize that keeps the column count (opening the Menu resizes main)
+    // keeps the duck envelope mid-ease; only a new grid lands re-primed.
+    if (n !== env.length) {
+      xs = new Float32Array(n);
+      offsets = new Float32Array(n);
+      weights = new Float32Array(n);
+      env = new Float32Array(n);
+      targets = new Float32Array(n);
+      carve = new Float32Array(n);
+      probeAlpha = new Float32Array(probe ? n : 0);
+      ducked.duck = env;
+      primed = false;
+    }
     track = { ...layout, baselineOffset: offsets };
     Object.assign(carveLayout, layout);
-    open = columnWeights({ ...layout, reach: 1, feather: 0, edgeTaper: width <= PHONE_MAX_PX ? 24 : 96, rects: [] });
+    open = columnWeights({ ...layout, reach: 1, feather: 0, edgeTaper: 96, rects: [] });
     measureRects();
     refresh();
   };
@@ -246,8 +262,8 @@ export function createHorizonView(
       const r = host.getBoundingClientRect();
       return { top: r.top, bottom: r.bottom, baseline: r.top + layout.baseline };
     },
-    columns: () =>
-      Array.from(xs, (x, i) => ({ x, duck: env[i], alpha: env[i] > 0.5 ? DUCK_ALPHA[theme] : alphas.muted })),
+    // Empty when the last paint drew nothing (the train all back in the band).
+    columns: () => (painted ? Array.from(xs, (x, i) => ({ x, duck: env[i], alpha: probeAlpha[i] })) : []),
   });
 
   return view;

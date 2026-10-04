@@ -90,9 +90,17 @@ describe("buildDots with paint-time weights", () => {
     field.mag.fill(1);
     const muted: number[] = [];
     const accent: number[] = [];
+    const at = (dots: number[], x: number) => xs(dots).filter((dotX) => dotX === x).length;
+    buildDots(field, { ...small, maxAmp: 70 }, 0, new Float32Array([1, 1, 1]), cursor, muted, accent);
+    const uncapped = [...muted, ...accent];
     buildDots(field, { ...small, maxAmp: 70, maxThick: 1 }, 0, new Float32Array([1, 1, 1]), cursor, muted, accent);
     const all = [...muted, ...accent];
-    for (const x of [5, 15, 25]) expect(xs(all).filter((dotX) => dotX === x).length).toBeLessThanOrEqual(3);
+    for (const x of [5, 15, 25]) {
+      expect(at(uncapped, x)).toBeGreaterThan(3);
+      expect(at(all, x)).toBeLessThanOrEqual(3);
+      // The centre dot always stays, on the midline.
+      expect(all.some((v, k) => k % 3 === 0 && v === x && all[k + 1] === 50 && all[k + 2] === CENTER_RADIUS)).toBe(true);
+    }
   });
 
   it("baselineOffset moves the centre dot by its px", () => {
