@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 import { test, expect } from "./support/fixtures";
 import { openHome, scrollToY } from "./support/coil";
+import { settled } from "./support/fallback";
 
 // The soundtrack band (#listen): in flow under the book, the one place the
 // waveform runs; "Play it" really plays, "Maybe later" leaves a still line,
@@ -138,6 +139,48 @@ test("band: the wave draws while the band is in view, and \"Maybe later\" brings
       { timeout: 10_000, intervals: [0], message: "repaints in a quiet second" },
     )
     .toBe(0);
+});
+
+// The engine split's guard: the band must look the same on the conductor and
+// view as it did on the old single engine. Reduced motion paints one still
+// line, so it is compared pixel for pixel against a baseline taken on main
+// before the split (no scene under reduced motion, so no openHome here).
+test("band: the still line under reduced motion is pixel identical to the baseline", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+  await settled(page);
+  await scrollBandIntoView(page);
+  await page.waitForTimeout(300);
+  await expect(page.locator("#listen canvas")).toHaveScreenshot("band-still.png", { maxDiffPixels: 0, threshold: 0 });
+});
+
+// The idle drift runs on a real clock, so frames differ run to run; its dot
+// count and vertical extent stand in for the pixels.
+test("band: idle drift paints the same dot count and extent as before the split", async ({ page }) => {
+  await instrument(page);
+  await openHome(page);
+  await scrollBandIntoView(page);
+  await page.waitForTimeout(1200);
+  const stats = await page.evaluate(() => {
+    const canvas = document.querySelector<HTMLCanvasElement>("#listen canvas")!;
+    const ctx = canvas.getContext("2d")!;
+    const { data, width, height } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    let painted = 0;
+    let top = height;
+    let bottom = 0;
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        if (data[(y * width + x) * 4 + 3] > 0) {
+          painted++;
+          if (y < top) top = y;
+          if (y > bottom) bottom = y;
+        }
+      }
+    }
+    return { painted, top, bottom, width, height };
+  });
+  expect(stats.painted).toBeGreaterThan(2000);
+  expect(stats.bottom - stats.top).toBeLessThan(stats.height * 0.5);
 });
 
 test("band: the pill shows once the band is off screen with music on, and only then takes keyboard focus", async ({ page }) => {
