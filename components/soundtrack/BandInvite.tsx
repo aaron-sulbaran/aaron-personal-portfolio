@@ -52,10 +52,10 @@ export function BandInvite() {
   // browser's autoplay policy. The press is recorded in page coordinates.
   // Answering the question lands focus on the note, so the question is not
   // read again; Pause and Resume hand focus to each other.
-  const act = (write: () => void, to: "note" | "control") => (event: MouseEvent<HTMLButtonElement>) => {
+  const act = (write: () => void) => (event: MouseEvent<HTMLButtonElement>) => {
     const r = event.currentTarget.getBoundingClientRect();
     setDockSource(new DOMRect(r.x + window.scrollX, r.y + window.scrollY, r.width, r.height));
-    moveFocus.current = to;
+    moveFocus.current = event.currentTarget.dataset.focusTo === "note" ? "note" : "control";
     write();
   };
 
@@ -68,20 +68,20 @@ export function BandInvite() {
           className={`grid transition-opacity duration-150 has-[:focus-visible]:opacity-100 ${docked ? "pointer-events-none opacity-0" : "opacity-100"}`}
         >
           <Layer shown={music === "before"} className="flex items-baseline gap-6">
-            <button type="button" data-control="before" onClick={act(startSoundtrack, "note")} data-cursor-hover className={PRIMARY}>
+            <button type="button" data-control="before" data-focus-to="note" onClick={act(startSoundtrack)} data-cursor-hover className={PRIMARY}>
               {c.accept}
             </button>
-            <button type="button" onClick={act(stopSoundtrack, "note")} data-cursor-hover className={QUIET}>
+            <button type="button" data-focus-to="note" onClick={act(stopSoundtrack)} data-cursor-hover className={QUIET}>
               {c.decline}
             </button>
           </Layer>
           <Layer shown={music === "on"}>
-            <button type="button" data-control="on" onClick={act(pauseSoundtrack, "control")} data-cursor-hover className={SMALL}>
+            <button type="button" data-control="on" onClick={act(pauseSoundtrack)} data-cursor-hover className={SMALL}>
               {c.pause}
             </button>
           </Layer>
           <Layer shown={music === "paused"}>
-            <button type="button" data-control="paused" onClick={act(startSoundtrack, "control")} data-cursor-hover className={SMALL}>
+            <button type="button" data-control="paused" onClick={act(startSoundtrack)} data-cursor-hover className={SMALL}>
               {c.resume}
             </button>
           </Layer>
@@ -100,7 +100,7 @@ export function BandInvite() {
         <Layer shown={music === "off"}>
           <p>
             {c.declinedNote}
-            <button type="button" onClick={act(startSoundtrack, "control")} data-cursor-hover className={`ml-3 md:hidden ${SMALL}`}>
+            <button type="button" onClick={act(startSoundtrack)} data-cursor-hover className={`ml-3 md:hidden ${SMALL}`}>
               {c.accept}
             </button>
           </p>
