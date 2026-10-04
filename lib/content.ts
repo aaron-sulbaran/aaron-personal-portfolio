@@ -29,7 +29,6 @@ export const siteContent = {
   // voice, to be tightened by Aaron.
   listen: {
     ariaLabel: "Soundtrack",
-    kicker: "A note from me",
     line: "Want some music while you scroll?",
     body: "I put together a short playlist for this site. The wave follows you down the page.",
     accept: "Play it",
@@ -506,7 +505,6 @@ export const siteContent = {
   },
   soundtrack: {
     invite: "Play the soundtrack",
-    inviteArtist: "A curated playlist for this site",
     prompt: "Click to open player",
     // The pill's label as it lands on the wave (one per state, once per page
     // load), then the collapsed capsule's text (components/soundtrack/PillLabel).
