@@ -24,12 +24,14 @@ export function AboutIntro() {
           <span>{label}</span>
         </div>
         <h2
+          data-wave-avoid
           className="reveal-mask font-display text-display-xl text-foreground"
           style={revealIndex(1)}
         >
           <span className="block">{heading}</span>
         </h2>
         <p
+          data-wave-avoid
           className="reveal-item max-w-xl text-lg leading-[1.55] text-muted md:text-xl"
           style={revealIndex(2)}
         >

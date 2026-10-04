@@ -6,7 +6,7 @@ import { Portal } from "@/components/Portal";
 import { siteContent } from "@/lib/content";
 import { getSoundtrackPlayer } from "@/lib/audio";
 import { useSoundtrack } from "@/lib/soundtrack";
-import { PHONE_QUERY } from "@/lib/waveform/layout";
+import { isPhone, subscribePhone } from "@/lib/waveform/layout";
 import { pillVisible } from "@/lib/waveform/pill";
 import { Cover, EASE, Glyph, glass } from "./PillParts";
 import { PlayerCard } from "./PlayerCard";
@@ -27,13 +27,6 @@ export function PlaybackPill({ bandInView }: { bandInView: boolean | null }) {
     </Portal>
   );
 }
-
-const subscribePhone = (onChange: () => void) => {
-  const query = window.matchMedia(PHONE_QUERY);
-  query.addEventListener("change", onChange);
-  return () => query.removeEventListener("change", onChange);
-};
-const isPhone = () => window.matchMedia(PHONE_QUERY).matches;
 
 function PillInner({ bandInView }: { bandInView: boolean | null }) {
   const music = useSoundtrack();

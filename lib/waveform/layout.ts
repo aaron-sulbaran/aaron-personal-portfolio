@@ -5,6 +5,15 @@ import type { DotLayout } from "./dots";
 export const PHONE_MAX_PX = 767;
 export const PHONE_QUERY = `(max-width: ${PHONE_MAX_PX}px)`;
 
+// The phone query as a store for useSyncExternalStore (client only; pass
+// `() => true` as the server snapshot so nothing phone-gated renders on the server).
+export const subscribePhone = (onChange: () => void) => {
+  const query = window.matchMedia(PHONE_QUERY);
+  query.addEventListener("change", onChange);
+  return () => query.removeEventListener("change", onChange);
+};
+export const isPhone = () => window.matchMedia(PHONE_QUERY).matches;
+
 // A band of dots gains nothing past 1.5x density; capping it keeps the canvas
 // under a third of the pixels a 3x phone would otherwise allocate.
 export const DPR_CAP = 1.5;
@@ -26,5 +35,20 @@ export function bandLayout(width: number, height: number): DotLayout {
     startX: (width - columns * spacing) / 2 + spacing / 2,
     baseline: height / 2,
     maxAmp: height * AMPLITUDE,
+  };
+}
+
+// The horizon strip along the viewport bottom: the band's column grid at the
+// same width (so the two tracks share one train), on a baseline 72px above
+// the viewport's bottom edge, a quieter amplitude, and at most six fuzz dots
+// a side so the loudest passage is a dense column, never a wall.
+export const HORIZON = { height: 176, lift: 72, maxAmp: 44, maxThick: 6 };
+
+export function horizonLayout(width: number): DotLayout {
+  return {
+    ...bandLayout(width, HORIZON.height),
+    baseline: HORIZON.height - HORIZON.lift,
+    maxAmp: HORIZON.maxAmp,
+    maxThick: HORIZON.maxThick,
   };
 }

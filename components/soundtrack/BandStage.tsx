@@ -1,25 +1,29 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { siteContent } from "@/lib/content";
 import { useSoundtrack } from "@/lib/soundtrack";
+import { isPhone, subscribePhone } from "@/lib/waveform/layout";
+import { HorizonCanvas } from "./HorizonCanvas";
 import { PlaybackPill } from "./PlaybackPill";
 import { WaveCanvas } from "./WaveCanvas";
 import { useReducedMotionLive } from "./useReducedMotionLive";
 
-// The band's live half: the waveform, the freeze toggle, the credit, and the
-// pill it hands the music to. One IntersectionObserver on the band decides
-// both whether the wave runs and whether the pill shows (only while the band
-// is off screen). No ScrollTrigger on this surface.
+// The band's live half: the waveform, the freeze toggle, the credit, the pill
+// it hands the music to, and from md up the horizon strip the wave travels to
+// as the reader scrolls on. One IntersectionObserver on the band decides both
+// whether the band's wave runs and whether the pill shows (only while the
+// band is off screen).
 //
-// Phones stack the wave under the copy in its own strip; from md up the wave
-// fills the whole band behind the copy, on the band's midline.
+// Phones stack the wave under the copy in its own strip and have no horizon;
+// from md up the wave fills the whole band behind the copy, on the band's midline.
 export function BandStage() {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const [inView, setInView] = useState<boolean | null>(null);
   const [frozen, setFrozen] = useState(false);
   const music = useSoundtrack();
   const reduce = useReducedMotionLive();
+  const phone = useSyncExternalStore(subscribePhone, isPhone, () => true);
   const c = siteContent.listen;
   const s = siteContent.soundtrack;
 
@@ -71,6 +75,7 @@ export function BandStage() {
         </div>
       </div>
       <PlaybackPill bandInView={inView} />
+      {phone ? null : <HorizonCanvas />}
     </>
   );
 }

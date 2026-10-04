@@ -86,6 +86,7 @@ export function UpToNowList({ items }: { items: readonly string[] }) {
   return (
     <ol
       ref={olRef}
+      data-wave-avoid
       data-reveal=""
       data-armed={armed ? "true" : undefined}
       data-shown={shown ? "true" : undefined}
