@@ -16,6 +16,7 @@ import {
   dockGeometry,
   dockLanded,
   dockText,
+  peekDock,
   readDock,
   startDock,
   stopDock,
@@ -151,7 +152,7 @@ test("band: in flow directly under the book; the one fixed canvas is the horizon
       );
       await scrollToY(page, Math.round(y));
       const hit = await page.evaluate(
-        ({ selector, i }) => {
+        ({ selector, i, stepAside }) => {
           const el = document.querySelectorAll(selector)[i];
           const r = el.getBoundingClientRect();
           const host = document.querySelector<HTMLElement>('[data-wave="horizon"]')!;
@@ -159,9 +160,10 @@ test("band: in flow directly under the book; the one fixed canvas is the horizon
           const strip = host.getBoundingClientRect();
           // elementFromPoint skips pointer-events: none, so the strip is made
           // hit testable for this one read: paint order alone must give the point to the text.
-          // The pill docks on the strip at the bottom centre by design (z 45, over
-          // the footer row's centre at the foot of the page); it steps aside for the read.
-          const pill = document.querySelector<HTMLElement>("[data-pill]");
+          // The pill docks on the strip at the bottom centre by design (z 45); at the
+          // foot of the page it sits over the footer row's centre, so for that row
+          // alone it steps aside for the read.
+          const pill = stepAside ? document.querySelector<HTMLElement>("[data-pill]") : null;
           host.style.pointerEvents = "auto";
           canvas.style.pointerEvents = "auto";
           if (pill) pill.style.visibility = "hidden";
@@ -171,7 +173,7 @@ test("band: in flow directly under the book; the one fixed canvas is the horizon
           if (pill) pill.style.visibility = "";
           return { overStrip: r.top < strip.bottom && r.bottom > strip.top, owned: !!at && el.contains(at) };
         },
-        { selector, i },
+        { selector, i, stepAside: block === "footer" },
       );
       expect(hit, `${selector} #${i} over the strip`).toEqual({ overStrip: true, owned: true });
     }
@@ -382,6 +384,8 @@ test("dock: the decline path says it'll be here, settles as \"Music\", and a rel
   await band.getByRole("button", { name: L.decline, exact: true }).click();
   await expect(band.locator("[data-band-note]")).toBeFocused();
   await expect(band.locator("[data-band-note] > :not([inert])")).toHaveText(L.declinedNote, { useInnerText: true });
+  // Declined, the capsule's click plays instead of opening the card, so the band keeps the freeze toggle on desktop.
+  await expect(band.getByRole("button", { name: L.freeze, exact: true })).toBeVisible();
 
   await toAbout(page);
   await expect.poll(() => dockText(page), { timeout: 1000, message: "the label as it lands" }).toBe(S.dockDeclined);
@@ -482,37 +486,53 @@ test("dock: pausing in the band inside the start window is the visitor's pause, 
   await expect(page.locator(CAPSULE)).toHaveAccessibleName(S.ariaOpen);
 });
 
-test("dock: the first arrival condenses out of the pressed control and travels down to the dock", async ({ page }) => {
-  await armDock(page);
-  await openHome(page, { path: HOME });
-  await scrollBandIntoView(page);
-  await bandControl(page, "before").click();
+// Scrolls just past the arrival threshold (sweep target 0.35) with the band
+// on screen: the trigger runs from the band's centre at 60 percent of the
+// viewport to its bottom at 15 percent, so progress 0.4 of that range. Each
+// selector's centre is measured in the same task, before the threshold is
+// processed, which is where the pill takes its source (page coordinates
+// converted at the threshold). Returns the recorded arrival and the dock.
+async function condense(page: Page, selectors: string[]) {
   await startDock(page);
-  // Just past the arrival threshold (sweep target 0.35) with the band on
-  // screen: the trigger runs from the band's centre at 60 percent of the
-  // viewport to its bottom at 15 percent, so progress 0.4 of that range. The
-  // control is measured in the same task, before the threshold is processed.
-  const scrolled = await page.evaluate(() => {
+  const scrolled = await page.evaluate((selectors) => {
     const vh = window.innerHeight;
     const band = document.getElementById("listen")!.getBoundingClientRect();
     const top = band.top + window.scrollY;
     const start = top + band.height / 2 - 0.6 * vh;
     const end = top + band.height - 0.15 * vh;
     window.scrollTo({ top: Math.round(start + 0.4 * (end - start)), behavior: "instant" });
-    const r = document.querySelector('#listen [data-control="before"]')!.getBoundingClientRect();
-    return { x: r.left + r.width / 2, y: r.top + r.height / 2, vh };
-  });
-  expect(scrolled.y, "the pressed control on screen at the threshold").toBeGreaterThan(0);
-  expect(scrolled.y).toBeLessThan(scrolled.vh);
+    const centres = selectors.map((selector) => {
+      const r = document.querySelector(selector)!.getBoundingClientRect();
+      return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    });
+    return { centres, vh };
+  }, selectors);
+  for (const [i, c] of scrolled.centres.entries()) {
+    expect(c.y, `${selectors[i]} on screen at the threshold`).toBeGreaterThan(0);
+    expect(c.y).toBeLessThan(scrolled.vh);
+  }
   await dockLanded(page);
   await page.waitForTimeout(200);
   const run = arrival(await stopDock(page));
   expect(run, "an arrival tween").not.toBeNull();
-  const { first, ticks } = run!;
   const at = await dockGeometry(page);
-  const dock = { x: at.centre, y: at.baseline };
+  return { ...run!, sources: scrolled.centres, dock: { x: at.centre, y: at.baseline } };
+}
 
-  expect(near(first, scrolled), "the arrival's first box from the pressed control's centre").toBeLessThanOrEqual(40);
+// The condense's source tolerance: the measured start sits on the source's centre (about 0px).
+const SOURCE_PX = 6;
+const NOT_NOW = '#listen [data-band-controls] [data-focus-to="note"]:not([data-control])';
+const VISIBLE_CONTROLS = "#listen [data-band-controls] > :not([inert])";
+const VISIBLE_NOTE = "#listen [data-band-note] > :not([inert])";
+
+test("dock: the first arrival condenses out of the pressed control and travels down to the dock", async ({ page }) => {
+  await armDock(page);
+  await openHome(page, { path: HOME });
+  await scrollBandIntoView(page);
+  await bandControl(page, "before").click();
+  const { first, ticks, sources, dock } = await condense(page, ['#listen [data-control="before"]']);
+
+  expect(near(first, sources[0]), "the arrival's first box from the pressed Play it's centre").toBeLessThanOrEqual(SOURCE_PX);
   expect(first.opacity, "the arrival's first opacity").toBeLessThan(1);
   expect(ticks.length, "50ms samples over 700ms").toBeGreaterThanOrEqual(12);
   const last = ticks.at(-1)!;
@@ -524,6 +544,41 @@ test("dock: the first arrival condenses out of the pressed control and travels d
     if (path[i - 1].transform) expect(path[i].y, `sample ${i} below sample ${i - 1}`).toBeGreaterThan(path[i - 1].y);
     else expect(path[i].y, `sample ${i} at rest`).toBe(path[i - 1].y);
   }
+});
+
+test("dock: after \"Not now\" the first arrival condenses out of the pressed button, not the note", async ({ page }) => {
+  await armDock(page);
+  await openHome(page, { path: HOME });
+  await scrollBandIntoView(page);
+  await page.locator(NOT_NOW).click();
+  const { first, sources } = await condense(page, [NOT_NOW, VISIBLE_NOTE]);
+  const [pressed, note] = sources;
+  expect(near(pressed, note), "the pressed button and the note are told apart").toBeGreaterThan(2 * SOURCE_PX);
+  expect(near(first, pressed), "the arrival's first box from the pressed Not now's centre").toBeLessThanOrEqual(SOURCE_PX);
+});
+
+test("dock: an unanswered first trip condenses out of the band's visible controls", async ({ page }) => {
+  await armDock(page);
+  await openHome(page, { path: HOME });
+  await scrollBandIntoView(page);
+  const { first, sources } = await condense(page, [VISIBLE_CONTROLS]);
+  expect(near(first, sources[0]), "the arrival's first box from the visible controls' centre").toBeLessThanOrEqual(SOURCE_PX);
+});
+
+test("dock: a declined later trip condenses out of the band's visible note", async ({ page }) => {
+  await armDock(page);
+  await openHome(page, { path: HOME });
+  await scrollBandIntoView(page);
+  await page.locator(NOT_NOW).click();
+  // The first trip takes the pressed button; back above the threshold, the pill returns home.
+  await toAbout(page);
+  await dockLanded(page);
+  await parkBand(page);
+  await expect(page.locator(PILL)).toHaveAttribute("inert", "");
+  await page.waitForFunction(() => document.querySelector<HTMLElement>("[data-pill]")!.style.opacity === "0");
+  // Declined, no control layer shows, so the later trip's source is the note.
+  const { first, sources } = await condense(page, [VISIBLE_NOTE]);
+  expect(near(first, sources[0]), "the arrival's first box from the visible note's centre").toBeLessThanOrEqual(SOURCE_PX);
 });
 
 test("dock: the freeze toggle lives in the player card once music is on", async ({ page }) => {
@@ -541,11 +596,12 @@ test("dock: the freeze toggle lives in the player card once music is on", async 
   await page.locator(CAPSULE).click();
   const card = page.getByRole("group", { name: S.ariaOpen });
   await expect(card).not.toHaveAttribute("inert", "");
+  expect(await paintsOver(page, 1000), "horizon repaints in a second before freezing").toBeGreaterThan(0);
   await card.getByRole("button", { name: L.freeze, exact: true }).click();
   await expect(card.getByRole("button", { name: L.unfreeze, exact: true })).toBeVisible();
-  await expect
-    .poll(() => paintsOver(page, 1000), { timeout: 10_000, intervals: [0], message: "horizon repaints in a frozen second" })
-    .toBe(0);
+  // A short settle for the last frame in flight, then one whole second.
+  await page.waitForTimeout(300);
+  expect(await paintsOver(page, 1000), "horizon repaints in a frozen second").toBe(0);
 
   await card.getByRole("button", { name: L.unfreeze, exact: true }).click();
   await expect.poll(() => paintsOver(page, 1000), { message: "horizon repaints once the wave moves" }).toBeGreaterThan(0);
@@ -596,7 +652,13 @@ test("dock: the label holds about 2.6s, and a mouse click on the capsule does no
 
   await startDock(page);
   await toAbout(page);
-  await expect.poll(() => dockText(page), { timeout: 4000 }).toBe(S.capsuleOff);
+  await expect
+    .poll(async () => (await peekDock(page)).some((s) => s.text === S.capsuleOff), {
+      timeout: 4000,
+      intervals: [50],
+      message: "a recorded sample with the capsule's text",
+    })
+    .toBe(true);
   const samples = await stopDock(page);
   const landed = samples.find((s) => !s.inert && s.shown && !s.transform && s.opacity === 1);
   const collapsed = samples.find((s) => landed && s.t > landed.t && s.text === S.capsuleOff);

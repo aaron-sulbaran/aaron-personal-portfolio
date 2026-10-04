@@ -31,6 +31,7 @@ export type DockSample = {
 type DockRecorder = {
   read: () => DockSample | null;
   start: (every: number) => void;
+  peek: () => DockSample[];
   stop: () => DockSample[];
 };
 type DockWindow = Window & { __e2eDock: DockRecorder };
@@ -83,6 +84,7 @@ export async function armDock(page: Page, { fromLoad = false }: { fromLoad?: boo
         id = setInterval(() => take("tick"), every);
         take("tick");
       },
+      peek: () => samples.slice(),
       stop() {
         recording = false;
         clearInterval(id);
@@ -97,6 +99,7 @@ export async function armDock(page: Page, { fromLoad = false }: { fromLoad?: boo
 export const readDock = (page: Page) => page.evaluate(() => (window as unknown as DockWindow).__e2eDock.read());
 export const dockText = async (page: Page) => (await readDock(page))?.text ?? null;
 export const startDock = (page: Page, every = 50) => page.evaluate((every) => (window as unknown as DockWindow).__e2eDock.start(every), every);
+export const peekDock = (page: Page) => page.evaluate(() => (window as unknown as DockWindow).__e2eDock.peek());
 export const stopDock = (page: Page) => page.evaluate(() => (window as unknown as DockWindow).__e2eDock.stop());
 
 // The pill out, at rest on the dock: the root shown and reachable, the
