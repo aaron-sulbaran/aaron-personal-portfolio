@@ -70,7 +70,8 @@ export function stepLevels(levels: Levels, regime: Regime, dt: number): Levels {
 }
 
 // Where column i's magnitude is heading at `time` seconds, before weights and
-// the cursor carve. i is a float: the caller adds the conveyor's phase.
+// the cursor carve. i is a float: the caller subtracts the conveyor's phase,
+// so a negative phase (scrolling down) shows the shape further left.
 export function columnTarget(i: number, time: number, levels: Levels, band: number): number {
   const ambient = 0.11 + 0.07 * Math.sin(time * 0.5 + i * 0.35) + 0.05 * Math.sin(time * 0.21 + i * 0.12);
   const thin = 0.035 + 0.015 * Math.sin(time * 1.3 + i * 0.6);
@@ -127,7 +128,7 @@ export function stepField(field: Field, input: FieldInput): { settled: boolean }
     Math.abs(levels.reactive - goal.reactive) < SETTLE_EPSILON;
 
   for (let i = 0; i < field.mag.length; i++) {
-    const j = i + phase;
+    const j = i - phase;
     let target = columnTarget(j, time, levels, bands[i] ?? 0);
     const carveTarget = carve ? carve[i] : 0;
     field.carve[i] = easeToward(field.carve[i], carveTarget, 0.1, dt);

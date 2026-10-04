@@ -12,6 +12,7 @@ import {
   type FieldInput,
   type Levels,
 } from "@/lib/waveform/field";
+import { createConveyor, feedScroll, stepConveyor } from "@/lib/waveform/conveyor";
 
 const IDLE: Levels = { idle: 1, paused: 0, reactive: 0 };
 const REACTIVE: Levels = { idle: 0, paused: 0, reactive: 1 };
@@ -170,9 +171,40 @@ describe("field with phase", () => {
     ...over,
   });
 
-  it("a phase of one column shifts the shape by one column", () => {
-    expect(columnTarget(3 + 1, 2, levelTargets("idle"), 0)).toBeCloseTo(columnTarget(4, 2, levelTargets("idle"), 0), 12);
+  it("a phase of one column shows the shape one column to the right", () => {
+    const still = createField(8);
+    const shifted = createField(8);
+    stepField(still, phaseInput({ time: 2 }));
+    stepField(shifted, phaseInput({ time: 2, phase: 1 }));
+    for (const i of [2, 3, 4, 5]) expect(shifted.disp[i]).toBeCloseTo(still.disp[i - 1], 6);
     expect(columnDisplacement(2.5, 2, levelTargets("idle"), 0)).not.toBeCloseTo(columnDisplacement(2, 2, levelTargets("idle"), 0), 3);
+  });
+
+  it("the bands stay on their integer column while the shape moves", () => {
+    const bands = new Float32Array(8);
+    bands[5] = 0.6;
+    const still = createField(8, "reactive");
+    const shifted = createField(8, "reactive");
+    for (let k = 0; k < 30; k++) {
+      const frame = { time: 2 + k / 60, regime: "reactive" as const, bands, audioLevel: 0.8 };
+      stepField(still, phaseInput(frame));
+      stepField(shifted, phaseInput({ ...frame, phase: 2 }));
+    }
+    for (let i = 0; i < 8; i++) if (i !== 5) expect(shifted.mag[5]).toBeGreaterThan(shifted.mag[i] + 0.3);
+    expect(Array.from(shifted.mag)).toEqual(Array.from(still.mag));
+    for (const i of [2, 3, 4, 5, 6, 7]) expect(shifted.disp[i]).toBeCloseTo(still.disp[i - 2], 6);
+  });
+
+  it("scrolling down one column's worth moves the shape one column left", () => {
+    const conveyor = createConveyor();
+    feedScroll(conveyor, 26);
+    for (let k = 0; k < 600 && stepConveyor(conveyor, 1 / 60, false).moving; k++);
+    expect(conveyor.phase).toBeCloseTo(-1, 6);
+    const still = createField(12);
+    const scrolled = createField(12);
+    stepField(still, phaseInput({ time: 3 }));
+    stepField(scrolled, phaseInput({ time: 3, phase: conveyor.phase }));
+    for (let i = 0; i < 11; i++) expect(Math.abs(scrolled.disp[i] - still.disp[i + 1])).toBeLessThan(1e-6);
   });
 
   it("stepField no longer takes weights: magnitude eases toward the unweighted target", () => {
