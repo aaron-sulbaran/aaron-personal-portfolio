@@ -24,6 +24,7 @@ export function createConveyor(): ConveyorState {
 }
 
 export function feedScroll(state: ConveyorState, deltaPx: number): void {
+  if (!Number.isFinite(deltaPx)) return;
   state.target -= deltaPx / CONVEYOR.pxPerColumn;
   const lead = state.target - state.phase;
   if (lead > CONVEYOR.leadColumns) state.target = state.phase + CONVEYOR.leadColumns;

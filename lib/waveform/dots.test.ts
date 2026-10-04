@@ -70,6 +70,10 @@ describe("buildDots with paint-time weights", () => {
     const accent: number[] = [];
     buildDots(field, small, 0, new Float32Array([0, 1, 1]), cursor, muted, accent);
     expect(muted.slice(0, 3)).toEqual([5, 50, 2.2]);
+    const all = [...muted, ...accent];
+    const triplesAt = (x: number) => xs(all).filter((dotX) => dotX === x).length;
+    expect(triplesAt(5)).toBe(1);
+    expect(triplesAt(15)).toBeGreaterThan(1);
   });
 
   it("columnX places each column", () => {

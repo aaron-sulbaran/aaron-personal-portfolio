@@ -33,6 +33,13 @@ describe("conveyor", () => {
     expect(c.target).toBeCloseTo(-0.2, 6);
   });
 
+  it("ignores a scroll delta that is not a finite number", () => {
+    const c = createConveyor();
+    feedScroll(c, Number.NaN);
+    feedScroll(c, Number.POSITIVE_INFINITY);
+    expect(c.target).toBe(0);
+  });
+
   it("scrolling up travels the other way", () => {
     const c = createConveyor();
     feedScroll(c, -52);
