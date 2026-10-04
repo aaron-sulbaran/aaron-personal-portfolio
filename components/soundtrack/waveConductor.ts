@@ -27,6 +27,10 @@ const FAST_FRAME_MS = 1000 / 60 - 2;
 const SLOW_FRAME_MS = 1000 / 30 - 2;
 const MAX_STEP_S = 0.1;
 const LEVEL_EPSILON = 1e-3;
+// The idle drift keeps the conveyor "moving" for good: its steady lag is
+// 0.4 / 11, about 0.036 columns. A lag under this counts as at rest for the
+// frame rate (not for stopping), so a calm wave past the band runs at 30fps.
+const DRIFT_LAG_COLUMNS = 0.05;
 
 export interface WaveView {
   // Called once per conductor frame before the field steps: sync the cursor,
@@ -137,13 +141,21 @@ function createInstance(still: boolean): Instance {
       Math.abs(levels.idle - goal.idle) < LEVEL_EPSILON &&
       Math.abs(levels.paused - goal.paused) < LEVEL_EPSILON &&
       Math.abs(levels.reactive - goal.reactive) < LEVEL_EPSILON;
-    const calm = regime !== "reactive" && arrived && !moving && !sweeping;
+    const drifting = moving && Math.abs(conductor.conveyor.target - conductor.conveyor.phase) >= DRIFT_LAG_COLUMNS;
+    const calm = regime !== "reactive" && arrived && !drifting && !sweeping;
     minFrameMs = calm ? SLOW_FRAME_MS : FAST_FRAME_MS;
     return settled && !moving && !sweeping && !views.some((view) => view.busy());
   };
 
+  // A sweep still easing runs the loop on its own: after a jump past the band
+  // no view is active yet (the horizon waits for sweep > 0), so the sweep
+  // must step itself there. Under `still` it never eases (the target snaps).
   const running = () =>
-    !destroyed && !still && !frozen && !document.hidden && views.some((view) => view.active() || view.busy());
+    !destroyed &&
+    !still &&
+    !frozen &&
+    !document.hidden &&
+    (conductor.sweep.value !== conductor.sweep.target || views.some((view) => view.active() || view.busy()));
 
   const tick = (t: number) => {
     raf = 0;
