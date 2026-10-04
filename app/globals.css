@@ -270,15 +270,15 @@ body {
   mask-image: linear-gradient(to top, #000 65%, transparent);
 }
 
-/* Playback pill equalizer glyph (components/soundtrack/PillParts.tsx). */
-@keyframes eqbar {
-  0%,
-  100% {
-    transform: scaleY(0.45);
-  }
-  50% {
-    transform: scaleY(1);
-  }
+/* The playback pill's capsule (components/soundtrack/PlaybackPill.tsx): a
+   36px capsule whose hit area reaches 44px. */
+.pill-hit {
+  position: relative;
+}
+.pill-hit::before {
+  content: "";
+  position: absolute;
+  inset: -4px;
 }
 
 /* The soundtrack note (components/menu/NoteIcon.tsx), in the Menu pill and

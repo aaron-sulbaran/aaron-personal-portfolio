@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type RefObject } from "react";
 import { siteContent } from "@/lib/content";
 import { useSoundtrack } from "@/lib/soundtrack";
+import { DOCK } from "@/lib/waveform/dock";
+import { setFrozen, useFrozen } from "@/lib/waveform/freeze";
 import { isPhone, subscribePhone } from "@/lib/waveform/layout";
 import { HorizonCanvas } from "./HorizonCanvas";
 import { PlaybackPill } from "./PlaybackPill";
@@ -11,20 +13,21 @@ import { acquireWaveConductor, type WaveConductor } from "./waveConductor";
 import { useReducedMotionLive } from "./useReducedMotionLive";
 import { useSweepTrigger } from "./useSweepTrigger";
 
-// The band's live half: the waveform, the freeze toggle, the credit, the pill
-// it hands the music to, and from md up the horizon strip the wave travels to
-// as the reader scrolls on. One IntersectionObserver on the band decides both
-// whether the band's wave runs and whether the pill shows (only while the
-// band is off screen); one ScrollTrigger (useSweepTrigger) drives the sweep
-// from the band to the horizon.
+// The band's live half: the waveform, the credit, the pill it hands the
+// music to, and from md up the horizon strip the wave travels to as the
+// reader scrolls on. One IntersectionObserver on the band decides whether the
+// band's wave runs; one ScrollTrigger (useSweepTrigger) drives the sweep from
+// the band to the horizon, and the pill docks once its target passes
+// DOCK.arriveAtSweep.
 //
-// Phones stack the wave under the copy in its own strip and have no horizon;
-// from md up the wave fills the whole band behind the copy, on the band's midline.
+// Phones stack the wave under the copy in its own strip and have no horizon
+// and no pill, so the freeze toggle stays here for them; from md up it lives
+// in the player card, and the wave fills the whole band behind the copy.
 export function BandStage() {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const conductorRef = useRef<WaveConductor | null>(null);
   const [inView, setInView] = useState<boolean | null>(null);
-  const [frozen, setFrozen] = useState(false);
+  const frozen = useFrozen();
   const music = useSoundtrack();
   const reduce = useReducedMotionLive();
   const phone = useSyncExternalStore(subscribePhone, isPhone, () => true);
@@ -42,12 +45,13 @@ export function BandStage() {
     };
   }, [reduce]);
   useSweepTrigger(conductorRef);
+  const reached = useDockReached(conductorRef, reduce);
 
   useEffect(() => {
     const band = stageRef.current?.closest("section");
     if (!band) return;
     // The top margin is the header bar's height: a band tucked under the bar
-    // is already out of reach, so the pill takes over there.
+    // is already out of view.
     const observer = new IntersectionObserver(([entry]) => setInView(entry.isIntersecting), {
       rootMargin: "-72px 0px 0px 0px",
     });
@@ -65,14 +69,14 @@ export function BandStage() {
         <WaveCanvas active={inView === true} frozen={frozen} />
       </div>
       <div className="relative z-10 px-[6vw] pb-5 md:absolute md:inset-x-0 md:bottom-0">
-        <div className="mx-auto flex max-w-[1240px] flex-wrap items-baseline justify-between gap-x-8 gap-y-2 text-xs leading-[1.5] text-muted">
+        <div className="mx-auto flex max-w-[1240px] flex-wrap items-baseline justify-between gap-x-8 gap-y-2 text-xs leading-[1.5] text-muted md:justify-end">
           <button
             type="button"
             data-wave-avoid
             inert={!freezable}
-            onClick={() => setFrozen((value) => !value)}
+            onClick={() => setFrozen(!frozen)}
             data-cursor-hover
-            className={`rounded-sm underline decoration-1 underline-offset-[3px] transition-[color,opacity] duration-200 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+            className={`rounded-sm underline md:hidden decoration-1 underline-offset-[3px] transition-[color,opacity] duration-200 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
               freezable ? "opacity-100" : "opacity-0"
             }`}
           >
@@ -90,10 +94,24 @@ export function BandStage() {
           </p>
         </div>
       </div>
-      <PlaybackPill bandInView={inView} />
+      <PlaybackPill reached={reached} />
       {phone ? null : <HorizonCanvas />}
     </>
   );
+}
+
+// The dock's trigger, read from the sweep target the band's ScrollTrigger
+// writes (the conductor notifies on every new target, stepping or not). The
+// conductor is replaced when reduced motion toggles, so the subscription
+// follows `reduce`; the ref is filled in a layout effect before this reads it.
+function useDockReached(conductorRef: RefObject<WaveConductor | null>, reduce: boolean): boolean {
+  const subscribe = useCallback(
+    (onChange: () => void) => conductorRef.current?.subscribe(onChange) ?? (() => {}),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- a new conductor per `reduce`
+    [conductorRef, reduce],
+  );
+  const read = () => (conductorRef.current?.sweep.target ?? 0) > DOCK.arriveAtSweep;
+  return useSyncExternalStore(subscribe, read, () => false);
 }
 
 const LINK =

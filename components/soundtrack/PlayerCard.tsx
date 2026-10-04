@@ -6,7 +6,7 @@ import { siteContent } from "@/lib/content";
 import { getSoundtrackPlayer, type PlayerSnapshot } from "@/lib/audio";
 import { useEscapeKey } from "@/lib/modal";
 import { pauseSoundtrack, startSoundtrack, type SoundtrackState } from "@/lib/soundtrack";
-import { Cover, EASE, formatTime, glass, iconButton } from "./PillParts";
+import { Cover, EASE, FreezeRow, formatTime, glass, iconButton } from "./PillParts";
 
 type Props = {
   music: SoundtrackState;
@@ -17,9 +17,9 @@ type Props = {
   onCollapse: () => void;
 };
 
-// The pill's open state: now playing, a seek bar, transport and volume. Every
-// value comes from the player; the playhead is polled only while the card is
-// open and playing. Escape closes it.
+// The pill's open state: now playing, a seek bar, transport and volume, and
+// the wave's freeze toggle. Every value comes from the player; the playhead
+// is polled only while the card is open and playing. Escape closes it.
 export function PlayerCard({ music, expanded, reduce, focusOnOpen, onCardLeave, onCollapse }: Props) {
   const c = siteContent.soundtrack;
   const player = getSoundtrackPlayer();
@@ -194,6 +194,7 @@ export function PlayerCard({ music, expanded, reduce, focusOnOpen, onCardLeave, 
           </a>
         )}
       </div>
+      <FreezeRow reduce={reduce} />
     </div>
   );
 }

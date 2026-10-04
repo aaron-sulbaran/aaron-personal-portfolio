@@ -8,12 +8,12 @@ import { getSoundtrackPlayer } from "./audio";
 // Soundtrack control (Phase 3) both write here; the waveform and the pill glyph
 // both read here, so the background and the pill can never disagree.
 //
-//   before  first scroll into the back half, no choice yet -> idle big drift,
-//           the pill carries the "Play the soundtrack" invitation.
-//   on      music playing -> reactive wave, pill shows the equalizer.
+//   before  no choice yet -> idle drift; the band asks, the pill reads "Music?".
+//   on      music playing -> reactive wave, the pill's note fills and sways.
 //   paused  opted in but audio paused / awaiting input -> thin waiting line,
 //           pill drops to a flat line. Holds; does NOT bloom back to idle.
-//   off     opted out -> idle big drift, NO pill (re-entry via the menu only).
+//   off     opted out -> still line in the band, calm drift on the horizon;
+//           the pill stays as a quiet "Music" capsule, one click from playing.
 
 export type SoundtrackState = "before" | "on" | "paused" | "off";
 
@@ -23,6 +23,15 @@ const STORAGE_KEY = "aaron-soundtrack";
 
 let state: SoundtrackState = "before";
 const listeners = new Set<Listener>();
+// What initSoundtrackFromStorage restored this page load, if anything: the
+// pill greets a restored opt-in and keeps a restored opt-out quiet.
+let restored: SoundtrackState | null = null;
+// When startSoundtrack last ran (performance.now() ms), and whether the
+// player then reported it stopped inside START_WINDOW_MS: a rejected play()
+// or a failed load, not the visitor's own pause. Cleared by the next attempt.
+export const START_WINDOW_MS = 4000;
+let lastStartAt = Number.NEGATIVE_INFINITY;
+let playFailed = false;
 
 export function getSoundtrackState(): SoundtrackState {
   return state;
@@ -53,14 +62,29 @@ export function initSoundtrackFromStorage(): void {
   if (state !== "before") return;
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved === "off") setSoundtrackState("off");
+    if (saved === "off") restored = "off";
     // A remembered opt-in restores to the ready/paused player, not autoplay:
     // browsers require a gesture for audio, and a silent "on" would lie (the
     // wave reactive, the glyph bouncing, nothing audible). One tap resumes.
-    else if (saved === "on") setSoundtrackState("paused");
+    else if (saved === "on") restored = "paused";
+    if (restored) setSoundtrackState(restored);
   } catch {
     /* storage unavailable */
   }
+}
+
+export function getRestoredSoundtrack(): SoundtrackState | null {
+  return restored;
+}
+
+export function getLastStartAt(): number {
+  return lastStartAt;
+}
+
+// True from a failed start until the next attempt; changes only alongside a
+// state change, so subscribeSoundtrack covers it.
+export function getPlayFailed(): boolean {
+  return playFailed;
 }
 
 export function subscribeSoundtrack(listener: Listener): () => void {
@@ -96,6 +120,7 @@ function ensureReconciler(): void {
     // Downgrade: the player stopped (autoplay reject, error, native pause) while
     // we still claim "on" -> drop to "paused" so nothing shows audible music.
     if (!player.playing && s === "on") {
+      playFailed = performance.now() - lastStartAt < START_WINDOW_MS;
       setSoundtrackState("paused");
     // Upgrade: the player resumed on its own (OS media key / lockscreen resume)
     // while we sit at "paused" -> follow it back to "on". Never lifts "off": an
@@ -111,17 +136,24 @@ function ensureReconciler(): void {
 // start under browser autoplay policy. State and playback move together so the
 // wave, the pill glyph, and the audible audio can never disagree.
 export function startSoundtrack(): void {
+  lastStartAt = performance.now();
+  playFailed = false;
   ensureReconciler();
   getSoundtrackPlayer().play();
   setSoundtrackState("on");
 }
 
+// The visitor's own pause or stop closes the start window, so it never reads
+// as a failure.
 export function pauseSoundtrack(): void {
+  lastStartAt = Number.NEGATIVE_INFINITY;
   getSoundtrackPlayer().pause();
   setSoundtrackState("paused");
 }
 
 export function stopSoundtrack(): void {
+  lastStartAt = Number.NEGATIVE_INFINITY;
+  playFailed = false;
   getSoundtrackPlayer().pause();
   setSoundtrackState("off");
 }
