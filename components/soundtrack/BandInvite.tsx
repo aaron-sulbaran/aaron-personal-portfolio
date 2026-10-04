@@ -99,8 +99,8 @@ export function BandInvite() {
         </Layer>
         <Layer shown={music === "off"}>
           <p>
-            {c.declinedNote}
-            <button type="button" onClick={act(startSoundtrack)} data-cursor-hover className={`ml-3 md:hidden ${SMALL}`}>
+            {c.declinedNote}{" "}
+            <button type="button" onClick={act(startSoundtrack)} data-cursor-hover className={`md:hidden ${SMALL}`}>
               {c.accept}
             </button>
           </p>
