@@ -7,12 +7,15 @@
 //
 // The horizon view registers its readers once (`attachWaveSource`) and bumps
 // `horizonPaints` per paint; the readers build their answers only when called.
+// The sweep trigger counts itself in and out (`countSweepTrigger`), so a
+// trigger leaked by a remount shows up as a count above one.
 
 export type WaveProbe = {
   sweep: () => number;
   horizonPaints: number; // incremented by the horizon view's paint
   strip: () => { top: number; bottom: number; baseline: number } | null; // viewport px
   columns: () => { x: number; duck: number; alpha: number }[]; // last painted frame, horizon
+  triggers: () => number; // live sweep ScrollTriggers on #listen
 };
 
 export type WaveSource = Pick<WaveProbe, "sweep" | "strip" | "columns">;
@@ -25,6 +28,7 @@ declare global {
 
 let probe: WaveProbe | null | undefined;
 let source: WaveSource | null = null;
+let liveTriggers = 0;
 
 const flagged = () => /wavedebug/.test(window.location.search) || /wavedebug/.test(window.location.hash);
 
@@ -36,6 +40,7 @@ export function waveProbe(): WaveProbe | null {
     horizonPaints: 0,
     strip: () => source?.strip() ?? null,
     columns: () => source?.columns() ?? [],
+    triggers: () => liveTriggers,
   };
   window.__waveProbe = probe;
   return probe;
@@ -48,4 +53,9 @@ export function attachWaveSource(next: WaveSource): () => void {
   return () => {
     if (source === next) source = null;
   };
+}
+
+// +1 when the sweep trigger is created, -1 when it is killed.
+export function countSweepTrigger(delta: 1 | -1): void {
+  if (waveProbe()) liveTriggers += delta;
 }
