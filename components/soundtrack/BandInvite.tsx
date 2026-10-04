@@ -15,10 +15,11 @@ import { getDocked, setDockSource, subscribeDocked } from "@/lib/waveform/dock";
 // heading is the question; the controls beside it and the note under it swap
 // per state, every layer stacked in one grid cell so the band never changes
 // height (no layout shift when a stored choice restores after mount). Hidden
-// layers are inert: not focusable, not clickable, not read. A choice made here
-// moves focus to the new layer's control (or, after "Not now", which leaves no
-// control, to the heading) so keyboard users never land on the body. Once
-// declined, re-entry is the pill's quiet capsule (or the Menu's note).
+// layers are inert: not focusable, not clickable, not read. Answering moves
+// focus to the note under the question, and Pause and Resume to each other,
+// so keyboard users never land on the body. Once declined, re-entry is the
+// pill's quiet capsule on desktop and "Play it" beside the note on phones
+// (the Menu's note works everywhere).
 //
 // The pressed control is the pill's arrival source: the pill condenses out of
 // it at the dock, and while the pill is out the controls fade (150ms), so the
@@ -30,7 +31,7 @@ import { getDocked, setDockSource, subscribeDocked } from "@/lib/waveform/dock";
 export function BandInvite() {
   const music = useSoundtrack();
   const c = siteContent.listen;
-  const moveFocus = useRef(false);
+  const moveFocus = useRef<"note" | "control" | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const docked = useSyncExternalStore(subscribeDocked, getDocked, () => false);
 
@@ -39,53 +40,54 @@ export function BandInvite() {
   }, []);
 
   useEffect(() => {
-    if (!moveFocus.current) return;
-    moveFocus.current = false;
+    const to = moveFocus.current;
+    if (!to) return;
+    moveFocus.current = null;
     const root = rootRef.current;
-    const target = root?.querySelector<HTMLElement>(`[data-control="${music}"]`) ?? root?.querySelector<HTMLElement>("h2");
+    const target = to === "note" ? root?.querySelector<HTMLElement>("[data-band-note]") : root?.querySelector<HTMLElement>(`[data-control="${music}"]`);
     target?.focus({ preventScroll: true });
   }, [music]);
 
   // Each runs inside the click, which is what lets audio start under the
   // browser's autoplay policy. The press is recorded in page coordinates.
-  const act = (write: () => void) => (event: MouseEvent<HTMLButtonElement>) => {
+  // Answering the question lands focus on the note, so the question is not
+  // read again; Pause and Resume hand focus to each other.
+  const act = (write: () => void, to: "note" | "control") => (event: MouseEvent<HTMLButtonElement>) => {
     const r = event.currentTarget.getBoundingClientRect();
     setDockSource(new DOMRect(r.x + window.scrollX, r.y + window.scrollY, r.width, r.height));
-    moveFocus.current = true;
+    moveFocus.current = to;
     write();
   };
 
   return (
     <div ref={rootRef} data-wave-avoid className="pointer-events-auto w-fit max-w-full">
       <div className="flex flex-wrap items-baseline gap-x-7 gap-y-3">
-        <h2 tabIndex={-1} className="font-display text-[clamp(1.375rem,2vw,1.75rem)] leading-[1.1] text-foreground outline-none">
-          {c.line}
-        </h2>
+        <h2 className="font-display text-[clamp(1.375rem,2vw,1.75rem)] leading-[1.1] text-foreground">{c.line}</h2>
         <div
           data-band-controls
           className={`grid transition-opacity duration-150 has-[:focus-visible]:opacity-100 ${docked ? "pointer-events-none opacity-0" : "opacity-100"}`}
         >
           <Layer shown={music === "before"} className="flex items-baseline gap-6">
-            <button type="button" data-control="before" onClick={act(startSoundtrack)} data-cursor-hover className={PRIMARY}>
+            <button type="button" data-control="before" onClick={act(startSoundtrack, "note")} data-cursor-hover className={PRIMARY}>
               {c.accept}
             </button>
-            <button type="button" onClick={act(stopSoundtrack)} data-cursor-hover className={QUIET}>
+            <button type="button" onClick={act(stopSoundtrack, "note")} data-cursor-hover className={QUIET}>
               {c.decline}
             </button>
           </Layer>
           <Layer shown={music === "on"}>
-            <button type="button" data-control="on" onClick={act(pauseSoundtrack)} data-cursor-hover className={SMALL}>
+            <button type="button" data-control="on" onClick={act(pauseSoundtrack, "control")} data-cursor-hover className={SMALL}>
               {c.pause}
             </button>
           </Layer>
           <Layer shown={music === "paused"}>
-            <button type="button" data-control="paused" onClick={act(startSoundtrack)} data-cursor-hover className={SMALL}>
+            <button type="button" data-control="paused" onClick={act(startSoundtrack, "control")} data-cursor-hover className={SMALL}>
               {c.resume}
             </button>
           </Layer>
         </div>
       </div>
-      <div className="mt-2 grid max-w-[42rem] text-sm leading-[1.5] text-muted" aria-live="polite">
+      <div data-band-note tabIndex={-1} className="mt-2 grid max-w-[42rem] text-sm leading-[1.5] text-muted outline-none" aria-live="polite">
         <Layer shown={music === "before"}>
           <p>{c.body}</p>
         </Layer>
@@ -96,7 +98,12 @@ export function BandInvite() {
           <p>{c.pausedNote}</p>
         </Layer>
         <Layer shown={music === "off"}>
-          <p>{c.declinedNote}</p>
+          <p>
+            {c.declinedNote}
+            <button type="button" onClick={act(startSoundtrack, "control")} data-cursor-hover className={`ml-3 md:hidden ${SMALL}`}>
+              {c.accept}
+            </button>
+          </p>
         </Layer>
       </div>
     </div>

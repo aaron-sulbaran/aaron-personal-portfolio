@@ -120,10 +120,11 @@ export function FreezeRow({ reduce }: { reduce: boolean }) {
     <button
       type="button"
       onClick={() => setFrozen(!frozen)}
-      aria-pressed={frozen}
       data-cursor-hover
       style={{
         ...iconButton(),
+        justifyContent: "flex-start",
+        minHeight: 24,
         marginTop: 10,
         fontFamily: "var(--font-sans)",
         fontSize: 12,
