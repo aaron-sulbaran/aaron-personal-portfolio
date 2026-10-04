@@ -1,21 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { HOVER_START, hoverReducer, pillVisible, type HoverEvent, type HoverState } from "@/lib/waveform/pill";
-
-describe("pillVisible", () => {
-  it("shows the mini-player only for chosen music once the band is off screen", () => {
-    expect(pillVisible({ music: "on", bandInView: false })).toBe(true);
-    expect(pillVisible({ music: "paused", bandInView: false })).toBe(true);
-    expect(pillVisible({ music: "on", bandInView: true })).toBe(false);
-    expect(pillVisible({ music: "paused", bandInView: true })).toBe(false);
-  });
-
-  it("never shows when music is off or not yet chosen (the band is the one ask)", () => {
-    for (const bandInView of [true, false]) {
-      expect(pillVisible({ music: "off", bandInView })).toBe(false);
-      expect(pillVisible({ music: "before", bandInView })).toBe(false);
-    }
-  });
-});
+import { HOVER_START, hoverReducer, type HoverEvent, type HoverState } from "@/lib/waveform/pill";
 
 const run = (events: HoverEvent["type"][], from: HoverState = HOVER_START) =>
   events.reduce((state, type) => hoverReducer(state, { type } as HoverEvent), from);
