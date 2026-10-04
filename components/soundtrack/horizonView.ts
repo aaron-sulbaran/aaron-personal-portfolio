@@ -9,7 +9,7 @@ import { layTrack } from "@/lib/waveform/track";
 import { columnWeights, type Rect } from "@/lib/waveform/weights";
 import type { WaveConductor } from "./waveConductor";
 import type { ViewOptions, WaveViewHandle } from "./waveView";
-import { createDotPainter, sizeCanvas, themeNow, trackPointer, type Alphas, type Theme } from "./viewParts";
+import { createDotPainter, measureAvoidRects, sizeCanvas, themeNow, trackPointer, type Alphas, type Theme } from "./viewParts";
 
 // The horizon view: the train's second track, a strip fixed along the bottom
 // of the viewport (HorizonCanvas.tsx). It paints column i at
@@ -182,22 +182,6 @@ export function createHorizonView(
     conductor.wake();
   };
 
-  const measureRects = () => {
-    const y = window.scrollY;
-    const next: Rect[] = [];
-    document.querySelectorAll<HTMLElement>(AVOID_SELECTOR).forEach((el) => {
-      const r = inkBox(el);
-      if (!r) return;
-      next.push({
-        left: r.left - DUCK.padPx,
-        right: r.right + DUCK.padPx,
-        top: r.top + y - DUCK.padPx,
-        bottom: r.bottom + y + DUCK.padPx,
-      });
-    });
-    rects = next.sort((a, b) => a.top - b.top);
-  };
-
   const measure = () => {
     measureRaf = 0;
     width = host.clientWidth;
@@ -224,7 +208,7 @@ export function createHorizonView(
     track = { ...layout, baselineOffset: offsets };
     Object.assign(carveLayout, layout);
     open = columnWeights({ ...layout, reach: 1, feather: 0, edgeTaper: 96, rects: [] });
-    measureRects();
+    rects = measureAvoidRects(AVOID_SELECTOR, DUCK.padPx);
     refresh();
   };
 
@@ -267,36 +251,4 @@ export function createHorizonView(
   });
 
   return view;
-}
-
-// The box the element's words cover, viewport px: a block heading spans its
-// whole container, but only its words need the wave out of the way, so the
-// air beside a short heading keeps the wave. Left and right come from the
-// text, top and bottom from the element: a reveal holds a heading's words
-// translated below their box until it plays, and no observer sees a
-// transform end, so the element's own box is the steadier vertical. Falls
-// back to the element's box when it holds no text. Icons count as words.
-function inkBox(el: HTMLElement): Rect | null {
-  const own = el.getBoundingClientRect();
-  if (!own.width || !own.height) return null;
-  const range = document.createRange();
-  const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
-  let left = Infinity;
-  let right = -Infinity;
-  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-    if (!node.textContent?.trim()) continue;
-    range.selectNodeContents(node);
-    const r = range.getBoundingClientRect();
-    if (!r.width) continue;
-    left = Math.min(left, r.left);
-    right = Math.max(right, r.right);
-  }
-  el.querySelectorAll("svg, img").forEach((icon) => {
-    const r = icon.getBoundingClientRect();
-    if (!r.width) return;
-    left = Math.min(left, r.left);
-    right = Math.max(right, r.right);
-  });
-  if (left > right) return { left: own.left, right: own.right, top: own.top, bottom: own.bottom };
-  return { left: Math.max(left, own.left), right: Math.min(right, own.right), top: own.top, bottom: own.bottom };
 }
