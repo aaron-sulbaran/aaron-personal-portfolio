@@ -15,6 +15,8 @@ import type { Rect } from "./weights";
 
 export const DUCK = { padPx: 20, lookAheadPx: 160, attackRate: 0.4, releaseRate: 0.06 };
 export const DUCK_ALPHA = { light: 0.07, dark: 0.11 };
+// A column whose envelope is past this paints at the DUCK_ALPHA ceiling.
+export const DUCK_SPLIT = 0.5;
 
 const REST_EPSILON = 1e-3;
 

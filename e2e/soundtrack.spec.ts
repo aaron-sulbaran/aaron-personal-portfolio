@@ -129,8 +129,16 @@ test("band: in flow directly under the book; the one fixed canvas is the horizon
         ({ selector, i }) => {
           const el = document.querySelectorAll(selector)[i];
           const r = el.getBoundingClientRect();
-          const strip = document.querySelector('[data-wave="horizon"]')!.getBoundingClientRect();
+          const host = document.querySelector<HTMLElement>('[data-wave="horizon"]')!;
+          const canvas = host.querySelector("canvas")!;
+          const strip = host.getBoundingClientRect();
+          // elementFromPoint skips pointer-events: none, so the strip is made
+          // hit testable for this one read: paint order alone must give the point to the text.
+          host.style.pointerEvents = "auto";
+          canvas.style.pointerEvents = "auto";
           const at = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+          host.style.pointerEvents = "";
+          canvas.style.pointerEvents = "";
           return { overStrip: r.top < strip.bottom && r.bottom > strip.top, owned: !!at && el.contains(at) };
         },
         { selector, i },
@@ -185,7 +193,8 @@ test("band: the wave draws while the band is in view, and \"Maybe later\" brings
 // before the split (no scene under reduced motion, so no openHome here).
 test("band: the still line under reduced motion is pixel identical to the baseline", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.goto("/?wavedebug");
+  // Plain "/": this test never reads the probe; the band is parked by geometry only.
+  await page.goto("/");
   await settled(page);
   await scrollBandIntoView(page);
   await page.waitForTimeout(300);

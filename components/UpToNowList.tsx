@@ -14,6 +14,12 @@ import { revealIndex } from "@/lib/motion";
 // The <li> keeps its static md:translate-y-12 offset (a third, untouched
 // transform owner). Reduced motion and JS-disabled both render the static,
 // fully-visible list.
+// The duck's avoid box pads the list's top and bottom for its offset items:
+// the right column sits 48px low (md:translate-y-12) and the parallax drifts
+// it up to 12px more (a 24px swing), a 60px overhang past the list's box;
+// 60 plus the default 20px pad (DUCK.padPx) is 80.
+const AVOID_PAD = 80;
+
 export function UpToNowList({ items }: { items: readonly string[] }) {
   const olRef = useRef<HTMLOListElement | null>(null);
   const layerRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -87,7 +93,7 @@ export function UpToNowList({ items }: { items: readonly string[] }) {
     <ol
       ref={olRef}
       data-wave-avoid
-      data-wave-avoid-pad="72"
+      data-wave-avoid-pad={AVOID_PAD}
       data-reveal=""
       data-armed={armed ? "true" : undefined}
       data-shown={shown ? "true" : undefined}

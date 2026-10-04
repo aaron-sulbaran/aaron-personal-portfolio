@@ -1,6 +1,6 @@
 import { ScrollTrigger } from "@/lib/gsap";
 import { ACCENT_LINE, buildDots, carveTargets, type Cursor, type DotLayout } from "@/lib/waveform/dots";
-import { DUCK, DUCK_ALPHA, duckTargets, stepDuck } from "@/lib/waveform/duck";
+import { DUCK, DUCK_ALPHA, DUCK_SPLIT, duckTargets, stepDuck } from "@/lib/waveform/duck";
 import { FLOOR } from "@/lib/waveform/field";
 import { HORIZON, horizonLayout } from "@/lib/waveform/layout";
 import { attachWaveSource, waveProbe } from "@/lib/waveform/probe";
@@ -119,7 +119,7 @@ export function createHorizonView(
       const mag = conductor.field.mag;
       for (let i = 0; i < probeAlpha.length; i++) {
         const accentCentre = FLOOR + (mag[i] - FLOOR) * weights[i] > ACCENT_LINE;
-        probeAlpha[i] = env[i] > 0.5 ? floor : accentCentre ? alphas.accent : alphas.muted;
+        probeAlpha[i] = env[i] > DUCK_SPLIT ? floor : accentCentre ? alphas.accent : alphas.muted;
       }
     }
   };
