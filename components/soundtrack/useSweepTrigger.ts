@@ -3,6 +3,7 @@
 import type { RefObject } from "react";
 import { gsap, ScrollTrigger, useGSAP } from "@/lib/gsap";
 import { PHONE_QUERY } from "@/lib/waveform/layout";
+import { countSweepTrigger } from "@/lib/waveform/probe";
 import type { WaveConductor } from "./waveConductor";
 import { useReducedMotionLive } from "./useReducedMotionLive";
 
@@ -37,8 +38,10 @@ export function useSweepTrigger(conductorRef: RefObject<WaveConductor | null>) {
           onRefresh: (self) => conductor.setSweepTarget(self.progress, true),
         });
         conductor.setSweepTarget(st.progress, true);
+        countSweepTrigger(1);
         return () => {
           st.kill();
+          countSweepTrigger(-1);
           conductor.setSweepTarget(0, true);
         };
       });
