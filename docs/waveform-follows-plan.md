@@ -71,7 +71,7 @@ Task groups and PRs: Tasks 1 to 4 are PR A (engine split, band unchanged). Tasks
 
 **Interfaces:**
 - Produces: `interface ConveyorState { target: number; phase: number }`, `createConveyor(): ConveyorState`, `feedScroll(state, deltaPx: number): void`, `stepConveyor(state, dt: number, idle: boolean): { moving: boolean }`, constants `CONVEYOR = { pxPerColumn: 26, idleColumnsPerSecond: 0.4, leadColumns: 12, lambda: 11, capColumnsPerSecond: 40 }`.
-- `phase` is in columns; positive scroll (down) decreases phase (the wave travels left), and the field adds `phase` to `i`.
+- `phase` is in columns; positive scroll (down) decreases phase (the wave travels left), and the field SUBTRACTS `phase` from `i` (a feature at shape position j0 then shows at column j0 + phase, which is lower, so leftward, when phase is negative; the music terms with `+ time` travel the same way).
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -81,7 +81,7 @@ import { describe, expect, it } from "vitest";
 import { CONVEYOR, createConveyor, feedScroll, stepConveyor } from "./conveyor";
 
 describe("conveyor", () => {
-  it("1px of scroll down moves the target 1/26 column left", () => {
+  it("26px of scroll down moves the target one column left (negative phase)", () => {
     const c = createConveyor();
     feedScroll(c, 26);
     expect(c.target).toBeCloseTo(-1, 6);
@@ -200,7 +200,7 @@ git commit -m "feat(waveform): scroll conveyor for the wave's phase"
 
 **Interfaces:**
 - `FieldInput` loses `weights` and gains `phase: number`. `stepField` eases `mag` toward the unweighted target (carve still applied).
-- `columnTarget(i, time, levels, band)` and `columnDisplacement(i, time, levels, audioLevel)` take `i` as a float; callers pass `i + phase`. `bands[i]` stays bound to the integer column.
+- `columnTarget(i, time, levels, band)` and `columnDisplacement(i, time, levels, audioLevel)` take `i` as a float; callers pass `i - phase`. `bands[i]` stays bound to the integer column.
 - `buildDots(field, layout, time, weights, cursor, muted, accent, columnX?: (i: number) => number)`: paints magnitude `FLOOR + (field.mag[i] - FLOOR) * weight` and displacement `field.disp[i] * weight`; `columnX` defaults to `startX + i * spacing`.
 - The music term travels with the stream: `Math.sin(i * 0.3 + time * 3)` (sign flipped from `- time * 3`), so the reactive wave moves left like the conveyor.
 
@@ -291,7 +291,7 @@ Expected: FAIL (type errors on `phase`, wrong magnitudes).
 
 - [ ] **Step 3: Implement**
 
-In `lib/waveform/field.ts`: replace `weights: Float32Array;` in `FieldInput` with `phase: number; // columns, from the conveyor`; in `stepField` destructure `phase` instead of `weights`, compute `const j = i + phase;`, use `columnTarget(j, time, levels, bands[i] ?? 0)` with no weight multiply, `field.disp[i] = columnDisplacement(j, time, levels, audioLevel)` with no weight multiply. Flip the music sign in `columnDisplacement`: `Math.sin(i * 0.3 + time * 3)`. Update the comment at the top: weights are applied at paint time so two views can share one field.
+In `lib/waveform/field.ts`: replace `weights: Float32Array;` in `FieldInput` with `phase: number; // columns, from the conveyor`; in `stepField` destructure `phase` instead of `weights`, compute `const j = i - phase;`, use `columnTarget(j, time, levels, bands[i] ?? 0)` with no weight multiply, `field.disp[i] = columnDisplacement(j, time, levels, audioLevel)` with no weight multiply. Flip the music sign in `columnDisplacement`: `Math.sin(i * 0.3 + time * 3)`. Update the comment at the top: weights are applied at paint time so two views can share one field.
 
 In `lib/waveform/dots.ts`: add the `columnX` parameter and apply weights:
 
