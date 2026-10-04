@@ -9,12 +9,12 @@ import { DOCK, setDocked, takeDockSource } from "@/lib/waveform/dock";
 // root, and every transform is cleared at rest so the hover preview's own
 // transitions own the capsule again.
 //
-//   Arrival: born at the band control the visitor pressed (or the one it
-//   last returned into; with neither, the band's controls) while that is on
+//   Arrival: born at the band control the visitor pressed (the first trip
+//   after a press), else the band's visible controls or note, while that is on
 //   screen: from its centre at 0.6 scale and 0.4 opacity to the dock over
 //   DOCK.arriveMs on the site's ease (--ease-out is a quint out, GSAP's
 //   power4.out). A source off screen (a deep link, an anchor jump) rises 12px.
-//   Return: back into that control (or the band's controls) if on screen,
+//   Return: back into the band's visible controls or note if on screen,
 //   shrinking and fading as it goes; otherwise a fade down. The band's
 //   controls fade out while the pill is out (setDocked) and back once it is in.
 //   Reduced motion: opacity only, both ways.
@@ -36,11 +36,12 @@ const toViewport = (page: DOMRect): Rect => {
   const top = page.y - window.scrollY;
   return { left: page.x - window.scrollX, top, width: page.width, height: page.height, bottom: top + page.height };
 };
-// The band's visible control layer, in page coordinates. "off" shows none
-// (every layer is inert), so there the pill rises instead of condensing out
-// of an empty patch beside the question.
+// Where the pill lives in the band for this trip, in page coordinates: the
+// visible control layer, or in "off" (no control shows) the visible note.
 const bandControls = (): DOMRect | null => {
-  const r = document.querySelector("[data-band-controls] > :not([inert])")?.getBoundingClientRect();
+  const el =
+    document.querySelector("[data-band-controls] > :not([inert])") ?? document.querySelector("[data-band-note] > :not([inert])");
+  const r = el?.getBoundingClientRect();
   return r ? new DOMRect(r.x + window.scrollX, r.y + window.scrollY, r.width, r.height) : null;
 };
 
@@ -50,7 +51,6 @@ export function usePillArrival(target: RefObject<HTMLElement | null>, shown: boo
   const [exiting, setExiting] = useState(false);
   const [landed, setLanded] = useState(false);
   const [previous, setPrevious] = useState(shown);
-  const home = useRef<DOMRect | null>(null); // page coordinates
   const tween = useRef<gsap.core.Tween | null>(null);
   const out = useRef(false);
   const still = useRef(reduce);
@@ -83,8 +83,9 @@ export function usePillArrival(target: RefObject<HTMLElement | null>, shown: boo
 
     if (shown) {
       setDocked(true);
+      // The pressed control is the source once, taken on every arrival so it
+      // never goes stale; later trips use the band as it is now.
       const pressed = takeDockSource();
-      if (pressed) home.current = pressed;
       const land = () => {
         gsap.set(el, { clearProps: "transform,opacity" });
         tween.current = null;
@@ -98,10 +99,9 @@ export function usePillArrival(target: RefObject<HTMLElement | null>, shown: boo
         tween.current = gsap.to(el, { x: 0, y: 0, scale: 1, opacity: 1, duration: DOCK.arriveMs / 1000, ease: "power4.out", onComplete: land });
         return;
       }
-      const page = home.current ?? bandControls();
+      const page = pressed ?? bandControls();
       const source = page ? toViewport(page) : null;
-      if (page && source && onScreen(source)) {
-        home.current = page;
+      if (source && onScreen(source)) {
         gsap.set(el, { clearProps: "transform,opacity" });
         const from = centre(source);
         const to = centre(el.getBoundingClientRect());
@@ -129,10 +129,9 @@ export function usePillArrival(target: RefObject<HTMLElement | null>, shown: boo
       tween.current = gsap.to(el, { opacity: 0, duration: FADE_MS / 1000, ease: "none", onComplete: gone });
       return;
     }
-    const page = home.current ?? bandControls();
+    const page = bandControls();
     const dest = page ? toViewport(page) : null;
-    if (page && dest && onScreen(dest)) {
-      home.current = page;
+    if (dest && onScreen(dest)) {
       const now = el.getBoundingClientRect();
       const rest = { x: centre(now).x - Number(gsap.getProperty(el, "x")), y: centre(now).y - Number(gsap.getProperty(el, "y")) };
       const into = centre(dest);
