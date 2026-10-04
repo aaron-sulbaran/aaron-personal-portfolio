@@ -1,14 +1,6 @@
-import type { SoundtrackState } from "@/lib/soundtrack";
-
-// The playback pill's rules, pure. The pill is a mini-player: the band under
-// the book is where the music is offered and controlled, so the pill only
-// appears once music has been chosen (on or paused) and the band is off
-// screen, anywhere on the page. Audible music always has a visible control
-// that way, and the ask is never duplicated.
-export function pillVisible({ music, bandInView }: { music: SoundtrackState; bandInView: boolean }): boolean {
-  return (music === "on" || music === "paused") && !bandInView;
-}
-
+// The playback pill's hover rules, pure. Where and when the pill shows is
+// lib/waveform/dock.ts.
+//
 // Hover choreography (spec 6.4): hover grows the capsule into a preview with a
 // delayed tooltip, a click opens the card, leaving the card minimizes it but
 // remembers it briefly (`recent`) so a quick re-hover snaps back, and a short
