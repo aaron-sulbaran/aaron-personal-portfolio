@@ -36,8 +36,11 @@ const toViewport = (page: DOMRect): Rect => {
   const top = page.y - window.scrollY;
   return { left: page.x - window.scrollX, top, width: page.width, height: page.height, bottom: top + page.height };
 };
+// The band's visible control layer, in page coordinates. "off" shows none
+// (every layer is inert), so there the pill rises instead of condensing out
+// of an empty patch beside the question.
 const bandControls = (): DOMRect | null => {
-  const r = document.querySelector("[data-band-controls]")?.getBoundingClientRect();
+  const r = document.querySelector("[data-band-controls] > :not([inert])")?.getBoundingClientRect();
   return r ? new DOMRect(r.x + window.scrollX, r.y + window.scrollY, r.width, r.height) : null;
 };
 
