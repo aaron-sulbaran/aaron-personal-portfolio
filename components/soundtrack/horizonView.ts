@@ -2,6 +2,7 @@ import { ScrollTrigger } from "@/lib/gsap";
 import { buildDots, carveTargets, type Cursor, type DotLayout } from "@/lib/waveform/dots";
 import { DUCK, DUCK_ALPHA, duckTargets, stepDuck } from "@/lib/waveform/duck";
 import { HORIZON, PHONE_MAX_PX, horizonLayout } from "@/lib/waveform/layout";
+import { attachWaveSource, waveProbe } from "@/lib/waveform/probe";
 import { trainX } from "@/lib/waveform/sweep";
 import { columnWeights, type Rect } from "@/lib/waveform/weights";
 import type { WaveConductor } from "./waveConductor";
@@ -37,6 +38,7 @@ export function createHorizonView(
   const host = canvas.parentElement;
   if (!ctx || !host) return null;
   const { still } = options;
+  const probe = waveProbe();
 
   let layout = horizonLayout(0);
   let track: DotLayout = layout;
@@ -108,6 +110,7 @@ export function createHorizonView(
     painter.fill(ducked.accent, painter.colors.accent, floor);
     ctx.globalAlpha = 1;
     painted = true;
+    if (probe) probe.horizonPaints++;
   };
 
   const { pointer, dispose: disposePointer } = trackPointer(!still && window.matchMedia("(pointer: fine)").matches, () =>
@@ -143,6 +146,7 @@ export function createHorizonView(
       window.removeEventListener("resize", scheduleMeasure);
       window.removeEventListener("scroll", onScroll);
       disposePointer();
+      detachProbe();
       host.getAnimations().forEach((animation) => animation.cancel());
       host.style.opacity = "";
     },
@@ -234,6 +238,17 @@ export function createHorizonView(
     refresh();
   });
   themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+  const detachProbe = attachWaveSource({
+    sweep: () => conductor.sweep.value,
+    strip: () => {
+      if (!width) return null;
+      const r = host.getBoundingClientRect();
+      return { top: r.top, bottom: r.bottom, baseline: r.top + layout.baseline };
+    },
+    columns: () =>
+      Array.from(xs, (x, i) => ({ x, duck: env[i], alpha: env[i] > 0.5 ? DUCK_ALPHA[theme] : alphas.muted })),
+  });
 
   return view;
 }
