@@ -52,23 +52,34 @@ export function trainX(
   return side === "band" ? x - sweep * length : x + (1 - sweep) * length;
 }
 
+export interface Junction {
+  dy: number;
+  scale: number;
+}
+
 // Transit gates the curl so the band at 0 and the horizon at 1 paint flat.
+// A view's frame passes `out` so the per-column call allocates nothing.
 export function junction(
   i: number,
   columns: number,
   sweep: number,
   side: "band" | "horizon",
   curlPx: number,
-): { dy: number; scale: number } {
+  out: Junction = { dy: 0, scale: 1 },
+): Junction {
+  out.dy = 0;
+  out.scale = 1;
   const curl = SWEEP.curlColumns;
   let t: number;
   if (side === "band" && i >= columns - curl) t = (i - (columns - curl)) / curl;
   else if (side === "horizon" && i < curl) t = 1 - i / curl;
-  else return { dy: 0, scale: 1 };
-  if (sweep <= 0 || sweep >= 1) return { dy: 0, scale: 1 };
+  else return out;
+  if (sweep <= 0 || sweep >= 1) return out;
   const transit = Math.sin(Math.PI * sweep);
   const dy = curlPx * smoothstep01(t) * transit;
-  return { dy: side === "band" ? dy : -dy, scale: 1 - TIP_THINNING * t * transit };
+  out.dy = side === "band" ? dy : -dy;
+  out.scale = 1 - TIP_THINNING * t * transit;
+  return out;
 }
 
 export function swell(sweep: number): number {

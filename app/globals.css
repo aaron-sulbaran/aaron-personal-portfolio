@@ -263,6 +263,13 @@ body {
   }
 }
 
+/* The horizon strip's top edge fades out (components/soundtrack/HorizonCanvas.tsx).
+   The #000 is mask coverage (fully kept), not a colour; nothing paints it. */
+.wave-horizon-mask {
+  -webkit-mask-image: linear-gradient(to top, #000 65%, transparent);
+  mask-image: linear-gradient(to top, #000 65%, transparent);
+}
+
 /* Playback pill equalizer glyph (components/soundtrack/PillParts.tsx). */
 @keyframes eqbar {
   0%,
