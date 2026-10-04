@@ -85,6 +85,8 @@ export function buildDots(
   for (let i = 0; i < columns; i++) {
     const x = columnX(i);
     const weight = weights[i] ?? 1;
+    // Under a carve at weight below 1 this differs slightly from the old
+    // weighting in the field (the carve now scales the floor share too); kept.
     const magnitude = FLOOR + (field.mag[i] - FLOOR) * weight;
     const cy = baseline - field.disp[i] * weight * maxAmp;
     const peak = magnitude > ACCENT_PEAK;

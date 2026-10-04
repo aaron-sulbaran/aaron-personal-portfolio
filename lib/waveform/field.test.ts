@@ -182,6 +182,18 @@ describe("field with phase", () => {
     expect(field.mag[0]).toBeCloseTo(target, 3);
   });
 
+  it("the music travels left with the stream: a later frame is the earlier one read further right", () => {
+    // The first term moves exactly 10 columns per second, the second about
+    // 11.5, so a 10 column per second shift leaves only a sliver of error;
+    // a term still moving right would leave about 0.03.
+    const d = 0.05;
+    let worst = 0;
+    for (let i = 0; i < 60; i += 0.5) {
+      worst = Math.max(worst, Math.abs(columnDisplacement(i, 2 + d, REACTIVE, 1) - columnDisplacement(i + 10 * d, 2, REACTIVE, 1)));
+    }
+    expect(worst).toBeLessThan(0.005);
+  });
+
   it("applying a constant weight at paint time equals the old weighted field", () => {
     // The old engine eased toward FLOOR + (target - FLOOR) * w. Easing is
     // affine, so scaling the unweighted magnitude after easing is identical.
