@@ -1,12 +1,15 @@
 import type { Page } from "@playwright/test";
 import { test, expect } from "./support/fixtures";
+import { HORIZON } from "@/lib/waveform/layout";
 import { openHome, scrollToY } from "./support/coil";
 import { settled } from "./support/fallback";
+import { AVOID_BLOCKS, hasProbe, parkBand, sweep } from "./support/wave";
 
-// The soundtrack band (#listen): in flow under the book, the one place the
-// waveform runs; "Play it" really plays, "Maybe later" leaves a still line,
-// and the playback pill takes over once the band is off screen with music
-// chosen. A deep load into the page keeps its layout still.
+// The soundtrack band (#listen): in flow under the book, where the waveform
+// starts before it follows the reader onto the horizon strip (horizon.spec.ts);
+// "Play it" really plays, "Maybe later" leaves a still line in the band, and
+// the playback pill takes over once the band is off screen with music chosen.
+// A deep load into the page keeps its layout still.
 
 // Counts every repaint of each 2D canvas (the wave clears once per paint) and
 // remembers every media element that was asked to play.
@@ -38,12 +41,16 @@ const bandPaints = (page: Page) => page.evaluate(() => (window as unknown as { _
 const media = (page: Page) =>
   page.evaluate(() => (window as unknown as { __e2eMedia: () => { paused: boolean; time: number; src: string }[] }).__e2eMedia());
 
+// The band fully in view with its centre at 70 percent of the viewport, below
+// the sweep trigger's start (centre at 60 percent): the whole train is still
+// in the band, so the band guards below run at sweep 0.
 async function scrollBandIntoView(page: Page) {
-  await page.locator("#listen").scrollIntoViewIfNeeded();
+  await parkBand(page);
   await page.waitForFunction(() => {
     const rect = document.querySelector("#listen")!.getBoundingClientRect();
     return rect.top > 80 && rect.bottom < window.innerHeight;
   });
+  if (await hasProbe(page)) await expect.poll(() => sweep(page), { message: "sweep with the band parked" }).toBe(0);
 }
 
 // Focuses the last control the keyboard can reach before the pill in
@@ -67,44 +74,75 @@ async function focusLastBeforePill(page: Page) {
   expect(focused, "a control before the pill took focus").toBe(true);
 }
 
-test("band: in flow directly under the book, and nothing animates behind the text below it", async ({ page }) => {
-  await openHome(page);
+// The rule that replaced "no canvas behind text": the one fixed canvas is the
+// horizon strip, behind the content (z 0 under 10) with no pointer events, so
+// every text box that crosses it still owns the point at its centre.
+test("band: in flow directly under the book; the one fixed canvas is the horizon, behind the text", async ({ page }) => {
+  await openHome(page, { path: "/?wavedebug" });
   const layout = await page.evaluate(() => {
     const band = document.getElementById("listen")!;
     const book = document.getElementById("work")!;
+    const fixedAncestor = (el: Element | null): HTMLElement | null => {
+      for (let node = el as HTMLElement | null; node; node = node.parentElement) {
+        if (getComputedStyle(node).position === "fixed") return node;
+      }
+      return null;
+    };
+    const fixed = [...document.querySelectorAll("canvas")].filter((c) => fixedAncestor(c));
+    const strip = fixed[0];
     return {
       followsBook: book.nextElementSibling === band || !!(book.compareDocumentPosition(band) & Node.DOCUMENT_POSITION_FOLLOWING),
       position: getComputedStyle(band).position,
-      fixedCanvases: [...document.querySelectorAll("canvas")].filter((c) => getComputedStyle(c).position === "fixed").length,
+      fixedCanvases: fixed.length,
+      fixedIsHorizon: !!strip && strip.matches('[data-wave="horizon"] canvas'),
+      zIndex: strip ? getComputedStyle(fixedAncestor(strip)!).zIndex : null,
+      pointerEvents: strip ? getComputedStyle(strip).pointerEvents : null,
       bandTop: band.getBoundingClientRect().top + window.scrollY,
       bookBottom: book.getBoundingClientRect().bottom + window.scrollY,
     };
   });
   expect(layout.followsBook).toBe(true);
   expect(["static", "relative"]).toContain(layout.position);
-  expect(layout.fixedCanvases, "canvases fixed to the viewport").toBe(0);
+  expect(layout.fixedCanvases, "canvases fixed to the viewport").toBe(1);
+  expect(layout.fixedIsHorizon, "the fixed canvas is the horizon strip").toBe(true);
+  expect(layout.zIndex).toBe("0");
+  expect(layout.pointerEvents).toBe("none");
   expect(layout.bandTop).toBeGreaterThan(layout.bookBottom - 100);
 
-  for (const id of ["about", "who-i-am", "up-to-now", "connect"]) {
-    await page.locator(`#${id}`).scrollIntoViewIfNeeded();
-    const overlaps = await page.evaluate((id) => {
-      const texts = [...document.querySelectorAll(`#${id} :is(h1,h2,h3,p,li,a,span,blockquote)`)]
-        .map((el) => el.getBoundingClientRect())
-        .filter((r) => r.width > 0 && r.height > 0);
-      const canvases = [...document.querySelectorAll("canvas")]
-        .filter((c) => getComputedStyle(c).visibility !== "hidden" && Number(getComputedStyle(c).opacity) > 0)
-        .map((c) => c.getBoundingClientRect())
-        .filter((r) => r.width > 0 && r.height > 0);
-      const hit = (a: DOMRect, b: DOMRect) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
-      return texts.filter((t) => canvases.some((c) => hit(t, c))).length;
-    }, id);
-    expect(overlaps, `text boxes in #${id} under a canvas`).toBe(0);
+  const vh = page.viewportSize()!.height;
+  for (const block of AVOID_BLOCKS) {
+    const selector = `${block} [data-wave-avoid]`;
+    const count = await page.locator(selector).count();
+    expect(count, `avoid boxes in ${block}`).toBeGreaterThan(0);
+    for (let i = 0; i < count; i++) {
+      // The box's centre on the strip's baseline (as far as the page scrolls).
+      const y = await page.evaluate(
+        ({ selector, i, at }) => {
+          const r = document.querySelectorAll(selector)[i].getBoundingClientRect();
+          const max = document.documentElement.scrollHeight - window.innerHeight;
+          return Math.max(0, Math.min(max, r.top + r.height / 2 + window.scrollY - at));
+        },
+        { selector, i, at: vh - HORIZON.lift },
+      );
+      await scrollToY(page, Math.round(y));
+      const hit = await page.evaluate(
+        ({ selector, i }) => {
+          const el = document.querySelectorAll(selector)[i];
+          const r = el.getBoundingClientRect();
+          const strip = document.querySelector('[data-wave="horizon"]')!.getBoundingClientRect();
+          const at = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+          return { overStrip: r.top < strip.bottom && r.bottom > strip.top, owned: !!at && el.contains(at) };
+        },
+        { selector, i },
+      );
+      expect(hit, `${selector} #${i} over the strip`).toEqual({ overStrip: true, owned: true });
+    }
   }
 });
 
 test("band: a real click on \"Play it\" starts playback", async ({ page }) => {
   await instrument(page);
-  await openHome(page);
+  await openHome(page, { path: "/?wavedebug" });
   await scrollBandIntoView(page);
 
   await page.locator("#listen").getByRole("button", { name: "Play it" }).click();
@@ -120,7 +158,7 @@ test("band: a real click on \"Play it\" starts playback", async ({ page }) => {
 
 test("band: the wave draws while the band is in view, and \"Maybe later\" brings it to a stop", async ({ page }) => {
   await instrument(page);
-  await openHome(page);
+  await openHome(page, { path: "/?wavedebug" });
   await scrollBandIntoView(page);
   const moving = await bandPaints(page);
   await expect.poll(async () => (await bandPaints(page)) - moving, { message: "repaints while in view" }).toBeGreaterThan(10);
@@ -147,7 +185,7 @@ test("band: the wave draws while the band is in view, and \"Maybe later\" brings
 // before the split (no scene under reduced motion, so no openHome here).
 test("band: the still line under reduced motion is pixel identical to the baseline", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.goto("/");
+  await page.goto("/?wavedebug");
   await settled(page);
   await scrollBandIntoView(page);
   await page.waitForTimeout(300);
@@ -166,7 +204,7 @@ test("band: the still line under reduced motion is pixel identical to the baseli
 // weight blend or a frozen field moves one of them out of it.
 test("band: idle drift paints the same dot count and extent as before the split", async ({ page }) => {
   await instrument(page);
-  await openHome(page);
+  await openHome(page, { path: "/?wavedebug" });
   await scrollBandIntoView(page);
   await page.waitForTimeout(1200);
   const stats = await page.evaluate(() => {
@@ -195,7 +233,7 @@ test("band: idle drift paints the same dot count and extent as before the split"
 });
 
 test("band: the pill shows once the band is off screen with music on, and only then takes keyboard focus", async ({ page }) => {
-  await openHome(page);
+  await openHome(page, { path: "/?wavedebug" });
   await scrollBandIntoView(page);
   const pill = page.locator("[data-pill]");
   const capsule = page.getByRole("button", { name: "Open soundtrack player" });
