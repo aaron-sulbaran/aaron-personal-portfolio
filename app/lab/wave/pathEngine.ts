@@ -3,7 +3,9 @@ import { ACCENT_LINE, CENTER_RADIUS } from "@/lib/waveform/dots";
 import { FLOOR, easeToward } from "@/lib/waveform/field";
 import type { WaveSettings, ThemeName } from "./settings";
 import { arcAtY, sampleSpine, type Point, type SpineSamples } from "./spineGeometry";
-import { SECTION_KEYS, resolveSpine, spineById, type Anchors, type SectionKey, type Span } from "./spines";
+import { publishMeasure } from "./anchorStore";
+import { createCursor } from "./pathCursor";
+import { SECTION_KEYS, resolveSpine, type Anchors, type SectionKey, type Span, type SpinePoint } from "./spines";
 import { bandAt, createSpectrum, stepSpectrum } from "./spectrum";
 
 // The Path placement: the site's dotted wave laid along a spine in document
@@ -24,6 +26,11 @@ import { bandAt, createSpectrum, stepSpectrum } from "./spectrum";
 // tight enough reads as a bare dotted thread. Crossings: every dot of a colour
 // goes into one path and is filled once, so where the line crosses itself the
 // dots union instead of stacking alpha: one thread over another in the same ink.
+//
+// The pointer (pathCursor.ts): fine pointers only, never under reduced
+// motion. Its state is stepped only for the tiles its reach touches and the
+// tiles still settling, only those are repainted when nothing else changed,
+// and the loop stops once every column is back at rest.
 
 const TILE = 768;
 const DPR_CAP = 2;
@@ -56,11 +63,14 @@ export interface PathInfo {
   visibleTiles: number;
   columns: number;
   paints: number;
+  layoutMs: number; // the last full layout: measure, sample, columns, tiles
+  sampleMs: number; // of which sampling the spline and laying the columns
+  interactPaints: number; // tile repaints caused by the pointer alone
 }
 
 export interface PathEngine {
   attach(layer: HTMLElement, root: HTMLElement): () => void;
-  update(settings: WaveSettings, reduced: boolean): void;
+  update(settings: WaveSettings, reduced: boolean, points: SpinePoint[]): void;
   start(): void;
   stop(): void;
   info(): PathInfo;
@@ -135,6 +145,17 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
   let colTaper = new Float32Array(0);
   let tileCols = new Int32Array(0);
   let width = 0;
+  let points: SpinePoint[] = [];
+  let layerLeft = 0;
+  let layoutMs = 0;
+  let sampleMs = 0;
+  let interactPaints = 0;
+  const cursor = createCursor();
+  let fine = false;
+  let clientX = 0;
+  let clientY = 0;
+  let tileActive = new Uint8Array(0);
+  const repelOut = { x: 0, y: 0 };
 
   let layerDocTop = 0;
   let viewport = 0;
@@ -169,13 +190,18 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
   // Geometry: anchors, spine, columns, tiles. Layout reads live here only.
   const layout = () => {
     if (!layer || !root) return;
+    const t0 = performance.now();
     const anchors = measureAnchors(layer, root);
     if (!anchors) return;
+    publishMeasure({ anchors, viewport: window.innerHeight });
+    layerLeft = 0;
+    for (let node: HTMLElement | null = layer; node; node = node.offsetParent as HTMLElement | null) layerLeft += node.offsetLeft;
+    const t1 = performance.now();
     width = anchors.width;
     viewport = window.innerHeight;
     layerDocTop = docTop(layer);
     scrollY = window.scrollY;
-    controls = resolveSpine(spineById(settings.path.spine), anchors);
+    controls = resolveSpine({ points }, anchors);
     samples = sampleSpine(controls, SAMPLE_STEP);
 
     const spacing = settings.spacing;
@@ -199,6 +225,8 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
       // Keep the farthest dot inside 80 percent of the bend's radius.
       colTaper[j] = Math.min(1, (0.8 * samples.radius[i]) / Math.max(1, reachOf(amp)));
     }
+    cursor.resize(columns);
+    sampleMs = performance.now() - t1;
 
     // Tiles: one canvas per TILE px of the layer's height.
     const height = layer.clientHeight;
@@ -251,10 +279,27 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
       const b = Math.min(count - 1, Math.floor((colY[j] + reach) / TILE));
       for (let t = a; t <= b; t++) tileCols[tiles[t].first + tiles[t].count++] = j;
     }
+    tileActive = new Uint8Array(count);
     target = targetHead();
     if (reduced || paintedHead < 0) head = target;
     dirty = true;
+    layoutMs = performance.now() - t0;
     refresh();
+  };
+
+  const interactive = () => fine && !reduced && cursor.mode !== "none";
+
+  // One dot out, through the pointer's repel (carve and blend) when its
+  // column is near the pointer. Module-level scratch, no allocation.
+  let emitTop = 0;
+  let emitRepel = false;
+  const emit = (out: number[], x: number, y: number, r: number) => {
+    if (emitRepel) {
+      cursor.repel(x, y + emitTop, repelOut);
+      pushDot(out, repelOut.x, repelOut.y - emitTop, r);
+    } else {
+      pushDot(out, x, y, r);
+    }
   };
 
   const targetHead = (): number => {
@@ -289,6 +334,11 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
     const musicAmount = music * p.musicLayer;
     const top = tile.top;
     let sparkJ = -1;
+    const touch = interactive();
+    const plucking = touch && cursor.hasPlucks();
+    const repelR = cursor.radius + 30;
+    const pointer = cursor.pointer;
+    emitTop = top;
 
     for (let k = 0; k < tile.count; k++) {
       const j = tileCols[tile.first + k];
@@ -316,17 +366,31 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
       }
       if (present < 1 && hash(j, 0) > present) continue;
 
+      let carved = 1;
+      let bright = 0;
+      let ox = 0;
+      let oy = 0;
+      emitRepel = false;
+      if (touch) {
+        w *= cursor.swellScale(j);
+        carved = cursor.carveScale(j);
+        bright = cursor.brightness(j);
+        ox = cursor.offX(j);
+        oy = cursor.offY(j);
+        emitRepel = pointer.on && Math.abs(colX[j] - pointer.x) < repelR && Math.abs(colY[j] - pointer.y) < repelR + amp;
+      }
+
       const a = (TAU * (s - shift)) / lambda;
-      const disp = 0.26 * shape(a);
+      const disp = 0.26 * shape(a) + (plucking ? cursor.pluck(s) : 0);
       let mag = FLOOR + 0.05 + 0.17 * (0.5 + 0.5 * Math.sin(a / 0.55 + 0.6)) ** 2;
       if (musicAmount > 1e-3) mag += musicAmount * bandAt(spectrum, (s % SPEC_PERIOD) / SPEC_PERIOD);
-      const magnitude = FLOOR + (mag - FLOOR) * w;
+      const magnitude = FLOOR + (mag - FLOOR) * w * carved;
       const nx = colNx[j];
       const ny = colNy[j];
-      const cx = colX[j] - nx * disp * w * amp;
-      const cy = colY[j] - top - ny * disp * w * amp;
+      const cx = colX[j] - nx * disp * w * amp + ox;
+      const cy = colY[j] - top - ny * disp * w * amp + oy;
       const peak = magnitude > ACCENT_PEAK;
-      pushDot(magnitude > ACCENT_LINE ? accent : muted, cx, cy, CENTER_RADIUS * r);
+      emit(magnitude > ACCENT_LINE || (bright > 0 && hash(j, 9) < bright) ? accent : muted, cx, cy, CENTER_RADIUS * r);
 
       const thick = Math.min(settings.maxThick, Math.floor((magnitude * amp) / gap));
       for (let q = 1; q <= thick; q++) {
@@ -336,10 +400,10 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
         const shimmer = 0.5 + 0.5 * Math.sin(j * 1.3 + q * 2.1 + (musicAmount > 1e-3 ? clock * 6 : 0));
         if (shimmer >= 0.5 + fade * 0.45) continue;
         if (present < 1 && hash(j, q) > present) continue;
-        const out = q >= thick && peak ? accent : muted;
+        const out = (q >= thick && peak) || (bright > 0 && hash(j, q + 9) < bright) ? accent : muted;
         const o = q * gap;
-        pushDot(out, cx + nx * o, cy + ny * o, FUZZ_RADIUS * r);
-        pushDot(out, cx - nx * o, cy - ny * o, FUZZ_RADIUS * r);
+        emit(out, cx + nx * o, cy + ny * o, FUZZ_RADIUS * r);
+        emit(out, cx - nx * o, cy - ny * o, FUZZ_RADIUS * r);
       }
     }
     if (sparkJ >= 0) pushDot(accent, colX[sparkJ], colY[sparkJ] - top, CENTER_RADIUS * 1.7 * settings.dotScale);
@@ -401,9 +465,63 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
       music = easeToward(music, settings.music ? 1 : 0, settings.music ? 0.05 : 0.11, dt);
       stepSpectrum(spectrum, clock, dt, music * settings.intensity, settings.beat);
     }
-    if (dirty || live || Math.abs(head - paintedHead) > 0.2) paintVisible();
-    if (head !== target || live) raf = requestAnimationFrame(tick);
+    const touching = interactive() && stepPointer(dt);
+    if (dirty || live || Math.abs(head - paintedHead) > 0.2) {
+      paintVisible();
+    } else if (touching) {
+      for (let k = 0; k < tiles.length; k++) {
+        if (tiles[k].visible && tileActive[k]) {
+          paintTile(tiles[k]);
+          interactPaints++;
+        }
+      }
+    }
+    if (interactive()) cursor.endFrame();
+    if (head !== target || live || (interactive() && cursor.busy())) raf = requestAnimationFrame(tick);
     else last = 0;
+  };
+
+  // Step the pointer's state for the tiles its reach touches and the tiles
+  // still settling; mark them for repaint. Returns true if any tile needs it.
+  const stepPointer = (dt: number): boolean => {
+    cursor.beginFrame(dt);
+    const p = cursor.pointer;
+    const reach = cursor.radius * 2 + settings.amplitude + 40;
+    const plucking = cursor.hasPlucks();
+    let any = false;
+    let nearJ = -1;
+    let nearD = Infinity;
+    let nearSide = 0;
+    const tailS = settings.path.tail === "train" ? head - settings.path.trainLength : -Infinity;
+    for (let k = 0; k < tiles.length; k++) {
+      const tile = tiles[k];
+      if (!tile.visible) {
+        tileActive[k] = 0;
+        continue;
+      }
+      const inReach = p.on && p.y + reach > tile.top && p.y - reach < tile.top + tile.height;
+      if (!inReach && !tileActive[k] && !plucking) continue;
+      const before = cursor.unsettledCount();
+      for (let c = 0; c < tile.count; c++) {
+        const j = tileCols[tile.first + c];
+        cursor.step(j, colX[j], colY[j], dt);
+        if (p.moved && p.on && colS[j] <= head && colS[j] >= tailS) {
+          const dx = p.x - colX[j];
+          const dy = p.y - colY[j];
+          const d = dx * dx + dy * dy;
+          if (d < nearD) {
+            nearD = d;
+            nearJ = j;
+            nearSide = Math.sign(dx * colNx[j] + dy * colNy[j]);
+          }
+        }
+      }
+      tileActive[k] = inReach || plucking || cursor.unsettledCount() > before ? 1 : 0;
+      if (tileActive[k]) any = true;
+    }
+    if (nearJ >= 0 && nearD < cursor.radius * cursor.radius) cursor.crossing(nearJ, nearSide, colS[nearJ]);
+    else if (p.moved) cursor.crossing(-1, 0, 0);
+    return any;
   };
 
   const wake = () => {
@@ -422,6 +540,18 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
 
   const onScroll = () => {
     scrollY = window.scrollY;
+    if (cursor.pointer.on) cursor.place(clientX - layerLeft, clientY + scrollY - layerDocTop);
+    wake();
+  };
+  const onPointer = (event: PointerEvent) => {
+    if (!interactive() || event.pointerType === "touch") return;
+    clientX = event.clientX;
+    clientY = event.clientY;
+    cursor.move(clientX - layerLeft, clientY + scrollY - layerDocTop, event.timeStamp);
+    wake();
+  };
+  const onLeave = () => {
+    cursor.leave();
     wake();
   };
   const onResize = () => layout();
@@ -464,9 +594,11 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
         root = null;
       };
     },
-    update(next, nextReduced) {
+    update(next, nextReduced, nextPoints) {
       settings = next;
       reduced = nextReduced;
+      points = nextPoints;
+      cursor.configure(next.cursor);
       layout();
     },
     start() {
@@ -475,6 +607,11 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
       theme = themeNow();
       window.addEventListener("scroll", onScroll, { passive: true });
       window.addEventListener("resize", onResize);
+      fine = window.matchMedia("(pointer: fine)").matches;
+      if (fine) {
+        window.addEventListener("pointermove", onPointer, { passive: true });
+        document.documentElement.addEventListener("pointerleave", onLeave);
+      }
       document.addEventListener("visibilitychange", onVisibility);
       themeObserver = new MutationObserver(() => {
         theme = themeNow();
@@ -495,6 +632,8 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
       last = 0;
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onResize);
+      window.removeEventListener("pointermove", onPointer);
+      document.documentElement.removeEventListener("pointerleave", onLeave);
       document.removeEventListener("visibilitychange", onVisibility);
       themeObserver?.disconnect();
       themeObserver = null;
@@ -507,6 +646,9 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
       visibleTiles: tiles.filter((t) => t.visible).length,
       columns,
       paints,
+      layoutMs,
+      sampleMs,
+      interactPaints,
     }),
   };
 }
