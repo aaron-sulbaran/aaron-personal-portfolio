@@ -73,15 +73,16 @@ function PillInner({ reached }: { reached: boolean }) {
   const labelShown = labelsShown.has(kind) || quietRestore;
   const mode = dockMode({ ...input, labelShown });
   const shown = mode !== "hidden";
-  // The face the pill shows: on its way back to the band it keeps the slots it
-  // had, so its box holds its size while the return carries it (the dock is
-  // left-anchored, so a collapsing slot would drag its centre off the tween).
   const [lastFace, setLastFace] = useState(mode);
   if (shown && mode !== lastFace) setLastFace(mode);
-  const face = shown ? mode : lastFace;
   const line = labelLine(kind);
 
   const { present, landed } = usePillArrival(wrapperRef, shown, reduce);
+  // The face the pill shows: on its way back to the band it keeps the slots it
+  // had, so its box holds its size while the return carries it (the dock is
+  // left-anchored, so a collapsing slot would drag its centre off the tween);
+  // once it is away the slots close, so each arrival opens from closed.
+  const face = shown ? mode : present ? lastFace : "hidden";
   const [hover, send] = usePillHover(reduce, shown);
   const expanded = hover.mode === "expanded";
 
