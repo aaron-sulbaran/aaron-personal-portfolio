@@ -110,16 +110,16 @@ export const CardShell = forwardRef<HTMLDivElement, ShellProps>(function CardShe
   );
 });
 
-function useCardPlayer(stageRef: React.RefObject<HTMLDivElement | null>, s: Settings, reduced: boolean, autoplay: boolean) {
+function useCardPlayer(stageRef: React.RefObject<HTMLDivElement | null>, s: Settings, reduced: boolean, delay: number) {
   const build = useCallback((scope: Element) => buildCardOpen(scope, s, reduced), [s, reduced]);
-  return usePlayer(stageRef, build, { autoplay, delay: autoplay ? 250 : 0 });
+  return usePlayer(stageRef, build, { delay });
 }
 
 // The inline bench: a stand-in page under the backdrop so the blur has
 // something to blur, with its own transport.
 export function CardStage({ s, reduced }: { s: Settings; reduced: boolean }) {
   const stageRef = useRef<HTMLDivElement | null>(null);
-  const { tlRef, version } = useCardPlayer(stageRef, s, reduced, true);
+  const { tlRef, version } = useCardPlayer(stageRef, s, reduced, 250);
   useEffect(() => {
     window.__markCard = () => tlRef.current;
     return () => {
@@ -146,7 +146,7 @@ export function CardStage({ s, reduced }: { s: Settings; reduced: boolean }) {
 // own modal primitives (scroll lock, Escape, focus trap).
 export function CardOverlay({ s, reduced, onClose }: { s: Settings; reduced: boolean; onClose: () => void }) {
   const stageRef = useRef<HTMLDivElement | null>(null);
-  useCardPlayer(stageRef, s, reduced, true);
+  useCardPlayer(stageRef, s, reduced, 0);
   useBodyScrollLock(true);
   useEscapeKey(true, onClose);
   useFocusTrap(stageRef, true);
