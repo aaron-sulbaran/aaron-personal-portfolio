@@ -5,9 +5,9 @@ import { Portal } from "@/components/Portal";
 import { siteContent } from "@/lib/content";
 import { getSoundtrackPlayer } from "@/lib/audio";
 import { getPlayFailed, getRestoredSoundtrack, startSoundtrack, subscribeSoundtrack, useSoundtrack } from "@/lib/soundtrack";
-import { DOCK, capsuleText, dockLabel, dockMode, type DockLabel } from "@/lib/waveform/dock";
+import { DOCK, capsuleName, capsuleText, dockLabel, dockMode, type DockLabel } from "@/lib/waveform/dock";
 import { isPhone, subscribePhone } from "@/lib/waveform/layout";
-import { Cover, DockGlyph, EASE, glass, reveal } from "./PillParts";
+import { Cover, DockGlyph, EASE, PillSlot, glass } from "./PillParts";
 import { PillAnnouncer, PillLabel, labelLine, useLabelHold } from "./PillLabel";
 import { PlayerCard } from "./PlayerCard";
 import { usePillArrival } from "./usePillArrival";
@@ -24,7 +24,7 @@ function readGreeted(): boolean {
   }
 }
 
-// The glass playback pill, docked at the bottom centre on the wave's line
+// The glass playback pill, docked at the bottom left on the wave's line
 // (lib/waveform/dock). From the band down it is there in every music state:
 // it condenses out of the band control the visitor pressed (usePillArrival),
 // lands open with one line for the state (PillLabel), then collapses to a
@@ -73,9 +73,16 @@ function PillInner({ reached }: { reached: boolean }) {
   const labelShown = labelsShown.has(kind) || quietRestore;
   const mode = dockMode({ ...input, labelShown });
   const shown = mode !== "hidden";
+  const [lastFace, setLastFace] = useState(mode);
+  if (shown && mode !== lastFace) setLastFace(mode);
   const line = labelLine(kind);
 
   const { present, landed } = usePillArrival(wrapperRef, shown, reduce);
+  // The face the pill shows: on its way back to the band it keeps the slots it
+  // had, so its box holds its size while the return carries it (the dock is
+  // left-anchored, so a collapsing slot would drag its centre off the tween);
+  // once it is away the slots close, so each arrival opens from closed.
+  const face = shown ? mode : present ? lastFace : "hidden";
   const [hover, send] = usePillHover(reduce, shown);
   const expanded = hover.mode === "expanded";
 
@@ -152,10 +159,10 @@ function PillInner({ reached }: { reached: boolean }) {
   const tip: CSSProperties = {
     ...glass,
     position: "absolute",
-    left: "50%",
+    left: 0,
     bottom: "calc(100% + 10px)",
     whiteSpace: "nowrap",
-    transform: hover.tip ? "translateX(-50%) translateY(0)" : "translateX(-50%) translateY(4px)",
+    transform: hover.tip ? "translateY(0)" : "translateY(4px)",
     opacity: hover.tip && preview ? 1 : 0,
     transition: `opacity 220ms ease, transform 220ms ${EASE}`,
     pointerEvents: "none",
@@ -178,7 +185,8 @@ function PillInner({ reached }: { reached: boolean }) {
           bottom: DOCK.baselineFromBottomPx - DOCK.capsulePx / 2,
           zIndex: 45,
           display: "flex",
-          justifyContent: "center",
+          justifyContent: "flex-start",
+          paddingLeft: DOCK.insetPx,
           pointerEvents: "none",
           opacity: present ? 1 : 0,
         }}
@@ -202,26 +210,26 @@ function PillInner({ reached }: { reached: boolean }) {
             onClick={press}
             onMouseEnter={() => previewable && send("enter")}
             onMouseLeave={() => send("leave")}
-            aria-label={`${capsuleText(music, track.title)}. ${startsMusic ? c.invite : c.ariaOpen}`}
+            aria-label={capsuleName(capsuleText(music, track.title), startsMusic ? c.invite : c.ariaOpen)}
             data-cursor-hover
             style={{ ...capsule, ["--pill-hit-inset" as string]: `${(DOCK.hitPx - DOCK.capsulePx) / 2}px` }}
           >
-            <span style={reveal(preview, "40px", reduce)}>
+            <PillSlot visible={preview} maxWidth={40} reduce={reduce}>
               <Cover size={38} cover={track.cover} />
-            </span>
-            <span style={{ ...reveal(preview, "190px", reduce, 280, 12), display: "block" }}>
+            </PillSlot>
+            <PillSlot visible={preview} maxWidth={190} reduce={reduce} before={12} after={12} block>
               <span style={{ display: "block", fontSize: 12, fontWeight: 500 }}>{track.title}</span>
               <span style={{ display: "block", fontSize: 11, color: "var(--color-muted)" }}>{track.artist}</span>
-            </span>
-            <span style={{ display: "flex", marginLeft: preview ? 12 : 0, transition: `margin 280ms ${EASE}` }}>
+            </PillSlot>
+            <span style={{ display: "flex" }}>
               <DockGlyph music={music} />
             </span>
-            <PillLabel line={line} open={mode === "label"} reduce={reduce} />
-            <span style={reveal(mode === "capsule" && !preview, "220px", reduce, DOCK.collapseMs, 8)}>
+            <PillLabel line={line} open={face === "label"} reduce={reduce} />
+            <PillSlot visible={face === "capsule" && !preview} maxWidth={220} reduce={reduce} ms={DOCK.collapseMs} before={8}>
               <span style={{ fontSize: 12, fontWeight: 500, color: music === "on" ? "var(--color-foreground)" : "var(--color-muted)" }}>
                 {capsuleText(music, track.title)}
               </span>
-            </span>
+            </PillSlot>
           </button>
           <PlayerCard
             music={music}

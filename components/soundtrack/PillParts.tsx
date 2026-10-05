@@ -1,13 +1,13 @@
 "use client";
 
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { NoteIcon } from "@/components/menu/NoteIcon";
 import { siteContent } from "@/lib/content";
 import type { SoundtrackState } from "@/lib/soundtrack";
 import { setFrozen, useFrozen } from "@/lib/waveform/freeze";
 
 // Shared pieces of the playback pill: the glass surface (backdrop blur is
-// sanctioned on the pill), the reveal, the cover tile, the glyph and the
+// sanctioned on the pill), the growing slot, the cover tile, the glyph and the
 // card's freeze row.
 
 export const EASE = "var(--ease-out)";
@@ -21,24 +21,45 @@ export const glass: CSSProperties = {
 };
 
 // A slot that grows from nothing: max-width and max-height collapse together
-// (without the height a hidden two-line title keeps the row tall), and the
-// slot's own left margin stands in for the flex gap, so hidden slots add no
-// space. Reduced motion fades only.
-export function reveal(visible: boolean, maxWidth: string, reduce: boolean, ms = 280, space = 0): CSSProperties {
-  return {
-    display: "flex",
-    alignItems: "center",
-    overflow: "hidden",
-    flex: "0 0 auto",
-    whiteSpace: "nowrap",
-    transition: reduce
-      ? "opacity 220ms ease"
-      : `max-width ${ms}ms ${EASE}, max-height ${ms}ms ${EASE}, margin ${ms}ms ${EASE}, opacity ${Math.min(ms, 220)}ms ease`,
-    maxWidth: visible ? maxWidth : "0px",
-    maxHeight: visible ? "48px" : "0px",
-    marginLeft: visible ? space : 0,
-    opacity: visible ? 1 : 0,
-  };
+// (without the height a hidden two-line title keeps the row tall) and the
+// slot clips. The space around its content (`before` stands in for the flex
+// gap, `after` for the gap to the next item) is padding inside the clip, so a
+// hidden slot adds no space and only max-width, max-height and opacity
+// transition. Reduced motion fades only.
+type SlotProps = {
+  visible: boolean;
+  maxWidth: number; // the content's, px; the padding is added on top
+  reduce: boolean;
+  ms?: number;
+  before?: number;
+  after?: number;
+  block?: boolean;
+  ariaHidden?: boolean;
+  children: ReactNode;
+};
+
+export function PillSlot({ visible, maxWidth, reduce, ms = 280, before = 0, after = 0, block = false, ariaHidden, children }: SlotProps) {
+  const display = block ? "block" : "flex";
+  return (
+    <span
+      aria-hidden={ariaHidden}
+      style={{
+        display,
+        alignItems: "center",
+        overflow: "hidden",
+        flex: "0 0 auto",
+        whiteSpace: "nowrap",
+        transition: reduce
+          ? "opacity 220ms ease"
+          : `max-width ${ms}ms ${EASE}, max-height ${ms}ms ${EASE}, opacity ${Math.min(ms, 220)}ms ease`,
+        maxWidth: visible ? maxWidth + before + after : 0,
+        maxHeight: visible ? 48 : 0,
+        opacity: visible ? 1 : 0,
+      }}
+    >
+      <span style={{ display, alignItems: "center", paddingLeft: before, paddingRight: after }}>{children}</span>
+    </span>
+  );
 }
 
 export const formatTime = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;

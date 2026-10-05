@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 import { test, expect } from "./support/fixtures";
 import { siteContent } from "@/lib/content";
+import { DOCK } from "@/lib/waveform/dock";
 import { HORIZON } from "@/lib/waveform/layout";
 import { THEME_STORAGE_KEY } from "@/lib/theme";
 import { openHome, scrollToY } from "./support/coil";
@@ -30,7 +31,7 @@ import { AVOID_BLOCKS, hasProbe, paintsOver, parkBand, sweep } from "./support/w
 // starts before it follows the reader onto the horizon strip (horizon.spec.ts);
 // "Play it" really plays, "Not now" leaves a still line in the band, and the
 // playback pill condenses out of the band onto the wave's line at the bottom
-// centre once the reader scrolls on (the dock tests below, spec sections 2
+// left once the reader scrolls on (the dock tests below, spec sections 2
 // and 5). A deep load into the page keeps its layout still.
 
 const L = siteContent.listen;
@@ -179,7 +180,7 @@ test("band: in flow directly under the book; the one fixed canvas is the horizon
   }
 });
 
-// The pill docks at the bottom centre (z 45), so at the foot of the page the
+// The pill docks at the bottom left (z 45), so at the foot of the page the
 // footer's bottom padding keeps its last row clear of the capsule from md up.
 for (const viewport of [
   { width: 1440, height: 900 },
@@ -362,7 +363,7 @@ test("band: a deep load at #about keeps its layout still (CLS under 0.05)", asyn
 // ---------------------------------------------------------------------------
 // The dock (spec sections 2, 5 and 8): from the band down the pill is there in
 // every music state, condensed out of the band onto the wave's line at the
-// bottom centre. It lands open with one line for the state, once per page
+// bottom left. It lands open with one line for the state, once per page
 // load, holds about 2.6s (hover or keyboard focus pauses the hold), then
 // collapses to the capsule. Every read goes through the dock recorder
 // (support/dock.ts) and every string comes from lib/content.ts.
@@ -408,7 +409,7 @@ test("dock: the accept path plays, condenses to the dock, says where the music l
   await dockLanded(page);
   const at = await dockGeometry(page);
   expect(at.height, "capsule height").toBeGreaterThanOrEqual(36);
-  expect(Math.abs(at.x - at.centre), "capsule centre from the viewport's centre").toBeLessThanOrEqual(2);
+  expect(Math.abs(at.left - DOCK.insetPx), "capsule left edge from the dock's inset").toBeLessThanOrEqual(2);
   expect(Math.abs(at.y - at.baseline), "capsule centre from the horizon's baseline").toBeLessThanOrEqual(4);
 });
 
@@ -452,7 +453,7 @@ test("dock: unanswered, the pill arrives as \"Music?\" with no label and nothing
   const texts = new Set(samples.filter((s) => !s.inert).map((s) => s.text));
   expect([...texts], "the pill's text from its arrival on").toEqual([S.capsuleUnanswered]);
   // One click is a yes: the capsule's name is its visible text, then the invitation.
-  await expect(page.locator(CAPSULE)).toHaveAccessibleName(`${S.capsuleUnanswered}. ${S.invite}`);
+  await expect(page.locator(CAPSULE)).toHaveAccessibleName(`${S.capsuleUnanswered} ${S.invite}`);
   expect(await storedChoice(page)).toBeNull();
 });
 
@@ -553,7 +554,7 @@ async function condense(page: Page, selectors: string[]) {
   const run = arrival(await stopDock(page));
   expect(run, "an arrival tween").not.toBeNull();
   const at = await dockGeometry(page);
-  return { ...run!, sources: scrolled.centres, dock: { x: at.centre, y: at.baseline } };
+  return { ...run!, sources: scrolled.centres, dock: { x: at.x, y: at.baseline } };
 }
 
 // The condense's source tolerance: the measured start sits on the source's centre (about 0px).
@@ -575,11 +576,14 @@ test("dock: the first arrival condenses out of the pressed control and travels d
   const last = ticks.at(-1)!;
   expect(Math.abs(last.x - dock.x), "the last sample from the dock, x").toBeLessThanOrEqual(4);
   expect(Math.abs(last.y - dock.y), "the last sample from the dock, y").toBeLessThanOrEqual(4);
-  // Down all the way: y strictly increases while the tween runs, then holds at rest.
+  // Down all the way: y strictly increases while the tween travels, then holds
+  // at rest on the dock's measured centre. GSAP's last frame can leave a zero
+  // translate in place for a tick before it clears, so "travelling" is read
+  // from the position, not the inline transform.
   const path = [first, ...ticks];
   for (let i = 1; i < path.length; i++) {
-    if (path[i - 1].transform) expect(path[i].y, `sample ${i} below sample ${i - 1}`).toBeGreaterThan(path[i - 1].y);
-    else expect(path[i].y, `sample ${i} at rest`).toBe(path[i - 1].y);
+    if (path[i - 1].y < dock.y - 1) expect(path[i].y, `sample ${i} below sample ${i - 1}`).toBeGreaterThan(path[i - 1].y);
+    else expect(Math.abs(path[i].y - dock.y), `sample ${i} at rest on the dock`).toBeLessThanOrEqual(1);
   }
 });
 
@@ -645,7 +649,7 @@ test("dock: the freeze toggle lives in the player card once music is on", async 
 });
 
 for (const theme of ["light", "dark"] as const) {
-  test(`dock: the capsule rests on the wave's baseline at the bottom centre in ${theme}`, async ({ page }) => {
+  test(`dock: the capsule rests on the wave's baseline at the bottom left in ${theme}`, async ({ page }) => {
     await page.addInitScript(({ key, theme }) => localStorage.setItem(key, theme), { key: THEME_STORAGE_KEY, theme });
     await armDock(page);
     await page.goto(`${HOME}#about`);
@@ -654,7 +658,7 @@ for (const theme of ["light", "dark"] as const) {
     await dockLanded(page);
     const at = await dockGeometry(page);
     expect(at.height, "capsule height").toBeGreaterThanOrEqual(36);
-    expect(Math.abs(at.x - at.centre), "capsule centre from the viewport's centre").toBeLessThanOrEqual(2);
+    expect(Math.abs(at.left - DOCK.insetPx), "capsule left edge from the dock's inset").toBeLessThanOrEqual(2);
     expect(Math.abs(at.y - at.baseline), "capsule centre from the horizon's baseline").toBeLessThanOrEqual(4);
   });
 }
