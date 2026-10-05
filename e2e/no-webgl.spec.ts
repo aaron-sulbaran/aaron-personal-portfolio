@@ -1,12 +1,13 @@
 import { test, expect } from "./support/fixtures";
 import { watchScripts } from "./support/chunks";
 import { expectPosterHeroAndUsableBook, settled } from "./support/fallback";
+import { MUTED_ARGS } from "./support/launch";
 
 // No WebGL: a browser launched without the GPU, and WebGL taken away in the
 // page, the two ways a visitor's browser can lack it. The poster, the h1 and
 // the book carry the page, and the scene's chunk is never fetched.
 
-test.use({ launchOptions: { args: ["--disable-gpu"] } });
+test.use({ launchOptions: { args: [...MUTED_ARGS, "--disable-gpu"] } });
 
 test("a browser without WebGL 2 never fetches the scene chunk", async ({ page }) => {
   await page.addInitScript(() => {

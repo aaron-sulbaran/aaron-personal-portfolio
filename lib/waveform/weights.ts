@@ -26,10 +26,15 @@ export interface WeightLayout {
 
 const EDGE_FLOOR = 0.3;
 
+// The wave's one smoothstep, t clamped to [0, 1]; the sweep's junction shares it.
+export function smoothstep01(t: number): number {
+  const c = Math.min(1, Math.max(0, t));
+  return c * c * (3 - 2 * c);
+}
+
 const smoothstep = (edge: number, x: number) => {
   if (edge <= 0) return x > 0 ? 1 : 0;
-  const t = Math.min(1, Math.max(0, x / edge));
-  return t * t * (3 - 2 * t);
+  return smoothstep01(x / edge);
 };
 
 function clearanceWeight(rect: Rect, baseline: number, reach: number): number {

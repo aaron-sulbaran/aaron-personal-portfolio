@@ -12,6 +12,7 @@ import {
   type FieldInput,
   type Levels,
 } from "@/lib/waveform/field";
+import { createConveyor, feedScroll, stepConveyor } from "@/lib/waveform/conveyor";
 
 const IDLE: Levels = { idle: 1, paused: 0, reactive: 0 };
 const REACTIVE: Levels = { idle: 0, paused: 0, reactive: 1 };
@@ -24,8 +25,8 @@ function input(overrides: Partial<FieldInput> = {}): FieldInput {
     regime: "idle",
     bands: new Float32Array(columns),
     audioLevel: 0,
-    weights: new Float32Array(columns).fill(1),
     carve: null,
+    phase: 0,
     ...overrides,
   };
 }
@@ -152,20 +153,99 @@ describe("frame-rate independence", () => {
   it("reaches the same field state at 60Hz and 120Hz", () => {
     const at60 = createField(16);
     const at120 = createField(16);
-    for (let f = 0; f < 120; f++) stepField(at60, input({ bands: new Float32Array(16), weights: new Float32Array(16).fill(1), regime: "still", time: f / 60, dt: 1 / 60 }));
-    for (let f = 0; f < 240; f++) stepField(at120, input({ bands: new Float32Array(16), weights: new Float32Array(16).fill(1), regime: "still", time: f / 120, dt: 1 / 120 }));
+    for (let f = 0; f < 120; f++) stepField(at60, input({ bands: new Float32Array(16), regime: "still", time: f / 60, dt: 1 / 60 }));
+    for (let f = 0; f < 240; f++) stepField(at120, input({ bands: new Float32Array(16), regime: "still", time: f / 120, dt: 1 / 120 }));
     expect(at60.levels.idle).toBeCloseTo(at120.levels.idle, 6);
   });
 });
 
-describe("column weights in the field", () => {
-  it("flattens a zero-weight column to the floor line while its neighbours move", () => {
-    const weights = new Float32Array(24).fill(1);
-    weights[5] = 0;
-    const field = createField(24);
-    for (let f = 0; f < 240; f++) stepField(field, input({ weights, time: 1 + f / 60 }));
-    expect(field.mag[5]).toBeCloseTo(FLOOR, 4);
-    expect(Math.abs(field.disp[5])).toBe(0);
-    expect(field.mag[12]).toBeGreaterThan(FLOOR * 2);
+describe("field with phase", () => {
+  const phaseInput = (over: Partial<FieldInput> = {}): FieldInput => ({
+    time: 1,
+    dt: 1 / 60,
+    regime: "idle" as const,
+    bands: new Float32Array(8),
+    audioLevel: 0,
+    carve: null,
+    phase: 0,
+    ...over,
+  });
+
+  it("a phase of one column shows the shape one column to the right", () => {
+    const still = createField(8);
+    const shifted = createField(8);
+    stepField(still, phaseInput({ time: 2 }));
+    stepField(shifted, phaseInput({ time: 2, phase: 1 }));
+    for (const i of [2, 3, 4, 5]) expect(shifted.disp[i]).toBeCloseTo(still.disp[i - 1], 6);
+    expect(columnDisplacement(2.5, 2, levelTargets("idle"), 0)).not.toBeCloseTo(columnDisplacement(2, 2, levelTargets("idle"), 0), 3);
+  });
+
+  it("the bands stay on their integer column while the shape moves", () => {
+    const bands = new Float32Array(8);
+    bands[5] = 0.6;
+    const still = createField(8, "reactive");
+    const shifted = createField(8, "reactive");
+    for (let k = 0; k < 30; k++) {
+      const frame = { time: 2 + k / 60, regime: "reactive" as const, bands, audioLevel: 0.8 };
+      stepField(still, phaseInput(frame));
+      stepField(shifted, phaseInput({ ...frame, phase: 2 }));
+    }
+    for (let i = 0; i < 8; i++) if (i !== 5) expect(shifted.mag[5]).toBeGreaterThan(shifted.mag[i] + 0.3);
+    expect(Array.from(shifted.mag)).toEqual(Array.from(still.mag));
+    for (const i of [2, 3, 4, 5, 6, 7]) expect(shifted.disp[i]).toBeCloseTo(still.disp[i - 2], 6);
+  });
+
+  it("scrolling down one column's worth moves the shape one column left", () => {
+    const conveyor = createConveyor();
+    feedScroll(conveyor, 26);
+    for (let k = 0; k < 600 && stepConveyor(conveyor, 1 / 60, false).moving; k++);
+    expect(conveyor.phase).toBeCloseTo(-1, 6);
+    const still = createField(12);
+    const scrolled = createField(12);
+    stepField(still, phaseInput({ time: 3 }));
+    stepField(scrolled, phaseInput({ time: 3, phase: conveyor.phase }));
+    for (let i = 0; i < 11; i++) expect(Math.abs(scrolled.disp[i] - still.disp[i + 1])).toBeLessThan(1e-6);
+  });
+
+  it("stepField no longer takes weights: magnitude eases toward the unweighted target", () => {
+    const field = createField(8);
+    for (let k = 0; k < 400; k++) stepField(field, phaseInput());
+    const target = columnTarget(0, 1, levelTargets("idle"), 0);
+    expect(field.mag[0]).toBeCloseTo(target, 3);
+  });
+
+  it("the music travels left with the stream: a later frame is the earlier one read further right", () => {
+    // The first term moves exactly 10 columns per second, the second about
+    // 11.5, so a 10 column per second shift leaves only a sliver of error;
+    // a term still moving right would leave about 0.03.
+    const d = 0.05;
+    let worst = 0;
+    for (let i = 0; i < 60; i += 0.5) {
+      worst = Math.max(worst, Math.abs(columnDisplacement(i, 2 + d, REACTIVE, 1) - columnDisplacement(i + 10 * d, 2, REACTIVE, 1)));
+    }
+    expect(worst).toBeLessThan(0.005);
+  });
+
+  it("applying a constant weight at paint time equals the old weighted field", () => {
+    // The old engine eased toward FLOOR + (target - FLOOR) * w. Easing is
+    // affine, so scaling the unweighted magnitude after easing is identical,
+    // rising (0.35) and falling (0.12) alike. The field stores float32, which
+    // bounds the agreement near 1e-8.
+    const w = 0.4;
+    const unweighted = createField(4);
+    let old = FLOOR + (0 - FLOOR) * w;
+    let falling = 0;
+    let worst = 0;
+    for (let k = 0; k < 150; k++) {
+      const regime = k < 50 ? "idle" : "still";
+      stepField(unweighted, phaseInput({ time: k / 60, regime }));
+      const target = columnTarget(0, k / 60, unweighted.levels, 0);
+      const scaled = FLOOR + (target - FLOOR) * w;
+      if (scaled < old) falling++;
+      old = scaled + (old - scaled) * Math.pow(1 - (scaled > old ? 0.35 : 0.12), (1 / 60) * 45);
+      worst = Math.max(worst, Math.abs(FLOOR + (unweighted.mag[0] - FLOOR) * w - old));
+    }
+    expect(falling).toBeGreaterThan(50);
+    expect(worst).toBeLessThan(2e-8);
   });
 });

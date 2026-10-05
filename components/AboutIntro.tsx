@@ -17,6 +17,7 @@ export function AboutIntro() {
     >
       <Reveal className="mx-auto flex max-w-6xl flex-col gap-6 md:gap-10">
         <div
+          data-wave-avoid
           className="reveal-item flex items-center gap-3 text-sm text-muted"
           style={revealIndex(0)}
         >
@@ -24,12 +25,14 @@ export function AboutIntro() {
           <span>{label}</span>
         </div>
         <h2
+          data-wave-avoid
           className="reveal-mask font-display text-display-xl text-foreground"
           style={revealIndex(1)}
         >
           <span className="block">{heading}</span>
         </h2>
         <p
+          data-wave-avoid
           className="reveal-item max-w-xl text-lg leading-[1.55] text-muted md:text-xl"
           style={revealIndex(2)}
         >
