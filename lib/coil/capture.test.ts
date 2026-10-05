@@ -25,9 +25,12 @@ import {
 const GAP = COIL.capture.gestureGapMs;
 const REARM = COIL.capture.rearmPx;
 
-// The hero at the top of the page, ready, with the pointer on a card.
-const onCoil: Omit<WheelFacts, "nowMs"> = { interactive: true, heroVisible: 1, onCard: true };
-const offCoil: Omit<WheelFacts, "nowMs"> = { ...onCoil, onCard: false };
+// The hero at the top of the page, ready, with the pointer on a card (where
+// armedCapture left it), on empty background inside the helix silhouette, or
+// outside the silhouette.
+const onCoil: Omit<WheelFacts, "nowMs"> = { interactive: true, heroVisible: 1, onCard: true, insideSilhouette: true, x: 106, y: 100 };
+const background: Omit<WheelFacts, "nowMs"> = { ...onCoil, onCard: false };
+const offCoil: Omit<WheelFacts, "nowMs"> = { ...onCoil, onCard: false, insideSilhouette: false };
 
 // A pointer move to (x, y), inside or outside the helix silhouette.
 const move = (nowMs: number, x: number, y: number, insideSilhouette = true) => ({ nowMs, insideSilhouette, x, y });
@@ -88,8 +91,8 @@ describe("gesture ownership", () => {
   it("gives a gesture starting away from every card to the page, empty background inside the helix included", () => {
     // onCard is rule A (lib/coil/geometry.ts nearCard): on a card or in the
     // seam between two. Background between turns of the helix is not.
-    const { owners } = replay(downFirstQuick, () => offCoil);
-    expect(owners.every((owner) => owner === "page")).toBe(true);
+    expect(replay(downFirstQuick, () => offCoil).owners.every((owner) => owner === "page")).toBe(true);
+    expect(replay(downFirstQuick, () => background).owners.every((owner) => owner === "page")).toBe(true);
   });
 
   it("holds the coil through pointer jitter inside the silhouette and cards passing under a still pointer", () => {
@@ -185,7 +188,7 @@ describe("arming: the page sliding the coil under a still pointer never arms it"
       }
       else if ("scroll" in step) current = pageScrolled(current, { nowMs, x: step.scroll[0], y: step.scroll[1] });
       else {
-        const facts = step.gesture === "card" ? onCoil : offCoil;
+        const facts = { ...(step.gesture === "card" ? onCoil : background), x: at[0], y: at[1] };
         current = replay(downFirstQuick.slice(0, 20), () => facts, { startMs: nowMs, state: current }).state;
         owners.push(current.owner);
         // A page gesture scrolls the page under the still pointer.
@@ -268,6 +271,79 @@ describe("arming: the page sliding the coil under a still pointer never arms it"
     expect(pointerMoved(seen, move(1, 52, 50))).toBe(seen);
     const disarmed = pageScrolled(armedCapture(), { nowMs: 5, x: 50, y: 50 });
     expect(pageScrolled(disarmed, { nowMs: 6, x: 50, y: 50 })).toBe(disarmed);
+  });
+});
+
+describe("continuation: things moving under a still pointer never change the next gesture's owner", () => {
+  // A coil gesture on a card, then the wheel pauses past the gesture gap. A
+  // spin stretches the helix, so the still pointer may now sit in a widened
+  // seam (onCard false) while still inside the silhouette.
+  function afterSpin() {
+    const spin = replay(downFirstQuick, () => onCoil);
+    expect(spin.state.owner).toBe("coil");
+    return { state: spin.state, nextMs: spin.endMs + GAP + 140 };
+  }
+  const nextGesture = (state: CaptureState, startMs: number, facts = background) =>
+    replay(notches, () => facts, { startMs, state }).owners;
+
+  it("a coil gesture, a pause over the gap, a fresh gesture with no card under the still pointer: the coil's", () => {
+    const { state, nextMs } = afterSpin();
+    expect(nextGesture(state, nextMs).every((owner) => owner === "coil")).toBe(true);
+    expect(state.held).toBe(true);
+  });
+
+  it("the same after a real move of rearmPx, with no card under the pointer: the page's", () => {
+    const { state, nextMs } = afterSpin();
+    const moved = pointerMoved(state, move(nextMs - 50, 106 + REARM, 100));
+    expect(moved.held).toBe(false);
+    expect(nextGesture(moved, nextMs).every((owner) => owner === "page")).toBe(true);
+    // A move back onto a card: rule A decides, the coil's.
+    expect(nextGesture(moved, nextMs, onCoil).every((owner) => owner === "coil")).toBe(true);
+  });
+
+  it("the same after a page scroll: the page's (it disarms too)", () => {
+    const { state, nextMs } = afterSpin();
+    const scrolled = pageScrolled(state, { nowMs: nextMs - 50, x: 106, y: 100 });
+    expect(scrolled.held).toBe(false);
+    expect(nextGesture(scrolled, nextMs).every((owner) => owner === "page")).toBe(true);
+    expect(nextGesture(scrolled, nextMs, onCoil).every((owner) => owner === "page")).toBe(true);
+  });
+
+  it("jitter under rearmPx after the gesture keeps it; outside the silhouette it does not apply", () => {
+    const { state, nextMs } = afterSpin();
+    const jittered = pointerMoved(pointerMoved(state, move(nextMs - 80, 108, 101)), move(nextMs - 40, 104, 99));
+    expect(jittered.held).toBe(true);
+    expect(nextGesture(jittered, nextMs).every((owner) => owner === "coil")).toBe(true);
+    expect(nextGesture(jittered, nextMs, offCoil).every((owner) => owner === "page")).toBe(true);
+  });
+
+  it("moves during the live coil gesture carry the mark: the pointer where the gesture left it", () => {
+    // A mouse user sweeps the pointer across the helix while notching.
+    const spin = replay(jitter, () => onCoil, {
+      between: (index, nowMs, current) => (index === 40 ? pointerMoved(current, move(nowMs, 300, 220)) : current),
+    });
+    expect(spin.state.owner).toBe("coil");
+    expect(spin.state.held).toBe(true);
+    const still = pointerMoved(spin.state, move(spin.endMs + GAP + 20, 302, 221));
+    expect(nextGesture(still, spin.endMs + GAP + 140, { ...background, x: 302, y: 221 }).every((owner) => owner === "coil")).toBe(true);
+  });
+
+  it("a coil gesture released to the page, or a page gesture, holds nothing", () => {
+    const released = replay(jitter, () => onCoil, {
+      between: (index, nowMs, current) => (index === 30 ? pointerMoved(current, move(nowMs, 600, 100, false)) : current),
+    });
+    expect(released.state.held).toBe(false);
+    const back = pointerMoved(released.state, move(released.endMs + GAP + 10, 106, 100));
+    expect(nextGesture(back, released.endMs + GAP + 140).every((owner) => owner === "page")).toBe(true);
+    const { state, nextMs } = afterSpin();
+    const page = replay(notches, () => ({ ...onCoil, heroVisible: 0.3 }), { startMs: nextMs, state });
+    expect(page.state.owner).toBe("page");
+    expect(page.state.held).toBe(false);
+  });
+
+  it("the hero turning non-interactive mid-gesture holds nothing", () => {
+    const { state } = replay(downFirstQuick, (index) => ({ ...onCoil, interactive: index < 10 }));
+    expect(state.held).toBe(false);
   });
 });
 

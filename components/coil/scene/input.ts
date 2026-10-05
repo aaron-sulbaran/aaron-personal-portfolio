@@ -123,11 +123,12 @@ export function createInput(ctx: SceneCtx, cards: Cards, hover: Hover, loop: Loo
   };
 
   // Decided once per gesture (events under COIL.capture.gestureGapMs apart,
-  // trackpad inertia included): a gesture that starts on a card or a seam,
-  // armed by a real pointer move since the page last scrolled, with the hero
-  // at least half in view, spins the coil from its first event, in both
-  // directions, and the page does not move; any other gesture scrolls the
-  // page natively. The coil responds on the frame after the event (one
+  // trackpad inertia included): a gesture that starts on a card or a seam
+  // (or anywhere inside the helix while the last coil gesture still holds the
+  // pointer), armed by a real pointer move since the page last scrolled, with
+  // the hero at least half in view, spins the coil from its first event, in
+  // both directions, and the page does not move; any other gesture scrolls
+  // the page natively. The coil responds on the frame after the event (one
   // smoothing stage and the spin cap, nothing before the first motion).
   const onWheel = (event: WheelEvent) => {
     const now = performance.now();
@@ -148,6 +149,9 @@ export function createInput(ctx: SceneCtx, cards: Cards, hover: Hover, loop: Loo
         interactive: wheelInteractive(event),
         heroVisible: fresh ? heroVisible(host) : 1,
         onCard: fresh ? pointerOnCard() : true,
+        insideSilhouette: fresh ? pointerInsideHelix() : true,
+        x: pointer.clientX,
+        y: pointer.clientY,
       }),
       now,
     );
@@ -164,7 +168,8 @@ export function createInput(ctx: SceneCtx, cards: Cards, hover: Hover, loop: Loo
   const onWindowWheel = (event: WheelEvent) => {
     if (event.target instanceof Node && host.contains(event.target)) return;
     const now = performance.now();
-    setCapture(decideWheel(st.capture, { nowMs: now, interactive: false, heroVisible: 0, onCard: false }), now);
+    const facts = { nowMs: now, interactive: false, heroVisible: 0, onCard: false, insideSilhouette: false, x: event.clientX, y: event.clientY };
+    setCapture(decideWheel(st.capture, facts), now);
   };
   // ---- end fx-input ----
 
