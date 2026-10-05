@@ -16,11 +16,12 @@ export type WaveProbe = {
   strip: () => { top: number; bottom: number; baseline: number } | null; // viewport px
   columns: () => { x: number; duck: number; alpha: number }[]; // last painted frame, horizon
   rects: () => { left: number; right: number; top: number; bottom: number }[]; // the horizon's padded avoid boxes, document px
+  busy: () => boolean; // the horizon view keeps the conductor's loop awake
   triggers: () => number; // live sweep ScrollTriggers on #listen
   triggersCreated: () => number; // every sweep ScrollTrigger created, never decremented
 };
 
-export type WaveSource = Pick<WaveProbe, "sweep" | "strip" | "columns" | "rects">;
+export type WaveSource = Pick<WaveProbe, "sweep" | "strip" | "columns" | "rects" | "busy">;
 
 declare global {
   interface Window {
@@ -44,6 +45,7 @@ export function waveProbe(): WaveProbe | null {
     strip: () => source?.strip() ?? null,
     columns: () => source?.columns() ?? [],
     rects: () => source?.rects() ?? [],
+    busy: () => source?.busy() ?? false,
     triggers: () => liveTriggers,
     triggersCreated: () => createdTriggers,
   };
