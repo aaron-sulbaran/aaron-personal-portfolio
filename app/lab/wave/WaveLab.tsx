@@ -1,11 +1,18 @@
 "use client";
 
-import { Fragment, useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode, type RefObject } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode, type RefObject } from "react";
 import { useReducedMotionLive } from "@/components/soundtrack/useReducedMotionLive";
 import { Capsule } from "./Capsule";
 import { createWaveEngine, type WaveEngine } from "./engine";
 import { PANEL_WIDTH, Panel } from "./Panel";
+import { getMeasure, getServerMeasure, subscribeMeasure } from "./anchorStore";
+import { composePoints, derivedSeed, generateLine } from "./compose";
 import { PathLayer } from "./PathLayer";
+import { checkOptions, chooseSpine } from "./spineChoice";
+import { sampleSpine } from "./spineGeometry";
+import { bulkCheck, checkLine, type BulkReport } from "./spineRules";
+import { resolveSpine } from "./spines";
+import { useLabSettings } from "./useLabSettings";
 import { SECTION_KEYS } from "./spines";
 import { DEFAULT_SETTINGS, PRESETS, type PathSettings, type Placement, type ThemeName, type WaveSettings } from "./settings";
 
@@ -34,6 +41,9 @@ declare global {
       get: () => WaveSettings;
       open: (open: boolean) => void;
       hold: (seconds: number | null) => void;
+      bulk: (count?: number, start?: number) => BulkReport | null;
+      timing: (count?: number) => Record<string, number> | null;
+      report: () => unknown;
     };
   }
 }
@@ -45,7 +55,7 @@ interface WaveLabProps {
 }
 
 export function WaveLab({ band, sections, footer }: WaveLabProps) {
-  const [settings, setSettings] = useState<WaveSettings>(DEFAULT_SETTINGS);
+  const [settings, setSettings] = useLabSettings();
   const [open, setOpen] = useState(true);
   const [simReduced, setSimReduced] = useState(false);
   const systemReduced = useReducedMotionLive();
@@ -62,6 +72,16 @@ export function WaveLab({ band, sections, footer }: WaveLabProps) {
     engine.update(settings, reduced);
   }, [engine, settings, reduced]);
 
+  // The path's spine: authored, custom or generated, checked against the
+  // page the engine last measured.
+  const measure = useSyncExternalStore(subscribeMeasure, getMeasure, getServerMeasure);
+  const { path, amplitude } = settings;
+  const choice = useMemo(() => chooseSpine(path, measure, amplitude), [path, measure, amplitude]);
+  const report = useMemo(
+    () => (measure ? checkLine(choice.def.points, measure.anchors, checkOptions(path, amplitude, measure.viewport)) : null),
+    [choice, measure, path, amplitude],
+  );
+
   // A handle for driving the lab from the console or a test browser:
   // window.__waveLab.patch({ placement: "seams" }), .preset("thresholds").
   useEffect(() => {
@@ -75,8 +95,43 @@ export function WaveLab({ band, sections, footer }: WaveLabProps) {
       open: setOpen,
       hold: (seconds) => engine.hold(seconds),
       pathPatch: (patch) => setSettings((current) => ({ ...current, path: { ...current.path, ...patch } })),
+      // Every seed from `start` through the generator and the rules, on this page at this width.
+      bulk: (count = 2000, start = 1) =>
+        measure ? bulkCheck(count, settings.path.gen, measure.anchors, checkOptions(settings.path, settings.amplitude, measure.viewport), start) : null,
+      // The current line's rule report, plus where its tightest on-screen bend is.
+      report: () => {
+        if (!measure) return null;
+        const smp = sampleSpine(resolveSpine(choice.def, measure.anchors), 4);
+        let at = 0;
+        for (let i = 0; i < smp.count; i++) {
+          const on = smp.x[i] > -40 && smp.x[i] < measure.anchors.width + 40;
+          if (on && smp.radius[i] < smp.radius[at]) at = i;
+        }
+        return { spine: choice.def.id, report, anchors: measure.anchors, points: resolveSpine(choice.def, measure.anchors), tightest: { x: smp.x[at], y: smp.y[at], radius: smp.radius[at] } };
+      },
+      // Mean ms per line for each step a visitor's load would take.
+      timing: (count = 300) => {
+        if (!measure) return null;
+        const opts = checkOptions(settings.path, settings.amplitude, measure.viewport);
+        let generate = 0;
+        let check = 0;
+        let sample = 0;
+        for (let seed = 1; seed <= count; seed++) {
+          const t0 = performance.now();
+          const points = composePoints(generateLine(derivedSeed(seed, 0), settings.path.gen));
+          const t1 = performance.now();
+          checkLine(points, measure.anchors, opts);
+          const t2 = performance.now();
+          sampleSpine(resolveSpine({ points }, measure.anchors), 4);
+          const t3 = performance.now();
+          generate += t1 - t0;
+          check += t2 - t1;
+          sample += t3 - t2;
+        }
+        return { generateMs: generate / count, checkMs: check / count, sampleMs: sample / count, width: measure.anchors.width };
+      },
     };
-  }, [engine, settings]);
+  }, [engine, settings, measure, setSettings, choice, report]);
 
   const setTheme = (next: ThemeName) => {
     document.documentElement.dataset.theme = next;
@@ -111,7 +166,7 @@ export function WaveLab({ band, sections, footer }: WaveLabProps) {
       </div>
 
       <div className="relative z-10" style={{ marginRight: inset }}>
-        {placement === "path" && <PathLayer settings={settings} reduced={reduced} />}
+        {placement === "path" && <PathLayer settings={settings} reduced={reduced} points={choice.def.points} />}
         <main ref={mainRef} id="main" className="relative overflow-x-clip">
           <div data-lab-section="band">{band}</div>
           {sections.map((section, i) => (
@@ -133,6 +188,8 @@ export function WaveLab({ band, sections, footer }: WaveLabProps) {
       {settings.capsule && <Capsule />}
 
       <Panel
+        choice={choice}
+        report={report}
         settings={settings}
         patch={(patch) => setSettings((current) => ({ ...current, ...patch }))}
         replace={setSettings}

@@ -2,7 +2,18 @@
 
 import { Choice, Group, Slider, Toggle } from "./panelParts";
 import { PATH_RANGES, type HeadMode, type HeadStyle, type PathSettings, type TailMode } from "./settings";
-import { SPINES, spineById } from "./spines";
+import type { SpineChoice } from "./spineChoice";
+import type { RuleReport } from "./spineRules";
+import { SPINES } from "./spines";
+import { Generator, RulesReadout, StretchEditor } from "./SpineTools";
+
+// Every spine, the parked ones last, then the editable and generated slots.
+const SPINE_OPTIONS = [
+  ...SPINES.filter((s) => !s.parked),
+  { id: "custom", label: "Custom" },
+  { id: "generated", label: "Generated" },
+  ...SPINES.filter((s) => s.parked),
+];
 
 // The Path placement's group in the panel: the spine, the head and the tail,
 // the shape along the spine and the two optional motion layers. Amplitude,
@@ -23,12 +34,21 @@ const TAILS: { id: TailMode; label: string }[] = [
   { id: "train", label: "Finite train" },
 ];
 
-export function PathControls({ path, onChange }: { path: PathSettings; onChange: (patch: Partial<PathSettings>) => void }) {
+export function PathControls(props: { path: PathSettings; choice: SpineChoice; report: RuleReport | null; onChange: (patch: Partial<PathSettings>) => void }) {
+  const { path, choice, onChange } = props;
   const R = PATH_RANGES;
   return (
     <Group title="Path">
-      <Choice options={SPINES} value={path.spine} onChange={(spine) => onChange({ spine })} />
-      <p className="mt-1 text-xs leading-snug text-muted">{spineById(path.spine).note}</p>
+      <Choice options={SPINE_OPTIONS} value={path.spine} onChange={(spine) => onChange({ spine })} />
+      <p className="mt-1 text-xs leading-snug text-muted">{choice.def.note}</p>
+      {choice.def.moves && path.spine !== "custom" && (
+        <button type="button" onClick={() => onChange({ spine: "custom", custom: choice.def.moves })} className="mt-1 rounded border border-border px-2 py-0.5 text-xs">
+          Edit a copy of this line
+        </button>
+      )}
+      <RulesReadout report={props.report} />
+      <Generator path={path} choice={choice} onChange={onChange} />
+      {path.spine === "custom" && <StretchEditor moves={path.custom} onChange={(custom) => onChange({ custom })} />}
 
       <p className="mt-3 text-xs text-muted">Head</p>
       <Choice options={HEAD_MODES} value={path.headMode} onChange={(headMode) => onChange({ headMode })} />

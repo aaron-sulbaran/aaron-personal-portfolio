@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { Fragment, useState, useSyncExternalStore } from "react";
 import { Choice, Group, Slider, Toggle } from "./panelParts";
 import { PathControls } from "./PathControls";
-import { spineById } from "./spines";
+import { CursorControls } from "./CursorControls";
+import type { SpineChoice } from "./spineChoice";
+import type { RuleReport } from "./spineRules";
 import { readTokens, textContrast, type Contrast, type ThemeTokens } from "./readout";
 import { LOOPS, PLACEMENTS, POSITION, PRESETS, RANGES, type ThemeName, type WaveSettings } from "./settings";
 
@@ -16,6 +18,8 @@ export const PANEL_WIDTH = 320;
 type Patch = (patch: Partial<WaveSettings>) => void;
 
 interface PanelProps {
+  choice: SpineChoice;
+  report: RuleReport | null;
   settings: WaveSettings;
   patch: Patch;
   replace: (next: WaveSettings) => void;
@@ -52,7 +56,12 @@ export function Panel(props: PanelProps) {
 
   const copy = async () => {
     // A Path's spine goes out with it, in the page-relative terms of spines.ts.
-    const json = JSON.stringify(s.placement === "path" ? { ...s, spineDefinition: spineById(s.path.spine) } : s, null, 2);
+    const g = props.choice.generated;
+    const spineDefinition = {
+      ...props.choice.def,
+      ...(g ? { seed: g.seed, usedSeed: g.usedSeed, fallback: g.fallback } : {}),
+    };
+    const json = JSON.stringify(s.placement === "path" ? { ...s, spineDefinition } : s, null, 2);
     try {
       await navigator.clipboard.writeText(json);
       setCopied("Copied to the clipboard.");
@@ -90,9 +99,10 @@ export function Panel(props: PanelProps) {
 
       <Group title="Presets">
         <div className="flex flex-col gap-1">
-          {PRESETS.map((p) => (
+          {PRESETS.map((p, i) => (
+            <Fragment key={p.id}>
+            {p.parked && !PRESETS[i - 1]?.parked && <p className="mt-2 text-xs text-muted">Parked</p>}
             <button
-              key={p.id}
               type="button"
               onClick={() => {
                 setPresetId(p.id);
@@ -102,6 +112,7 @@ export function Panel(props: PanelProps) {
             >
               {p.label}
             </button>
+            </Fragment>
           ))}
         </div>
         {preset && <p className="mt-2 text-xs leading-snug text-muted">{preset.why}</p>}
@@ -117,7 +128,10 @@ export function Panel(props: PanelProps) {
       </Group>
 
       {s.placement === "path" ? (
-        <PathControls path={s.path} onChange={(path) => edit({ path: { ...s.path, ...path } })} />
+        <>
+          <PathControls path={s.path} choice={props.choice} report={props.report} onChange={(path) => edit({ path: { ...s.path, ...path } })} />
+          <CursorControls cursor={s.cursor} onChange={(cursor) => edit({ cursor: { ...s.cursor, ...cursor } })} />
+        </>
       ) : (
         <Group title="Loop">
           <Choice options={LOOPS} value={s.loop} onChange={(next) => edit({ loop: next })} />

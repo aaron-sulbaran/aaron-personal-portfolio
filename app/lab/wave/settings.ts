@@ -3,6 +3,8 @@
 // max-amplitude units), so a setting found here lifts straight into
 // lib/waveform and components/soundtrack.
 
+import type { GenParams, Move } from "./compose";
+import { AUTHORED } from "./compose";
 import type { SpineId } from "./spines";
 
 export type Placement = "path" | "backdrop" | "horizon" | "seams" | "chapters" | "rail";
@@ -29,7 +31,40 @@ export interface WaveSettings {
   scrollInfluence: number; // 0 none, 1 the merged build's conveyor
   capsule: boolean;
   path: PathSettings;
+  cursor: CursorSettings;
 }
+
+// How the pointer touches the dots (Path only). Fine pointers only, never
+// under reduced motion.
+export type CursorMode = "blend" | "push" | "carve" | "pluck" | "swell" | "brighten" | "lean" | "none";
+
+export interface CursorSettings {
+  mode: CursorMode;
+  radius: number; // px around the pointer
+  strength: number; // 0..2, 1 is the band's feel for carve
+  recovery: number; // s for the effect to settle back
+  saturate: number; // px/s at which the push reaches full strength
+  mix: { push: number; carve: number; swell: number }; // "blend" only, 0..1 each
+}
+
+export const CURSOR_MODES: { id: CursorMode; label: string; note: string }[] = [
+  { id: "blend", label: "Blend", note: "Push, carve and swell mixed: speed throws the dots, the space under the pointer clears so words stay clean, and a ring just outside lifts with your motion, like water around a hand. A resting pointer only clears." },
+  { id: "carve", label: "Carve", note: "The band's original: the dots under the pointer thin out and part around it, then ease back. Over text it clears the dots from what you are reading." },
+  { id: "push", label: "Push", note: "Speed-proportional, the hero name's language: a slow pointer barely moves the dots, a fast pass throws them aside, and they spring back." },
+  { id: "pluck", label: "Pluck", note: "Crossing the line sends a damped ripple along it both ways, like a plucked string; still again in about a second." },
+  { id: "swell", label: "Swell", note: "The wave's amplitude lifts toward the pointer and relaxes when it leaves." },
+  { id: "brighten", label: "Brighten", note: "Dots within reach turn the accent colour, dot by dot, and fade back." },
+  { id: "lean", label: "Lean", note: "Mine: the dots lean gently toward the pointer, as if listening, and settle back. The opposite of carve." },
+  { id: "none", label: "None", note: "The wave ignores the pointer." },
+];
+
+export const CURSOR_RANGES = {
+  radius: { min: 30, max: 260, step: 1 },
+  strength: { min: 0, max: 2, step: 0.05 },
+  recovery: { min: 0.15, max: 3, step: 0.05 },
+  saturate: { min: 300, max: 4000, step: 10 },
+  mix: { min: 0, max: 1, step: 0.01 },
+};
 
 export type HeadMode = "viewport" | "progress";
 export type HeadStyle = "taper" | "spark" | "swell" | "none";
@@ -51,6 +86,10 @@ export interface PathSettings {
   musicLayer: number; // 0..1, the simulated spectrum's share while music is on
   lineOnly: boolean; // one dotted line along the spine, no amplitude
   debug: boolean; // draw the spine and its control points
+  custom: Move[]; // the editable spine ("custom"), stretch by stretch
+  seed: number; // the generator's seed ("generated")
+  gen: GenParams;
+  newEachVisit: boolean; // reseed the generated line on every load
 }
 
 export const PLACEMENTS: { id: Placement; label: string; note: string }[] = [
@@ -144,7 +183,12 @@ const base: WaveSettings = {
     musicLayer: 0.35,
     lineOnly: false,
     debug: false,
+    custom: AUTHORED[0].moves,
+    seed: 7,
+    gen: { through: 0.5, uneven: 0.6, offscreen: 0.5 },
+    newEachVisit: false,
   },
+  cursor: { mode: "push", radius: 92, strength: 1, recovery: 0.8, saturate: 1600, mix: { push: 1, carve: 0.6, swell: 0.5 } },
 };
 
 export const PATH_RANGES = {
@@ -157,14 +201,15 @@ export const PATH_RANGES = {
   musicLayer: { min: 0, max: 1, step: 0.01 },
 };
 
-type Preset = { id: string; label: string; why: string; values: WaveSettings };
+type Preset = { id: string; label: string; why: string; values: WaveSettings; parked?: boolean };
 
-type PresetPatch = Omit<Partial<WaveSettings>, "path"> & { path?: Partial<PathSettings> };
+type PresetPatch = Omit<Partial<WaveSettings>, "path" | "cursor"> & { path?: Partial<PathSettings>; cursor?: Partial<CursorSettings> };
 
-const preset = (id: string, label: string, why: string, patch: PresetPatch): Preset => ({
+const preset = (id: string, label: string, why: string, patch: PresetPatch, parked = false): Preset => ({
   id,
   label,
   why,
+  parked,
   values: {
     ...base,
     ...patch,
@@ -172,20 +217,68 @@ const preset = (id: string, label: string, why: string, patch: PresetPatch): Pre
     stripHeight: { ...baseHeights, ...patch.stripHeight },
     alpha: { light: { ...base.alpha.light, ...patch.alpha?.light }, dark: { ...base.alpha.dark, ...patch.alpha?.dark } },
     path: { ...base.path, ...patch.path },
+    cursor: { ...base.cursor, ...patch.cursor },
   },
 });
 
 export const PRESETS: Preset[] = [
   preset(
-    "knot",
-    "Unspool (recommended)",
-    "The reference's idea in our dots: the wave starts as a knot beside the music question and unspools down the page as you scroll, in sweeps that leave both edges and return. It only moves while you scroll, so it is still whenever you read.",
+    "aaron",
+    "Aaron's pick",
+    "Through the words as a 1600px train with a swelling head, music on. The base for the irregular lines: switch the spine to Signature line, Margin note, Late bloom or a generated one.",
     {
       placement: "path",
-      amplitude: 70,
-      maxThick: 4,
-      alpha: { light: { muted: 0.26, accent: 0.46 }, dark: { muted: 0.38, accent: 0.54 } },
-      path: { spine: "knot", headMode: "viewport", headAt: 0.62, preDrawn: 0.08, tail: "all" },
+      music: true,
+      intensity: 0.8,
+      beat: true,
+      amplitude: 80,
+      maxThick: 5,
+      dotScale: 1,
+      spacing: 13,
+      edgeFade: 0.24,
+      capsule: true,
+      alpha: { light: { muted: 0.35, accent: 0.5 }, dark: { muted: 0.34, accent: 0.5 } },
+      path: {
+        spine: "through",
+        headMode: "viewport",
+        headAt: 0.7,
+        preDrawn: 0,
+        smoothing: 7,
+        headStyle: "swell",
+        tail: "train",
+        trainLength: 1600,
+        wavelength: 240,
+        shapeTravel: 0,
+        musicLayer: 0.35,
+      },
+    },
+  ),
+  preset(
+    "water",
+    "Aaron's pick, hand in water",
+    "His pick with the combined pointer: a push in proportion to speed, a small clearing under the pointer and a ring that lifts with your motion, all settled within about a second. A resting pointer only clears.",
+    {
+      placement: "path",
+      music: true,
+      amplitude: 80,
+      maxThick: 5,
+      alpha: { light: { muted: 0.35, accent: 0.5 }, dark: { muted: 0.34, accent: 0.5 } },
+      path: { spine: "signature", headAt: 0.7, preDrawn: 0, smoothing: 7, headStyle: "swell", tail: "train", trainLength: 1600, musicLayer: 0.35 },
+      cursor: { mode: "blend", radius: 96, strength: 1, recovery: 0.9, saturate: 1600, mix: { push: 1, carve: 0.6, swell: 0.5 } },
+    },
+  ),
+  preset(
+    "reader",
+    "Aaron's pick, quiet reader",
+    "The same line with the pointer tuned for reading: a wider, firmer clearing, a softer push that needs a real flick to saturate, almost no swell.",
+    {
+      placement: "path",
+      music: true,
+      amplitude: 80,
+      maxThick: 5,
+      alpha: { light: { muted: 0.35, accent: 0.5 }, dark: { muted: 0.34, accent: 0.5 } },
+      path: { spine: "signature", headAt: 0.7, preDrawn: 0, smoothing: 7, headStyle: "swell", tail: "train", trainLength: 1600, musicLayer: 0.35 },
+      cursor: { mode: "blend", radius: 120, strength: 1, recovery: 0.7, saturate: 2400, mix: { push: 0.55, carve: 1, swell: 0.15 } },
     },
   ),
   preset(
@@ -259,6 +352,19 @@ export const PRESETS: Preset[] = [
       intensity: 0.55,
       alpha: { light: { muted: 0.2, accent: 0.4 }, dark: { muted: 0.3, accent: 0.46 } },
     },
+  ),
+  preset(
+    "knot",
+    "Unspool",
+    "The reference's idea in our dots: the wave starts as a knot beside the music question and unspools down the page as you scroll, in sweeps that leave both edges and return. It only moves while you scroll, so it is still whenever you read.",
+    {
+      placement: "path",
+      amplitude: 70,
+      maxThick: 4,
+      alpha: { light: { muted: 0.26, accent: 0.46 }, dark: { muted: 0.38, accent: 0.54 } },
+      path: { spine: "knot", headMode: "viewport", headAt: 0.62, preDrawn: 0.08, tail: "all" },
+    },
+    true,
   ),
 ];
 
