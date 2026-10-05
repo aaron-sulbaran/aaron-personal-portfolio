@@ -14,8 +14,14 @@ import { defineConfig, devices, type Project } from "@playwright/test";
 // to SwiftShader at about 30fps, which is not the frame budget the coil is
 // tuned for. WebKit and Firefox are configured but only run with E2E_ALL=1
 // and their browsers installed.
+//
+// Every browser is muted: Chromium by flag, Firefox by pref. WebKit has no
+// mute switch, so it skips the specs that start playback. A spec that sets its
+// own launchOptions replaces these and spreads e2e/support/launch.ts's copy
+// (the holding build copies no e2e/, so this file cannot import it).
 
 const CI = !!process.env.CI;
+const MUTED_ARGS = ["--mute-audio"];
 const FULL_PORT = 3140;
 const HOLDING_PORT = 3141;
 // E2E_BASE_URL points the suite at another local build of the full site
@@ -34,6 +40,7 @@ const desktop = {
   viewport: { width: 1440, height: 900 },
   deviceScaleFactor: 1,
   baseURL: FULL_URL,
+  launchOptions: { args: MUTED_ARGS },
 };
 
 function installed(prefix: string) {
@@ -47,10 +54,10 @@ const otherEngines: Project[] =
   process.env.E2E_ALL === "1"
     ? [
         ...(installed("webkit-")
-          ? [{ name: "webkit", testIgnore: /(holding|touch)\.spec\.ts/, use: { ...devices["Desktop Safari"], baseURL: FULL_URL } }]
+          ? [{ name: "webkit", testIgnore: /(holding|touch|soundtrack|horizon)\.spec\.ts/, use: { ...devices["Desktop Safari"], baseURL: FULL_URL } }]
           : []),
         ...(installed("firefox-")
-          ? [{ name: "firefox", testIgnore: /(holding|touch)\.spec\.ts/, use: { ...devices["Desktop Firefox"], baseURL: FULL_URL } }]
+          ? [{ name: "firefox", testIgnore: /(holding|touch)\.spec\.ts/, use: { ...devices["Desktop Firefox"], baseURL: FULL_URL, launchOptions: { firefoxUserPrefs: { "media.volume_scale": "0.0" } } } }]
           : []),
       ]
     : [];
@@ -80,6 +87,7 @@ export default defineConfig({
         ...devices["Pixel 7"],
         channel: "chromium",
         baseURL: FULL_URL,
+        launchOptions: { args: MUTED_ARGS },
       },
     },
     { name: "holding", testMatch: /holding\.spec\.ts/, use: { ...desktop, baseURL: HOLDING_URL } },
