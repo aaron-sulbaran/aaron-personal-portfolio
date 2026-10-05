@@ -577,14 +577,13 @@ test("dock: the first arrival condenses out of the pressed control and travels d
   expect(Math.abs(last.x - dock.x), "the last sample from the dock, x").toBeLessThanOrEqual(4);
   expect(Math.abs(last.y - dock.y), "the last sample from the dock, y").toBeLessThanOrEqual(4);
   // Down all the way: y strictly increases while the tween travels, then holds
-  // at rest. GSAP's last frame can leave a zero translate in place for a tick
-  // before it clears, so "travelling" is read from the position, not the
-  // inline transform.
+  // at rest on the dock's measured centre. GSAP's last frame can leave a zero
+  // translate in place for a tick before it clears, so "travelling" is read
+  // from the position, not the inline transform.
   const path = [first, ...ticks];
-  const rest = last.y;
   for (let i = 1; i < path.length; i++) {
-    if (path[i - 1].y < rest - 0.5) expect(path[i].y, `sample ${i} below sample ${i - 1}`).toBeGreaterThan(path[i - 1].y);
-    else expect(Math.abs(path[i].y - rest), `sample ${i} at rest`).toBeLessThanOrEqual(0.5);
+    if (path[i - 1].y < dock.y - 1) expect(path[i].y, `sample ${i} below sample ${i - 1}`).toBeGreaterThan(path[i - 1].y);
+    else expect(Math.abs(path[i].y - dock.y), `sample ${i} at rest on the dock`).toBeLessThanOrEqual(1);
   }
 });
 
