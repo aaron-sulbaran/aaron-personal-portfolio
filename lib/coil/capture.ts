@@ -20,6 +20,14 @@ import { COIL, type CoilConstants } from "./constants";
 //   an anchor jump). So the page sliding a card under a still pointer never
 //   hands the next gesture to the coil, as cards passing under a still
 //   pointer never release it.
+// - Held (the continuation rule, the same symmetry): a coil gesture that ends
+//   without passing to the page leaves capture held, with a mark where the
+//   pointer was during it. While held, a fresh gesture is the coil's anywhere
+//   inside the silhouette, on a card or not: a spin's stretch opens the seams
+//   under a still pointer, and cards moving under it never change the next
+//   gesture's owner. A real move of rearmPx from the mark, a page scroll, a
+//   release or a page gesture clears it; then rule A decides again. It cannot
+//   rebuild the trap: the trap always scrolls the page, which clears it.
 // - A coil gesture passes to the page only when the pointer itself moves
 //   outside the helix silhouette (or the hero stops being interactive); cards
 //   or gaps passing under a still pointer, or a move over a gap, never
@@ -38,13 +46,20 @@ export type CaptureState = {
   // seen; NaN until the pointer is seen.
   readonly markX: number;
   readonly markY: number;
+  readonly held: boolean;
+  // Where the pointer was during the held coil gesture, viewport px.
+  readonly heldX: number;
+  readonly heldY: number;
 };
 
 export type WheelFacts = {
   nowMs: number;
   interactive: boolean;
   heroVisible: number; // 0 to 1, the fraction of the hero's height in view
-  onCard: boolean; // the pointer over the canvas, on a pickable card or within the seam margin of one
+  onCard: boolean; // the pointer over the canvas, on a pickable card or in a seam (rule A)
+  insideSilhouette: boolean; // the pointer over the canvas, inside the helix hull
+  x: number; // the pointer, viewport px
+  y: number;
 };
 
 // A real pointer move to (x, y), viewport px.
@@ -61,6 +76,9 @@ export function createCapture(): CaptureState {
     armed: false,
     markX: Number.NaN,
     markY: Number.NaN,
+    held: false,
+    heldX: Number.NaN,
+    heldY: Number.NaN,
   };
 }
 
@@ -78,37 +96,46 @@ export function gestureOwner(state: CaptureState, nowMs: number, c: CoilConstant
 export function decideWheel(state: CaptureState, facts: WheelFacts, c: CoilConstants = COIL): CaptureState {
   const { nowMs } = facts;
   if (live(state, nowMs, c)) {
-    const owner = state.owner === "coil" && !facts.interactive ? "page" : state.owner;
-    return { ...state, owner, lastWheelMs: nowMs };
+    if (state.owner === "coil" && !facts.interactive) return { ...state, owner: "page", lastWheelMs: nowMs, held: false };
+    return { ...state, lastWheelMs: nowMs };
   }
-  const coil = state.armed && facts.interactive && facts.heroVisible >= c.capture.heroVisibleMin && facts.onCard;
+  const where = facts.onCard || (state.held && facts.insideSilhouette);
+  const coil = state.armed && facts.interactive && facts.heroVisible >= c.capture.heroVisibleMin && where;
   return coil
-    ? { ...state, owner: "coil", lastWheelMs: nowMs, coilSinceMs: nowMs }
-    : { ...state, owner: "page", lastWheelMs: nowMs, coilSinceMs: Number.NaN };
+    ? { ...state, owner: "coil", lastWheelMs: nowMs, coilSinceMs: nowMs, held: true, heldX: facts.x, heldY: facts.y }
+    : { ...state, owner: "page", lastWheelMs: nowMs, coilSinceMs: Number.NaN, held: false };
 }
 
 // A real pointer move (its position changed). Unarmed, the first sighting
 // marks where the pointer is and a move of rearmPx from the mark arms
-// capture. Outside the silhouette, a live coil gesture passes to the page for
-// the rest of that gesture.
+// capture. During a live coil gesture the hold's mark follows the pointer,
+// and outside the silhouette the gesture passes to the page for the rest of
+// it. After the gesture, a move of rearmPx from the hold's mark ends the hold.
 export function pointerMoved(state: CaptureState, facts: PointerFacts, c: CoilConstants = COIL): CaptureState {
   let next = state;
   if (!state.armed) {
     if (Number.isNaN(state.markX) || Number.isNaN(state.markY)) next = { ...state, markX: facts.x, markY: facts.y };
     else if (Math.hypot(facts.x - state.markX, facts.y - state.markY) >= c.capture.rearmPx) next = { ...state, armed: true };
   }
-  if (facts.insideSilhouette || next.owner !== "coil" || !live(next, facts.nowMs, c)) return next;
-  return { ...next, owner: "page", coilSinceMs: Number.NaN };
+  if (next.owner === "coil" && live(next, facts.nowMs, c)) {
+    if (!facts.insideSilhouette) return { ...next, owner: "page", coilSinceMs: Number.NaN, held: false };
+    return next.held ? { ...next, heldX: facts.x, heldY: facts.y } : next;
+  }
+  if (next.held && Math.hypot(facts.x - next.heldX, facts.y - next.heldY) >= c.capture.rearmPx) {
+    return { ...next, held: false };
+  }
+  return next;
 }
 
+const sameOrBothNaN = (a: number, b: number) => a === b || (Number.isNaN(a) && Number.isNaN(b));
+
 // The page scrolled (any cause): outside a coil gesture, capture is disarmed
-// and the pointer's position becomes the mark a re-arming move is measured
-// from.
+// and no longer held, and the pointer's position becomes the mark a
+// re-arming move is measured from.
 export function pageScrolled(state: CaptureState, facts: ScrollFacts, c: CoilConstants = COIL): CaptureState {
   if (gestureOwner(state, facts.nowMs, c) === "coil") return state;
-  const same = (a: number, b: number) => a === b || (Number.isNaN(a) && Number.isNaN(b));
-  if (!state.armed && same(state.markX, facts.x) && same(state.markY, facts.y)) return state;
-  return { ...state, armed: false, markX: facts.x, markY: facts.y };
+  if (!state.armed && !state.held && sameOrBothNaN(state.markX, facts.x) && sameOrBothNaN(state.markY, facts.y)) return state;
+  return { ...state, armed: false, held: false, markX: facts.x, markY: facts.y };
 }
 
 // Page scroll turns the coil during page gestures, keyboard and scrollbar
