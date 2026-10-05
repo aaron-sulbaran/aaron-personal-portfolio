@@ -18,7 +18,7 @@ The band stays under the book and stays the place where the wave is introduced a
 
 **In the band.** The heading becomes the question: "Want some music while you scroll?" with one line under it, "I put together a short playlist for this site. The wave follows you down the page.", and two controls, **Play it** and **Not now**. The wave runs through the band as it does today.
 
-**They say yes.** The music starts and the wave reacts to it. The band's note reads "Keep going, the music will follow." As they scroll away, the wave slides out of the band and arrives along the bottom of the viewport (section 3), and the pill condenses down out of the control they pressed and settles on the wave's line at the bottom centre. It lands open, saying "Music and volume live here.", holds for about 2.6 seconds, then collapses to the capsule showing the track title.
+**They say yes.** The music starts and the wave reacts to it. The band's note reads "Keep going, the music will follow." As they scroll away, the wave slides out of the band and arrives along the bottom of the viewport (section 3), and the pill condenses down out of the control they pressed and settles on the wave's line at the bottom left. It lands open, saying "Music and volume live here.", holds for about 2.6 seconds, then collapses to the capsule showing the track title.
 
 **They say no.** The band's note reads "No problem. It'll be here if you change your mind." As they scroll away the same handoff plays: the wave follows as a calm background that moves with the scroll and does not react to any music, and the pill condenses down saying "Here if you change your mind.", then collapses to a quiet capsule that reads "Music". One click on it starts the soundtrack.
 
@@ -54,22 +54,22 @@ The rejected alternatives: one viewport-sized canvas with a literal S-curve (the
 This is the rule that replaces "nothing animates behind body text". Think of a sidechain compressor: text is the kick, and the wave ducks under it.
 
 - The text blocks of About, Who I am, Up to now, Connect and the footer carry `data-wave-avoid`. The horizon view measures their document rects once per layout (ScrollTrigger refresh, `document.fonts.ready`, a ResizeObserver on `main`), pads them 20px, and each frame subtracts `scrollY` with no layout read.
-- Any column under a text box, or within 160px of one about to enter from below, ducks to a still centreline with no fuzz. Attack about 60ms, release about 450ms.
+- Any column under a text box ducks to a still centreline with no fuzz. Attack about 60ms, release about 450ms. Text about to enter from below ducks its columns early, by a look-ahead that scales with the downward scroll speed: zero at rest, 160px at 1500px per second and above. (A fixed 160px hid about 70 percent of the strip while the wave was arriving at 1440 by 900.) The speed is tracked by a small pure helper that takes no sample across a pause in painting and resets when the wave returns to the band.
 - Ducked dots have an alpha ceiling of 0.07 in light and 0.11 in dark (measured 2026-10-03 against the tokens: the spec first said 0.09 and 0.15, which left muted text over an accent dot at 4.36 and 4.22 to 1). Those values keep muted body text at 4.5 to 1 or better against the darkest dot pixel. A pure test, `lib/waveform/contrast.test.ts`, computes this from the token hexes, so a palette change fails a test before it fails a reader.
-- In open air (gutters, the gaps between sections) the dots paint at muted 0.30 and accent 0.50 in light, muted 0.40 and accent 0.70 in dark, lower than the band's values. The strip's top edge fades out with a CSS mask.
+- In open air (gutters, the gaps between sections) the dots paint at muted 0.40 and accent 0.55 in light (raised from 0.30 and 0.50 after the design review found the ribbon too faint to follow), muted 0.40 and accent 0.70 in dark, lower than the band's values. The strip's top edge fades out with a CSS mask.
 - The horizon caps column thickness at 6, so the loudest passage is a dense column, never a wall.
 - The strip's baseline sits 72px above the bottom of the viewport. The pill sits on that line; its glass blur softens the dots behind it, and there is no carve (a notch under a 36px capsule would read as a gap in the line; decided at the whole-branch review, 2026-10-04).
 
 ## 5. The pill
 
-The existing `PlaybackPill` stays the component; it moves to bottom centre on the wave's baseline and grows a label layer.
+The existing `PlaybackPill` stays the component; it sits at the bottom left on the wave's baseline, 24px in so it shares the header mark's left edge, and grows a label layer. (Aaron's ruling of 2026-10-05, from mockups of four placements on the real build: at bottom centre the fixed capsule sat on the reading column in every section; at bottom left it is clear at 1440 in every state. Below about 1280 wide it can still cross text while scrolling; a fade under text was offered and not taken.) The player card and the tooltip anchor to the capsule's left edge.
 
 - Capsule height goes from 26px to 36px with a 44px hit area. It uses the menu's `NoteIcon` so the two controls match.
 - Hidden through the hero and the book (the Menu's note covers audible music there). Present from the band down in every state, including declined. The rule in `lib/waveform/pill.ts` becomes a pure `dockMode()` with tests.
 - **Arrival.** When the sweep target passes 0.35 and the band's controls are still on screen, the pill is born at the pressed control's viewport rect and travels to the dock in one GSAP tween of about 600ms on the site's ease, while the band's control fades over 150ms. It is timed, not scrubbed: a fixed element chasing a scrolling one frame by frame is the lag problem from section 3. Scrolling back above the threshold plays it in reverse. When the source is off screen it uses the rise from the bottom.
 - **Label.** The pill lands open with its one line (section 2), holds 2.6 seconds (hover or focus pauses the hold), then collapses in 360ms. The label is shown once per page load per state.
 - **Audio failure.** If the player does not report playing, the label reads "I couldn't start the music. Press here to try again." and the state is paused. Nothing ever claims music that is not audible.
-- "Freeze the wave" moves from the band into the player card, since the wave is now everywhere. The band keeps the CC BY credit.
+- "Freeze the wave" is in the player card, since the wave is now everywhere. The band keeps the toggle on desktop while the state is unanswered or declined (those visitors have no card), and always on phones. The band keeps the CC BY credit.
 
 All copy lives in `siteContent.listen` and `siteContent.soundtrack`; the keys that no longer have a reader are deleted, not stranded.
 
