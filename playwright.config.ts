@@ -2,7 +2,6 @@ import { existsSync, readdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { defineConfig, devices, type Project } from "@playwright/test";
-import { MUTED_ARGS } from "./e2e/support/launch";
 
 // The end to end suite (e2e/). It runs against local production builds only,
 // never the dev server, a Vercel preview or the production domain: the full
@@ -16,10 +15,13 @@ import { MUTED_ARGS } from "./e2e/support/launch";
 // tuned for. WebKit and Firefox are configured but only run with E2E_ALL=1
 // and their browsers installed.
 //
-// Every browser is muted (e2e/support/launch.ts): Chromium by flag, Firefox by
-// pref. WebKit has no mute switch, so it skips the specs that start playback.
+// Every browser is muted: Chromium by flag, Firefox by pref. WebKit has no
+// mute switch, so it skips the specs that start playback. A spec that sets its
+// own launchOptions replaces these and spreads e2e/support/launch.ts's copy
+// (the holding build copies no e2e/, so this file cannot import it).
 
 const CI = !!process.env.CI;
+const MUTED_ARGS = ["--mute-audio"];
 const FULL_PORT = 3140;
 const HOLDING_PORT = 3141;
 // E2E_BASE_URL points the suite at another local build of the full site
