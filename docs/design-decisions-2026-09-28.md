@@ -174,6 +174,9 @@ Picked by Aaron from hero lab 2, 2026-09-29 (the build starts on these; see `doc
 - [x] Yes: the wave reacts to the music and follows. No: the wave follows as a calm background that moves with the scroll and reacts to nothing, and the pill stays within reach ("Here if you change your mind."). "Not now" is never asked twice.
 - [x] The handoff is a snake: the wave leaves the band at one edge and the same ribbon arrives from the other edge, lower down, driven by scroll and reversible.
 - [x] Phones unchanged this pass (the band is the ask and the control).
+- [x] Ruled 2026-10-05 from mockups of four placements on the real build: the pill sits at the bottom left on the wave's line, sharing the header mark's left edge. Bottom centre, the first build, put a fixed capsule on the reading column. No fade under text.
+- [x] The duck's look-ahead scales with scroll speed (zero at rest), and the light theme's open-air dots are 0.40 and 0.55.
+- [x] The test browser is muted; an unmuted suite was playing the soundtrack through the laptop's speakers.
 - [ ] Later, Aaron's idea: once it is background, the wave reshapes into other forms (a helix echoing the hero).
 
 ## 9a. Surfaced by the overnight build (2026-09-29), yours in the morning
