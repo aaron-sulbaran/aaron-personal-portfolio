@@ -2,6 +2,7 @@ import { existsSync, readdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { defineConfig, devices, type Project } from "@playwright/test";
+import { MUTED_ARGS } from "./e2e/support/launch";
 
 // The end to end suite (e2e/). It runs against local production builds only,
 // never the dev server, a Vercel preview or the production domain: the full
@@ -14,6 +15,9 @@ import { defineConfig, devices, type Project } from "@playwright/test";
 // to SwiftShader at about 30fps, which is not the frame budget the coil is
 // tuned for. WebKit and Firefox are configured but only run with E2E_ALL=1
 // and their browsers installed.
+//
+// Every browser is muted (e2e/support/launch.ts): Chromium by flag, Firefox by
+// pref. WebKit has no mute switch, so it skips the specs that start playback.
 
 const CI = !!process.env.CI;
 const FULL_PORT = 3140;
@@ -34,6 +38,7 @@ const desktop = {
   viewport: { width: 1440, height: 900 },
   deviceScaleFactor: 1,
   baseURL: FULL_URL,
+  launchOptions: { args: MUTED_ARGS },
 };
 
 function installed(prefix: string) {
@@ -47,10 +52,10 @@ const otherEngines: Project[] =
   process.env.E2E_ALL === "1"
     ? [
         ...(installed("webkit-")
-          ? [{ name: "webkit", testIgnore: /(holding|touch)\.spec\.ts/, use: { ...devices["Desktop Safari"], baseURL: FULL_URL } }]
+          ? [{ name: "webkit", testIgnore: /(holding|touch|soundtrack|horizon)\.spec\.ts/, use: { ...devices["Desktop Safari"], baseURL: FULL_URL } }]
           : []),
         ...(installed("firefox-")
-          ? [{ name: "firefox", testIgnore: /(holding|touch)\.spec\.ts/, use: { ...devices["Desktop Firefox"], baseURL: FULL_URL } }]
+          ? [{ name: "firefox", testIgnore: /(holding|touch)\.spec\.ts/, use: { ...devices["Desktop Firefox"], baseURL: FULL_URL, launchOptions: { firefoxUserPrefs: { "media.volume_scale": "0.0" } } } }]
           : []),
       ]
     : [];
@@ -80,6 +85,7 @@ export default defineConfig({
         ...devices["Pixel 7"],
         channel: "chromium",
         baseURL: FULL_URL,
+        launchOptions: { args: MUTED_ARGS },
       },
     },
     { name: "holding", testMatch: /holding\.spec\.ts/, use: { ...desktop, baseURL: HOLDING_URL } },
