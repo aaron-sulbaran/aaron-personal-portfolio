@@ -52,7 +52,7 @@ export function SoundBand() {
       </div>
 
       <div className="w-fit max-w-full">
-        <div className="flex flex-wrap items-baseline gap-x-7 gap-y-3">
+        <div className="flex flex-wrap items-baseline gap-x-7 gap-y-3" style={{ columnGap: "var(--lab-heading-gap, 28px)" }}>
           <h2 className="font-display text-[clamp(1.375rem,2vw,1.75rem)] leading-[1.1] text-foreground">{c.line}</h2>
           <div className={controlAlign === "site" ? "grid" : "grid items-baseline"}>
             <Layer

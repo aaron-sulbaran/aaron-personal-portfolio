@@ -95,6 +95,15 @@
   top: var(--lab-secondary-nudge, 0px);
 }
 
+/* Optional: "Not now" a step quieter than "Play it" (muted, full ink on
+   hover), whatever the color settings say. */
+.type-lab[data-quiet-secondary="on"] button.lab-secondary.lab-secondary {
+  color: var(--color-muted);
+}
+.type-lab[data-quiet-secondary="on"] button.lab-secondary.lab-secondary:hover {
+  color: var(--color-foreground);
+}
+
 /* The panel's own range inputs pick up the accent. */
 .type-lab-panel input[type="range"] {
   accent-color: var(--color-accent);

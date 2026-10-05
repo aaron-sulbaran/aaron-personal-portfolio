@@ -55,7 +55,12 @@ export function LayoutControls() {
           <Segmented options={["site", "baseline", "center"] as const} value={b.controlAlign} format={(a) => (a === "site" ? "as built" : a)} onChange={(controlAlign) => editB((s) => ({ ...s, controlAlign }))} />
         </Field>
         <Slider label="Not now, baseline nudge" value={b.secondaryNudge} min={-4} max={4} step={0.5} format={px} onChange={(secondaryNudge) => editB((s) => ({ ...s, secondaryNudge }))} />
+        <Slider label="Gap after the question" value={b.headingGap} min={8} max={64} step={1} format={px} onChange={(headingGap) => editB((s) => ({ ...s, headingGap }))} />
         <Slider label="Gap between them" value={b.controlGap} min={8} max={48} step={1} format={px} onChange={(controlGap) => editB((s) => ({ ...s, controlGap }))} />
+        <label className="flex items-center gap-2">
+          <input type="checkbox" checked={b.quietSecondary} onChange={(e) => editB((s) => ({ ...s, quietSecondary: e.target.checked }))} />
+          <span>Not now in muted (a quieter secondary)</span>
+        </label>
       </div>
 
       <div className="flex flex-col gap-5 border-t border-border pt-4">

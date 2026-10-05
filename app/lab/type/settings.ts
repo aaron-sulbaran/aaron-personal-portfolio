@@ -58,6 +58,9 @@ export type Settings = {
   controlAlign: "site" | "baseline" | "center";
   secondaryNudge: number; // px, negative raises "Not now"
   controlGap: number;
+  headingGap: number; // px from the question to its controls
+  // Optional: "Not now" in the muted token, a step quieter than "Play it".
+  quietSecondary: boolean;
   roleLineCase: RoleLine;
   roleLineModal: RoleLine;
   subtitleWeight: number; // the role line's weight once it sits below
@@ -83,6 +86,8 @@ const SITE_LAYOUT = {
   controlAlign: "site",
   secondaryNudge: 0,
   controlGap: 24,
+  headingGap: 28,
+  quietSecondary: false,
   roleLineCase: ROLE_LINE_SITE.case,
   roleLineModal: ROLE_LINE_SITE.modal,
   subtitleWeight: 400,
@@ -122,6 +127,30 @@ export const SITE_TODAY: Settings = {
 export type Preset = { id: string; name: string; note: string; settings: Settings };
 
 export const PRESETS: readonly Preset[] = [
+  {
+    id: "aaron-final",
+    name: "Aaron's final",
+    note: "Aaron's pick as decided: role line above on the case page, below in the modal. The band's question stands apart from its two answers (36px), and the answers pair up (16px).",
+    settings: {
+      face: "profa",
+      weight: 700,
+      strongWeight: 700,
+      scale: 1.06,
+      tracking: 0.01,
+      leading: null,
+      stretch: 100,
+      interactiveColor: "accent",
+      staticColor: "accent",
+      roles: ALL_ROLES,
+      ...PROFA_LAYOUT,
+      iconStroke: 2.5,
+      controlGap: 16,
+      headingGap: 36,
+      roleLineCase: { placement: "above", gap: 8, size: 14 },
+      roleLineModal: { placement: "below", gap: 3, size: 15 },
+      subtitleWeight: 700,
+    },
+  },
   {
     id: "aaron-pick",
     name: "Aaron's pick",
@@ -257,6 +286,7 @@ export function labVars(settings: Settings): CSSProperties {
     "--lab-icon-offset": `${settings.iconOffset}px`,
     ...(settings.iconGap === null ? {} : { "--lab-icon-gap": `${settings.iconGap}px` }),
     "--lab-control-gap": `${settings.controlGap}px`,
+    "--lab-heading-gap": `${settings.headingGap}px`,
     "--lab-secondary-nudge": `${settings.secondaryNudge}px`,
   } as CSSProperties;
 }
@@ -267,6 +297,7 @@ export function labAttributes(settings: Settings) {
     "data-color-interactive": settings.interactiveColor,
     "data-color-static": settings.staticColor,
     "data-leading": settings.leading === null ? "site" : "set",
+    "data-quiet-secondary": settings.quietSecondary ? "on" : "off",
   };
 }
 
@@ -313,6 +344,8 @@ export function exportValues(settings: Settings, label: string) {
       align: settings.controlAlign,
       secondaryNudgePx: settings.secondaryNudge,
       gapPx: settings.controlGap,
+      headingGapPx: settings.headingGap,
+      quietSecondary: settings.quietSecondary,
     },
     roleLine: { casePage: roleLine(settings.roleLineCase), modal: roleLine(settings.roleLineModal) },
   };

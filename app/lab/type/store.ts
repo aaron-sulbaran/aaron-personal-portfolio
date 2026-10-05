@@ -14,9 +14,9 @@ export type LabState = {
   collapsed: boolean;
 };
 
-// v2: round 2 added settings and made Aaron's pick the default, so round 1's
-// stored state is left behind.
-const STORAGE_KEY = "lab-type-v2";
+// Bumped whenever the default preset changes (v3: Aaron's final), so stored
+// state from an earlier round is left behind.
+const STORAGE_KEY = "lab-type-v3";
 const INITIAL: LabState = { b: PRESETS[0].settings, a: null, view: "b", collapsed: false };
 
 let state: LabState = INITIAL;
