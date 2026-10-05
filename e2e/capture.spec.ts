@@ -19,9 +19,9 @@ import { approach, firstPixels, pointerJitter, pointerTo, trackpad } from "./sup
 import type { Page } from "@playwright/test";
 import type { CaptureProbe } from "./support/hooks";
 
-// The seam point whose two nearest cards are farthest from it while rule A
-// still holds with 3px of slack: the wide end of the wedge picking leaves
-// between two cards.
+// The middle of the widest seam on screen: the point off every card whose
+// nearest card is farthest away while its second nearest stays 3px inside
+// the margin (rule A, with slack for the idle drift before the first wheel).
 async function widestSeamPoint(page: Page): Promise<{ point: Point; probe: CaptureProbe } | null> {
   return page.evaluate(() => {
     const coil = (window as unknown as { __coil: { captureAt: (x: number, y: number) => CaptureProbe; api: { cardAt: (x: number, y: number) => unknown } } }).__coil;
@@ -33,7 +33,7 @@ async function widestSeamPoint(page: Page): Promise<{ point: Point; probe: Captu
       for (let x = 100; x < window.innerWidth - 100; x += 3) {
         const probe = coil.captureAt(x, y);
         if (!probe.onCard || probe.cardPx === 0 || probe.secondCardPx > probe.seamPx - 3) continue;
-        if (best && probe.secondCardPx <= best.probe.secondCardPx) continue;
+        if (best && probe.cardPx <= best.probe.cardPx) continue;
         if (coil.api.cardAt(x, y)) continue;
         best = { point: { x, y }, probe };
       }
@@ -83,7 +83,11 @@ test.describe("capture: a gesture over the coil spins it and holds the page stil
   for (const scenario of cases) {
     test(scenario.name, async ({ page, cdp }) => {
       await openHome(page);
-      if (scenario.scrollY) await scrollToY(page, scenario.scrollY);
+      if (scenario.scrollY) {
+        await scrollToY(page, scenario.scrollY);
+        // Page scroll turns the coil: sample the points once it is back to its idle pace.
+        await waitForCoilSettled(page);
+      }
       const points = await coilPoints(page);
       const point = points[scenario.where];
       expect(point, `a ${scenario.where} point on the hero`).toBeTruthy();
@@ -124,7 +128,7 @@ test("capture: the widest seam at rest (about a tenth of a card to both cards) i
   const seam = await widestSeamPoint(page);
   expect(seam, "a wide seam point on the hero").toBeTruthy();
   const cardHeight = seam!.probe.seamPx / COIL.capture.seamCards;
-  expect(seam!.probe.secondCardPx / cardHeight, "both cards from the seam point, card heights").toBeGreaterThanOrEqual(0.09);
+  expect(seam!.probe.cardPx / cardHeight, "the nearer card from the seam point, card heights").toBeGreaterThanOrEqual(0.09);
   expect(await cardAt(page, seam!.point), "a card under the seam point").toBeNull();
   await approach(cdp, seam!.point);
   expect(await captureAt(page, seam!.point), "rule A holds and capture is armed").toMatchObject({ onCard: true, armed: true });
