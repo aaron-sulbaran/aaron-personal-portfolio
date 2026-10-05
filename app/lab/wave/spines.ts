@@ -1,3 +1,4 @@
+import { AUTHORED, composePoints, type Move } from "./compose";
 import type { Point } from "./spineGeometry";
 
 // The spines, in page-relative terms so they survive content changes and any
@@ -24,13 +25,17 @@ export interface SpinePoint {
   dy?: number;
 }
 
-export type SpineId = "switchback" | "knot" | "through" | "calm";
+// Authored ids, plus "custom" (the editable moves in the settings) and
+// "generated" (the seeded generator).
+export type SpineId = string;
 
 export interface SpineDef {
   id: SpineId;
   label: string;
   note: string;
   points: SpinePoint[];
+  moves?: Move[]; // present when the spine was composed stretch by stretch
+  parked?: boolean;
 }
 
 export interface Span {
@@ -49,34 +54,7 @@ export interface Anchors {
 const knot = (dx: number, dy: number): SpinePoint => ({ at: "band", box: true, y: 0.6, x: 0.8, dx, dy });
 
 export const SPINES: SpineDef[] = [
-  {
-    id: "knot",
-    label: "Knot and sweep",
-    note: "The reference's character: a knot of loops beside the band, then wide sweeps that leave both edges of the screen and come back.",
-    points: [
-      { at: "band", box: true, y: 0.2, x: 1.1 },
-      knot(30, -110),
-      knot(-10, -70),
-      knot(-70, -10),
-      knot(-20, 60),
-      knot(50, 10),
-      knot(0, -50),
-      knot(-90, -40),
-      knot(-140, 20),
-      knot(-80, 75),
-      knot(-10, 40),
-      { at: "gap0", y: 0.75, x: 0.35 },
-      { at: "about", y: 0.55, x: -0.14 },
-      { at: "gap1", y: 0.55, x: 0.45 },
-      { at: "who", y: 0.5, x: 1.16 },
-      { at: "gap2", y: 0.55, x: 0.5 },
-      { at: "up", y: 0.45, x: -0.16 },
-      { at: "gap3", y: 0.5, x: 0.5 },
-      { at: "connect", y: 0.5, x: 1.14 },
-      { at: "gap4", y: 0.6, x: 0.4 },
-      { at: "footer", box: true, y: 1, x: -0.12 },
-    ],
-  },
+  ...AUTHORED.map((a) => ({ id: a.id, label: a.label, note: a.note, moves: a.moves, points: composePoints(a.moves) })),
   {
     id: "switchback",
     label: "Switchback",
@@ -146,6 +124,35 @@ export const SPINES: SpineDef[] = [
       { at: "footer", box: true, y: 1, x: -0.06 },
     ],
   },
+  {
+    id: "knot",
+    label: "Knot and sweep (parked)",
+    parked: true,
+    note: "The reference's character: a knot of loops beside the band, then wide sweeps that leave both edges of the screen and come back.",
+    points: [
+      { at: "band", box: true, y: 0.2, x: 1.1 },
+      knot(30, -110),
+      knot(-10, -70),
+      knot(-70, -10),
+      knot(-20, 60),
+      knot(50, 10),
+      knot(0, -50),
+      knot(-90, -40),
+      knot(-140, 20),
+      knot(-80, 75),
+      knot(-10, 40),
+      { at: "gap0", y: 0.75, x: 0.35 },
+      { at: "about", y: 0.55, x: -0.14 },
+      { at: "gap1", y: 0.55, x: 0.45 },
+      { at: "who", y: 0.5, x: 1.16 },
+      { at: "gap2", y: 0.55, x: 0.5 },
+      { at: "up", y: 0.45, x: -0.16 },
+      { at: "gap3", y: 0.5, x: 0.5 },
+      { at: "connect", y: 0.5, x: 1.14 },
+      { at: "gap4", y: 0.6, x: 0.4 },
+      { at: "footer", box: true, y: 1, x: -0.12 },
+    ],
+  },
 ];
 
 export function spineById(id: SpineId): SpineDef {
@@ -161,7 +168,7 @@ function spanOf(anchors: Anchors, point: SpinePoint): Span {
   return point.box ? anchors.box[key] : anchors.words[key];
 }
 
-export function resolveSpine(def: SpineDef, anchors: Anchors): Point[] {
+export function resolveSpine(def: { points: SpinePoint[] }, anchors: Anchors): Point[] {
   return def.points.map((p) => {
     const span = spanOf(anchors, p);
     return { x: p.x * anchors.width + (p.dx ?? 0), y: span.top + p.y * (span.bottom - span.top) + (p.dy ?? 0) };
