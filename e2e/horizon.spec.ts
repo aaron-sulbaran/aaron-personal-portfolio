@@ -64,32 +64,35 @@ async function placeBottom(page: Page, selector: string, index: number, at: numb
 
 const avoidCount = (page: Page, selector: string) => page.locator(selector).count();
 
+// The About block sits just under the band: its words cross the strip while
+// the train is still arriving from the right, so at rest no column may reach
+// them yet (only the eased sweep's lag, after a scroll back up, brings columns
+// under them). Every later block is past the band, so its words are read.
+const AHEAD_ALLOWED = new Set<string>(["#about"]);
+
 async function expectBlocksDucked(page: Page, ceiling: number) {
   const vh = page.viewportSize()!.height;
-  let read = 0;
   for (const block of AVOID_BLOCKS) {
     const selector = `${block} [data-wave-avoid]`;
     const count = await avoidCount(page, selector);
     expect(count, `avoid boxes in ${block}`).toBeGreaterThan(0);
+    let read = 0;
     for (let i = 0; i < count; i++) {
       // The bottom on the strip's baseline, well inside it.
       await placeBottom(page, selector, i, vh - HORIZON.lift);
       await page.waitForTimeout(SETTLE_MS);
       const report = await duckReport(page, selector, i, ceiling);
       expect(report.overStrip, `${selector} #${i} over the strip`).toBe(true);
-      // The About block sits just under the band: its words cross the strip
-      // while the train is still arriving from the right, so at rest no column
-      // reaches them yet (only the eased sweep's lag, after a scroll back up,
-      // brings columns under them).
       if (report.under === 0) {
+        expect(AHEAD_ALLOWED.has(block), `${selector} #${i} has no columns under its words`).toBe(true);
         expect(report.ahead, `${selector} #${i} no columns under its words, and the train not yet there`).toBe(true);
         continue;
       }
       read += 1;
       expect(report.loud, `${selector} #${i} columns painting loud under its words`).toEqual([]);
     }
+    if (!AHEAD_ALLOWED.has(block)) expect(read, `boxes in ${block} with columns under their words`).toBeGreaterThan(0);
   }
-  expect(read, "boxes with columns under their words").toBeGreaterThan(0);
 }
 
 test("horizon: the sweep follows scroll, out to the strip and back", async ({ page }) => {
