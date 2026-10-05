@@ -250,13 +250,14 @@ function ScrollArea({ children }: { children: ReactNode }) {
         data-shown="false"
         aria-hidden="true"
         data-cursor-hover
-        className="group relative mt-2 h-4 touch-none opacity-0 transition-opacity duration-300 ease-[var(--ease-out)] data-[shown=true]:opacity-100 motion-reduce:transition-none"
+        className="group relative mt-2 h-4 opacity-0 [touch-action:pan-y] transition-opacity duration-300 ease-[var(--ease-out)] data-[shown=true]:opacity-100 motion-reduce:transition-none"
         onPointerEnter={() => show(60_000)}
         onPointerLeave={() => show()}
         onPointerDown={(e) => {
           const el = scroller.current;
           const bar = thumb.current;
-          if (!el || !bar) return;
+          // Touch swipes the chart itself; the pill is a mouse control.
+          if (!el || !bar || e.pointerType !== "mouse") return;
           e.currentTarget.setPointerCapture(e.pointerId);
           if (e.target !== bar) {
             // A press on the bare track centers the thumb there.
