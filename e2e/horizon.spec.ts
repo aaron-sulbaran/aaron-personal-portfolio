@@ -67,7 +67,9 @@ const avoidCount = (page: Page, selector: string) => page.locator(selector).coun
 // The About block sits just under the band: its words cross the strip while
 // the train is still arriving from the right, so at rest no column may reach
 // them yet (only the eased sweep's lag, after a scroll back up, brings columns
-// under them). Every later block is past the band, so its words are read.
+// under them). A later block's box may read as ahead only while the train is
+// measurably still arriving (Who I am's kicker, left of the leading column at
+// 1440 by 900), and every later block has at least one box actually read.
 const AHEAD_ALLOWED = new Set<string>(["#about"]);
 
 async function expectBlocksDucked(page: Page, ceiling: number) {
@@ -84,7 +86,9 @@ async function expectBlocksDucked(page: Page, ceiling: number) {
       const report = await duckReport(page, selector, i, ceiling);
       expect(report.overStrip, `${selector} #${i} over the strip`).toBe(true);
       if (report.under === 0) {
-        expect(AHEAD_ALLOWED.has(block), `${selector} #${i} has no columns under its words`).toBe(true);
+        if (!AHEAD_ALLOWED.has(block)) {
+          expect(await sweep(page), `${selector} #${i} has no columns under its words with the train all on the strip`).toBeLessThan(0.99);
+        }
         expect(report.ahead, `${selector} #${i} no columns under its words, and the train not yet there`).toBe(true);
         continue;
       }
