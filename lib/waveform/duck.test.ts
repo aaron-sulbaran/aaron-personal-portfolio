@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DUCK, duckTargets, stepDuck } from "./duck";
+import { DUCK, duckTargets, lookAheadFor, stepDuck, stepScrollSpeed } from "./duck";
 
 describe("duck", () => {
   const xs = [10, 20, 30, 40];
@@ -15,6 +15,13 @@ describe("duck", () => {
     duckTargets([{ left: 0, right: 50, top: 1226 + DUCK.lookAheadPx + 1, bottom: 1500 }], xs, { top: 1050, bottom: 1226 }, out);
     expect([...out]).toEqual([0, 0, 0, 0]);
   });
+  it("the look-ahead is a parameter: at 0 a rect just below the strip does not duck", () => {
+    const out = new Float32Array(4);
+    duckTargets([{ left: 0, right: 50, top: 1227, bottom: 1500 }], xs, { top: 1050, bottom: 1226 }, out, 0);
+    expect([...out]).toEqual([0, 0, 0, 0]);
+    duckTargets([{ left: 0, right: 50, top: 1227, bottom: 1500 }], xs, { top: 1050, bottom: 1226 }, out, 2);
+    expect([...out]).toEqual([1, 1, 1, 1]);
+  });
   it("a rect wholly above the strip does not duck, and the scan goes on to the next", () => {
     const out = new Float32Array(4);
     duckTargets(
@@ -27,6 +34,31 @@ describe("duck", () => {
       out,
     );
     expect([...out]).toEqual([0, 0, 1, 1]);
+  });
+  it("the look-ahead is 0 at rest, full at 1500px/s and above, linear between", () => {
+    expect(lookAheadFor(0)).toBe(0);
+    expect(lookAheadFor(-800)).toBe(0);
+    expect(lookAheadFor(Number.NaN)).toBe(0);
+    expect(lookAheadFor(Number.POSITIVE_INFINITY)).toBe(0);
+    expect(lookAheadFor(1500)).toBe(160);
+    expect(lookAheadFor(4000)).toBe(160);
+    expect(lookAheadFor(750)).toBeCloseTo(80, 9);
+    expect(lookAheadFor(375)).toBeCloseTo(40, 9);
+  });
+  it("the scroll speed attacks at once and releases below 5 percent within 0.75s", () => {
+    expect(stepScrollSpeed(0, 1200, 1 / 120)).toBe(1200);
+    expect(stepScrollSpeed(300, 1200, 1 / 120)).toBe(1200);
+    let speed = 1500;
+    let t = 0;
+    while (t < 0.75 - 1e-9) {
+      speed = stepScrollSpeed(speed, 0, 1 / 120);
+      t += 1 / 120;
+    }
+    expect(speed).toBeLessThan(1500 * 0.05);
+    expect(speed).toBeGreaterThan(0);
+    expect(stepScrollSpeed(1000, 0, 0.25)).toBeCloseTo(1000 / Math.E, 6);
+    expect(stepScrollSpeed(0, -500, 1 / 60)).toBe(0);
+    expect(stepScrollSpeed(Number.NaN, 0, 1 / 60)).toBe(0);
   });
   // The envelope is a Float32Array, so the step is pinned to the exact float32 value.
   it("one step pins the attack and release rates", () => {
