@@ -25,7 +25,7 @@ export function NavBar() {
         <span className="absolute left-6 top-5 block h-8 w-8 text-foreground">
           <AsMark className="block h-full w-full" />
         </span>
-        <nav aria-label="Specimen sections" className="absolute left-1/2 top-0 flex h-[72px] -translate-x-1/2 items-center gap-8 text-sm font-medium">
+        <nav aria-label="Specimen sections" className="absolute left-1/2 top-0 hidden h-[72px] md:flex -translate-x-1/2 items-center gap-8 text-sm font-medium">
           {NAV_ITEMS.map((item) => {
             const active = item.href === ACTIVE;
             return (

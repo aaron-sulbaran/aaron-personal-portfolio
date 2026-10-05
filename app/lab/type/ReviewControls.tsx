@@ -30,10 +30,15 @@ export function ReviewControls() {
         </Field>
       ))}
 
-      <label className="flex items-center gap-2">
-        <input type="checkbox" checked={b.seenMetaDim} onChange={(e) => editB((s) => ({ ...s, seenMetaDim: e.target.checked }))} />
-        <span>A seen book row dims its meta too</span>
-      </label>
+      <div className="flex flex-col gap-1.5">
+        <label className="flex items-center gap-2">
+          <input type="checkbox" checked={b.seenMetaDim !== null} onChange={(e) => editB((s) => ({ ...s, seenMetaDim: e.target.checked ? 0.75 : null }))} />
+          <span>A seen book row dims its meta too</span>
+        </label>
+        {b.seenMetaDim !== null && (
+          <Slider label="Seen meta opacity" value={b.seenMetaDim} min={0.4} max={1} step={0.05} format={(n) => n.toFixed(2)} onChange={(seenMetaDim) => editB((s) => ({ ...s, seenMetaDim }))} />
+        )}
+      </div>
 
       <div className="flex flex-col gap-1.5">
         <label className="flex items-center gap-2">

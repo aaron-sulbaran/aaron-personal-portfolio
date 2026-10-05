@@ -156,9 +156,10 @@
 }
 
 /* A seen book row dims its meta with its title, back to full on hover and
-   focus, like the title. */
+   focus, like the title. 0.75 keeps 14.8px bold accent above 4.5:1 in both
+   themes; the title's 0.55 is large text, where 3:1 is the bar. */
 .type-lab[data-seen-meta="dim"] .book-row[data-seen] [data-role="meta"] {
-  opacity: 0.55;
+  opacity: var(--lab-seen-meta-opacity);
   transition: opacity 200ms;
 }
 .type-lab[data-seen-meta="dim"] .book-row[data-seen]:is(:hover, :focus-visible) [data-role="meta"] {

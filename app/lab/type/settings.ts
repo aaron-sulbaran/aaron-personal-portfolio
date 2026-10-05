@@ -84,8 +84,9 @@ export type Settings = {
   roleLineModal: RoleLine;
   subtitleWeight: number; // the role line's weight once it sits below
   toneColors: Record<Tone, ToneColor>;
-  // A seen book row dims its meta with its title (back on hover and focus).
-  seenMetaDim: boolean;
+  // A seen book row dims its meta with its title (back on hover and focus),
+  // to this opacity; null leaves the meta at full ink as the site does.
+  seenMetaDim: number | null;
   // Every label size collapses onto STEP_PX (times the scale).
   threeSteps: boolean;
   // Book meta beside its title: "site" keeps the site's grid (meta never
@@ -121,7 +122,7 @@ const SITE_LAYOUT = {
   roleLineModal: ROLE_LINE_SITE.modal,
   subtitleWeight: 400,
   toneColors: { besideTitle: "same", hint: "same", kicker: "same", secondary: "same" },
-  seenMetaDim: false,
+  seenMetaDim: null,
   threeSteps: false,
   metaWrap: "site",
 } satisfies Partial<Settings>;
@@ -190,7 +191,7 @@ const AARON_REVIEWED: Settings = {
   quietSecondary: true,
   roleLineCase: { placement: "below", gap: 14, size: 18 },
   roleLineModal: { placement: "below", gap: 6, size: 15 },
-  seenMetaDim: true,
+  seenMetaDim: 0.75,
   threeSteps: true,
   metaWrap: "fit",
 };
@@ -345,6 +346,7 @@ export function labVars(settings: Settings): CSSProperties {
     ...(settings.iconGap === null ? {} : { "--lab-icon-gap": `${settings.iconGap}px` }),
     "--lab-control-gap": `${settings.controlGap}px`,
     "--lab-heading-gap": `${settings.headingGap}px`,
+    "--lab-seen-meta-opacity": settings.seenMetaDim ?? 1,
     ...Object.fromEntries(
       TONES.filter((tone) => settings.toneColors[tone] !== "same").map((tone) => [
         `--lab-tone-${tone}`,
@@ -363,7 +365,7 @@ export function labAttributes(settings: Settings) {
     "data-leading": settings.leading === null ? "site" : "set",
     "data-quiet-secondary": settings.quietSecondary ? "on" : "off",
     "data-tones": TONES.filter((tone) => settings.toneColors[tone] !== "same").join(" "),
-    "data-seen-meta": settings.seenMetaDim ? "dim" : "site",
+    "data-seen-meta": settings.seenMetaDim === null ? "site" : "dim",
     "data-three-steps": settings.threeSteps ? "on" : "off",
   };
 }
@@ -423,7 +425,7 @@ export function exportValues(settings: Settings, label: string) {
     toneColors: Object.fromEntries(
       TONES.map((tone) => [tone, settings.toneColors[tone] === "same" ? "same as its role" : colorExport(settings.toneColors[tone] as ColorRole)]),
     ),
-    seenRowMetaDims: settings.seenMetaDim,
+    seenRowMetaOpacity: settings.seenMetaDim ?? "as on the site (full)",
     sizeSteps: settings.threeSteps
       ? Object.fromEntries(Object.entries(STEP_PX).map(([step, px]) => [step, round(px * settings.scale)]))
       : "as each element's own size",
