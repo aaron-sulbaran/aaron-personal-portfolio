@@ -76,6 +76,9 @@ const values = {
     // middle at any pane (geometry.test.ts derives it), and this covers it
     // with 2px to spare down to a 1024 by 768 pane. 25.6px at 1485 by 927.
     seamCards: 0.115,
+    // A real pointer move this far from where the page last scrolled under a
+    // still pointer arms capture again (trackpad jitter is 1 to 3px).
+    rearmPx: 6,
   },
   // A book row hovered or focused holds the coil still on its card.
   rowHold: {

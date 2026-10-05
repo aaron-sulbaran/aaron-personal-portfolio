@@ -1,6 +1,6 @@
 import { COIL } from "@/lib/coil/constants";
 import { FIELD } from "@/lib/coil/field.glsl";
-import { pickCard, poseAt, projectPoint, rayThrough, restHelix } from "@/lib/coil/geometry";
+import { nearCard, pickCard, poseAt, projectPoint, rayThrough, restHelix, seamMarginPx } from "@/lib/coil/geometry";
 import { hoverJumpTarget, setRowHold, startGlide, type JumpBand } from "@/lib/coil/motion";
 import { heroVisibleFraction } from "@/lib/coil/capture";
 import { setSceneHover } from "@/lib/cursor/hover";
@@ -34,6 +34,13 @@ export function createHover(ctx: SceneCtx, cards: Cards, loop: LoopLink) {
   function pickAt(x: number, y: number) {
     if (!st.geoCamera || poses.length === 0) return -1;
     return pickCard(poses, rayThrough(st.geoCamera, x, y));
+  }
+
+  // Wheel capture's rule A at a canvas point: on a card pickAt would pick, or
+  // within the seam margin of one, from the last rendered frame.
+  function nearCardAt(x: number, y: number) {
+    if (!st.geo || !st.geoCamera || poses.length === 0) return false;
+    return nearCard(poses, st.geoCamera, x, y, seamMarginPx(st.geo));
   }
 
   // The card under a viewport point.
@@ -119,7 +126,7 @@ export function createHover(ctx: SceneCtx, cards: Cards, loop: LoopLink) {
     // ---- end fx-input ----
   }
 
-  return { pickAt, cardAt, picking, liftTarget, focusCard, focusKey: () => focusKey };
+  return { pickAt, nearCardAt, cardAt, picking, liftTarget, focusCard, focusKey: () => focusKey };
 }
 
 export type Hover = ReturnType<typeof createHover>;
