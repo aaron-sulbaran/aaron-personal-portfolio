@@ -209,6 +209,9 @@ function Readout({ tokens, settings }: { tokens: Record<ThemeName, ThemeTokens> 
       <p className="text-xs leading-snug text-muted">
         Text over the most inked dot pixel (a dot&apos;s centre). Accent dots only appear on loud music. The line marks 4.5 to 1. Information, not a gate.
       </p>
+      {settings.placement === "path" && (
+        <p className="mt-1 text-xs leading-snug text-muted">Path crosses words on purpose; these numbers apply wherever it passes behind them.</p>
+      )}
       {settings.placement === "seams" && (
         <p className="mt-1 text-xs leading-snug text-muted">Seams sit in the gaps, never under words; these numbers only bite if a seam is nudged into text.</p>
       )}
