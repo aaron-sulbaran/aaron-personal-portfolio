@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { capsuleText, dockLabel, dockMode, setDockSource, takeDockSource } from "./dock";
+import { capsuleName, capsuleText, dockLabel, dockMode, setDockSource, takeDockSource } from "./dock";
 
 const base = { music: "before" as const, reached: true, phone: false, labelShown: false, returning: false, failed: false };
 const STATES = ["before", "on", "paused", "off"] as const;
@@ -34,6 +34,13 @@ describe("dock", () => {
     expect(capsuleText("paused", "x")).toBe("Paused");
     expect(capsuleText("before", "x")).toBe("Music?");
     expect(capsuleText("off", "x")).toBe("Music");
+  });
+  it("the capsule's name joins its text and action with one separator", () => {
+    expect(capsuleName("Music?", "Play the soundtrack")).toBe("Music? Play the soundtrack");
+    expect(capsuleName("Paused", "Open soundtrack player")).toBe("Paused. Open soundtrack player");
+    expect(capsuleName("Small Steps.", "Open")).toBe("Small Steps. Open");
+    expect(capsuleName("Wow!", "Open")).toBe("Wow! Open");
+    expect(capsuleName("Music", "Play the soundtrack")).toBe("Music. Play the soundtrack");
   });
   it("the arrival source is taken once", () => {
     const rect = { x: 1, y: 2, width: 3, height: 4, top: 2, left: 1, right: 4, bottom: 6, toJSON: () => ({}) } as DOMRect;

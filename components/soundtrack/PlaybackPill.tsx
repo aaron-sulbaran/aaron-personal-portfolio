@@ -5,7 +5,7 @@ import { Portal } from "@/components/Portal";
 import { siteContent } from "@/lib/content";
 import { getSoundtrackPlayer } from "@/lib/audio";
 import { getPlayFailed, getRestoredSoundtrack, startSoundtrack, subscribeSoundtrack, useSoundtrack } from "@/lib/soundtrack";
-import { DOCK, capsuleText, dockLabel, dockMode, type DockLabel } from "@/lib/waveform/dock";
+import { DOCK, capsuleName, capsuleText, dockLabel, dockMode, type DockLabel } from "@/lib/waveform/dock";
 import { isPhone, subscribePhone } from "@/lib/waveform/layout";
 import { Cover, DockGlyph, EASE, glass, reveal } from "./PillParts";
 import { PillAnnouncer, PillLabel, labelLine, useLabelHold } from "./PillLabel";
@@ -203,7 +203,7 @@ function PillInner({ reached }: { reached: boolean }) {
             onClick={press}
             onMouseEnter={() => previewable && send("enter")}
             onMouseLeave={() => send("leave")}
-            aria-label={`${capsuleText(music, track.title)}. ${startsMusic ? c.invite : c.ariaOpen}`}
+            aria-label={capsuleName(capsuleText(music, track.title), startsMusic ? c.invite : c.ariaOpen)}
             data-cursor-hover
             style={{ ...capsule, ["--pill-hit-inset" as string]: `${(DOCK.hitPx - DOCK.capsulePx) / 2}px` }}
           >
