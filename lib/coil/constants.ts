@@ -70,12 +70,14 @@ const values = {
     gestureGapMs: 260, // wheel events closer than this are one gesture (the lab's value)
     heroVisibleMin: 0.5,
     nudgeAfterMs: 2600,
-    // The seam margin around every pickable card, in card heights (times the
-    // pane's cardPx): the widest seam between two adjacent front cards, as
-    // picking sees them (flat cards, so a wedge), is 0.102 card heights to its
-    // middle at any pane (geometry.test.ts derives it), and this covers it
-    // with 2px to spare down to a 1024 by 768 pane. 25.6px at 1485 by 927.
-    seamCards: 0.115,
+    // The seam margin, in card heights (times the pane's cardPx): off a card,
+    // a point is in a seam when two pickable cards are this close. The widest
+    // seam between two adjacent front cards at rest, as picking sees them
+    // (flat cards, so a wedge), has both cards 0.1045 card heights from its
+    // middle at any pane (geometry.test.ts derives it); this covers it with
+    // 2px to spare down to a 1024 by 768 pane. 26.7px at 1485 by 927. A spin's
+    // stretch opens seams past it; the continuation rule covers those.
+    seamCards: 0.12,
     // A real pointer move this far from where the page last scrolled under a
     // still pointer arms capture again (trackpad jitter is 1 to 3px).
     rearmPx: 6,
