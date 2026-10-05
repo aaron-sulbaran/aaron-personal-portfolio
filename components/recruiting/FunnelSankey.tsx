@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import { sankey, sankeyLeft, sankeyLinkHorizontal, type SankeyLink, type SankeyNode } from "d3-sankey";
 import { siteContent } from "@/lib/content";
 import { summarizeCompanies } from "@/lib/recruiting/companies";
@@ -144,8 +144,8 @@ export function FunnelSankey({ funnel }: { funnel: Funnel }) {
 // Phones and narrow panes: the same chart, laid out at the narrowest width
 // the wide layout ever gets and scaled down to fit, like a screenshot.
 // Scaling stops at MIN_SCALE so labels stay readable (12px renders near 9px);
-// past that the card scrolls sideways, with a fade on the right edge until
-// the end is reached.
+// past that the card scrolls sideways, each edge fading while there is more
+// chart past it.
 //
 // When it scrolls, the tooltip is drawn here, outside the scroll area, so it
 // is sized and flipped against the visible width and never clipped.
@@ -153,7 +153,13 @@ const DESIGN_WIDTH = NARROW;
 const MIN_SCALE = 0.72;
 // Overflow smaller than this is not worth a scroll; the chart shrinks instead.
 const MIN_OVERFLOW = 12;
-const EDGE_FADE = "linear-gradient(to right, #000 calc(100% - 40px), transparent)";
+// Each edge fades only while there is more chart past it.
+function edgeFade(fadeLeft: boolean, fadeRight: boolean): string | undefined {
+  if (!fadeLeft && !fadeRight) return undefined;
+  const left = fadeLeft ? "transparent, #000 32px" : "#000, #000";
+  const right = fadeRight ? "#000 calc(100% - 40px), transparent" : "#000, #000";
+  return `linear-gradient(to right, ${left}, ${right})`;
+}
 
 function ScaledSankey({ funnel, width }: { funnel: Funnel; width: number }) {
   const fit = width / DESIGN_WIDTH;
@@ -178,19 +184,112 @@ function ScaledSankey({ funnel, width }: { funnel: Funnel; width: number }) {
   );
 }
 
+// The sideways scroll's own indicator, in place of the browser scrollbar: a
+// thin pill under the chart that fades in while the chart moves, is hovered or
+// is dragged, and fades out IDLE_MS after. It peeks once on arrival so the
+// swipe is discoverable, and a mouse can drag it or click the track to jump.
+// Geometry and visibility are written straight to the DOM, so scrolling never
+// re-renders the chart.
+const IDLE_MS = 1000;
+const PEEK_MS = 1600;
+
 function ScrollArea({ children }: { children: ReactNode }) {
-  const [atEnd, setAtEnd] = useState(false);
+  const [edges, setEdges] = useState({ atStart: true, atEnd: false });
+  const fade = edgeFade(!edges.atStart, !edges.atEnd);
+  const scroller = useRef<HTMLDivElement>(null);
+  const track = useRef<HTMLDivElement>(null);
+  const thumb = useRef<HTMLDivElement>(null);
+  const hideTimer = useRef<number | undefined>(undefined);
+  const drag = useRef<{ x: number; scrollLeft: number } | null>(null);
+
+  const place = useCallback(() => {
+    const el = scroller.current;
+    const bar = thumb.current;
+    if (!el || !bar) return;
+    const ratio = el.clientWidth / el.scrollWidth;
+    const max = el.scrollWidth - el.clientWidth;
+    const progress = max > 0 ? el.scrollLeft / max : 0;
+    bar.style.width = `${ratio * 100}%`;
+    bar.style.left = `${progress * (1 - ratio) * 100}%`;
+  }, []);
+
+  const show = useCallback((forMs: number = IDLE_MS) => {
+    track.current?.setAttribute("data-shown", "true");
+    window.clearTimeout(hideTimer.current);
+    hideTimer.current = window.setTimeout(() => {
+      if (!drag.current) track.current?.setAttribute("data-shown", "false");
+    }, forMs);
+  }, []);
+
+  useEffect(() => {
+    place();
+    show(PEEK_MS);
+    return () => window.clearTimeout(hideTimer.current);
+  }, [place, show]);
+
   return (
-    <div
-      className="-mx-4 overflow-x-auto overscroll-x-contain px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-      style={atEnd ? undefined : { maskImage: EDGE_FADE, WebkitMaskImage: EDGE_FADE }}
-      onScroll={(e) => {
-        const el = e.currentTarget;
-        setAtEnd(el.scrollLeft + el.clientWidth >= el.scrollWidth - 4);
-      }}
-    >
-      {children}
-    </div>
+    <>
+      <div
+        ref={scroller}
+        className="-mx-4 overflow-x-auto overscroll-x-contain px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        style={fade ? { maskImage: fade, WebkitMaskImage: fade } : undefined}
+        onScroll={(e) => {
+          const el = e.currentTarget;
+          const atStart = el.scrollLeft <= 4;
+          const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 4;
+          if (atStart !== edges.atStart || atEnd !== edges.atEnd) setEdges({ atStart, atEnd });
+          place();
+          show();
+        }}
+        onPointerEnter={(e) => e.pointerType === "mouse" && show()}
+      >
+        {children}
+      </div>
+      <div
+        ref={track}
+        data-shown="false"
+        aria-hidden="true"
+        data-cursor-hover
+        className="group relative mt-2 h-4 touch-none opacity-0 transition-opacity duration-300 ease-[var(--ease-out)] data-[shown=true]:opacity-100 motion-reduce:transition-none"
+        onPointerEnter={() => show(60_000)}
+        onPointerLeave={() => show()}
+        onPointerDown={(e) => {
+          const el = scroller.current;
+          const bar = thumb.current;
+          if (!el || !bar) return;
+          e.currentTarget.setPointerCapture(e.pointerId);
+          if (e.target !== bar) {
+            // A press on the bare track centers the thumb there.
+            const box = e.currentTarget.getBoundingClientRect();
+            const share = (e.clientX - box.left) / box.width;
+            el.scrollLeft = share * el.scrollWidth - el.clientWidth / 2;
+          }
+          drag.current = { x: e.clientX, scrollLeft: el.scrollLeft };
+          show(60_000);
+        }}
+        onPointerMove={(e) => {
+          const el = scroller.current;
+          if (!drag.current || !el) return;
+          const ratio = el.scrollWidth / e.currentTarget.getBoundingClientRect().width;
+          el.scrollLeft = drag.current.scrollLeft + (e.clientX - drag.current.x) * ratio;
+        }}
+        onPointerUp={() => {
+          drag.current = null;
+          show();
+        }}
+        onPointerCancel={() => {
+          drag.current = null;
+          show();
+        }}
+      >
+        {/* Opacity, not a /alpha color: the theme colors are CSS variables. */}
+        <div className="absolute inset-x-0 top-1/2 h-[3px] -translate-y-1/2 rounded-full bg-foreground opacity-[0.08]" />
+        <div
+          ref={thumb}
+          className="absolute top-1/2 h-[3px] -translate-y-1/2 rounded-full bg-foreground opacity-35 transition-[height,opacity] duration-200 group-hover:h-[5px] group-hover:opacity-60"
+        />
+      </div>
+    </>
   );
 }
 
