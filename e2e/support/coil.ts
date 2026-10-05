@@ -1,5 +1,6 @@
-import type { Page } from "@playwright/test";
-import type { HookWindow, SlotInfo } from "./hooks";
+import type { CDPSession, Page } from "@playwright/test";
+import type { CaptureProbe, HookWindow, SlotInfo } from "./hooks";
+import { approach } from "./input";
 
 // Loading the home and reading the scene through its QA hooks. Every wait is
 // on the page's own state (readiness, the entrance clock, the scene's first
@@ -171,6 +172,55 @@ export async function captureAt(page: Page, point: Point) {
   const probe = await page.evaluate(({ x, y }) => (window as HookWindow).__coil!.captureAt?.(x, y) ?? null, point);
   if (!probe) throw new Error("window.__coil.captureAt is missing: the capture probe is required");
   return probe;
+}
+
+// The capture probe at the pointer the moment the next wheel gesture starts:
+// taken by a window listener in the capture phase, before the scene's own
+// handler decides that first event, from the same last rendered frame. The
+// idle drift keeps moving the cards between any earlier check and the first
+// wheel, so a gesture's precondition is asserted on this.
+export type FirstWheel = CaptureProbe & { x: number; y: number; owner: "coil" | "page" | "none" };
+
+export async function watchFirstWheel(page: Page) {
+  await page.evaluate(() => {
+    const w = window as HookWindow & { __e2eFirstWheel?: unknown };
+    w.__e2eFirstWheel = null;
+    window.addEventListener(
+      "wheel",
+      (event) => {
+        if (w.__e2eFirstWheel !== null) return;
+        const coil = w.__coil!;
+        w.__e2eFirstWheel = { ...coil.captureAt(event.clientX, event.clientY), x: event.clientX, y: event.clientY, owner: coil.owner() };
+      },
+      { capture: true, passive: true, once: true },
+    );
+  });
+}
+
+export async function firstWheel(page: Page): Promise<FirstWheel> {
+  const probe = await page.evaluate(() => (window as unknown as { __e2eFirstWheel?: FirstWheel | null }).__e2eFirstWheel ?? null);
+  if (!probe) throw new Error("no wheel reached the window since watchFirstWheel");
+  return probe;
+}
+
+// Samples a point with `find`, moves onto it the way a hand does, and checks
+// the probe there with `ready`; the idle drift moves the cards about 13px a
+// second, so on a miss it samples again, up to `tries` times. The gesture
+// should start right after, and its first wheel be checked with firstWheel.
+export async function settleOn(
+  page: Page,
+  cdp: CDPSession,
+  find: () => Promise<Point | null>,
+  ready: (probe: CaptureProbe) => boolean,
+  tries = 5,
+): Promise<Point | null> {
+  for (let attempt = 0; attempt < tries; attempt++) {
+    const point = await find();
+    if (!point) continue;
+    await approach(cdp, point);
+    if (ready(await captureAt(page, point))) return point;
+  }
+  return null;
 }
 
 // The stretch envelope has relaxed (a page scroll feeds the coil, which
