@@ -390,7 +390,6 @@ export const siteContent = {
       countLabel: (n: number) => `${n} ${n === 1 ? "application" : "applications"}`,
       empty: "Nothing in the funnel for this selection yet.",
       plannedNote: (n: number) => `${n} planned, not yet applied`,
-      lanesLabel: "Lanes",
       outcomesLabel: "What happened",
       nodes: {
         applied: "Applied",
@@ -416,7 +415,6 @@ export const siteContent = {
         noreply: "No reply",
         withdrew: "Withdrew",
       },
-      ofApplied: "of applied",
       flowTo: "to",
       referredLegend: "Referred",
       referredCount: (n: number) => `${n} referred`,

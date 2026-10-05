@@ -1,16 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import { sankey, sankeyLeft, sankeyLinkHorizontal, type SankeyLink, type SankeyNode } from "d3-sankey";
 import { siteContent } from "@/lib/content";
 import { summarizeCompanies } from "@/lib/recruiting/companies";
-import { columnChain, stageBars, type Funnel, type FunnelLink, type FunnelNode } from "@/lib/recruiting/funnel";
+import { columnChain, type Funnel, type FunnelLink, type FunnelNode } from "@/lib/recruiting/funnel";
 import type { Lane } from "@/lib/recruiting/types";
 import { TONES } from "./tones";
 
-// The funnel chart. Wide containers get the Sankey; narrow ones (phones, a
-// docked pane) get stacked stage bars built from the same links, because a
-// Sankey needs horizontal room per column and would otherwise scroll.
+// The funnel chart. Wide containers draw the Sankey at their own width;
+// narrow ones (phones, a docked pane) get the same chart scaled down, and
+// scrolling sideways once the labels would get too small (ScaledSankey).
 //
 // Sankey settings follow sankeymatic.com's Job Search recipe
 // (github.com/nowthis/sankeymatic build/constants.js): node_w 8, node spacing
@@ -62,8 +62,12 @@ function flowDetail(byLane: Partial<Record<Lane, number>>, referred: number): st
 }
 
 interface Tip {
+  // Position relative to whatever element the tooltip is drawn in.
   x: number;
   y: number;
+  // The pointer in viewport coordinates, for a host that draws it elsewhere.
+  clientX: number;
+  clientY: number;
   title: string;
   detail: string;
   companies: string[];
@@ -85,15 +89,16 @@ function CompanyList({ names }: { names: string[] }) {
 const TIP_WIDTH = 300;
 
 function FlowTooltip({ tip, width, height }: { tip: Tip; width: number; height: number }) {
-  const flipX = tip.x + 14 + TIP_WIDTH > width;
+  const tipWidth = Math.min(TIP_WIDTH, width);
+  const flipX = tip.x + 14 + tipWidth > width;
   const flipY = tip.y > height * 0.55;
   return (
     <div
       role="tooltip"
       className="pointer-events-none absolute z-10 rounded-md border border-border bg-glass-strong px-3 py-2 text-[12px] text-foreground shadow-[0_8px_20px_-12px_rgba(10,10,10,0.35)] backdrop-blur-md"
       style={{
-        width: TIP_WIDTH,
-        left: flipX ? Math.max(0, tip.x - 14 - TIP_WIDTH) : tip.x + 14,
+        width: tipWidth,
+        left: flipX ? Math.max(0, tip.x - 14 - tipWidth) : tip.x + 14,
         top: flipY ? undefined : tip.y + 14,
         bottom: flipY ? height - tip.y + 14 : undefined,
       }}
@@ -128,7 +133,7 @@ export function FunnelSankey({ funnel }: { funnel: Funnel }) {
       ) : width === 0 ? (
         <div style={{ height: 320 }} />
       ) : width < NARROW ? (
-        <FunnelBars funnel={funnel} />
+        <ScaledSankey funnel={funnel} width={width} />
       ) : (
         <SankeyChart funnel={funnel} width={width} />
       )}
@@ -136,8 +141,176 @@ export function FunnelSankey({ funnel }: { funnel: Funnel }) {
   );
 }
 
-function SankeyChart({ funnel, width }: { funnel: Funnel; width: number }) {
-  const [hover, setHover] = useState<Tip | null>(null);
+// Phones and narrow panes: the same chart, laid out at the narrowest width
+// the wide layout ever gets and scaled down to fit, like a screenshot.
+// Scaling stops at MIN_SCALE so labels stay readable (12px renders near 9px);
+// past that the card scrolls sideways, each edge fading while there is more
+// chart past it.
+//
+// When it scrolls, the tooltip is drawn here, outside the scroll area, so it
+// is sized and flipped against the visible width and never clipped.
+const DESIGN_WIDTH = NARROW;
+const MIN_SCALE = 0.72;
+// Overflow smaller than this is not worth a scroll; the chart shrinks instead.
+const MIN_OVERFLOW = 12;
+// Each edge fades only while there is more chart past it.
+function edgeFade(fadeLeft: boolean, fadeRight: boolean): string | undefined {
+  if (!fadeLeft && !fadeRight) return undefined;
+  const left = fadeLeft ? "transparent, #000 32px" : "#000, #000";
+  const right = fadeRight ? "#000 calc(100% - 40px), transparent" : "#000, #000";
+  return `linear-gradient(to right, ${left}, ${right})`;
+}
+
+function ScaledSankey({ funnel, width }: { funnel: Funnel; width: number }) {
+  const fit = width / DESIGN_WIDTH;
+  const scrolls = DESIGN_WIDTH * MIN_SCALE - width > MIN_OVERFLOW;
+  const scale = scrolls ? MIN_SCALE : Math.min(1, fit);
+  const host = useRef<HTMLDivElement>(null);
+  const [tip, setTip] = useState<{ tip: Tip; height: number } | null>(null);
+  if (!scrolls) return <SankeyChart funnel={funnel} width={DESIGN_WIDTH} scale={scale} />;
+  const showTip = (next: Tip | null) => {
+    const box = host.current?.getBoundingClientRect();
+    if (!next || !box) return setTip(null);
+    setTip({ tip: { ...next, x: next.clientX - box.left, y: next.clientY - box.top }, height: box.height });
+  };
+  return (
+    <div ref={host} className="relative">
+      {/* Keyed by width: a resize or rotation starts again at the left, fade on. */}
+      <ScrollArea key={width}>
+        <SankeyChart funnel={funnel} width={DESIGN_WIDTH} scale={scale} onTip={showTip} />
+      </ScrollArea>
+      {tip && <FlowTooltip tip={tip.tip} width={width} height={tip.height} />}
+    </div>
+  );
+}
+
+// The sideways scroll's own indicator, in place of the browser scrollbar: a
+// thin pill under the chart that fades in while the chart moves, is hovered or
+// is dragged, and fades out IDLE_MS after. It peeks once on arrival so the
+// swipe is discoverable, and a mouse can drag it or click the track to jump.
+// Geometry and visibility are written straight to the DOM, so scrolling never
+// re-renders the chart.
+const IDLE_MS = 1000;
+const PEEK_MS = 1600;
+
+function ScrollArea({ children }: { children: ReactNode }) {
+  const [edges, setEdges] = useState({ atStart: true, atEnd: false });
+  const fade = edgeFade(!edges.atStart, !edges.atEnd);
+  const scroller = useRef<HTMLDivElement>(null);
+  const track = useRef<HTMLDivElement>(null);
+  const thumb = useRef<HTMLDivElement>(null);
+  const hideTimer = useRef<number | undefined>(undefined);
+  const drag = useRef<{ x: number; scrollLeft: number } | null>(null);
+
+  const place = useCallback(() => {
+    const el = scroller.current;
+    const bar = thumb.current;
+    if (!el || !bar) return;
+    const ratio = el.clientWidth / el.scrollWidth;
+    const max = el.scrollWidth - el.clientWidth;
+    const progress = max > 0 ? el.scrollLeft / max : 0;
+    bar.style.width = `${ratio * 100}%`;
+    bar.style.left = `${progress * (1 - ratio) * 100}%`;
+  }, []);
+
+  const show = useCallback((forMs: number = IDLE_MS) => {
+    track.current?.setAttribute("data-shown", "true");
+    window.clearTimeout(hideTimer.current);
+    hideTimer.current = window.setTimeout(() => {
+      if (!drag.current) track.current?.setAttribute("data-shown", "false");
+    }, forMs);
+  }, []);
+
+  useEffect(() => {
+    place();
+    show(PEEK_MS);
+    return () => window.clearTimeout(hideTimer.current);
+  }, [place, show]);
+
+  return (
+    <>
+      <div
+        ref={scroller}
+        className="-mx-4 overflow-x-auto overscroll-x-contain px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        style={fade ? { maskImage: fade, WebkitMaskImage: fade } : undefined}
+        onScroll={(e) => {
+          const el = e.currentTarget;
+          const atStart = el.scrollLeft <= 4;
+          const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 4;
+          if (atStart !== edges.atStart || atEnd !== edges.atEnd) setEdges({ atStart, atEnd });
+          place();
+          show();
+        }}
+        onPointerEnter={(e) => e.pointerType === "mouse" && show()}
+      >
+        {children}
+      </div>
+      <div
+        ref={track}
+        data-shown="false"
+        aria-hidden="true"
+        data-cursor-hover
+        className="group relative mt-2 h-4 opacity-0 [touch-action:pan-y] transition-opacity duration-300 ease-[var(--ease-out)] data-[shown=true]:opacity-100 motion-reduce:transition-none"
+        onPointerEnter={() => show(60_000)}
+        onPointerLeave={() => show()}
+        onPointerDown={(e) => {
+          const el = scroller.current;
+          const bar = thumb.current;
+          // Touch swipes the chart itself; the pill is a mouse control.
+          if (!el || !bar || e.pointerType !== "mouse") return;
+          e.currentTarget.setPointerCapture(e.pointerId);
+          if (e.target !== bar) {
+            // A press on the bare track centers the thumb there.
+            const box = e.currentTarget.getBoundingClientRect();
+            const share = (e.clientX - box.left) / box.width;
+            el.scrollLeft = share * el.scrollWidth - el.clientWidth / 2;
+          }
+          drag.current = { x: e.clientX, scrollLeft: el.scrollLeft };
+          show(60_000);
+        }}
+        onPointerMove={(e) => {
+          const el = scroller.current;
+          if (!drag.current || !el) return;
+          const ratio = el.scrollWidth / e.currentTarget.getBoundingClientRect().width;
+          el.scrollLeft = drag.current.scrollLeft + (e.clientX - drag.current.x) * ratio;
+        }}
+        onPointerUp={() => {
+          drag.current = null;
+          show();
+        }}
+        onPointerCancel={() => {
+          drag.current = null;
+          show();
+        }}
+      >
+        {/* Opacity, not a /alpha color: the theme colors are CSS variables. */}
+        <div className="absolute inset-x-0 top-1/2 h-[3px] -translate-y-1/2 rounded-full bg-foreground opacity-[0.08]" />
+        <div
+          ref={thumb}
+          className="absolute top-1/2 h-[3px] -translate-y-1/2 rounded-full bg-foreground opacity-35 transition-[height,opacity] duration-200 group-hover:h-[5px] group-hover:opacity-60"
+        />
+      </div>
+    </>
+  );
+}
+
+function SankeyChart({
+  funnel,
+  width,
+  scale = 1,
+  onTip,
+}: {
+  funnel: Funnel;
+  width: number;
+  scale?: number;
+  // Given, the chart reports its tooltip instead of drawing it.
+  onTip?: (tip: Tip | null) => void;
+}) {
+  const [hover, setHoverState] = useState<Tip | null>(null);
+  const setHover = (next: Tip | null) => {
+    setHoverState(next);
+    onTip?.(next);
+  };
   const [focus, setFocus] = useState<string | null>(null);
   const applied = funnel.nodes.find((n) => n.id === "stage:applied")?.count ?? 0;
 
@@ -186,10 +359,10 @@ function SankeyChart({ funnel, width }: { funnel: Funnel; width: number }) {
   const pct = (n: number) => (applied ? `${Math.round((n / applied) * 100)}%` : "");
 
   return (
-    <>
+    <div className="relative" style={{ width: width * scale }}>
       <svg
-        width={width}
-        height={height}
+        width={width * scale}
+        height={height * scale}
         viewBox={`0 0 ${width} ${height}`}
         className="block font-sans"
         role="img"
@@ -197,6 +370,13 @@ function SankeyChart({ funnel, width }: { funnel: Funnel; width: number }) {
         onMouseLeave={() => {
           setHover(null);
           setFocus(null);
+        }}
+        onClick={(e) => {
+          // A tap on empty space dismisses a tapped tooltip.
+          if (e.target === e.currentTarget) {
+            setHover(null);
+            setFocus(null);
+          }
         }}
       >
         <defs>
@@ -213,6 +393,18 @@ function SankeyChart({ funnel, width }: { funnel: Funnel; width: number }) {
             const on = touches(link);
             const d = path(link) ?? undefined;
             const strokeWidth = Math.max(1.5, link.width ?? 1);
+            const showTip = (e: MouseEvent<SVGPathElement>) => {
+              const box = (e.currentTarget.ownerSVGElement as SVGSVGElement).getBoundingClientRect();
+              setHover({
+                x: e.clientX - box.left,
+                y: e.clientY - box.top,
+                clientX: e.clientX,
+                clientY: e.clientY,
+                title: `${nodeLabel(s)} ${copy.flowTo} ${nodeLabel(t)}: ${link.value}`,
+                detail: flowDetail(link.byLane, link.referred),
+                companies: link.companies,
+              });
+            };
             return (
               <g key={`${s.id}>${t.id}${link.referral ? "#referral" : ""}`}>
                 <path
@@ -221,16 +413,9 @@ function SankeyChart({ funnel, width }: { funnel: Funnel; width: number }) {
                   strokeWidth={strokeWidth}
                   strokeOpacity={on ? (link.referral ? Math.min(1, tone.flowOpacity + 0.3) : tone.flowOpacity) : tone.flowOpacity * 0.25}
                   className="transition-[stroke-opacity] duration-200"
-                  onMouseMove={(e) => {
-                    const box = (e.currentTarget.ownerSVGElement as SVGSVGElement).getBoundingClientRect();
-                    setHover({
-                      x: e.clientX - box.left,
-                      y: e.clientY - box.top,
-                      title: `${nodeLabel(s)} ${copy.flowTo} ${nodeLabel(t)}: ${link.value}`,
-                      detail: flowDetail(link.byLane, link.referred),
-                      companies: link.companies,
-                    });
-                  }}
+                  onMouseMove={showTip}
+                  // A tap sends a click but not always a mousemove.
+                  onClick={showTip}
                   onMouseLeave={() => setHover(null)}
                 />
                 {link.referral && on && (
@@ -257,19 +442,26 @@ function SankeyChart({ funnel, width }: { funnel: Funnel; width: number }) {
             const share = node.kind === "lane" || node.id === "stage:applied" ? "" : ` · ${pct(node.count)}`;
             const halo = { paintOrder: "stroke" as const, stroke: "var(--color-background)", strokeWidth: 4, strokeLinejoin: "round" as const };
             const dim = focus && focus !== node.id ? 0.45 : 1;
+            const showTip = (e: MouseEvent<SVGGElement>) => {
+              const box = (e.currentTarget.ownerSVGElement as SVGSVGElement).getBoundingClientRect();
+              setHover({
+                x: e.clientX - box.left,
+                y: e.clientY - box.top,
+                clientX: e.clientX,
+                clientY: e.clientY,
+                title: `${label}: ${node.count}${share}`,
+                detail: node.referred ? copy.referredCount(node.referred) : "",
+                companies: node.companies,
+              });
+            };
             return (
               <g
                 key={node.id}
                 onMouseEnter={() => setFocus(node.id)}
-                onMouseMove={(e) => {
-                  const box = (e.currentTarget.ownerSVGElement as SVGSVGElement).getBoundingClientRect();
-                  setHover({
-                    x: e.clientX - box.left,
-                    y: e.clientY - box.top,
-                    title: `${label}: ${node.count}${share}`,
-                    detail: node.referred ? copy.referredCount(node.referred) : "",
-                    companies: node.companies,
-                  });
+                onMouseMove={showTip}
+                onClick={(e) => {
+                  setFocus(node.id);
+                  showTip(e);
                 }}
                 onMouseLeave={() => {
                   setFocus(null);
@@ -314,81 +506,7 @@ function SankeyChart({ funnel, width }: { funnel: Funnel; width: number }) {
         </g>
       </svg>
 
-      {hover && <FlowTooltip tip={hover} width={width} height={height} />}
-    </>
-  );
-}
-
-// Narrow screens: one bar per stage reached, its length the share of
-// applications that got that far, split by what happened next. Same tones as
-// the Sankey, 2px surface gaps between segments, 4px rounded data ends.
-function FunnelBars({ funnel }: { funnel: Funnel }) {
-  const bars = stageBars(funnel);
-  const applied = bars.find((b) => b.stage === "applied")?.count ?? 0;
-  const lanes = funnel.nodes.filter((n) => n.kind === "lane" && n.lane !== "outreach");
-  const [tip, setTip] = useState<{ stage: string; tone: string } | null>(null);
-
-  return (
-    <div className="flex flex-col gap-5 py-1">
-      <ul className="flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-muted" aria-label={copy.lanesLabel}>
-        {lanes.map((n) => (
-          <li key={n.id} className="inline-flex items-center gap-1.5">
-            <span aria-hidden="true" className="h-2 w-2 rounded-full" style={{ background: nodeTone(n).color }} />
-            <span className="text-foreground">{nodeLabel(n)}</span> {n.count}
-          </li>
-        ))}
-      </ul>
-      <ol className="flex flex-col gap-4">
-        {bars.map((bar) => {
-          const share = applied ? bar.count / applied : 0;
-          return (
-            <li key={bar.stage} className="flex flex-col gap-1.5">
-              <div className="flex items-baseline justify-between gap-3 text-[13px]">
-                <span className="font-medium text-foreground">{copy.nodes[bar.stage]}</span>
-                <span className="text-muted">
-                  {bar.count}
-                  {bar.stage !== "applied" && ` · ${Math.round(share * 100)}% ${copy.ofApplied}`}
-                </span>
-              </div>
-              <div className="flex h-3 gap-[2px]" style={{ width: `${Math.max(share * 100, 4)}%` }}>
-                {bar.segments.map((seg) => {
-                  const tone = TONES[seg.tone];
-                  const label = `${copy.tones[seg.tone as keyof typeof copy.tones] ?? seg.tone}: ${seg.value}`;
-                  const open = tip?.stage === bar.stage && tip.tone === seg.tone;
-                  return (
-                    <button
-                      key={seg.tone}
-                      type="button"
-                      aria-label={label}
-                      title={label}
-                      aria-expanded={open}
-                      onClick={() => setTip(open ? null : { stage: bar.stage, tone: seg.tone })}
-                      className="h-full min-w-[4px] first:rounded-l-[4px] last:rounded-r-[4px]"
-                      style={{
-                        flex: `${seg.value} 0 0`,
-                        background: tone.hollow ? "transparent" : tone.color,
-                        opacity: tone.hollow ? 1 : Math.max(tone.nodeOpacity, 0.5),
-                        border: tone.hollow ? `1.5px dashed ${tone.color}` : undefined,
-                      }}
-                    />
-                  );
-                })}
-              </div>
-              {tip?.stage === bar.stage &&
-                bar.segments
-                  .filter((seg) => seg.tone === tip.tone)
-                  .map((seg) => (
-                    <div key={seg.tone} className="text-[12px]">
-                      <p className="text-muted">
-                        {copy.tones[seg.tone as keyof typeof copy.tones] ?? seg.tone}: {seg.value}
-                      </p>
-                      <CompanyList names={seg.companies} />
-                    </div>
-                  ))}
-            </li>
-          );
-        })}
-      </ol>
+      {hover && !onTip && <FlowTooltip tip={hover} width={width * scale} height={height * scale} />}
     </div>
   );
 }

@@ -8,7 +8,6 @@ import {
   exitNodeId,
   median,
   pathFor,
-  stageBars,
   stagesReached,
 } from "./funnel";
 import type { Application } from "./types";
@@ -171,16 +170,6 @@ describe("computeFunnel", () => {
     expect(computeFunnel(all, { ...both, lanes: ["co-op"] }).counted).toBe(1);
     expect(computeFunnel(all, { ...both, seasons: ["2025-26"] }).counted).toBe(1);
     expect(computeFunnel(all, { ...both, seasons: ["2027-28"] }).counted).toBe(0);
-  });
-});
-
-describe("stageBars", () => {
-  it("splits each stage by what happened next", () => {
-    const bars = stageBars(computeFunnel(all, both));
-    const applied = bars.find((b) => b.stage === "applied");
-    expect(applied?.count).toBe(5);
-    expect(applied?.segments.reduce((s, x) => s + x.value, 0)).toBe(5);
-    expect(applied?.segments[0].tone).toBe("forward");
   });
 });
 
