@@ -44,6 +44,7 @@ declare global {
       bulk: (count?: number, start?: number) => BulkReport | null;
       timing: (count?: number) => Record<string, number> | null;
       report: () => unknown;
+      spineXAt: (docY: number) => number | null;
     };
   }
 }
@@ -108,6 +109,13 @@ export function WaveLab({ band, sections, footer }: WaveLabProps) {
           if (on && smp.radius[i] < smp.radius[at]) at = i;
         }
         return { spine: choice.def.id, report, anchors: measure.anchors, points: resolveSpine(choice.def, measure.anchors), tightest: { x: smp.x[at], y: smp.y[at], radius: smp.radius[at] } };
+      },
+      // Where the line crosses a document y (its first crossing), for pinning a pointer on it.
+      spineXAt: (docY) => {
+        if (!measure) return null;
+        const smp = sampleSpine(resolveSpine(choice.def, measure.anchors), 4);
+        for (let i = 0; i < smp.count; i++) if (smp.y[i] >= docY) return smp.x[i];
+        return null;
       },
       // Mean ms per line for each step a visitor's load would take.
       timing: (count = 300) => {

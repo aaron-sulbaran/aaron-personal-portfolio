@@ -164,31 +164,35 @@ export function createCursor() {
       }
       const strength = settings.strength;
       if (mode === "carve") {
-        carve[j] = ease(carve[j], clamp01(1 - d / (R * CARVE_SHARE)) * Math.min(1, strength), dt);
-        if (carve[j] > REST) unsettled++;
+        const target = clamp01(1 - d / (R * CARVE_SHARE)) * Math.min(1, strength);
+        carve[j] = ease(carve[j], target, dt);
+        if (Math.abs(carve[j] - target) > REST) unsettled++;
       } else if (mode === "swell") {
         swell[j] = ease(swell[j], near * strength, dt);
-        if (swell[j] > REST) unsettled++;
+        if (Math.abs(swell[j] - near * strength) > REST) unsettled++;
       } else if (mode === "brighten") {
-        bright[j] = ease(bright[j], near * Math.min(1, strength), dt);
-        if (bright[j] > REST) unsettled++;
+        const target = near * Math.min(1, strength);
+        bright[j] = ease(bright[j], target, dt);
+        if (Math.abs(bright[j] - target) > REST) unsettled++;
       } else if (mode === "lean") {
         const pull = near * near * 0.3 * strength;
         offX[j] = ease(offX[j], -dx * pull, dt);
         offY[j] = ease(offY[j], -dy * pull, dt);
-        if (Math.abs(offX[j]) + Math.abs(offY[j]) > 0.05) unsettled++;
+        if (Math.abs(offX[j] + dx * pull) + Math.abs(offY[j] + dy * pull) > 0.05) unsettled++;
       } else if (mode === "push" || mode === "blend") {
         const blend = mode === "blend";
         const mix = settings.mix;
         if (blend) {
           // The clearing: a small carve right under the pointer, at any speed,
           // so a resting pointer over a paragraph only ever removes dots.
-          carve[j] = ease(carve[j], clamp01(1 - d / (R * 0.6)) * mix.carve, dt);
+          const clear = clamp01(1 - d / (R * 0.6)) * mix.carve;
+          carve[j] = ease(carve[j], clear, dt);
           // The ring: just outside the clearing the wave lifts with the stir,
           // never at rest.
           const ring = Math.exp(-(((d - R * 0.85) / (R * 0.35)) ** 2));
-          swell[j] = ease(swell[j], ring * stir * mix.swell, dt);
-          if (carve[j] > REST || swell[j] > REST) unsettled++;
+          const lift = ring * stir * mix.swell;
+          swell[j] = ease(swell[j], lift, dt);
+          if (Math.abs(carve[j] - clear) > REST || Math.abs(swell[j] - lift) > REST) unsettled++;
         }
         // A kick away from the pointer (bent along the stroke) in proportion
         // to its speed, over a reach that widens with speed, then a critically
