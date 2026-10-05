@@ -13,6 +13,7 @@ import {
   IMPACT,
   SPLASH_DOTS,
 } from "./geometry";
+import { celMarkup, celPlan, celSchedule } from "./cel";
 import { EASES, beats, type EaseKey, type StrikeSettings } from "./settings";
 
 // One GSAP timeline per strike. Only DrawSVG (the reveals) and CustomEase (the
@@ -33,6 +34,7 @@ function parts(root: Element) {
   const one = <T extends Element>(part: string) => root.querySelector<T>(`[data-part="${part}"]`);
   return {
     rest: one<HTMLElement>("rest"),
+    cel: one<SVGGElement>("cel"),
     mark: one<SVGGElement>("anim-mark"),
     fx: one<SVGGElement>("fx"),
     boltReveal: one<SVGPathElement>("bolt-reveal"),
@@ -52,20 +54,27 @@ function parts(root: Element) {
 // The strike as a paused timeline on the mark rendered by StrikeMark. At its
 // end the animated copy hides and the real AsMark (the "rest" layer) shows, so
 // the settled frame is the shipped component, not a lookalike.
-export function buildStrike(
-  root: Element,
-  s: StrikeSettings,
-  { flash, reduced = false, splashScale = 1 }: { flash?: Element | null; reduced?: Reduced; splashScale?: number } = {},
-) {
+export type StrikeOptions = {
+  flash?: Element | null;
+  night?: Element | null;
+  celFlash?: Element | null;
+  reduced?: Reduced;
+  splashScale?: number;
+};
+
+export function buildStrike(root: Element, s: StrikeSettings, { flash, night, celFlash, reduced = false, splashScale = 1 }: StrikeOptions = {}) {
   const p = parts(root);
   const tl = gsap.timeline({ paused: true });
+  const layers = [p.mark, p.fx, p.cel].filter(Boolean);
 
   if (reduced) {
-    gsap.set([p.mark, p.fx], { autoAlpha: 0 });
+    if (layers.length) gsap.set(layers, { autoAlpha: 0 });
     if (reduced === "static") gsap.set(p.rest, { autoAlpha: 1 });
     else tl.fromTo(p.rest, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.18, ease: "none" });
     return tl;
   }
+
+  if (s.strike === "cel" && p.cel) return buildCel(tl, p.cel, p.rest, s, night ?? null, celFlash ?? null);
 
   const b = beats(s);
   const S = s.strikeMs / 1000;
@@ -170,5 +179,58 @@ export function buildStrike(
   tl.set(p.mark, { autoAlpha: 0 }, b.settle);
   tl.set(p.rest, { autoAlpha: 1 }, b.settle);
   if (b.end > b.settle) tl.set({}, {}, b.end);
+  return tl;
+}
+
+// The cel strike: one linear tween of a frame counter whose onUpdate redraws
+// the layer only when the whole frame index changes, so the clock steps like
+// film and the scrub steps frame by frame. Before the first frame the layer is
+// empty; after the last it hides and AsMark shows. The night dip and the full
+// flash are DOM layers of the host stage.
+function buildCel(tl: gsap.core.Timeline, layer: SVGGElement, rest: HTMLElement | null, s: StrikeSettings, night: Element | null, fullFlash: Element | null) {
+  const plan = celPlan(s);
+  const sch = celSchedule(s);
+  const ids = { glow: layer.dataset.glow ?? "", wide: layer.dataset.wide ?? "", pool: layer.dataset.pool ?? "", bloom: layer.dataset.bloom ?? "" };
+  const count = plan.frames.length;
+  const framesEnd = sch.lead + count / sch.fps;
+  let shown = -2;
+  const draw = (index: number) => {
+    if (index === shown) return;
+    shown = index;
+    layer.innerHTML = index < 0 ? "" : celMarkup(plan, index, ids, s);
+  };
+
+  gsap.set(rest, { autoAlpha: 0 });
+  gsap.set(layer, { autoAlpha: 1 });
+  draw(-1);
+  const clock = { f: -sch.lead * sch.fps };
+  tl.fromTo(
+    clock,
+    { f: -sch.lead * sch.fps },
+    { f: count, duration: framesEnd, ease: "none", onUpdate: () => draw(Math.min(count - 1, Math.floor(clock.f + 1e-6))) },
+    0,
+  );
+
+  if (fullFlash) {
+    gsap.set(fullFlash, { opacity: 0 });
+    if (plan.fullFlash > 0) {
+      const at = sch.lead + plan.impactFrame / sch.fps;
+      tl.set(fullFlash, { opacity: plan.fullFlash }, at);
+      tl.set(fullFlash, { opacity: 0 }, at + 1 / sch.fps);
+    }
+  }
+
+  if (s.celTone === "night" && night) {
+    gsap.set(night, { opacity: 0 });
+    tl.to(night, { opacity: 1, duration: sch.lead, ease: "power1.out" }, 0);
+    tl.to(night, { opacity: 0, duration: sch.lift, ease: "power2.inOut" }, framesEnd);
+    // AsMark fades in over the hot copy (same shapes, so no crossfade dip),
+    // and the copy goes once AsMark is opaque.
+    tl.to(rest, { autoAlpha: 1, duration: sch.lift, ease: "power2.inOut" }, framesEnd);
+    tl.set(layer, { autoAlpha: 0 }, framesEnd + sch.lift);
+  } else {
+    tl.set(layer, { autoAlpha: 0 }, framesEnd);
+    tl.set(rest, { autoAlpha: 1 }, framesEnd);
+  }
   return tl;
 }

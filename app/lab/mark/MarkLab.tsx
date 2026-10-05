@@ -1,15 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useReducedMotion } from "framer-motion";
 import { syncThemeColorMeta, type Theme } from "@/lib/theme";
 import { CardOverlay, CardStage } from "./CardStage";
+import { celSchedule } from "./cel";
 import { Panel, type View } from "./Panel";
 import { Transport, usePlayer, type Timeline } from "./player";
 import { INITIAL, beats, type Settings } from "./settings";
 import { SmallSizes } from "./SmallSizes";
 import { buildStrike } from "./strike";
-import { StrikeMark } from "./StrikeMark";
+import { CelStage, StrikeMark } from "./StrikeMark";
 import { TriggerCorner } from "./Trigger";
 import { Caption, Section } from "./ui";
 
@@ -45,7 +46,13 @@ export function MarkLab() {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const flashRef = useRef<HTMLDivElement | null>(null);
   const build = useCallback(
-    (scope: Element) => buildStrike(scope, s, { flash: flashRef.current, reduced: reduced ? "fade" : false }).timeScale(s.speed),
+    (scope: Element) =>
+      buildStrike(scope, s, {
+        flash: flashRef.current,
+        night: scope.querySelector('[data-cel-night="specimen"]'),
+        celFlash: scope.querySelector('[data-cel-flash="specimen"]'),
+        reduced: reduced ? "fade" : false,
+      }).timeScale(s.speed),
     [s, reduced],
   );
   const { tlRef, version } = usePlayer(stageRef, build, { loop: view.loop, delay: 200 });
@@ -58,6 +65,11 @@ export function MarkLab() {
   }, [tlRef]);
 
   const b = beats(s);
+  const frames = useMemo(() => {
+    if (s.strike !== "cel" || reduced) return undefined;
+    const c = celSchedule(s);
+    return { fps: c.fps, lead: c.lead, count: c.count };
+  }, [s, reduced]);
   const markers = reduced
     ? []
     : [
@@ -87,9 +99,18 @@ export function MarkLab() {
             <div className="flex flex-col gap-4">
               <div ref={stageRef} id="specimen-stage" className="relative isolate flex h-[520px] items-center justify-center overflow-hidden rounded-2xl bg-[var(--menu-panel)] [box-shadow:inset_0_0_0_1px_var(--color-border)]">
                 <div ref={flashRef} aria-hidden="true" className={`pointer-events-none absolute inset-0 opacity-0 ${s.effect === "accent" ? "bg-accent" : "bg-foreground"} ${s.flashInLight ? "" : "hidden dark:block"}`} />
+                <CelStage s={s} where="specimen" />
                 <StrikeMark s={s} sizePx={s.sizePx} />
               </div>
-              <Transport tlRef={tlRef} version={version} speed={s.speed} loop={view.loop} onLoop={(loop) => setView((v) => ({ ...v, loop }))} markers={markers} />
+              <Transport
+                tlRef={tlRef}
+                version={version}
+                speed={s.speed}
+                loop={view.loop}
+                onLoop={(loop) => setView((v) => ({ ...v, loop }))}
+                markers={markers}
+                frames={frames}
+              />
             </div>
           </Section>
 

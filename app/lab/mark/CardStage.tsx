@@ -9,7 +9,7 @@ import { GROUND_FRACTION } from "./geometry";
 import { buildCardOpen, cardMarkers } from "./card";
 import { Transport, usePlayer, type Timeline } from "./player";
 import type { Settings } from "./settings";
-import { StrikeMark } from "./StrikeMark";
+import { CelStage, StrikeMark } from "./StrikeMark";
 
 // A static copy of the site's modal shell (components/WorkModal.tsx) sized
 // for a small card. The panel is split into a surface (border, fill, shadow,
@@ -73,6 +73,7 @@ export const CardShell = forwardRef<HTMLDivElement, ShellProps>(function CardShe
     <div ref={ref} data-card="panel" className={`relative my-auto w-full ${width}`} onMouseDown={(e) => e.stopPropagation()}>
       <div data-card="surface" className={`absolute inset-0 overflow-hidden rounded-2xl border border-border bg-background/85 backdrop-blur-xl ${PANEL_SHADOW}`}>
         <div data-card="flash-card" className={`pointer-events-none absolute inset-0 opacity-0 ${flashTone(s)}`} />
+        <CelStage s={s} where="card" />
       </div>
       <div className="relative flex flex-col gap-6 p-6 md:p-10">
         <button
@@ -134,6 +135,7 @@ export function CardStage({ s, reduced }: { s: Settings; reduced: boolean }) {
         <div data-card="backdrop" className="absolute inset-0 flex justify-center overflow-hidden px-4 py-6 md:px-10 md:py-14">
           <div data-card="tint" className="pointer-events-none absolute inset-0 bg-background/70" />
           <div data-card="flash-page" className={`pointer-events-none absolute inset-0 opacity-0 ${flashTone(s)}`} />
+          <CelStage s={s} where="page" />
           <CardShell s={s} />
         </div>
       </div>
@@ -162,6 +164,7 @@ export function CardOverlay({ s, reduced, onClose }: { s: Settings; reduced: boo
       >
         <div data-card="tint" className="pointer-events-none fixed inset-0 bg-background/70" />
         <div data-card="flash-page" className={`pointer-events-none fixed inset-0 opacity-0 ${flashTone(s)}`} />
+        <CelStage s={s} where="page" />
         <CardShell s={s} onClose={onClose} />
       </div>
     </div>

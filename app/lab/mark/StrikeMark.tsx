@@ -27,6 +27,53 @@ import type { StrikeSettings } from "./settings";
 // under the mark so the splash never crosses the letter.
 type Props = { s: StrikeSettings; sizePx: number; className?: string };
 
+// The cel copy: an empty layer that strike.ts redraws frame by frame, the
+// glow, pool and bloom filters it references, and AsMark on top.
+const CelMark = forwardRef<HTMLDivElement, Props & { id: string }>(function CelMark({ s, sizePx, className = "", id }, ref) {
+  const tone =
+    s.celTone === "night"
+      ? "[--cel-core:var(--loader-name)] [--cel-glow:var(--loader-fill)]"
+      : "[--cel-core:var(--color-foreground)] [--cel-glow:var(--color-accent)]";
+  const region = { filterUnits: "userSpaceOnUse" as const, x: -160, y: -160, width: 580, height: 580 };
+  return (
+    <div ref={ref} className={`relative shrink-0 ${className}`} style={{ width: sizePx, height: sizePx }}>
+      <svg viewBox={VIEW_BOX} aria-hidden="true" focusable="false" className="absolute inset-0 h-full w-full overflow-visible">
+        <defs>
+          <filter id={`${id}-glow`} {...region}>
+            <feGaussianBlur stdDeviation={s.celGlowRadius} />
+          </filter>
+          <filter id={`${id}-wide`} {...region}>
+            <feGaussianBlur stdDeviation={s.celGlowRadius * 2.8} />
+          </filter>
+          <filter id={`${id}-pool`} {...region}>
+            <feGaussianBlur stdDeviation="9 2.2" />
+          </filter>
+          <filter id={`${id}-bloom`} {...region}>
+            <feGaussianBlur stdDeviation="26" />
+          </filter>
+        </defs>
+        <g data-part="cel" data-glow={`${id}-glow`} data-wide={`${id}-wide`} data-pool={`${id}-pool`} data-bloom={`${id}-bloom`} className={tone} />
+      </svg>
+      <div data-part="rest" className="absolute inset-0 text-foreground">
+        <AsMark className="block h-full w-full" />
+      </div>
+    </div>
+  );
+});
+
+// Stage layers the cel strike needs from its host: the dip to night (the
+// loader's always-dark tokens) and the one full-surface flash frame.
+export function CelStage({ s, where }: { s: StrikeSettings; where: string }) {
+  if (s.strike !== "cel") return null;
+  const flashTone = s.celTone === "night" ? "bg-[var(--loader-name)]" : "bg-accent";
+  return (
+    <>
+      <div data-cel-night={where} aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[var(--loader-bg)] opacity-0" />
+      <div data-cel-flash={where} aria-hidden="true" className={`pointer-events-none absolute inset-0 opacity-0 ${flashTone}`} />
+    </>
+  );
+}
+
 export const StrikeMark = forwardRef<HTMLDivElement, Props>(function StrikeMark({ s, sizePx, className = "" }, ref) {
   const id = useId().replace(/:/g, "");
   const boltMask = `${id}-bolt`;
@@ -35,6 +82,8 @@ export const StrikeMark = forwardRef<HTMLDivElement, Props>(function StrikeMark(
   // One mask over the whole A, never one per path: the leg and the bar share
   // an edge, and masking them apart double-inks that seam against AsMark.
   const aMaskRef = s.a === "scorch" ? undefined : `url(#${aMask})`;
+
+  if (s.strike === "cel") return <CelMark ref={ref} s={s} sizePx={sizePx} className={className} id={id} />;
 
   return (
     <div ref={ref} className={`relative shrink-0 ${className}`} style={{ width: sizePx, height: sizePx }}>

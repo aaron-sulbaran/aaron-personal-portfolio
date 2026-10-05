@@ -12,7 +12,32 @@ export const BOLT_D = "M90.29 83.58L162.35 23.12L134.45 92.18L196.11 105.28L131.
 export const LEG_D = "M151.62 133.45L52.19 232.88L65.2 232.88L132.65 165.43L122.98 198.37L123.53 229.2Z";
 export const BAR_D = "M102.4 189.17L135.27 189.17L132.57 198.37L93.2 198.37Z";
 
-type Point = readonly [number, number];
+// The same three paths as points, for the cel FX that are drawn around them.
+export const BOLT_PTS: readonly (readonly [number, number])[] = [
+  [90.29, 83.58],
+  [162.35, 23.12],
+  [134.45, 92.18],
+  [196.11, 105.28],
+  [131.2, 229.2],
+  [160.4, 129.67],
+  [78.69, 112.3],
+];
+export const LEG_PTS: readonly (readonly [number, number])[] = [
+  [151.62, 133.45],
+  [52.19, 232.88],
+  [65.2, 232.88],
+  [132.65, 165.43],
+  [122.98, 198.37],
+  [123.53, 229.2],
+];
+export const BAR_PTS: readonly (readonly [number, number])[] = [
+  [102.4, 189.17],
+  [135.27, 189.17],
+  [132.57, 198.37],
+  [93.2, 198.37],
+];
+
+export type Point = readonly [number, number];
 
 // The bolt lands on its own point; the A's left foot sits 3.7 units lower,
 // which is the ground the splash travels along.
@@ -26,7 +51,7 @@ export const GROUND_FRACTION = (GROUND_Y - VIEW_Y) / VIEW_SIZE;
 
 // The strike's spine: tip, the left elbow, the right elbow, the point. Every
 // waypoint sits inside the bolt so the visible leader never leaves the ink.
-const BOLT_SPINE: readonly Point[] = [
+export const BOLT_SPINE: readonly Point[] = [
   [160.4, 26.6],
   [94, 100],
   [176, 115.5],

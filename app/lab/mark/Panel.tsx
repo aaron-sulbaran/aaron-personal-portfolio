@@ -15,6 +15,11 @@ import {
   beats,
   exportValues,
   sameSettings,
+  CEL_A_LABELS,
+  CEL_IMPACT_LABELS,
+  CEL_TONE_LABELS,
+  CURSOR_LABELS,
+  FILL_LABELS,
   type EaseKey,
   type Settings,
 } from "./settings";
@@ -49,6 +54,7 @@ export function Panel({ s, view, theme, osReduced, edit, setView, setTheme }: Pr
   const preset = PRESETS.find((p) => sameSettings(p.settings, s));
   const values = exportValues(s, preset ? preset.name : "custom", theme);
   const b = beats(s);
+  const cel = s.strike === "cel";
   const set = <K extends keyof Settings>(key: K) => (value: Settings[K]) => edit((x) => ({ ...x, [key]: value }));
 
   const copy = async () => {
@@ -101,43 +107,97 @@ export function Panel({ s, view, theme, osReduced, edit, setView, setTheme }: Pr
 
       <Group title="1. The strike">
         <Select label="Strike" value={s.strike} options={options(STRIKE_LABELS)} onChange={set("strike")} />
-        <Slider label="Strike duration" value={s.strikeMs} min={100} max={700} step={10} format={(n) => `${n}ms`} onChange={set("strikeMs")} />
-        <Field label="Strike easing" value={EASES[s.strikeEase].export}>
-          <Select label="Strike easing" value={s.strikeEase} options={EASE_OPTIONS} onChange={set("strikeEase")} />
-        </Field>
-        <Slider label="Pause at impact" value={s.pauseMs} min={0} max={400} step={10} format={(n) => `${n}ms`} onChange={set("pauseMs")} />
+        {cel ? (
+          <>
+            <Slider label="Frame rate" value={s.celFps} min={12} max={30} step={1} format={(n) => `${n}fps`} onChange={set("celFps")} />
+            <Slider label="Frames per pose" value={s.celFpp} min={1} max={3} step={1} format={(n) => (n === 2 ? "2 (on twos)" : n === 3 ? "3 (on threes)" : "1 (on ones)")} onChange={set("celFpp")} />
+            <Slider label="Poses (the last is the mark)" value={s.celPoses} min={2} max={4} step={1} format={String} onChange={set("celPoses")} />
+            <Check label="Blank frame between poses" checked={s.celBlanks} onChange={set("celBlanks")} />
+            <Slider label="Boil" value={s.celBoil} min={0} max={1} step={0.05} format={(n) => n.toFixed(2)} hint="How much a held pose redraws from frame to frame." onChange={set("celBoil")} />
+            <Check label="Whip arcs at the peak" checked={s.celArcs} onChange={set("celArcs")} />
+            <Field label="Seed" value={String(s.celSeed)} hint="A take. Reseed draws every pose, whip and shard anew.">
+              <Chip onClick={() => edit((x) => ({ ...x, celSeed: 1 + Math.floor(Math.random() * 9999) }))}>Reseed</Chip>
+            </Field>
+          </>
+        ) : (
+          <>
+            <Slider label="Strike duration" value={s.strikeMs} min={100} max={700} step={10} format={(n) => `${n}ms`} onChange={set("strikeMs")} />
+            <Field label="Strike easing" value={EASES[s.strikeEase].export}>
+              <Select label="Strike easing" value={s.strikeEase} options={EASE_OPTIONS} onChange={set("strikeEase")} />
+            </Field>
+            <Slider label="Pause at impact" value={s.pauseMs} min={0} max={400} step={10} format={(n) => `${n}ms`} onChange={set("pauseMs")} />
+          </>
+        )}
       </Group>
 
-      <Group title="2. Impact and splash">
-        <Select label="Splash" value={s.splash} options={options(SPLASH_LABELS)} onChange={set("splash")} />
-        <Slider label="Splash size" value={s.splashSize} min={0.5} max={1.6} step={0.05} format={(n) => `${n.toFixed(2)}x`} onChange={set("splashSize")} />
-        <Slider label="Splash duration" value={s.splashMs} min={200} max={1200} step={10} format={(n) => `${n}ms`} onChange={set("splashMs")} />
-        <Field label="Splash easing" value={EASES[s.splashEase].export}>
-          <Select label="Splash easing" value={s.splashEase} options={EASE_OPTIONS} onChange={set("splashEase")} />
-        </Field>
-        <Slider
-          label="Flash"
-          value={s.flash}
-          min={0}
-          max={0.16}
-          step={0.01}
-          format={(n) => (n === 0 ? "off" : n.toFixed(2))}
-          hint="One flash of the surface at the landing: 60ms up, 440ms down, capped at 0.16. Never repeats. On paper a flash can only darken, so it reads as a shadow; off in light by default."
-          onChange={set("flash")}
-        />
-        <Check label="Flash in the light theme too" checked={s.flashInLight} onChange={set("flashInLight")} />
-        <Field label="Splash and flash color">
-          <Segmented options={["accent", "ink"] as const} value={s.effect} onChange={set("effect")} />
-        </Field>
-      </Group>
+      {cel ? (
+        <>
+          <Group title="2. Light, impact and breakup">
+            <Field label="Stage tone">
+              <Segmented options={["night", "paper"] as const} value={s.celTone} format={(t) => CEL_TONE_LABELS[t]} onChange={set("celTone")} />
+            </Field>
+            <Slider label="Glow radius" value={s.celGlowRadius} min={1} max={12} step={0.5} format={(n) => `${n}`} onChange={set("celGlowRadius")} />
+            <Slider label="Glow strength" value={s.celGlow} min={0} max={1} step={0.05} format={(n) => n.toFixed(2)} onChange={set("celGlow")} />
+            <Slider label="Ground pool size" value={s.celPoolSize} min={0.4} max={1.8} step={0.05} format={(n) => `${n.toFixed(2)}x`} onChange={set("celPoolSize")} />
+            <Slider label="Ground pool strength" value={s.celPool} min={0} max={1} step={0.05} format={(n) => n.toFixed(2)} onChange={set("celPool")} />
+            <Field label="Impact">
+              <Select label="Impact" value={s.celImpact} options={options(CEL_IMPACT_LABELS)} onChange={set("celImpact")} />
+            </Field>
+            <Slider label="Shards" value={s.celShards} min={4} max={28} step={1} format={String} onChange={set("celShards")} />
+            <Slider label="Shard drift" value={s.celDrift} min={0} max={1.8} step={0.05} format={(n) => `${n.toFixed(2)}x`} onChange={set("celDrift")} />
+            <Slider
+              label="Flash frame"
+              value={s.celFlash}
+              min={0}
+              max={0.8}
+              step={0.05}
+              format={(n) => (n === 0 ? "off" : n.toFixed(2))}
+              hint="One frame at the landing. Below full reach it is a local bloom at the impact; at full reach it lights the whole surface, so keep it low there."
+              onChange={set("celFlash")}
+            />
+            <Slider label="Flash reach" value={s.celReach} min={0.1} max={1} step={0.05} format={(n) => (n >= 1 ? "whole surface" : `local, ${n.toFixed(2)}`)} onChange={set("celReach")} />
+          </Group>
+          <Group title="3. The A">
+            <Field label="The A">
+              <Segmented options={["flash", "sparks"] as const} value={s.celA} format={(a) => CEL_A_LABELS[a]} onChange={set("celA")} />
+            </Field>
+            <Slider label="Afterglow" value={s.celAfterglowMs} min={150} max={900} step={10} format={(n) => `${n}ms`} hint="Hot to flat, with one last flicker." onChange={set("celAfterglowMs")} />
+          </Group>
+        </>
+      ) : (
+        <>
+          <Group title="2. Impact and splash">
+            <Select label="Splash" value={s.splash} options={options(SPLASH_LABELS)} onChange={set("splash")} />
+            <Slider label="Splash size" value={s.splashSize} min={0.5} max={1.6} step={0.05} format={(n) => `${n.toFixed(2)}x`} onChange={set("splashSize")} />
+            <Slider label="Splash duration" value={s.splashMs} min={200} max={1200} step={10} format={(n) => `${n}ms`} onChange={set("splashMs")} />
+            <Field label="Splash easing" value={EASES[s.splashEase].export}>
+              <Select label="Splash easing" value={s.splashEase} options={EASE_OPTIONS} onChange={set("splashEase")} />
+            </Field>
+            <Slider
+              label="Flash"
+              value={s.flash}
+              min={0}
+              max={0.16}
+              step={0.01}
+              format={(n) => (n === 0 ? "off" : n.toFixed(2))}
+              hint="One flash of the surface at the landing: 60ms up, 440ms down, capped at 0.16. Never repeats. On paper a flash can only darken, so it reads as a shadow."
+              onChange={set("flash")}
+            />
+            <Check label="Flash in the light theme too" checked={s.flashInLight} onChange={set("flashInLight")} />
+            <Field label="Splash and flash color">
+              <Segmented options={["accent", "ink"] as const} value={s.effect} onChange={set("effect")} />
+            </Field>
+          </Group>
 
-      <Group title="3. The A">
-        <Select label="The A" value={s.a} options={options(A_LABELS)} onChange={set("a")} />
-        <Slider label="A duration" value={s.aMs} min={200} max={1200} step={10} format={(n) => `${n}ms`} onChange={set("aMs")} />
-        <Field label="A easing" value={EASES[s.aEase].export}>
-          <Select label="A easing" value={s.aEase} options={EASE_OPTIONS} onChange={set("aEase")} />
-        </Field>
-      </Group>
+          <Group title="3. The A">
+            <Select label="The A" value={s.a} options={options(A_LABELS)} onChange={set("a")} />
+            <Slider label="A duration" value={s.aMs} min={200} max={1200} step={10} format={(n) => `${n}ms`} onChange={set("aMs")} />
+            <Field label="A easing" value={EASES[s.aEase].export}>
+              <Select label="A easing" value={s.aEase} options={EASE_OPTIONS} onChange={set("aEase")} />
+            </Field>
+          </Group>
+        </>
+      )}
 
       <Group title="Overall">
         <Slider label="Speed" value={s.speed} min={0.25} max={2} step={0.05} format={(n) => `${n.toFixed(2)}x`} onChange={set("speed")} />
@@ -159,11 +219,30 @@ export function Panel({ s, view, theme, osReduced, edit, setView, setTheme }: Pr
 
       <Group title="How it is found">
         <Field label="Trigger">
-          <Segmented options={["click-at-top", "double-click", "hold"] as const} value={s.trigger} format={(t) => TRIGGER_LABELS[t]} onChange={set("trigger")} />
+          <Segmented options={["hold", "click-at-top", "double-click"] as const} value={s.trigger} format={(t) => TRIGGER_LABELS[t]} onChange={set("trigger")} />
         </Field>
-        {s.trigger === "hold" && <Slider label="Hold to open" value={s.holdMs} min={400} max={1400} step={25} format={(n) => `${n}ms`} onChange={set("holdMs")} />}
-        <Field label="Hint">
-          <Segmented options={["none", "twitch", "glint"] as const} value={s.hint} format={(h) => HINT_LABELS[h]} onChange={set("hint")} />
+        <Field label="Hover">
+          <Segmented options={["grow", "none"] as const} value={s.hint} format={(h) => HINT_LABELS[h]} onChange={set("hint")} />
+        </Field>
+        {s.hint === "grow" && (
+          <>
+            <Slider label="Growth" value={s.growPx} min={1} max={10} step={0.5} format={(n) => `${n}px`} onChange={set("growPx")} />
+            <Slider label="Growth duration" value={s.growMs} min={120} max={600} step={10} format={(n) => `${n}ms`} onChange={set("growMs")} />
+          </>
+        )}
+        {s.trigger === "hold" && (
+          <>
+            <Slider label="Hold to open" value={s.holdMs} min={400} max={1400} step={25} format={(n) => `${n}ms`} onChange={set("holdMs")} />
+            <Field label="Fill">
+              <Segmented options={["rise", "bolt"] as const} value={s.fillDirection} format={(f) => FILL_LABELS[f]} onChange={set("fillDirection")} />
+            </Field>
+            <Slider label="Drain" value={s.drainMs} min={80} max={700} step={10} format={(n) => `${n}ms`} onChange={set("drainMs")} />
+            <Slider label="A tap fills at least" value={s.minFill} min={0} max={0.6} step={0.05} format={(n) => `${Math.round(n * 100)}%`} onChange={set("minFill")} />
+            <Slider label="and holds it for" value={s.tasteMs} min={0} max={500} step={10} format={(n) => `${n}ms`} onChange={set("tasteMs")} />
+          </>
+        )}
+        <Field label="The site cursor over the mark">
+          <Select label="The site cursor over the mark" value={s.cursor} options={options(CURSOR_LABELS)} onChange={set("cursor")} />
         </Field>
       </Group>
 

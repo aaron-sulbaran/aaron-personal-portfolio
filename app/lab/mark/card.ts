@@ -14,6 +14,10 @@ const MODAL_IN = 0.28;
 const STRIKE_LEAD = 0.04;
 
 
+function celLayers(stage: Element, where: "page" | "card") {
+  return { night: stage.querySelector(`[data-cel-night="${where}"]`), celFlash: stage.querySelector(`[data-cel-flash="${where}"]`) };
+}
+
 export function buildCardOpen(stage: Element, s: Settings, reduced: boolean) {
   const one = (part: string) => stage.querySelector<HTMLElement>(`[data-card="${part}"]`);
   const backdrop = one("backdrop");
@@ -62,7 +66,7 @@ export function buildCardOpen(stage: Element, s: Settings, reduced: boolean) {
   if (s.order === "card-first") {
     tl.fromTo(panel, { opacity: 0, y: 16, scale: 0.97 }, { opacity: 1, y: 0, scale: 1, duration: MODAL_IN, ease: "framerOut" }, 0);
     const strikeAt = MODAL_IN + 0.08;
-    const strike = buildStrike(markRoot, s, { flash: one("flash-card") }).timeScale(speed);
+    const strike = buildStrike(markRoot, s, { flash: one("flash-card"), ...celLayers(stage, "card") }).timeScale(speed);
     tl.add(strike.paused(false), strikeAt);
     placeGround(strikeAt);
     return tl;
@@ -70,7 +74,7 @@ export function buildCardOpen(stage: Element, s: Settings, reduced: boolean) {
 
   // Strike first: the bolt lands on the bare page, then the surface forms
   // around the settled mark and the words rise after it. The mark never moves.
-  const strike = buildStrike(markRoot, s, { flash: one("flash-page") }).timeScale(speed);
+  const strike = buildStrike(markRoot, s, { flash: one("flash-page"), ...celLayers(stage, "page") }).timeScale(speed);
   tl.add(strike.paused(false), STRIKE_LEAD);
   placeGround(STRIKE_LEAD);
   const formAt = STRIKE_LEAD + b.settle / speed - 0.12;

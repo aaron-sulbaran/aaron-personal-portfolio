@@ -49,6 +49,7 @@ export function Transport({
   loop,
   onLoop,
   markers = [],
+  frames,
 }: {
   tlRef: RefObject<Timeline | null>;
   version: number;
@@ -56,6 +57,7 @@ export function Transport({
   loop?: boolean;
   onLoop?: (next: boolean) => void;
   markers?: readonly Marker[];
+  frames?: { fps: number; lead: number; count: number };
 }) {
   const rangeRef = useRef<HTMLInputElement | null>(null);
   const readoutRef = useRef<HTMLSpanElement | null>(null);
@@ -66,14 +68,26 @@ export function Transport({
     const sync = () => {
       const t = tl.time();
       if (rangeRef.current) rangeRef.current.value = String(tl.duration() ? t / tl.duration() : 0);
-      if (readoutRef.current) readoutRef.current.textContent = `${Math.round((t / speed) * 1000)} / ${Math.round((tl.duration() / speed) * 1000)}ms`;
+      if (readoutRef.current) {
+        const frame = frames ? Math.floor((t - frames.lead) * frames.fps + 1e-6) : null;
+        const label = frame === null ? "" : frame < 0 ? "before frame 1, " : frame >= frames!.count ? "settling, " : `frame ${frame + 1} of ${frames!.count}, `;
+        readoutRef.current.textContent = `${label}${Math.round((t / speed) * 1000)} / ${Math.round((tl.duration() / speed) * 1000)}ms`;
+      }
     };
     tl.eventCallback("onUpdate", sync);
     sync();
     return () => {
       tl.eventCallback("onUpdate", null);
     };
-  }, [tlRef, version, speed]);
+  }, [tlRef, version, speed, frames]);
+
+  const step = (by: number) => {
+    const tl = tlRef.current;
+    if (!tl || !frames) return;
+    const current = Math.floor((tl.time() - frames.lead) * frames.fps + 1e-6);
+    const next = Math.max(-1, Math.min(frames.count, current + by));
+    seek(next < 0 ? 0 : frames.lead + (next + 0.5) / frames.fps);
+  };
 
   const seek = (seconds: number) => {
     const tl = tlRef.current;
@@ -87,6 +101,12 @@ export function Transport({
       <div className="flex flex-wrap items-center gap-2">
         <Chip onClick={() => tlRef.current?.restart()}>Replay</Chip>
         <Chip onClick={() => (tlRef.current?.paused() ? tlRef.current?.play() : tlRef.current?.pause())}>Play or pause</Chip>
+        {frames && (
+          <>
+            <Chip onClick={() => step(-1)}>Previous frame</Chip>
+            <Chip onClick={() => step(1)}>Next frame</Chip>
+          </>
+        )}
         {onLoop && (
           <label className="ml-1 flex items-center gap-1.5">
             <input type="checkbox" checked={!!loop} onChange={(e) => onLoop(e.target.checked)} />

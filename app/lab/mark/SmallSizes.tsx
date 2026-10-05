@@ -5,18 +5,23 @@ import { AsMark } from "@/components/menu/BrandMark";
 import { usePlayer } from "./player";
 import type { Settings } from "./settings";
 import { buildStrike } from "./strike";
-import { StrikeMark } from "./StrikeMark";
+import { CelStage, StrikeMark } from "./StrikeMark";
 import { Caption } from "./ui";
 
 const SIZES = [96, 48] as const;
 
 function LoopCell({ s, size, speed, label }: { s: Settings; size: number; speed: number; label: string }) {
   const ref = useRef<HTMLDivElement | null>(null);
-  const build = useCallback((scope: Element) => buildStrike(scope, s).timeScale(speed), [s, speed]);
+  const build = useCallback(
+    (scope: Element) =>
+      buildStrike(scope, s, { night: scope.querySelector("[data-cel-night]"), celFlash: scope.querySelector("[data-cel-flash]") }).timeScale(speed),
+    [s, speed],
+  );
   usePlayer(ref, build, { loop: true });
   return (
     <figure className="flex flex-col">
-      <div ref={ref} className="flex h-[150px] w-[150px] items-center justify-center rounded-xl [box-shadow:inset_0_0_0_1px_var(--color-border)]">
+      <div ref={ref} className="relative isolate flex h-[150px] w-[150px] items-center justify-center overflow-hidden rounded-xl [box-shadow:inset_0_0_0_1px_var(--color-border)]">
+        <CelStage s={s} where={`small-${size}-${speed}`} />
         <StrikeMark s={s} sizePx={size} />
       </div>
       <Caption>{label}</Caption>
