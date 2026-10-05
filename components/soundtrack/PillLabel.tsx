@@ -3,11 +3,11 @@
 import { useEffect, useRef } from "react";
 import { siteContent } from "@/lib/content";
 import { DOCK, type DockLabel } from "@/lib/waveform/dock";
-import { reveal } from "./PillParts";
+import { PillSlot } from "./PillParts";
 
 // The pill's label layer: the one line it lands with (spec section 2), shown
 // once per page load per state. The visible line sits inside the capsule
-// beside the glyph and grows and collapses with the reveal; a polite live
+// beside the glyph and grows and collapses with its slot; a polite live
 // region outside the capsule (whose accessible name is its action) reads the
 // same line. Focus never moves for it.
 
@@ -23,9 +23,9 @@ export function labelLine(kind: DockLabel): string | null {
 
 export function PillLabel({ line, open, reduce }: { line: string | null; open: boolean; reduce: boolean }) {
   return (
-    <span aria-hidden="true" style={reveal(open && line !== null, "360px", reduce, DOCK.collapseMs, 8)}>
+    <PillSlot hidden visible={open && line !== null} maxWidth={360} reduce={reduce} ms={DOCK.collapseMs} before={8}>
       <span style={{ fontSize: 12, fontWeight: 500, color: "var(--color-foreground)" }}>{line}</span>
-    </span>
+    </PillSlot>
   );
 }
 
