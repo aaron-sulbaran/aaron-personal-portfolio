@@ -316,6 +316,22 @@ test("horizon: a fast flick lands with the text over the strip already ducked", 
   expect(checked, "words over the strip after the flick").toBeGreaterThan(0);
 });
 
+// Every on-screen column ducked past DUCK_SPLIT that lies under no avoid box
+// crossing the strip itself (the open air a look-ahead would hide).
+async function strayDucks(page: Page) {
+  return page.evaluate((split) => {
+    const probe = window.__waveProbe!;
+    const strip = probe.strip()!;
+    const top = strip.top + window.scrollY;
+    const bottom = strip.bottom + window.scrollY;
+    const width = document.documentElement.clientWidth;
+    const crossing = probe.rects().filter((r) => r.top < bottom && r.bottom > top);
+    const onScreen = probe.columns().filter((c) => c.x >= 0 && c.x <= width);
+    const stray = onScreen.filter((c) => c.duck > split && !crossing.some((r) => r.left <= c.x && c.x <= r.right));
+    return { onScreen: onScreen.length, stray };
+  }, DUCK_SPLIT);
+}
+
 // The look-ahead is for flicks (it scales with the downward scroll speed), so
 // at rest text parked just below the viewport ducks nothing: every ducked
 // column lies under an avoid box that crosses the strip itself, and the open
@@ -327,22 +343,78 @@ test("horizon: at rest only text over the strip ducks", async ({ page }) => {
   await sweepAtRest(page);
   await expect.poll(() => paintedColumns(page), { message: "columns painted on the strip" }).toBeGreaterThan(0);
   await page.waitForTimeout(1000);
-  const read = await page.evaluate(() => {
-    const probe = window.__waveProbe!;
-    const strip = probe.strip()!;
-    const top = strip.top + window.scrollY;
-    const bottom = strip.bottom + window.scrollY;
+  const read = await page.evaluate((split) => {
+    const strip = window.__waveProbe!.strip()!;
     const width = document.documentElement.clientWidth;
-    const crossing = probe.rects().filter((r) => r.top < bottom && r.bottom > top);
-    const onScreen = probe.columns().filter((c) => c.x >= 0 && c.x <= width);
-    return { crossing, onScreen };
-  });
-  expect(read.crossing.length, "avoid boxes crossing the strip").toBeGreaterThan(0);
-  expect(read.onScreen.length, "columns on screen").toBeGreaterThan(0);
-  const ducked = read.onScreen.filter((c) => c.duck > DUCK_SPLIT);
-  const stray = ducked.filter((c) => !read.crossing.some((r) => r.left <= c.x && c.x <= r.right));
-  expect(stray, "ducked columns under no box that crosses the strip").toEqual([]);
-  expect(ducked.length, "on-screen columns not ducked").toBeLessThan(read.onScreen.length);
+    const crossing = window.__waveProbe!.rects().filter((r) => r.top < strip.bottom + window.scrollY && r.bottom > strip.top + window.scrollY);
+    const onScreen = window.__waveProbe!.columns().filter((c) => c.x >= 0 && c.x <= width);
+    return { crossing: crossing.length, onScreen: onScreen.length, ducked: onScreen.filter((c) => c.duck > split).length };
+  }, DUCK_SPLIT);
+  expect(read.crossing, "avoid boxes crossing the strip").toBeGreaterThan(0);
+  expect(read.onScreen, "columns on screen").toBeGreaterThan(0);
+  expect((await strayDucks(page)).stray, "ducked columns under no box that crosses the strip").toEqual([]);
+  expect(read.ducked, "on-screen columns not ducked").toBeLessThan(read.onScreen);
+});
+
+// A slow arrival is not a flick: the scroll made while the strip was not
+// painting is a gap, not a speed, so the first frames on the strip look
+// ahead by nothing.
+test("horizon: a slow arrival from rest ducks nothing below the strip", async ({ page }) => {
+  await openHome(page, { path: HOME });
+  await parkBand(page);
+  expect(await sweepAtRest(page)).toBeLessThan(0.05);
+  await page.waitForTimeout(500);
+  // From the band's centre at 70 percent of the viewport to under the trigger's start at 60.
+  const step = Math.round(0.12 * page.viewportSize()!.height);
+  await page.evaluate((step) => window.scrollBy({ top: step, behavior: "instant" }), step);
+  await page.waitForTimeout(150);
+  const read = await strayDucks(page);
+  expect(read.onScreen, "columns on screen").toBeGreaterThan(0);
+  expect(read.stray, "ducked columns under no box that crosses the strip").toEqual([]);
+});
+
+// The same gap mid-sweep: frozen, the strip stops painting; a scroll made
+// then and the unfreeze that follows are not a flick, so the open air beside
+// About's lede keeps its wave rather than ducking for Who I am below.
+test("horizon: a scroll made while frozen does not read as a flick on unfreeze", async ({ page }) => {
+  await openHome(page, { path: HOME });
+  const vh = page.viewportSize()!.height;
+  await placeBottom(page, "#about p[data-wave-avoid]", 0, vh - HORIZON.lift);
+  await sweepAtRest(page);
+  await page.waitForTimeout(1000);
+  const band = page.locator("#listen");
+  await band.getByRole("button", { name: siteContent.listen.freeze, exact: true }).click();
+  await page.waitForTimeout(300);
+  await page.evaluate(() => window.scrollBy({ top: 100, behavior: "instant" }));
+  await page.waitForTimeout(300);
+  await band.getByRole("button", { name: siteContent.listen.unfreeze, exact: true }).click();
+  await page.waitForTimeout(150);
+  const read = await strayDucks(page);
+  expect(read.onScreen, "columns on screen").toBeGreaterThan(0);
+  expect(read.stray, "ducked columns under no box that crosses the strip").toEqual([]);
+});
+
+// Just past the trigger and back above the band within a second: once the
+// train is home the horizon neither paints nor keeps the loop awake.
+test("horizon: back above the band, the strip stops painting and lets the loop sleep", async ({ page }) => {
+  await openHome(page, { path: HOME });
+  await parkBand(page);
+  expect(await sweepAtRest(page)).toBeLessThan(0.05);
+  await page.mouse.move(720, 300);
+  for (let i = 0; i < 4; i++) {
+    await page.mouse.wheel(0, 100);
+    await page.waitForTimeout(30);
+  }
+  await expect.poll(() => horizonPaints(page), { timeout: 1000, message: "the strip painting past the trigger" }).toBeGreaterThan(0);
+  expect(await sweep(page)).toBeGreaterThan(0);
+  await parkBand(page);
+  await expect.poll(() => sweep(page), { message: "the train back in the band" }).toBe(0);
+  await expect
+    .poll(() => paintsOver(page, 1000), { timeout: 10_000, intervals: [0], message: "horizon repaints in a quiet second" })
+    .toBe(0);
+  expect(await page.evaluate(() => window.__waveProbe!.busy()), "the horizon view busy").toBe(false);
+  expect(await paintsOver(page, 1000), "horizon repaints in the next second").toBe(0);
+  expect(await page.evaluate(() => window.__waveProbe!.busy()), "the horizon view busy a second later").toBe(false);
 });
 
 test("horizon: the strip sits behind the text and takes no pointer", async ({ page }) => {
