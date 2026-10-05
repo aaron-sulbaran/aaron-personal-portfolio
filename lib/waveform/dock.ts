@@ -50,6 +50,12 @@ export function capsuleText(music: SoundtrackState, trackTitle: string): string 
   return c.capsuleOff;
 }
 
+// The capsule's accessible name: its visible text, then its action, with one
+// separator ("Music? Play the soundtrack", "Paused. Open soundtrack player").
+export function capsuleName(text: string, action: string): string {
+  return /[.?!]$/.test(text) ? `${text} ${action}` : `${text}. ${action}`;
+}
+
 // The arrival source: the band records the control the visitor pressed and
 // the pill takes it once, when it next arrives, to condense out of it. The
 // band records it in page coordinates (the viewport rect plus the scroll at
