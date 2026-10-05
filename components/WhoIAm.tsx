@@ -16,6 +16,7 @@ export function WhoIAm() {
       <Reveal className="mx-auto grid max-w-6xl gap-10 md:grid-cols-12 md:gap-16">
         <div className="md:col-span-4">
           <div
+            data-wave-avoid
             className="reveal-item flex items-center gap-3 text-sm text-muted"
             style={revealIndex(0)}
           >
@@ -23,7 +24,7 @@ export function WhoIAm() {
             <span>{label}</span>
           </div>
         </div>
-        <div className="md:col-span-8">
+        <div data-wave-avoid className="md:col-span-8">
           <ReadAlong
             text={paragraph}
             className="text-balance text-xl leading-[1.6] text-foreground md:text-[22px] md:leading-[1.55]"

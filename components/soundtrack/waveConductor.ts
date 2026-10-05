@@ -2,6 +2,7 @@ import { getSoundtrackPlayer } from "@/lib/audio";
 import { getSoundtrackState, subscribeSoundtrack } from "@/lib/soundtrack";
 import { createConveyor, feedScroll, stepConveyor, type ConveyorState } from "@/lib/waveform/conveyor";
 import { FLOOR, createField, levelTargets, regimeOf, stepField, type Field, type Regime } from "@/lib/waveform/field";
+import { createSweep, stepSweep, type SweepState } from "@/lib/waveform/sweep";
 
 // The waveform's one engine: the field, the loop, the audio sample, the
 // regime, the clock, the scroll conveyor and the sweep. Views (waveView.ts)
@@ -26,10 +27,10 @@ const FAST_FRAME_MS = 1000 / 60 - 2;
 const SLOW_FRAME_MS = 1000 / 30 - 2;
 const MAX_STEP_S = 0.1;
 const LEVEL_EPSILON = 1e-3;
-
-// Stand-in until the sweep lands in Task 5, which steps it by dt here.
-type SweepState = { value: number; target: number };
-const stepSweep = (): boolean => false;
+// The idle drift keeps the conveyor "moving" for good: its steady lag is
+// 0.4 / 11, about 0.036 columns. A lag under this counts as at rest for the
+// frame rate (not for stopping), so a calm wave past the band runs at 30fps.
+const DRIFT_LAG_COLUMNS = 0.05;
 
 export interface WaveView {
   // Called once per conductor frame before the field steps: sync the cursor,
@@ -49,7 +50,7 @@ export interface WaveConductor {
   columns: number;
   carve: Float32Array; // this frame's carve targets, the max over the views
   conveyor: ConveyorState;
-  sweep: SweepState; // { value: 0, target: 0 } until Task 5
+  sweep: SweepState; // 0 all in the band, 1 all on the horizon
   time: number; // seconds, last stepped
   attach(view: WaveView): void;
   detach(view: WaveView): void;
@@ -59,7 +60,7 @@ export interface WaveConductor {
   setColumns(columns: number, from?: WaveView): void;
   setSweepTarget(target: number, snap?: boolean): void;
   setFrozen(frozen: boolean): void;
-  subscribe(listener: () => void): () => void; // fires after each step
+  subscribe(listener: () => void): () => void; // fires after each step and on a new sweep target
   wake(): void;
   release(): void; // ref counted; the last release destroys it
 }
@@ -120,7 +121,7 @@ function createInstance(still: boolean): Instance {
     const frame = player.sample(t, conductor.columns);
     const idle = regime === "idle" && !still;
     const { moving } = stepConveyor(conductor.conveyor, dt, idle);
-    const sweeping = stepSweep();
+    const sweeping = stepSweep(conductor.sweep, dt);
     const { settled } = stepField(conductor.field, {
       time,
       dt,
@@ -140,13 +141,21 @@ function createInstance(still: boolean): Instance {
       Math.abs(levels.idle - goal.idle) < LEVEL_EPSILON &&
       Math.abs(levels.paused - goal.paused) < LEVEL_EPSILON &&
       Math.abs(levels.reactive - goal.reactive) < LEVEL_EPSILON;
-    const calm = regime !== "reactive" && arrived && !moving && !sweeping;
+    const drifting = moving && Math.abs(conductor.conveyor.target - conductor.conveyor.phase) >= DRIFT_LAG_COLUMNS;
+    const calm = regime !== "reactive" && arrived && !drifting && !sweeping;
     minFrameMs = calm ? SLOW_FRAME_MS : FAST_FRAME_MS;
     return settled && !moving && !sweeping && !views.some((view) => view.busy());
   };
 
+  // A sweep still easing runs the loop on its own: after a jump past the band
+  // no view is active yet (the horizon waits for sweep > 0), so the sweep
+  // must step itself there. Under `still` it never eases (the target snaps).
   const running = () =>
-    !destroyed && !still && !frozen && !document.hidden && views.some((view) => view.active() || view.busy());
+    !destroyed &&
+    !still &&
+    !frozen &&
+    !document.hidden &&
+    (conductor.sweep.value !== conductor.sweep.target || views.some((view) => view.active() || view.busy()));
 
   const tick = (t: number) => {
     raf = 0;
@@ -182,7 +191,7 @@ function createInstance(still: boolean): Instance {
     columns: 0,
     carve: new Float32Array(0),
     conveyor: createConveyor(),
-    sweep: { value: 0, target: 0 },
+    sweep: createSweep(),
     time: 0,
     attach(view) {
       if (!views.includes(view)) views.push(view);
@@ -198,10 +207,17 @@ function createInstance(still: boolean): Instance {
       requests.set(key, from ? columns : Math.max(requests.get(key) ?? 0, columns));
       resize();
     },
+    // The sweep's domain is [0, 1]: all in the band to all on the horizon.
     setSweepTarget(target, snap = false) {
-      conductor.sweep.target = target;
-      if (snap) conductor.sweep.value = target;
+      if (!Number.isFinite(target)) return;
+      const previous = conductor.sweep.target;
+      conductor.sweep.target = Math.min(1, Math.max(0, target));
+      // Reduced motion never steps, so the train lands without travel.
+      if (snap || still) conductor.sweep.value = conductor.sweep.target;
       wake();
+      // A still or frozen conductor never steps, so a reader of the target
+      // (the pill's dock) hears about it here too.
+      if (conductor.sweep.target !== previous) listeners.forEach((listener) => listener());
     },
     setFrozen(next) {
       frozen = next;

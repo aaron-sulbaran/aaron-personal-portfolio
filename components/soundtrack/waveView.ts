@@ -1,24 +1,32 @@
-import { buildDots, carveTargets, reachOf, type Cursor } from "@/lib/waveform/dots";
-import { DPR_CAP, PHONE_MAX_PX, bandLayout } from "@/lib/waveform/layout";
+import { buildDots, carveTargets, reachOf, type Cursor, type DotLayout } from "@/lib/waveform/dots";
+import { PHONE_MAX_PX, bandLayout } from "@/lib/waveform/layout";
+import { trainX } from "@/lib/waveform/sweep";
+import { layTrack } from "@/lib/waveform/track";
 import { blendWeights, columnWeights, type Rect, type WeightLayout } from "@/lib/waveform/weights";
+import { createHorizonView } from "./horizonView";
 import type { WaveConductor, WaveView } from "./waveConductor";
+import { createDotPainter, sizeCanvas, themeNow, trackPointer, type Alphas } from "./viewParts";
 
 // One canvas that paints the conductor's field: sizing, weights, colors, the
 // cursor and the dots. The conductor (waveConductor.ts) owns the field and the
-// loop; a view only measures, feeds its cursor carve in and paints.
+// loop; a view only measures, feeds its cursor carve in and paints. This file
+// is the band's view; the horizon strip's lives in horizonView.ts.
+//
+// The band is the train's first track: as the sweep runs it paints column i
+// at x_i - sweep * W, curls its last ten columns down toward the horizon and
+// swells in transit. At sweep 0 it takes today's exact path.
 //
 // The canvas fills its parent and is sized by a ResizeObserver, never the
-// viewport. `still` (reduced motion) draws one flat line and takes no cursor.
+// viewport. `still` (reduced motion) draws one flat line and takes no cursor;
+// it stays at sweep 0, since the horizon cross-fades in rather than travels.
 
 const AVOID_PAD = 6; // px of air kept between the copy and the nearest dot
 const FEATHER = 48;
 
-type Alphas = { muted: number; accent: number };
-
 export interface ViewOptions {
   kind: "band" | "horizon";
   still: boolean;
-  avoidRoot: ParentNode; // where [data-wave-avoid] is queried
+  avoidRoot: ParentNode; // where [data-wave-avoid] is queried (the horizon keeps to main and the footer under it)
   alphas: Alphas | ((theme: "light" | "dark") => Alphas);
 }
 
@@ -28,6 +36,7 @@ export interface WaveViewHandle extends WaveView {
 }
 
 export function createWaveView(canvas: HTMLCanvasElement, conductor: WaveConductor, options: ViewOptions): WaveViewHandle | null {
+  if (options.kind === "horizon") return createHorizonView(canvas, conductor, options);
   const ctx = canvas.getContext("2d");
   const host = canvas.parentElement;
   if (!ctx || !host) return null;
@@ -38,49 +47,45 @@ export function createWaveView(canvas: HTMLCanvasElement, conductor: WaveConduct
   let calmWeights: Float32Array = new Float32Array(0);
   let loudWeights: Float32Array = new Float32Array(0);
   let carve: Float32Array = new Float32Array(0);
+  // The track in transit, preallocated per layout: x, junction lift, weight.
+  let xs = new Float32Array(0);
+  let offsets = new Float32Array(0);
+  let trackWeights = new Float32Array(0);
+  let track: DotLayout = layout;
+  const carveLayout = { ...layout };
+  const scratch = { dy: 0, scale: 1 };
+  const atX = (i: number) => xs[i];
   const muted: number[] = [];
   const accent: number[] = [];
-  const colors = { muted: "rgb(136,136,136)", accent: "rgb(127,168,201)" };
+  const painter = createDotPainter(ctx);
   let alphas: Alphas = { muted: 0.55, accent: 0.9 };
   const cursor: Cursor = { x: -1e4, y: -1e4, on: false };
-  const pointer = { x: -1e4, y: -1e4, on: false };
   let width = 0;
   let height = 0;
   let active = false;
   let measureRaf = 0;
 
   const readColors = () => {
-    const style = getComputedStyle(document.documentElement);
-    const toRgb = (hex: string, fallback: string) => {
-      if (!hex.startsWith("#")) return fallback;
-      const n = parseInt(hex.slice(1), 16);
-      return `rgb(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255})`;
-    };
-    colors.muted = toRgb(style.getPropertyValue("--color-muted").trim(), colors.muted);
-    colors.accent = toRgb(style.getPropertyValue("--color-accent").trim(), colors.accent);
-    const theme = document.documentElement.dataset.theme === "dark" ? "dark" : "light";
-    alphas = typeof options.alphas === "function" ? options.alphas(theme) : options.alphas;
+    painter.readColors();
+    alphas = typeof options.alphas === "function" ? options.alphas(themeNow()) : options.alphas;
   };
 
-  const fill = (dots: number[], color: string, alpha: number) => {
-    if (!dots.length) return;
-    ctx.globalAlpha = alpha;
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    for (let k = 0; k < dots.length; k += 3) {
-      // moveTo the circle's right edge first so the batched path never joins
-      // consecutive dots with a stray chord.
-      ctx.moveTo(dots[k] + dots[k + 2], dots[k + 1]);
-      ctx.arc(dots[k], dots[k + 1], dots[k + 2], 0, Math.PI * 2);
-    }
-    ctx.fill();
-  };
+  // Reduced motion keeps the band at rest; the horizon fades in instead.
+  const sweepNow = () => (still ? 0 : conductor.sweep.value);
 
   const paint = (time: number) => {
     ctx.clearRect(0, 0, width, height);
-    buildDots(conductor.field, layout, time, weights, cursor, muted, accent);
-    fill(muted, colors.muted, alphas.muted);
-    fill(accent, colors.accent, alphas.accent);
+    const sweep = sweepNow();
+    // Whole train on the horizon: every column sits left of the canvas.
+    if (sweep >= 1) return;
+    if (sweep === 0) {
+      buildDots(conductor.field, layout, time, weights, cursor, muted, accent);
+    } else {
+      layTrack(layout, sweep, "band", height - layout.baseline, weights, xs, offsets, trackWeights, scratch);
+      buildDots(conductor.field, track, time, trackWeights, cursor, muted, accent, atX);
+    }
+    painter.fill(muted, painter.colors.muted, alphas.muted);
+    painter.fill(accent, painter.colors.accent, alphas.accent);
     ctx.globalAlpha = 1;
   };
 
@@ -95,6 +100,10 @@ export function createWaveView(canvas: HTMLCanvasElement, conductor: WaveConduct
     cursor.on = cursor.y > -layout.maxAmp && cursor.y < height + layout.maxAmp;
   };
 
+  const { pointer, dispose: disposePointer } = trackPointer(!still && window.matchMedia("(pointer: fine)").matches, () =>
+    conductor.wake(),
+  );
+
   const view: WaveViewHandle = {
     // Before the field steps: the weights follow the field's levels as they
     // stood, and this view's carve targets raise the shared carve.
@@ -102,7 +111,10 @@ export function createWaveView(canvas: HTMLCanvasElement, conductor: WaveConduct
       syncCursor();
       blendWeights(calmWeights, loudWeights, conductor.field.levels.reactive, weights);
       if (!cursor.on) return;
-      carveTargets(layout, cursor, carve);
+      // The carve follows the painted columns: in transit the band's grid is
+      // its rest grid shifted left by the train's travel.
+      carveLayout.startX = trainX(0, layout, layout.columns, sweepNow(), "band");
+      carveTargets(carveLayout, cursor, carve);
       const shared = conductor.carve;
       for (let i = 0; i < carve.length && i < shared.length; i++) if (carve[i] > shared[i]) shared[i] = carve[i];
     },
@@ -120,10 +132,7 @@ export function createWaveView(canvas: HTMLCanvasElement, conductor: WaveConduct
       if (measureRaf) cancelAnimationFrame(measureRaf);
       resizeObserver.disconnect();
       themeObserver.disconnect();
-      if (fine) {
-        window.removeEventListener("pointermove", onPointerMove);
-        document.removeEventListener("mouseleave", onPointerLeave);
-      }
+      disposePointer();
     },
   };
 
@@ -131,15 +140,16 @@ export function createWaveView(canvas: HTMLCanvasElement, conductor: WaveConduct
     measureRaf = 0;
     width = host.clientWidth;
     height = host.clientHeight;
-    // DPR_CAP: a band of dots gains nothing past 1.5x density.
-    const dpr = Math.min(window.devicePixelRatio || 1, DPR_CAP);
-    canvas.width = Math.round(width * dpr);
-    canvas.height = Math.round(height * dpr);
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    sizeCanvas(canvas, ctx, width, height);
 
     layout = bandLayout(width, height);
     conductor.setColumns(layout.columns, view);
     carve = new Float32Array(layout.columns);
+    xs = new Float32Array(layout.columns);
+    offsets = new Float32Array(layout.columns);
+    trackWeights = new Float32Array(layout.columns);
+    track = { ...layout, baselineOffset: offsets };
+    Object.assign(carveLayout, layout);
 
     const origin = canvas.getBoundingClientRect();
     const rects: Rect[] = [];
@@ -188,23 +198,6 @@ export function createWaveView(canvas: HTMLCanvasElement, conductor: WaveConduct
     paint(conductor.time);
   });
   themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-
-  const fine = !still && window.matchMedia("(pointer: fine)").matches;
-  const onPointerMove = (event: PointerEvent) => {
-    pointer.x = event.clientX;
-    pointer.y = event.clientY;
-    pointer.on = true;
-    conductor.wake();
-  };
-  const onPointerLeave = () => {
-    pointer.on = false;
-    // Wake a stopped loop so a carve under a cursor that left the window eases out.
-    conductor.wake();
-  };
-  if (fine) {
-    window.addEventListener("pointermove", onPointerMove, { passive: true });
-    document.addEventListener("mouseleave", onPointerLeave);
-  }
 
   return view;
 }

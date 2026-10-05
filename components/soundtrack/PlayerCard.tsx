@@ -6,7 +6,7 @@ import { siteContent } from "@/lib/content";
 import { getSoundtrackPlayer, type PlayerSnapshot } from "@/lib/audio";
 import { useEscapeKey } from "@/lib/modal";
 import { pauseSoundtrack, startSoundtrack, type SoundtrackState } from "@/lib/soundtrack";
-import { Cover, EASE, formatTime, glass, iconButton } from "./PillParts";
+import { Cover, EASE, FreezeRow, formatTime, glass, iconButton } from "./PillParts";
 
 type Props = {
   music: SoundtrackState;
@@ -17,9 +17,9 @@ type Props = {
   onCollapse: () => void;
 };
 
-// The pill's open state: now playing, a seek bar, transport and volume. Every
-// value comes from the player; the playhead is polled only while the card is
-// open and playing. Escape closes it.
+// The pill's open state: now playing, a seek bar, transport and volume, and
+// the wave's freeze toggle. Every value comes from the player; the playhead
+// is polled only while the card is open and playing. Escape closes it.
 export function PlayerCard({ music, expanded, reduce, focusOnOpen, onCardLeave, onCollapse }: Props) {
   const c = siteContent.soundtrack;
   const player = getSoundtrackPlayer();
@@ -65,19 +65,15 @@ export function PlayerCard({ music, expanded, reduce, focusOnOpen, onCardLeave, 
     ...glass,
     position: "absolute",
     bottom: 0,
-    left: "50%",
+    left: 0,
     width: 342,
     padding: 18,
     borderRadius: 22,
-    transformOrigin: "bottom center",
+    transformOrigin: "bottom left",
     transition: reduce ? "opacity 300ms ease" : `opacity 300ms ease, transform 340ms ${EASE}`,
     opacity: expanded ? 1 : 0,
     pointerEvents: expanded ? "auto" : "none",
-    transform: reduce
-      ? "translateX(-50%)"
-      : expanded
-        ? "translateX(-50%) translateY(0) scale(1)"
-        : "translateX(-50%) translateY(10px) scale(0.95)",
+    transform: reduce ? "none" : expanded ? "translateY(0) scale(1)" : "translateY(10px) scale(0.95)",
   };
   const small: CSSProperties = { fontSize: 10, fontVariantNumeric: "tabular-nums", color: "var(--color-muted)" };
   const range: CSSProperties = { flex: "1 1 auto", minWidth: 0, accentColor: "var(--color-accent)", cursor: "pointer" };
@@ -194,6 +190,7 @@ export function PlayerCard({ music, expanded, reduce, focusOnOpen, onCardLeave, 
           </a>
         )}
       </div>
+      <FreezeRow reduce={reduce} />
     </div>
   );
 }

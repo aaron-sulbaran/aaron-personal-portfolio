@@ -84,6 +84,46 @@ describe("buildDots with paint-time weights", () => {
     buildDots(field, small, 0, new Float32Array([1, 1, 1]), cursor, muted, accent, (i) => 100 + i);
     expect([muted[0], muted[3], muted[6]]).toEqual([100, 101, 102]);
   });
+
+  it("maxThick 1 stacks at most one fuzz dot each side of the centre", () => {
+    const field = createField(3);
+    field.mag.fill(1);
+    const muted: number[] = [];
+    const accent: number[] = [];
+    const at = (dots: number[], x: number) => xs(dots).filter((dotX) => dotX === x).length;
+    buildDots(field, { ...small, maxAmp: 70 }, 0, new Float32Array([1, 1, 1]), cursor, muted, accent);
+    const uncapped = [...muted, ...accent];
+    buildDots(field, { ...small, maxAmp: 70, maxThick: 1 }, 0, new Float32Array([1, 1, 1]), cursor, muted, accent);
+    const all = [...muted, ...accent];
+    for (const x of [5, 15, 25]) {
+      expect(at(uncapped, x)).toBeGreaterThan(3);
+      expect(at(all, x)).toBeLessThanOrEqual(3);
+      // The centre dot always stays, on the midline.
+      expect(all.some((v, k) => k % 3 === 0 && v === x && all[k + 1] === 50 && all[k + 2] === CENTER_RADIUS)).toBe(true);
+    }
+  });
+
+  it("baselineOffset moves the centre dot by its px", () => {
+    const field = createField(3);
+    field.mag.fill(FLOOR);
+    const muted: number[] = [];
+    const accent: number[] = [];
+    const baselineOffset = new Float32Array([10, 0, 0]);
+    buildDots(field, { ...small, baselineOffset }, 0, new Float32Array([1, 1, 1]), cursor, muted, accent);
+    expect(muted[1]).toBe(60);
+    expect(muted[4]).toBe(50);
+  });
+
+  it("a duck past half sends the column to the ducked arrays", () => {
+    const field = createField(3);
+    field.mag.fill(FLOOR);
+    const muted: number[] = [];
+    const accent: number[] = [];
+    const ducked = { duck: new Float32Array([0, 0.6, 0.4]), muted: [] as number[], accent: [] as number[] };
+    buildDots(field, small, 0, new Float32Array([1, 0, 1]), cursor, muted, accent, undefined, ducked);
+    expect(xs(ducked.muted)).toEqual([15]);
+    expect(xs(muted)).toEqual([5, 25]);
+  });
 });
 
 describe("reachOf", () => {
