@@ -1,6 +1,6 @@
 import { ScrollTrigger } from "@/lib/gsap";
 import { ACCENT_LINE, buildDots, carveTargets, type Cursor, type DotLayout } from "@/lib/waveform/dots";
-import { DUCK, DUCK_ALPHA, DUCK_SPLIT, duckTargets, lookAheadFor, stepDuck, stepScrollSpeed } from "@/lib/waveform/duck";
+import { DUCK, DUCK_ALPHA, DUCK_SPLIT, createScrollTracker, duckTargets, lookAheadFor, resetScroll, stepDuck, trackScroll } from "@/lib/waveform/duck";
 import { FLOOR } from "@/lib/waveform/field";
 import { HORIZON, horizonLayout } from "@/lib/waveform/layout";
 import { attachWaveSource, waveProbe } from "@/lib/waveform/probe";
@@ -21,9 +21,12 @@ import { createDotPainter, measureAvoidRects, sizeCanvas, themeNow, trackPointer
 // space once per layout; each frame compares them with the strip's span (from
 // the cached scroll position, no layout read) and every column under text
 // eases to a still centreline painted at the DUCK_ALPHA ceiling. The strip
-// looks ahead below itself only while the reader scrolls down: the speed comes
-// from the same cached position, smoothed by stepScrollSpeed, and feeds
-// lookAheadFor, so at rest only text over the strip ducks.
+// looks ahead below itself only while the reader scrolls down: a scroll
+// tracker (lib/waveform/duck.ts) samples the same cached position on the wall
+// clock each paint and feeds lookAheadFor, so at rest only text over the strip
+// ducks. The tracker resets when the train leaves and resyncs after any gap
+// in painting, so a gap's scroll never reads as a flick. Reduced motion has
+// no look-ahead.
 //
 // Reduced motion never travels: the strip paints its still line at rest,
 // repaints on scroll (the conductor never loops then) and fades in over 400ms
@@ -31,11 +34,8 @@ import { createDotPainter, measureAvoidRects, sizeCanvas, themeNow, trackPointer
 // globals.css collapses every CSS transition under reduced motion.
 
 const MAX_STEP_S = 0.1;
-// A jump (an anchor, End, a deep load) is not a flick: past the speed that
-// already gives the full look-ahead it only lengthens the release.
-const MAX_SPEED_PX_S = DUCK.fullLookAheadAtPxPerS;
-// Below this the look-ahead is under a pixel; the speed rests at 0.
-const SPEED_REST_PX_S = 5;
+// Paints further apart than this are a gap (a jank frame at worst), not a sample.
+const SCROLL_GAP_S = 0.25;
 const FADE_MS = 400;
 const AVOID_SELECTOR = "main [data-wave-avoid], footer [data-wave-avoid]";
 
@@ -76,8 +76,7 @@ export function createHorizonView(
   let width = 0;
   let viewportH = window.innerHeight;
   let scrollTop = window.scrollY;
-  let lastScrollTop = scrollTop;
-  let scrollSpeed = 0; // px/s downward, smoothed
+  const scroll = createScrollTracker();
   let lastTime = -Infinity;
   let primed = false;
   let ducking = false;
@@ -100,21 +99,18 @@ export function createHorizonView(
     painted = false;
     ducking = false;
     const sweep = sweepNow();
-    if (sweep <= 0 || !layout.columns) return;
+    // The train has left: no look-ahead to release, so the loop can sleep.
+    if (sweep <= 0 || !layout.columns) {
+      resetScroll(scroll, scrollTop, performance.now() / 1000);
+      return;
+    }
     layTrack(layout, sweep, "horizon", layout.baseline, open, xs, offsets, weights, scratch);
     strip.top = scrollTop + viewportH - HORIZON.height;
     strip.bottom = scrollTop + viewportH;
     const dt = Math.min(Math.max(time - lastTime, 0), MAX_STEP_S);
     lastTime = time;
-    // A repaint at the same clock (a theme change, a measure) carries no
-    // speed; the scroll it saw is counted on the next step.
-    if (dt > 0) {
-      const down = Math.min(Math.max((scrollTop - lastScrollTop) / dt, 0), MAX_SPEED_PX_S);
-      lastScrollTop = scrollTop;
-      scrollSpeed = stepScrollSpeed(scrollSpeed, down, dt);
-      if (scrollSpeed < SPEED_REST_PX_S) scrollSpeed = 0;
-    }
-    duckTargets(rects, xs, strip, targets, lookAheadFor(scrollSpeed));
+    const speed = still ? 0 : trackScroll(scroll, scrollTop, performance.now() / 1000, SCROLL_GAP_S);
+    duckTargets(rects, xs, strip, targets, lookAheadFor(speed));
     // A fresh layout lands already ducked rather than easing down under text.
     if (still || !primed) {
       env.set(targets);
@@ -164,8 +160,8 @@ export function createHorizonView(
     // canvas once it has all gone back to the band.
     active: () => conductor.sweep.value > 0 || painted,
     // The speed's release keeps the loop awake so the look-ahead, and then
-    // the envelope, can settle once the scroll stops.
-    busy: () => ducking || scrollSpeed > 0,
+    // the envelope, can settle once the scroll stops; never while inactive.
+    busy: () => view.active() && (ducking || scroll.speed > 0),
     setActive() {},
     destroy() {
       destroyed = true;
@@ -269,6 +265,7 @@ export function createHorizonView(
     // Empty when the last paint drew nothing (the train all back in the band).
     columns: () => (painted ? Array.from(xs, (x, i) => ({ x, duck: env[i], alpha: probeAlpha[i] })) : []),
     rects: () => rects.map((r) => ({ ...r })),
+    busy: () => view.busy(),
   });
 
   return view;
