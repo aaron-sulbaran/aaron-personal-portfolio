@@ -23,7 +23,7 @@ export function labelLine(kind: DockLabel): string | null {
 
 export function PillLabel({ line, open, reduce }: { line: string | null; open: boolean; reduce: boolean }) {
   return (
-    <PillSlot hidden visible={open && line !== null} maxWidth={360} reduce={reduce} ms={DOCK.collapseMs} before={8}>
+    <PillSlot ariaHidden visible={open && line !== null} maxWidth={360} reduce={reduce} ms={DOCK.collapseMs} before={8}>
       <span style={{ fontSize: 12, fontWeight: 500, color: "var(--color-foreground)" }}>{line}</span>
     </PillSlot>
   );
