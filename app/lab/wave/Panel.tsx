@@ -193,6 +193,9 @@ function Readout({ tokens, settings }: { tokens: Record<ThemeName, ThemeTokens> 
       <p className="text-xs leading-snug text-muted">
         Text over the most inked dot pixel (a dot&apos;s centre). Accent dots only appear on loud music. The line marks 4.5 to 1. Information, not a gate.
       </p>
+      {settings.placement === "seams" && (
+        <p className="mt-1 text-xs leading-snug text-muted">Seams sit in the gaps, never under words; these numbers only bite if a seam is nudged into text.</p>
+      )}
       {(["light", "dark"] as const).map((theme) => (
         <div key={theme} className="mt-2">
           <p className="text-xs">{theme === "light" ? "Light" : "Dark"}</p>

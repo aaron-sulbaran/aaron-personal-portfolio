@@ -84,8 +84,13 @@ export function createWaveEngine(initial: WaveSettings): WaveEngine {
     const width = s.host.clientWidth;
     const height = s.host.clientHeight;
     const dpr = Math.min(window.devicePixelRatio || 1, DPR_CAP);
-    s.canvas.width = Math.max(1, Math.round(width * dpr));
-    s.canvas.height = Math.max(1, Math.round(height * dpr));
+    const pixelW = Math.max(1, Math.round(width * dpr));
+    const pixelH = Math.max(1, Math.round(height * dpr));
+    // A slider drag re-lays every surface; only a real size change reallocates the bitmap.
+    if (s.canvas.width !== pixelW || s.canvas.height !== pixelH) {
+      s.canvas.width = pixelW;
+      s.canvas.height = pixelH;
+    }
     s.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     s.width = width;
     s.height = height;
