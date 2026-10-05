@@ -7,7 +7,7 @@ import { getSoundtrackPlayer } from "@/lib/audio";
 import { getPlayFailed, getRestoredSoundtrack, startSoundtrack, subscribeSoundtrack, useSoundtrack } from "@/lib/soundtrack";
 import { DOCK, capsuleName, capsuleText, dockLabel, dockMode, type DockLabel } from "@/lib/waveform/dock";
 import { isPhone, subscribePhone } from "@/lib/waveform/layout";
-import { Cover, DockGlyph, EASE, glass, reveal } from "./PillParts";
+import { Cover, DockGlyph, EASE, PillSlot, glass } from "./PillParts";
 import { PillAnnouncer, PillLabel, labelLine, useLabelHold } from "./PillLabel";
 import { PlayerCard } from "./PlayerCard";
 import { usePillArrival } from "./usePillArrival";
@@ -207,22 +207,22 @@ function PillInner({ reached }: { reached: boolean }) {
             data-cursor-hover
             style={{ ...capsule, ["--pill-hit-inset" as string]: `${(DOCK.hitPx - DOCK.capsulePx) / 2}px` }}
           >
-            <span style={reveal(preview, "40px", reduce)}>
+            <PillSlot visible={preview} maxWidth={40} reduce={reduce}>
               <Cover size={38} cover={track.cover} />
-            </span>
-            <span style={{ ...reveal(preview, "190px", reduce, 280, 12), display: "block" }}>
+            </PillSlot>
+            <PillSlot visible={preview} maxWidth={190} reduce={reduce} before={12} after={12} block>
               <span style={{ display: "block", fontSize: 12, fontWeight: 500 }}>{track.title}</span>
               <span style={{ display: "block", fontSize: 11, color: "var(--color-muted)" }}>{track.artist}</span>
-            </span>
-            <span style={{ display: "flex", marginLeft: preview ? 12 : 0, transition: `margin 280ms ${EASE}` }}>
+            </PillSlot>
+            <span style={{ display: "flex" }}>
               <DockGlyph music={music} />
             </span>
             <PillLabel line={line} open={mode === "label"} reduce={reduce} />
-            <span style={reveal(mode === "capsule" && !preview, "220px", reduce, DOCK.collapseMs, 8)}>
+            <PillSlot visible={mode === "capsule" && !preview} maxWidth={220} reduce={reduce} ms={DOCK.collapseMs} before={8}>
               <span style={{ fontSize: 12, fontWeight: 500, color: music === "on" ? "var(--color-foreground)" : "var(--color-muted)" }}>
                 {capsuleText(music, track.title)}
               </span>
-            </span>
+            </PillSlot>
           </button>
           <PlayerCard
             music={music}
