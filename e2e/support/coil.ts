@@ -166,9 +166,11 @@ export async function cardAt(page: Page, point: Point) {
   return page.evaluate(({ x, y }) => (window as HookWindow).__coil!.api.cardAt(x, y), point);
 }
 
-// The capture probe at a viewport point (null on builds without it).
+// The capture probe at a viewport point. Required: a build without it fails here.
 export async function captureAt(page: Page, point: Point) {
-  return page.evaluate(({ x, y }) => (window as HookWindow).__coil!.captureAt?.(x, y) ?? null, point);
+  const probe = await page.evaluate(({ x, y }) => (window as HookWindow).__coil!.captureAt?.(x, y) ?? null, point);
+  if (!probe) throw new Error("window.__coil.captureAt is missing: the capture probe is required");
+  return probe;
 }
 
 // The stretch envelope has relaxed (a page scroll feeds the coil, which

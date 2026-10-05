@@ -16,6 +16,31 @@ import {
 } from "./support/coil";
 import { frames, offsetTravel, pageTravel, type Recording } from "./support/frames";
 import { approach, firstPixels, pointerJitter, pointerTo, trackpad } from "./support/input";
+import type { Page } from "@playwright/test";
+import type { CaptureProbe } from "./support/hooks";
+
+// The seam point whose two nearest cards are farthest from it while rule A
+// still holds with 3px of slack: the wide end of the wedge picking leaves
+// between two cards.
+async function widestSeamPoint(page: Page): Promise<{ point: Point; probe: CaptureProbe } | null> {
+  return page.evaluate(() => {
+    const coil = (window as unknown as { __coil: { captureAt: (x: number, y: number) => CaptureProbe; api: { cardAt: (x: number, y: number) => unknown } } }).__coil;
+    const rect = document.querySelector("section[data-scene]")!.getBoundingClientRect();
+    const top = Math.max(rect.top, 0) + 80;
+    const bottom = Math.min(rect.bottom, window.innerHeight) - 40;
+    let best: { point: Point; probe: CaptureProbe } | null = null;
+    for (let y = top; y < bottom; y += 3) {
+      for (let x = 100; x < window.innerWidth - 100; x += 3) {
+        const probe = coil.captureAt(x, y);
+        if (!probe.onCard || probe.cardPx === 0 || probe.secondCardPx > probe.seamPx - 3) continue;
+        if (best && probe.secondCardPx <= best.probe.secondCardPx) continue;
+        if (coil.api.cardAt(x, y)) continue;
+        best = { point: { x, y }, probe };
+      }
+    }
+    return best;
+  });
+}
 
 // Wheel capture (docs/coil-input-model.md section 3): a gesture is the coil's
 // when it starts with the pointer on a card (or in the seam between two), the
@@ -67,7 +92,7 @@ test.describe("capture: a gesture over the coil spins it and holds the page stil
       }
       await approach(cdp, point!);
       const probe = await captureAt(page, point!);
-      if (probe) expect(probe, "rule A holds and capture is armed").toMatchObject({ onCard: true, armed: true });
+      expect(probe, "rule A holds and capture is armed").toMatchObject({ onCard: true, armed: true });
 
       const recording = await frames(page, () => trackpad(cdp, scenario.stream, { at: point! }), { tailMs: 120 });
 
@@ -92,6 +117,21 @@ test("capture: the coil moves within one frame of the first wheel event", async 
   const moved = after.findIndex((row) => Math.abs(row.offset - before.offset) > 0.004);
   expect(moved, "frames from the first wheel to the first motion").toBeGreaterThanOrEqual(0);
   expect(moved).toBeLessThanOrEqual(1);
+});
+
+test("capture: the widest seam at rest (about a tenth of a card to both cards) is the coil's", async ({ page, cdp }) => {
+  await openHome(page);
+  const seam = await widestSeamPoint(page);
+  expect(seam, "a wide seam point on the hero").toBeTruthy();
+  const cardHeight = seam!.probe.seamPx / COIL.capture.seamCards;
+  expect(seam!.probe.secondCardPx / cardHeight, "both cards from the seam point, card heights").toBeGreaterThanOrEqual(0.09);
+  expect(await cardAt(page, seam!.point), "a card under the seam point").toBeNull();
+  await approach(cdp, seam!.point);
+  expect(await captureAt(page, seam!.point), "rule A holds and capture is armed").toMatchObject({ onCard: true, armed: true });
+
+  const recording = await frames(page, () => trackpad(cdp, downFirstQuick, { at: seam!.point }), { tailMs: 120 });
+
+  expectCoilOwnedAll(recording, 1);
 });
 
 test.describe("capture: jitter and release", () => {
@@ -143,6 +183,71 @@ test.describe("capture: jitter and release", () => {
   });
 });
 
+test.describe("capture: the coil keeps the wheel after its own gesture until the pointer really moves", () => {
+  const PAUSE_MS = 400;
+
+  test("spin on a card, a pause with the pointer still, the next gesture is the coil's", async ({ page, cdp }) => {
+    await openHome(page);
+    const { card } = await coilPoints(page);
+    await approach(cdp, card);
+    const spin = await frames(page, () => trackpad(cdp, downFirstQuick, { at: card }), { tailMs: 0 });
+    expectCoilOwnedAll(spin, 1);
+    await page.waitForTimeout(PAUSE_MS);
+    expect(await page.evaluate(() => (window as unknown as { __coil: { owner: () => string } }).__coil.owner()), "the spin's gesture has ended").toBe("none");
+    // Whatever the spin's stretch left under the pointer, card or opened seam.
+    expect(await captureAt(page, card), "the still pointer, inside the helix").toMatchObject({ insideSilhouette: true, armed: true });
+
+    const next = await frames(page, () => trackpad(cdp, notches, { at: card }), { tailMs: 100 });
+
+    expect(next.wheels.every((wheel) => wheel.prevented), "the next gesture's events").toBe(true);
+    expect(pageTravel(next), "page movement, px").toBe(0);
+  });
+
+  test("a coil gesture that ends with the pointer over a gap inside the helix keeps the next gesture, until a real move", async ({ page, cdp }) => {
+    await openHome(page);
+    const { card, background } = await coilPoints(page);
+    expect(background, "a background point inside the silhouette").toBeTruthy();
+    await approach(cdp, card);
+    // The hand drifts off the card onto the gap between turns while the coil
+    // still owns the gesture, then rests: what a seam the stretch opened
+    // under a still pointer looks like, made certain. The pause runs until
+    // the stretch has relaxed and the coil is at its idle pace, so the band
+    // of cards is back where it was and the gap is a gap again.
+    let where: Point = card;
+    const spin = await frames(page, () =>
+      trackpad(cdp, downFirstQuick, {
+        at: () => where,
+        before: async (index) => {
+          if (index !== 50) return;
+          where = background!;
+          await pointerTo(cdp, background!);
+        },
+      }),
+    );
+    expectCoilOwnedAll(spin, 1);
+    await waitForGestureEnd(page);
+    await waitForEnvelopeRest(page);
+    await waitForCoilSettled(page);
+    const gap = await captureAt(page, background!);
+    expect(gap, "no card under the still pointer, inside the helix").toMatchObject({ onCard: false, insideSilhouette: true });
+
+    const next = await frames(page, () => trackpad(cdp, notches, { at: background! }), { tailMs: 100 });
+
+    expect(next.wheels.every((wheel) => wheel.prevented), "the next gesture's events").toBe(true);
+    expect(pageTravel(next), "page movement, px").toBe(0);
+
+    // A real move of rearmPx, still over the gap: rule A decides again, the page's.
+    await waitForGestureEnd(page);
+    await waitForEnvelopeRest(page);
+    await waitForCoilSettled(page);
+    const moved = { x: background!.x + COIL.capture.rearmPx + 2, y: background!.y };
+    await pointerTo(cdp, moved);
+    expect(await captureAt(page, moved)).toMatchObject({ onCard: false, held: false });
+    const after = await frames(page, () => trackpad(cdp, firstPixels(downFirstQuick, 200), { at: moved }), { tailMs: 120 });
+    expectPageOwnedAll(after);
+  });
+});
+
 test.describe("capture: empty background belongs to the page", () => {
   test("a gesture from empty background inside the helix silhouette scrolls the page", async ({ page, cdp }) => {
     await openHome(page);
@@ -151,7 +256,7 @@ test.describe("capture: empty background belongs to the page", () => {
     expect(await silhouetteDistance(page, background!), "silhouette distance, px").toBeLessThan(-40);
     await approach(cdp, background!);
     const probe = await captureAt(page, background!);
-    if (probe) expect(probe, "inside the old hull, armed, but no card near").toMatchObject({ onCard: false, insideSilhouette: true, armed: true });
+    expect(probe, "inside the old hull, armed, but no card near").toMatchObject({ onCard: false, insideSilhouette: true, armed: true });
 
     const recording = await frames(page, () => trackpad(cdp, firstPixels(downFirstQuick, 300), { at: background! }), { tailMs: 120 });
 
@@ -173,7 +278,7 @@ test.describe("capture: empty background belongs to the page", () => {
         expect(await cardAt(page, point)).toBeNull();
         await approach(cdp, point);
         const probe = await captureAt(page, point);
-        if (probe) expect(probe).toMatchObject({ onCard: false, armed: true });
+        expect(probe).toMatchObject({ onCard: false, armed: true });
 
         const recording = await frames(page, () => trackpad(cdp, firstPixels(downFirstQuick, 200), { at: point }), { tailMs: 120 });
 
@@ -188,7 +293,7 @@ test.describe("capture: the page sliding the coil under a still pointer never ar
     await openHome(page);
     const { card } = await coilPoints(page);
     const probe = await captureAt(page, card);
-    if (probe) expect(probe, "a card under the point, capture not armed").toMatchObject({ onCard: true, armed: false });
+    expect(probe, "a card under the point, capture not armed").toMatchObject({ onCard: true, armed: false });
 
     const recording = await frames(page, () => trackpad(cdp, firstPixels(downFirstQuick, 200), { at: card }), { tailMs: 120 });
 
@@ -238,7 +343,7 @@ test.describe("capture: the page sliding the coil under a still pointer never ar
     expect(await silhouetteDistance(page, pointer), "pointer to silhouette, px").toBeLessThan(0);
     expect(await heroVisible(page)).toBeGreaterThanOrEqual(0.5);
     const slid = await captureAt(page, pointer);
-    if (slid) expect(slid, "a card under the still pointer, capture disarmed").toMatchObject({ onCard: true, armed: false });
+    expect(slid, "a card under the still pointer, capture disarmed").toMatchObject({ onCard: true, armed: false });
 
     // A second gesture, the pointer still where it was: the page's.
     const second = await frames(page, () => trackpad(cdp, firstPixels(upQuick, 80), { at: pointer }), { tailMs: 150 });
@@ -252,7 +357,7 @@ test.describe("capture: the page sliding the coil under a still pointer never ar
     expect(Math.hypot(card.x - pointer.x, card.y - pointer.y), "the move, px").toBeGreaterThanOrEqual(COIL.capture.rearmPx);
     await pointerTo(cdp, card);
     const armed = await captureAt(page, card);
-    if (armed) expect(armed).toMatchObject({ onCard: true, armed: true });
+    expect(armed).toMatchObject({ onCard: true, armed: true });
 
     const third = await frames(page, () => trackpad(cdp, downFirstQuick.slice(0, 30), { at: card }), { tailMs: 100 });
 

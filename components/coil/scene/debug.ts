@@ -1,7 +1,7 @@
 import { Vector2 } from "three";
 import { gestureOwner } from "@/lib/coil/capture";
 import {
-  cardDistancePx,
+  cardDistancesPx,
   insideSilhouette,
   projectQuad,
   seamMarginPx,
@@ -100,9 +100,10 @@ export type DebugStats = {
   // ---- fx-input debug: the live wheel owner and the helix hull ----
   owner?: () => "coil" | "page" | "none";
   silhouette?: () => Silhouette | null;
-  // Wheel capture at a viewport point: rule A (onCard, with the distance to
-  // the nearest pickable card and the seam margin in use), the hull that
-  // still governs release, and whether a real pointer move has armed capture.
+  // Wheel capture at a viewport point: rule A (onCard, with the distances to
+  // the nearest and second nearest pickable cards and the seam margin in
+  // use), the hull that governs release and the hold, whether a real pointer
+  // move has armed capture, and whether the last coil gesture still holds it.
   captureAt?: (clientX: number, clientY: number) => CaptureProbe;
   // ---- end fx-input debug ----
   api?: CoilSceneApi;
@@ -144,7 +145,15 @@ export type DebugStats = {
   drag?: () => object;
 };
 
-export type CaptureProbe = { onCard: boolean; cardPx: number; seamPx: number; insideSilhouette: boolean; armed: boolean };
+export type CaptureProbe = {
+  onCard: boolean;
+  cardPx: number;
+  secondCardPx: number;
+  seamPx: number;
+  insideSilhouette: boolean;
+  armed: boolean;
+  held: boolean;
+};
 
 export type DebugReads = {
   offset: () => number;
@@ -280,12 +289,15 @@ export function installSceneHooks(ctx: SceneCtx, parts: HookParts) {
   debug.captureAt = (clientX, clientY) => {
     const x = clientX - (st.view.docLeft - window.scrollX);
     const y = clientY - (st.view.docTop - window.scrollY);
+    const distances = st.geoCamera ? cardDistancesPx(st.poses, st.geoCamera, x, y) : null;
     return {
       onCard: hover.nearCardAt(x, y),
-      cardPx: st.geoCamera ? cardDistancePx(st.poses, st.geoCamera, x, y) : Number.POSITIVE_INFINITY,
+      cardPx: distances?.nearest ?? Number.POSITIVE_INFINITY,
+      secondCardPx: distances?.second ?? Number.POSITIVE_INFINITY,
       seamPx: st.geo ? seamMarginPx(st.geo) : 0,
       insideSilhouette: st.sil !== null && insideSilhouette(st.sil, x, y),
       armed: st.capture.armed,
+      held: st.capture.held,
     };
   };
 }
