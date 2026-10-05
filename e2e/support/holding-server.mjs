@@ -16,18 +16,31 @@ const port = process.argv[2] ?? "3141";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const target = join(tmpdir(), "aaronsulbaran-e2e-holding");
 const SKIP = new Set([".git", ".next", "node_modules", "test-results", "playwright-report", "e2e", ".vercel"]);
+const stamp = join(target, "node_modules", ".e2e-lock");
 
-function run(command, args, cwd) {
+function attempt(command, args, cwd) {
   const result = spawnSync(command, args, {
     cwd,
     stdio: ["ignore", "ignore", "inherit"],
     env: { ...process.env, NEXT_PUBLIC_SITE_MODE: "holding" },
   });
-  if (result.status !== 0) process.exit(result.status ?? 1);
+  return result.status ?? 1;
 }
 
+function run(command, args, cwd) {
+  const status = attempt(command, args, cwd);
+  if (status !== 0) process.exit(status);
+}
+
+const install = () => {
+  run("pnpm", ["install", "--frozen-lockfile", "--prefer-offline", "--ignore-scripts", "--reporter=silent"], target);
+  cpSync(join(root, "pnpm-lock.yaml"), stamp);
+};
+
 // A fresh copy of the sources on every start; node_modules survives between
-// runs and is reinstalled only when the lockfile changed.
+// runs and is reinstalled only when the lockfile changed. The OS prunes its
+// temp dir, which can leave a partly deleted node_modules behind a matching
+// stamp, so a failed build reinstalls from scratch and tries once more.
 mkdirSync(target, { recursive: true });
 for (const entry of [".next", "app", "components", "lib", "public"]) rmSync(join(target, entry), { recursive: true, force: true });
 cpSync(root, target, {
@@ -38,12 +51,13 @@ cpSync(root, target, {
   },
 });
 const lock = readFileSync(join(root, "pnpm-lock.yaml"), "utf8");
-const stamp = join(target, "node_modules", ".e2e-lock");
-if (!existsSync(stamp) || readFileSync(stamp, "utf8") !== lock) {
-  run("pnpm", ["install", "--frozen-lockfile", "--prefer-offline", "--ignore-scripts", "--reporter=silent"], target);
-  cpSync(join(root, "pnpm-lock.yaml"), stamp);
+if (!existsSync(stamp) || readFileSync(stamp, "utf8") !== lock) install();
+if (attempt("pnpm", ["exec", "next", "build"], target) !== 0) {
+  console.error("[holding-server] build failed; reinstalling node_modules and building once more");
+  for (const entry of ["node_modules", ".next"]) rmSync(join(target, entry), { recursive: true, force: true });
+  install();
+  run("pnpm", ["exec", "next", "build"], target);
 }
-run("pnpm", ["exec", "next", "build"], target);
 
 const server = spawn("pnpm", ["exec", "next", "start", "-p", port], {
   cwd: target,
