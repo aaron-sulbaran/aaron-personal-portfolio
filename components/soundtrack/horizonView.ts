@@ -69,7 +69,7 @@ export function createHorizonView(
   const ducked = { duck: env as ArrayLike<number>, muted: [] as number[], accent: [] as number[] };
   const painter = createDotPainter(ctx);
   let theme: Theme = "light";
-  let alphas: Alphas = { muted: 0.3, accent: 0.5 };
+  let alphas: Alphas = { muted: 0.4, accent: 0.55 };
   const cursor: Cursor = { x: -1e4, y: -1e4, on: false };
   let rects: Rect[] = [];
   const strip = { top: 0, bottom: 0 };
