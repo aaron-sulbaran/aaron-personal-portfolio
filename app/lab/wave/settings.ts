@@ -3,7 +3,9 @@
 // max-amplitude units), so a setting found here lifts straight into
 // lib/waveform and components/soundtrack.
 
-export type Placement = "backdrop" | "horizon" | "seams" | "chapters" | "rail";
+import type { SpineId } from "./spines";
+
+export type Placement = "path" | "backdrop" | "horizon" | "seams" | "chapters" | "rail";
 export type LoopKind = "standing" | "travel" | "pulse" | "draw" | "ripple";
 export type ThemeName = "light" | "dark";
 export type ThemeAlphas = { muted: number; accent: number };
@@ -26,9 +28,33 @@ export interface WaveSettings {
   edgeFade: number; // share of the length faded at each end, 0..0.45
   scrollInfluence: number; // 0 none, 1 the merged build's conveyor
   capsule: boolean;
+  path: PathSettings;
+}
+
+export type HeadMode = "viewport" | "progress";
+export type HeadStyle = "taper" | "spark" | "swell" | "none";
+export type TailMode = "all" | "train";
+
+// The Path placement's own knobs. The spine itself is page-relative (spines.ts);
+// "Copy values" writes its points out beside these.
+export interface PathSettings {
+  spine: SpineId;
+  headMode: HeadMode; // viewport: the head sits at headAt of the viewport; progress: the reference's mapping
+  headAt: number; // 0.3..1 of the viewport height
+  preDrawn: number; // share of the spine drawn before any scroll, 0..1 (the reference starts at 0.5)
+  smoothing: number; // lambda per second on the head, 0 for raw
+  headStyle: HeadStyle;
+  tail: TailMode;
+  trainLength: number; // px of arc behind the head, tail "train" only
+  wavelength: number; // px of arc per turn of the shape
+  shapeTravel: number; // 0..1, the shape's phase advances with the head
+  musicLayer: number; // 0..1, the simulated spectrum's share while music is on
+  lineOnly: boolean; // one dotted line along the spine, no amplitude
+  debug: boolean; // draw the spine and its control points
 }
 
 export const PLACEMENTS: { id: Placement; label: string; note: string }[] = [
+  { id: "path", label: "Path", note: "In flow, one line wandering down the page from the band to the footer, drawn by your scroll." },
   { id: "backdrop", label: "Backdrop", note: "Fixed behind the content, content scrolls over it." },
   { id: "horizon", label: "Horizon", note: "The fixed bottom strip as built, never ducked." },
   { id: "seams", label: "Seams", note: "In flow, one small wave in each gap between sections." },
@@ -46,6 +72,7 @@ export const LOOPS: { id: LoopKind; label: string; note: string; usesSpeed: bool
 
 // The position slider means something different per placement.
 export const POSITION: Record<Placement, { label: string; min: number; max: number; step: number; unit: string }> = {
+  path: { label: "Unused by Path", min: 0, max: 1, step: 0.01, unit: "" },
   backdrop: { label: "Vertical position", min: 0.1, max: 0.9, step: 0.01, unit: "of viewport" },
   horizon: { label: "Baseline above bottom", min: 24, max: 240, step: 1, unit: "px" },
   seams: { label: "Offset from seam", min: -120, max: 120, step: 1, unit: "px" },
@@ -68,6 +95,7 @@ export const RANGES = {
 };
 
 const basePositions: Record<Placement, number> = {
+  path: 0,
   backdrop: 0.74,
   horizon: 72,
   seams: 0,
@@ -76,6 +104,7 @@ const basePositions: Record<Placement, number> = {
 };
 
 const baseHeights: Record<Placement, number> = {
+  path: 0,
   backdrop: 320,
   horizon: 176,
   seams: 160,
@@ -101,11 +130,38 @@ const base: WaveSettings = {
   edgeFade: 0.24,
   scrollInfluence: 0,
   capsule: true,
+  path: {
+    spine: "knot",
+    headMode: "viewport",
+    headAt: 0.62,
+    preDrawn: 0.04,
+    smoothing: 7,
+    headStyle: "taper",
+    tail: "all",
+    trainLength: 1800,
+    wavelength: 240,
+    shapeTravel: 0,
+    musicLayer: 0.35,
+    lineOnly: false,
+    debug: false,
+  },
+};
+
+export const PATH_RANGES = {
+  headAt: { min: 0.3, max: 1, step: 0.01 },
+  preDrawn: { min: 0, max: 1, step: 0.01 },
+  smoothing: { min: 0, max: 20, step: 0.5 },
+  trainLength: { min: 200, max: 5000, step: 10 },
+  wavelength: { min: 80, max: 700, step: 5 },
+  shapeTravel: { min: 0, max: 1, step: 0.01 },
+  musicLayer: { min: 0, max: 1, step: 0.01 },
 };
 
 type Preset = { id: string; label: string; why: string; values: WaveSettings };
 
-const preset = (id: string, label: string, why: string, patch: Partial<WaveSettings>): Preset => ({
+type PresetPatch = Omit<Partial<WaveSettings>, "path"> & { path?: Partial<PathSettings> };
+
+const preset = (id: string, label: string, why: string, patch: PresetPatch): Preset => ({
   id,
   label,
   why,
@@ -115,13 +171,50 @@ const preset = (id: string, label: string, why: string, patch: Partial<WaveSetti
     position: { ...basePositions, ...patch.position },
     stripHeight: { ...baseHeights, ...patch.stripHeight },
     alpha: { light: { ...base.alpha.light, ...patch.alpha?.light }, dark: { ...base.alpha.dark, ...patch.alpha?.dark } },
+    path: { ...base.path, ...patch.path },
   },
 });
 
 export const PRESETS: Preset[] = [
   preset(
+    "knot",
+    "Unspool (recommended)",
+    "The reference's idea in our dots: the wave starts as a knot beside the music question and unspools down the page as you scroll, in sweeps that leave both edges and return. It only moves while you scroll, so it is still whenever you read.",
+    {
+      placement: "path",
+      amplitude: 70,
+      maxThick: 4,
+      alpha: { light: { muted: 0.24, accent: 0.46 }, dark: { muted: 0.32, accent: 0.5 } },
+      path: { spine: "knot", headMode: "viewport", headAt: 0.62, preDrawn: 0.08, tail: "all" },
+    },
+  ),
+  preset(
+    "switchback",
+    "Switchback",
+    "A calmer line drawn by your scroll. It crosses each gap on a gentle slope and turns past the screen's edge, so it enters from one side and leaves by the other, never sitting still under a paragraph.",
+    {
+      placement: "path",
+      amplitude: 64,
+      maxThick: 4,
+      alpha: { light: { muted: 0.34, accent: 0.6 }, dark: { muted: 0.4, accent: 0.62 } },
+      path: { spine: "switchback", headMode: "progress", headAt: 0.7, preDrawn: 0.02, tail: "all" },
+    },
+  ),
+  preset(
+    "train",
+    "Through the words, a train",
+    "A finite train of wave rides long diagonals behind the text: it enters, follows you, and leaves, so only a stretch of it is ever on screen.",
+    {
+      placement: "path",
+      amplitude: 80,
+      maxThick: 5,
+      alpha: { light: { muted: 0.22, accent: 0.42 }, dark: { muted: 0.3, accent: 0.48 } },
+      path: { spine: "through", headMode: "viewport", headAt: 0.7, preDrawn: 0, tail: "train", trainLength: 1600, headStyle: "swell" },
+    },
+  ),
+  preset(
     "thresholds",
-    "Thresholds (recommended)",
+    "Thresholds",
     "A small travelling wave in each gap between sections, scrolling away with the page. It never sits under words, and the next one peeking at the bottom of the screen is the invitation to keep going.",
     {
       placement: "seams",

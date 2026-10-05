@@ -5,12 +5,16 @@ import { useReducedMotionLive } from "@/components/soundtrack/useReducedMotionLi
 import { Capsule } from "./Capsule";
 import { createWaveEngine, type WaveEngine } from "./engine";
 import { PANEL_WIDTH, Panel } from "./Panel";
-import { DEFAULT_SETTINGS, PRESETS, type Placement, type ThemeName, type WaveSettings } from "./settings";
+import { PathLayer } from "./PathLayer";
+import { SECTION_KEYS } from "./spines";
+import { DEFAULT_SETTINGS, PRESETS, type PathSettings, type Placement, type ThemeName, type WaveSettings } from "./settings";
 
 // The lab's client shell: the settings, the wave layer and the panel. The
 // fixed placements live in one fixed stage at z 0 behind the content (z 10,
-// as on the site); the in-flow ones (seams, chapters) sit inside the content
-// at z -1, so they scroll with the page exactly and still paint behind it.
+// as on the site); the in-flow ones (path, seams, chapters) sit inside the
+// content at z -1, so they scroll with the page exactly and still paint
+// behind it. Each section's wrapper carries data-lab-section, the anchors the
+// path's spine is defined against.
 // The section wrappers and seam markers are always rendered, so switching
 // placement never remounts a section.
 
@@ -23,7 +27,14 @@ const readTheme = (): ThemeName => (document.documentElement.dataset.theme === "
 
 declare global {
   interface Window {
-    __waveLab?: { patch: (patch: Partial<WaveSettings>) => void; preset: (id: string) => void; get: () => WaveSettings; open: (open: boolean) => void; hold: (seconds: number | null) => void };
+    __waveLab?: {
+      patch: (patch: Partial<WaveSettings>) => void;
+      pathPatch: (patch: Partial<PathSettings>) => void;
+      preset: (id: string) => void;
+      get: () => WaveSettings;
+      open: (open: boolean) => void;
+      hold: (seconds: number | null) => void;
+    };
   }
 }
 
@@ -63,6 +74,7 @@ export function WaveLab({ band, sections, footer }: WaveLabProps) {
       get: () => settings,
       open: setOpen,
       hold: (seconds) => engine.hold(seconds),
+      pathPatch: (patch) => setSettings((current) => ({ ...current, path: { ...current.path, ...patch } })),
     };
   }, [engine, settings]);
 
@@ -99,12 +111,13 @@ export function WaveLab({ band, sections, footer }: WaveLabProps) {
       </div>
 
       <div className="relative z-10" style={{ marginRight: inset }}>
+        {placement === "path" && <PathLayer settings={settings} reduced={reduced} />}
         <main ref={mainRef} id="main" className="relative overflow-x-clip">
-          {band}
+          <div data-lab-section="band">{band}</div>
           {sections.map((section, i) => (
             <Fragment key={i}>
               <Seam on={placement === "seams"} index={i} engine={engine} settings={settings} gap={seamGaps[i]} />
-              <div className="relative">
+              <div data-lab-section={SECTION_KEYS[i + 1]} className="relative">
                 {section}
                 {placement === "chapters" && (
                   <InFlow engine={engine} kind="chapters" index={i} settings={settings} top={`calc(${position * 100}% - ${height / 2}px)`} />
@@ -114,7 +127,7 @@ export function WaveLab({ band, sections, footer }: WaveLabProps) {
           ))}
           <Seam on={placement === "seams"} index={sections.length} engine={engine} settings={settings} gap={seamGaps[sections.length]} />
         </main>
-        {footer}
+        <div data-lab-section="footer">{footer}</div>
       </div>
 
       {settings.capsule && <Capsule />}

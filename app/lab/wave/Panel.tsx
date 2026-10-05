@@ -1,6 +1,9 @@
 "use client";
 
-import { useState, useSyncExternalStore, type ReactNode } from "react";
+import { useState, useSyncExternalStore } from "react";
+import { Choice, Group, Slider, Toggle } from "./panelParts";
+import { PathControls } from "./PathControls";
+import { spineById } from "./spines";
 import { readTokens, textContrast, type Contrast, type ThemeTokens } from "./readout";
 import { LOOPS, PLACEMENTS, POSITION, PRESETS, RANGES, type ThemeName, type WaveSettings } from "./settings";
 
@@ -48,7 +51,8 @@ export function Panel(props: PanelProps) {
     edit({ alpha: { ...s.alpha, [props.theme]: { ...alpha, [key]: value } } });
 
   const copy = async () => {
-    const json = JSON.stringify(s, null, 2);
+    // A Path's spine goes out with it, in the page-relative terms of spines.ts.
+    const json = JSON.stringify(s.placement === "path" ? { ...s, spineDefinition: spineById(s.path.spine) } : s, null, 2);
     try {
       await navigator.clipboard.writeText(json);
       setCopied("Copied to the clipboard.");
@@ -112,10 +116,14 @@ export function Panel(props: PanelProps) {
         <p className="mt-1 text-xs leading-snug text-muted">{PLACEMENTS.find((p) => p.id === s.placement)?.note}</p>
       </Group>
 
-      <Group title="Loop">
-        <Choice options={LOOPS} value={s.loop} onChange={(next) => edit({ loop: next })} />
-        <p className="mt-1 text-xs leading-snug text-muted">{loop?.note}</p>
-      </Group>
+      {s.placement === "path" ? (
+        <PathControls path={s.path} onChange={(path) => edit({ path: { ...s.path, ...path } })} />
+      ) : (
+        <Group title="Loop">
+          <Choice options={LOOPS} value={s.loop} onChange={(next) => edit({ loop: next })} />
+          <p className="mt-1 text-xs leading-snug text-muted">{loop?.note}</p>
+        </Group>
+      )}
 
       <Group title="Music, simulated">
         <Toggle label="Music on" checked={s.music} onChange={(music) => edit({ music })} />
@@ -145,6 +153,8 @@ export function Panel(props: PanelProps) {
       </Group>
 
       <Group title="Motion">
+        {s.placement !== "path" && (
+          <>
         <Slider label="Loop period" unit="s" value={s.period} {...RANGES.period} onChange={(period) => edit({ period })} />
         <Slider
           label={loop?.usesSpeed ? "Speed" : "Speed (unused by this loop)"}
@@ -154,6 +164,8 @@ export function Panel(props: PanelProps) {
           onChange={(speed) => edit({ speed })}
         />
         <Slider label="Scroll influence" value={s.scrollInfluence} {...RANGES.scrollInfluence} onChange={(scrollInfluence) => edit({ scrollInfluence })} />
+          </>
+        )}
         <Toggle
           label={props.systemReduced ? "Reduced motion (on in the system)" : "Preview reduced motion"}
           checked={props.systemReduced || props.simReduced}
@@ -163,6 +175,8 @@ export function Panel(props: PanelProps) {
       </Group>
 
       <Group title="Place">
+        {s.placement !== "path" && (
+          <>
         <Slider
           label={position.label}
           unit={position.unit}
@@ -180,6 +194,8 @@ export function Panel(props: PanelProps) {
           onChange={(v) => edit({ stripHeight: { ...s.stripHeight, [s.placement]: v } })}
         />
         <Slider label="Edge fade" unit="of length" value={s.edgeFade} {...RANGES.edgeFade} onChange={(edgeFade) => edit({ edgeFade })} />
+          </>
+        )}
         <Toggle label="Show the music capsule" checked={s.capsule} onChange={(capsule) => edit({ capsule })} />
       </Group>
     </aside>
@@ -228,67 +244,5 @@ function Ratio({ label, contrast }: { label: string; contrast: Contrast }) {
         <div className="absolute -inset-y-1 w-px bg-foreground" style={{ left: pct(4.5) }} title="4.5 to 1" />
       </div>
     </div>
-  );
-}
-
-function Group({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section className="mt-5 border-t border-border pt-3">
-      <p className="mb-2 text-xs text-muted">{title}</p>
-      {children}
-    </section>
-  );
-}
-
-function Choice<T extends string>({ options, value, onChange }: { options: readonly { id: T; label: string }[]; value: T; onChange: (v: T) => void }) {
-  return (
-    <div className="flex flex-wrap gap-1">
-      {options.map((o) => (
-        <button
-          key={o.id}
-          type="button"
-          aria-pressed={o.id === value}
-          onClick={() => onChange(o.id)}
-          className={`rounded border px-2 py-0.5 text-xs ${o.id === value ? "border-accent bg-accent text-background" : "border-border"}`}
-        >
-          {o.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function Toggle({ label, checked, onChange, disabled }: { label: string; checked: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
-  return (
-    <label className="mt-1 flex items-center gap-2 text-xs">
-      <input type="checkbox" checked={checked} disabled={disabled} onChange={(e) => onChange(e.target.checked)} className="accent-accent" />
-      {label}
-    </label>
-  );
-}
-
-type SliderProps = { label: string; value: number; min: number; max: number; step: number; unit?: string; onChange: (v: number) => void };
-
-function Slider({ label, value, min, max, step, unit, onChange }: SliderProps) {
-  const digits = step >= 1 ? 0 : step >= 0.1 ? 1 : step >= 0.01 ? 2 : 3;
-  return (
-    <label className="mt-2 block text-xs">
-      <span className="flex justify-between">
-        <span>{label}</span>
-        <span className="tabular-nums text-muted">
-          {value.toFixed(digits)}
-          {unit ? ` ${unit}` : ""}
-        </span>
-      </span>
-      <input
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        className="mt-1 w-full accent-accent"
-      />
-    </label>
   );
 }
