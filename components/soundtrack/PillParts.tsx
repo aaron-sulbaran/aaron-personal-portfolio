@@ -34,15 +34,15 @@ type SlotProps = {
   before?: number;
   after?: number;
   block?: boolean;
-  hidden?: boolean; // aria-hidden
+  ariaHidden?: boolean;
   children: ReactNode;
 };
 
-export function PillSlot({ visible, maxWidth, reduce, ms = 280, before = 0, after = 0, block = false, hidden, children }: SlotProps) {
+export function PillSlot({ visible, maxWidth, reduce, ms = 280, before = 0, after = 0, block = false, ariaHidden, children }: SlotProps) {
   const display = block ? "block" : "flex";
   return (
     <span
-      aria-hidden={hidden}
+      aria-hidden={ariaHidden}
       style={{
         display,
         alignItems: "center",
