@@ -24,7 +24,7 @@ function readGreeted(): boolean {
   }
 }
 
-// The glass playback pill, docked at the bottom centre on the wave's line
+// The glass playback pill, docked at the bottom left on the wave's line
 // (lib/waveform/dock). From the band down it is there in every music state:
 // it condenses out of the band control the visitor pressed (usePillArrival),
 // lands open with one line for the state (PillLabel), then collapses to a
@@ -152,10 +152,10 @@ function PillInner({ reached }: { reached: boolean }) {
   const tip: CSSProperties = {
     ...glass,
     position: "absolute",
-    left: "50%",
+    left: 0,
     bottom: "calc(100% + 10px)",
     whiteSpace: "nowrap",
-    transform: hover.tip ? "translateX(-50%) translateY(0)" : "translateX(-50%) translateY(4px)",
+    transform: hover.tip ? "translateY(0)" : "translateY(4px)",
     opacity: hover.tip && preview ? 1 : 0,
     transition: `opacity 220ms ease, transform 220ms ${EASE}`,
     pointerEvents: "none",
@@ -178,7 +178,8 @@ function PillInner({ reached }: { reached: boolean }) {
           bottom: DOCK.baselineFromBottomPx - DOCK.capsulePx / 2,
           zIndex: 45,
           display: "flex",
-          justifyContent: "center",
+          justifyContent: "flex-start",
+          paddingLeft: DOCK.insetPx,
           pointerEvents: "none",
           opacity: present ? 1 : 0,
         }}

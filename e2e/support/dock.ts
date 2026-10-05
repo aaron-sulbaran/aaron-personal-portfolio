@@ -119,16 +119,17 @@ export async function dockLanded(page: Page) {
   });
 }
 
-// Where the capsule sits, against where the dock says it should: the
-// viewport's horizontal centre and the horizon's baseline (the probe's strip).
+// Where the capsule sits, against where the dock says it should: its left
+// edge DOCK.insetPx from the viewport's left, its centre on the horizon's
+// baseline (the probe's strip).
 export async function dockGeometry(page: Page) {
   return page.evaluate(() => {
     const r = document.querySelector("[data-pill] .pill-hit")!.getBoundingClientRect();
     return {
+      left: r.left,
       x: r.left + r.width / 2,
       y: r.top + r.height / 2,
       height: r.height,
-      centre: document.documentElement.clientWidth / 2,
       baseline: window.__waveProbe!.strip()!.baseline,
     };
   });
