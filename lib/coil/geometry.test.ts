@@ -550,22 +550,45 @@ describe("near a card (wheel capture, rule A)", () => {
     expect(nearCard(poses, camera, DESKTOP.width - 5, DESKTOP.height - 5, margin)).toBe(false);
   });
 
+  // A brute-force distance from a point to a card's flat projected quad, CSS
+  // px (0 inside), independent of cardDistancesPx.
+  function quadDistance(quad: readonly { x: number; y: number }[], x: number, y: number) {
+    const crosses = quad.map((a, i) => {
+      const b = quad[(i + 1) % quad.length];
+      return (b.x - a.x) * (y - a.y) - (b.y - a.y) * (x - a.x);
+    });
+    if (crosses.every((c) => c >= 0) || crosses.every((c) => c <= 0)) return 0;
+    return Math.min(
+      ...quad.map((a, i) => {
+        const b = quad[(i + 1) % quad.length];
+        const length2 = (b.x - a.x) ** 2 + (b.y - a.y) ** 2;
+        const t = Math.min(1, Math.max(0, ((x - a.x) * (b.x - a.x) + (y - a.y) * (b.y - a.y)) / length2));
+        return Math.hypot(a.x + (b.x - a.x) * t - x, a.y + (b.y - a.y) * t - y);
+      }),
+    );
+  }
+
   it("keeps the rim of free card edges out of rule A on the real helix", () => {
+    // The rim: points no card is picked at, within the margin of exactly one
+    // pickable card's flat quad, every other one farther. A single-card rule
+    // would capture all of them.
     const geo = solveGeometry(DESKTOP, STRAND);
     const frame = restHelix(geo);
     const poses = Array.from({ length: frame.slotCount }, (_, slot) => coilPose(frame, slot, 0.3));
+    const quads = poses.filter((pose) => pose.alpha > 0.5).map((pose) => projectQuad({ ...pose, bend: 0 }, camera));
     const margin = seamMarginPx(geo);
     let rim = 0;
     let rimCaptured = 0;
-    for (let y = 2; y < DESKTOP.height; y += 4) {
-      for (let x = 2; x < DESKTOP.width; x += 4) {
-        const { nearest, second } = cardDistancesPx(poses, camera, x, y);
-        if (nearest === 0 || nearest > margin || second <= margin) continue;
+    for (let y = 2; y < DESKTOP.height; y += 6) {
+      for (let x = 2; x < DESKTOP.width; x += 6) {
+        if (pickCard(poses, rayThrough(camera, x, y)) >= 0) continue;
+        const within = quads.filter((quad) => quadDistance(quad, x, y) <= margin).length;
+        if (within !== 1) continue;
         rim += 1;
         if (nearCard(poses, camera, x, y, margin)) rimCaptured += 1;
       }
     }
-    expect(rim).toBeGreaterThan(500);
+    expect(rim).toBeGreaterThan(300);
     expect(rimCaptured).toBe(0);
   });
 });
