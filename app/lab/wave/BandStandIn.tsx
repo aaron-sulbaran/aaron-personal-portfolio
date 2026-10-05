@@ -9,7 +9,7 @@ export function BandStandIn() {
   return (
     <section aria-label={c.ariaLabel} className="relative w-full px-[6vw] pb-6 pt-36 md:min-h-[clamp(240px,30vh,340px)] md:pt-44">
       <div className="mx-auto max-w-[1240px]">
-        <div className="w-fit max-w-full">
+        <div data-wave-avoid className="w-fit max-w-full">
           <div className="flex flex-wrap items-baseline gap-x-7 gap-y-3">
             <h2 className="font-display text-[clamp(1.375rem,2vw,1.75rem)] leading-[1.1] text-foreground">{c.line}</h2>
             <div className="flex items-baseline gap-6">

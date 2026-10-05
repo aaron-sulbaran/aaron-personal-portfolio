@@ -50,7 +50,7 @@ export const POSITION: Record<Placement, { label: string; min: number; max: numb
   horizon: { label: "Baseline above bottom", min: 24, max: 240, step: 1, unit: "px" },
   seams: { label: "Offset from seam", min: -120, max: 120, step: 1, unit: "px" },
   chapters: { label: "Depth in section", min: 0, max: 1, step: 0.01, unit: "of section" },
-  rail: { label: "Horizontal position", min: 0, max: 1, step: 0.005, unit: "of width" },
+  rail: { label: "Centre from right edge", min: 16, max: 600, step: 1, unit: "px" },
 };
 
 export const RANGES = {
@@ -68,11 +68,11 @@ export const RANGES = {
 };
 
 const basePositions: Record<Placement, number> = {
-  backdrop: 0.6,
+  backdrop: 0.74,
   horizon: 72,
   seams: 0,
   chapters: 0.55,
-  rail: 0.955,
+  rail: 72,
 };
 
 const baseHeights: Record<Placement, number> = {
@@ -89,9 +89,9 @@ const base: WaveSettings = {
   music: false,
   intensity: 0.8,
   beat: true,
-  alpha: { light: { muted: 0.22, accent: 0.42 }, dark: { muted: 0.26, accent: 0.48 } },
-  amplitude: 96,
-  maxThick: 5,
+  alpha: { light: { muted: 0.24, accent: 0.42 }, dark: { muted: 0.34, accent: 0.5 } },
+  amplitude: 120,
+  maxThick: 6,
   dotScale: 1,
   spacing: 13,
   speed: 40,
@@ -120,34 +120,52 @@ const preset = (id: string, label: string, why: string, patch: Partial<WaveSetti
 
 export const PRESETS: Preset[] = [
   preset(
-    "tide",
-    "Tide (recommended)",
-    "Fixed backdrop below the reading line, breathing in place. Nothing crosses the text, so nothing pulls the eye sideways while reading.",
-    {},
+    "thresholds",
+    "Thresholds (recommended)",
+    "A small travelling wave in each gap between sections, scrolling away with the page. It never sits under words, and the next one peeking at the bottom of the screen is the invitation to keep going.",
+    {
+      placement: "seams",
+      loop: "travel",
+      period: 9,
+      speed: 28,
+      amplitude: 70,
+      maxThick: 4,
+      edgeFade: 0.3,
+      alpha: { light: { muted: 0.34, accent: 0.6 }, dark: { muted: 0.38, accent: 0.62 } },
+    },
   ),
   preset(
-    "thresholds",
-    "Thresholds",
-    "A small travelling wave in each gap between sections. The page scrolls it away; the drift runs left to right, the way the eye reads.",
-    { placement: "seams", loop: "travel", period: 9, speed: 28, amplitude: 70, maxThick: 4, edgeFade: 0.3, alpha: { light: { muted: 0.34, accent: 0.6 }, dark: { muted: 0.38, accent: 0.62 } } },
+    "tide",
+    "Tide",
+    "Fixed backdrop in the lower third, breathing in place. Text rises through it as you read; nothing crosses sideways, so nothing tugs the eye off the line.",
+    { intensity: 0.55, maxThick: 5 },
   ),
   preset(
     "signature",
     "Signature",
     "The backdrop draws itself on, holds, and dissolves. It never simply persists; it is gone for a beat every cycle.",
-    { loop: "draw", period: 16, speed: 260, alpha: { light: { muted: 0.24, accent: 0.46 }, dark: { muted: 0.28, accent: 0.5 } } },
+    { loop: "draw", period: 16, speed: 260, intensity: 0.55, alpha: { light: { muted: 0.24, accent: 0.46 }, dark: { muted: 0.34, accent: 0.5 } } },
   ),
   preset(
     "horizon",
     "Horizon, held",
     "The strip as built, minus the duck and the conveyor: one constant alpha, a calm standing breath, the capsule on its line.",
-    { placement: "horizon", amplitude: 44, maxThick: 6, edgeFade: 0.1, alpha: { light: { muted: 0.3, accent: 0.55 }, dark: { muted: 0.34, accent: 0.6 } } },
+    { placement: "horizon", amplitude: 44, maxThick: 6, edgeFade: 0.1, alpha: { light: { muted: 0.3, accent: 0.55 }, dark: { muted: 0.36, accent: 0.6 } } },
   ),
   preset(
     "chapters",
     "Chapters",
-    "One quiet wave behind each section that pulses every few seconds and scrolls away with it, so each section carries its own.",
-    { placement: "chapters", loop: "pulse", period: 7, speed: 180, amplitude: 90, edgeFade: 0.3, alpha: { light: { muted: 0.2, accent: 0.4 }, dark: { muted: 0.24, accent: 0.46 } } },
+    "One quiet wave behind each section that swells every few seconds and scrolls away with it, so each section carries its own.",
+    {
+      placement: "chapters",
+      loop: "pulse",
+      period: 7,
+      speed: 180,
+      amplitude: 90,
+      edgeFade: 0.3,
+      intensity: 0.55,
+      alpha: { light: { muted: 0.2, accent: 0.4 }, dark: { muted: 0.3, accent: 0.46 } },
+    },
   ),
 ];
 

@@ -1,11 +1,11 @@
 "use client";
 
-import { Fragment, useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
+import { Fragment, useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode, type RefObject } from "react";
 import { useReducedMotionLive } from "@/components/soundtrack/useReducedMotionLive";
 import { Capsule } from "./Capsule";
 import { createWaveEngine, type WaveEngine } from "./engine";
 import { PANEL_WIDTH, Panel } from "./Panel";
-import { DEFAULT_SETTINGS, type Placement, type ThemeName, type WaveSettings } from "./settings";
+import { DEFAULT_SETTINGS, PRESETS, type Placement, type ThemeName, type WaveSettings } from "./settings";
 
 // The lab's client shell: the settings, the wave layer and the panel. The
 // fixed placements live in one fixed stage at z 0 behind the content (z 10,
@@ -20,6 +20,12 @@ const subscribeTheme = (onChange: () => void) => {
   return () => observer.disconnect();
 };
 const readTheme = (): ThemeName => (document.documentElement.dataset.theme === "dark" ? "dark" : "light");
+
+declare global {
+  interface Window {
+    __waveLab?: { patch: (patch: Partial<WaveSettings>) => void; preset: (id: string) => void; get: () => WaveSettings; open: (open: boolean) => void; hold: (seconds: number | null) => void };
+  }
+}
 
 interface WaveLabProps {
   band: ReactNode;
@@ -45,9 +51,27 @@ export function WaveLab({ band, sections, footer }: WaveLabProps) {
     engine.update(settings, reduced);
   }, [engine, settings, reduced]);
 
+  // A handle for driving the lab from the console or a test browser:
+  // window.__waveLab.patch({ placement: "seams" }), .preset("thresholds").
+  useEffect(() => {
+    window.__waveLab = {
+      patch: (patch) => setSettings((current) => ({ ...current, ...patch })),
+      preset: (id) => {
+        const found = PRESETS.find((p) => p.id === id);
+        if (found) setSettings(found.values);
+      },
+      get: () => settings,
+      open: setOpen,
+      hold: (seconds) => engine.hold(seconds),
+    };
+  }, [engine, settings]);
+
   const setTheme = (next: ThemeName) => {
     document.documentElement.dataset.theme = next;
   };
+
+  const mainRef = useRef<HTMLElement | null>(null);
+  const seamGaps = useSeamGaps(mainRef, settings.placement === "seams");
 
   const inset = open ? PANEL_WIDTH : 0;
   const { placement } = settings;
@@ -68,18 +92,18 @@ export function WaveLab({ band, sections, footer }: WaveLabProps) {
           </div>
         )}
         {placement === "rail" && (
-          <div className="absolute inset-y-0" style={{ left: `calc(${position * 100}% - ${height / 2}px)`, width: height, ...maskFor(settings, "rail") }}>
+          <div className="absolute inset-y-0" style={{ right: position - height / 2, width: height, ...maskFor(settings, "rail") }}>
             <LabCanvas engine={engine} kind="rail" index={0} />
           </div>
         )}
       </div>
 
       <div className="relative z-10" style={{ marginRight: inset }}>
-        <main id="main" className="relative overflow-x-clip">
+        <main ref={mainRef} id="main" className="relative overflow-x-clip">
           {band}
           {sections.map((section, i) => (
             <Fragment key={i}>
-              <Seam on={placement === "seams"} index={i} engine={engine} settings={settings} />
+              <Seam on={placement === "seams"} index={i} engine={engine} settings={settings} gap={seamGaps[i]} />
               <div className="relative">
                 {section}
                 {placement === "chapters" && (
@@ -88,7 +112,7 @@ export function WaveLab({ band, sections, footer }: WaveLabProps) {
               </div>
             </Fragment>
           ))}
-          <Seam on={placement === "seams"} index={sections.length} engine={engine} settings={settings} />
+          <Seam on={placement === "seams"} index={sections.length} engine={engine} settings={settings} gap={seamGaps[sections.length]} />
         </main>
         {footer}
       </div>
@@ -111,22 +135,69 @@ export function WaveLab({ band, sections, footer }: WaveLabProps) {
   );
 }
 
-// A zero-height marker at the boundary between two sections.
-function Seam({ on, index, engine, settings }: { on: boolean; index: number; engine: WaveEngine; settings: WaveSettings }) {
-  const height = settings.stripHeight.seams;
+// A zero-height marker at the boundary between two sections. The wave
+// centres itself in the measured gap between the two sections' words (the
+// offset slider nudges it from there) and never grows taller than the gap.
+function Seam({ on, index, engine, settings, gap }: { on: boolean; index: number; engine: WaveEngine; settings: WaveSettings; gap?: SeamGap }) {
+  const height = Math.min(settings.stripHeight.seams, gap ? Math.max(60, gap.span - 24) : Infinity);
+  const centre = (gap?.centre ?? 0) + settings.position.seams;
   return (
-    <div aria-hidden="true" className="relative h-0">
-      {on && <InFlow engine={engine} kind="seams" index={index} settings={settings} top={`${settings.position.seams - height / 2}px`} />}
+    <div aria-hidden="true" data-seam className="relative h-0">
+      {on && <InFlow engine={engine} kind="seams" index={index} settings={settings} height={height} top={`${centre - height / 2}px`} />}
     </div>
   );
 }
 
-function InFlow({ engine, kind, index, settings, top }: { engine: WaveEngine; kind: Placement; index: number; settings: WaveSettings; top: string }) {
+interface SeamGap {
+  centre: number; // px from the marker to the middle of the gap
+  span: number; // px of clear air between the two sections' words
+}
+
+// Measures each seam's gap from the [data-wave-avoid] boxes the real sections
+// already carry, on resize only (and once more after the reveals settle).
+function useSeamGaps(mainRef: RefObject<HTMLElement | null>, on: boolean): SeamGap[] {
+  const [gaps, setGaps] = useState<SeamGap[]>([]);
+  useEffect(() => {
+    const main = mainRef.current;
+    if (!on || !main) return;
+    const measure = () => setGaps(Array.from(main.querySelectorAll<HTMLElement>("[data-seam]"), measureGap));
+    const observer = new ResizeObserver(measure);
+    observer.observe(main);
+    const late = window.setTimeout(measure, 1500);
+    return () => {
+      observer.disconnect();
+      window.clearTimeout(late);
+    };
+  }, [mainRef, on]);
+  return gaps;
+}
+
+function measureGap(marker: HTMLElement): SeamGap {
+  const at = marker.getBoundingClientRect().top;
+  const before = marker.previousElementSibling;
+  const after = marker.nextElementSibling ?? marker.parentElement?.nextElementSibling ?? null;
+  let lastWords = -Infinity;
+  before?.querySelectorAll<HTMLElement>("[data-wave-avoid]").forEach((el) => {
+    // An element whose words overhang its box (Up to now's offset column) says so.
+    const overhang = Math.max(0, Number(el.dataset.waveAvoidPad || 0) - 20);
+    lastWords = Math.max(lastWords, el.getBoundingClientRect().bottom + overhang);
+  });
+  const top = Number.isFinite(lastWords) ? lastWords : at;
+  let firstWords = Infinity;
+  after?.querySelectorAll<HTMLElement>("[data-wave-avoid]").forEach((el) => {
+    firstWords = Math.min(firstWords, el.getBoundingClientRect().top);
+  });
+  const bottom = Number.isFinite(firstWords) ? firstWords : at;
+  return { centre: (top + bottom) / 2 - at, span: Math.max(0, bottom - top) };
+}
+
+function InFlow(props: { engine: WaveEngine; kind: Placement; index: number; settings: WaveSettings; top: string; height?: number }) {
+  const { engine, kind, index, settings, top } = props;
   return (
     <div
       aria-hidden="true"
       className="pointer-events-none absolute inset-x-0"
-      style={{ top, height: settings.stripHeight[kind], zIndex: -1, ...maskFor(settings, kind) }}
+      style={{ top, height: props.height ?? settings.stripHeight[kind], zIndex: -1, ...maskFor(settings, kind) }}
     >
       <LabCanvas engine={engine} kind={kind} index={index} />
     </div>

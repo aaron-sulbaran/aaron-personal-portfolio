@@ -84,30 +84,33 @@ export function sampleLoop(input: LoopInput, out: LoopOut): void {
       // it morphs from one shape to the other and back, once per period.
       const s1 = shape((TAU * x) / standingLambda);
       const s2 = shape((TAU * x) / (standingLambda * 0.63) + 1.7);
-      d = 0.3 * (s1 * Math.cos(theta) + 0.55 * s2 * Math.sin(theta));
-      m = FLOOR + 0.03 + 0.09 * (0.5 + 0.5 * Math.cos(2 * theta)) * (0.55 + 0.45 * Math.abs(s1));
+      d = 0.26 * (s1 * Math.cos(theta) + 0.55 * s2 * Math.sin(theta));
+      // The body: thick where a slow profile swells, thickest at the two
+      // moments per period the line is at full stretch, never a bare line.
+      const body = 0.5 + 0.5 * Math.sin((TAU * x) / (standingLambda * 1.3) + 0.4);
+      m = FLOOR + 0.05 + 0.17 * body * (0.72 + 0.28 * Math.cos(2 * theta));
     } else if (kind === "travel") {
       const a = TAU * (x / travelLambda - tau);
       // The thickness rides a second, shorter train at a different speed
       // (still one whole turn per period), so the crests and the fuzz slide
       // past each other instead of moving as one rigid slab.
       const b = TAU * (x / (travelLambda * 0.55) - tau);
-      d = 0.28 * shape(a) * (0.86 + 0.14 * Math.cos(theta));
-      m = FLOOR + 0.03 + 0.1 * (0.5 + 0.5 * Math.sin(b)) ** 2;
+      d = 0.26 * shape(a) * (0.86 + 0.14 * Math.cos(theta));
+      m = FLOOR + 0.05 + 0.17 * (0.5 + 0.5 * Math.sin(b)) ** 2;
     } else if (kind === "pulse") {
       const calm = shape(TAU * (x / (L / 1.2) - tau));
       d = 0.08 * calm;
-      m = FLOOR + 0.025;
+      m = FLOOR + 0.09;
       const g = Math.exp(-(((x - pulseCentre) / pulseWidth) ** 2));
       if (g > 1e-3) {
         const carrier = Math.sin((TAU * (x - pulseCentre)) / 140);
-        d += 0.5 * g * carrier;
+        d += 0.42 * g * carrier;
         m += 0.2 * g;
       }
     } else if (kind === "draw") {
       const a = TAU * (x / (L / 1.3) - tau);
       d = 0.26 * shape(a);
-      m = FLOOR + 0.03 + 0.07 * (0.5 + 0.5 * Math.sin(a * 1.7 + 0.6));
+      m = FLOOR + 0.05 + 0.15 * (0.5 + 0.5 * Math.sin(a * 1.7 + 0.6));
       const { draw, hold, dissolve } = phases;
       if (tau < draw) {
         const front = (tau / draw) * (1 + 2 * soft) - soft;
@@ -129,7 +132,7 @@ export function sampleLoop(input: LoopInput, out: LoopOut): void {
       const a = TAU * (r / lambda - tau);
       const falloff = 1 - 0.55 * clamp01(r / (L / 2));
       d = 0.3 * shape(a) * falloff;
-      m = FLOOR + 0.03 + 0.09 * (0.5 + 0.5 * Math.sin(a)) * falloff;
+      m = FLOOR + 0.05 + 0.15 * (0.5 + 0.5 * Math.sin(a)) * falloff;
     }
 
     mag[i] = m;

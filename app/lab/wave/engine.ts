@@ -48,6 +48,7 @@ export interface WaveEngine {
   update(settings: WaveSettings, reduced: boolean): void;
   attach(canvas: HTMLCanvasElement, kind: Placement, index: number): () => void;
   stop(): void; // restartable: React's dev double effect runs stop, then start again
+  hold(seconds: number | null): void; // pin the clock (a still at a known phase); null runs it again
 }
 
 const isVisible = (s: Surface) => s.visible;
@@ -68,6 +69,7 @@ export function createWaveEngine(initial: WaveSettings): WaveEngine {
   let last = 0;
   let clock = 0;
   let music = 0;
+  let held: number | null = null;
   let theme: ThemeName = "light";
   let lastScrollY = 0;
   const surfaces: Surface[] = [];
@@ -175,7 +177,7 @@ export function createWaveEngine(initial: WaveSettings): WaveEngine {
     if (last && t - last < FRAME_MS) return;
     const dt = last ? Math.min((t - last) / 1000, MAX_STEP_S) : 1 / 60;
     last = t;
-    clock += dt;
+    clock = held ?? clock + dt;
     const target = settings.music ? 1 : 0;
     // The real field's reactive rates: springs up at 0.05, falls at 0.11.
     music = easeToward(music, target, target > music ? 0.05 : 0.11, dt);
@@ -284,6 +286,9 @@ export function createWaveEngine(initial: WaveSettings): WaveEngine {
         resizeObserver?.unobserve(host);
         surface.io?.disconnect();
       };
+    },
+    hold(seconds) {
+      held = seconds;
     },
     stop() {
       if (!started) return;

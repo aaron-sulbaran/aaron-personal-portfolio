@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useSyncExternalStore, type ReactNode } from "react";
-import { readTokens, textContrast, type ThemeTokens } from "./readout";
+import { readTokens, textContrast, type Contrast, type ThemeTokens } from "./readout";
 import { LOOPS, PLACEMENTS, POSITION, PRESETS, RANGES, type ThemeName, type WaveSettings } from "./settings";
 
 // The lab's controls: plain chrome, docked to the right edge so it never sits
@@ -191,7 +191,7 @@ function Readout({ tokens, settings }: { tokens: Record<ThemeName, ThemeTokens> 
   return (
     <div className="mt-3 rounded border border-border p-2">
       <p className="text-xs leading-snug text-muted">
-        Text over the most inked dot pixel (a dot&apos;s centre), worst of the muted and accent dots. Information, not a gate.
+        Text over the most inked dot pixel (a dot&apos;s centre). Accent dots only appear on loud music. The line marks 4.5 to 1. Information, not a gate.
       </p>
       {(["light", "dark"] as const).map((theme) => (
         <div key={theme} className="mt-2">
@@ -206,7 +206,7 @@ function Readout({ tokens, settings }: { tokens: Record<ThemeName, ThemeTokens> 
 
 const SCALE_MAX = 8;
 
-function Ratio({ label, contrast }: { label: string; contrast: { bare: number; worst: number } }) {
+function Ratio({ label, contrast }: { label: string; contrast: Contrast }) {
   const pct = (v: number) => `${(Math.min(v, SCALE_MAX) / SCALE_MAX) * 100}%`;
   const pass = contrast.worst >= 4.5;
   return (
@@ -214,9 +214,12 @@ function Ratio({ label, contrast }: { label: string; contrast: { bare: number; w
       <div className="flex justify-between text-xs">
         <span className="text-muted">{label}</span>
         <span className={pass ? "text-foreground" : "text-accent"}>
-          {contrast.worst.toFixed(2)} to 1 <span className="text-muted">(bare {contrast.bare.toFixed(2)})</span>
+          {contrast.worst.toFixed(2)} to 1
         </span>
       </div>
+      <p className="text-[11px] tabular-nums text-muted">
+        over a muted dot {contrast.overMuted.toFixed(2)}, over an accent dot {contrast.overAccent.toFixed(2)}, bare {contrast.bare.toFixed(2)}
+      </p>
       <div className="relative mt-1 h-1.5 rounded-full bg-border">
         <div className="absolute inset-y-0 left-0 rounded-full bg-muted" style={{ width: pct(contrast.worst) }} />
         <div className="absolute -inset-y-1 w-px bg-foreground" style={{ left: pct(4.5) }} title="4.5 to 1" />
