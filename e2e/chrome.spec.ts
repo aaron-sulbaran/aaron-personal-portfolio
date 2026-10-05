@@ -22,7 +22,9 @@ test("chrome: the Menu pill opens into the panel and closes again", async ({ pag
   await expect(page.getByRole("button", { name: "Open menu" })).toHaveAttribute("aria-expanded", "false");
 });
 
-test("chrome: the music note toggles the soundtrack and says what it will do", async ({ page }) => {
+test("chrome: the music note toggles the soundtrack and says what it will do", async ({ page, browserName }) => {
+  // Pressing the note starts playback, and WebKit has no mute switch.
+  test.skip(browserName === "webkit", "WebKit cannot be launched muted");
   await openHome(page);
   // The note is the toggle (aria-pressed); the locator requires the attribute so only the note matches.
   const toggle = (name: string) => page.locator("button[aria-pressed]").and(page.getByRole("button", { name }));
