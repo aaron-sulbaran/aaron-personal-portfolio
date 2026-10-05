@@ -455,6 +455,82 @@ export function pickCard(poses: readonly CardPose[], ray: Ray, minAlpha = 0.5, a
   return best;
 }
 
+// ---------------------------------------------------------------- near a card
+
+// Scratch for one card's four projected corners (x, y pairs): the near-card
+// test runs on wheel events and pointer moves and allocates nothing per card.
+const cornerScratch = new Float64Array(8);
+const CORNER_SIGNS = [-1, 1, 1, 1, 1, -1, -1, -1] as const; // card order: TL, TR, BR, BL
+
+// The on-screen distance, CSS px, from a canvas point to the nearest card
+// picking could pick there (alpha over `minAlpha`), measured to the card's
+// flat footprint, the quad pickCard tests: 0 on a card, Infinity with none.
+// Stops early once a card is within `stopAtPx`.
+export function cardDistancePx(
+  poses: readonly CardPose[],
+  camera: Camera,
+  x: number,
+  y: number,
+  minAlpha = 0.5,
+  aspect: number = COIL.cardAspect,
+  stopAtPx = 0,
+) {
+  const t = Math.tan((camera.fovDeg * DEG) / 2);
+  const ratio = camera.width / camera.height;
+  let best = Infinity;
+  for (let i = 0; i < poses.length; i++) {
+    const pose = poses[i];
+    if (pose.alpha <= minAlpha) continue;
+    const { position: p, basis: b, scale } = pose;
+    for (let k = 0; k < 4; k++) {
+      const sx = (CORNER_SIGNS[k * 2] * aspect * scale) / 2;
+      const sy = (CORNER_SIGNS[k * 2 + 1] * scale) / 2;
+      const wx = p[0] + b.x[0] * sx + b.y[0] * sy;
+      const wy = p[1] + b.x[1] * sx + b.y[1] * sy;
+      const depth = camera.distance - (p[2] + b.x[2] * sx + b.y[2] * sy);
+      cornerScratch[k * 2] = ((wx / (depth * t * ratio) + 1) / 2) * camera.width;
+      cornerScratch[k * 2 + 1] = ((1 - wy / (depth * t)) / 2) * camera.height;
+    }
+    let positive = 0;
+    let negative = 0;
+    let edge = Infinity;
+    for (let k = 0; k < 4; k++) {
+      const ax = cornerScratch[k * 2];
+      const ay = cornerScratch[k * 2 + 1];
+      const ex = cornerScratch[((k + 1) % 4) * 2] - ax;
+      const ey = cornerScratch[((k + 1) % 4) * 2 + 1] - ay;
+      const cross = ex * (y - ay) - ey * (x - ax);
+      if (cross > 0) positive += 1;
+      else if (cross < 0) negative += 1;
+      const along = Math.min(1, Math.max(0, ((x - ax) * ex + (y - ay) * ey) / (ex * ex + ey * ey || 1)));
+      edge = Math.min(edge, Math.hypot(ax + ex * along - x, ay + ey * along - y));
+    }
+    const distance = positive === 0 || negative === 0 ? 0 : edge;
+    if (distance < best) best = distance;
+    if (best <= stopAtPx) return best;
+  }
+  return best;
+}
+
+// Wheel capture's rule A: the canvas point is on a card picking could pick,
+// or within `marginPx` of one (the seam between two adjacent cards).
+export function nearCard(
+  poses: readonly CardPose[],
+  camera: Camera,
+  x: number,
+  y: number,
+  marginPx: number,
+  minAlpha = 0.5,
+  aspect: number = COIL.cardAspect,
+) {
+  return cardDistancePx(poses, camera, x, y, minAlpha, aspect, marginPx) <= marginPx;
+}
+
+// The seam margin on this pane, CSS px.
+export function seamMarginPx(geo: CoilGeometry, c: CoilConstants = COIL) {
+  return c.capture.seamCards * geo.cardPx;
+}
+
 // ---------------------------------------------------------------- silhouette
 
 // The helix's projected hull: its screen axis (a point and a unit direction)
