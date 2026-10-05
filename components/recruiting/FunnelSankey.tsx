@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import { sankey, sankeyLeft, sankeyLinkHorizontal, type SankeyLink, type SankeyNode } from "d3-sankey";
 import { siteContent } from "@/lib/content";
 import { summarizeCompanies } from "@/lib/recruiting/companies";
@@ -62,8 +62,12 @@ function flowDetail(byLane: Partial<Record<Lane, number>>, referred: number): st
 }
 
 interface Tip {
+  // Position relative to whatever element the tooltip is drawn in.
   x: number;
   y: number;
+  // The pointer in viewport coordinates, for a host that draws it elsewhere.
+  clientX: number;
+  clientY: number;
   title: string;
   detail: string;
   companies: string[];
@@ -142,16 +146,40 @@ export function FunnelSankey({ funnel }: { funnel: Funnel }) {
 // Scaling stops at MIN_SCALE so labels stay readable (12px renders near 9px);
 // past that the card scrolls sideways, with a fade on the right edge until
 // the end is reached.
+//
+// When it scrolls, the tooltip is drawn here, outside the scroll area, so it
+// is sized and flipped against the visible width and never clipped.
 const DESIGN_WIDTH = NARROW;
 const MIN_SCALE = 0.72;
+// Overflow smaller than this is not worth a scroll; the chart shrinks instead.
+const MIN_OVERFLOW = 12;
 const EDGE_FADE = "linear-gradient(to right, #000 calc(100% - 40px), transparent)";
 
 function ScaledSankey({ funnel, width }: { funnel: Funnel; width: number }) {
   const fit = width / DESIGN_WIDTH;
-  const scale = Math.min(1, Math.max(MIN_SCALE, fit));
-  const scrolls = fit < MIN_SCALE;
-  const [atEnd, setAtEnd] = useState(false);
+  const scrolls = DESIGN_WIDTH * MIN_SCALE - width > MIN_OVERFLOW;
+  const scale = scrolls ? MIN_SCALE : Math.min(1, fit);
+  const host = useRef<HTMLDivElement>(null);
+  const [tip, setTip] = useState<{ tip: Tip; height: number } | null>(null);
   if (!scrolls) return <SankeyChart funnel={funnel} width={DESIGN_WIDTH} scale={scale} />;
+  const showTip = (next: Tip | null) => {
+    const box = host.current?.getBoundingClientRect();
+    if (!next || !box) return setTip(null);
+    setTip({ tip: { ...next, x: next.clientX - box.left, y: next.clientY - box.top }, height: box.height });
+  };
+  return (
+    <div ref={host} className="relative">
+      {/* Keyed by width: a resize or rotation starts again at the left, fade on. */}
+      <ScrollArea key={width}>
+        <SankeyChart funnel={funnel} width={DESIGN_WIDTH} scale={scale} onTip={showTip} />
+      </ScrollArea>
+      {tip && <FlowTooltip tip={tip.tip} width={width} height={tip.height} />}
+    </div>
+  );
+}
+
+function ScrollArea({ children }: { children: ReactNode }) {
+  const [atEnd, setAtEnd] = useState(false);
   return (
     <div
       className="-mx-4 overflow-x-auto overscroll-x-contain px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
@@ -161,13 +189,28 @@ function ScaledSankey({ funnel, width }: { funnel: Funnel; width: number }) {
         setAtEnd(el.scrollLeft + el.clientWidth >= el.scrollWidth - 4);
       }}
     >
-      <SankeyChart funnel={funnel} width={DESIGN_WIDTH} scale={scale} />
+      {children}
     </div>
   );
 }
 
-function SankeyChart({ funnel, width, scale = 1 }: { funnel: Funnel; width: number; scale?: number }) {
-  const [hover, setHover] = useState<Tip | null>(null);
+function SankeyChart({
+  funnel,
+  width,
+  scale = 1,
+  onTip,
+}: {
+  funnel: Funnel;
+  width: number;
+  scale?: number;
+  // Given, the chart reports its tooltip instead of drawing it.
+  onTip?: (tip: Tip | null) => void;
+}) {
+  const [hover, setHoverState] = useState<Tip | null>(null);
+  const setHover = (next: Tip | null) => {
+    setHoverState(next);
+    onTip?.(next);
+  };
   const [focus, setFocus] = useState<string | null>(null);
   const applied = funnel.nodes.find((n) => n.id === "stage:applied")?.count ?? 0;
 
@@ -255,6 +298,8 @@ function SankeyChart({ funnel, width, scale = 1 }: { funnel: Funnel; width: numb
               setHover({
                 x: e.clientX - box.left,
                 y: e.clientY - box.top,
+                clientX: e.clientX,
+                clientY: e.clientY,
                 title: `${nodeLabel(s)} ${copy.flowTo} ${nodeLabel(t)}: ${link.value}`,
                 detail: flowDetail(link.byLane, link.referred),
                 companies: link.companies,
@@ -302,6 +347,8 @@ function SankeyChart({ funnel, width, scale = 1 }: { funnel: Funnel; width: numb
               setHover({
                 x: e.clientX - box.left,
                 y: e.clientY - box.top,
+                clientX: e.clientX,
+                clientY: e.clientY,
                 title: `${label}: ${node.count}${share}`,
                 detail: node.referred ? copy.referredCount(node.referred) : "",
                 companies: node.companies,
@@ -359,7 +406,7 @@ function SankeyChart({ funnel, width, scale = 1 }: { funnel: Funnel; width: numb
         </g>
       </svg>
 
-      {hover && <FlowTooltip tip={hover} width={width * scale} height={height * scale} />}
+      {hover && !onTip && <FlowTooltip tip={hover} width={width * scale} height={height * scale} />}
     </div>
   );
 }
