@@ -453,7 +453,7 @@ test("dock: unanswered, the pill arrives as \"Music?\" with no label and nothing
   const texts = new Set(samples.filter((s) => !s.inert).map((s) => s.text));
   expect([...texts], "the pill's text from its arrival on").toEqual([S.capsuleUnanswered]);
   // One click is a yes: the capsule's name is its visible text, then the invitation.
-  await expect(page.locator(CAPSULE)).toHaveAccessibleName(`${S.capsuleUnanswered}. ${S.invite}`);
+  await expect(page.locator(CAPSULE)).toHaveAccessibleName(`${S.capsuleUnanswered} ${S.invite}`);
   expect(await storedChoice(page)).toBeNull();
 });
 
