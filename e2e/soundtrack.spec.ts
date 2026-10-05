@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 import { test, expect } from "./support/fixtures";
 import { siteContent } from "@/lib/content";
+import { DOCK } from "@/lib/waveform/dock";
 import { HORIZON } from "@/lib/waveform/layout";
 import { THEME_STORAGE_KEY } from "@/lib/theme";
 import { openHome, scrollToY } from "./support/coil";
@@ -30,7 +31,7 @@ import { AVOID_BLOCKS, hasProbe, paintsOver, parkBand, sweep } from "./support/w
 // starts before it follows the reader onto the horizon strip (horizon.spec.ts);
 // "Play it" really plays, "Not now" leaves a still line in the band, and the
 // playback pill condenses out of the band onto the wave's line at the bottom
-// centre once the reader scrolls on (the dock tests below, spec sections 2
+// left once the reader scrolls on (the dock tests below, spec sections 2
 // and 5). A deep load into the page keeps its layout still.
 
 const L = siteContent.listen;
@@ -179,7 +180,7 @@ test("band: in flow directly under the book; the one fixed canvas is the horizon
   }
 });
 
-// The pill docks at the bottom centre (z 45), so at the foot of the page the
+// The pill docks at the bottom left (z 45), so at the foot of the page the
 // footer's bottom padding keeps its last row clear of the capsule from md up.
 for (const viewport of [
   { width: 1440, height: 900 },
@@ -362,7 +363,7 @@ test("band: a deep load at #about keeps its layout still (CLS under 0.05)", asyn
 // ---------------------------------------------------------------------------
 // The dock (spec sections 2, 5 and 8): from the band down the pill is there in
 // every music state, condensed out of the band onto the wave's line at the
-// bottom centre. It lands open with one line for the state, once per page
+// bottom left. It lands open with one line for the state, once per page
 // load, holds about 2.6s (hover or keyboard focus pauses the hold), then
 // collapses to the capsule. Every read goes through the dock recorder
 // (support/dock.ts) and every string comes from lib/content.ts.
@@ -408,7 +409,7 @@ test("dock: the accept path plays, condenses to the dock, says where the music l
   await dockLanded(page);
   const at = await dockGeometry(page);
   expect(at.height, "capsule height").toBeGreaterThanOrEqual(36);
-  expect(Math.abs(at.x - at.centre), "capsule centre from the viewport's centre").toBeLessThanOrEqual(2);
+  expect(Math.abs(at.left - DOCK.insetPx), "capsule left edge from the dock's inset").toBeLessThanOrEqual(2);
   expect(Math.abs(at.y - at.baseline), "capsule centre from the horizon's baseline").toBeLessThanOrEqual(4);
 });
 
@@ -553,7 +554,7 @@ async function condense(page: Page, selectors: string[]) {
   const run = arrival(await stopDock(page));
   expect(run, "an arrival tween").not.toBeNull();
   const at = await dockGeometry(page);
-  return { ...run!, sources: scrolled.centres, dock: { x: at.centre, y: at.baseline } };
+  return { ...run!, sources: scrolled.centres, dock: { x: at.x, y: at.baseline } };
 }
 
 // The condense's source tolerance: the measured start sits on the source's centre (about 0px).
@@ -645,7 +646,7 @@ test("dock: the freeze toggle lives in the player card once music is on", async 
 });
 
 for (const theme of ["light", "dark"] as const) {
-  test(`dock: the capsule rests on the wave's baseline at the bottom centre in ${theme}`, async ({ page }) => {
+  test(`dock: the capsule rests on the wave's baseline at the bottom left in ${theme}`, async ({ page }) => {
     await page.addInitScript(({ key, theme }) => localStorage.setItem(key, theme), { key: THEME_STORAGE_KEY, theme });
     await armDock(page);
     await page.goto(`${HOME}#about`);
@@ -654,7 +655,7 @@ for (const theme of ["light", "dark"] as const) {
     await dockLanded(page);
     const at = await dockGeometry(page);
     expect(at.height, "capsule height").toBeGreaterThanOrEqual(36);
-    expect(Math.abs(at.x - at.centre), "capsule centre from the viewport's centre").toBeLessThanOrEqual(2);
+    expect(Math.abs(at.left - DOCK.insetPx), "capsule left edge from the dock's inset").toBeLessThanOrEqual(2);
     expect(Math.abs(at.y - at.baseline), "capsule centre from the horizon's baseline").toBeLessThanOrEqual(4);
   });
 }

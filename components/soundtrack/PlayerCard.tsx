@@ -65,19 +65,15 @@ export function PlayerCard({ music, expanded, reduce, focusOnOpen, onCardLeave, 
     ...glass,
     position: "absolute",
     bottom: 0,
-    left: "50%",
+    left: 0,
     width: 342,
     padding: 18,
     borderRadius: 22,
-    transformOrigin: "bottom center",
+    transformOrigin: "bottom left",
     transition: reduce ? "opacity 300ms ease" : `opacity 300ms ease, transform 340ms ${EASE}`,
     opacity: expanded ? 1 : 0,
     pointerEvents: expanded ? "auto" : "none",
-    transform: reduce
-      ? "translateX(-50%)"
-      : expanded
-        ? "translateX(-50%) translateY(0) scale(1)"
-        : "translateX(-50%) translateY(10px) scale(0.95)",
+    transform: reduce ? "none" : expanded ? "translateY(0) scale(1)" : "translateY(10px) scale(0.95)",
   };
   const small: CSSProperties = { fontSize: 10, fontVariantNumeric: "tabular-nums", color: "var(--color-muted)" };
   const range: CSSProperties = { flex: "1 1 auto", minWidth: 0, accentColor: "var(--color-accent)", cursor: "pointer" };
