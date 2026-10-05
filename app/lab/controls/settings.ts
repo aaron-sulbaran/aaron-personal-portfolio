@@ -95,7 +95,7 @@ const RECOMMENDED: Settings = {
   arrowSwap: true,
   controls: {
     menu: { variant: "icon", colorway: "glass-accent" },
-    nav: { variant: "rise", colorway: "glass-accent" },
+    nav: { variant: "rise", colorway: "quiet" },
     capsule: { variant: "icon", colorway: "glass-accent" },
     band: { variant: "rise", colorway: "glass-accent" },
     hero: { variant: "circle", colorway: "glass-accent" },
@@ -114,7 +114,7 @@ export const PRESETS: readonly Preset[] = [
   {
     id: "house",
     name: "House fill",
-    note: "Recommended. The reference's clock (450ms, in-out circ) everywhere; each control fills from the thing it already has: icon pills from their icon, text links from their own underline, the two calls to action from the reference's circle. Connect stays quiet so the page's last word is the address, not the effect.",
+    note: "Recommended. The reference's clock (450ms, in-out circ) everywhere; each control fills from the thing it already has: icon pills from their icon, text links from their own underline, the two calls to action from the reference's circle. The nav and Connect stay quiet (a tint, not the accent) so the chrome and the page's last word never shout.",
     settings: RECOMMENDED,
   },
   {

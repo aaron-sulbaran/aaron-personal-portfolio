@@ -77,9 +77,9 @@ export function BandCopy({ fill, onAnswer }: { fill: ControlFill; onAnswer?: (an
             origin="start"
             shape="rect"
             line={1.5}
-            lineInset={6}
-            className="-mx-1.5"
-            inner="flex px-1.5 pb-[3px] pt-px"
+            lineInset={8}
+            className="-mx-2"
+            inner="flex px-2 pb-1 pt-0.5"
             onClick={() => onAnswer?.("on")}
           >
             <span className="font-display text-[20px] leading-[1.1]">{l.accept}</span>

@@ -11,7 +11,7 @@ export type MusicState = "off" | "on" | "paused";
 // the site draws it (its own slash and sway), as the control.
 const PAD = 1.5;
 const GAP = 2.2;
-const IND_W = 7;
+const IND_W = 8.4;
 const CY = 10.5;
 
 export function NoteGlyph({
@@ -45,7 +45,7 @@ export function NoteGlyph({
   const ix = PAD + inkW + GAP;
   const width = indicator ? ix + IND_W + PAD : 24;
   const stroke = note.weight === "solid" ? 2.4 : 2;
-  const bar = note.weight === "solid" ? 2.2 : 1.9;
+  const bar = note.weight === "solid" ? 2.4 : 2.1;
 
   return (
     <svg
@@ -71,15 +71,15 @@ export function NoteGlyph({
       {anim === "levels" && (
         <g className="lv-wrap" fill="currentColor">
           {[
-            { x: ix + 0.2, h: 9, ms: 520, delay: -260 },
-            { x: ix + 2.95, h: 12, ms: 700, delay: -90 },
-            { x: ix + 5.7, h: 7.5, ms: 610, delay: -430 },
+            { x: ix, h: 10, ms: 520, delay: -260 },
+            { x: ix + 3, h: 13.5, ms: 700, delay: -90 },
+            { x: ix + 6, h: 8.5, ms: 610, delay: -430 },
           ].map((b) => (
             <rect
               key={b.x}
               className="lv"
               x={b.x}
-              y={19.5 - b.h}
+              y={20 - b.h}
               width={bar}
               height={b.h}
               rx={bar / 2}

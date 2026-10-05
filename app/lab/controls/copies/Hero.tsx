@@ -54,6 +54,7 @@ export function HeroStage({ moving, children }: { moving: boolean; children: Rea
           />
         </span>
       ))}
+      <span aria-hidden="true" className="pointer-events-none absolute inset-0 rounded-2xl [box-shadow:inset_0_0_0_1px_var(--color-border)]" />
       <div className="absolute bottom-[24px] left-[28px] flex flex-wrap items-center gap-3">{children}</div>
     </div>
   );
