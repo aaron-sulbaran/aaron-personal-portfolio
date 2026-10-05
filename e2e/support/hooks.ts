@@ -13,8 +13,8 @@ export type CoilHooks = {
   hovered: () => number;
   owner: () => "coil" | "page" | "none";
   silhouette: () => Silhouette | null;
-  // Rule A and the arming at a viewport point (builds before the arming rule have none).
-  captureAt?: (clientX: number, clientY: number) => CaptureProbe;
+  // Rule A, the arming and the hold at a viewport point.
+  captureAt: (clientX: number, clientY: number) => CaptureProbe;
   envelope: number[];
   budget: () => Record<string, unknown>;
   visibleQuads: () => Quad[];
@@ -53,11 +53,20 @@ export type CoilHooks = {
 };
 
 // What may start a coil gesture at a point: onCard is rule A (on a pickable
-// card or within the seam margin of one; cardPx is the distance to the
-// nearest, 0 on one), insideSilhouette the hull that still governs release,
-// armed whether a real pointer move has armed capture since the page last
-// scrolled.
-export type CaptureProbe = { onCard: boolean; cardPx: number; seamPx: number; insideSilhouette: boolean; armed: boolean };
+// card, or within the seam margin of two; cardPx and secondCardPx are the
+// distances to the nearest two, 0 on one), insideSilhouette the hull that
+// governs release and the hold, armed whether a real pointer move has armed
+// capture since the page last scrolled, held whether the last coil gesture
+// still holds the wheel for a still pointer.
+export type CaptureProbe = {
+  onCard: boolean;
+  cardPx: number;
+  secondCardPx: number;
+  seamPx: number;
+  insideSilhouette: boolean;
+  armed: boolean;
+  held: boolean;
+};
 
 export type ProbePoint = { x: number; y: number };
 
