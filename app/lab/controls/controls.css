@@ -1,0 +1,450 @@
+/* The controls lab. Fx.tsx explains the fill; this file is its mechanics,
+   the Coil and Band toggle, the note animations and the stand-in backdrop.
+   Everything is scoped under .controls-lab and reads tokens only. */
+
+@property --fx-p {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+@property --tg-a {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+@property --tg-b {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0.5;
+}
+
+/* ---- the label face (Aaron's pick: Profa 700, 1.06x, 0.01em, accent) ---- */
+.controls-lab .lab-label {
+  font-family: var(--lab-family);
+  font-weight: var(--lab-weight);
+  font-size: calc(var(--base, 14px) * var(--lab-scale));
+  letter-spacing: var(--lab-tracking);
+  font-synthesis: none;
+}
+
+/* ---- colorways ---- */
+.controls-lab [data-colorway="glass-accent"] {
+  --fx-fg: var(--color-accent);
+  --fx-fill-bg: var(--color-accent);
+  --fx-fill-fg: var(--color-background);
+}
+.controls-lab [data-colorway="accent-paper"] {
+  --fx-fg: var(--color-background);
+  --fx-rest-bg: var(--color-accent);
+  --fx-fill-bg: var(--color-background);
+  --fx-fill-fg: var(--color-accent);
+}
+.controls-lab [data-colorway="quiet"] {
+  --fx-fg: var(--color-accent);
+  --fx-fill-bg: var(--color-border);
+  --fx-fill-fg: var(--color-foreground);
+}
+.controls-lab [data-colorway="ink"] {
+  --fx-fg: var(--color-accent);
+  --fx-fill-bg: var(--color-foreground);
+  --fx-fill-fg: var(--color-background);
+}
+
+/* ---- the fill ---- */
+.controls-lab .fx {
+  --fx-p: 0;
+  --fx-radius: 999px;
+  position: relative;
+  display: grid;
+  isolation: isolate;
+  border-radius: var(--fx-radius);
+  color: var(--fx-fg);
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: --fx-p var(--fx-ms) var(--fx-ease);
+}
+.controls-lab .fx[data-shape="rect"] {
+  --fx-radius: var(--fx-rect-radius);
+}
+.controls-lab .fx:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+}
+.controls-lab .fx > .fx-base,
+.controls-lab .fx > .fx-over {
+  grid-area: 1 / 1;
+  border-radius: inherit;
+  min-width: 0;
+}
+.controls-lab .fx > .fx-base {
+  background: var(--fx-rest-bg, transparent);
+}
+.controls-lab .fx > .fx-over {
+  pointer-events: none;
+  background: var(--fx-fill-bg);
+  color: var(--fx-fill-fg);
+}
+.controls-lab .fx > .fx-over * {
+  color: inherit !important;
+}
+.controls-lab .fx > .fx-base [data-fx-rest] {
+  color: var(--rest-color, inherit);
+}
+
+@media (hover: hover) {
+  .controls-lab .fx:hover {
+    --fx-p: 1;
+  }
+}
+.controls-lab .fx:focus-visible,
+.controls-lab .fx[data-pressed] {
+  --fx-p: 1;
+}
+.controls-lab[data-scrub] .fx {
+  --fx-p: var(--fx-scrub) !important;
+  transition: none !important;
+}
+.controls-lab[data-reduce] .fx {
+  transition: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .controls-lab .fx {
+    transition: none;
+  }
+}
+
+/* Origins for the wipe: which inset closes. */
+.controls-lab .fx {
+  --o-t: 0;
+  --o-r: 0;
+  --o-b: 0;
+  --o-l: 0;
+}
+.controls-lab .fx[data-origin="start"] {
+  --o-r: 1;
+}
+.controls-lab .fx[data-origin="end"] {
+  --o-l: 1;
+}
+.controls-lab .fx[data-origin="top"] {
+  --o-b: 1;
+}
+.controls-lab .fx[data-origin="bottom"] {
+  --o-t: 1;
+}
+.controls-lab .fx[data-origin="center"] {
+  --o-l: 0.5;
+  --o-r: 0.5;
+}
+
+.controls-lab .fx[data-variant="wipe"] > .fx-over {
+  clip-path: inset(
+    calc((1 - var(--fx-p)) * var(--o-t) * 100%) calc((1 - var(--fx-p)) * var(--o-r) * 100%)
+      calc((1 - var(--fx-p)) * var(--o-b) * 100%) calc((1 - var(--fx-p)) * var(--o-l) * 100%) round var(--fx-radius)
+  );
+}
+.controls-lab .fx[data-variant="rise"] > .fx-over {
+  clip-path: inset(
+    calc((1 - var(--fx-p)) * (100% - var(--fx-line))) calc((1 - var(--fx-p)) * var(--fx-line-inset)) 0
+      calc((1 - var(--fx-p)) * var(--fx-line-inset)) round calc(var(--fx-p) * var(--fx-radius))
+  );
+}
+.controls-lab .fx[data-variant="circle"] > .fx-over {
+  clip-path: inset(
+    calc((1 - var(--fx-p)) * var(--fx-st, 0px)) calc((1 - var(--fx-p)) * var(--fx-sr, 0px))
+      calc((1 - var(--fx-p)) * var(--fx-sb, 0px)) calc((1 - var(--fx-p)) * var(--fx-sl, 100%))
+      round max(var(--fx-radius), calc((1 - var(--fx-p)) * var(--fx-s0, 0px)))
+  );
+}
+.controls-lab .fx:is([data-variant="icon"], [data-variant="pointer"]) > .fx-over {
+  clip-path: circle(calc(var(--fx-r1, 120px) * var(--fx-p)) at var(--fx-ox, 50%) var(--fx-oy, 50%));
+}
+
+/* The seed only shows in the circle variant; elsewhere its box still holds the arrow. */
+.controls-lab .fx-seed {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  border-radius: 999px;
+}
+
+/* ---- the arrow swap ---- */
+.controls-lab .fx-arrow {
+  position: relative;
+  display: inline-block;
+  flex: none;
+}
+.controls-lab .fx-arrow > svg {
+  position: absolute;
+  inset: 0;
+}
+.controls-lab .fx-arrow[data-dir="right"] {
+  --ax: 110%;
+  --ay: 0%;
+}
+.controls-lab .fx-arrow[data-dir="up-right"] {
+  --ax: 80%;
+  --ay: -80%;
+}
+.controls-lab .fx-arrow-a {
+  transform: translate(calc(var(--fx-p) * var(--ax)), calc(var(--fx-p) * var(--ay))) scale(calc(1 - var(--fx-p)));
+}
+.controls-lab .fx-arrow-b {
+  transform: translate(calc((var(--fx-p) - 1) * var(--ax)), calc((var(--fx-p) - 1) * var(--ay))) scale(var(--fx-p));
+}
+.controls-lab[data-arrow-swap="off"] .fx-arrow-a {
+  transform: none;
+}
+.controls-lab[data-arrow-swap="off"] .fx-arrow-b {
+  display: none;
+}
+
+/* The Menu pill's label rolls to the mark on the fill's own clock. */
+.controls-lab .fx-odometer {
+  transform: translateY(calc(var(--fx-p) * -22px));
+}
+
+/* ---- the Coil and Band toggle ----
+   The selection is a fill: an accent clip over a second copy of both labels.
+   Moving to the other side, the leading edge goes first and the trailing
+   edge follows --tg-lag later, so the fill flows across rather than slides.
+   Hovering the other side leans the leading edge toward it. */
+.controls-lab .tg {
+  --tg-a: 0;
+  --tg-b: 0.5;
+  --tg-da: 0ms;
+  --tg-db: 0ms;
+  position: relative;
+  display: grid;
+  border-radius: 999px;
+  transition:
+    --tg-a var(--fx-ms) var(--fx-ease) var(--tg-da),
+    --tg-b var(--fx-ms) var(--fx-ease) var(--tg-db);
+}
+.controls-lab .tg[data-state="band"] {
+  --tg-a: 0.5;
+  --tg-b: 1;
+}
+.controls-lab .tg[data-dir="right"] {
+  --tg-da: var(--tg-lag);
+}
+.controls-lab .tg[data-dir="left"] {
+  --tg-db: var(--tg-lag);
+}
+@media (hover: hover) {
+  .controls-lab .tg[data-state="coil"]:has([data-seg="band"]:hover) {
+    --tg-b: 0.57;
+  }
+  .controls-lab .tg[data-state="band"]:has([data-seg="coil"]:hover) {
+    --tg-a: 0.43;
+  }
+}
+.controls-lab .tg[data-state="coil"]:has([data-seg="band"]:focus-visible) {
+  --tg-b: 0.57;
+}
+.controls-lab .tg[data-state="band"]:has([data-seg="coil"]:focus-visible) {
+  --tg-a: 0.43;
+}
+.controls-lab[data-scrub] .tg {
+  --tg-a: calc(var(--fx-scrub) * 0.5) !important;
+  --tg-b: calc(0.5 + var(--fx-scrub) * 0.5) !important;
+  transition: none !important;
+}
+.controls-lab[data-reduce] .tg {
+  transition: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .controls-lab .tg {
+    transition: none;
+  }
+}
+.controls-lab .tg:has(:focus-visible) {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+}
+.controls-lab .tg > .tg-base,
+.controls-lab .tg > .tg-over {
+  grid-area: 1 / 1;
+}
+.controls-lab .tg > .tg-over {
+  pointer-events: none;
+  border-radius: 999px;
+  background: var(--fx-fill-bg);
+  color: var(--fx-fill-fg);
+  clip-path: inset(var(--tg-pad) calc((1 - var(--tg-b)) * (100% - 2 * var(--tg-pad)) + var(--tg-pad)) var(--tg-pad)
+      calc(var(--tg-a) * (100% - 2 * var(--tg-pad)) + var(--tg-pad)) round 999px);
+}
+.controls-lab .tg-seg {
+  color: var(--color-muted);
+  transition: color 200ms var(--ease-out);
+}
+.controls-lab .tg-seg:hover {
+  color: var(--color-foreground);
+}
+.controls-lab .tg-seg:focus-visible {
+  outline: none;
+}
+.controls-lab .tg-surface-pill {
+  background: var(--menu-pill);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: inset 0 0 0 1px var(--color-border);
+}
+.controls-lab .tg-surface-solid {
+  background: var(--color-background);
+  box-shadow: inset 0 0 0 1px var(--color-border);
+}
+
+/* ---- the notes ---- */
+.controls-lab .note {
+  overflow: visible;
+  color: var(--color-muted);
+  transition: color calc(200ms / var(--note-speed)) var(--ease-out);
+}
+.controls-lab .note[data-state="on"] {
+  color: var(--color-accent);
+}
+.controls-lab .note :is(.ind-x, .ind-arc, .lv-wrap, .lv, .mv) {
+  transform-box: fill-box;
+}
+
+/* 1. The recorded idea: an x beside the note when off; when on, the x shrinks
+   away and two arcs come in, inner then outer, about 200ms in all. */
+.controls-lab .note .ind-x {
+  transform-origin: 50% 50%;
+  transition:
+    opacity calc(110ms / var(--note-speed)) ease-out calc(70ms / var(--note-speed)),
+    transform calc(110ms / var(--note-speed)) ease-out calc(70ms / var(--note-speed));
+}
+.controls-lab .note:not([data-state="off"]) .ind-x {
+  opacity: 0;
+  transform: scale(0.35);
+  transition:
+    opacity calc(110ms / var(--note-speed)) ease-out,
+    transform calc(110ms / var(--note-speed)) ease-out;
+}
+.controls-lab .note .ind-arc {
+  opacity: 0;
+  transform-origin: 0% 50%;
+  transform: scale(0.55);
+  transition:
+    opacity calc(90ms / var(--note-speed)) ease-in,
+    transform calc(90ms / var(--note-speed)) ease-in;
+}
+.controls-lab .note[data-state="on"] .ind-arc {
+  transform: scale(1);
+  transition:
+    opacity calc(120ms / var(--note-speed)) ease-out var(--arc-delay),
+    transform calc(120ms / var(--note-speed)) cubic-bezier(0.22, 1, 0.36, 1) var(--arc-delay);
+}
+.controls-lab .note .ind-arc-1 {
+  --arc-delay: calc(40ms / var(--note-speed));
+}
+.controls-lab .note .ind-arc-2 {
+  --arc-delay: calc(90ms / var(--note-speed));
+}
+.controls-lab .note[data-state="on"] .ind-arc-1 {
+  opacity: 1;
+}
+.controls-lab .note[data-state="on"] .ind-arc-2 {
+  opacity: 0.45;
+}
+
+/* 2. Levels: three bars that move while playing, freeze where they are when
+   paused, and squash to dots when off. */
+.controls-lab .note .lv-wrap {
+  transform-origin: 50% 100%;
+  transition: transform calc(180ms / var(--note-speed)) cubic-bezier(0.22, 1, 0.36, 1), opacity calc(180ms / var(--note-speed)) ease;
+}
+.controls-lab .note[data-state="off"] .lv-wrap {
+  transform: scaleY(0.22);
+  opacity: 0.8;
+}
+.controls-lab .note .lv {
+  transform-origin: 50% 100%;
+  animation: note-level calc(var(--lv-ms) / var(--note-speed)) ease-in-out infinite alternate;
+  animation-delay: var(--lv-delay);
+  animation-play-state: paused;
+}
+.controls-lab .note[data-state="on"] .lv {
+  animation-play-state: running;
+}
+@keyframes note-level {
+  0% {
+    transform: scaleY(0.3);
+  }
+  45% {
+    transform: scaleY(1);
+  }
+  70% {
+    transform: scaleY(0.55);
+  }
+  100% {
+    transform: scaleY(0.85);
+  }
+}
+
+/* 3. The note moves: a small hop as it starts, then a slow tilt about its head. */
+.controls-lab .note .mv {
+  transform-origin: 30% 85%;
+}
+.controls-lab .note[data-anim="move"][data-state="on"] .mv {
+  animation:
+    note-hop calc(280ms / var(--note-speed)) cubic-bezier(0.22, 1, 0.36, 1),
+    note-tilt calc(1700ms / var(--note-speed)) ease-in-out calc(280ms / var(--note-speed)) infinite alternate;
+}
+@keyframes note-hop {
+  0% {
+    transform: translateY(0) rotate(0deg);
+  }
+  45% {
+    transform: translateY(-9%) rotate(-7deg);
+  }
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+}
+@keyframes note-tilt {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(-6deg);
+  }
+}
+
+.controls-lab[data-reduce] .note *,
+.controls-lab[data-reduce] .note {
+  animation: none !important;
+  transition-duration: 0ms !important;
+  transition-delay: 0ms !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .controls-lab .note *,
+  .controls-lab .note {
+    animation: none !important;
+    transition-duration: 0ms !important;
+    transition-delay: 0ms !important;
+  }
+}
+
+/* ---- the stand-in backdrop for the hero (a still poster and photo cards
+   that drift; no WebGL) ---- */
+.controls-lab .stage-card {
+  animation: stage-drift 9s ease-in-out infinite alternate;
+  animation-play-state: var(--stage-play, running);
+}
+@keyframes stage-drift {
+  from {
+    translate: 0 0;
+  }
+  to {
+    translate: -60px 40px;
+  }
+}
+
+.controls-lab-panel input[type="range"] {
+  accent-color: var(--color-accent);
+  width: 100%;
+}
