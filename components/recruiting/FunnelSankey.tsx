@@ -1,16 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { sankey, sankeyLeft, sankeyLinkHorizontal, type SankeyLink, type SankeyNode } from "d3-sankey";
 import { siteContent } from "@/lib/content";
 import { summarizeCompanies } from "@/lib/recruiting/companies";
-import { columnChain, stageBars, type Funnel, type FunnelLink, type FunnelNode } from "@/lib/recruiting/funnel";
+import { columnChain, type Funnel, type FunnelLink, type FunnelNode } from "@/lib/recruiting/funnel";
 import type { Lane } from "@/lib/recruiting/types";
 import { TONES } from "./tones";
 
-// The funnel chart. Wide containers get the Sankey; narrow ones (phones, a
-// docked pane) get stacked stage bars built from the same links, because a
-// Sankey needs horizontal room per column and would otherwise scroll.
+// The funnel chart. Wide containers draw the Sankey at their own width;
+// narrow ones (phones, a docked pane) get the same chart scaled down, and
+// scrolling sideways once the labels would get too small (ScaledSankey).
 //
 // Sankey settings follow sankeymatic.com's Job Search recipe
 // (github.com/nowthis/sankeymatic build/constants.js): node_w 8, node spacing
@@ -85,15 +85,16 @@ function CompanyList({ names }: { names: string[] }) {
 const TIP_WIDTH = 300;
 
 function FlowTooltip({ tip, width, height }: { tip: Tip; width: number; height: number }) {
-  const flipX = tip.x + 14 + TIP_WIDTH > width;
+  const tipWidth = Math.min(TIP_WIDTH, width);
+  const flipX = tip.x + 14 + tipWidth > width;
   const flipY = tip.y > height * 0.55;
   return (
     <div
       role="tooltip"
       className="pointer-events-none absolute z-10 rounded-md border border-border bg-glass-strong px-3 py-2 text-[12px] text-foreground shadow-[0_8px_20px_-12px_rgba(10,10,10,0.35)] backdrop-blur-md"
       style={{
-        width: TIP_WIDTH,
-        left: flipX ? Math.max(0, tip.x - 14 - TIP_WIDTH) : tip.x + 14,
+        width: tipWidth,
+        left: flipX ? Math.max(0, tip.x - 14 - tipWidth) : tip.x + 14,
         top: flipY ? undefined : tip.y + 14,
         bottom: flipY ? height - tip.y + 14 : undefined,
       }}
@@ -128,7 +129,7 @@ export function FunnelSankey({ funnel }: { funnel: Funnel }) {
       ) : width === 0 ? (
         <div style={{ height: 320 }} />
       ) : width < NARROW ? (
-        <FunnelBars funnel={funnel} />
+        <ScaledSankey funnel={funnel} width={width} />
       ) : (
         <SankeyChart funnel={funnel} width={width} />
       )}
@@ -136,7 +137,36 @@ export function FunnelSankey({ funnel }: { funnel: Funnel }) {
   );
 }
 
-function SankeyChart({ funnel, width }: { funnel: Funnel; width: number }) {
+// Phones and narrow panes: the same chart, laid out at the narrowest width
+// the wide layout ever gets and scaled down to fit, like a screenshot.
+// Scaling stops at MIN_SCALE so labels stay readable (12px renders near 9px);
+// past that the card scrolls sideways, with a fade on the right edge until
+// the end is reached.
+const DESIGN_WIDTH = NARROW;
+const MIN_SCALE = 0.72;
+const EDGE_FADE = "linear-gradient(to right, #000 calc(100% - 40px), transparent)";
+
+function ScaledSankey({ funnel, width }: { funnel: Funnel; width: number }) {
+  const fit = width / DESIGN_WIDTH;
+  const scale = Math.min(1, Math.max(MIN_SCALE, fit));
+  const scrolls = fit < MIN_SCALE;
+  const [atEnd, setAtEnd] = useState(false);
+  if (!scrolls) return <SankeyChart funnel={funnel} width={DESIGN_WIDTH} scale={scale} />;
+  return (
+    <div
+      className="-mx-4 overflow-x-auto overscroll-x-contain px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      style={atEnd ? undefined : { maskImage: EDGE_FADE, WebkitMaskImage: EDGE_FADE }}
+      onScroll={(e) => {
+        const el = e.currentTarget;
+        setAtEnd(el.scrollLeft + el.clientWidth >= el.scrollWidth - 4);
+      }}
+    >
+      <SankeyChart funnel={funnel} width={DESIGN_WIDTH} scale={scale} />
+    </div>
+  );
+}
+
+function SankeyChart({ funnel, width, scale = 1 }: { funnel: Funnel; width: number; scale?: number }) {
   const [hover, setHover] = useState<Tip | null>(null);
   const [focus, setFocus] = useState<string | null>(null);
   const applied = funnel.nodes.find((n) => n.id === "stage:applied")?.count ?? 0;
@@ -186,10 +216,10 @@ function SankeyChart({ funnel, width }: { funnel: Funnel; width: number }) {
   const pct = (n: number) => (applied ? `${Math.round((n / applied) * 100)}%` : "");
 
   return (
-    <>
+    <div className="relative" style={{ width: width * scale }}>
       <svg
-        width={width}
-        height={height}
+        width={width * scale}
+        height={height * scale}
         viewBox={`0 0 ${width} ${height}`}
         className="block font-sans"
         role="img"
@@ -197,6 +227,13 @@ function SankeyChart({ funnel, width }: { funnel: Funnel; width: number }) {
         onMouseLeave={() => {
           setHover(null);
           setFocus(null);
+        }}
+        onClick={(e) => {
+          // A tap on empty space dismisses a tapped tooltip.
+          if (e.target === e.currentTarget) {
+            setHover(null);
+            setFocus(null);
+          }
         }}
       >
         <defs>
@@ -213,6 +250,16 @@ function SankeyChart({ funnel, width }: { funnel: Funnel; width: number }) {
             const on = touches(link);
             const d = path(link) ?? undefined;
             const strokeWidth = Math.max(1.5, link.width ?? 1);
+            const showTip = (e: MouseEvent<SVGPathElement>) => {
+              const box = (e.currentTarget.ownerSVGElement as SVGSVGElement).getBoundingClientRect();
+              setHover({
+                x: e.clientX - box.left,
+                y: e.clientY - box.top,
+                title: `${nodeLabel(s)} ${copy.flowTo} ${nodeLabel(t)}: ${link.value}`,
+                detail: flowDetail(link.byLane, link.referred),
+                companies: link.companies,
+              });
+            };
             return (
               <g key={`${s.id}>${t.id}${link.referral ? "#referral" : ""}`}>
                 <path
@@ -221,16 +268,9 @@ function SankeyChart({ funnel, width }: { funnel: Funnel; width: number }) {
                   strokeWidth={strokeWidth}
                   strokeOpacity={on ? (link.referral ? Math.min(1, tone.flowOpacity + 0.3) : tone.flowOpacity) : tone.flowOpacity * 0.25}
                   className="transition-[stroke-opacity] duration-200"
-                  onMouseMove={(e) => {
-                    const box = (e.currentTarget.ownerSVGElement as SVGSVGElement).getBoundingClientRect();
-                    setHover({
-                      x: e.clientX - box.left,
-                      y: e.clientY - box.top,
-                      title: `${nodeLabel(s)} ${copy.flowTo} ${nodeLabel(t)}: ${link.value}`,
-                      detail: flowDetail(link.byLane, link.referred),
-                      companies: link.companies,
-                    });
-                  }}
+                  onMouseMove={showTip}
+                  // A tap sends a click but not always a mousemove.
+                  onClick={showTip}
                   onMouseLeave={() => setHover(null)}
                 />
                 {link.referral && on && (
@@ -257,19 +297,24 @@ function SankeyChart({ funnel, width }: { funnel: Funnel; width: number }) {
             const share = node.kind === "lane" || node.id === "stage:applied" ? "" : ` · ${pct(node.count)}`;
             const halo = { paintOrder: "stroke" as const, stroke: "var(--color-background)", strokeWidth: 4, strokeLinejoin: "round" as const };
             const dim = focus && focus !== node.id ? 0.45 : 1;
+            const showTip = (e: MouseEvent<SVGGElement>) => {
+              const box = (e.currentTarget.ownerSVGElement as SVGSVGElement).getBoundingClientRect();
+              setHover({
+                x: e.clientX - box.left,
+                y: e.clientY - box.top,
+                title: `${label}: ${node.count}${share}`,
+                detail: node.referred ? copy.referredCount(node.referred) : "",
+                companies: node.companies,
+              });
+            };
             return (
               <g
                 key={node.id}
                 onMouseEnter={() => setFocus(node.id)}
-                onMouseMove={(e) => {
-                  const box = (e.currentTarget.ownerSVGElement as SVGSVGElement).getBoundingClientRect();
-                  setHover({
-                    x: e.clientX - box.left,
-                    y: e.clientY - box.top,
-                    title: `${label}: ${node.count}${share}`,
-                    detail: node.referred ? copy.referredCount(node.referred) : "",
-                    companies: node.companies,
-                  });
+                onMouseMove={showTip}
+                onClick={(e) => {
+                  setFocus(node.id);
+                  showTip(e);
                 }}
                 onMouseLeave={() => {
                   setFocus(null);
@@ -314,81 +359,7 @@ function SankeyChart({ funnel, width }: { funnel: Funnel; width: number }) {
         </g>
       </svg>
 
-      {hover && <FlowTooltip tip={hover} width={width} height={height} />}
-    </>
-  );
-}
-
-// Narrow screens: one bar per stage reached, its length the share of
-// applications that got that far, split by what happened next. Same tones as
-// the Sankey, 2px surface gaps between segments, 4px rounded data ends.
-function FunnelBars({ funnel }: { funnel: Funnel }) {
-  const bars = stageBars(funnel);
-  const applied = bars.find((b) => b.stage === "applied")?.count ?? 0;
-  const lanes = funnel.nodes.filter((n) => n.kind === "lane" && n.lane !== "outreach");
-  const [tip, setTip] = useState<{ stage: string; tone: string } | null>(null);
-
-  return (
-    <div className="flex flex-col gap-5 py-1">
-      <ul className="flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-muted" aria-label={copy.lanesLabel}>
-        {lanes.map((n) => (
-          <li key={n.id} className="inline-flex items-center gap-1.5">
-            <span aria-hidden="true" className="h-2 w-2 rounded-full" style={{ background: nodeTone(n).color }} />
-            <span className="text-foreground">{nodeLabel(n)}</span> {n.count}
-          </li>
-        ))}
-      </ul>
-      <ol className="flex flex-col gap-4">
-        {bars.map((bar) => {
-          const share = applied ? bar.count / applied : 0;
-          return (
-            <li key={bar.stage} className="flex flex-col gap-1.5">
-              <div className="flex items-baseline justify-between gap-3 text-[13px]">
-                <span className="font-medium text-foreground">{copy.nodes[bar.stage]}</span>
-                <span className="text-muted">
-                  {bar.count}
-                  {bar.stage !== "applied" && ` · ${Math.round(share * 100)}% ${copy.ofApplied}`}
-                </span>
-              </div>
-              <div className="flex h-3 gap-[2px]" style={{ width: `${Math.max(share * 100, 4)}%` }}>
-                {bar.segments.map((seg) => {
-                  const tone = TONES[seg.tone];
-                  const label = `${copy.tones[seg.tone as keyof typeof copy.tones] ?? seg.tone}: ${seg.value}`;
-                  const open = tip?.stage === bar.stage && tip.tone === seg.tone;
-                  return (
-                    <button
-                      key={seg.tone}
-                      type="button"
-                      aria-label={label}
-                      title={label}
-                      aria-expanded={open}
-                      onClick={() => setTip(open ? null : { stage: bar.stage, tone: seg.tone })}
-                      className="h-full min-w-[4px] first:rounded-l-[4px] last:rounded-r-[4px]"
-                      style={{
-                        flex: `${seg.value} 0 0`,
-                        background: tone.hollow ? "transparent" : tone.color,
-                        opacity: tone.hollow ? 1 : Math.max(tone.nodeOpacity, 0.5),
-                        border: tone.hollow ? `1.5px dashed ${tone.color}` : undefined,
-                      }}
-                    />
-                  );
-                })}
-              </div>
-              {tip?.stage === bar.stage &&
-                bar.segments
-                  .filter((seg) => seg.tone === tip.tone)
-                  .map((seg) => (
-                    <div key={seg.tone} className="text-[12px]">
-                      <p className="text-muted">
-                        {copy.tones[seg.tone as keyof typeof copy.tones] ?? seg.tone}: {seg.value}
-                      </p>
-                      <CompanyList names={seg.companies} />
-                    </div>
-                  ))}
-            </li>
-          );
-        })}
-      </ol>
+      {hover && <FlowTooltip tip={hover} width={width * scale} height={height * scale} />}
     </div>
   );
 }

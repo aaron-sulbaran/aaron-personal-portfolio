@@ -329,38 +329,6 @@ export function columnChain(funnel: Funnel): FunnelLink[] {
   return chain;
 }
 
-// Per-stage breakdown for the narrow-screen bars: how many reached each stage
-// and where they went next (forward, still open, or which exit).
-export interface StageBar {
-  stage: Stage;
-  count: number;
-  segments: Array<{ tone: FlowTone; value: number; companies: string[] }>;
-}
-
-export function stageBars(funnel: Funnel): StageBar[] {
-  const bars: StageBar[] = [];
-  for (const node of funnel.nodes) {
-    if (node.kind !== "stage" || !node.stage) continue;
-    const out = funnel.links.filter((l) => l.source === node.id);
-    const byTone = new Map<FlowTone, number>();
-    const namesByTone = new Map<FlowTone, string[]>();
-    for (const link of out) {
-      const tone = link.tone === "offer" ? "forward" : link.tone;
-      byTone.set(tone, (byTone.get(tone) ?? 0) + link.value);
-      namesByTone.set(tone, [...(namesByTone.get(tone) ?? []), ...link.companies]);
-    }
-    const order: FlowTone[] = ["forward", "open", "rejected", "noreply", "withdrew"];
-    bars.push({
-      stage: node.stage,
-      count: node.count,
-      segments: order
-        .filter((t) => byTone.has(t))
-        .map((t) => ({ tone: t, value: byTone.get(t) as number, companies: namesByTone.get(t) ?? [] })),
-    });
-  }
-  return bars.sort((a, b) => stageIndex(a.stage) - stageIndex(b.stage));
-}
-
 export interface FunnelStats {
   applications: number;
   responseRate: number | null;

@@ -1,7 +1,7 @@
 import type { FlowTone } from "@/lib/recruiting/funnel";
 
-// One place for how each flow tone paints, shared by the Sankey, the narrow
-// bars and the legend so they can never disagree. Encoding (dataviz skill):
+// One place for how each flow tone paints, shared by the Sankey and the
+// legend so they can never disagree. Encoding (dataviz skill):
 // lanes are categorical identity (validated trio); outcomes are a diverging
 // pair on a neutral midpoint: warm = moved forward, cool = rejected, gray =
 // no reply or withdrew, hollow gray = still open (not resolved yet).
