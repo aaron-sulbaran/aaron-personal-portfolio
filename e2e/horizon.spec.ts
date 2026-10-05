@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { siteContent } from "@/lib/content";
-import { DUCK, DUCK_ALPHA } from "@/lib/waveform/duck";
+import { DUCK, DUCK_ALPHA, DUCK_SPLIT } from "@/lib/waveform/duck";
 import { HORIZON } from "@/lib/waveform/layout";
 import { THEME_STORAGE_KEY } from "@/lib/theme";
 import { test, expect } from "./support/fixtures";
@@ -307,6 +307,35 @@ test("horizon: a fast flick lands with the text over the strip already ducked", 
     expect(report.loud, `avoid box ${index} after the flick`).toEqual([]);
   }
   expect(checked, "words over the strip after the flick").toBeGreaterThan(0);
+});
+
+// The look-ahead is for flicks (it scales with the downward scroll speed), so
+// at rest text parked just below the viewport ducks nothing: every ducked
+// column lies under an avoid box that crosses the strip itself, and the open
+// air beside the words keeps its wave.
+test("horizon: at rest only text over the strip ducks", async ({ page }) => {
+  await openHome(page, { path: HOME });
+  const vh = page.viewportSize()!.height;
+  await placeBottom(page, "#about p[data-wave-avoid]", 0, vh - HORIZON.lift);
+  await sweepAtRest(page);
+  await expect.poll(() => paintedColumns(page), { message: "columns painted on the strip" }).toBeGreaterThan(0);
+  await page.waitForTimeout(1000);
+  const read = await page.evaluate(() => {
+    const probe = window.__waveProbe!;
+    const strip = probe.strip()!;
+    const top = strip.top + window.scrollY;
+    const bottom = strip.bottom + window.scrollY;
+    const width = document.documentElement.clientWidth;
+    const crossing = probe.rects().filter((r) => r.top < bottom && r.bottom > top);
+    const onScreen = probe.columns().filter((c) => c.x >= 0 && c.x <= width);
+    return { crossing, onScreen };
+  });
+  expect(read.crossing.length, "avoid boxes crossing the strip").toBeGreaterThan(0);
+  expect(read.onScreen.length, "columns on screen").toBeGreaterThan(0);
+  const ducked = read.onScreen.filter((c) => c.duck > DUCK_SPLIT);
+  const stray = ducked.filter((c) => !read.crossing.some((r) => r.left <= c.x && c.x <= r.right));
+  expect(stray, "ducked columns under no box that crosses the strip").toEqual([]);
+  expect(ducked.length, "on-screen columns not ducked").toBeLessThan(read.onScreen.length);
 });
 
 test("horizon: the strip sits behind the text and takes no pointer", async ({ page }) => {
