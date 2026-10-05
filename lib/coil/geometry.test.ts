@@ -3,6 +3,7 @@ import { COIL } from "@/lib/coil/constants";
 import {
   cameraFor,
   cardDistancePx,
+  cardDistancesPx,
   cardHit,
   clearTopFor,
   isNarrow,
@@ -31,6 +32,9 @@ import {
 const DESKTOP = { width: 1440, height: 900 };
 const PHONE = { width: 390, height: 844 };
 const STRAND = 14;
+
+// The widest seam's half width as a share of the card height (geometry.ts).
+const SEAM_SHARE_MAX = 0.11;
 
 const distance3 = (a: Vec3, b: Vec3) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
 
@@ -353,23 +357,61 @@ describe("near a card (wheel capture, rule A)", () => {
   const camera = cameraFor(DESKTOP);
   const halfWidth = 100 * COIL.cardAspect;
 
-  it("measures the on-screen distance to a card's picked footprint, 0 on it", () => {
+  it("measures the on-screen distance to the nearest and the second nearest card's picked footprint, 0 on it", () => {
     const card = flatCardAt(700, 400, 200);
     expect(cardDistancePx([card], camera, 700, 400)).toBe(0);
     expect(cardDistancePx([card], camera, 700 + halfWidth - 1, 400 + 99)).toBe(0);
     expect(cardDistancePx([card], camera, 700 + halfWidth + 10, 400)).toBeCloseTo(10, 6);
     expect(cardDistancePx([card], camera, 700, 400 - 100 - 15)).toBeCloseTo(15, 6);
     expect(cardDistancePx([card], camera, 700 + halfWidth + 3, 400 - 100 - 4)).toBeCloseTo(5, 6);
-    expect(nearCard([card], camera, 700 + halfWidth + 10, 400, 12)).toBe(true);
-    expect(nearCard([card], camera, 700 + halfWidth + 10, 400, 8)).toBe(false);
-    expect(nearCard([card], camera, 700, 400, 0)).toBe(true);
+    // A second card 30px to the right: a point 10px off the first is 20px off the second.
+    const right = flatCardAt(700 + 2 * halfWidth + 30, 400, 200);
+    const both = cardDistancesPx([card, right], camera, 700 + halfWidth + 10, 400);
+    expect(both.nearest).toBeCloseTo(10, 6);
+    expect(both.second).toBeCloseTo(20, 6);
+    expect(cardDistancesPx([card], camera, 700, 400).second).toBe(Infinity);
   });
 
-  it("never counts a card picking would skip (faded), and is false with no cards", () => {
+  it("counts a point on a card by itself, and a point off every card only when two cards are within the margin", () => {
+    const card = flatCardAt(700, 400, 200);
+    const right = flatCardAt(700 + 2 * halfWidth + 30, 400, 200);
+    expect(nearCard([card], camera, 700, 400, 0)).toBe(true);
+    // In the 30px seam: 10px off one card, 20px off the other.
+    expect(nearCard([card, right], camera, 700 + halfWidth + 10, 400, 21)).toBe(true);
+    expect(nearCard([card, right], camera, 700 + halfWidth + 10, 400, 19)).toBe(false);
+  });
+
+  it("leaves the rim beside a free edge of a lone card to the page", () => {
+    const card = flatCardAt(700, 400, 200);
+    const margin = seamMarginPx(solveGeometry(DESKTOP, STRAND));
+    for (const [x, y] of [
+      [700 + halfWidth + 5, 400],
+      [700 - halfWidth - 10, 450],
+      [700, 400 - 100 - 3],
+      [700 + halfWidth + 2, 400 + 100 + 2],
+    ]) {
+      expect(cardDistancePx([card], camera, x, y)).toBeLessThan(margin);
+      expect(nearCard([card], camera, x, y, margin), `(${x}, ${y})`).toBe(false);
+    }
+  });
+
+  it("never counts a card picking would skip (faded, or behind the camera), and is false with no cards", () => {
     const card = flatCardAt(700, 400, 200);
     expect(cardDistancePx([{ ...card, alpha: 0.4 }], camera, 700, 400)).toBe(Infinity);
     expect(nearCard([{ ...card, alpha: 0.4 }], camera, 700, 400, 50)).toBe(false);
     expect(nearCard([], camera, 700, 400, 50)).toBe(false);
+    // Behind the camera, the mirrored projection would land on screen; picking never hits it.
+    const behind: CardPose = { ...card, position: [-card.position[0], -card.position[1], camera.distance + 5] };
+    const ray = rayThrough(camera, 700, 400);
+    expect(pickCard([behind], ray)).toBe(-1);
+    for (const [x, y] of [
+      [700, 400],
+      [740, 500],
+      [1440 - 700, 900 - 400],
+    ]) {
+      expect(pickCard([behind], rayThrough(camera, x, y))).toBe(-1);
+      expect(cardDistancePx([behind], camera, x, y)).toBe(Infinity);
+    }
   });
 
   it("agrees with picking: distance 0 exactly where a card is picked", () => {
@@ -392,10 +434,12 @@ describe("near a card (wheel capture, rule A)", () => {
   // Adjacent pairs on screen: for every pair of slots next to each other on
   // the strand, both picked (alpha over a half) and both centers on the pane,
   // the midpoints between A's right edge and B's left edge (the seam, from
-  // top to bottom) that picking misses.
-  function seamPoints(viewport: { width: number; height: number }, offset: number, frontOnly: boolean) {
+  // top to bottom) that picking misses. `envelope` stretches the helix as a
+  // spin does (lib/coil/motion.ts stretchedDy).
+  function seamPoints(viewport: { width: number; height: number }, offset: number, frontOnly: boolean, envelope = 0) {
     const geo = solveGeometry(viewport, STRAND);
-    const frame = restHelix(geo);
+    const rest = restHelix(geo);
+    const frame = { ...rest, dy: rest.dy * (1 + envelope) };
     const poses = Array.from({ length: frame.slotCount }, (_, slot) => coilPose(frame, slot, offset));
     const order = poses.map((_, slot) => slot).sort((a, b) => poses[a].u - poses[b].u);
     const points: { x: number; y: number }[] = [];
@@ -427,23 +471,30 @@ describe("near a card (wheel capture, rule A)", () => {
     { width: 2560, height: 1440 },
   ];
 
+  // Rule A off a card needs two cards within the margin: the seam's width is
+  // the farther of the two nearest cards, at its widest point.
+  function widestSeam(pane: { width: number; height: number }, frontOnly: boolean, envelope = 0) {
+    let widest = 0;
+    for (let k = 0; k < 20; k++) {
+      const { geo, poses, points } = seamPoints(pane, k / 20, frontOnly, envelope);
+      for (const { x, y } of points) widest = Math.max(widest, cardDistancesPx(poses, geo.camera, x, y).second);
+    }
+    return widest;
+  }
+
   it("derives the seam margin: the widest seam between adjacent front cards is about a tenth of a card, at any pane", () => {
     for (const pane of panes) {
-      let widest = 0;
-      for (let k = 0; k < 20; k++) {
-        const { geo, poses, points } = seamPoints(pane, k / 20, true);
-        for (const { x, y } of points) widest = Math.max(widest, cardDistancePx(poses, geo.camera, x, y));
-      }
+      const widest = widestSeam(pane, true);
       const cardPx = solveGeometry(pane, STRAND).cardPx;
-      // Half the seam scales with the card (0.102 card heights; 22.6px at 1485 by 927).
+      // Both cards of the widest seam are this far from its middle, as a share of the card.
       expect(widest / cardPx).toBeGreaterThan(0.09);
-      expect(widest / cardPx).toBeLessThan(0.105);
+      expect(widest / cardPx).toBeLessThan(SEAM_SHARE_MAX);
       // The margin covers it with at least 2px to spare.
       expect(seamMarginPx(solveGeometry(pane, STRAND))).toBeGreaterThanOrEqual(widest + 2);
     }
   });
 
-  it("counts the seam between any two adjacent cards as near one, and not without the margin", () => {
+  it("counts the seam between any two adjacent cards as near, and not without the margin", () => {
     for (const pane of panes) {
       let missedWithoutMargin = 0;
       for (let k = 0; k < 20; k++) {
@@ -455,6 +506,27 @@ describe("near a card (wheel capture, rule A)", () => {
       }
       expect(missedWithoutMargin).toBeGreaterThan(0);
     }
+  });
+
+  it("does not cover the seams of a stretched helix: a spin's envelope widens them past the margin", () => {
+    // Rule A alone is a rest-pose rule. After a spin the envelope (up to
+    // envelopeTargetMax times the turn gap, relaxing over about 2s) stretches
+    // the rise per card and the seams open; the continuation rule in
+    // lib/coil/capture.ts, not this margin, keeps the next gesture the coil's.
+    const pane = { width: 1485, height: 927 };
+    const geo = solveGeometry(pane, STRAND);
+    let missed = 0;
+    let seams = 0;
+    for (let k = 0; k < 20; k++) {
+      const { poses, points } = seamPoints(pane, k / 20, false, 0.84);
+      for (const { x, y } of points) {
+        seams += 1;
+        if (!nearCard(poses, geo.camera, x, y, seamMarginPx(geo))) missed += 1;
+      }
+    }
+    expect(seams).toBeGreaterThan(100);
+    expect(missed / seams).toBeGreaterThan(0.1);
+    expect(widestSeam(pane, true, 0.84)).toBeGreaterThan(seamMarginPx(geo));
   });
 
   it("leaves empty background inside the helix silhouette, and everything far outside it, to the page", () => {
@@ -476,5 +548,24 @@ describe("near a card (wheel capture, rule A)", () => {
     expect(background / inside).toBeGreaterThan(0.1);
     expect(nearCard(poses, camera, 5, 5, margin)).toBe(false);
     expect(nearCard(poses, camera, DESKTOP.width - 5, DESKTOP.height - 5, margin)).toBe(false);
+  });
+
+  it("keeps the rim of free card edges out of rule A on the real helix", () => {
+    const geo = solveGeometry(DESKTOP, STRAND);
+    const frame = restHelix(geo);
+    const poses = Array.from({ length: frame.slotCount }, (_, slot) => coilPose(frame, slot, 0.3));
+    const margin = seamMarginPx(geo);
+    let rim = 0;
+    let rimCaptured = 0;
+    for (let y = 2; y < DESKTOP.height; y += 4) {
+      for (let x = 2; x < DESKTOP.width; x += 4) {
+        const { nearest, second } = cardDistancesPx(poses, camera, x, y);
+        if (nearest === 0 || nearest > margin || second <= margin) continue;
+        rim += 1;
+        if (nearCard(poses, camera, x, y, margin)) rimCaptured += 1;
+      }
+    }
+    expect(rim).toBeGreaterThan(500);
+    expect(rimCaptured).toBe(0);
   });
 });
