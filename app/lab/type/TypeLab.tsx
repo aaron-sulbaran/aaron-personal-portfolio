@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { ShownSettings } from "./context";
 import { Panel } from "./Panel";
 import { Specimen } from "./Specimen";
 import { labAttributes, labVars } from "./settings";
@@ -34,6 +35,7 @@ export function TypeLab({ month }: { month: string }) {
   }, []);
 
   return (
+    <ShownSettings.Provider value={shown}>
     <div className="type-lab relative min-h-screen bg-background text-foreground" style={labVars(shown)} {...labAttributes(shown)}>
       <div className={`px-6 pb-24 pt-28 md:px-10 ${lab.collapsed ? "lg:pr-[200px]" : "lg:pr-[380px]"}`}>
         <Panel />
@@ -65,5 +67,6 @@ export function TypeLab({ month }: { month: string }) {
         </div>
       </div>
     </div>
+    </ShownSettings.Provider>
   );
 }

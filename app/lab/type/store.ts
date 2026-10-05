@@ -14,7 +14,9 @@ export type LabState = {
   collapsed: boolean;
 };
 
-const STORAGE_KEY = "lab-type-v1";
+// v2: round 2 added settings and made Aaron's pick the default, so round 1's
+// stored state is left behind.
+const STORAGE_KEY = "lab-type-v2";
 const INITIAL: LabState = { b: PRESETS[0].settings, a: null, view: "b", collapsed: false };
 
 let state: LabState = INITIAL;
@@ -26,7 +28,11 @@ function load() {
   loaded = true;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) state = { ...INITIAL, ...(JSON.parse(raw) as Partial<LabState>) };
+    if (raw) {
+      const stored = JSON.parse(raw) as Partial<LabState>;
+      const fill = (settings: Settings) => ({ ...PRESETS[0].settings, ...settings });
+      state = { ...INITIAL, ...stored, b: stored.b ? fill(stored.b) : INITIAL.b, a: stored.a ? fill(stored.a) : null };
+    }
   } catch {
     /* storage unavailable or stale: start from the recommendation */
   }

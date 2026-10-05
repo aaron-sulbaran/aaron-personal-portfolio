@@ -43,15 +43,56 @@
   line-height: var(--lab-leading);
 }
 
+/* Interactive text (controls, nav, pill, and the links inside the credit)
+   and the rest (meta, kickers, credit) take their colors separately. */
 :is(
   .type-lab[data-roles~="controls"] [data-role="controls"],
+  .type-lab[data-roles~="nav"] [data-role="nav"],
+  .type-lab[data-roles~="pill"] [data-role="pill"]
+):where(.type-lab:not([data-color-interactive="site"]) *) {
+  color: var(--lab-color-interactive);
+}
+
+:is(
   .type-lab[data-roles~="meta"] [data-role="meta"],
   .type-lab[data-roles~="kickers"] [data-role="kickers"],
-  .type-lab[data-roles~="nav"] [data-role="nav"],
-  .type-lab[data-roles~="pill"] [data-role="pill"],
   .type-lab[data-roles~="credit"] [data-role="credit"]
-):where(.type-lab:not([data-color="site"]) *) {
-  color: var(--lab-color);
+):where(.type-lab:not([data-color-static="site"]) *) {
+  color: var(--lab-color-static);
+}
+
+.type-lab[data-roles~="credit"] [data-role="credit"] [data-interactive]:where(.type-lab:not([data-color-interactive="site"]) *) {
+  color: var(--lab-color-interactive);
+}
+
+/* The role line's size step holds even with the meta role off (the role's
+   own rule, higher up in specificity, adds the scale). */
+.type-lab [data-sized] {
+  font-size: var(--base);
+}
+
+/* A role line moved under its title is a subtitle, with its own weight. */
+.type-lab[data-roles~="meta"] [data-role="meta"][data-subtitle] {
+  font-weight: var(--lab-weight-subtitle);
+}
+
+/* Icon and label pairs: every icon takes the vertical offset; the drawn
+   arrows take the stroke, and the back link's arrow the size; the band's
+   secondary control takes the nudge. Each pair's gap is set inline with the site's own as fallback. */
+.type-lab .lab-icon {
+  position: relative;
+  top: var(--lab-icon-offset, 0px);
+}
+.type-lab .lab-arrow {
+  stroke-width: var(--lab-icon-stroke);
+}
+.type-lab .lab-arrow-sized {
+  width: var(--lab-icon-size);
+  height: var(--lab-icon-size);
+}
+.type-lab .lab-secondary {
+  position: relative;
+  top: var(--lab-secondary-nudge, 0px);
 }
 
 /* The panel's own range inputs pick up the accent. */

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { FACES, GROUP_LABELS, faceById, type FaceGroup } from "./faces";
 import { Field, PanelButton, Segmented, Slider } from "./controls";
+import { LayoutControls } from "./LayoutControls";
 import { COLOR_ROLES, PRESETS, ROLES, ROLE_LABELS, SITE_TODAY, exportValues, withFace, type Settings } from "./settings";
 import { editB, flipView, setLab, setTheme, useLab, useTheme } from "./store";
 
@@ -11,6 +12,7 @@ import { editB, flipView, setLab, setTheme, useLab, useTheme } from "./store";
 // that. Every edit lands on B; A is a pinned copy to flip against.
 const GROUPS: readonly FaceGroup[] = ["control", "family", "google", "disk"];
 const same = (x: Settings, y: Settings) => JSON.stringify(x) === JSON.stringify(y);
+const colorName = (color: string) => (color === "site" ? "as on site" : color);
 
 export function Panel() {
   const lab = useLab();
@@ -54,9 +56,9 @@ export function Panel() {
 
       <Field label="Presets">
         <div className="grid grid-cols-2 gap-1.5">
-          {PRESETS.map((preset, i) => (
+          {PRESETS.map((preset) => (
             <PanelButton key={preset.id} pressed={same(b, preset.settings)} onClick={() => editB(() => preset.settings)}>
-              {i === 0 ? `${preset.name} (pick)` : preset.name}
+              {preset.name}
             </PanelButton>
           ))}
         </div>
@@ -108,8 +110,11 @@ export function Panel() {
         )}
       </div>
 
-      <Field label="Color">
-        <Segmented options={COLOR_ROLES} value={b.color} format={(c) => (c === "site" ? "as on site" : c)} onChange={(color) => editB((s) => ({ ...s, color }))} />
+      <Field label="Color for interactive text">
+        <Segmented options={COLOR_ROLES} value={b.interactiveColor} format={colorName} onChange={(interactiveColor) => editB((s) => ({ ...s, interactiveColor }))} />
+      </Field>
+      <Field label="Color for non-interactive text">
+        <Segmented options={COLOR_ROLES} value={b.staticColor} format={colorName} onChange={(staticColor) => editB((s) => ({ ...s, staticColor }))} />
       </Field>
 
       <Field label="Roles in the label face">
@@ -126,6 +131,8 @@ export function Panel() {
           ))}
         </div>
       </Field>
+
+      <LayoutControls />
 
       <Field label="Theme">
         <Segmented options={["light", "dark"] as const} value={theme} onChange={setTheme} />
