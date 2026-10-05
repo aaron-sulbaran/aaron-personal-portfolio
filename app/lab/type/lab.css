@@ -1,0 +1,61 @@
+/* The label face lands on every fragment element whose data-role is switched
+   on at the lab root (data-roles). Each element carries its real size as
+   --base, so the scale multiplies what the site sets. Selectors outrank the
+   Tailwind utilities they replace; with a role off the fragment is exactly
+   the site's markup. The :where() tails add the root's color and leading
+   switches without changing that specificity. */
+:is(
+  .type-lab[data-roles~="controls"] [data-role="controls"],
+  .type-lab[data-roles~="meta"] [data-role="meta"],
+  .type-lab[data-roles~="kickers"] [data-role="kickers"],
+  .type-lab[data-roles~="nav"] [data-role="nav"],
+  .type-lab[data-roles~="pill"] [data-role="pill"],
+  .type-lab[data-roles~="credit"] [data-role="credit"]
+) {
+  font-family: var(--lab-family);
+  font-weight: var(--lab-weight);
+  font-size: calc(var(--base) * var(--lab-scale));
+  letter-spacing: var(--lab-tracking);
+  font-stretch: var(--lab-stretch);
+  font-feature-settings: var(--lab-features);
+  font-synthesis: none;
+}
+
+:is(
+  .type-lab[data-roles~="controls"] [data-role="controls"],
+  .type-lab[data-roles~="meta"] [data-role="meta"],
+  .type-lab[data-roles~="kickers"] [data-role="kickers"],
+  .type-lab[data-roles~="nav"] [data-role="nav"],
+  .type-lab[data-roles~="pill"] [data-role="pill"],
+  .type-lab[data-roles~="credit"] [data-role="credit"]
+):is([data-strong]) {
+  font-weight: var(--lab-weight-strong);
+}
+
+:is(
+  .type-lab[data-roles~="controls"] [data-role="controls"],
+  .type-lab[data-roles~="meta"] [data-role="meta"],
+  .type-lab[data-roles~="kickers"] [data-role="kickers"],
+  .type-lab[data-roles~="nav"] [data-role="nav"],
+  .type-lab[data-roles~="pill"] [data-role="pill"],
+  .type-lab[data-roles~="credit"] [data-role="credit"]
+):where(.type-lab[data-leading="set"] *) {
+  line-height: var(--lab-leading);
+}
+
+:is(
+  .type-lab[data-roles~="controls"] [data-role="controls"],
+  .type-lab[data-roles~="meta"] [data-role="meta"],
+  .type-lab[data-roles~="kickers"] [data-role="kickers"],
+  .type-lab[data-roles~="nav"] [data-role="nav"],
+  .type-lab[data-roles~="pill"] [data-role="pill"],
+  .type-lab[data-roles~="credit"] [data-role="credit"]
+):where(.type-lab:not([data-color="site"]) *) {
+  color: var(--lab-color);
+}
+
+/* The panel's own range inputs pick up the accent. */
+.type-lab-panel input[type="range"] {
+  accent-color: var(--color-accent);
+  width: 100%;
+}
