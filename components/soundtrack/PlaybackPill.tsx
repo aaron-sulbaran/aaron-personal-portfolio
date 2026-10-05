@@ -73,6 +73,12 @@ function PillInner({ reached }: { reached: boolean }) {
   const labelShown = labelsShown.has(kind) || quietRestore;
   const mode = dockMode({ ...input, labelShown });
   const shown = mode !== "hidden";
+  // The face the pill shows: on its way back to the band it keeps the slots it
+  // had, so its box holds its size while the return carries it (the dock is
+  // left-anchored, so a collapsing slot would drag its centre off the tween).
+  const [lastFace, setLastFace] = useState(mode);
+  if (shown && mode !== lastFace) setLastFace(mode);
+  const face = shown ? mode : lastFace;
   const line = labelLine(kind);
 
   const { present, landed } = usePillArrival(wrapperRef, shown, reduce);
@@ -217,8 +223,8 @@ function PillInner({ reached }: { reached: boolean }) {
             <span style={{ display: "flex" }}>
               <DockGlyph music={music} />
             </span>
-            <PillLabel line={line} open={mode === "label"} reduce={reduce} />
-            <PillSlot visible={mode === "capsule" && !preview} maxWidth={220} reduce={reduce} ms={DOCK.collapseMs} before={8}>
+            <PillLabel line={line} open={face === "label"} reduce={reduce} />
+            <PillSlot visible={face === "capsule" && !preview} maxWidth={220} reduce={reduce} ms={DOCK.collapseMs} before={8}>
               <span style={{ fontSize: 12, fontWeight: 500, color: music === "on" ? "var(--color-foreground)" : "var(--color-muted)" }}>
                 {capsuleText(music, track.title)}
               </span>
