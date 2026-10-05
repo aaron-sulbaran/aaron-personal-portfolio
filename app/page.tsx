@@ -40,7 +40,7 @@ export default function Home() {
           <UpToNow />
           <Connect />
         </main>
-        <Footer />
+        <Footer dock />
       </div>
     </>
   );

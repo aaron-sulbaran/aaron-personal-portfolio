@@ -2,12 +2,13 @@ import type { Page } from "@playwright/test";
 import { test, expect } from "./support/fixtures";
 import { nextFrames, openHome, scrollToY } from "./support/coil";
 import { documentTop, sweep } from "./support/wave";
+import { MUTED_ARGS } from "./support/launch";
 
 // A classic 15px scrollbar (headless Chromium hides scrollbars unless told
 // otherwise, and a styled one is never an overlay). The scroll lock hides it
 // and pads by --scrollbar-comp, so the strip keeps its width and its backing
 // store, and stays as wide as the band (the two tracks share one train).
-test.use({ launchOptions: { ignoreDefaultArgs: ["--hide-scrollbars"] } });
+test.use({ launchOptions: { args: MUTED_ARGS, ignoreDefaultArgs: ["--hide-scrollbars"] } });
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {

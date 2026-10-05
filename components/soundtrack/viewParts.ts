@@ -78,14 +78,14 @@ export function trackPointer(fine: boolean, onChange: () => void) {
   };
 }
 
-// The boxes the elements matching `selector` cover, in document px, padded by
+// The boxes the elements matching `selector` under `root` cover, in document px, padded by
 // `pad` and sorted by top (duckTargets stops at the first one past its reach).
 // An element whose words sit outside its own box (offset or parallaxed
 // children) sets `data-wave-avoid-pad` to pad its top and bottom further.
-export function measureAvoidRects(selector: string, pad: number): Rect[] {
+export function measureAvoidRects(root: ParentNode, selector: string, pad: number): Rect[] {
   const y = window.scrollY;
   const next: Rect[] = [];
-  document.querySelectorAll<HTMLElement>(selector).forEach((el) => {
+  root.querySelectorAll<HTMLElement>(selector).forEach((el) => {
     const r = inkBox(el);
     if (!r) return;
     const own = Number(el.dataset.waveAvoidPad);
