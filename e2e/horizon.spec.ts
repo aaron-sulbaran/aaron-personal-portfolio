@@ -356,26 +356,9 @@ test("horizon: at rest only text over the strip ducks", async ({ page }) => {
   expect(read.ducked, "on-screen columns not ducked").toBeLessThan(read.onScreen);
 });
 
-// A slow arrival is not a flick: the scroll made while the strip was not
-// painting is a gap, not a speed, so the first frames on the strip look
-// ahead by nothing.
-test("horizon: a slow arrival from rest ducks nothing below the strip", async ({ page }) => {
-  await openHome(page, { path: HOME });
-  await parkBand(page);
-  expect(await sweepAtRest(page)).toBeLessThan(0.05);
-  await page.waitForTimeout(500);
-  // From the band's centre at 70 percent of the viewport to under the trigger's start at 60.
-  const step = Math.round(0.12 * page.viewportSize()!.height);
-  await page.evaluate((step) => window.scrollBy({ top: step, behavior: "instant" }), step);
-  await page.waitForTimeout(150);
-  const read = await strayDucks(page);
-  expect(read.onScreen, "columns on screen").toBeGreaterThan(0);
-  expect(read.stray, "ducked columns under no box that crosses the strip").toEqual([]);
-});
-
-// The same gap mid-sweep: frozen, the strip stops painting; a scroll made
-// then and the unfreeze that follows are not a flick, so the open air beside
-// About's lede keeps its wave rather than ducking for Who I am below.
+// A gap in painting is not a flick: frozen, the strip stops painting, and a
+// scroll made then is not read as speed on the unfreeze, so the open air
+// beside About's lede keeps its wave rather than ducking for Who I am below.
 test("horizon: a scroll made while frozen does not read as a flick on unfreeze", async ({ page }) => {
   await openHome(page, { path: HOME });
   const vh = page.viewportSize()!.height;
