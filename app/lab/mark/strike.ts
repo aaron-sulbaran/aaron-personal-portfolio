@@ -111,12 +111,11 @@ export function buildStrike(
   // The splash at the point.
   const size = s.splashSize * splashScale;
   if (s.splash === "ring" && p.ring) {
-    tl.fromTo(
-      p.ring,
-      { attr: { rx: 2, ry: 0.6, "stroke-width": 3.2 }, opacity: 0.85 },
-      { attr: { rx: 74 * size, ry: 74 * size * 0.26, "stroke-width": 0.5 }, duration: splash, ease: ease(s.splashEase) },
-      b.impact,
-    );
+    // Hidden until the landing even when scrubbed backwards: a fromTo would
+    // render its from state (a visible small ring) before the impact.
+    gsap.set(p.ring, { opacity: 0, attr: { rx: 2, ry: 0.6, "stroke-width": 3.2 } });
+    tl.set(p.ring, { opacity: 0.85 }, b.impact);
+    tl.to(p.ring, { attr: { rx: 74 * size, ry: 74 * size * 0.26, "stroke-width": 0.5 }, duration: splash, ease: ease(s.splashEase) }, b.impact);
     tl.to(p.ring, { opacity: 0, duration: splash, ease: "power2.in" }, b.impact);
   }
   if (s.splash === "ripple") {

@@ -30,7 +30,7 @@ const BOLT_SPINE: readonly Point[] = [
   [160.4, 26.6],
   [94, 100],
   [176, 115.5],
-  [131.6, 226.6],
+  [132.4, 221.2],
 ];
 
 // The reveal spine runs a little past both ends, so a butt cap uncovers the
@@ -82,10 +82,12 @@ function segmentLengths(points: readonly Point[]) {
 
 // Where each elbow falls along the reveal, as a fraction of its length: the
 // stepped strike pauses at exactly these points.
+// The second stop holds 14 units short of the right elbow, so the paused
+// frame shows a clean end on the band, not a stub of the lower wedge.
 export const BOLT_ELBOWS: readonly number[] = (() => {
   const lengths = segmentLengths(BOLT_REVEAL);
   const total = lengths.reduce((a, b) => a + b, 0);
-  return [lengths[0] / total, (lengths[0] + lengths[1]) / total];
+  return [lengths[0] / total, (lengths[0] + lengths[1] - 14) / total];
 })();
 
 // The dotted splash: dots thrown low along the ground that land on an even

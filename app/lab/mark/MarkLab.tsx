@@ -19,7 +19,7 @@ import { Caption, Section } from "./ui";
 
 declare global {
   interface Window {
-    __markLab?: { specimen: () => Timeline | null };
+    __markLab?: { specimen: () => Timeline | null; set: (patch: Partial<Settings>) => void };
   }
 }
 
@@ -51,7 +51,7 @@ export function MarkLab() {
   const { tlRef, version } = usePlayer(stageRef, build, { loop: view.loop, delay: 200 });
 
   useEffect(() => {
-    window.__markLab = { specimen: () => tlRef.current };
+    window.__markLab = { specimen: () => tlRef.current, set: (patch) => setS((x) => ({ ...x, ...patch })) };
     return () => {
       delete window.__markLab;
     };
@@ -86,7 +86,7 @@ export function MarkLab() {
           <Section index="1" title="The strike" note="Pin each beat with the buttons under the stage; the scrub drags the timeline by hand.">
             <div className="flex flex-col gap-4">
               <div ref={stageRef} id="specimen-stage" className="relative isolate flex h-[520px] items-center justify-center overflow-hidden rounded-2xl bg-[var(--menu-panel)] [box-shadow:inset_0_0_0_1px_var(--color-border)]">
-                <div ref={flashRef} aria-hidden="true" className={`pointer-events-none absolute inset-0 opacity-0 ${s.effect === "accent" ? "bg-accent" : "bg-foreground"}`} />
+                <div ref={flashRef} aria-hidden="true" className={`pointer-events-none absolute inset-0 opacity-0 ${s.effect === "accent" ? "bg-accent" : "bg-foreground"} ${s.flashInLight ? "" : "hidden dark:block"}`} />
                 <StrikeMark s={s} sizePx={s.sizePx} />
               </div>
               <Transport tlRef={tlRef} version={version} speed={s.speed} loop={view.loop} onLoop={(loop) => setView((v) => ({ ...v, loop }))} markers={markers} />

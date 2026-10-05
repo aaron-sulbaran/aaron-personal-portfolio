@@ -41,7 +41,7 @@ export const StrikeMark = forwardRef<HTMLDivElement, Props>(function StrikeMark(
       <svg viewBox={VIEW_BOX} aria-hidden="true" focusable="false" className="absolute inset-0 h-full w-full overflow-visible text-foreground">
         <defs>
           <mask id={boltMask} maskUnits="userSpaceOnUse" x="0" y="0" width="260" height="260">
-            <path data-part="bolt-reveal" d={BOLT_REVEAL_D} fill="none" stroke="white" strokeWidth={BOLT_REVEAL_WIDTH} strokeLinejoin="round" />
+            <path data-part="bolt-reveal" d={BOLT_REVEAL_D} fill="none" stroke="white" strokeWidth={BOLT_REVEAL_WIDTH} strokeLinejoin="miter" strokeMiterlimit={8} />
           </mask>
           <mask id={aMask} maskUnits="userSpaceOnUse" x="0" y="0" width="260" height="260">
             {s.a === "trace" && (
@@ -66,7 +66,7 @@ export const StrikeMark = forwardRef<HTMLDivElement, Props>(function StrikeMark(
 
         <g data-part="anim-mark">
           <path d={BOLT_D} fill="currentColor" mask={`url(#${boltMask})`} />
-          {s.strike === "leader" && <path data-part="leader" d={BOLT_SPINE_D} fill="none" stroke="currentColor" strokeWidth="3" strokeLinejoin="round" />}
+          {s.strike === "leader" && <path data-part="leader" d={BOLT_SPINE_D} fill="none" stroke="currentColor" strokeWidth="3" strokeLinejoin="miter" />}
           {s.a === "scorch" && (
             <g data-part="a-tint" className="text-accent" opacity="0">
               <path d={LEG_D} fill="currentColor" />

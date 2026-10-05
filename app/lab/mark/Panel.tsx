@@ -122,9 +122,10 @@ export function Panel({ s, view, theme, osReduced, edit, setView, setTheme }: Pr
           max={0.16}
           step={0.01}
           format={(n) => (n === 0 ? "off" : n.toFixed(2))}
-          hint="One flash of the surface at the landing: 60ms up, 440ms down, capped at 0.16. Never repeats."
+          hint="One flash of the surface at the landing: 60ms up, 440ms down, capped at 0.16. Never repeats. On paper a flash can only darken, so it reads as a shadow; off in light by default."
           onChange={set("flash")}
         />
+        <Check label="Flash in the light theme too" checked={s.flashInLight} onChange={set("flashInLight")} />
         <Field label="Splash and flash color">
           <Segmented options={["accent", "ink"] as const} value={s.effect} onChange={set("effect")} />
         </Field>

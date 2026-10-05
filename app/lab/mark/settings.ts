@@ -25,6 +25,7 @@ export type StrikeSettings = {
   aMs: number;
   aEase: EaseKey;
   flash: number;
+  flashInLight: boolean;
   effect: EffectColor;
   speed: number;
 };
@@ -100,6 +101,7 @@ const RECOMMENDED: Settings = {
   aMs: 620,
   aEase: "site",
   flash: 0.06,
+  flashInLight: false,
   effect: "accent",
   speed: 1,
   sizePx: 300,
@@ -213,6 +215,7 @@ export function exportValues(s: Settings, label: string, theme: string) {
     aDuration: `${s.aMs}ms`,
     aEase: EASES[s.aEase].export,
     flashAmount: s.flash,
+    flashInLightTheme: s.flashInLight,
     flashRise: s.flash > 0 ? "60ms" : "none",
     flashDecay: s.flash > 0 ? "440ms" : "none",
     effectColor: s.effect === "accent" ? "var(--color-accent)" : "var(--color-foreground)",
