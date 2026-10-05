@@ -108,7 +108,7 @@ const RECOMMENDED: Settings = {
   cardMarkPx: 168,
   layout: "ground",
   order: "strike-first",
-  trigger: "click-at-top",
+  trigger: "hold",
   holdMs: 650,
   hint: "none",
 };
