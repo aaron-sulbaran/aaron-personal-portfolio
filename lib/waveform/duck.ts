@@ -39,6 +39,45 @@ export function stepScrollSpeed(previous: number, instant: number, dt: number): 
   return Number.isFinite(next) && next > 0 ? next : 0;
 }
 
+// The scroll speed behind the look-ahead, tracked from samples of the scroll
+// position on the wall clock (seconds). A sample counts only when it follows
+// the last one within `maxGapS`: after a gap (the first paint, the strip's
+// return, an unfreeze, a tab coming back) the whole gap's scroll is not a
+// flick, so the tracker resyncs and the speed starts again from 0. A jump past
+// the speed that already gives the full look-ahead only lengthens the release,
+// so the instant speed is capped there; under SPEED_REST_PX_S (a look-ahead
+// under a pixel) the speed rests at 0.
+export type ScrollTracker = { speed: number; lastTop: number; lastTime: number };
+
+const SPEED_REST_PX_S = 5;
+
+export function createScrollTracker(): ScrollTracker {
+  return { speed: 0, lastTop: Number.NaN, lastTime: Number.NaN };
+}
+
+export function resetScroll(tracker: ScrollTracker, scrollTop: number, time: number): void {
+  tracker.speed = 0;
+  tracker.lastTop = scrollTop;
+  tracker.lastTime = time;
+}
+
+// Returns the smoothed downward speed in px/s. A sample at the same time as
+// the last one carries nothing; its scroll is counted by the next.
+export function trackScroll(tracker: ScrollTracker, scrollTop: number, time: number, maxGapS: number): number {
+  const dt = time - tracker.lastTime;
+  if (dt === 0) return tracker.speed;
+  if (!(dt > 0 && dt <= maxGapS && Number.isFinite(tracker.lastTop))) {
+    resetScroll(tracker, scrollTop, time);
+    return 0;
+  }
+  const down = Math.min(Math.max((scrollTop - tracker.lastTop) / dt, 0), DUCK.fullLookAheadAtPxPerS);
+  tracker.lastTop = scrollTop;
+  tracker.lastTime = time;
+  const speed = stepScrollSpeed(tracker.speed, Number.isFinite(down) ? down : 0, dt);
+  tracker.speed = speed < SPEED_REST_PX_S ? 0 : speed;
+  return tracker.speed;
+}
+
 // `rects` must be sorted by `top`: the scan stops at the first one below the look-ahead.
 export function duckTargets(
   rects: Rect[],
