@@ -1,6 +1,15 @@
 import { Vector2 } from "three";
 import { gestureOwner } from "@/lib/coil/capture";
-import { projectQuad, type Camera, type CoilGeometry, type Quad, type Silhouette } from "@/lib/coil/geometry";
+import {
+  cardDistancePx,
+  insideSilhouette,
+  projectQuad,
+  seamMarginPx,
+  type Camera,
+  type CoilGeometry,
+  type Quad,
+  type Silhouette,
+} from "@/lib/coil/geometry";
 import type { Cards } from "./cards";
 import type { Entrance } from "./entrance";
 import type { Field } from "./field";
@@ -91,6 +100,10 @@ export type DebugStats = {
   // ---- fx-input debug: the live wheel owner and the helix hull ----
   owner?: () => "coil" | "page" | "none";
   silhouette?: () => Silhouette | null;
+  // Wheel capture at a viewport point: rule A (onCard, with the distance to
+  // the nearest pickable card and the seam margin in use), the hull that
+  // still governs release, and whether a real pointer move has armed capture.
+  captureAt?: (clientX: number, clientY: number) => CaptureProbe;
   // ---- end fx-input debug ----
   api?: CoilSceneApi;
   // Slice 7: what the scene spends, as live (the DPR in use, the buffer,
@@ -130,6 +143,8 @@ export type DebugStats = {
   // Slice 7: the touch drag.
   drag?: () => object;
 };
+
+export type CaptureProbe = { onCard: boolean; cardPx: number; seamPx: number; insideSilhouette: boolean; armed: boolean };
 
 export type DebugReads = {
   offset: () => number;
@@ -262,6 +277,17 @@ export function installSceneHooks(ctx: SceneCtx, parts: HookParts) {
     focusKey: hover.focusKey,
   });
   debug.drag = input.dragState;
+  debug.captureAt = (clientX, clientY) => {
+    const x = clientX - (st.view.docLeft - window.scrollX);
+    const y = clientY - (st.view.docTop - window.scrollY);
+    return {
+      onCard: hover.nearCardAt(x, y),
+      cardPx: st.geoCamera ? cardDistancePx(st.poses, st.geoCamera, x, y) : Number.POSITIVE_INFINITY,
+      seamPx: st.geo ? seamMarginPx(st.geo) : 0,
+      insideSilhouette: st.sil !== null && insideSilhouette(st.sil, x, y),
+      armed: st.capture.armed,
+    };
+  };
 }
 
 export function removeDebugStats(debug: DebugStats | null) {
