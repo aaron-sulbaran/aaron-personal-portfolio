@@ -25,10 +25,6 @@ describe("buildDots", () => {
     field.mag.fill(1);
     field.disp.forEach((_, i) => (field.disp[i] = i % 2 ? 0.62 : -0.62));
     const weights = new Float32Array(30).map((_, i) => (i % 5) / 4);
-    for (let i = 0; i < 30; i++) {
-      field.mag[i] = FLOOR + (1 - FLOOR) * weights[i];
-      field.disp[i] *= weights[i];
-    }
     const muted: number[] = [];
     const accent: number[] = [];
     const cursor = { x: 10 + 13 * 7, y: 150, on: true };
@@ -59,6 +55,74 @@ describe("buildDots", () => {
     buildDots(field, layout, 4, new Float32Array(30).fill(1), NO_CURSOR, muted, accent);
     expect(accent.length).toBeGreaterThan(0);
     for (const x of xs(accent)) expect(x).toBe(10 + 13 * 4);
+  });
+});
+
+describe("buildDots with paint-time weights", () => {
+  const small = { columns: 3, spacing: 10, startX: 5, baseline: 50, maxAmp: 20 };
+  const cursor = { x: -1e4, y: -1e4, on: false };
+
+  it("a weight of 0 pins the column to the floor on the midline", () => {
+    const field = createField(3);
+    field.mag.fill(0.5);
+    field.disp.fill(0.5);
+    const muted: number[] = [];
+    const accent: number[] = [];
+    buildDots(field, small, 0, new Float32Array([0, 1, 1]), cursor, muted, accent);
+    expect(muted.slice(0, 3)).toEqual([5, 50, 2.2]);
+    const all = [...muted, ...accent];
+    const triplesAt = (x: number) => xs(all).filter((dotX) => dotX === x).length;
+    expect(triplesAt(5)).toBe(1);
+    expect(triplesAt(15)).toBeGreaterThan(1);
+  });
+
+  it("columnX places each column", () => {
+    const field = createField(3);
+    field.mag.fill(FLOOR);
+    const muted: number[] = [];
+    const accent: number[] = [];
+    buildDots(field, small, 0, new Float32Array([1, 1, 1]), cursor, muted, accent, (i) => 100 + i);
+    expect([muted[0], muted[3], muted[6]]).toEqual([100, 101, 102]);
+  });
+
+  it("maxThick 1 stacks at most one fuzz dot each side of the centre", () => {
+    const field = createField(3);
+    field.mag.fill(1);
+    const muted: number[] = [];
+    const accent: number[] = [];
+    const at = (dots: number[], x: number) => xs(dots).filter((dotX) => dotX === x).length;
+    buildDots(field, { ...small, maxAmp: 70 }, 0, new Float32Array([1, 1, 1]), cursor, muted, accent);
+    const uncapped = [...muted, ...accent];
+    buildDots(field, { ...small, maxAmp: 70, maxThick: 1 }, 0, new Float32Array([1, 1, 1]), cursor, muted, accent);
+    const all = [...muted, ...accent];
+    for (const x of [5, 15, 25]) {
+      expect(at(uncapped, x)).toBeGreaterThan(3);
+      expect(at(all, x)).toBeLessThanOrEqual(3);
+      // The centre dot always stays, on the midline.
+      expect(all.some((v, k) => k % 3 === 0 && v === x && all[k + 1] === 50 && all[k + 2] === CENTER_RADIUS)).toBe(true);
+    }
+  });
+
+  it("baselineOffset moves the centre dot by its px", () => {
+    const field = createField(3);
+    field.mag.fill(FLOOR);
+    const muted: number[] = [];
+    const accent: number[] = [];
+    const baselineOffset = new Float32Array([10, 0, 0]);
+    buildDots(field, { ...small, baselineOffset }, 0, new Float32Array([1, 1, 1]), cursor, muted, accent);
+    expect(muted[1]).toBe(60);
+    expect(muted[4]).toBe(50);
+  });
+
+  it("a duck past half sends the column to the ducked arrays", () => {
+    const field = createField(3);
+    field.mag.fill(FLOOR);
+    const muted: number[] = [];
+    const accent: number[] = [];
+    const ducked = { duck: new Float32Array([0, 0.6, 0.4]), muted: [] as number[], accent: [] as number[] };
+    buildDots(field, small, 0, new Float32Array([1, 0, 1]), cursor, muted, accent, undefined, ducked);
+    expect(xs(ducked.muted)).toEqual([15]);
+    expect(xs(muted)).toEqual([5, 25]);
   });
 });
 
