@@ -22,7 +22,7 @@ type Music = "before" | "on" | "paused";
 
 function Glyph({ music }: { music: Music }) {
   return (
-    <span className="flex h-4 w-4 flex-none items-center justify-center">
+    <span className="lab-icon flex h-4 w-4 flex-none items-center justify-center">
       {music === "paused" ? (
         <span className="block h-0.5 w-4 rounded-[1px] bg-muted opacity-70" />
       ) : (
@@ -40,7 +40,7 @@ function Capsule({ music, preview = false, children }: { music: Music; preview?:
       style={{ ...glass, padding: preview ? "8px 16px 8px 8px" : "0 16px 0 13px" }}
     >
       {preview ? children : <Glyph music={music} />}
-      {preview ? <Glyph music={music} /> : children}
+      {preview ? <Glyph music={music} /> : <span style={{ paddingLeft: "var(--lab-icon-gap, 8px)" }}>{children}</span>}
     </button>
   );
 }
@@ -66,7 +66,7 @@ export function PillStates() {
     <div className="flex flex-wrap items-end gap-x-10 gap-y-12">
       <div>
         <Capsule music="before">
-          <span className="whitespace-nowrap pl-2 text-[12px] font-medium text-muted" {...role("pill", 12, true)}>
+          <span className="whitespace-nowrap text-[12px] font-medium text-muted" {...role("pill", 12, true)}>
             {s.capsuleUnanswered}
           </span>
         </Capsule>
@@ -74,7 +74,7 @@ export function PillStates() {
       </div>
       <div>
         <Capsule music="on">
-          <span className="whitespace-nowrap pl-2 text-[12px] font-medium text-foreground" {...role("pill", 12, true)}>
+          <span className="whitespace-nowrap text-[12px] font-medium text-foreground" {...role("pill", 12, true)}>
             {s.dockAccepted}
           </span>
         </Capsule>
@@ -82,7 +82,7 @@ export function PillStates() {
       </div>
       <div>
         <Capsule music="on">
-          <span className="whitespace-nowrap pl-2 text-[12px] font-medium text-foreground" {...role("pill", 12, true)}>
+          <span className="whitespace-nowrap text-[12px] font-medium text-foreground" {...role("pill", 12, true)}>
             {track.title}
           </span>
         </Capsule>
@@ -90,7 +90,7 @@ export function PillStates() {
       </div>
       <div>
         <Capsule music="paused">
-          <span className="whitespace-nowrap pl-2 text-[12px] font-medium text-muted" {...role("pill", 12, true)}>
+          <span className="whitespace-nowrap text-[12px] font-medium text-muted" {...role("pill", 12, true)}>
             {s.capsulePaused}
           </span>
         </Capsule>

@@ -2,6 +2,8 @@ import type { CSSProperties } from "react";
 import Image from "next/image";
 import { ArrowRight, X } from "lucide-react";
 import { siteContent } from "@/lib/content";
+import { useShown } from "../context";
+import { RoleLineText } from "../pairs";
 import { role } from "../Specimen";
 
 // components/WorkModal.tsx and PhotoModal.tsx, the panels only (no backdrop,
@@ -29,6 +31,9 @@ function Close() {
 
 export function ModalMeta() {
   const hint = siteContent.modals.closeHintKeyboard;
+  const line = useShown().roleLineModal;
+  const roleLine = <RoleLineText line={line} text={`${item.role}, ${item.year}`} />;
+  const cta = role("controls", 18, true);
   return (
     <div className="flex flex-col gap-12">
       <div className="relative flex w-full max-w-xl flex-col gap-6 overflow-hidden rounded-2xl border border-border bg-background/85 p-6 shadow-[0_40px_80px_-20px_rgba(10,10,10,0.45)] backdrop-blur-xl md:p-10">
@@ -40,11 +45,10 @@ export function ModalMeta() {
               <Image src={item.logo} alt={`${item.title} logo`} width={120} height={120} className="h-auto w-[86%] object-contain opacity-90" />
             </div>
           </div>
-          <div className="flex flex-col gap-1">
-            <span className="text-sm text-muted" {...role("meta", 14)}>
-              {item.role}, {item.year}
-            </span>
+          <div className="flex flex-col" style={{ gap: line.gap }}>
+            {line.placement === "above" && roleLine}
             <h2 className="font-display text-3xl leading-tight text-foreground md:text-4xl">{item.title}</h2>
+            {line.placement === "below" && roleLine}
           </div>
         </div>
         <p className="text-base leading-relaxed text-foreground md:text-lg md:leading-[1.55]">{item.teaser}</p>
@@ -52,10 +56,11 @@ export function ModalMeta() {
           <a
             href="#modal"
             className="group inline-flex items-center gap-2 text-lg font-medium text-accent transition-colors duration-200 hover:text-accent-hover"
-            {...role("controls", 18, true)}
+            {...cta}
+            style={{ ...cta.style, gap: "var(--lab-icon-gap, 8px)" }}
           >
             {siteContent.work.cta}
-            <ArrowRight aria-hidden="true" className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+            <ArrowRight aria-hidden="true" className="lab-icon lab-arrow h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
           </a>
           <span className="text-sm text-muted" {...role("meta", 14)}>
             {hint}

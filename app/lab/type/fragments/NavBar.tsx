@@ -15,6 +15,9 @@ const CHIP =
 export function NavBar() {
   const m = siteContent.menu;
   const s = siteContent.soundtrack;
+  const menuTag = role("nav", 14, true);
+  const chipTag = role("nav", 13, true);
+  const chip = { "data-role": chipTag["data-role"], "data-strong": "", style: { ...chipTag.style, gap: "var(--lab-icon-gap, 8px)" } };
   return (
     <div className="flex flex-col gap-12">
       <div className="relative h-[72px] w-full overflow-hidden rounded-sm">
@@ -44,9 +47,14 @@ export function NavBar() {
         <div className="absolute right-5 top-4 min-h-10 rounded-[20px] bg-[var(--menu-pill)] text-foreground backdrop-blur-[8px] [box-shadow:inset_0_0_0_1px_var(--color-border)]">
           <div className="relative flex h-10 items-center justify-end">
             <span className="flex h-10 w-[34px] items-center justify-center">
-              <NoteIcon on={false} className="block h-[15px] w-[9.5px] text-muted" />
+              <NoteIcon on={false} className="lab-icon block h-[15px] w-[9.5px] text-muted" />
             </span>
-            <span className="flex h-10 items-center rounded-full pl-1.5 pr-[17px] text-sm font-medium tracking-[0.005em]" {...role("nav", 14, true)}>
+            <span
+              className="flex h-10 items-center rounded-full pl-1.5 pr-[17px] text-sm font-medium tracking-[0.005em]"
+              data-role={menuTag["data-role"]}
+              data-strong=""
+              style={{ ...menuTag.style, paddingLeft: "var(--lab-icon-gap, 6px)" }}
+            >
               {m.pillLabel}
             </span>
           </div>
@@ -56,12 +64,12 @@ export function NavBar() {
       <div className="max-w-[440px] rounded-sm bg-[var(--menu-panel)] px-8 py-7 [box-shadow:inset_0_0_0_1px_var(--color-border)]">
         <div className="flex shrink-0 flex-col gap-[18px] border-t border-border pt-5">
           <div className="flex flex-wrap gap-2.5">
-            <button type="button" className={CHIP} {...role("nav", 13, true)}>
-              <Moon aria-hidden="true" className="h-4 w-4" strokeWidth={1.6} />
+            <button type="button" className={CHIP} {...chip}>
+              <Moon aria-hidden="true" className="lab-icon h-4 w-4" strokeWidth={1.6} />
               <span>{m.themeToggleToDark}</span>
             </button>
-            <button type="button" className={CHIP} {...role("nav", 13, true)}>
-              <span aria-hidden="true" className="flex h-4 w-4 items-center justify-center">
+            <button type="button" className={CHIP} {...chip}>
+              <span aria-hidden="true" className="lab-icon flex h-4 w-4 items-center justify-center">
                 <NoteIcon on={false} className="block h-[15px] w-[9.5px] text-muted" />
               </span>
               <span>{s.menuToggleOff}</span>
