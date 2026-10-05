@@ -62,7 +62,7 @@ export function ModalMeta() {
             {siteContent.work.cta}
             <ArrowRight aria-hidden="true" className="lab-icon lab-arrow h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
           </a>
-          <span className="text-sm text-muted" {...role("meta", 14)}>
+          <span className="text-sm text-muted" {...role("meta", 14, false, "hint")}>
             {hint}
           </span>
         </div>
@@ -75,7 +75,7 @@ export function ModalMeta() {
         </div>
         <div className="flex flex-1 flex-col justify-center pt-2 md:pt-0">
           <p className="text-2xl leading-[1.25] text-foreground md:text-3xl md:leading-[1.2]">{photo.caption}</p>
-          <p className="mt-5 text-sm text-muted" {...role("meta", 14)}>
+          <p className="mt-5 text-sm text-muted" {...role("meta", 14, false, "hint")}>
             {hint}
           </p>
         </div>

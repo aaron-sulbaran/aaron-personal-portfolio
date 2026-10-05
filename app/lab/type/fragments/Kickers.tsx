@@ -14,7 +14,7 @@ export function Kickers() {
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 md:gap-10">
         <div className="flex items-center gap-3 text-sm text-muted">
           <span className="inline-block h-px w-8 bg-border" aria-hidden="true" />
-          <span {...role("kickers", 14)}>{label}</span>
+          <span {...role("kickers", 14, false, "kicker")}>{label}</span>
         </div>
         <h2 className="font-display text-display-xl text-foreground">
           <span className="block">{heading}</span>
@@ -26,7 +26,7 @@ export function Kickers() {
         <div className="md:col-span-4">
           <div className="flex items-center gap-3 text-sm text-muted">
             <span className="inline-block h-px w-8 bg-border" aria-hidden="true" />
-            <span {...role("kickers", 14)}>{who.label}</span>
+            <span {...role("kickers", 14, false, "kicker")}>{who.label}</span>
           </div>
         </div>
         <div className="md:col-span-8">

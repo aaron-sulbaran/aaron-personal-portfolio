@@ -104,6 +104,112 @@
   color: var(--color-foreground);
 }
 
+/* Tones: what kind of small text an element is. A tone's color, when the
+   panel sets one, wins over its role's (one attribute more specific). The
+   soft accent is the accent mixed toward the paper, about 5:1 in both
+   themes. */
+.type-lab {
+  --lab-accent-soft: color-mix(in srgb, var(--color-accent) 72%, var(--color-background));
+}
+[data-theme="dark"] .type-lab {
+  --lab-accent-soft: color-mix(in srgb, var(--color-accent) 80%, var(--color-background));
+}
+:is(
+  .type-lab[data-roles~="controls"] [data-role="controls"],
+  .type-lab[data-roles~="meta"] [data-role="meta"],
+  .type-lab[data-roles~="kickers"] [data-role="kickers"],
+  .type-lab[data-roles~="nav"] [data-role="nav"],
+  .type-lab[data-roles~="pill"] [data-role="pill"],
+  .type-lab[data-roles~="credit"] [data-role="credit"]
+)[data-tone="besideTitle"]:where(.type-lab[data-tones~="besideTitle"] *) {
+  color: var(--lab-tone-besideTitle);
+}
+:is(
+  .type-lab[data-roles~="controls"] [data-role="controls"],
+  .type-lab[data-roles~="meta"] [data-role="meta"],
+  .type-lab[data-roles~="kickers"] [data-role="kickers"],
+  .type-lab[data-roles~="nav"] [data-role="nav"],
+  .type-lab[data-roles~="pill"] [data-role="pill"],
+  .type-lab[data-roles~="credit"] [data-role="credit"]
+)[data-tone="hint"]:where(.type-lab[data-tones~="hint"] *) {
+  color: var(--lab-tone-hint);
+}
+:is(
+  .type-lab[data-roles~="controls"] [data-role="controls"],
+  .type-lab[data-roles~="meta"] [data-role="meta"],
+  .type-lab[data-roles~="kickers"] [data-role="kickers"],
+  .type-lab[data-roles~="nav"] [data-role="nav"],
+  .type-lab[data-roles~="pill"] [data-role="pill"],
+  .type-lab[data-roles~="credit"] [data-role="credit"]
+)[data-tone="kicker"]:where(.type-lab[data-tones~="kicker"] *) {
+  color: var(--lab-tone-kicker);
+}
+:is(
+  .type-lab[data-roles~="controls"] [data-role="controls"],
+  .type-lab[data-roles~="meta"] [data-role="meta"],
+  .type-lab[data-roles~="kickers"] [data-role="kickers"],
+  .type-lab[data-roles~="nav"] [data-role="nav"],
+  .type-lab[data-roles~="pill"] [data-role="pill"],
+  .type-lab[data-roles~="credit"] [data-role="credit"]
+)[data-tone="secondary"]:where(.type-lab[data-tones~="secondary"] *) {
+  color: var(--lab-tone-secondary);
+}
+
+/* A seen book row dims its meta with its title, back to full on hover and
+   focus, like the title. */
+.type-lab[data-seen-meta="dim"] .book-row[data-seen] [data-role="meta"] {
+  opacity: 0.55;
+  transition: opacity 200ms;
+}
+.type-lab[data-seen-meta="dim"] .book-row[data-seen]:is(:hover, :focus-visible) [data-role="meta"] {
+  opacity: 1;
+}
+
+/* Three size steps: every switched-on label lands on 12, 14 or 18px, times
+   the scale. */
+:is(
+  .type-lab[data-roles~="controls"] [data-role="controls"],
+  .type-lab[data-roles~="meta"] [data-role="meta"],
+  .type-lab[data-roles~="kickers"] [data-role="kickers"],
+  .type-lab[data-roles~="nav"] [data-role="nav"],
+  .type-lab[data-roles~="pill"] [data-role="pill"],
+  .type-lab[data-roles~="credit"] [data-role="credit"]
+)[data-step="sm"]:where(.type-lab[data-three-steps="on"] *) {
+  font-size: calc(0.75rem * var(--lab-scale));
+}
+:is(
+  .type-lab[data-roles~="controls"] [data-role="controls"],
+  .type-lab[data-roles~="meta"] [data-role="meta"],
+  .type-lab[data-roles~="kickers"] [data-role="kickers"],
+  .type-lab[data-roles~="nav"] [data-role="nav"],
+  .type-lab[data-roles~="pill"] [data-role="pill"],
+  .type-lab[data-roles~="credit"] [data-role="credit"]
+)[data-step="md"]:where(.type-lab[data-three-steps="on"] *) {
+  font-size: calc(0.875rem * var(--lab-scale));
+}
+:is(
+  .type-lab[data-roles~="controls"] [data-role="controls"],
+  .type-lab[data-roles~="meta"] [data-role="meta"],
+  .type-lab[data-roles~="kickers"] [data-role="kickers"],
+  .type-lab[data-roles~="nav"] [data-role="nav"],
+  .type-lab[data-roles~="pill"] [data-role="pill"],
+  .type-lab[data-roles~="credit"] [data-role="credit"]
+)[data-step="lg"]:where(.type-lab[data-three-steps="on"] *) {
+  font-size: calc(1.125rem * var(--lab-scale));
+}
+
+/* The lab's step marks (a view aid, not a setting): small dotted, medium
+   dashed, large solid. */
+.type-lab[data-mark-steps="on"] [data-role][data-step="sm"] {
+  outline: 1px dotted var(--color-accent);
+}
+.type-lab[data-mark-steps="on"] [data-role][data-step="md"] {
+  outline: 1px dashed var(--color-muted);
+}
+.type-lab[data-mark-steps="on"] [data-role][data-step="lg"] {
+  outline: 1px solid var(--color-foreground);
+}
+
 /* The panel's own range inputs pick up the accent. */
 .type-lab-panel input[type="range"] {
   accent-color: var(--color-accent);

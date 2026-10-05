@@ -1,14 +1,23 @@
 import type { CSSProperties, ReactNode } from "react";
-import type { Role } from "./settings";
+import { stepFor, type Role, type Tone } from "./settings";
 
 // Marks a fragment element as a label role at its real size (px), so lab.css
-// can restyle it. `strong` marks text the site sets in medium.
-export function role(name: Role, px: number, strong = false) {
+// can restyle it. `strong` marks text the site sets in medium; `tone` says
+// what kind of small text it is (its color can override the role's); the
+// step is where the three-step scale puts it.
+export function role(name: Role, px: number, strong = false, tone?: Tone) {
   return {
     "data-role": name,
     "data-strong": strong ? "" : undefined,
+    "data-step": stepFor(px),
+    "data-tone": tone,
     style: { "--base": `${px / 16}rem` } as CSSProperties,
   };
+}
+
+// The same marks without the style, for elements that merge their own.
+export function marks(tag: ReturnType<typeof role>) {
+  return { "data-role": tag["data-role"], "data-strong": tag["data-strong"], "data-step": tag["data-step"], "data-tone": tag["data-tone"] };
 }
 
 // One fragment on the bench, captioned in the lab's plain chrome with the

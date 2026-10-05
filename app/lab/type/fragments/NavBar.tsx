@@ -2,7 +2,7 @@ import { Moon } from "lucide-react";
 import { AsMark } from "@/components/menu/BrandMark";
 import { NoteIcon } from "@/components/menu/NoteIcon";
 import { siteContent } from "@/lib/content";
-import { role } from "../Specimen";
+import { marks, role } from "../Specimen";
 
 // components/SiteNav.tsx and components/menu: the bar past the hero (mark,
 // Work active, About, Connect) with the Menu pill and its Listen note, then
@@ -17,7 +17,7 @@ export function NavBar() {
   const s = siteContent.soundtrack;
   const menuTag = role("nav", 14, true);
   const chipTag = role("nav", 13, true);
-  const chip = { "data-role": chipTag["data-role"], "data-strong": "", style: { ...chipTag.style, gap: "var(--lab-icon-gap, 8px)" } };
+  const chip = { ...marks(chipTag), style: { ...chipTag.style, gap: "var(--lab-icon-gap, 8px)" } };
   return (
     <div className="flex flex-col gap-12">
       <div className="relative h-[72px] w-full overflow-hidden rounded-sm">
@@ -51,8 +51,7 @@ export function NavBar() {
             </span>
             <span
               className="flex h-10 items-center rounded-full pl-1.5 pr-[17px] text-sm font-medium tracking-[0.005em]"
-              data-role={menuTag["data-role"]}
-              data-strong=""
+              {...marks(menuTag)}
               style={{ ...menuTag.style, paddingLeft: "var(--lab-icon-gap, 6px)" }}
             >
               {m.pillLabel}

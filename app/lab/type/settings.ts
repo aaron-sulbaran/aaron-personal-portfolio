@@ -21,8 +21,27 @@ export const ROLE_LABELS: Record<Role, string> = {
 export const INTERACTIVE_ROLES: readonly Role[] = ["controls", "nav", "pill"];
 export const STATIC_ROLES: readonly Role[] = ["meta", "kickers", "credit"];
 
-export type ColorRole = "site" | "muted" | "foreground" | "accent";
-export const COLOR_ROLES: readonly ColorRole[] = ["site", "muted", "foreground", "accent"];
+export type ColorRole = "site" | "muted" | "foreground" | "accent" | "accent-soft";
+export const COLOR_ROLES: readonly ColorRole[] = ["site", "muted", "foreground", "accent", "accent-soft"];
+
+// Finer than interactive and non-interactive: a tone marks what kind of
+// small text an element is, and a tone's color, when set, wins over its
+// role's. "same" leaves the role's color in charge.
+export const TONES = ["besideTitle", "hint", "kicker", "secondary"] as const;
+export type Tone = (typeof TONES)[number];
+export type ToneColor = ColorRole | "same";
+export const TONE_COLORS: readonly ToneColor[] = ["same", "muted", "accent", "accent-soft", "foreground"];
+export const TONE_LABELS: Record<Tone, string> = {
+  besideTitle: "Meta beside a title (role lines, book meta)",
+  hint: "Free-standing hints and credit (Esc hints, credit prose, pill tip)",
+  kicker: "Kickers (About, Who I am)",
+  secondary: "Secondary pill text (artist, Paused, Music?)",
+};
+
+// Three size steps, before the scale: what each base size collapses to.
+export const STEP_PX = { sm: 12, md: 14, lg: 18 } as const;
+export type Step = keyof typeof STEP_PX;
+export const stepFor = (px: number): Step => (px <= 12 ? "sm" : px >= 17 ? "lg" : "md");
 
 export type Placement = "above" | "below";
 // The role line beside a title: where it sits, its gap to the title and its
@@ -64,6 +83,16 @@ export type Settings = {
   roleLineCase: RoleLine;
   roleLineModal: RoleLine;
   subtitleWeight: number; // the role line's weight once it sits below
+  toneColors: Record<Tone, ToneColor>;
+  // A seen book row dims its meta with its title (back on hover and focus).
+  seenMetaDim: boolean;
+  // Every label size collapses onto STEP_PX (times the scale).
+  threeSteps: boolean;
+  // Book meta beside its title: "site" keeps the site's grid (meta never
+  // wraps, the title gives way); "fit" puts a row's meta under its title
+  // only when the two do not fit side by side; a number does it for a whole
+  // column narrower than that many px.
+  metaWrap: "site" | "fit" | number;
 };
 
 // The role line as the site has it (an eyebrow above), and as I would ship
@@ -91,7 +120,11 @@ const SITE_LAYOUT = {
   roleLineCase: ROLE_LINE_SITE.case,
   roleLineModal: ROLE_LINE_SITE.modal,
   subtitleWeight: 400,
-} as const satisfies Partial<Settings>;
+  toneColors: { besideTitle: "same", hint: "same", kicker: "same", secondary: "same" },
+  seenMetaDim: false,
+  threeSteps: false,
+  metaWrap: "site",
+} satisfies Partial<Settings>;
 
 // Profa sits about 0.07em higher in its line box than Inter (its ascent is
 // 0.818em against a 0.636em cap height), so an icon centred on the line box
@@ -106,7 +139,7 @@ const PROFA_LAYOUT = {
   iconSize: 14,
   iconOffset: -1,
   controlAlign: "baseline",
-} as const satisfies Partial<Settings>;
+} satisfies Partial<Settings>;
 
 const ALL_ROLES: readonly Role[] = ROLES;
 
@@ -126,30 +159,54 @@ export const SITE_TODAY: Settings = {
 
 export type Preset = { id: string; name: string; note: string; settings: Settings };
 
+const AARON_FINAL: Settings = {
+  face: "profa",
+  weight: 700,
+  strongWeight: 700,
+  scale: 1.06,
+  tracking: 0.01,
+  leading: null,
+  stretch: 100,
+  interactiveColor: "accent",
+  staticColor: "accent",
+  roles: ALL_ROLES,
+  ...PROFA_LAYOUT,
+  iconStroke: 2.5,
+  controlGap: 16,
+  headingGap: 36,
+  roleLineCase: { placement: "above", gap: 8, size: 14 },
+  roleLineModal: { placement: "below", gap: 3, size: 15 },
+  subtitleWeight: 700,
+};
+
+// The design review's changes on top of Aaron's final, each one a setting:
+// color tells clickable from not again (hints, credit, kickers and the
+// pill's secondary text go muted, "Not now" too), the role line sits below
+// the title in both places, a seen row dims its meta, three size steps, and
+// book meta wraps under a cramped title.
+const AARON_REVIEWED: Settings = {
+  ...AARON_FINAL,
+  toneColors: { besideTitle: "same", hint: "muted", kicker: "muted", secondary: "muted" },
+  quietSecondary: true,
+  roleLineCase: { placement: "below", gap: 14, size: 18 },
+  roleLineModal: { placement: "below", gap: 6, size: 15 },
+  seenMetaDim: true,
+  threeSteps: true,
+  metaWrap: "fit",
+};
+
 export const PRESETS: readonly Preset[] = [
   {
     id: "aaron-final",
     name: "Aaron's final",
     note: "Aaron's pick as decided: role line above on the case page, below in the modal. The band's question stands apart from its two answers (36px), and the answers pair up (16px).",
-    settings: {
-      face: "profa",
-      weight: 700,
-      strongWeight: 700,
-      scale: 1.06,
-      tracking: 0.01,
-      leading: null,
-      stretch: 100,
-      interactiveColor: "accent",
-      staticColor: "accent",
-      roles: ALL_ROLES,
-      ...PROFA_LAYOUT,
-      iconStroke: 2.5,
-      controlGap: 16,
-      headingGap: 36,
-      roleLineCase: { placement: "above", gap: 8, size: 14 },
-      roleLineModal: { placement: "below", gap: 3, size: 15 },
-      subtitleWeight: 700,
-    },
+    settings: AARON_FINAL,
+  },
+  {
+    id: "aaron-reviewed",
+    name: "Aaron's final, reviewed",
+    note: "His final plus the review: muted hints, credit, kickers and secondary pill text; quieter Not now; role line below in both; seen meta dims; three size steps; book meta wraps in a narrow column.",
+    settings: AARON_REVIEWED,
   },
   {
     id: "aaron-pick",
@@ -265,7 +322,8 @@ export function withPlacement(spot: RoleLineSpot, placement: Placement): RoleLin
   return placement === "below" ? ROLE_LINE_BELOW[spot] : ROLE_LINE_SITE[spot];
 }
 
-const colorValue = (color: ColorRole) => (color === "site" ? "inherit" : `var(--color-${color})`);
+const colorValue = (color: ColorRole) =>
+  color === "site" ? "inherit" : color === "accent-soft" ? "var(--lab-accent-soft)" : `var(--color-${color})`;
 
 export function labVars(settings: Settings): CSSProperties {
   const face = faceById(settings.face);
@@ -287,6 +345,12 @@ export function labVars(settings: Settings): CSSProperties {
     ...(settings.iconGap === null ? {} : { "--lab-icon-gap": `${settings.iconGap}px` }),
     "--lab-control-gap": `${settings.controlGap}px`,
     "--lab-heading-gap": `${settings.headingGap}px`,
+    ...Object.fromEntries(
+      TONES.filter((tone) => settings.toneColors[tone] !== "same").map((tone) => [
+        `--lab-tone-${tone}`,
+        colorValue(settings.toneColors[tone] as ColorRole),
+      ]),
+    ),
     "--lab-secondary-nudge": `${settings.secondaryNudge}px`,
   } as CSSProperties;
 }
@@ -298,12 +362,20 @@ export function labAttributes(settings: Settings) {
     "data-color-static": settings.staticColor,
     "data-leading": settings.leading === null ? "site" : "set",
     "data-quiet-secondary": settings.quietSecondary ? "on" : "off",
+    "data-tones": TONES.filter((tone) => settings.toneColors[tone] !== "same").join(" "),
+    "data-seen-meta": settings.seenMetaDim ? "dim" : "site",
+    "data-three-steps": settings.threeSteps ? "on" : "off",
   };
 }
 
 const BASE_SIZES_PX = [11, 12, 13, 14, 16, 18] as const;
 
-const colorExport = (color: ColorRole) => (color === "site" ? "as on the site" : `var(--color-${color})`);
+const colorExport = (color: ColorRole) =>
+  color === "site"
+    ? "as on the site"
+    : color === "accent-soft"
+      ? "color-mix(in srgb, var(--color-accent) 72%, var(--color-background)) (80% in dark)"
+      : `var(--color-${color})`;
 
 // What the clipboard gets: the settings plus the values a token would hold.
 // The round 1 fields keep their names and shapes; `color` is the shared value
@@ -315,7 +387,7 @@ export function exportValues(settings: Settings, label: string) {
     placement: line.placement,
     gapPx: line.gap,
     sizePx: line.size,
-    sizePxScaled: round(line.size * settings.scale),
+    sizePxScaled: round((settings.threeSteps ? STEP_PX[stepFor(line.size)] : line.size) * settings.scale),
     fontWeight: line.placement === "below" ? settings.subtitleWeight : settings.weight,
   });
   return {
@@ -348,5 +420,18 @@ export function exportValues(settings: Settings, label: string) {
       quietSecondary: settings.quietSecondary,
     },
     roleLine: { casePage: roleLine(settings.roleLineCase), modal: roleLine(settings.roleLineModal) },
+    toneColors: Object.fromEntries(
+      TONES.map((tone) => [tone, settings.toneColors[tone] === "same" ? "same as its role" : colorExport(settings.toneColors[tone] as ColorRole)]),
+    ),
+    seenRowMetaDims: settings.seenMetaDim,
+    sizeSteps: settings.threeSteps
+      ? Object.fromEntries(Object.entries(STEP_PX).map(([step, px]) => [step, round(px * settings.scale)]))
+      : "as each element's own size",
+    bookMetaWrap:
+      settings.metaWrap === "site"
+        ? "as on the site"
+        : settings.metaWrap === "fit"
+          ? "per row, under the title when the two do not fit side by side"
+          : `whole column, under the title below ${settings.metaWrap}px`,
   };
 }

@@ -13,6 +13,7 @@ import { Kickers } from "./fragments/Kickers";
 import { ModalMeta } from "./fragments/ModalMeta";
 import { NavBar } from "./fragments/NavBar";
 import { PillStates } from "./fragments/PillStates";
+import { Sequence } from "./fragments/Sequence";
 import { SoundBand } from "./fragments/SoundBand";
 
 // The bench: every fragment where small text lives, restyled from one panel.
@@ -36,7 +37,7 @@ export function TypeLab({ month }: { month: string }) {
 
   return (
     <ShownSettings.Provider value={shown}>
-    <div className="type-lab relative min-h-screen bg-background text-foreground" style={labVars(shown)} {...labAttributes(shown)}>
+    <div className="type-lab relative min-h-screen bg-background text-foreground" style={labVars(shown)} {...labAttributes(shown)} data-mark-steps={lab.markSteps ? "on" : "off"}>
       <div className={`px-6 pb-24 pt-28 md:px-10 ${lab.collapsed ? "lg:pr-[200px]" : "lg:pr-[380px]"}`}>
         <Panel />
         <div className="mx-auto flex max-w-[1240px] flex-col">
@@ -63,6 +64,9 @@ export function TypeLab({ month }: { month: string }) {
           </Specimen>
           <Specimen index={8} title="Footer row" source="components/Footer.tsx">
             <FooterRow month={month} />
+          </Specimen>
+          <Specimen index={9} title="Modal, then case page, as a sequence" source="WorkModal.tsx, then app/work/[slug]/page.tsx">
+            <Sequence />
           </Specimen>
         </div>
       </div>

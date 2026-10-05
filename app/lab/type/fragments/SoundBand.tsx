@@ -104,7 +104,7 @@ export function SoundBand() {
           >
             {c.freeze}
           </button>
-          <p className="ml-auto" {...role("credit", 12)}>
+          <p className="ml-auto" {...role("credit", 12, false, "hint")}>
             {s.creditLead}{" "}
             <a href={s.creditArtistUrl} target="_blank" rel="noopener noreferrer" className={LINK} data-interactive="">
               {s.creditArtist}

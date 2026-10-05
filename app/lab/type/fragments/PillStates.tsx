@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import { NoteIcon } from "@/components/menu/NoteIcon";
 import { siteContent } from "@/lib/content";
-import { role } from "../Specimen";
+import { marks, role } from "../Specimen";
 
 // components/soundtrack/PlaybackPill.tsx, PillLabel.tsx and PillParts.tsx,
 // static: the capsule in each state it rests in, the landing label, and the
@@ -61,12 +61,12 @@ function Caption({ children }: { children: ReactNode }) {
 }
 
 export function PillStates() {
-  const tip = role("pill", 11);
+  const tip = role("pill", 11, false, "hint");
   return (
     <div className="flex flex-wrap items-end gap-x-10 gap-y-12">
       <div>
         <Capsule music="before">
-          <span className="whitespace-nowrap text-[12px] font-medium text-muted" {...role("pill", 12, true)}>
+          <span className="whitespace-nowrap text-[12px] font-medium text-muted" {...role("pill", 12, true, "secondary")}>
             {s.capsuleUnanswered}
           </span>
         </Capsule>
@@ -90,7 +90,7 @@ export function PillStates() {
       </div>
       <div>
         <Capsule music="paused">
-          <span className="whitespace-nowrap text-[12px] font-medium text-muted" {...role("pill", 12, true)}>
+          <span className="whitespace-nowrap text-[12px] font-medium text-muted" {...role("pill", 12, true, "secondary")}>
             {s.capsulePaused}
           </span>
         </Capsule>
@@ -100,7 +100,7 @@ export function PillStates() {
         <div
           aria-hidden="true"
           className="absolute left-0 top-0 whitespace-nowrap rounded-full text-[11px] text-muted"
-          data-role={tip["data-role"]}
+          {...marks(tip)}
           style={{ ...glass, padding: "6px 11px", ...tip.style }}
         >
           {s.prompt}
@@ -111,7 +111,7 @@ export function PillStates() {
             <span className="block text-[12px] font-medium" {...role("pill", 12, true)}>
               {track.title}
             </span>
-            <span className="block text-[11px] text-muted" {...role("pill", 11)}>
+            <span className="block text-[11px] text-muted" {...role("pill", 11, false, "secondary")}>
               {track.artist}
             </span>
           </span>

@@ -12,12 +12,14 @@ export type LabState = {
   a: Settings | null;
   view: "a" | "b";
   collapsed: boolean;
+  markSteps: boolean; // a view aid: outline each label by its size step
 };
 
-// Bumped whenever the default preset changes (v3: Aaron's final), so stored
-// state from an earlier round is left behind.
-const STORAGE_KEY = "lab-type-v3";
-const INITIAL: LabState = { b: PRESETS[0].settings, a: null, view: "b", collapsed: false };
+// Bumped whenever the default preset changes (v4: A is Aaron's final, B the
+// reviewed version, showing A; F flips), so stored state from an earlier
+// round is left behind.
+const STORAGE_KEY = "lab-type-v4";
+const INITIAL: LabState = { b: PRESETS[1].settings, a: PRESETS[0].settings, view: "a", collapsed: false, markSteps: false };
 
 let state: LabState = INITIAL;
 let loaded = false;

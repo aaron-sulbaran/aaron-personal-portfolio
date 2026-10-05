@@ -3,7 +3,7 @@
 import { ArrowLeft } from "lucide-react";
 import { siteContent } from "@/lib/content";
 import { useShown } from "./context";
-import { role } from "./Specimen";
+import { marks, role } from "./Specimen";
 import type { RoleLine } from "./settings";
 
 // Markup the round 2 controls change: the back link's arrow (the site's
@@ -20,7 +20,7 @@ export function BackLabel() {
     <a
       href="#case"
       className="mb-12 inline-flex items-center gap-2 text-sm text-muted transition-colors duration-200 hover:text-accent md:mb-16"
-      data-role={tag["data-role"]}
+      {...marks(tag)}
       style={arrow === "icon" ? { ...tag.style, gap: "var(--lab-icon-gap, 4px)" } : tag.style}
     >
       {arrow === "icon" ? (
@@ -36,9 +36,9 @@ export function BackLabel() {
 }
 
 export function RoleLineText({ line, text }: { line: RoleLine; text: string }) {
-  const tag = role("meta", line.size);
+  const tag = role("meta", line.size, false, "besideTitle");
   return (
-    <span className="text-sm text-muted" data-role={tag["data-role"]} data-sized="" data-subtitle={line.placement === "below" ? "" : undefined} style={tag.style}>
+    <span className="text-sm text-muted" {...marks(tag)} data-sized="" data-subtitle={line.placement === "below" ? "" : undefined} style={tag.style}>
       {text}
     </span>
   );

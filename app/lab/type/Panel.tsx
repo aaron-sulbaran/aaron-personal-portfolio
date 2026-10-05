@@ -4,6 +4,7 @@ import { useState } from "react";
 import { FACES, GROUP_LABELS, faceById, type FaceGroup } from "./faces";
 import { Field, PanelButton, Segmented, Slider } from "./controls";
 import { LayoutControls } from "./LayoutControls";
+import { ReviewControls } from "./ReviewControls";
 import { COLOR_ROLES, PRESETS, ROLES, ROLE_LABELS, SITE_TODAY, exportValues, withFace, type Settings } from "./settings";
 import { editB, flipView, setLab, setTheme, useLab, useTheme } from "./store";
 
@@ -131,6 +132,8 @@ export function Panel() {
           ))}
         </div>
       </Field>
+
+      <ReviewControls />
 
       <LayoutControls />
 
