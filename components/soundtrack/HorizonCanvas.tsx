@@ -14,7 +14,7 @@ import type { Alphas, Theme } from "./viewParts";
 // never resizes it, which keeps its width equal to the band's (the two tracks
 // share one train). Mounted from md up only (BandStage gates it).
 const ALPHAS: Record<Theme, Alphas> = {
-  light: { muted: 0.3, accent: 0.5 },
+  light: { muted: 0.4, accent: 0.55 },
   dark: { muted: 0.4, accent: 0.7 },
 };
 
