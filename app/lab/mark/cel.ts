@@ -301,15 +301,15 @@ function shardAt(s: Shard, u: number) {
   return speck(c, 1);
 }
 
-// Points scattered around the A that fly in and become it (the "sparks" A).
-function returning(r: Rand, count: number) {
+// The "sparks" A: pieces of the peak's sheath that fly down into the A's
+// outline instead of out, so the excess energy is what makes the letter.
+function returning(r: Rand, rim: readonly { p: V; n: V }[], count: number) {
   const outline = [...LEG_PTS, ...BAR_PTS];
-  return Array.from({ length: count }, () => {
+  return Array.from({ length: count }, (_, i) => {
     const a = outline[Math.floor(r() * outline.length)];
     const b = outline[Math.floor(r() * outline.length)];
     const end = lerp(a, b, r() * 0.3);
-    const away = unit(sub(end, [110, 200]));
-    const start = add(end, mul(unit(add(away, [signed(r) * 0.6, -0.3])), range(r, 30, 62)));
+    const start = rim[Math.floor(((i + r()) * rim.length) / count) % rim.length].p;
     return { start, end };
   });
 }
@@ -347,7 +347,8 @@ export function celSchedule(s: StrikeSettings) {
   const aFrame = impactFrame + 1 + (s.celA === "sparks" ? 4 : 0);
   const breakup = Math.max(4, Math.round(0.4 * fps));
   const afterglow = Math.max(2, Math.round((s.celAfterglowMs / 1000) * fps));
-  const count = Math.max(impactFrame + peak + breakup, aFrame + afterglow) + 1;
+  const breakupFrom = s.celA === "sparks" ? aFrame - impactFrame : peak;
+  const count = Math.max(impactFrame + breakupFrom + breakup, aFrame + afterglow) + 1;
   const lead = s.celTone === "night" ? 0.1 : 0;
   const lift = s.celTone === "night" ? 0.3 : 0;
   return { fps, fpp, peak, impactFrame, aFrame, breakup, afterglow, count, lead, lift };
@@ -364,7 +365,8 @@ export function celPlan(s: StrikeSettings): CelPlan {
   // The rim the shards break from: the sheath of the last peak frame.
   const rim = sheath(seeded(s.celSeed * 31 + 5), 5.5, 0).rim;
   const shards = shardsFrom(seeded(s.celSeed * 17 + 3), rim, s.celShards, s.celDrift, s.celImpact === "spray");
-  const sparks = returning(seeded(s.celSeed * 13 + 11), 14);
+  const sparks = returning(seeded(s.celSeed * 13 + 11), rim, 16);
+  const breakupFrom = s.celA === "sparks" ? aFrame - impactFrame : peak;
 
   let f = 0;
   let pool = 0;
@@ -404,8 +406,8 @@ export function celPlan(s: StrikeSettings): CelPlan {
     if (f === aFrame) {
       sheaths.push(sheath(seeded(s.celSeed * 59 + 1), 4.5, 0, LEG_PTS).d, sheath(seeded(s.celSeed * 59 + 2), 4, 0, BAR_PTS).d);
     }
-    if (i >= peak && i < peak + breakup) {
-      const u = (i - peak + 1) / breakup;
+    if (i >= breakupFrom && i < breakupFrom + breakup) {
+      const u = (i - breakupFrom + 1) / breakup;
       shards.forEach((shard) => {
         const shape = shardAt(shard, u);
         if (shape) fx.push(shape);
@@ -416,14 +418,14 @@ export function celPlan(s: StrikeSettings): CelPlan {
       sparks.forEach(({ start, end }) => {
         const p = lerp(start, end, u * u);
         const dir = sub(end, start);
-        fx.push(thorn(p, Math.atan2(dir[1], dir[0]), 4 + 9 * (1 - u), 1.6, 0));
+        fx.push(thorn(p, Math.atan2(dir[1], dir[0]), 6 + 12 * (1 - u), 2.4, 0));
       });
     }
     const sinceA = f - aFrame;
-    let glow = f < aFrame ? 1 : Math.max(0, 1 - sinceA / afterglow);
+    let glow = f < aFrame ? 1 : Math.max(0, 1 - Math.pow(sinceA / afterglow, 1.5));
     if (sinceA === Math.round(afterglow * 0.7)) glow = Math.min(1, glow + 0.45);
     const sinceImpact = Math.max(0, i);
-    pool = s.celPool * Math.max(0, 1 - sinceImpact / (peak + breakup)) * (i < peak ? 1 : 0.85);
+    pool = s.celPool * Math.max(0, 1 - sinceImpact / (breakupFrom + breakup)) * (i < peak ? 1 : 0.85);
     frames.push({
       sheath: sheaths,
       fx,

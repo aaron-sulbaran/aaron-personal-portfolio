@@ -234,7 +234,7 @@ export const PRESETS: readonly { id: string; name: string; note: string; setting
     id: "cel-paper",
     name: "Cel, paper",
     note: "The same drawings with no dip: ink cores and an accent glow on paper, with a keyed star. Cleaner on the page, but light on paper can only read as ink.",
-    settings: { ...CEL_NIGHT, celTone: "paper", celImpact: "star", celFlash: 0.3, celReach: 0.5, celGlow: 0.7 },
+    settings: { ...CEL_NIGHT, celTone: "paper", celImpact: "star", celFlash: 0, celReach: 0.5, celGlow: 0.3 },
   },
   {
     id: "cel-sparks",
