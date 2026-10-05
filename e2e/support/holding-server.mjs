@@ -52,8 +52,9 @@ cpSync(root, target, {
 });
 const lock = readFileSync(join(root, "pnpm-lock.yaml"), "utf8");
 if (!existsSync(stamp) || readFileSync(stamp, "utf8") !== lock) install();
-if (attempt("pnpm", ["exec", "next", "build"], target) !== 0) {
-  console.error("[holding-server] build failed; reinstalling node_modules and building once more");
+const firstBuild = attempt("pnpm", ["exec", "next", "build"], target);
+if (firstBuild !== 0) {
+  console.error(`[holding-server] build failed with status ${firstBuild}; reinstalling node_modules and building once more`);
   for (const entry of ["node_modules", ".next"]) rmSync(join(target, entry), { recursive: true, force: true });
   install();
   run("pnpm", ["exec", "next", "build"], target);
