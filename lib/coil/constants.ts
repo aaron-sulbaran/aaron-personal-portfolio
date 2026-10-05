@@ -60,14 +60,22 @@ const values = {
     pageScrollCardsPerPixel: 1 / 150, // page scroll turns the coil (on)
   },
   // Wheel capture, decided once per gesture (lib/coil/capture.ts): a gesture
-  // starting inside the helix silhouette (gaps between cards included) with
-  // the hero at least half in view is the coil's from its first event, with
-  // no hover intent. Aaron, 2026-09-29, superseding table 1.1's "cards only,
-  // 400ms hover intent" after testing the build.
+  // starting with the pointer on a card (or in the seam between two), capture
+  // armed by a real pointer move since the page last scrolled, and the hero
+  // at least half in view is the coil's from its first event, with no hover
+  // intent; release stays the helix silhouette. Aaron, 2026-09-29 (no intent,
+  // no top-of-page rule), narrowed from the whole silhouette after his
+  // hardware pass of 2026-10-05.
   capture: {
     gestureGapMs: 260, // wheel events closer than this are one gesture (the lab's value)
     heroVisibleMin: 0.5,
     nudgeAfterMs: 2600,
+    // The seam margin around every pickable card, in card heights (times the
+    // pane's cardPx): the widest seam between two adjacent front cards, as
+    // picking sees them (flat cards, so a wedge), is 0.102 card heights to its
+    // middle at any pane (geometry.test.ts derives it), and this covers it
+    // with 2px to spare down to a 1024 by 768 pane. 25.6px at 1485 by 927.
+    seamCards: 0.115,
   },
   // A book row hovered or focused holds the coil still on its card.
   rowHold: {

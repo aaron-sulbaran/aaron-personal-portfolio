@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest";
 import { COIL } from "@/lib/coil/constants";
 import {
   cameraFor,
+  cardDistancePx,
   cardHit,
   clearTopFor,
   isNarrow,
   coilPose,
+  nearCard,
   endFade,
   insideSilhouette,
   mod,
@@ -15,6 +17,7 @@ import {
   projectQuad,
   rayThrough,
   restHelix,
+  seamMarginPx,
   silhouette,
   slotU,
   solveGeometry,
@@ -343,5 +346,135 @@ describe("picking and the silhouette", () => {
     expect(insideSilhouette(sil, outside.x, outside.y)).toBe(false);
     // Sliding along the axis never leaves the hull.
     expect(insideSilhouette(sil, 720 + sil.dx * 300, 450 + sil.dy * 300)).toBe(true);
+  });
+});
+
+describe("near a card (wheel capture, rule A)", () => {
+  const camera = cameraFor(DESKTOP);
+  const halfWidth = 100 * COIL.cardAspect;
+
+  it("measures the on-screen distance to a card's picked footprint, 0 on it", () => {
+    const card = flatCardAt(700, 400, 200);
+    expect(cardDistancePx([card], camera, 700, 400)).toBe(0);
+    expect(cardDistancePx([card], camera, 700 + halfWidth - 1, 400 + 99)).toBe(0);
+    expect(cardDistancePx([card], camera, 700 + halfWidth + 10, 400)).toBeCloseTo(10, 6);
+    expect(cardDistancePx([card], camera, 700, 400 - 100 - 15)).toBeCloseTo(15, 6);
+    expect(cardDistancePx([card], camera, 700 + halfWidth + 3, 400 - 100 - 4)).toBeCloseTo(5, 6);
+    expect(nearCard([card], camera, 700 + halfWidth + 10, 400, 12)).toBe(true);
+    expect(nearCard([card], camera, 700 + halfWidth + 10, 400, 8)).toBe(false);
+    expect(nearCard([card], camera, 700, 400, 0)).toBe(true);
+  });
+
+  it("never counts a card picking would skip (faded), and is false with no cards", () => {
+    const card = flatCardAt(700, 400, 200);
+    expect(cardDistancePx([{ ...card, alpha: 0.4 }], camera, 700, 400)).toBe(Infinity);
+    expect(nearCard([{ ...card, alpha: 0.4 }], camera, 700, 400, 50)).toBe(false);
+    expect(nearCard([], camera, 700, 400, 50)).toBe(false);
+  });
+
+  it("agrees with picking: distance 0 exactly where a card is picked", () => {
+    const frame = restHelix(solveGeometry(DESKTOP, STRAND));
+    const poses = Array.from({ length: frame.slotCount }, (_, slot) => coilPose(frame, slot, 0.3));
+    let picked = 0;
+    for (let y = 3.5; y < DESKTOP.height; y += 9) {
+      for (let x = 3.5; x < DESKTOP.width; x += 9) {
+        const hit = pickCard(poses, rayThrough(camera, x, y)) >= 0;
+        const distance = cardDistancePx(poses, camera, x, y);
+        if (hit) picked += 1;
+        // A point within a hair of an edge may round either way.
+        if (distance > 0.01) expect(hit, `(${x}, ${y})`).toBe(false);
+        if (distance === 0) expect(hit, `(${x}, ${y})`).toBe(true);
+      }
+    }
+    expect(picked).toBeGreaterThan(1000);
+  });
+
+  // Adjacent pairs on screen: for every pair of slots next to each other on
+  // the strand, both picked (alpha over a half) and both centers on the pane,
+  // the midpoints between A's right edge and B's left edge (the seam, from
+  // top to bottom) that picking misses.
+  function seamPoints(viewport: { width: number; height: number }, offset: number, frontOnly: boolean) {
+    const geo = solveGeometry(viewport, STRAND);
+    const frame = restHelix(geo);
+    const poses = Array.from({ length: frame.slotCount }, (_, slot) => coilPose(frame, slot, offset));
+    const order = poses.map((_, slot) => slot).sort((a, b) => poses[a].u - poses[b].u);
+    const points: { x: number; y: number }[] = [];
+    for (let i = 0; i + 1 < order.length; i++) {
+      const a = poses[order[i]];
+      const b = poses[order[i + 1]];
+      if (a.alpha <= 0.5 || b.alpha <= 0.5 || (frontOnly && Math.min(a.depth, b.depth) <= 0.7)) continue;
+      const ca = projectPoint(geo.camera, a.position);
+      const cb = projectPoint(geo.camera, b.position);
+      if ([ca, cb].some((c) => c.y < 0 || c.y > viewport.height)) continue;
+      const qa = projectQuad({ ...a, bend: 0 }, geo.camera);
+      const qb = projectQuad({ ...b, bend: 0 }, geo.camera);
+      for (let k = 0; k <= 20; k++) {
+        const t = k / 20;
+        const x = (qa[1].x + (qa[2].x - qa[1].x) * t + qb[0].x + (qb[3].x - qb[0].x) * t) / 2;
+        const y = (qa[1].y + (qa[2].y - qa[1].y) * t + qb[0].y + (qb[3].y - qb[0].y) * t) / 2;
+        if (pickCard(poses, rayThrough(geo.camera, x, y)) < 0) points.push({ x, y });
+      }
+    }
+    return { geo, poses, points };
+  }
+
+  const panes = [
+    { width: 1485, height: 927 },
+    DESKTOP,
+    { width: 1280, height: 800 },
+    { width: 1024, height: 768 },
+    { width: 1920, height: 1080 },
+    { width: 2560, height: 1440 },
+  ];
+
+  it("derives the seam margin: the widest seam between adjacent front cards is about a tenth of a card, at any pane", () => {
+    for (const pane of panes) {
+      let widest = 0;
+      for (let k = 0; k < 20; k++) {
+        const { geo, poses, points } = seamPoints(pane, k / 20, true);
+        for (const { x, y } of points) widest = Math.max(widest, cardDistancePx(poses, geo.camera, x, y));
+      }
+      const cardPx = solveGeometry(pane, STRAND).cardPx;
+      // Half the seam scales with the card (0.102 card heights; 22.6px at 1485 by 927).
+      expect(widest / cardPx).toBeGreaterThan(0.09);
+      expect(widest / cardPx).toBeLessThan(0.105);
+      // The margin covers it with at least 2px to spare.
+      expect(seamMarginPx(solveGeometry(pane, STRAND))).toBeGreaterThanOrEqual(widest + 2);
+    }
+  });
+
+  it("counts the seam between any two adjacent cards as near one, and not without the margin", () => {
+    for (const pane of panes) {
+      let missedWithoutMargin = 0;
+      for (let k = 0; k < 20; k++) {
+        const { geo, poses, points } = seamPoints(pane, k / 20, false);
+        for (const { x, y } of points) {
+          expect(nearCard(poses, geo.camera, x, y, seamMarginPx(geo)), `${pane.width}x${pane.height} (${x}, ${y})`).toBe(true);
+          if (!nearCard(poses, geo.camera, x, y, 0)) missedWithoutMargin += 1;
+        }
+      }
+      expect(missedWithoutMargin).toBeGreaterThan(0);
+    }
+  });
+
+  it("leaves empty background inside the helix silhouette, and everything far outside it, to the page", () => {
+    const geo = solveGeometry(DESKTOP, STRAND);
+    const frame = restHelix(geo);
+    const poses = Array.from({ length: frame.slotCount }, (_, slot) => coilPose(frame, slot, 0.3));
+    const sil = silhouette(frame, camera, poses);
+    const margin = seamMarginPx(geo);
+    let inside = 0;
+    let background = 0;
+    for (let y = 5; y < DESKTOP.height; y += 10) {
+      for (let x = 5; x < DESKTOP.width; x += 10) {
+        if (!insideSilhouette(sil, x, y)) continue;
+        inside += 1;
+        if (cardDistancePx(poses, camera, x, y) > 3 * margin) background += 1;
+      }
+    }
+    // A real share of the old hull is background more than three margins from any card.
+    expect(background / inside).toBeGreaterThan(0.1);
+    expect(nearCard(poses, camera, 5, 5, margin)).toBe(false);
+    expect(nearCard(poses, camera, DESKTOP.width - 5, DESKTOP.height - 5, margin)).toBe(false);
   });
 });
