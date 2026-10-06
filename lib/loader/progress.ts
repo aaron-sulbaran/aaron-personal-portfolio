@@ -36,6 +36,19 @@ export const LOADER = {
   // The entrance starts this long before the exit ends (the scaffold allows
   // up to 250ms of overlap): the stack gathers as the name settles.
   entranceOverlapMs: 200,
+  // A load done inside the guard never shows the pane: the resting lockup
+  // (the exit's landed pose, no fill, no number) holds from first paint, and
+  // this long after the tally is done (the entrance reaching the scene) it
+  // hands to the canvas on the first frame that can take it; the band starts
+  // at the hand-off.
+  restHoldMs: 80,
+  // A hand-off the scene never takes gives up after this: the DOM lockup
+  // leaves and the canvas's own fallback (or the h1) carries on.
+  handoffGiveUpMs: 1500,
+  // The greeting rests in the paper tint through the fill (only the name is
+  // the progress) and takes the accent over this once the name is full, so
+  // the lockup leaves as one color.
+  greetingAccentMs: 150,
 } as const;
 
 export type LoadTally = {
