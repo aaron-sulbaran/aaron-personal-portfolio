@@ -30,7 +30,7 @@ function frames(count: number, seed = 7) {
   });
 }
 
-const rest = { idleWeight: 1, pageScrollPx: 0 };
+const rest = { idleWeight: 1 };
 
 describe("conveyor", () => {
   it("holds the speed cap under any wheel flood", () => {
@@ -75,9 +75,9 @@ describe("conveyor", () => {
 
   it("stops idling at zero weight", () => {
     const conveyor = createConveyor();
-    stepConveyor(conveyor, { dt: 1 / 60, nowMs: 16, idleWeight: 0, pageScrollPx: 0 });
+    stepConveyor(conveyor, { dt: 1 / 60, nowMs: 16, idleWeight: 0 });
     expect(conveyor.offset).toBe(0);
-    for (let i = 0; i < 240; i++) stepConveyor(conveyor, { dt: 1 / 60, nowMs: i * 16, idleWeight: 0, pageScrollPx: 0 });
+    for (let i = 0; i < 240; i++) stepConveyor(conveyor, { dt: 1 / 60, nowMs: i * 16, idleWeight: 0 });
     expect(conveyor.offset).toBe(0);
   });
 
@@ -308,7 +308,7 @@ describe("row hover hold", () => {
     expect(rowHoldWeight(hold, 5000 + resumeDelayMs + resumeMs)).toBe(1);
   });
 
-  it("holds the coil still on the row's card after its glide, under idle and page scroll", () => {
+  it("holds the coil still on the row's card after its glide, under idle", () => {
     const conveyor = createConveyor(0.37);
     const hold = setRowHold(createRowHold(), true, 0);
     startGlide(conveyor, 4, 0);
@@ -316,7 +316,7 @@ describe("row hover hold", () => {
     for (let i = 0; i < 60 * 4; i++) {
       now += 1000 / 60;
       const weight = rowHoldWeight(hold, now);
-      stepConveyor(conveyor, { dt: 1 / 60, nowMs: now, idleWeight: weight, pageScrollPx: 12 * weight });
+      stepConveyor(conveyor, { dt: 1 / 60, nowMs: now, idleWeight: weight });
     }
     expect(conveyor.offset).toBe(4);
   });
@@ -327,13 +327,13 @@ describe("row hover hold", () => {
     startGlide(conveyor, -2.5, 0);
     let last = conveyor.offset;
     for (let t = 1000 / 60; t < COIL.hoverJumpMs; t += 1000 / 60) {
-      stepConveyor(conveyor, { dt: 1 / 60, nowMs: t, idleWeight: 0, pageScrollPx: 0 });
+      stepConveyor(conveyor, { dt: 1 / 60, nowMs: t, idleWeight: 0 });
       expect(conveyor.offset).toBeLessThanOrEqual(last + 1e-12);
       expect(conveyor.offset).toBeGreaterThanOrEqual(-2.5 - 1e-9);
       last = conveyor.offset;
     }
     expect(conveyor.glide).not.toBeNull();
-    stepConveyor(conveyor, { dt: 1 / 60, nowMs: COIL.hoverJumpMs, idleWeight: 0, pageScrollPx: 0 });
+    stepConveyor(conveyor, { dt: 1 / 60, nowMs: COIL.hoverJumpMs, idleWeight: 0 });
     expect(conveyor.offset).toBe(-2.5);
   });
 });

@@ -45,7 +45,6 @@ export function createLoop(
       props: live.current,
       geo: st.geo,
       camera: st.geoCamera,
-      scrollDelta: 0,
       helix: null,
       clock: null,
       realElapsedMs: 0,
@@ -133,8 +132,6 @@ export function createLoop(
     holdClocks(performance.now() - st.lastTime);
     // ---- end fx-flight freeze ----
     st.lastTime = performance.now();
-    // A return from off screen or a hidden tab must not read as one huge scroll.
-    st.lastScrollY = window.scrollY;
     st.raf = requestAnimationFrame(frame);
   }
 

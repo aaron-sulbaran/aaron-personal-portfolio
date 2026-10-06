@@ -1,7 +1,6 @@
 import { COIL } from "@/lib/coil/constants";
 import {
   decideWheel,
-  feedsPageScroll,
   gestureOwner,
   nudgeShown,
   pointerMoved,
@@ -20,8 +19,9 @@ import type { LoopLink, SceneCtx, SceneFrame } from "./state";
 // rules are docs/coil-input-model.md section 3), and a click opens the card
 // under it; a coarse pointer drags it sideways and throws it, and a tap opens
 // the card with no flight. Each frame the conveyor takes its feeds (idle,
-// wheel, page scroll, the throw's coast) through one smoothing stage and the
-// spin cap, and the nudge shows while a coil gesture is held.
+// wheel, the throw's coast) through one smoothing stage and the spin cap, and
+// the nudge shows while a coil gesture is held. Page scroll is not a feed: the
+// coil keeps its own pace while the page moves (Aaron, 2026-10-06).
 
 // Slice 7, the touch drag: a released flick coasts on this time constant (an
 // exponential throw, distance = velocity * tau) and settles on a card.
@@ -252,36 +252,25 @@ export function createInput(ctx: SceneCtx, cards: Cards, hover: Hover, loop: Loo
   }
   // ---- end slice 7 ----
 
-  // Update step: the page's scroll since the last frame, and the pointer's canvas position.
-  function scroll(f: SceneFrame) {
-    const scrollY = window.scrollY;
-    f.scrollDelta = scrollY - st.lastScrollY;
-    st.lastScrollY = scrollY;
+  // Update step: the pointer's canvas position at the page's current scroll.
+  function scroll() {
     updatePointerLocal();
   }
 
   // Update step: the conveyor's feeds, its one smoothing stage and spin cap, and the stretch envelope.
   function feedConveyor(f: SceneFrame) {
-    const { dt, now, props } = f;
+    const { dt, now } = f;
     const previous = conveyor.offset;
     if (!posterMode) {
       // Slice 7: a released drag's throw decays into the target, which the
       // one smoothing stage and the speed cap then carry, as for the wheel.
       if (st.coast) conveyor.target += (st.coast.rest - conveyor.target) * (1 - Math.exp(-dt / COAST_TAU_S));
       // ---- fx-input: the conveyor's feeds ----
-      // A held book row stills the idle drift and the page-scroll feed (and
-      // eases them back after it lets go); page scroll turns the coil only
-      // during page gestures, keyboard and scrollbar scrolling.
+      // A held book row stills the idle drift (and eases it back after it
+      // lets go); the idle drift also waits while a finger holds or throws
+      // the coil, so the coast lands exactly on its card.
       const holdWeight = rowHoldWeight(rowHold, now);
-      const pageFeed = props.interactive && feedsPageScroll(st.capture, now) ? f.scrollDelta * holdWeight : 0;
-      stepConveyor(conveyor, {
-        dt,
-        nowMs: now,
-        // The idle drift waits while a finger holds or throws the coil, so
-        // the coast lands exactly on its card.
-        idleWeight: st.dragging || st.coast ? 0 : holdWeight,
-        pageScrollPx: pageFeed,
-      });
+      stepConveyor(conveyor, { dt, nowMs: now, idleWeight: st.dragging || st.coast ? 0 : holdWeight });
       // ---- end fx-input ----
       stepEnvelope(envelope, conveyor.excessVelocity, dt);
       if (st.coast && Math.abs(st.coast.rest - conveyor.offset) < COAST_SETTLED_CARDS) st.coast = null;

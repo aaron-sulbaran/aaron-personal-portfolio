@@ -5,8 +5,9 @@
 // later ones: the helix, the entrance clock, the rebuild fade, the unwind's
 // progress).
 //
-// Update: scroll delta, conveyor (idle, wheel, page scroll; one smoothing
-// stage and the spin cap; the stretch envelope), helix frame, entrance (the
+// Update: scroll (the pointer's canvas position at the page's scroll),
+// conveyor (idle, wheel, the touch throw; one smoothing stage and the spin
+// cap; the stretch envelope), helix frame, entrance (the
 // strand held until the band opens; the name's fade), rebuild fade, unwind
 // (latch, column, overlay fades, the name's move), name (the surface's clock
 // and the pointer's wake), seen levels, slots (pose, entrance, unwind, header
