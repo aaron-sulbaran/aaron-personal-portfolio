@@ -154,6 +154,26 @@
 )[data-tone="secondary"]:where(.type-lab[data-tones~="secondary"] *) {
   color: var(--lab-tone-secondary);
 }
+:is(
+  .type-lab[data-roles~="controls"] [data-role="controls"],
+  .type-lab[data-roles~="meta"] [data-role="meta"],
+  .type-lab[data-roles~="kickers"] [data-role="kickers"],
+  .type-lab[data-roles~="nav"] [data-role="nav"],
+  .type-lab[data-roles~="pill"] [data-role="pill"],
+  .type-lab[data-roles~="credit"] [data-role="credit"]
+)[data-tone="footer"]:where(.type-lab[data-tones~="footer"] *) {
+  color: var(--lab-tone-footer);
+}
+
+/* A faint underline under the band's secondary control, so a muted "Not
+   now" still reads as a control: the muted token at a percent, 1px, the same
+   4px offset as "Play it". */
+.type-lab[data-secondary-underline="on"] button.lab-secondary {
+  text-decoration-line: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+  text-decoration-color: color-mix(in srgb, var(--color-muted) var(--lab-secondary-underline), transparent);
+}
 
 /* A seen book row dims its meta with its title, back to full on hover and
    focus, like the title. 0.75 keeps 14.8px bold accent above 4.5:1 in both

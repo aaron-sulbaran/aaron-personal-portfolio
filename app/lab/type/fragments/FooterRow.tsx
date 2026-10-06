@@ -9,7 +9,7 @@ export function FooterRow({ month }: { month: string }) {
     <footer className="w-full border-t border-border py-10 md:py-14">
       <div className="mx-auto flex max-w-6xl flex-col gap-2 text-[12px] text-muted md:flex-row md:items-center md:justify-between">
         <p className="font-display text-base text-foreground md:text-lg">{tagline(month)}</p>
-        <p className="tracking-wide" {...role("credit", 12)}>
+        <p className="tracking-wide" {...role("credit", 12, false, "footer")}>
           {copyright}
         </p>
       </div>

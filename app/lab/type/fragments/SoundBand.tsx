@@ -90,7 +90,12 @@ export function SoundBand() {
             <p>{c.pausedNote}</p>
           </Layer>
           <Layer shown={music === "off"}>
-            <p>{c.declinedNote}</p>
+            <p>
+              {c.declinedNote}{" "}
+              <button type="button" className={`md:hidden ${SMALL}`} {...role("controls", 14)}>
+                {c.accept}
+              </button>
+            </p>
           </Layer>
         </div>
       </div>

@@ -27,7 +27,7 @@ export const COLOR_ROLES: readonly ColorRole[] = ["site", "muted", "foreground",
 // Finer than interactive and non-interactive: a tone marks what kind of
 // small text an element is, and a tone's color, when set, wins over its
 // role's. "same" leaves the role's color in charge.
-export const TONES = ["besideTitle", "hint", "kicker", "secondary"] as const;
+export const TONES = ["besideTitle", "hint", "kicker", "secondary", "footer"] as const;
 export type Tone = (typeof TONES)[number];
 export type ToneColor = ColorRole | "same";
 export const TONE_COLORS: readonly ToneColor[] = ["same", "muted", "accent", "accent-soft", "foreground"];
@@ -36,6 +36,7 @@ export const TONE_LABELS: Record<Tone, string> = {
   hint: "Free-standing hints and credit (Esc hints, credit prose, pill tip)",
   kicker: "Kickers (About, Who I am)",
   secondary: "Secondary pill text (artist, Paused, Music?)",
+  footer: "Footer copyright",
 };
 
 // Three size steps, before the scale: what each base size collapses to.
@@ -80,6 +81,10 @@ export type Settings = {
   headingGap: number; // px from the question to its controls
   // Optional: "Not now" in the muted token, a step quieter than "Play it".
   quietSecondary: boolean;
+  // Optional: a faint underline under "Not now" so it still reads as a
+  // control once muted; the muted token at this percent, 1px, the same 4px
+  // offset as "Play it". null leaves it bare as on the site.
+  secondaryUnderline: number | null;
   roleLineCase: RoleLine;
   roleLineModal: RoleLine;
   subtitleWeight: number; // the role line's weight once it sits below
@@ -94,6 +99,9 @@ export type Settings = {
   // only when the two do not fit side by side; a number does it for a whole
   // column narrower than that many px.
   metaWrap: "site" | "fit" | number;
+  // Copy the lab overrides locally, keyed by its path in siteContent (the
+  // rollout changes lib/content.ts).
+  copyOverrides: Readonly<Record<string, string>>;
 };
 
 // The role line as the site has it (an eyebrow above), and as I would ship
@@ -118,10 +126,12 @@ const SITE_LAYOUT = {
   controlGap: 24,
   headingGap: 28,
   quietSecondary: false,
+  secondaryUnderline: null,
   roleLineCase: ROLE_LINE_SITE.case,
   roleLineModal: ROLE_LINE_SITE.modal,
   subtitleWeight: 400,
-  toneColors: { besideTitle: "same", hint: "same", kicker: "same", secondary: "same" },
+  toneColors: { besideTitle: "same", hint: "same", kicker: "same", secondary: "same", footer: "same" },
+  copyOverrides: {},
   seenMetaDim: null,
   threeSteps: false,
   metaWrap: "site",
@@ -187,8 +197,10 @@ const AARON_FINAL: Settings = {
 // book meta wraps under a cramped title.
 const AARON_REVIEWED: Settings = {
   ...AARON_FINAL,
-  toneColors: { besideTitle: "same", hint: "muted", kicker: "muted", secondary: "muted" },
+  toneColors: { besideTitle: "same", hint: "muted", kicker: "muted", secondary: "muted", footer: "muted" },
   quietSecondary: true,
+  secondaryUnderline: 40,
+  copyOverrides: { "book.workRows.claude-ambassador.meta": "Claude ambassador, 2025" },
   roleLineCase: { placement: "below", gap: 14, size: 18 },
   roleLineModal: { placement: "below", gap: 6, size: 15 },
   seenMetaDim: 0.75,
@@ -347,6 +359,7 @@ export function labVars(settings: Settings): CSSProperties {
     "--lab-control-gap": `${settings.controlGap}px`,
     "--lab-heading-gap": `${settings.headingGap}px`,
     "--lab-seen-meta-opacity": settings.seenMetaDim ?? 1,
+    "--lab-secondary-underline": `${settings.secondaryUnderline ?? 0}%`,
     ...Object.fromEntries(
       TONES.filter((tone) => settings.toneColors[tone] !== "same").map((tone) => [
         `--lab-tone-${tone}`,
@@ -364,6 +377,7 @@ export function labAttributes(settings: Settings) {
     "data-color-static": settings.staticColor,
     "data-leading": settings.leading === null ? "site" : "set",
     "data-quiet-secondary": settings.quietSecondary ? "on" : "off",
+    "data-secondary-underline": settings.secondaryUnderline === null ? "off" : "on",
     "data-tones": TONES.filter((tone) => settings.toneColors[tone] !== "same").join(" "),
     "data-seen-meta": settings.seenMetaDim === null ? "site" : "dim",
     "data-three-steps": settings.threeSteps ? "on" : "off",
@@ -420,6 +434,14 @@ export function exportValues(settings: Settings, label: string) {
       gapPx: settings.controlGap,
       headingGapPx: settings.headingGap,
       quietSecondary: settings.quietSecondary,
+      secondaryUnderline:
+        settings.secondaryUnderline === null
+          ? "none"
+          : {
+              color: `color-mix(in srgb, var(--color-muted) ${settings.secondaryUnderline}%, transparent)`,
+              thicknessPx: 1,
+              offsetPx: 4,
+            },
     },
     roleLine: { casePage: roleLine(settings.roleLineCase), modal: roleLine(settings.roleLineModal) },
     toneColors: Object.fromEntries(
@@ -435,5 +457,7 @@ export function exportValues(settings: Settings, label: string) {
         : settings.metaWrap === "fit"
           ? "per row, under the title when the two do not fit side by side"
           : `whole column, under the title below ${settings.metaWrap}px`,
+    copyOverrides: settings.copyOverrides,
+    settings,
   };
 }

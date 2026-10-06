@@ -63,7 +63,7 @@ function Row({ title, meta, seen, layout }: { title: string; meta: string; seen:
 }
 
 export function BookRows() {
-  const wrap = useShown().metaWrap;
+  const { metaWrap: wrap, copyOverrides: copy } = useShown();
   const below = typeof wrap === "number" ? wrap : null;
   const workRef = useRef<HTMLDivElement | null>(null);
   const photosRef = useRef<HTMLDivElement | null>(null);
@@ -77,7 +77,7 @@ export function BookRows() {
         <ol className="book-list">
           {WORK.map((row) => (
             <li key={row.key} className={ITEM_CLASS}>
-              <Row title={row.title} meta={row.meta} seen={row.key === SEEN} layout={workLayout} />
+              <Row title={row.title} meta={copy[`book.workRows.${row.key}.meta`] ?? row.meta} seen={row.key === SEEN} layout={workLayout} />
             </li>
           ))}
         </ol>

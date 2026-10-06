@@ -61,6 +61,13 @@ export function LayoutControls() {
           <input type="checkbox" checked={b.quietSecondary} onChange={(e) => editB((s) => ({ ...s, quietSecondary: e.target.checked }))} />
           <span>Not now in muted (a quieter secondary)</span>
         </label>
+        <label className="flex items-center gap-2">
+          <input type="checkbox" checked={b.secondaryUnderline !== null} onChange={(e) => editB((s) => ({ ...s, secondaryUnderline: e.target.checked ? 40 : null }))} />
+          <span>Faint underline under Not now</span>
+        </label>
+        {b.secondaryUnderline !== null && (
+          <Slider label="Underline, percent of muted" value={b.secondaryUnderline} min={10} max={100} step={5} format={(n) => `${n}%`} onChange={(secondaryUnderline) => editB((s) => ({ ...s, secondaryUnderline }))} />
+        )}
       </div>
 
       <div className="flex flex-col gap-5 border-t border-border pt-4">
