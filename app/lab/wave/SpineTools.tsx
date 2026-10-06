@@ -4,7 +4,7 @@ import { BEHAVIOURS, STRETCHES, type Behaviour, type Move, type Side, type Stret
 import { Slider, Toggle } from "./panelParts";
 import type { PathSettings } from "./settings";
 import type { SpineChoice } from "./spineChoice";
-import { RULES, type RuleReport } from "./spineRules";
+import { RULES, type RuleReport, type RuleSettings } from "./spineRules";
 import { sessionSeed } from "./useLabSettings";
 
 // The irregular line's tools: the seeded generator, the per-stretch editor
@@ -76,7 +76,7 @@ export function Generator({ path, choice, onChange }: { path: PathSettings; choi
   );
 }
 
-export function RulesReadout({ report }: { report: RuleReport | null }) {
+export function RulesReadout({ report, rules }: { report: RuleReport | null; rules: RuleSettings }) {
   if (!report) return null;
   const row = (label: string, value: string, ok: boolean) => (
     <p className="flex justify-between text-[11px] tabular-nums">
@@ -84,15 +84,44 @@ export function RulesReadout({ report }: { report: RuleReport | null }) {
       <span className={ok ? "text-foreground" : "text-accent"}>{value}</span>
     </p>
   );
+  const px = (v: number) => (Number.isFinite(v) ? `${Math.round(v)} px` : "none");
   return (
     <div className="mt-3 rounded border border-border p-2">
-      <p className="text-xs text-muted">Rules, on this page at this width</p>
+      <p className="text-xs text-muted">Rules, on this page at this width {report.failed.length ? `(${report.failed.length} broken)` : "(all kept)"}</p>
       {row("Tightest bend, times the reach", report.bendRatio.toFixed(2), report.bendRatio >= RULES.minBendRatio)}
       {row("Climbs back on itself", `${report.backtrackPx.toFixed(0)} px`, report.backtrackPx <= RULES.maxBacktrackPx)}
-      {row("Longest flat run in words", `${report.flatRunPx.toFixed(0)} px`, report.flatRunPx <= RULES.maxFlatRunPx)}
-      {row("Longest scroll with no wave", `${report.empty.longestVh.toFixed(2)} vh`, report.empty.longestVh <= RULES.maxEmptyVh)}
-      {row("Starting at scroll", `${Math.round(report.empty.atY)} px`, true)}
-      {row("Page wholly off screen, longest", `${report.offscreenVh.toFixed(2)} vh`, true)}
+      {row("Longest flat run in words", px(report.flatRunPx), report.flatRunPx <= RULES.maxFlatRunPx)}
+      {row(`Longest scroll with no wave (max ${rules.maxEmptyVh})`, `${report.empty.longestVh.toFixed(2)} vh`, report.empty.longestVh <= rules.maxEmptyVh)}
+      {row("Closest dot to a heading", px(report.headingClearPx), !rules.headingClearPx || report.headingClearPx >= rules.headingClearPx)}
+      {row("Closest dot to the link list", px(report.linksClearPx), !rules.linksClear || report.linksClearPx >= 0)}
+      {row("Longest run along a hairline", px(report.hairlineRunPx), !rules.hairlineGapPx || report.hairlineRunPx <= rules.hairlineRunPx)}
+      {row("Longest run down a text edge", px(report.edgeRunPx), !rules.edgeGapPx || report.edgeRunPx <= rules.edgeRunPx)}
+      {row("Most turning in one section", `${Math.round(report.turnDeg)} deg`, !rules.maxTurnDeg || report.turnDeg <= rules.maxTurnDeg)}
+      {row("Longest flat run on screen", px(report.flatAnyPx), !rules.flatAnySlope || report.flatAnyPx <= rules.flatAnyPx)}
+      {row("Entry from the band's right end", px(report.entryPx), !rules.entryNearBandPx || report.entryPx <= rules.entryNearBandPx)}
+      {row("Ends past an edge", report.exitOffscreen ? "yes" : "no", !rules.exitAtEdge || report.exitOffscreen)}
+      {row("Character: turning, direction changes", `${Math.round(report.totalTurnDeg)} deg, ${report.dirChanges}`, (!rules.minTurnDeg || report.totalTurnDeg >= rules.minTurnDeg) && (!rules.minDirChanges || report.dirChanges >= rules.minDirChanges))}
+    </div>
+  );
+}
+
+export function RuleControls({ rules, onChange }: { rules: RuleSettings; onChange: (rules: RuleSettings) => void }) {
+  const set = (patch: Partial<RuleSettings>) => onChange({ ...rules, ...patch });
+  return (
+    <div className="mt-3 rounded border border-border p-2">
+      <p className="text-xs text-muted">Rule settings (0 switches one off)</p>
+      <Slider label="Max scroll with no wave" unit="vh" value={rules.maxEmptyVh} min={0.2} max={2} step={0.05} onChange={(maxEmptyVh) => set({ maxEmptyVh })} />
+      <Slider label="Heading clearance" unit="px" value={rules.headingClearPx} min={0} max={80} step={1} onChange={(headingClearPx) => set({ headingClearPx })} />
+      <Slider label="Hairline: gap" unit="px" value={rules.hairlineGapPx} min={0} max={80} step={1} onChange={(hairlineGapPx) => set({ hairlineGapPx })} />
+      <Slider label="Text edge: gap" unit="px" value={rules.edgeGapPx} min={0} max={80} step={1} onChange={(edgeGapPx) => set({ edgeGapPx })} />
+      <Slider label="Turning in one section" unit="deg" value={rules.maxTurnDeg} min={0} max={360} step={5} onChange={(maxTurnDeg) => set({ maxTurnDeg })} />
+      <Slider label="Flat anywhere: slope" value={rules.flatAnySlope} min={0} max={0.4} step={0.01} onChange={(flatAnySlope) => set({ flatAnySlope })} />
+      <Slider label="Entry near the band" unit="px" value={rules.entryNearBandPx} min={0} max={400} step={5} onChange={(entryNearBandPx) => set({ entryNearBandPx })} />
+      <Slider label="Character: least turning" unit="deg" value={rules.minTurnDeg} min={0} max={360} step={5} onChange={(minTurnDeg) => set({ minTurnDeg })} />
+      <Slider label="Character: direction changes" value={rules.minDirChanges} min={0} max={6} step={1} onChange={(minDirChanges) => set({ minDirChanges })} />
+      <Slider label="Hairline: longest run" unit="px" value={rules.hairlineRunPx} min={80} max={600} step={10} onChange={(hairlineRunPx) => set({ hairlineRunPx })} />
+      <Toggle label="Keep off Connect's link list" checked={rules.linksClear} onChange={(linksClear) => set({ linksClear })} />
+      <Toggle label="End past an edge" checked={rules.exitAtEdge} onChange={(exitAtEdge) => set({ exitAtEdge })} />
     </div>
   );
 }

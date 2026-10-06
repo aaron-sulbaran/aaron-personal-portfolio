@@ -10,7 +10,7 @@ import { composePoints, derivedSeed, generateLine } from "./compose";
 import { PathLayer } from "./PathLayer";
 import { checkOptions, chooseSpine } from "./spineChoice";
 import { sampleSpine } from "./spineGeometry";
-import { bulkCheck, checkLine, type BulkReport } from "./spineRules";
+import { bulkCheck, checkLine, hintsFor, type BulkReport } from "./spineRules";
 import { resolveSpine } from "./spines";
 import { useLabSettings } from "./useLabSettings";
 import { SECTION_KEYS } from "./spines";
@@ -45,6 +45,7 @@ declare global {
       timing: (count?: number) => Record<string, number> | null;
       report: () => unknown;
       spineXAt: (docY: number) => number | null;
+      candidate: (seed: number, round3?: boolean) => unknown;
     };
   }
 }
@@ -79,7 +80,7 @@ export function WaveLab({ band, sections, footer }: WaveLabProps) {
   const { path, amplitude } = settings;
   const choice = useMemo(() => chooseSpine(path, measure, amplitude), [path, measure, amplitude]);
   const report = useMemo(
-    () => (measure ? checkLine(choice.def.points, measure.anchors, checkOptions(path, amplitude, measure.viewport)) : null),
+    () => (measure ? checkLine(choice.def.points, measure.anchors, checkOptions(path, amplitude, measure.viewport, measure.anchors.width)) : null),
     [choice, measure, path, amplitude],
   );
 
@@ -98,7 +99,7 @@ export function WaveLab({ band, sections, footer }: WaveLabProps) {
       pathPatch: (patch) => setSettings((current) => ({ ...current, path: { ...current.path, ...patch } })),
       // Every seed from `start` through the generator and the rules, on this page at this width.
       bulk: (count = 2000, start = 1) =>
-        measure ? bulkCheck(count, settings.path.gen, measure.anchors, checkOptions(settings.path, settings.amplitude, measure.viewport), start) : null,
+        measure ? bulkCheck(count, settings.path.gen, measure.anchors, checkOptions(settings.path, settings.amplitude, measure.viewport, measure.anchors.width), start) : null,
       // The current line's rule report, plus where its tightest on-screen bend is.
       report: () => {
         if (!measure) return null;
@@ -117,16 +118,26 @@ export function WaveLab({ band, sections, footer }: WaveLabProps) {
         for (let i = 0; i < smp.count; i++) if (smp.y[i] >= docY) return smp.x[i];
         return null;
       },
+      // The generator's first candidate for a seed, before any fallback, with its report.
+      // round3: the round 3 generator's line for the seed, checked against the current rules.
+      candidate: (seed, round3 = false) => {
+        if (!measure) return null;
+        const hints = round3 ? { entryRight: false, clearHeadings: false, clearLinks: false } : hintsFor(settings.path.rules);
+        const moves = generateLine(derivedSeed(seed, 0), settings.path.gen, undefined, hints);
+        const points = composePoints(moves);
+        const report = checkLine(points, measure.anchors, checkOptions(settings.path, settings.amplitude, measure.viewport, measure.anchors.width));
+        return { moves, points: resolveSpine({ points }, measure.anchors).map((q) => [Math.round(q.x), Math.round(q.y)]), report };
+      },
       // Mean ms per line for each step a visitor's load would take.
       timing: (count = 300) => {
         if (!measure) return null;
-        const opts = checkOptions(settings.path, settings.amplitude, measure.viewport);
+        const opts = checkOptions(settings.path, settings.amplitude, measure.viewport, measure.anchors.width);
         let generate = 0;
         let check = 0;
         let sample = 0;
         for (let seed = 1; seed <= count; seed++) {
           const t0 = performance.now();
-          const points = composePoints(generateLine(derivedSeed(seed, 0), settings.path.gen));
+          const points = composePoints(generateLine(derivedSeed(seed, 0), settings.path.gen, undefined, hintsFor(settings.path.rules)));
           const t1 = performance.now();
           checkLine(points, measure.anchors, opts);
           const t2 = performance.now();

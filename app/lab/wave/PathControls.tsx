@@ -5,7 +5,7 @@ import { PATH_RANGES, type HeadMode, type HeadStyle, type PathSettings, type Tai
 import type { SpineChoice } from "./spineChoice";
 import type { RuleReport } from "./spineRules";
 import { SPINES } from "./spines";
-import { Generator, RulesReadout, StretchEditor } from "./SpineTools";
+import { Generator, RuleControls, RulesReadout, StretchEditor } from "./SpineTools";
 
 // Every spine, the parked ones last, then the editable and generated slots.
 const SPINE_OPTIONS = [
@@ -46,7 +46,8 @@ export function PathControls(props: { path: PathSettings; choice: SpineChoice; r
           Edit a copy of this line
         </button>
       )}
-      <RulesReadout report={props.report} />
+      <RulesReadout report={props.report} rules={path.rules} />
+      <RuleControls rules={path.rules} onChange={(rules) => onChange({ rules })} />
       <Generator path={path} choice={choice} onChange={onChange} />
       {path.spine === "custom" && <StretchEditor moves={path.custom} onChange={(custom) => onChange({ custom })} />}
 
@@ -72,6 +73,13 @@ export function PathControls(props: { path: PathSettings; choice: SpineChoice; r
       <Slider label="Wavelength" unit="px of arc" value={path.wavelength} {...R.wavelength} onChange={(wavelength) => onChange({ wavelength })} />
       <Slider label="Shape travels with scroll" value={path.shapeTravel} {...R.shapeTravel} onChange={(shapeTravel) => onChange({ shapeTravel })} />
       <Slider label="Music layer (needs Music on)" value={path.musicLayer} {...R.musicLayer} onChange={(musicLayer) => onChange({ musicLayer })} />
+      <p className="mt-3 text-xs text-muted">Over the words</p>
+      <Toggle label="No lone dots in word gaps" checked={path.thinInWords} onChange={(thinInWords) => onChange({ thinInWords })} />
+      <Toggle label="Accent only outside text" checked={path.accentOutsideWords} onChange={(accentOutsideWords) => onChange({ accentOutsideWords })} />
+      <Toggle label="Head's swell relaxes inside text" checked={path.swellOutsideWords} onChange={(swellOutsideWords) => onChange({ swellOutsideWords })} />
+      <Toggle label="Soft music shimmer (size, not blink)" checked={path.shimmer === "soft"} onChange={(soft) => onChange({ shimmer: soft ? "soft" : "threshold" })} />
+      <Toggle label="Head starts at the band (first scroll pulls it out)" checked={path.headFromBand} onChange={(headFromBand) => onChange({ headFromBand })} />
+      <Slider label="Amplitude below 600px (0 keeps it)" unit="px" value={path.phoneAmplitude} min={0} max={120} step={1} onChange={(phoneAmplitude) => onChange({ phoneAmplitude })} />
       <Toggle label="Line only (no amplitude)" checked={path.lineOnly} onChange={(lineOnly) => onChange({ lineOnly })} />
       <Toggle label="Debug: draw the spine and its points" checked={path.debug} onChange={(debug) => onChange({ debug })} />
     </Group>

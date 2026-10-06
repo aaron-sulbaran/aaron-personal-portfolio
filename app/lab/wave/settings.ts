@@ -4,6 +4,7 @@
 // lib/waveform and components/soundtrack.
 
 import type { GenParams, Move } from "./compose";
+import type { RuleSettings } from "./spineRules";
 import { AUTHORED } from "./compose";
 import type { SpineId } from "./spines";
 
@@ -90,6 +91,14 @@ export interface PathSettings {
   seed: number; // the generator's seed ("generated")
   gen: GenParams;
   newEachVisit: boolean; // reseed the generated line on every load
+  // The design review's readability changes, each switchable:
+  thinInWords: boolean; // inside a text block, a column with no fuzz draws nothing (no lone dots in word gaps)
+  accentOutsideWords: boolean; // accent dots only outside text blocks; inside they stay muted
+  swellOutsideWords: boolean; // the head's swell relaxes to nothing while the head is inside a text block
+  shimmer: "threshold" | "soft"; // music's fuzz shimmer: dots blink on a threshold, or breathe in size
+  headFromBand: boolean; // at load the head waits at the line's entry by the band; the first scroll pulls it out
+  phoneAmplitude: number; // px, the amplitude below 600px wide (phones only); 0 keeps the amplitude
+  rules: RuleSettings;
 }
 
 export const PLACEMENTS: { id: Placement; label: string; note: string }[] = [
@@ -151,6 +160,42 @@ const baseHeights: Record<Placement, number> = {
   rail: 120,
 };
 
+// Round 3's rules: the reviewer's additions off.
+export const ROUND3_RULES: RuleSettings = {
+  maxEmptyVh: 1.5,
+  headingClearPx: 0,
+  linksClear: false,
+  hairlineGapPx: 0,
+  hairlineRunPx: 160,
+  edgeGapPx: 0,
+  edgeRunPx: 160,
+  maxTurnDeg: 0,
+  flatAnySlope: 0,
+  flatAnyPx: 400,
+  entryNearBandPx: 0,
+  exitAtEdge: false,
+  minTurnDeg: 0,
+  minDirChanges: 0,
+};
+
+// The design review's rules (2026-10-05).
+export const REVIEWED_RULES: RuleSettings = {
+  maxEmptyVh: 0.6,
+  headingClearPx: 24,
+  linksClear: true,
+  hairlineGapPx: 40,
+  hairlineRunPx: 160,
+  edgeGapPx: 32,
+  edgeRunPx: 160,
+  maxTurnDeg: 150,
+  flatAnySlope: 0.2,
+  flatAnyPx: 400,
+  entryNearBandPx: 120,
+  exitAtEdge: true,
+  minTurnDeg: 60,
+  minDirChanges: 2,
+};
+
 const base: WaveSettings = {
   placement: "backdrop",
   loop: "standing",
@@ -187,6 +232,13 @@ const base: WaveSettings = {
     seed: 7,
     gen: { through: 0.5, uneven: 0.6, offscreen: 0.5 },
     newEachVisit: false,
+    thinInWords: false,
+    accentOutsideWords: false,
+    swellOutsideWords: false,
+    shimmer: "threshold",
+    headFromBand: false,
+    phoneAmplitude: 0,
+    rules: ROUND3_RULES,
   },
   cursor: { mode: "push", radius: 92, strength: 1, recovery: 0.8, saturate: 1600, mix: { push: 1, carve: 0.6, swell: 0.5 } },
 };
@@ -250,6 +302,44 @@ export const PRESETS: Preset[] = [
         wavelength: 240,
         shapeTravel: 0,
         musicLayer: 0.35,
+      },
+    },
+  ),
+  preset(
+    "reviewed",
+    "Aaron's pick, reviewed",
+    "His pick with the design review applied: Signature line, reviewed; no lone dots in word gaps; accent only outside text; the head's swell relaxes inside text; music shimmer breathes instead of blinking; muted dots 0.28 in dark; the reviewer's spine rules on.",
+    {
+      placement: "path",
+      music: true,
+      intensity: 0.8,
+      beat: true,
+      amplitude: 80,
+      maxThick: 5,
+      dotScale: 1,
+      spacing: 13,
+      edgeFade: 0.24,
+      capsule: true,
+      alpha: { light: { muted: 0.35, accent: 0.5 }, dark: { muted: 0.28, accent: 0.5 } },
+      path: {
+        spine: "signature-reviewed",
+        headMode: "viewport",
+        headAt: 0.7,
+        preDrawn: 0,
+        smoothing: 7,
+        headStyle: "swell",
+        tail: "train",
+        trainLength: 1600,
+        wavelength: 240,
+        shapeTravel: 0,
+        musicLayer: 0.35,
+        thinInWords: true,
+        accentOutsideWords: true,
+        swellOutsideWords: true,
+        shimmer: "soft",
+        headFromBand: true,
+        phoneAmplitude: 48,
+        rules: REVIEWED_RULES,
       },
     },
   ),
