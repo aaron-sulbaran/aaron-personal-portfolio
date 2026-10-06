@@ -3,6 +3,7 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { gsap } from "gsap";
 import { BAR_D, BAR_REVEAL_D, BOLT_D, BOLT_REVEAL_D, BOLT_REVEAL_WIDTH, LEG_D, LEG_REVEAL_D, VIEW_BOX } from "./geometry";
+import { CursorStandIn, paintRing, ringActive } from "./Cursor";
 import { CURSOR_LABELS, FILL_LABELS, TRIGGER_LABELS, type Settings } from "./settings";
 import { Caption, Check } from "./ui";
 
@@ -15,7 +16,9 @@ import { Caption, Check } from "./ui";
 // through it. The fill starts on pointer down, with no dead zone. Let go early
 // and a short tap still shows a taste (a minimum fill, held a moment) before it
 // drains, and the ordinary click still happens. Hold to the end and the charge
-// discharges up out of the top, and the strike answers in the card.
+// discharges up out of the top, and the strike answers in the card. When the
+// cursor rings the mark, paint() also draws the ring's wash and arc from the
+// same band, so the mark and the ring can never disagree.
 
 const SITE_EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
 const MARK_TOP = 22;
@@ -26,7 +29,7 @@ const TASTE_RISE_S = 0.09;
 
 type Phase = "idle" | "filling" | "taste" | "draining" | "fired";
 
-export function TriggerCorner({ s, onOpen }: { s: Settings; onOpen: () => void }) {
+export function TriggerCorner({ s, reduced, cardOpen, onOpen }: { s: Settings; reduced: boolean; cardOpen: boolean; onOpen: () => void }) {
   const [atTop, setAtTop] = useState(true);
   const [phone, setPhone] = useState(false);
   const [note, setNote] = useState("Waiting.");
@@ -43,6 +46,11 @@ export function TriggerCorner({ s, onOpen }: { s: Settings; onOpen: () => void }
   const phase = useRef<Phase>("idle");
   const tween = useRef<gsap.core.Timeline | gsap.core.Tween | null>(null);
   const fired = useRef(false);
+  const struck = useRef(false);
+  const ringRootRef = useRef<SVGSVGElement | null>(null);
+  const ringWashRef = useRef<SVGRectElement | null>(null);
+  const ringArcRef = useRef<SVGCircleElement | null>(null);
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
 
   const size = phone ? 26 : 32;
   const grown = s.hint === "grow" && (hover || focus);
@@ -69,6 +77,9 @@ export function TriggerCorner({ s, onOpen }: { s: Settings; onOpen: () => void }
     band(boltRef.current, 0, BOLT_SHARE);
     band(legRef.current, BOLT_SHARE, 1);
     band(barRef.current, BOLT_SHARE + (1 - BOLT_SHARE) * 0.55, 1);
+    buttonRef.current?.setAttribute("data-hold-progress", p.toFixed(3));
+    const striking = phase.current === "fired";
+    paintRing({ root: ringRootRef, wash: ringWashRef, arc: ringArcRef }, s, reduced, fill.current, striking && s.ringAtStrike === "closes", cardOpen || struck.current || (striking && s.ringAtStrike === "vanishes"));
   };
   const paintRef = useRef(paint);
 
@@ -76,6 +87,10 @@ export function TriggerCorner({ s, onOpen }: { s: Settings; onOpen: () => void }
     paintRef.current = paint;
     paint();
   });
+
+  useEffect(() => {
+    if (!cardOpen) struck.current = false;
+  }, [cardOpen]);
 
   useEffect(
     () => () => {
@@ -98,9 +113,10 @@ export function TriggerCorner({ s, onOpen }: { s: Settings; onOpen: () => void }
       ease: "power2.in",
       onUpdate: repaint,
       onComplete: () => {
+        struck.current = true;
         fill.current = { p: 0, q: 0 };
-        repaint();
         phase.current = "idle";
+        repaint();
         onOpen();
       },
     });
@@ -110,6 +126,7 @@ export function TriggerCorner({ s, onOpen }: { s: Settings; onOpen: () => void }
     if (s.trigger !== "hold" || phase.current === "fired") return;
     tween.current?.kill();
     fired.current = false;
+    struck.current = false;
     phase.current = "filling";
     fill.current.q = 0;
     tween.current = gsap.to(fill.current, {
@@ -213,7 +230,9 @@ export function TriggerCorner({ s, onOpen }: { s: Settings; onOpen: () => void }
         </p>
         {!atTop && <div aria-hidden="true" className="absolute inset-x-0 top-0 h-[72px] border-b border-border bg-[var(--nav-bar)]" />}
         <button
+          ref={buttonRef}
           type="button"
+          data-hold-progress="0.000"
           aria-label="Back to the top (lab copy)"
           onClick={onClick}
           onDoubleClick={() => {
@@ -265,72 +284,24 @@ export function TriggerCorner({ s, onOpen }: { s: Settings; onOpen: () => void }
             </g>
           </svg>
         </button>
-        <CursorStandIn s={s} pointer={pointer} overMark={hover} markSize={size * scale} markLeft={phone ? 16 : 24} markTop={phone ? 18 : 20} />
+        <CursorStandIn s={s} rootRef={ringRootRef} washRef={ringWashRef} arcRef={ringArcRef} reduced={reduced} pointer={pointer} overMark={hover} markSize={size * scale} markLeft={phone ? 16 : 24} markTop={phone ? 18 : 20} />
       </div>
       <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[12px] [font-family:system-ui]">
         <Check label="Page is at the top" checked={atTop} onChange={setAtTop} />
         <Check label="Phone size (26px)" checked={phone} onChange={setPhone} />
         <span className="text-muted">
-          {TRIGGER_LABELS[s.trigger]}, {s.trigger === "hold" ? FILL_LABELS[s.fillDirection].toLowerCase() : "no fill"}, cursor: {CURSOR_LABELS[s.cursor].toLowerCase()}. {note}
+          {TRIGGER_LABELS[s.trigger]}, {s.trigger === "hold" ? FILL_LABELS[s.fillDirection].toLowerCase() : "no fill"}, cursor: {CURSOR_LABELS[s.cursor].toLowerCase()}
+          {ringActive(s, reduced) ? `, the ring shows the hold (${s.ringArcDegrees} degrees at full)` : ""}. {note}
         </span>
       </div>
       <Caption>
         Hover (or tab to it) and the mark grows {s.growPx}px from its top-left corner. Press and it fills at once; a quick click shows at least {Math.round(s.minFill * 100)}%
         for {s.tasteMs}ms and drains over {s.drainMs}ms, and the ordinary click still happens. Hold {s.holdMs}ms and the charge leaves through the top, then the card
         opens with the strike. Enter or Space held on the focused mark does the same; on touch it is a long press with the callout suppressed.
+        {ringActive(s, reduced)
+          ? ` Ringed, the cursor shows the same hold: a ${Math.round(s.ringFillStrength * 100)}% wash rises inside it and an arc draws to ${s.ringArcDegrees} degrees, and at the strike the circle ${s.ringAtStrike === "closes" ? "closes, then goes with the card" : "vanishes"}.`
+          : ""}
       </Caption>
-    </div>
-  );
-}
-
-// A stand-in for components/CustomCursor (a 10px accent dot that becomes a
-// 22px ring over anything clickable), and four answers for the mark.
-function CursorStandIn({
-  s,
-  pointer,
-  overMark,
-  markSize,
-  markLeft,
-  markTop,
-}: {
-  s: Settings;
-  pointer: { x: number; y: number; inside: boolean };
-  overMark: boolean;
-  markSize: number;
-  markLeft: number;
-  markTop: number;
-}) {
-  let x = pointer.x;
-  let y = pointer.y;
-  let diameter = 10;
-  let ring = false;
-  if (overMark) {
-    if (s.cursor === "today") {
-      diameter = 22;
-      ring = true;
-    } else if (s.cursor === "dot") {
-      diameter = 4;
-    } else if (s.cursor === "aside") {
-      x += 18;
-      y += 18;
-      diameter = 8;
-    } else {
-      x = markLeft + markSize / 2;
-      y = markTop + markSize / 2;
-      diameter = markSize + 14;
-      ring = true;
-    }
-  }
-  return (
-    <div
-      aria-hidden="true"
-      className="pointer-events-none absolute left-0 top-0 z-20"
-      style={{ transform: `translate(${x}px, ${y}px)`, opacity: pointer.inside ? 1 : 0, transition: overMark && s.cursor === "ring" ? `transform 200ms ${SITE_EASE}` : "none" }}
-    >
-      <span
-        className={`block -translate-x-1/2 -translate-y-1/2 rounded-full transition-[width,height] duration-200 ease-out ${ring ? "border-[1.5px] border-accent" : "bg-accent"}`}
-        style={{ width: diameter, height: diameter }}
-      />
     </div>
   );
 }

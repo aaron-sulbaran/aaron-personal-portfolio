@@ -15,6 +15,10 @@ export type TriggerKind = "click-at-top" | "double-click" | "hold";
 export type HintKind = "grow" | "none";
 export type FillDirection = "rise" | "bolt";
 export type CursorAnswer = "today" | "dot" | "aside" | "ring";
+export type RingArcStart = "top" | "fill";
+export type RingArcEase = "none" | "bump";
+export type RingTone = "accent" | "ink";
+export type RingAtStrike = "closes" | "vanishes";
 
 export type StrikeSettings = {
   strike: StrikeKind;
@@ -68,6 +72,16 @@ export type Settings = StrikeSettings & {
   minFill: number;
   tasteMs: number;
   cursor: CursorAnswer;
+  ringIndicator: boolean;
+  ringFill: boolean;
+  ringFillTone: RingTone;
+  ringFillStrength: number;
+  ringArcDegrees: number;
+  ringArcStart: RingArcStart;
+  ringArcWidth: number;
+  ringArcEase: RingArcEase;
+  ringLead: number;
+  ringAtStrike: RingAtStrike;
 };
 
 export const EASES: Record<EaseKey, { name: string; gsap: string; export: string }> = {
@@ -140,6 +154,18 @@ export const CURSOR_LABELS: Record<CursorAnswer, string> = {
   aside: "Steps aside",
   ring: "Rings the mark",
 };
+export const RING_START_LABELS: Record<RingArcStart, string> = {
+  top: "From 12 o'clock, clockwise",
+  fill: "From 6 o'clock, both sides, with the fill",
+};
+export const RING_EASE_LABELS: Record<RingArcEase, string> = {
+  none: "None, as the mark",
+  bump: "A bump near the end",
+};
+export const RING_STRIKE_LABELS: Record<RingAtStrike, string> = {
+  closes: "Closes the circle, then goes with the card",
+  vanishes: "Vanishes at the strike",
+};
 
 const RECOMMENDED: Settings = {
   strike: "fill",
@@ -171,6 +197,16 @@ const RECOMMENDED: Settings = {
   minFill: 0.3,
   tasteMs: 200,
   cursor: "dot",
+  ringIndicator: false,
+  ringFill: true,
+  ringFillTone: "accent",
+  ringFillStrength: 0.16,
+  ringArcDegrees: 75,
+  ringArcStart: "top",
+  ringArcWidth: 4,
+  ringArcEase: "none",
+  ringLead: 0,
+  ringAtStrike: "closes",
   celFps: 24,
   celFpp: 2,
   celPoses: 3,
@@ -217,10 +253,40 @@ const AARONS_PICK: Settings = {
 
 const CEL_NIGHT: Settings = { ...AARONS_PICK, strike: "cel" };
 
+// Round two, as Aaron copied it: the cel strike on night, the cursor ringing
+// the mark, and a 10px growth so the press reads in the light theme.
+const AARONS_CEL: Settings = { ...CEL_NIGHT, growPx: 10, cursor: "ring" };
+
+const AARONS_RING: Settings = {
+  ...AARONS_CEL,
+  ringIndicator: true,
+  ringFill: true,
+  ringFillTone: "accent",
+  ringFillStrength: 0.16,
+  ringArcDegrees: 75,
+  ringArcStart: "top",
+  ringArcWidth: 4,
+  ringArcEase: "none",
+  ringLead: 0,
+  ringAtStrike: "closes",
+};
+
 export const PRESETS: readonly { id: string; name: string; note: string; settings: Settings }[] = [
+  {
+    id: "aaron-ring",
+    name: "Aaron's pick, ring indicator",
+    note: "Aaron's cel pick with the ring as a hold indicator: on press the ring washes with the accent from the bottom while an arc draws clockwise from 12 o'clock to 75 degrees, both on the mark's own fill clock. Let go and all three drain together; hold to the end and the circle closes as the charge leaves the top.",
+    settings: AARONS_RING,
+  },
   {
     id: "aaron",
     name: "Aaron's pick",
+    note: "Aaron's pick from round two as he copied it: the cel strike on night, the cursor ringing the mark, a 10px growth from the corner, no ring indicator.",
+    settings: AARONS_CEL,
+  },
+  {
+    id: "aaron-round-one",
+    name: "Aaron's round one",
     note: "Aaron's pick from round one: stepped, a ground ring, the A by shockwave, the flash on in light too, mark left and text right, press and hold.",
     settings: AARONS_PICK,
   },
@@ -374,6 +440,7 @@ export function exportValues(s: Settings, label: string, theme: string) {
     tapMinimumFill: s.minFill,
     tapTasteHold: `${s.tasteMs}ms`,
     cursorOverMark: CURSOR_LABELS[s.cursor],
+    ...ringValues(s),
     celFrameRate: `${s.celFps}fps`,
     celFramesPerPose: s.celFpp,
     celPoses: s.celPoses,
@@ -396,5 +463,25 @@ export function exportValues(s: Settings, label: string, theme: string) {
     celColors: "core var(--loader-name) on var(--loader-bg) in the night dip, else var(--color-foreground); glow var(--loader-fill) or var(--color-accent)",
     restingMark: "components/menu/BrandMark.tsx AsMark, flat currentColor",
     reducedMotion: "no strike: the static mark, the card fades in over 180ms",
+  };
+}
+
+function ringValues(s: Settings) {
+  if (s.cursor !== "ring" || s.trigger !== "hold" || !s.ringIndicator) return { ringIndicator: false };
+  return {
+    ringIndicator: true,
+    ringBase: "1.5px var(--color-accent), the grown mark plus 14px, centred on it",
+    ringFill: s.ringFill,
+    ringFillTone: s.ringFillTone === "accent" ? "var(--color-accent)" : "var(--color-foreground)",
+    ringFillStrength: s.ringFillStrength,
+    ringFillDirection: "bottom to top, its own height, on the mark's hold progress",
+    ringArcDegrees: s.ringArcDegrees,
+    ringArcStart: RING_START_LABELS[s.ringArcStart],
+    ringArcWidth: `${s.ringArcWidth}px`,
+    ringArcColor: "var(--color-accent)",
+    ringArcEase: RING_EASE_LABELS[s.ringArcEase],
+    ringLead: `${s.ringLead}ms at mid hold (positive leads, negative lags; level with the mark at press and at full)`,
+    ringAtStrike: RING_STRIKE_LABELS[s.ringAtStrike],
+    ringReducedMotion: "the plain ring, no wash and no arc",
   };
 }

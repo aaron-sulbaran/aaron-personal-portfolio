@@ -123,7 +123,7 @@ export function MarkLab() {
           </Section>
 
           <Section index="3" title="How it is found" note="The top-left corner at its real size. Pick the trigger in the panel, then try it here; it opens the card over the whole page.">
-            <TriggerCorner s={s} onOpen={() => setOverlay(true)} />
+            <TriggerCorner s={s} reduced={reduced} cardOpen={overlay} onOpen={() => setOverlay(true)} />
           </Section>
 
           <Section index="4" title="Small sizes" note="The settled mark and the strike at 96 and 48px, at speed and slowed, so you can see whether the animation survives a smaller card.">
