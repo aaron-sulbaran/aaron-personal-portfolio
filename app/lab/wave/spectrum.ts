@@ -1,15 +1,29 @@
-import { easeToward } from "@/lib/waveform/field";
-
 // Simulated music: no audio, ever. A handful of seeded voices, each a bump
 // over the log spectrum (low on the left, as in lib/waveform/bands.ts) whose
 // level wanders smoothly, plus an optional beat (a kick on every beat, hats
-// on the off-beats). The bins ease up fast and fall slower, the way the real
-// analyser's magnitudes feed the field, so the reactive look can be judged in
-// silence. Output is in the field's units: bands peak past the 0.36 accent
-// gate on loud passages, the level sits around 0.3 to 0.6.
+// on the off-beats). The bins follow an attack and release envelope, the way
+// the real analyser's magnitudes feed the field, so the reactive look can be
+// judged in silence. Output is in the field's units: bands peak past the 0.36
+// accent gate on loud passages, the level sits around 0.3 to 0.6.
+//
+// Every rate is a knob (SpectrumMotion). The lively values reproduce the
+// first simulation to within rounding: 94 BPM, a kick decaying at 9 and hats at 16 per
+// beat, bins rising with a 52ms time constant and falling with 174ms.
 
 export const BINS = 64;
-const BPM = 94;
+
+export interface SpectrumMotion {
+  speed: number; // scales every time-based rate at once: tempo, wander, attack, release (and the shimmer)
+  tempo: number; // BPM
+  beatStrength: number; // 0..1, the kick and hats' share
+  softness: number; // 1 is the snap; the kick and hat decays are divided by it, so a hit becomes a swell
+  attack: number; // s, the bins' time constant rising
+  release: number; // s, falling
+  wander: number; // Hz, the fastest of the voices' wandering sines (the slower two keep their ratios)
+}
+
+// The voices' fastest sine averages 0.8 Hz (see voice()); wander scales from it.
+const NATIVE_WANDER = 0.8;
 
 interface Voice {
   centre: number; // 0..1 along the log spectrum
@@ -48,23 +62,40 @@ const VOICES: Voice[] = [
 export interface Spectrum {
   bins: Float32Array;
   level: number;
+  beatPhase: number; // beats elapsed; accumulated, so moving a rate never jumps the music
+  wanderTime: number; // s of wander at the native rates
 }
 
 export function createSpectrum(): Spectrum {
-  return { bins: new Float32Array(BINS), level: 0 };
+  return { bins: new Float32Array(BINS), level: 0, beatPhase: 0, wanderTime: 0 };
 }
+
+// A hit at the start of each period, decaying at `rate` per period, shaped to
+// reach exactly 0 at the next hit so a slow decay never steps at the wrap.
+// At rate 9 or more this is the plain exp(-x * rate) to within 1e-4.
+const hit = (x: number, rate: number) => {
+  const end = Math.exp(-rate);
+  return (Math.exp(-x * rate) - end) / (1 - end);
+};
 
 const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
 
-// Step the spectrum at `time` seconds. `amount` is the eased music level times
+// Step the spectrum by dt seconds. `amount` is the eased music level times
 // the intensity slider; 0 lets every bin fall back to silence.
-export function stepSpectrum(spectrum: Spectrum, time: number, dt: number, amount: number, beat: boolean): void {
-  const beatPhase = (time * BPM) / 60;
+export function stepSpectrum(spectrum: Spectrum, dt: number, amount: number, beat: boolean, motion: SpectrumMotion): void {
+  const run = dt * motion.speed;
+  spectrum.beatPhase += (run * motion.tempo) / 60;
+  spectrum.wanderTime += (run * motion.wander) / NATIVE_WANDER;
+  const time = spectrum.wanderTime;
+  const beatPhase = spectrum.beatPhase;
   const sinceBeat = beatPhase - Math.floor(beatPhase);
   const offBeat = (sinceBeat + 0.5) % 1;
   const downbeat = Math.floor(beatPhase) % 4 === 0 ? 1.25 : 1;
-  const kick = beat ? Math.exp(-sinceBeat * 9) * downbeat : 0;
-  const hat = beat ? Math.exp(-offBeat * 16) : 0;
+  const soft = Math.max(1, motion.softness);
+  const kick = beat ? hit(sinceBeat, 9 / soft) * downbeat * motion.beatStrength : 0;
+  const hat = beat ? hit(offBeat, 16 / soft) * motion.beatStrength : 0;
+  const rise = 1 - Math.exp(-run / Math.max(1e-3, motion.attack));
+  const fall = 1 - Math.exp(-run / Math.max(1e-3, motion.release));
   // A phrase swell every 8 bars so loud and quiet passages trade.
   const phrase = 0.7 + 0.3 * Math.sin((beatPhase / 32) * Math.PI * 2);
 
@@ -87,7 +118,7 @@ export function stepSpectrum(spectrum: Spectrum, time: number, dt: number, amoun
     energy += 0.22 * hat * Math.exp(-(((f - 0.88) / 0.07) ** 2));
     const target = clamp01(Math.pow(clamp01(energy), 1.35) * 1.9) * amount;
     const before = spectrum.bins[b];
-    spectrum.bins[b] = easeToward(before, target, target > before ? 0.35 : 0.12, dt);
+    spectrum.bins[b] = before + (target - before) * (target > before ? rise : fall);
     sum += spectrum.bins[b];
   }
   spectrum.level = clamp01((sum / BINS) * 2.2);

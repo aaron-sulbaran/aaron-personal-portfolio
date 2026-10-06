@@ -4,6 +4,7 @@ import { Fragment, useState, useSyncExternalStore } from "react";
 import { Choice, Group, Slider, Toggle } from "./panelParts";
 import { PathControls } from "./PathControls";
 import { CursorControls } from "./CursorControls";
+import { MotionControls } from "./MotionControls";
 import type { SpineChoice } from "./spineChoice";
 import type { RuleReport } from "./spineRules";
 import { readTokens, textContrast, type Contrast, type ThemeTokens } from "./readout";
@@ -143,6 +144,7 @@ export function Panel(props: PanelProps) {
         <Toggle label="Music on" checked={s.music} onChange={(music) => edit({ music })} />
         <Toggle label="Beat" checked={s.beat} onChange={(beat) => edit({ beat })} />
         <Slider label="Intensity" value={s.intensity} {...RANGES.intensity} onChange={(intensity) => edit({ intensity })} />
+        <MotionControls motion={s.motion} onChange={(motion) => edit({ motion: { ...s.motion, ...motion } })} />
       </Group>
 
       <Group title="Theme and alpha">

@@ -21,6 +21,7 @@ function merge(stored: Partial<WaveSettings>): WaveSettings {
     alpha: { light: { ...d.alpha.light, ...stored.alpha?.light }, dark: { ...d.alpha.dark, ...stored.alpha?.dark } },
     position: { ...d.position, ...stored.position },
     stripHeight: { ...d.stripHeight, ...stored.stripHeight },
+    motion: { ...d.motion, ...stored.motion },
     path: { ...d.path, ...stored.path, gen: { ...d.path.gen, ...stored.path?.gen }, rules: { ...d.path.rules, ...stored.path?.rules } },
     cursor: { ...d.cursor, ...stored.cursor, mix: { ...d.cursor.mix, ...stored.cursor?.mix } },
   };

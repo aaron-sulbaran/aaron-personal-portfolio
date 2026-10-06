@@ -7,6 +7,7 @@ import type { GenParams, Move } from "./compose";
 import type { RuleSettings } from "./spineRules";
 import { AUTHORED } from "./compose";
 import type { SpineId } from "./spines";
+import type { SpectrumMotion } from "./spectrum";
 
 export type Placement = "path" | "backdrop" | "horizon" | "seams" | "chapters" | "rail";
 export type LoopKind = "standing" | "travel" | "pulse" | "draw" | "ripple";
@@ -31,9 +32,45 @@ export interface WaveSettings {
   edgeFade: number; // share of the length faded at each end, 0..0.45
   scrollInfluence: number; // 0 none, 1 the merged build's conveyor
   capsule: boolean;
+  motion: MotionSettings;
   path: PathSettings;
   cursor: CursorSettings;
 }
+
+// How fast the music moves the wave: the simulated spectrum's rates
+// (spectrum.ts) plus the Path's fuzz shimmer. `speed` scales every one of
+// them at once, so it is the first knob to turn.
+export interface MotionSettings extends SpectrumMotion {
+  shimmerRate: number; // the shimmer's clock multiplier: "soft" breathes at clock x this, "threshold" blinks at x3 this
+  shimmerDepth: number; // "soft" only: the share of a fuzz dot's size that breathes
+  softRows: boolean; // Path: a fuzz row grows in and out with the level instead of popping, and the shimmer's cut is feathered
+}
+
+// The first simulation's rates: a snappy kick, bins that jump.
+export const LIVELY_MOTION: MotionSettings = {
+  speed: 1,
+  tempo: 94,
+  beatStrength: 1,
+  softness: 1,
+  attack: 0.052,
+  release: 0.174,
+  wander: 0.8,
+  shimmerRate: 2,
+  shimmerDepth: 0.22,
+  softRows: false,
+};
+
+export const MOTION_RANGES = {
+  speed: { min: 0.25, max: 2, step: 0.05 },
+  tempo: { min: 40, max: 140, step: 1 },
+  beatStrength: { min: 0, max: 1, step: 0.01 },
+  softness: { min: 1, max: 8, step: 0.1 },
+  attack: { min: 0.03, max: 2, step: 0.01 },
+  release: { min: 0.05, max: 4, step: 0.01 },
+  wander: { min: 0.05, max: 1.5, step: 0.01 },
+  shimmerRate: { min: 0.25, max: 2, step: 0.05 },
+  shimmerDepth: { min: 0, max: 0.5, step: 0.01 },
+};
 
 // How the pointer touches the dots (Path only). Fine pointers only, never
 // under reduced motion.
@@ -214,6 +251,7 @@ const base: WaveSettings = {
   edgeFade: 0.24,
   scrollInfluence: 0,
   capsule: true,
+  motion: LIVELY_MOTION,
   path: {
     spine: "knot",
     headMode: "viewport",
@@ -255,7 +293,11 @@ export const PATH_RANGES = {
 
 type Preset = { id: string; label: string; why: string; values: WaveSettings; parked?: boolean };
 
-type PresetPatch = Omit<Partial<WaveSettings>, "path" | "cursor"> & { path?: Partial<PathSettings>; cursor?: Partial<CursorSettings> };
+type PresetPatch = Omit<Partial<WaveSettings>, "path" | "cursor" | "motion"> & {
+  path?: Partial<PathSettings>;
+  cursor?: Partial<CursorSettings>;
+  motion?: Partial<MotionSettings>;
+};
 
 const preset = (id: string, label: string, why: string, patch: PresetPatch, parked = false): Preset => ({
   id,
@@ -268,10 +310,46 @@ const preset = (id: string, label: string, why: string, patch: PresetPatch, park
     position: { ...basePositions, ...patch.position },
     stripHeight: { ...baseHeights, ...patch.stripHeight },
     alpha: { light: { ...base.alpha.light, ...patch.alpha?.light }, dark: { ...base.alpha.dark, ...patch.alpha?.dark } },
+    motion: { ...base.motion, ...patch.motion },
     path: { ...base.path, ...patch.path },
     cursor: { ...base.cursor, ...patch.cursor },
   },
 });
+
+// Aaron's pick, reviewed: everything but the music motion, shared by its calm and lively versions.
+const REVIEWED: PresetPatch = {
+  placement: "path",
+  music: true,
+  intensity: 0.8,
+  beat: true,
+  amplitude: 80,
+  maxThick: 5,
+  dotScale: 1,
+  spacing: 13,
+  edgeFade: 0.24,
+  capsule: true,
+  alpha: { light: { muted: 0.35, accent: 0.5 }, dark: { muted: 0.28, accent: 0.5 } },
+  path: {
+    spine: "signature-reviewed",
+    headMode: "viewport",
+    headAt: 0.7,
+    preDrawn: 0,
+    smoothing: 7,
+    headStyle: "swell",
+    tail: "train",
+    trainLength: 1600,
+    wavelength: 240,
+    shapeTravel: 0,
+    musicLayer: 0.35,
+    thinInWords: true,
+    accentOutsideWords: true,
+    swellOutsideWords: true,
+    shimmer: "soft",
+    headFromBand: true,
+    phoneAmplitude: 48,
+    rules: REVIEWED_RULES,
+  },
+};
 
 export const PRESETS: Preset[] = [
   preset(
@@ -309,39 +387,7 @@ export const PRESETS: Preset[] = [
     "reviewed",
     "Aaron's pick, reviewed",
     "His pick with the design review applied: Signature line, reviewed; no lone dots in word gaps; accent only outside text; the head's swell relaxes inside text; music shimmer breathes instead of blinking; muted dots 0.28 in dark; the reviewer's spine rules on.",
-    {
-      placement: "path",
-      music: true,
-      intensity: 0.8,
-      beat: true,
-      amplitude: 80,
-      maxThick: 5,
-      dotScale: 1,
-      spacing: 13,
-      edgeFade: 0.24,
-      capsule: true,
-      alpha: { light: { muted: 0.35, accent: 0.5 }, dark: { muted: 0.28, accent: 0.5 } },
-      path: {
-        spine: "signature-reviewed",
-        headMode: "viewport",
-        headAt: 0.7,
-        preDrawn: 0,
-        smoothing: 7,
-        headStyle: "swell",
-        tail: "train",
-        trainLength: 1600,
-        wavelength: 240,
-        shapeTravel: 0,
-        musicLayer: 0.35,
-        thinInWords: true,
-        accentOutsideWords: true,
-        swellOutsideWords: true,
-        shimmer: "soft",
-        headFromBand: true,
-        phoneAmplitude: 48,
-        rules: REVIEWED_RULES,
-      },
-    },
+    REVIEWED,
   ),
   preset(
     "water",

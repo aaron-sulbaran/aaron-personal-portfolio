@@ -8,6 +8,7 @@ import { PANEL_WIDTH, Panel } from "./Panel";
 import { getMeasure, getServerMeasure, subscribeMeasure } from "./anchorStore";
 import { composePoints, derivedSeed, generateLine } from "./compose";
 import { PathLayer } from "./PathLayer";
+import { probeMotion, type MotionReport } from "./motionProbe";
 import { checkOptions, chooseSpine } from "./spineChoice";
 import { sampleSpine } from "./spineGeometry";
 import { bulkCheck, checkLine, hintsFor, type BulkReport } from "./spineRules";
@@ -46,6 +47,7 @@ declare global {
       report: () => unknown;
       spineXAt: (docY: number) => number | null;
       candidate: (seed: number, round3?: boolean) => unknown;
+      motionProbe: (seconds?: number) => MotionReport;
     };
   }
 }
@@ -94,6 +96,8 @@ export function WaveLab({ band, sections, footer }: WaveLabProps) {
         if (found) setSettings(found.values);
       },
       get: () => settings,
+      // How fast the music moves the dots at the current settings (motionProbe.ts).
+      motionProbe: (seconds = 60) => probeMotion(settings, seconds),
       open: setOpen,
       hold: (seconds) => engine.hold(seconds),
       pathPatch: (patch) => setSettings((current) => ({ ...current, path: { ...current.path, ...patch } })),

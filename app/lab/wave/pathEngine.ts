@@ -41,6 +41,7 @@ const DOT_GAP = 6.5;
 const ACCENT_PEAK = 0.36;
 const MAX_STEP_S = 0.1;
 const SPEC_PERIOD = 1100; // px of arc per pass through the spectrum
+const FEATHER = 0.08; // soft rows: the width of the shimmer cut's feather, in the shimmer's 0..1 units
 
 type Painter = ReturnType<typeof createDotPainter>;
 
@@ -218,7 +219,7 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
   let dirty = true;
   let paints = 0;
   let music = 0;
-  let clock = 0;
+  let shimmerClock = 0; // advances at the shimmer's rate, so moving the slider never jumps the pattern
   let raf = 0;
   let last = 0;
   let theme: ThemeName = "light";
@@ -427,6 +428,9 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
     const plucking = touch && cursor.hasPlucks();
     const repelR = cursor.radius + 30;
     const pointer = cursor.pointer;
+    const soft = p.shimmer === "soft";
+    const depth = settings.motion.shimmerDepth;
+    const softRows = settings.motion.softRows;
     emitTop = top;
 
     for (let k = 0; k < tile.count; k++) {
@@ -483,25 +487,38 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
       // centre dot (it reads as punctuation between words).
       const plain = p.accentOutsideWords && inWords;
       const peak = !plain && magnitude > ACCENT_PEAK;
-      const thick = Math.min(settings.maxThick, Math.floor((magnitude * amp) / gap));
-      if (p.thinInWords && inWords && thick === 0) continue;
-      emit(!plain && (magnitude > ACCENT_LINE || (bright > 0 && hash(j, 9) < bright)) ? accent : muted, cx, cy, CENTER_RADIUS * r);
+      // Soft rows: the level's row count is continuous; the outermost row's
+      // dots grow with its fraction instead of popping in whole.
+      const rows = Math.min(settings.maxThick, (magnitude * amp) / gap);
+      const thick = softRows ? Math.ceil(rows - 1e-3) : Math.floor(rows);
+      const rowsFor = softRows ? rows : thick;
+      let centre = 1;
+      if (p.thinInWords && inWords && rows < 1) {
+        if (!softRows) continue;
+        centre = smooth(rows);
+        if (centre < 0.05) continue;
+      }
+      emit(!plain && (magnitude > ACCENT_LINE || (bright > 0 && hash(j, 9) < bright)) ? accent : muted, cx, cy, CENTER_RADIUS * r * centre);
       for (let q = 1; q <= thick; q++) {
-        const fade = 1 - q / (thick + 1.5);
+        const fade = 1 - q / (rowsFor + 1.5);
         // The site's shimmer, frozen per column: the pattern is a property of
         // the arc length, so scrolling reveals it rather than animating it.
         // "threshold": music animates the site's blink (each fuzz dot on or off
-        // at clock * 6). "soft": the pattern stays put and each dot breathes in
-        // size instead, slower, so nothing pops behind a word.
-        const soft = p.shimmer === "soft";
-        const shimmer = 0.5 + 0.5 * Math.sin(j * 1.3 + q * 2.1 + (!soft && musicAmount > 1e-3 ? clock * 6 : 0));
-        const breathe = soft && musicAmount > 1e-3 ? 0.78 + 0.22 * (0.5 + 0.5 * Math.sin(clock * 2 + j * 1.3 + q * 2.1)) : 1;
-        if (shimmer >= 0.5 + fade * 0.45) continue;
+        // at the shimmer clock x3). "soft": the pattern stays put and each dot
+        // breathes in size instead, slower, so nothing pops behind a word.
+        const shimmer = 0.5 + 0.5 * Math.sin(j * 1.3 + q * 2.1 + (!soft && musicAmount > 1e-3 ? shimmerClock * 3 : 0));
+        const breathe = soft && musicAmount > 1e-3 ? 1 - depth + depth * (0.5 + 0.5 * Math.sin(shimmerClock + j * 1.3 + q * 2.1)) : 1;
+        const cut = 0.5 + fade * 0.45;
+        // Soft rows feather the cut (centred on it, so the ink stays the same on
+        // average): a dot the level moves across it shrinks away instead of vanishing.
+        const kept = softRows ? smooth((cut - shimmer) / FEATHER + 0.5) * Math.min(1, rows - (q - 1)) : shimmer < cut ? 1 : 0;
+        if (kept < 0.05) continue;
         if (present < 1 && hash(j, q) > present) continue;
         const out = !plain && ((q >= thick && peak) || (bright > 0 && hash(j, q + 9) < bright)) ? accent : muted;
         const o = q * gap;
-        emit(out, cx + nx * o, cy + ny * o, FUZZ_RADIUS * r * breathe);
-        emit(out, cx - nx * o, cy - ny * o, FUZZ_RADIUS * r * breathe);
+        const fuzz = FUZZ_RADIUS * r * breathe * kept;
+        emit(out, cx + nx * o, cy + ny * o, fuzz);
+        emit(out, cx - nx * o, cy - ny * o, fuzz);
       }
     }
     if (sparkJ >= 0) pushDot(accent, colX[sparkJ], colY[sparkJ] - top, CENTER_RADIUS * 1.7 * settings.dotScale);
@@ -553,7 +570,8 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
     if (!started) return;
     const dt = last ? Math.min((t - last) / 1000, MAX_STEP_S) : 1 / 60;
     last = t;
-    clock += dt;
+    const motion = settings.motion;
+    shimmerClock += dt * motion.shimmerRate * motion.speed;
     target = targetHead();
     const gateTarget = gateFor();
     const gateBefore = swellGate;
@@ -566,7 +584,7 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
     const live = musicLive();
     if (live) {
       music = easeToward(music, settings.music ? 1 : 0, settings.music ? 0.05 : 0.11, dt);
-      stepSpectrum(spectrum, clock, dt, music * settings.intensity, settings.beat);
+      stepSpectrum(spectrum, dt, music * settings.intensity, settings.beat, motion);
     }
     const touching = interactive() && stepPointer(dt);
     if (dirty || live || Math.abs(head - paintedHead) > 0.2) {

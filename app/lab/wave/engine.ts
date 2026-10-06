@@ -186,7 +186,8 @@ export function createWaveEngine(initial: WaveSettings): WaveEngine {
     const target = settings.music ? 1 : 0;
     // The real field's reactive rates: springs up at 0.05, falls at 0.11.
     music = easeToward(music, target, target > music ? 0.05 : 0.11, dt);
-    stepSpectrum(spectrum, clock, dt, music * settings.intensity, settings.beat);
+    // A held clock (screenshots) freezes the music where it is.
+    stepSpectrum(spectrum, held === null ? dt : 0, music * settings.intensity, settings.beat, settings.motion);
     stepConveyor(conveyor, dt, false);
     paintAll(clock);
   };
