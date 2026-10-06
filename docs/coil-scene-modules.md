@@ -56,14 +56,14 @@ Every module is a factory: `createX(ctx, ...parts it calls, loop)` returns the f
 | `budget`, `landedAhead` (reset) | boot.ts (`resync`) |
 | `poses`, `rendered`, `sil` | cards.ts |
 | `hoveredSlot` | hover.ts |
-| `pointer`, `capture`, `lastScrollY` (per frame), `dragging`, `coast`, `pressCaughtCoil` | input.ts (`coast` also cleared by entrance.ts while the strand is held) |
+| `pointer`, `capture`, `dragging`, `coast`, `pressCaughtCoil` | input.ts (`coast` also cleared by entrance.ts while the strand is held) |
 | `conveyor` | input.ts (feeds), entrance.ts (held at 0), unwind.ts (latched), hover.ts (glide) |
 | `envelope` | input.ts |
 | `rowHold` | hover.ts |
 | `unwind` | unwind.ts (and loop.ts shifts its start after a stop) |
 | `rebuildAt` | renderer.ts (layout), entrance.ts, loop.ts (clock hold) |
 | `hiddenSlot`, `frozenByApi`, `landedAhead` (set) | flight.ts (and debugProbe.ts `hide`) |
-| `raf`, `lastTime`, `lastScrollY` (on wake), `visible`, `resuming`, `firstFrameSent` | loop.ts |
+| `raf`, `lastTime`, `visible`, `resuming`, `firstFrameSent` | loop.ts |
 | `ready`, `disposed` | boot.ts, the root's dispose |
 
 ## The frame
@@ -72,7 +72,7 @@ Every module is a factory: `createX(ctx, ...parts it calls, loop)` returns the f
 
 | Step | Part | Hands on |
 |---|---|---|
-| scroll | input | `scrollDelta` |
+| scroll | input | (places the pointer at the page's scroll) |
 | conveyor | input | (moves `st.conveyor`, `st.envelope`) |
 | helix | cards | `helix` |
 | entrance | entrance (and name's fades) | `clock`, `realElapsedMs`, `helix` |
