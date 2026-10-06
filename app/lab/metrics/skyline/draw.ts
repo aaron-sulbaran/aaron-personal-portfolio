@@ -214,11 +214,13 @@ export const draw = (s: Scene) => {
     ctx.textAlign = "left";
     ctx.textBaseline = "bottom";
     let edge = -Infinity;
+    // A fixed gap above the first row, not a share of a cell: a short range has
+    // big cells, and a cell-relative offset pushed the labels off the canvas.
     for (const m of s.months) {
-      const x = px(m.week + off, -0.3);
+      const x = px(m.week + off, off);
       const tw = ctx.measureText(m.label).width;
       if (x < edge || x + tw > W) continue;
-      ctx.fillText(m.label, x, py(m.week + off, -0.3, 0) - 3);
+      ctx.fillText(m.label, x, py(m.week + off, off, 0) - 6);
       edge = x + tw + 6;
     }
     ctx.textAlign = "right";
