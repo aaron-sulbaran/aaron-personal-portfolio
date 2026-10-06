@@ -35,10 +35,10 @@ Non-functional
 ```
 wheel event ─┐
 pointermove ─┼─> capture (pure)  ── owner: COIL ──> conveyor.addWheel ──> scene
-hero rect  ──┘        │            owner: PAGE ──> browser scrolls ──> pageScroll feed (gentle)
+hero rect  ──┘        │            owner: PAGE ──> browser scrolls (the coil keeps its idle pace)
                       └─> nudge (COIL held 2.6s)
 
-row hover/focus ──> hold (pure) ──> idleWeight 0, pageScroll feed 0, glide to card, hold
+row hover/focus ──> hold (pure) ──> idleWeight 0, glide to card, hold
 card click ──> freeze scene ──> flight (pure handoff state machine) ──> modal ──> reverse ──> unfreeze next frame
 modal close, row click ──> seen store ──> coil ring + book row dim
 ```
@@ -50,7 +50,7 @@ Gesture ownership (the core rule). A gesture is a run of wheel events less than 
 - PAGE never converts to COIL mid-gesture, even if the hero scrolls under the pointer.
 - No hover intent, no "top of page only", no "cards only".
 
-Row hold. While a row is hovered or focused: idle 0, page-scroll feed 0, one glide to the card's visible copy, then still. Row to row: a 700ms glide from the held pose. Leaving the list: idle resumes after 400ms, eased in over 600ms. Hero less than a quarter in view: no effect.
+Row hold. While a row is hovered or focused: idle 0, one glide to the card's visible copy, then still. Row to row: a 700ms glide from the held pose. Leaving the list: idle resumes after 400ms, eased in over 600ms. Hero less than a quarter in view: no effect.
 
 Flight handoff. The flying object renders exactly what the mesh renders (same shader, bend, shading, lift), and releases bend, shading and lift over the flight. The mesh reappears only on the frame every value equals its rest value; the scene unfreezes on the next frame with `dt` clamped to one frame.
 
