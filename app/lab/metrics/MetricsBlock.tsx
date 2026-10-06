@@ -3,7 +3,7 @@
 import ContributionSkyline from "./ContributionSkyline";
 import { NumbersRow } from "./NumbersRow";
 import { useContributions } from "./context";
-import { windowPeriod, yearOf } from "./derive";
+import { isRolling, windowPeriod, yearOf } from "./derive";
 import type { ContributionData } from "./data";
 import { accentRamp, DAY_MS, dayMs, toKey } from "./skyline/maths";
 import type { Settings } from "./settings";
@@ -21,9 +21,10 @@ export function SampleTag() {
 
 type BlockProps = { settings: Settings; pin: number | null; replay: number };
 
-// The calendar range the chart shows, shared with the ribbon. The rolling
-// year is drawn the way GitHub draws it: whole weeks from the Sunday on or
-// before the day a year ago, ending today, so it has no future to show. The
+// The calendar range the chart shows, shared with the ribbon. A rolling
+// window (six or twelve months) is drawn the way GitHub draws its year: whole
+// weeks from the Sunday on or before its first day, ending today, so it has no
+// future to show (the six-month fixture already starts on that Sunday). The
 // calendar year starts on January 1 (its first week padded) and may run on
 // to December 31 as empty slabs.
 const sundayOf = (date: string) => {
@@ -32,7 +33,7 @@ const sundayOf = (date: string) => {
 };
 
 export const chartRange = (d: ContributionData, s: Settings) =>
-  d.window === "12mo"
+  isRolling(d)
     ? { from: sundayOf(d.range.from), through: undefined }
     : { from: d.range.from, through: s.future === "slabs" ? yearOf(d) + "-12-31" : undefined };
 
@@ -41,7 +42,7 @@ const common = (d: ContributionData, s: Settings, pin: number | null) => ({
   endDate: d.fetched,
   range: chartRange(d, s),
   periodLabel: windowPeriod(d),
-  totalLabel: d.window === "12mo" ? "Last 12 months" : yearOf(d) + " so far",
+  totalLabel: d.window === "6mo" ? "Last 6 months" : d.window === "12mo" ? "Last 12 months" : yearOf(d) + " so far",
   palette: accentRamp(s.share),
   heightScale: s.heightScale,
   heightCurve: s.curve,

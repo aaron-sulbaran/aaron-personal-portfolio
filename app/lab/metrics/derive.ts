@@ -23,8 +23,12 @@ export const rangeTotal = (d: ContributionData) => d.days.reduce((sum, x) => sum
 const numberFormat = new Intl.NumberFormat("en-US");
 export const formatCount = (n: number) => numberFormat.format(n);
 
-// "the last 12 months" or "2026": the window as a phrase, and with "in" for captions.
-export const windowName = (d: ContributionData) => (d.window === "12mo" ? "the last 12 months" : yearOf(d));
+// A rolling window (six or twelve months back to today) rather than the calendar year.
+export const isRolling = (d: ContributionData) => d.window !== "year";
+
+// "the last 6 months", "the last 12 months" or "2026": the window as a phrase, and with "in" for captions.
+export const windowName = (d: ContributionData) =>
+  d.window === "6mo" ? "the last 6 months" : d.window === "12mo" ? "the last 12 months" : yearOf(d);
 export const windowPeriod = (d: ContributionData) => "in " + windowName(d);
 
 const monthDay = new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", timeZone: "UTC" });

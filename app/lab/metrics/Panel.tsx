@@ -105,7 +105,7 @@ export function Panel({ settings: s, onChange, pin, onPin, onReplay }: PanelProp
       </Field>
 
       <Field label="Window">
-        <Segmented options={["12mo", "year"] as const} value={s.window} onChange={(v) => set("window", v)} format={(v) => WINDOW_NAMES[v]} />
+        <Segmented options={["6mo", "12mo", "year"] as const} value={s.window} onChange={(v) => set("window", v)} format={(v) => WINDOW_NAMES[v]} />
       </Field>
 
       <Field label="Data">

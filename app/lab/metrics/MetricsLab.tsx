@@ -9,7 +9,7 @@ import { Ribbon } from "./Ribbon";
 import { VisitorQuestion } from "./VisitorQuestion";
 import { ContributionsProvider } from "./context";
 import type { ContributionData, ContributionWindow } from "./data";
-import { activeDays, dateSpan, formatCount, rangeTotal, sinceLabel, windowName, windowPeriod } from "./derive";
+import { activeDays, dateSpan, formatCount, isRolling, rangeTotal, sinceLabel, windowName, windowPeriod } from "./derive";
 import { DAY_MS, dayMs, generateContributions } from "./skyline/maths";
 import { DEFAULT_SETTINGS, type Settings } from "./settings";
 
@@ -93,7 +93,7 @@ export function MetricsLab({ windows, upToNow, connect }: LabProps) {
   const question = s.question ? <VisitorQuestion /> : null;
   const data = windows[s.window];
   const name = windowName(data);
-  const rolling = data.window === "12mo";
+  const rolling = isRolling(data);
   const end = dayMs(data.fetched);
   // The same seed and span the skyline's own sample uses, so the two agree.
   const sampleDays = generateContributions(end, 7, Math.round((end - dayMs(data.range.from)) / DAY_MS) + 1);
@@ -107,7 +107,7 @@ export function MetricsLab({ windows, upToNow, connect }: LabProps) {
         <div className="mx-auto max-w-6xl">
           <p className="m-label text-muted">Metrics lab, dev only</p>
           <h1 className="mt-4 font-display text-display-md">
-            {rolling ? "The last 12 months" : name} on GitHub, in context.
+            {rolling ? name.charAt(0).toUpperCase() + name.slice(1) : name} on GitHub, in context.
           </h1>
           <p className="mt-6 max-w-2xl text-lg leading-[1.55] text-muted">
             The real Up to now and Connect sections with the metrics placed between them. The data is my contribution

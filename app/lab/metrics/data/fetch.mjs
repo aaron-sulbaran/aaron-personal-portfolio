@@ -2,8 +2,10 @@
 // Refetches Aaron's contribution calendar through the logged-in GitHub CLI
 // and rewrites the lab fixtures. Run from the lab worktree:
 //   node app/lab/metrics/data/fetch.mjs
-// Writes contributions-2026.json (January 1 to today, what the lab reads) and
-// contributions-12mo.json (the rolling year GitHub's own graph shows).
+// Writes contributions-6mo.json (whole weeks from the Sunday on or before the
+// day six months ago, to today: the default window), contributions-12mo.json
+// (the rolling year GitHub's own graph shows) and contributions-2026.json
+// (January 1 to today). Each carries its own totals and streaks.
 // Private contributions appear only while the profile setting
 // "Contribution settings > Private contributions" is on; GitHub applies that
 // setting to the API as well as to logged-out visitors.
@@ -100,12 +102,20 @@ const twelveMonthsAgo = new Date(today);
 twelveMonthsAgo.setUTCFullYear(twelveMonthsAgo.getUTCFullYear() - 1);
 twelveMonthsAgo.setUTCDate(twelveMonthsAgo.getUTCDate() + 1);
 
+// Six months back, then back again to that week's Sunday, so the grid's first
+// column is a whole week of real days.
+const sixMonthsAgo = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - 6, today.getUTCDate()));
+sixMonthsAgo.setUTCDate(sixMonthsAgo.getUTCDate() - sixMonthsAgo.getUTCDay());
+
 const thisYear = fetchRange(yearStart, to);
 const rolling = fetchRange(isoDay(twelveMonthsAgo), to);
+const half = fetchRange(isoDay(sixMonthsAgo), to);
 
 writeFileSync(join(here, "contributions-2026.json"), JSON.stringify(thisYear, null, 1) + "\n");
 writeFileSync(join(here, "contributions-12mo.json"), JSON.stringify(rolling, null, 1) + "\n");
+writeFileSync(join(here, "contributions-6mo.json"), JSON.stringify(half, null, 1) + "\n");
 
 const active = (d) => d.days.filter((x) => x.count > 0).length;
 console.log(`${yearStart} to ${to}: ${thisYear.total} contributions on ${active(thisYear)} days, restricted ${thisYear.restricted}`);
 console.log(`last 12 months: ${rolling.total} contributions on ${active(rolling)} days; longest streak ${rolling.streaks.longest.days} (${rolling.streaks.longest.start} to ${rolling.streaks.longest.end}); current ${rolling.streaks.current.days}`);
+console.log(`last 6 months (${half.range.from} to ${to}): ${half.total} contributions on ${active(half)} days; longest streak ${half.streaks.longest.days}; current ${half.streaks.current.days} (${half.streaks.current.start} to ${half.streaks.current.end}); busiest ${Math.max(...half.days.map((d) => d.count))}`);

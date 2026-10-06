@@ -14,10 +14,10 @@ export const metadata: Metadata = { title: "Metrics lab", robots: { index: false
 // loadContributions() alone, once per window; the panel picks which one
 // shows. Dev only via app/lab/layout.tsx.
 export default async function MetricsLabPage() {
-  const [rolling, year] = await Promise.all([loadContributions("12mo"), loadContributions("year")]);
+  const [half, rolling, year] = await Promise.all([loadContributions("6mo"), loadContributions("12mo"), loadContributions("year")]);
   return (
     <div id="main" className={labFontVariables}>
-      <MetricsLab windows={{ "12mo": rolling, year }} upToNow={<UpToNow />} connect={<Connect />} />
+      <MetricsLab windows={{ "6mo": half, "12mo": rolling, year }} upToNow={<UpToNow />} connect={<Connect />} />
     </div>
   );
 }

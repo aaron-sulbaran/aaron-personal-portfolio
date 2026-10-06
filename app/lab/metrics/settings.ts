@@ -51,6 +51,7 @@ export const COMPANION_NAMES: Record<Companions, string> = {
 };
 
 export const WINDOW_NAMES: Record<ContributionWindow, string> = {
+  "6mo": "Last 6 months",
   "12mo": "Last 12 months",
   year: "This year",
 };
@@ -145,7 +146,7 @@ export const exportValues = (s: Settings, theme: string) => {
     window: WINDOW_NAMES[s.window],
     numbersLead: s.placement === "strip" || s.placement === "divider" || s.companions !== "numbers" ? "n/a, no numbers row" : LEAD_NAMES[s.lead],
     data: s.data === "real" ? "real" : "sample year (comparison only)",
-    afterToday: s.window === "12mo" ? "n/a, the rolling year ends today" : s.future === "omit" ? "grid stops at today" : "empty slabs to December 31",
+    afterToday: s.window !== "year" ? "n/a, the rolling window ends today" : s.future === "omit" ? "grid stops at today" : "empty slabs to December 31",
     defaultView: s.view === "3d" ? "skyline (3D)" : "flat (2D)",
     lightestStepShare: s.share + "%",
     ramp: accentRamp(s.share).join(" | "),
