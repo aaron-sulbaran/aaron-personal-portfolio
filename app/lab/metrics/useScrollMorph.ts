@@ -87,7 +87,6 @@ export function useScrollMorph(blockRef: RefObject<HTMLElement | null>, s: Setti
             start: `top ${s.triggerPct}%`,
             end: `top ${Math.max(5, s.triggerPct - s.scrubBand)}%`,
             scrub: s.scrubLag,
-            invalidateOnRefresh: true,
           },
         });
       }
@@ -97,13 +96,16 @@ export function useScrollMorph(blockRef: RefObject<HTMLElement | null>, s: Setti
     });
     // Anything above the block that reflows without a window resize (the
     // panel on phones, a font landing, the copy above changing) moves the
-    // line; re-measure once the page's height settles.
+    // line; re-measure once it settles. Only the block's own position counts:
+    // the morph growing the chart below its top must not refresh, because a
+    // refresh rewinds the scrubbed clock (a loop: rewind, shrink, refresh).
     let timer = 0;
-    let lastHeight = document.body.scrollHeight;
+    const blockTop = () => Math.round(trigger.getBoundingClientRect().top + window.scrollY);
+    let lastTop = blockTop();
     const observer = new ResizeObserver(() => {
-      const height = document.body.scrollHeight;
-      if (height === lastHeight) return;
-      lastHeight = height;
+      const top = blockTop();
+      if (top === lastTop) return;
+      lastTop = top;
       window.clearTimeout(timer);
       timer = window.setTimeout(() => ScrollTrigger.refresh(), 150);
     });

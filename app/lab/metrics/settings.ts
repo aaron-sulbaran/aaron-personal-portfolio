@@ -126,8 +126,8 @@ export const PRESETS: readonly Preset[] = [
   {
     id: "aaron-6mo",
     name: "Aaron's pick, 6 months, scroll morph",
-    note: "His round 2 pick on the last 6 months: flat until the block's top crosses 70 percent of the viewport, then the full 1300ms morph to the skyline; back to flat when the reader scrolls back above it. The toggle overrides until the next crossing. The block's reveal stand-in runs first.",
-    settings: { ...AARON_PASTED, window: "6mo", morph: "play", reveal: true },
+    note: "His round 2 pick on the last 6 months: flat until the block's top crosses 60 percent of the viewport (where the reveal's band ends, so the whole flat grid is on screen first), then the full 1300ms morph to the skyline; back to flat when the reader scrolls back above it. The toggle overrides until the next crossing.",
+    settings: { ...AARON_PASTED, window: "6mo", morph: "play", triggerPct: 60, reveal: true },
   },
   {
     id: "aaron-pasted",
