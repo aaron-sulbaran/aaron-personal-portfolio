@@ -1,3 +1,4 @@
+import type { Page } from "@playwright/test";
 import { LOADER } from "@/lib/loader/progress";
 import { test, expect } from "./support/fixtures";
 import { waitForCoil } from "./support/coil";
@@ -5,9 +6,11 @@ import type { HookWindow } from "./support/hooks";
 import { cardRegion, pixelDiff, shoot, type Image } from "./support/pixels";
 
 // The loader and the entrance (docs/coil-build-scaffold.md, slice 4): a slow
-// load shows the loader with a rising number and lands its name on the
-// scene's in one frame; a cached load skips it; the scroll lock over loader
-// and entrance releases exactly once.
+// load shows the loader with a rising number and lands its lockup ("Hi, I'm"
+// over "Aaron") on the scene's in one frame; a cached load never shows the
+// pane, only the resting lockup, which the canvas takes over in one frame;
+// the fallback h1 never shows while a scene is on its way; the scroll lock
+// over loader and entrance releases exactly once.
 
 // The spread between the name box's darker and lighter pixels (5th to 95th
 // percentile of luminance, of 255).
@@ -21,6 +24,58 @@ function luminanceSpread(image: Image) {
 }
 
 type LoaderFrame = { event: string; data?: { shown?: number; numberHidden?: boolean } };
+type Lockup = NonNullable<ReturnType<NonNullable<HookWindow["__coil"]>["api"]["nameRect"]>>;
+
+// The lockup's two regions from the scene's own numbers: the name's gradient
+// band across its ink, and the greeting's line around its ink.
+function lockupRegions(t: Lockup, viewport: { width: number; height: number }) {
+  const rect = (x0: number, y0: number, x1: number, y1: number) =>
+    cardRegion(
+      [
+        { x: x0, y: y0 },
+        { x: x1, y: y0 },
+        { x: x1, y: y1 },
+        { x: x0, y: y1 },
+      ],
+      viewport,
+      0,
+    );
+  const g = t.greeting;
+  return {
+    name: rect(t.left, t.gradient.top, t.left + t.width, t.gradient.top + t.gradient.height),
+    greeting: rect(g.left - 3, g.baseline - 0.8 * g.fontPx, g.left + 2.8 * g.fontPx, g.baseline + 0.2 * g.fontPx),
+  };
+}
+
+// Both sides of a held hand-off: the DOM lockup on the canvas field, then the
+// canvas lockup the same frame the DOM one leaves. Each region within the
+// slow path's tolerance, and letters on both sides (not an empty field twice).
+async function expectSeamlessHandoff(page: Page, label: string, minGreetingSpread: number) {
+  const target = (await page.evaluate(() => (window as HookWindow).__coil!.api.nameRect()))!;
+  const regions = lockupRegions(target, page.viewportSize()!);
+  const before = { name: await shoot(page, regions.name.box), greeting: await shoot(page, regions.greeting.box) };
+  // The hand-off renders its frame synchronously; the freeze stops the loop
+  // right after it, so the shot is that frame and not the surface growing in.
+  const handedOff = await page.evaluate(() => {
+    const w = window as HookWindow;
+    w.__coilLoader!.finish!();
+    w.__coil!.api.freeze(true);
+    return w.__coilLoader!.events.some((e) => e.event === "handoff");
+  });
+  expect(handedOff, `${label}: the hand-off happened in the finishing task`).toBe(true);
+  const after = { name: await shoot(page, regions.name.box), greeting: await shoot(page, regions.greeting.box) };
+  await page.evaluate(() => (window as HookWindow).__coil!.api.freeze(false));
+  for (const part of ["name", "greeting"] as const) {
+    const diff = pixelDiff(before[part], after[part], after[part], regions[part]);
+    test.info().annotations.push({ type: `${label} ${part}`, description: `mean ${diff.insideMean.toFixed(2)}, max ${diff.insideMax}` });
+    expect(diff.insideMean, `${label}: mean difference inside the ${part}, of 255`).toBeLessThan(3);
+  }
+  expect(luminanceSpread(before.name), `${label}: loader side, the name box's luminance spread`).toBeGreaterThan(30);
+  expect(luminanceSpread(after.name), `${label}: canvas side, the name box's luminance spread`).toBeGreaterThan(30);
+  expect(luminanceSpread(before.greeting), `${label}: loader side, the greeting's luminance spread`).toBeGreaterThan(minGreetingSpread);
+  expect(luminanceSpread(after.greeting), `${label}: canvas side, the greeting's luminance spread`).toBeGreaterThan(minGreetingSpread);
+  return target;
+}
 
 test("loader: a throttled load shows a rising number and hands the name to the canvas without a visible change", async ({ page, cdp }) => {
   await cdp.send("Network.enable");
@@ -56,29 +111,76 @@ test("loader: a throttled load shows a rising number and hands the name to the c
     },
     LOADER.exitMs,
   );
-  const name = (await page.evaluate(() => (window as HookWindow).__coil!.api.nameRect()))!;
-  const outline = [
-    { x: name.left, y: name.gradient.top },
-    { x: name.left + name.width, y: name.gradient.top },
-    { x: name.left + name.width, y: name.gradient.top + name.gradient.height },
-    { x: name.left, y: name.gradient.top + name.gradient.height },
-  ];
-  const region = cardRegion(outline, page.viewportSize()!, 0);
-  const loaderName = await shoot(page, region.box);
-  await page.evaluate(() => {
-    (window as HookWindow).__coilLoader!.finish!();
-  });
-  await page.waitForFunction(() => (window as HookWindow).__coilLoader!.events.some((e) => e.event === "handoff"));
-  const canvasName = await shoot(page, region.box);
-
-  const diff = pixelDiff(loaderName, canvasName, canvasName, region);
-  expect(diff.insideMean, "mean difference inside the name, of 255").toBeLessThan(3);
-  // And the name is there on both sides: letters against the field, not an empty field twice.
-  expect(luminanceSpread(loaderName), "loader side: luminance spread in the name box").toBeGreaterThan(30);
-  expect(luminanceSpread(canvasName), "canvas side: luminance spread in the name box").toBeGreaterThan(30);
+  await expectSeamlessHandoff(page, "throttled", 12);
 });
 
-test("loader: a cached load skips the loader, and the scroll lock releases exactly once", async ({ page }) => {
+// The slow path on a cached build (the tally's items land on a schedule):
+// at the exit's held last frame the loader's greeting is on screen, on the
+// canvas greeting, and the hand-off changes no pixel of the lockup.
+test("loader: the slow path lands the greeting with the name, pixel for pixel", async ({ page }) => {
+  await page.goto("/?coildebug=1");
+  await waitForCoil(page);
+  await page.goto("/?coildebug=slow,handoff,at=3");
+  await page.waitForFunction(
+    (exitMs) => {
+      const w = window as HookWindow;
+      const exit = w.__coilLoader?.events.find((e) => e.event === "exit");
+      return !!exit && performance.now() > exit.t + exitMs + 50 && !!w.__coil?.api.nameRect();
+    },
+    LOADER.exitMs,
+    { timeout: 30_000 },
+  );
+  const events = await page.evaluate(() => (window as HookWindow).__coilLoader!.events.map((e) => e.event));
+  expect(events, "the slow load showed the pane").toContain("100");
+  // The greeting is in the loader at the landed frame, where the canvas draws it.
+  const greet = await page.evaluate(() => {
+    const el = document.querySelector(".coil-loader__greet")!;
+    const r = el.getBoundingClientRect();
+    return {
+      text: el.textContent,
+      shows: el.checkVisibility({ opacityProperty: true, visibilityProperty: true }),
+      fontPx: parseFloat(getComputedStyle(el).fontSize),
+      scale: new DOMMatrixReadOnly(getComputedStyle(el.parentElement!).transform).a,
+      left: r.left,
+      bottom: r.bottom,
+    };
+  });
+  const target = (await page.evaluate(() => (window as HookWindow).__coil!.api.nameRect()))!;
+  expect(greet.text).toBe("Hi, I'm");
+  expect(greet.shows, "the loader's greeting shows at the landed frame").toBe(true);
+  expect(greet.fontPx * greet.scale, "the greeting's landed size, px").toBeCloseTo(target.greeting.fontPx, 0);
+  await expectSeamlessHandoff(page, "slow", 12);
+});
+
+// A warm load inside the guard: the resting lockup, already the landed pose,
+// is the canvas lockup at the hand-off (held there by ?coildebug=handoff).
+test("loader: the resting lockup is the canvas lockup at the hand-off", async ({ page }) => {
+  await page.goto("/?coildebug=1");
+  await waitForCoil(page);
+  await page.goto("/?coildebug=handoff,at=3");
+  await page.waitForFunction(
+    () => {
+      const w = window as HookWindow;
+      return (
+        !!w.__coilLoader?.events.some((e) => e.event === "rest") &&
+        !!w.__coilLoader.finish &&
+        !!w.__coil?.api.nameRect() &&
+        document.querySelector<HTMLElement>("section[data-scene]")?.dataset.scene === "on"
+      );
+    },
+    null,
+    { timeout: 30_000 },
+  );
+  const target = (await page.evaluate(() => (window as HookWindow).__coil!.api.nameRect()))!;
+  const sizes = await page.evaluate(() =>
+    [".coil-loader__rest-name", ".coil-loader__rest-greet"].map((sel) => parseFloat(getComputedStyle(document.querySelector(sel)!).fontSize)),
+  );
+  expect(sizes[0], "the resting name's size, px").toBeCloseTo(target.fontPx, 1);
+  expect(sizes[1], "the resting greeting's size, px").toBeCloseTo(target.greeting.fontPx, 1);
+  await expectSeamlessHandoff(page, "resting", 12);
+});
+
+test("loader: a cached load never shows the pane, and the scroll lock releases exactly once", async ({ page }) => {
   await page.goto("/?coildebug=1");
   await waitForCoil(page);
 
@@ -89,7 +191,9 @@ test("loader: a cached load skips the loader, and the scroll lock releases exact
     const w = window as HookWindow;
     return { events: w.__coilLoader!.events.map((e) => e.event), locks: w.__coilLoader!.locks.map((e) => e.event) };
   });
-  expect(loader.events).toContain("skipped");
+  expect(loader.events).toContain("rest");
+  expect(loader.events).toContain("handoff");
+  expect(loader.events).not.toContain("100");
   expect(loader.events).not.toContain("exit");
   expect(loader.events).not.toContain("fade");
   await expect(page.locator(".coil-loader")).toBeHidden();
@@ -97,4 +201,57 @@ test("loader: a cached load skips the loader, and the scroll lock releases exact
   // The first entry is the state when the log started (the lock not yet
   // engaged); after it the lock engages once and releases once, never again.
   expect(loader.locks, "lock states, in order").toEqual(["unlocked", "locked", "unlocked"]);
+});
+
+// Every frame of a warm reload at the top, from navigation until the loader
+// hands the lockup to the canvas: the fallback h1 never shows while a scene is
+// on its way, and the loader's resting lockup ("Hi, I'm" over "Aaron", where
+// the canvas will draw them) is on screen instead.
+type HeroFrame = { t: number; scene: string | null; gone: boolean; h1: boolean | null; greeting: boolean; name: boolean };
+
+test("loader: a warm reload never shows the fallback heading; the resting lockup holds until the canvas takes it", async ({
+  page,
+}) => {
+  await page.goto("/?coildebug=1");
+  await waitForCoil(page);
+  await page.addInitScript(() => {
+    const frames: HeroFrame[] = [];
+    (window as unknown as { __heroFrames: HeroFrame[] }).__heroFrames = frames;
+    const shows = (el: Element | null) => {
+      if (!el) return false;
+      const rect = el.getBoundingClientRect();
+      return rect.width > 1 && rect.height > 1 && el.checkVisibility({ opacityProperty: true, visibilityProperty: true });
+    };
+    const sample = () => {
+      const hero = document.querySelector<HTMLElement>("section[data-scene]");
+      const loader = document.querySelector<HTMLElement>(".coil-loader");
+      const gone = !!loader && loader.dataset.state === "gone";
+      const h1 = document.getElementById("hero-heading");
+      frames.push({
+        t: performance.now(),
+        scene: hero?.dataset.scene ?? null,
+        gone,
+        h1: h1 ? shows(h1) : null,
+        greeting: shows(document.querySelector(".coil-loader__rest-greet")),
+        name: shows(document.querySelector(".coil-loader__rest-name")),
+      });
+      if (!gone && frames.length < 2000) requestAnimationFrame(sample);
+    };
+    requestAnimationFrame(sample);
+  });
+  await page.reload();
+  await waitForCoil(page);
+
+  const frames = await page.evaluate(() => (window as unknown as { __heroFrames: HeroFrame[] }).__heroFrames);
+  const pending = frames.filter((f) => f.h1 !== null && !f.gone);
+  expect(pending.length, "frames sampled before the hand-off").toBeGreaterThan(2);
+  const h1Shown = pending.filter((f) => f.h1);
+  expect(h1Shown.length, `frames showing the fallback h1 (first at ${h1Shown[0]?.t.toFixed(0)}ms)`).toBe(0);
+  const bare = pending.filter((f) => !f.greeting || !f.name);
+  expect(bare.length, `frames without the resting lockup (first at ${bare[0]?.t.toFixed(0)}ms)`).toBe(0);
+  // The sampling ran up to the hand-off: the loader left only once the canvas drew.
+  const events = await page.evaluate(() => (window as HookWindow).__coilLoader!.events.map((e) => e.event));
+  expect(events, "the warm reload took the fast path").toContain("rest");
+  expect(frames.at(-1)!.gone, "the loader handed off").toBe(true);
+  expect(frames.at(-1)!.scene, "the scene was drawing at the hand-off").toBe("on");
 });
