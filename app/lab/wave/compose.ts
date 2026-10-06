@@ -260,7 +260,26 @@ export function generateLine(seed: number, p: GenParams, stretches: readonly Str
   const beforeLast = stretches[stretches.length - 2];
   if (isGap(beforeLast) && r() < 0.6) moves.push({ at: beforeLast, kind: "run", side: exit, reach: outReach(), slope: 0.5 });
   else moves.push({ at: last, kind: "arc", side: exit, reach: outReach(), slope: 0.4, centre: 0.7 });
-  return moves;
+  return hints.bandRun ? afterBandRun(moves) : moves;
+}
+
+// Behind a band run the line arrives at the first section from past the
+// right edge (headMap.ts turns it there), so the first gap's move, which was
+// planned for the old opening, goes, and a first section that would double
+// back (a crossing from left to right, an off-screen or gutter stretch on the
+// left) is solved by mirroring the whole line, so its turns still agree with
+// each other. A line whose first section already fits is unchanged.
+function afterBandRun(moves: Move[]): Move[] {
+  const out = moves.filter((m) => m.at !== "gap0");
+  const first = out.find((m) => !isGap(m.at));
+  const doubles = first && (first.kind === "through" ? first.side === "right" : first.side === "left");
+  if (!doubles) return out;
+  return out.map((m) => ({
+    ...m,
+    side: m.side === "right" ? "left" : "right",
+    ...(m.mid !== undefined ? { mid: 1 - m.mid } : {}),
+    // A pass's position is its side and reach, so the side flip mirrors it.
+  }));
 }
 
 // The generator under the design review's rules. Free generation failed

@@ -46,7 +46,7 @@ declare global {
       timing: (count?: number) => Record<string, number> | null;
       report: () => unknown;
       spineXAt: (docY: number) => number | null;
-      candidate: (seed: number, round3?: boolean) => unknown;
+      candidate: (seed: number, round3?: boolean, attempt?: number) => unknown;
       motionProbe: (seconds?: number) => MotionReport;
     };
   }
@@ -127,10 +127,11 @@ export function WaveLab({ band, sections, footer }: WaveLabProps) {
       },
       // The generator's first candidate for a seed, before any fallback, with its report.
       // round3: the round 3 generator's line for the seed, checked against the current rules.
-      candidate: (seed, round3 = false) => {
+      // attempt: one of the retries generateSpine would make for the seed.
+      candidate: (seed, round3 = false, attempt = 0) => {
         if (!measure) return null;
-        const hints = round3 ? { entryRight: false, clearHeadings: false, clearLinks: false } : hintsFor(settings.path.rules);
-        const moves = generateLine(derivedSeed(seed, 0), settings.path.gen, undefined, { ...hints, bandRun: settings.path.bandRun });
+        const hints = round3 ? { entryRight: false, clearHeadings: false, clearLinks: false } : hintsFor(settings.path.rules, settings.path.bandRun);
+        const moves = generateLine(derivedSeed(seed, attempt), settings.path.gen, undefined, hints);
         const points = composePoints(moves);
         const report = checkLine(points, measure.anchors, checkOptions(settings.path, settings.amplitude, measure.viewport, measure.anchors.width));
         return { moves, points: resolveSpine({ points }, measure.anchors, runOpts).map((q) => [Math.round(q.x), Math.round(q.y)]), report };

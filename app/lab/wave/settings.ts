@@ -140,7 +140,8 @@ export const CURSOR_RANGES = {
   returnS: { min: 0.2, max: 3, step: 0.05 },
 };
 
-export const SCATTER_OFF: ScatterSettings = { on: false, threshold: 500, launch: 0.45, spread: 0.5, drag: 3.5, returnS: 0.8 };
+export const SCATTER_OFF: ScatterSettings = { on: false, threshold: 500, launch: 0.25, spread: 0.5, drag: 3.5, returnS: 0.8 };
+export const SCATTER_ON: ScatterSettings = { ...SCATTER_OFF, on: true };
 
 export type HeadMode = "viewport" | "progress";
 export type HeadStyle = "taper" | "spark" | "swell" | "none";
@@ -408,8 +409,8 @@ const REVIEWED: PresetPatch = {
 
 // Aaron's pick 2 (round 5), from his copied values: a generated line he
 // accepted with every proximity rule off, drawn by page progress, carve under
-// the pointer. Only the music motion differs from his copy (calm, as he asked
-// of every preset).
+// the pointer with the scatter layer on top. Only the music motion differs
+// from his copy (calm, as he asked of every preset), plus the new fields.
 const PICK2: PresetPatch = {
   placement: "path",
   music: true,
@@ -449,7 +450,7 @@ const PICK2: PresetPatch = {
     bandRun: true,
     rules: AARON_RULES,
   },
-  cursor: { mode: "carve", radius: 96, strength: 1, recovery: 0.9, saturate: 1600, mix: { push: 1, carve: 0.6, swell: 0.5 } },
+  cursor: { mode: "carve", radius: 96, strength: 1, recovery: 0.9, saturate: 1600, mix: { push: 1, carve: 0.6, swell: 0.5 }, scatter: SCATTER_ON },
 };
 
 export const PRESETS: Preset[] = [
@@ -487,7 +488,7 @@ export const PRESETS: Preset[] = [
   preset(
     "pick2",
     "Aaron's pick 2",
-    "His round 5 pick: a generated line (seed 487570111) with every proximity rule off, always partly on screen, reaching the end at the bottom; the head follows page progress at a capped draw speed; it starts as a level run across the band and waits for Play it or Not now; carve under the pointer; dark alphas 0.40 and 0.69.",
+    "His round 5 pick: a generated line (seed 487570111) with every proximity rule off, always partly on screen, reaching the end at the bottom; the head follows page progress at a capped draw speed; it starts as a level run across the band and waits for Play it or Not now; carve under the pointer, and a fast pass scatters the dots, which spring home; dark alphas 0.40 and 0.69.",
     PICK2,
   ),
   preset(

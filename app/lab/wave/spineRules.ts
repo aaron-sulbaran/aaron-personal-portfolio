@@ -58,6 +58,7 @@ export interface RuleReport {
   totalTurnDeg: number; // all the turning on screen
   headingPoint: { x: number; y: number } | null; // where the line comes closest to a heading
   backtrackPoint: { x: number; y: number } | null; // where it climbs back the most
+  bendPoint: { x: number; y: number } | null; // its tightest bend on screen
   dirChanges: number; // changes of horizontal direction along the whole line
   visible: VisibleReport;
   end: EndReport;
@@ -81,6 +82,7 @@ export function checkLine(points: SpinePoint[], anchors: Anchors, opts: CheckOpt
 
 const VISIBLE_STEP = 50; // px of scroll between the always-visible rule's samples
 const TRAIN_FADE = 0.3; // the train's tail fade, as a share of its length (pathEngine.ts)
+const DOT_REACH = 0.3; // of the amplitude: how far a column's dots show past its spine point at rest
 
 export interface VisibleReport {
   worstGapPx: number; // the longest scroll with no drawn dot on screen (0: always visible)
@@ -113,6 +115,9 @@ export function visibility(samples: SpineSamples, anchors: Anchors, opts: CheckO
   let worstAt = 0;
   let runStart = -1;
   let positions = 0;
+  // A column's dots reach about this far past its spine point (its wave and
+  // a row or two of fuzz at rest), so a spine just past the edge still shows.
+  const peek = DOT_REACH * opts.amplitude;
   for (let scroll = 0; ; scroll = Math.min(maxScroll, scroll + VISIBLE_STEP)) {
     positions++;
     const { head, tail } = frameAt(samples, anchors, opts, scroll);
@@ -120,7 +125,7 @@ export function visibility(samples: SpineSamples, anchors: Anchors, opts: CheckO
     const last = Math.min(samples.count - 1, Math.floor(head / samples.step));
     for (let i = Math.max(0, Math.ceil(tail / samples.step)); i <= last; i++) {
       const y = samples.y[i];
-      if (samples.x[i] > 0 && samples.x[i] < width && y > scroll && y < scroll + opts.viewport) {
+      if (samples.x[i] > -peek && samples.x[i] < width + peek && y > scroll && y < scroll + opts.viewport) {
         seen = true;
         break;
       }
@@ -176,6 +181,7 @@ export function checkSamples(samples: SpineSamples, anchors: Anchors, opts: Chec
   let bend = Infinity;
   let backtrack = 0;
   let backtrackAt = -1;
+  let bendAt = -1;
   let flatRun = 0;
   let offscreen = 0;
   let headingClear = Infinity;
@@ -199,7 +205,10 @@ export function checkSamples(samples: SpineSamples, anchors: Anchors, opts: Chec
   for (let i = 0; i < count; i++) {
     const on = x[i] > -margin && x[i] < width + margin;
     const inside = x[i] > 0 && x[i] < width && i * step >= runLen;
-    if (on) bend = Math.min(bend, radius[i] / reach);
+    if (on && radius[i] / reach < bend) {
+      bend = radius[i] / reach;
+      bendAt = i;
+    }
     if (yMax[i] - y[i] > backtrack) {
       backtrack = yMax[i] - y[i];
       backtrackAt = i;
@@ -340,6 +349,7 @@ export function checkSamples(samples: SpineSamples, anchors: Anchors, opts: Chec
     dirChanges,
     visible,
     end,
+    bendPoint: bendAt >= 0 ? { x: x[bendAt], y: y[bendAt] } : null,
     backtrackPoint: backtrackAt >= 0 ? { x: x[backtrackAt], y: y[backtrackAt] } : null,
     headingPoint: headingAt >= 0 ? { x: x[headingAt], y: y[headingAt] } : null,
     failed,
@@ -420,10 +430,17 @@ export function hintsFor(rules: RuleSettings, bandRun = false): GenHints {
   return { entryRight: rules.entryNearBandPx > 0, clearHeadings: rules.headingClearPx > 0, clearLinks: rules.linksClear, bandRun };
 }
 
-export function generateSpine(seed: number, params: GenParams, anchors: Anchors | null, opts: CheckOptions, fallback: Move[] = FALLBACK.moves): Generated {
+// How many derived seeds a seed may try. The always-visible rule rejects
+// more than half of the free generator's lines, so it gets three times the
+// tries (a try is about 0.7ms to generate and check at 1440).
+export function triesFor(rules: RuleSettings): number {
+  return rules.alwaysVisible ? RULES.tries * 3 : RULES.tries;
+}
+
+export function generateSpine(seed: number, params: GenParams, anchors: Anchors | null, opts: CheckOptions, fallback: Move[] = FALLBACK.moves, fallbackPoints?: SpinePoint[]): Generated {
   let lastSeed = seed;
   const hints = hintsFor(opts.rules, opts.bandRun);
-  for (let attempt = 0; attempt < RULES.tries; attempt++) {
+  for (let attempt = 0; attempt < triesFor(opts.rules); attempt++) {
     lastSeed = derivedSeed(seed, attempt);
     const moves = generateLine(lastSeed, params, undefined, hints);
     const points = composePoints(moves);
@@ -431,8 +448,8 @@ export function generateSpine(seed: number, params: GenParams, anchors: Anchors 
     const report = checkLine(points, anchors, opts);
     if (!report.failed.length) return { seed, usedSeed: lastSeed, attempts: attempt + 1, fallback: false, moves, points, report };
   }
-  const points = composePoints(fallback);
-  return { seed, usedSeed: lastSeed, attempts: RULES.tries, fallback: true, moves: fallback, points, report: anchors ? checkLine(points, anchors, opts) : null };
+  const points = fallbackPoints ?? composePoints(fallback);
+  return { seed, usedSeed: lastSeed, attempts: triesFor(opts.rules), fallback: true, moves: fallback, points, report: anchors ? checkLine(points, anchors, opts) : null };
 }
 
 export const FALLBACK = AUTHORED[0];
@@ -463,7 +480,7 @@ export function bulkCheck(count: number, params: GenParams, anchors: Anchors, op
   for (let n = 0; n < count; n++) {
     const seed = start + n;
     let passed = false;
-    for (let attempt = 0; attempt < RULES.tries; attempt++) {
+    for (let attempt = 0; attempt < triesFor(opts.rules); attempt++) {
       const t0 = performance.now();
       const points = composePoints(generateLine(derivedSeed(seed, attempt), params, undefined, hints));
       const t1 = performance.now();

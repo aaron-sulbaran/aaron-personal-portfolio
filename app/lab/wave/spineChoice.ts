@@ -40,9 +40,11 @@ export function chooseSpine(path: PathSettings, measure: PageMeasure | null, amp
   }
   if (path.spine === "generated") {
     const t0 = performance.now();
-    // With the reviewer's rules on, a failed seed falls back to the reviewed Signature line.
-    const fallback = spineById(path.rules.headingClearPx > 0 ? "signature-reviewed" : "signature").moves;
-    const generated = generateSpine(path.seed, path.gen, measure?.anchors ?? null, checkOptions(path, amplitude, measure?.viewport ?? 900, measure?.anchors.width ?? 0), fallback);
+    // With the reviewer's rules on, a failed seed falls back to the reviewed
+    // Signature line; under the always-visible rule, to Calm S, which keeps it.
+    const fallbackId = path.rules.alwaysVisible ? "calm" : path.rules.headingClearPx > 0 ? "signature-reviewed" : "signature";
+    const fallbackDef = spineById(fallbackId);
+    const generated = generateSpine(path.seed, path.gen, measure?.anchors ?? null, checkOptions(path, amplitude, measure?.viewport ?? 900, measure?.anchors.width ?? 0), fallbackDef.moves, fallbackDef.points);
     const genMs = performance.now() - t0;
     return {
       def: {

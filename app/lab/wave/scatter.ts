@@ -1,4 +1,4 @@
-import type { ScatterSettings } from "./settings";
+import { SCATTER_OFF, type ScatterSettings } from "./settings";
 
 // Scatter: a layer over the pointer modes. A fast pointer throws the dots it
 // passes: each gets its own velocity from the stroke (its speed and
@@ -12,7 +12,7 @@ import type { ScatterSettings } from "./settings";
 // even if the field's own row thins under it (carve, music) meanwhile.
 
 const CAP = 600;
-const VMAX = 1400; // px/s, the fastest any dot is thrown
+const VMAX = 900; // px/s, the fastest any dot is thrown (with the default drag, about 250px of flight)
 const LAND_SPEED = 40; // px/s: slower than this, a dot stops flying and heads home
 const MAX_FLIGHT = 2; // s, a flight never lasts longer
 const SETTLE = 6.6; // a critically damped spring is within 1 percent after 6.6 / omega
@@ -25,7 +25,7 @@ const hash = (k: number, salt: number) => {
 export const dotKey = (j: number, q: number, side: number) => (j * 16 + q) * 2 + side;
 
 export function createScatter() {
-  let settings: ScatterSettings = { on: false, threshold: 500, launch: 0.45, spread: 0.5, drag: 3.5, returnS: 0.8 };
+  let settings: ScatterSettings = SCATTER_OFF;
   const key = new Int32Array(CAP);
   const col = new Int32Array(CAP);
   const homeX = new Float32Array(CAP);
