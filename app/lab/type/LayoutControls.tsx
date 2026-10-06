@@ -62,11 +62,14 @@ export function LayoutControls() {
           <span>Not now in muted (a quieter secondary)</span>
         </label>
         <label className="flex items-center gap-2">
-          <input type="checkbox" checked={b.secondaryUnderline !== null} onChange={(e) => editB((s) => ({ ...s, secondaryUnderline: e.target.checked ? 40 : null }))} />
+          <input type="checkbox" checked={b.secondaryUnderline !== null} onChange={(e) => editB((s) => ({ ...s, secondaryUnderline: e.target.checked ? { light: 40, dark: 55 } : null }))} />
           <span>Faint underline under Not now</span>
         </label>
         {b.secondaryUnderline !== null && (
-          <Slider label="Underline, percent of muted" value={b.secondaryUnderline} min={10} max={100} step={5} format={(n) => `${n}%`} onChange={(secondaryUnderline) => editB((s) => ({ ...s, secondaryUnderline }))} />
+          <>
+            <Slider label="Underline, percent of muted, light" value={b.secondaryUnderline.light} min={10} max={100} step={5} format={(n) => `${n}%`} onChange={(light) => editB((s) => ({ ...s, secondaryUnderline: { dark: s.secondaryUnderline?.dark ?? 55, light } }))} />
+            <Slider label="Underline, percent of muted, dark" value={b.secondaryUnderline.dark} min={10} max={100} step={5} format={(n) => `${n}%`} onChange={(dark) => editB((s) => ({ ...s, secondaryUnderline: { light: s.secondaryUnderline?.light ?? 40, dark } }))} />
+          </>
         )}
       </div>
 

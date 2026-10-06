@@ -17,8 +17,8 @@ export type LabState = {
 
 // Bumped whenever a default preset changes (v4: A is Aaron's final, B the
 // reviewed version, showing A, F flips; v5: Aaron's rulings on the reviewed
-// version), so stored state from an earlier round is left behind.
-const STORAGE_KEY = "lab-type-v5";
+// version; v6: the underline per theme), so stored state from an earlier round is left behind.
+const STORAGE_KEY = "lab-type-v6";
 const INITIAL: LabState = { b: PRESETS[1].settings, a: PRESETS[0].settings, view: "a", collapsed: false, markSteps: false };
 
 let state: LabState = INITIAL;

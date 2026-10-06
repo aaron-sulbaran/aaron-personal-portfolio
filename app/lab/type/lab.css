@@ -168,6 +168,12 @@
 /* A faint underline under the band's secondary control, so a muted "Not
    now" still reads as a control: the muted token at a percent, 1px, the same
    4px offset as "Play it". */
+.type-lab {
+  --lab-secondary-underline: var(--lab-secondary-underline-light, 0%);
+}
+[data-theme="dark"] .type-lab {
+  --lab-secondary-underline: var(--lab-secondary-underline-dark, 0%);
+}
 .type-lab[data-secondary-underline="on"] button.lab-secondary {
   text-decoration-line: underline;
   text-decoration-thickness: 1px;

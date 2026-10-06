@@ -84,7 +84,9 @@ export type Settings = {
   // Optional: a faint underline under "Not now" so it still reads as a
   // control once muted; the muted token at this percent, 1px, the same 4px
   // offset as "Play it". null leaves it bare as on the site.
-  secondaryUnderline: number | null;
+  // Per theme: a thin dim line fades more on the dark ground (40 percent
+  // all but vanishes there at 1x; 55 reads as faint without competing).
+  secondaryUnderline: { light: number; dark: number } | null;
   roleLineCase: RoleLine;
   roleLineModal: RoleLine;
   subtitleWeight: number; // the role line's weight once it sits below
@@ -199,7 +201,7 @@ const AARON_REVIEWED: Settings = {
   ...AARON_FINAL,
   toneColors: { besideTitle: "same", hint: "muted", kicker: "muted", secondary: "muted", footer: "muted" },
   quietSecondary: true,
-  secondaryUnderline: 40,
+  secondaryUnderline: { light: 40, dark: 55 },
   copyOverrides: { "book.workRows.claude-ambassador.meta": "Claude ambassador, 2025" },
   roleLineCase: { placement: "below", gap: 14, size: 18 },
   roleLineModal: { placement: "below", gap: 6, size: 15 },
@@ -359,7 +361,8 @@ export function labVars(settings: Settings): CSSProperties {
     "--lab-control-gap": `${settings.controlGap}px`,
     "--lab-heading-gap": `${settings.headingGap}px`,
     "--lab-seen-meta-opacity": settings.seenMetaDim ?? 1,
-    "--lab-secondary-underline": `${settings.secondaryUnderline ?? 0}%`,
+    "--lab-secondary-underline-light": `${settings.secondaryUnderline?.light ?? 0}%`,
+    "--lab-secondary-underline-dark": `${settings.secondaryUnderline?.dark ?? 0}%`,
     ...Object.fromEntries(
       TONES.filter((tone) => settings.toneColors[tone] !== "same").map((tone) => [
         `--lab-tone-${tone}`,
@@ -438,7 +441,8 @@ export function exportValues(settings: Settings, label: string) {
         settings.secondaryUnderline === null
           ? "none"
           : {
-              color: `color-mix(in srgb, var(--color-muted) ${settings.secondaryUnderline}%, transparent)`,
+              colorLight: `color-mix(in srgb, var(--color-muted) ${settings.secondaryUnderline.light}%, transparent)`,
+              colorDark: `color-mix(in srgb, var(--color-muted) ${settings.secondaryUnderline.dark}%, transparent)`,
               thicknessPx: 1,
               offsetPx: 4,
             },
