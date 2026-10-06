@@ -1,5 +1,5 @@
 import type { ContributionWindow } from "./data";
-import { accentRamp, type HeightCurve } from "./skyline/maths";
+import { accentRamp, type HeightCurve, type LevelCurve } from "./skyline/maths";
 
 // Everything the panel can set, the three presets (the recommendation first),
 // and the flat export the copy button writes.
@@ -22,6 +22,8 @@ export type Settings = {
   view: "2d" | "3d";
   share: number; // the lightest step's share of the accent, percent
   curve: HeightCurve;
+  levels: LevelCurve;
+  heightCap: number; // the quantile of active days the tallest bar stands for, 1 the busiest day
   heightScale: number;
   duration: number; // morph, ms
   card: boolean;
@@ -65,7 +67,7 @@ export const PRESETS: readonly Preset[] = [
   {
     id: "recommended",
     name: "Recommended",
-    note: "Inside Up to now, flat first with Skyline one click away, three real figures plus two placeholders above it, square-root heights so the small days still read.",
+    note: "Inside Up to now, the last 12 months, flat first with Skyline one click away, the running streak leading three real figures and two placeholders. Colour steps on the square root of a busy day, so August to October climb through all four; bars on the original curve with the tallest at the 95th percentile, so the one outsized day cannot shrink the rest.",
     settings: {
       placement: "inside",
       companions: "numbers",
@@ -75,7 +77,9 @@ export const PRESETS: readonly Preset[] = [
       future: "omit",
       view: "2d",
       share: 32,
-      curve: "sqrt",
+      curve: "power",
+      levels: "sqrt",
+      heightCap: 0.95,
       heightScale: 1,
       duration: 1300,
       card: false,
@@ -96,6 +100,8 @@ export const PRESETS: readonly Preset[] = [
       view: "3d",
       share: 32,
       curve: "power",
+      levels: "linear",
+      heightCap: 1,
       heightScale: 1,
       duration: 1300,
       card: false,
@@ -115,7 +121,9 @@ export const PRESETS: readonly Preset[] = [
       future: "omit",
       view: "2d",
       share: 32,
-      curve: "sqrt",
+      curve: "power",
+      levels: "sqrt",
+      heightCap: 0.95,
       heightScale: 1,
       duration: 1300,
       card: false,
@@ -142,6 +150,8 @@ export const exportValues = (s: Settings, theme: string) => {
     lightestStepShare: s.share + "%",
     ramp: accentRamp(s.share).join(" | "),
     heightCurve: s.curve,
+    colourSteps: s.levels === "sqrt" ? "square root of a busy day's share" : "quarters of a busy day (original)",
+    tallestBar: s.heightCap === 1 ? "the busiest day" : Math.round(s.heightCap * 100) + "th percentile day",
     heightScale: s.heightScale,
     morphMs: s.duration,
     card: s.card,

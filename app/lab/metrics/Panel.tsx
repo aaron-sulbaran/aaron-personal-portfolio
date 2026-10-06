@@ -157,6 +157,22 @@ export function Panel({ settings: s, onChange, pin, onPin, onReplay }: PanelProp
             format={(v) => (v === "power" ? "Original (0.85)" : v === "sqrt" ? "Square root" : "Log")}
           />
         </Field>
+        <Field label="Colour steps">
+          <Segmented
+            options={["linear", "sqrt"] as const}
+            value={s.levels}
+            onChange={(v) => set("levels", v)}
+            format={(v) => (v === "linear" ? "Quarters (original)" : "Square root")}
+          />
+        </Field>
+        <Field label="Tallest bar stands for">
+          <Segmented
+            options={[1, 0.98, 0.95] as const}
+            value={s.heightCap}
+            onChange={(v) => set("heightCap", v)}
+            format={(v) => (v === 1 ? "Busiest day" : Math.round(v * 100) + "th percentile")}
+          />
+        </Field>
         <Slider label="Height scale" value={s.heightScale} min={0.3} max={2} step={0.05} format={(n) => n.toFixed(2) + "x"} onChange={(v) => set("heightScale", v)} />
         <Slider label="Morph duration" value={s.duration} min={300} max={3000} step={50} format={(n) => n + " ms"} onChange={(v) => set("duration", v)} />
 

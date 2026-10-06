@@ -3,7 +3,7 @@
 // Adapted from "Contribution Skyline" on 21st.dev (https://21st.dev/), reskinned to the site's tokens and type.
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { buildGrid, computeStats, DAY_MS, dayMs, generateContributions, monthLabels, type ContributionDay, type HeightCurve } from "./skyline/maths";
+import { buildGrid, computeStats, DAY_MS, dayMs, generateContributions, monthLabels, type ContributionDay, type HeightCurve, type LevelCurve } from "./skyline/maths";
 import { createEngine, type Engine, type EngineConfig, type ThemeReadout } from "./skyline/engine";
 import { Legend, Stat, ViewToggle, type StatBlock, type View } from "./skyline/parts";
 
@@ -33,6 +33,10 @@ export type ContributionSkylineProps = {
   unitPlural?: string;
   heightScale?: number;
   heightCurve?: HeightCurve;
+  // Colour steps: quarters of a busy day ("linear", the original) or of its square root.
+  levelCurve?: LevelCurve;
+  // The quantile of active days the tallest bar stands for; 1 is the busiest day.
+  heightCap?: number;
   duration?: number;
   weekStart?: 0 | 1;
   orbit?: boolean;
@@ -68,6 +72,8 @@ export default function ContributionSkyline({
   unitPlural,
   heightScale = 1,
   heightCurve = "power",
+  levelCurve = "linear",
+  heightCap = 1,
   duration = 1300,
   weekStart = 0,
   orbit = true,
@@ -90,9 +96,9 @@ export default function ContributionSkyline({
     const from = rangeFrom ? dayMs(rangeFrom) : undefined;
     const through = rangeThrough ? dayMs(rangeThrough) : undefined;
     const sampleDays = from === undefined ? 371 : Math.round((end - from) / DAY_MS) + 1;
-    const grid = buildGrid(data ?? generateContributions(end, seed, sampleDays), end, weekStart, { from, through });
+    const grid = buildGrid(data ?? generateContributions(end, seed, sampleDays), end, weekStart, { from, through }, { levelCurve, heightCap });
     return { ...grid, stats: computeStats(grid.cells), months: monthLabels(grid.cells, grid.weeks, locale) };
-  }, [data, endDate, rangeFrom, rangeThrough, seed, weekStart, locale]);
+  }, [data, endDate, rangeFrom, rangeThrough, seed, weekStart, locale, levelCurve, heightCap]);
 
   const [innerView, setInnerView] = useState<View>(defaultView);
   const view = viewProp ?? innerView;

@@ -45,6 +45,8 @@ const common = (d: ContributionData, s: Settings, pin: number | null) => ({
   palette: accentRamp(s.share),
   heightScale: s.heightScale,
   heightCurve: s.curve,
+  levelCurve: s.levels,
+  heightCap: s.heightCap,
   duration: s.duration,
   card: s.card,
   pin,

@@ -17,6 +17,8 @@ export type ContributionStats = {
 };
 export type RGB = [number, number, number];
 export type HeightCurve = "power" | "sqrt" | "log";
+// How a day's share of a busy day maps to the four colour steps.
+export type LevelCurve = "linear" | "sqrt";
 
 export const DAY_MS = 86400000;
 
@@ -85,9 +87,20 @@ export const generateContributions = (endMs: number, seed = 7, days = 371): Cont
   return out;
 };
 
-// 0 for an empty day, else 1 to 4 by quarters of `busy`. Anything at or past `busy` is 4.
-export const levelOf = (count: number, busy: number): number =>
-  count <= 0 ? 0 : busy <= 0 ? 4 : 1 + Math.min(3, Math.floor((count / busy) * 4));
+// 0 for an empty day, else 1 to 4 by quarters of `busy` ("linear"), or by
+// quarters of the square root of the share ("sqrt": steps at 1/16, 1/4 and
+// 9/16 of `busy`, so a skewed year spreads over all four). Anything at or
+// past `busy` is 4.
+export const levelOf = (count: number, busy: number, curve: LevelCurve = "linear"): number => {
+  if (count <= 0) return 0;
+  if (busy <= 0) return 4;
+  const share = Math.min(1, count / busy);
+  return 1 + Math.min(3, Math.floor((curve === "sqrt" ? Math.sqrt(share) : share) * 4));
+};
+
+// The value at quantile q of an ascending list.
+export const quantile = (sorted: number[], q: number): number =>
+  sorted.length ? sorted[Math.floor(Math.max(0, Math.min(1, q)) * (sorted.length - 1))] : 0;
 
 // The grid: columns are weeks, rows are weekdays (row 0 = `weekStart`).
 // Without a range it is the original trailing year: it ends on `endMs` and
@@ -96,9 +109,18 @@ export const levelOf = (count: number, busy: number): number =>
 // "outside"; with `range.through` past `endMs` the days after today are
 // "future" slabs. Levels split the real days by their share of a busy day,
 // the 95th percentile, so one freak day cannot wash every other day out.
+// `max`, what the tallest bar stands for, is the busiest day unless
+// `heightCap` names a lower quantile; days past it stand at full height.
 export type GridRange = { from?: number; through?: number };
+export type GridScale = { levelCurve?: LevelCurve; heightCap?: number };
 
-export const buildGrid = (data: ContributionDay[], endMs: number, weekStart = 0, range: GridRange = {}) => {
+export const buildGrid = (
+  data: ContributionDay[],
+  endMs: number,
+  weekStart = 0,
+  range: GridRange = {},
+  { levelCurve = "linear", heightCap = 1 }: GridScale = {},
+) => {
   const counts = new Map<string, number>();
   for (const d of data) {
     if (!d || typeof d.date !== "string") continue;
@@ -122,9 +144,9 @@ export const buildGrid = (data: ContributionDay[], endMs: number, weekStart = 0,
     .map((c) => c.count)
     .filter((c) => c > 0)
     .sort((a, b) => a - b);
-  const busy = nz.length ? nz[Math.floor(0.95 * (nz.length - 1))] : 0;
-  for (const c of cells) c.level = levelOf(c.count, busy);
-  return { cells, weeks: cells.length ? cells[cells.length - 1].week + 1 : 0, max: nz.length ? nz[nz.length - 1] : 0 };
+  const busy = quantile(nz, 0.95);
+  for (const c of cells) c.level = levelOf(c.count, busy, levelCurve);
+  return { cells, weeks: cells.length ? cells[cells.length - 1].week + 1 : 0, max: quantile(nz, heightCap) };
 };
 
 // Total, busiest day, longest run, and the run that reaches today (or yesterday; today is not over).
@@ -186,8 +208,9 @@ export const monthLabels = (cells: Cell[], weeks: number, locale = "en-US") => {
 // the rest of a sparse year into slabs.
 export const heightShare = (count: number, max: number, curve: HeightCurve): number => {
   if (count <= 0 || max <= 0) return 0;
-  if (curve === "log") return Math.log1p(count) / Math.log1p(max);
-  return Math.pow(count / max, curve === "sqrt" ? 0.5 : 0.85);
+  const c = Math.min(count, max);
+  if (curve === "log") return Math.log1p(c) / Math.log1p(max);
+  return Math.pow(c / max, curve === "sqrt" ? 0.5 : 0.85);
 };
 
 // Box height in grid units. Empty days are thin slabs; the busiest day is about 7.6 cells tall.
