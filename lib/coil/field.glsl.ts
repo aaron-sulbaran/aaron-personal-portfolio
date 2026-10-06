@@ -18,6 +18,7 @@
 //
 // Strings only, no three import: the scene builds the materials.
 
+import { COIL } from "./constants";
 import { WAKE } from "./wake";
 
 // Field tuning from the design review (scaffold-inputs/design-review-lab2.md,
@@ -33,7 +34,7 @@ export const FIELD = {
   grain: 0.016,
   // The name's gradient mix: the lab mixes at ink * 2.2, so 12 percent ink is
   // 26.4 percent of the gradient color (review item 6, kept and written down).
-  nameInkGain: 2.2,
+  nameInkGain: COIL.lockup.inkGain,
   // The field fades to paper over the last 14 percent of the hero (item 8).
   seamFade: 0.14,
 } as const;
@@ -123,9 +124,8 @@ export const NAME = {
   // The greeting's cap height as a fraction of the name's (Aaron and the
   // builder, 2026-09-30: 0.22 read heavy), and the gap from its lowest ink to
   // the top of the "A" as a fraction of its own cap height.
-  greetingCap: 0.18,
-  greetingGap: 0.45,
-  greetingFadeMs: 350,
+  greetingCap: COIL.lockup.greetingCap,
+  greetingGap: COIL.lockup.greetingGap,
   // After the loader lands its solid DOM name, the surface grows in over this.
   surfaceInMs: 900,
   // s: the per-letter minimum follows the drifting surface over about this.

@@ -1,5 +1,6 @@
 import { Vector4, type ShaderMaterial, type Texture } from "three";
 import { siteContent } from "@/lib/content";
+import { COIL } from "@/lib/coil/constants";
 import { clamp01, helixRotation, isNarrow, smoothstep01, unprojectToPlane, type HelixFrame } from "@/lib/coil/geometry";
 import { settleUnwind, toggleUnwind, unwindDurationMs, unwindProgress } from "@/lib/coil/unwind";
 import type { Hover } from "./hover";
@@ -124,8 +125,8 @@ export function createUnwindWiring(ctx: SceneCtx, comp: ShaderMaterial, name: Na
     const text = siteContent.hero.name;
     probe.font = `900 100px ${st.nameFamily}`;
     const w100 = probe.measureText(text).width || 1;
-    const restSize = ((view.width * (isNarrow(view) ? 0.9 : 0.7)) / w100) * 100;
-    const pad = Math.ceil(restSize * 0.04);
+    const restSize = ((view.width * (isNarrow(view) ? COIL.lockup.widthNarrow : COIL.lockup.widthWide)) / w100) * 100;
+    const pad = Math.ceil(restSize * COIL.lockup.pad);
     const k = slot.fontPx / restSize;
     probe.font = `900 ${slot.fontPx}px ${st.nameFamily}`;
     const m = probe.measureText(text);
