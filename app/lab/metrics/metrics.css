@@ -1,0 +1,30 @@
+/* The label face as the type lab settled it (Profa Bold 700, 1.06x, 0.01em),
+   lab only until the label face spec lands its tokens. --lab-profa comes from
+   app/lab/type/fonts.ts on the lab root. */
+.metrics-lab .m-label,
+.metrics-lab .m-label-sm,
+.metrics-lab .m-label-lg {
+  font-family: var(--lab-profa), var(--font-sans), system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  font-synthesis: none;
+}
+.metrics-lab .m-label-sm {
+  font-size: 0.795rem;
+  line-height: 1rem;
+}
+.metrics-lab .m-label {
+  font-size: 0.9275rem;
+  line-height: 1.25rem;
+}
+.metrics-lab .m-label-lg {
+  font-size: 1.1925rem;
+  line-height: 1.5rem;
+}
+/* Placeholder copy is marked where it stands, so nothing reads as a claim. */
+.metrics-lab .m-placeholder {
+  text-decoration: underline dashed;
+  text-decoration-color: var(--color-muted);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
