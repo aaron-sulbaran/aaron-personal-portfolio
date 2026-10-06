@@ -28,3 +28,79 @@
   text-decoration-thickness: 1px;
   text-underline-offset: 0.18em;
 }
+
+/* The view toggle in the controls lab's fill grammar (app/lab/controls/Fx.tsx):
+   Aaron's pick for small links, the nav's "rise" in the quiet tint, 450ms on
+   the reference in-out circ, from the start edge, 10px radius. One clock,
+   --fx-p, runs 0 to 1 on hover, keyboard focus or a touch press; the fill and
+   the label's colour are one clip over a duplicate of the label. The shown
+   view rests in the accent, the other in muted. Only the rise and the quiet
+   tint are copied here: the controls lab's CSS is scoped to its own page. */
+@property --fx-p {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+.metrics-lab {
+  --fx-ms: 450ms;
+  --fx-ease: cubic-bezier(0.785, 0.135, 0.15, 0.86);
+  --fx-rect-radius: 10px;
+}
+.metrics-lab .fx {
+  --fx-p: 0;
+  --fx-radius: var(--fx-rect-radius);
+  position: relative;
+  display: grid;
+  isolation: isolate;
+  border-radius: var(--fx-radius);
+  color: var(--fx-fg);
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: --fx-p var(--fx-ms) var(--fx-ease);
+}
+.metrics-lab .fx[data-colorway="quiet"] {
+  --fx-fg: var(--color-accent);
+  --fx-fill-bg: var(--color-border);
+  --fx-fill-fg: var(--color-foreground);
+}
+.metrics-lab .fx[aria-pressed="false"] {
+  --fx-fg: var(--color-muted);
+}
+.metrics-lab .fx:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+}
+.metrics-lab .fx > .fx-base,
+.metrics-lab .fx > .fx-over {
+  grid-area: 1 / 1;
+  border-radius: inherit;
+  min-width: 0;
+}
+.metrics-lab .fx > .fx-over {
+  pointer-events: none;
+  background: var(--fx-fill-bg);
+  color: var(--fx-fill-fg);
+}
+.metrics-lab .fx > .fx-over * {
+  color: inherit !important;
+}
+.metrics-lab .fx[data-variant="rise"] > .fx-over {
+  clip-path: inset(
+    calc((1 - var(--fx-p)) * (100% - var(--fx-line))) calc((1 - var(--fx-p)) * var(--fx-line-inset)) 0
+      calc((1 - var(--fx-p)) * var(--fx-line-inset)) round calc(var(--fx-p) * var(--fx-radius))
+  );
+}
+@media (hover: hover) {
+  .metrics-lab .fx:hover {
+    --fx-p: 1;
+  }
+}
+.metrics-lab .fx:focus-visible,
+.metrics-lab .fx[data-pressed] {
+  --fx-p: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .metrics-lab .fx {
+    transition: none;
+  }
+}

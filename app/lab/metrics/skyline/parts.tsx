@@ -1,5 +1,7 @@
 "use client";
 
+import { Fx } from "../../controls/Fx";
+
 // The chart's DOM pieces: one stat (corner or stacked), the view switch, the legend.
 
 export type StatBlock = { label: string; value: string; unit: string; sub: string };
@@ -41,24 +43,27 @@ export type View = "2d" | "3d";
 
 const VIEW_NAMES: Record<View, string> = { "2d": "Flat", "3d": "Skyline" };
 
-// Two words in the label face, accent because they are controls; the shown
-// view carries the underline the label face spec gives "Play it".
+// Two words in the label face, each a control in the controls lab's fill
+// grammar (the nav's rise in the quiet tint, metrics.css); the shown view
+// rests in the accent, the other in muted. Native buttons, so Enter and Space
+// work; aria-pressed names the shown one.
 export function ViewToggle({ view, onChange }: { view: View; onChange: (v: View) => void }) {
   return (
-    <div role="group" aria-label="Chart view" className="flex items-baseline gap-4">
+    <div role="group" aria-label="Chart view" className="-mx-2 flex items-baseline gap-1">
       {(["2d", "3d"] as const).map((v) => (
-        <button
+        <Fx
           key={v}
-          type="button"
-          aria-pressed={view === v}
+          variant="rise"
+          colorway="quiet"
+          origin="start"
+          shape="rect"
+          line={0}
+          pressed={view === v}
           onClick={() => onChange(v)}
-          className={
-            "m-label text-accent underline-offset-4 transition-colors duration-200 hover:text-accent-hover " +
-            (view === v ? "underline decoration-1" : "no-underline")
-          }
+          inner="flex items-center px-2 py-1"
         >
-          {VIEW_NAMES[v]}
-        </button>
+          <span className="m-label">{VIEW_NAMES[v]}</span>
+        </Fx>
       ))}
     </div>
   );
