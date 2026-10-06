@@ -31,6 +31,7 @@ export interface Move {
   reach: number;
   slope: number;
   centre?: number; // 0..1 inside the stretch, default 0.5
+  mid?: number; // through: the x the crossing is centred on (default 0.5); gutter: its x
 }
 
 export const BEHAVIOURS: { id: Behaviour; label: string }[] = [
@@ -53,8 +54,8 @@ export function composePoints(moves: Move[]): SpinePoint[] {
     const right = m.side === "right";
     const add = (y: number, x: number) => points.push({ at: m.at, y: round(y), x: round(x), ...(box ? { box } : {}) });
     if (m.kind === "through") {
-      const a = 0.5 - m.reach / 2;
-      const b = 0.5 + m.reach / 2;
+      const a = (m.mid ?? 0.5) - m.reach / 2;
+      const b = (m.mid ?? 0.5) + m.reach / 2;
       add(c - h, right ? a : b);
       add(c + h, right ? b : a);
     } else if (m.kind === "run") {
@@ -66,7 +67,7 @@ export function composePoints(moves: Move[]): SpinePoint[] {
       add(c - h, out);
       add(c + h, out);
     } else if (m.kind === "gutter") {
-      const g = right ? 0.965 : 0.035;
+      const g = m.mid ?? (right ? 0.965 : 0.035);
       add(c - h, g);
       add(c + h, g);
     } else {
@@ -127,6 +128,25 @@ export const AUTHORED: { id: string; label: string; note: string; moves: Move[] 
   },
 ];
 
+// Signature line after the design review: it enters at the band's right
+// end, drops beside "About." and dives below the lede instead of through the
+// heading, leaves wide past Who I am, and crosses Connect through its lede
+// side, never the link list. The original stays above for comparison.
+AUTHORED.push({
+  id: "signature-reviewed",
+  label: "Signature line, reviewed",
+  note: "Enters at the band's right end, falls beside About and dives below its lede, slips out above the Who I am label and leaves wide past the paragraph, comes back above Up to now's label for one steep crossing of its list, runs down Connect's right gutter beside the link list, and leaves past the right edge at the footer.",
+  moves: [
+    { at: "band", kind: "arc", side: "right", reach: 0.06, slope: 0.4, centre: 0.55 },
+    { at: "about", kind: "pass", side: "right", reach: 0.7, slope: 0.4, centre: 0.45 },
+    { at: "gap1", kind: "pass", side: "left", reach: 0.36, slope: 0.4, centre: 0.25 },
+    { at: "who", kind: "arc", side: "left", reach: 0.26, slope: 0.7, centre: 0.55 },
+    { at: "up", kind: "through", side: "right", reach: 0.5, slope: 0.9, centre: 0.55, mid: 0.55 },
+    { at: "connect", kind: "gutter", side: "right", reach: 0, slope: 0.6, centre: 0.5, mid: 0.955 },
+    { at: "footer", kind: "arc", side: "right", reach: 0.12, slope: 0.4, centre: 0.6 },
+  ],
+});
+
 // A small seeded generator (mulberry32): the same seed always gives the same line.
 export function rng(seed: number) {
   let a = seed >>> 0;
@@ -138,6 +158,18 @@ export function rng(seed: number) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
+
+// What the active rules ask of a candidate, so the generator draws mostly
+// lines that can pass instead of leaning on rejection: start at the band's
+// right end, keep crossings beside the display headings, and keep Connect's
+// pass to the lede's side of the page.
+export interface GenHints {
+  entryRight: boolean;
+  clearHeadings: boolean;
+  clearLinks: boolean;
+}
+
+const NO_HINTS: GenHints = { entryRight: false, clearHeadings: false, clearLinks: false };
 
 export interface GenParams {
   through: number; // 0..1, how often a section is crossed through its words rather than skipped off screen
@@ -153,7 +185,8 @@ const isGap = (key: string) => key.startsWith("gap");
 // gaps sit between sections). No DOM, no clock, no Math.random: the same
 // inputs always give the same moves. Rule checking (spineRules.ts) is a
 // separate pure step against a measured page.
-export function generateLine(seed: number, p: GenParams, stretches: readonly StretchKey[] = STRETCHES): Move[] {
+export function generateLine(seed: number, p: GenParams, stretches: readonly StretchKey[] = STRETCHES, hints: GenHints = NO_HINTS): Move[] {
+  if (hints.entryRight || hints.clearHeadings || hints.clearLinks) return generateLaned(seed, p);
   const r = rng(seed);
   const jitter = (spread: number) => (r() - 0.5) * 2 * spread * p.uneven;
   const pickSide = (): Side => (r() < 0.5 ? "left" : "right");
@@ -165,7 +198,10 @@ export function generateLine(seed: number, p: GenParams, stretches: readonly Str
 
   // The opening: half the lines slip in from off screen, half start on a waypoint.
   let side = pickSide();
-  if (r() < 0.55) moves.push({ at: first, kind: "arc", side, reach: outReach(), slope: 0.6 });
+  if (hints.entryRight) {
+    side = "right";
+    moves.push({ at: first, kind: "arc", side, reach: 0.06, slope: 0.4, centre: 0.55 });
+  } else if (r() < 0.55) moves.push({ at: first, kind: "arc", side, reach: outReach(), slope: 0.6 });
   else moves.push({ at: first, kind: "pass", side, reach: clamp(0.5 + jitter(0.3), 0.1, 0.9), slope: 0.4, centre: 0.65 });
 
   for (let i = 1; i < stretches.length - 1; i++) {
@@ -183,6 +219,10 @@ export function generateLine(seed: number, p: GenParams, stretches: readonly Str
         slope: clamp(0.7 + jitter(0.3), 0.45, 0.9),
         centre: clamp(0.5 + jitter(0.15), 0.35, 0.65),
       };
+      // Connect's links sit right of its lede: keep the crossing on the lede's side.
+      if (hints.clearLinks && at === "connect") Object.assign(move, { reach: clamp(move.reach, 0.2, 0.3), mid: 0.2, centre: 0.75 });
+      // About's heading fills its left half: cross in the open air beside it.
+      if (hints.clearHeadings && at === "about") Object.assign(move, { reach: clamp(move.reach, 0.25, 0.4), mid: 0.74 });
     } else {
       if (r() >= 0.85) side = flip(side);
       move = { at, kind: r() < 0.9 ? "arc" : "gutter", side, reach: outReach(), slope: clamp(0.6 + jitter(0.3), 0.3, 0.9) };
@@ -213,6 +253,52 @@ export function generateLine(seed: number, p: GenParams, stretches: readonly Str
   const beforeLast = stretches[stretches.length - 2];
   if (isGap(beforeLast) && r() < 0.6) moves.push({ at: beforeLast, kind: "run", side: exit, reach: outReach(), slope: 0.5 });
   else moves.push({ at: last, kind: "arc", side: exit, reach: outReach(), slope: 0.4, centre: 0.7 });
+  return moves;
+}
+
+// The generator under the design review's rules. Free generation failed
+// those rules about 99 times in 100, so this one plans by lanes instead: it
+// knows where each section's display type sits (the site's layout, not
+// measured) and only offers each section the moves that can keep clear of
+// it. Per section: off screen on the side the line is on, or a steep
+// crossing through the open part of the words. No waypoints in the gaps, so
+// nothing runs flat.
+//   About: the heading and lede sit left, so a crossing stays in the right half.
+//   Who I am: the label sits top left, the paragraph right; a steep crossing anywhere below the label.
+//   Up to now: the heading sits top right, so a crossing stays in the lower part.
+//   Connect: the link list sits right, so it is crossed only off screen.
+// Off screen stays on the side the line is on; only a crossing changes side.
+// It enters at the band's right end and leaves past the edge it is nearest;
+// an off-screen section is always followed by a crossing.
+export function generateLaned(seed: number, p: GenParams): Move[] {
+  const r = rng(seed);
+  const jitter = (spread: number) => (r() - 0.5) * 2 * spread * p.uneven;
+  const outReach = () => clamp(0.08 + p.offscreen * (0.1 + 0.25 * r()), 0.06, 0.4);
+  // The entry: it begins just inside the right edge, level with the band.
+  const moves: Move[] = [{ at: "band", kind: "pass", side: "right", reach: 0.9, slope: 0.4, centre: clamp(0.62 + jitter(0.1), 0.5, 0.75) }];
+  let side: Side = "right";
+  let wasOff = false;
+  const off = (at: StretchKey) => {
+    moves.push({ at, kind: "arc", side, reach: outReach(), slope: clamp(0.6 + jitter(0.2), 0.4, 0.8), centre: clamp(0.55 + jitter(0.15), 0.4, 0.7) });
+    wasOff = true;
+  };
+  const cross = (move: Omit<Move, "side" | "kind">) => {
+    side = side === "right" ? "left" : "right";
+    moves.push({ kind: "through", side, ...move });
+    wasOff = false;
+  };
+  // Two sections off screen in a row leave the page empty too long, so an
+  // off-screen stretch is always followed by a crossing.
+  const choose = () => wasOff || r() < p.through;
+
+  if (choose()) cross({ at: "about", mid: 0.72, reach: clamp(0.32 + jitter(0.08), 0.24, 0.4), slope: clamp(0.78 + jitter(0.1), 0.65, 0.9), centre: clamp(0.55 + jitter(0.1), 0.45, 0.65) });
+  else off("about");
+  if (choose()) cross({ at: "who", mid: clamp(0.55 + jitter(0.12), 0.4, 0.7), reach: clamp(0.55 + jitter(0.15), 0.35, 0.7), slope: clamp(0.78 + jitter(0.1), 0.65, 0.9), centre: clamp(0.6 + jitter(0.1), 0.5, 0.7) });
+  else off("who");
+  if (choose()) cross({ at: "up", mid: clamp(0.5 + jitter(0.1), 0.4, 0.6), reach: clamp(0.44 + jitter(0.06), 0.38, 0.5), slope: clamp(0.5 + jitter(0.06), 0.42, 0.56), centre: 0.74 });
+  else off("up");
+  off("connect");
+  moves.push({ at: "footer", kind: "arc", side, reach: outReach(), slope: 0.4, centre: 0.6 });
   return moves;
 }
 

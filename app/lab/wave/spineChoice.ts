@@ -13,8 +13,19 @@ export interface SpineChoice {
   genMs: number; // generation plus rule checks, every attempt
 }
 
-export function checkOptions(path: PathSettings, amplitude: number, viewport: number): CheckOptions {
-  return { amplitude, viewport, headAt: path.headAt, train: path.tail === "train" ? path.trainLength : null };
+// The amplitude the engine draws at this width (phones get their own).
+export function effectiveAmplitude(path: PathSettings, amplitude: number, width: number): number {
+  return width > 0 && width < 600 && path.phoneAmplitude > 0 ? path.phoneAmplitude : amplitude;
+}
+
+export function checkOptions(path: PathSettings, amplitude: number, viewport: number, width = 0): CheckOptions {
+  return {
+    amplitude: effectiveAmplitude(path, amplitude, width),
+    viewport,
+    headAt: path.headAt,
+    train: path.tail === "train" ? path.trainLength : null,
+    rules: path.rules,
+  };
 }
 
 export function chooseSpine(path: PathSettings, measure: PageMeasure | null, amplitude: number): SpineChoice {
@@ -27,7 +38,9 @@ export function chooseSpine(path: PathSettings, measure: PageMeasure | null, amp
   }
   if (path.spine === "generated") {
     const t0 = performance.now();
-    const generated = generateSpine(path.seed, path.gen, measure?.anchors ?? null, checkOptions(path, amplitude, measure?.viewport ?? 900));
+    // With the reviewer's rules on, a failed seed falls back to the reviewed Signature line.
+    const fallback = spineById(path.rules.headingClearPx > 0 ? "signature-reviewed" : "signature").moves;
+    const generated = generateSpine(path.seed, path.gen, measure?.anchors ?? null, checkOptions(path, amplitude, measure?.viewport ?? 900, measure?.anchors.width ?? 0), fallback);
     const genMs = performance.now() - t0;
     return {
       def: {

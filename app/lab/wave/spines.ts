@@ -43,10 +43,25 @@ export interface Span {
   bottom: number;
 }
 
+export interface Rect {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+}
+
 export interface Anchors {
   width: number;
   box: Record<SectionKey, Span>;
   words: Record<SectionKey, Span>;
+  // The ink of every text block ([data-wave-avoid]), the display headings
+  // (h2), Connect's link list, and the y of each section hairline, all in
+  // layer px. Left and right come from the words themselves, so a block
+  // heading spanning the column only claims the width of its letters.
+  blocks: Rect[];
+  headings: Rect[];
+  links: Rect[];
+  hairlines: number[];
 }
 
 // The knot beside the band: three overlapping loops, each a little left of

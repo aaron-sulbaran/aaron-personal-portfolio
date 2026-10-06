@@ -5,7 +5,7 @@ import type { WaveSettings, ThemeName } from "./settings";
 import { arcAtY, sampleSpine, type Point, type SpineSamples } from "./spineGeometry";
 import { publishMeasure } from "./anchorStore";
 import { createCursor } from "./pathCursor";
-import { SECTION_KEYS, resolveSpine, type Anchors, type SectionKey, type Span, type SpinePoint } from "./spines";
+import { SECTION_KEYS, resolveSpine, type Anchors, type Rect, type SectionKey, type Span, type SpinePoint } from "./spines";
 import { bandAt, createSpectrum, stepSpectrum } from "./spectrum";
 
 // The Path placement: the site's dotted wave laid along a spine in document
@@ -95,10 +95,47 @@ function docTop(el: HTMLElement): number {
   return y;
 }
 
+// The horizontal ink of an element: the union of its text runs (and icons),
+// from client rects (a reveal's rise is vertical, so x is never skewed).
+function inkX(el: HTMLElement, originLeft: number): { left: number; right: number } {
+  const range = document.createRange();
+  const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+  let left = Infinity;
+  let right = -Infinity;
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    if (!node.textContent?.trim()) continue;
+    range.selectNodeContents(node);
+    const r = range.getBoundingClientRect();
+    if (!r.width) continue;
+    left = Math.min(left, r.left);
+    right = Math.max(right, r.right);
+  }
+  el.querySelectorAll("svg").forEach((icon) => {
+    const r = icon.getBoundingClientRect();
+    if (!r.width) return;
+    left = Math.min(left, r.left);
+    right = Math.max(right, r.right);
+  });
+  if (left > right) {
+    const r = el.getBoundingClientRect();
+    return { left: r.left - originLeft, right: r.right - originLeft };
+  }
+  return { left: left - originLeft, right: right - originLeft };
+}
+
 function measureAnchors(layer: HTMLElement, root: HTMLElement): Anchors | null {
   const origin = docTop(layer);
+  const originLeft = layer.getBoundingClientRect().left;
   const box = {} as Record<SectionKey, Span>;
   const words = {} as Record<SectionKey, Span>;
+  const blocks: Rect[] = [];
+  const headings: Rect[] = [];
+  const links: Rect[] = [];
+  const hairlines: number[] = [];
+  const vertical = (el: HTMLElement, pad = 0) => {
+    const top = docTop(el) - origin;
+    return { top, bottom: top + el.offsetHeight + pad };
+  };
   for (const key of SECTION_KEYS) {
     const el = root.querySelector<HTMLElement>(`[data-lab-section="${key}"]`);
     if (!el) return null;
@@ -107,15 +144,28 @@ function measureAnchors(layer: HTMLElement, root: HTMLElement): Anchors | null {
     let first = Infinity;
     let last = -Infinity;
     el.querySelectorAll<HTMLElement>("[data-wave-avoid]").forEach((w) => {
-      const t = docTop(w) - origin;
       // An element whose words overhang its box (Up to now's offset column) says so.
       const overhang = Math.max(0, Number(w.dataset.waveAvoidPad || 0) - 20);
-      first = Math.min(first, t);
-      last = Math.max(last, t + w.offsetHeight + overhang);
+      const v = vertical(w, overhang);
+      first = Math.min(first, v.top);
+      last = Math.max(last, v.bottom);
+      blocks.push({ ...inkX(w, originLeft), ...v });
     });
     words[key] = Number.isFinite(first) ? { top: first, bottom: last } : box[key];
+    el.querySelectorAll<HTMLElement>("h2").forEach((h) => headings.push({ ...inkX(h, originLeft), ...vertical(h) }));
+    // The section kickers ("About", "Who I am", ...): a short rule and a label.
+    // Their ink runs from the rule's left end to the label's last letter.
+    el.querySelectorAll<HTMLElement>("[data-wave-avoid]").forEach((w) => {
+      const rule = w.querySelector<HTMLElement>(":scope > span.h-px");
+      if (!rule) return;
+      const ink = inkX(w, originLeft);
+      headings.push({ left: rule.getBoundingClientRect().left - originLeft, right: ink.right, ...vertical(w) });
+    });
+    if (key === "connect") el.querySelectorAll<HTMLElement>("ul").forEach((u) => links.push({ ...inkX(u, originLeft), ...vertical(u) }));
+    const first0 = el.firstElementChild as HTMLElement | null;
+    if (first0 && parseFloat(getComputedStyle(first0).borderTopWidth) > 0) hairlines.push(docTop(first0) - origin);
   }
-  return { width: layer.clientWidth, box, words };
+  return { width: layer.clientWidth, box, words, blocks, headings, links, hairlines };
 }
 
 function pushDot(out: number[], x: number, y: number, r: number) {
@@ -143,6 +193,8 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
   let colNx = new Float32Array(0);
   let colNy = new Float32Array(0);
   let colTaper = new Float32Array(0);
+  let colInWords = new Uint8Array(0); // the column's spine point sits on a text block's ink
+  let swellGate = 1; // the head's swell, relaxed to 0 while the head is inside a text block
   let tileCols = new Int32Array(0);
   let width = 0;
   let points: SpinePoint[] = [];
@@ -188,6 +240,10 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
   };
 
   // Geometry: anchors, spine, columns, tiles. Layout reads live here only.
+  // Below 600px wide the wave scales down (phones only), so it is not a fifth of the screen.
+  const amplitudeNow = () => (width > 0 && width < 600 && settings.path.phoneAmplitude > 0 ? settings.path.phoneAmplitude : settings.amplitude);
+  let entryY = 0; // where the line first comes on screen, layer px
+
   const layout = () => {
     if (!layer || !root) return;
     const t0 = performance.now();
@@ -212,8 +268,9 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
     colNx = new Float32Array(columns);
     colNy = new Float32Array(columns);
     colTaper = new Float32Array(columns);
+    colInWords = new Uint8Array(columns);
     const reachOf = (amp: number) => amp * 0.55;
-    const amp = settings.amplitude;
+    const amp = amplitudeNow();
     for (let j = 0; j < columns; j++) {
       const s = j * spacing + spacing / 2;
       const i = Math.min(samples.count - 1, Math.round(s / SAMPLE_STEP));
@@ -224,8 +281,23 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
       colNy[j] = samples.ny[i];
       // Keep the farthest dot inside 80 percent of the bend's radius.
       colTaper[j] = Math.min(1, (0.8 * samples.radius[i]) / Math.max(1, reachOf(amp)));
+      const cx = colX[j];
+      const cy = colY[j];
+      for (const b of anchors.blocks) {
+        if (cx > b.left - 4 && cx < b.right + 4 && cy > b.top - 4 && cy < b.bottom + 4) {
+          colInWords[j] = 1;
+          break;
+        }
+      }
     }
     cursor.resize(columns);
+    entryY = samples.y[0];
+    for (let i = 0; i < samples.count; i++) {
+      if (samples.x[i] > 0 && samples.x[i] < width) {
+        entryY = samples.y[i];
+        break;
+      }
+    }
     sampleMs = performance.now() - t1;
 
     // Tiles: one canvas per TILE px of the layer's height.
@@ -287,6 +359,13 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
     refresh();
   };
 
+  // The swell relaxes while the head sits on a text block (the head column, by arc length).
+  const gateFor = () => {
+    if (!settings.path.swellOutsideWords || !columns) return 1;
+    const j = Math.min(columns - 1, Math.max(0, Math.floor(head / settings.spacing)));
+    return colInWords[j] ? 0 : 1;
+  };
+
   const interactive = () => fine && !reduced && cursor.mode !== "none";
 
   // One dot out, through the pointer's repel (carve and blend) when its
@@ -307,7 +386,17 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
     const L = samples.length;
     if (reduced) return L;
     const p = settings.path;
-    const line = scrollY + p.headAt * viewport - layerDocTop;
+    let line = scrollY + p.headAt * viewport - layerDocTop;
+    // From the band: if the line's entry is already above the head line when
+    // the page opens (the lab, a deep reload), the head waits at the entry
+    // and then outruns the scroll two to one until it reaches the head line,
+    // so the first scroll visibly pulls the wave out of the band. Where the
+    // entry starts below the head line (the real page, under the hero) this
+    // changes nothing.
+    if (p.headFromBand) {
+      const start = Math.max(0, layerDocTop + entryY - p.headAt * viewport);
+      line = Math.min(line, entryY + 2 * Math.max(0, scrollY - start));
+    }
     if (p.headMode === "progress") {
       const y0 = samples.y[0];
       const y1 = samples.yMax[samples.count - 1];
@@ -324,7 +413,7 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
     muted.length = 0;
     accent.length = 0;
     const p = settings.path;
-    const amp = settings.amplitude;
+    const amp = amplitudeNow();
     const gap = DOT_GAP * settings.dotScale;
     const train = p.tail === "train" && !reduced;
     const tailS = train ? head - p.trainLength : -Infinity;
@@ -353,7 +442,7 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
           w *= f;
           r *= 0.55 + 0.45 * f;
         } else if (p.headStyle === "swell") {
-          w *= 1 + 0.7 * Math.exp(-((fromHead / 140) ** 2));
+          w *= 1 + 0.7 * swellGate * Math.exp(-((fromHead / 140) ** 2));
         } else if (p.headStyle === "spark" && fromHead < settings.spacing) {
           sparkJ = j;
         }
@@ -389,21 +478,30 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
       const ny = colNy[j];
       const cx = colX[j] - nx * disp * w * amp + ox;
       const cy = colY[j] - top - ny * disp * w * amp + oy;
-      const peak = magnitude > ACCENT_PEAK;
-      emit(magnitude > ACCENT_LINE || (bright > 0 && hash(j, 9) < bright) ? accent : muted, cx, cy, CENTER_RADIUS * r);
-
+      const inWords = colInWords[j] === 1;
+      // Inside a text block: no accent (the darkest mark in light) and no lone
+      // centre dot (it reads as punctuation between words).
+      const plain = p.accentOutsideWords && inWords;
+      const peak = !plain && magnitude > ACCENT_PEAK;
       const thick = Math.min(settings.maxThick, Math.floor((magnitude * amp) / gap));
+      if (p.thinInWords && inWords && thick === 0) continue;
+      emit(!plain && (magnitude > ACCENT_LINE || (bright > 0 && hash(j, 9) < bright)) ? accent : muted, cx, cy, CENTER_RADIUS * r);
       for (let q = 1; q <= thick; q++) {
         const fade = 1 - q / (thick + 1.5);
         // The site's shimmer, frozen per column: the pattern is a property of
         // the arc length, so scrolling reveals it rather than animating it.
-        const shimmer = 0.5 + 0.5 * Math.sin(j * 1.3 + q * 2.1 + (musicAmount > 1e-3 ? clock * 6 : 0));
+        // "threshold": music animates the site's blink (each fuzz dot on or off
+        // at clock * 6). "soft": the pattern stays put and each dot breathes in
+        // size instead, slower, so nothing pops behind a word.
+        const soft = p.shimmer === "soft";
+        const shimmer = 0.5 + 0.5 * Math.sin(j * 1.3 + q * 2.1 + (!soft && musicAmount > 1e-3 ? clock * 6 : 0));
+        const breathe = soft && musicAmount > 1e-3 ? 0.78 + 0.22 * (0.5 + 0.5 * Math.sin(clock * 2 + j * 1.3 + q * 2.1)) : 1;
         if (shimmer >= 0.5 + fade * 0.45) continue;
         if (present < 1 && hash(j, q) > present) continue;
-        const out = (q >= thick && peak) || (bright > 0 && hash(j, q + 9) < bright) ? accent : muted;
+        const out = !plain && ((q >= thick && peak) || (bright > 0 && hash(j, q + 9) < bright)) ? accent : muted;
         const o = q * gap;
-        emit(out, cx + nx * o, cy + ny * o, FUZZ_RADIUS * r);
-        emit(out, cx - nx * o, cy - ny * o, FUZZ_RADIUS * r);
+        emit(out, cx + nx * o, cy + ny * o, FUZZ_RADIUS * r * breathe);
+        emit(out, cx - nx * o, cy - ny * o, FUZZ_RADIUS * r * breathe);
       }
     }
     if (sparkJ >= 0) pushDot(accent, colX[sparkJ], colY[sparkJ] - top, CENTER_RADIUS * 1.7 * settings.dotScale);
@@ -457,6 +555,11 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
     last = t;
     clock += dt;
     target = targetHead();
+    const gateTarget = gateFor();
+    const gateBefore = swellGate;
+    swellGate = reduced ? gateTarget : gateTarget + (swellGate - gateTarget) * Math.exp(-dt / 0.25);
+    if (Math.abs(swellGate - gateTarget) < 0.01) swellGate = gateTarget;
+    if (swellGate !== gateBefore) dirty = true;
     const lambda = settings.path.smoothing;
     head = lambda <= 0 || reduced ? target : target + (head - target) * Math.exp(-lambda * dt);
     if (Math.abs(head - target) < 0.2) head = target;
@@ -477,7 +580,7 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
       }
     }
     if (interactive()) cursor.endFrame();
-    if (head !== target || live || (interactive() && cursor.busy())) raf = requestAnimationFrame(tick);
+    if (head !== target || live || swellGate !== gateTarget || (interactive() && cursor.busy())) raf = requestAnimationFrame(tick);
     else last = 0;
   };
 
@@ -486,7 +589,7 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
   const stepPointer = (dt: number): boolean => {
     cursor.beginFrame(dt);
     const p = cursor.pointer;
-    const reach = cursor.radius * 2 + settings.amplitude + 40;
+    const reach = cursor.radius * 2 + amplitudeNow() + 40;
     const plucking = cursor.hasPlucks();
     let any = false;
     let nearJ = -1;
