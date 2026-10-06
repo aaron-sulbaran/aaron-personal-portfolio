@@ -73,12 +73,26 @@ describe("conveyor", () => {
     expect(conveyor.offset).toBeCloseTo(expected, 6);
   });
 
-  it("stops idling at zero weight and turns gently with page scroll", () => {
+  it("stops idling at zero weight", () => {
     const conveyor = createConveyor();
     stepConveyor(conveyor, { dt: 1 / 60, nowMs: 16, idleWeight: 0, pageScrollPx: 0 });
     expect(conveyor.offset).toBe(0);
-    for (let i = 0; i < 240; i++) stepConveyor(conveyor, { dt: 1 / 60, nowMs: i * 16, idleWeight: 0, pageScrollPx: i === 0 ? 150 : 0 });
-    expect(conveyor.offset).toBeCloseTo(1, 3);
+    for (let i = 0; i < 240; i++) stepConveyor(conveyor, { dt: 1 / 60, nowMs: i * 16, idleWeight: 0, pageScrollPx: 0 });
+    expect(conveyor.offset).toBe(0);
+  });
+
+  // Aaron, 2026-10-06: the coil keeps its natural pace while the page
+  // scrolls; only a captured wheel, a touch drag or a glide moves it faster.
+  it("leaves the target at the idle pace however far the page scrolls", () => {
+    const conveyor = createConveyor();
+    const dt = 1 / 60;
+    // A page scroll delta handed in anyway (a stale caller) must move nothing.
+    const scrolling = { dt, nowMs: 16, idleWeight: 1, pageScrollPx: 900 };
+    stepConveyor(conveyor, scrolling);
+    expect(conveyor.target).toBeCloseTo(COIL.idleCardsPerSecond * dt, 12);
+    expect(conveyor.offset).toBeCloseTo(COIL.idleCardsPerSecond * dt, 12);
+    expect(conveyor.excessVelocity).toBeCloseTo(0, 9);
+    expect("pageScrollCardsPerPixel" in COIL.wheel, "a page-scroll rate in the constants").toBe(false);
   });
 
   it("converts wheel delta modes on the dominant axis", () => {
