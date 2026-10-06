@@ -49,7 +49,6 @@ export type SceneState = {
   rebuildAt: number | null; // when the last rebuild began
   // ---- the loop ----
   lastFieldTime: number;
-  lastScrollY: number;
   lastTime: number;
   raf: number;
   ready: boolean;
@@ -84,7 +83,6 @@ export type SceneFrame = {
   props: CoilSceneProps;
   geo: CoilGeometry;
   camera: Camera;
-  scrollDelta: number;
   helix: HelixFrame | null;
   clock: EntranceClock | null;
   realElapsedMs: number;
@@ -127,7 +125,6 @@ export function createSceneState(theme: CoilTheme, budget: RenderBudget): SceneS
     pressCaughtCoil: false,
     rebuildAt: null,
     lastFieldTime: Number.NaN,
-    lastScrollY: window.scrollY,
     lastTime: performance.now(),
     raf: 0,
     ready: false,

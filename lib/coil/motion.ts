@@ -1,8 +1,8 @@
 import { COIL, type CoilConstants } from "./constants";
 
 // The Coil's motion model, ported from hero lab 2's update(): the conveyor
-// (idle drift, wheel and page-scroll input, one exponential smoothing stage,
-// a hard speed cap), the stretch envelope (critically damped, never past its
+// (idle drift and wheel input, one exponential smoothing stage, a hard speed
+// cap; page scroll is no input, Aaron 2026-10-06), the stretch envelope (critically damped, never past its
 // target), and the hover-jump glide. Pure: every function takes the time step
 // or timestamp it needs, and the state objects are plain data the scene owns
 // and steps once per frame (mutated in place, so a frame allocates nothing).
@@ -84,9 +84,6 @@ export type ConveyorInput = {
   // Idle drift weight: 1 at rest, 0 when reduced motion, a row focus, or the
   // unwound list holds the coil still (the lab's coilW fades it in between).
   idleWeight: number;
-  // Page scroll since the last frame (px), fed only while the hero is on
-  // screen and the entrance is over. Page scroll turns the coil gently.
-  pageScrollPx: number;
 };
 
 export function stepConveyor(conveyor: Conveyor, input: ConveyorInput, c: CoilConstants = COIL): Conveyor {
@@ -98,7 +95,6 @@ export function stepConveyor(conveyor: Conveyor, input: ConveyorInput, c: CoilCo
   // lead: the idle offset is bounded by construction.
   conveyor.offset += idleVelocity * dt;
   conveyor.target += idleVelocity * dt;
-  conveyor.target += input.pageScrollPx * c.wheel.pageScrollCardsPerPixel;
 
   const lead = targetLead(c);
   conveyor.target = clamp(conveyor.target, conveyor.offset - lead, conveyor.offset + lead);
@@ -191,7 +187,7 @@ export function hoverJumpTarget(
 // ---------------------------------------------------------------- row hold
 
 // A book row hovered or keyboard focused holds the coil still on its card:
-// the idle drift and the page-scroll feed weigh 0 while held. Letting go
+// the idle drift weighs 0 while held. Letting go
 // waits resumeDelayMs, then eases the weight back in over resumeMs, so the
 // drift never jumps. Only a real release (held to not held) starts the wait.
 export type RowHold = { held: boolean; releasedAtMs: number };
@@ -206,7 +202,7 @@ export function setRowHold(hold: RowHold, held: boolean, nowMs: number): RowHold
   return hold;
 }
 
-// The weight (0 to 1) on the idle drift and the page-scroll feed.
+// The weight (0 to 1) on the idle drift.
 export function rowHoldWeight(hold: RowHold, nowMs: number, c: CoilConstants = COIL) {
   if (hold.held) return 0;
   const t = clamp((nowMs - hold.releasedAtMs - c.rowHold.resumeDelayMs) / c.rowHold.resumeMs, 0, 1);
