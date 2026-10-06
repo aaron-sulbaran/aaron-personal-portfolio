@@ -8,7 +8,7 @@ import { MotionControls } from "./MotionControls";
 import type { SpineChoice } from "./spineChoice";
 import type { RuleReport } from "./spineRules";
 import { readTokens, textContrast, type Contrast, type ThemeTokens } from "./readout";
-import { LOOPS, PLACEMENTS, POSITION, PRESETS, RANGES, type ThemeName, type WaveSettings } from "./settings";
+import { DEFAULT_PRESET_ID, LOOPS, PLACEMENTS, POSITION, PRESETS, RANGES, type ThemeName, type WaveSettings } from "./settings";
 
 // The lab's controls: plain chrome, docked to the right edge so it never sits
 // over the reading column (the page narrows while it is open; collapse it to
@@ -40,7 +40,7 @@ const noSubscribe = () => () => {};
 
 export function Panel(props: PanelProps) {
   const { settings: s, patch, open, setOpen } = props;
-  const [presetId, setPresetId] = useState<string | null>(PRESETS[0].id);
+  const [presetId, setPresetId] = useState<string | null>(DEFAULT_PRESET_ID);
   const [copied, setCopied] = useState<string | null>(null);
   const tokens = useSyncExternalStore(noSubscribe, getTokens, () => null);
   const loop = LOOPS.find((l) => l.id === s.loop);

@@ -529,4 +529,6 @@ export const PRESETS: Preset[] = [
   ),
 ];
 
-export const DEFAULT_SETTINGS: WaveSettings = PRESETS[0].values;
+// The lab opens on the reviewed pick (calm); "Aaron's pick" stays the first button.
+export const DEFAULT_PRESET_ID = "reviewed";
+export const DEFAULT_SETTINGS: WaveSettings = PRESETS.find((p) => p.id === DEFAULT_PRESET_ID)!.values;
