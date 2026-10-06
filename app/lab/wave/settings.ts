@@ -351,6 +351,25 @@ const REVIEWED: PresetPatch = {
   },
 };
 
+// The owner's note (2026-10-06): the reviewed pick's wave moved "way too quick
+// and visually jolting". Calm keeps the random drift and slows every rate: a
+// target of no dot's displacement changing faster than about 40px/s and no
+// visible rise in under half a second. Measured (motionProbe.ts, 60s): at most
+// 22px/s on a plain column (about 37 under the head's swell), the fastest
+// rise of a row or more 1.5s, against 346px/s and 0.02s for the lively rates.
+export const CALM_MOTION: MotionSettings = {
+  speed: 1,
+  tempo: 76,
+  beatStrength: 0.45,
+  softness: 3,
+  attack: 0.45,
+  release: 1,
+  wander: 0.45,
+  shimmerRate: 0.8,
+  shimmerDepth: 0.22,
+  softRows: true,
+};
+
 export const PRESETS: Preset[] = [
   preset(
     "aaron",
@@ -386,8 +405,14 @@ export const PRESETS: Preset[] = [
   preset(
     "reviewed",
     "Aaron's pick, reviewed",
-    "His pick with the design review applied: Signature line, reviewed; no lone dots in word gaps; accent only outside text; the head's swell relaxes inside text; music shimmer breathes instead of blinking; muted dots 0.28 in dark; the reviewer's spine rules on.",
-    REVIEWED,
+    "His pick with the design review applied: Signature line, reviewed; no lone dots in word gaps; accent only outside text; the head's swell relaxes inside text; music shimmer breathes instead of blinking; muted dots 0.28 in dark; the reviewer's spine rules on. Music motion calmed (2026-10-06): a slower tempo with a soft, quiet beat, levels that glide, a slow wander and shimmer, rows that grow in. Flip to the lively one to compare.",
+    { ...REVIEWED, motion: CALM_MOTION },
+  ),
+  preset(
+    "reviewed-lively",
+    "Aaron's pick, reviewed, lively",
+    "The reviewed pick with the first simulation's music motion: a snapping 94 BPM kick, levels that jump within a twentieth of a second, the shimmer at its old rate. Everything else matches the calm one.",
+    { ...REVIEWED, motion: LIVELY_MOTION },
   ),
   preset(
     "water",
