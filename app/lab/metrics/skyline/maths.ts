@@ -10,6 +10,7 @@ export type Streak = { days: number; start: string | null; end: string | null };
 export type ContributionStats = {
   total: number;
   active: number;
+  days: number; // real days in range
   first: string | null;
   last: string | null;
   busiest: { count: number; date: string | null };
@@ -183,6 +184,7 @@ export const computeStats = (all: Cell[]): ContributionStats => {
   return {
     total,
     active,
+    days: cells.length,
     first: cells.length ? cells[0].date : null,
     last: cells.length ? cells[cells.length - 1].date : null,
     busiest: { count: best, date: bestDate },

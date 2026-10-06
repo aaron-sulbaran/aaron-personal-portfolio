@@ -16,7 +16,7 @@ import { DEFAULT_SETTINGS, type Settings } from "./settings";
 // The lab shell: the real Up to now and Connect (rendered on the server and
 // passed through) with the metrics placed between, in, or under them.
 
-const STORAGE_KEY = "lab-metrics-v3";
+const STORAGE_KEY = "lab-metrics-v4";
 
 function Kicker({ children }: { children: ReactNode }) {
   return (
@@ -115,7 +115,7 @@ export function MetricsLab({ windows, upToNow, connect }: LabProps) {
             {formatCount(rangeTotal(data))} contributions on {activeDays(data)} days, the account dating from{" "}
             {sinceLabel(data)}. Copy with a dashed underline is placeholder. Scroll down.
           </p>
-          <p className="m-label-sm mt-4 text-muted">Opens on the recommended preset; the panel holds the rest.</p>
+          <p className="m-label-sm mt-4 text-muted">Opens on Aaron&apos;s pick, 6 months, scroll morph; the panel holds the rest.</p>
         </div>
       </header>
 

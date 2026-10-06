@@ -15,7 +15,7 @@ import {
   type LevelCurve,
   type Streak,
 } from "./skyline/maths";
-import { createEngine, type Engine, type EngineConfig, type ThemeReadout } from "./skyline/engine";
+import { createEngine, type Drive, type Engine, type EngineConfig, type Gate, type ThemeReadout } from "./skyline/engine";
 import { Legend, Stat, ViewToggle, type StatBlock, type View } from "./skyline/parts";
 
 // A year of activity as a heat map that folds up into an isometric skyline.
@@ -63,6 +63,11 @@ export type ContributionSkylineProps = {
   card?: boolean;
   // Lab only: hold the morph at this point (0 flat, 1 skyline).
   pin?: number | null;
+  // When the view first applies: on first sight (the original) or at once.
+  gate?: Gate;
+  // An outside clock for the morph (a scrubbed scroll); it drives while `driven`.
+  drive?: Drive | null;
+  driven?: boolean;
   locale?: string;
   seed?: number;
   onCellClick?: (day: ContributionDay) => void;
@@ -98,6 +103,9 @@ export default function ContributionSkyline({
   footer,
   card = false,
   pin = null,
+  gate = "sight",
+  drive = null,
+  driven = false,
   locale = "en-US",
   seed = 7,
   onCellClick,
@@ -161,6 +169,9 @@ export default function ContributionSkyline({
     legendLevel,
     target: view === "3d" ? 1 : 0,
     pin,
+    gate,
+    drive,
+    driven,
     locale,
     onCellClick,
     setActive,
@@ -192,7 +203,7 @@ export default function ContributionSkyline({
 
   useEffect(() => {
     engine.current?.kick();
-  }, [view, legendLevel, pin]);
+  }, [view, legendLevel, pin, driven]);
 
   useEffect(() => {
     engine.current?.load();
@@ -222,7 +233,7 @@ export default function ContributionSkyline({
   const streak = streakProp ?? stats.current;
   const statBlocks: StatBlock[] = [
     { label: totalLabel, value: nf.format(stats.total), unit: noun(stats.total), sub: span(stats.first, stats.last, true) },
-    { label: "Active days", value: nf.format(stats.active), unit: days(stats.active), sub: "with at least one " + unit },
+    { label: "Active days", value: nf.format(stats.active), unit: days(stats.active), sub: "of " + nf.format(stats.days) + " days" },
     {
       label: "Current streak of " + plural,
       value: nf.format(streak.days),
@@ -290,9 +301,12 @@ export default function ContributionSkyline({
 
             {corners && (
               <>
+                {/* Each corner pair sits side by side: the empty triangles above the
+                    back edge and below the front edge are wide and shallow, and a
+                    stacked pair ran into the newest, tallest bars. */}
                 <div
                   aria-hidden={!is3d}
-                  className="pointer-events-none absolute right-1 top-1 flex flex-col items-end gap-5 transition-[opacity,transform] motion-reduce:transition-none"
+                  className="pointer-events-none absolute right-1 top-1 flex items-start gap-8 transition-[opacity,transform] motion-reduce:transition-none"
                   style={cornerStyle(-10, 0.55)}
                 >
                   <Stat {...statBlocks[0]} size={bigSize} align="end" />
@@ -300,7 +314,7 @@ export default function ContributionSkyline({
                 </div>
                 <div
                   aria-hidden={!is3d}
-                  className="pointer-events-none absolute bottom-1 left-1 flex flex-col items-start gap-5 transition-[opacity,transform] motion-reduce:transition-none"
+                  className="pointer-events-none absolute bottom-1 left-1 flex items-end gap-8 transition-[opacity,transform] motion-reduce:transition-none"
                   style={cornerStyle(10, 0.65)}
                 >
                   <Stat {...statBlocks[2]} size={bigSize} align="start" />

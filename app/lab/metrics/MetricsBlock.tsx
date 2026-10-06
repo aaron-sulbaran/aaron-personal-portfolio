@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import ContributionSkyline from "./ContributionSkyline";
 import { NumbersRow } from "./NumbersRow";
 import { useContributions } from "./context";
@@ -7,6 +8,7 @@ import { isRolling, windowPeriod, yearOf } from "./derive";
 import type { ContributionData } from "./data";
 import { accentRamp, DAY_MS, dayMs, toKey } from "./skyline/maths";
 import type { Settings } from "./settings";
+import { useRevealStandIn, useScrollMorph } from "./useScrollMorph";
 
 // The skyline with whichever companions the panel picked, plus the strip
 // variant (flat only). `replay` remounts it so the entrance plays again.
@@ -56,22 +58,31 @@ const common = (d: ContributionData, s: Settings, pin: number | null) => ({
 
 export function MetricsBlock({ settings: s, pin, replay }: BlockProps) {
   const d = useContributions();
-  const key = [replay, s.view, s.data, s.future, d.window].join("-");
+  const outer = useRef<HTMLDivElement>(null);
+  const inner = useRef<HTMLDivElement>(null);
+  const morph = useScrollMorph(outer, s);
+  useRevealStandIn(outer, inner, s.reveal);
+  const key = [replay, s.view, s.data, s.future, d.window, s.morph].join("-");
+  const driver = morph.scrolled
+    ? { view: morph.view, onViewChange: morph.choose, gate: "none" as const, drive: morph.drive, driven: morph.driven }
+    : { defaultView: s.view };
   return (
-    <div>
-      {s.data === "sample" && <SampleTag />}
-      {s.companions === "numbers" && (
-        <div className="mb-14 md:mb-20">
-          <NumbersRow lead={s.lead} />
-        </div>
-      )}
-      <ContributionSkyline
-        key={key}
-        {...common(d, s, pin)}
-        defaultView={s.view}
-        showStats={s.companions === "stats"}
-        showTitle={s.companions !== "numbers"}
-      />
+    <div ref={outer} data-metrics-block="">
+      <div ref={inner}>
+        {s.data === "sample" && <SampleTag />}
+        {s.companions === "numbers" && (
+          <div className="mb-14 md:mb-20">
+            <NumbersRow lead={s.lead} />
+          </div>
+        )}
+        <ContributionSkyline
+          key={key}
+          {...common(d, s, pin)}
+          {...driver}
+          showStats={s.companions === "stats"}
+          showTitle={s.companions !== "numbers"}
+        />
+      </div>
     </div>
   );
 }

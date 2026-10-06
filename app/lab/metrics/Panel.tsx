@@ -7,6 +7,9 @@ import { setLabTheme, useLabTheme } from "./labTheme";
 import {
   COMPANION_NAMES,
   LEAD_NAMES,
+  MORPH_NAMES,
+  MORPH_NOTES,
+  TOGGLE_RULE,
   WINDOW_NAMES,
   PLACEMENT_NAMES,
   PLACEMENT_NOTES,
@@ -15,6 +18,7 @@ import {
   sameSettings,
   type Companions,
   type Lead,
+  type MorphMode,
   type Placement,
   type Settings,
 } from "./settings";
@@ -34,6 +38,7 @@ type PanelProps = {
 const PLACEMENTS: readonly Placement[] = ["section", "inside", "strip", "divider"];
 const COMPANIONS: readonly Companions[] = ["stats", "numbers", "alone"];
 const LEADS: readonly Lead[] = ["streak", "total", "days"];
+const MORPHS: readonly MorphMode[] = ["play", "scrub", "load"];
 
 export function Panel({ settings: s, onChange, pin, onPin, onReplay }: PanelProps) {
   const theme = useLabTheme();
@@ -77,7 +82,7 @@ export function Panel({ settings: s, onChange, pin, onPin, onReplay }: PanelProp
       </div>
 
       <Field label="Presets">
-        <div className="grid grid-cols-3 gap-1.5">
+        <div className="grid grid-cols-1 gap-1.5">
           {PRESETS.map((p) => (
             <PanelButton key={p.id} pressed={sameSettings(p.settings, s)} onClick={() => onChange(() => p.settings)}>
               {p.name}
@@ -133,13 +138,54 @@ export function Panel({ settings: s, onChange, pin, onPin, onReplay }: PanelProp
       </Field>
 
       <div className={skylineShown ? "flex flex-col gap-5" : "pointer-events-none flex flex-col gap-5 opacity-40"}>
-        <Field label="Opens as">
-          <Segmented
-            options={["2d", "3d"] as const}
-            value={s.view}
-            onChange={(v) => set("view", v)}
-            format={(v) => (v === "2d" ? "Flat (2D)" : "Skyline (3D), rises when seen")}
-          />
+        <Field label="Flat to skyline">
+          <Segmented options={MORPHS} value={s.morph} onChange={(v) => set("morph", v)} format={(v) => MORPH_NAMES[v].replace("Morph: ", "")} />
+          <p className="leading-snug text-muted">{MORPH_NOTES[s.morph]}</p>
+        </Field>
+        <Slider
+          label="Trigger line, block top at"
+          value={s.triggerPct}
+          min={30}
+          max={95}
+          step={1}
+          disabled={s.morph === "load"}
+          format={(n) => n + "% of the viewport"}
+          onChange={(v) => set("triggerPct", v)}
+        />
+        <Slider
+          label="Scrub band after the line"
+          value={s.scrubBand}
+          min={10}
+          max={60}
+          step={1}
+          disabled={s.morph !== "scrub"}
+          format={(n) => n + "% of the viewport"}
+          onChange={(v) => set("scrubBand", v)}
+        />
+        <Slider
+          label="Scrub lag"
+          value={s.scrubLag}
+          min={0}
+          max={2}
+          step={0.05}
+          disabled={s.morph !== "scrub"}
+          format={(n) => n.toFixed(2) + " s"}
+          onChange={(v) => set("scrubLag", v)}
+        />
+        <p className={"leading-snug text-muted " + (s.morph === "load" ? "opacity-40" : "")}>Toggle: {TOGGLE_RULE}</p>
+        <Field label="Block reveal stand-in (sections grammar)">
+          <Segmented options={["off", "on"] as const} value={s.reveal ? "on" : "off"} onChange={(v) => set("reveal", v === "on")} />
+        </Field>
+
+        <Field label="Opens as (round 2 morph only)">
+          <div className={s.morph === "load" ? "" : "pointer-events-none opacity-40"}>
+            <Segmented
+              options={["2d", "3d"] as const}
+              value={s.view}
+              onChange={(v) => set("view", v)}
+              format={(v) => (v === "2d" ? "Flat (2D)" : "Skyline (3D), rises when seen")}
+            />
+          </div>
         </Field>
 
         <Slider label="Lightest step, share of accent" value={s.share} min={8} max={70} step={1} format={(n) => n + "%"} onChange={(v) => set("share", v)} />

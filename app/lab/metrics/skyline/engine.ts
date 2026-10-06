@@ -26,6 +26,14 @@ export type Model = {
 
 export type ThemeReadout = { dark: boolean; swatches: string[] };
 
+// An outside clock for the morph (a scrubbed scroll position, 0 flat to 1
+// skyline). The engine subscribes once and reads it each frame while `driven`.
+export type Drive = { get: () => number; subscribe: (fn: () => void) => () => void };
+
+// "sight": the skyline rises the first time the chart is seen (the original).
+// "none": the target applies at once; something outside (scroll) decides it.
+export type Gate = "sight" | "none";
+
 export type EngineConfig = {
   model: Model;
   duration: number;
@@ -36,6 +44,9 @@ export type EngineConfig = {
   legendLevel: number;
   target: 0 | 1;
   pin: number | null;
+  gate: Gate;
+  drive: Drive | null;
+  driven: boolean;
   locale: string;
   onCellClick?: (day: ContributionDay) => void;
   setActive: (i: number) => void;
@@ -118,6 +129,9 @@ export function createEngine(el: EngineElements, cfg: { current: EngineConfig })
   let raf = 0;
   let last = 0;
   let alive = true;
+  // Following the drive exactly, or still catching up to it (after an override
+  // lets go, the morph eases to the scroll's value at the morph's own rate).
+  let locked = false;
 
   const load = () => {
     const m = cfg.current.model;
@@ -209,8 +223,19 @@ export function createEngine(el: EngineElements, cfg: { current: EngineConfig })
     let moving = false;
     const pin = cfg.current.pin;
 
+    const drive = cfg.current.driven ? cfg.current.drive : null;
+    if (!drive) locked = false;
     if (pin !== null) s.t = pin;
-    else if (s.t !== ctl.target) {
+    else if (drive) {
+      const goal = drive.get();
+      if (locked || reduced) s.t = goal;
+      else {
+        const step = (dt * 1000) / Math.max(1, cfg.current.duration);
+        s.t = goal > s.t ? Math.min(goal, s.t + step) : Math.max(goal, s.t - step);
+        if (Math.abs(goal - s.t) < 1e-4) locked = true;
+        else moving = true;
+      }
+    } else if (s.t !== ctl.target) {
       const step = reduced ? 1 : (dt * 1000) / Math.max(1, cfg.current.duration);
       s.t = ctl.target > s.t ? Math.min(ctl.target, s.t + step) : Math.max(ctl.target, s.t - step);
       moving = true;
@@ -253,6 +278,9 @@ export function createEngine(el: EngineElements, cfg: { current: EngineConfig })
     }
 
     draw(s);
+    // Lab probe: the morph's clock, for the headless checks.
+    const tLabel = s.t.toFixed(3);
+    if (stage.dataset.morph !== tLabel) stage.dataset.morph = tLabel;
     if (moving) raf = requestAnimationFrame(tick);
   };
 
@@ -299,7 +327,8 @@ export function createEngine(el: EngineElements, cfg: { current: EngineConfig })
     kick();
   };
   let io: IntersectionObserver | null = null;
-  if ("IntersectionObserver" in window) {
+  if (cfg.current.gate === "none") enter();
+  else if ("IntersectionObserver" in window) {
     io = new IntersectionObserver(
       (entries) => {
         if (entries.some((en) => en.isIntersecting)) {
@@ -331,7 +360,7 @@ export function createEngine(el: EngineElements, cfg: { current: EngineConfig })
   };
   reduceMq.addEventListener("change", onReduce);
   const detachInput = attachInput({ s, ctl, cfg, kick, refreshActive, orbitable });
-
+  const detachDrive = cfg.current.drive?.subscribe(kick);
 
   return {
     kick: () => {
@@ -356,6 +385,7 @@ export function createEngine(el: EngineElements, cfg: { current: EngineConfig })
       mo.disconnect();
       reduceMq.removeEventListener("change", onReduce);
       detachInput();
+      detachDrive?.();
     },
   };
 }
