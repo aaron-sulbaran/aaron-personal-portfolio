@@ -68,12 +68,6 @@ export function pointerMoved(state: CaptureState, facts: PointerFacts, c: CoilCo
   return { ...state, owner: "page", coilSinceMs: Number.NaN };
 }
 
-// Page scroll turns the coil during page gestures, keyboard and scrollbar
-// scrolling; never during a coil gesture.
-export function feedsPageScroll(state: CaptureState, nowMs: number, c: CoilConstants = COIL) {
-  return gestureOwner(state, nowMs, c) !== "coil";
-}
-
 // The chevron nudge: only while a coil gesture has been held nudgeAfterMs.
 export function nudgeShown(state: CaptureState, nowMs: number, c: CoilConstants = COIL) {
   return gestureOwner(state, nowMs, c) === "coil" && nowMs - state.coilSinceMs >= c.capture.nudgeAfterMs;

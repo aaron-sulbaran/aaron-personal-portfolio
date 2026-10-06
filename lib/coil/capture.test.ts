@@ -3,7 +3,6 @@ import { COIL } from "@/lib/coil/constants";
 import {
   createCapture,
   decideWheel,
-  feedsPageScroll,
   gestureOwner,
   heroVisibleFraction,
   nudgeShown,
@@ -147,18 +146,6 @@ describe("gesture ownership", () => {
     // A pointer move after the gesture ended changes nothing about the next one.
     const moved = pointerMoved(state, { nowMs: endMs + GAP + 10, insideSilhouette: false });
     expect(gestureOwner(moved, endMs + GAP + 10)).toBe(null);
-  });
-});
-
-describe("page scroll feed", () => {
-  it("turns the coil with page scroll except during a coil gesture", () => {
-    const idle = createCapture();
-    expect(feedsPageScroll(idle, 0)).toBe(true); // keyboard and scrollbar scrolling
-    const page = decideWheel(idle, { ...offCoil, nowMs: 100 });
-    expect(feedsPageScroll(page, 120)).toBe(true);
-    const coil = decideWheel(idle, { ...onCoil, nowMs: 100 });
-    expect(feedsPageScroll(coil, 120)).toBe(false);
-    expect(feedsPageScroll(coil, 100 + GAP)).toBe(true);
   });
 });
 
