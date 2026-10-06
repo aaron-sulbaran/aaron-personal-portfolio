@@ -60,12 +60,14 @@ function jump(by: "screen" | "section", report: (text: string) => void) {
   }
   window.scrollTo({ top: to, behavior: "instant" });
   const start = performance.now();
+  let arrived = 0;
   report("Catching up...");
   const watch = () => {
     const info = window.__wavePath?.info();
     if (!info) return report("");
     const seconds = (performance.now() - start) / 1000;
-    if (Math.abs(info.head - info.target) < 1) return report(`Caught up in ${seconds.toFixed(2)} s.`);
+    if (!arrived && Math.abs(info.head - info.target) < 50) arrived = seconds;
+    if (Math.abs(info.head - info.target) < 1) return report(`Within 50 px in ${arrived.toFixed(2)} s, settled in ${seconds.toFixed(2)} s.`);
     if (seconds > 10) return report("Still catching up after 10 s.");
     requestAnimationFrame(watch);
   };
@@ -91,7 +93,7 @@ function TravelSpeed({ path, onChange }: { path: PathSettings; onChange: (patch:
         ))}
       </div>
       <p className="mt-1 text-xs leading-snug text-muted">
-        Px of the line per second the head may travel toward where the scroll puts it; the line carries about 2.5 px of arc per px of page, so 1200 takes nearly 3 s to catch a 1.5-screen flick.
+        Px of the line per second the head may travel toward where the scroll puts it. The always-on line carries about 1.7 px of arc per px of page, so at 1440x900 a 1.5-screen flick arrives within 50 px in about 1 s at 4000 and 2.2 s at 1200 (0.5 s at 0, where only the smoothing below remains).
       </p>
       <Toggle label="Ease the catch-up in" checked={path.drawEase === "eased"} onChange={(eased) => onChange({ drawEase: eased ? "eased" : "linear" })} />
       <div className="mt-2 flex flex-wrap gap-1">
