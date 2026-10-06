@@ -8,15 +8,15 @@ import { Panel } from "./Panel";
 import { Ribbon } from "./Ribbon";
 import { VisitorQuestion } from "./VisitorQuestion";
 import { ContributionsProvider } from "./context";
-import type { ContributionData } from "./data";
-import { activeDays, rangeTotal, sinceLabel, yearOf } from "./derive";
+import type { ContributionData, ContributionWindow } from "./data";
+import { activeDays, dateSpan, formatCount, rangeTotal, sinceLabel, windowName, windowPeriod } from "./derive";
 import { DAY_MS, dayMs, generateContributions } from "./skyline/maths";
 import { DEFAULT_SETTINGS, type Settings } from "./settings";
 
 // The lab shell: the real Up to now and Connect (rendered on the server and
 // passed through) with the metrics placed between, in, or under them.
 
-const STORAGE_KEY = "lab-metrics-v1";
+const STORAGE_KEY = "lab-metrics-v2";
 
 function Kicker({ children }: { children: ReactNode }) {
   return (
@@ -60,9 +60,9 @@ function Continued({ section, children, className = "" }: { section: ReactNode; 
   );
 }
 
-type LabProps = { data: ContributionData; upToNow: ReactNode; connect: ReactNode };
+type LabProps = { windows: Record<ContributionWindow, ContributionData>; upToNow: ReactNode; connect: ReactNode };
 
-export function MetricsLab({ data, upToNow, connect }: LabProps) {
+export function MetricsLab({ windows, upToNow, connect }: LabProps) {
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [pin, setPin] = useState<number | null>(null);
   const [replay, setReplay] = useState(0);
@@ -91,7 +91,9 @@ export function MetricsLab({ data, upToNow, connect }: LabProps) {
   const s = settings;
   const block = <MetricsBlock settings={s} pin={pin} replay={replay} />;
   const question = s.question ? <VisitorQuestion /> : null;
-  const year = yearOf(data);
+  const data = windows[s.window];
+  const name = windowName(data);
+  const rolling = data.window === "12mo";
   const end = dayMs(data.fetched);
   // The same seed and span the skyline's own sample uses, so the two agree.
   const sampleDays = generateContributions(end, 7, Math.round((end - dayMs(data.range.from)) / DAY_MS) + 1);
@@ -104,11 +106,14 @@ export function MetricsLab({ data, upToNow, connect }: LabProps) {
       <header className="px-6 pb-16 pt-32 md:px-10 md:pt-40">
         <div className="mx-auto max-w-6xl">
           <p className="m-label text-muted">Metrics lab, dev only</p>
-          <h1 className="mt-4 font-display text-display-md">{year} on GitHub, in context.</h1>
+          <h1 className="mt-4 font-display text-display-md">
+            {rolling ? "The last 12 months" : name} on GitHub, in context.
+          </h1>
           <p className="mt-6 max-w-2xl text-lg leading-[1.55] text-muted">
-            The real Up to now and Connect sections with the metrics placed between them. The data is my public
-            contribution calendar for {year}, January 1 to {data.fetched}: {rangeTotal(data)} contributions on {activeDays(data)}{" "}
-            days, the account dating from {sinceLabel(data)}. Copy with a dashed underline is placeholder. Scroll down.
+            The real Up to now and Connect sections with the metrics placed between them. The data is my contribution
+            calendar, private work included, for {name}, {dateSpan(data.range.from, data.range.to, rolling)}:{" "}
+            {formatCount(rangeTotal(data))} contributions on {activeDays(data)} days, the account dating from{" "}
+            {sinceLabel(data)}. Copy with a dashed underline is placeholder. Scroll down.
           </p>
           <p className="m-label-sm mt-4 text-muted">Opens on the recommended preset; the panel holds the rest.</p>
         </div>
@@ -153,12 +158,12 @@ export function MetricsLab({ data, upToNow, connect }: LabProps) {
           <div className="px-6 md:px-10">
             <div className="mx-auto max-w-6xl">
               <Ribbon
-                key={replay + s.data}
+                key={[replay, s.data, s.window].join("-")}
                 days={s.data === "real" ? data.days : sampleDays}
                 endDate={data.fetched}
                 range={chartRange(data, s)}
                 share={s.share}
-                period={"in " + year}
+                period={windowPeriod(data)}
                 caption={s.data === "real" ? "On GitHub since " + sinceLabel(data) : "Sample year, not my data"}
               />
             </div>

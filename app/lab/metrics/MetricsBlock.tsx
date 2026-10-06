@@ -3,9 +3,9 @@
 import ContributionSkyline from "./ContributionSkyline";
 import { NumbersRow } from "./NumbersRow";
 import { useContributions } from "./context";
-import { yearOf } from "./derive";
+import { windowPeriod, yearOf } from "./derive";
 import type { ContributionData } from "./data";
-import { accentRamp } from "./skyline/maths";
+import { accentRamp, DAY_MS, dayMs, toKey } from "./skyline/maths";
 import type { Settings } from "./settings";
 
 // The skyline with whichever companions the panel picked, plus the strip
@@ -21,18 +21,27 @@ export function SampleTag() {
 
 type BlockProps = { settings: Settings; pin: number | null; replay: number };
 
-// The calendar range the chart shows, shared with the ribbon.
-export const chartRange = (d: ContributionData, s: Settings) => ({
-  from: d.range.from,
-  through: s.future === "slabs" ? yearOf(d) + "-12-31" : undefined,
-});
+// The calendar range the chart shows, shared with the ribbon. The rolling
+// year is drawn the way GitHub draws it: whole weeks from the Sunday on or
+// before the day a year ago, ending today, so it has no future to show. The
+// calendar year starts on January 1 (its first week padded) and may run on
+// to December 31 as empty slabs.
+const sundayOf = (date: string) => {
+  const ms = dayMs(date);
+  return toKey(ms - new Date(ms).getUTCDay() * DAY_MS);
+};
+
+export const chartRange = (d: ContributionData, s: Settings) =>
+  d.window === "12mo"
+    ? { from: sundayOf(d.range.from), through: undefined }
+    : { from: d.range.from, through: s.future === "slabs" ? yearOf(d) + "-12-31" : undefined };
 
 const common = (d: ContributionData, s: Settings, pin: number | null) => ({
   data: s.data === "real" ? d.days : undefined,
   endDate: d.fetched,
   range: chartRange(d, s),
-  periodLabel: "in " + yearOf(d),
-  totalLabel: yearOf(d) + " so far",
+  periodLabel: windowPeriod(d),
+  totalLabel: d.window === "12mo" ? "Last 12 months" : yearOf(d) + " so far",
   palette: accentRamp(s.share),
   heightScale: s.heightScale,
   heightCurve: s.curve,
@@ -43,13 +52,13 @@ const common = (d: ContributionData, s: Settings, pin: number | null) => ({
 
 export function MetricsBlock({ settings: s, pin, replay }: BlockProps) {
   const d = useContributions();
-  const key = [replay, s.view, s.data, s.future].join("-");
+  const key = [replay, s.view, s.data, s.future, d.window].join("-");
   return (
     <div>
       {s.data === "sample" && <SampleTag />}
       {s.companions === "numbers" && (
         <div className="mb-14 md:mb-20">
-          <NumbersRow />
+          <NumbersRow lead={s.lead} />
         </div>
       )}
       <ContributionSkyline
@@ -69,7 +78,7 @@ export function MetricsStrip({ settings: s, pin, replay }: BlockProps) {
     <div>
       {s.data === "sample" && <SampleTag />}
       <ContributionSkyline
-        key={[replay, s.data, s.future].join("-")}
+        key={[replay, s.data, s.future, d.window].join("-")}
         {...common(d, s, pin)}
         view="2d"
         orbit={false}

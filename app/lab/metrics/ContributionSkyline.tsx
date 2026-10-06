@@ -253,7 +253,7 @@ export default function ContributionSkyline({
               role="img"
               aria-roledescription="interactive chart"
               aria-label={
-                nf.format(stats.total) + " " + noun(stats.total) + " between " + span(stats.first, stats.last, true) +
+                nf.format(stats.total) + " " + noun(stats.total) + " from " + span(stats.first, stats.last, true) +
                 ", shown as a " + (is3d ? "3D skyline" : "heat map") + ". Use the arrow keys to read individual days."
               }
               className="absolute left-0 top-0 block outline-none"

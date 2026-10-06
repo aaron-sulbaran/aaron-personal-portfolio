@@ -53,8 +53,8 @@ export function Ribbon({ days, endDate, range, share, period, caption }: RibbonP
 
   const w = hover >= 0 ? weeks[hover] : null;
   const readout = w
-    ? "Week of " + fmt.format(dayMs(w.start)) + ": " + (w.total === null ? "not yet" : w.total === 1 ? "1 contribution" : w.total + " contributions")
-    : total + " contributions " + period;
+    ? "Week of " + fmt.format(dayMs(w.start)) + ": " + (w.total === null ? "not yet" : w.total === 1 ? "1 contribution" : w.total.toLocaleString("en-US") + " contributions")
+    : total.toLocaleString("en-US") + " contributions " + period;
 
   return (
     <div ref={ref} className="pt-10">
@@ -66,7 +66,7 @@ export function Ribbon({ days, endDate, range, share, period, caption }: RibbonP
       </div>
       <div
         role="img"
-        aria-label={total + " contributions " + period + ", as weekly totals"}
+        aria-label={total.toLocaleString("en-US") + " contributions " + period + ", as weekly totals"}
         className="flex h-16 items-end gap-[2px] md:h-20"
         onMouseLeave={() => setHover(-1)}
       >

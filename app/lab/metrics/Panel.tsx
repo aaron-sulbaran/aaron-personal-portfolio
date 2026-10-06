@@ -6,12 +6,15 @@ import { accentRamp } from "./skyline/maths";
 import { setLabTheme, useLabTheme } from "./labTheme";
 import {
   COMPANION_NAMES,
+  LEAD_NAMES,
+  WINDOW_NAMES,
   PLACEMENT_NAMES,
   PLACEMENT_NOTES,
   PRESETS,
   exportValues,
   sameSettings,
   type Companions,
+  type Lead,
   type Placement,
   type Settings,
 } from "./settings";
@@ -30,6 +33,7 @@ type PanelProps = {
 
 const PLACEMENTS: readonly Placement[] = ["section", "inside", "strip", "divider"];
 const COMPANIONS: readonly Companions[] = ["stats", "numbers", "alone"];
+const LEADS: readonly Lead[] = ["streak", "total", "days"];
 
 export function Panel({ settings: s, onChange, pin, onPin, onReplay }: PanelProps) {
   const theme = useLabTheme();
@@ -39,6 +43,8 @@ export function Panel({ settings: s, onChange, pin, onPin, onReplay }: PanelProp
   const preset = PRESETS.find((p) => sameSettings(p.settings, s));
   const companionsApply = s.placement === "section" || s.placement === "inside";
   const skylineShown = s.placement !== "divider";
+  const numbersShown = companionsApply && s.companions === "numbers";
+  const futureApplies = s.window === "year";
 
   const copy = async () => {
     try {
@@ -92,22 +98,34 @@ export function Panel({ settings: s, onChange, pin, onPin, onReplay }: PanelProp
         </div>
       </Field>
 
+      <Field label="Numbers row leads with">
+        <div className={numbersShown ? "" : "pointer-events-none opacity-40"}>
+          <Segmented options={LEADS} value={s.lead} onChange={(v) => set("lead", v)} format={(v) => LEAD_NAMES[v]} />
+        </div>
+      </Field>
+
+      <Field label="Window">
+        <Segmented options={["12mo", "year"] as const} value={s.window} onChange={(v) => set("window", v)} format={(v) => WINDOW_NAMES[v]} />
+      </Field>
+
       <Field label="Data">
         <Segmented
           options={["real", "sample"] as const}
           value={s.data}
           onChange={(v) => set("data", v)}
-          format={(v) => (v === "real" ? "My real 2026" : "Sample year (comparison)")}
+          format={(v) => (v === "real" ? "My real data" : "Sample year (comparison)")}
         />
       </Field>
 
       <Field label="After today">
-        <Segmented
-          options={["omit", "slabs"] as const}
-          value={s.future}
-          onChange={(v) => set("future", v)}
-          format={(v) => (v === "omit" ? "Stop at today" : "Empty slabs to Dec 31")}
-        />
+        <div className={futureApplies ? "" : "pointer-events-none opacity-40"}>
+          <Segmented
+            options={["omit", "slabs"] as const}
+            value={s.future}
+            onChange={(v) => set("future", v)}
+            format={(v) => (v === "omit" ? "Stop at today" : "Empty slabs to Dec 31")}
+          />
+        </div>
       </Field>
 
       <Field label="Theme">

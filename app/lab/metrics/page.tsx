@@ -11,12 +11,13 @@ export const metadata: Metadata = { title: "Metrics lab", robots: { index: false
 // /lab/metrics: a GitHub contribution skyline in the site's own skin, placed
 // around the real Up to now and Connect sections (Server Components, passed
 // through the client shell as rendered children). The data comes through
-// loadContributions() alone. Dev only via app/lab/layout.tsx.
+// loadContributions() alone, once per window; the panel picks which one
+// shows. Dev only via app/lab/layout.tsx.
 export default async function MetricsLabPage() {
-  const data = await loadContributions();
+  const [rolling, year] = await Promise.all([loadContributions("12mo"), loadContributions("year")]);
   return (
     <div id="main" className={labFontVariables}>
-      <MetricsLab data={data} upToNow={<UpToNow />} connect={<Connect />} />
+      <MetricsLab windows={{ "12mo": rolling, year }} upToNow={<UpToNow />} connect={<Connect />} />
     </div>
   );
 }

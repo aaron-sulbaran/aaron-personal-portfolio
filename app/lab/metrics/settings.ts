@@ -1,3 +1,4 @@
+import type { ContributionWindow } from "./data";
 import { accentRamp, type HeightCurve } from "./skyline/maths";
 
 // Everything the panel can set, the three presets (the recommendation first),
@@ -8,10 +9,14 @@ export type Companions = "stats" | "numbers" | "alone";
 export type DataSource = "real" | "sample";
 // After today: stop the grid at today, or run it to December 31 with empty slabs.
 export type Future = "omit" | "slabs";
+// Which real figure opens the numbers row.
+export type Lead = "streak" | "total" | "days";
 
 export type Settings = {
   placement: Placement;
   companions: Companions;
+  window: ContributionWindow;
+  lead: Lead;
   data: DataSource;
   future: Future;
   view: "2d" | "3d";
@@ -43,6 +48,17 @@ export const COMPANION_NAMES: Record<Companions, string> = {
   alone: "Skyline alone",
 };
 
+export const WINDOW_NAMES: Record<ContributionWindow, string> = {
+  "12mo": "Last 12 months",
+  year: "This year",
+};
+
+export const LEAD_NAMES: Record<Lead, string> = {
+  streak: "Streak",
+  total: "Total",
+  days: "Active days",
+};
+
 export type Preset = { id: string; name: string; note: string; settings: Settings };
 
 export const PRESETS: readonly Preset[] = [
@@ -53,6 +69,8 @@ export const PRESETS: readonly Preset[] = [
     settings: {
       placement: "inside",
       companions: "numbers",
+      window: "12mo",
+      lead: "streak",
       data: "real",
       future: "omit",
       view: "2d",
@@ -71,6 +89,8 @@ export const PRESETS: readonly Preset[] = [
     settings: {
       placement: "section",
       companions: "stats",
+      window: "12mo",
+      lead: "streak",
       data: "real",
       future: "omit",
       view: "3d",
@@ -89,6 +109,8 @@ export const PRESETS: readonly Preset[] = [
     settings: {
       placement: "divider",
       companions: "alone",
+      window: "12mo",
+      lead: "streak",
       data: "real",
       future: "omit",
       view: "2d",
@@ -112,8 +134,10 @@ export const exportValues = (s: Settings, theme: string) => {
     preset: preset ? preset.name : "custom",
     placement: PLACEMENT_NAMES[s.placement],
     companions: s.placement === "strip" || s.placement === "divider" ? "n/a for this placement" : COMPANION_NAMES[s.companions],
-    data: s.data === "real" ? "real 2026" : "sample year (comparison only)",
-    afterToday: s.future === "omit" ? "grid stops at today" : "empty slabs to December 31",
+    window: WINDOW_NAMES[s.window],
+    numbersLead: s.placement === "strip" || s.placement === "divider" || s.companions !== "numbers" ? "n/a, no numbers row" : LEAD_NAMES[s.lead],
+    data: s.data === "real" ? "real" : "sample year (comparison only)",
+    afterToday: s.window === "12mo" ? "n/a, the rolling year ends today" : s.future === "omit" ? "grid stops at today" : "empty slabs to December 31",
     defaultView: s.view === "3d" ? "skyline (3D)" : "flat (2D)",
     lightestStepShare: s.share + "%",
     ramp: accentRamp(s.share).join(" | "),

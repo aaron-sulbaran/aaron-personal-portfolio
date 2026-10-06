@@ -1,19 +1,43 @@
 "use client";
 
 import { useContributions } from "./context";
-import { accountMonths, rangeTotal, sinceLabel, yearOf } from "./derive";
+import { activeDays, dateSpan, formatCount, rangeTotal, sinceDate, streakFigure, windowName } from "./derive";
+import type { Lead } from "./settings";
 
-// Three real figures from the GitHub data and two slots Aaron fills. The
-// placeholders read as placeholders: muted, dashed, and labelled so.
+// Three real figures from the GitHub data, the lead first, and two slots
+// Aaron fills. The placeholders read as placeholders: muted, dashed, and
+// labelled so.
 
 type Figure = { value: string; label: string; sub?: string; placeholder?: boolean };
 
-export function NumbersRow() {
+const ORDER: readonly Lead[] = ["streak", "total", "days"];
+
+export function NumbersRow({ lead }: { lead: Lead }) {
   const d = useContributions();
+  const { running, streak } = streakFigure(d);
+  const rolling = d.window === "12mo";
+  const real: Record<Lead, Figure> = {
+    streak: running
+      ? { value: formatCount(streak.days), label: "days in a row, and counting", sub: streak.start ? sinceDate(streak.start) : undefined }
+      : {
+          value: formatCount(streak.days),
+          label: "days in a row, my longest streak",
+          sub: streak.start && streak.end ? dateSpan(streak.start, streak.end) : undefined,
+        },
+    total: {
+      value: formatCount(rangeTotal(d)),
+      label: "contributions in " + windowName(d),
+      sub: rolling ? "on GitHub, private work included" : "so far, private work included",
+    },
+    days: {
+      value: formatCount(activeDays(d)),
+      label: "days I shipped something",
+      sub: rolling ? "in the last 12 months" : "since January 1",
+    },
+  };
   const figures: Figure[] = [
-    { value: String(rangeTotal(d)), label: "contributions in " + yearOf(d), sub: "so far, on GitHub" },
-    { value: String(d.publicRepos), label: "public repositories", sub: "and counting" },
-    { value: String(accountMonths(d)), label: "months on GitHub", sub: "since " + sinceLabel(d) },
+    real[lead],
+    ...ORDER.filter((k) => k !== lead).map((k) => real[k]),
     { value: "00", label: "Placeholder: a LinkedIn figure", sub: "Aaron supplies", placeholder: true },
     { value: "00", label: "Placeholder: a figure of yours", sub: "e.g. hackathons", placeholder: true },
   ];
