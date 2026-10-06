@@ -1,8 +1,11 @@
 import type { CDPSession, Page } from "@playwright/test";
 import { test, expect } from "./support/fixtures";
-import { coilPoints, nextFrames, openHome, type Point } from "./support/coil";
+import { COIL } from "@/lib/coil/constants";
+import { downFirstQuick } from "@/lib/coil/capture.fixtures";
+import { coilPoints, nextFrames, openHome, silhouetteDistance, type Point } from "./support/coil";
+import { frames, offsetTravel, pageTravel } from "./support/frames";
 import type { HookWindow } from "./support/hooks";
-import { pointerTo } from "./support/input";
+import { approach, firstPixels, pointerTo, trackpad } from "./support/input";
 import { cardRegion, pixelDiff, shoot, type CardRegion } from "./support/pixels";
 
 // The hero slice: the greeting drawn with the name in the canvas (no DOM
@@ -53,6 +56,31 @@ test("hero: the greeting is drawn with the name, and no DOM control sits beside 
     ),
   );
   expect(visibleGreeting, "a visible DOM greeting over the canvas").toBe(false);
+});
+
+// Aaron, 2026-10-06: page scroll never turns the coil. A page gesture off
+// the helix, then a jump like a scrollbar drag, move the page while the coil
+// keeps its idle pace (0.09 cards a second) and nothing more.
+test("hero: page scroll leaves the coil at its idle pace", async ({ page, cdp }) => {
+  await openHome(page);
+  const gutter = { x: 8, y: 120 };
+  expect(await silhouetteDistance(page, gutter), "gutter to silhouette, px").toBeGreaterThan(20);
+  await approach(cdp, gutter);
+
+  const recording = await frames(page, async () => {
+    await trackpad(cdp, firstPixels(downFirstQuick, 320), { at: gutter });
+    await page.evaluate(() => window.scrollBy({ top: 200, behavior: "instant" }));
+    await nextFrames(page, 30);
+  });
+
+  expect(recording.wheels.some((wheel) => wheel.prevented), "wheel events the coil took").toBe(false);
+  expect(pageTravel(recording), "page movement, px").toBeGreaterThan(300);
+  const { rows } = recording;
+  const seconds = (rows.at(-1)!.t - rows[0].t) / 1000;
+  expect(Math.abs(offsetTravel(recording)), "coil travel, cards").toBeLessThan(COIL.idleCardsPerSecond * seconds + 0.02);
+  const steps = rows.slice(1).map((row, i) => Math.abs(row.offset - rows[i].offset));
+  // The idle is 0.0015 cards a frame at 60fps.
+  expect(Math.max(...steps), "largest step in a frame, cards").toBeLessThan(0.005);
 });
 
 test("hint: \"Open me\" shows over a card until the first open, \"Keep exploring\" once after it lands, never again", async ({ page, context, cdp }) => {
