@@ -10,7 +10,7 @@ import { DEFAULT_SETTINGS, type WaveSettings } from "./settings";
 // session and kept in sessionStorage, so a reload, a resize or a theme change
 // mid-read never reshuffles it.
 
-const STORE_KEY = "wave-lab-settings-v4";
+const STORE_KEY = "wave-lab-settings-v5";
 const SESSION_SEED_KEY = "wave-lab-session-seed-v1";
 
 function merge(stored: Partial<WaveSettings>): WaveSettings {
@@ -23,7 +23,7 @@ function merge(stored: Partial<WaveSettings>): WaveSettings {
     stripHeight: { ...d.stripHeight, ...stored.stripHeight },
     motion: { ...d.motion, ...stored.motion },
     path: { ...d.path, ...stored.path, gen: { ...d.path.gen, ...stored.path?.gen }, rules: { ...d.path.rules, ...stored.path?.rules } },
-    cursor: { ...d.cursor, ...stored.cursor, mix: { ...d.cursor.mix, ...stored.cursor?.mix } },
+    cursor: { ...d.cursor, ...stored.cursor, mix: { ...d.cursor.mix, ...stored.cursor?.mix }, scatter: { ...d.cursor.scatter, ...stored.cursor?.scatter } },
   };
 }
 

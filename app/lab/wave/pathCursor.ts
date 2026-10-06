@@ -1,4 +1,4 @@
-import type { CursorSettings } from "./settings";
+import { SCATTER_OFF, type CursorSettings } from "./settings";
 
 // The pointer's touch on the path's dots: per-column state the path engine
 // steps only for the tiles the pointer's reach (or a still-settling column)
@@ -23,7 +23,7 @@ const REST = 1e-3;
 const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
 
 export function createCursor() {
-  let settings: CursorSettings = { mode: "none", radius: 92, strength: 1, recovery: 0.6, saturate: 1600, mix: { push: 1, carve: 0.6, swell: 0.5 } };
+  let settings: CursorSettings = { mode: "none", radius: 92, strength: 1, recovery: 0.6, saturate: 1600, mix: { push: 1, carve: 0.6, swell: 0.5 }, scatter: SCATTER_OFF };
   // How stirred the water is: rises with pointer speed, relaxes over the recovery.
   let stir = 0;
   const pointer = { x: 0, y: 0, on: false, speed: 0, dirX: 0, dirY: 0, moved: false, lastT: 0 };

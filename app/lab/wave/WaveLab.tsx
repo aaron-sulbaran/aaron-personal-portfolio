@@ -86,6 +86,9 @@ export function WaveLab({ band, sections, footer }: WaveLabProps) {
     [choice, measure, path, amplitude],
   );
 
+  const viewportNow = measure?.viewport ?? 900;
+  const runOpts = useMemo(() => ({ bandRun: path.bandRun, viewport: viewportNow }), [path.bandRun, viewportNow]);
+
   // A handle for driving the lab from the console or a test browser:
   // window.__waveLab.patch({ placement: "seams" }), .preset("thresholds").
   useEffect(() => {
@@ -107,18 +110,18 @@ export function WaveLab({ band, sections, footer }: WaveLabProps) {
       // The current line's rule report, plus where its tightest on-screen bend is.
       report: () => {
         if (!measure) return null;
-        const smp = sampleSpine(resolveSpine(choice.def, measure.anchors), 4);
+        const smp = sampleSpine(resolveSpine(choice.def, measure.anchors, runOpts), 4);
         let at = 0;
         for (let i = 0; i < smp.count; i++) {
           const on = smp.x[i] > -40 && smp.x[i] < measure.anchors.width + 40;
           if (on && smp.radius[i] < smp.radius[at]) at = i;
         }
-        return { spine: choice.def.id, report, anchors: measure.anchors, points: resolveSpine(choice.def, measure.anchors), tightest: { x: smp.x[at], y: smp.y[at], radius: smp.radius[at] } };
+        return { spine: choice.def.id, report, anchors: measure.anchors, points: resolveSpine(choice.def, measure.anchors, runOpts), tightest: { x: smp.x[at], y: smp.y[at], radius: smp.radius[at] } };
       },
       // Where the line crosses a document y (its first crossing), for pinning a pointer on it.
       spineXAt: (docY) => {
         if (!measure) return null;
-        const smp = sampleSpine(resolveSpine(choice.def, measure.anchors), 4);
+        const smp = sampleSpine(resolveSpine(choice.def, measure.anchors, runOpts), 4);
         for (let i = 0; i < smp.count; i++) if (smp.y[i] >= docY) return smp.x[i];
         return null;
       },
@@ -127,10 +130,10 @@ export function WaveLab({ band, sections, footer }: WaveLabProps) {
       candidate: (seed, round3 = false) => {
         if (!measure) return null;
         const hints = round3 ? { entryRight: false, clearHeadings: false, clearLinks: false } : hintsFor(settings.path.rules);
-        const moves = generateLine(derivedSeed(seed, 0), settings.path.gen, undefined, hints);
+        const moves = generateLine(derivedSeed(seed, 0), settings.path.gen, undefined, { ...hints, bandRun: settings.path.bandRun });
         const points = composePoints(moves);
         const report = checkLine(points, measure.anchors, checkOptions(settings.path, settings.amplitude, measure.viewport, measure.anchors.width));
-        return { moves, points: resolveSpine({ points }, measure.anchors).map((q) => [Math.round(q.x), Math.round(q.y)]), report };
+        return { moves, points: resolveSpine({ points }, measure.anchors, runOpts).map((q) => [Math.round(q.x), Math.round(q.y)]), report };
       },
       // Mean ms per line for each step a visitor's load would take.
       timing: (count = 300) => {
@@ -141,11 +144,11 @@ export function WaveLab({ band, sections, footer }: WaveLabProps) {
         let sample = 0;
         for (let seed = 1; seed <= count; seed++) {
           const t0 = performance.now();
-          const points = composePoints(generateLine(derivedSeed(seed, 0), settings.path.gen, undefined, hintsFor(settings.path.rules)));
+          const points = composePoints(generateLine(derivedSeed(seed, 0), settings.path.gen, undefined, hintsFor(settings.path.rules, settings.path.bandRun)));
           const t1 = performance.now();
           checkLine(points, measure.anchors, opts);
           const t2 = performance.now();
-          sampleSpine(resolveSpine({ points }, measure.anchors), 4);
+          sampleSpine(resolveSpine({ points }, measure.anchors, runOpts), 4);
           const t3 = performance.now();
           generate += t1 - t0;
           check += t2 - t1;
@@ -154,7 +157,7 @@ export function WaveLab({ band, sections, footer }: WaveLabProps) {
         return { generateMs: generate / count, checkMs: check / count, sampleMs: sample / count, width: measure.anchors.width };
       },
     };
-  }, [engine, settings, measure, setSettings, choice, report]);
+  }, [engine, settings, measure, setSettings, choice, report, runOpts]);
 
   const setTheme = (next: ThemeName) => {
     document.documentElement.dataset.theme = next;

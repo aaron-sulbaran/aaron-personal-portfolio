@@ -91,7 +91,17 @@ export function RulesReadout({ report, rules }: { report: RuleReport | null; rul
       {row("Tightest bend, times the reach", report.bendRatio.toFixed(2), report.bendRatio >= RULES.minBendRatio)}
       {row("Climbs back on itself", `${report.backtrackPx.toFixed(0)} px`, report.backtrackPx <= RULES.maxBacktrackPx)}
       {row("Longest flat run in words", px(report.flatRunPx), report.flatRunPx <= RULES.maxFlatRunPx)}
-      {row(`Longest scroll with no wave (max ${rules.maxEmptyVh})`, `${report.empty.longestVh.toFixed(2)} vh`, report.empty.longestVh <= rules.maxEmptyVh)}
+      {row(
+        `Longest scroll with no wave (max ${rules.maxEmptyVh}${rules.alwaysVisible ? ", unused" : ""})`,
+        `${report.empty.longestVh.toFixed(2)} vh`,
+        rules.alwaysVisible || report.empty.longestVh <= rules.maxEmptyVh,
+      )}
+      {row("Always some wave on screen (every 50px)", report.visible.worstGapPx ? `no, ${report.visible.worstGapPx} px gap at ${Math.round(report.visible.atY)}` : "yes", !rules.alwaysVisible || !report.visible.worstGapPx)}
+      {row(
+        "Head reaches the end at max scroll",
+        report.end.shortPx > 1 ? `no, short by ${Math.round(report.end.shortPx)} px` : report.end.endsOff ? "yes" : "yes, but ends on screen",
+        !rules.endReached || (report.end.shortPx <= 1 && report.end.endsOff),
+      )}
       {row("Closest dot to a heading", px(report.headingClearPx), !rules.headingClearPx || report.headingClearPx >= rules.headingClearPx)}
       {row("Closest dot to the link list", px(report.linksClearPx), !rules.linksClear || report.linksClearPx >= 0)}
       {row("Longest run along a hairline", px(report.hairlineRunPx), !rules.hairlineGapPx || report.hairlineRunPx <= rules.hairlineRunPx)}
@@ -122,6 +132,8 @@ export function RuleControls({ rules, onChange }: { rules: RuleSettings; onChang
       <Slider label="Hairline: longest run" unit="px" value={rules.hairlineRunPx} min={80} max={600} step={10} onChange={(hairlineRunPx) => set({ hairlineRunPx })} />
       <Toggle label="Keep off Connect's link list" checked={rules.linksClear} onChange={(linksClear) => set({ linksClear })} />
       <Toggle label="End past an edge" checked={rules.exitAtEdge} onChange={(exitAtEdge) => set({ exitAtEdge })} />
+      <Toggle label="Always some wave on screen (replaces the empty-scroll limit)" checked={rules.alwaysVisible} onChange={(alwaysVisible) => set({ alwaysVisible })} />
+      <Toggle label="Head reaches the end at max scroll" checked={rules.endReached} onChange={(endReached) => set({ endReached })} />
     </div>
   );
 }

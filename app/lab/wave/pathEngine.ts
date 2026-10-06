@@ -2,7 +2,10 @@ import { createDotPainter } from "@/components/soundtrack/viewParts";
 import { ACCENT_LINE, CENTER_RADIUS } from "@/lib/waveform/dots";
 import { FLOOR, easeToward } from "@/lib/waveform/field";
 import type { WaveSettings, ThemeName } from "./settings";
-import { arcAtY, sampleSpine, type Point, type SpineSamples } from "./spineGeometry";
+import { sampleSpine, type Point, type SpineSamples } from "./spineGeometry";
+import { headTarget, runLength, tailStart } from "./headMap";
+import { createScatter, dotKey } from "./scatter";
+import type { Decision } from "./decisionStore";
 import { publishMeasure } from "./anchorStore";
 import { createCursor } from "./pathCursor";
 import { SECTION_KEYS, resolveSpine, type Anchors, type Rect, type SectionKey, type Span, type SpinePoint } from "./spines";
@@ -67,11 +70,24 @@ export interface PathInfo {
   layoutMs: number; // the last full layout: measure, sample, columns, tiles
   sampleMs: number; // of which sampling the spline and laying the columns
   interactPaints: number; // tile repaints caused by the pointer alone
+  runLen: number; // the band run's arc length, 0 without one
+  decision: Decision;
+  scrollY: number;
+  maxScrollY: number;
+  endShortPx: number; // how far the head's target is from the line's end at this scroll (0 at the end)
+  frameMs: number; // the last frame's work, ms
+  maxFrameMs: number; // the worst since resetStats()
+  frames: number; // frames since resetStats()
+  scatterLive: number;
+  scatterLaunched: number;
+  scatterSpreadPx: number; // the farthest any thrown dot is from home
 }
 
 export interface PathEngine {
   attach(layer: HTMLElement, root: HTMLElement): () => void;
   update(settings: WaveSettings, reduced: boolean, points: SpinePoint[]): void;
+  decide(decision: Decision): void;
+  resetStats(): void;
   start(): void;
   stop(): void;
   info(): PathInfo;
@@ -195,7 +211,16 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
   let colNy = new Float32Array(0);
   let colTaper = new Float32Array(0);
   let colInWords = new Uint8Array(0); // the column's spine point sits on a text block's ink
-  let swellGate = 1; // the head's swell, relaxed to 0 while the head is inside a text block
+  let swellGate = 1; // the head's swell, relaxed to 0 while the head is inside a text block or waiting on the band
+  let decision: Decision = "undecided";
+  let runLen = 0;
+  let maxScrollY = 0;
+  let headVel = 0; // px of arc per second, the capped catch-up's current speed
+  let breathClock = 0;
+  let frameMs = 0;
+  let maxFrameMs = 0;
+  let frames = 0;
+  const scatter = createScatter();
   let tileCols = new Int32Array(0);
   let width = 0;
   let points: SpinePoint[] = [];
@@ -258,8 +283,10 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
     viewport = window.innerHeight;
     layerDocTop = docTop(layer);
     scrollY = window.scrollY;
-    controls = resolveSpine({ points }, anchors);
+    controls = resolveSpine({ points }, anchors, { bandRun: settings.path.bandRun, viewport });
     samples = sampleSpine(controls, SAMPLE_STEP);
+    runLen = settings.path.bandRun ? runLength(samples, width) : 0;
+    maxScrollY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
 
     const spacing = settings.spacing;
     columns = Math.max(0, Math.floor(samples.length / spacing));
@@ -292,6 +319,7 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
       }
     }
     cursor.resize(columns);
+    scatter.resize(columns);
     entryY = samples.y[0];
     for (let i = 0; i < samples.count; i++) {
       if (samples.x[i] > 0 && samples.x[i] < width) {
@@ -361,7 +389,10 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
   };
 
   // The swell relaxes while the head sits on a text block (the head column, by arc length).
+  const waiting = () => settings.path.bandRun && decision === "undecided" && !reduced;
+
   const gateFor = () => {
+    if (waiting()) return 0;
     if (!settings.path.swellOutsideWords || !columns) return 1;
     const j = Math.min(columns - 1, Math.max(0, Math.floor(head / settings.spacing)));
     return colInWords[j] ? 0 : 1;
@@ -373,38 +404,70 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
   // column is near the pointer. Module-level scratch, no allocation.
   let emitTop = 0;
   let emitRepel = false;
+  let emitScatter = false; // scatter is on: thrown dots are drawn by the pool, not in place
+  let emitArmed = false; // the pointer is moving fast enough to throw this frame
+  let emitJ = 0;
+  let emitKey = 0;
   const emit = (out: number[], x: number, y: number, r: number) => {
+    let dx = x;
+    let dy = y;
     if (emitRepel) {
       cursor.repel(x, y + emitTop, repelOut);
-      pushDot(out, repelOut.x, repelOut.y - emitTop, r);
-    } else {
-      pushDot(out, x, y, r);
+      dx = repelOut.x;
+      dy = repelOut.y - emitTop;
     }
+    if (emitScatter) {
+      if (scatter.columnLive(emitJ) && scatter.isLive(emitKey)) return;
+      if (emitArmed) {
+        const pt = cursor.pointer;
+        const ly = dy + emitTop;
+        const rx = dx - pt.x;
+        const ry = ly - pt.y;
+        const reach = cursor.radius;
+        if (rx * rx + ry * ry < reach * reach && scatter.launch(emitKey, emitJ, dx, ly, r, out === accent, pt.x, pt.y, pt.dirX, pt.dirY, pt.speed)) return;
+      }
+    }
+    pushDot(out, dx, dy, r);
   };
 
+  // Where the head is heading: the band run's right end while the visitor
+  // has not answered, otherwise the scroll's target (headMap.ts), which is
+  // the line's end at the page's maximum scroll.
   const targetHead = (): number => {
     if (!samples) return 0;
-    const L = samples.length;
-    if (reduced) return L;
+    if (reduced) return samples.length;
+    if (waiting()) return runLen;
     const p = settings.path;
-    let line = scrollY + p.headAt * viewport - layerDocTop;
-    // From the band: if the line's entry is already above the head line when
-    // the page opens (the lab, a deep reload), the head waits at the entry
-    // and then outruns the scroll two to one until it reaches the head line,
-    // so the first scroll visibly pulls the wave out of the band. Where the
-    // entry starts below the head line (the real page, under the hero) this
-    // changes nothing.
-    if (p.headFromBand) {
-      const start = Math.max(0, layerDocTop + entryY - p.headAt * viewport);
-      line = Math.min(line, entryY + 2 * Math.max(0, scrollY - start));
+    return headTarget(
+      { mode: p.headMode, headAt: p.headAt, preDrawn: p.preDrawn, fromBand: p.headFromBand },
+      { samples, viewport, scrollY, maxScrollY, layerTop: layerDocTop, runLen, entryY },
+    );
+  };
+
+  // The head toward its target: the smoothing's pull, never faster than the
+  // draw speed, so a flick is followed by the line drawing itself rather than
+  // a jump. "eased" lets the catch-up accelerate in (about 0.25s) instead of
+  // starting at full speed.
+  const stepHead = (dt: number) => {
+    const p = settings.path;
+    const gap = target - head;
+    if (reduced) {
+      head = target;
+      headVel = 0;
+      return;
     }
-    if (p.headMode === "progress") {
-      const y0 = samples.y[0];
-      const y1 = samples.yMax[samples.count - 1];
-      const progress = Math.min(1, Math.max(0, (line - y0) / Math.max(1, y1 - y0)));
-      return L * (p.preDrawn + (1 - p.preDrawn) * progress);
+    let want = p.smoothing <= 0 ? gap / Math.max(dt, 1e-3) : gap * p.smoothing;
+    if (p.drawSpeed > 0) want = Math.max(-p.drawSpeed, Math.min(p.drawSpeed, want));
+    if (p.drawEase === "eased" && p.drawSpeed > 0 && Math.abs(want) > Math.abs(headVel)) {
+      headVel = want + (headVel - want) * Math.exp(-dt / 0.25);
+    } else {
+      headVel = want;
     }
-    return Math.max(p.preDrawn * L, arcAtY(samples, line));
+    head += headVel * dt;
+    if ((gap > 0 && head > target) || (gap < 0 && head < target) || Math.abs(head - target) < 0.2) {
+      head = target;
+      headVel = 0;
+    }
   };
 
   const paintTile = (tile: Tile) => {
@@ -417,8 +480,13 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
     const amp = amplitudeNow();
     const gap = DOT_GAP * settings.dotScale;
     const train = p.tail === "train" && !reduced;
-    const tailS = train ? head - p.trainLength : -Infinity;
     const tailFade = p.trainLength * 0.3;
+    const tailS = train ? tailStart(head, p.trainLength, tailFade, runLen) : -Infinity;
+    // The band run breathes while it waits, like the band's own wave: a slow
+    // standing swell along the run, gone over its last 200px so the line
+    // leaving it is still.
+    const breathing = runLen > 0 && !reduced;
+    const breath = Math.sin(breathClock * 0.9);
     const shift = p.shapeTravel * head;
     const lambda = p.wavelength;
     const musicAmount = music * p.musicLayer;
@@ -432,6 +500,10 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
     const depth = settings.motion.shimmerDepth;
     const softRows = settings.motion.softRows;
     emitTop = top;
+    const scat = scatter.on && interactive();
+    const armed = scat && pointer.on && pointer.moved && pointer.speed > scatter.threshold;
+    emitScatter = scat;
+    emitArmed = armed;
 
     for (let k = 0; k < tile.count; k++) {
       const j = tileCols[tile.first + k];
@@ -474,7 +546,8 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
       }
 
       const a = (TAU * (s - shift)) / lambda;
-      const disp = 0.26 * shape(a) + (plucking ? cursor.pluck(s) : 0);
+      let disp = 0.26 * shape(a) + (plucking ? cursor.pluck(s) : 0);
+      if (breathing && s < runLen) disp *= 1 + 0.35 * breath * Math.sin(a * 0.5) * smooth((runLen - s) / 200);
       let mag = FLOOR + 0.05 + 0.17 * (0.5 + 0.5 * Math.sin(a / 0.55 + 0.6)) ** 2;
       if (musicAmount > 1e-3) mag += musicAmount * bandAt(spectrum, (s % SPEC_PERIOD) / SPEC_PERIOD);
       const magnitude = FLOOR + (mag - FLOOR) * w * carved;
@@ -498,6 +571,8 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
         centre = smooth(rows);
         if (centre < 0.05) continue;
       }
+      emitJ = j;
+      emitKey = dotKey(j, 0, 0);
       emit(!plain && (magnitude > ACCENT_LINE || (bright > 0 && hash(j, 9) < bright)) ? accent : muted, cx, cy, CENTER_RADIUS * r * centre);
       for (let q = 1; q <= thick; q++) {
         const fade = 1 - q / (rowsFor + 1.5);
@@ -517,11 +592,14 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
         const out = !plain && ((q >= thick && peak) || (bright > 0 && hash(j, q + 9) < bright)) ? accent : muted;
         const o = q * gap;
         const fuzz = FUZZ_RADIUS * r * breathe * kept;
+        emitKey = dotKey(j, q, 0);
         emit(out, cx + nx * o, cy + ny * o, fuzz);
+        emitKey = dotKey(j, q, 1);
         emit(out, cx - nx * o, cy - ny * o, fuzz);
       }
     }
     if (sparkJ >= 0) pushDot(accent, colX[sparkJ], colY[sparkJ] - top, CENTER_RADIUS * 1.7 * settings.dotScale);
+    if (scat && scatter.live) scatter.paint(top, tile.height, muted, accent);
 
     const alphas = settings.alpha[theme];
     painter.fill(muted, painter.colors.muted, alphas.muted);
@@ -563,31 +641,39 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
     dirty = false;
   };
 
-  const musicLive = () => !reduced && settings.path.musicLayer > 0 && (settings.music || music > 1e-3);
+  // Behind a band run the music is the visitor's answer: none until "Play it".
+  const musicWanted = () => settings.music && (!settings.path.bandRun || decision === "play");
+  const musicLive = () => !reduced && settings.path.musicLayer > 0 && (musicWanted() || music > 1e-3);
+  // The waiting band run breathes, so the loop runs while its tile is in view.
+  const breathingLive = () => runLen > 0 && !reduced && tiles.some((tile) => tile.visible && tile.top < (samples ? samples.y[0] + 200 : 0));
 
   const tick = (t: number) => {
     raf = 0;
     if (!started) return;
     const dt = last ? Math.min((t - last) / 1000, MAX_STEP_S) : 1 / 60;
     last = t;
+    const started0 = performance.now();
     const motion = settings.motion;
     shimmerClock += dt * motion.shimmerRate * motion.speed;
+    breathClock += dt * motion.speed;
     target = targetHead();
     const gateTarget = gateFor();
     const gateBefore = swellGate;
     swellGate = reduced ? gateTarget : gateTarget + (swellGate - gateTarget) * Math.exp(-dt / 0.25);
     if (Math.abs(swellGate - gateTarget) < 0.01) swellGate = gateTarget;
     if (swellGate !== gateBefore) dirty = true;
-    const lambda = settings.path.smoothing;
-    head = lambda <= 0 || reduced ? target : target + (head - target) * Math.exp(-lambda * dt);
-    if (Math.abs(head - target) < 0.2) head = target;
+    stepHead(dt);
     const live = musicLive();
     if (live) {
-      music = easeToward(music, settings.music ? 1 : 0, settings.music ? 0.05 : 0.11, dt);
+      const on = musicWanted();
+      music = easeToward(music, on ? 1 : 0, on ? 0.05 : 0.11, dt);
       stepSpectrum(spectrum, dt, music * settings.intensity, settings.beat, motion);
     }
     const touching = interactive() && stepPointer(dt);
-    if (dirty || live || Math.abs(head - paintedHead) > 0.2) {
+    const thrown = scatter.on && scatter.live > 0;
+    if (thrown) scatter.step(dt);
+    const breathing = breathingLive();
+    if (dirty || live || thrown || breathing || Math.abs(head - paintedHead) > 0.2) {
       paintVisible();
     } else if (touching) {
       for (let k = 0; k < tiles.length; k++) {
@@ -598,7 +684,10 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
       }
     }
     if (interactive()) cursor.endFrame();
-    if (head !== target || live || swellGate !== gateTarget || (interactive() && cursor.busy())) raf = requestAnimationFrame(tick);
+    frameMs = performance.now() - started0;
+    maxFrameMs = Math.max(maxFrameMs, frameMs);
+    frames++;
+    if (head !== target || live || thrown || breathing || swellGate !== gateTarget || (interactive() && cursor.busy())) raf = requestAnimationFrame(tick);
     else last = 0;
   };
 
@@ -720,6 +809,7 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
       reduced = nextReduced;
       points = nextPoints;
       cursor.configure(next.cursor);
+      scatter.configure(next.cursor.scatter);
       layout();
     },
     start() {
@@ -759,6 +849,15 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
       themeObserver?.disconnect();
       themeObserver = null;
     },
+    decide(next) {
+      decision = next;
+      dirty = true;
+      wake();
+    },
+    resetStats() {
+      maxFrameMs = 0;
+      frames = 0;
+    },
     info: () => ({
       length: samples?.length ?? 0,
       head,
@@ -770,6 +869,17 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
       layoutMs,
       sampleMs,
       interactPaints,
+      runLen,
+      decision,
+      scrollY,
+      maxScrollY,
+      endShortPx: samples ? samples.length - target : 0,
+      frameMs,
+      maxFrameMs,
+      frames,
+      scatterLive: scatter.live,
+      scatterLaunched: scatter.launched,
+      scatterSpreadPx: scatter.spread(),
     }),
   };
 }

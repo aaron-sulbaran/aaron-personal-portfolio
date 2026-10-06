@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { getDecision, getServerDecision, subscribeDecision } from "./decisionStore";
 import { createPathEngine, type PathEngine } from "./pathEngine";
 import type { WaveSettings } from "./settings";
 import type { SpinePoint } from "./spines";
@@ -39,6 +40,11 @@ export function PathLayer({ settings, reduced, points }: { settings: WaveSetting
   useEffect(() => {
     engine.update(settings, reduced, points);
   }, [engine, settings, reduced, points]);
+
+  const decision = useSyncExternalStore(subscribeDecision, getDecision, getServerDecision);
+  useEffect(() => {
+    engine.decide(decision);
+  }, [engine, decision]);
 
   return <div ref={ref} aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden" style={{ zIndex: -1 }} />;
 }

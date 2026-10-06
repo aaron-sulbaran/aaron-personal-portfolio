@@ -1,6 +1,7 @@
 import { arcAtY, sampleSpine, type SpineSamples } from "./spineGeometry";
 import { AUTHORED, composePoints, derivedSeed, generateLine, type GenHints, type GenParams, type Move } from "./compose";
 import { SECTION_KEYS, resolveSpine, type Anchors, type Rect, type SpinePoint } from "./spines";
+import { headTarget, runLength, tailStart, type HeadParams } from "./headMap";
 
 // The rules a good line keeps, as a pure function of the points and a
 // measured page (section boxes at one width): the line is sampled here, never
@@ -32,11 +33,13 @@ export interface RuleSettings {
   exitAtEdge: boolean; // the line ends past an edge, never mid-screen
   minTurnDeg: number; // character: at least this much turning on screen in all (a ruler line has none)
   minDirChanges: number; // character: at least this many changes of horizontal direction (off-screen turns count)
+  alwaysVisible: boolean; // some drawn dots on screen at every scroll position (replaces maxEmptyVh when on)
+  endReached: boolean; // at the page's maximum scroll the head is at the line's end, and the line ends past an edge or at the footer
 }
 
-export type RuleId = "bend" | "crossing" | "flat" | "empty" | "heading" | "links" | "hairline" | "edge" | "turning" | "flatAny" | "entry" | "exit" | "character";
+export type RuleId = "bend" | "crossing" | "flat" | "empty" | "heading" | "links" | "hairline" | "edge" | "turning" | "flatAny" | "entry" | "exit" | "character" | "visible" | "end";
 
-export const RULE_IDS: RuleId[] = ["bend", "crossing", "flat", "empty", "heading", "links", "hairline", "edge", "turning", "flatAny", "entry", "exit", "character"];
+export const RULE_IDS: RuleId[] = ["bend", "crossing", "flat", "empty", "heading", "links", "hairline", "edge", "turning", "flatAny", "entry", "exit", "character", "visible", "end"];
 
 export interface RuleReport {
   bendRatio: number;
@@ -54,7 +57,10 @@ export interface RuleReport {
   exitOffscreen: boolean;
   totalTurnDeg: number; // all the turning on screen
   headingPoint: { x: number; y: number } | null; // where the line comes closest to a heading
+  backtrackPoint: { x: number; y: number } | null; // where it climbs back the most
   dirChanges: number; // changes of horizontal direction along the whole line
+  visible: VisibleReport;
+  end: EndReport;
   failed: RuleId[];
   violations: string[];
 }
@@ -65,10 +71,80 @@ export interface CheckOptions {
   headAt: number;
   train: number | null; // px, or null when everything behind the head stays drawn
   rules: RuleSettings;
+  head: HeadParams;
+  bandRun: boolean;
 }
 
 export function checkLine(points: SpinePoint[], anchors: Anchors, opts: CheckOptions): RuleReport {
-  return checkSamples(sampleSpine(resolveSpine({ points }, anchors), 4), anchors, opts);
+  return checkSamples(sampleSpine(resolveSpine({ points }, anchors, { bandRun: opts.bandRun, viewport: opts.viewport }), 4), anchors, opts);
+}
+
+const VISIBLE_STEP = 50; // px of scroll between the always-visible rule's samples
+const TRAIN_FADE = 0.3; // the train's tail fade, as a share of its length (pathEngine.ts)
+
+export interface VisibleReport {
+  worstGapPx: number; // the longest scroll with no drawn dot on screen (0: always visible)
+  atY: number; // where it starts, scroll px
+  positions: number; // scroll positions sampled
+}
+
+export interface EndReport {
+  shortPx: number; // px of arc the head falls short of the line's end at the maximum scroll
+  endsOff: boolean; // the line ends past an edge or at the footer
+}
+
+// Visitor-side view, assuming the visitor has decided (the band run waits
+// otherwise): the head and the train where the page would draw them at each
+// scroll position, ignoring the draw-speed cap (a visitor at rest sees the
+// settled head).
+function frameAt(samples: SpineSamples, anchors: Anchors, opts: CheckOptions, scroll: number) {
+  const runLen = opts.bandRun ? runLength(samples, anchors.width) : 0;
+  const maxScroll = Math.max(0, anchors.box.footer.bottom - opts.viewport);
+  const head = headTarget(opts.head, { samples, viewport: opts.viewport, scrollY: scroll, maxScrollY: maxScroll, layerTop: 0, runLen, entryY: samples.y[0] });
+  const fade = (opts.train ?? 0) * TRAIN_FADE;
+  const tail = opts.train === null ? 0 : tailStart(head, opts.train, fade, runLen) + 0.2 * fade;
+  return { head, tail, maxScroll };
+}
+
+export function visibility(samples: SpineSamples, anchors: Anchors, opts: CheckOptions): VisibleReport {
+  const width = anchors.width;
+  const maxScroll = Math.max(0, anchors.box.footer.bottom - opts.viewport);
+  let worst = 0;
+  let worstAt = 0;
+  let runStart = -1;
+  let positions = 0;
+  for (let scroll = 0; ; scroll = Math.min(maxScroll, scroll + VISIBLE_STEP)) {
+    positions++;
+    const { head, tail } = frameAt(samples, anchors, opts, scroll);
+    let seen = false;
+    const last = Math.min(samples.count - 1, Math.floor(head / samples.step));
+    for (let i = Math.max(0, Math.ceil(tail / samples.step)); i <= last; i++) {
+      const y = samples.y[i];
+      if (samples.x[i] > 0 && samples.x[i] < width && y > scroll && y < scroll + opts.viewport) {
+        seen = true;
+        break;
+      }
+    }
+    if (!seen && runStart < 0) runStart = scroll;
+    if ((seen || scroll >= maxScroll) && runStart >= 0) {
+      const gap = scroll - runStart + (seen ? 0 : VISIBLE_STEP);
+      if (gap > worst) {
+        worst = gap;
+        worstAt = runStart;
+      }
+      runStart = -1;
+    }
+    if (scroll >= maxScroll) break;
+  }
+  return { worstGapPx: worst, atY: worstAt, positions };
+}
+
+export function endCheck(samples: SpineSamples, anchors: Anchors, opts: CheckOptions): EndReport {
+  const maxScroll = Math.max(0, anchors.box.footer.bottom - opts.viewport);
+  const { head } = frameAt(samples, anchors, opts, maxScroll);
+  const n = samples.count - 1;
+  const endsOff = samples.x[n] < 0 || samples.x[n] > anchors.width || samples.y[n] >= anchors.box.footer.top;
+  return { shortPx: Math.max(0, samples.length - head), endsOff };
 }
 
 const rectDistance = (r: Rect, x: number, y: number) => {
@@ -99,6 +175,7 @@ export function checkSamples(samples: SpineSamples, anchors: Anchors, opts: Chec
   const margin = 40;
   let bend = Infinity;
   let backtrack = 0;
+  let backtrackAt = -1;
   let flatRun = 0;
   let offscreen = 0;
   let headingClear = Infinity;
@@ -116,12 +193,19 @@ export function checkSamples(samples: SpineSamples, anchors: Anchors, opts: Chec
   const turning = new Map<string, number>();
   const run = (start: number, i: number) => (i - start) * step;
 
+  // The band run is level by design: the placement rules (flat runs,
+  // headings, hairlines, edges, turning, entry) start where it ends.
+  const runLen = opts.bandRun ? runLength(samples, width) : 0;
   for (let i = 0; i < count; i++) {
     const on = x[i] > -margin && x[i] < width + margin;
-    const inside = x[i] > 0 && x[i] < width;
+    const inside = x[i] > 0 && x[i] < width && i * step >= runLen;
     if (on) bend = Math.min(bend, radius[i] / reach);
-    backtrack = Math.max(backtrack, yMax[i] - y[i]);
-    if (inside && !Number.isFinite(entry)) {
+    if (yMax[i] - y[i] > backtrack) {
+      backtrack = yMax[i] - y[i];
+      backtrackAt = i;
+    }
+    if (runLen > 0) entry = 0;
+    else if (inside && !Number.isFinite(entry)) {
       const band = anchors.box.band;
       entry = Math.hypot(width - x[i], Math.max(0, Math.abs(y[i] - (band.top + band.bottom) / 2) - (band.bottom - band.top) / 2));
     }
@@ -149,7 +233,7 @@ export function checkSamples(samples: SpineSamples, anchors: Anchors, opts: Chec
       offStart = -1;
     }
 
-    if (on) {
+    if (on && i * step >= runLen) {
       for (const h of headings) {
         const c = rectDistance(h, x[i], y[i]) - reach;
         if (c < headingClear) {
@@ -212,6 +296,8 @@ export function checkSamples(samples: SpineSamples, anchors: Anchors, opts: Chec
   turning.forEach((v) => (turnDeg = Math.max(turnDeg, (v * 180) / Math.PI)));
   const exitOffscreen = x[count - 1] < 0 || x[count - 1] > width;
   const empty = emptyScreen(samples, anchors, opts.viewport, opts.headAt, opts.train);
+  const visible = visibility(samples, anchors, opts);
+  const end = endCheck(samples, anchors, opts);
 
   const failed: RuleId[] = [];
   const violations: string[] = [];
@@ -222,7 +308,7 @@ export function checkSamples(samples: SpineSamples, anchors: Anchors, opts: Chec
   if (bend < RULES.minBendRatio) fail("bend", `a bend tighter than ${RULES.minBendRatio} times the wave's reach`);
   if (backtrack > RULES.maxBacktrackPx) fail("crossing", "the line climbs back on itself (it could cross)");
   if (flatRun > RULES.maxFlatRunPx) fail("flat", `a flat run of ${Math.round(flatRun)}px inside a text block`);
-  if (empty.longestVh > R.maxEmptyVh) fail("empty", `${empty.longestVh.toFixed(2)} viewports of scroll with no wave on screen`);
+  if (!R.alwaysVisible && empty.longestVh > R.maxEmptyVh) fail("empty", `${empty.longestVh.toFixed(2)} viewports of scroll with no wave on screen`);
   if (R.headingClearPx > 0 && headingClear < R.headingClearPx) fail("heading", `dots within ${Math.round(headingClear)}px of a heading`);
   if (R.linksClear && linksClear < 0) fail("links", "dots on Connect's link list");
   if (R.hairlineGapPx > 0 && hairRun > R.hairlineRunPx) fail("hairline", `${Math.round(hairRun)}px along a section hairline`);
@@ -231,6 +317,8 @@ export function checkSamples(samples: SpineSamples, anchors: Anchors, opts: Chec
   if (R.flatAnySlope > 0 && flatAny > R.flatAnyPx) fail("flatAny", `a flat run of ${Math.round(flatAny)}px on screen`);
   if (R.entryNearBandPx > 0 && entry > R.entryNearBandPx) fail("entry", `first appears ${Math.round(entry)}px from the band's right end`);
   if (R.exitAtEdge && !exitOffscreen) fail("exit", "ends on screen");
+  if (R.alwaysVisible && visible.worstGapPx > 0) fail("visible", `${visible.worstGapPx}px of scroll with no wave on screen`);
+  if (R.endReached && (end.shortPx > 1 || !end.endsOff)) fail("end", end.endsOff ? `the head stops ${Math.round(end.shortPx)}px short of the end` : "the line ends on screen above the footer");
   const totalTurnDeg = (totalTurn * 180) / Math.PI;
   if ((R.minTurnDeg > 0 && totalTurnDeg < R.minTurnDeg) || (R.minDirChanges > 0 && dirChanges < R.minDirChanges))
     fail("character", `too little character: ${Math.round(totalTurnDeg)} degrees of turning, ${dirChanges} changes of direction`);
@@ -250,6 +338,9 @@ export function checkSamples(samples: SpineSamples, anchors: Anchors, opts: Chec
     exitOffscreen,
     totalTurnDeg,
     dirChanges,
+    visible,
+    end,
+    backtrackPoint: backtrackAt >= 0 ? { x: x[backtrackAt], y: y[backtrackAt] } : null,
     headingPoint: headingAt >= 0 ? { x: x[headingAt], y: y[headingAt] } : null,
     failed,
     violations,
@@ -325,13 +416,13 @@ export interface Generated {
 // every rule wins; if none does, the authored fallback (the first authored
 // irregular spine) stands in. Without a measured page the first candidate
 // stands until the measure arrives.
-export function hintsFor(rules: RuleSettings): GenHints {
-  return { entryRight: rules.entryNearBandPx > 0, clearHeadings: rules.headingClearPx > 0, clearLinks: rules.linksClear };
+export function hintsFor(rules: RuleSettings, bandRun = false): GenHints {
+  return { entryRight: rules.entryNearBandPx > 0, clearHeadings: rules.headingClearPx > 0, clearLinks: rules.linksClear, bandRun };
 }
 
 export function generateSpine(seed: number, params: GenParams, anchors: Anchors | null, opts: CheckOptions, fallback: Move[] = FALLBACK.moves): Generated {
   let lastSeed = seed;
-  const hints = hintsFor(opts.rules);
+  const hints = hintsFor(opts.rules, opts.bandRun);
   for (let attempt = 0; attempt < RULES.tries; attempt++) {
     lastSeed = derivedSeed(seed, attempt);
     const moves = generateLine(lastSeed, params, undefined, hints);
@@ -361,7 +452,7 @@ export interface BulkReport {
 // lines ranked by how close they sit to a rule's edge.
 export function bulkCheck(count: number, params: GenParams, anchors: Anchors, opts: CheckOptions, start = 1): BulkReport {
   const firstTryRejected = Object.fromEntries(RULE_IDS.map((id) => [id, 0])) as Record<RuleId, number>;
-  const hints = hintsFor(opts.rules);
+  const hints = hintsFor(opts.rules, opts.bandRun);
   let firstPass = 0;
   let fallbacks = 0;
   let attempts = 0;
@@ -390,7 +481,7 @@ export function bulkCheck(count: number, params: GenParams, anchors: Anchors, op
         const score =
           Math.max(0, 2.2 - report.bendRatio) +
           report.flatRunPx / RULES.maxFlatRunPx +
-          report.empty.longestVh / R.maxEmptyVh +
+          (R.alwaysVisible ? 0 : report.empty.longestVh / R.maxEmptyVh) +
           (R.headingClearPx > 0 ? Math.max(0, 1 - (report.headingClearPx - R.headingClearPx) / 80) : 0) +
           (R.flatAnySlope > 0 ? report.flatAnyPx / R.flatAnyPx : 0) +
           (R.maxTurnDeg > 0 ? report.turnDeg / R.maxTurnDeg : 0);

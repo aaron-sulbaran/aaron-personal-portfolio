@@ -167,6 +167,7 @@ export interface GenHints {
   entryRight: boolean;
   clearHeadings: boolean;
   clearLinks: boolean;
+  bandRun?: boolean; // the line starts as the level band run (headMap.ts): no band move, and it leaves the band heading from the right end
 }
 
 const NO_HINTS: GenHints = { entryRight: false, clearHeadings: false, clearLinks: false };
@@ -186,7 +187,7 @@ const isGap = (key: string) => key.startsWith("gap");
 // inputs always give the same moves. Rule checking (spineRules.ts) is a
 // separate pure step against a measured page.
 export function generateLine(seed: number, p: GenParams, stretches: readonly StretchKey[] = STRETCHES, hints: GenHints = NO_HINTS): Move[] {
-  if (hints.entryRight || hints.clearHeadings || hints.clearLinks) return generateLaned(seed, p);
+  if (hints.entryRight || hints.clearHeadings || hints.clearLinks) return generateLaned(seed, p, hints.bandRun);
   const r = rng(seed);
   const jitter = (spread: number) => (r() - 0.5) * 2 * spread * p.uneven;
   const pickSide = (): Side => (r() < 0.5 ? "left" : "right");
@@ -196,12 +197,18 @@ export function generateLine(seed: number, p: GenParams, stretches: readonly Str
   const last = stretches[stretches.length - 1];
   const moves: Move[] = [];
 
-  // The opening: half the lines slip in from off screen, half start on a waypoint.
+  // The opening: half the lines slip in from off screen, half start on a
+  // waypoint. Behind a band run the band stretch is the run and the line sets
+  // off from its right end; the opening's draws are still made, so a seed's
+  // line past the band is the one it always was.
   let side = pickSide();
-  if (hints.entryRight) {
+  const opening = r();
+  if (hints.bandRun) {
+    r();
+  } else if (hints.entryRight) {
     side = "right";
     moves.push({ at: first, kind: "arc", side, reach: 0.06, slope: 0.4, centre: 0.55 });
-  } else if (r() < 0.55) moves.push({ at: first, kind: "arc", side, reach: outReach(), slope: 0.6 });
+  } else if (opening < 0.55) moves.push({ at: first, kind: "arc", side, reach: outReach(), slope: 0.6 });
   else moves.push({ at: first, kind: "pass", side, reach: clamp(0.5 + jitter(0.3), 0.1, 0.9), slope: 0.4, centre: 0.65 });
 
   for (let i = 1; i < stretches.length - 1; i++) {
@@ -270,12 +277,13 @@ export function generateLine(seed: number, p: GenParams, stretches: readonly Str
 // Off screen stays on the side the line is on; only a crossing changes side.
 // It enters at the band's right end and leaves past the edge it is nearest;
 // an off-screen section is always followed by a crossing.
-export function generateLaned(seed: number, p: GenParams): Move[] {
+export function generateLaned(seed: number, p: GenParams, bandRun = false): Move[] {
   const r = rng(seed);
   const jitter = (spread: number) => (r() - 0.5) * 2 * spread * p.uneven;
   const outReach = () => clamp(0.08 + p.offscreen * (0.1 + 0.25 * r()), 0.06, 0.4);
   // The entry: it begins just inside the right edge, level with the band.
-  const moves: Move[] = [{ at: "band", kind: "pass", side: "right", reach: 0.9, slope: 0.4, centre: clamp(0.62 + jitter(0.1), 0.5, 0.75) }];
+  const entry: Move = { at: "band", kind: "pass", side: "right", reach: 0.9, slope: 0.4, centre: clamp(0.62 + jitter(0.1), 0.5, 0.75) };
+  const moves: Move[] = bandRun ? [] : [entry];
   let side: Side = "right";
   let wasOff = false;
   const off = (at: StretchKey) => {

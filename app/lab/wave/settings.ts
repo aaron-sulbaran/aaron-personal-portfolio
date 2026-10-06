@@ -60,6 +60,25 @@ export const LIVELY_MOTION: MotionSettings = {
   softRows: false,
 };
 
+// The owner's note (2026-10-06): the reviewed pick's wave moved "way too quick
+// and visually jolting". Calm keeps the random drift and slows every rate: a
+// target of no dot's displacement changing faster than about 40px/s and no
+// visible rise in under half a second. Measured (motionProbe.ts, 60s): at most
+// 22px/s on a plain column (about 37 under the head's swell), the fastest
+// rise of a row or more 1.5s, against 346px/s and 0.02s for the lively rates.
+export const CALM_MOTION: MotionSettings = {
+  speed: 1,
+  tempo: 76,
+  beatStrength: 0.45,
+  softness: 3,
+  attack: 0.45,
+  release: 1,
+  wander: 0.45,
+  shimmerRate: 0.8,
+  shimmerDepth: 0.22,
+  softRows: true,
+};
+
 export const MOTION_RANGES = {
   speed: { min: 0.25, max: 2, step: 0.05 },
   tempo: { min: 40, max: 140, step: 1 },
@@ -83,6 +102,18 @@ export interface CursorSettings {
   recovery: number; // s for the effect to settle back
   saturate: number; // px/s at which the push reaches full strength
   mix: { push: number; carve: number; swell: number }; // "blend" only, 0..1 each
+  scatter: ScatterSettings;
+}
+
+// A layer over any mode (scatter.ts): a fast pointer throws the dots it
+// passes as projectiles; each flies with drag, then springs home.
+export interface ScatterSettings {
+  on: boolean;
+  threshold: number; // px/s of pointer speed before anything is thrown
+  launch: number; // a thrown dot's speed as a share of the pointer's
+  spread: number; // 0..1, how far each dot strays from the stroke's direction and speed
+  drag: number; // per second: how fast a flying dot loses speed
+  returnS: number; // s for a dot to settle home once it has slowed
 }
 
 export const CURSOR_MODES: { id: CursorMode; label: string; note: string }[] = [
@@ -102,11 +133,19 @@ export const CURSOR_RANGES = {
   recovery: { min: 0.15, max: 3, step: 0.05 },
   saturate: { min: 300, max: 4000, step: 10 },
   mix: { min: 0, max: 1, step: 0.01 },
+  threshold: { min: 100, max: 3000, step: 10 },
+  launch: { min: 0.05, max: 1.5, step: 0.01 },
+  spread: { min: 0, max: 1, step: 0.01 },
+  drag: { min: 0.5, max: 10, step: 0.1 },
+  returnS: { min: 0.2, max: 3, step: 0.05 },
 };
+
+export const SCATTER_OFF: ScatterSettings = { on: false, threshold: 500, launch: 0.45, spread: 0.5, drag: 3.5, returnS: 0.8 };
 
 export type HeadMode = "viewport" | "progress";
 export type HeadStyle = "taper" | "spark" | "swell" | "none";
 export type TailMode = "all" | "train";
+export type DrawEase = "linear" | "eased";
 
 // The Path placement's own knobs. The spine itself is page-relative (spines.ts);
 // "Copy values" writes its points out beside these.
@@ -135,6 +174,9 @@ export interface PathSettings {
   shimmer: "threshold" | "soft"; // music's fuzz shimmer: dots blink on a threshold, or breathe in size
   headFromBand: boolean; // at load the head waits at the line's entry by the band; the first scroll pulls it out
   phoneAmplitude: number; // px, the amplitude below 600px wide (phones only); 0 keeps the amplitude
+  drawSpeed: number; // px of arc per second: the most the head travels toward its scroll target; 0 for no cap
+  drawEase: DrawEase; // "eased": the catch-up accelerates in instead of starting at full speed
+  bandRun: boolean; // the line starts as a level run across the band, idle until the visitor decides
   rules: RuleSettings;
 }
 
@@ -213,6 +255,8 @@ export const ROUND3_RULES: RuleSettings = {
   exitAtEdge: false,
   minTurnDeg: 0,
   minDirChanges: 0,
+  alwaysVisible: false,
+  endReached: false,
 };
 
 // The design review's rules (2026-10-05).
@@ -231,7 +275,14 @@ export const REVIEWED_RULES: RuleSettings = {
   exitAtEdge: true,
   minTurnDeg: 60,
   minDirChanges: 2,
+  alwaysVisible: false,
+  endReached: false,
 };
+
+// Aaron's own rules (round 5): every proximity rule off, as he had them, plus
+// his one hard bound (some of the wave on screen at every scroll position,
+// which stands in for the empty-scroll limit) and the end reached at the bottom.
+export const AARON_RULES: RuleSettings = { ...ROUND3_RULES, alwaysVisible: true, endReached: true };
 
 const base: WaveSettings = {
   placement: "backdrop",
@@ -251,7 +302,7 @@ const base: WaveSettings = {
   edgeFade: 0.24,
   scrollInfluence: 0,
   capsule: true,
-  motion: LIVELY_MOTION,
+  motion: CALM_MOTION,
   path: {
     spine: "knot",
     headMode: "viewport",
@@ -276,9 +327,12 @@ const base: WaveSettings = {
     shimmer: "threshold",
     headFromBand: false,
     phoneAmplitude: 0,
+    drawSpeed: 1200,
+    drawEase: "eased",
+    bandRun: true,
     rules: ROUND3_RULES,
   },
-  cursor: { mode: "push", radius: 92, strength: 1, recovery: 0.8, saturate: 1600, mix: { push: 1, carve: 0.6, swell: 0.5 } },
+  cursor: { mode: "push", radius: 92, strength: 1, recovery: 0.8, saturate: 1600, mix: { push: 1, carve: 0.6, swell: 0.5 }, scatter: SCATTER_OFF },
 };
 
 export const PATH_RANGES = {
@@ -289,13 +343,14 @@ export const PATH_RANGES = {
   wavelength: { min: 80, max: 700, step: 5 },
   shapeTravel: { min: 0, max: 1, step: 0.01 },
   musicLayer: { min: 0, max: 1, step: 0.01 },
+  drawSpeed: { min: 0, max: 4000, step: 50 },
 };
 
 type Preset = { id: string; label: string; why: string; values: WaveSettings; parked?: boolean };
 
 type PresetPatch = Omit<Partial<WaveSettings>, "path" | "cursor" | "motion"> & {
   path?: Partial<PathSettings>;
-  cursor?: Partial<CursorSettings>;
+  cursor?: Partial<Omit<CursorSettings, "scatter">> & { scatter?: Partial<ScatterSettings> };
   motion?: Partial<MotionSettings>;
 };
 
@@ -312,7 +367,7 @@ const preset = (id: string, label: string, why: string, patch: PresetPatch, park
     alpha: { light: { ...base.alpha.light, ...patch.alpha?.light }, dark: { ...base.alpha.dark, ...patch.alpha?.dark } },
     motion: { ...base.motion, ...patch.motion },
     path: { ...base.path, ...patch.path },
-    cursor: { ...base.cursor, ...patch.cursor },
+    cursor: { ...base.cursor, ...patch.cursor, scatter: { ...base.cursor.scatter, ...patch.cursor?.scatter } },
   },
 });
 
@@ -351,23 +406,50 @@ const REVIEWED: PresetPatch = {
   },
 };
 
-// The owner's note (2026-10-06): the reviewed pick's wave moved "way too quick
-// and visually jolting". Calm keeps the random drift and slows every rate: a
-// target of no dot's displacement changing faster than about 40px/s and no
-// visible rise in under half a second. Measured (motionProbe.ts, 60s): at most
-// 22px/s on a plain column (about 37 under the head's swell), the fastest
-// rise of a row or more 1.5s, against 346px/s and 0.02s for the lively rates.
-export const CALM_MOTION: MotionSettings = {
-  speed: 1,
-  tempo: 76,
-  beatStrength: 0.45,
-  softness: 3,
-  attack: 0.45,
-  release: 1,
-  wander: 0.45,
-  shimmerRate: 0.8,
-  shimmerDepth: 0.22,
-  softRows: true,
+// Aaron's pick 2 (round 5), from his copied values: a generated line he
+// accepted with every proximity rule off, drawn by page progress, carve under
+// the pointer. Only the music motion differs from his copy (calm, as he asked
+// of every preset).
+const PICK2: PresetPatch = {
+  placement: "path",
+  music: true,
+  intensity: 0.9,
+  beat: true,
+  amplitude: 80,
+  maxThick: 5,
+  dotScale: 1,
+  spacing: 14,
+  edgeFade: 0.24,
+  capsule: true,
+  alpha: { light: { muted: 0.35, accent: 0.5 }, dark: { muted: 0.4, accent: 0.69 } },
+  path: {
+    spine: "generated",
+    seed: 487570111,
+    gen: { through: 0.5, uneven: 0.6, offscreen: 0.5 },
+    newEachVisit: false,
+    headMode: "progress",
+    headAt: 0.7,
+    preDrawn: 0,
+    smoothing: 7,
+    headStyle: "swell",
+    tail: "train",
+    trainLength: 1600,
+    wavelength: 240,
+    shapeTravel: 0,
+    musicLayer: 0.35,
+    thinInWords: false,
+    accentOutsideWords: true,
+    swellOutsideWords: false,
+    shimmer: "threshold",
+    headFromBand: false,
+    phoneAmplitude: 0,
+    debug: true,
+    drawSpeed: 1200,
+    drawEase: "eased",
+    bandRun: true,
+    rules: AARON_RULES,
+  },
+  cursor: { mode: "carve", radius: 96, strength: 1, recovery: 0.9, saturate: 1600, mix: { push: 1, carve: 0.6, swell: 0.5 } },
 };
 
 export const PRESETS: Preset[] = [
@@ -403,10 +485,16 @@ export const PRESETS: Preset[] = [
     },
   ),
   preset(
+    "pick2",
+    "Aaron's pick 2",
+    "His round 5 pick: a generated line (seed 487570111) with every proximity rule off, always partly on screen, reaching the end at the bottom; the head follows page progress at a capped draw speed; it starts as a level run across the band and waits for Play it or Not now; carve under the pointer; dark alphas 0.40 and 0.69.",
+    PICK2,
+  ),
+  preset(
     "reviewed",
     "Aaron's pick, reviewed",
-    "His pick with the design review applied: Signature line, reviewed; no lone dots in word gaps; accent only outside text; the head's swell relaxes inside text; music shimmer breathes instead of blinking; muted dots 0.28 in dark; the reviewer's spine rules on. Music motion calmed (2026-10-06): a slower tempo with a soft, quiet beat, levels that glide, a slow wander and shimmer, rows that grow in. Flip to the lively one to compare.",
-    { ...REVIEWED, motion: CALM_MOTION },
+    "His pick with the design review applied: Signature line, reviewed; no lone dots in word gaps; accent only outside text; the head's swell relaxes inside text; music shimmer breathes instead of blinking; muted dots 0.28 in dark; the reviewer's spine rules on. Calm music motion, as every preset but the lively one.",
+    REVIEWED,
   ),
   preset(
     "reviewed-lively",
@@ -530,5 +618,5 @@ export const PRESETS: Preset[] = [
 ];
 
 // The lab opens on the reviewed pick (calm); "Aaron's pick" stays the first button.
-export const DEFAULT_PRESET_ID = "reviewed";
+export const DEFAULT_PRESET_ID = "pick2";
 export const DEFAULT_SETTINGS: WaveSettings = PRESETS.find((p) => p.id === DEFAULT_PRESET_ID)!.values;

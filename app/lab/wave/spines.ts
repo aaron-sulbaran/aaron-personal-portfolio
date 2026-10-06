@@ -1,5 +1,6 @@
 import { AUTHORED, composePoints, type Move } from "./compose";
 import type { Point } from "./spineGeometry";
+import { bandRunPoints, runExit } from "./headMap";
 
 // The spines, in page-relative terms so they survive content changes and any
 // width. A point names an anchor and sits inside it by fractions:
@@ -183,9 +184,27 @@ function spanOf(anchors: Anchors, point: SpinePoint): Span {
   return point.box ? anchors.box[key] : anchors.words[key];
 }
 
-export function resolveSpine(def: { points: SpinePoint[] }, anchors: Anchors): Point[] {
-  return def.points.map((p) => {
+// With a band run the line's own band stretch is replaced by the level run
+// across the band (headMap.ts); every spine, authored or generated, starts there.
+export interface ResolveOptions {
+  bandRun: boolean;
+  viewport: number;
+}
+
+export function resolveSpine(def: { points: SpinePoint[] }, anchors: Anchors, opts?: ResolveOptions): Point[] {
+  const resolve = (p: SpinePoint) => {
     const span = spanOf(anchors, p);
     return { x: p.x * anchors.width + (p.dx ?? 0), y: span.top + p.y * (span.bottom - span.top) + (p.dy ?? 0) };
-  });
+  };
+  if (!opts?.bandRun) return def.points.map(resolve);
+  // Points at or just under the run's line belonged to the band's own
+  // stretch; the run replaces them. Points a little lower are pushed down to
+  // leave the turn off the run some room.
+  const line = bandRunPoints(anchors, opts.viewport)[0].y;
+  const rest = def.points
+    .filter((p) => p.at !== "band")
+    .map(resolve)
+    .filter((q) => q.y > line + 24)
+    .map((q) => ({ x: q.x, y: Math.max(q.y, line + 80) }));
+  return [...bandRunPoints(anchors, opts.viewport), ...runExit(anchors, opts.viewport, rest[0]), ...rest];
 }

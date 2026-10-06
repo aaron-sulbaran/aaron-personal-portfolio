@@ -1,5 +1,7 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
+import { getDecision, getServerDecision, setDecision, subscribeDecision, type Decision } from "./decisionStore";
 import { Choice, Group, Slider, Toggle } from "./panelParts";
 import { PATH_RANGES, type HeadMode, type HeadStyle, type PathSettings, type TailMode } from "./settings";
 import type { SpineChoice } from "./spineChoice";
@@ -29,6 +31,11 @@ const HEAD_STYLES: { id: HeadStyle; label: string }[] = [
   { id: "swell", label: "Swell" },
   { id: "none", label: "None" },
 ];
+const DECISIONS: { id: Decision; label: string }[] = [
+  { id: "undecided", label: "Undecided" },
+  { id: "play", label: "Play it" },
+  { id: "decline", label: "Not now" },
+];
 const TAILS: { id: TailMode; label: string }[] = [
   { id: "all", label: "Stays drawn" },
   { id: "train", label: "Finite train" },
@@ -37,8 +44,18 @@ const TAILS: { id: TailMode; label: string }[] = [
 export function PathControls(props: { path: PathSettings; choice: SpineChoice; report: RuleReport | null; onChange: (patch: Partial<PathSettings>) => void }) {
   const { path, choice, onChange } = props;
   const R = PATH_RANGES;
+  const decision = useSyncExternalStore(subscribeDecision, getDecision, getServerDecision);
   return (
     <Group title="Path">
+      <p className="text-xs text-muted">The band&apos;s question</p>
+      <Choice options={DECISIONS} value={decision} onChange={setDecision} />
+      <p className="mt-1 text-xs leading-snug text-muted">
+        {path.bandRun
+          ? "Undecided: the line is a level run across the band, breathing, and nothing follows the scroll. Play it or Not now (here or on the band) sets the head off from the run's right end; Play it also brings the music in. Undecided resets."
+          : "The band run is off, so the line ignores the answer."}
+      </p>
+      <Toggle label="Start as a level run across the band" checked={path.bandRun} onChange={(bandRun) => onChange({ bandRun })} />
+
       <Choice options={SPINE_OPTIONS} value={path.spine} onChange={(spine) => onChange({ spine })} />
       <p className="mt-1 text-xs leading-snug text-muted">{choice.def.note}</p>
       {choice.def.moves && path.spine !== "custom" && (
@@ -61,6 +78,8 @@ export function PathControls(props: { path: PathSettings; choice: SpineChoice; r
       <Slider label="Head line" unit="of viewport" value={path.headAt} {...R.headAt} onChange={(headAt) => onChange({ headAt })} />
       <Slider label="Drawn before any scroll" unit="of spine" value={path.preDrawn} {...R.preDrawn} onChange={(preDrawn) => onChange({ preDrawn })} />
       <Slider label="Head smoothing (0 is raw)" unit="per s" value={path.smoothing} {...R.smoothing} onChange={(smoothing) => onChange({ smoothing })} />
+      <Slider label="Draw speed cap (0 is none)" unit="px/s" value={path.drawSpeed} {...R.drawSpeed} onChange={(drawSpeed) => onChange({ drawSpeed })} />
+      <Toggle label="Ease the catch-up in" checked={path.drawEase === "eased"} onChange={(eased) => onChange({ drawEase: eased ? "eased" : "linear" })} />
       <Choice options={HEAD_STYLES} value={path.headStyle} onChange={(headStyle) => onChange({ headStyle })} />
 
       <p className="mt-3 text-xs text-muted">Tail</p>

@@ -25,6 +25,8 @@ export function checkOptions(path: PathSettings, amplitude: number, viewport: nu
     headAt: path.headAt,
     train: path.tail === "train" ? path.trainLength : null,
     rules: path.rules,
+    head: { mode: path.headMode, headAt: path.headAt, preDrawn: path.preDrawn, fromBand: path.headFromBand },
+    bandRun: path.bandRun,
   };
 }
 
