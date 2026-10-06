@@ -98,7 +98,7 @@ export function MetricsLab({ data, upToNow, connect }: LabProps) {
 
   return (
     <ContributionsProvider data={data}>
-    <div className="metrics-lab bg-background text-foreground">
+    <div className="metrics-lab overflow-x-clip bg-background text-foreground">
       <Panel settings={s} onChange={update} pin={pin} onPin={setPin} onReplay={() => setReplay((r) => r + 1)} />
 
       <header className="px-6 pb-16 pt-32 md:px-10 md:pt-40">
