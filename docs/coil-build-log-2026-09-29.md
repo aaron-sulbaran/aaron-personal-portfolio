@@ -77,3 +77,10 @@ Eleven defects and directions from Aaron's first hands-on session, plus the foll
 Rulings recorded in `docs/design-decisions-2026-09-28.md` 2.10 and `docs/coil-input-model.md`. Two labs and a judge produced the name surface: `prototypes/labs/name-lab-opus.html`, `name-lab-fable.html`, verdict in the PR 19 body.
 
 Open: Capital One assets (private Brandfolder), the IEEE toolkit agreement, the Talos mark pick, real-device checks, the soundtrack e2e test that fails only on this machine, the Codex spend cap.
+
+## Aaron's hardware pass, 2026-10-06 (the scroll fix and the loader)
+
+He tried PR 24 on his trackpad: "pleasantly surprised that the scroll fix is working again. Nothing is trapped." Two rulings from the same pass, each on its own branch and PR:
+
+- **Page scroll no longer turns the coil** (branch `coil-scroll-free`). The coil runs at its idle pace whether or not the page is moving; scrolling away just carries the hero up. Wheel capture over the coil, touch drag and the book's row hold are unchanged. The `pageScrollCardsPerPixel` feed (1/150) goes, and table 1.1 and the input model's scroll line change with it.
+- **The loader's fast path flashed the fallback heading** (branch `loader-lockup`). On a warm reload at the top the asset tally finishes inside the loader's 250ms guard, the loader skips, and the server-rendered "Hi, I'm Aaron." h1 is visible for about 200ms until the scene's first frame sets `data-scene="on"`; his recording shows it at frames 6 to 8 of 60 per second. The fix: when a scene is going to take over, the loader never vanishes; on the fast path it paints the lockup already in its landed pose and hands it to the canvas in one frame, so no frame shows the h1. The design change he asked for with it: the loader paints "Hi, I'm" above "Aaron" with the canvas lockup's proportions and both lines dissolve into the background lockup, the band unfurling in front. The h1 keeps its role for reduced motion, no WebGL and a failed scene.
