@@ -23,7 +23,7 @@ function merge(stored: Partial<WaveSettings>): WaveSettings {
     stripHeight: { ...d.stripHeight, ...stored.stripHeight },
     motion: { ...d.motion, ...stored.motion },
     path: { ...d.path, ...stored.path, gen: { ...d.path.gen, ...stored.path?.gen }, rules: { ...d.path.rules, ...stored.path?.rules } },
-    cursor: { ...d.cursor, ...stored.cursor, mix: { ...d.cursor.mix, ...stored.cursor?.mix }, scatter: { ...d.cursor.scatter, ...stored.cursor?.scatter } },
+    cursor: { ...d.cursor, ...stored.cursor, mix: { ...d.cursor.mix, ...stored.cursor?.mix } },
   };
 }
 

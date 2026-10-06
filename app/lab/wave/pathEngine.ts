@@ -4,7 +4,6 @@ import { FLOOR, easeToward } from "@/lib/waveform/field";
 import type { WaveSettings, ThemeName } from "./settings";
 import { sampleSpine, type Point, type SpineSamples } from "./spineGeometry";
 import { headTarget, runLength, tailStart } from "./headMap";
-import { createScatter, dotKey } from "./scatter";
 import type { Decision } from "./decisionStore";
 import { publishMeasure } from "./anchorStore";
 import { createCursor } from "./pathCursor";
@@ -78,9 +77,6 @@ export interface PathInfo {
   frameMs: number; // the last frame's work, ms
   maxFrameMs: number; // the worst since resetStats()
   frames: number; // frames since resetStats()
-  scatterLive: number;
-  scatterLaunched: number;
-  scatterSpreadPx: number; // the farthest any thrown dot is from home
 }
 
 export interface PathEngine {
@@ -220,7 +216,6 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
   let frameMs = 0;
   let maxFrameMs = 0;
   let frames = 0;
-  const scatter = createScatter();
   let tileCols = new Int32Array(0);
   let width = 0;
   let points: SpinePoint[] = [];
@@ -319,7 +314,6 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
       }
     }
     cursor.resize(columns);
-    scatter.resize(columns);
     entryY = samples.y[0];
     for (let i = 0; i < samples.count; i++) {
       if (samples.x[i] > 0 && samples.x[i] < width) {
@@ -404,10 +398,6 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
   // column is near the pointer. Module-level scratch, no allocation.
   let emitTop = 0;
   let emitRepel = false;
-  let emitScatter = false; // scatter is on: thrown dots are drawn by the pool, not in place
-  let emitArmed = false; // the pointer is moving fast enough to throw this frame
-  let emitJ = 0;
-  let emitKey = 0;
   const emit = (out: number[], x: number, y: number, r: number) => {
     let dx = x;
     let dy = y;
@@ -415,17 +405,6 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
       cursor.repel(x, y + emitTop, repelOut);
       dx = repelOut.x;
       dy = repelOut.y - emitTop;
-    }
-    if (emitScatter) {
-      if (scatter.columnLive(emitJ) && scatter.isLive(emitKey)) return;
-      if (emitArmed) {
-        const pt = cursor.pointer;
-        const ly = dy + emitTop;
-        const rx = dx - pt.x;
-        const ry = ly - pt.y;
-        const reach = cursor.radius;
-        if (rx * rx + ry * ry < reach * reach && scatter.launch(emitKey, emitJ, dx, ly, r, out === accent, pt.x, pt.y, pt.dirX, pt.dirY, pt.speed)) return;
-      }
     }
     pushDot(out, dx, dy, r);
   };
@@ -500,10 +479,6 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
     const depth = settings.motion.shimmerDepth;
     const softRows = settings.motion.softRows;
     emitTop = top;
-    const scat = scatter.on && interactive();
-    const armed = scat && pointer.on && pointer.moved && pointer.speed > scatter.threshold;
-    emitScatter = scat;
-    emitArmed = armed;
 
     for (let k = 0; k < tile.count; k++) {
       const j = tileCols[tile.first + k];
@@ -571,8 +546,6 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
         centre = smooth(rows);
         if (centre < 0.05) continue;
       }
-      emitJ = j;
-      emitKey = dotKey(j, 0, 0);
       emit(!plain && (magnitude > ACCENT_LINE || (bright > 0 && hash(j, 9) < bright)) ? accent : muted, cx, cy, CENTER_RADIUS * r * centre);
       for (let q = 1; q <= thick; q++) {
         const fade = 1 - q / (rowsFor + 1.5);
@@ -592,14 +565,11 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
         const out = !plain && ((q >= thick && peak) || (bright > 0 && hash(j, q + 9) < bright)) ? accent : muted;
         const o = q * gap;
         const fuzz = FUZZ_RADIUS * r * breathe * kept;
-        emitKey = dotKey(j, q, 0);
         emit(out, cx + nx * o, cy + ny * o, fuzz);
-        emitKey = dotKey(j, q, 1);
         emit(out, cx - nx * o, cy - ny * o, fuzz);
       }
     }
     if (sparkJ >= 0) pushDot(accent, colX[sparkJ], colY[sparkJ] - top, CENTER_RADIUS * 1.7 * settings.dotScale);
-    if (scat && scatter.live) scatter.paint(top, tile.height, muted, accent);
 
     const alphas = settings.alpha[theme];
     painter.fill(muted, painter.colors.muted, alphas.muted);
@@ -670,10 +640,8 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
       stepSpectrum(spectrum, dt, music * settings.intensity, settings.beat, motion);
     }
     const touching = interactive() && stepPointer(dt);
-    const thrown = scatter.on && scatter.live > 0;
-    if (thrown) scatter.step(dt);
     const breathing = breathingLive();
-    if (dirty || live || thrown || breathing || Math.abs(head - paintedHead) > 0.2) {
+    if (dirty || live || breathing || Math.abs(head - paintedHead) > 0.2) {
       paintVisible();
     } else if (touching) {
       for (let k = 0; k < tiles.length; k++) {
@@ -687,7 +655,7 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
     frameMs = performance.now() - started0;
     maxFrameMs = Math.max(maxFrameMs, frameMs);
     frames++;
-    if (head !== target || live || thrown || breathing || swellGate !== gateTarget || (interactive() && cursor.busy())) raf = requestAnimationFrame(tick);
+    if (head !== target || live || breathing || swellGate !== gateTarget || (interactive() && cursor.busy())) raf = requestAnimationFrame(tick);
     else last = 0;
   };
 
@@ -809,7 +777,6 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
       reduced = nextReduced;
       points = nextPoints;
       cursor.configure(next.cursor);
-      scatter.configure(next.cursor.scatter);
       layout();
     },
     start() {
@@ -877,9 +844,6 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
       frameMs,
       maxFrameMs,
       frames,
-      scatterLive: scatter.live,
-      scatterLaunched: scatter.launched,
-      scatterSpreadPx: scatter.spread(),
     }),
   };
 }

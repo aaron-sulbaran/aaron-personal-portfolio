@@ -102,18 +102,6 @@ export interface CursorSettings {
   recovery: number; // s for the effect to settle back
   saturate: number; // px/s at which the push reaches full strength
   mix: { push: number; carve: number; swell: number }; // "blend" only, 0..1 each
-  scatter: ScatterSettings;
-}
-
-// A layer over any mode (scatter.ts): a fast pointer throws the dots it
-// passes as projectiles; each flies with drag, then springs home.
-export interface ScatterSettings {
-  on: boolean;
-  threshold: number; // px/s of pointer speed before anything is thrown
-  launch: number; // a thrown dot's speed as a share of the pointer's
-  spread: number; // 0..1, how far each dot strays from the stroke's direction and speed
-  drag: number; // per second: how fast a flying dot loses speed
-  returnS: number; // s for a dot to settle home once it has slowed
 }
 
 export const CURSOR_MODES: { id: CursorMode; label: string; note: string }[] = [
@@ -133,15 +121,7 @@ export const CURSOR_RANGES = {
   recovery: { min: 0.15, max: 3, step: 0.05 },
   saturate: { min: 300, max: 4000, step: 10 },
   mix: { min: 0, max: 1, step: 0.01 },
-  threshold: { min: 100, max: 3000, step: 10 },
-  launch: { min: 0.05, max: 1.5, step: 0.01 },
-  spread: { min: 0, max: 1, step: 0.01 },
-  drag: { min: 0.5, max: 10, step: 0.1 },
-  returnS: { min: 0.2, max: 3, step: 0.05 },
 };
-
-export const SCATTER_OFF: ScatterSettings = { on: false, threshold: 500, launch: 0.25, spread: 0.5, drag: 3.5, returnS: 0.8 };
-export const SCATTER_ON: ScatterSettings = { ...SCATTER_OFF, on: true };
 
 export type HeadMode = "viewport" | "progress";
 export type HeadStyle = "taper" | "spark" | "swell" | "none";
@@ -333,7 +313,7 @@ const base: WaveSettings = {
     bandRun: true,
     rules: ROUND3_RULES,
   },
-  cursor: { mode: "push", radius: 92, strength: 1, recovery: 0.8, saturate: 1600, mix: { push: 1, carve: 0.6, swell: 0.5 }, scatter: SCATTER_OFF },
+  cursor: { mode: "push", radius: 92, strength: 1, recovery: 0.8, saturate: 1600, mix: { push: 1, carve: 0.6, swell: 0.5 } },
 };
 
 export const PATH_RANGES = {
@@ -351,7 +331,7 @@ type Preset = { id: string; label: string; why: string; values: WaveSettings; pa
 
 type PresetPatch = Omit<Partial<WaveSettings>, "path" | "cursor" | "motion"> & {
   path?: Partial<PathSettings>;
-  cursor?: Partial<Omit<CursorSettings, "scatter">> & { scatter?: Partial<ScatterSettings> };
+  cursor?: Partial<CursorSettings>;
   motion?: Partial<MotionSettings>;
 };
 
@@ -368,7 +348,7 @@ const preset = (id: string, label: string, why: string, patch: PresetPatch, park
     alpha: { light: { ...base.alpha.light, ...patch.alpha?.light }, dark: { ...base.alpha.dark, ...patch.alpha?.dark } },
     motion: { ...base.motion, ...patch.motion },
     path: { ...base.path, ...patch.path },
-    cursor: { ...base.cursor, ...patch.cursor, scatter: { ...base.cursor.scatter, ...patch.cursor?.scatter } },
+    cursor: { ...base.cursor, ...patch.cursor },
   },
 });
 
@@ -409,7 +389,7 @@ const REVIEWED: PresetPatch = {
 
 // Aaron's pick 2 (round 5), from his copied values: a generated line he
 // accepted with every proximity rule off, drawn by page progress, carve under
-// the pointer with the scatter layer on top. Only the music motion differs
+// the pointer (his scatter layer is gone since round 6). Only the music motion differs
 // from his copy (calm, as he asked of every preset), plus the new fields.
 const PICK2: PresetPatch = {
   placement: "path",
@@ -450,7 +430,7 @@ const PICK2: PresetPatch = {
     bandRun: true,
     rules: AARON_RULES,
   },
-  cursor: { mode: "carve", radius: 96, strength: 1, recovery: 0.9, saturate: 1600, mix: { push: 1, carve: 0.6, swell: 0.5 }, scatter: SCATTER_ON },
+  cursor: { mode: "carve", radius: 96, strength: 1, recovery: 0.9, saturate: 1600, mix: { push: 1, carve: 0.6, swell: 0.5 } },
 };
 
 export const PRESETS: Preset[] = [
@@ -488,7 +468,7 @@ export const PRESETS: Preset[] = [
   preset(
     "pick2",
     "Aaron's pick 2",
-    "His round 5 pick: a generated line (seed 487570111) with every proximity rule off, always partly on screen, reaching the end at the bottom; the head follows page progress at a capped draw speed; it starts as a level run across the band and waits for Play it or Not now; carve under the pointer, and a fast pass scatters the dots, which spring home; dark alphas 0.40 and 0.69.",
+    "His round 5 pick: a generated line (seed 487570111) with every proximity rule off, always partly on screen, reaching the end at the bottom; the head follows page progress at a capped draw speed; it starts as a level run across the band and waits for Play it or Not now; carve under the pointer; dark alphas 0.40 and 0.69.",
     PICK2,
   ),
   preset(
