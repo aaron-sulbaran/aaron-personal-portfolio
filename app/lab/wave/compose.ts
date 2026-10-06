@@ -147,6 +147,31 @@ AUTHORED.push({
   ],
 });
 
+// The reviewed Signature line, always on (round 6). Aaron wants some wave on
+// screen at every scroll position; the reviewed line left the page past Who I
+// am (x -0.26), which emptied the screen for 50px of scroll at 1440, 200 at
+// 1024 and 400 at 390. Here that stretch is an edge run instead: the line
+// hugs the left margin (1.5 percent of the width, inside the 32px edge gap)
+// for the paragraph's length, after a gap pass far enough left and early
+// enough that it reaches the margin clear of the "Who I am" kicker. The rest
+// is the reviewed line. At 1440 it keeps every reviewed rule; at 1024 the
+// margin (40px) is narrower than the wave's reach, so the run grazes the
+// kicker there, as any on-screen pass of that stretch would.
+AUTHORED.push({
+  id: "signature-reviewed-on",
+  label: "Signature line, reviewed, always on",
+  note: "The reviewed Signature line that never leaves the screen: enters at the band's right end, falls beside About, then instead of leaving wide past Who I am it runs down the left margin beside the paragraph, crosses Up to now's list once steeply, runs down Connect's right gutter and leaves past the right edge at the footer.",
+  moves: [
+    { at: "band", kind: "arc", side: "right", reach: 0.06, slope: 0.4, centre: 0.55 },
+    { at: "about", kind: "pass", side: "right", reach: 0.7, slope: 0.4, centre: 0.45 },
+    { at: "gap1", kind: "pass", side: "left", reach: 0.5, slope: 0.4, centre: 0.3 },
+    { at: "who", kind: "gutter", side: "left", reach: 0, slope: 0.8, centre: 0.45, mid: 0.015 },
+    { at: "up", kind: "through", side: "right", reach: 0.5, slope: 0.9, centre: 0.55, mid: 0.55 },
+    { at: "connect", kind: "gutter", side: "right", reach: 0, slope: 0.6, centre: 0.5, mid: 0.955 },
+    { at: "footer", kind: "arc", side: "right", reach: 0.12, slope: 0.4, centre: 0.6 },
+  ],
+});
+
 // A small seeded generator (mulberry32): the same seed always gives the same line.
 export function rng(seed: number) {
   let a = seed >>> 0;

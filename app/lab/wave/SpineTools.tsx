@@ -76,6 +76,25 @@ export function Generator({ path, choice, onChange }: { path: PathSettings; choi
   );
 }
 
+// An authored or custom line is not regenerated when it breaks a rule, so its
+// verdict sits right under the spine's note, the always-visible bound first:
+// the same check the generator applies to its candidates.
+export function SpineVerdict({ report, rules, generated }: { report: RuleReport | null; rules: RuleSettings; generated: boolean }) {
+  if (!report || generated) return null;
+  const gap = report.visible.worstGapPx;
+  const others = report.failed.filter((id) => id !== "visible");
+  return (
+    <div className="mt-1 text-[11px] leading-snug">
+      <p className={gap ? "text-accent" : "text-muted"}>
+        {gap
+          ? `Not always visible here: ${gap}px of scroll from ${Math.round(report.visible.atY)}px with no wave on screen.${rules.alwaysVisible ? " Only generated lines are kept from this; pick an always-on line or edit a copy." : ""}`
+          : "Always visible here: some of the wave is on screen at every scroll position (checked every 50px)."}
+      </p>
+      {others.length > 0 && <p className="text-muted">Also breaks at this width: {others.join(", ")}.</p>}
+    </div>
+  );
+}
+
 export function RulesReadout({ report, rules }: { report: RuleReport | null; rules: RuleSettings }) {
   if (!report) return null;
   const row = (label: string, value: string, ok: boolean) => (
@@ -96,7 +115,7 @@ export function RulesReadout({ report, rules }: { report: RuleReport | null; rul
         `${report.empty.longestVh.toFixed(2)} vh`,
         rules.alwaysVisible || report.empty.longestVh <= rules.maxEmptyVh,
       )}
-      {row("Always some wave on screen (every 50px)", report.visible.worstGapPx ? `no, ${report.visible.worstGapPx} px gap at ${Math.round(report.visible.atY)}` : "yes", !rules.alwaysVisible || !report.visible.worstGapPx)}
+      {row("Always some wave on screen (every 50px)", report.visible.worstGapPx ? `no, ${report.visible.worstGapPx} px gap at ${Math.round(report.visible.atY)}` : "yes", !report.visible.worstGapPx)}
       {row(
         "Head reaches the end at max scroll",
         report.end.shortPx > 1 ? `no, short by ${Math.round(report.end.shortPx)} px` : report.end.endsOff ? "yes" : "yes, but ends on screen",
