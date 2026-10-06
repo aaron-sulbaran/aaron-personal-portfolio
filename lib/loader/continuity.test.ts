@@ -1,12 +1,22 @@
 import { describe, expect, it } from "vitest";
 import type { NameTarget } from "@/lib/loader/handoff";
-import { landing, landingGradient, landingOpacity, landingTransform, parseRgb, type NameBox } from "@/lib/loader/continuity";
+import {
+  greetingColor,
+  greetingInBox,
+  landing,
+  landingGradient,
+  landingOpacity,
+  landingTransform,
+  parseRgb,
+  type NameBox,
+} from "@/lib/loader/continuity";
 
 const target: NameTarget = {
   left: 216,
   baseline: 520,
   width: 1008,
   fontPx: 364,
+  greeting: { left: 223.28, baseline: 230.5, fontPx: 65.52 },
   gradient: { top: 272, height: 262, from: [200, 210, 220], to: [40, 50, 60] },
   inkAlpha: 0.264,
 };
@@ -64,6 +74,28 @@ describe("continuity landing", () => {
     const landedTop = target.baseline - box.height * scale;
     const first = Number(end.match(/rgb\(200, 210, 220\) (-?[\d.]+)px/)?.[1]);
     expect(first).toBeCloseTo((target.gradient.top - landedTop) / scale - glyphTop, 1);
+  });
+
+  it("lands the greeting on the canvas greeting from the box's own px", () => {
+    for (const b of [box, { left: -300, top: 328, width: 812, height: 187, rotationDeg: -90 }]) {
+      const l = landing(b, target);
+      const g = greetingInBox(b, target);
+      // Box-local px through the landed transform (rotation spent, about the center).
+      const cx = b.left + b.width / 2 + l.dx;
+      const cy = b.top + b.height / 2 + l.dy;
+      expect(cx + (g.left - b.width / 2) * l.scale).toBeCloseTo(target.greeting.left, 6);
+      expect(cy + (g.baseline - b.height / 2) * l.scale).toBeCloseTo(target.greeting.baseline, 6);
+      expect(g.fontPx * l.scale).toBeCloseTo(target.greeting.fontPx, 6);
+    }
+    // The greeting rides above the box: its baseline is above the cap line.
+    expect(greetingInBox(box, target).baseline).toBeLessThan(0);
+  });
+
+  it("dresses the greeting in the accent, then the gradient's top color", () => {
+    const accent = [127, 168, 201] as const;
+    expect(greetingColor(accent, target, 0)).toBe("rgb(127, 168, 201)");
+    expect(greetingColor(accent, target, 1)).toBe("rgb(200, 210, 220)");
+    expect(greetingColor(accent, target, 0.5)).toBe("rgb(164, 189, 211)");
   });
 
   it("reads computed colors", () => {

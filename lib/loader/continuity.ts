@@ -1,7 +1,7 @@
-import type { NameTarget, Rgb } from "./handoff";
+import type { GreetingTarget, NameTarget, Rgb } from "./handoff";
 
-// The continuity exit's math, pure: where the loader's name has to travel to
-// sit on the canvas name, and the colors it wears on the way. The DOM name is
+// The continuity exit's math, pure: where the loader's lockup has to travel
+// to sit on the canvas lockup, and the colors it wears on the way. The DOM name is
 // a box one cap height tall whose bottom edge is the baseline and whose width
 // is the ink's width; the canvas name is described by its ink box too, so one
 // uniform scale and a translation land ink on ink.
@@ -37,12 +37,27 @@ export function landingTransform(l: Landing, e: number) {
   return `translate(${(l.dx * e).toFixed(2)}px, ${(l.dy * e).toFixed(2)}px) rotate(${rotation.toFixed(3)}deg) scale(${scale.toFixed(5)})`;
 }
 
-const smooth = (x: number) => x * x * (3 - 2 * x);
+// Where the greeting sits inside the box (its ink's left edge, baseline and
+// size in the box's own unscaled px, from the box's top left) so that the
+// exit's landed transform puts it on the canvas greeting. The greeting rides
+// the name's transform, so its landing is the landing's inverse.
+export function greetingInBox(box: NameBox, target: NameTarget): GreetingTarget {
+  const l = landing(box, target);
+  const cx = box.left + box.width / 2 + l.dx;
+  const cy = box.top + box.height / 2 + l.dy;
+  return {
+    left: (target.greeting.left - cx) / l.scale + box.width / 2,
+    baseline: (target.greeting.baseline - cy) / l.scale + box.height / 2,
+    fontPx: target.greeting.fontPx / l.scale,
+  };
+}
+
+export const smoothstep = (x: number) => x * x * (3 - 2 * x);
 const mix = (a: Rgb, b: Rgb, t: number): Rgb => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 const css = (c: Rgb) => `rgb(${c.map((v) => Math.round(Math.min(255, Math.max(0, v)))).join(", ")})`;
 
 // Samples of the composite's smoothstep gradient across the mask's rect.
-const STOPS = [0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1];
+export const GRADIENT_STOPS = [0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1] as const;
 
 // The letters' fill at color progress c (0 the loader's accent, 1 the canvas
 // gradient), as a CSS gradient in the glyph element's own unscaled px.
@@ -54,11 +69,17 @@ export function landingGradient(accent: Rgb, target: NameTarget, box: NameBox, g
   const landedTop = target.baseline - box.height * scale;
   const top = (target.gradient.top - landedTop) / scale - glyphTop;
   const height = target.gradient.height / scale;
-  const stops = STOPS.map((k) => {
-    const color = mix(accent, mix(target.gradient.from, target.gradient.to, smooth(k)), c);
+  const stops = GRADIENT_STOPS.map((k) => {
+    const color = mix(accent, mix(target.gradient.from, target.gradient.to, smoothstep(k)), c);
     return `${css(color)} ${(top + height * k).toFixed(2)}px`;
   });
   return `linear-gradient(to bottom, ${stops.join(", ")})`;
+}
+
+// The greeting's color at color progress c: it sits above the mask's rect,
+// where the composite holds the gradient's top color.
+export function greetingColor(accent: Rgb, target: NameTarget, c: number) {
+  return css(mix(accent, target.gradient.from, c));
 }
 
 // The name's opacity at color progress c: from solid to the composite's ink.
