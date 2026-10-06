@@ -9,6 +9,7 @@ export type Cell = { date: string; count: number; level: number; week: number; d
 export type Streak = { days: number; start: string | null; end: string | null };
 export type ContributionStats = {
   total: number;
+  active: number;
   first: string | null;
   last: string | null;
   busiest: { count: number; date: string | null };
@@ -153,6 +154,7 @@ export const buildGrid = (
 export const computeStats = (all: Cell[]): ContributionStats => {
   const cells = all.filter((c) => c.kind === "day");
   let total = 0;
+  let active = 0;
   let best = 0;
   let bestDate: string | null = null;
   let run = 0;
@@ -165,6 +167,7 @@ export const computeStats = (all: Cell[]): ContributionStats => {
       bestDate = c.date;
     }
     if (c.count > 0) {
+      active++;
       if (run === 0) runStart = c.date;
       run++;
       if (run > longest.days) longest = { days: run, start: runStart, end: c.date };
@@ -179,6 +182,7 @@ export const computeStats = (all: Cell[]): ContributionStats => {
     days > 0 ? { days, start: cells[j + 1].date, end: cells[endAt].date } : { days: 0, start: null, end: null };
   return {
     total,
+    active,
     first: cells.length ? cells[0].date : null,
     last: cells.length ? cells[cells.length - 1].date : null,
     busiest: { count: best, date: bestDate },

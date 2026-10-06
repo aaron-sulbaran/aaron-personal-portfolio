@@ -1,5 +1,5 @@
 import type { ContributionData } from "./data";
-import { DAY_MS, dayMs, type Streak } from "./skyline/maths";
+import { dayMs, type Streak } from "./skyline/maths";
 
 // Figures and phrases derived from the loaded data, pure, for the numbers row and copy.
 
@@ -42,13 +42,10 @@ export const dateSpan = (from: string, to: string, withYear = false) => {
 
 export const sinceDate = (date: string) => "since " + monthDay.format(dayMs(date));
 
-// The streak worth showing: the current one while it still reaches today or
-// yesterday (today is not over), else the longest with its dates.
-export type StreakFigure = { running: boolean; streak: Streak };
+// The streak shown: the current one only (Aaron contributes daily, so the
+// longest is the same number twice). On a day with no contribution yet the
+// fetch script's `current` is the run that ended yesterday; the longest is
+// kept in the fixture and never rendered.
+export const currentStreak = (d: ContributionData): Streak => d.streaks.current;
 
-export const streakFigure = (d: ContributionData): StreakFigure => {
-  const { current, longest } = d.streaks;
-  const today = dayMs(d.fetched);
-  const running = current.days > 0 && current.end !== null && today - dayMs(current.end) <= DAY_MS;
-  return running ? { running, streak: current } : { running, streak: longest };
-};
+export const STREAK_LABEL = "current streak of contributions";

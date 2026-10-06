@@ -39,6 +39,7 @@ export const chartRange = (d: ContributionData, s: Settings) =>
 
 const common = (d: ContributionData, s: Settings, pin: number | null) => ({
   data: s.data === "real" ? d.days : undefined,
+  streak: s.data === "real" ? d.streaks.current : undefined,
   endDate: d.fetched,
   range: chartRange(d, s),
   periodLabel: windowPeriod(d),

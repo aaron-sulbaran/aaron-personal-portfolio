@@ -3,7 +3,18 @@
 // Adapted from "Contribution Skyline" on 21st.dev (https://21st.dev/), reskinned to the site's tokens and type.
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { buildGrid, computeStats, DAY_MS, dayMs, generateContributions, monthLabels, type ContributionDay, type HeightCurve, type LevelCurve } from "./skyline/maths";
+import {
+  buildGrid,
+  computeStats,
+  DAY_MS,
+  dayMs,
+  generateContributions,
+  monthLabels,
+  type ContributionDay,
+  type HeightCurve,
+  type LevelCurve,
+  type Streak,
+} from "./skyline/maths";
 import { createEngine, type Engine, type EngineConfig, type ThemeReadout } from "./skyline/engine";
 import { Legend, Stat, ViewToggle, type StatBlock, type View } from "./skyline/parts";
 
@@ -20,6 +31,9 @@ export type ContributionSkylineProps = {
   // A calendar range: the grid starts on the week containing `from`; days
   // after endDate up to `through` are drawn as empty future slabs.
   range?: { from: string; through?: string };
+  // The current streak to show (the data's own, which may reach past the
+  // window); omitted, the chart computes it from the days it draws.
+  streak?: Streak;
   // "in 2026" after the total in the caption; the total stat's label.
   periodLabel?: string;
   totalLabel?: string;
@@ -61,6 +75,7 @@ export default function ContributionSkyline({
   data,
   endDate,
   range,
+  streak: streakProp,
   periodLabel = "in the last year",
   totalLabel = "1 year total",
   view: viewProp,
@@ -203,11 +218,18 @@ export default function ContributionSkyline({
   const corners = showStats && width >= 560;
   const bigSize = Math.round(Math.max(30, Math.min(56, width * 0.058)));
   const days = (n: number) => (n === 1 ? "day" : "days");
+  // The current streak only; the longest is never shown (the same number twice for a daily contributor).
+  const streak = streakProp ?? stats.current;
   const statBlocks: StatBlock[] = [
     { label: totalLabel, value: nf.format(stats.total), unit: noun(stats.total), sub: span(stats.first, stats.last, true) },
+    { label: "Active days", value: nf.format(stats.active), unit: days(stats.active), sub: "with at least one " + unit },
+    {
+      label: "Current streak of " + plural,
+      value: nf.format(streak.days),
+      unit: days(streak.days),
+      sub: streak.start ? "since " + df.format(dayMs(streak.start)) : "None yet",
+    },
     { label: "Busiest day", value: nf.format(stats.busiest.count), unit: noun(stats.busiest.count), sub: stats.busiest.date ? df.format(dayMs(stats.busiest.date)) : "None yet" },
-    { label: "Longest streak", value: nf.format(stats.longest.days), unit: days(stats.longest.days), sub: span(stats.longest.start, stats.longest.end) },
-    { label: "Current streak", value: nf.format(stats.current.days), unit: days(stats.current.days), sub: span(stats.current.start, stats.current.end) },
   ];
   const showRow = showStats && !(is3d && corners);
   const levelNames = ["No " + plural, "Light", "Moderate", "Heavy", "Heaviest"];

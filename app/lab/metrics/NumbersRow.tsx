@@ -1,7 +1,7 @@
 "use client";
 
 import { useContributions } from "./context";
-import { activeDays, dateSpan, formatCount, isRolling, rangeTotal, sinceDate, streakFigure, windowName } from "./derive";
+import { activeDays, currentStreak, formatCount, isRolling, rangeTotal, sinceDate, STREAK_LABEL, windowName } from "./derive";
 import type { Lead } from "./settings";
 
 // Three real figures from the GitHub data, the lead first, and two slots
@@ -14,16 +14,10 @@ const ORDER: readonly Lead[] = ["streak", "total", "days"];
 
 export function NumbersRow({ lead }: { lead: Lead }) {
   const d = useContributions();
-  const { running, streak } = streakFigure(d);
+  const streak = currentStreak(d);
   const rolling = isRolling(d);
   const real: Record<Lead, Figure> = {
-    streak: running
-      ? { value: formatCount(streak.days), label: "days in a row, and counting", sub: streak.start ? sinceDate(streak.start) : undefined }
-      : {
-          value: formatCount(streak.days),
-          label: "days in a row, my longest streak",
-          sub: streak.start && streak.end ? dateSpan(streak.start, streak.end) : undefined,
-        },
+    streak: { value: formatCount(streak.days), label: STREAK_LABEL, sub: streak.start ? sinceDate(streak.start) : undefined },
     total: {
       value: formatCount(rangeTotal(d)),
       label: "contributions in " + windowName(d),

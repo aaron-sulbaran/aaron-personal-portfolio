@@ -68,7 +68,7 @@ export const PRESETS: readonly Preset[] = [
   {
     id: "recommended",
     name: "Recommended",
-    note: "Inside Up to now, the last 12 months, flat first with Skyline one click away, the running streak leading three real figures and two placeholders. Colour steps on the square root of a busy day, so August to October climb through all four; bars on the original curve with the tallest at the 95th percentile, so the one outsized day cannot shrink the rest.",
+    note: "Inside Up to now, the last 12 months, flat first with Skyline one click away, the current streak leading three real figures and two placeholders. Colour steps on the square root of a busy day, so August to October climb through all four; bars on the original curve with the tallest at the 95th percentile, so the one outsized day cannot shrink the rest.",
     settings: {
       placement: "inside",
       companions: "numbers",
@@ -157,6 +157,7 @@ export const exportValues = (s: Settings, theme: string) => {
     morphMs: s.duration,
     card: s.card,
     visitorQuestion: s.question,
+    streak: "current streak of contributions only, since its first day; the longest is not shown",
     theme,
   };
 };
