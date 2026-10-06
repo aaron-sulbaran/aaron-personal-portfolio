@@ -20,6 +20,9 @@ import {
   CEL_TONE_LABELS,
   CURSOR_LABELS,
   FILL_LABELS,
+  RING_EASE_LABELS,
+  RING_START_LABELS,
+  RING_STRIKE_LABELS,
   type EaseKey,
   type Settings,
 } from "./settings";
@@ -244,6 +247,7 @@ export function Panel({ s, view, theme, osReduced, edit, setView, setTheme }: Pr
         <Field label="The site cursor over the mark">
           <Select label="The site cursor over the mark" value={s.cursor} options={options(CURSOR_LABELS)} onChange={set("cursor")} />
         </Field>
+        {s.trigger === "hold" && s.cursor === "ring" && <RingControls s={s} set={set} />}
       </Group>
 
       <div className="flex flex-col gap-2 border-t border-border pt-4">
@@ -254,5 +258,69 @@ export function Panel({ s, view, theme, osReduced, edit, setView, setTheme }: Pr
         </details>
       </div>
     </aside>
+  );
+}
+
+type Setter = <K extends keyof Settings>(key: K) => (value: Settings[K]) => void;
+
+// The ring as a hold indicator, under the trigger: it reads the mark's own
+// fill progress, so every value here shapes that one clock, never a second.
+function RingControls({ s, set }: { s: Settings; set: Setter }) {
+  return (
+    <>
+      <Check label="The ring shows the hold" checked={s.ringIndicator} onChange={set("ringIndicator")} />
+      {s.ringIndicator && (
+        <>
+          <Slider
+            label="Arc at full hold"
+            value={s.ringArcDegrees}
+            min={30}
+            max={360}
+            step={5}
+            format={(n) => `${n} degrees`}
+            hint="How far the arc has drawn when the hold completes. Aaron asked for 60 to 90."
+            onChange={set("ringArcDegrees")}
+          />
+          <Field label="Arc starts">
+            <Segmented options={["top", "fill"] as const} value={s.ringArcStart} format={(v) => RING_START_LABELS[v]} onChange={set("ringArcStart")} />
+          </Field>
+          <Slider label="Arc stroke" value={s.ringArcWidth} min={1.5} max={6} step={0.5} format={(n) => `${n}px`} hint="The plain ring is 1.5px; the arc thickens it inward." onChange={set("ringArcWidth")} />
+          <Field label="Arc ease">
+            <Segmented options={["none", "bump"] as const} value={s.ringArcEase} format={(v) => RING_EASE_LABELS[v]} onChange={set("ringArcEase")} />
+          </Field>
+          <Check label="Wash the ring's interior from the bottom" checked={s.ringFill} onChange={set("ringFill")} />
+          {s.ringFill && (
+            <>
+              <Field label="Wash tone">
+                <Segmented options={["accent", "ink"] as const} value={s.ringFillTone} onChange={set("ringFillTone")} />
+              </Field>
+              <Slider
+                label="Wash strength"
+                value={s.ringFillStrength}
+                min={0.04}
+                max={0.4}
+                step={0.01}
+                format={(n) => `${Math.round(n * 100)}%`}
+                hint="A tint, so the mark's own accent fill still reads through it."
+                onChange={set("ringFillStrength")}
+              />
+            </>
+          )}
+          <Slider
+            label="Ring leads the mark"
+            value={s.ringLead}
+            min={-120}
+            max={120}
+            step={10}
+            format={(n) => (n === 0 ? "in step" : n > 0 ? `leads ${n}ms` : `lags ${-n}ms`)}
+            hint="Measured at mid hold; the ring and the mark start together and are full together."
+            onChange={set("ringLead")}
+          />
+          <Field label="At the strike">
+            <Segmented options={["closes", "vanishes"] as const} value={s.ringAtStrike} format={(v) => RING_STRIKE_LABELS[v]} onChange={set("ringAtStrike")} />
+          </Field>
+        </>
+      )}
+    </>
   );
 }
