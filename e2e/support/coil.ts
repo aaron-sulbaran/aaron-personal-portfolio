@@ -54,8 +54,7 @@ export async function nextFrames(page: Page, count = 1) {
   );
 }
 
-// Page scroll turns the coil through one smoothing stage, so a jump in scroll
-// keeps it moving for a moment: waits until it is back to its idle pace
+// Waits until the coil is back to its idle pace after a spin or a glide
 // (under `perFrame` cards a frame for `frames` frames in a row).
 export async function waitForCoilSettled(page: Page, perFrame = 0.003, frames = 10) {
   await page.evaluate(

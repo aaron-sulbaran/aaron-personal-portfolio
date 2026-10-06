@@ -6,10 +6,9 @@ import { frames, type FrameRow } from "./support/frames";
 import { pointerTo } from "./support/input";
 
 // The row hold: hovering a book row glides its card to the front of the
-// visible helix once, then the coil holds still (idle drift and page scroll
-// feed at zero); row to row is one more glide; leaving resumes the idle after
-// resumeDelayMs, eased in over resumeMs; a hero under a quarter in view does
-// nothing.
+// visible helix once, then the coil holds still (idle drift at zero); row to
+// row is one more glide; leaving resumes the idle after resumeDelayMs, eased
+// in over resumeMs; a hero under a quarter in view does nothing.
 
 const HOLD = COIL.rowHold;
 
