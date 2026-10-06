@@ -1,4 +1,12 @@
-// Simulated music: no audio, ever. A handful of seeded voices, each a bump
+// The music the wave hears, with no audio ever. Two sources (`source`):
+//   "track" / "track-site": the real track's envelope (envelope.ts), analysed
+//      offline from public/audio/track-01.mp3 and replayed on the lab's own
+//      clock, auto-levelled per column or shaped exactly as the site does;
+//   "simulated": the seeded stand-in below.
+// Either way the bins follow the same attack and release envelope, as the
+// site's field eases its columns toward the analyser's bands.
+//
+// Simulated music: A handful of seeded voices, each a bump
 // over the log spectrum (low on the left, as in lib/waveform/bands.ts) whose
 // level wanders smoothly, plus an optional beat (a kick on every beat, hats
 // on the off-beats). The bins follow an attack and release envelope, the way
@@ -10,16 +18,21 @@
 // first simulation to within rounding: 94 BPM, a kick decaying at 9 and hats at 16 per
 // beat, bins rising with a 52ms time constant and falling with 174ms.
 
+import { getEnvelope, sampleEnvelope, type Shaping } from "./envelope";
+
 export const BINS = 64;
 
+export type SpectrumSource = "track" | "track-site" | "simulated";
+
 export interface SpectrumMotion {
+  source: SpectrumSource;
   speed: number; // scales every time-based rate at once: tempo, wander, attack, release (and the shimmer)
-  tempo: number; // BPM
-  beatStrength: number; // 0..1, the kick and hats' share
-  softness: number; // 1 is the snap; the kick and hat decays are divided by it, so a hit becomes a swell
+  tempo: number; // BPM (simulated only)
+  beatStrength: number; // 0..1, the kick and hats' share (simulated only)
+  softness: number; // 1 is the snap; the kick and hat decays are divided by it, so a hit becomes a swell (simulated only)
   attack: number; // s, the bins' time constant rising
   release: number; // s, falling
-  wander: number; // Hz, the fastest of the voices' wandering sines (the slower two keep their ratios)
+  wander: number; // Hz, the fastest of the voices' wandering sines (the slower two keep their ratios; simulated only)
 }
 
 // The voices' fastest sine averages 0.8 Hz (see voice()); wander scales from it.
@@ -64,11 +77,14 @@ export interface Spectrum {
   level: number;
   beatPhase: number; // beats elapsed; accumulated, so moving a rate never jumps the music
   wanderTime: number; // s of wander at the native rates
+  trackTime: number; // s into the real track's loop; runs only while the music is up
 }
 
 export function createSpectrum(): Spectrum {
-  return { bins: new Float32Array(BINS), level: 0, beatPhase: 0, wanderTime: 0 };
+  return { bins: new Float32Array(BINS), level: 0, beatPhase: 0, wanderTime: 0, trackTime: 0 };
 }
+
+const trackTargets = new Float32Array(BINS);
 
 // A hit at the start of each period, decaying at `rate` per period, shaped to
 // reach exactly 0 at the next hit so a slow decay never steps at the wrap.
@@ -83,6 +99,10 @@ const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
 // Step the spectrum by dt seconds. `amount` is the eased music level times
 // the intensity slider; 0 lets every bin fall back to silence.
 export function stepSpectrum(spectrum: Spectrum, dt: number, amount: number, beat: boolean, motion: SpectrumMotion): void {
+  if (motion.source !== "simulated") {
+    stepTrack(spectrum, dt, amount, motion);
+    return;
+  }
   const run = dt * motion.speed;
   spectrum.beatPhase += (run * motion.tempo) / 60;
   spectrum.wanderTime += (run * motion.wander) / NATIVE_WANDER;
@@ -117,6 +137,33 @@ export function stepSpectrum(spectrum: Spectrum, dt: number, amount: number, bea
     energy += 0.55 * kick * Math.exp(-(((f - 0.06) / 0.07) ** 2));
     energy += 0.22 * hat * Math.exp(-(((f - 0.88) / 0.07) ** 2));
     const target = clamp01(Math.pow(clamp01(energy), 1.35) * 1.9) * amount;
+    const before = spectrum.bins[b];
+    spectrum.bins[b] = before + (target - before) * (target > before ? rise : fall);
+    sum += spectrum.bins[b];
+  }
+  spectrum.level = clamp01((sum / BINS) * 2.2);
+}
+
+// The real track: the envelope's columns at the track clock, eased with the
+// same attack and release. Silent (falling to 0) until the file has loaded.
+function stepTrack(spectrum: Spectrum, dt: number, amount: number, motion: SpectrumMotion): void {
+  const run = dt * motion.speed;
+  const env = getEnvelope();
+  if (env && amount > 1e-4) spectrum.trackTime = (spectrum.trackTime + run) % env.duration;
+  if (env) {
+    const shaping: Shaping = motion.source === "track-site" ? "site" : "auto";
+    if (env.columns === BINS) sampleEnvelope(env, spectrum.trackTime, shaping, trackTargets);
+    else {
+      const cols = new Float32Array(env.columns);
+      sampleEnvelope(env, spectrum.trackTime, shaping, cols);
+      for (let b = 0; b < BINS; b++) trackTargets[b] = cols[Math.round((b * (env.columns - 1)) / (BINS - 1))];
+    }
+  } else trackTargets.fill(0);
+  const rise = 1 - Math.exp(-run / Math.max(1e-3, motion.attack));
+  const fall = 1 - Math.exp(-run / Math.max(1e-3, motion.release));
+  let sum = 0;
+  for (let b = 0; b < BINS; b++) {
+    const target = trackTargets[b] * amount;
     const before = spectrum.bins[b];
     spectrum.bins[b] = before + (target - before) * (target > before ? rise : fall);
     sum += spectrum.bins[b];

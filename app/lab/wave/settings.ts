@@ -37,9 +37,9 @@ export interface WaveSettings {
   cursor: CursorSettings;
 }
 
-// How fast the music moves the wave: the simulated spectrum's rates
-// (spectrum.ts) plus the Path's fuzz shimmer. `speed` scales every one of
-// them at once, so it is the first knob to turn.
+// How the music moves the wave: its source (the real track's envelope or the
+// simulation), the spectrum's rates (spectrum.ts) plus the Path's fuzz
+// shimmer. `speed` scales every one of them at once (the track's clock too).
 export interface MotionSettings extends SpectrumMotion {
   shimmerRate: number; // the shimmer's clock multiplier: "soft" breathes at clock x this, "threshold" blinks at x3 this
   shimmerDepth: number; // "soft" only: the share of a fuzz dot's size that breathes
@@ -48,6 +48,7 @@ export interface MotionSettings extends SpectrumMotion {
 
 // The first simulation's rates: a snappy kick, bins that jump.
 export const LIVELY_MOTION: MotionSettings = {
+  source: "track",
   speed: 1,
   tempo: 94,
   beatStrength: 1,
@@ -67,6 +68,7 @@ export const LIVELY_MOTION: MotionSettings = {
 // 22px/s on a plain column (about 37 under the head's swell), the fastest
 // rise of a row or more 1.5s, against 346px/s and 0.02s for the lively rates.
 export const CALM_MOTION: MotionSettings = {
+  source: "track",
   speed: 1,
   tempo: 76,
   beatStrength: 0.45,
@@ -78,6 +80,34 @@ export const CALM_MOTION: MotionSettings = {
   shimmerDepth: 0.22,
   softRows: true,
 };
+
+// Round 6 (Aaron: the beat "replaced by slight dot shimmer, which removes the
+// entire point"): the calm rates rounded every hit into a swell. The dots
+// take the site's own responsiveness again, the band field's easing in
+// lib/waveform/field.ts (0.35 up and 0.12 down per 45fps frame: time
+// constants of 0.052s and 0.174s) over the real track; the line's shape never
+// moves with the music, so the calm he asked for in round 4 stays where it
+// was (the line), and the dots hit. Rows still grow in: it changes how a row
+// appears, not when, so the rise time is the same with it on (motionProbe).
+export const SITE_MOTION: MotionSettings = {
+  source: "track",
+  speed: 1,
+  tempo: 76,
+  beatStrength: 1,
+  softness: 1,
+  attack: 0.052,
+  release: 0.174,
+  wander: 0.45,
+  shimmerRate: 0.8,
+  shimmerDepth: 0.22,
+  softRows: true,
+};
+
+export const MUSIC_SOURCES: { id: MotionSettings["source"]; label: string; note: string }[] = [
+  { id: "track", label: "Track 01, real", note: "The site's first track (Small Steps, Lee Rosevere, CC BY 4.0), analysed offline with the site's FFT and replayed in silence; quiet passages lifted like a radio's automatic gain and each column levelled to its own range, so every hit shows, the soft intro's included." },
+  { id: "track-site", label: "Track 01, site shaping", note: "The same envelope through the site's own band shaping, exactly what the band would draw: on this track the middle columns sit at full for more than half the time, so the hits barely register." },
+  { id: "simulated", label: "Simulated", note: "The seeded stand-in: voices that wander and, with Beat on, a kick and hats at the tempo below." },
+];
 
 export const MOTION_RANGES = {
   speed: { min: 0.25, max: 2, step: 0.05 },
@@ -141,7 +171,8 @@ export interface PathSettings {
   trainLength: number; // px of arc behind the head, tail "train" only
   wavelength: number; // px of arc per turn of the shape
   shapeTravel: number; // 0..1, the shape's phase advances with the head
-  musicLayer: number; // 0..1, the simulated spectrum's share while music is on
+  spectrumPeriod: number; // px of arc per pass through the spectrum, bass to treble
+  musicLayer: number; // 0..1, the music's share of each column while it plays: 0 leaves the resting shape alone, 1 hands the column to the music (the band's reactive target)
   lineOnly: boolean; // one dotted line along the spine, no amplitude
   debug: boolean; // draw the spine and its control points
   custom: Move[]; // the editable spine ("custom"), stretch by stretch
@@ -155,7 +186,7 @@ export interface PathSettings {
   shimmer: "threshold" | "soft"; // music's fuzz shimmer: dots blink on a threshold, or breathe in size
   headFromBand: boolean; // at load the head waits at the line's entry by the band; the first scroll pulls it out
   phoneAmplitude: number; // px, the amplitude below 600px wide (phones only); 0 keeps the amplitude
-  drawSpeed: number; // px of arc per second: the most the head travels toward its scroll target; 0 for no cap
+  drawSpeed: number; // px of arc per second: the most the head travels toward its scroll target; 0 for no cap (it follows the scroll)
   drawEase: DrawEase; // "eased": the catch-up accelerates in instead of starting at full speed
   bandRun: boolean; // the line starts as a level run across the band, idle until the visitor decides
   rules: RuleSettings;
@@ -283,7 +314,7 @@ const base: WaveSettings = {
   edgeFade: 0.24,
   scrollInfluence: 0,
   capsule: true,
-  motion: CALM_MOTION,
+  motion: SITE_MOTION,
   path: {
     spine: "knot",
     headMode: "viewport",
@@ -295,6 +326,7 @@ const base: WaveSettings = {
     trainLength: 1800,
     wavelength: 240,
     shapeTravel: 0,
+    spectrumPeriod: 1100,
     musicLayer: 0.35,
     lineOnly: false,
     debug: false,
@@ -324,7 +356,8 @@ export const PATH_RANGES = {
   wavelength: { min: 80, max: 700, step: 5 },
   shapeTravel: { min: 0, max: 1, step: 0.01 },
   musicLayer: { min: 0, max: 1, step: 0.01 },
-  drawSpeed: { min: 0, max: 4000, step: 50 },
+  spectrumPeriod: { min: 200, max: 2000, step: 20 },
+  drawSpeed: { min: 0, max: 8000, step: 100 },
 };
 
 type Preset = { id: string; label: string; why: string; values: WaveSettings; parked?: boolean };
@@ -355,6 +388,7 @@ const preset = (id: string, label: string, why: string, patch: PresetPatch, park
 // Aaron's pick, reviewed: everything but the music motion, shared by its calm and lively versions.
 const REVIEWED: PresetPatch = {
   placement: "path",
+  motion: CALM_MOTION,
   music: true,
   intensity: 0.8,
   beat: true,
@@ -393,6 +427,7 @@ const REVIEWED: PresetPatch = {
 // from his copy (calm, as he asked of every preset), plus the new fields.
 const PICK2: PresetPatch = {
   placement: "path",
+  motion: CALM_MOTION,
   music: true,
   intensity: 0.9,
   beat: true,
@@ -433,7 +468,91 @@ const PICK2: PresetPatch = {
   cursor: { mode: "carve", radius: 96, strength: 1, recovery: 0.9, saturate: 1600, mix: { push: 1, carve: 0.6, swell: 0.5 } },
 };
 
+// Aaron's pick 3 (round 6), his copied values verbatim but for the scatter
+// layer (gone) and the real track (every preset's music now).
+const PICK3_PASTED: PresetPatch = {
+  placement: "path",
+  loop: "standing",
+  music: true,
+  intensity: 1.2,
+  beat: true,
+  alpha: { light: { muted: 0.35, accent: 0.5 }, dark: { muted: 0.28, accent: 0.5 } },
+  amplitude: 80,
+  maxThick: 5,
+  dotScale: 1,
+  spacing: 13,
+  speed: 40,
+  period: 12,
+  edgeFade: 0.24,
+  scrollInfluence: 0,
+  capsule: true,
+  motion: CALM_MOTION, // his values: tempo 76, beat 0.45, softness 3, attack 0.45, release 1, wander 0.45, shimmer 0.8 at 0.22, rows grow in
+  path: {
+    spine: "signature-reviewed",
+    headMode: "viewport",
+    headAt: 0.7,
+    preDrawn: 0,
+    smoothing: 7,
+    headStyle: "swell",
+    tail: "train",
+    trainLength: 1600,
+    wavelength: 240,
+    shapeTravel: 0,
+    musicLayer: 0.35,
+    lineOnly: false,
+    debug: false,
+    seed: 172067862,
+    gen: { through: 0.5, uneven: 0.6, offscreen: 0.5 },
+    newEachVisit: false,
+    thinInWords: true,
+    accentOutsideWords: true,
+    swellOutsideWords: true,
+    shimmer: "soft",
+    headFromBand: true,
+    phoneAmplitude: 48,
+    drawSpeed: 1200,
+    drawEase: "eased",
+    bandRun: true,
+    rules: { ...REVIEWED_RULES, alwaysVisible: true, endReached: true },
+  },
+  cursor: { mode: "pluck", radius: 49, strength: 0.3, recovery: 0.6, saturate: 1600, mix: { push: 1, carve: 0.6, swell: 0.5 } },
+};
+
+// The recommended music share and travel speed (round 6, measured). Music
+// share 1: the column is the band's reactive target, so "Not now" keeps the
+// resting shape and "Play it" hands every column to the track. Travel 4000:
+// a 1.5-screen flick at 1440x900 (2100 to 2600 px of arc) arrives within 50px
+// in 0.93 to 1.05 s and settles in 1.5 s, against 2.0 to 2.4 s at 1200; and
+// ordinary scrolling (up to about 2000 px/s of page, under 4000 px/s of arc
+// on this line) never reaches the cap, so the cap only shows on a flick.
+export const PICK3_MUSIC_LAYER = 1;
+export const PICK3_DRAW_SPEED = 4000;
+// The track has no bass for its first 30 s, so at 1100 px of arc per pass a
+// third of every pass (about 370 px) sat as a bare thread; at 480 a quiet
+// band of the spectrum is a short rest (about 160 px) between moving ones.
+export const PICK3_SPECTRUM_PERIOD = 480;
+
+// His pick 3 with the always-on line, the site's music responsiveness and
+// the recommended music share and travel speed.
+const PICK3_ON: PresetPatch = {
+  ...PICK3_PASTED,
+  motion: SITE_MOTION,
+  path: { ...PICK3_PASTED.path, spine: "signature-reviewed-on", musicLayer: PICK3_MUSIC_LAYER, drawSpeed: PICK3_DRAW_SPEED, spectrumPeriod: PICK3_SPECTRUM_PERIOD },
+};
+
 export const PRESETS: Preset[] = [
+  preset(
+    "pick3-on",
+    "Aaron's pick 3, always on",
+    "His round 6 pick with the fixes: the Signature line runs down the left margin beside Who I am instead of leaving, so some wave is on screen at every scroll position (checked at 1440, 1024 and 390); the dots hit the real track with the site's responsiveness while the line's shape stays still; the music owns each column while it plays; the wave travels to a flick fast; pluck under the pointer; no scatter.",
+    PICK3_ON,
+  ),
+  preset(
+    "pick3",
+    "Aaron's pick 3 as pasted",
+    "His copied values as they were (the reviewed Signature line, which leaves the screen past Who I am; round 5's calm music rates; music at 0.35; travel capped at 1200 px/s), over the real track, so the difference is easy to see.",
+    PICK3_PASTED,
+  ),
   preset(
     "aaron",
     "Aaron's pick",
@@ -474,7 +593,7 @@ export const PRESETS: Preset[] = [
   preset(
     "reviewed",
     "Aaron's pick, reviewed",
-    "His pick with the design review applied: Signature line, reviewed; no lone dots in word gaps; accent only outside text; the head's swell relaxes inside text; music shimmer breathes instead of blinking; muted dots 0.28 in dark; the reviewer's spine rules on. Calm music motion, as every preset but the lively one.",
+    "His pick with the design review applied: Signature line, reviewed; no lone dots in word gaps; accent only outside text; the head's swell relaxes inside text; music shimmer breathes instead of blinking; muted dots 0.28 in dark; the reviewer's spine rules on. Round 5's calm music motion, now over the real track.",
     REVIEWED,
   ),
   preset(
@@ -598,6 +717,6 @@ export const PRESETS: Preset[] = [
   ),
 ];
 
-// The lab opens on the reviewed pick (calm); "Aaron's pick" stays the first button.
-export const DEFAULT_PRESET_ID = "pick2";
+// The lab opens on his pick 3, always on, the first button.
+export const DEFAULT_PRESET_ID = "pick3-on";
 export const DEFAULT_SETTINGS: WaveSettings = PRESETS.find((p) => p.id === DEFAULT_PRESET_ID)!.values;

@@ -10,7 +10,7 @@ import { DEFAULT_SETTINGS, type WaveSettings } from "./settings";
 // session and kept in sessionStorage, so a reload, a resize or a theme change
 // mid-read never reshuffles it.
 
-const STORE_KEY = "wave-lab-settings-v5";
+const STORE_KEY = "wave-lab-settings-v6";
 const SESSION_SEED_KEY = "wave-lab-session-seed-v1";
 
 function merge(stored: Partial<WaveSettings>): WaveSettings {

@@ -6,16 +6,18 @@ import { Capsule } from "./Capsule";
 import { createWaveEngine, type WaveEngine } from "./engine";
 import { PANEL_WIDTH, Panel } from "./Panel";
 import { getMeasure, getServerMeasure, subscribeMeasure } from "./anchorStore";
+import { setDecision, type Decision } from "./decisionStore";
 import { composePoints, derivedSeed, generateLine } from "./compose";
 import { PathLayer } from "./PathLayer";
-import { probeMotion, type MotionReport } from "./motionProbe";
+import { loadEnvelope } from "./envelope";
+import { probeBeat, probeMotion, type BeatReport, type MotionReport } from "./motionProbe";
 import { checkOptions, chooseSpine } from "./spineChoice";
 import { sampleSpine } from "./spineGeometry";
 import { bulkCheck, checkLine, hintsFor, type BulkReport } from "./spineRules";
 import { resolveSpine } from "./spines";
 import { useLabSettings } from "./useLabSettings";
 import { SECTION_KEYS } from "./spines";
-import { DEFAULT_SETTINGS, PRESETS, type PathSettings, type Placement, type ThemeName, type WaveSettings } from "./settings";
+import { CALM_MOTION, DEFAULT_SETTINGS, PRESETS, type PathSettings, type Placement, type ThemeName, type WaveSettings } from "./settings";
 
 // The lab's client shell: the settings, the wave layer and the panel. The
 // fixed placements live in one fixed stage at z 0 behind the content (z 10,
@@ -48,6 +50,9 @@ declare global {
       spineXAt: (docY: number) => number | null;
       candidate: (seed: number, round3?: boolean, attempt?: number) => unknown;
       motionProbe: (seconds?: number) => MotionReport;
+      decide: (decision: Decision) => void;
+      musicProbe: (seconds?: number) => BeatReport | null;
+      beatCompare: (seconds?: number) => Promise<Record<string, unknown>>;
     };
   }
 }
@@ -101,7 +106,17 @@ export function WaveLab({ band, sections, footer }: WaveLabProps) {
       get: () => settings,
       // How fast the music moves the dots at the current settings (motionProbe.ts).
       motionProbe: (seconds = 60) => probeMotion(settings, seconds),
+      // The dots' beat response, live, over the last `seconds` (the path must be drawing with music up).
+      musicProbe: (seconds = 2) => window.__wavePath?.musicProbe(seconds) ?? null,
+      // The same offline, from the track's start: the current settings against round 5's
+      // calm simulated music (music share 0.35) and the real track through the calm rates.
+      beatCompare: async (seconds = 60) => (await loadEnvelope(), {
+        current: probeBeat(settings, seconds),
+        oldCalmSimulated: probeBeat({ ...settings, motion: { ...CALM_MOTION, source: "simulated" }, path: { ...settings.path, musicLayer: 0.35 } }, seconds),
+        realTrackCalmRates: probeBeat({ ...settings, motion: { ...CALM_MOTION, source: "track" } }, seconds),
+      }),
       open: setOpen,
+      decide: setDecision,
       hold: (seconds) => engine.hold(seconds),
       pathPatch: (patch) => setSettings((current) => ({ ...current, path: { ...current.path, ...patch } })),
       // Every seed from `start` through the generator and the rules, on this page at this width.

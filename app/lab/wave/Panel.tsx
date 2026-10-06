@@ -96,7 +96,7 @@ export function Panel(props: PanelProps) {
           Collapse
         </button>
       </div>
-      <p className="mt-1 text-xs leading-snug text-muted">No audio here; music is simulated. Collapse the panel to see the page at full width.</p>
+      <p className="mt-1 text-xs leading-snug text-muted">No audio here: the music is the real track&apos;s analysed envelope, or a simulation, replayed in silence. Collapse the panel to see the page at full width.</p>
 
       <Group title="Presets">
         <div className="flex flex-col gap-1">
@@ -140,9 +140,9 @@ export function Panel(props: PanelProps) {
         </Group>
       )}
 
-      <Group title="Music, simulated">
+      <Group title="Music, silent">
         <Toggle label="Music on" checked={s.music} onChange={(music) => edit({ music })} />
-        <Toggle label="Beat" checked={s.beat} onChange={(beat) => edit({ beat })} />
+        {s.motion.source === "simulated" && <Toggle label="Beat" checked={s.beat} onChange={(beat) => edit({ beat })} />}
         <Slider label="Intensity" value={s.intensity} {...RANGES.intensity} onChange={(intensity) => edit({ intensity })} />
         <MotionControls motion={s.motion} onChange={(motion) => edit({ motion: { ...s.motion, ...motion } })} />
       </Group>

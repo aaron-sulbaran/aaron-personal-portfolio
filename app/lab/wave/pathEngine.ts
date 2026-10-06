@@ -8,7 +8,8 @@ import type { Decision } from "./decisionStore";
 import { publishMeasure } from "./anchorStore";
 import { createCursor } from "./pathCursor";
 import { SECTION_KEYS, resolveSpine, type Anchors, type Rect, type SectionKey, type Span, type SpinePoint } from "./spines";
-import { bandAt, createSpectrum, stepSpectrum } from "./spectrum";
+import { BINS, bandAt, createSpectrum, stepSpectrum } from "./spectrum";
+import { beatScale, measureBeat, type BeatReport } from "./motionProbe";
 
 // The Path placement: the site's dotted wave laid along a spine in document
 // space, drawn by scroll.
@@ -42,8 +43,8 @@ const FUZZ_RADIUS = 1.8;
 const DOT_GAP = 6.5;
 const ACCENT_PEAK = 0.36;
 const MAX_STEP_S = 0.1;
-const SPEC_PERIOD = 1100; // px of arc per pass through the spectrum
 const FEATHER = 0.08; // soft rows: the width of the shimmer cut's feather, in the shimmer's 0..1 units
+const PROBE_FRAMES = 240; // the music probe's memory: 4 s at 60fps
 
 type Painter = ReturnType<typeof createDotPainter>;
 
@@ -77,6 +78,7 @@ export interface PathInfo {
   frameMs: number; // the last frame's work, ms
   maxFrameMs: number; // the worst since resetStats()
   frames: number; // frames since resetStats()
+  onScreenDots: number; // dots the last paint put inside the viewport (layer width by the window's height)
 }
 
 export interface PathEngine {
@@ -84,6 +86,10 @@ export interface PathEngine {
   update(settings: WaveSettings, reduced: boolean, points: SpinePoint[]): void;
   decide(decision: Decision): void;
   resetStats(): void;
+  // Paint now and return how many drawn dots sit inside the viewport (a test hook).
+  probeVisible(): number;
+  // The music's measured hold on the dots over the last `seconds` of frames (motionProbe.ts).
+  musicProbe(seconds?: number): BeatReport | null;
   start(): void;
   stop(): void;
   info(): PathInfo;
@@ -244,6 +250,12 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
   let last = 0;
   let theme: ThemeName = "light";
   const spectrum = createSpectrum();
+  // The last PROBE_FRAMES frames of the music's px per spectrum column, a ring.
+  const probeSeries = new Float32Array(PROBE_FRAMES * BINS);
+  const probeTimes = new Float32Array(PROBE_FRAMES);
+  let probeAt = 0;
+  let probeCount = 0;
+  let probeClock = 0;
   const muted: number[] = [];
   const accent: number[] = [];
 
@@ -398,6 +410,8 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
   // column is near the pointer. Module-level scratch, no allocation.
   let emitTop = 0;
   let emitRepel = false;
+  let onScreenDots = 0;
+  let viewTop = 0; // the viewport's top in layer px, for the on-screen count
   const emit = (out: number[], x: number, y: number, r: number) => {
     let dx = x;
     let dy = y;
@@ -406,6 +420,8 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
       dx = repelOut.x;
       dy = repelOut.y - emitTop;
     }
+    const ly = dy + emitTop;
+    if (dx >= 0 && dx <= width && ly >= viewTop && ly <= viewTop + viewport) onScreenDots++;
     pushDot(out, dx, dy, r);
   };
 
@@ -469,6 +485,7 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
     const shift = p.shapeTravel * head;
     const lambda = p.wavelength;
     const musicAmount = music * p.musicLayer;
+    const specPeriod = Math.max(50, p.spectrumPeriod);
     const top = tile.top;
     let sparkJ = -1;
     const touch = interactive();
@@ -523,8 +540,11 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
       const a = (TAU * (s - shift)) / lambda;
       let disp = 0.26 * shape(a) + (plucking ? cursor.pluck(s) : 0);
       if (breathing && s < runLen) disp *= 1 + 0.35 * breath * Math.sin(a * 0.5) * smooth((runLen - s) / 200);
-      let mag = FLOOR + 0.05 + 0.17 * (0.5 + 0.5 * Math.sin(a / 0.55 + 0.6)) ** 2;
-      if (musicAmount > 1e-3) mag += musicAmount * bandAt(spectrum, (s % SPEC_PERIOD) / SPEC_PERIOD);
+      // The resting shape cedes to the music by the music's share: at a share
+      // of 1 the column is the band's reactive target (the floor plus the
+      // band), so the music owns the amplitude and a quiet bar thins to the line.
+      let mag = FLOOR + (0.05 + 0.17 * (0.5 + 0.5 * Math.sin(a / 0.55 + 0.6)) ** 2) * (1 - musicAmount);
+      if (musicAmount > 1e-3) mag += musicAmount * bandAt(spectrum, (s % specPeriod) / specPeriod);
       const magnitude = FLOOR + (mag - FLOOR) * w * carved;
       const nx = colNx[j];
       const ny = colNy[j];
@@ -606,6 +626,8 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
   };
 
   const paintVisible = () => {
+    onScreenDots = 0;
+    viewTop = scrollY - layerDocTop;
     for (let t = 0; t < tiles.length; t++) if (tiles[t].visible) paintTile(tiles[t]);
     paintedHead = head;
     dirty = false;
@@ -638,6 +660,13 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
       const on = musicWanted();
       music = easeToward(music, on ? 1 : 0, on ? 0.05 : 0.11, dt);
       stepSpectrum(spectrum, dt, music * settings.intensity, settings.beat, motion);
+      probeClock += dt;
+      const px = music * settings.path.musicLayer * amplitudeNow();
+      const row = probeAt * BINS;
+      for (let b = 0; b < BINS; b++) probeSeries[row + b] = spectrum.bins[b] * px;
+      probeTimes[probeAt] = probeClock;
+      probeAt = (probeAt + 1) % PROBE_FRAMES;
+      probeCount = Math.min(PROBE_FRAMES, probeCount + 1);
     }
     const touching = interactive() && stepPointer(dt);
     const breathing = breathingLive();
@@ -825,6 +854,25 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
       maxFrameMs = 0;
       frames = 0;
     },
+    musicProbe(seconds = 2) {
+      if (probeCount < 2) return null;
+      const newest = probeTimes[(probeAt + PROBE_FRAMES - 1) % PROBE_FRAMES];
+      let n = 0;
+      while (n < probeCount && newest - probeTimes[(probeAt + PROBE_FRAMES - 1 - n) % PROBE_FRAMES] <= seconds) n++;
+      const series = new Float32Array(n * BINS);
+      const times = new Float32Array(n);
+      for (let k = 0; k < n; k++) {
+        const from = (probeAt + PROBE_FRAMES - n + k) % PROBE_FRAMES;
+        series.set(probeSeries.subarray(from * BINS, from * BINS + BINS), k * BINS);
+        times[k] = probeTimes[from];
+      }
+      return measureBeat(series, times, n, beatScale({ ...settings, amplitude: amplitudeNow() }));
+    },
+    probeVisible() {
+      scrollY = window.scrollY;
+      paintVisible();
+      return onScreenDots;
+    },
     info: () => ({
       length: samples?.length ?? 0,
       head,
@@ -844,6 +892,7 @@ export function createPathEngine(initial: WaveSettings): PathEngine {
       frameMs,
       maxFrameMs,
       frames,
+      onScreenDots,
     }),
   };
 }
