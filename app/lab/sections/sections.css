@@ -1,0 +1,25 @@
+/* The sections lab only. Sticky holds are desktop only, as the columns stack
+   on phones. A sticky column's bottom margin is where its hold ends early. */
+@media (min-width: 768px) {
+  .sl-root [data-sl-sticky="on"] {
+    position: sticky;
+    top: var(--sl-sticky-top, 112px);
+  }
+  .sl-root .sl-col {
+    margin-bottom: var(--sl-stop, 0px);
+  }
+}
+
+/* A line mask leaves room for Profa's ink, as the site's .reveal-mask does. */
+.sl-root .sl-line-mask {
+  padding-block: 0.04em;
+  margin-block: -0.04em;
+}
+
+/* A focused link is always fully shown, whatever its scroll state. */
+.sl-root [data-sl-row]:focus-within [data-sl-rowinner],
+.sl-root [data-sl-row]:focus-within [data-sl-hair] {
+  opacity: 1 !important;
+  transform: none !important;
+  filter: none !important;
+}
