@@ -27,6 +27,7 @@ export function BandStage() {
   const c = siteContent.listen;
   const s = siteContent.soundtrack;
   const passed = useBandPassed();
+  const [focusHeld, setFocusHeld] = useState(false);
 
   useEffect(() => {
     const section = stageRef.current?.closest("section");
@@ -45,8 +46,10 @@ export function BandStage() {
   // frozen and can still be let go. The player card carries the toggle on
   // desktop while music is on or paused; before a choice and after a decline
   // the capsule's click plays instead, so the band keeps it there. Phones
-  // always keep it here.
+  // always keep it here. A toggle that just let a declined wave go keeps the
+  // keyboard's focus, so it stays live until focus leaves it.
   const freezable = !reduce && (music !== "off" || frozen);
+  const live = freezable || focusHeld;
   const inCard = music === "on" || music === "paused";
 
   return (
@@ -59,11 +62,13 @@ export function BandStage() {
           <button
             type="button"
             data-wave-avoid
-            inert={!freezable}
+            inert={!live}
             onClick={() => setFrozen(!frozen)}
+            onFocus={() => setFocusHeld(true)}
+            onBlur={() => setFocusHeld(false)}
             data-cursor-hover
             className={`rounded-sm underline ${inCard ? "md:hidden" : ""} decoration-1 underline-offset-[3px] transition-[color,opacity] duration-200 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
-              freezable ? "opacity-100" : "opacity-0"
+              live ? "opacity-100" : "opacity-0"
             }`}
           >
             {frozen ? c.unfreeze : c.freeze}

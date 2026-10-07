@@ -3,7 +3,7 @@ import { test, expect } from "./support/fixtures";
 import { siteContent } from "@/lib/content";
 import { DOCK } from "@/lib/waveform/dock";
 import { THEME_STORAGE_KEY } from "@/lib/theme";
-import { openHome, scrollToY } from "./support/coil";
+import { nextFrames, openHome, scrollToY } from "./support/coil";
 import { settled } from "./support/fallback";
 import {
   CAPSULE,
@@ -548,6 +548,23 @@ test("dock: back up to exactly the dock line, then on up through the band, the p
   expect(bottom, "the band's bottom edge exactly on the dock line").toBe(DOCK.passedPx);
   await bandBottomAt(page, DOCK.passedPx + 200);
   await expect(page.locator(PILL)).toHaveAttribute("inert", "", { timeout: DOCK.fadeMs + 2000 });
+});
+
+// Letting a frozen, declined wave move again leaves the toggle with nothing to
+// do, but the keyboard is on it: it stays live until focus leaves.
+test("band: pressing \"Let the wave move\" from the keyboard after a decline keeps focus on the toggle", async ({ page }) => {
+  await openHome(page, { path: HOME });
+  await scrollBandIntoView(page);
+  const band = page.locator("#listen");
+  await band.getByRole("button", { name: L.freeze, exact: true }).click();
+  await band.getByRole("button", { name: L.decline, exact: true }).click();
+  const toggle = band.getByRole("button", { name: L.unfreeze, exact: true });
+  await toggle.focus();
+  await page.keyboard.press("Enter");
+  // Chromium drops focus from an inert element at its next style update, not at once.
+  await nextFrames(page, 3);
+  expect(await page.evaluate(() => document.activeElement !== document.body), "focus left on the body").toBe(true);
+  await expect(band.getByRole("button", { name: L.freeze, exact: true })).toBeFocused();
 });
 
 // Reduced motion makes every anchor jump instant, so the reader can cross the
