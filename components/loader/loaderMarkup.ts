@@ -41,8 +41,9 @@ const L = COIL.lockup;
 // JavaScript never arrive to take the loader down.
 const BAIL_MS = 9400;
 
-// Reduced motion never runs a scene: the h1 waits for the decoded still, at most a hand-off's give-up.
 // The still notice waits for the loader to go (and leaves the tab order meanwhile).
+//
+// Reduced motion never runs a scene: the h1 waits for the decoded still, at most a hand-off's give-up.
 // Its duration is !important over globals.css's reduced-motion zeroing (the
 // noscript rule's animation:none still wins on the name).
 export const LOADER_CSS = `

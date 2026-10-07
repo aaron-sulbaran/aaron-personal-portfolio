@@ -159,7 +159,7 @@ export function CoilStage({
 
   const handleError = useCallback(
     (error: unknown) => {
-      console.error("Coil scene failed; the poster stays.", error);
+      console.error("Coil scene failed; the hero still carries the page.", error);
       onSceneChange("off");
       setFailure("unavailable");
     },
