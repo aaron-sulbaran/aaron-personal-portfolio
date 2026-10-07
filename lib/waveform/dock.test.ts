@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { capsuleName, capsuleText, dockLabel, dockMode, setDockSource, takeDockSource } from "./dock";
+import { bandPassed, capsuleName, capsuleText, dockLabel, dockMode } from "./dock";
 
 const base = { music: "before" as const, reached: true, phone: false, labelShown: false, returning: false, failed: false };
 const STATES = ["before", "on", "paused", "off"] as const;
@@ -42,10 +42,12 @@ describe("dock", () => {
     expect(capsuleName("Wow!", "Open")).toBe("Wow! Open");
     expect(capsuleName("Music", "Play the soundtrack")).toBe("Music. Play the soundtrack");
   });
-  it("the arrival source is taken once", () => {
-    const rect = { x: 1, y: 2, width: 3, height: 4, top: 2, left: 1, right: 4, bottom: 6, toJSON: () => ({}) } as DOMRect;
-    setDockSource(rect);
-    expect(takeDockSource()).toBe(rect);
-    expect(takeDockSource()).toBeNull();
+  it("the band is passed once its bottom edge is above the dock line, never while it shows or lies below", () => {
+    expect(bandPassed(-10, 72, false)).toBe(true);
+    expect(bandPassed(72, 72, false)).toBe(true);
+    expect(bandPassed(80, 72, true)).toBe(false);
+    expect(bandPassed(1400, 72, false)).toBe(false);
+    expect(bandPassed(40, null, false)).toBe(true);
+    expect(bandPassed(96, null, false)).toBe(true);
   });
 });
