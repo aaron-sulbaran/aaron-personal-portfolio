@@ -231,7 +231,10 @@ test("loader: the resting lockup stays with the hero when the page moves before 
     { scrollAt: 300, scrollTo: 1800 },
   );
   await page.goto("/?coildebug=slowscene=1500");
-  await waitForCoil(page);
+  // The scene idles off screen, so the wait is on the loader, not the hero.
+  await page.waitForFunction(() => document.querySelector<HTMLElement>(".coil-loader")?.dataset.state === "gone", null, {
+    timeout: 30_000,
+  });
 
   const frames = await page.evaluate(() => (window as unknown as { __restFrames: RestFrame[] }).__restFrames);
   const held = frames.filter((f) => f.state === "rest" && f.y > 1000);
@@ -251,6 +254,9 @@ test("loader: the resting lockup stays with the hero when the page moves before 
   expect(events).not.toContain("100");
   await expect(page.locator(".coil-loader")).toBeHidden();
   expect(frames.at(-1)!.state, "the loader handed off").toBe("gone");
+  // Back at the top, the hero is whole: the scene drew the name it took.
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
+  await waitForCoil(page);
 });
 
 // The same hold, and the visitor goes down and comes back before the scene
