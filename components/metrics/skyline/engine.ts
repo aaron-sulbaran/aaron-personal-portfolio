@@ -342,9 +342,17 @@ export function createEngine(el: EngineElements, cfg: { current: EngineConfig })
   });
   ro.observe(stage);
 
-  // The site's theme is data-theme on <html>; the label face may land after first paint.
-  const mo = new MutationObserver(retheme);
-  mo.observe(document.documentElement, { attributes: true, attributeFilter: ["class", "style", "data-theme"] });
+  // The site's theme is data-theme on <html>, and only a change of it rethemes:
+  // the inline style there is written by every ScrollTrigger refresh and
+  // scroll lock. The label face may land after first paint (fonts.ready).
+  let themeSeen = document.documentElement.dataset.theme;
+  const mo = new MutationObserver(() => {
+    const next = document.documentElement.dataset.theme;
+    if (next === themeSeen) return;
+    themeSeen = next;
+    retheme();
+  });
+  mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
   document.fonts?.ready.then(() => {
     if (!alive) return;
     retheme();

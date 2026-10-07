@@ -139,6 +139,57 @@ test("metrics: a click hold survives ScrollTrigger refreshes", async ({ page }) 
   await held();
 });
 
+// The engine rethemes (resolving every token, measuring every label) on a
+// theme switch only: ScrollTrigger's refresh guard and the scroll lock write
+// <html>'s inline style, and those writes must not retheme it. retheme is
+// the engine's only measureText caller, so the count of those on the
+// skyline's canvas counts rethemes.
+test("metrics: a theme switch repaints the skyline; a style write on <html> does not retheme it", async ({ page }) => {
+  await openHome(page);
+  await scrollToY(page, await topAt(page, 0.2));
+  await expect.poll(() => state(page), { timeout: 5000 }).toBe("skyline");
+  await nextFrames(page, 30);
+  await page.evaluate(() => {
+    const canvas = document.querySelector("[data-skyline-stage] canvas");
+    const w = window as unknown as { __measures: number };
+    w.__measures = 0;
+    const measure = CanvasRenderingContext2D.prototype.measureText;
+    CanvasRenderingContext2D.prototype.measureText = function (this: CanvasRenderingContext2D, text: string) {
+      if (this.canvas === canvas) w.__measures++;
+      return measure.call(this, text);
+    };
+  });
+  const measures = () => page.evaluate(() => (window as unknown as { __measures: number }).__measures);
+  const ink = () =>
+    page.evaluate(() => {
+      const c = document.querySelector<HTMLCanvasElement>("[data-skyline-stage] canvas")!;
+      const d = c.getContext("2d")!.getImageData(0, 0, c.width, c.height).data;
+      let sum = 0;
+      for (let i = 0; i < d.length; i += 4) sum += d[i] + d[i + 1] + d[i + 2];
+      return sum;
+    });
+
+  for (const write of [
+    () => document.documentElement.style.setProperty("--scrollbar-comp", "15px"),
+    () => (document.documentElement.style.scrollBehavior = "auto"),
+    () => document.documentElement.style.removeProperty("scroll-behavior"),
+    () => document.documentElement.style.setProperty("--scrollbar-comp", "0px"),
+    () => document.documentElement.setAttribute("data-theme", document.documentElement.getAttribute("data-theme") ?? "light"),
+  ]) {
+    await page.evaluate(write);
+    await nextFrames(page, 3);
+  }
+  expect(await measures(), "style writes and an unchanged theme must not retheme").toBe(0);
+
+  const before = await ink();
+  await page.evaluate(() => {
+    const root = document.documentElement;
+    root.setAttribute("data-theme", root.getAttribute("data-theme") === "dark" ? "light" : "dark");
+  });
+  await expect.poll(measures).toBeGreaterThan(0);
+  await expect.poll(ink, { timeout: 5000 }).not.toBe(before);
+});
+
 test("metrics: Enter on the canvas with nothing pinned announces and shows the last day", async ({ page }) => {
   await openHome(page);
   await scrollToY(page, await topAt(page, 0.2));
