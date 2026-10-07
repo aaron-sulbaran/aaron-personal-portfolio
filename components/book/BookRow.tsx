@@ -102,7 +102,7 @@ const ROW_CLASS = `${ROW_BASE} rounded-sm focus-visible:outline focus-visible:ou
 const TITLE_CLASS =
   "min-w-0 font-display text-[clamp(1.125rem,1.5vw,1.375rem)] leading-[1.1] text-foreground transition-opacity duration-200 [.book-list:hover_.book-row:not(:hover)_&]:opacity-[0.55]";
 
-const META_CLASS = "text-sm text-muted min-[720px]:whitespace-nowrap";
+const META_CLASS = "font-label text-label text-accent min-[720px]:whitespace-nowrap";
 
 // ---- fx-chrome
 // Seen rows (opened from the coil or the list, from lib/home/seen) keep their

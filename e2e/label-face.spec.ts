@@ -91,3 +91,19 @@ test("label face: controls and links are Profa Bold in the accent", async ({ pag
   const dialog = await openWorkModal(page, cdp);
   await expectLabel(dialog.getByRole("link", { name: siteContent.work.cta }), "label-lg", "accent");
 });
+
+test("label face: meta beside a title is Profa Bold in the accent", async ({ page, cdp }) => {
+  const item = siteContent.workItems.find((i) => i.slug === "capital-one-pm")!;
+  await page.goto(`/work/${item.slug}`);
+  await expectLabel(page.locator("article").getByText(`${item.role}, ${item.year}`, { exact: true }), "label-lg", "accent");
+
+  const row = siteContent.book.workRows.find((r) => r.key === "capital-one-pm")!;
+  await page.goto("/");
+  await settled(page);
+  await expectLabel(page.locator("#work .book-row").getByText(row.meta, { exact: true }), "label", "accent");
+
+  const dialog = await openWorkModal(page, cdp);
+  const shownTitle = (await dialog.locator("h2").textContent())?.trim();
+  const shown = siteContent.workItems.find((i) => i.title === shownTitle)!;
+  await expectLabel(dialog.getByText(`${shown.role}, ${shown.year}`, { exact: true }), "label", "accent");
+});
