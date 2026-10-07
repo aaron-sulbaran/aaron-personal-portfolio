@@ -75,7 +75,6 @@ export function PlayerCard({ music, expanded, reduce, focusOnOpen, onCardLeave, 
     pointerEvents: expanded ? "auto" : "none",
     transform: reduce ? "none" : expanded ? "translateY(0) scale(1)" : "translateY(10px) scale(0.95)",
   };
-  const small: CSSProperties = { fontSize: 10, fontVariantNumeric: "tabular-nums", color: "var(--color-muted)" };
   const range: CSSProperties = { flex: "1 1 auto", minWidth: 0, accentColor: "var(--color-accent)", cursor: "pointer" };
 
   return (
@@ -103,7 +102,7 @@ export function PlayerCard({ music, expanded, reduce, focusOnOpen, onCardLeave, 
           >
             {track.title}
           </span>
-          <span style={{ display: "block", fontSize: 12, color: "var(--color-muted)", marginTop: 2 }}>{track.artist}</span>
+          <span className="mt-0.5 block font-label text-label-sm text-muted">{track.artist}</span>
         </span>
         <button type="button" onClick={onCollapse} aria-label={c.ariaCollapse} style={iconButton(28)}>
           <ChevronDown aria-hidden="true" size={14} />
@@ -111,7 +110,7 @@ export function PlayerCard({ music, expanded, reduce, focusOnOpen, onCardLeave, 
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 16 }}>
-        <span style={small}>{formatTime(position)}</span>
+        <span className="inline-block min-w-[4ch] text-right font-label text-label-sm tabular-nums text-muted">{formatTime(position)}</span>
         <input
           type="range"
           min={0}
@@ -125,7 +124,9 @@ export function PlayerCard({ music, expanded, reduce, focusOnOpen, onCardLeave, 
           aria-label={c.ariaSeek}
           style={range}
         />
-        <span style={small}>{formatTime(Math.max(0, snap.duration - position))}</span>
+        <span className="inline-block min-w-[4ch] text-left font-label text-label-sm tabular-nums text-muted">
+          {formatTime(Math.max(0, snap.duration - position))}
+        </span>
       </div>
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 14 }}>
@@ -175,7 +176,7 @@ export function PlayerCard({ music, expanded, reduce, focusOnOpen, onCardLeave, 
           borderTop: "1px solid var(--color-border)",
         }}
       >
-        <span style={{ fontFamily: "var(--font-sans)", fontSize: 12, color: "var(--color-muted)" }}>
+        <span className="font-label text-label-sm text-muted">
           {playing ? c.statusPlaying : music === "paused" ? c.statusPaused : c.statusReady}
         </span>
         {track.spotifyUrl && (
@@ -183,10 +184,10 @@ export function PlayerCard({ music, expanded, reduce, focusOnOpen, onCardLeave, 
             href={track.spotifyUrl}
             target="_blank"
             rel="noopener noreferrer"
-            style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, color: "var(--color-accent)" }}
+            className="inline-flex items-center gap-1.5 font-label text-label-sm text-accent transition-colors duration-200 hover:text-accent-hover"
           >
             {c.openInSpotify}
-            <ExternalLink aria-hidden="true" size={12} />
+            <ExternalLink aria-hidden="true" size={12} className="relative -top-px" />
           </a>
         )}
       </div>

@@ -2,9 +2,9 @@ import type { SoundtrackState } from "@/lib/soundtrack";
 
 // The waveform field as pure math: per-column magnitude (how thick the column's
 // dot stack is) and displacement (how far its centerline sits off the band's
-// midline), both in units of the band's max amplitude. The two views
-// (components/soundtrack/waveView.ts for the band, horizonView.ts for the
-// strip) only turn these into dots, through lib/waveform/dots.ts.
+// midline), both in units of the band's max amplitude. The band's view
+// (components/soundtrack/waveView.ts) only turns these into dots, through
+// lib/waveform/dots.ts.
 //
 // Column weights are applied at paint time (lib/waveform/dots.ts), not here,
 // so two views with different weights can share one field. `phase` comes from

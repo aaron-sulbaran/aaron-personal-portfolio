@@ -3,6 +3,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import { NoteIcon } from "@/components/menu/NoteIcon";
 import { siteContent } from "@/lib/content";
+import { noteState } from "@/lib/note";
 import type { SoundtrackState } from "@/lib/soundtrack";
 import { setFrozen, useFrozen } from "@/lib/waveform/freeze";
 
@@ -112,21 +113,11 @@ export function Cover({ size, cover }: { size: number; cover: string | null }) {
   );
 }
 
-// The capsule's glyph, one visual language with the Menu's note: filled in
-// the accent and swaying while the music plays, crossed out while it does
-// not, and the wave's own flat waiting line while paused.
+// The capsule's glyph: the Menu's note, in the same three states.
 export function DockGlyph({ music }: { music: SoundtrackState }) {
   return (
-    <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 16, height: 16, flex: "0 0 auto" }}>
-      {music === "paused" ? (
-        <span style={{ display: "block", width: 16, height: 2, borderRadius: 1, background: "var(--color-muted)", opacity: 0.7 }} />
-      ) : (
-        <NoteIcon
-          on={music === "on"}
-          living
-          className={`block h-[15px] w-[9.5px] ${music === "on" ? "text-accent" : "text-muted"}`}
-        />
-      )}
+    <span data-fill-icon className="flex h-4 w-4 flex-none items-center justify-center">
+      <NoteIcon state={noteState(music)} className="block h-4 w-[14px]" />
     </span>
   );
 }
@@ -142,17 +133,8 @@ export function FreezeRow({ reduce }: { reduce: boolean }) {
       type="button"
       onClick={() => setFrozen(!frozen)}
       data-cursor-hover
-      style={{
-        ...iconButton(),
-        justifyContent: "flex-start",
-        minHeight: 24,
-        marginTop: 10,
-        fontFamily: "var(--font-sans)",
-        fontSize: 12,
-        color: "var(--color-muted)",
-        textDecoration: "underline",
-        textUnderlineOffset: 3,
-      }}
+      className="font-label text-label-sm text-accent underline underline-offset-[3px] transition-colors duration-200 hover:text-accent-hover"
+      style={{ ...iconButton(), color: undefined, justifyContent: "flex-start", minHeight: 24, marginTop: 10 }}
     >
       {frozen ? c.unfreeze : c.freeze}
     </button>

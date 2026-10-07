@@ -1,8 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
-import { ArrowRight, X } from "lucide-react";
+import { X } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useRef } from "react";
 import {
@@ -13,6 +12,8 @@ import {
   modalBackdropTintVariants,
 } from "@/lib/modal";
 import { siteContent, type WorkItem } from "@/lib/content";
+import { Fill, FillArrow, FillSeed } from "@/components/fx/Fill";
+import { CTA_CLASS, CTA_OVER_CLASS, FILL_PICK } from "@/lib/fx/fill";
 import { Portal } from "./Portal";
 import { useCloseHint } from "./PhotoModal";
 
@@ -125,13 +126,13 @@ export function WorkModal({ item, onClose, renderMedia = false }: WorkModalProps
                   </>
                 )}
               </div>
-              <div className="flex flex-col gap-1">
-                <span className="text-sm text-muted">
-                  {item.role}, {item.year}
-                </span>
+              <div className="flex flex-col gap-1.5">
                 <h2 className="font-display text-3xl leading-tight text-foreground md:text-4xl">
                   {item.title}
                 </h2>
+                <p className="font-label text-label text-accent">
+                  {item.role}, {item.year}
+                </p>
               </div>
             </div>
 
@@ -140,15 +141,13 @@ export function WorkModal({ item, onClose, renderMedia = false }: WorkModalProps
             </p>
 
             <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
-              <Link
-                href={`/work/${item.slug}`}
-                className="group inline-flex items-center gap-2 text-lg font-medium text-accent transition-colors duration-200 hover:text-accent-hover"
-                onClick={onClose}
-              >
+              <Fill as="link" {...FILL_PICK.cta} href={`/work/${item.slug}`} onClick={onClose} className={CTA_CLASS} overClassName={CTA_OVER_CLASS}>
                 {cta}
-                <ArrowRight aria-hidden="true" className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
-              </Link>
-              <span className="text-sm text-muted">
+                <FillSeed className="h-8 w-8">
+                  <FillArrow />
+                </FillSeed>
+              </Fill>
+              <span className="font-label text-label text-muted">
                 {closeHint}
               </span>
             </div>
