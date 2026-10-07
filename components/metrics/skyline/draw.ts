@@ -10,7 +10,9 @@ import {
   type DepthSpec,
   type RGB,
 } from "@/lib/metrics/skyline/maths";
-import { alphaCss, quadPath, rgbString, rgbaString, type AlphaCss } from "./paint";
+import { SKYLINE } from "@/lib/metrics/settings";
+import { frontEdgeX, OUTLINE_LEN, prismSilhouette, roundedCell } from "@/lib/metrics/skyline/prism";
+import { alphaCss, polyPath, rgbString, rgbaString, type AlphaCss } from "./paint";
 import { flatCell } from "./flat";
 
 // The scene's mutable state and the one function that paints it. The engine
@@ -57,6 +59,9 @@ export type Scene = {
   dim: Float32Array;
   polys: Float32Array;
   faces: Uint8Array;
+  // The bar's rounded outline at height zero and its prism silhouette, rewritten per bar.
+  outline: Float32Array;
+  sil: Float32Array;
   // Paint order, back to front, and its keys; re-sorted only when the camera turns.
   order: number[];
   sortKey: Float64Array;
@@ -186,10 +191,9 @@ export const draw = (s: Scene) => {
 
   const w = lerp(0.78, 0.9, e);
   const off = (1 - w) / 2;
-  const radius = lerp(0.17, 0.03, e) * sc;
   const depth = s.depth;
   const outline = (1 - e) * (depth.mode === "none" ? 0.07 : depth.edge);
-  const lift = 0.7 * e;
+  const hoverLift = 0.7 * e;
   // The flat depth gives way as the real faces arrive; by e = 0.3 they carry it.
   const fd = depth.mode === "none" ? 0 : 1 - smoothstep(0, 0.3, e);
   const outlineCss = outline > 0.004 ? alphaCss(s.outlineCss, fg, outline) : "";
@@ -201,7 +205,7 @@ export const draw = (s: Scene) => {
     const y0 = dy[i] + off;
     const x1 = x0 + w;
     const y1 = y0 + w;
-    const z = zs[i] + hover[i] * lift;
+    const z = zs[i] + hover[i] * hoverLift;
     const o = i * 24;
     // top
     polys[o] = px(s, x0, y0);
@@ -254,28 +258,31 @@ export const draw = (s: Scene) => {
       g += (fg[1] - g) * m;
       bl += (fg[2] - bl) * m;
     }
-    if (f & 1) {
+    roundedCell(s.outline, cam, x0, y0, w, SKYLINE.prismRadius * w, 0, sc, s.ox, s.oy);
+    const rise = z * ce * sc;
+    if (f) {
+      const m = prismSilhouette(s.sil, s.outline, OUTLINE_LEN, rise);
+      const front = frontEdgeX(s.outline, OUTLINE_LEN);
+      ctx.save();
       ctx.beginPath();
-      quadPath(ctx, polys, o + 8, 0);
+      polyPath(ctx, s.sil, m);
+      ctx.clip();
       ctx.fillStyle = rgbString(r * FACE_Y, g * FACE_Y, bl * FACE_Y);
-      ctx.fill();
-    }
-    if (f & 2) {
-      ctx.beginPath();
-      quadPath(ctx, polys, o + 16, 0);
+      ctx.fillRect(0, 0, front, s.Hmax);
       ctx.fillStyle = rgbString(r * FACE_X, g * FACE_X, bl * FACE_X);
-      ctx.fill();
+      ctx.fillRect(front, 0, W - front, s.Hmax);
+      ctx.restore();
     }
-    if (fd > 0.004) flatCell(s, o, radius, r, g, bl, fd, lv[i] === 0 || lv[i] === 5);
+    if (fd > 0.004) flatCell(s, rise, r, g, bl, fd, lv[i] === 0 || lv[i] === 5);
     else {
       ctx.beginPath();
-      quadPath(ctx, polys, o, radius);
+      polyPath(ctx, s.outline, OUTLINE_LEN, 0, -rise);
       ctx.fillStyle = rgbString(r, g, bl);
       ctx.fill();
     }
     if (outline > 0.004 || hv > 0.02) {
       ctx.beginPath();
-      quadPath(ctx, polys, o, radius);
+      polyPath(ctx, s.outline, OUTLINE_LEN, 0, -rise);
     }
     if (outline > 0.004) {
       ctx.strokeStyle = outlineCss;
@@ -335,7 +342,7 @@ export const draw = (s: Scene) => {
   // The tooltip rides the active cell through morphs and orbits.
   if (s.activeIdx >= 0 && s.activeIdx < n) {
     const i = s.activeIdx;
-    const z = zs[i] + hover[i] * lift;
+    const z = zs[i] + hover[i] * hoverLift;
     const tx = px(s, wk[i] + 0.5, dy[i] + 0.5);
     const ty = Math.min(
       py(s, wk[i] + off, dy[i] + off, z),
