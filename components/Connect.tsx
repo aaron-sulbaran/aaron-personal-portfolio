@@ -1,5 +1,6 @@
-import { ArrowUpRight } from "lucide-react";
+import { Fill, FillArrow } from "@/components/fx/Fill";
 import { siteContent } from "@/lib/content";
+import { FILL_PICK } from "@/lib/fx/fill";
 import { revealIndex } from "@/lib/motion";
 import { Reveal } from "./Reveal";
 
@@ -42,23 +43,21 @@ export function Connect() {
               className="reveal-item border-b border-border last:border-b-0"
               style={revealIndex(i)}
             >
-              <a
+              <Fill
+                as="a"
+                {...FILL_PICK.connect}
+                shape="rect"
+                line={0}
                 href={link.href}
                 target={link.external ? "_blank" : undefined}
                 rel={link.external ? "noopener noreferrer" : undefined}
-                className="group flex min-h-[56px] items-baseline gap-4 py-5 text-foreground transition-colors duration-200 hover:text-accent"
+                className="-mx-4 flex min-h-[56px] items-baseline gap-4 px-4 py-5 text-foreground"
+                overClassName="flex items-baseline gap-4 px-4 py-5"
               >
-                <span className="w-28 shrink-0 text-sm text-muted transition-colors duration-200 group-hover:text-accent md:w-32">
-                  {link.label}
-                </span>
-                <span className="flex-1 truncate font-display text-2xl md:text-3xl">
-                  {link.value}
-                </span>
-                <ArrowUpRight
-                  aria-hidden="true"
-                  className="h-5 w-5 shrink-0 translate-y-[3px] text-muted transition-all duration-200 group-hover:-translate-y-[1px] group-hover:translate-x-0.5 group-hover:text-accent"
-                />
-              </a>
+                <span className="w-28 shrink-0 font-label text-label text-muted md:w-32">{link.label}</span>
+                <span className="flex-1 truncate font-display text-2xl md:text-3xl">{link.value}</span>
+                <FillArrow dir="up-right" size={20} className="self-center text-muted" />
+              </Fill>
             </li>
           ))}
         </Reveal>

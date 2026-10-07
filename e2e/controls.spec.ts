@@ -147,3 +147,9 @@ test("controls: the playback pill and the Menu pill keep their width in all thre
   expect(paused).toEqual(off);
   expect(playing).toEqual(off);
 });
+
+test("controls: the nav bar and the Connect links rise with the quiet tint", async ({ page }) => {
+  await openHome(page);
+  await expectFill(page.locator("header nav a"), "nav");
+  await expectFill(page.locator("#connect li > a"), "connect");
+});
