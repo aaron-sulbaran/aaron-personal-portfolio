@@ -7,8 +7,8 @@ import type { CSSProperties } from "react";
 // transition (the --ease-out custom property in globals.css).
 export const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
 
-// Stagger order for a .reveal-item or .reveal-mask descendant: the Nth one lands
-// N * 70ms after the first (see the reveal rules in globals.css). Lives here, not
+// Stagger order for a .reveal-item row (the Book) or a .holding-rise line (the
+// holding page): the Nth one lands N * 70ms after the first (see the reveal rules in globals.css). Lives here, not
 // in the "use client" Reveal module, so Server Components can call it directly
 // (a function imported from a client module is a client reference, not callable
 // on the server).
