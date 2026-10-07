@@ -16,7 +16,7 @@ export function WhoIAm() {
       <Reveal className="mx-auto grid max-w-6xl gap-10 md:grid-cols-12 md:gap-16">
         <div className="md:col-span-4">
           <div
-            className="reveal-item flex items-center gap-3 text-sm text-muted"
+            className="reveal-item flex items-center gap-3 font-label text-label text-muted"
             style={revealIndex(0)}
           >
             <span className="inline-block h-px w-8 bg-border" aria-hidden="true" />

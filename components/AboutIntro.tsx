@@ -17,7 +17,7 @@ export function AboutIntro() {
     >
       <Reveal className="mx-auto flex max-w-6xl flex-col gap-6 md:gap-10">
         <div
-          className="reveal-item flex items-center gap-3 text-sm text-muted"
+          className="reveal-item flex items-center gap-3 font-label text-label text-muted"
           style={revealIndex(0)}
         >
           <span className="inline-block h-px w-8 bg-border" aria-hidden="true" />

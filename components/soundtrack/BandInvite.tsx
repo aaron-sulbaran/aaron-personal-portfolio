@@ -52,10 +52,10 @@ export function BandInvite() {
 
   return (
     <div ref={rootRef} data-wave-avoid className="pointer-events-auto w-fit max-w-full">
-      <div className="flex flex-wrap items-baseline gap-x-7 gap-y-3">
+      <div className="flex flex-wrap items-baseline gap-x-9 gap-y-3">
         <h2 className="font-display text-[clamp(1.375rem,2vw,1.75rem)] leading-[1.1] text-foreground">{c.line}</h2>
-        <div data-band-controls className="grid">
-          <Layer shown={music === "before"} className="flex items-baseline gap-6">
+        <div data-band-controls className="grid items-baseline">
+          <Layer shown={music === "before"} className="flex items-baseline gap-4">
             <button type="button" data-control="before" data-focus-to="note" onClick={act(startSoundtrack)} data-cursor-hover className={PRIMARY}>
               {c.accept}
             </button>
@@ -113,6 +113,6 @@ const FOCUS = "rounded-sm focus-visible:outline focus-visible:outline-2 focus-vi
 
 const PRIMARY = `font-display text-[clamp(1.125rem,1.5vw,1.375rem)] leading-[1.1] text-accent underline decoration-1 underline-offset-[4px] transition-colors duration-200 hover:text-accent-hover ${FOCUS}`;
 
-const QUIET = `text-sm text-muted transition-colors duration-200 hover:text-foreground ${FOCUS}`;
+const QUIET = `font-label text-label text-muted underline decoration-1 underline-offset-[4px] decoration-[color:color-mix(in_srgb,var(--color-muted)_40%,transparent)] dark:decoration-[color:color-mix(in_srgb,var(--color-muted)_55%,transparent)] transition-colors duration-200 hover:text-foreground ${FOCUS}`;
 
-const SMALL = `text-sm text-accent underline decoration-1 underline-offset-[3px] transition-colors duration-200 hover:text-accent-hover ${FOCUS}`;
+const SMALL = `font-label text-label text-accent underline decoration-1 underline-offset-[3px] transition-colors duration-200 hover:text-accent-hover ${FOCUS}`;

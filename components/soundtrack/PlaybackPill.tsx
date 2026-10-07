@@ -147,8 +147,6 @@ function PillInner({ reached }: { reached: boolean }) {
     padding: preview ? "8px 16px 8px 8px" : "0 16px 0 13px",
     borderRadius: 999,
     cursor: "pointer",
-    fontFamily: "var(--font-sans)",
-    color: "var(--color-foreground)",
     transition: reduce ? "opacity 280ms ease" : `opacity 280ms ease, transform 320ms ${EASE}, padding 300ms ease`,
     opacity: expanded ? 0 : 1,
     transform: reduce || !expanded ? "none" : "scale(0.92)",
@@ -167,9 +165,6 @@ function PillInner({ reached }: { reached: boolean }) {
     pointerEvents: "none",
     padding: "6px 11px",
     borderRadius: 999,
-    color: "var(--color-muted)",
-    fontSize: 11,
-    fontFamily: "var(--font-sans)",
   };
 
   return (
@@ -198,13 +193,13 @@ function PillInner({ reached }: { reached: boolean }) {
           onBlur={blur}
           style={{ position: "relative", pointerEvents: shown ? "auto" : "none" }}
         >
-          <div aria-hidden="true" style={tip}>
+          <div aria-hidden="true" className="font-label text-label-sm text-muted" style={tip}>
             {c.prompt}
           </div>
           <button
             ref={capsuleRef}
             type="button"
-            className="pill-hit"
+            className="pill-hit font-label text-foreground"
             inert={expanded}
             onClick={press}
             onMouseEnter={() => previewable && send("enter")}
@@ -217,15 +212,15 @@ function PillInner({ reached }: { reached: boolean }) {
               <Cover size={38} cover={track.cover} />
             </PillSlot>
             <PillSlot visible={preview} maxWidth={190} reduce={reduce} before={12} after={12} block>
-              <span style={{ display: "block", fontSize: 12, fontWeight: 500 }}>{track.title}</span>
-              <span style={{ display: "block", fontSize: 11, color: "var(--color-muted)" }}>{track.artist}</span>
+              <span className="block font-label text-label-sm text-foreground">{track.title}</span>
+              <span className="block font-label text-label-sm text-muted">{track.artist}</span>
             </PillSlot>
-            <span style={{ display: "flex" }}>
+            <span className="relative -top-px flex">
               <DockGlyph music={music} />
             </span>
             <PillLabel line={line} open={face === "label"} reduce={reduce} />
             <PillSlot visible={face === "capsule" && !preview} maxWidth={220} reduce={reduce} ms={DOCK.collapseMs} before={8}>
-              <span style={{ fontSize: 12, fontWeight: 500, color: music === "on" ? "var(--color-foreground)" : "var(--color-muted)" }}>
+              <span className={`font-label text-label-sm ${music === "on" ? "text-foreground" : "text-muted"}`}>
                 {capsuleText(music, track.title)}
               </span>
             </PillSlot>

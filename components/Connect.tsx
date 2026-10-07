@@ -14,7 +14,7 @@ export function Connect() {
       <div className="mx-auto grid max-w-6xl gap-12 md:grid-cols-12 md:gap-16">
         <Reveal className="md:col-span-5">
           <div
-            className="reveal-item flex items-center gap-3 text-sm text-muted"
+            className="reveal-item flex items-center gap-3 font-label text-label text-muted"
             style={revealIndex(0)}
           >
             <span className="inline-block h-px w-8 bg-border" aria-hidden="true" />
@@ -46,7 +46,7 @@ export function Connect() {
                 rel={link.external ? "noopener noreferrer" : undefined}
                 className="group flex min-h-[56px] items-baseline gap-4 py-5 text-foreground transition-colors duration-200 hover:text-accent"
               >
-                <span className="w-28 shrink-0 text-sm text-muted transition-colors duration-200 group-hover:text-accent md:w-32">
+                <span className="w-28 shrink-0 font-label text-label text-muted transition-colors duration-200 group-hover:text-accent md:w-32">
                   {link.label}
                 </span>
                 <span className="flex-1 truncate font-display text-2xl md:text-3xl">

@@ -142,7 +142,7 @@ export function SiteNav() {
         <nav
           aria-label={siteContent.menu.navAriaLabel}
           inert={!navShown}
-          className={`absolute left-1/2 top-0 hidden h-[72px] -translate-x-1/2 items-center gap-8 text-sm font-medium transition-opacity duration-300 md:flex ${
+          className={`absolute left-1/2 top-0 hidden h-[72px] -translate-x-1/2 items-center gap-8 font-label text-label transition-opacity duration-300 md:flex ${
             bar ? "pointer-events-auto opacity-100" : "opacity-0"
           }`}
         >
@@ -158,10 +158,10 @@ export function SiteNav() {
                   goTo(item.href);
                 }}
                 data-cursor-hover
-                className={`relative transition-colors duration-200 hover:text-foreground ${
+                className={`relative text-accent transition-colors duration-200 hover:text-accent-hover ${
                   active
-                    ? "text-foreground after:absolute after:-bottom-2 after:left-1/2 after:-ml-0.5 after:h-1 after:w-1 after:rounded-full after:bg-accent after:content-['']"
-                    : "text-muted"
+                    ? "after:absolute after:-bottom-2 after:left-1/2 after:-ml-0.5 after:h-1 after:w-1 after:rounded-full after:bg-accent after:content-['']"
+                    : ""
                 }`}
               >
                 {item.label}

@@ -16,7 +16,7 @@ export function UpToNow() {
       <div className="mx-auto max-w-6xl">
         <Reveal className="mb-14 flex flex-col gap-6 md:mb-20 md:flex-row md:items-end md:justify-between">
           <div
-            className="reveal-item flex items-center gap-3 text-sm text-muted"
+            className="reveal-item flex items-center gap-3 font-label text-label text-muted"
             style={revealIndex(0)}
           >
             <span className="inline-block h-px w-8 bg-border" aria-hidden="true" />

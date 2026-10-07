@@ -139,7 +139,7 @@ export function PhotoModal({ photo, onClose, renderMedia = false }: PhotoModalPr
               <p className="text-2xl leading-[1.25] text-foreground md:text-3xl md:leading-[1.2]">
                 {photo.caption}
               </p>
-              <p className="mt-5 text-sm text-muted">
+              <p className="mt-5 font-label text-label text-muted">
                 {closeHint}
               </p>
             </div>

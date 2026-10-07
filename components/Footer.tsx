@@ -8,9 +8,9 @@ export function Footer({ dock = false }: { dock?: boolean }) {
   const clearance = dock ? "md:pb-28 md:pt-14" : "md:py-14";
   return (
     <footer className={`w-full border-t border-border px-6 py-10 md:px-10 ${clearance}`}>
-      <div className="mx-auto flex max-w-6xl flex-col gap-2 text-[12px] text-muted md:flex-row md:items-center md:justify-between">
+      <div className="mx-auto flex max-w-6xl flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <p className="font-display text-base text-foreground md:text-lg">{tagline(lastUpdatedMonth())}</p>
-        <p className="tracking-wide">{copyright}</p>
+        <p className="font-label text-label-sm text-muted">{copyright}</p>
       </div>
     </footer>
   );
