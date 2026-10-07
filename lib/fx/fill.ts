@@ -28,8 +28,8 @@ export const FILL_PICK: Record<ControlKey, ControlFill> = {
 
 // The calls to action: a 44px pill with a hairline ring, the circle seeded in its arrow.
 export const CTA_CLASS =
-  "inline-flex h-11 items-center gap-3 rounded-full pl-5 pr-1.5 font-label text-label-lg text-accent [box-shadow:inset_0_0_0_1px_var(--color-border)]";
-export const CTA_OVER_CLASS = "flex items-center gap-3 pl-5 pr-1.5";
+  "inline-flex h-11 items-center gap-3 rounded-full pl-5 pr-1.5 font-label text-label-lg leading-6 text-accent [box-shadow:inset_0_0_0_1px_var(--color-border)]";
+export const CTA_OVER_CLASS = "flex items-center gap-3 pl-5 pr-1.5 leading-6";
 
 const px = (n: number) => `${Math.round(n * 100) / 100}px`;
 
