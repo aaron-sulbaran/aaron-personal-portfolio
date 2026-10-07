@@ -479,6 +479,6 @@ test("horizon: a phone has no strip and keeps the band's controls", async ({ pag
   expect(await page.evaluate(() => window.__waveProbe?.triggers() ?? 0), "sweep triggers on a phone").toBe(0);
   const band = page.locator("#listen");
   // The band's own Play it (a second one waits, inert, beside the declined note).
-  await expect(band.locator('[data-control="before"]')).toHaveText(siteContent.listen.accept);
+  await expect(band.locator('[data-control="before"]')).toHaveAccessibleName(siteContent.listen.accept);
   await expect(band.getByRole("button", { name: siteContent.listen.decline, exact: true })).toBeAttached();
 });
