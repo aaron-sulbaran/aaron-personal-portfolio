@@ -9,8 +9,8 @@ import {
   type HeightCurve,
   type RGB,
 } from "./maths";
-import { draw, extent, type Scene } from "./draw";
-import { resolveColor, rgbString } from "./paint";
+import { draw, extent, NO_DEPTH, type DepthSpec, type Scene } from "./draw";
+import { resolveColor, resolveRGBA, rgbString } from "./paint";
 import { attachInput, type Ctl } from "./input";
 
 // The imperative half: one scene per mount, a rAF loop that only runs while
@@ -43,6 +43,9 @@ export type EngineConfig = {
   palette: string[];
   legendLevel: number;
   target: 0 | 1;
+  // Apply the next change of target at once (a toggle that snaps), not over the morph.
+  snap: boolean;
+  depth: DepthSpec;
   pin: number | null;
   gate: Gate;
   drive: Drive | null;
@@ -118,6 +121,10 @@ export function createEngine(el: EngineElements, cfg: { current: EngineConfig })
     weekdayRows: [],
     activeIdx: -1,
     tipW: 0,
+    depth: NO_DEPTH,
+    hi: FALLBACK,
+    hiA: 0,
+    shade: FALLBACK,
   };
 
   const reduceMq = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -178,8 +185,19 @@ export function createEngine(el: EngineElements, cfg: { current: EngineConfig })
     s.muted = resolveColor(el.probe, "var(--color-muted)", FALLBACK);
     const isDark = luminance(s.bg) < 0.45;
     s.font = "700 " + LABEL_PX + "px " + (getComputedStyle(el.labelProbe).fontFamily || "sans-serif");
-    // An empty day is the site's hairline colour, so the bare grid reads as the page's own rules.
-    const empty = resolveColor(el.probe, "var(--color-border)", mixRGB(s.bg, s.fg, isDark ? 0.11 : 0.075));
+    // An empty day is the site's hairline colour, so the bare grid reads as the
+    // page's own rules; with flat depth it is paper, a few percent of ink off
+    // the page, like the Coil's card body.
+    const depth = cfg.current.depth;
+    s.depth = depth;
+    const empty =
+      depth.mode === "none"
+        ? resolveColor(el.probe, "var(--color-border)", mixRGB(s.bg, s.fg, isDark ? 0.11 : 0.075))
+        : mixRGB(s.bg, s.fg, depth.paper / 100);
+    [s.hi, s.hiA] = resolveRGBA(el.probe, "var(--card-hi)", [isDark ? s.fg : s.bg, isDark ? 0.09 : 0.75]);
+    // Lift's shadow: the page's ink at about a tenth over paper; in dark, ink
+    // would glow, so the shadow is the page at half its brightness instead.
+    s.shade = isDark ? [s.bg[0] * 0.5, s.bg[1] * 0.5, s.bg[2] * 0.5] : mixRGB(s.bg, s.fg, 0.1);
     const future = mixRGB(empty, s.bg, 0.55);
     const all: RGB[] = [empty, ...cfg.current.palette.slice(0, 4).map((c) => resolveColor(el.probe, c, FALLBACK)), future];
     for (let k = 0; k < 6; k++) for (let ch = 0; ch < 3; ch++) colGoal[k * 3 + ch] = all[k][ch];
@@ -213,6 +231,7 @@ export function createEngine(el: EngineElements, cfg: { current: EngineConfig })
     canvas.style.height = s.Hmax + "px";
     s.lastH = -1;
     cfg.current.setWidth(w);
+    s.depth = cfg.current.depth;
     draw(s);
   };
 
@@ -277,6 +296,7 @@ export function createEngine(el: EngineElements, cfg: { current: EngineConfig })
       }
     }
 
+    s.depth = cfg.current.depth;
     draw(s);
     // Lab probe: the morph's clock, for the headless checks.
     const tLabel = s.t.toFixed(3);
@@ -306,6 +326,7 @@ export function createEngine(el: EngineElements, cfg: { current: EngineConfig })
     if (!entered) return;
     if (goal !== ctl.target) {
       ctl.target = goal;
+      if (cfg.current.snap && cfg.current.pin === null) s.t = goal;
       if (goal === 0) {
         ctl.yawGoal = 0;
         ctl.elevGoal = 0;

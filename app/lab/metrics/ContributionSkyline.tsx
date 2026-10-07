@@ -16,6 +16,7 @@ import {
   type Streak,
 } from "./skyline/maths";
 import { createEngine, type Drive, type Engine, type EngineConfig, type Gate, type ThemeReadout } from "./skyline/engine";
+import { NO_DEPTH, type DepthSpec } from "./skyline/draw";
 import { Legend, Stat, ViewToggle, type StatBlock, type View } from "./skyline/parts";
 
 // A year of activity as a heat map that folds up into an isometric skyline.
@@ -68,6 +69,10 @@ export type ContributionSkylineProps = {
   // An outside clock for the morph (a scrubbed scroll); it drives while `driven`.
   drive?: Drive | null;
   driven?: boolean;
+  // The next view change applies at once instead of morphing (a toggle that snaps).
+  snap?: boolean;
+  // How the flat view carries depth; the default is round 3's paper.
+  depth?: DepthSpec;
   locale?: string;
   seed?: number;
   onCellClick?: (day: ContributionDay) => void;
@@ -106,6 +111,8 @@ export default function ContributionSkyline({
   gate = "sight",
   drive = null,
   driven = false,
+  snap = false,
+  depth = NO_DEPTH,
   locale = "en-US",
   seed = 7,
   onCellClick,
@@ -168,6 +175,8 @@ export default function ContributionSkyline({
     palette,
     legendLevel,
     target: view === "3d" ? 1 : 0,
+    snap,
+    depth,
     pin,
     gate,
     drive,
@@ -209,9 +218,14 @@ export default function ContributionSkyline({
     engine.current?.load();
   }, [model, heightScale, heightCurve]);
 
+  // The paper tone and the depth mode change the empty day's colour; the rest only repaint.
+  const toneKey = depth.mode + "|" + depth.paper;
   useEffect(() => {
     engine.current?.retheme();
-  }, [paletteKey]);
+  }, [paletteKey, toneKey]);
+  useEffect(() => {
+    engine.current?.kick();
+  }, [depth.lift, depth.edge, depth.hi]);
 
   // The tooltip's width keeps it inside the chart; measure it when its text changes.
   useLayoutEffect(() => {
@@ -283,6 +297,7 @@ export default function ContributionSkyline({
         <div className="relative">
           <div
             ref={stageRef}
+            data-skyline-stage=""
             className="relative w-full overflow-hidden outline-offset-4 has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-accent"
             style={{ height: 150 }}
           >

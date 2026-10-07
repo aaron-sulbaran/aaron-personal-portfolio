@@ -43,6 +43,18 @@ export const resolveColor = (probe: HTMLElement, css: string, fallback: RGB): RG
   return parseComputed(getComputedStyle(probe).color) ?? fallback;
 };
 
+// A token that carries its own alpha (the Coil's --card-hi): the colour and
+// its alpha, read the same way.
+export const resolveRGBA = (probe: HTMLElement, css: string, fallback: [RGB, number]): [RGB, number] => {
+  probe.style.color = "";
+  probe.style.color = css;
+  const computed = getComputedStyle(probe).color;
+  const m = /^rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)(?:[,\s/]+([\d.]+)(%?))?\s*\)$/.exec(computed);
+  if (!m) return fallback;
+  const a = m[4] === undefined ? 1 : m[5] ? parseFloat(m[4]) / 100 : parseFloat(m[4]);
+  return [[+m[1], +m[2], +m[3]], a];
+};
+
 export const rgbString = (r: number, g: number, b: number) =>
   "rgb(" + Math.round(r) + "," + Math.round(g) + "," + Math.round(b) + ")";
 
@@ -65,19 +77,21 @@ export const pointInQuad = (p: Float32Array, o: number, x: number, y: number): b
   return sign !== 0;
 };
 
-export const quadPath = (ctx: CanvasRenderingContext2D, p: Float32Array, o: number, r: number) => {
+// One quad from `p` at offset `o`, corners rounded by r, shifted by (dx, dy)
+// screen pixels (the flat depth's edges are the same cell, offset).
+export const quadPath = (ctx: CanvasRenderingContext2D, p: Float32Array, o: number, r: number, dx = 0, dy = 0) => {
   if (r < 0.3) {
-    ctx.moveTo(p[o], p[o + 1]);
-    ctx.lineTo(p[o + 2], p[o + 3]);
-    ctx.lineTo(p[o + 4], p[o + 5]);
-    ctx.lineTo(p[o + 6], p[o + 7]);
+    ctx.moveTo(p[o] + dx, p[o + 1] + dy);
+    ctx.lineTo(p[o + 2] + dx, p[o + 3] + dy);
+    ctx.lineTo(p[o + 4] + dx, p[o + 5] + dy);
+    ctx.lineTo(p[o + 6] + dx, p[o + 7] + dy);
     ctx.closePath();
     return;
   }
-  ctx.moveTo((p[o + 6] + p[o]) / 2, (p[o + 7] + p[o + 1]) / 2);
+  ctx.moveTo((p[o + 6] + p[o]) / 2 + dx, (p[o + 7] + p[o + 1]) / 2 + dy);
   for (let k = 0; k < 4; k++) {
     const b = (k + 1) % 4;
-    ctx.arcTo(p[o + k * 2], p[o + k * 2 + 1], p[o + b * 2], p[o + b * 2 + 1], r);
+    ctx.arcTo(p[o + k * 2] + dx, p[o + k * 2 + 1] + dy, p[o + b * 2] + dx, p[o + b * 2 + 1] + dy, r);
   }
   ctx.closePath();
 };

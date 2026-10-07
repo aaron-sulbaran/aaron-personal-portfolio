@@ -4,6 +4,21 @@ import { quadPath, rgbString, rgbaString } from "./paint";
 // The scene's mutable state and the one function that paints it. The engine
 // owns the state and calls draw() from its loop; nothing here schedules.
 
+// The skyline's light: tops at full colour, the +y face (left on screen in 3D,
+// the bottom edge from above) and the +x face (right in 3D, the right edge
+// from above) darker. Light from the top-left of the flat view.
+export const FACE_Y = 0.84;
+export const FACE_X = 0.68;
+
+// How the flat view carries depth: "none" is round 3's paper; "lift" a hard
+// shadow down-right; "bevel" the side faces at height zero as edges; "inset"
+// the cell sunk, its top and left walls in shade. lift is px, edge the
+// hairline's ink alpha, hi a percent of the Coil's --card-hi, paper the
+// percent of ink in an empty day.
+export type FlatDepth = "none" | "lift" | "bevel" | "inset";
+export type DepthSpec = { mode: FlatDepth; lift: number; edge: number; hi: number; paper: number };
+export const NO_DEPTH: DepthSpec = { mode: "none", lift: 0, edge: 0.07, hi: 0, paper: 0 };
+
 export type Scene = {
   ctx: CanvasRenderingContext2D;
   canvas: HTMLCanvasElement;
@@ -44,6 +59,10 @@ export type Scene = {
   weekdayRows: { day: number; label: string }[];
   activeIdx: number;
   tipW: number;
+  depth: DepthSpec;
+  hi: RGB; // the Coil's inner highlight colour and alpha (--card-hi)
+  hiA: number;
+  shade: RGB; // lift's cast shadow: the page's ink over paper, or deeper than the page in dark
 };
 
 // Projected extent of the scene for camera e, with each bar at its full
@@ -114,8 +133,11 @@ export const draw = (s: Scene) => {
   const w = lerp(0.78, 0.9, e);
   const off = (1 - w) / 2;
   const radius = lerp(0.17, 0.03, e) * sc;
-  const outline = (1 - e) * 0.07;
+  const depth = s.depth;
+  const outline = (1 - e) * (depth.mode === "none" ? 0.07 : depth.edge);
   const lift = 0.7 * e;
+  // The flat depth gives way as the real faces arrive; by e = 0.3 they carry it.
+  const fd = depth.mode === "none" ? 0 : 1 - smoothstep(0, 0.3, e);
 
   for (let k = 0; k < n; k++) {
     const i = s.order[k];
@@ -180,19 +202,26 @@ export const draw = (s: Scene) => {
     if (f & 1) {
       ctx.beginPath();
       quadPath(ctx, polys, o + 8, 0);
-      ctx.fillStyle = rgbString(r * 0.84, g * 0.84, bl * 0.84);
+      ctx.fillStyle = rgbString(r * FACE_Y, g * FACE_Y, bl * FACE_Y);
       ctx.fill();
     }
     if (f & 2) {
       ctx.beginPath();
       quadPath(ctx, polys, o + 16, 0);
-      ctx.fillStyle = rgbString(r * 0.68, g * 0.68, bl * 0.68);
+      ctx.fillStyle = rgbString(r * FACE_X, g * FACE_X, bl * FACE_X);
       ctx.fill();
     }
-    ctx.beginPath();
-    quadPath(ctx, polys, o, radius);
-    ctx.fillStyle = rgbString(r, g, bl);
-    ctx.fill();
+    if (fd > 0.004) flatCell(s, o, radius, r, g, bl, fd, lv[i] === 0 || lv[i] === 5);
+    else {
+      ctx.beginPath();
+      quadPath(ctx, polys, o, radius);
+      ctx.fillStyle = rgbString(r, g, bl);
+      ctx.fill();
+    }
+    if (outline > 0.004 || hv > 0.02) {
+      ctx.beginPath();
+      quadPath(ctx, polys, o, radius);
+    }
     if (outline > 0.004) {
       ctx.strokeStyle = rgbaString(fg, outline);
       ctx.lineWidth = 1;
@@ -256,4 +285,73 @@ export const draw = (s: Scene) => {
     s.tip.style.transform = "translate(" + (cx - half).toFixed(1) + "px," + (ty - 8).toFixed(1) + "px) translateY(-100%)";
     s.tip.style.setProperty("--arrow", (tx - cx + half).toFixed(1) + "px");
   }
+};
+
+// One flat cell with depth, at strength fd (1 flat, 0 gone). An empty day
+// stands half as high (its slab in 3D is half the lowest active bar), so its
+// edge is half as wide and it carries no highlight.
+const flatCell = (s: Scene, o: number, radius: number, r: number, g: number, b: number, fd: number, empty: boolean) => {
+  const { ctx, polys, depth } = s;
+  const L = depth.lift * fd * (empty ? 0.5 : 1);
+  const hiA = empty ? 0 : (depth.hi / 100) * s.hiA * fd;
+  const top = rgbString(r, g, b);
+  const cell = (dx: number, dy: number) => {
+    ctx.beginPath();
+    quadPath(ctx, polys, o, radius, dx, dy);
+  };
+  if (depth.mode === "lift") {
+    if (L > 0.05) {
+      cell(L, L);
+      ctx.fillStyle = rgbString(s.shade[0], s.shade[1], s.shade[2]);
+      ctx.fill();
+    }
+    cell(0, 0);
+    ctx.fillStyle = top;
+    ctx.fill();
+    if (hiA > 0.004) {
+      ctx.save();
+      ctx.clip();
+      innerLine(s, o, radius, 0, 0, top, hiA, 1);
+      ctx.restore();
+    }
+    return;
+  }
+  // bevel: the cell is the right face's shade, the bottom face's shade over
+  // all but its right edge, the top over all but both edges. inset mirrors
+  // it: the walls on the top and left, the floor shifted down-right.
+  const dir = depth.mode === "bevel" ? -1 : 1;
+  const lip = depth.mode === "bevel" ? 1 : -1;
+  cell(0, 0);
+  ctx.save();
+  ctx.clip();
+  if (L > 0.05) {
+    ctx.fillStyle = rgbString(r * FACE_X, g * FACE_X, b * FACE_X);
+    ctx.fill();
+    cell(dir * L, 0);
+    ctx.fillStyle = rgbString(r * FACE_Y, g * FACE_Y, b * FACE_Y);
+    ctx.fill();
+    cell(dir * L, dir * L);
+  }
+  ctx.fillStyle = top;
+  ctx.fill();
+  if (hiA > 0.004) innerLine(s, o, radius, dir * Math.max(L, 0), dir * Math.max(L, 0), top, hiA, lip);
+  ctx.restore();
+};
+
+// The Coil's flat 1px inner highlight along two edges of the face at
+// (dx, dy): the top and left when side is 1, the bottom and right when -1.
+// Called inside the cell's clip, so the face's clip intersects it.
+const innerLine = (s: Scene, o: number, radius: number, dx: number, dy: number, base: string, alpha: number, side: 1 | -1) => {
+  const { ctx, polys } = s;
+  ctx.save();
+  ctx.beginPath();
+  quadPath(ctx, polys, o, radius, dx, dy);
+  ctx.clip();
+  ctx.fillStyle = rgbaString(s.hi, alpha);
+  ctx.fill();
+  ctx.beginPath();
+  quadPath(ctx, polys, o, radius, dx + side, dy + side);
+  ctx.fillStyle = base;
+  ctx.fill();
+  ctx.restore();
 };
