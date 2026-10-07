@@ -18,10 +18,11 @@ Eight pull requests merged into `main` in order, each one slice of the plan set 
 | 32 | Metrics | The six-month GitHub contribution skyline inside Up to now: flat with bevelled cells until seen, one morph to rounded prisms, a Flat/Skyline toggle in the fill grammar, the stats beside it with the current streak only; a daily server fetch with a read-only token and a committed snapshot as the fallback (the one backend growth: no database). |
 | 33 | The scroll refresh guard | A ScrollTrigger refresh (a resize, a rotation, a media-query crossing) never scroll-jumps the page to the top, and no longer leaves an inline `smooth` that overrode the reduced-motion rule. |
 | 34 | A test fix | The dock sampler test measures a time window instead of a count. |
+| 35 | Review fixes | The four required items and three suggestions from the code review (section 3a). |
 
 Build process: six read-only Opus planners wrote the slice plans, one fresh Opus reviewer reviewed the set (it caught three wrong cross-slice guesses and one plan that would have failed its own suite), five Opus controllers ran subagent-driven development in parallel worktrees (fresh implementer per task, fresh reviewer per task, whole-branch review per slice), and each merge step after the first was done by a fresh agent that resolved the known conflicts and reran the suites. Fable looked at every slice on a production build at 1440, 1024 and 390 in both themes before it merged.
 
-Final state of `main` before the two late fixes (section 3): `pnpm test` 53 files, 486 tests; `pnpm test:e2e` 145 passed, 1 skipped (a manual capture), 0 failed, 0 flaky, in 10.5 minutes; type check clean; lint 0 errors.
+Final state of `main` (section 6 has the numbers after the two late fixes): every merge step reran the unit suite, the type check, lint and the full end-to-end suite on its own build before its PR merged.
 
 ## 2. Issues met on the way, and how each was fixed
 
@@ -80,4 +81,6 @@ Seven merged worktrees removed and their local branches deleted (all live on Git
 
 ## 6. The local link
 
-(filled in once the last fixes merge)
+**http://localhost:3001** serves a production build of `main` at `ab736d4` (the launch config `main-prod`; port 3000 holds the creative director session's dev server). Final verification on that exact tree: `pnpm test` 54 files, 492 tests; `pnpm test:e2e` 149 passed, 1 skipped, 0 failed, 0 flaky, 10.8 minutes; type check clean; lint 0 errors.
+
+One check was still running when this brief was written: the systematic-debugging agent on the photo-modal scroll jump (section 3b, item 2). Its outcome is appended below when it reports; if it found and fixed the cause, that fix is a separate PR awaiting your word, not part of the build on 3001.
