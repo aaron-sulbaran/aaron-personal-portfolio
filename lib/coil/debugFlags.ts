@@ -5,12 +5,16 @@ export type DebugFlags = {
   debugMode: string | null;
   // ?coildebug=poster: the field's first frame, no cards, no name.
   posterMode: boolean;
-  // ?coildebug=still: the scene at rest for the hero stills
+  // ?coildebug=still or still=<offset>: the scene at rest for the hero stills
   // (scripts/render-posters.mjs): cards and name drawn, nothing moving.
   stillMode: boolean;
+  // The still's conveyor offset in cards (the phase the render measured,
+  // scripts/hero-still-phases.json): 0 for plain still, null outside still mode.
+  stillOffset: number | null;
   // The poster and the still hold one moment: the field clock at 0 (the
   // posters' fieldClocks(0), lib/coil/drift.ts), the entrance finished, the
-  // conveyor idle at its start, the name's surface clock and wake still.
+  // conveyor idle at its start (the still's offset), the name's surface
+  // clock and wake still.
   pinned: boolean;
   hideCards: boolean;
   hideName: boolean;
@@ -28,12 +32,15 @@ export function parseDebugFlags(search: string): DebugFlags {
   const heldAt = match(/^at=(\d+(?:\.\d+)?)$/);
   const ink = match(/^ink=(\d+(?:\.\d+)?)$/);
   const forced = match(/^entrance=(-?\d+(?:\.\d+)?)$/);
+  const stillAt = match(/^still=(-?\d+(?:\.\d+)?)$/);
   const posterMode = debugMode === "poster";
-  const stillMode = tokens.has("still");
+  const stillOffset = stillAt ? Number(stillAt[1]) : tokens.has("still") ? 0 : null;
+  const stillMode = stillOffset !== null;
   return {
     debugMode,
     posterMode,
     stillMode,
+    stillOffset,
     pinned: posterMode || stillMode,
     hideCards: tokens.has("nocards"),
     hideName: tokens.has("noname"),

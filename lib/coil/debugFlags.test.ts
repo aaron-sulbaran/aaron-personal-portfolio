@@ -15,6 +15,21 @@ describe("scene debug flags", () => {
     expect(parseDebugFlags("?coildebug=handoff, still").stillMode).toBe(true);
     expect(parseDebugFlags("?coildebug=stillness").stillMode).toBe(false);
   });
+  it("still takes the conveyor's offset in cards: plain still holds 0, still=<offset> holds that", () => {
+    expect(parseDebugFlags("").stillOffset).toBeNull();
+    expect(parseDebugFlags("?coildebug=poster").stillOffset).toBeNull();
+    expect(parseDebugFlags("?coildebug=still").stillOffset).toBe(0);
+    expect(parseDebugFlags("?coildebug=still=0.375")).toMatchObject({ stillMode: true, pinned: true, stillOffset: 0.375 });
+    expect(parseDebugFlags("?coildebug=still=-1.25")).toMatchObject({ stillMode: true, pinned: true, stillOffset: -1.25 });
+  });
+  it("a malformed still offset is not still mode", () => {
+    expect(parseDebugFlags("?coildebug=still=abc")).toMatchObject({ stillMode: false, pinned: false, stillOffset: null });
+    expect(parseDebugFlags("?coildebug=still=").stillMode).toBe(false);
+  });
+  it("still=<offset> combines with the other tokens", () => {
+    expect(parseDebugFlags("?coildebug=still=0.5,nocards")).toMatchObject({ stillMode: true, stillOffset: 0.5, hideCards: true });
+    expect(parseDebugFlags("?coildebug=still,nocards")).toMatchObject({ stillMode: true, stillOffset: 0, hideCards: true });
+  });
   it("keeps the other tokens", () => {
     expect(parseDebugFlags("?coildebug=at=3,ink=150,entrance=-200,nocards&drift=calm")).toMatchObject({
       heldAt: 3, inkOverride: 1, forcedEntranceMs: -200, hideCards: true, driftParam: "calm",

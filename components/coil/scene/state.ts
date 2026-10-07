@@ -101,7 +101,9 @@ export type LoopLink = {
   render: (dt: number) => void;
 };
 
-export function createSceneState(theme: CoilTheme, budget: RenderBudget): SceneState {
+// conveyorStart: the conveyor's offset at the first frame, in cards (the
+// still's measured phase; 0 for every other scene).
+export function createSceneState(theme: CoilTheme, budget: RenderBudget, conveyorStart = 0): SceneState {
   return {
     theme,
     budget,
@@ -109,7 +111,7 @@ export function createSceneState(theme: CoilTheme, budget: RenderBudget): SceneS
     geo: null,
     geoCamera: null,
     nameFamily: "",
-    conveyor: createConveyor(0),
+    conveyor: createConveyor(conveyorStart),
     envelope: createEnvelope(),
     unwind: createUnwind(),
     poses: [],

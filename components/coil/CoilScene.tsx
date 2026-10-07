@@ -105,7 +105,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   const renderer = createRenderer(canvas);
   const tiles = strandTiles;
   // The state more than one part of the scene reads (scene/state.ts).
-  const st = createSceneState(readCoilTheme(), budgetFor(live.current.input));
+  const st = createSceneState(readCoilTheme(), budgetFor(live.current.input), flags.stillOffset ?? 0);
   const debug = createDebugStats(flags, debugReads(st));
   // ---- fx-flight debug: ?coildebug=flight, the measurement hook ----
   const flightLog = flightProbe();
