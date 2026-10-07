@@ -282,3 +282,9 @@ test("label face: a row's meta wraps under its title only when the two do not fi
   await meta.hover();
   await expect.poll(() => meta.evaluate((el) => Number(getComputedStyle(el).opacity))).toBe(1);
 });
+
+test("label face: at 1440 every work row's meta sits beside its title", async ({ page }) => {
+  await page.goto("/");
+  await settled(page);
+  for (const row of await rowLayout(page)) expect(row.wrapped, row.text ?? "").toBe(false);
+});
