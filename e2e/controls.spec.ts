@@ -158,3 +158,11 @@ test("controls: the band's controls rise with glass to accent", async ({ page })
   await openHome(page);
   await expectFill(page.locator("#listen [data-band-controls] button, #listen [data-band-note] button"), "band");
 });
+
+test("controls: the hero control is a circle on the Menu pill's glass", async ({ page }) => {
+  await openHome(page);
+  const coil = page.locator("section[data-scene] button.fx");
+  await expectFill(coil, "hero");
+  await expect(coil).toContainText(siteContent.hero.coilControl);
+  expect(await coil.evaluate((el) => getComputedStyle(el).backdropFilter)).toBe("blur(8px)");
+});
