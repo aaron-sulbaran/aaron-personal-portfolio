@@ -69,7 +69,7 @@ export function MenuPanel({
 }) {
   const { items, themeToggleToDark, themeToggleToLight, themeAriaLabelToDark, themeAriaLabelToLight, email, socials } =
     siteContent.menu;
-  const { menuToggleOn, menuTogglePaused, menuToggleOff, menuAriaLabelOn, menuAriaLabelOff } = siteContent.soundtrack;
+  const { menuToggleOn, menuTogglePaused, menuToggleOff, menuAriaLabel } = siteContent.soundtrack;
   // The panel only ever mounts on the client (after a click), so it can read
   // the live theme straight off <html>.
   const [theme, setTheme] = useState<Theme>(() =>
@@ -176,7 +176,7 @@ export function MenuPanel({
           <Fill
             {...FILL_PICK.menu}
             onClick={toggleMusic}
-            aria-label={optedIn ? menuAriaLabelOff : menuAriaLabelOn}
+            aria-label={menuAriaLabel}
             aria-pressed={optedIn}
             data-cursor-hover
             className="inline-flex h-[34px] items-center gap-2 rounded-[17px] pl-2.5 pr-3.5 font-label text-label text-accent shadow-[inset_0_0_0_1px_var(--color-border)]"
