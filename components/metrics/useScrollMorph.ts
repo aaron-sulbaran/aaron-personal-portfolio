@@ -35,7 +35,7 @@ export function useScrollMorph(blockRef: RefObject<HTMLElement | null>) {
       block.dataset.morphPending = String(on);
     };
     hold(false);
-    const chart = () => (block.querySelector<HTMLElement>("[data-skyline-stage]") ?? block).getBoundingClientRect();
+    const stage = block.querySelector<HTMLElement>("[data-skyline-stage]") ?? block;
     const play = () => {
       if (viewRef.current !== "skyline") block.dataset.morphPlays = String(++playsRef.current);
       show("skyline");
@@ -44,7 +44,7 @@ export function useScrollMorph(blockRef: RefObject<HTMLElement | null>) {
       if (!pendingRef.current) return;
       const now = performance.now();
       const m = meter.read(now, MORPH.settledMs);
-      const box = chart();
+      const box = stage.getBoundingClientRect();
       const input = { top: box.top, height: box.height, viewport: window.innerHeight, share: MORPH.inViewShare, speed: m.speed, dir: m.dir, settled: m.settled, durationMs: MORPH.durationMs };
       if (gateOpen(input)) {
         hold(false);
