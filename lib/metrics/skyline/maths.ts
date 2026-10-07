@@ -207,10 +207,17 @@ export type Cam = { cs: number; sn: number; se: number; ce: number };
 // e=0 looks straight down (yaw 0, elevation 90 degrees): x across, y down,
 // height invisible, a plain heat map. e=1 is the isometric corner view. Orbit
 // offsets only apply in proportion to e, so the flat view never tilts.
-export const camera = (e: number, dYaw = 0, dElev = 0): Cam => {
+export const camera = (e: number, dYaw = 0, dElev = 0): Cam => cameraInto({ cs: 0, sn: 0, se: 0, ce: 0 }, e, dYaw, dElev);
+
+// camera() written into `out`, for the paint loop that must not allocate.
+export const cameraInto = (out: Cam, e: number, dYaw = 0, dElev = 0): Cam => {
   const yaw = Math.min(YAW_RANGE[1], Math.max(0, lerp(0, YAW_3D + dYaw, e)));
   const elev = lerp(Math.PI / 2, Math.min(ELEV_RANGE[1], Math.max(ELEV_RANGE[0], ELEV_3D + dElev)), e);
-  return { cs: Math.cos(yaw), sn: Math.sin(yaw), se: Math.sin(elev), ce: Math.cos(elev) };
+  out.cs = Math.cos(yaw);
+  out.sn = Math.sin(yaw);
+  out.se = Math.sin(elev);
+  out.ce = Math.cos(elev);
+  return out;
 };
 
 // World (x = week, y = weekday, z = up) to screen, before scale and offset.
