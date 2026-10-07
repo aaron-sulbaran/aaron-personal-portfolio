@@ -63,6 +63,7 @@ docs/archive/
 docs/review-sweep/
 
 # Font files stay out by default; only faces the shipped site uses are
-# allowlisted below (Profa Black, owned; the headline face).
+# allowlisted below (Profa Black, the headline face; Profa Bold, the label face).
 app/fonts/*
 !app/fonts/ProfaTrial-Black.ttf
+!app/fonts/ProfaTrial-Bold.ttf
