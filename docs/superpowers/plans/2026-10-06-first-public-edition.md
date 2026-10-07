@@ -132,6 +132,8 @@ Slices 2a to 2d build in parallel from the same base and merge in order; 2b, 2c,
 - **Timing-sensitive e2e** (the pill fade bounds, the mark's tap samples, the metrics fling) will flake with four production builds running at once; controllers stagger full runs and never read a timing failure as a defect on the first try.
 - **Hard-coded copy in tests** ("Open menu", "Flat", "Skyline", "Close") is brittle under Aaron's content pass; builders read labels from `siteContent` in tests where a plan hard-codes them.
 
+- **Found 2026-10-06 while looking at PRs 28 and 29 (merged PR 26, not the slices):** on a slow GPU the loader's resting lockup, which lives in the fixed `.coil-loader` layer, follows the scroll while the scene is still booting, so "Hi, I'm Aaron" floats over the book and band (measured at 0.9s with the page at 1800px, `data-scene` still off). Milliseconds on a fast GPU, visible on a slow device or a throttled tab. Fix in flight on branch `loader-rest-scroll`: the resting lockup stays glued to the hero during the hold.
+
 ## 8. Go-live steps (tier 5)
 
 1. `lib/holding.ts` default to full; `app/sitemap.ts` and `robots` follow; `/work/[slug]` no longer redirects.
@@ -161,7 +163,7 @@ Each is a full writing-plans document with tasks, tests first, exact files and c
 | coil-scroll-free | 25 | 2026-10-06 | 3230 (retired) | yes | 2026-10-06, second, one test conflict resolved |
 | loader-lockup | 26 | 2026-10-06 | 3240 (retired) | headless only; Aaron's Chrome sighting never reproduced | 2026-10-06, third |
 | label-face | 27 | 2026-10-06 | 3260 (production build) | clean at 1440, 1024, 390 in both themes; the Connect email truncation at 1024 is pre-existing on `main`, handed to `sections` | awaiting Aaron; must merge after tier 1 and resolve the listed conflicts (keep label classes, drop `data-wave-avoid`, `grid items-baseline` with `gap-4`, regenerate `band-still`) |
-| wave-band-only | 28 | 2026-10-06 | 3250 (production build) | see below | awaiting Aaron; merges first in tier 1 |
+| wave-band-only | 28 | 2026-10-06 | 3250 (production build) | clean: zero fixed canvases and zero avoid markers outside the band at every scroll position, the pill docks past the band and undocks above it | awaiting Aaron; merges first in tier 1 |
 | controls | | building | 3270 | | |
-| sections | 29 | 2026-10-06 | 3280 (production build) | see below | awaiting Aaron; merges after label-face; Connect swaps to `Fill line={0}` once controls lands |
+| sections | 29 | 2026-10-06 | 3280 (production build) | clean: beside layout with hairlines, sticky Who I am at 1024, Connect values break after the at sign at 390 with zero overflow at all widths, reduced motion hides nothing | awaiting Aaron; merges after label-face; Connect swaps to `Fill line={0}` once controls lands |
 | metrics | | building | 3290 | | |
