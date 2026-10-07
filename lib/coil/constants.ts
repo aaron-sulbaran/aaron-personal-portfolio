@@ -57,17 +57,29 @@ const values = {
   wheel: {
     lambda: 11, // one exponential smoothing stage, 1/s (about 90ms)
     cardsPerPixel: 0.0045,
-    pageScrollCardsPerPixel: 1 / 150, // page scroll turns the coil (on)
   },
   // Wheel capture, decided once per gesture (lib/coil/capture.ts): a gesture
-  // starting inside the helix silhouette (gaps between cards included) with
-  // the hero at least half in view is the coil's from its first event, with
-  // no hover intent. Aaron, 2026-09-29, superseding table 1.1's "cards only,
-  // 400ms hover intent" after testing the build.
+  // starting with the pointer on a card (or in the seam between two), capture
+  // armed by a real pointer move since the page last scrolled, and the hero
+  // at least half in view is the coil's from its first event, with no hover
+  // intent; release stays the helix silhouette. Aaron, 2026-09-29 (no intent,
+  // no top-of-page rule), narrowed from the whole silhouette after his
+  // hardware pass of 2026-10-05.
   capture: {
     gestureGapMs: 260, // wheel events closer than this are one gesture (the lab's value)
     heroVisibleMin: 0.5,
     nudgeAfterMs: 2600,
+    // The seam margin, in card heights (times the pane's cardPx): off a card,
+    // a point is in a seam when two pickable cards are this close. The widest
+    // seam between two adjacent front cards at rest, as picking sees them
+    // (flat cards, so a wedge), has both cards 0.1045 card heights from its
+    // middle at any pane (geometry.test.ts derives it); this covers it with
+    // 2px to spare down to a 1024 by 768 pane. 26.7px at 1485 by 927. A spin's
+    // stretch opens seams past it; the continuation rule covers those.
+    seamCards: 0.12,
+    // A real pointer move this far from where the page last scrolled under a
+    // still pointer arms capture again (trackpad jitter is 1 to 3px).
+    rearmPx: 6,
   },
   // A book row hovered or focused holds the coil still on its card.
   rowHold: {
@@ -105,6 +117,22 @@ const values = {
 
   // Name behind the helix.
   nameInk: 0.12,
+  // The "Hi, I'm" over "Aaron" lockup, drawn by the canvas and matched by the
+  // loader's DOM lockup (lib/loader/lockup.ts), so one set of proportions
+  // serves both. The name's advance spans this share of the pane's width;
+  // the greeting's cap height is greetingCap of the name's, its lowest ink
+  // greetingGap of its own cap height above the "A", its ink greetingShift of
+  // the name's size right of the name's ink. pad (of the size) rims the mask;
+  // inkGain is the composite's gain on the --name-ink token.
+  lockup: {
+    widthWide: 0.7,
+    widthNarrow: 0.9,
+    greetingCap: 0.18,
+    greetingGap: 0.45,
+    greetingShift: 0.02,
+    pad: 0.04,
+    inkGain: 2.2,
+  },
 
   // Header.
   markPx: 32,

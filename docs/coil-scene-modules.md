@@ -30,11 +30,11 @@ Every module is a factory: `createX(ctx, ...parts it calls, loop)` returns the f
 | `scene/renderer.ts` | The scene canvas's `WebGLRenderer`, cameras, scenes, the field's and the name surface's targets, `uView`, the shared quad (`Gl`); the layout (host sized, DPR capped, rebuild trigger); the resize observer; the lost context | loop |
 | `scene/nameSurface.ts` | The name's lit surface pass (half the lockup's device resolution, drawn only when its clock, the wake, the layout or the theme moved), its clock and light orbit, the pointer's wake (`lib/coil/wake.ts`) stepped and uploaded, `nameBench()` | none |
 | `scene/field.ts` | The field pass (drift preset, its two clocks, only redrawn when a clock moved) and the composite pass (material, theme colors and the name's per-theme scalars, size uniforms) | none |
-| `scene/name.ts` | The lockup mask (greeting and name, one mask), its layout, the entrance, loader, rebuild and QA fades, the surface growing over the loader's name, the per-letter reduction pass (each letter's contrast, the lift), `nameRect` and `landName` | nameSurface, loop |
+| `scene/name.ts` | The lockup mask (greeting and name, one mask), its layout, the entrance, loader, rebuild and QA fades, the surface growing over the loader's name, the per-letter reduction pass (each letter's contrast, the lift), `nameRect` (which carries the greeting's ink too) and `landName`, which lands the whole lockup and returns false until an entrance waiting for the loader has reached a frame | nameSurface, loop |
 | `scene/nameProbe.ts` | QA only: the composite without the cards read back, the per-letter readout (`lib/coil/letterContrast.ts`) and lightness snapshots (`window.__coil.nameProbe`) | name |
 | `scene/cards.ts` | Slot meshes, shared card uniforms, painted faces and the repaint queue, seen levels, the helix frame, per slot poses (entrance, unwind, header band, rebuild, hidden, hover lift, seen ring), the silhouette, the card pass; `quadOf`, `flightQuadOf`, `facesOf`, `slotOfKey` | name (QA hide) |
 | `scene/hover.ts` | Picking (`pickAt`, `cardAt`), the per frame hover and the cursor bridge (`lib/cursor/hover.ts`), the flown card's lift target, the row hold and hover-jump (`focusCard`), `heroVisible` | cards, loop |
-| `scene/input.ts` | Pointer and wheel handlers over `lib/coil/capture.ts`, click and tap opening, the touch drag and its coast, the scroll, conveyor and nudge steps | cards, hover, loop |
+| `scene/input.ts` | Pointer and wheel handlers over `lib/coil/capture.ts` (plus the window scroll listener that disarms capture), click and tap opening, the touch drag and its coast, the scroll, conveyor and nudge steps | cards, hover, loop |
 | `scene/entrance.ts` | The entrance clock on the scene's time (a rebuild starts at rest), the strand held until the band opens, the end reported once, the rebuild fade | name |
 | `scene/unwind.ts` | The double-click toggle and `api.unwind`, the latch held in the frame, rows measured onto the z = 0 plane, the name's move into the list's lead | name, hover, loop |
 | `scene/flightOverlay.ts` | The flown card's own canvas and renderer on the scene canvas's pixel grid, its covers, its face copies, prewarm target, teardown | cards |
@@ -56,14 +56,14 @@ Every module is a factory: `createX(ctx, ...parts it calls, loop)` returns the f
 | `budget`, `landedAhead` (reset) | boot.ts (`resync`) |
 | `poses`, `rendered`, `sil` | cards.ts |
 | `hoveredSlot` | hover.ts |
-| `pointer`, `capture`, `lastScrollY` (per frame), `dragging`, `coast`, `pressCaughtCoil` | input.ts (`coast` also cleared by entrance.ts while the strand is held) |
+| `pointer`, `capture`, `dragging`, `coast`, `pressCaughtCoil` | input.ts (`coast` also cleared by entrance.ts while the strand is held) |
 | `conveyor` | input.ts (feeds), entrance.ts (held at 0), unwind.ts (latched), hover.ts (glide) |
 | `envelope` | input.ts |
 | `rowHold` | hover.ts |
 | `unwind` | unwind.ts (and loop.ts shifts its start after a stop) |
 | `rebuildAt` | renderer.ts (layout), entrance.ts, loop.ts (clock hold) |
 | `hiddenSlot`, `frozenByApi`, `landedAhead` (set) | flight.ts (and debugProbe.ts `hide`) |
-| `raf`, `lastTime`, `lastScrollY` (on wake), `visible`, `resuming`, `firstFrameSent` | loop.ts |
+| `raf`, `lastTime`, `visible`, `resuming`, `firstFrameSent` | loop.ts |
 | `ready`, `disposed` | boot.ts, the root's dispose |
 
 ## The frame
@@ -72,7 +72,7 @@ Every module is a factory: `createX(ctx, ...parts it calls, loop)` returns the f
 
 | Step | Part | Hands on |
 |---|---|---|
-| scroll | input | `scrollDelta` |
+| scroll | input | (places the pointer at the page's scroll) |
 | conveyor | input | (moves `st.conveyor`, `st.envelope`) |
 | helix | cards | `helix` |
 | entrance | entrance (and name's fades) | `clock`, `realElapsedMs`, `helix` |

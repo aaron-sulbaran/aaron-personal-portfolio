@@ -13,6 +13,9 @@ export type CoilHooks = {
   hovered: () => number;
   owner: () => "coil" | "page" | "none";
   silhouette: () => Silhouette | null;
+  // Rule A, the arming and the hold at a viewport point.
+  captureAt: (clientX: number, clientY: number) => CaptureProbe;
+  envelope: number[];
   budget: () => Record<string, unknown>;
   visibleQuads: () => Quad[];
   entrance: () => { base: number | null; elapsedMs: number | null; ended: boolean; nameLanded: boolean; nameA: number; offset: number };
@@ -45,8 +48,32 @@ export type CoilHooks = {
     unwind: (on?: boolean) => void;
     cardAt: (clientX: number, clientY: number) => { key: string; slot: number } | null;
     slotOfKey: (key: string) => number;
-    nameRect: () => { left: number; baseline: number; width: number; fontPx: number; gradient: { top: number; height: number } } | null;
+    freeze: (on: boolean) => void;
+    nameRect: () => {
+      left: number;
+      baseline: number;
+      width: number;
+      fontPx: number;
+      greeting: { left: number; baseline: number; fontPx: number };
+      gradient: { top: number; height: number };
+    } | null;
   };
+};
+
+// What may start a coil gesture at a point: onCard is rule A (on a pickable
+// card, or within the seam margin of two; cardPx and secondCardPx are the
+// distances to the nearest two, 0 on one), insideSilhouette the hull that
+// governs release and the hold, armed whether a real pointer move has armed
+// capture since the page last scrolled, held whether the last coil gesture
+// still holds the wheel for a still pointer.
+export type CaptureProbe = {
+  onCard: boolean;
+  cardPx: number;
+  secondCardPx: number;
+  seamPx: number;
+  insideSilhouette: boolean;
+  armed: boolean;
+  held: boolean;
 };
 
 export type ProbePoint = { x: number; y: number };

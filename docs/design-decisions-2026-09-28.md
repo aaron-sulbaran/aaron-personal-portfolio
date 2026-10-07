@@ -89,7 +89,7 @@ Picked by Aaron from hero lab 2, 2026-09-29 (the build starts on these; see `doc
 - [x] Name fill: a gradient (explore a grain gradient inside the letters during the build, not a flat fill).
 - [x] Palette: sea plus burnt orange, the orange reduced to about 20 percent of the field (the lab's 50/50 was too much). Light and dark both approved.
 - [x] Geometry: axis 33 degrees, 8 cards per turn, turn gap 1.5, card height 24 percent, neighbor gap 0.05, lean -12, curvature 0.7, repeats fill the pane.
-- [x] Wheel (revised 2026-09-29 after Aaron's hands-on pass; see `docs/coil-input-model.md`): ownership is decided once per wheel gesture. Pointer inside the helix silhouette (gaps included) with the hero at least half in view: the coil owns the gesture, both directions, no delay, the page does not move. Otherwise the page owns it. Released only when the pointer itself leaves the silhouette. No hover intent, no "cards only", no "top of page only" (those three rules broke capture). Chevron nudge after 2.6s, gone the instant the coil lets go. Page scroll turns the coil gently. Spin cap 12.5 cards/s, idle slow as built.
+- [x] Wheel (revised 2026-09-29 after Aaron's hands-on pass; see `docs/coil-input-model.md`): ownership is decided once per wheel gesture. Pointer inside the helix silhouette (gaps included) with the hero at least half in view: the coil owns the gesture, both directions, no delay, the page does not move. Otherwise the page owns it. Released only when the pointer itself leaves the silhouette. No hover intent, no "cards only", no "top of page only" (those three rules broke capture). Chevron nudge after 2.6s, gone the instant the coil lets go. Page scroll turns the coil gently. Revised 2026-10-06: page scroll no longer turns the coil; it runs at its idle pace while the hero scrolls away. Spin cap 12.5 cards/s, idle slow as built.
 - [x] Build: autonomous overnight per the scaffold and section 10, Aaron's full permission (2026-09-29).
 
 ## 3. Loader
@@ -178,6 +178,14 @@ Picked by Aaron from hero lab 2, 2026-09-29 (the build starts on these; see `doc
 - [x] The duck's look-ahead scales with scroll speed (zero at rest), and the light theme's open-air dots are 0.40 and 0.55.
 - [x] The test browser is muted; an unmuted suite was playing the soundtrack through the laptop's speakers.
 - [ ] Later, Aaron's idea: once it is background, the wave reshapes into other forms (a helix echoing the hero).
+
+## 2.12 Aaron's hardware pass, 2026-10-05 (the Coil's wheel)
+
+- [x] Supersedes 2.9 and 2.10 where they say the coil owns a gesture anywhere inside the helix silhouette, gaps included. The silhouette took the wheel from empty background, and a page scroll could slide a card under a still pointer and trap the next gesture.
+- [x] The coil takes a gesture only where the cursor shows a card, or in the seam between two cards. Empty background inside the helix scrolls the page.
+- [x] The coil takes a gesture only after a real pointer move since the page last scrolled. A fresh load, or a card the page slid under a still pointer, scrolls the page.
+- [x] Once the coil has a gesture it keeps the next ones until the pointer really moves or the page scrolls. Release is unchanged: only a real move outside the silhouette.
+- [x] Still true: decided once per gesture, no delay, no hover intent, no top-of-page rule. Rules and tests: `docs/coil-input-model.md` section 3.
 
 ## 9a. Surfaced by the overnight build (2026-09-29), yours in the morning
 
