@@ -47,24 +47,6 @@ export const siteContent = {
     freeze: "Freeze the wave",
     unfreeze: "Let the wave move",
   },
-  // Words that open a "My definition of <term>" modal (DefinitionModal). The
-  // ring's hero tagline was their only trigger; the Coil hero has no tagline,
-  // so nothing opens them today. Kept, with the component, for a future home.
-  // Keep each body to one or two sentences; drafts in Aaron's voice.
-  definitions: {
-    products: {
-      term: "products",
-      titlePrefix: "My definition of",
-      body:
-        "To me, product is turning a real human need into something people actually reach for. Less about features, more about judgment: deciding what matters, what to cut, and why.",
-    },
-    community: {
-      term: "community",
-      titlePrefix: "My definition of",
-      body:
-        "Community, to me, is what happens when you build with people instead of just for them. It is the rooms where people show up, contribute, and leave more capable than they came.",
-    },
-  },
   about: {
     label: "About",
     heading: "About.",
@@ -817,8 +799,6 @@ export type WorkItem = (typeof siteContent.workItems)[number];
 export type MenuItem = (typeof siteContent.menu.items)[number];
 export type Track = SoundtrackTrack;
 export type HomeTile = (typeof siteContent.homeTiles)[number];
-export type Definition =
-  (typeof siteContent.definitions)[keyof typeof siteContent.definitions];
 
 // O(1) lookups for the card and row resolvers (HomeController, BookRow),
 // built once at module load so per-render resolution never scans the arrays.
