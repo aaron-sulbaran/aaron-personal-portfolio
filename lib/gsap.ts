@@ -15,16 +15,22 @@ import { guardRefreshScroll, type RecordedScroll } from "./scrollRefresh";
 
 if (typeof window !== "undefined") {
   gsap.registerPlugin(useGSAP, ScrollTrigger, Observer);
-  const root = document.documentElement;
-  guardRefreshScroll({
-    on: (event, callback) => ScrollTrigger.addEventListener(event, callback),
-    windowScroll: () => ScrollTrigger.getScrollFunc(window) as ScrollTrigger.ScrollFunc & RecordedScroll,
-    root,
-    scrollY: () => window.scrollY,
-    flushStyle: () => getComputedStyle(root).scrollBehavior,
-    nextFrame: (callback) => requestAnimationFrame(callback),
-    cancelFrame: (id) => cancelAnimationFrame(id),
-  });
+  // Once per page: a dev Fast Refresh re-runs this module, and a second guard
+  // would take the first one's auto for the root's own value and keep it.
+  const host = window as { __refreshGuard?: true };
+  if (!host.__refreshGuard) {
+    host.__refreshGuard = true;
+    const root = document.documentElement;
+    guardRefreshScroll({
+      on: (event, callback) => ScrollTrigger.addEventListener(event, callback),
+      windowScroll: () => ScrollTrigger.getScrollFunc(window) as ScrollTrigger.ScrollFunc & RecordedScroll,
+      root,
+      scrollY: () => window.scrollY,
+      flushStyle: () => getComputedStyle(root).scrollBehavior,
+      nextFrame: (callback) => requestAnimationFrame(callback),
+      cancelFrame: (id) => cancelAnimationFrame(id),
+    });
+  }
 }
 
 export { gsap, ScrollTrigger, Observer, useGSAP };

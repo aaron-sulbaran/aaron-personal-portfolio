@@ -604,6 +604,8 @@ test("dock: a phone width removes the pill and desktop fades it back in", async 
   await page.setViewportSize({ width: 1440, height: 900 });
   await nextFrames(page, 2);
   expect(await page.evaluate(() => window.scrollY), "scroll after the desktop width's refresh").toBe(place);
+  await nextFrames(page, 45);
+  expect(await page.evaluate(() => window.scrollY), "no glide after the refresh").toBe(place);
   await dockLanded(page);
   const samples = (await stopDock(page)).filter((s) => s.shown);
   expect(samples.some((s) => s.opacity > 0 && s.opacity < 1), "a fade back in").toBe(true);
