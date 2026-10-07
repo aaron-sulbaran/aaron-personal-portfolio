@@ -593,9 +593,12 @@ test("dock: a phone width removes the pill and desktop fades it back in", async 
   await dockLanded(page);
   await page.setViewportSize({ width: 375, height: 812 });
   await expect(page.locator(PILL)).toHaveCount(0);
+  // Still past the band: the resize's refresh re-derives "passed" with no scroll.
+  await startDock(page, 16);
   await page.setViewportSize({ width: 1440, height: 900 });
-  await toAbout(page);
   await dockLanded(page);
+  const samples = (await stopDock(page)).filter((s) => s.shown);
+  expect(samples.some((s) => s.opacity > 0 && s.opacity < 1), "a fade back in").toBe(true);
   expect(Math.abs((await dockGeometry(page)).left - DOCK.insetPx)).toBeLessThanOrEqual(2);
 });
 
