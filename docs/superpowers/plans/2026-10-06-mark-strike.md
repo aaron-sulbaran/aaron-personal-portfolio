@@ -1,20 +1,28 @@
-# Mark strike: implementation plan
+# Mark strike: implementation plan (revised)
 
-> **For agentic workers:** this plan is meant to be executed with superpowers:subagent-driven-development. Run the tasks in order, one implementer at a time, inside the worktree. Every task writes its failing test first. Opus 5.5 implements Tasks 7 to 9 (motion); Sonnet can take the transcription tasks.
+I applied all five review edits:
+1. Task 10 now swaps in the controls slice's `Fill` primitive, gated on `test -f components/fx/Fill.tsx`. The plain accent link stays as the fallback.
+2. Task 7 adds `CustomEase` to the existing `registerPlugin` call and export list in `lib/gsap.ts`, so `SplitText` from the sections slice is kept.
+3. The card's shadow is a `--shadow-card` token in `globals.css`. The component has no raw rgba.
+4. Every intermediate end-to-end run serves this slice's own build on port 3310 through `E2E_BASE_URL`. The full run uses `CI=1` after an `lsof` check of 3140 and 3141.
+5. The specs read the dialog name, Close and Say hi from `siteContent`.
 
-**Goal:** Holding the top-left AS mark for 650ms (pointer, touch, or Enter/Space on the focused mark) fills it two-tone, then discharges into Aaron's cel strike and opens a small card about the mark. A normal click still scrolls to the top. The cursor's ring shows the hold.
+> **For agentic workers:** execute with superpowers:subagent-driven-development, tasks in order, one implementer at a time, in the worktree. Every task writes its failing test first. Opus 5.5 implements Tasks 7 to 9 (motion); Sonnet can take the transcription tasks.
+
+**Goal:** Holding the top-left AS mark for 650ms (pointer, touch, or Enter or Space on the focused mark) fills it two-tone, then discharges into Aaron's cel strike and opens a small card about the mark. A normal click still scrolls to the top, and the cursor's ring shows the hold.
 
 **Architecture:**
-- **The clock.** `lib/mark/hold.ts` is a pure state machine: no timers, no DOM, time passed in. It owns press, fill, taste, drain, discharge, completion and the swallowed click. `MarkTrigger` ticks it once per frame. Each frame it paints the mark's accent clip and publishes `{ fill, spent, closed, hidden }` as `markHold` on the hover store (`lib/cursor/hover.ts`). `CustomCursor` renders `MarkRing`, which paints the 16 percent tint and the 4px arc from that same value. One clock, two painters.
-- **The strike.** `lib/mark/cel.ts` is lifted from the lab and is pure: a seed produces a frame list. `lib/mark/timeline.ts` steps that list on a GSAP clock.
-- **The card.** `MarkCard` uses the house modal shell: Portal, `useBodyScrollLock`, `useEscapeKey`, `useFocusTrap`, and the shared blur and tint variants. Framer owns the backdrop and the exit. GSAP owns the strike, the surface forming and the words rising. The two never animate the same element.
-- **The settled frame.** The resting mark is always the real `AsMark`. Its paths move into `lib/mark/geometry.ts` so there is one copy in code, and a test checks them against `public/brand/as-mark-ink.svg`.
+- **One clock for the hold.** `lib/mark/hold.ts` is a pure state machine with time passed in: press, fill, taste, drain, discharge, completion, and the swallowed click.
+- **Two painters.** `MarkTrigger` ticks the machine each frame, paints the mark's accent clip, and publishes `{ fill, spent, closed, hidden }` as `markHold` on the hover store (`lib/cursor/hover.ts`). `CustomCursor` renders `MarkRing`, which paints the 16 percent tint and the 4px arc from that same value.
+- **The strike.** `lib/mark/cel.ts` is lifted from the lab: a pure frame list from a seed. `lib/mark/timeline.ts` steps it on a GSAP clock.
+- **The card.** `MarkCard` uses the house modal shell (Portal, `useBodyScrollLock`, `useEscapeKey`, `useFocusTrap`, the shared blur and tint variants). Framer owns the backdrop and the exit; GSAP owns the strike, the surface and the words. They never animate the same element.
+- **The settled frame.** It is always the real `AsMark`. Its paths move to `lib/mark/geometry.ts`, the only copy in code, and a test checks that copy against `public/brand/as-mark-ink.svg`.
 
 **Tech Stack:** Next 16.2, React 19.2, TypeScript strict, Tailwind 3.4, GSAP 3.15 (CustomEase), Framer Motion 12, vitest, Playwright (Chromium, muted).
 
 **Spec path:**
-- `docs/lab-log-2026-10-05.md`, section "Mark lab": Aaron's picks of 2026-10-06, round 3's ring indicator, and the rollout cautions.
-- Master plan: `docs/superpowers/plans/2026-10-06-first-public-edition.md`, section 6 item 5 (the keyboard route). That file is untracked in the main checkout, so read it from there.
+- `docs/lab-log-2026-10-05.md`, "Mark lab": Aaron's picks of 2026-10-06, the ring indicator from round 3, and the rollout cautions.
+- Master plan: `docs/superpowers/plans/2026-10-06-first-public-edition.md`, section 6 item 5, the keyboard route. That file is untracked on main; read it from the main checkout.
 - Lab source: `/Users/asulbaran21/Personal Projects/.worktrees/aaron-portfolio-website-lab/app/lab/mark/`.
 
 **Global Constraints (verbatim):**
@@ -37,48 +45,61 @@ From the master plan, section 4:
 
 From the brief: fixed overlays Portal to body; one ref-counted scroll lock; z scale: modals 50, cursor 100; the mark is the top-left nav button that scrolls to the top.
 
-**Decisions this plan takes (flag to Aaron):**
-1. **Only the cel strike ships.** Aaron's JSON also carries round-one values: stepped 220ms power2.in, 110ms pause, ring splash 640ms expo.out, shockwave wipe 620ms power2.out, and the 0.06 flash with 60ms rise and 440ms decay. The lab's cel path (`strike.ts`, `buildCel`) never reads any of them. They are recorded in a comment in `lib/mark/constants.ts` and not built.
-2. **CustomEase is registered in `lib/gsap.ts`; DrawSVG is not.** The brief asked for both, but the cel strike draws no strokes, and registering DrawSVG would add an unused plugin to every page.
-3. **Phones stack the card.** Mark left and text right holds from `sm` up. Below `sm`, a 168px mark leaves about 110px for text, so the mark sits above the text.
-4. **The ring snaps onto the mark.** The lab's 200ms glide is not ported. The cursor's position is written inside the input handler with no transition so it has zero lag, and a transition on it would lag the dot everywhere.
-5. **The drain scales with the fill.** It runs 260ms times max(0.3, fill), as in the lab, so a full hold drains in 260ms.
-6. **`touch-none` on the mark.** A pan can never cancel a hold that starts on the 26px or 32px mark.
+**Running end to end.** Intermediate runs serve this slice's own build on 3310. That is its preview port: 3250 upward in tens, in slice order, and mark-strike is seventh. Set `EXTRA` to the task's filter (empty for none), then run this one command:
+```bash
+! lsof -nP -iTCP:3310 -sTCP:LISTEN >/dev/null && NEXT_PUBLIC_SITE_MODE=full pnpm build && { NEXT_PUBLIC_SITE_MODE=full pnpm exec next start -p 3310 >/dev/null 2>&1 & SERVER=$!; until curl -sf -o /dev/null http://localhost:3310; do sleep 1; done; E2E_BASE_URL=http://localhost:3310 pnpm test:e2e --project chromium e2e/mark.spec.ts $EXTRA; STATUS=$?; kill "$SERVER"; exit "$STATUS"; }
+```
+It stops only the server it started. If 3310 is taken, stop and report; never kill a listener you did not start. The full run (Task 11) uses `CI=1` after an `lsof` check of 3140 and 3141.
 
-**Copy placeholders for Aaron to replace.** These are the shortest true lines; each is marked `PLACEHOLDER` in `lib/content.ts`:
+**Decisions this plan takes (flag to Aaron):**
+1. **Only the cel strike ships.** His JSON's round-one values (stepped 220ms power2.in, 110ms pause, ring splash 640ms expo.out, shockwave wipe 620ms power2.out, the 0.06 flash with 60ms rise and 440ms decay) are never read by the lab's cel path (`strike.ts`, `buildCel`). They are recorded in a comment in `lib/mark/constants.ts`, not built.
+2. **CustomEase is registered; DrawSVG is not.** The cel strike draws no strokes, and DrawSVG would load on every page.
+3. **Phones stack the card.** Mark left and text right holds from `sm` up. Below `sm` a 168px mark leaves about 110px for the text.
+4. **The ring snaps onto the mark.** The lab's 200ms glide is dropped. The cursor's transform is written in the input handler with no transition, so it never lags.
+5. **The drain scales with the fill.** It is 260ms times max(0.3, fill), as in the lab.
+6. **`touch-none` on the mark,** so a pan never cancels a hold that starts on it.
+7. **The card's shadow becomes a token.** The house modals inline `rgba(10,10,10,0.45)`. The card reads the same value from a new `--shadow-card` in `globals.css`, under the mark's own comment.
+
+**Copy placeholders for Aaron to replace.** These are the shortest true lines, each marked `PLACEHOLDER` in `lib/content.ts`:
 - dialog label "The mark"
 - eyebrow "The mark"
 - title "My initials, A and S"
-- line "The bolt's tail is also the A's right leg."
+- one line: "The bolt's tail is also the A's right leg."
 - call to action "Say hi", linking to `#connect`
 
 **Review Focus: five failure modes no test covers**
-1. **The swallowed click leaking.** A touch long press may never fire a click (Android after a prevented contextmenu, iOS after a held touch). The pending swallow is cleared only by the next `press`. Confirm that a keyboard hold never sets it (`source === "key"`), and that a screen-reader activation (a click with no pointerdown) after a pointer hold whose click never arrived is eaten at most once.
-2. **Who owns the nav mark's transform.** The tuck (`-translate-y-[90px]`, `focus-visible:translate-y-0`) lives on the button. The 10px growth lives on the inner span. Moving the scale onto the button breaks the headroom tuck. It also breaks `CustomCursor`'s ring geometry, which assumes an unscaled button box plus `MARK.growPx`.
-3. **Real touch hardware.** Check the iOS callout, magnifier and selection; `pointercancel`; Android's `contextmenu` at about 500ms, before the 650ms completion; and whether a click follows a long press. Chromium desktop end-to-end covers none of this. Check on Aaron's phone at 390px on port 3310.
-4. **Closing or holding again mid-strike.** AnimatePresence keeps the dialog mounted for its 200ms exit with the GSAP context still live. A new hold during the exit re-enters the same key. Check that the scroll-lock count returns to 0, that the night layer never lingers after unmount, and that `markHold.hidden` is reset on close.
-5. **A stale ring.** The ring caches the mark's rect when the pointer enters. A resize or a headroom tuck while the pointer rests on the mark leaves the ring at the old place until the next mousemove. A keyboard hold also shows the ring if the pointer happens to sit over the mark. Decide whether either needs a guard.
+1. **The swallowed click leaking.** A touch long press may never fire a click (Android after a prevented contextmenu, iOS after a held touch). Only the next `press` clears the pending swallow. Confirm that a keyboard hold never sets it, and that a screen reader's click with no pointerdown is eaten at most once.
+2. **Who owns the nav mark's transform.** The tuck (`-translate-y-[90px]`, `focus-visible:translate-y-0`) is on the button; the 10px growth is on the inner span. Moving the scale onto the button breaks the headroom tuck and the cursor's ring geometry, which assumes an unscaled box plus `MARK.growPx`.
+3. **Real touch hardware.** Check the iOS callout, magnifier and selection; `pointercancel`; Android's `contextmenu` at about 500ms, before the 650ms completion; and whether a click follows a long press. Chromium desktop runs cover none of it. Check on Aaron's phone at 390px on 3310.
+4. **Closing or holding again mid-strike.** AnimatePresence keeps the dialog mounted for its 200ms exit with the GSAP context live, and a hold during the exit re-enters the same key. The scroll-lock count must return to 0, the night layer must never linger, and `markHold.hidden` must reset on close.
+5. **A stale ring.** The rect is cached when the pointer enters the mark. A resize or a tuck while the pointer rests there leaves the ring in place until the next mousemove. A keyboard hold also shows the ring if the pointer happens to sit over the mark.
 
 ---
 
 ### Task 0: Worktree and baseline
 
-**Files:** none.
+**Files:** none. **Interfaces:** Consumes `main` after tier 2. Produces the branch `mark-strike`.
 
-**Interfaces:** Consumes `main` after the tier 2 merges. Produces the branch `mark-strike`.
-
-- [ ] Create the worktree:
+- [ ] Create the worktree and install:
   ```bash
   git -C "/Users/asulbaran21/Personal Projects/aaron-portfolio-website" worktree add "/Users/asulbaran21/Personal Projects/.worktrees/aaron-portfolio-website-mark-strike" -b mark-strike main
   cd "/Users/asulbaran21/Personal Projects/.worktrees/aaron-portfolio-website-mark-strike" && pnpm install --frozen-lockfile
   ```
-- [ ] Run `pnpm test && pnpm tsc --noEmit && pnpm lint`. Expect everything to be green. Every later command runs from the worktree root.
+- [ ] Run `pnpm test && pnpm tsc --noEmit && pnpm lint`. Expect green. Run every later command from the worktree root.
 
 ### Task 1: One copy of the mark's geometry
 
-**Files:** create `lib/mark/geometry.ts` and `lib/mark/geometry.test.ts`; modify `components/menu/BrandMark.tsx`.
+**Files:**
+- Create `lib/mark/geometry.ts` and `lib/mark/geometry.test.ts`
+- Modify `components/menu/BrandMark.tsx`
 
-**Interfaces:** Produces `VIEW_BOX: string`, `BOLT_D`, `LEG_D`, `BAR_D: string`, `type Point = readonly [number, number]`, `BOLT_PTS`, `LEG_PTS`, `BAR_PTS: readonly Point[]`, `IMPACT: Point`, `GROUND_Y: number`, `BOLT_SPINE: readonly Point[]`, and `FILL_TOP = 22`, `FILL_BOTTOM = 234`.
+**Interfaces:**
+- Produces from `lib/mark/geometry.ts`:
+  - `VIEW_BOX`, `BOLT_D`, `LEG_D`, `BAR_D` (strings)
+  - `type Point = readonly [number, number]`
+  - `BOLT_PTS`, `LEG_PTS`, `BAR_PTS: readonly Point[]`
+  - `IMPACT: Point`, `GROUND_Y: number`, `BOLT_SPINE: readonly Point[]`
+  - `FILL_TOP = 22`, `FILL_BOTTOM = 234`
 
 - [ ] Write the failing test, `lib/mark/geometry.test.ts`:
   ```ts
@@ -100,7 +121,7 @@ From the brief: fixed overlays Portal to body; one ref-counted scroll lock; z sc
     });
   });
   ```
-- [ ] Run `pnpm test lib/mark/geometry.test.ts`. Expect FAIL: cannot resolve `@/lib/mark/geometry`.
+- [ ] Run `pnpm test lib/mark/geometry.test.ts`. Expect FAIL: the module cannot be resolved.
 - [ ] Create `lib/mark/geometry.ts`:
   ```ts
   // The mark's geometry: the three paths of public/brand/as-mark-ink.svg, the
@@ -118,7 +139,7 @@ From the brief: fixed overlays Portal to body; one ref-counted scroll lock; z sc
   export const BAR_PTS: readonly Point[] = [[102.4, 189.17], [135.27, 189.17], [132.57, 198.37], [93.2, 198.37]];
 
   // The bolt lands on its own point; the A's left foot sits 3.7 units lower,
-  // which is the ground the shards and the pool travel along.
+  // the ground the shards and the pool travel along.
   export const IMPACT: Point = [131.2, 229.2];
   export const GROUND_Y = 232.88;
 
@@ -157,11 +178,17 @@ From the brief: fixed overlays Portal to body; one ref-counted scroll lock; z sc
 
 ### Task 2: Lift the cel strike and Aaron's numbers
 
-**Files:** create `lib/mark/cel.ts` (copied from the lab), `lib/mark/constants.ts` and `lib/mark/cel.test.ts`.
+**Files:** create `lib/mark/cel.ts` (copied from the lab), `lib/mark/constants.ts`, `lib/mark/cel.test.ts`.
 
 **Interfaces:**
-- Consumes the geometry from Task 1.
-- Produces from `lib/mark/cel.ts`: `type CelSettings`, `seeded(seed: number): () => number`, `celSchedule(s: CelSettings)`, `celPlan(s: CelSettings): CelPlan`, `celMarkup(plan: CelPlan, index: number, ids: { glow: string; wide: string; pool: string; bloom: string }, s: CelSettings): string`, and `celBeats(s: CelSettings): { impact: number; aStart: number; framesEnd: number; settle: number }` (all in seconds).
+- Consumes the Task 1 geometry.
+- Produces from `lib/mark/cel.ts`:
+  - `type CelSettings`
+  - `seeded(seed: number): () => number`
+  - `celSchedule(s: CelSettings)`
+  - `celPlan(s: CelSettings): CelPlan`
+  - `celMarkup(plan: CelPlan, index: number, ids: { glow: string; wide: string; pool: string; bloom: string }, s: CelSettings): string`
+  - `celBeats(s: CelSettings): { impact: number; aStart: number; framesEnd: number; settle: number }`, in seconds
 - Produces from `lib/mark/constants.ts`: `HoldConfig`, `HOLD`, `CEL_PICK`, `MARK`, `RING`, `CARD`.
 
 - [ ] Write the failing test, `lib/mark/cel.test.ts`:
@@ -202,13 +229,13 @@ From the brief: fixed overlays Portal to body; one ref-counted scroll lock; z sc
     });
   });
   ```
-- [ ] Run `pnpm test lib/mark/cel.test.ts`. Expect FAIL: modules not found.
-- [ ] Copy the lab module and rename its settings type:
+- [ ] Run `pnpm test lib/mark/cel.test.ts`. Expect FAIL: the modules are not found.
+- [ ] Copy the lab file and rename its settings type:
   ```bash
   cp "/Users/asulbaran21/Personal Projects/.worktrees/aaron-portfolio-website-lab/app/lab/mark/cel.ts" lib/mark/cel.ts
   sed -i '' 's/StrikeSettings/CelSettings/g' lib/mark/cel.ts
   ```
-- [ ] Replace lines 1 and 2 of `lib/mark/cel.ts` (the two imports) with:
+- [ ] Replace lines 1 and 2 (the two imports) with:
   ```ts
   import { BAR_D, BAR_PTS, BOLT_D, BOLT_PTS, BOLT_SPINE, GROUND_Y, IMPACT, LEG_D, LEG_PTS, type Point } from "@/lib/mark/geometry";
   ```
@@ -237,7 +264,7 @@ From the brief: fixed overlays Portal to body; one ref-counted scroll lock; z sc
     celSeed: number;
   };
   ```
-- [ ] Append to `lib/mark/cel.ts`:
+- [ ] Append:
   ```ts
   // The strike's beats in seconds: the frames run after the night dip's lead,
   // and the mark is settled once the dip has lifted.
@@ -291,7 +318,7 @@ From the brief: fixed overlays Portal to body; one ref-counted scroll lock; z sc
   export const CARD = { strikeLeadS: 0.04, formEarlyS: 0.12, formS: 0.42, textDelayS: 0.1, textStaggerS: 0.05 } as const;
   ```
 - [ ] Run `pnpm test lib/mark/cel.test.ts && pnpm tsc --noEmit`. Expect PASS.
-- [ ] Parity check: `diff "/Users/asulbaran21/Personal Projects/.worktrees/aaron-portfolio-website-lab/app/lab/mark/cel.ts" lib/mark/cel.ts`. The only expected hunks are the import line, the one comment line, the inserted `CelSettings` type, `StrikeSettings` renamed to `CelSettings` in three signatures, and the appended `celBeats`. Any other hunk means the copy drifted; redo the copy.
+- [ ] Parity check: `diff "/Users/asulbaran21/Personal Projects/.worktrees/aaron-portfolio-website-lab/app/lab/mark/cel.ts" lib/mark/cel.ts`. The only hunks should be the import line, the one comment line, the `CelSettings` type, the three renamed signatures, and `celBeats`. Any other hunk means the copy is wrong; redo it.
 - [ ] Commit:
   ```bash
   git add lib/mark/cel.ts lib/mark/cel.test.ts lib/mark/constants.ts
@@ -304,7 +331,8 @@ From the brief: fixed overlays Portal to body; one ref-counted scroll lock; z sc
 
 **Interfaces:**
 - Consumes `HOLD` and `HoldConfig`.
-- Produces `type HoldPhase`, `type HoldSource = "pointer" | "key"`, `type HoldState`, `HOLD_IDLE`, and:
+- Produces:
+  - `type HoldPhase`, `type HoldSource = "pointer" | "key"`, `type HoldState`, `HOLD_IDLE`
   - `advance(s, now, c?): HoldState`
   - `sample(s, now, c?): { fill: number; spent: number }`
   - `press(s, now, source, c?)`, `release(s, now, c?)`, `cancel(s, now, c?)`, each returning `HoldState`
@@ -376,7 +404,7 @@ From the brief: fixed overlays Portal to body; one ref-counted scroll lock; z sc
     });
   });
   ```
-- [ ] Run `pnpm test lib/mark/hold.test.ts`. Expect FAIL: module not found.
+- [ ] Run `pnpm test lib/mark/hold.test.ts`. Expect FAIL: the module is not found.
 - [ ] Create `lib/mark/hold.ts`:
   ```ts
   import { HOLD, type HoldConfig } from "@/lib/mark/constants";
@@ -473,11 +501,16 @@ From the brief: fixed overlays Portal to body; one ref-counted scroll lock; z sc
 
 ### Task 4: The hold on the hover store, and the ring's paint
 
-**Files:** modify `lib/cursor/hover.ts` and `lib/cursor/hover.test.ts`; create `lib/mark/ring.ts` and `lib/mark/ring.test.ts`.
+**Files:**
+- Modify `lib/cursor/hover.ts` and `lib/cursor/hover.test.ts`
+- Create `lib/mark/ring.ts` and `lib/mark/ring.test.ts`
 
 **Interfaces:**
-- Produces `type MarkHold = { fill: number; spent: number; closed: boolean; hidden: boolean }`, `MARK_HOLD_IDLE`, `getMarkHold(): MarkHold`, `setMarkHold(next: MarkHold): void`, and `subscribeMarkHold(listener: () => void): () => void`.
-- Produces `ringPaint(hold: MarkHold, arcWidth: number, arcRadius: number): RingFrame`, where `RingFrame = { washTop: number; washHeight: number; arcDegrees: number; arcVisible: boolean; dashArray: string; dashOffset: string }`.
+- Produces in `lib/cursor/hover.ts`:
+  - `type MarkHold = { fill: number; spent: number; closed: boolean; hidden: boolean }`
+  - `MARK_HOLD_IDLE`
+  - `getMarkHold(): MarkHold`, `setMarkHold(next: MarkHold): void`, `subscribeMarkHold(listener: () => void): () => void`
+- Produces in `lib/mark/ring.ts`: `ringPaint(hold: MarkHold, arcWidth: number, arcRadius: number): RingFrame`, where `RingFrame = { washTop: number; washHeight: number; arcDegrees: number; arcVisible: boolean; dashArray: string; dashOffset: string }`.
 
 - [ ] Write the failing tests. Append to `lib/cursor/hover.test.ts`, and add `MARK_HOLD_IDLE, getMarkHold, setMarkHold, subscribeMarkHold` to its import from `@/lib/cursor/hover`:
   ```ts
@@ -519,7 +552,7 @@ From the brief: fixed overlays Portal to body; one ref-counted scroll lock; z sc
     });
   });
   ```
-- [ ] Run `pnpm test lib/cursor lib/mark/ring.test.ts`. Expect FAIL: the missing exports and the missing module.
+- [ ] Run `pnpm test lib/cursor lib/mark/ring.test.ts`. Expect FAIL: missing exports and a missing module.
 - [ ] Append to `lib/cursor/hover.ts`:
   ```ts
   // ---- mark-strike: the mark's hold for the cursor's ring ----
@@ -605,7 +638,7 @@ From the brief: fixed overlays Portal to body; one ref-counted scroll lock; z sc
   });
   ```
 - [ ] Run `pnpm test lib/content.test.ts`. Expect FAIL: `mark` is undefined.
-- [ ] In `lib/content.ts`, insert the block as the last key of `siteContent`, directly before `} as const;`:
+- [ ] Insert the block as the last key of `siteContent`, directly before `} as const;`:
   ```ts
     // The mark's card (components/mark/MarkCard.tsx), opened by holding the
     // top-left mark. PLACEHOLDER: every line below is the shortest true line,
@@ -630,16 +663,16 @@ From the brief: fixed overlays Portal to body; one ref-counted scroll lock; z sc
 **Files:** create `e2e/mark.spec.ts`.
 
 **Interfaces:**
-- Consumes `openHome`, `scrollToY` (`e2e/support/coil.ts`) and `settled` (`e2e/support/fallback.ts`).
-- Consumes the DOM contract the later tasks produce:
-  - `[data-mark-trigger]`, carrying `data-hold-progress="0.000"`
-  - its first `span`, which carries the inline `scale()`
-  - `[data-mark-ring]`, carrying `data-ring-arc`
-  - a dialog named "The mark", containing `[data-mark-strike][data-mode]`, `[data-card="surface"]`, `[data-part="cel"]`, `[data-cel-night]` and `[data-cel-flash]`
+- Consumes `openHome`, `scrollToY`, `settled`, and `siteContent` (the `@` alias works in `e2e/`, as `modal.spec.ts` shows).
+- Consumes the DOM contract built later:
+  - `[data-mark-trigger][data-hold-progress]`, whose first `span` carries the scale
+  - `[data-mark-ring][data-ring-arc]`
+  - inside the dialog: `[data-mark-strike][data-mode]`, `[data-card="surface"]`, `[data-part="cel"]`, `[data-cel-night]`, `[data-cel-flash]`
 
 - [ ] Write the failing test, `e2e/mark.spec.ts`:
   ```ts
   import type { Page } from "@playwright/test";
+  import { siteContent } from "@/lib/content";
   import { test, expect } from "./support/fixtures";
   import { openHome, scrollToY } from "./support/coil";
   import { settled } from "./support/fallback";
@@ -652,8 +685,9 @@ From the brief: fixed overlays Portal to body; one ref-counted scroll lock; z sc
 
   const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
   const Y = 600;
+  const CLOSE = siteContent.modals.closeAriaLabel;
   const mark = (page: Page) => page.locator("[data-mark-trigger]");
-  const card = (page: Page) => page.getByRole("dialog", { name: "The mark" });
+  const card = (page: Page) => page.getByRole("dialog", { name: siteContent.mark.dialogLabel });
   const progress = async (page: Page) => Number(await mark(page).getAttribute("data-hold-progress"));
   const scrollY = (page: Page) => page.evaluate(() => window.scrollY);
 
@@ -691,7 +725,7 @@ From the brief: fixed overlays Portal to body; one ref-counted scroll lock; z sc
     await expect.poll(() => dialog.locator('[data-card="surface"]').evaluate((el) => getComputedStyle(el).opacity), { timeout: 4000 }).toBe("1");
     expect(Math.abs((await scrollY(page)) - Y)).toBeLessThan(1);
     await expect.poll(() => page.evaluate(() => document.querySelector<SVGElement>("[data-mark-ring]")?.style.opacity ?? "0")).toBe("0");
-    await dialog.getByRole("button", { name: "Close" }).click();
+    await dialog.getByRole("button", { name: CLOSE }).click();
     await expect(dialog).toHaveCount(0);
     expect(Math.abs((await scrollY(page)) - Y)).toBeLessThan(1);
     await mark(page).click();
@@ -748,7 +782,7 @@ From the brief: fixed overlays Portal to body; one ref-counted scroll lock; z sc
     await page.keyboard.down("Enter");
     await expect(card(page)).toBeVisible();
     await expect(page.locator("[data-mark-ring]")).toHaveCount(0);
-    await expect(card(page).getByRole("button", { name: "Close" })).toBeFocused();
+    await expect(card(page).getByRole("button", { name: CLOSE })).toBeFocused();
     await page.keyboard.down("Enter");
     await page.keyboard.up("Enter");
     await sleep(300);
@@ -772,7 +806,7 @@ From the brief: fixed overlays Portal to body; one ref-counted scroll lock; z sc
     expect(Math.abs((await scrollY(page)) - Y)).toBeLessThan(1);
     await page.keyboard.down("Space");
     await expect(card(page)).toBeVisible();
-    await expect(card(page).getByRole("button", { name: "Close" })).toBeFocused();
+    await expect(card(page).getByRole("button", { name: CLOSE })).toBeFocused();
     await page.keyboard.up("Space");
     await sleep(300);
     await expect(card(page)).toBeVisible();
@@ -793,7 +827,7 @@ From the brief: fixed overlays Portal to body; one ref-counted scroll lock; z sc
     });
   });
   ```
-- [ ] Run `pnpm test:e2e e2e/mark.spec.ts`. This builds the site itself; do not run it while a dev server is up in this checkout. Expect all 7 tests to FAIL: no `[data-mark-trigger]`, no dialog.
+- [ ] Run the 3310 block with `EXTRA=` (empty). Expect all 7 tests to FAIL: there is no `[data-mark-trigger]` and no dialog.
 - [ ] Commit:
   ```bash
   git add e2e/mark.spec.ts
@@ -802,22 +836,33 @@ From the brief: fixed overlays Portal to body; one ref-counted scroll lock; z sc
 
 ### Task 7: The strike timeline, the strike mark and the card
 
-**Files:** modify `lib/gsap.ts`; create `lib/mark/timeline.ts`, `components/mark/MarkStrike.tsx` and `components/mark/MarkCard.tsx`.
+**Files:**
+- Modify `lib/gsap.ts` and `app/globals.css`
+- Create `lib/mark/timeline.ts`, `components/mark/MarkStrike.tsx`, `components/mark/MarkCard.tsx`
 
 **Interfaces:**
-- Consumes `CEL_PICK`, `CARD`, `MARK`, `celPlan`, `celSchedule`, `celMarkup`, `celBeats`, `siteContent.mark`, `useCloseHint`, `Portal`, and the `lib/modal` hooks and variants.
+- Consumes `CEL_PICK`, `CARD`, `MARK`, the cel functions, `siteContent.mark`, `useCloseHint`, `Portal`, and the `lib/modal` hooks and variants.
 - Produces:
-  - `CustomEase` exported from `@/lib/gsap`, and the ease `"site"`
+  - `CustomEase` exported from `@/lib/gsap`, with the ease named `"site"`
+  - `--shadow-card`
   - `buildCardOpen(scope: Element): gsap.core.Timeline` (paused)
   - `MarkStrike({ sizePx: number; reduced: boolean })`
   - `MarkCard({ open: boolean; onClose: () => void })`
 
-- [ ] Failing test: the Task 6 spec still fails. There is no route to the card until Task 8.
-- [ ] In `lib/gsap.ts`:
+- [ ] Failing test: the Task 6 spec, which has no route to the card until Task 8.
+- [ ] `lib/gsap.ts`:
   - Add `import { CustomEase } from "gsap/CustomEase";`.
-  - Inside the window guard, change the registration to `gsap.registerPlugin(useGSAP, ScrollTrigger, Observer, CustomEase);` and add `if (!CustomEase.get("site")) CustomEase.create("site", "0.22,1,0.36,1");`.
-  - Change the export to `export { gsap, ScrollTrigger, Observer, CustomEase, useGSAP };`.
+  - Add `CustomEase` as one more argument to the existing `gsap.registerPlugin(...)` call and one more name in the existing `export { ... }` list. Keep every entry already there, including `SplitText` from the sections slice; do not rewrite either line.
+  - After the `registerPlugin` call, inside the window guard, add `if (!CustomEase.get("site")) CustomEase.create("site", "0.22,1,0.36,1");`.
   - Append this sentence to the header comment: `CustomEase names the site's ease "site" for the mark card's GSAP open.`
+- [ ] `app/globals.css`: append at the end of the file, as its own block so it never collides with other slices' blocks:
+  ```css
+  /* ---- mark-strike: the mark card's shadow, the house modals' value as a token ---- */
+  :root {
+    --shadow-card: 0 40px 80px -20px rgba(10, 10, 10, 0.45);
+  }
+  /* ---- end mark-strike ---- */
+  ```
 - [ ] Create `lib/mark/timeline.ts`:
   ```ts
   import { gsap } from "@/lib/gsap";
@@ -1026,7 +1071,7 @@ From the brief: fixed overlays Portal to body; one ref-counted scroll lock; z sc
           </>
         )}
         <motion.div variants={panel} className="relative my-auto w-full max-w-xl" onMouseDown={(e) => e.stopPropagation()}>
-          <div data-card="surface" className="absolute inset-0 rounded-2xl border border-border bg-background shadow-[0_40px_80px_-20px_rgba(10,10,10,0.45)]" />
+          <div data-card="surface" className="absolute inset-0 rounded-2xl border border-border bg-background shadow-[var(--shadow-card)]" />
           <div className="relative flex flex-col gap-6 p-6 sm:flex-row sm:items-center sm:gap-7 md:p-10">
             <button
               type="button"
@@ -1044,7 +1089,7 @@ From the brief: fixed overlays Portal to body; one ref-counted scroll lock; z sc
               {COPY.lines.map((line) => (
                 <p key={line} data-card="text" className="text-base leading-relaxed text-foreground">{line}</p>
               ))}
-              {/* Swap for the controls slice's circle fill once it merges (Task 10). */}
+              {/* Swap for the controls slice's Fill once components/fx/Fill.tsx exists (Task 10). */}
               <span data-card="text" className="w-fit">
                 <a
                   href={COPY.cta.href}
@@ -1065,10 +1110,10 @@ From the brief: fixed overlays Portal to body; one ref-counted scroll lock; z sc
     );
   }
   ```
-- [ ] Run `pnpm tsc --noEmit && pnpm lint && pnpm test`. Expect clean, with no new lint errors.
+- [ ] Run `pnpm tsc --noEmit && pnpm lint && pnpm test`. Expect clean.
 - [ ] Commit:
   ```bash
-  git add lib/gsap.ts lib/mark/timeline.ts components/mark/MarkStrike.tsx components/mark/MarkCard.tsx
+  git add lib/gsap.ts app/globals.css lib/mark/timeline.ts components/mark/MarkStrike.tsx components/mark/MarkCard.tsx
   git commit -m "Mark: the cel strike timeline and the card in the modal shell, strike first" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
   ```
 
@@ -1077,10 +1122,10 @@ From the brief: fixed overlays Portal to body; one ref-counted scroll lock; z sc
 **Files:** create `components/mark/MarkTrigger.tsx`; modify `components/SiteNav.tsx`.
 
 **Interfaces:**
-- Consumes the hold machine, `setMarkHold`, `MARK_HOLD_IDLE`, `MarkCard`, `AsMark` and the geometry.
-- Produces `MarkTrigger({ ariaLabel: string; className: string; onActivate: () => void })`, which renders `button[data-mark-trigger][data-hold-progress]` and an inner `span` that carries the scale.
+- Consumes the hold machine, `setMarkHold`, `MARK_HOLD_IDLE`, `MarkCard`, `AsMark`, the geometry.
+- Produces `MarkTrigger({ ariaLabel: string; className: string; onActivate: () => void })`.
 
-- [ ] Failing test: `pnpm test:e2e e2e/mark.spec.ts --grep-invert @ring` fails (from Task 6).
+- [ ] Failing test: the 3310 block with `EXTRA="--grep-invert @ring"` fails (Task 6).
 - [ ] Create `components/mark/MarkTrigger.tsx`:
   ```tsx
   "use client";
@@ -1258,7 +1303,7 @@ From the brief: fixed overlays Portal to body; one ref-counted scroll lock; z sc
     );
   }
   ```
-- [ ] In `components/SiteNav.tsx`:
+- [ ] `components/SiteNav.tsx`:
   - Replace `import { AsMark } from "@/components/menu/BrandMark";` with `import { MarkTrigger } from "@/components/mark/MarkTrigger";`.
   - Replace the whole mark `<button>...</button>` with:
   ```tsx
@@ -1271,7 +1316,7 @@ From the brief: fixed overlays Portal to body; one ref-counted scroll lock; z sc
       />
   ```
   - Add this sentence to the header comment: `The mark is MarkTrigger: a click scrolls to the top, a 650ms hold opens the mark's card.`
-- [ ] Run `pnpm tsc --noEmit && pnpm lint && pnpm test:e2e e2e/mark.spec.ts --grep-invert @ring`. Expect PASS, 6 tests.
+- [ ] Run `pnpm tsc --noEmit && pnpm lint`, then the 3310 block with `EXTRA="--grep-invert @ring"`. Expect PASS, 6 tests.
 - [ ] Commit:
   ```bash
   git add components/mark/MarkTrigger.tsx components/SiteNav.tsx
@@ -1283,10 +1328,10 @@ From the brief: fixed overlays Portal to body; one ref-counted scroll lock; z sc
 **Files:** create `components/mark/MarkRing.tsx`; modify `components/CustomCursor.tsx`.
 
 **Interfaces:**
-- Consumes `getMarkHold`, `subscribeMarkHold`, `MARK_HOLD_IDLE`, `ringPaint`, `RING` and `MARK`.
+- Consumes `getMarkHold`, `subscribeMarkHold`, `MARK_HOLD_IDLE`, `ringPaint`, `RING`, `MARK`.
 - Produces `MarkRing({ diameter: number; reduced: boolean })`, rendering `svg[data-mark-ring][data-ring-arc]`.
 
-- [ ] Failing test: `pnpm test:e2e e2e/mark.spec.ts --grep @ring` fails because `[data-mark-ring]` is missing.
+- [ ] Failing test: the 3310 block with `EXTRA="--grep @ring"` fails because the ring is missing.
 - [ ] Create `components/mark/MarkRing.tsx`:
   ```tsx
   "use client";
@@ -1363,9 +1408,9 @@ From the brief: fixed overlays Portal to body; one ref-counted scroll lock; z sc
     );
   }
   ```
-- [ ] Modify `components/CustomCursor.tsx`:
-  1. Add the imports: `import { useReducedMotion } from "framer-motion";`, `import { MarkRing } from "@/components/mark/MarkRing";` and `import { MARK, RING } from "@/lib/mark/constants";`.
-  2. Inside the component, after `hoverRef`, add:
+- [ ] `components/CustomCursor.tsx`:
+  1. Add the imports `import { useReducedMotion } from "framer-motion";`, `import { MarkRing } from "@/components/mark/MarkRing";` and `import { MARK, RING } from "@/lib/mark/constants";`.
+  2. After `hoverRef`, add:
      ```tsx
      // ---- mark-strike: the cursor rings the mark ----
      // Over the nav mark the cursor centres a ring on the grown mark (its box
@@ -1378,7 +1423,7 @@ From the brief: fixed overlays Portal to body; one ref-counted scroll lock; z sc
      const [ringDiameter, setRingDiameter] = useState(0);
      // ---- end mark-strike ----
      ```
-  3. In `handleMove`, before the `const el = dotRef.current;` block, insert:
+  3. In `handleMove`, before `const el = dotRef.current;`, insert:
      ```tsx
      const target = event.target as Element | null;
      const mark = target?.closest("[data-mark-trigger]") ?? null;
@@ -1391,10 +1436,10 @@ From the brief: fixed overlays Portal to body; one ref-counted scroll lock; z sc
      }
      ```
   4. Change the transform write to `el.style.transform = ringAt.current ? \`translate3d(${ringAt.current.x}px, ${ringAt.current.y}px, 0)\` : \`translate3d(${event.clientX}px, ${event.clientY}px, 0)\`;`.
-  5. Delete the later duplicate `const target = event.target as Element | null;` line, which now sits under `setVisible(true)`.
-  6. Before `return (`, add `const ringing = ringDiameter > 0;`. Change `const grown = (hovering || sceneHover) && !pill;` to `const grown = (hovering || sceneHover) && !pill && !ringing;`.
-  7. Add `opacity: ringing ? 0 : 1` to the size span's `style`. After that span's closing tag, add `{ringing && <MarkRing diameter={ringDiameter} reduced={reduced} />}`.
-- [ ] Run `pnpm tsc --noEmit && pnpm lint && pnpm test:e2e e2e/mark.spec.ts`. Expect PASS, all 7 tests.
+  5. Delete the later duplicate `const target = event.target as Element | null;` line, below `setVisible(true)`.
+  6. Before `return (`, add `const ringing = ringDiameter > 0;` and change the `grown` line to `const grown = (hovering || sceneHover) && !pill && !ringing;`.
+  7. Add `opacity: ringing ? 0 : 1` to the size span's `style`, and after that span add `{ringing && <MarkRing diameter={ringDiameter} reduced={reduced} />}`.
+- [ ] Run `pnpm tsc --noEmit && pnpm lint`, then the 3310 block with `EXTRA=`. Expect PASS, all 7 tests.
 - [ ] Commit:
   ```bash
   git add components/mark/MarkRing.tsx components/CustomCursor.tsx
@@ -1403,40 +1448,59 @@ From the brief: fixed overlays Portal to body; one ref-counted scroll lock; z sc
 
 ### Task 10: The call to action takes the controls fill
 
-**Files:** modify `components/mark/MarkCard.tsx`.
+**Files:** modify `components/mark/MarkCard.tsx` and `e2e/mark.spec.ts`.
 
-**Interfaces:** Consumes the `controls` slice's circle call-to-action fill, expected as `FillLink` from `@/components/controls/FillLink` with props `{ href: string; variant: "circle"; onClick?: React.MouseEventHandler<HTMLAnchorElement>; children: React.ReactNode }`. Confirm the real name and props in `docs/superpowers/plans/2026-10-06-controls.md` and on `main`.
+**Interfaces:** Consumes the controls slice's primitive:
+- `Fill`, `FillSeed` and `FillArrow` from `@/components/fx/Fill`
+- `FILL_PICK`, `CTA_CLASS` and `CTA_OVER_CLASS` from `@/lib/fx/fill`
 
-- [ ] Check whether it has merged: `git log main --oneline | grep -i controls` and `git grep -n "circle" -- components/controls`.
-- [ ] **If merged:**
-  - Write the failing assertion. In `e2e/mark.spec.ts`, inside the 700ms hold test after the surface poll, add `await expect(dialog.getByRole("link", { name: "Say hi" })).toHaveAttribute("data-fill", "circle");`. If the controls primitive exposes a different marker attribute, use that one.
-  - Run `pnpm test:e2e e2e/mark.spec.ts`. Expect FAIL.
-  - Replace the comment and the inner `<a>` with:
-    ```tsx
-    <FillLink href={COPY.cta.href} variant="circle" onClick={(e) => { e.preventDefault(); onCta(); }}>{COPY.cta.label}</FillLink>
+Confirm where each is exported with `grep -n "export" components/fx/Fill.tsx lib/fx/fill.ts`, and import each from the file that exports it.
+
+- [ ] Gate on `test -f components/fx/Fill.tsx && echo present`.
+- [ ] **If present:**
+  - Write the failing assertion. In the 700ms hold test, after the surface poll, add:
+    ```ts
+    await expect(dialog.getByRole("link", { name: siteContent.mark.cta.label }).locator("svg")).not.toHaveCount(0);
     ```
-    and add `import { FillLink } from "@/components/controls/FillLink";`.
-  - Run the spec again. Expect PASS.
+    The fallback link holds no svg; `FillArrow` does.
+  - Run the 3310 block with `EXTRA="-g strikes"`. Expect FAIL.
+  - In `MarkCard.tsx`, delete the swap comment and replace the inner `<a ...>...</a>` with:
+    ```tsx
+    <Fill as="link" {...FILL_PICK.cta} href={COPY.cta.href} onClick={(e) => { e.preventDefault(); onCta(); }} className={CTA_CLASS} overClassName={CTA_OVER_CLASS}>
+      {COPY.cta.label}
+      <FillSeed className="h-8 w-8">
+        <FillArrow />
+      </FillSeed>
+    </Fill>
+    ```
+    and add the imports `import { Fill, FillArrow, FillSeed } from "@/components/fx/Fill";` and `import { CTA_CLASS, CTA_OVER_CLASS, FILL_PICK } from "@/lib/fx/fill";`.
+  - Run `pnpm tsc --noEmit && pnpm lint`, then the 3310 block with `EXTRA=`. Expect PASS, 7 tests.
   - Commit:
     ```bash
-    git commit -am "Mark: the card's call to action takes the controls circle fill" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+    git add components/mark/MarkCard.tsx e2e/mark.spec.ts
+    git commit -m "Mark: the card's call to action takes the controls circle fill" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
     ```
-- [ ] **If not merged:** leave the accent link and its one-line comment in place, and put this line in the PR body: "The card's call to action is a plain accent link; swap to the controls circle fill once `controls` merges (plan Task 10)."
+- [ ] **If absent:** keep the plain accent link and its one-line comment. Put this line in the PR body: "The card's call to action is a plain accent link; swap to the controls `Fill` once `components/fx/Fill.tsx` lands (plan Task 10)."
 
 ### Task 11: Whole-branch verification and the PR
 
 **Files:** none new.
 
-- [ ] Run `pnpm test && pnpm tsc --noEmit && pnpm lint`. Expect all green.
-- [ ] Run `pnpm test:e2e e2e/mark.spec.ts e2e/chrome.spec.ts e2e/a11y.spec.ts e2e/modal.spec.ts`. Expect all PASS. The a11y spec still finds "Back to top" before "Open menu", and nothing focusable sits inside aria-hidden.
-- [ ] Run `grep -rnP "\x{2014}" lib/mark components/mark e2e/mark.spec.ts lib/cursor/hover.ts` and `grep -rnE "#[0-9A-Fa-f]{3,8}\b" lib/mark components/mark`. Expect no output from either.
-- [ ] Preview on port 3310: master plan section 4 numbers slice previews from 3250 upward in steps of 10 in slice order, and mark-strike is the seventh. Run `NEXT_PUBLIC_SITE_MODE=full pnpm build && pnpm start -p 3310` in the background, and stop only that process afterwards. Check in both themes at 1440, 1024 and 390:
-  - the 10px growth from the corner;
-  - the fill rising in light mode;
-  - the ring's tint and arc in step with the mark, closing at the discharge and leaving as the card opens;
-  - the night dip and strike, then the opaque card forming around the settled mark with no jump at the swap;
-  - the stacked layout at 390;
-  - "Say hi" closing the card and then scrolling to Connect.
+- [ ] Run `pnpm test && pnpm tsc --noEmit && pnpm lint`. Expect green.
+- [ ] Full run:
+  - Run `lsof -nP -iTCP:3140 -iTCP:3141 -sTCP:LISTEN`. Expect no output; if a listener is there, stop and report, never kill it.
+  - Then run `CI=1 pnpm test:e2e e2e/mark.spec.ts e2e/chrome.spec.ts e2e/a11y.spec.ts e2e/modal.spec.ts`.
+  - Expect PASS. The a11y spec still finds "Back to top" before "Open menu", and nothing focusable sits inside aria-hidden.
+- [ ] Run `grep -rnP "\x{2014}" lib/mark components/mark e2e/mark.spec.ts lib/cursor/hover.ts` and `grep -rnE "#[0-9A-Fa-f]{3,8}\b|rgba\(" lib/mark components/mark`. Expect no output.
+- [ ] Preview on 3310:
+  - Check it is free with `lsof -nP -iTCP:3310 -sTCP:LISTEN` (expect no output).
+  - Run `NEXT_PUBLIC_SITE_MODE=full pnpm build`, then `NEXT_PUBLIC_SITE_MODE=full pnpm exec next start -p 3310` in the background. Stop only that process afterwards.
+  - Check both themes at 1440, 1024 and 390:
+    - the 10px growth from the corner, and the fill rising in light mode;
+    - the ring's tint and arc in step with the mark, closing at the discharge and leaving as the card opens;
+    - the night dip and strike, then the opaque card forming around the settled mark with no jump at the swap;
+    - the stacked layout at 390;
+    - "Say hi" closing the card, then scrolling to Connect.
 - [ ] Push and open the PR. The merge is Aaron's call.
   ```bash
   git push -u origin mark-strike
