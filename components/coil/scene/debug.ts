@@ -30,7 +30,7 @@ import type { UnwindWiring } from "./unwind";
 // Without the query nothing here is created and every call is a null check.
 //
 // Tokens: poster (the field's first frame, no cards, no name), still or
-// still=<offset> (the scene at rest for the hero stills: cards and name drawn,
+// still=<offset> (the scene at rest for the hero stills: cards and name drawn, the name at COIL.lockup.stillInk,
 // the field at its first frame, the entrance done, the conveyor idle at
 // <offset> cards, 0 for plain still; scripts/render-posters.mjs), nocards, noname, at=<s> (the field and the
 // name's surface held on one moment), entrance=<ms> (the drawn entrance

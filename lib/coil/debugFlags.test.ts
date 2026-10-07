@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { heldFieldS, parseDebugFlags } from "@/lib/coil/debugFlags";
+import { COIL } from "@/lib/coil/constants";
+import { heldFieldS, nameCompositeInk, parseDebugFlags } from "@/lib/coil/debugFlags";
 
 describe("scene debug flags", () => {
   it("reads nothing without the query", () => {
@@ -40,5 +41,21 @@ describe("scene debug flags", () => {
     expect(heldFieldS(parseDebugFlags("?coildebug=poster"), 7)).toBe(0);
     expect(heldFieldS(parseDebugFlags("?coildebug=at=3"), 7)).toBe(3);
     expect(heldFieldS(parseDebugFlags(""), 7)).toBe(7);
+  });
+  describe("the name composite's ink", () => {
+    const themeInk = 0.12;
+    it("live: the theme's ink times the composite's gain", () => {
+      expect(nameCompositeInk(parseDebugFlags(""), themeInk)).toBeCloseTo(themeInk * COIL.lockup.inkGain, 10);
+      expect(nameCompositeInk(parseDebugFlags("?coildebug=poster"), themeInk)).toBeCloseTo(themeInk * COIL.lockup.inkGain, 10);
+    });
+    it("still: the strong ink, the h1's layer opacity, whatever the theme's ink", () => {
+      expect(nameCompositeInk(parseDebugFlags("?coildebug=still"), themeInk)).toBe(COIL.lockup.stillInk);
+      expect(nameCompositeInk(parseDebugFlags("?coildebug=still=0.375,nocards"), 0.3)).toBe(COIL.lockup.stillInk);
+    });
+    it("ink= wins over still for QA, clamped to 1", () => {
+      expect(nameCompositeInk(parseDebugFlags("?coildebug=still,ink=10"), themeInk)).toBeCloseTo(0.1 * COIL.lockup.inkGain, 10);
+      expect(nameCompositeInk(parseDebugFlags("?coildebug=ink=10"), themeInk)).toBeCloseTo(0.1 * COIL.lockup.inkGain, 10);
+      expect(nameCompositeInk(parseDebugFlags("?coildebug=ink=100"), themeInk)).toBe(1);
+    });
   });
 });
