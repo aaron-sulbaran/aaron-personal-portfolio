@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef, type MouseEvent, type ReactNode } from "react";
+import { Fill } from "@/components/fx/Fill";
 import { siteContent } from "@/lib/content";
+import { FILL_PICK } from "@/lib/fx/fill";
 import {
   initSoundtrackFromStorage,
   pauseSoundtrack,
@@ -56,22 +58,22 @@ export function BandInvite() {
         <h2 className="font-display text-[clamp(1.375rem,2vw,1.75rem)] leading-[1.1] text-foreground">{c.line}</h2>
         <div data-band-controls className="grid items-baseline">
           <Layer shown={music === "before"} className="flex items-baseline gap-4">
-            <button type="button" data-control="before" data-focus-to="note" onClick={act(startSoundtrack)} data-cursor-hover className={PRIMARY}>
+            <Fill {...FILL_PICK.band} shape="rect" type="button" data-control="before" data-focus-to="note" onClick={act(startSoundtrack)} data-cursor-hover {...PRIMARY}>
               {c.accept}
-            </button>
-            <button type="button" data-focus-to="note" onClick={act(stopSoundtrack)} data-cursor-hover className={QUIET}>
+            </Fill>
+            <Fill {...FILL_PICK.band} shape="rect" type="button" data-focus-to="note" onClick={act(stopSoundtrack)} data-cursor-hover {...QUIET}>
               {c.decline}
-            </button>
+            </Fill>
           </Layer>
           <Layer shown={music === "on"}>
-            <button type="button" data-control="on" onClick={act(pauseSoundtrack)} data-cursor-hover className={SMALL}>
+            <Fill {...FILL_PICK.band} shape="rect" type="button" data-control="on" onClick={act(pauseSoundtrack)} data-cursor-hover {...SMALL}>
               {c.pause}
-            </button>
+            </Fill>
           </Layer>
           <Layer shown={music === "paused"}>
-            <button type="button" data-control="paused" onClick={act(startSoundtrack)} data-cursor-hover className={SMALL}>
+            <Fill {...FILL_PICK.band} shape="rect" type="button" data-control="paused" onClick={act(startSoundtrack)} data-cursor-hover {...SMALL}>
               {c.resume}
-            </button>
+            </Fill>
           </Layer>
         </div>
       </div>
@@ -88,9 +90,9 @@ export function BandInvite() {
         <Layer shown={music === "off"}>
           <p>
             {c.declinedNote}{" "}
-            <button type="button" onClick={act(startSoundtrack)} data-cursor-hover className={`md:hidden ${SMALL}`}>
+            <Fill {...FILL_PICK.band} shape="rect" type="button" onClick={act(startSoundtrack)} data-cursor-hover {...SMALL} className={`md:hidden ${SMALL.className}`}>
               {c.accept}
-            </button>
+            </Fill>
           </p>
         </Layer>
       </div>
@@ -111,8 +113,23 @@ function Layer({ shown, className = "", children }: { shown: boolean; className?
 
 const FOCUS = "rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
 
-const PRIMARY = `font-display text-[clamp(1.125rem,1.5vw,1.375rem)] leading-[1.1] text-accent underline decoration-1 underline-offset-[4px] transition-colors duration-200 hover:text-accent-hover ${FOCUS}`;
+// "Play it": the 1.5px rise line stands in for its underline, inset by its own padding.
+const PRIMARY = {
+  line: 1.5,
+  className: `-mx-2 inline-flex items-baseline px-2 pb-1 pt-0.5 font-display text-[clamp(1.125rem,1.5vw,1.375rem)] leading-[1.1] text-accent ${FOCUS}`,
+  overClassName: "flex items-baseline px-2 pb-1 pt-0.5",
+};
 
-const QUIET = `font-label text-label text-muted underline decoration-1 underline-offset-[4px] decoration-[color:color-mix(in_srgb,var(--color-muted)_40%,transparent)] dark:decoration-[color:color-mix(in_srgb,var(--color-muted)_55%,transparent)] transition-colors duration-200 hover:text-foreground ${FOCUS}`;
+// "Not now" keeps its muted underline; no rise line.
+const QUIET = {
+  line: 0,
+  className: `-mx-1.5 inline-flex items-baseline px-1.5 pb-[3px] pt-px font-label text-label text-muted underline decoration-1 underline-offset-[4px] decoration-[color:color-mix(in_srgb,var(--color-muted)_40%,transparent)] dark:decoration-[color:color-mix(in_srgb,var(--color-muted)_55%,transparent)] ${FOCUS}`,
+  overClassName: "flex items-baseline px-1.5 pb-[3px] pt-px",
+};
 
-const SMALL = `font-label text-label text-accent underline decoration-1 underline-offset-[3px] transition-colors duration-200 hover:text-accent-hover ${FOCUS}`;
+// Pause, Resume and the phone's Play it: a 1px rise line.
+const SMALL = {
+  line: 1,
+  className: `-mx-1.5 inline-flex items-baseline px-1.5 pb-[2px] pt-px font-label text-label text-accent ${FOCUS}`,
+  overClassName: "flex items-baseline px-1.5 pb-[2px] pt-px",
+};

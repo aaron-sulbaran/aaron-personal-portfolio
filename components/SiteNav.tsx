@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useReducedMotion } from "framer-motion";
+import { Fill } from "@/components/fx/Fill";
 import { AsMark } from "@/components/menu/BrandMark";
+import { FILL_PICK } from "@/lib/fx/fill";
 import { siteContent } from "@/lib/content";
 import { useHomeReadiness } from "@/lib/home/readiness";
 import { closeMenu, getMenuOpen, setHeaderHidden, useHeaderHidden, useMenuOpen } from "@/lib/menu";
@@ -149,7 +151,10 @@ export function SiteNav() {
           {NAV_ITEMS.map((item) => {
             const active = activeHref === item.href;
             return (
-              <a
+              <Fill
+                as="a"
+                {...FILL_PICK.nav}
+                shape="rect"
                 key={item.key}
                 href={item.href}
                 aria-current={active ? "location" : undefined}
@@ -158,14 +163,13 @@ export function SiteNav() {
                   goTo(item.href);
                 }}
                 data-cursor-hover
-                className={`relative text-accent transition-colors duration-200 hover:text-accent-hover ${
-                  active
-                    ? "after:absolute after:-bottom-2 after:left-1/2 after:-ml-0.5 after:h-1 after:w-1 after:rounded-full after:bg-accent after:content-['']"
-                    : ""
+                className={`-mx-2 inline-flex items-center px-2 py-1 font-label text-label text-accent ${
+                  active ? "after:absolute after:-bottom-1 after:left-1/2 after:-ml-0.5 after:h-1 after:w-1 after:rounded-full after:bg-accent after:content-['']" : ""
                 }`}
+                overClassName="flex items-center px-2 py-1"
               >
                 {item.label}
-              </a>
+              </Fill>
             );
           })}
         </nav>

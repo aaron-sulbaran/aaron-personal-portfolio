@@ -7,10 +7,11 @@
 //    origin is never clamped, so it lays nothing out). The inline auto is not
 //    computed yet, the stale smooth from globals.css applies, and the jump
 //    glides toward the top instead of landing.
-// 2. A ScrollTrigger created inside a gsap.matchMedia callback (ReadAlong and
-//    UpToNowList at 768px and up) refreshes on its own between the media
-//    change's record and its full refresh, and a lone refresh clears the
-//    record. GSAP then never scrolls back, and the glide from 1 runs to 0.
+// 2. A ScrollTrigger created inside a gsap.matchMedia callback (a sections
+//    Block rebuilt on a reduced-motion change, or any width query) refreshes
+//    on its own between the media change's record and its full refresh, and
+//    a lone refresh clears the record. GSAP then never scrolls back, and the
+//    glide from 1 runs to 0.
 //
 // On refreshInit (after the record, before the jump) the guard makes the
 // instant behaviour take effect at once and puts back a lost record from the

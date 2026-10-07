@@ -207,14 +207,13 @@ body {
   }
 }
 
-/* Back-half scroll-journey reveals. The <Reveal> client wrapper sets
-   data-armed once JS has mounted and data-shown when the element scrolls into
-   view; CSS owns the transition so the project ease (lib/motion EASE) lives in
-   one place and GSAP only flips the trigger. The hidden initial state lives
-   inside no-preference and is gated on data-armed, so without JS or under
-   reduced motion the content always renders at its final, readable state.
-   .reveal-item = a staggered fade + rise (set --reveal-i per child for the
-   stagger). .reveal-mask = a heading rising from behind a clip. */
+/* The book's reveals (components/book/Book.tsx). The <Reveal> client wrapper
+   sets data-armed once JS has mounted and data-shown when the list scrolls
+   into view; CSS owns the transition so the project ease lives in one place.
+   The hidden state lives inside no-preference and is gated on data-armed, so
+   without JS or under reduced motion the rows render at their final state.
+   .reveal-item = a staggered fade + rise (--reveal-i per row). The sections
+   under the band use the scrubbed grammar instead (lib/sections). */
 @media (prefers-reduced-motion: no-preference) {
   [data-reveal][data-armed="true"] .reveal-item {
     opacity: 0;
@@ -226,41 +225,45 @@ body {
     opacity: 1;
     transform: none;
   }
+}
 
-  [data-reveal][data-armed="true"] .reveal-mask {
-    overflow: hidden;
-    /* Profa Black's ink (0.69em up, 0.18em down) sits inside even a 0.95
-       line box, so the clip needs only an antialiasing margin; the negative
-       margin keeps layout unchanged. */
-    padding-block: 0.04em;
-    margin-block: -0.04em;
+/* The sections grammar (lib/sections, components/sections). Nothing here
+   applies until the engine arms a block, so without JS and under reduced
+   motion every section renders whole. Sticky columns hold on desktop only
+   (the columns stack on phones); a sticky column's bottom margin ends its
+   hold early. The values come from lib/sections/grammar.ts through
+   StickyColumn's inline custom properties. */
+@media (min-width: 768px) {
+  .sections-sticky-col {
+    margin-bottom: var(--sections-sticky-stop);
   }
-  [data-reveal][data-armed="true"] .reveal-mask > * {
-    transform: translateY(115%);
-    transition: transform 0.7s var(--ease-out);
-    transition-delay: calc(var(--reveal-i, 0) * 60ms);
+  .sections-sticky-col > [data-sections-sticky] {
+    position: sticky;
+    top: var(--sections-sticky-top);
   }
-  [data-reveal][data-armed="true"][data-shown="true"] .reveal-mask > * {
-    transform: none;
-  }
+}
 
-  /* WhoIAm read-along. <ReadAlong> adds .read-along on desktop only and scrubs
-     --read-pos from a low value to 100% as the paragraph passes the reading
-     line, so the bright (foreground) band sweeps down over the muted text. The
-     class is added imperatively after mount, so without JS, under reduced
-     motion, or on mobile the paragraph stays plain foreground and readable. */
-  .read-along {
-    background-image: linear-gradient(
-      180deg,
-      var(--color-foreground) 0%,
-      var(--color-foreground) var(--read-pos, 100%),
-      var(--color-muted) calc(var(--read-pos, 100%) + 14%),
-      var(--color-muted) 100%
-    );
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-  }
+/* A masked block or line leaves room for Profa's ink; the negative margin
+   keeps the layout unchanged. */
+[data-sections-state="armed"][data-sections-split="block"] {
+  overflow: clip;
+  padding-block: 0.04em;
+  margin-block: -0.04em;
+}
+.sections-line-mask {
+  padding-block: 0.04em;
+  margin-block: -0.04em;
+}
+/* Adjacent masks' margins collapse to one, so a seam takes both lines' share. */
+.sections-line-mask + .sections-line-mask {
+  margin-top: -0.08em;
+}
+
+/* A focused Connect link shows whatever its scroll state. */
+[data-sections-row]:focus-within [data-sections-rowinner],
+[data-sections-row]:focus-within [data-sections-hair] {
+  opacity: 1 !important;
+  transform: none !important;
 }
 
 /* The playback pill's capsule (components/soundtrack/PlaybackPill.tsx): the
@@ -274,64 +277,33 @@ body {
   inset: calc(-1 * var(--pill-hit-inset, 4px));
 }
 
-/* The soundtrack note (components/menu/NoteIcon.tsx), in the Menu pill and
-   the panel's chip. Off: the silhouette drains to an outline while the slash
-   (and its knockout in the mask) draws from the top left, 240ms on the site
-   ease. On: the slash retracts, then hides, and the note fills. The slash
-   paths use pathLength=1, so a dashoffset of 1 is fully retracted. While on
-   in the pill the note sways 2.5 degrees about its head. */
+/* The soundtrack note (components/menu/NoteIcon.tsx). Paused and off, the
+   slash (and its knockout in the mask) draws from the bottom left; playing,
+   it retracts and then hides. pathLength=1, so a dashoffset of 1 is fully
+   retracted. Reduced motion swaps at once. */
+:root {
+  --note-slash-ms: 200ms;
+}
 .note-icon {
   overflow: visible;
-  transition: color 240ms var(--ease-out);
-}
-.note-icon .note-body {
-  fill: currentColor;
-  fill-opacity: 0;
-  transition: fill-opacity 240ms var(--ease-out);
-}
-.note-icon[data-on="true"] .note-body {
-  fill-opacity: 1;
+  transition: color var(--note-slash-ms) var(--ease-out);
 }
 .note-icon .note-slash {
   stroke-dasharray: 1 1;
   stroke-dashoffset: 0;
-  opacity: 1;
-  transition: stroke-dashoffset 240ms var(--ease-out), opacity 0s;
+  visibility: visible;
+  transition: stroke-dashoffset var(--note-slash-ms) var(--ease-out), visibility 0s;
 }
-.note-icon[data-on="true"] .note-slash {
+.note-icon[data-note="playing"] .note-slash {
   stroke-dashoffset: 1;
-  opacity: 0;
-  transition: stroke-dashoffset 240ms var(--ease-out), opacity 0s linear 240ms;
-}
-.note-icon .note-sway {
-  transform-box: fill-box;
-  transform-origin: 45% 88%;
-}
-@keyframes note-sway {
-  from {
-    transform: rotate(-2.5deg);
-  }
-  to {
-    transform: rotate(2.5deg);
-  }
-}
-.note-icon[data-living="true"] .note-sway {
-  animation: note-sway 1.6s ease-in-out infinite alternate;
+  visibility: hidden;
+  transition: stroke-dashoffset var(--note-slash-ms) var(--ease-out), visibility 0s linear var(--note-slash-ms);
 }
 @media (prefers-reduced-motion: reduce) {
-  /* A plain 150ms fade between the two states; beats the global zeroing
-     rule on specificity. */
   .note-icon,
-  .note-icon .note-body {
-    transition-duration: 150ms !important;
-  }
   .note-icon .note-slash,
-  .note-icon[data-on="true"] .note-slash {
-    stroke-dashoffset: 0;
-    transition: opacity 150ms linear !important;
-  }
-  .note-icon[data-living="true"] .note-sway {
-    animation: none !important;
+  .note-icon[data-note="playing"] .note-slash {
+    transition: none !important;
   }
 }
 
@@ -382,4 +354,114 @@ body {
   border-color: var(--color-border);
   background: var(--color-glass);
   color: var(--color-muted);
+}
+
+/* The fill (components/fx/Fill.tsx, lib/fx/fill.ts; lab log "Controls lab").
+   One registered number, --fx-p, runs 0 to 1 on hover, keyboard focus or a
+   touch press. The control's content is drawn twice: in place, and as an
+   aria-hidden, inert copy absolutely positioned over it on the fill's colours,
+   clipped by a shape built from --fx-p. The fill and the label's colour change
+   are one clip, so they never drift, and nothing in the layout moves. Never
+   put overflow hidden (it clips the 44px hit areas) or a transition utility on
+   a fill's root. Position and isolation sit in a zero-specificity rule so a
+   root's own positioning utility wins. */
+@property --fx-p {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+:root {
+  --fx-ms: 450ms;
+  --fx-ease: cubic-bezier(0.785, 0.135, 0.15, 0.86);
+  --fx-rect-radius: 10px;
+}
+:where(.fx) {
+  position: relative;
+  isolation: isolate;
+}
+.fx {
+  --fx-p: 0;
+  --fx-radius: 999px;
+  -webkit-tap-highlight-color: transparent;
+  transition: --fx-p var(--fx-ms) var(--fx-ease);
+}
+.fx[data-shape="rect"] {
+  --fx-radius: var(--fx-rect-radius);
+}
+.fx[data-colorway="glass-accent"] {
+  --fx-fill-bg: var(--color-accent);
+  --fx-fill-fg: var(--color-background);
+}
+.fx[data-colorway="quiet"] {
+  --fx-fill-bg: var(--color-border);
+  --fx-fill-fg: var(--color-foreground);
+}
+@media (hover: hover) {
+  .fx:hover {
+    --fx-p: 1;
+  }
+}
+.fx:focus-visible,
+.fx[data-pressed] {
+  --fx-p: 1;
+}
+.fx > .fx-over {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--fx-radius);
+  background: var(--fx-fill-bg);
+  color: var(--fx-fill-fg);
+  pointer-events: none;
+  user-select: none;
+}
+.fx > .fx-over * {
+  color: inherit !important;
+}
+.fx[data-fill="icon"] > .fx-over {
+  clip-path: circle(calc(var(--fx-r1, 0px) * var(--fx-p)) at var(--fx-ox, 0px) var(--fx-oy, 50%));
+}
+.fx[data-fill="rise"] > .fx-over {
+  clip-path: inset(
+    calc((1 - var(--fx-p)) * (100% - var(--fx-line, 0px))) calc((1 - var(--fx-p)) * var(--fx-line-r, 0px)) 0
+      calc((1 - var(--fx-p)) * var(--fx-line-l, 0px)) round calc(var(--fx-p) * var(--fx-radius))
+  );
+}
+.fx[data-fill="circle"] > .fx-over {
+  clip-path: inset(
+    calc((1 - var(--fx-p)) * var(--fx-st, 0px)) calc((1 - var(--fx-p)) * var(--fx-sr, 0px))
+      calc((1 - var(--fx-p)) * var(--fx-sb, 0px)) calc((1 - var(--fx-p)) * var(--fx-sl, 100%))
+      round max(var(--fx-radius), calc((1 - var(--fx-p)) * var(--fx-s0, 0px)))
+  );
+}
+.fx-seed {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+}
+.fx-arrow {
+  position: relative;
+  display: inline-block;
+  flex: none;
+}
+.fx-arrow > svg {
+  position: absolute;
+  inset: 0;
+}
+.fx-arrow-a {
+  transform: translate(calc(var(--fx-p) * var(--ax)), calc(var(--fx-p) * var(--ay))) scale(calc(1 - var(--fx-p)));
+}
+.fx-arrow-b {
+  transform: translate(calc((var(--fx-p) - 1) * var(--ax)), calc((var(--fx-p) - 1) * var(--ay))) scale(var(--fx-p));
+}
+/* The Menu pill's label rolls to the mark on the fill's own clock. */
+.fx-odometer {
+  transform: translateY(calc(var(--fx-p) * -22px));
+}
+/* Beats the global 0.001ms rule on specificity, so the colour swaps at once. */
+@media (prefers-reduced-motion: reduce) {
+  .fx {
+    transition-duration: 0s !important;
+  }
 }

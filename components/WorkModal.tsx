@@ -1,8 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
-import { ArrowRight, X } from "lucide-react";
+import { X } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useRef } from "react";
 import {
@@ -13,6 +12,8 @@ import {
   modalBackdropTintVariants,
 } from "@/lib/modal";
 import { siteContent, type WorkItem } from "@/lib/content";
+import { Fill, FillArrow, FillSeed } from "@/components/fx/Fill";
+import { CTA_CLASS, CTA_OVER_CLASS, FILL_PICK } from "@/lib/fx/fill";
 import { Portal } from "./Portal";
 import { useCloseHint } from "./PhotoModal";
 
@@ -140,14 +141,12 @@ export function WorkModal({ item, onClose, renderMedia = false }: WorkModalProps
             </p>
 
             <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
-              <Link
-                href={`/work/${item.slug}`}
-                className="group inline-flex items-center gap-2 font-label text-label-lg leading-7 text-accent transition-colors duration-200 hover:text-accent-hover"
-                onClick={onClose}
-              >
+              <Fill as="link" {...FILL_PICK.cta} href={`/work/${item.slug}`} onClick={onClose} className={CTA_CLASS} overClassName={CTA_OVER_CLASS}>
                 {cta}
-                <ArrowRight aria-hidden="true" className="relative -top-px h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
-              </Link>
+                <FillSeed className="h-8 w-8">
+                  <FillArrow />
+                </FillSeed>
+              </Fill>
               <span className="font-label text-label text-muted">
                 {closeHint}
               </span>
