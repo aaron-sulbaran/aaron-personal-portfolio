@@ -3,11 +3,12 @@
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { siteContent } from "@/lib/content";
 import { useSoundtrack } from "@/lib/soundtrack";
-import { DOCK, bandPassed } from "@/lib/waveform/dock";
+import { DOCK } from "@/lib/waveform/dock";
 import { setFrozen, useFrozen } from "@/lib/waveform/freeze";
 import { isPhone, subscribePhone } from "@/lib/waveform/layout";
 import { HorizonCanvas } from "./HorizonCanvas";
 import { PlaybackPill } from "./PlaybackPill";
+import { useBandPassed } from "./useBandPassed";
 import { WaveCanvas } from "./WaveCanvas";
 import { acquireWaveConductor, type WaveConductor } from "./waveConductor";
 import { useReducedMotionLive } from "./useReducedMotionLive";
@@ -16,8 +17,9 @@ import { useSweepTrigger } from "./useSweepTrigger";
 // The band's live half: the waveform, the credit, the pill it hands the
 // music to, and from md up the horizon strip the wave travels to as the
 // reader scrolls on. One IntersectionObserver on the band decides whether the
-// band's wave runs and, once the band's bottom edge is above the dock line
-// (DOCK.passedPx), that the pill fades in at its dock; one ScrollTrigger
+// band's wave runs; one ScrollTrigger (useBandPassed) reads from the scroll
+// position whether the band's bottom edge is above the dock line
+// (DOCK.passedPx), which fades the pill in at its dock; another
 // (useSweepTrigger) drives the sweep from the band to the horizon.
 //
 // Phones stack the wave under the copy in its own strip and have no horizon
@@ -27,7 +29,7 @@ import { useSweepTrigger } from "./useSweepTrigger";
 export function BandStage() {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const conductorRef = useRef<WaveConductor | null>(null);
-  const [band, setBand] = useState({ inView: false, passed: false });
+  const [inView, setInView] = useState(false);
   const frozen = useFrozen();
   const music = useSoundtrack();
   const reduce = useReducedMotionLive();
@@ -46,21 +48,16 @@ export function BandStage() {
     };
   }, [reduce]);
   useSweepTrigger(conductorRef);
+  const passed = useBandPassed();
 
   useEffect(() => {
     const section = stageRef.current?.closest("section");
     if (!section) return;
     // The top margin is the dock line: the header bar plus an anchor's
-    // landing, so a band whose last strip shows under them counts as passed.
-    // The observer only fires on a crossing, so the margin is the line itself.
-    const observer = new IntersectionObserver(
-      ([entry]) =>
-        setBand({
-          inView: entry.isIntersecting,
-          passed: bandPassed(entry.boundingClientRect.bottom, entry.rootBounds?.top ?? null, entry.isIntersecting),
-        }),
-      { rootMargin: `-${DOCK.passedPx}px 0px 0px 0px` },
-    );
+    // landing, where a band tucked under them is already out of view.
+    const observer = new IntersectionObserver(([entry]) => setInView(entry.isIntersecting), {
+      rootMargin: `-${DOCK.passedPx}px 0px 0px 0px`,
+    });
     observer.observe(section);
     return () => observer.disconnect();
   }, []);
@@ -77,7 +74,7 @@ export function BandStage() {
   return (
     <>
       <div ref={stageRef} className="relative h-[176px] md:absolute md:inset-0 md:h-auto">
-        <WaveCanvas active={band.inView} frozen={frozen} />
+        <WaveCanvas active={inView} frozen={frozen} />
       </div>
       <div className="relative z-10 px-[6vw] pb-5 md:absolute md:inset-x-0 md:bottom-0">
         <div className="mx-auto flex max-w-[1240px] flex-wrap items-baseline justify-between gap-x-8 gap-y-2 text-xs leading-[1.5] text-muted">
@@ -105,7 +102,7 @@ export function BandStage() {
           </p>
         </div>
       </div>
-      <PlaybackPill reached={band.passed} />
+      <PlaybackPill reached={passed} />
       {phone ? null : <HorizonCanvas />}
     </>
   );

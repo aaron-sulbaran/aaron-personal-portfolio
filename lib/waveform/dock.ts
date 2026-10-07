@@ -11,7 +11,7 @@ export type DockLabel = "accepted" | "declined" | "unanswered" | "returning" | "
 
 export interface DockInput {
   music: SoundtrackState;
-  reached: boolean; // the band's bottom edge is above the dock line, DOCK.passedPx (bandPassed)
+  reached: boolean; // the band's bottom edge is above the dock line, DOCK.passedPx (useBandPassed's ScrollTrigger)
   phone: boolean;
   labelShown: boolean; // this page load already showed the label for this state
   returning: boolean; // a stored "on" restored this session and not yet greeted
@@ -56,11 +56,4 @@ export function capsuleText(music: SoundtrackState, trackTitle: string): string 
 // separator ("Music? Play the soundtrack", "Paused. Open soundtrack player").
 export function capsuleName(text: string, action: string): string {
   return /[.?!]$/.test(text) ? `${text} ${action}` : `${text}. ${action}`;
-}
-
-// The reader has scrolled past the band: its bottom edge is above the dock
-// line (DOCK.passedPx from the viewport's top, under the header bar and an
-// anchor's landing). A band below the viewport (the hero, the book) is not passed.
-export function bandPassed(bottom: number, rootTop: number | null, intersecting: boolean): boolean {
-  return !intersecting && bottom <= (rootTop ?? DOCK.passedPx);
 }
