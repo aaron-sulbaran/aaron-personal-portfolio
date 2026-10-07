@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { STILL_MEDIA, heroStillSrc, stillCut, stillFallback, stillSources } from "@/lib/coil/heroStill";
+import { STILL_MEDIA, heroStillSrc, stillCause, stillCut, stillFallback, stillSources } from "@/lib/coil/heroStill";
 
 describe("hero still", () => {
   it("cuts on the narrow composition's strict line and at 1.2", () => {
@@ -25,5 +25,14 @@ describe("hero still", () => {
       ["", "image/avif", "/coil/hero-light-wide.avif"],
     ]);
     expect(stillFallback("dark")).toBe("/coil/hero-dark-wide.webp");
+  });
+});
+
+describe("still cause", () => {
+  it("names reduced motion first, then a missing context, else a scene that failed", () => {
+    expect(stillCause({ reducedMotion: true, hasApi: false, failure: "unavailable" })).toBe("reducedMotion");
+    expect(stillCause({ reducedMotion: false, hasApi: false, failure: null })).toBe("noWebgl");
+    expect(stillCause({ reducedMotion: false, hasApi: true, failure: "noWebgl" })).toBe("noWebgl");
+    expect(stillCause({ reducedMotion: false, hasApi: true, failure: "unavailable" })).toBe("unavailable");
   });
 });
