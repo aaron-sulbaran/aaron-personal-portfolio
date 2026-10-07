@@ -122,3 +122,13 @@ test("label face: hints and the credit prose are Profa Bold, muted", async ({ pa
   const photo = page.getByRole("dialog");
   await expectLabel(photo.getByText(siteContent.modals.closeHintKeyboard, { exact: true }), "label", "muted");
 });
+
+test("label face: kickers and the Connect labels are Profa Bold, muted", async ({ page }) => {
+  await page.goto("/");
+  await settled(page);
+  const { about, whoIAm, upToNow, connect } = siteContent;
+  for (const label of [about.label, whoIAm.label, upToNow.label, connect.label]) {
+    await expectLabel(page.locator(`section[aria-label="${label}"]`).getByText(label, { exact: true }).first(), "label", "muted");
+  }
+  await expectLabel(page.locator("#connect li a > span").first(), "label", "muted");
+});
