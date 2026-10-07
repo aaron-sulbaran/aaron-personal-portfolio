@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
+import { ArrowLeft } from "lucide-react";
 import { siteContent, type WorkBodySection } from "@/lib/content";
 import { HOLDING_MODE } from "@/lib/holding";
 import { Footer } from "@/components/Footer";
@@ -47,8 +48,9 @@ export default async function WorkDetailPage({ params }: Params) {
           <div className="mx-auto max-w-4xl">
             <Link
               href="/#work"
-              className="mb-12 inline-flex items-center gap-2 text-sm text-muted transition-colors duration-200 hover:text-accent md:mb-16"
+              className="mb-12 inline-flex items-center gap-1 font-label text-label text-accent transition-colors duration-200 hover:text-accent-hover md:mb-16"
             >
+              <ArrowLeft aria-hidden="true" size={14} strokeWidth={2.5} className="relative -top-px shrink-0" />
               {backLabel}
             </Link>
 
@@ -62,13 +64,13 @@ export default async function WorkDetailPage({ params }: Params) {
                   className="object-contain p-3"
                 />
               </div>
-              <div className="flex flex-col gap-2">
-                <span className="text-sm text-muted">
-                  {item.role}, {item.year}
-                </span>
+              <div className="flex flex-col gap-3.5">
                 <h1 className="font-display text-display-page text-foreground">
                   {item.title}
                 </h1>
+                <p className="font-label text-label-lg leading-5 text-accent">
+                  {item.role}, {item.year}
+                </p>
               </div>
             </div>
 

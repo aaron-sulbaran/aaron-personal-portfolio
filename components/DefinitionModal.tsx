@@ -109,8 +109,8 @@ export function DefinitionModal({ definition, morph, onClose }: DefinitionModalP
               {definition.body}
             </p>
 
-            <p className="mt-1 text-sm text-muted">
-              Press Esc to close
+            <p className="mt-1 font-label text-label text-muted">
+              {siteContent.modals.closeHintKeyboard}
             </p>
           </motion.div>
         </motion.div>

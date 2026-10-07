@@ -272,7 +272,7 @@ export function MenuPill() {
             aria-expanded={open}
             aria-controls={MENU_ID}
             data-cursor-hover
-            className={`flex h-10 items-center rounded-full pr-[17px] font-label text-label text-accent focus-visible:rounded-full focus-visible:outline-offset-[-3px] ${
+            className={`flex h-10 items-center rounded-full pr-[17px] font-label text-label focus-visible:rounded-full focus-visible:outline-offset-[-3px] ${
               engaged ? "pl-[14px]" : "pl-1.5"
             }`}
             overClassName={`flex items-center pr-[17px] ${engaged ? "pl-[14px]" : "pl-1.5"}`}
@@ -284,14 +284,14 @@ export function MenuPill() {
                 }`}
               >
                 <span className="fx-odometer block">
-                  <span className="flex h-[22px] items-center justify-end">{pillLabel}</span>
+                  <span className="flex h-[22px] items-center justify-end text-accent">{pillLabel}</span>
                   <span className="flex h-[22px] items-center justify-center">
                     <AsMark fit="tight" className="h-[22px] w-[15px]" />
                   </span>
                 </span>
               </span>
               <span
-                className={`col-start-1 row-start-1 flex h-[22px] items-center justify-end transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                className={`col-start-1 row-start-1 flex h-[22px] items-center justify-end text-accent transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
                   engaged ? "" : "translate-y-[110%]"
                 }`}
               >

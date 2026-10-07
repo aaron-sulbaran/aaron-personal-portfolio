@@ -2,9 +2,8 @@ import type { Page } from "@playwright/test";
 import { test, expect } from "./support/fixtures";
 import { siteContent } from "@/lib/content";
 import { DOCK } from "@/lib/waveform/dock";
-import { HORIZON } from "@/lib/waveform/layout";
 import { THEME_STORAGE_KEY } from "@/lib/theme";
-import { openHome, scrollToY } from "./support/coil";
+import { nextFrames, openHome, scrollToY } from "./support/coil";
 import { settled } from "./support/fallback";
 import {
   CAPSULE,
@@ -25,18 +24,17 @@ import {
   toAbout,
   type DockSample,
 } from "./support/dock";
-import { AVOID_BLOCKS, hasProbe, paintsOver, parkBand, sweep } from "./support/wave";
+import { bandBottomAt, parkBand } from "./support/wave";
 
 // The soundtrack band (#listen): in flow under the book, where the waveform
-// starts before it follows the reader onto the horizon strip (horizon.spec.ts);
-// "Play it" really plays, "Not now" leaves a still line in the band, and the
-// playback pill condenses out of the band onto the wave's line at the bottom
-// left once the reader scrolls on (the dock tests below, spec sections 2
-// and 5). A deep load into the page keeps its layout still.
+// lives; "Play it" really plays, "Not now" leaves a still line in the band, and the
+// playback pill fades in at its dock on the wave's line at the bottom left
+// once the band's bottom edge passes the dock line (the dock tests below,
+// spec sections 2 and 5). A deep load into the page keeps its layout still.
 
 const L = siteContent.listen;
 const S = siteContent.soundtrack;
-const HOME = "/?wavedebug";
+const HOME = "/";
 
 // Counts every repaint of each 2D canvas (the wave clears once per paint) and
 // remembers every media element that was asked to play.
@@ -65,19 +63,21 @@ async function instrument(page: Page) {
 }
 
 const bandPaints = (page: Page) => page.evaluate(() => (window as unknown as { __e2eBandPaints: () => number }).__e2eBandPaints());
+const bandRepaints = async (page: Page, ms: number) => {
+  const before = await bandPaints(page);
+  await page.waitForTimeout(ms);
+  return (await bandPaints(page)) - before;
+};
 type MediaRead = { paused: boolean; time: number; src: string; error: number | null };
 const media = (page: Page) => page.evaluate(() => (window as unknown as { __e2eMedia: () => MediaRead[] }).__e2eMedia());
 
-// The band fully in view with its centre at 70 percent of the viewport, below
-// the sweep trigger's start (centre at 60 percent): the whole train is still
-// in the band, so the band guards below run at sweep 0.
+// The band fully in view with its centre at 70 percent of the viewport.
 async function scrollBandIntoView(page: Page) {
   await parkBand(page);
   await page.waitForFunction(() => {
     const rect = document.querySelector("#listen")!.getBoundingClientRect();
     return rect.top > 80 && rect.bottom < window.innerHeight;
   });
-  if (await hasProbe(page)) await expect.poll(() => sweep(page), { message: "sweep with the band parked" }).toBe(0);
 }
 
 // Focuses the last control the keyboard can reach before the pill in
@@ -101,83 +101,31 @@ async function focusLastBeforePill(page: Page) {
   expect(focused, "a control before the pill took focus").toBe(true);
 }
 
-// The rule that replaced "no canvas behind text": the one fixed canvas is the
-// horizon strip, behind the content (z 0 under 10) with no pointer events, so
-// every text box that crosses it paints above the strip at its centre. The
-// docked pill may sit over that point (it docks on the strip by design); it is
-// neither text nor strip, so the read is the order of those two in the stack,
-// and the footer test below proves the pill leaves the footer's words clear.
-test("band: in flow directly under the book; the one fixed canvas is the horizon, behind the text", async ({ page }) => {
+// The wave lives in the band and nowhere else: no canvas fixed to the
+// viewport, and no text outside the band carries the duck's mark.
+test("band: in flow directly under the book; no canvas is fixed to the viewport", async ({ page }) => {
   await openHome(page, { path: HOME });
   const layout = await page.evaluate(() => {
     const band = document.getElementById("listen")!;
     const book = document.getElementById("work")!;
-    const fixedAncestor = (el: Element | null): HTMLElement | null => {
-      for (let node = el as HTMLElement | null; node; node = node.parentElement) {
-        if (getComputedStyle(node).position === "fixed") return node;
-      }
-      return null;
-    };
-    const fixed = [...document.querySelectorAll("canvas")].filter((c) => fixedAncestor(c));
-    const strip = fixed[0];
+    const fixed = [...document.querySelectorAll("canvas")].filter((c) => {
+      for (let n: HTMLElement | null = c; n; n = n.parentElement) if (getComputedStyle(n).position === "fixed") return true;
+      return false;
+    });
     return {
-      followsBook: book.nextElementSibling === band || !!(book.compareDocumentPosition(band) & Node.DOCUMENT_POSITION_FOLLOWING),
+      followsBook: !!(book.compareDocumentPosition(band) & Node.DOCUMENT_POSITION_FOLLOWING),
       position: getComputedStyle(band).position,
       fixedCanvases: fixed.length,
-      fixedIsHorizon: !!strip && strip.matches('[data-wave="horizon"] canvas'),
-      zIndex: strip ? getComputedStyle(fixedAncestor(strip)!).zIndex : null,
-      pointerEvents: strip ? getComputedStyle(strip).pointerEvents : null,
+      avoidOutsideBand: [...document.querySelectorAll("[data-wave-avoid]")].filter((el) => !band.contains(el)).length,
       bandTop: band.getBoundingClientRect().top + window.scrollY,
       bookBottom: book.getBoundingClientRect().bottom + window.scrollY,
     };
   });
   expect(layout.followsBook).toBe(true);
   expect(["static", "relative"]).toContain(layout.position);
-  expect(layout.fixedCanvases, "canvases fixed to the viewport").toBe(1);
-  expect(layout.fixedIsHorizon, "the fixed canvas is the horizon strip").toBe(true);
-  expect(layout.zIndex).toBe("0");
-  expect(layout.pointerEvents).toBe("none");
+  expect(layout.fixedCanvases, "canvases fixed to the viewport").toBe(0);
+  expect(layout.avoidOutsideBand, "duck marks outside the band").toBe(0);
   expect(layout.bandTop).toBeGreaterThan(layout.bookBottom - 100);
-
-  const vh = page.viewportSize()!.height;
-  for (const block of AVOID_BLOCKS) {
-    const selector = `${block} [data-wave-avoid]`;
-    const count = await page.locator(selector).count();
-    expect(count, `avoid boxes in ${block}`).toBeGreaterThan(0);
-    for (let i = 0; i < count; i++) {
-      // The box's centre on the strip's baseline (as far as the page scrolls).
-      const y = await page.evaluate(
-        ({ selector, i, at }) => {
-          const r = document.querySelectorAll(selector)[i].getBoundingClientRect();
-          const max = document.documentElement.scrollHeight - window.innerHeight;
-          return Math.max(0, Math.min(max, r.top + r.height / 2 + window.scrollY - at));
-        },
-        { selector, i, at: vh - HORIZON.lift },
-      );
-      await scrollToY(page, Math.round(y));
-      const hit = await page.evaluate(
-        ({ selector, i }) => {
-          const el = document.querySelectorAll(selector)[i];
-          const r = el.getBoundingClientRect();
-          const host = document.querySelector<HTMLElement>('[data-wave="horizon"]')!;
-          const canvas = host.querySelector("canvas")!;
-          const strip = host.getBoundingClientRect();
-          // elementsFromPoint skips pointer-events: none, so the strip is made
-          // hit testable for this one read: paint order alone must put the text above the strip.
-          host.style.pointerEvents = "auto";
-          canvas.style.pointerEvents = "auto";
-          const stack = document.elementsFromPoint(r.left + r.width / 2, r.top + r.height / 2);
-          host.style.pointerEvents = "";
-          canvas.style.pointerEvents = "";
-          const text = stack.findIndex((node) => el.contains(node));
-          const below = stack.findIndex((node) => host.contains(node));
-          return { overStrip: r.top < strip.bottom && r.bottom > strip.top, owned: text >= 0 && below >= 0 && text < below };
-        },
-        { selector, i },
-      );
-      expect(hit, `${selector} #${i} over the strip`).toEqual({ overStrip: true, owned: true });
-    }
-  }
 });
 
 // The pill docks at the bottom left (z 45), so at the foot of the page the
@@ -197,7 +145,7 @@ for (const viewport of [
     await dockLanded(page);
     const read = await page.evaluate(() => {
       const capsule = document.querySelector("[data-pill] .pill-hit")!.getBoundingClientRect();
-      const row = document.querySelector("footer [data-wave-avoid]")!;
+      const row = document.querySelector("footer > div")!;
       const walker = document.createTreeWalker(row, NodeFilter.SHOW_TEXT);
       const boxes: { left: number; top: number; right: number; bottom: number }[] = [];
       for (let node = walker.nextNode(); node; node = walker.nextNode()) {
@@ -263,7 +211,6 @@ test("band: the wave draws while the band is in view, and \"Not now\" brings it 
 // before the split (no scene under reduced motion, so no openHome here).
 test("band: the still line under reduced motion is pixel identical to the baseline", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
-  // Plain "/": this test never reads the probe; the band is parked by geometry only.
   await page.goto("/");
   await settled(page);
   await scrollBandIntoView(page);
@@ -362,23 +309,15 @@ test("band: a deep load at #about keeps its layout still (CLS under 0.05)", asyn
 
 // ---------------------------------------------------------------------------
 // The dock (spec sections 2, 5 and 8): from the band down the pill is there in
-// every music state, condensed out of the band onto the wave's line at the
-// bottom left. It lands open with one line for the state, once per page
+// every music state, faded in at its dock on the wave's line at the bottom
+// left. It lands open with one line for the state, once per page
 // load, holds about 2.6s (hover or keyboard focus pauses the hold), then
 // collapses to the capsule. Every read goes through the dock recorder
 // (support/dock.ts) and every string comes from lib/content.ts.
 
 const near = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.hypot(a.x - b.x, a.y - b.y);
 
-// The pill's first arrival after a scroll, from the recorder: the first write
-// that carries a transform (the tween's from state) and the 50ms ticks after it.
-function arrival(samples: DockSample[], ms = 700) {
-  const first = samples.find((s) => s.kind === "write" && s.transform !== "");
-  if (!first) return null;
-  return { first, ticks: samples.filter((s) => s.kind === "tick" && s.t > first.t && s.t <= first.t + ms) };
-}
-
-test("dock: the accept path plays, condenses to the dock, says where the music lives, then shows the track", async ({ page }) => {
+test("dock: the accept path plays, fades in at the dock, says where the music lives, then shows the track", async ({ page }) => {
   await instrument(page);
   await armDock(page);
   await openHome(page, { path: HOME });
@@ -410,7 +349,7 @@ test("dock: the accept path plays, condenses to the dock, says where the music l
   const at = await dockGeometry(page);
   expect(at.height, "capsule height").toBeGreaterThanOrEqual(36);
   expect(Math.abs(at.left - DOCK.insetPx), "capsule left edge from the dock's inset").toBeLessThanOrEqual(2);
-  expect(Math.abs(at.y - at.baseline), "capsule centre from the horizon's baseline").toBeLessThanOrEqual(4);
+  expect(Math.abs(at.y - at.baseline), "capsule centre from the dock's line").toBeLessThanOrEqual(4);
 });
 
 test("dock: the decline path says it'll be here, settles as \"Music\", and a reload stays quiet", async ({ page }) => {
@@ -422,8 +361,8 @@ test("dock: the decline path says it'll be here, settles as \"Music\", and a rel
   await band.getByRole("button", { name: L.decline, exact: true }).click();
   await expect(band.locator("[data-band-note]")).toBeFocused();
   await expect(band.locator("[data-band-note] > :not([inert])")).toHaveText(L.declinedNote, { useInnerText: true });
-  // Declined, the capsule's click plays instead of opening the card, so the band keeps the freeze toggle on desktop.
-  await expect(band.getByRole("button", { name: L.freeze, exact: true })).toBeVisible();
+  // Declined, nothing in the band moves, so its freeze toggle is inert.
+  await expect(band.locator("button", { hasText: L.freeze })).toHaveAttribute("inert", "");
 
   await toAbout(page);
   await expect.poll(() => dockText(page), { timeout: 1000, message: "the label as it lands" }).toBe(S.dockDeclined);
@@ -524,128 +463,168 @@ test("dock: pausing in the band inside the start window is the visitor's pause, 
   await expect(page.locator(CAPSULE)).toHaveAccessibleName(`${S.capsulePaused}. ${S.ariaOpen}`);
 });
 
-// Scrolls just past the arrival threshold (sweep target 0.35) with the band
-// on screen: the trigger runs from the band's centre at 60 percent of the
-// viewport to its bottom at 15 percent, so progress 0.4 of that range. Each
-// selector's centre is measured in the same task, before the threshold is
-// processed, which is where the pill takes its source (page coordinates
-// converted at the threshold). Returns the recorded arrival and the dock.
-async function condense(page: Page, selectors: string[]) {
-  await startDock(page);
-  const scrolled = await page.evaluate((selectors) => {
-    const vh = window.innerHeight;
-    const band = document.getElementById("listen")!.getBoundingClientRect();
-    const top = band.top + window.scrollY;
-    const start = top + band.height / 2 - 0.6 * vh;
-    const end = top + band.height - 0.15 * vh;
-    window.scrollTo({ top: Math.round(start + 0.4 * (end - start)), behavior: "instant" });
-    const centres = selectors.map((selector) => {
-      const r = document.querySelector(selector)!.getBoundingClientRect();
-      return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
-    });
-    return { centres, vh };
-  }, selectors);
-  for (const [i, c] of scrolled.centres.entries()) {
-    expect(c.y, `${selectors[i]} on screen at the threshold`).toBeGreaterThan(0);
-    expect(c.y).toBeLessThan(scrolled.vh);
-  }
-  await dockLanded(page);
-  await page.waitForTimeout(200);
-  const run = arrival(await stopDock(page));
-  expect(run, "an arrival tween").not.toBeNull();
-  const at = await dockGeometry(page);
-  return { ...run!, sources: scrolled.centres, dock: { x: at.x, y: at.baseline } };
+// The introduction: an opacity fade at the dock once the band's bottom edge is
+// above the dock line, and the same fade out when it returns. The box never
+// moves: its left edge and centre line hold while the label opens rightward.
+async function fadeRun(page: Page, bottom: number) {
+  await startDock(page, 25);
+  await bandBottomAt(page, bottom);
+  await page.waitForTimeout(DOCK.fadeMs + 250);
+  return (await stopDock(page)).filter((s) => s.shown);
 }
 
-// The condense's source tolerance: the measured start sits on the source's centre (about 0px).
-const SOURCE_PX = 6;
-const NOT_NOW = '#listen [data-band-controls] [data-focus-to="note"]:not([data-control])';
-const VISIBLE_CONTROLS = "#listen [data-band-controls] > :not([inert])";
-const VISIBLE_NOTE = "#listen [data-band-note] > :not([inert])";
+function expectStill(samples: DockSample[], rest: DockSample) {
+  for (const s of samples) {
+    expect({ transform: s.transform, computed: s.computed }).toEqual({ transform: "", computed: "none" });
+    expect(Math.hypot(s.x - s.width / 2 - (rest.x - rest.width / 2), s.y - rest.y), "the box held still").toBeLessThanOrEqual(0.5);
+  }
+}
 
-test("dock: the first arrival condenses out of the pressed control and travels down to the dock", async ({ page }) => {
+test("dock: the pill fades in at its dock once the band's bottom edge passes the dock line, and fades out in place", async ({ page }) => {
   await armDock(page);
   await openHome(page, { path: HOME });
   await scrollBandIntoView(page);
   await bandControl(page, "before").click();
-  const { first, ticks, sources, dock } = await condense(page, ['#listen [data-control="before"]']);
-
-  expect(near(first, sources[0]), "the arrival's first box from the pressed Play it's centre").toBeLessThanOrEqual(SOURCE_PX);
-  expect(first.opacity, "the arrival's first opacity").toBeLessThan(1);
-  expect(ticks.length, "50ms samples over 700ms").toBeGreaterThanOrEqual(12);
-  const last = ticks.at(-1)!;
-  expect(Math.abs(last.x - dock.x), "the last sample from the dock, x").toBeLessThanOrEqual(4);
-  expect(Math.abs(last.y - dock.y), "the last sample from the dock, y").toBeLessThanOrEqual(4);
-  // Down all the way: y strictly increases while the tween travels, then holds
-  // at rest on the dock's measured centre. GSAP's last frame can leave a zero
-  // translate in place for a tick before it clears, so "travelling" is read
-  // from the position, not the inline transform.
-  const path = [first, ...ticks];
-  for (let i = 1; i < path.length; i++) {
-    if (path[i - 1].y < dock.y - 1) expect(path[i].y, `sample ${i} below sample ${i - 1}`).toBeGreaterThan(path[i - 1].y);
-    else expect(Math.abs(path[i].y - dock.y), `sample ${i} at rest on the dock`).toBeLessThanOrEqual(1);
-  }
-});
-
-test("dock: after \"Not now\" the first arrival condenses out of the pressed button, not the note", async ({ page }) => {
-  await armDock(page);
-  await openHome(page, { path: HOME });
-  await scrollBandIntoView(page);
-  await page.locator(NOT_NOW).click();
-  const { first, sources } = await condense(page, [NOT_NOW, VISIBLE_NOTE]);
-  const [pressed, note] = sources;
-  expect(near(pressed, note), "the pressed button and the note are told apart").toBeGreaterThan(2 * SOURCE_PX);
-  expect(near(first, pressed), "the arrival's first box from the pressed Not now's centre").toBeLessThanOrEqual(SOURCE_PX);
-});
-
-test("dock: an unanswered first trip condenses out of the band's visible controls", async ({ page }) => {
-  await armDock(page);
-  await openHome(page, { path: HOME });
-  await scrollBandIntoView(page);
-  const { first, sources } = await condense(page, [VISIBLE_CONTROLS]);
-  expect(near(first, sources[0]), "the arrival's first box from the visible controls' centre").toBeLessThanOrEqual(SOURCE_PX);
-});
-
-test("dock: a declined later trip condenses out of the band's visible note", async ({ page }) => {
-  await armDock(page);
-  await openHome(page, { path: HOME });
-  await scrollBandIntoView(page);
-  await page.locator(NOT_NOW).click();
-  // The first trip takes the pressed button; back above the threshold, the pill returns home.
-  await toAbout(page);
+  await bandBottomAt(page, DOCK.passedPx + 12);
+  await page.waitForTimeout(DOCK.fadeMs + 100);
+  await expect(page.locator(PILL), "band edge still in view").toHaveAttribute("inert", "");
+  const fadeIn = await fadeRun(page, DOCK.passedPx - 12);
   await dockLanded(page);
-  await parkBand(page);
+  const rest = (await readDock(page))!;
+  expectStill(fadeIn, rest);
+  const first = fadeIn.find((s) => s.opacity > 0)!;
+  const full = fadeIn.find((s) => s.opacity === 1)!;
+  expect(fadeIn.some((s) => s.opacity > 0.1 && s.opacity < 0.9), "a fade in between").toBe(true);
+  expect(full.t - first.t, "the fade, ms").toBeGreaterThan(DOCK.fadeMs * 0.6);
+  expect(full.t - first.t).toBeLessThan(DOCK.fadeMs * 1.6);
+  const fadeOut = await fadeRun(page, DOCK.passedPx + 12);
+  expectStill(fadeOut, rest);
+  expect(fadeOut.some((s) => s.opacity > 0.1 && s.opacity < 0.9), "a fade out between").toBe(true);
   await expect(page.locator(PILL)).toHaveAttribute("inert", "");
-  await page.waitForFunction(() => document.querySelector<HTMLElement>("[data-pill]")!.style.opacity === "0");
-  // Declined, no control layer shows, so the later trip's source is the note.
-  const { first, sources } = await condense(page, [VISIBLE_NOTE]);
-  expect(near(first, sources[0]), "the arrival's first box from the visible note's centre").toBeLessThanOrEqual(SOURCE_PX);
 });
 
-test("dock: the freeze toggle lives in the player card once music is on", async ({ page }) => {
+test("dock: a deep load at #about fades the pill in at its dock without moving", async ({ page }) => {
+  await armDock(page, { fromLoad: true });
+  await page.goto(`${HOME}#about`);
+  await settled(page);
+  await dockLanded(page);
+  await page.waitForTimeout(200);
+  const samples = (await stopDock(page)).filter((s) => s.shown);
+  expectStill(samples, (await readDock(page))!);
+  expect(samples.some((s) => s.opacity > 0 && s.opacity < 1), "a fade in").toBe(true);
+});
+
+test("dock: turning back mid-fade reverses from the opacity it has", async ({ page }) => {
+  await armDock(page);
+  await openHome(page, { path: HOME });
+  await scrollBandIntoView(page);
+  await startDock(page, 16);
+  await bandBottomAt(page, DOCK.passedPx - 12);
+  await page.waitForTimeout(DOCK.fadeMs / 2);
+  await bandBottomAt(page, DOCK.passedPx + 12);
+  await page.waitForTimeout(DOCK.fadeMs + 100);
+  const samples = (await stopDock(page)).filter((s) => s.shown);
+  const peak = Math.max(...samples.map((s) => s.opacity));
+  expect(peak, "turned before full").toBeLessThan(1);
+  for (let i = 1; i < samples.length; i++) expect(Math.abs(samples[i].opacity - samples[i - 1].opacity), `no jump at ${i}`).toBeLessThan(0.5);
+  const after = samples.slice(samples.findIndex((s) => s.opacity === peak) + 1);
+  expect(after.some((s) => s.opacity > 0 && s.opacity < peak), "a fade out from the peak").toBe(true);
+  await expect(page.locator(PILL)).toHaveAttribute("inert", "");
+});
+
+// Progress 0 is "before" to GSAP: a return that stops exactly on the start
+// fires onLeaveBack there and nothing above it, so the read at start must say
+// "not passed", or the pill stays out over the book and the Coil.
+test("dock: back up to exactly the dock line, then on up through the band, the pill fades away", async ({ page }) => {
+  await armDock(page);
+  await openHome(page, { path: HOME });
+  await scrollBandIntoView(page);
+  await bandBottomAt(page, DOCK.passedPx - 12);
+  await dockLanded(page);
+  await bandBottomAt(page, DOCK.passedPx);
+  // The start is the band's bottom edge on the dock line, so a bottom edge at
+  // exactly DOCK.passedPx is a scroll at exactly the trigger's start.
+  const bottom = await page.evaluate(() => document.getElementById("listen")!.getBoundingClientRect().bottom);
+  expect(bottom, "the band's bottom edge exactly on the dock line").toBe(DOCK.passedPx);
+  await bandBottomAt(page, DOCK.passedPx + 200);
+  await expect(page.locator(PILL)).toHaveAttribute("inert", "", { timeout: DOCK.fadeMs + 2000 });
+});
+
+// Letting a frozen, declined wave move again leaves the toggle with nothing to
+// do, but the keyboard is on it: it stays live until focus leaves.
+test("band: pressing \"Let the wave move\" from the keyboard after a decline keeps focus on the toggle", async ({ page }) => {
+  await openHome(page, { path: HOME });
+  await scrollBandIntoView(page);
+  const band = page.locator("#listen");
+  await band.getByRole("button", { name: L.freeze, exact: true }).click();
+  await band.getByRole("button", { name: L.decline, exact: true }).click();
+  const toggle = band.getByRole("button", { name: L.unfreeze, exact: true });
+  await toggle.focus();
+  await page.keyboard.press("Enter");
+  // Chromium drops focus from an inert element at its next style update, not at once.
+  await nextFrames(page, 3);
+  expect(await page.evaluate(() => document.activeElement !== document.body), "focus left on the body").toBe(true);
+  await expect(band.getByRole("button", { name: L.freeze, exact: true })).toBeFocused();
+});
+
+// Reduced motion makes every anchor jump instant, so the reader can cross the
+// band in one step, with no frame where it shows: the dock must still follow.
+test("dock: under reduced motion an instant jump past the band lands the pill, and a jump back above it hides it", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await armDock(page);
+  await page.goto(HOME);
+  await settled(page);
+  const pill = page.locator(PILL);
+  await expect(pill).toHaveAttribute("inert", "");
+  await page.evaluate(() => {
+    const top = document.getElementById("about")!.getBoundingClientRect().top + window.scrollY;
+    window.scrollTo({ top, behavior: "instant" });
+  });
+  await dockLanded(page);
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
+  await expect(pill).toHaveAttribute("inert", "");
+  await page.waitForFunction(() => document.querySelector<HTMLElement>("[data-pill]")!.style.opacity === "0");
+});
+
+test("dock: a phone width removes the pill and desktop fades it back in", async ({ page }) => {
+  await armDock(page);
+  await page.goto(`${HOME}#about`);
+  await settled(page);
+  await dockLanded(page);
+  await page.setViewportSize({ width: 375, height: 812 });
+  await expect(page.locator(PILL)).toHaveCount(0);
+  // Still past the band: the resize's refresh re-derives "passed" with no scroll.
+  await startDock(page, 16);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await dockLanded(page);
+  const samples = (await stopDock(page)).filter((s) => s.shown);
+  expect(samples.some((s) => s.opacity > 0 && s.opacity < 1), "a fade back in").toBe(true);
+  expect(Math.abs((await dockGeometry(page)).left - DOCK.insetPx)).toBeLessThanOrEqual(2);
+});
+
+test("dock: the freeze toggle lives in the player card once music is on, and stops the band", async ({ page }) => {
+  await instrument(page);
   await armDock(page);
   await openHome(page, { path: HOME });
   await scrollBandIntoView(page);
   const bandFreeze = page.locator("#listen").getByRole("button", { name: L.freeze, exact: true });
-  // Before an answer the band keeps it; with music chosen the card carries it on desktop.
   await expect(bandFreeze).toBeVisible();
   await bandControl(page, "before").click();
   await expect(bandFreeze).toBeHidden();
-
-  await toAbout(page);
-  await dockLanded(page);
-  await page.locator(CAPSULE).click();
   const card = page.getByRole("group", { name: S.ariaOpen });
-  await expect(card).not.toHaveAttribute("inert", "");
-  expect(await paintsOver(page, 1000), "horizon repaints in a second before freezing").toBeGreaterThan(0);
-  await card.getByRole("button", { name: L.freeze, exact: true }).click();
-  await expect(card.getByRole("button", { name: L.unfreeze, exact: true })).toBeVisible();
-  // A short settle for the last frame in flight, then one whole second.
+  const toggleInCard = async (name: string) => {
+    await toAbout(page);
+    await dockLanded(page);
+    if ((await card.getAttribute("inert")) !== null) await page.locator(CAPSULE).click();
+    await card.getByRole("button", { name, exact: true }).click();
+  };
+  await toggleInCard(L.freeze);
+  await scrollBandIntoView(page);
   await page.waitForTimeout(300);
-  expect(await paintsOver(page, 1000), "horizon repaints in a frozen second").toBe(0);
-
-  await card.getByRole("button", { name: L.unfreeze, exact: true }).click();
-  await expect.poll(() => paintsOver(page, 1000), { message: "horizon repaints once the wave moves" }).toBeGreaterThan(0);
+  expect(await bandRepaints(page, 1000), "band repaints in a frozen second").toBe(0);
+  await toggleInCard(L.unfreeze);
+  await scrollBandIntoView(page);
+  await expect.poll(() => bandRepaints(page, 1000), { message: "band repaints once the wave moves" }).toBeGreaterThan(0);
 });
 
 for (const theme of ["light", "dark"] as const) {
@@ -659,7 +638,7 @@ for (const theme of ["light", "dark"] as const) {
     const at = await dockGeometry(page);
     expect(at.height, "capsule height").toBeGreaterThanOrEqual(36);
     expect(Math.abs(at.left - DOCK.insetPx), "capsule left edge from the dock's inset").toBeLessThanOrEqual(2);
-    expect(Math.abs(at.y - at.baseline), "capsule centre from the horizon's baseline").toBeLessThanOrEqual(4);
+    expect(Math.abs(at.y - at.baseline), "capsule centre from the dock's line").toBeLessThanOrEqual(4);
   });
 }
 
@@ -737,65 +716,6 @@ test("dock: hovering the pill holds its label; leaving lets it collapse", async 
   await expect.poll(() => dockText(page), { timeout: 3500, message: "collapsed after the pointer left" }).toBe(S.capsuleOff);
 });
 
-test("dock: a deep load at #about rises into place rather than condensing", async ({ page }) => {
-  await armDock(page, { fromLoad: true });
-  await page.goto(`${HOME}#about`);
-  await settled(page);
-  await dockLanded(page);
-  await page.waitForTimeout(200);
-  const run = arrival(await stopDock(page));
-  expect(run, "an arrival tween").not.toBeNull();
-  const { first, ticks } = run!;
-  const rest = (await readDock(page))!;
-  // Straight up from below the dock, full size, faded: no travel from the band.
-  expect(first.y - rest.y, "the first box below its rest position, px").toBeGreaterThan(4);
-  expect(Math.abs(first.x - rest.x), "no sideways travel").toBeLessThanOrEqual(1);
-  expect(Math.abs(first.width - rest.width), "no condensing scale").toBeLessThanOrEqual(1);
-  expect(first.opacity, "the first opacity").toBeLessThan(1);
-  const last = ticks.at(-1)!;
-  expect(last.transform, "at rest").toBe("");
-  expect(last.opacity).toBe(1);
-  expect(Math.abs(last.y - rest.y)).toBeLessThanOrEqual(0.5);
-});
-
-test("dock: scrolling back above the threshold returns the pill into the band's controls", async ({ page }) => {
-  await armDock(page);
-  await openHome(page, { path: HOME });
-  await scrollBandIntoView(page);
-  await bandControl(page, "before").click();
-  await toAbout(page);
-  await dockLanded(page);
-  const docked = (await readDock(page))!;
-
-  await startDock(page);
-  await parkBand(page);
-  const pill = page.locator(PILL);
-  await expect(pill).toHaveAttribute("inert", "");
-  await page.waitForFunction(() => document.querySelector<HTMLElement>("[data-pill]")!.style.opacity === "0");
-  const samples = await stopDock(page);
-  const into = await page.evaluate(() => {
-    const r = document.querySelector("[data-band-controls] > :not([inert])")!.getBoundingClientRect();
-    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
-  });
-
-  // The return tween: up and toward the visible control, fading as it goes.
-  const moving = samples.filter((s) => s.kind === "write" && s.transform !== "");
-  expect(moving.length, "frames of the return").toBeGreaterThan(3);
-  for (let i = 1; i < moving.length; i++) {
-    expect(moving[i].y, `return frame ${i} no lower`).toBeLessThanOrEqual(moving[i - 1].y);
-    expect(near(moving[i], into), `return frame ${i} no farther from the controls`).toBeLessThanOrEqual(near(moving[i - 1], into) + 0.01);
-  }
-  expect(near(moving.at(-1)!, into), "the last frame's distance to the controls").toBeLessThan(near(docked, into) * 0.5);
-  expect(moving.at(-1)!.opacity).toBeLessThan(moving[0].opacity);
-
-  // The controls come back: full opacity, clickable, reachable.
-  const controls = page.locator("#listen [data-band-controls]");
-  await expect.poll(() => controls.evaluate((el) => getComputedStyle(el).opacity)).toBe("1");
-  expect(await controls.evaluate((el) => getComputedStyle(el).pointerEvents)).not.toBe("none");
-  expect(await bandLayerShown(page, "on"), "Pause not inert").toBe(true);
-  await expect(bandControl(page, "on")).toBeVisible();
-});
-
 test("dock: under reduced motion the pill arrives by opacity alone", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await armDock(page);
@@ -859,5 +779,4 @@ test("dock: a live reduced-motion toggle leaves the docked pill where it is", as
       expect(near(s, rest), "the box held still").toBeLessThanOrEqual(0.5);
     }
   }
-  await expect.poll(() => sweep(page)).toBeGreaterThan(0.99);
 });

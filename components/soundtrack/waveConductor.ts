@@ -2,7 +2,11 @@ import { getSoundtrackPlayer } from "@/lib/audio";
 import { getSoundtrackState, subscribeSoundtrack } from "@/lib/soundtrack";
 import { createConveyor, feedScroll, stepConveyor, type ConveyorState } from "@/lib/waveform/conveyor";
 import { FLOOR, createField, levelTargets, regimeOf, stepField, type Field, type Regime } from "@/lib/waveform/field";
-import { createSweep, stepSweep, type SweepState } from "@/lib/waveform/sweep";
+
+// Stand-in since the horizon left (wave-path rewrites this file): nothing
+// sets a sweep target, so the band stays at rest, as before PR 21.
+type SweepState = { value: number; target: number };
+const stepSweep = (): boolean => false;
 
 // The waveform's one engine: the field, the loop, the audio sample, the
 // regime, the clock, the scroll conveyor and the sweep. Views (waveView.ts)
@@ -58,9 +62,8 @@ export interface WaveConductor {
   // the views that asked (`from` keys the request, so a view that shrinks or
   // detaches gives its columns back).
   setColumns(columns: number, from?: WaveView): void;
-  setSweepTarget(target: number, snap?: boolean): void;
   setFrozen(frozen: boolean): void;
-  subscribe(listener: () => void): () => void; // fires after each step and on a new sweep target
+  subscribe(listener: () => void): () => void; // fires after each step
   wake(): void;
   release(): void; // ref counted; the last release destroys it
 }
@@ -121,7 +124,7 @@ function createInstance(still: boolean): Instance {
     const frame = player.sample(t, conductor.columns);
     const idle = regime === "idle" && !still;
     const { moving } = stepConveyor(conductor.conveyor, dt, idle);
-    const sweeping = stepSweep(conductor.sweep, dt);
+    const sweeping = stepSweep();
     const { settled } = stepField(conductor.field, {
       time,
       dt,
@@ -191,7 +194,7 @@ function createInstance(still: boolean): Instance {
     columns: 0,
     carve: new Float32Array(0),
     conveyor: createConveyor(),
-    sweep: createSweep(),
+    sweep: { value: 0, target: 0 },
     time: 0,
     attach(view) {
       if (!views.includes(view)) views.push(view);
@@ -206,18 +209,6 @@ function createInstance(still: boolean): Instance {
       const key = from ?? null;
       requests.set(key, from ? columns : Math.max(requests.get(key) ?? 0, columns));
       resize();
-    },
-    // The sweep's domain is [0, 1]: all in the band to all on the horizon.
-    setSweepTarget(target, snap = false) {
-      if (!Number.isFinite(target)) return;
-      const previous = conductor.sweep.target;
-      conductor.sweep.target = Math.min(1, Math.max(0, target));
-      // Reduced motion never steps, so the train lands without travel.
-      if (snap || still) conductor.sweep.value = conductor.sweep.target;
-      wake();
-      // A still or frozen conductor never steps, so a reader of the target
-      // (the pill's dock) hears about it here too.
-      if (conductor.sweep.target !== previous) listeners.forEach((listener) => listener());
     },
     setFrozen(next) {
       frozen = next;
