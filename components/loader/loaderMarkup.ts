@@ -42,6 +42,7 @@ const L = COIL.lockup;
 const BAIL_MS = 9400;
 
 // Reduced motion never runs a scene: the h1 waits for the decoded still, at most a hand-off's give-up.
+// The still notice waits for the loader to go (and leaves the tab order meanwhile).
 // Its duration is !important over globals.css's reduced-motion zeroing (the
 // noscript rule's animation:none still wins on the name).
 export const LOADER_CSS = `
@@ -53,6 +54,7 @@ export const LOADER_CSS = `
 .coil-loader[data-state=live] :is(.coil-loader__bg,.coil-loader__pane){animation:none;opacity:1;visibility:visible}
 .coil-loader[data-state=rest] :is(.coil-loader__bg,.coil-loader__pane),.coil-loader[data-rest=off] .coil-loader__rest{display:none}
 .coil-loader[data-state=gone],html[data-coil-loader=skip] .coil-loader{display:none}
+html:not([data-coil-loader=skip]):has(.coil-loader:not([data-state=gone])) [data-still-notice]{visibility:hidden}
 @keyframes coil-loader-in{from{opacity:0;visibility:hidden}to{opacity:1;visibility:visible}}
 @keyframes coil-loader-bail{to{opacity:0;visibility:hidden}}
 @keyframes coil-loader-h1{from,to{opacity:0}}

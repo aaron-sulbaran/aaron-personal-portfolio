@@ -7,7 +7,8 @@ import { CoilErrorBoundary } from "./CoilErrorBoundary";
 import { HeroOverlay, type HeroOverlayHandle } from "./HeroOverlay";
 import { canCreateWebGL2 } from "./webglProbe";
 import { Poster, decodeHeroStill } from "./Poster";
-import type { HeroScene } from "@/lib/coil/heroStill";
+import { StillNotice } from "./StillNotice";
+import { stillCause, type HeroScene, type StillFailure } from "@/lib/coil/heroStill";
 import type { CoilCardRef, CoilSceneApi, CoilSceneProps } from "./CoilScene";
 // Slice 4: the entrance claim, the loader's tally and the name handoff.
 import { COIL } from "@/lib/coil/constants";
@@ -35,6 +36,8 @@ type Props = {
   frozen: boolean;
   interactive: boolean;
   input: InputDriver;
+  // The hero's scene state, as the controller holds it (data-scene).
+  scene: HeroScene;
   // "on" once the scene has drawn, "off" while one is on its way, "still" once none can run.
   onSceneChange: (scene: HeroScene) => void;
   // Slice 5: the controller's handle on the live scene (the flight, the book's
@@ -49,6 +52,7 @@ export function CoilStage({
   frozen,
   interactive,
   input,
+  scene: heroScene,
   onSceneChange,
   api,
   onCardClick,
@@ -56,14 +60,14 @@ export function CoilStage({
 }: Props) {
   const [Scene, setScene] = useState<ComponentType<CoilSceneProps> | null>(null);
   const [generation, setGeneration] = useState(0);
-  const [failed, setFailed] = useState(false);
+  const [failure, setFailure] = useState<StillFailure | null>(null);
   const [stillDecoded, setStillDecoded] = useState(false);
   const lossesRef = useRef(0);
   const overlayRef = useRef<HeroOverlayHandle>(null);
   const ownApiRef = useRef<CoilSceneApi>(null);
   const apiRef = api ?? ownApiRef;
 
-  const eligible = !reducedMotion && !HOLDING_MODE && !failed && hasWebGL2();
+  const eligible = !reducedMotion && !HOLDING_MODE && !failure && hasWebGL2();
 
   // ---- slice 4: the entrance ----
   // The scene claims the entrance before paint (this layout effect runs before
@@ -74,6 +78,7 @@ export function CoilStage({
   // went away, or never drew within the fallback).
   const controller = useHomeController();
   const entrance = controller ? controller.entrance : AT_REST;
+  const ready = controller?.phase === "ready";
   const completeEntrance = controller?.completeEntrance;
   useIsoLayoutEffect(() => {
     if (HOLDING_MODE || !hasWebGL2() || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -122,7 +127,7 @@ export function CoilStage({
     const frame = requestAnimationFrame(() => {
       // No real context, no chunk: the hero still carries the hero.
       if (!canCreateWebGL2()) {
-        setFailed(true);
+        setFailure("noWebgl");
         return;
       }
       import("./CoilScene").then(
@@ -131,7 +136,7 @@ export function CoilStage({
           if (!cancelled) setScene(() => module.default);
         },
         () => {
-          if (!cancelled) setFailed(true);
+          if (!cancelled) setFailure("unavailable");
         },
       );
     });
@@ -156,7 +161,7 @@ export function CoilStage({
     (error: unknown) => {
       console.error("Coil scene failed; the poster stays.", error);
       onSceneChange("off");
-      setFailed(true);
+      setFailure("unavailable");
     },
     [onSceneChange],
   );
@@ -165,7 +170,7 @@ export function CoilStage({
     onSceneChange("off");
     lossesRef.current += 1;
     if (lossesRef.current === 1) setGeneration((n) => n + 1);
-    else setFailed(true);
+    else setFailure("unavailable");
   }, [onSceneChange]);
 
   return (
@@ -189,6 +194,9 @@ export function CoilStage({
         </CoilErrorBoundary>
       ) : null}
       <HeroOverlay ref={overlayRef} api={apiRef} onRowOpen={onRowOpen} entrance={entrance} />
+      {heroScene === "still" && ready ? (
+        <StillNotice cause={stillCause({ reducedMotion, hasApi: hasWebGL2(), failure })} />
+      ) : null}
     </div>
   );
 }
