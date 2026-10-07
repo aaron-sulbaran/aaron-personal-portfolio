@@ -58,11 +58,33 @@ test("a deep reload with no WebGL 2 shows the still at full opacity", async ({ p
   await page.addInitScript(noWebgl2Api);
   // lib/scroll.ts's saved position, past half a viewport: the fast start.
   await page.addInitScript(() => sessionStorage.setItem("aps:home-scroll-y", String(window.innerHeight * 2)));
+  // The still's opacity one frame after it is marked decoded, and whether the
+  // loader was skipped then: off the loader's hand-off the still never fades.
+  await page.addInitScript(() => {
+    const host = window as unknown as { __stillReadyFrame?: { opacity: string; loaderSkipped: boolean } };
+    new MutationObserver((records, observer) => {
+      const still = records
+        .map((record) => record.target)
+        .find((target): target is HTMLElement => target instanceof HTMLElement && target.matches("[data-hero-still][data-still-ready]"));
+      if (!still) return;
+      observer.disconnect();
+      requestAnimationFrame(() => {
+        host.__stillReadyFrame = {
+          opacity: getComputedStyle(still).opacity,
+          loaderSkipped: document.documentElement.dataset.coilLoader === "skip" || !document.querySelector(".coil-loader"),
+        };
+      });
+    }).observe(document, { subtree: true, attributes: true, attributeFilter: ["data-still-ready"] });
+  });
   await page.goto("/");
   await settled(page);
   const still = page.locator("[data-hero-still]");
   await expect(still).toHaveAttribute("data-still-ready", "");
   await expect.poll(() => still.evaluate((el) => getComputedStyle(el).opacity)).toBe("1");
+  const frame = await page.waitForFunction(() => (window as unknown as { __stillReadyFrame?: object }).__stillReadyFrame);
+  const { opacity, loaderSkipped } = (await frame.jsonValue()) as { opacity: string; loaderSkipped: boolean };
+  expect(loaderSkipped, "the loader was skipped (the deep path)").toBe(true);
+  expect(opacity, "the still's opacity one frame after data-still-ready").toBe("1");
 });
 
 for (const [width, height, cut] of [[390, 844, "narrow"], [800, 1000, "square"], [1000, 1000, "square"], [1440, 900, "wide"]] as const) {
