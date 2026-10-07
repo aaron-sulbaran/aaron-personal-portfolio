@@ -217,3 +217,16 @@ test("label face: the band's answers sit on the question's baseline, 36px after 
   await settled(page);
   expect((await read()).alpha).toBeCloseTo(0.55, 2);
 });
+
+test("label face: the back link is a drawn 14px arrow, lifted 1px, then Work", async ({ page }) => {
+  await page.goto("/work/capital-one-pm");
+  const link = page.locator("article a[href='/#work']");
+  await expect(link).toHaveText("Work");
+  const icon = link.locator("svg");
+  expect(await icon.evaluate((el) => ({
+    w: el.getBoundingClientRect().width,
+    stroke: el.getAttribute("stroke-width"),
+    top: getComputedStyle(el).top,
+    first: el.parentElement!.firstElementChild === el,
+  }))).toEqual({ w: 14, stroke: "2.5", top: "-1px", first: true });
+});

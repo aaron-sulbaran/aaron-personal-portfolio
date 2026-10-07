@@ -65,3 +65,9 @@ describe("menu", () => {
     expect(siteContent.menu.items.map((item) => item.key)).toEqual(["home", "work", "about", "connect"]);
   });
 });
+
+describe("the case page", () => {
+  it("labels the back link with the word alone; the page draws the arrow", () => {
+    expect(siteContent.work.backLabel).toBe("Work");
+  });
+});
