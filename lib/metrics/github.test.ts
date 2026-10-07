@@ -3,16 +3,23 @@ import raw from "./data/contributions-6mo.json";
 
 vi.mock("server-only", () => ({}));
 
-const weeks = Array.from({ length: Math.ceil(raw.days.length / 7) }, (_, w) => ({
-  contributionDays: raw.days.slice(w * 7, w * 7 + 7).map((d) => ({ date: d.date, contributionCount: d.count })),
-}));
-const calendar = { data: { user: { contributionsCollection: { contributionCalendar: { weeks } } } } };
+type Day = { date: string; count: number };
+const calendarOf = (days: Day[]) => {
+  const weeks = Array.from({ length: Math.ceil(days.length / 7) }, (_, w) => ({
+    contributionDays: days.slice(w * 7, w * 7 + 7).map((d) => ({ date: d.date, contributionCount: d.count })),
+  }));
+  return { data: { user: { contributionsCollection: { contributionCalendar: { weeks } } } } };
+};
+const calendar = calendarOf(raw.days);
+// One day past the snapshot, so a copy fetched from it differs from the snapshot in total and range.
+const dayAfter = calendarOf([...raw.days, { date: "2026-10-07", count: 5 }]);
 const reply = (body: unknown, status = 200) => vi.fn(async () => new Response(JSON.stringify(body), { status }));
 
 afterEach(() => {
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
   vi.resetModules();
+  vi.restoreAllMocks();
 });
 
 describe("fetchGithubSeries", () => {
@@ -48,10 +55,21 @@ describe("loadSeries", () => {
     const { loadSeries } = await import("./github");
     vi.stubGlobal("fetch", reply({}, 500));
     expect((await loadSeries("github", "6mo", new Date("2026-10-07T12:00:00Z"))).range.to).toBe("2026-10-06");
-    vi.stubGlobal("fetch", reply(calendar));
-    expect((await loadSeries("github", "6mo", new Date("2026-10-06T12:00:00Z"))).stale).toBe(false);
+    vi.stubGlobal("fetch", reply(dayAfter));
+    const fresh = await loadSeries("github", "6mo", new Date("2026-10-07T12:00:00Z"));
+    expect([fresh.stale, fresh.total, fresh.range.to]).toEqual([false, 2506, "2026-10-07"]);
     vi.stubGlobal("fetch", reply({}, 500));
-    const after = await loadSeries("github", "6mo", new Date("2026-10-07T12:00:00Z"));
-    expect([after.stale, after.total]).toEqual([true, 2501]);
+    const after = await loadSeries("github", "6mo", new Date("2026-10-08T12:00:00Z"));
+    expect(after).toEqual({ ...fresh, stale: true });
+  });
+  it("serves the snapshot, not a good copy of another window, when a fetch fails", async () => {
+    vi.stubEnv("GITHUB_CONTRIB_TOKEN", "t");
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const { loadSeries } = await import("./github");
+    vi.stubGlobal("fetch", reply(dayAfter));
+    expect((await loadSeries("github", "6mo", new Date("2026-10-07T12:00:00Z"))).total).toBe(2506);
+    vi.stubGlobal("fetch", reply({}, 500));
+    const other = await loadSeries("github", "12mo", new Date("2026-10-08T12:00:00Z"));
+    expect([other.stale, other.window, other.total, other.range.to]).toEqual([true, "6mo", 2501, "2026-10-06"]);
   });
 });
