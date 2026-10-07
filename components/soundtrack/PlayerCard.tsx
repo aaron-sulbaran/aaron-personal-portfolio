@@ -110,7 +110,7 @@ export function PlayerCard({ music, expanded, reduce, focusOnOpen, onCardLeave, 
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 16 }}>
-        <span className="font-label text-label-sm tabular-nums text-muted">{formatTime(position)}</span>
+        <span className="inline-block min-w-[4ch] text-right font-label text-label-sm tabular-nums text-muted">{formatTime(position)}</span>
         <input
           type="range"
           min={0}
@@ -124,7 +124,9 @@ export function PlayerCard({ music, expanded, reduce, focusOnOpen, onCardLeave, 
           aria-label={c.ariaSeek}
           style={range}
         />
-        <span className="font-label text-label-sm tabular-nums text-muted">{formatTime(Math.max(0, snap.duration - position))}</span>
+        <span className="inline-block min-w-[4ch] text-left font-label text-label-sm tabular-nums text-muted">
+          {formatTime(Math.max(0, snap.duration - position))}
+        </span>
       </div>
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 14 }}>
