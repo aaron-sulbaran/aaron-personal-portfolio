@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { NoteIcon } from "@/components/menu/NoteIcon";
 import { siteContent } from "@/lib/content";
+import { noteState } from "@/lib/note";
 import {
   initSoundtrackFromStorage,
   pauseSoundtrack,
@@ -10,11 +11,10 @@ import {
   useSoundtrack,
 } from "@/lib/soundtrack";
 
-// The Listen control inside the Menu pill: a quarter note, outlined in muted
-// ink with a slash through it while nothing plays (before, paused, off),
-// filled in the accent and gently swaying while the soundtrack plays; the
-// slash drawing through or retracting is the transition (NoteIcon). It
-// mirrors lib/soundtrack, the same store the playback pill and the waveform
+// The Listen control inside the Menu pill: the bolt eighth, slashed in muted
+// ink while nothing plays (before, paused, off) and plain in the accent while
+// the soundtrack plays; the slash drawing in or out is the transition
+// (NoteIcon). It mirrors lib/soundtrack, the same store the playback pill and the waveform
 // read, so the three can never disagree.
 //
 // The pill is layout-mounted, so on a case page (where neither ListenInvite
@@ -52,11 +52,7 @@ export function ListenDot({ hidden }: { hidden: boolean }) {
         hidden ? "hidden" : "flex"
       }`}
     >
-      <NoteIcon
-        on={playing}
-        living
-        className={`block h-[15px] w-[9.5px] ${playing ? "text-accent" : "text-muted"}`}
-      />
+      <NoteIcon state={noteState(music)} className="block h-4 w-[14px]" />
     </button>
   );
 }
