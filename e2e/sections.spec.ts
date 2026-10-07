@@ -165,6 +165,27 @@ test("sections: Connect's columns fit a 390px viewport", async ({ page }) => {
   for (const right of rights) expect(right, "inside the 24px gutter").toBeLessThanOrEqual(390 - 24);
 });
 
+test("sections: no Connect value is cut short at 1024 or at 390", async ({ page }) => {
+  for (const viewport of [
+    { width: 1024, height: 768 },
+    { width: 390, height: 844 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await openHome(page);
+    const values = await page.evaluate(() =>
+      [...document.querySelectorAll<HTMLElement>("#connect [data-sections-row] [data-connect-value]")].map((value) => ({
+        text: value.textContent,
+        scrollWidth: value.scrollWidth,
+        clientWidth: value.clientWidth,
+      })),
+    );
+    expect(values.length, "one value per link").toBe(connect.links.length);
+    for (const value of values) {
+      expect(value.scrollWidth, `${value.text} overflows its cell at ${viewport.width}`).toBeLessThanOrEqual(value.clientWidth);
+    }
+  }
+});
+
 // A block already past its band on a deep load must never paint masked. The
 // observer's callback is a microtask after the task that armed the block,
 // which is the first moment the browser could paint it.

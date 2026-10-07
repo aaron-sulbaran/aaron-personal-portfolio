@@ -1,7 +1,24 @@
+import { Fragment } from "react";
 import { ArrowUpRight } from "lucide-react";
 import { siteContent } from "@/lib/content";
 import { Block } from "./sections/Block";
 import { Kicker } from "./sections/Kicker";
+
+// Measured, not guessed: an address fits one line at 2xl from 1024 and at 3xl
+// from 1280; below 1024 even 2xl's "name@" outgrows the cell, so it is xl and
+// wraps after the at sign. break-words only ever acts on a cell narrower than
+// any segment (a 360px phone). The arrow's box is one line of the value tall,
+// so it sits centered on the first line whether or not the value wraps.
+const VALUE_SIZE = "text-xl lg:text-2xl xl:text-3xl";
+
+function breakAfterAt(value: string) {
+  return value.split(/(?<=@)/).map((part, i) => (
+    <Fragment key={i}>
+      {i > 0 && <wbr />}
+      {part}
+    </Fragment>
+  ));
+}
 
 // Stays a Server Component. The kicker, heading and lede arrive by the
 // sections grammar, the heading and lede line by line; the link list is one
@@ -36,11 +53,15 @@ export function Connect() {
                     <span className="w-28 shrink-0 font-label text-label text-muted transition-colors duration-200 group-hover:text-accent md:w-32">
                       {link.label}
                     </span>
-                    <span className="flex-1 truncate font-display text-2xl md:text-3xl">{link.value}</span>
-                    <ArrowUpRight
-                      aria-hidden="true"
-                      className="h-5 w-5 shrink-0 self-center text-muted transition-colors duration-200 group-hover:text-accent"
-                    />
+                    <span data-connect-value className={`min-w-0 flex-1 break-words font-display ${VALUE_SIZE}`}>
+                      {breakAfterAt(link.value)}
+                    </span>
+                    <span className={`flex h-[1lh] shrink-0 items-center self-start ${VALUE_SIZE}`}>
+                      <ArrowUpRight
+                        aria-hidden="true"
+                        className="h-5 w-5 text-muted transition-colors duration-200 group-hover:text-accent"
+                      />
+                    </span>
                   </span>
                 </span>
               </a>
