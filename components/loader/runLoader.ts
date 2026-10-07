@@ -41,7 +41,6 @@ export type LoaderParts = {
   num: HTMLSpanElement;
   bg: HTMLDivElement;
   greet: HTMLSpanElement;
-  rest: HTMLDivElement;
 };
 
 export type LoaderOptions = {
@@ -78,14 +77,6 @@ export function runLoader(
   let holdTimer = 0;
   const note = debugLog(root);
   note("run", { reduced, resting, items: tally ? tally.progress() : null });
-
-  // The resting lockup is placed for a hero at the top of the page; a load
-  // that kept a shallow scroll (short of the deep start) moves it with the
-  // hero, which the entrance's lock then holds still.
-  const followHero = () => {
-    parts.rest.style.transform = window.scrollY ? `translateY(${-window.scrollY}px)` : "";
-  };
-  if (resting) followHero();
 
   // The face's real metrics, once loaded, then the tally hears it.
   const family = getComputedStyle(document.documentElement).getPropertyValue("--font-display").trim() || "sans-serif";
@@ -146,7 +137,6 @@ export function runLoader(
   // resting lockup (already the landed pose) holds while the entrance reaches
   // the scene, then the canvas takes it. The band starts at the hand-off.
   function rest() {
-    followHero();
     root.setAttribute("data-state", "rest");
     note("rest");
     reveal(performance.now() + (holdHandoff ? 600000 : LOADER.restHoldMs), true);
