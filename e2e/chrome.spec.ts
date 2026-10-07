@@ -58,8 +58,8 @@ test("chrome: the header bar arrives past the hero and tucks away on the way dow
 
 // A ScrollTrigger refresh switches the root to an instant scroll while it
 // measures; afterwards the root's own inline value comes back, so the
-// stylesheet decides again and a live switch to reduced motion makes anchor
-// jumps instant (globals.css), with no inline smooth left over to win.
+// stylesheet decides again and a live switch to reduced motion makes native
+// anchor jumps instant (globals.css), with no inline smooth left over to win.
 test("chrome: after a refresh the stylesheet owns the root's scroll behaviour again", async ({ page }) => {
   await openHome(page);
   for (const width of [375, 1440]) {
