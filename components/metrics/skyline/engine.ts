@@ -12,6 +12,7 @@ import {
 import { draw, extent, NO_DEPTH, type DepthSpec, type Scene } from "./draw";
 import { newAlphaCss, resolveColor, resolveRGBA, rgbString } from "./paint";
 import { attachInput, type Ctl } from "./input";
+import { OUTLINE_LEN, SILHOUETTE_LEN } from "@/lib/metrics/skyline/prism";
 
 // The imperative half: one scene per mount, a rAF loop that only runs while
 // something moves, pointer and keyboard input. React hands it a config ref
@@ -100,6 +101,8 @@ export function createEngine(el: EngineElements, cfg: { current: EngineConfig })
     dim: new Float32Array(0),
     polys: new Float32Array(0),
     faces: new Uint8Array(0),
+    outline: new Float32Array(OUTLINE_LEN * 2),
+    sil: new Float32Array(SILHOUETTE_LEN * 2),
     order: [],
     sortKey: new Float64Array(0),
     sortCs: NaN,

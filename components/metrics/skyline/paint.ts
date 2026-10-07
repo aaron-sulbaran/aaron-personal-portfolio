@@ -1,6 +1,6 @@
 import type { RGB } from "@/lib/metrics/skyline/maths";
 
-// Canvas helpers: colour resolution and the two quad routines.
+// Canvas helpers: colour resolution, the quad routines and the polyline path.
 
 // The canvas fill parser never resolves var(), so a token string is first
 // handed to a probe element inside the chart (custom properties resolve
@@ -107,5 +107,13 @@ export const quadPath = (ctx: CanvasRenderingContext2D, p: Float32Array, o: numb
     const b = (k + 1) % 4;
     ctx.arcTo(p[o + k * 2] + dx, p[o + k * 2 + 1] + dy, p[o + b * 2] + dx, p[o + b * 2 + 1] + dy, r);
   }
+  ctx.closePath();
+};
+
+// A closed polyline of n points from `p` (x, y pairs), shifted by (dx, dy):
+// the rounded cell's outline and the prism's silhouette.
+export const polyPath = (ctx: CanvasRenderingContext2D, p: Float32Array, n: number, dx = 0, dy = 0) => {
+  ctx.moveTo(p[0] + dx, p[1] + dy);
+  for (let k = 1; k < n; k++) ctx.lineTo(p[k * 2] + dx, p[k * 2 + 1] + dy);
   ctx.closePath();
 };
