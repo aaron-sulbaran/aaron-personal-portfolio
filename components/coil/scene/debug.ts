@@ -1,6 +1,15 @@
 import { Vector2 } from "three";
 import { gestureOwner } from "@/lib/coil/capture";
-import { projectQuad, type Camera, type CoilGeometry, type Quad, type Silhouette } from "@/lib/coil/geometry";
+import {
+  cardDistancesPx,
+  insideSilhouette,
+  projectQuad,
+  seamMarginPx,
+  type Camera,
+  type CoilGeometry,
+  type Quad,
+  type Silhouette,
+} from "@/lib/coil/geometry";
 import type { Cards } from "./cards";
 import type { Entrance } from "./entrance";
 import type { Field } from "./field";
@@ -91,6 +100,11 @@ export type DebugStats = {
   // ---- fx-input debug: the live wheel owner and the helix hull ----
   owner?: () => "coil" | "page" | "none";
   silhouette?: () => Silhouette | null;
+  // Wheel capture at a viewport point: rule A (onCard, with the distances to
+  // the nearest and second nearest pickable cards and the seam margin in
+  // use), the hull that governs release and the hold, whether a real pointer
+  // move has armed capture, and whether the last coil gesture still holds it.
+  captureAt?: (clientX: number, clientY: number) => CaptureProbe;
   // ---- end fx-input debug ----
   api?: CoilSceneApi;
   // Slice 7: what the scene spends, as live (the DPR in use, the buffer,
@@ -129,6 +143,16 @@ export type DebugStats = {
   focusKey?: () => string | null;
   // Slice 7: the touch drag.
   drag?: () => object;
+};
+
+export type CaptureProbe = {
+  onCard: boolean;
+  cardPx: number;
+  secondCardPx: number;
+  seamPx: number;
+  insideSilhouette: boolean;
+  armed: boolean;
+  held: boolean;
 };
 
 export type DebugReads = {
@@ -262,6 +286,20 @@ export function installSceneHooks(ctx: SceneCtx, parts: HookParts) {
     focusKey: hover.focusKey,
   });
   debug.drag = input.dragState;
+  debug.captureAt = (clientX, clientY) => {
+    const x = clientX - (st.view.docLeft - window.scrollX);
+    const y = clientY - (st.view.docTop - window.scrollY);
+    const distances = st.geoCamera ? cardDistancesPx(st.poses, st.geoCamera, x, y) : null;
+    return {
+      onCard: hover.nearCardAt(x, y),
+      cardPx: distances?.nearest ?? Number.POSITIVE_INFINITY,
+      secondCardPx: distances?.second ?? Number.POSITIVE_INFINITY,
+      seamPx: st.geo ? seamMarginPx(st.geo) : 0,
+      insideSilhouette: st.sil !== null && insideSilhouette(st.sil, x, y),
+      armed: st.capture.armed,
+      held: st.capture.held,
+    };
+  };
 }
 
 export function removeDebugStats(debug: DebugStats | null) {
