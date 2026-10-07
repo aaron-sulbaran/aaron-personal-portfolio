@@ -38,3 +38,14 @@ describe("copy stays in lib/content.ts", () => {
     expect(readFileSync("components/DefinitionModal.tsx", "utf8")).not.toContain("Press Esc to close");
   });
 });
+
+describe("the playback pill and player card", () => {
+  it("take the label face from classes, never inline font styles", () => {
+    for (const file of ["PlaybackPill", "PillParts", "PillLabel", "PlayerCard"]) {
+      const source = readFileSync(`components/soundtrack/${file}.tsx`, "utf8");
+      expect(source, file).not.toContain("var(--font-sans)");
+      expect(source, file).not.toMatch(/fontSize: 1[0-2]\b/);
+      expect(source, file).not.toMatch(/fontWeight: 500/);
+    }
+  });
+});

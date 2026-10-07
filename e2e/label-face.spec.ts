@@ -1,5 +1,6 @@
 import type { CDPSession, Locator, Page } from "@playwright/test";
 import { siteContent } from "@/lib/content";
+import { capsuleText } from "@/lib/waveform/dock";
 import { test, expect } from "./support/fixtures";
 import { openHome } from "./support/coil";
 import { settled } from "./support/fallback";
@@ -150,4 +151,25 @@ test("label face: the footer copyright is Profa Bold, muted, at the small step",
   await page.goto("/");
   await settled(page);
   await expectLabel(page.locator("footer").getByText(siteContent.footer.copyright, { exact: true }), "label-sm", "muted");
+});
+
+test("label face: the pill and the player card are Profa Bold at the small step", async ({ page }) => {
+  const S = siteContent.soundtrack;
+  const track = S.tracks[0];
+  await page.goto("/");
+  await settled(page);
+  const pill = page.locator("[data-pill]");
+  await expect(pill).toBeAttached();
+  await expectLabel(pill.getByText(S.prompt, { exact: true }), "label-sm", "muted");
+  const capsule = pill.locator(".pill-hit");
+  await expectLabel(capsule.getByText(capsuleText("before", track.title), { exact: true }).first(), "label-sm", "muted");
+  await expectLabel(capsule.getByText(track.title, { exact: true }).first(), "label-sm", "foreground");
+  await expectLabel(capsule.getByText(track.artist, { exact: true }).first(), "label-sm", "muted");
+  const card = pill.locator('[role="group"]');
+  await expectLabel(card.getByText(track.artist, { exact: true }), "label-sm", "muted");
+  await expectLabel(card.getByText(S.statusReady, { exact: true }), "label-sm", "muted");
+  const time = card.getByText("0:00").first();
+  await expectLabel(time, "label-sm", "muted");
+  expect(await time.evaluate((el) => getComputedStyle(el).fontVariantNumeric)).toBe("tabular-nums");
+  await expectLabel(card.locator("button", { hasText: siteContent.listen.freeze }), "label-sm", "accent");
 });
