@@ -58,6 +58,10 @@ describe("the book", () => {
       }
     }
   });
+
+  it("keeps the ambassador meta short enough to sit beside its title", () => {
+    expect(book.workRows.find((row) => row.key === "claude-ambassador")?.meta).toBe("Claude ambassador, 2025");
+  });
 });
 
 describe("menu", () => {
