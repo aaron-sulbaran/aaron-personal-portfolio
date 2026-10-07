@@ -194,13 +194,33 @@ function gradientColor(k: number) {
   return `color-mix(in srgb, var(--name-grad-top), var(--name-grad-bottom) ${(smoothstep(k) * 100).toFixed(4)}%)`;
 }
 
-function placement(narrow: boolean) {
+// The lockup's three parts as selectors: the ink layer (a container's
+// child, inset 0), the greeting and the name inside it.
+export type LockupSelectors = { layer: string; greet: string; name: string };
+
+// The loader's resting lockup (components/loader/Loader.tsx).
+export const LOADER_LOCKUP: LockupSelectors = {
+  layer: ".coil-loader__rest",
+  greet: ".coil-loader__rest-greet",
+  name: ".coil-loader__rest-name",
+};
+
+// The hero's h1 (components/home/HeroText.tsx): the container is the h1.
+export const HERO_LOCKUP = {
+  container: ".hero-lockup",
+  layer: ".hero-lockup__ink",
+  greet: ".hero-lockup__greet",
+  name: ".hero-lockup__name",
+  stop: ".hero-lockup__stop",
+} as const satisfies LockupSelectors & { container: string; stop: string };
+
+function placement(sel: LockupSelectors, narrow: boolean) {
   const s = lockupSpans(CSS_ARITH, lockupPose(CSS_ARITH, { width: "100cqw", height: "100cqh" }, VAR_METRICS, narrow), VAR_METRICS);
   const stops = GRADIENT_STOPS.map((k) => `${gradientColor(k)} calc(${s.gradient.top} + ${s.gradient.height} * ${k})`);
   const box = (b: Span<string>) => `left:calc(${b.left});top:calc(${b.top});font-size:calc(${b.fontPx})`;
   return (
-    `.coil-loader__rest-greet{${box(s.greeting)}}` +
-    `.coil-loader__rest-name{${box(s.name)};background-image:linear-gradient(to bottom,${stops.join(",")})}`
+    `${sel.greet}{${box(s.greeting)}}` +
+    `${sel.name}{${box(s.name)};background-image:linear-gradient(to bottom,${stops.join(",")})}`
   );
 }
 
@@ -208,14 +228,34 @@ function placement(narrow: boolean) {
 // letters at the gradient, the layer at --name-ink times the gain), the
 // greeting in the gradient's top color, the name in the gradient itself.
 // The theme's tokens carry the colors, so a theme switch needs nothing.
-export function restLockupCss() {
+// One function for both lockups, so the h1 lands at the loader's pose.
+export function restLockupCss(sel: LockupSelectors = LOADER_LOCKUP) {
   return (
-    `.coil-loader__rest{position:absolute;inset:0;pointer-events:none;opacity:calc(var(--name-ink) * ${L.inkGain});` +
+    `${sel.layer}{position:absolute;inset:0;pointer-events:none;opacity:calc(var(--name-ink) * ${L.inkGain});` +
     `font-family:var(--font-display),sans-serif;font-weight:900;font-synthesis:none;font-kerning:normal;line-height:1;white-space:nowrap}` +
-    `.coil-loader__rest-greet,.coil-loader__rest-name{position:absolute;display:block;line-height:1}` +
-    `.coil-loader__rest-greet{color:var(--name-grad-top)}` +
-    `.coil-loader__rest-name{color:transparent;-webkit-background-clip:text;background-clip:text}` +
-    placement(false) +
-    `@container (aspect-ratio < ${NARROW_BELOW}){${placement(true)}}`
+    `${sel.greet},${sel.name}{position:absolute;display:block;line-height:1}` +
+    `${sel.greet}{color:var(--name-grad-top)}` +
+    `${sel.name}{color:transparent;-webkit-background-clip:text;background-clip:text}` +
+    placement(sel, false) +
+    `@container (aspect-ratio < ${NARROW_BELOW}){${placement(sel, true)}}`
+  );
+}
+
+// The h1 as the lockup: the h1 covers the box the loader's root covers (the
+// hero's top, full width, 100svh) and is the size container, so the same
+// rules land at the identical pose, with the metrics' defaults until the
+// loader measures the face (it sets them on both). The layer's ink is
+// COIL.lockup.stillInk: --name-ink at stillInk over the gain, so the shared
+// opacity rule comes out at stillInk. The period sits in the name's box at
+// zero size: an inline box, so the accessible name joins it to the name
+// with no space (an absolutely placed sr-only span is block-level, and the
+// name computation puts a space before a block).
+export function heroLockupCss() {
+  const h = HERO_LOCKUP;
+  return (
+    `${h.container}{position:absolute;top:0;left:0;right:0;height:100vh;height:100svh;margin:0;container-type:size;pointer-events:none;${lockupVarDefaults()}}` +
+    `${h.layer}{--name-ink:calc(${L.stillInk} / ${L.inkGain})}` +
+    `${h.stop}{font-size:0}` +
+    restLockupCss(h)
   );
 }

@@ -5,6 +5,7 @@ import { LOADER, coilDebugFlags, displayPercent, homeLoad, reportHomeLoad, slowS
 import { landName, nameTarget, type NameTarget } from "@/lib/loader/handoff";
 import { loaderEnd, stillPoster, type StillPoster } from "@/lib/loader/still";
 import { createStillWait } from "@/lib/loader/stillWait";
+import { HERO_HEADING_ID } from "@/components/home/HeroText";
 import {
   greetingColor,
   greetingInBox,
@@ -83,7 +84,7 @@ export function runLoader(
   const note = debugLog(root);
   note("run", { reduced, items: tally ? tally.progress() : null });
 
-  // The face's real metrics, once loaded, then the tally hears it.
+  // The face's real metrics, once loaded, on both lockups (the h1 hands over at the same pose), then the tally hears it.
   const family = getComputedStyle(document.documentElement).getPropertyValue("--font-display").trim() || "sans-serif";
   Promise.all([document.fonts.load(`900 100px ${family}`), document.fonts.ready])
     .then(() => {
@@ -91,7 +92,8 @@ export function runLoader(
       const measured = measureLockup(family);
       if (measured) {
         metrics = measured;
-        lockupVars(measured).forEach(([key, value]) => root.style.setProperty(key, value));
+        const heading = document.getElementById(HERO_HEADING_ID);
+        lockupVars(measured).forEach(([key, value]) => [root, heading].forEach((el) => el?.style.setProperty(key, value)));
       }
       reportHomeLoad("fonts");
     })

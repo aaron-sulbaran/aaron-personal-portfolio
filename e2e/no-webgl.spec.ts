@@ -1,14 +1,14 @@
-import { siteContent } from "@/lib/content";
 import { test, expect } from "./support/fixtures";
 import { watchScripts } from "./support/chunks";
-import { expectStillHeroAndUsableBook, settled, watchHydration } from "./support/fallback";
+import { expectHeadingLockup, expectStillHeroAndUsableBook, settled, watchHydration } from "./support/fallback";
 import { MUTED_ARGS } from "./support/launch";
 import { noWebgl2Api, noWebglContext } from "./support/webgl";
 import type { HookWindow } from "./support/hooks";
 
 // No WebGL: a browser launched without the GPU, and WebGL taken away in the
-// page, the two ways a visitor's browser can lack it. The hero still, the
-// hidden h1 and the book carry the page, and the scene's chunk is never fetched.
+// page, the two ways a visitor's browser can lack it. The hero still, the h1
+// lockup in front of it and the book carry the page, and the scene's chunk is
+// never fetched.
 
 test.use({ launchOptions: { args: [...MUTED_ARGS, "--disable-gpu"] } });
 
@@ -36,7 +36,7 @@ test("a context that cannot be created never fetches the scene chunk", async ({ 
   expect(hydration).toEqual([]);
 });
 
-test("stills that never load: the h1 carries the hero", async ({ page }) => {
+test("stills that never load: the loader fades and the h1 lockup carries the hero over the field poster", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.route("**/coil/hero-*", (route) => route.abort());
@@ -48,9 +48,12 @@ test("stills that never load: the h1 carries the hero", async ({ page }) => {
   expect(await page.locator("[data-hero-still]").getAttribute("data-still-ready")).toBeNull();
   const events = await page.evaluate(() => (window as HookWindow).__coilLoader!.events.map((e) => e.event));
   expect(events).toContain("still-failed");
+  expect(events).toContain("fade");
   expect(events).not.toContain("dissolve");
-  const h1 = page.getByRole("heading", { level: 1, name: siteContent.hero.heading });
-  await expect.poll(() => h1.evaluate((el) => el.getBoundingClientRect().width > 1 && el.checkVisibility({ opacityProperty: true }))).toBe(true);
+  await expectHeadingLockup(page);
+  const field = page.locator('section[data-scene] img[src*="/coil/field-"]').filter({ visible: true });
+  await expect(field, "the field poster under the h1 lockup").toHaveCount(1);
+  await expect.poll(() => field.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
   expect(errors).toEqual([]);
 });
 

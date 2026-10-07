@@ -9,10 +9,11 @@ import { HERO_HEADING_ID } from "@/components/home/HeroText";
 //
 // Two layers. The resting lockup ("Hi, I'm" over "Aaron" in the composite's
 // ink, exactly where the canvas draws them: lib/loader/lockup.ts) shows from
-// first paint, and the fallback h1 hides under it, so a load the scene takes
-// over never shows the h1. The pane (the dark ground, the big name, the
-// number) fades in over it only if the load outlives the 250ms guard.
-// With no scene the hero still waits at opacity 0 under the resting lockup and fades in under it (data-dissolve); the lockup then leaves in one frame.
+// first paint, and the h1 (the same lockup, components/home/HeroText.tsx)
+// hides under it, so a load the scene takes over never shows the h1. The
+// pane (the dark ground, the big name, the number) fades in over it only if
+// the load outlives the 250ms guard.
+// With no scene the hero still waits at opacity 0 under the resting lockup and fades in under it (data-dissolve) while the lockup's ink eases to the h1's; the lockup then leaves in one frame onto the h1 at the identical pose.
 // Only a live loader fades the still: off it (a deep reload's skip, a scene failure after the loader has gone) the still shows in the frame it decodes.
 //
 // The root is the hero's box at the top of the document (the hero is the
@@ -44,9 +45,7 @@ const BAIL_MS = 9400;
 
 // The still notice waits for the loader to go (and leaves the tab order meanwhile).
 //
-// Reduced motion never runs a scene: the h1 waits for the decoded still, at most a hand-off's give-up.
-// Its duration is !important over globals.css's reduced-motion zeroing (the
-// noscript rule's animation:none still wins on the name).
+// Reduced motion has no resting lockup: the h1 lockup shows from first paint and the loader fades off onto it.
 export const LOADER_CSS = `
 .coil-loader{position:absolute;top:0;left:0;right:0;height:100vh;height:100svh;z-index:60;container-type:size;pointer-events:none;${lockupVarDefaults()};
   animation:coil-loader-bail 400ms linear 9s forwards}
@@ -104,7 +103,6 @@ ${restLockupCss()}
 }
 .coil-loader[data-full] :is(.coil-loader__base,.coil-loader__greet){color:var(--loader-fill)}
 @media (prefers-reduced-motion: reduce){
-  html:not(:has([data-still-ready])) #${HERO_HEADING_ID}{animation:coil-loader-h1 ${LOADER.handoffGiveUpMs}ms linear;animation-duration:${LOADER.handoffGiveUpMs}ms!important}
   .coil-loader__pane{--p:1!important}
   :is(.coil-loader__base,.coil-loader__greet){color:var(--loader-fill)}
   .coil-loader__rest{display:none}
@@ -118,5 +116,5 @@ ${restLockupCss()}
 export const LOADER_SKIP_SCRIPT = `(function(){try{var h=location.hash,d=h.length>1&&h!=="#main";if(!d){var y=Number(sessionStorage.getItem("aps:home-scroll-y"));d=y>innerHeight*${FAST_START_THRESHOLD_FRAC}}if(d)document.documentElement.setAttribute("data-coil-loader","skip")}catch(e){}})();`;
 
 // No JavaScript, no loader: nothing would ever take it down, and the h1
-// carries the hero.
+// lockup carries the hero at the default metrics.
 export const LOADER_NOSCRIPT = `<style>.coil-loader{display:none}#${HERO_HEADING_ID}{animation:none!important}</style>`;
