@@ -577,9 +577,31 @@ test("dock: turning back mid-fade reverses from the opacity it has", async ({ pa
   await bandBottomAt(page, DOCK.passedPx + 12);
   await page.waitForTimeout(DOCK.fadeMs + 100);
   const samples = (await stopDock(page)).filter((s) => s.shown);
-  expect(Math.max(...samples.map((s) => s.opacity)), "turned before full").toBeLessThan(1);
-  for (let i = 1; i < samples.length; i++) expect(samples[i].opacity - samples[i - 1].opacity, `no jump at ${i}`).toBeLessThan(0.5);
+  const peak = Math.max(...samples.map((s) => s.opacity));
+  expect(peak, "turned before full").toBeLessThan(1);
+  for (let i = 1; i < samples.length; i++) expect(Math.abs(samples[i].opacity - samples[i - 1].opacity), `no jump at ${i}`).toBeLessThan(0.5);
+  const after = samples.slice(samples.findIndex((s) => s.opacity === peak) + 1);
+  expect(after.some((s) => s.opacity > 0 && s.opacity < peak), "a fade out from the peak").toBe(true);
   await expect(page.locator(PILL)).toHaveAttribute("inert", "");
+});
+
+// Reduced motion makes every anchor jump instant, so the reader can cross the
+// band in one step, with no frame where it shows: the dock must still follow.
+test("dock: under reduced motion an instant jump past the band lands the pill, and a jump back above it hides it", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await armDock(page);
+  await page.goto(HOME);
+  await settled(page);
+  const pill = page.locator(PILL);
+  await expect(pill).toHaveAttribute("inert", "");
+  await page.evaluate(() => {
+    const top = document.getElementById("about")!.getBoundingClientRect().top + window.scrollY;
+    window.scrollTo({ top, behavior: "instant" });
+  });
+  await dockLanded(page);
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
+  await expect(pill).toHaveAttribute("inert", "");
+  await page.waitForFunction(() => document.querySelector<HTMLElement>("[data-pill]")!.style.opacity === "0");
 });
 
 test("dock: a phone width removes the pill and desktop fades it back in", async ({ page }) => {
