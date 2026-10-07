@@ -29,10 +29,10 @@ import type { UnwindWiring } from "./unwind";
 // Playwright suite reads, and (with the flight token) the probe's scene hooks.
 // Without the query nothing here is created and every call is a null check.
 //
-// Tokens: poster (the field's first frame, no cards, no name), still (the
-// scene at rest for the hero stills: cards and name drawn, the field at its
-// first frame, the entrance done, the conveyor idle;
-// scripts/render-posters.mjs), nocards, noname, at=<s> (the field and the
+// Tokens: poster (the field's first frame, no cards, no name), still or
+// still=<offset> (the scene at rest for the hero stills: cards and name drawn,
+// the field at its first frame, the entrance done, the conveyor idle at
+// <offset> cards, 0 for plain still; scripts/render-posters.mjs), nocards, noname, at=<s> (the field and the
 // name's surface held on one moment), entrance=<ms> (the drawn entrance
 // frozen there), throw=render, throw=frame (the error boundary paths), flight
 // (lib/coil/flightProbe.ts), name (the wake grid and the per-letter readout
