@@ -455,6 +455,105 @@ export function pickCard(poses: readonly CardPose[], ray: Ray, minAlpha = 0.5, a
   return best;
 }
 
+// ---------------------------------------------------------------- near a card
+
+// Scratch for one card's four projected corners (x, y pairs): the near-card
+// test runs on the first wheel event of a gesture and in the ?coildebug probe,
+// and allocates nothing per card.
+const cornerScratch = new Float64Array(8);
+const CORNER_SIGNS = [-1, 1, 1, 1, 1, -1, -1, -1] as const; // card order: TL, TR, BR, BL
+
+export type CardDistances = { readonly nearest: number; readonly second: number };
+
+// The on-screen distances, CSS px, from a canvas point to the nearest and the
+// second nearest card picking could pick there (alpha over `minAlpha`),
+// measured to each card's flat footprint, the quad pickCard tests: 0 on a
+// card, Infinity when there is no such card. A card with a corner at or
+// behind the camera is skipped, as picking never hits behind the ray's origin.
+export function cardDistancesPx(
+  poses: readonly CardPose[],
+  camera: Camera,
+  x: number,
+  y: number,
+  minAlpha = 0.5,
+  aspect: number = COIL.cardAspect,
+): CardDistances {
+  const t = Math.tan((camera.fovDeg * DEG) / 2);
+  const ratio = camera.width / camera.height;
+  let nearest = Infinity;
+  let second = Infinity;
+  for (let i = 0; i < poses.length; i++) {
+    const pose = poses[i];
+    if (pose.alpha <= minAlpha) continue;
+    const { position: p, basis: b, scale } = pose;
+    let behind = false;
+    for (let k = 0; k < 4; k++) {
+      const sx = (CORNER_SIGNS[k * 2] * aspect * scale) / 2;
+      const sy = (CORNER_SIGNS[k * 2 + 1] * scale) / 2;
+      const wx = p[0] + b.x[0] * sx + b.y[0] * sy;
+      const wy = p[1] + b.x[1] * sx + b.y[1] * sy;
+      const depth = camera.distance - (p[2] + b.x[2] * sx + b.y[2] * sy);
+      if (depth <= 1e-6) behind = true;
+      cornerScratch[k * 2] = ((wx / (depth * t * ratio) + 1) / 2) * camera.width;
+      cornerScratch[k * 2 + 1] = ((1 - wy / (depth * t)) / 2) * camera.height;
+    }
+    if (behind) continue;
+    let positive = 0;
+    let negative = 0;
+    let edge = Infinity;
+    for (let k = 0; k < 4; k++) {
+      const ax = cornerScratch[k * 2];
+      const ay = cornerScratch[k * 2 + 1];
+      const ex = cornerScratch[((k + 1) % 4) * 2] - ax;
+      const ey = cornerScratch[((k + 1) % 4) * 2 + 1] - ay;
+      const cross = ex * (y - ay) - ey * (x - ax);
+      if (cross > 0) positive += 1;
+      else if (cross < 0) negative += 1;
+      const along = Math.min(1, Math.max(0, ((x - ax) * ex + (y - ay) * ey) / (ex * ex + ey * ey || 1)));
+      edge = Math.min(edge, Math.hypot(ax + ex * along - x, ay + ey * along - y));
+    }
+    const distance = positive === 0 || negative === 0 ? 0 : edge;
+    if (distance < nearest) {
+      second = nearest;
+      nearest = distance;
+    } else if (distance < second) second = distance;
+  }
+  return { nearest, second };
+}
+
+// The distance to the nearest pickable card alone (0 on one).
+export function cardDistancePx(
+  poses: readonly CardPose[],
+  camera: Camera,
+  x: number,
+  y: number,
+  minAlpha = 0.5,
+  aspect: number = COIL.cardAspect,
+) {
+  return cardDistancesPx(poses, camera, x, y, minAlpha, aspect).nearest;
+}
+
+// Wheel capture's rule A: the canvas point is on a card picking could pick,
+// or in a seam: within `marginPx` of two of them. The rim beside a free edge
+// of a single card is not a seam.
+export function nearCard(
+  poses: readonly CardPose[],
+  camera: Camera,
+  x: number,
+  y: number,
+  marginPx: number,
+  minAlpha = 0.5,
+  aspect: number = COIL.cardAspect,
+) {
+  const { nearest, second } = cardDistancesPx(poses, camera, x, y, minAlpha, aspect);
+  return nearest === 0 || second <= marginPx;
+}
+
+// The seam margin on this pane, CSS px.
+export function seamMarginPx(geo: CoilGeometry, c: CoilConstants = COIL) {
+  return c.capture.seamCards * geo.cardPx;
+}
+
 // ---------------------------------------------------------------- silhouette
 
 // The helix's projected hull: its screen axis (a point and a unit direction)

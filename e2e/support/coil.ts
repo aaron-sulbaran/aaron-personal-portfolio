@@ -1,5 +1,6 @@
-import type { Page } from "@playwright/test";
-import type { HookWindow, SlotInfo } from "./hooks";
+import type { CDPSession, Page } from "@playwright/test";
+import type { CaptureProbe, HookWindow, SlotInfo } from "./hooks";
+import { approach } from "./input";
 
 // Loading the home and reading the scene through its QA hooks. Every wait is
 // on the page's own state (readiness, the entrance clock, the scene's first
@@ -100,19 +101,28 @@ export async function silhouetteDistance(page: Page, point: Point) {
 export type CoilPoints = {
   // A card near the hero's middle, well inside the silhouette.
   card: Point;
-  // No card under it, but inside the silhouette (a gap between cards).
-  gap: Point | null;
+  // No card under it, in the narrow seam between two cards adjacent on the
+  // strand: each side, 10px off, is one of them.
+  seam: Point | null;
+  // Empty background inside the silhouette (between turns of the helix): no
+  // card within BACKGROUND_CLEAR_PX of it.
+  background: Point | null;
   // Inside the hero, well outside the silhouette.
   outside: Point;
 };
 
+// Far beyond the seam margin, so a background point stays background while
+// the coil drifts for the length of a test.
+export const BACKGROUND_CLEAR_PX = 60;
+
 // Sampled from the scene's own picking and hull at this moment.
 export async function coilPoints(page: Page): Promise<CoilPoints> {
-  return page.evaluate(() => {
+  return page.evaluate((clearPx) => {
     const w = window as HookWindow;
     const coil = w.__coil!;
     // Builds before the ownership rule had no hull: cards only, then.
     const sil = coil.silhouette?.() ?? null;
+    const slotCount = Number(coil.budget().slots);
     const rect = document.querySelector("section[data-scene]")!.getBoundingClientRect();
     const top = Math.max(rect.top, 0) + 80;
     const bottom = Math.min(rect.bottom, window.innerHeight) - 40;
@@ -137,8 +147,88 @@ export async function coilPoints(page: Page): Promise<CoilPoints> {
     cards.sort((a, b) => near(a) - near(b));
     gaps.sort((a, b) => near(a) - near(b));
     outside.sort((a, b) => near(a) - near(b));
-    return { card: cards[0], gap: gaps[0] ?? null, outside: outside[0] };
+    const directions = Array.from({ length: 16 }, (_, i) => [Math.cos((i * Math.PI) / 8), Math.sin((i * Math.PI) / 8)]);
+    const adjacent = (a: number, b: number) => Math.abs(a - b) === 1 || Math.abs(a - b) === slotCount - 1;
+    const inSeam = ({ x, y }: { x: number; y: number }) =>
+      directions.slice(0, 8).some(([ux, uy]) => {
+        const a = coil.api.cardAt(x + ux * 10, y + uy * 10);
+        const b = coil.api.cardAt(x - ux * 10, y - uy * 10);
+        return !!a && !!b && adjacent(a.slot, b.slot);
+      });
+    const clear = ({ x, y }: { x: number; y: number }) =>
+      [0.25, 0.5, 0.75, 1].every((f) => directions.every(([ux, uy]) => !coil.api.cardAt(x + ux * clearPx * f, y + uy * clearPx * f)));
+    return { card: cards[0], seam: gaps.find(inSeam) ?? null, background: gaps.find(clear) ?? null, outside: outside[0] };
+  }, BACKGROUND_CLEAR_PX);
+}
+
+// The card the scene picks at a viewport point, or null.
+export async function cardAt(page: Page, point: Point) {
+  return page.evaluate(({ x, y }) => (window as HookWindow).__coil!.api.cardAt(x, y), point);
+}
+
+// The capture probe at a viewport point. Required: a build without it fails here.
+export async function captureAt(page: Page, point: Point) {
+  const probe = await page.evaluate(({ x, y }) => (window as HookWindow).__coil!.captureAt?.(x, y) ?? null, point);
+  if (!probe) throw new Error("window.__coil.captureAt is missing: the capture probe is required");
+  return probe;
+}
+
+// The capture probe at the pointer the moment the next wheel gesture starts:
+// taken by a window listener in the capture phase, before the scene's own
+// handler decides that first event, from the same last rendered frame. The
+// idle drift keeps moving the cards between any earlier check and the first
+// wheel, so a gesture's precondition is asserted on this.
+export type FirstWheel = CaptureProbe & { x: number; y: number; owner: "coil" | "page" | "none" };
+
+export async function watchFirstWheel(page: Page) {
+  await page.evaluate(() => {
+    const w = window as HookWindow & { __e2eFirstWheel?: unknown };
+    w.__e2eFirstWheel = null;
+    window.addEventListener(
+      "wheel",
+      (event) => {
+        if (w.__e2eFirstWheel !== null) return;
+        const coil = w.__coil!;
+        w.__e2eFirstWheel = { ...coil.captureAt(event.clientX, event.clientY), x: event.clientX, y: event.clientY, owner: coil.owner() };
+      },
+      { capture: true, passive: true, once: true },
+    );
   });
+}
+
+export async function firstWheel(page: Page): Promise<FirstWheel> {
+  const probe = await page.evaluate(() => (window as unknown as { __e2eFirstWheel?: FirstWheel | null }).__e2eFirstWheel ?? null);
+  if (!probe) throw new Error("no wheel reached the window since watchFirstWheel");
+  return probe;
+}
+
+// Samples a point with `find`, moves onto it the way a hand does, and checks
+// the probe there with `ready`; the idle drift moves the cards about 13px a
+// second, so on a miss it samples again, up to `tries` times. The gesture
+// should start right after, and its first wheel be checked with firstWheel.
+export async function settleOn(
+  page: Page,
+  cdp: CDPSession,
+  find: () => Promise<Point | null>,
+  ready: (probe: CaptureProbe) => boolean,
+  tries = 5,
+): Promise<Point | null> {
+  for (let attempt = 0; attempt < tries; attempt++) {
+    const point = await find();
+    if (!point) continue;
+    await approach(cdp, point);
+    if (ready(await captureAt(page, point))) return point;
+  }
+  return null;
+}
+
+// The stretch envelope has relaxed (a page scroll feeds the coil, which
+// stretches the helix for a moment).
+export async function waitForEnvelopeRest(page: Page, below = 0.005) {
+  await page.waitForFunction((limit) => {
+    const envelope = (window as HookWindow).__coil!.envelope;
+    return envelope.length > 0 && envelope[envelope.length - 1] < limit;
+  }, below);
 }
 
 // The on-screen slots (alpha over a half) with their projected geometry; needs ?coildebug=flight.

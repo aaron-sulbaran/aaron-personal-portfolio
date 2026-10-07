@@ -3,6 +3,7 @@ import {
   decideWheel,
   gestureOwner,
   nudgeShown,
+  pageScrolled,
   pointerMoved,
   type CaptureState,
 } from "@/lib/coil/capture";
@@ -15,8 +16,9 @@ import { heroVisible, type Hover } from "./hover";
 import type { LoopLink, SceneCtx, SceneFrame } from "./state";
 
 // What moves the coil. A fine pointer's wheel spins it when the gesture
-// starts over the helix (ownership per gesture, lib/coil/capture.ts; the
-// rules are docs/coil-input-model.md section 3), and a click opens the card
+// starts on a card, or in the seam between two, after a real pointer move
+// (ownership per gesture, lib/coil/capture.ts; the rules are
+// docs/coil-input-model.md section 3), and a click opens the card
 // under it; a coarse pointer drags it sideways and throws it, and a tap opens
 // the card with no flight. Each frame the conveyor takes its feeds (idle,
 // wheel, the throw's coast) through one smoothing stage and the spin cap, and
@@ -65,9 +67,17 @@ export function createInput(ctx: SceneCtx, cards: Cards, hover: Hover, loop: Loo
   }
 
   // The pointer over the canvas and inside the helix's projected hull (gaps
-  // between cards included), from the last rendered frame.
+  // between cards included), from the last rendered frame: what releases a
+  // coil gesture.
   function pointerInsideHelix() {
     return pointer.inside && st.sil !== null && insideSilhouette(st.sil, pointer.x, pointer.y);
+  }
+
+  // The pointer over the canvas and on a card picking could pick, or within
+  // the seam margin of one, from the last rendered frame: where a gesture may
+  // start.
+  function pointerOnCard() {
+    return pointer.inside && hover.nearCardAt(pointer.x, pointer.y);
   }
 
   function setCapture(next: CaptureState, nowMs: number) {
@@ -76,7 +86,7 @@ export function createInput(ctx: SceneCtx, cards: Cards, hover: Hover, loop: Loo
   }
 
   // Only a real move counts: a card or a gap passing under a still pointer is
-  // not a move, so it never releases a coil gesture.
+  // not a move, so it never releases a coil gesture, and it never arms one.
   const onPointerMove = (event: PointerEvent) => {
     if (event.pointerType !== "mouse" && event.pointerType !== "pen") return;
     const moved = !pointer.known || event.clientX !== pointer.clientX || event.clientY !== pointer.clientY;
@@ -86,7 +96,10 @@ export function createInput(ctx: SceneCtx, cards: Cards, hover: Hover, loop: Loo
     updatePointerLocal();
     pointer.inside = pointerOverHero(event.target);
     const now = performance.now();
-    if (moved) setCapture(pointerMoved(st.capture, { nowMs: now, insideSilhouette: pointerInsideHelix() }), now);
+    if (moved) {
+      const facts = { nowMs: now, insideSilhouette: pointerInsideHelix(), x: event.clientX, y: event.clientY };
+      setCapture(pointerMoved(st.capture, facts), now);
+    }
     loop.wake();
   };
 
@@ -95,12 +108,25 @@ export function createInput(ctx: SceneCtx, cards: Cards, hover: Hover, loop: Loo
     pointer.inside = false;
     pointer.known = false;
     const now = performance.now();
-    setCapture(pointerMoved(st.capture, { nowMs: now, insideSilhouette: false }), now);
+    setCapture(pointerMoved(st.capture, { nowMs: now, insideSilhouette: false, x: event.clientX, y: event.clientY }), now);
+  };
+
+  // The page scrolled, by any means (a page gesture, keyboard, the scrollbar,
+  // an anchor jump): outside a coil gesture, the next gesture waits for a real
+  // pointer move, so the page sliding a card under a still pointer never
+  // hands that card the wheel.
+  const onScroll = () => {
+    const now = performance.now();
+    const x = pointer.known ? pointer.clientX : Number.NaN;
+    const y = pointer.known ? pointer.clientY : Number.NaN;
+    setCapture(pageScrolled(st.capture, { nowMs: now, x, y }), now);
   };
 
   // Decided once per gesture (events under COIL.capture.gestureGapMs apart,
-  // trackpad inertia included): a gesture that starts inside the helix with
-  // the hero at least half in view spins the coil from its first event, in
+  // trackpad inertia included): a gesture that starts on a card or a seam
+  // (or anywhere inside the helix while the last coil gesture still holds the
+  // pointer), armed by a real pointer move since the page last scrolled, with
+  // the hero at least half in view, spins the coil from its first event, in
   // both directions, and the page does not move; any other gesture scrolls
   // the page natively. The coil responds on the frame after the event (one
   // smoothing stage and the spin cap, nothing before the first motion).
@@ -122,7 +148,10 @@ export function createInput(ctx: SceneCtx, cards: Cards, hover: Hover, loop: Loo
         nowMs: now,
         interactive: wheelInteractive(event),
         heroVisible: fresh ? heroVisible(host) : 1,
+        onCard: fresh ? pointerOnCard() : true,
         insideSilhouette: fresh ? pointerInsideHelix() : true,
+        x: pointer.clientX,
+        y: pointer.clientY,
       }),
       now,
     );
@@ -139,7 +168,8 @@ export function createInput(ctx: SceneCtx, cards: Cards, hover: Hover, loop: Loo
   const onWindowWheel = (event: WheelEvent) => {
     if (event.target instanceof Node && host.contains(event.target)) return;
     const now = performance.now();
-    setCapture(decideWheel(st.capture, { nowMs: now, interactive: false, heroVisible: 0, insideSilhouette: false }), now);
+    const facts = { nowMs: now, interactive: false, heroVisible: 0, onCard: false, insideSilhouette: false, x: event.clientX, y: event.clientY };
+    setCapture(decideWheel(st.capture, facts), now);
   };
   // ---- end fx-input ----
 
@@ -148,11 +178,13 @@ export function createInput(ctx: SceneCtx, cards: Cards, hover: Hover, loop: Loo
     window.addEventListener("pointerout", onPointerOut);
     host.addEventListener("wheel", onWheel, { passive: false });
     window.addEventListener("wheel", onWindowWheel, { passive: true }); // fx-input
+    window.addEventListener("scroll", onScroll, { passive: true });
     return () => {
       window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("pointerout", onPointerOut);
       host.removeEventListener("wheel", onWheel);
       window.removeEventListener("wheel", onWindowWheel); // fx-input
+      window.removeEventListener("scroll", onScroll);
     };
   }
 
