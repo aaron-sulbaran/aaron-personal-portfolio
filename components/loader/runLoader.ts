@@ -4,6 +4,7 @@ import { siteContent } from "@/lib/content";
 import { LOADER, coilDebugFlags, displayPercent, homeLoad, reportHomeLoad, slowSceneMs } from "@/lib/loader/progress";
 import { landName, nameTarget, type NameTarget } from "@/lib/loader/handoff";
 import { loaderEnd, stillPoster, type StillPoster } from "@/lib/loader/still";
+import { createStillWait } from "@/lib/loader/stillWait";
 import {
   greetingColor,
   greetingInBox,
@@ -250,30 +251,28 @@ export function runLoader(
     };
     const handTo = () => {
       if (disposed) return;
+      stopStillWait();
       gone();
       note("still-handoff");
     };
-    // The lockup leaves on the still's own transitionend (the fade starts at
-    // the style recalc after data-dissolve, not here), or stillFadeSlackMs
-    // past the fade should none come; whichever is first, once.
+    // The lockup leaves when the still's own fade ends; the backup timer
+    // runs from the fade's transitionrun, not from here (lib/loader/stillWait.ts).
     const afterStillFade = () => {
       const still = document.querySelector<HTMLElement>("[data-hero-still]");
-      let left = false;
-      const once = () => {
-        if (left) return;
-        left = true;
-        stopStillWait();
-        handTo();
+      const wait = createStillWait({
+        fadeMs: LOADER.stillFadeMs, slackMs: LOADER.stillFadeSlackMs,
+        startGuardMs: LOADER.stillFadeMs + LOADER.stillFadeSlackMs + LOADER.handoffGiveUpMs,
+        timers: { set: (fn, ms) => window.setTimeout(fn, ms), clear: (id) => window.clearTimeout(id) },
+        leave: handTo,
+      });
+      const phases: Record<string, () => void> = { transitionrun: wait.started, transitionend: wait.ended, transitioncancel: wait.cancelled };
+      const onPhase = (event: Event) => {
+        if (event.target === still && (event as TransitionEvent).propertyName === "opacity") phases[event.type]();
       };
-      const ended = (event: TransitionEvent) => {
-        if (event.target === still && event.propertyName === "opacity") once();
-      };
-      still?.addEventListener("transitionend", ended);
-      stillTimer = window.setTimeout(once, LOADER.stillFadeMs + LOADER.stillFadeSlackMs);
+      Object.keys(phases).forEach((type) => still?.addEventListener(type, onPhase));
       stopStillWait = () => {
-        still?.removeEventListener("transitionend", ended);
-        window.clearTimeout(stillTimer);
-        stopStillWait = () => {};
+        Object.keys(phases).forEach((type) => still?.removeEventListener(type, onPhase));
+        wait.dispose();
       };
     };
     const under = () => {
