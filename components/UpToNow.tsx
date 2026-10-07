@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { siteContent } from "@/lib/content";
 import { revealIndex } from "@/lib/motion";
 import { Reveal } from "./Reveal";
@@ -5,7 +6,7 @@ import { UpToNowList } from "./UpToNowList";
 
 // Stays a Server Component. The header reveals on enter; the list (entrance
 // stagger + desktop parallax) is the <UpToNowList> client leaf.
-export function UpToNow() {
+export function UpToNow({ after }: { after?: ReactNode } = {}) {
   const { label, heading, items } = siteContent.upToNow;
   return (
     <section
@@ -33,6 +34,7 @@ export function UpToNow() {
         </Reveal>
 
         <UpToNowList items={items} />
+        {after && <div className="mt-28 md:mt-36">{after}</div>}
       </div>
     </section>
   );
