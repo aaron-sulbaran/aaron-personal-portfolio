@@ -102,7 +102,8 @@ export default defineConfig({
       // E2E_NO_BUILD=1 starts the last build as it is (a rerun with no source change).
       command: process.env.E2E_NO_BUILD === "1" ? `pnpm start -p ${FULL_PORT}` : `pnpm build && pnpm start -p ${FULL_PORT}`,
       url: FULL_URL,
-      env: { NEXT_PUBLIC_SITE_MODE: "full" },
+      // No token: the committed contribution snapshot is the path under test.
+      env: { NEXT_PUBLIC_SITE_MODE: "full", GITHUB_CONTRIB_TOKEN: "" },
       reuseExistingServer: !CI,
       timeout: 240_000,
       stdout: "ignore",
