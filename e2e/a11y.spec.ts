@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { siteContent } from "../lib/content";
 import { test, expect } from "./support/fixtures";
 import { openHome } from "./support/coil";
@@ -67,8 +68,15 @@ test("a11y: nothing focusable sits inside aria-hidden, and every reachable contr
 });
 
 test("a11y: the skyline's canvas is named with its total and range", async ({ page }) => {
+  const snap = JSON.parse(readFileSync("lib/metrics/data/contributions-6mo.json", "utf8"));
+  const monthDay = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+  const shortDay = (day: string) => {
+    const [y, mo, d] = day.split("-").map(Number);
+    return monthDay.format(Date.UTC(y, mo - 1, d));
+  };
+  const total = new Intl.NumberFormat("en-US").format(snap.total);
   await openHome(page);
   const canvas = page.locator("[data-skyline-stage] canvas");
-  await expect(canvas).toHaveAttribute("aria-label", siteContent.metrics.chart.label("2,501", "Apr 5", "Oct 6", false));
+  await expect(canvas).toHaveAttribute("aria-label", siteContent.metrics.chart.label(total, shortDay(snap.range.from), shortDay(snap.range.to), false));
   await expect(canvas).toHaveAttribute("tabindex", "0");
 });
