@@ -130,10 +130,6 @@ const onKey = (ev: KeyboardEvent) => {
   }
   ev.preventDefault();
   let i = ctl.pinned >= 0 ? ctl.pinned : s.activeIdx >= 0 ? s.activeIdx : ctl.lastDay;
-  if (ev.key === "Enter" || ev.key === " ") {
-    cfg.current.setAnnounce(cfg.current.describe(i));
-    return;
-  }
   if (ctl.pinned >= 0 || s.activeIdx >= 0) {
     if (ev.key === "ArrowLeft") i -= 7;
     if (ev.key === "ArrowRight") i += 7;
