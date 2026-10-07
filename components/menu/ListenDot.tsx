@@ -27,7 +27,7 @@ import {
 export function ListenDot({ hidden }: { hidden: boolean }) {
   const music = useSoundtrack();
   const playing = music === "on";
-  const { listenAriaLabelPlay, listenAriaLabelPause } = siteContent.menu;
+  const { listenAriaLabel } = siteContent.menu;
 
   useEffect(() => {
     initSoundtrackFromStorage();
@@ -47,7 +47,7 @@ export function ListenDot({ hidden }: { hidden: boolean }) {
     <Fill
       {...FILL_PICK.menu}
       onClick={toggle}
-      aria-label={playing ? listenAriaLabelPause : listenAriaLabelPlay}
+      aria-label={listenAriaLabel}
       aria-pressed={playing}
       data-cursor-hover
       className={`h-10 w-[34px] items-center justify-center rounded-full before:absolute before:-bottom-0.5 before:-left-2 before:-right-0.5 before:-top-0.5 before:content-[''] focus-visible:rounded-full focus-visible:outline-offset-[-3px] ${

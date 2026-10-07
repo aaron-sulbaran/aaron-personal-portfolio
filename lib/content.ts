@@ -64,8 +64,8 @@ export const siteContent = {
     pillLabel: "Menu",
     closeLabel: "Close",
     dialogLabel: "Site menu",
-    listenAriaLabelPlay: "Play my soundtrack",
-    listenAriaLabelPause: "Pause my soundtrack",
+    // One name for the note; aria-pressed says whether it plays.
+    listenAriaLabel: "Play my soundtrack",
     // The header bar past the hero (components/SiteNav.tsx).
     navAriaLabel: "Sections",
     markAriaLabel: "Back to top",
@@ -541,8 +541,8 @@ export const siteContent = {
     menuToggleOn: "Soundtrack on",
     menuTogglePaused: "Soundtrack paused",
     menuToggleOff: "Soundtrack off",
-    menuAriaLabelOn: "Turn soundtrack on",
-    menuAriaLabelOff: "Turn soundtrack off",
+    // The panel chip's one name; aria-pressed says whether I'm opted in.
+    menuAriaLabel: "Soundtrack",
     ariaOpen: "Open soundtrack player",
     ariaCollapse: "Collapse player",
     ariaSeek: "Seek track position",
