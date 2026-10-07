@@ -163,5 +163,5 @@ Each is a full writing-plans document with tasks, tests first, exact files and c
 | label-face | 27 | 2026-10-06 | 3260 (production build) | clean at 1440, 1024, 390 in both themes; the Connect email truncation at 1024 is pre-existing on `main`, handed to `sections` | awaiting Aaron; must merge after tier 1 and resolve the listed conflicts (keep label classes, drop `data-wave-avoid`, `grid items-baseline` with `gap-4`, regenerate `band-still`) |
 | wave-band-only | 28 | 2026-10-06 | 3250 (production build) | see below | awaiting Aaron; merges first in tier 1 |
 | controls | | building | 3270 | | |
-| sections | | building | 3280 | | |
+| sections | 29 | 2026-10-06 | 3280 (production build) | see below | awaiting Aaron; merges after label-face; Connect swaps to `Fill line={0}` once controls lands |
 | metrics | | building | 3290 | | |
