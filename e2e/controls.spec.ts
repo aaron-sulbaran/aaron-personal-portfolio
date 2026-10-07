@@ -153,3 +153,8 @@ test("controls: the nav bar and the Connect links rise with the quiet tint", asy
   await expectFill(page.locator("header nav a"), "nav");
   await expectFill(page.locator("#connect li > a"), "connect");
 });
+
+test("controls: the band's controls rise with glass to accent", async ({ page }) => {
+  await openHome(page);
+  await expectFill(page.locator("#listen [data-band-controls] button, #listen [data-band-note] button"), "band");
+});
