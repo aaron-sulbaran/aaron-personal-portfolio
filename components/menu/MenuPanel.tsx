@@ -3,9 +3,12 @@
 import { useState, type CSSProperties } from "react";
 import { motion, type Variants } from "framer-motion";
 import { Moon, Sun } from "lucide-react";
+import { Fill } from "@/components/fx/Fill";
 import { NoteIcon } from "@/components/menu/NoteIcon";
 import { siteContent } from "@/lib/content";
+import { FILL_PICK } from "@/lib/fx/fill";
 import { EASE } from "@/lib/motion";
+import { noteState } from "@/lib/note";
 import { THEME_STORAGE_KEY, syncThemeColorMeta, type Theme } from "@/lib/theme";
 import { startSoundtrack, stopSoundtrack, useSoundtrack } from "@/lib/soundtrack";
 
@@ -153,36 +156,37 @@ export function MenuPanel({
         className="flex shrink-0 flex-col gap-[18px] border-t border-border pt-5"
       >
         <div className="flex flex-wrap gap-2.5">
-          <button
-            type="button"
+          <Fill
+            {...FILL_PICK.menu}
             onClick={toggleTheme}
             aria-label={theme === "dark" ? themeAriaLabelToLight : themeAriaLabelToDark}
             data-cursor-hover
-            className="inline-flex h-[34px] items-center gap-2 rounded-[17px] pl-2.5 pr-3.5 font-label text-label text-accent shadow-[inset_0_0_0_1px_var(--color-border)] transition-shadow duration-200 hover:shadow-[inset_0_0_0_1px_var(--color-muted)]"
+            className="inline-flex h-[34px] items-center gap-2 rounded-[17px] pl-2.5 pr-3.5 font-label text-label text-accent shadow-[inset_0_0_0_1px_var(--color-border)]"
+            overClassName="flex items-center gap-2 pl-2.5 pr-3.5"
           >
-            {theme === "dark" ? (
-              <Sun aria-hidden="true" className="relative -top-px h-4 w-4" strokeWidth={1.6} />
-            ) : (
-              <Moon aria-hidden="true" className="relative -top-px h-4 w-4" strokeWidth={1.6} />
-            )}
+            <span data-fill-icon className="relative -top-px flex h-4 w-4 items-center justify-center">
+              {theme === "dark" ? (
+                <Sun aria-hidden="true" className="h-4 w-4" strokeWidth={1.6} />
+              ) : (
+                <Moon aria-hidden="true" className="h-4 w-4" strokeWidth={1.6} />
+              )}
+            </span>
             <span>{theme === "dark" ? themeToggleToLight : themeToggleToDark}</span>
-          </button>
-          <button
-            type="button"
+          </Fill>
+          <Fill
+            {...FILL_PICK.menu}
             onClick={toggleMusic}
             aria-label={optedIn ? menuAriaLabelOff : menuAriaLabelOn}
             aria-pressed={optedIn}
             data-cursor-hover
-            className="inline-flex h-[34px] items-center gap-2 rounded-[17px] pl-2.5 pr-3.5 font-label text-label text-accent shadow-[inset_0_0_0_1px_var(--color-border)] transition-shadow duration-200 hover:shadow-[inset_0_0_0_1px_var(--color-muted)]"
+            className="inline-flex h-[34px] items-center gap-2 rounded-[17px] pl-2.5 pr-3.5 font-label text-label text-accent shadow-[inset_0_0_0_1px_var(--color-border)]"
+            overClassName="flex items-center gap-2 pl-2.5 pr-3.5"
           >
-            <span aria-hidden="true" className="relative -top-px flex h-4 w-4 items-center justify-center">
-              <NoteIcon
-                on={music === "on"}
-                className={`block h-[15px] w-[9.5px] ${music === "on" ? "text-accent" : "text-muted"}`}
-              />
+            <span aria-hidden="true" data-fill-icon className="relative -top-px flex h-4 w-4 items-center justify-center">
+              <NoteIcon state={noteState(music)} className="block h-4 w-[14px]" />
             </span>
             <span>{music === "on" ? menuToggleOn : music === "paused" ? menuTogglePaused : menuToggleOff}</span>
-          </button>
+          </Fill>
         </div>
         <div
           className={`flex font-label text-label ${

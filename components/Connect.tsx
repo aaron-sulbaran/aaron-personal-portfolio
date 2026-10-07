@@ -1,6 +1,7 @@
 import { Fragment } from "react";
-import { ArrowUpRight } from "lucide-react";
+import { Fill, FillArrow } from "@/components/fx/Fill";
 import { siteContent } from "@/lib/content";
+import { FILL_PICK } from "@/lib/fx/fill";
 import { Block } from "./sections/Block";
 import { Kicker } from "./sections/Kicker";
 
@@ -23,8 +24,7 @@ function breakAfterAt(value: string) {
 // Stays a Server Component. The kicker, heading and lede arrive by the
 // sections grammar, the heading and lede line by line; the link list is one
 // block whose rows draw their rules and lift out of a clip in turn. The rule
-// under each link is this section's; controls' Fill (with line={0}, since
-// this section owns the rule) replaces the plain anchor when it lands.
+// under each link is this section's, so the row's Fill rises from line 0.
 export function Connect() {
   const { label, heading, lede, links } = siteContent.connect;
   return (
@@ -42,29 +42,29 @@ export function Connect() {
         <Block kind="links" as="ul" className="md:col-span-7">
           {links.map((link, i) => (
             <li key={link.key} data-sections-row className="relative">
-              <a
+              <Fill
+                as="a"
+                {...FILL_PICK.connect}
+                shape="rect"
+                line={0}
                 href={link.href}
                 target={link.external ? "_blank" : undefined}
                 rel={link.external ? "noopener noreferrer" : undefined}
-                className="group -mx-4 flex min-h-[56px] items-baseline px-4 py-5 text-foreground transition-colors duration-200 hover:text-accent"
+                className="-mx-4 flex min-h-[56px] items-baseline px-4 py-5 text-foreground"
+                overClassName="flex items-baseline px-4 py-5"
               >
                 <span className="-my-[0.15em] flex min-w-0 flex-1 overflow-clip py-[0.15em]">
                   <span data-sections-rowinner className="flex min-w-0 flex-1 items-baseline gap-4">
-                    <span className="w-28 shrink-0 font-label text-label text-muted transition-colors duration-200 group-hover:text-accent md:w-32">
-                      {link.label}
-                    </span>
+                    <span className="w-28 shrink-0 font-label text-label text-muted md:w-32">{link.label}</span>
                     <span data-connect-value className={`min-w-0 flex-1 break-words font-display ${VALUE_SIZE}`}>
                       {breakAfterAt(link.value)}
                     </span>
                     <span className={`flex h-[1lh] shrink-0 items-center self-start ${VALUE_SIZE}`}>
-                      <ArrowUpRight
-                        aria-hidden="true"
-                        className="h-5 w-5 text-muted transition-colors duration-200 group-hover:text-accent"
-                      />
+                      <FillArrow dir="up-right" size={20} className="text-muted" />
                     </span>
                   </span>
                 </span>
-              </a>
+              </Fill>
               {i < links.length - 1 && (
                 <span data-sections-hair aria-hidden="true" className="absolute inset-x-0 bottom-0 h-px origin-left bg-border" />
               )}

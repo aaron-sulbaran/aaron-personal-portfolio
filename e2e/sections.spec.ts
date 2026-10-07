@@ -173,11 +173,13 @@ test("sections: no Connect value is cut short at 1024 or at 390", async ({ page 
     await page.setViewportSize(viewport);
     await openHome(page);
     const values = await page.evaluate(() =>
-      [...document.querySelectorAll<HTMLElement>("#connect [data-sections-row] [data-connect-value]")].map((value) => ({
-        text: value.textContent,
-        scrollWidth: value.scrollWidth,
-        clientWidth: value.clientWidth,
-      })),
+      [...document.querySelectorAll<HTMLElement>("#connect [data-sections-row] [data-connect-value]")]
+        .filter((value) => !value.closest(".fx-over"))
+        .map((value) => ({
+          text: value.textContent,
+          scrollWidth: value.scrollWidth,
+          clientWidth: value.clientWidth,
+        })),
     );
     expect(values.length, "one value per link").toBe(connect.links.length);
     for (const value of values) {
