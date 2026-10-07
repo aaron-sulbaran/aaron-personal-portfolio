@@ -1,10 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
-import { useReducedMotion } from "framer-motion";
 import { gsap, ScrollTrigger } from "@/lib/gsap";
 import { createSpeedometer, gateOpen } from "@/lib/metrics/seenGate";
 import { MORPH } from "@/lib/metrics/settings";
+import { useReducedMotionLive } from "@/components/soundtrack/useReducedMotionLive";
 import type { View } from "./skyline/parts";
 
 // Scroll decides flat or skyline through one ScrollTrigger on the block (never
@@ -18,7 +18,7 @@ export function useScrollMorph(blockRef: RefObject<HTMLElement | null>) {
   const pendingRef = useRef(false);
   // Outlives the effect, so a Strict Mode remount never zeroes a count beside a view that already played.
   const playsRef = useRef(0);
-  const reduced = useReducedMotion() ?? false;
+  const reduced = useReducedMotionLive();
   const show = useCallback((v: View) => {
     viewRef.current = v;
     setView(v);
