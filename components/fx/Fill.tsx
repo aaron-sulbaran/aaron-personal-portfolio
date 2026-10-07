@@ -93,6 +93,9 @@ export function Fill(props: FillProps) {
 
 // The circle's start, its reach and the rise line's insets, from the base copy
 // (the first match in document order), re-measured whenever the root resizes.
+// Marks are mapped into the root's layout space, so a root inside a scaled
+// panel (a modal mounting at 0.97) measures as it will rest; ResizeObserver
+// never fires when a transform ends.
 function useFillGeometry(rootRef: RefObject<HTMLElement | null>, variant: FillVariant) {
   useLayoutEffect(() => {
     const root = rootRef.current;
@@ -100,13 +103,17 @@ function useFillGeometry(rootRef: RefObject<HTMLElement | null>, variant: FillVa
     const measure = () => {
       const box = rectOf(root);
       if (!box || !box.width) return;
+      const k = root.offsetWidth / box.width || 1;
+      const local = (r: Rect | null): Rect | null =>
+        r && { left: (r.left - box.left) * k, top: (r.top - box.top) * k, width: r.width * k, height: r.height * k };
+      const layoutBox = { left: 0, top: 0, width: root.offsetWidth, height: root.offsetHeight };
       const computed = getComputedStyle(root);
       const marks = {
-        icon: rectOf(root.querySelector("[data-fill-icon]")),
-        seed: rectOf(root.querySelector("[data-fill-seed]")),
+        icon: local(rectOf(root.querySelector("[data-fill-icon]"))),
+        seed: local(rectOf(root.querySelector("[data-fill-seed]"))),
         pad: { left: parseFloat(computed.paddingLeft) || 0, right: parseFloat(computed.paddingRight) || 0 },
       };
-      for (const [name, value] of Object.entries(fillVars(variant, box, marks))) root.style.setProperty(name, value);
+      for (const [name, value] of Object.entries(fillVars(variant, layoutBox, marks))) root.style.setProperty(name, value);
     };
     measure();
     const observer = new ResizeObserver(measure);
@@ -116,7 +123,8 @@ function useFillGeometry(rootRef: RefObject<HTMLElement | null>, variant: FillVa
 }
 
 // Touch and pen: the fill plays on the press and holds one duration past the
-// release, so a tap shows it at all.
+// release, so a tap shows it at all. A cancel (a scroll that started on the
+// control) drops it at once.
 function useTouchPress(rootRef: RefObject<HTMLElement | null>) {
   useEffect(() => {
     const root = rootRef.current;
@@ -129,16 +137,22 @@ function useTouchPress(rootRef: RefObject<HTMLElement | null>) {
     };
     const release = (event: PointerEvent) => {
       if (event.pointerType === "mouse") return;
+      window.clearTimeout(timer);
       timer = window.setTimeout(() => delete root.dataset.pressed, FILL.durationMs);
+    };
+    const cancel = (event: PointerEvent) => {
+      if (event.pointerType === "mouse") return;
+      window.clearTimeout(timer);
+      delete root.dataset.pressed;
     };
     root.addEventListener("pointerdown", press);
     root.addEventListener("pointerup", release);
-    root.addEventListener("pointercancel", release);
+    root.addEventListener("pointercancel", cancel);
     return () => {
       window.clearTimeout(timer);
       root.removeEventListener("pointerdown", press);
       root.removeEventListener("pointerup", release);
-      root.removeEventListener("pointercancel", release);
+      root.removeEventListener("pointercancel", cancel);
     };
   }, [rootRef]);
 }
