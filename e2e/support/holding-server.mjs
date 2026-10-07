@@ -14,7 +14,7 @@ import { fileURLToPath } from "node:url";
 
 const port = process.argv[2] ?? "3141";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
-const target = join(tmpdir(), "aaronsulbaran-e2e-holding");
+const target = join(tmpdir(), `aaronsulbaran-e2e-holding-${port}`);
 const SKIP = new Set([".git", ".next", "node_modules", "test-results", "playwright-report", "e2e", ".vercel"]);
 const stamp = join(target, "node_modules", ".e2e-lock");
 

@@ -2,7 +2,7 @@ import { siteContent } from "@/lib/content";
 import type { SoundtrackState } from "@/lib/soundtrack";
 
 // The playback pill's dock rules, pure (spec section 5). The pill sits at the
-// bottom left on the horizon's baseline from the band down, in every music
+// bottom left on the dock's line from the band down, in every music
 // state, and is hidden through the hero and the book (the Menu's note covers
 // audible music there) and on phones. It lands open with one line of copy per
 // state, once per page load, then collapses to the capsule.

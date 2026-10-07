@@ -14,7 +14,6 @@ export function Connect() {
       <div className="mx-auto grid max-w-6xl gap-12 md:grid-cols-12 md:gap-16">
         <Reveal className="md:col-span-5">
           <div
-            data-wave-avoid
             className="reveal-item flex items-center gap-3 text-sm text-muted"
             style={revealIndex(0)}
           >
@@ -22,12 +21,11 @@ export function Connect() {
             <span>{label}</span>
           </div>
           <div className="mt-6">
-            <h2 data-wave-avoid className="reveal-mask font-display text-section" style={revealIndex(1)}>
+            <h2 className="reveal-mask font-display text-section" style={revealIndex(1)}>
               <span className="block">{heading}</span>
             </h2>
           </div>
           <p
-            data-wave-avoid
             className="reveal-item mt-5 max-w-sm text-base leading-relaxed text-muted md:text-lg"
             style={revealIndex(2)}
           >
@@ -35,7 +33,7 @@ export function Connect() {
           </p>
         </Reveal>
 
-        <Reveal as="ul" data-wave-avoid className="md:col-span-7">
+        <Reveal as="ul" className="md:col-span-7">
           {links.map((link, i) => (
             <li
               key={link.key}
