@@ -37,6 +37,31 @@ describe("fetchGithubSeries", () => {
     const down = vi.fn(async () => { throw new Error("network down"); });
     expect((await fetchGithubSeries("t", "2026-10-06", "6mo", down)).error).toBe("network down");
   });
+  it("gives up after 8 seconds, as an error, never a hang", async () => {
+    const { fetchGithubSeries } = await import("./github");
+    const clock = new AbortController();
+    const timeout = vi.spyOn(AbortSignal, "timeout").mockReturnValue(clock.signal);
+    const hang = vi.fn(
+      (_url: RequestInfo | URL, init?: RequestInit) =>
+        new Promise<Response>((_, reject) => init?.signal?.addEventListener("abort", () => reject(init.signal?.reason))),
+    );
+    const pending = fetchGithubSeries("t", "2026-10-06", "6mo", hang as unknown as typeof fetch);
+    clock.abort(new DOMException("The operation was aborted due to timeout", "TimeoutError"));
+    const { data, error } = await pending;
+    expect(timeout).toHaveBeenCalledWith(8000);
+    expect(hang.mock.calls[0][1]?.signal).toBe(clock.signal);
+    expect(data).toBeNull();
+    expect(error).toMatch(/8 seconds/);
+  });
+  it("reports GitHub's own error message, a rate limit or a missing scope, over the shape", async () => {
+    const { fetchGithubSeries } = await import("./github");
+    const limited = reply({ errors: [{ type: "RATE_LIMITED", message: "API rate limit exceeded for user ID 1." }] });
+    expect((await fetchGithubSeries("t", "2026-10-06", "6mo", limited)).error).toBe("GitHub GraphQL: API rate limit exceeded for user ID 1.");
+    const scoped = reply({ data: null, errors: [{ message: "Your token has not been granted the required scopes." }, { message: "Second." }] });
+    expect((await fetchGithubSeries("t", "2026-10-06", "6mo", scoped)).error).toBe("GitHub GraphQL: Your token has not been granted the required scopes. Second.");
+    const refused = reply({ message: "API rate limit exceeded", documentation_url: "https://docs.github.com" }, 403);
+    expect((await fetchGithubSeries("t", "2026-10-06", "6mo", refused)).error).toMatch(/rate limit/);
+  });
 });
 
 describe("loadSeries", () => {
