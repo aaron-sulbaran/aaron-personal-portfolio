@@ -132,7 +132,7 @@ Slices 2a to 2d build in parallel from the same base and merge in order; 2b, 2c,
 - **Timing-sensitive e2e** (the pill fade bounds, the mark's tap samples, the metrics fling) will flake with four production builds running at once; controllers stagger full runs and never read a timing failure as a defect on the first try.
 - **Hard-coded copy in tests** ("Open menu", "Flat", "Skyline", "Close") is brittle under Aaron's content pass; builders read labels from `siteContent` in tests where a plan hard-codes them.
 
-- **Found 2026-10-06 while looking at PRs 28 and 29 (merged PR 26, not the slices):** on a slow GPU the loader's resting lockup, which lives in the fixed `.coil-loader` layer, follows the scroll while the scene is still booting, so "Hi, I'm Aaron" floats over the book and band (measured at 0.9s with the page at 1800px, `data-scene` still off). Milliseconds on a fast GPU, visible on a slow device or a throttled tab. Fix in flight on branch `loader-rest-scroll`: the resting lockup stays glued to the hero during the hold.
+- **Found 2026-10-06 while looking at PRs 28 and 29 (merged PR 26, not the slices):** on a slow GPU the loader's resting lockup, which lives in the fixed `.coil-loader` layer, follows the scroll while the scene is still booting, so "Hi, I'm Aaron" floats over the book and band (measured at 0.9s with the page at 1800px, `data-scene` still off). Milliseconds on a fast GPU, visible on a slow device or a throttled tab. Fixed in PR 31 (`loader-rest-scroll`): the loader root is the hero's box at the document top (absolute, 100svh) so the lockup scrolls with the page, and the slow-path pane stays fixed; the lockup had stayed fixed while the page scrolled.
 
 ## 8. Go-live steps (tier 5)
 
@@ -166,4 +166,5 @@ Each is a full writing-plans document with tasks, tests first, exact files and c
 | wave-band-only | 28 | 2026-10-06 | 3250 (production build) | clean: zero fixed canvases and zero avoid markers outside the band at every scroll position, the pill docks past the band and undocks above it | awaiting Aaron; merges first in tier 1 |
 | controls | 30 | 2026-10-06 | 3270 (production build) | see below | awaiting Aaron's word on the hero control's 8px blur (Layer 1 guardrail); merges after label-face; band-still regenerated once after that |
 | sections | 29 | 2026-10-06 | 3280 (production build) | clean: beside layout with hairlines, sticky Who I am at 1024, Connect values break after the at sign at 390 with zero overflow at all widths, reduced motion hides nothing | awaiting Aaron; merges after label-face; Connect swaps to `Fill line={0}` once controls lands |
-| metrics | | building | 3290 | | |
+| metrics | 32 | 2026-10-06 | 3290 (production build) | see below | awaiting Aaron; merges last in tier 2, then the Fill swap and the sections `UpToNow` file in one follow-up commit |
+| loader-rest-scroll (PR 26 defect) | 31 | 2026-10-06 | none (fix) | fresh Opus review: approve with nits, all eight applied, two new tests (one failing first), 445 unit and 26 e2e green | awaiting Aaron's word; independent of the tiers, safe to merge any time |

@@ -2,7 +2,9 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type FocusEvent, type MouseEvent } from "react";
 import { Portal } from "@/components/Portal";
+import { Fill } from "@/components/fx/Fill";
 import { siteContent } from "@/lib/content";
+import { FILL_PICK, FILL_TRANSITION } from "@/lib/fx/fill";
 import { getSoundtrackPlayer } from "@/lib/audio";
 import { getPlayFailed, getRestoredSoundtrack, startSoundtrack, subscribeSoundtrack, useSoundtrack } from "@/lib/soundtrack";
 import { DOCK, capsuleName, capsuleText, dockLabel, dockMode, type DockLabel } from "@/lib/waveform/dock";
@@ -10,7 +12,7 @@ import { isPhone, subscribePhone } from "@/lib/waveform/layout";
 import { Cover, DockGlyph, EASE, PillSlot, glass } from "./PillParts";
 import { PillAnnouncer, PillLabel, labelLine, useLabelHold } from "./PillLabel";
 import { PlayerCard } from "./PlayerCard";
-import { usePillArrival } from "./usePillArrival";
+import { usePillFade } from "./usePillFade";
 import { usePillHover } from "./usePillHover";
 import { useReducedMotionLive } from "./useReducedMotionLive";
 
@@ -26,8 +28,8 @@ function readGreeted(): boolean {
 
 // The glass playback pill, docked at the bottom left on the wave's line
 // (lib/waveform/dock). From the band down it is there in every music state:
-// it condenses out of the band control the visitor pressed (usePillArrival),
-// lands open with one line for the state (PillLabel), then collapses to a
+// it fades in at its dock once the band is above the dock line (usePillFade),
+// opens with one line for the state (PillLabel), then collapses to a
 // 36px capsule: the track title, "Paused", "Music?" or "Music". Before a yes
 // (or after a failed start) one click plays; otherwise hover grows the
 // now-playing preview and a click opens the player card. Every hidden layer
@@ -77,11 +79,10 @@ function PillInner({ reached }: { reached: boolean }) {
   if (shown && mode !== lastFace) setLastFace(mode);
   const line = labelLine(kind);
 
-  const { present, landed } = usePillArrival(wrapperRef, shown, reduce);
-  // The face the pill shows: on its way back to the band it keeps the slots it
-  // had, so its box holds its size while the return carries it (the dock is
-  // left-anchored, so a collapsing slot would drag its centre off the tween);
-  // once it is away the slots close, so each arrival opens from closed.
+  const { present, landed } = usePillFade(wrapperRef, shown);
+  // The face the pill shows: while it fades out it keeps the slots it had, so
+  // its box holds still in place; once it is away the slots close, so each
+  // fade in opens from closed.
   const face = shown ? mode : present ? lastFace : "hidden";
   const [hover, send] = usePillHover(reduce, shown);
   const expanded = hover.mode === "expanded";
@@ -148,9 +149,7 @@ function PillInner({ reached }: { reached: boolean }) {
     padding: preview ? "8px 16px 8px 8px" : "0 16px 0 13px",
     borderRadius: 999,
     cursor: "pointer",
-    fontFamily: "var(--font-sans)",
-    color: "var(--color-foreground)",
-    transition: reduce ? "opacity 280ms ease" : `opacity 280ms ease, transform 320ms ${EASE}, padding 300ms ease`,
+    transition: reduce ? `opacity 280ms ease, ${FILL_TRANSITION}` : `opacity 280ms ease, transform 320ms ${EASE}, padding 300ms ease, ${FILL_TRANSITION}`,
     opacity: expanded ? 0 : 1,
     transform: reduce || !expanded ? "none" : "scale(0.92)",
     pointerEvents: expanded ? "none" : "auto",
@@ -168,9 +167,6 @@ function PillInner({ reached }: { reached: boolean }) {
     pointerEvents: "none",
     padding: "6px 11px",
     borderRadius: 999,
-    color: "var(--color-muted)",
-    fontSize: 11,
-    fontFamily: "var(--font-sans)",
   };
 
   return (
@@ -199,13 +195,13 @@ function PillInner({ reached }: { reached: boolean }) {
           onBlur={blur}
           style={{ position: "relative", pointerEvents: shown ? "auto" : "none" }}
         >
-          <div aria-hidden="true" style={tip}>
+          <div aria-hidden="true" className="font-label text-label-sm text-muted" style={tip}>
             {c.prompt}
           </div>
-          <button
+          <Fill
             ref={capsuleRef}
-            type="button"
-            className="pill-hit"
+            {...FILL_PICK.capsule}
+            className="pill-hit font-label text-label-sm text-foreground"
             inert={expanded}
             onClick={press}
             onMouseEnter={() => previewable && send("enter")}
@@ -213,24 +209,25 @@ function PillInner({ reached }: { reached: boolean }) {
             aria-label={capsuleName(capsuleText(music, track.title), startsMusic ? c.invite : c.ariaOpen)}
             data-cursor-hover
             style={{ ...capsule, ["--pill-hit-inset" as string]: `${(DOCK.hitPx - DOCK.capsulePx) / 2}px` }}
+            overClassName={`flex items-center ${preview ? "py-2 pl-2 pr-4" : "pl-[13px] pr-4"} ${reduce ? "" : "transition-[padding] duration-300 ease-[ease]"}`}
           >
             <PillSlot visible={preview} maxWidth={40} reduce={reduce}>
               <Cover size={38} cover={track.cover} />
             </PillSlot>
             <PillSlot visible={preview} maxWidth={190} reduce={reduce} before={12} after={12} block>
-              <span style={{ display: "block", fontSize: 12, fontWeight: 500 }}>{track.title}</span>
-              <span style={{ display: "block", fontSize: 11, color: "var(--color-muted)" }}>{track.artist}</span>
+              <span className="block font-label text-label-sm text-foreground">{track.title}</span>
+              <span className="block font-label text-label-sm text-muted">{track.artist}</span>
             </PillSlot>
-            <span style={{ display: "flex" }}>
+            <span className="relative -top-px flex">
               <DockGlyph music={music} />
             </span>
             <PillLabel line={line} open={face === "label"} reduce={reduce} />
             <PillSlot visible={face === "capsule" && !preview} maxWidth={220} reduce={reduce} ms={DOCK.collapseMs} before={8}>
-              <span style={{ fontSize: 12, fontWeight: 500, color: music === "on" ? "var(--color-foreground)" : "var(--color-muted)" }}>
+              <span className={`font-label text-label-sm ${music === "on" ? "text-foreground" : "text-muted"}`}>
                 {capsuleText(music, track.title)}
               </span>
             </PillSlot>
-          </button>
+          </Fill>
           <PlayerCard
             music={music}
             expanded={expanded}
