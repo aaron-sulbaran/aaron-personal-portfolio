@@ -171,8 +171,36 @@ test("label face: the pill and the player card are Profa Bold at the small step"
   await expectLabel(card.getByText(S.statusReady, { exact: true }), "label-sm", "muted");
   const time = card.getByText("0:00").first();
   await expectLabel(time, "label-sm", "muted");
-  expect(await time.evaluate((el) => getComputedStyle(el).fontVariantNumeric)).toBe("tabular-nums");
   await expectLabel(card.locator("button", { hasText: siteContent.listen.freeze }), "label-sm", "accent");
+});
+
+// The trial Profa Bold has no tnum, so tabular-nums alone lets a ticking time
+// change width and wobble the seek bar between them. Each time sits in a box
+// sized for its widest string; the narrowest ("1:11") and widest ("0:00")
+// must render the same width, so the bar never moves.
+test("label face: the player card's times keep one width as their digits change", async ({ page }) => {
+  await page.goto("/");
+  await settled(page);
+  const seek = page.locator("[data-pill] [role='group']").getByLabel(siteContent.soundtrack.ariaSeek);
+  await expect(seek).toBeAttached();
+  const read = await seek.evaluate((input) => {
+    const measure = (el: Element) => {
+      const original = el.textContent;
+      const width = (text: string) => {
+        el.textContent = text;
+        return el.getBoundingClientRect().width;
+      };
+      const out = { narrow: width("1:11"), wide: width("0:00"), tabular: getComputedStyle(el).fontVariantNumeric };
+      el.textContent = original;
+      return out;
+    };
+    return { elapsed: measure(input.previousElementSibling!), remaining: measure(input.nextElementSibling!) };
+  });
+  for (const [name, box] of Object.entries(read)) {
+    expect(box.wide, `${name}: rendered`).toBeGreaterThan(0);
+    expect(box.narrow, `${name}: width for 1:11 against 0:00`).toBe(box.wide);
+    expect(box.tabular, `${name}: tabular-nums kept for the full cut`).toBe("tabular-nums");
+  }
 });
 
 test("label face: the band's answers sit on the question's baseline, 36px after it, 16px apart", async ({ page }) => {
