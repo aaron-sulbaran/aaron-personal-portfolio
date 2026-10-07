@@ -62,13 +62,13 @@ export default async function WorkDetailPage({ params }: Params) {
                   className="object-contain p-3"
                 />
               </div>
-              <div className="flex flex-col gap-2">
-                <span className="font-label text-label-lg leading-5 text-accent">
-                  {item.role}, {item.year}
-                </span>
+              <div className="flex flex-col gap-3.5">
                 <h1 className="font-display text-display-page text-foreground">
                   {item.title}
                 </h1>
+                <p className="font-label text-label-lg leading-5 text-accent">
+                  {item.role}, {item.year}
+                </p>
               </div>
             </div>
 
