@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { test, expect } from "./support/fixtures";
-import { openHome, scrollToY } from "./support/coil";
+import { nextFrames, openHome, scrollToY } from "./support/coil";
 import { settled } from "./support/fallback";
 import { siteContent } from "@/lib/content";
 import { GRAMMAR } from "@/lib/sections/grammar";
@@ -206,4 +206,21 @@ test("sections: a deep load at #connect: every block past its band is whole the 
   const record = await page.evaluate(() => (window as unknown as { __e2eArmed: { observed: number; masked: string[] } }).__e2eArmed);
   expect(record.observed, "blocks past their band when they armed").toBeGreaterThan(0);
   expect(record.masked).toEqual([]);
+});
+
+// A live toggle back to motion re-arms every block inside GSAP's matchMedia
+// rebuild, while ScrollTrigger holds the page's scroll to restore after its
+// refresh. Nothing in the re-arm may make it lose that place.
+test("sections: a live reduced-motion toggle at #connect keeps the reader where they are", async ({ page }) => {
+  await page.goto("/#connect");
+  await settled(page);
+  await blocksIn(page, "armed");
+  const before = await page.evaluate(() => window.scrollY);
+  expect(before, "a deep load, well down the page").toBeGreaterThan(1000);
+  for (const reducedMotion of ["reduce", "no-preference"] as const) {
+    await page.emulateMedia({ reducedMotion });
+    await blocksIn(page, reducedMotion === "reduce" ? "still" : "armed");
+    await nextFrames(page, 2);
+    expect(Math.abs((await page.evaluate(() => window.scrollY)) - before), `scroll held through the toggle to ${reducedMotion}`).toBeLessThan(2);
+  }
 });
