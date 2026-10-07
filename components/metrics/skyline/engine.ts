@@ -10,7 +10,8 @@ import {
   type RGB,
 } from "@/lib/metrics/skyline/maths";
 import { draw, extent, NO_DEPTH, type DepthSpec, type Scene } from "./draw";
-import { newAlphaCss, resolveColor, resolveRGBA, rgbString } from "./paint";
+import { newCssCache } from "@/lib/metrics/skyline/cssCache";
+import { CELL_SLOTS, newAlphaCss, resolveColor, resolveRGBA, rgbString } from "./paint";
 import { attachInput, type Ctl } from "./input";
 import { OUTLINE_LEN, SILHOUETTE_LEN } from "@/lib/metrics/skyline/prism";
 
@@ -126,6 +127,7 @@ export function createEngine(el: EngineElements, cfg: { current: EngineConfig })
     label2Css: newAlphaCss(),
     label3Css: newAlphaCss(),
     hiCss: newAlphaCss(),
+    cellCss: newCssCache(0),
     tipAt: new Float64Array(3).fill(NaN),
   };
 
@@ -156,6 +158,7 @@ export function createEngine(el: EngineElements, cfg: { current: EngineConfig })
       s.faces = new Uint8Array(n);
       s.order = Array.from({ length: n }, (_, i) => i);
       s.sortKey = new Float64Array(n);
+      s.cellCss = newCssCache(n * CELL_SLOTS);
     }
     s.sortCs = NaN;
     for (let i = 0; i < n; i++) {
