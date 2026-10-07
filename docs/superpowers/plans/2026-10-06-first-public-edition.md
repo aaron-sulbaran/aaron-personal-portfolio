@@ -70,7 +70,7 @@
 | 2b | `controls` | main after 1 | 2a (uses `font-label`) | components/menu, soundtrack pill, SiteNav, Connect, **globals.css** (the fill primitive) |
 | 2c | `sections` | main after 1 | 2a (kickers) | Reveal, ReadAlong, UpToNowList, AboutIntro, WhoIAm, **UpToNow**, Connect, **globals.css** |
 | 2d | `metrics` | main after 1 | 2a (stats), 2c (mounts inside the new UpToNow) | components/metrics/*, app/api or a server component, **UpToNow**, **lib/content.ts**, env |
-| 3 | `wave-path` | main after 2 | 1, 2a (pill labels) | lib/wavepath/*, components/soundtrack/path/*, band, **lib/content.ts** (band copy), e2e |
+| 3 | `wave-path` | main after 2 | 1, 2a (pill labels), 2c (its `data-wave-words` markers go on the sections' DOM and skip the sticky columns), 2d (the skyline's reflow) | lib/wavepath/*, components/soundtrack/path/*, band, **lib/content.ts** (band copy), e2e |
 | 4 | `mark-strike` | main after 2 | 2b (fill grammar on the card), CustomCursor | components/mark/*, **CustomCursor**, menu/BrandMark, **lib/content.ts** |
 | 5 | `go-live` | main after 4 (or after whatever tier holds) | all merged | lib/holding.ts, app/layout metadata, OG image, AGENTS.md (Aaron applies) |
 
@@ -81,7 +81,10 @@ Slices 2a to 2d build in parallel from the same base and merge in order; 2b, 2c,
 - One superpowers:subagent-driven-development controller per slice, in its own worktree under `.worktrees/`, each with its own ledger under `.superpowers/sdd/`. Controllers run concurrently; implementers inside one controller run one at a time.
 - Implementers: Opus 5.5 for anything touching motion, the scene, the wave or the skyline; Sonnet for class swaps and transcription tasks where the plan carries the code. Task reviewers: Sonnet for small diffs, Opus for motion and engine diffs. Final whole-branch review: Opus, fresh, per slice. Fable's own look at a local production build in both themes at 1440, 1024 and 390 before any merge recommendation.
 - Every PR: small commits, `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`, the Claude Code line in the body, tests written first and shown failing, `pnpm test`, `pnpm tsc --noEmit`, `pnpm lint`, the affected e2e specs from a checkout with no dev server. Builders stop only the processes they started, never `pkill`, `killall` or a pattern match, never a port they did not open.
-- Merges: Aaron's word each time, in the order above. Production builds only from his push of `main`.
+- Merges: Aaron's word each time, in the order above. Production builds only from his push of `main`, and every merge into `main` triggers a holding build on Vercel (harmless while the default is holding); merging the go-live PR is the production deploy, so it opens as a draft and stays one until his word.
+- End-to-end isolation: tier 1 makes the Playwright ports and the holding temp directory per checkout (`E2E_FULL_PORT`, `E2E_HOLDING_PORT`, a per-port temp directory); every intermediate run in every slice serves its own build on its own port and passes `E2E_BASE_URL`; a full run uses `CI=1` after an `lsof` check of its ports. Four controllers must never test each other's builds.
+- Who fixes what a later slice breaks: the slice that merges later fixes the earlier slice's tests it breaks, in its rebase task (label-face's locators once Fill duplicates text; tier 1's avoid-marker test once sections lands; sections' aria-hidden count once controls lands).
+- `AGENTS.md` and `.claude/` are gitignored, so worktrees do not carry them: every dispatch points the implementer at the main checkout's `AGENTS.md` by absolute path, read-only. Only Fable edits `.claude/launch.json`.
 - Each slice gets a preview port for his trackpad before its merge: capture 3220, scroll-free 3230, loader 3240, then 3250 upward in slice order (added to `.claude/launch.json`).
 
 ## 5. What Aaron supplies tonight
@@ -98,7 +101,7 @@ Slices 2a to 2d build in parallel from the same base and merge in order; 2b, 2c,
 ## 6. Decisions this plan takes without a lab, flagged for his veto
 
 1. **The pill's introduction** is a 300ms fade in at its dock when the band's bottom edge leaves the viewport, and a fade out when the band returns (candidate 1 from the lab log, "two seats and no flight"). No condense, no flight. The lab for introductions was never built; this is the quietest option and the cheapest to replace.
-2. **The wave's draw speed** ships at 4000px/s of arc, the round-6 recommendation, and the always-on Signature line as the one authored line; the vetted seed list and per-visit lines wait for a later round.
+2. **The wave's draw speed** ships at 2800px/s of arc: Aaron's sections pick has "draw speed follows the lag" on, which links the cap to the 0.8s text lag, and an explicit pick outranks round 6's 4000 recommendation; 4000 is the alternative for his veto. The always-on Signature line ships as the one authored line (round 6 is logged as awaiting his read, so this is a plan decision too); the vetted seed list and per-visit lines wait for a later round. The 1024 graze of the Who I am label noted in round 6 is accepted for the edition.
 3. **"Not now" draws the wave too** (both answers start the follow); the band's note stops promising that the music follows, and the music adds the reactive layer only after "Play it".
 4. **The metrics morph's trigger** is 60 percent with the seen rule (60 percent in view, settled 120ms under 300px/s), bevel depth, six months, the current streak only.
 5. **The mark has a keyboard route:** focus the mark, hold Enter or Space for 650ms; the ring is not drawn for keyboard users, the mark's own fill is the indicator.
@@ -124,6 +127,10 @@ Slices 2a to 2d build in parallel from the same base and merge in order; 2b, 2c,
 - **`lib/waveform/probe.ts` and `contrast.ts` go in tier 1** (every reader is horizon or sweep; the lab's `readout.ts` also imported contrast, and the lab never merges). `conveyor.ts` stays: the band uses it.
 - **New leveller rates** for the live analyser (`rangeRate 40`, `targetRate 8` bytes per second, `warmS 3`, `warmBoost 5`) have no lab counterpart because the lab levelled offline over the whole file; they are constants and get a pixel test, and Aaron judges them on the preview port.
 - **`DefinitionModal` is dead code** (imported nowhere); a cleanup for after launch, not this edition.
+- **Tier 1 keeps its hands off what tier 3 rewrites.** `wave-band-only` deletes the horizon, sweep, duck and probe modules and their specs (rejected code does not sit on `main`) and unmounts the condense, but does not retune `waveConductor`, `waveView`, `dots`, `layout` or `field` beyond removing dead imports; `wave-path` rewrites those.
+- **Three body-level ResizeObservers** (sections' refresh, metrics' refresh, wave-path's relayout) can storm when the skyline changes height; wave-path, merging last, owns consolidating them behind one debounced reflow broadcaster if the probe shows more than one refresh per reflow.
+- **Timing-sensitive e2e** (the pill fade bounds, the mark's tap samples, the metrics fling) will flake with four production builds running at once; controllers stagger full runs and never read a timing failure as a defect on the first try.
+- **Hard-coded copy in tests** ("Open menu", "Flat", "Skyline", "Close") is brittle under Aaron's content pass; builders read labels from `siteContent` in tests where a plan hard-codes them.
 
 ## 8. Go-live steps (tier 5)
 
