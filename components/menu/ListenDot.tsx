@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect } from "react";
+import { Fill } from "@/components/fx/Fill";
 import { NoteIcon } from "@/components/menu/NoteIcon";
 import { siteContent } from "@/lib/content";
+import { FILL_PICK } from "@/lib/fx/fill";
 import { noteState } from "@/lib/note";
 import {
   initSoundtrackFromStorage,
@@ -42,17 +44,20 @@ export function ListenDot({ hidden }: { hidden: boolean }) {
   // widens the hit area to 44 by 44. It spills past the pill, which only
   // clips its content while the menu is engaged, when this button is hidden.
   return (
-    <button
-      type="button"
+    <Fill
+      {...FILL_PICK.menu}
       onClick={toggle}
       aria-label={playing ? listenAriaLabelPause : listenAriaLabelPlay}
       aria-pressed={playing}
       data-cursor-hover
-      className={`relative h-10 w-[34px] items-center justify-center rounded-full before:absolute before:-bottom-0.5 before:-left-2 before:-right-0.5 before:-top-0.5 before:content-[''] focus-visible:rounded-full focus-visible:outline-offset-[-3px] ${
+      className={`h-10 w-[34px] items-center justify-center rounded-full before:absolute before:-bottom-0.5 before:-left-2 before:-right-0.5 before:-top-0.5 before:content-[''] focus-visible:rounded-full focus-visible:outline-offset-[-3px] ${
         hidden ? "hidden" : "flex"
       }`}
+      overClassName="flex items-center justify-center"
     >
-      <NoteIcon state={noteState(music)} className="block h-4 w-[14px]" />
-    </button>
+      <span data-fill-icon className="flex">
+        <NoteIcon state={noteState(music)} className="block h-4 w-[14px]" />
+      </span>
+    </Fill>
   );
 }
