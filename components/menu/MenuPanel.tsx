@@ -158,12 +158,12 @@ export function MenuPanel({
             onClick={toggleTheme}
             aria-label={theme === "dark" ? themeAriaLabelToLight : themeAriaLabelToDark}
             data-cursor-hover
-            className="inline-flex h-[34px] items-center gap-2 rounded-[17px] pl-2.5 pr-3.5 text-[13px] font-medium text-foreground shadow-[inset_0_0_0_1px_var(--color-border)] transition-shadow duration-200 hover:shadow-[inset_0_0_0_1px_var(--color-muted)]"
+            className="inline-flex h-[34px] items-center gap-2 rounded-[17px] pl-2.5 pr-3.5 font-label text-label text-accent shadow-[inset_0_0_0_1px_var(--color-border)] transition-shadow duration-200 hover:shadow-[inset_0_0_0_1px_var(--color-muted)]"
           >
             {theme === "dark" ? (
-              <Sun aria-hidden="true" className="h-4 w-4" strokeWidth={1.6} />
+              <Sun aria-hidden="true" className="relative -top-px h-4 w-4" strokeWidth={1.6} />
             ) : (
-              <Moon aria-hidden="true" className="h-4 w-4" strokeWidth={1.6} />
+              <Moon aria-hidden="true" className="relative -top-px h-4 w-4" strokeWidth={1.6} />
             )}
             <span>{theme === "dark" ? themeToggleToLight : themeToggleToDark}</span>
           </button>
@@ -173,9 +173,9 @@ export function MenuPanel({
             aria-label={optedIn ? menuAriaLabelOff : menuAriaLabelOn}
             aria-pressed={optedIn}
             data-cursor-hover
-            className="inline-flex h-[34px] items-center gap-2 rounded-[17px] pl-2.5 pr-3.5 text-[13px] font-medium text-foreground shadow-[inset_0_0_0_1px_var(--color-border)] transition-shadow duration-200 hover:shadow-[inset_0_0_0_1px_var(--color-muted)]"
+            className="inline-flex h-[34px] items-center gap-2 rounded-[17px] pl-2.5 pr-3.5 font-label text-label text-accent shadow-[inset_0_0_0_1px_var(--color-border)] transition-shadow duration-200 hover:shadow-[inset_0_0_0_1px_var(--color-muted)]"
           >
-            <span aria-hidden="true" className="flex h-4 w-4 items-center justify-center">
+            <span aria-hidden="true" className="relative -top-px flex h-4 w-4 items-center justify-center">
               <NoteIcon
                 on={music === "on"}
                 className={`block h-[15px] w-[9.5px] ${music === "on" ? "text-accent" : "text-muted"}`}
@@ -185,11 +185,11 @@ export function MenuPanel({
           </button>
         </div>
         <div
-          className={`flex text-[13px] ${
+          className={`flex font-label text-label ${
             sheet ? "flex-col gap-2.5" : "flex-wrap justify-between gap-x-5 gap-y-2.5"
           }`}
         >
-          <a href={email.href} data-cursor-hover className="text-muted transition-colors duration-200 hover:text-foreground">
+          <a href={email.href} data-cursor-hover className="text-accent transition-colors duration-200 hover:text-accent-hover">
             {email.label}
           </a>
           <span className="flex gap-4">
@@ -200,7 +200,7 @@ export function MenuPanel({
                 target="_blank"
                 rel="noopener noreferrer"
                 data-cursor-hover
-                className="text-muted transition-colors duration-200 hover:text-foreground"
+                className="text-accent transition-colors duration-200 hover:text-accent-hover"
               >
                 {social.label}
               </a>
