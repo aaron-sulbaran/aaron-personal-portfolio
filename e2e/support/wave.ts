@@ -53,6 +53,12 @@ export async function parkBand(page: Page, at = BAND_PARK) {
   await scrollToY(page, Math.round(y));
 }
 
+// The band's bottom edge at `y` px from the viewport's top.
+export async function bandBottomAt(page: Page, y: number) {
+  const top = await page.evaluate((y) => document.getElementById("listen")!.getBoundingClientRect().bottom + window.scrollY - y, y);
+  await scrollToY(page, Math.round(top));
+}
+
 // Horizon repaints over `ms` of no input.
 export async function paintsOver(page: Page, ms: number) {
   const before = await horizonPaints(page);
