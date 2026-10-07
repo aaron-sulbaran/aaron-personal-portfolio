@@ -12,6 +12,7 @@ import { HERO_HEADING_ID } from "@/components/home/HeroText";
 // first paint, and the fallback h1 hides under it, so a load the scene takes
 // over never shows the h1. The pane (the dark ground, the big name, the
 // number) fades in over it only if the load outlives the 250ms guard.
+// With no scene the hero still waits at opacity 0 under the resting lockup and fades in under it (data-dissolve); the lockup then leaves in one frame.
 //
 // The root is the hero's box at the top of the document (the hero is the
 // first thing in #main, at least 100svh tall), not the viewport: the resting lockup
@@ -57,6 +58,8 @@ export const LOADER_CSS = `
 @keyframes coil-loader-h1{from,to{opacity:0}}
 @media (prefers-reduced-motion: no-preference){
   html:not([data-coil-loader=skip]):has(.coil-loader:not([data-state=gone]):not([data-rest=off])) #${HERO_HEADING_ID}{animation:coil-loader-h1 ${BAIL_MS}ms linear}
+  html:not([data-coil-loader=skip]):has(.coil-loader:not([data-state=gone]):not([data-rest=off]):not([data-dissolve])) [data-hero-still]{opacity:0}
+  [data-hero-still]{transition:opacity ${LOADER.stillFadeMs}ms linear}
 }
 ${restLockupCss()}
 .coil-loader__bg{position:fixed;inset:0;background:var(--loader-bg)}

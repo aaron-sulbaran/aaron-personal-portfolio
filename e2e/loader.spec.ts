@@ -5,6 +5,8 @@ import { test, expect } from "./support/fixtures";
 import { waitForCoil } from "./support/coil";
 import type { HookWindow } from "./support/hooks";
 import { cardRegion, pixelDiff, shoot, type Image } from "./support/pixels";
+import { noWebglContext } from "./support/webgl";
+import { heroSamples, sampleHero } from "./support/heroSamples";
 
 // The loader and the entrance (docs/coil-build-scaffold.md, slice 4): a slow
 // load shows the loader with a rising number and lands its lockup ("Hi, I'm"
@@ -422,4 +424,71 @@ test("loader: a warm reload never shows the fallback heading; the resting lockup
   expect(events, "the warm reload took the fast path").toContain("rest");
   expect(frames.at(-1)!.gone, "the loader handed off").toBe(true);
   expect(frames.at(-1)!.scene, "the scene was drawing at the hand-off").toBe("on");
+});
+
+// No WebGL (the Chrome setting: the API is there, no context starts): the
+// resting lockup is up from the first frames, the h1 never shows, the still
+// fades in under the lockup, and the lockup leaves in one frame. The init
+// script denies every context; a GPU-less launch cannot be set per describe
+// (it forces a new worker), and e2e/no-webgl.spec.ts covers that launch.
+test.describe("no WebGL", () => {
+  const goneLoader = () => document.querySelector<HTMLElement>(".coil-loader")?.dataset.state === "gone";
+
+  test("loader: a warm load holds the resting lockup and hands it to the hero still", async ({ page }) => {
+    await page.addInitScript(noWebglContext);
+    await sampleHero(page);
+    await page.goto("/?coildebug=1");
+    await page.waitForFunction(goneLoader, null, { timeout: 30_000 });
+    await page.reload();
+    await page.waitForFunction(goneLoader, null, { timeout: 30_000 });
+    await expect(page.locator("section[data-scene]")).toHaveAttribute("data-scene", "still");
+
+    const samples = (await heroSamples(page)).filter((s) => s.state !== null);
+    expect(samples.length, "frames sampled").toBeGreaterThan(2);
+    expect(samples.slice(0, 3).every((s) => s.state !== "gone" && s.rest), "the resting lockup in the first frames").toBe(true);
+    const h1Shown = samples.filter((s) => s.h1);
+    expect(h1Shown.length, `frames showing the h1 (first at ${h1Shown[0]?.t.toFixed(0)}ms)`).toBe(0);
+    const leaked = samples.filter((s) => s.rest && !s.dissolve && s.state !== "gone" && s.still !== 0);
+    expect(leaked.length, "frames with the still showing before the hand-off").toBe(0);
+    expect(samples.at(-1)!.state).toBe("gone");
+    const lastHeld = samples.filter((s) => s.dissolve && s.state !== "gone" && s.rest).at(-1);
+    expect(lastHeld, "a hand-off frame with the lockup up").toBeDefined();
+    expect(lastHeld!.still, "the still under the lockup's last frames").toBeGreaterThan(0.5);
+    expect(lastHeld!.stillReady, "the still had decoded under the lockup").toBe(true);
+    const events = await page.evaluate(() => (window as HookWindow).__coilLoader!.events.map((e) => e.event));
+    expect(events).toContain("dissolve");
+    expect(events, "the pane never armed").not.toContain("100");
+  });
+
+  test("loader: the still fades in under the resting lockup and the name never weakens", async ({ page }) => {
+    await page.addInitScript(noWebglContext);
+    await page.goto("/?coildebug=1");
+    await page.waitForFunction(goneLoader, null, { timeout: 30_000 });
+    // handoff: the hand-off waits on __coilLoader.finish() once the still has decoded, then again before the lockup leaves.
+    await page.goto("/?coildebug=handoff");
+    await page.waitForFunction(() => (window as HookWindow).__coilLoader?.events.some((e) => e.event === "still-held"), null, { timeout: 30_000 });
+    const box = await page.evaluate(() => {
+      const r = document.querySelector(".coil-loader__rest-name")!.getBoundingClientRect();
+      return { x: Math.floor(r.left), y: Math.floor(r.top), width: Math.ceil(r.width), height: Math.ceil(r.height) };
+    });
+    const rest = luminanceSpread(await shoot(page, box));
+    await page.evaluate(() => {
+      (window as HookWindow).__coilLoader!.finish!();
+      const fadeIn = document.querySelector("[data-hero-still]")!.getAnimations()[0];
+      fadeIn.pause();
+      (window as unknown as { __stillFade: Animation }).__stillFade = fadeIn;
+    });
+    for (const ms of [0, 100, 200, 300, LOADER.stillFadeMs - 1]) {
+      await page.evaluate((t) => {
+        (window as unknown as { __stillFade: Animation }).__stillFade.currentTime = t;
+      }, ms);
+      expect(luminanceSpread(await shoot(page, box)), `name box spread at ${ms}ms of the fade`).toBeGreaterThanOrEqual(rest - 2);
+    }
+    await page.evaluate(() => {
+      (window as unknown as { __stillFade: Animation }).__stillFade.finish();
+      (window as HookWindow).__coilLoader!.finish!();
+    });
+    await expect(page.locator(".coil-loader")).toHaveAttribute("data-state", "gone");
+    expect(luminanceSpread(await shoot(page, box)), "name box spread after the lockup left").toBeGreaterThanOrEqual(rest - 3);
+  });
 });
