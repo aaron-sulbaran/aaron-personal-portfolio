@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bandPassed, capsuleName, capsuleText, dockLabel, dockMode } from "./dock";
+import { capsuleName, capsuleText, dockLabel, dockMode } from "./dock";
 
 const base = { music: "before" as const, reached: true, phone: false, labelShown: false, returning: false, failed: false };
 const STATES = ["before", "on", "paused", "off"] as const;
@@ -41,13 +41,5 @@ describe("dock", () => {
     expect(capsuleName("Small Steps.", "Open")).toBe("Small Steps. Open");
     expect(capsuleName("Wow!", "Open")).toBe("Wow! Open");
     expect(capsuleName("Music", "Play the soundtrack")).toBe("Music. Play the soundtrack");
-  });
-  it("the band is passed once its bottom edge is above the dock line, never while it shows or lies below", () => {
-    expect(bandPassed(-10, 72, false)).toBe(true);
-    expect(bandPassed(72, 72, false)).toBe(true);
-    expect(bandPassed(80, 72, true)).toBe(false);
-    expect(bandPassed(1400, 72, false)).toBe(false);
-    expect(bandPassed(40, null, false)).toBe(true);
-    expect(bandPassed(96, null, false)).toBe(true);
   });
 });

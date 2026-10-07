@@ -5,8 +5,9 @@ import { gsap } from "@/lib/gsap";
 import { DOCK } from "@/lib/waveform/dock";
 
 // The pill's introduction at its dock: opacity over DOCK.fadeMs when the
-// band's bottom edge rises above the dock line (DOCK.passedPx), and the same
-// fade out when the band comes back below it. It never moves, so reduced motion gets the same fade. A reversal
+// reader scrolls past the band (its bottom edge above the dock line,
+// DOCK.passedPx, read by useBandPassed's ScrollTrigger), and the same fade out
+// when the band comes back below it. It never moves, so reduced motion gets the same fade. A reversal
 // starts from the opacity it has. `present`: the root shows (in, or fading
 // away). `landed`: fully in, which starts the label's hold.
 export function usePillFade(target: RefObject<HTMLElement | null>, shown: boolean) {
