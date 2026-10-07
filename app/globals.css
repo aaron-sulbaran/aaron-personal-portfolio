@@ -390,3 +390,15 @@ body {
   background: var(--color-glass);
   color: var(--color-muted);
 }
+
+/* Metrics (components/metrics): the skyline's keyboard ring, and the Flat and
+   Skyline toggle's fallback (the shown view in the accent, the other muted,
+   the quiet tint on hover) until the controls slice's Fill replaces it; then
+   the five .metrics-toggle rules go, so their transition cannot override the
+   fill's --fx-p transition. */
+.metrics-stage:has(canvas:focus-visible) { outline: 2px solid var(--color-accent); outline-offset: 4px; }
+.metrics-toggle { color: var(--color-muted); transition: color var(--fx-ms, 450ms) var(--fx-ease, cubic-bezier(0.785, 0.135, 0.15, 0.86)), background-color var(--fx-ms, 450ms) var(--fx-ease, cubic-bezier(0.785, 0.135, 0.15, 0.86)); }
+.metrics-toggle[aria-pressed="true"] { color: var(--color-accent); }
+@media (hover: hover) { .metrics-toggle:hover { background-color: var(--color-border); color: var(--color-foreground); } }
+.metrics-toggle:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) { .metrics-toggle { transition: none; } }
