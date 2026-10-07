@@ -28,15 +28,17 @@ export function Block({ kind, as = "div", index = 0, split = "lines", className,
     const el = ref.current;
     if (!el) return;
     const mm = gsap.matchMedia();
+    let rebuild = false;
     mm.add({ motion: "(prefers-reduced-motion: no-preference)", reduce: "(prefers-reduced-motion: reduce)" }, (context) => {
       const reduce = Boolean(context.conditions?.reduce);
       const release = reduce ? () => undefined : watchLayout();
-      const dispose = buildBlock(el, { kind, index, split, reduce });
+      const dispose = buildBlock(el, { kind, index, split, reduce, measure: !rebuild });
       return () => {
         dispose();
         release();
       };
     });
+    rebuild = true;
     return () => mm.revert();
   }, [kind, index, split]);
 

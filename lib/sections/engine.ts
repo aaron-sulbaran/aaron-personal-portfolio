@@ -12,6 +12,11 @@ export interface BlockOptions {
   index: number;
   split: Split;
   reduce: boolean;
+  // False when matchMedia rebuilds the block on a preference change: there
+  // ScrollTrigger has reverted every trigger and refreshes them all itself
+  // before the task ends, and a lone refresh would clear the scroll position
+  // it holds to restore, dropping the reader at the top of the page.
+  measure: boolean;
 }
 
 const SELECTOR: Record<Exclude<Step["target"], "lines">, string> = {
@@ -43,7 +48,7 @@ function targetsOf(el: HTMLElement, step: Step, lines: Element[]): Element | Ele
   return [...scope.querySelectorAll(SELECTOR[step.target])].find((found) => !found.closest(".fx-over")) ?? null;
 }
 
-export function buildBlock(el: HTMLElement, { kind, index, split, reduce }: BlockOptions): () => void {
+export function buildBlock(el: HTMLElement, { kind, index, split, reduce, measure }: BlockOptions): () => void {
   const rows = kind === "links" ? el.querySelectorAll("[data-sections-row]").length : 0;
   const plan = planBlock({ kind, reduce, index, split, rows });
   const settle = () => {
@@ -73,7 +78,7 @@ export function buildBlock(el: HTMLElement, { kind, index, split, reduce }: Bloc
     // the from-tweens hold the masked state; a block already past its band
     // on a deep load would paint masked for a frame. Measure now, in the task
     // that armed it.
-    tl.scrollTrigger?.refresh();
+    if (measure) tl.scrollTrigger?.refresh();
     return tl;
   };
   el.dataset.sectionsState = "armed";
