@@ -1,3 +1,4 @@
+import { siteContent } from "../lib/content";
 import { test, expect } from "./support/fixtures";
 import { openHome } from "./support/coil";
 
@@ -63,4 +64,11 @@ test("a11y: nothing focusable sits inside aria-hidden, and every reachable contr
   expect(report.count).toBeGreaterThan(20);
   expect(report.hidden, "focusable elements inside aria-hidden").toEqual([]);
   expect(report.unnamed, "focusable elements with no accessible name").toEqual([]);
+});
+
+test("a11y: the skyline's canvas is named with its total and range", async ({ page }) => {
+  await openHome(page);
+  const canvas = page.locator("[data-skyline-stage] canvas");
+  await expect(canvas).toHaveAttribute("aria-label", siteContent.metrics.chart.label("2,501", "Apr 5", "Oct 6", false));
+  await expect(canvas).toHaveAttribute("tabindex", "0");
 });
