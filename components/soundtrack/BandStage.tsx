@@ -1,53 +1,31 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState } from "react";
 import { siteContent } from "@/lib/content";
 import { useSoundtrack } from "@/lib/soundtrack";
 import { DOCK } from "@/lib/waveform/dock";
 import { setFrozen, useFrozen } from "@/lib/waveform/freeze";
-import { isPhone, subscribePhone } from "@/lib/waveform/layout";
-import { HorizonCanvas } from "./HorizonCanvas";
 import { PlaybackPill } from "./PlaybackPill";
 import { useBandPassed } from "./useBandPassed";
 import { WaveCanvas } from "./WaveCanvas";
-import { acquireWaveConductor, type WaveConductor } from "./waveConductor";
 import { useReducedMotionLive } from "./useReducedMotionLive";
-import { useSweepTrigger } from "./useSweepTrigger";
 
-// The band's live half: the waveform, the credit, the pill it hands the
-// music to, and from md up the horizon strip the wave travels to as the
-// reader scrolls on. One IntersectionObserver on the band decides whether the
-// band's wave runs; one ScrollTrigger (useBandPassed) reads from the scroll
-// position whether the band's bottom edge is above the dock line
-// (DOCK.passedPx), which fades the pill in at its dock; another
-// (useSweepTrigger) drives the sweep from the band to the horizon.
-//
-// Phones stack the wave under the copy in its own strip and have no horizon
-// and no pill, so the freeze toggle always stays here for them; from md up the
-// player card carries it while music is chosen, and the wave fills the whole
-// band behind the copy.
+// The band's live half: the waveform, the credit and the pill. One
+// IntersectionObserver on the band (its top margin is the dock line,
+// DOCK.passedPx) runs the band's wave while it shows; one ScrollTrigger
+// (useBandPassed) decides from the scroll position when the reader has passed
+// the band, and the pill fades in at its dock. Phones stack the wave under the
+// copy and have no pill. The freeze toggle stays here until music is chosen
+// (the player card carries it then on desktop) and goes inert once declined,
+// since nothing moves, unless the wave is frozen.
 export function BandStage() {
   const stageRef = useRef<HTMLDivElement | null>(null);
-  const conductorRef = useRef<WaveConductor | null>(null);
   const [inView, setInView] = useState(false);
   const frozen = useFrozen();
   const music = useSoundtrack();
   const reduce = useReducedMotionLive();
-  const phone = useSyncExternalStore(subscribePhone, isPhone, () => true);
   const c = siteContent.listen;
   const s = siteContent.soundtrack;
-
-  // A layout effect so the conductor is held before the sweep trigger (a
-  // layout effect too) is created; the canvases acquire the same instance.
-  useLayoutEffect(() => {
-    const conductor = acquireWaveConductor(reduce);
-    conductorRef.current = conductor;
-    return () => {
-      conductor.release();
-      conductorRef.current = null;
-    };
-  }, [reduce]);
-  useSweepTrigger(conductorRef);
   const passed = useBandPassed();
 
   useEffect(() => {
@@ -62,13 +40,13 @@ export function BandStage() {
     return () => observer.disconnect();
   }, []);
 
-  // Nothing moves under reduced motion, nor on a phone once the music is off
-  // (the band's line is still and phones have no horizon), so the toggle has
-  // nothing to do then. On desktop the horizon drifts even when declined. The
-  // player card carries the toggle on desktop while music is on or paused;
-  // before a choice and after a decline the capsule's click plays instead, so
-  // the band keeps it there. Phones always keep it here.
-  const freezable = !reduce && (music !== "off" || !phone);
+  // Nothing moves under reduced motion, nor once the music is off (the band's
+  // line is still), so the toggle has nothing to do then, unless the wave is
+  // frozen and can still be let go. The player card carries the toggle on
+  // desktop while music is on or paused; before a choice and after a decline
+  // the capsule's click plays instead, so the band keeps it there. Phones
+  // always keep it here.
+  const freezable = !reduce && (music !== "off" || frozen);
   const inCard = music === "on" || music === "paused";
 
   return (
@@ -103,7 +81,6 @@ export function BandStage() {
         </div>
       </div>
       <PlaybackPill reached={passed} />
-      {phone ? null : <HorizonCanvas />}
     </>
   );
 }
