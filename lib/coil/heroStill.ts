@@ -54,3 +54,16 @@ export function stillSources(theme: StillTheme): StillSource[] {
 export function stillFallback(theme: StillTheme): string {
   return heroStillSrc(theme, "wide", "webp");
 }
+
+// Why the hero is still, for the notice (components/coil/StillNotice.tsx).
+export type StillCause = "noWebgl" | "unavailable" | "reducedMotion";
+// Why a scene that could have run did not: no context could start
+// ("noWebgl"), or it started and failed (a chunk, a render error, a second
+// lost context).
+export type StillFailure = "noWebgl" | "unavailable";
+
+export function stillCause({ reducedMotion, hasApi, failure }: { reducedMotion: boolean; hasApi: boolean; failure: StillFailure | null }): StillCause {
+  if (reducedMotion) return "reducedMotion";
+  if (!hasApi) return "noWebgl";
+  return failure ?? "unavailable";
+}

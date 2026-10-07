@@ -1,8 +1,11 @@
 import { readFileSync } from "node:fs";
+import type { Page } from "@playwright/test";
 import { siteContent } from "../lib/content";
 import { test, expect } from "./support/fixtures";
 import { SEEN_STORAGE_KEY } from "@/lib/home/seen";
 import { openHome, scrollToY } from "./support/coil";
+import { settled } from "./support/fallback";
+import { noWebgl2Api } from "./support/webgl";
 
 // An accessibility smoke with no new dependency: the keyboard reaches the
 // mark, the Menu pill and the book in that order; nothing focusable hides
@@ -10,8 +13,7 @@ import { openHome, scrollToY } from "./support/coil";
 
 type Stop = { tag: string; name: string; inBook: boolean };
 
-test("a11y: Tab reaches the mark, then the Menu pill, then the book's rows", async ({ page }) => {
-  await openHome(page);
+async function tabStops(page: Page): Promise<Stop[]> {
   const stops: Stop[] = [];
   for (let i = 0; i < 40; i++) {
     await page.keyboard.press("Tab");
@@ -27,6 +29,12 @@ test("a11y: Tab reaches the mark, then the Menu pill, then the book's rows", asy
     if (stop) stops.push(stop);
     if (stop?.inBook) break;
   }
+  return stops;
+}
+
+test("a11y: Tab reaches the mark, then the Menu pill, then the book's rows", async ({ page }) => {
+  await openHome(page);
+  const stops = await tabStops(page);
   const mark = stops.findIndex((stop) => stop.name === "Back to top");
   const pill = stops.findIndex((stop) => stop.name === "Open menu");
   const book = stops.findIndex((stop) => stop.inBook);
@@ -35,9 +43,8 @@ test("a11y: Tab reaches the mark, then the Menu pill, then the book's rows", asy
   expect(book).toBeGreaterThan(pill);
 });
 
-test("a11y: nothing focusable sits inside aria-hidden, and every reachable control has a name", async ({ page }) => {
-  await openHome(page);
-  const report = await page.evaluate(() => {
+async function focusReport(page: Page) {
+  return page.evaluate(() => {
     const focusable = [
       ...document.querySelectorAll<HTMLElement>(
         'a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"]), [contenteditable="true"]',
@@ -63,7 +70,28 @@ test("a11y: nothing focusable sits inside aria-hidden, and every reachable contr
       unnamed: focusable.filter((el) => label(el) === "").map(describe),
     };
   });
+}
+
+test("a11y: nothing focusable sits inside aria-hidden, and every reachable control has a name", async ({ page }) => {
+  await openHome(page);
+  const report = await focusReport(page);
   expect(report.count).toBeGreaterThan(20);
+  expect(report.hidden, "focusable elements inside aria-hidden").toEqual([]);
+  expect(report.unnamed, "focusable elements with no accessible name").toEqual([]);
+});
+
+test("a11y (no WebGL 2): the notice's Got it is a named tab stop between the Menu pill and the book, nothing focusable hides", async ({ page }) => {
+  await page.addInitScript(noWebgl2Api);
+  await page.goto("/");
+  await settled(page);
+  await expect(page.locator("[data-still-notice]")).toBeVisible();
+  const stops = await tabStops(page);
+  const pill = stops.findIndex((stop) => stop.name === "Open menu");
+  const gotIt = stops.findIndex((stop) => stop.name.startsWith(siteContent.hero.still.dismiss));
+  const book = stops.findIndex((stop) => stop.inBook);
+  expect(gotIt, `tab stops: ${JSON.stringify(stops.map((s) => s.name))}`).toBeGreaterThan(pill);
+  expect(book).toBeGreaterThan(gotIt);
+  const report = await focusReport(page);
   expect(report.hidden, "focusable elements inside aria-hidden").toEqual([]);
   expect(report.unnamed, "focusable elements with no accessible name").toEqual([]);
 });
