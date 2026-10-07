@@ -164,3 +164,46 @@ test("sections: Connect's columns fit a 390px viewport", async ({ page }) => {
   );
   for (const right of rights) expect(right, "inside the 24px gutter").toBeLessThanOrEqual(390 - 24);
 });
+
+// A block already past its band on a deep load must never paint masked. The
+// observer's callback is a microtask after the task that armed the block,
+// which is the first moment the browser could paint it.
+test("sections: a deep load at #connect: every block past its band is whole the moment it arms", async ({ page }) => {
+  const pastBand = (GRAMMAR.bandEnd - GRAMMAR.follow - 4) / 100;
+  await page.addInitScript((pastBand) => {
+    const parts = [
+      ".sections-line",
+      "[data-sections-inner]",
+      "[data-sections-rule]",
+      "[data-sections-label]",
+      "[data-sections-hair]",
+      "[data-sections-text]",
+      "[data-sections-rowinner]",
+    ].join(", ");
+    const record = { observed: 0, masked: [] as string[] };
+    Object.assign(window, { __e2eArmed: record });
+    new MutationObserver((mutations) => {
+      for (const { target } of mutations) {
+        const block = target as HTMLElement;
+        if (block.dataset.sectionsState !== "armed") continue;
+        if (block.getBoundingClientRect().top > window.innerHeight * pastBand) continue;
+        record.observed += 1;
+        for (const part of block.querySelectorAll<HTMLElement>(parts)) {
+          if (part.closest(".fx-over")) continue;
+          const style = getComputedStyle(part);
+          const whole = style.transform === "none" || new DOMMatrixReadOnly(style.transform).isIdentity;
+          if (Number(style.opacity) < 1 || !whole) {
+            const section = block.closest("section")?.id ?? "?";
+            record.masked.push(`${section} ${block.dataset.sectionsBlock} ${part.className || part.tagName} ${style.opacity} ${style.transform}`);
+          }
+        }
+      }
+    }).observe(document, { attributes: true, attributeFilter: ["data-sections-state"], subtree: true });
+  }, pastBand);
+  await page.goto("/#connect");
+  await settled(page);
+  await blocksIn(page, "armed");
+  const record = await page.evaluate(() => (window as unknown as { __e2eArmed: { observed: number; masked: string[] } }).__e2eArmed);
+  expect(record.observed, "blocks past their band when they armed").toBeGreaterThan(0);
+  expect(record.masked).toEqual([]);
+});

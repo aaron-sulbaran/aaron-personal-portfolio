@@ -69,6 +69,11 @@ export function buildBlock(el: HTMLElement, { kind, index, split, reduce }: Bloc
       const targets = targetsOf(el, step, lines);
       if (targets) tl.from(targets, { ...step.from, stagger: step.stagger ?? 0 }, step.at);
     }
+    // A timeline's trigger defers its first refresh a tick, and until then
+    // the from-tweens hold the masked state; a block already past its band
+    // on a deep load would paint masked for a frame. Measure now, in the task
+    // that armed it.
+    tl.scrollTrigger?.refresh();
     return tl;
   };
   el.dataset.sectionsState = "armed";
