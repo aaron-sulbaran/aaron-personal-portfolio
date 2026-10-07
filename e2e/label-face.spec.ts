@@ -132,3 +132,16 @@ test("label face: kickers and the Connect labels are Profa Bold, muted", async (
   }
   await expectLabel(page.locator("#connect li a > span").first(), "label", "muted");
 });
+
+test("label face: the nav bar, the Menu pill and the panel are Profa Bold in the accent", async ({ page }) => {
+  const m = siteContent.menu;
+  await page.goto("/");
+  await settled(page);
+  await expectLabel(page.locator("header nav a").first(), "label", "accent");
+  const pill = page.locator(`button[aria-controls]`, { hasText: m.pillLabel });
+  await expectLabel(pill.getByText(m.pillLabel, { exact: true }).first(), "label", "accent");
+  await pill.click();
+  await expectLabel(page.getByRole("button", { name: m.themeAriaLabelToDark }), "label", "accent");
+  await expectLabel(page.getByRole("link", { name: m.email.label, exact: true }), "label", "accent");
+  await expectLabel(page.getByRole("link", { name: m.socials[0].label, exact: true }).last(), "label", "accent");
+});
