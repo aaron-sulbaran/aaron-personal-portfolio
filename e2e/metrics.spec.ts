@@ -9,6 +9,11 @@ import { settled } from "./support/fallback";
 // seen, a fling leaves it pending, the toggle plays the morph, reduced motion snaps.
 const m = siteContent.metrics;
 const snap = JSON.parse(readFileSync("lib/metrics/data/contributions-6mo.json", "utf8"));
+const monthDay = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+const shortDay = (day: string) => {
+  const [y, mo, d] = day.split("-").map(Number);
+  return monthDay.format(Date.UTC(y, mo - 1, d));
+};
 const state = (page: Page) => page.locator("[data-skyline-stage]").getAttribute("data-view-state");
 const block = (page: Page) => page.locator("[data-metrics-block]");
 const button = (page: Page, v: "flat" | "skyline") => block(page).getByRole("button", { name: m.chart[v], exact: true });
@@ -49,10 +54,10 @@ test("metrics: the stats show the snapshot's figures, stamped, with no token", a
   await openHome(page);
   const active = snap.days.filter((d: { count: number }) => d.count > 0).length;
   await expect(page.locator('[data-stat="streak"]')).toContainText(String(snap.streaks.current.days));
-  await expect(page.locator('[data-stat="streak"]')).toContainText(`${m.streakLabel}${m.since} Aug 8`);
+  await expect(page.locator('[data-stat="streak"]')).toContainText(`${m.streakLabel}${m.since} ${shortDay(snap.streaks.current.start)}`);
   await expect(page.locator('[data-stat="total"]')).toContainText(new Intl.NumberFormat("en-US").format(snap.total));
   await expect(page.locator('[data-stat="active"]')).toContainText(String(active));
-  await expect(page.locator("[data-metrics-stale]")).toHaveText(`${m.asOf} Oct 6`);
+  await expect(page.locator("[data-metrics-stale]")).toHaveText(`${m.asOf} ${shortDay(snap.range.to)}`);
 });
 
 test("metrics: flat at 95 percent down the viewport, skyline after a slow scroll past the line", async ({ page }) => {
