@@ -26,7 +26,8 @@ import { FILL_PICK } from "@/lib/fx/fill";
 // 1327-1360).
 //
 // It shows only while the scene draws (data-scene="on" on the hero); without
-// a scene the server-rendered h1 carries the greeting.
+// a scene the hero still (or, while one is on its way or the still has not
+// decoded, the h1) carries the greeting.
 
 export type OverlayLayout = {
   controlPx: number; // the "Coil" control's size

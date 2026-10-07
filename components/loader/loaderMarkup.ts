@@ -40,6 +40,9 @@ const L = COIL.lockup;
 // JavaScript never arrive to take the loader down.
 const BAIL_MS = 9400;
 
+// Reduced motion never runs a scene: the h1 waits for the decoded still, at most a hand-off's give-up.
+// Its duration is !important over globals.css's reduced-motion zeroing (the
+// noscript rule's animation:none still wins on the name).
 export const LOADER_CSS = `
 .coil-loader{position:absolute;top:0;left:0;right:0;height:100vh;height:100svh;z-index:60;container-type:size;pointer-events:none;${lockupVarDefaults()};
   animation:coil-loader-bail 400ms linear 9s forwards}
@@ -94,6 +97,7 @@ ${restLockupCss()}
 }
 .coil-loader[data-full] :is(.coil-loader__base,.coil-loader__greet){color:var(--loader-fill)}
 @media (prefers-reduced-motion: reduce){
+  html:not(:has([data-still-ready])) #${HERO_HEADING_ID}{animation:coil-loader-h1 ${LOADER.handoffGiveUpMs}ms linear;animation-duration:${LOADER.handoffGiveUpMs}ms!important}
   .coil-loader__pane{--p:1!important}
   :is(.coil-loader__base,.coil-loader__greet){color:var(--loader-fill)}
   .coil-loader__rest{display:none}
