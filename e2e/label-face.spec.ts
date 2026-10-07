@@ -230,3 +230,20 @@ test("label face: the back link is a drawn 14px arrow, lifted 1px, then Work", a
     first: el.parentElement!.firstElementChild === el,
   }))).toEqual({ w: 14, stroke: "2.5", top: "-1px", first: true });
 });
+
+test("label face: role lines sit under their titles, 14px on the case page and 6px in the modal", async ({ page, cdp }) => {
+  const gap = (title: Locator) =>
+    title.evaluate((h) => {
+      const p = h.nextElementSibling as HTMLElement | null;
+      return p?.tagName === "P" ? p.getBoundingClientRect().top - h.getBoundingClientRect().bottom : null;
+    });
+  await page.goto("/work/capital-one-pm");
+  expect(await gap(page.locator("article h1"))).toBeCloseTo(14, 0);
+  const dialog = await openWorkModal(page, cdp);
+  expect(await gap(dialog.locator("h2"))).toBeCloseTo(6, 0);
+  const fit = await dialog.locator("[data-tile-slot='work']").evaluate((slot) => ({
+    block: slot.nextElementSibling!.getBoundingClientRect().height,
+    slot: slot.getBoundingClientRect().height,
+  }));
+  expect(fit.block, "title block within the logo slot's height").toBeLessThanOrEqual(fit.slot);
+});
