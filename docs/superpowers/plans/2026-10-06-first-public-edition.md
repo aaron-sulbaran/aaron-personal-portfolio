@@ -161,7 +161,7 @@ Each is a full writing-plans document with tasks, tests first, exact files and c
 | coil-scroll-free | 25 | 2026-10-06 | 3230 (retired) | yes | 2026-10-06, second, one test conflict resolved |
 | loader-lockup | 26 | 2026-10-06 | 3240 (retired) | headless only; Aaron's Chrome sighting never reproduced | 2026-10-06, third |
 | label-face | 27 | 2026-10-06 | 3260 (production build) | clean at 1440, 1024, 390 in both themes; the Connect email truncation at 1024 is pre-existing on `main`, handed to `sections` | awaiting Aaron; must merge after tier 1 and resolve the listed conflicts (keep label classes, drop `data-wave-avoid`, `grid items-baseline` with `gap-4`, regenerate `band-still`) |
-| wave-band-only | | building | 3250 | | |
+| wave-band-only | 28 | 2026-10-06 | 3250 (production build) | see below | awaiting Aaron; merges first in tier 1 |
 | controls | | building | 3270 | | |
 | sections | | building | 3280 | | |
 | metrics | | building | 3290 | | |
