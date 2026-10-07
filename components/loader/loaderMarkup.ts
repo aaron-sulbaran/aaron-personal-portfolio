@@ -14,7 +14,7 @@ import { HERO_HEADING_ID } from "@/components/home/HeroText";
 // number) fades in over it only if the load outlives the 250ms guard.
 //
 // The root is the hero's box at the top of the document (the hero is the
-// first thing in #main, 100svh tall), not the viewport: the resting lockup
+// first thing in #main, at least 100svh tall), not the viewport: the resting lockup
 // scrolls with the hero by itself, before any JavaScript and on the
 // compositor, so a page moved under the hold (a script, an anchor jump,
 // find-in-page; the entrance lock stops only wheels and swipes) never leaves
