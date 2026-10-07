@@ -1,24 +1,26 @@
 #!/usr/bin/env node
 // Renders the hero stills (public/coil/hero-{light,dark}-{wide,square,narrow}.{avif,webp})
-// from a local production build of the full site: the scene at rest
-// (?coildebug=still=<offset>: cards and name, the field at fieldClocks(0), the
-// entrance done, the conveyor idle at <offset> cards), no hover, no seen rings
-// (a fresh profile per capture), each theme through lib/theme.ts's storage
-// key, at DPR 2. Only the canvas and the field poster stay visible for the
-// shot (the fixed header and the cursor overlap the stage). Encoded with the
-// sharp next ships: AVIF q60 4:4:4 (the commit 49ee8ba recipe) and WebP q82.
-// Each encoded buffer is written as is and its error is measured on that
-// same buffer.
+// from a local production build of the full site: the scene at rest with no
+// name (?coildebug=still=<offset>,noname: the cards, the field at
+// fieldClocks(0), the entrance done, the conveyor idle at <offset> cards; the
+// page's h1 lockup is the name in front of the still), no hover, no seen
+// rings (a fresh profile per capture), each theme through lib/theme.ts's
+// storage key, at DPR 2. Only the canvas and the field poster stay visible
+// for the shot (the fixed header and the cursor overlap the stage). Encoded
+// with the sharp next ships: AVIF q60 4:4:4 (the commit 49ee8ba recipe) and
+// WebP q82. Each encoded buffer is written as is and its error is measured
+// on that same buffer.
 //
-// The offset (the conveyor's phase) is chosen by measurement, per theme and
-// cut: it sweeps one card spacing in 16 steps; at each step the canvas is
-// captured twice, as is and with nocards, through identical waits; a pixel of
-// the lockup region ("Aaron" and "Hi, I'm", from window.__coil.api.nameRect())
-// is covered when any channel differs by more than 24/255 between the two.
-// The offset with the fewest covered pixels wins (ties: the lower greeting
-// fraction, then the lower offset). The picks go to scripts/hero-still-phases.json;
-// --phases <file> skips the sweep and renders at the recorded offsets.
-// Usage: node scripts/render-posters.mjs http://localhost:3160 [--phases scripts/hero-still-phases.json]
+// The default run renders every theme and cut at offset 0. Two options pick
+// other offsets (the conveyor's phase): --phases <file> renders at recorded
+// offsets, and --sweep measures them, per theme and cut: it sweeps one card
+// spacing in 16 steps; at each step the canvas is captured twice, as is and
+// with nocards, through identical waits; a pixel of the lockup region
+// ("Aaron" and "Hi, I'm", from window.__coil.api.nameRect()) is covered when
+// any channel differs by more than 24/255 between the two. The offset with
+// the fewest covered pixels wins (ties: the lower greeting fraction, then the
+// lower offset), and the picks go to scripts/hero-still-phases.json.
+// Usage: node scripts/render-posters.mjs http://localhost:3160 [--sweep | --phases scripts/hero-still-phases.json]
 
 import { createRequire } from "node:module";
 import { readFileSync, writeFileSync } from "node:fs";
@@ -32,8 +34,9 @@ const sharp = createRequire(require.resolve("next/package.json"))("sharp");
 const [base, ...rest] = process.argv.slice(2);
 const phasesFlag = rest.indexOf("--phases");
 const phasesIn = phasesFlag >= 0 ? rest[phasesFlag + 1] : null;
-if (!base || !/^http:\/\/localhost:\d+\/?$/.test(base) || (phasesFlag >= 0 && !phasesIn)) {
-  console.error("Usage: node scripts/render-posters.mjs http://localhost:<port> [--phases <file>] (a full-mode production build)");
+const sweepPhases = rest.includes("--sweep");
+if (!base || !/^http:\/\/localhost:\d+\/?$/.test(base) || (phasesFlag >= 0 && !phasesIn) || (sweepPhases && phasesIn)) {
+  console.error("Usage: node scripts/render-posters.mjs http://localhost:<port> [--sweep | --phases <file>] (a full-mode production build)");
   process.exit(1);
 }
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -202,6 +205,8 @@ try {
   if (phasesIn) {
     phases = JSON.parse(readFileSync(phasesIn, "utf8"));
     for (const theme of THEMES) for (const cut of Object.keys(CUTS)) if (typeof phases[theme]?.[cut] !== "number") throw new Error(`${phasesIn}: no offset for ${theme} ${cut}`);
+  } else if (!sweepPhases) {
+    phases = Object.fromEntries(THEMES.map((theme) => [theme, Object.fromEntries(Object.keys(CUTS).map((cut) => [cut, 0]))]));
   } else {
     phases = {};
     const table = [];
@@ -219,7 +224,7 @@ try {
   }
   for (const theme of THEMES) {
     for (const cut of Object.keys(CUTS)) {
-      const { png, width, height } = await capture(browser, theme, cut, `still=${phases[theme][cut]}`);
+      const { png, width, height } = await capture(browser, theme, cut, `still=${phases[theme][cut]},noname`);
       for (const [format, encode] of Object.entries(ENCODE)) {
         const buffer = await encode(png);
         const file = `hero-${theme}-${cut}.${format}`;
