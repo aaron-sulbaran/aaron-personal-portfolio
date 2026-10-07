@@ -99,7 +99,7 @@ const px = (s: Scene, x: number, y: number) => s.ox + (x * s.cam.cs - y * s.cam.
 const py = (s: Scene, x: number, y: number, z: number) =>
   s.oy + ((x * s.cam.sn + y * s.cam.cs) * s.cam.se - z * s.cam.ce) * s.sc;
 
-// One point, projected as maths' project() does (inlined: no tuple), into the bounds.
+// One point, projected to screen before scale and offset (no tuple), into the bounds.
 const grow = (b: Bounds, c: Cam, x: number, y: number, z: number) => {
   const sx = x * c.cs - y * c.sn;
   const sy = (x * c.sn + y * c.cs) * c.se - z * c.ce;
