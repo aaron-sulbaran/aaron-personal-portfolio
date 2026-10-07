@@ -1,4 +1,4 @@
-# Label face implementation plan
+# Label face implementation plan (revised with the coordinator's six edits)
 
 > **For agentic workers:** carry this out with superpowers:subagent-driven-development, one task at a time. Every step is a checkbox.
 
@@ -9,6 +9,8 @@
 **Tech stack:** Next 16.2, React 19.2, TypeScript strict, Tailwind 3.4, lucide-react, vitest (`pnpm test`), Playwright (Chromium, muted).
 
 **Spec:** `docs/label-face-spec.md`. The lab record is `docs/lab-log-2026-10-05.md`, "Type lab". The lab's reviewed preset is `AARON_REVIEWED` in the lab worktree's `app/lab/type/settings.ts`.
+
+**Base:** branch `label-face`, cut from `main` after `wave-band-only` (tier 1) merges, as the master plan says.
 
 **Produces, for other slices (exact class names):**
 - `controls` consumes `font-label`, `text-label-sm`, `text-label` and `text-label-lg`. Each size step already sets weight 700 and 0.01em tracking, so no `font-bold` and no `tracking-*` go beside them.
@@ -36,9 +38,10 @@ From the spec, section 7:
 ## How to run things in this plan
 
 - **Where:** every command runs from the worktree root, `/Users/asulbaran21/Personal Projects/.worktrees/aaron-portfolio-website-label-face`.
-- **Serving a build:** run `NEXT_PUBLIC_SITE_MODE=full pnpm build && NEXT_PUBLIC_SITE_MODE=full pnpm start -p 3250` in the background and record its PID. Before each pass/fail run that needs new code, stop only that PID, rebuild, and restart.
-- **Why not the default webServer:** it would reuse any server already on 3140 or 3141, possibly another slice's build, and its holding server shares one tmp directory across worktrees.
-- **Running e2e:** `E2E_BASE_URL=http://localhost:3250 pnpm test:e2e e2e/<spec>.ts --project=chromium -g "<title>"`. Flags go without `--`, as the repo's docs do (pnpm 10 forwards them).
+- **Serving this slice's build:** every intermediate e2e run uses this slice's own build on port 3260. Port 3250 belongs to tier 1. Run `NEXT_PUBLIC_SITE_MODE=full pnpm build && NEXT_PUBLIC_SITE_MODE=full pnpm start -p 3260` in the background and record its PID. Before each run that needs new code, stop only that PID, rebuild, and restart.
+- **Running an intermediate spec:** `E2E_BASE_URL=http://localhost:3260 pnpm test:e2e e2e/<spec>.ts --project=chromium -g "<title>"`. Flags go without `--`, as the repo's docs do (pnpm 10 forwards them).
+- **The full run (Task 14 only):** stop the 3260 server first, because the full run rebuilds the same `.next`. Confirm `lsof -iTCP:3140 -iTCP:3141 -sTCP:LISTEN` prints nothing, then run `CI=1 pnpm test:e2e`. Tier 1 adds `E2E_FULL_PORT`, `E2E_HOLDING_PORT` and a holding temp directory per port; `CI=1` turns off server reuse.
+- **Line numbers:** line numbers in the soundtrack files are from `main` before tier 1 and will drift. Find each change by its old string.
 
 ## Review focus: five failure modes no test covers
 
@@ -46,7 +49,7 @@ From the spec, section 7:
 2. **Inline styles beat classes, especially on hover.** `iconButton()` returns an inline `color`. Any inline `color` left in the pill silently cancels `text-accent` and `hover:text-accent-hover`. The e2e reads resting colour only.
 3. **Contrast on glass.** The contrast pass (Task 14) measures `main` and `footer` against `--color-background`. The pill's tip, the card and the Menu chips sit on glass over moving content and are not measured. Check them by eye in both themes.
 4. **Inter's features leaking into Profa.** `body` sets `font-feature-settings: "cv11", "ss01", "ss03"` for Inter. `font-label` resets it to `normal`, matching the lab's Profa (`faces.ts`, `features: "normal"`). The unit test pins the config, but nothing checks glyph shapes. If the reset is dropped, Profa may swap in alternates.
-5. **Rebase onto `wave-band-only`.** The master plan bases this slice on main after tier 1, which rewrites `PlaybackPill`, `BandStage` and `BandInvite`. A careless conflict resolution can bring back inline font styles or drop `items-baseline`. After any rebase, rerun `pnpm test` (the source scan) and the band and pill e2e checks.
+5. **Tier 1 and the rebase.** `wave-band-only` rewrites `PlaybackPill`, `BandStage` and `BandInvite` before this branch is cut. Any tier 1 follow-up, or a rebase of this branch, conflicts in exactly the swap rows of Tasks 2, 8 and 9. A careless resolution can bring back inline font styles or drop `items-baseline`. After any rebase, rerun `pnpm test` (the source scan) and the band and pill e2e checks.
 
 ---
 
@@ -59,12 +62,15 @@ From the spec, section 7:
 
 **Interfaces.** Consumes the lab's font file. Produces `profaBold` (`--font-label`), `font-label`, `text-label-sm`, `text-label` and `text-label-lg`.
 
-- [ ] **Step 1: Create the worktree and copy the font.**
+- [ ] **Step 1: Create the worktree once tier 1 is in, and copy the font.**
 ```bash
-git -C "/Users/asulbaran21/Personal Projects/aaron-portfolio-website" worktree add -b label-face "/Users/asulbaran21/Personal Projects/.worktrees/aaron-portfolio-website-label-face" main
+git -C "/Users/asulbaran21/Personal Projects/aaron-portfolio-website" fetch origin
+git -C "/Users/asulbaran21/Personal Projects/aaron-portfolio-website" branch -r --merged origin/main | grep wave-band-only
+git -C "/Users/asulbaran21/Personal Projects/aaron-portfolio-website" worktree add -b label-face "/Users/asulbaran21/Personal Projects/.worktrees/aaron-portfolio-website-label-face" origin/main
 cd "/Users/asulbaran21/Personal Projects/.worktrees/aaron-portfolio-website-label-face" && pnpm install
 cp "/Users/asulbaran21/Personal Projects/.worktrees/aaron-portfolio-website-lab/app/fonts/ProfaTrial-Bold.ttf" app/fonts/
 ```
+If the `grep` prints nothing, tier 1 has not merged yet. Stop and report back.
 - [ ] **Step 2: Write the failing test** in `lib/labelFace.test.ts`.
 ```ts
 import { existsSync, readFileSync } from "node:fs";
@@ -157,7 +163,7 @@ git commit -m "Label face: Profa Bold loader, font-label and the three label ste
 
 **Files:**
 - Create: `e2e/label-face.spec.ts`
-- Modify: `app/work/[slug]/page.tsx` (49, 88, 91, 117, 120), `components/soundtrack/BandInvite.tsx` (130), `components/soundtrack/BandStage.tsx` (78, 85, 124), `components/WorkModal.tsx` (145, 149), `app/not-found.tsx` (18), `app/error.tsx` (24)
+- Modify: `app/work/[slug]/page.tsx` (49, 88, 91, 117, 120), `components/soundtrack/BandInvite.tsx` (SMALL), `components/soundtrack/BandStage.tsx` (credit wrapper, freeze button, LINK), `components/WorkModal.tsx` (145, 149), `app/not-found.tsx` (18), `app/error.tsx` (24)
 - Test: `e2e/label-face.spec.ts`
 
 **Interfaces.** Consumes the Task 1 tokens. Produces the helpers `expectLabel(locator, step, tone)` and `openWorkModal(page, cdp)`, which later tasks reuse.
@@ -258,7 +264,7 @@ test("label face: controls and links are Profa Bold in the accent", async ({ pag
   await expectLabel(dialog.getByRole("link", { name: siteContent.work.cta }), "label-lg", "accent");
 });
 ```
-- [ ] **Step 2: Run it and confirm it fails.** Serve the build, then run `-g "label face: controls"`. Expected: FAIL with `--font-label is set on <html>` (empty), unless Task 1's build is served, in which case the failure is on `family` for the back link.
+- [ ] **Step 2: Run it and confirm it fails.** Serve this slice's build on 3260, then run `E2E_BASE_URL=http://localhost:3260 pnpm test:e2e e2e/label-face.spec.ts --project=chromium -g "label face: controls"`. Expected: FAIL. On a pre-Task 1 build it fails with `--font-label is set on <html>` (empty); on the Task 1 build it fails on `family` for the back link.
 - [ ] **Step 3: Minimal implementation.** Swap each string exactly:
 
 | File:line | Old | New |
@@ -268,17 +274,17 @@ test("label face: controls and links are Profa Bold in the accent", async ({ pag
 | `page.tsx:91` | `className="h-4 w-4"` | `className="relative -top-px h-4 w-4"` |
 | `page.tsx:117` | `gap-2 text-base font-medium text-accent` | `gap-2 font-label text-label-lg leading-6 text-accent` |
 | `page.tsx:120` | `className="h-4 w-4 transition-transform` | `className="relative -top-px h-4 w-4 transition-transform` |
-| `BandInvite.tsx:130` (SMALL) | `` `text-sm text-accent underline `` | `` `font-label text-label text-accent underline `` |
-| `BandStage.tsx:78` | `gap-y-2 text-xs leading-[1.5] text-muted` | `gap-y-2 font-label text-label-sm leading-[1.5] text-muted` |
-| `BandStage.tsx:85` | `underline-offset-[3px] transition-[color,opacity] duration-200 hover:text-foreground` | `underline-offset-[3px] text-accent transition-[color,opacity] duration-200 hover:text-accent-hover` |
-| `BandStage.tsx:124` (LINK) | `"rounded-sm underline decoration-1 underline-offset-[3px] transition-colors duration-200 hover:text-foreground` | `"rounded-sm text-accent underline decoration-1 underline-offset-[3px] transition-colors duration-200 hover:text-accent-hover` |
+| `BandInvite.tsx` SMALL | `` `text-sm text-accent underline `` | `` `font-label text-label text-accent underline `` |
+| `BandStage.tsx` credit wrapper | `gap-y-2 text-xs leading-[1.5] text-muted` | `gap-y-2 font-label text-label-sm leading-[1.5] text-muted` |
+| `BandStage.tsx` freeze button | `underline-offset-[3px] transition-[color,opacity] duration-200 hover:text-foreground` | `underline-offset-[3px] text-accent transition-[color,opacity] duration-200 hover:text-accent-hover` |
+| `BandStage.tsx` LINK | `"rounded-sm underline decoration-1 underline-offset-[3px] transition-colors duration-200 hover:text-foreground` | `"rounded-sm text-accent underline decoration-1 underline-offset-[3px] transition-colors duration-200 hover:text-accent-hover` |
 | `WorkModal.tsx:145` | `gap-2 text-lg font-medium text-accent` | `gap-2 font-label text-label-lg leading-7 text-accent` |
 | `WorkModal.tsx:149` | `className="h-4 w-4 transition-transform` | `className="relative -top-px h-4 w-4 transition-transform` |
 | `not-found.tsx:18` | `mt-10 text-base font-medium text-accent` | `mt-10 font-label text-label leading-6 text-accent` |
 | `error.tsx:24` | `mt-10 text-base font-medium text-accent` | `mt-10 font-label text-label leading-6 text-accent` |
 
-`error.tsx` has no e2e route; it mirrors `not-found.tsx` and is checked in review. The `BandStage.tsx:78` wrapper also sets the credit prose; that prose stays muted, as Task 4 checks.
-- [ ] **Step 4: Run it and confirm it passes.** Rebuild, serve, run `-g "label face: controls"`. Expected: PASS.
+`error.tsx` has no e2e route; it mirrors `not-found.tsx` and is checked in review. The credit wrapper also sets the credit prose; that prose stays muted, as Task 4 checks.
+- [ ] **Step 4: Run it and confirm it passes.** Rebuild, restart on 3260, run `-g "label face: controls"`. Expected: PASS.
 - [ ] **Step 5: Commit.**
 ```bash
 git add e2e/label-face.spec.ts "app/work/[slug]/page.tsx" components/soundtrack/BandInvite.tsx components/soundtrack/BandStage.tsx components/WorkModal.tsx app/not-found.tsx app/error.tsx
@@ -310,7 +316,7 @@ test("label face: meta beside a title is Profa Bold in the accent", async ({ pag
   await expectLabel(dialog.getByText(`${shown.role}, ${shown.year}`, { exact: true }), "label", "accent");
 });
 ```
-- [ ] **Step 2: Run it and confirm it fails.** Run `-g "label face: meta"`. Expected: FAIL on `family` for the case-page role line.
+- [ ] **Step 2: Run it and confirm it fails.** Run `E2E_BASE_URL=http://localhost:3260 pnpm test:e2e e2e/label-face.spec.ts --project=chromium -g "label face: meta"`. Expected: FAIL on `family` for the case-page role line.
 - [ ] **Step 3: Minimal implementation.**
 
 | File:line | Old | New |
@@ -318,7 +324,7 @@ test("label face: meta beside a title is Profa Bold in the accent", async ({ pag
 | `page.tsx:65` | `<span className="text-sm text-muted">` | `<span className="font-label text-label-lg leading-5 text-accent">` |
 | `WorkModal.tsx:129` | `<span className="text-sm text-muted">` | `<span className="font-label text-label text-accent">` |
 | `BookRow.tsx:105` | `"text-sm text-muted min-[720px]:whitespace-nowrap"` | `"font-label text-label text-accent min-[720px]:whitespace-nowrap"` |
-- [ ] **Step 4: Run it and confirm it passes.** Rebuild, run `-g "label face: meta"`. Expected: PASS.
+- [ ] **Step 4: Run it and confirm it passes.** Rebuild, restart on 3260, run `-g "label face: meta"`. Expected: PASS.
 - [ ] **Step 5: Commit.**
 ```bash
 git add "app/work/[slug]/page.tsx" components/WorkModal.tsx components/book/BookRow.tsx e2e/label-face.spec.ts
@@ -358,7 +364,7 @@ describe("copy stays in lib/content.ts", () => {
   });
 });
 ```
-- [ ] **Step 2: Run them and confirm they fail.** `pnpm test lib/labelFace.test.ts` fails on the hint string. `-g "label face: hints"` fails on `family` for the photo hint.
+- [ ] **Step 2: Run them and confirm they fail.** `pnpm test lib/labelFace.test.ts` fails on the hint string. `E2E_BASE_URL=http://localhost:3260 pnpm test:e2e e2e/label-face.spec.ts --project=chromium -g "label face: hints"` fails on `family` for the photo hint.
 - [ ] **Step 3: Minimal implementation.**
 
 | File:line | Old | New |
@@ -366,7 +372,7 @@ describe("copy stays in lib/content.ts", () => {
 | `WorkModal.tsx:151` | `<span className="text-sm text-muted">` | `<span className="font-label text-label text-muted">` |
 | `PhotoModal.tsx:142` | `<p className="mt-5 text-sm text-muted">` | `<p className="mt-5 font-label text-label text-muted">` |
 | `DefinitionModal.tsx:112-114` | `<p className="mt-1 text-sm text-muted">` / `Press Esc to close` / `</p>` | `<p className="mt-1 font-label text-label text-muted">` / `{siteContent.modals.closeHintKeyboard}` / `</p>` |
-- [ ] **Step 4: Run them and confirm they pass.** `pnpm test`, then rebuild and run `-g "label face: hints"`. Expected: PASS.
+- [ ] **Step 4: Run them and confirm they pass.** `pnpm test`, then rebuild, restart on 3260 and run `-g "label face: hints"`. Expected: PASS.
 - [ ] **Step 5: Commit.**
 ```bash
 git add components/WorkModal.tsx components/PhotoModal.tsx components/DefinitionModal.tsx e2e/label-face.spec.ts lib/labelFace.test.ts
@@ -393,14 +399,14 @@ test("label face: kickers and the Connect labels are Profa Bold, muted", async (
   await expectLabel(page.locator("#connect li a > span").first(), "label", "muted");
 });
 ```
-- [ ] **Step 2: Run it and confirm it fails.** Run `-g "label face: kickers"`. Expected: FAIL on `family`.
+- [ ] **Step 2: Run it and confirm it fails.** Run `E2E_BASE_URL=http://localhost:3260 pnpm test:e2e e2e/label-face.spec.ts --project=chromium -g "label face: kickers"`. Expected: FAIL on `family`.
 - [ ] **Step 3: Minimal implementation.**
 
 | File:line | Old | New |
 |---|---|---|
 | `AboutIntro.tsx:21`, `WhoIAm.tsx:20`, `UpToNow.tsx:20`, `Connect.tsx:18` | `reveal-item flex items-center gap-3 text-sm text-muted` | `reveal-item flex items-center gap-3 font-label text-label text-muted` |
 | `Connect.tsx:51` | `w-28 shrink-0 text-sm text-muted` | `w-28 shrink-0 font-label text-label text-muted` |
-- [ ] **Step 4: Run it and confirm it passes.** Rebuild, run `-g "label face: kickers"`. Expected: PASS.
+- [ ] **Step 4: Run it and confirm it passes.** Rebuild, restart on 3260, run `-g "label face: kickers"`. Expected: PASS.
 - [ ] **Step 5: Commit.**
 ```bash
 git add components/AboutIntro.tsx components/WhoIAm.tsx components/UpToNow.tsx components/Connect.tsx e2e/label-face.spec.ts
@@ -415,7 +421,7 @@ git commit -m "Label face: kickers and Connect labels muted in Profa Bold" -m "C
 
 **Interfaces.** Produces the nav in the label face. The active nav link keeps its dot; its colour no longer differs. `controls` reworks these hovers next.
 
-- [ ] **Step 1: Write the failing test.**
+- [ ] **Step 1: Write the failing test.** The `.first()` on the pill label keeps the locator to one match once `controls` duplicates the label into an aria-hidden fill overlay.
 ```ts
 test("label face: the nav bar, the Menu pill and the panel are Profa Bold in the accent", async ({ page }) => {
   const m = siteContent.menu;
@@ -423,14 +429,14 @@ test("label face: the nav bar, the Menu pill and the panel are Profa Bold in the
   await settled(page);
   await expectLabel(page.locator("header nav a").first(), "label", "accent");
   const pill = page.locator(`button[aria-controls]`, { hasText: m.pillLabel });
-  await expectLabel(pill.getByText(m.pillLabel, { exact: true }), "label", "accent");
+  await expectLabel(pill.getByText(m.pillLabel, { exact: true }).first(), "label", "accent");
   await pill.click();
   await expectLabel(page.getByRole("button", { name: m.themeAriaLabelToDark }), "label", "accent");
   await expectLabel(page.getByRole("link", { name: m.email.label }), "label", "accent");
   await expectLabel(page.getByRole("link", { name: m.socials[0].label, exact: true }).last(), "label", "accent");
 });
 ```
-- [ ] **Step 2: Run it and confirm it fails.** Run `-g "label face: the nav"`. Expected: FAIL on `family`.
+- [ ] **Step 2: Run it and confirm it fails.** Run `E2E_BASE_URL=http://localhost:3260 pnpm test:e2e e2e/label-face.spec.ts --project=chromium -g "label face: the nav"`. Expected: FAIL on `family`.
 - [ ] **Step 3: Minimal implementation.**
 
 | File:line | Old | New |
@@ -449,7 +455,7 @@ test("label face: the nav bar, the Menu pill and the panel are Profa Bold in the
 | `MenuPanel.tsx:192`, `:203` | `"text-muted transition-colors duration-200 hover:text-foreground"` | `"text-accent transition-colors duration-200 hover:text-accent-hover"` |
 
 `tracking-[0.005em]` must go: Tailwind emits `tracking-*` after `text-*`, so leaving it would override the token's 0.01em. The AS mark in the pill keeps its own colour because `text-accent` is on the text spans only.
-- [ ] **Step 4: Run it and confirm it passes.** Rebuild, run `-g "label face: the nav"`, then `e2e/chrome.spec.ts --project=chromium`. Expected: PASS.
+- [ ] **Step 4: Run it and confirm it passes.** Rebuild, restart on 3260, run `-g "label face: the nav"`, then `E2E_BASE_URL=http://localhost:3260 pnpm test:e2e e2e/chrome.spec.ts --project=chromium`. Expected: PASS.
 - [ ] **Step 5: Commit.**
 ```bash
 git add components/SiteNav.tsx components/menu/MenuPill.tsx components/menu/MenuPanel.tsx e2e/label-face.spec.ts
@@ -468,9 +474,9 @@ test("label face: the footer copyright is Profa Bold, muted, at the small step",
   await expectLabel(page.locator("footer").getByText(siteContent.footer.copyright, { exact: true }), "label-sm", "muted");
 });
 ```
-- [ ] **Step 2: Run it and confirm it fails.** Run `-g "label face: the footer"`. Expected: FAIL on `family`.
+- [ ] **Step 2: Run it and confirm it fails.** Run `E2E_BASE_URL=http://localhost:3260 pnpm test:e2e e2e/label-face.spec.ts --project=chromium -g "label face: the footer"`. Expected: FAIL on `family`.
 - [ ] **Step 3: Minimal implementation.** On line 11, `flex-col gap-2 text-[12px] text-muted md:flex-row` becomes `flex-col gap-2 md:flex-row`. On line 13, `<p className="tracking-wide">` becomes `<p className="font-label text-label-sm text-muted">`.
-- [ ] **Step 4: Run it and confirm it passes.** Rebuild and rerun. Expected: PASS.
+- [ ] **Step 4: Run it and confirm it passes.** Rebuild, restart on 3260 and rerun. Expected: PASS.
 - [ ] **Step 5: Commit.**
 ```bash
 git add components/Footer.tsx e2e/label-face.spec.ts
@@ -480,7 +486,7 @@ git commit -m "Label face: footer copyright muted in Profa Bold" -m "Co-Authored
 ### Task 8: The pill and the player card off inline styles
 
 **Files:**
-- Modify: `components/soundtrack/PlaybackPill.tsx` (142 to 174, 202, 208, 221 to 231), `PillLabel.tsx` (27), `PillParts.tsx` (141 to 156), `PlayerCard.tsx` (78, 106, 114, 128, 178 to 190)
+- Modify: `components/soundtrack/PlaybackPill.tsx` (capsule style, tip style, tip div, capsule button, preview spans, glyph wrapper, capsule text), `PillLabel.tsx` (27), `PillParts.tsx` (FreezeRow), `PlayerCard.tsx` (78, 106, 114, 128, 178 to 190)
 - Test: `lib/labelFace.test.ts` and `e2e/label-face.spec.ts` (append)
 
 **Interfaces.** Produces a pill whose text reads `var(--font-label)` through classes. The capsule's inline padding change during preview stays.
@@ -498,7 +504,7 @@ describe("the playback pill and player card", () => {
   });
 });
 ```
-Append to `e2e/label-face.spec.ts`. Add `import { capsuleText } from "@/lib/waveform/dock";` to the imports.
+Append to `e2e/label-face.spec.ts`, adding `import { capsuleText } from "@/lib/waveform/dock";` to the imports. The `.first()` on each capsule lookup keeps one match once `controls` duplicates the capsule's children into an aria-hidden fill overlay.
 ```ts
 test("label face: the pill and the player card are Profa Bold at the small step", async ({ page }) => {
   const S = siteContent.soundtrack;
@@ -509,9 +515,9 @@ test("label face: the pill and the player card are Profa Bold at the small step"
   await expect(pill).toBeAttached();
   await expectLabel(pill.getByText(S.prompt, { exact: true }), "label-sm", "muted");
   const capsule = pill.locator(".pill-hit");
-  await expectLabel(capsule.getByText(capsuleText("before", track.title), { exact: true }), "label-sm", "muted");
-  await expectLabel(capsule.getByText(track.title, { exact: true }), "label-sm", "foreground");
-  await expectLabel(capsule.getByText(track.artist, { exact: true }), "label-sm", "muted");
+  await expectLabel(capsule.getByText(capsuleText("before", track.title), { exact: true }).first(), "label-sm", "muted");
+  await expectLabel(capsule.getByText(track.title, { exact: true }).first(), "label-sm", "foreground");
+  await expectLabel(capsule.getByText(track.artist, { exact: true }).first(), "label-sm", "muted");
   const card = pill.locator('[role="group"]');
   await expectLabel(card.getByText(track.artist, { exact: true }), "label-sm", "muted");
   await expectLabel(card.getByText(S.statusReady, { exact: true }), "label-sm", "muted");
@@ -521,21 +527,21 @@ test("label face: the pill and the player card are Profa Bold at the small step"
   await expectLabel(card.locator("button", { hasText: siteContent.listen.freeze }), "label-sm", "accent");
 });
 ```
-- [ ] **Step 2: Run them and confirm they fail.** `pnpm test lib/labelFace.test.ts` fails with `PlaybackPill` containing `var(--font-sans)`. `-g "label face: the pill"` fails on `family`.
-- [ ] **Step 3: Minimal implementation.**
-  - **`PlaybackPill.tsx`, the capsule style:** delete `fontFamily: "var(--font-sans)",` and `color: "var(--color-foreground)",` (151 to 152). On line 208, `className="pill-hit"` becomes `className="pill-hit font-label text-foreground"`.
-  - **`PlaybackPill.tsx`, the tip style:** delete `color`, `fontSize` and `fontFamily` (171 to 173). Line 202 becomes `<div aria-hidden="true" className="font-label text-label-sm text-muted" style={tip}>`.
-  - **`PlaybackPill.tsx`, lines 221 to 222:** `<span className="block font-label text-label-sm text-foreground">{track.title}</span>` and `<span className="block font-label text-label-sm text-muted">{track.artist}</span>`.
-  - **`PlaybackPill.tsx`, line 224:** `<span className="relative -top-px flex">`.
-  - **`PlaybackPill.tsx`, line 229:** ``<span className={`font-label text-label-sm ${music === "on" ? "text-foreground" : "text-muted"}`}>``.
+- [ ] **Step 2: Run them and confirm they fail.** `pnpm test lib/labelFace.test.ts` fails with `PlaybackPill` containing `var(--font-sans)`. `E2E_BASE_URL=http://localhost:3260 pnpm test:e2e e2e/label-face.spec.ts --project=chromium -g "label face: the pill"` fails on `family`.
+- [ ] **Step 3: Minimal implementation.** Find each change by its old string, since tier 1 moves these lines.
+  - **`PlaybackPill.tsx`, the capsule style:** delete `fontFamily: "var(--font-sans)",` and `color: "var(--color-foreground)",`. The capsule's `className="pill-hit"` becomes `className="pill-hit font-label text-foreground"`.
+  - **`PlaybackPill.tsx`, the tip style:** delete `color`, `fontSize` and `fontFamily`. The tip becomes `<div aria-hidden="true" className="font-label text-label-sm text-muted" style={tip}>`.
+  - **`PlaybackPill.tsx`, the preview spans:** `<span className="block font-label text-label-sm text-foreground">{track.title}</span>` and `<span className="block font-label text-label-sm text-muted">{track.artist}</span>`.
+  - **`PlaybackPill.tsx`, the glyph wrapper:** `<span style={{ display: "flex" }}>` becomes `<span className="relative -top-px flex">`.
+  - **`PlaybackPill.tsx`, the capsule text span:** ``<span className={`font-label text-label-sm ${music === "on" ? "text-foreground" : "text-muted"}`}>``.
   - **`PillLabel.tsx:27`:** `<span className="font-label text-label-sm text-muted">{line}</span>`.
   - **`PillParts.tsx`, FreezeRow:** the style becomes `{ ...iconButton(), color: undefined, justifyContent: "flex-start", minHeight: 24, marginTop: 10 }`. Add `className="font-label text-label-sm text-accent underline underline-offset-[3px] transition-colors duration-200 hover:text-accent-hover"`. `color: undefined` removes `iconButton()`'s inline colour so the class can win.
   - **`PlayerCard.tsx`, line 78:** delete `const small`.
   - **`PlayerCard.tsx`, line 106:** `<span className="mt-0.5 block font-label text-label-sm text-muted">{track.artist}</span>`.
   - **`PlayerCard.tsx`, lines 114 and 128:** `<span className="font-label text-label-sm tabular-nums text-muted">`.
   - **`PlayerCard.tsx`, line 178:** `<span className="font-label text-label-sm text-muted">`.
-  - **`PlayerCard.tsx`, the Spotify anchor (183 to 190):** replace its `style` with `className="inline-flex items-center gap-1.5 font-label text-label-sm text-accent transition-colors duration-200 hover:text-accent-hover"`, and give `<ExternalLink aria-hidden="true" size={12} className="relative -top-px" />`. The track has no `spotifyUrl` today, so review covers this, not e2e.
-- [ ] **Step 4: Run them and confirm they pass.** `pnpm test && pnpm tsc --noEmit`. Rebuild, run `-g "label face: the pill"`, then `e2e/soundtrack.spec.ts --project=chromium -g "dock:"`. Expected: PASS.
+  - **`PlayerCard.tsx`, the Spotify anchor:** replace its `style` with `className="inline-flex items-center gap-1.5 font-label text-label-sm text-accent transition-colors duration-200 hover:text-accent-hover"`, and give `<ExternalLink aria-hidden="true" size={12} className="relative -top-px" />`. The track has no `spotifyUrl` today, so review covers this, not e2e.
+- [ ] **Step 4: Run them and confirm they pass.** `pnpm test && pnpm tsc --noEmit`. Rebuild, restart on 3260, run `-g "label face: the pill"`, then `E2E_BASE_URL=http://localhost:3260 pnpm test:e2e e2e/soundtrack.spec.ts --project=chromium -g "dock:"`. Expected: PASS.
 - [ ] **Step 5: Commit.**
 ```bash
 git add components/soundtrack/PlaybackPill.tsx components/soundtrack/PillLabel.tsx components/soundtrack/PillParts.tsx components/soundtrack/PlayerCard.tsx lib/labelFace.test.ts e2e/label-face.spec.ts
@@ -544,9 +550,9 @@ git commit -m "Label face: the pill and player card take the face from classes" 
 
 ### Task 9: The band row
 
-**Files:** Modify `components/soundtrack/BandInvite.tsx` (64, 68, 70, 128). Test: `e2e/label-face.spec.ts`.
+**Files:** Modify `components/soundtrack/BandInvite.tsx` (the row, the controls grid, the "before" layer, QUIET). Test: `e2e/label-face.spec.ts`.
 
-**Interfaces.** Produces "Not now" as a muted label with a faint underline, controls on the heading's baseline, 36px after the question and 16px inside the pair.
+**Interfaces.** Produces "Not now" as a muted label with a faint underline, controls on the heading's baseline, 36px after the question and 16px inside the pair. All gaps are measured between the text itself, so `controls`' later padding on the buttons (`-mx-2 px-2`, `-mx-1.5 px-1.5`) leaves them unchanged.
 
 - [ ] **Step 1: Write the failing test.**
 ```ts
@@ -561,15 +567,19 @@ test("label face: the band's answers sit on the question's baseline, 36px after 
         probe.remove();
         return y;
       };
+      const text = (el: Element) => {
+        const r = document.createRange();
+        r.selectNodeContents(el.firstChild!);
+        return r.getBoundingClientRect();
+      };
       const q = document.querySelector("#listen h2")!;
-      const controls = document.querySelector("#listen [data-band-controls]")!;
       const play = document.querySelector('#listen [data-control="before"]')!;
       const not = play.nextElementSibling!;
       const s = getComputedStyle(not);
       return {
         drift: ["before", "on", "paused"].map((k) => Math.abs(baseline(document.querySelector(`#listen [data-control="${k}"]`)!) - baseline(q))),
-        afterQuestion: controls.getBoundingClientRect().left - q.getBoundingClientRect().right,
-        inPair: not.getBoundingClientRect().left - play.getBoundingClientRect().right,
+        afterQuestion: text(play).left - text(q).right,
+        inPair: text(not).left - text(play).right,
         line: s.textDecorationLine,
         offset: s.textUnderlineOffset,
         alpha: Number(s.textDecorationColor.match(/([\d.]+)\)$/)![1]),
@@ -590,16 +600,16 @@ test("label face: the band's answers sit on the question's baseline, 36px after 
   expect((await read()).alpha).toBeCloseTo(0.55, 2);
 });
 ```
-- [ ] **Step 2: Run it and confirm it fails.** Run `-g "label face: the band"`. Expected: FAIL on `family` for "Not now".
-- [ ] **Step 3: Minimal implementation.**
+- [ ] **Step 2: Run it and confirm it fails.** Run `E2E_BASE_URL=http://localhost:3260 pnpm test:e2e e2e/label-face.spec.ts --project=chromium -g "label face: the band"`. Expected: FAIL on `family` for "Not now".
+- [ ] **Step 3: Minimal implementation.** Tier 1 rewrites the controls grid to `className="grid"`, so its row reads from that string:
 
-| Line | Old | New |
+| Where | Old | New |
 |---|---|---|
-| 64 | `items-baseline gap-x-7 gap-y-3` | `items-baseline gap-x-9 gap-y-3` |
-| 68 | `` `grid transition-opacity `` | `` `grid items-baseline transition-opacity `` |
-| 70 | `className="flex items-baseline gap-6"` | `className="flex items-baseline gap-4"` |
-| 128 (QUIET) | `` `text-sm text-muted transition-colors `` | `` `font-label text-label text-muted underline decoration-1 underline-offset-[4px] decoration-[color:color-mix(in_srgb,var(--color-muted)_40%,transparent)] dark:decoration-[color:color-mix(in_srgb,var(--color-muted)_55%,transparent)] transition-colors `` |
-- [ ] **Step 4: Run it and confirm it passes.** Rebuild, run `-g "label face: the band"`, then `e2e/soundtrack.spec.ts --project=chromium -g "band:"`. Expected: PASS, except `band: the still line` (Task 14 regenerates it).
+| question row | `items-baseline gap-x-7 gap-y-3` | `items-baseline gap-x-9 gap-y-3` |
+| controls grid (`data-band-controls`) | `className="grid"` | `className="grid items-baseline"` |
+| "before" layer | `className="flex items-baseline gap-6"` | `className="flex items-baseline gap-4"` |
+| QUIET | `` `text-sm text-muted transition-colors `` | `` `font-label text-label text-muted underline decoration-1 underline-offset-[4px] decoration-[color:color-mix(in_srgb,var(--color-muted)_40%,transparent)] dark:decoration-[color:color-mix(in_srgb,var(--color-muted)_55%,transparent)] transition-colors `` |
+- [ ] **Step 4: Run it and confirm it passes.** Rebuild, restart on 3260, run `-g "label face: the band"`, then `E2E_BASE_URL=http://localhost:3260 pnpm test:e2e e2e/soundtrack.spec.ts --project=chromium -g "band:"`. Expected: PASS, except `band: the still line` (Task 14 regenerates it).
 - [ ] **Step 5: Commit.**
 ```bash
 git add components/soundtrack/BandInvite.tsx e2e/label-face.spec.ts
@@ -645,7 +655,7 @@ test("label face: the back link is a drawn 14px arrow, lifted 1px, then Work", a
             </Link>
 ```
 The gap is `gap-1`, the lab's 4px icon gap.
-- [ ] **Step 4: Run them and confirm they pass.** `pnpm test`, then rebuild and run `-g "label face: the back link"`. Expected: PASS.
+- [ ] **Step 4: Run them and confirm they pass.** `pnpm test`, then rebuild, restart on 3260 and run `E2E_BASE_URL=http://localhost:3260 pnpm test:e2e e2e/label-face.spec.ts --project=chromium -g "label face: the back link"`. Expected: PASS.
 - [ ] **Step 5: Commit.**
 ```bash
 git add lib/content.ts lib/content.test.ts "app/work/[slug]/page.tsx" e2e/label-face.spec.ts
@@ -677,7 +687,7 @@ test("label face: role lines sit under their titles, 14px on the case page and 6
   expect(fit.block, "title block within the logo slot's height").toBeLessThanOrEqual(fit.slot);
 });
 ```
-- [ ] **Step 2: Run it and confirm it fails.** Run `-g "label face: role lines"`. Expected: FAIL, because the h1's next sibling is null.
+- [ ] **Step 2: Run it and confirm it fails.** Run `E2E_BASE_URL=http://localhost:3260 pnpm test:e2e e2e/label-face.spec.ts --project=chromium -g "label face: role lines"`. Expected: FAIL, because the h1's next sibling is null.
 - [ ] **Step 3: Minimal implementation.** In `page.tsx`, lines 64 to 71:
 ```tsx
               <div className="flex flex-col gap-3.5">
@@ -700,7 +710,7 @@ In `WorkModal.tsx`, lines 128 to 135:
                 </p>
               </div>
 ```
-- [ ] **Step 4: Run it and confirm it passes.** Rebuild. Run `-g "label face: role lines"`, then `e2e/flight.spec.ts --project=chromium -g "work card"` in both schemes. Expected: PASS, with the swaps seamless.
+- [ ] **Step 4: Run it and confirm it passes.** Rebuild and restart on 3260. Run `-g "label face: role lines"`, then `E2E_BASE_URL=http://localhost:3260 pnpm test:e2e e2e/flight.spec.ts --project=chromium -g "work card"` in both schemes. Expected: PASS, with the swaps seamless.
 - [ ] **Step 5: Commit.**
 ```bash
 git add "app/work/[slug]/page.tsx" components/WorkModal.tsx e2e/label-face.spec.ts
@@ -747,7 +757,7 @@ test("label face: a row's meta wraps under its title only when the two do not fi
   await expect.poll(() => meta.evaluate((el) => Number(getComputedStyle(el).opacity))).toBe(1);
 });
 ```
-- [ ] **Step 2: Run it and confirm it fails.** Run `-g "label face: a row"`. Expected: FAIL with `wrap` reading "nowrap" (the row is a grid).
+- [ ] **Step 2: Run it and confirm it fails.** Run `E2E_BASE_URL=http://localhost:3260 pnpm test:e2e e2e/label-face.spec.ts --project=chromium -g "label face: a row"`. Expected: FAIL with `wrap` reading "nowrap" (the row is a grid).
 - [ ] **Step 3: Minimal implementation.** Lines 39 to 43:
 ```tsx
       <span className="flex max-w-full items-center">
@@ -769,7 +779,7 @@ In the fx-chrome comment, "the meta stays full muted" becomes "the meta dims to 
 const SEEN_META_CLASS = "opacity-75 [.book-row:focus-visible_&]:opacity-100 [.book-row:hover_&]:opacity-100";
 ```
 `whitespace-nowrap` goes. A flex item breaks its line at its max-content width, so the meta still moves as a unit; at 390px a meta longer than its row now wraps inside instead of overflowing. The 360px whole-column fallback is not built. It waits for Fable's look.
-- [ ] **Step 4: Run it and confirm it passes.** Rebuild. Run `-g "label face: a row"`, `e2e/modal.spec.ts` and `e2e/row-hold.spec.ts` with `--project=chromium`. Expected: PASS.
+- [ ] **Step 4: Run it and confirm it passes.** Rebuild and restart on 3260. Run `-g "label face: a row"`, then `e2e/modal.spec.ts` and `e2e/row-hold.spec.ts` with `E2E_BASE_URL=http://localhost:3260` and `--project=chromium`. Expected: PASS.
 - [ ] **Step 5: Commit.**
 ```bash
 git add components/book/BookRow.tsx e2e/label-face.spec.ts
@@ -796,7 +806,7 @@ test("label face: at 1440 every work row's meta sits beside its title", async ({
 ```
 - [ ] **Step 2: Run them and confirm they fail.** `pnpm test lib/content.test.ts` fails because it receives "Claude ambassador at UT Austin, 2025".
 - [ ] **Step 3: Minimal implementation.** On line 159, `meta: "Claude ambassador at UT Austin, 2025"` becomes `meta: "Claude ambassador, 2025"`.
-- [ ] **Step 4: Run them and confirm they pass.** `pnpm test`, then rebuild and run `-g "label face: at 1440"`. Expected: PASS.
+- [ ] **Step 4: Run them and confirm they pass.** `pnpm test`, then rebuild, restart on 3260 and run `E2E_BASE_URL=http://localhost:3260 pnpm test:e2e e2e/label-face.spec.ts --project=chromium -g "label face: at 1440"`. Expected: PASS.
 - [ ] **Step 5: Commit.**
 ```bash
 git add lib/content.ts lib/content.test.ts e2e/label-face.spec.ts
@@ -850,16 +860,16 @@ for (const colorScheme of ["light", "dark"] as const) {
   });
 }
 ```
-- [ ] **Step 2: Run it.** Serve the current build and run `e2e/a11y.spec.ts --project=chromium`. Expected: PASS in both themes. If it fails, a colour or opacity in an earlier task is wrong; fix that task's row, not the threshold.
-- [ ] **Step 3: Regenerate `band-still`.** The wave avoids the band's wider text boxes, so its canvas pixels move. Run `-g "band: the still line" --update-snapshots`, then the same command without the flag. Expected: PASS. Open the new PNG beside the old one: the change must sit only around the text regions.
-- [ ] **Step 4: Rerun the regression set.** Run:
+- [ ] **Step 2: Run it.** Serve the current build on 3260 and run `E2E_BASE_URL=http://localhost:3260 pnpm test:e2e e2e/a11y.spec.ts --project=chromium`. Expected: PASS in both themes. If it fails, a colour or opacity in an earlier task is wrong; fix that task's row, not the threshold.
+- [ ] **Step 3: Regenerate `band-still`.** The wave avoids the band's wider text boxes, so its canvas pixels move. Run `E2E_BASE_URL=http://localhost:3260 pnpm test:e2e e2e/soundtrack.spec.ts --project=chromium -g "band: the still line" --update-snapshots`, then the same command without the flag. Expected: PASS. Open the new PNG beside the old one: the change must sit only around the text regions.
+- [ ] **Step 4: Rerun the regression set, then the full run.** First, against 3260 with `E2E_BASE_URL=http://localhost:3260` and `--project=chromium`:
   - `e2e/soundtrack.spec.ts -g "footer:"` (Profa Bold is wider than Inter Medium; the capsule must still clear the copyright at 1440 and 1024)
   - `e2e/flight.spec.ts`
   - `e2e/modal.spec.ts`
   - `e2e/chrome.spec.ts`
   - `e2e/label-face.spec.ts`
 
-  Then run the whole suite: `E2E_BASE_URL=http://localhost:3250 pnpm test:e2e --project=chromium --project=touch`. Then `pnpm test && pnpm tsc --noEmit && pnpm lint`. Expected: all PASS. For `holding.spec.ts`, first confirm with `lsof -iTCP:3140 -iTCP:3141 -sTCP:LISTEN` that both ports are free, then run `pnpm test:e2e --project=holding`.
+  Then stop the 3260 server (only that PID). Confirm `lsof -iTCP:3140 -iTCP:3141 -sTCP:LISTEN` prints nothing, and run the whole suite with `CI=1 pnpm test:e2e`, which builds and serves both modes itself. Finish with `pnpm test && pnpm tsc --noEmit && pnpm lint`. Expected: all PASS.
 - [ ] **Step 5: Commit.**
 ```bash
 git add e2e/a11y.spec.ts e2e/soundtrack.spec.ts-snapshots/band-still-chromium-darwin.png
@@ -873,7 +883,7 @@ git commit -m "Tests: label-face contrast pass in both themes; band-still regene
 
   > Profa Black (display, upright only, `font-synthesis: none`), Profa Bold (labels: small non-body text, `font-label` at `text-label-sm`, `text-label`, `text-label-lg`; accent when clickable or attached to a title, muted otherwise; see `docs/label-face-spec.md`) and Inter (body). All three are exposed on `<html>` as `--font-display`, `--font-label` and `--font-sans`; Tailwind's `font-display` and `font-serif` both resolve to Profa Black.
 
-- [ ] **Step 7: Hand off.** Push the branch, open the PR into `main`, and stop the port 3250 server you started. The PR body ends with the Claude Code line and lists the five review-focus items above. Fable's look comes next: a local production build in both themes at 1440, 1024 and 390, checking the mixed wrapped and unwrapped book rows, the glass surfaces, and the nav's active state (now the dot alone). Merging is Aaron's call.
+- [ ] **Step 7: Hand off.** Push the branch and open the PR into `main`. The PR body ends with the Claude Code line and lists the five review-focus items above. Fable's look comes next: a local production build in both themes at 1440, 1024 and 390, served on 3260 for Aaron's preview. It should check the mixed wrapped and unwrapped book rows, the glass surfaces, and the nav's active state (now the dot alone). Merging is Aaron's call.
 
 ### Critical files for implementation
 - /Users/asulbaran21/Personal Projects/aaron-portfolio-website/docs/label-face-spec.md
@@ -886,11 +896,17 @@ git commit -m "Tests: label-face contrast pass in both themes; band-still regene
 
 ## Notes for the caller (outside the plan)
 
+- **All six edits are in:**
+  1. The Task 9 grid row now reads old `className="grid"`, new `className="grid items-baseline"`.
+  2. The preview port is 3260 everywhere.
+  3. `inPair` is measured between the text ranges. I also measured `afterQuestion` text to text (the question's text right edge to "Play it"'s text left edge), because the `-mx-2` that `controls` adds would shift box-based measurements the same way.
+  4. `.first()` is added to the pill label lookup in Task 6 and to the three capsule lookups in Task 8.
+  5. Every intermediate run uses `E2E_BASE_URL=http://localhost:3260`. The full run uses `CI=1` after the `lsof` check, and the 3260 server is stopped first because the full run rebuilds the same `.next`.
+  6. The worktree is cut from `origin/main` once `git branch -r --merged origin/main` shows `wave-band-only`. Review-focus item 5 is kept, reworded for that base.
 - **Where I departed from the spec, and why:**
   - **Weight 700 in each size step.** The steps are in `fontSize`, not on the family, so the Inter fallback is bold too.
   - **`fontFeatureSettings: "normal"` on `font-label`.** This matches the lab and keeps Inter's alternates out of Profa.
   - **"Not now" is muted.** Section 5 of the spec lists it among the accent controls, but the values table and Aaron's ruling make it muted with the 40/55 percent underline. The plan follows the table.
   - **No `whitespace-nowrap` on book meta.** This prevents overflow at 390px and is otherwise the same as the lab's layout.
   - **Back link gap of 4px.** The spec doesn't give one; this is the lab's icon gap.
-- **Base branch.** The master plan bases this slice on `main` after `wave-band-only` (tier 1); your brief said `main`. If tier 1 lands first, Tasks 2, 8 and 9 will conflict in the soundtrack files (review focus item 5).
 - **`components/DefinitionModal.tsx` is imported nowhere.** It is dead code and may be worth its own cleanup task.
