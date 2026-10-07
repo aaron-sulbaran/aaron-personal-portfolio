@@ -10,12 +10,13 @@ import { GRAMMAR } from "@/lib/sections/grammar";
 // once SplitText has run, and the sticky holds. Each section lists the prose
 // it must keep, word for word.
 
-const { about, whoIAm } = siteContent;
+const { about, whoIAm, upToNow } = siteContent;
 const PROSE: Record<string, string[]> = {
   "#about": [about.heading, about.lede],
   "#who-i-am": [whoIAm.paragraph],
+  "#up-to-now": [upToNow.heading, ...upToNow.items],
 };
-const STICKY = ["#who-i-am"];
+const STICKY = ["#who-i-am", "#up-to-now"];
 // Decoration with transforms of its own: icons and controls' Fill copy and arrows.
 const SKIP = "svg, svg *, .fx-over, .fx-over *, .fx-arrow, .fx-arrow *";
 const squash = (text: string) => text.replace(/\s+/g, " ").trim();
@@ -122,3 +123,20 @@ for (const id of STICKY) {
     expect(past.heldTop).toBeLessThan(stickyTop - 50);
   });
 }
+
+test("sections: an Up to now item below the fold is masked before its band and risen once scrolled past it", async ({ page }) => {
+  await openHome(page);
+  await blocksIn(page, "armed");
+  const item = page.locator('#up-to-now [data-sections-block="item"]').last();
+  const lift = () =>
+    item.locator("[data-sections-text]").evaluate((el) => {
+      const transform = getComputedStyle(el).transform;
+      return transform === "none" ? 0 : new DOMMatrixReadOnly(transform).m42;
+    });
+  expect(await page.evaluate(() => window.scrollY)).toBe(0);
+  expect(await lift(), "below its mask before its band").toBeGreaterThan(10);
+  const top = await item.evaluate((el) => el.getBoundingClientRect().top + window.scrollY);
+  // Its top at 30 percent of the viewport: past the band's end (60, less the 6 an item follows by).
+  await scrollToY(page, Math.round(top - page.viewportSize()!.height * 0.3));
+  await expect.poll(async () => Math.abs(await lift()) < 0.5, { message: "the words in place once the scrub has caught up" }).toBe(true);
+});
