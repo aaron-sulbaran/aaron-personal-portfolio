@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { CTA_CLASS, CTA_OVER_CLASS, FILL, FILL_PICK, arrowShift, farCorner, fillVars, iconOrigin, seedInsets } from "./fill";
 
@@ -51,5 +52,16 @@ describe("Aaron's pick, 2026-10-06", () => {
     expect(CTA_CLASS).toContain("h-11");
     expect(CTA_CLASS).toContain("text-label-lg");
     expect(CTA_OVER_CLASS).toBe("flex items-center gap-3 pl-5 pr-1.5");
+  });
+});
+
+describe("globals.css carries the same clock", () => {
+  const css = readFileSync(new URL("../../app/globals.css", import.meta.url), "utf8");
+  it("registers --fx-p and sets the pick's duration, curve and radius", () => {
+    expect(css).toMatch(/@property --fx-p \{\s*syntax: "<number>";\s*inherits: true;\s*initial-value: 0;\s*\}/);
+    expect(css).toContain(`--fx-ms: ${FILL.durationMs}ms;`);
+    expect(css).toContain(`--fx-ease: ${FILL.ease};`);
+    expect(css).toContain(`--fx-rect-radius: ${FILL.rectRadiusPx}px;`);
+    expect(css).toMatch(/prefers-reduced-motion: reduce\) \{\s*\.fx \{\s*transition-duration: 0s !important;/);
   });
 });
