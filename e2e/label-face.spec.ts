@@ -1,5 +1,6 @@
 import type { CDPSession, Locator, Page } from "@playwright/test";
 import { siteContent } from "@/lib/content";
+import { SEEN_STORAGE_KEY } from "@/lib/home/seen";
 import { capsuleText } from "@/lib/waveform/dock";
 import { test, expect } from "./support/fixtures";
 import { openHome } from "./support/coil";
@@ -246,4 +247,38 @@ test("label face: role lines sit under their titles, 14px on the case page and 6
     slot: slot.getBoundingClientRect().height,
   }));
   expect(fit.block, "title block within the logo slot's height").toBeLessThanOrEqual(fit.slot);
+});
+
+const rowLayout = (page: Page) =>
+  page.locator("#work .book-row").evaluateAll((rows) =>
+    rows.map((row) => {
+      const [title, meta] = [row.children[0], row.children[1]].map((el) => el.getBoundingClientRect());
+      const box = row.getBoundingClientRect();
+      const s = getComputedStyle(row);
+      const inner = box.width - parseFloat(s.paddingLeft) - parseFloat(s.paddingRight);
+      return {
+        text: row.textContent,
+        wrap: s.flexWrap,
+        wrapped: meta.top >= title.bottom - 1,
+        fits: title.width + 14 + meta.width <= inner + 0.5,
+      };
+    }),
+  );
+
+test("label face: a row's meta wraps under its title only when the two do not fit, and a seen row dims it to 0.75", async ({ page }) => {
+  await page.addInitScript((key) => sessionStorage.setItem(key, JSON.stringify(["capital-one-pm"])), SEEN_STORAGE_KEY);
+  for (const viewport of [{ width: 1024, height: 768 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(viewport);
+    await page.goto("/");
+    await settled(page);
+    for (const row of await rowLayout(page)) {
+      expect(row.wrap).toBe("wrap");
+      expect(row.wrapped, `${viewport.width}: ${row.text}`).toBe(!row.fits);
+    }
+  }
+  const meta = page.locator("#work .book-row").getByText(siteContent.book.workRows.find((r) => r.key === "capital-one-pm")!.meta, { exact: true });
+  await page.mouse.move(1, 1);
+  await expect.poll(() => meta.evaluate((el) => Number(getComputedStyle(el).opacity))).toBeCloseTo(0.75, 2);
+  await meta.hover();
+  await expect.poll(() => meta.evaluate((el) => Number(getComputedStyle(el).opacity))).toBe(1);
 });
