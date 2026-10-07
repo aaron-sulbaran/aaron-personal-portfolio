@@ -135,7 +135,7 @@ const values = {
     greetingShift: 0.02,
     pad: 0.04,
     inkGain: 2.2,
-    stillInk: 0.9,
+    stillInk: 1,
   },
 
   // Header.
