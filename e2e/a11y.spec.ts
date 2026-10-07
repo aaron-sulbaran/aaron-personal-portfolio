@@ -67,7 +67,7 @@ test("a11y: nothing focusable sits inside aria-hidden, and every reachable contr
 });
 
 for (const colorScheme of ["light", "dark"] as const) {
-  test(`a11y: every label-face text on the page meets 4.5:1 in ${colorScheme}`, async ({ page }) => {
+  test(`a11y: every label-face text in main and the footer meets 4.5:1 in ${colorScheme}`, async ({ page }) => {
     await page.emulateMedia({ colorScheme });
     await page.addInitScript((key) => sessionStorage.setItem(key, JSON.stringify(["capital-one-pm"])), SEEN_STORAGE_KEY);
     await openHome(page);
@@ -103,7 +103,7 @@ for (const colorScheme of ["light", "dark"] as const) {
       }
       return { checked, failures };
     });
-    expect(report.checked, "label-face texts measured").toBeGreaterThan(15);
+    expect(report.checked, "label-face texts measured (26 on 2026-10-06)").toBeGreaterThanOrEqual(24);
     expect(report.failures, "label-face texts under 4.5:1").toEqual([]);
   });
 }
