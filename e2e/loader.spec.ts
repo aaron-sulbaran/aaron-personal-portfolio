@@ -180,6 +180,113 @@ test("loader: the resting lockup is the canvas lockup at the hand-off", async ({
   await expectSeamlessHandoff(page, "resting", 12);
 });
 
+// A scene slow to take the resting lockup (a software GPU, a throttled CPU, a
+// tab restored in the background) while the page moves under the hold: the
+// scroll lock stops wheels and swipes, not a script, an anchor jump or
+// find-in-page. ?coildebug=slowscene holds the hand-off for 1.5s; the page
+// jumps to 1800px at 300ms. Every frame from the jump to the hand-off: no
+// "Hi, I'm" on screen under a fixed ancestor, so nothing of the hero floats
+// over the book.
+type RestFrame = { t: number; y: number; state: string | null; floating: { cls: string; top: number }[] };
+
+test("loader: the resting lockup stays with the hero when the page moves before the scene takes it", async ({ page }) => {
+  await page.goto("/?coildebug=1");
+  await waitForCoil(page);
+  await page.addInitScript(
+    ({ scrollAt, scrollTo }) => {
+      const frames: RestFrame[] = [];
+      (window as unknown as { __restFrames: RestFrame[] }).__restFrames = frames;
+      const underFixed = (el: Element) => {
+        for (let node: Element | null = el; node; node = node.parentElement) {
+          if (getComputedStyle(node).position === "fixed") return true;
+        }
+        return false;
+      };
+      const floating = () => {
+        const found: RestFrame["floating"] = [];
+        const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+        for (let text = walker.nextNode(); text; text = walker.nextNode()) {
+          const el = text.parentElement;
+          if (!el || !(text.textContent ?? "").trimStart().startsWith("Hi, I'm")) continue;
+          if (!el.checkVisibility({ opacityProperty: true, visibilityProperty: true })) continue;
+          const r = el.getBoundingClientRect();
+          const onScreen = r.width > 1 && r.height > 1 && r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth;
+          if (onScreen && underFixed(el)) found.push({ cls: el.className, top: Math.round(r.top) });
+        }
+        return found;
+      };
+      let jumped = false;
+      const sample = () => {
+        const now = performance.now();
+        if (!jumped && now >= scrollAt && document.body) {
+          jumped = true;
+          window.scrollTo({ top: scrollTo, behavior: "instant" });
+        }
+        const state = document.querySelector<HTMLElement>(".coil-loader")?.dataset.state ?? null;
+        if (jumped) frames.push({ t: now, y: Math.round(window.scrollY), state, floating: floating() });
+        if (state !== "gone" && frames.length < 3000) requestAnimationFrame(sample);
+      };
+      requestAnimationFrame(sample);
+    },
+    { scrollAt: 300, scrollTo: 1800 },
+  );
+  await page.goto("/?coildebug=slowscene=1500");
+  await waitForCoil(page);
+
+  const frames = await page.evaluate(() => (window as unknown as { __restFrames: RestFrame[] }).__restFrames);
+  const held = frames.filter((f) => f.state === "rest" && f.y > 1000);
+  expect(held.length, "frames of the resting hold with the page moved down").toBeGreaterThan(2);
+  const floating = frames.filter((f) => f.state !== "gone" && f.floating.length > 0);
+  const first = floating[0];
+  expect(
+    floating.length,
+    first ? `frames with a fixed "Hi, I'm" on screen (first at ${first.t.toFixed(0)}ms, y ${first.y}: ${JSON.stringify(first.floating)})` : "",
+  ).toBe(0);
+
+  // The hand-off still happened, from the resting hold, once the scene could take it.
+  const events = await page.evaluate(() => (window as HookWindow).__coilLoader!.events.map((e) => e.event));
+  expect(events).toContain("rest");
+  expect(events).toContain("handoff");
+  expect(events).not.toContain("handoff-gave-up");
+  expect(events).not.toContain("100");
+  await expect(page.locator(".coil-loader")).toBeHidden();
+  expect(frames.at(-1)!.state, "the loader handed off").toBe("gone");
+});
+
+// The same hold, and the visitor goes down and comes back before the scene
+// takes the lockup: away, the resting lockup moved with the hero; back at
+// the top, it is the canvas lockup again, pixel for pixel, at the hand-off.
+test("loader: a page moved and brought back during the resting hold still hands off pixel for pixel", async ({ page }) => {
+  await page.goto("/?coildebug=1");
+  await waitForCoil(page);
+  await page.goto("/?coildebug=slowscene=1500,handoff,at=3");
+  await page.waitForFunction(
+    () => {
+      const w = window as HookWindow;
+      return (
+        !!w.__coilLoader?.events.some((e) => e.event === "rest") &&
+        !!w.__coilLoader.finish &&
+        !!w.__coil?.api.nameRect() &&
+        document.querySelector<HTMLElement>("section[data-scene]")?.dataset.scene === "on"
+      );
+    },
+    null,
+    { timeout: 30_000 },
+  );
+  const greetTop = () => page.evaluate(() => document.querySelector(".coil-loader__rest-greet")!.getBoundingClientRect().top);
+  const atTop = await greetTop();
+  await page.evaluate(() => window.scrollTo({ top: 1800, behavior: "instant" }));
+  await page.waitForFunction(() => Math.abs(window.scrollY - 1800) < 1);
+  const away = await greetTop();
+  expect(away - atTop, "the resting greeting moved with the page, px").toBeCloseTo(-1800, 0);
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
+  await page.waitForFunction(() => window.scrollY === 0);
+  expect(await greetTop(), "the resting greeting back at the top, px").toBeCloseTo(atTop, 0);
+  // Past the slow scene's hold, so the finish lands the hand-off in its own task.
+  await page.waitForFunction(() => performance.now() > 1600);
+  await expectSeamlessHandoff(page, "scrolled back", 12);
+});
+
 test("loader: a cached load never shows the pane, and the scroll lock releases exactly once", async ({ page }) => {
   await page.goto("/?coildebug=1");
   await waitForCoil(page);

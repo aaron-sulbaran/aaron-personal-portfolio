@@ -1,7 +1,7 @@
 import { gsap } from "@/lib/gsap";
 import { siteEase } from "@/lib/coil/motion";
 import { siteContent } from "@/lib/content";
-import { LOADER, coilDebugFlags, displayPercent, homeLoad, reportHomeLoad } from "@/lib/loader/progress";
+import { LOADER, coilDebugFlags, displayPercent, homeLoad, reportHomeLoad, slowSceneMs } from "@/lib/loader/progress";
 import { landName, nameTarget, type NameTarget } from "@/lib/loader/handoff";
 import {
   greetingColor,
@@ -64,7 +64,10 @@ export function runLoader(
   const tally = homeLoad();
   // ?coildebug=handoff: the hand-off waits on window.__coilLoader.finish()
   // (cards held back), to compare the frames either side of it.
-  const holdHandoff = coilDebugFlags(window.location.search).has("handoff");
+  const debugFlags = coilDebugFlags(window.location.search);
+  const holdHandoff = debugFlags.has("handoff");
+  // ?coildebug=slowscene: the scene cannot take the lockup before this time.
+  const sceneTakesAt = slowSceneMs(debugFlags) ?? 0;
   let metrics: LockupMetrics = PROFA_METRICS;
   let disposed = false;
   let raf = 0;
@@ -124,7 +127,7 @@ export function runLoader(
     const attempt = () => {
       raf = 0;
       if (disposed) return;
-      if (sceneShown() && landName()) {
+      if (sceneShown() && performance.now() >= sceneTakesAt && landName()) {
         gone();
         note("handoff");
         return;
