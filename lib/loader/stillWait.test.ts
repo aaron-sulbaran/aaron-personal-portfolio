@@ -95,4 +95,21 @@ describe("the wait for the still's fade", () => {
     vi.advanceTimersByTime(GUARD * 2);
     expect(unstarted.leave).not.toHaveBeenCalled();
   });
+
+  it("tells onStart when the fade starts, once, and never after it has left or been disposed", () => {
+    const onStart = vi.fn();
+    const leave = vi.fn();
+    const wait = createStillWait({ fadeMs: FADE, slackMs: SLACK, startGuardMs: GUARD, timers: fakeTimers(), leave, onStart });
+    expect(onStart).not.toHaveBeenCalled();
+    wait.started();
+    expect(onStart).toHaveBeenCalledTimes(1);
+    wait.ended();
+    wait.started();
+    expect(onStart).toHaveBeenCalledTimes(1);
+    const disposed = vi.fn();
+    const other = createStillWait({ fadeMs: FADE, slackMs: SLACK, startGuardMs: GUARD, timers: fakeTimers(), leave, onStart: disposed });
+    other.dispose();
+    other.started();
+    expect(disposed).not.toHaveBeenCalled();
+  });
 });

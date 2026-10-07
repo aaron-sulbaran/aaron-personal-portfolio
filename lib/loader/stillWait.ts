@@ -5,7 +5,8 @@
 // and React's commit of data-still-ready cannot let the lockup leave
 // mid-fade); and should the fade never start (no :has(), the still already
 // at full opacity), at the start guard. leave runs at most once; dispose
-// clears everything and nothing leaves after it.
+// clears everything and nothing leaves after it. onStart hears the fade's
+// start (the resting lockup's ink eases with it, lib/loader/inkEase.ts).
 
 export type StillWaitTimers = {
   set: (fn: () => void, ms: number) => number;
@@ -18,6 +19,7 @@ export type StillWaitOptions = {
   startGuardMs: number;
   timers: StillWaitTimers;
   leave: () => void;
+  onStart?: () => void;
 };
 
 export type StillWait = {
@@ -27,7 +29,7 @@ export type StillWait = {
   dispose: () => void;
 };
 
-export function createStillWait({ fadeMs, slackMs, startGuardMs, timers, leave }: StillWaitOptions): StillWait {
+export function createStillWait({ fadeMs, slackMs, startGuardMs, timers, leave, onStart }: StillWaitOptions): StillWait {
   let done = false;
   let timer = 0;
   const arm = (ms: number) => {
@@ -46,7 +48,9 @@ export function createStillWait({ fadeMs, slackMs, startGuardMs, timers, leave }
   arm(startGuardMs);
   return {
     started: () => {
-      if (!done) arm(fadeMs + slackMs);
+      if (done) return;
+      arm(fadeMs + slackMs);
+      onStart?.();
     },
     ended: finish,
     cancelled: finish,

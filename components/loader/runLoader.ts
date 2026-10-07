@@ -5,6 +5,8 @@ import { LOADER, coilDebugFlags, displayPercent, homeLoad, reportHomeLoad, slowS
 import { landName, nameTarget, type NameTarget } from "@/lib/loader/handoff";
 import { loaderEnd, stillPoster, type StillPoster } from "@/lib/loader/still";
 import { createStillWait } from "@/lib/loader/stillWait";
+import { createInkEase, type InkEase } from "@/lib/loader/inkEase";
+import { COIL } from "@/lib/coil/constants";
 import { HERO_HEADING_ID } from "@/components/home/HeroText";
 import {
   greetingColor,
@@ -15,7 +17,7 @@ import {
   landingTransform,
   parseRgb,
 } from "@/lib/loader/continuity";
-import { NUM_ARITH, PROFA_METRICS, inkSpan, lockupMetrics, lockupVars, type LockupMetrics } from "@/lib/loader/lockup";
+import { LOADER_LOCKUP, NUM_ARITH, PROFA_METRICS, inkSpan, lockupMetrics, lockupVars, type LockupMetrics } from "@/lib/loader/lockup";
 import { debugLog } from "./loaderDebug";
 
 // The loader's imperative run, outside React: one rAF loop easing the fill
@@ -81,6 +83,7 @@ export function runLoader(
   let endBegan = 0;
   let stillTimer = 0;
   let stopStillWait = () => {};
+  let ink: InkEase | null = null;
   const note = debugLog(root);
   note("run", { reduced, items: tally ? tally.progress() : null });
 
@@ -238,7 +241,8 @@ export function runLoader(
   // No scene can run. Once the still has decoded, the pane (if it showed)
   // fades off the resting lockup; then the still fades in UNDER the resting
   // lockup over stillFadeMs (loaderMarkup.ts lifts its hold on
-  // data-dissolve) and the lockup leaves in one frame when that fade ends.
+  // data-dissolve) while the lockup's ink eases to the h1's (lib/loader/inkEase.ts),
+  // and the lockup leaves in one frame onto the h1 when that fade ends.
   // A still that fails to decode, or not within handoffGiveUpMs: the plain
   // fade, and the h1 carries the hero.
   function dissolve(poster: StillPoster) {
@@ -253,19 +257,24 @@ export function runLoader(
     };
     const handTo = () => {
       if (disposed) return;
+      ink?.settle();
       stopStillWait();
       gone();
       note("still-handoff");
     };
-    // The lockup leaves when the still's own fade ends; the backup timer
-    // runs from the fade's transitionrun, not from here (lib/loader/stillWait.ts).
+    // The lockup leaves when the still's own fade ends (?coildebug=handoff:
+    // on finish()); the ink and the backup timer run from the fade's
+    // transitionrun, not from here (lib/loader/stillWait.ts).
     const afterStillFade = () => {
       const still = document.querySelector<HTMLElement>("[data-hero-still]");
+      const layer = root.querySelector<HTMLElement>(LOADER_LOCKUP.layer);
+      ink = createInkEase(layer, () => getComputedStyle(layer!).opacity, COIL.lockup.stillInk, LOADER.stillFadeMs);
       const wait = createStillWait({
         fadeMs: LOADER.stillFadeMs, slackMs: LOADER.stillFadeSlackMs,
         startGuardMs: LOADER.stillFadeMs + LOADER.stillFadeSlackMs + LOADER.handoffGiveUpMs,
         timers: { set: (fn, ms) => window.setTimeout(fn, ms), clear: (id) => window.clearTimeout(id) },
-        leave: handTo,
+        leave: holdHandoff ? () => {} : handTo,
+        onStart: ink.start,
       });
       const phases: Record<string, () => void> = { transitionrun: wait.started, transitionend: wait.ended, transitioncancel: wait.cancelled };
       const onPhase = (event: Event) => {
@@ -283,8 +292,8 @@ export function runLoader(
       root.setAttribute("data-dissolve", "");
       note("dissolve");
       reveal(performance.now() + LOADER.stillFadeMs, false);
+      afterStillFade();
       if (holdHandoff) exposeFinish(handTo);
-      else afterStillFade();
     };
     const begin = () => {
       if (!paneShown) return under();
@@ -369,6 +378,7 @@ export function runLoader(
     window.clearTimeout(holdTimer);
     window.clearTimeout(stillTimer);
     stopStillWait();
+    ink?.cancel();
     timeline?.kill();
   };
 }
