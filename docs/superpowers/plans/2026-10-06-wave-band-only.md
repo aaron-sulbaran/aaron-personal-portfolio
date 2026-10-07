@@ -4,11 +4,16 @@
 
 **Goal:** Take the rejected horizon strip, sweep, duck and pill condense off `main`. What remains is the band as it was before PR 21, plus the pill at its dock, introduced by a 300ms fade.
 
-**Architecture:** This is a deletion behind the engine split. The conductor keeps the field, loop, audio sample, regime and conveyor (the band uses the conveyor for scroll travel and idle drift through `phase`). It loses the sweep. The band view loses the track transit. The pill's arrival becomes an opacity fade. It is driven by the band's existing IntersectionObserver, which now also reports "passed": the bottom edge has gone above the header bar's 72px line. `contrast.ts` (read only by its own test) and `probe.ts` (horizon and sweep readers only) are deleted. The footer's dock padding stays.
+**Architecture:**
+- **Deleted:** the horizon, sweep, track, duck, contrast and probe modules, their unit tests and e2e specs. The condense is unmounted.
+- **Untouched, apart from dead imports and the code that only served them:** `waveConductor`, `waveView`, `dots`, `layout` and `field`. Wave-path rewrites those.
+- **The conductor** keeps the field, loop, audio sample, regime and conveyor. The band uses the conveyor for scroll travel and idle drift through `phase` (PR 20). The sweep becomes PR 20's stub.
+- **The pill's arrival** becomes an opacity fade. It is driven by the band's existing IntersectionObserver, which now also reports "passed": the band's bottom edge is above the header bar's 72px line.
+- **Test isolation:** this slice also lands e2e port isolation for every later slice.
 
 **Tech Stack:** Next 16, React 19, TypeScript strict, Tailwind 3.4, GSAP 3.15, vitest, Playwright (muted Chromium).
 
-**Spec:** `docs/waveform-build-log-2026-10-05.md` ("Status after Aaron's hardware pass"); `docs/superpowers/plans/2026-10-06-first-public-edition.md` section 6, decision 1.
+**Spec:** `docs/waveform-build-log-2026-10-05.md` ("Status after Aaron's hardware pass"); `docs/superpowers/plans/2026-10-06-first-public-edition.md` section 6, decision 1, and section 1 (tier 1 scope).
 
 ## Global Constraints
 
@@ -22,17 +27,20 @@
 - **`prefers-reduced-motion` is respected globally.**
 - Wave: one conductor steps the field and views only paint.
 - Z scale: content 10, SiteNav 30, scrim 35, pill and panel 40, PlaybackPill 45, modals 50, flight 55, loader 60, cursor 100.
-- No agent action may trigger a Vercel production build; never `vercel deploy`.
-- Builders stop only processes they started; never `pkill`, `killall` or a port they did not open.
+- No agent action may trigger a Vercel production build; never `vercel deploy`. Stop only processes you started; never `pkill` or `killall`.
 - Commits end with a blank line and `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
+- **Serving this slice for e2e (port 3290):**
+  - Run `NEXT_PUBLIC_SITE_MODE=full pnpm build && pnpm start -p 3290` in the background, and stop that PID before every rebuild.
+  - Then run `E2E_BASE_URL=http://localhost:3290 pnpm test:e2e <spec> --project=chromium`.
+  - The full run is Task 3's: `CI=1`, after an `lsof` check.
 
 ## Review Focus
 
-1. **Port collision.** Another worktree is already serving 3140 or 3141, so `reuseExistingServer` would run this suite against that build. Expected: the final run refuses to reuse it. Pinned in Task 3, step 1.
-2. **Deep load at `#about`.** The observer's first callback must report "passed", so the pill fades in with no scroll. Pinned in Task 1 (deep-load test).
-3. **Turning back mid-fade.** The fade must reverse from the opacity it has, with no flash and no jump. Pinned in Task 1 (reversal test).
-4. **Crossing the phone breakpoint while past the band.** The pill disappears on a phone and fades back in on desktop. Pinned in Task 1 (breakpoint test).
-5. **Declined visitor on desktop.** The freeze toggle must not be a dead control, but a frozen wave can still be let go. Pinned in Task 2 (decline test).
+1. **Another worktree serving 3140 or 3141.** `reuseExistingServer` would test that build instead of this one. Pinned by Task 2's port variables and Task 3's procedure.
+2. **Deep load at `#about`.** The observer's first callback must report "passed", so the pill fades in with no scroll. Pinned in Task 1.
+3. **Turning back mid-fade.** The fade reverses from the opacity it has, with no flash. Pinned in Task 1.
+4. **Crossing the phone breakpoint while past the band.** The pill goes away, then fades back in. Pinned in Task 1.
+5. **Declined visitor on desktop.** The freeze toggle must not be a dead control, but a frozen wave can still be let go. Pinned in Task 2.
 
 ---
 
@@ -44,7 +52,7 @@
 - Delete: `components/soundtrack/usePillArrival.ts`
 
 **Interfaces:**
-- Produces: `bandPassed(bottom: number, rootTop: number | null, intersecting: boolean): boolean`; `DOCK.fadeMs = 300`; `DOCK.headerPx = 72`; `usePillFade(target: RefObject<HTMLElement | null>, shown: boolean): { present: boolean; landed: boolean }`; `bandBottomAt(page, y)` in `e2e/support/wave.ts`.
+- Produces: `bandPassed(bottom: number, rootTop: number | null, intersecting: boolean): boolean`; `DOCK.fadeMs = 300`; `DOCK.headerPx = 72`; `usePillFade(target: RefObject<HTMLElement | null>, shown: boolean): { present: boolean; landed: boolean }`; `bandBottomAt(page, y)`.
 
 - [ ] **Step 1: Worktree**
 
@@ -54,7 +62,7 @@ cd "/Users/asulbaran21/Personal Projects/.worktrees/aaron-portfolio-website-wave
 ```
 Every later command runs from this worktree's root.
 
-- [ ] **Step 2: Failing unit test.** In `lib/waveform/dock.test.ts`, change the import to `import { bandPassed, capsuleName, capsuleText, dockLabel, dockMode } from "./dock";` and replace the test "the arrival source is taken once" with:
+- [ ] **Step 2: Failing unit test.** In `dock.test.ts`, import `bandPassed` (drop `setDockSource` and `takeDockSource`). Replace "the arrival source is taken once" with:
 
 ```ts
   it("the band is passed once its bottom edge is above the header bar, never while it shows or lies below", () => {
@@ -68,23 +76,13 @@ Every later command runs from this worktree's root.
 
 - [ ] **Step 3: Run** `pnpm vitest run lib/waveform/dock.test.ts`. Expected: FAIL, `bandPassed is not a function`.
 
-- [ ] **Step 4: Implement in `lib/waveform/dock.ts`.**
-  - Delete `setDockSource`, `takeDockSource`, the `docked` store (`getDocked`, `setDocked`, `subscribeDocked`) and their comments.
+- [ ] **Step 4: Implement** in `dock.ts`:
+  - Delete `setDockSource`, `takeDockSource` and the `docked` store (`getDocked`, `setDocked`, `subscribeDocked`) with their comments.
   - Change the `reached` comment to `// the band's bottom edge is above the header bar (bandPassed)`.
-  - Replace `DOCK` and add `bandPassed`:
+  - In `DOCK`, replace `arriveMs` and `arriveAtSweep` with `fadeMs: 300,` and `headerPx: 72, // the header bar: a band tucked under it is already out of view`.
+  - Add:
 
 ```ts
-export const DOCK = {
-  holdMs: 2600,
-  collapseMs: 360,
-  fadeMs: 300,
-  headerPx: 72, // the header bar: a band tucked under it is already out of view
-  capsulePx: 36,
-  hitPx: 44,
-  baselineFromBottomPx: 72,
-  insetPx: 24, // the header mark's sm:left-6, so the mark and the pill share one left edge
-};
-
 // The reader has scrolled past the band: its bottom edge is above the header
 // bar's line. A band below the viewport (the hero, the book) is not passed.
 export function bandPassed(bottom: number, rootTop: number | null, intersecting: boolean): boolean {
@@ -92,7 +90,7 @@ export function bandPassed(bottom: number, rootTop: number | null, intersecting:
 }
 ```
 
-- [ ] **Step 5: Run** `pnpm vitest run lib/waveform/dock.test.ts`. Expected: PASS.
+- [ ] **Step 5: Run** the same command. Expected: PASS.
 
 - [ ] **Step 6: Failing e2e.**
   - Add to `e2e/support/wave.ts`:
@@ -104,9 +102,10 @@ export async function bandBottomAt(page: Page, y: number) {
   await scrollToY(page, Math.round(top));
 }
 ```
-  - In `e2e/soundtrack.spec.ts`, delete these tests: "dock: the first arrival condenses out of the pressed control…", "dock: after \"Not now\" the first arrival condenses…", "dock: an unanswered first trip condenses…", "dock: a declined later trip condenses…", "dock: a deep load at #about rises into place…", "dock: scrolling back above the threshold returns the pill…".
-  - Also delete `near`, `arrival`, `condense`, `SOURCE_PX`, `NOT_NOW`, `VISIBLE_CONTROLS` and `VISIBLE_NOTE`.
-  - Import `bandBottomAt` from `./support/wave`, then add:
+  - In `e2e/soundtrack.spec.ts`:
+    - Delete the tests "dock: the first arrival condenses…", "dock: after \"Not now\" the first arrival condenses…", "dock: an unanswered first trip condenses…", "dock: a declined later trip condenses…", "dock: a deep load at #about rises into place…" and "dock: scrolling back above the threshold returns the pill…".
+    - Delete the helpers `near`, `arrival`, `condense`, `SOURCE_PX`, `NOT_NOW`, `VISIBLE_CONTROLS` and `VISIBLE_NOTE`.
+    - Import `bandBottomAt`, then add:
 
 ```ts
 // The introduction: an opacity fade at the dock once the band's bottom edge is
@@ -188,7 +187,7 @@ test("dock: a phone width removes the pill and desktop fades it back in", async 
 });
 ```
 
-- [ ] **Step 7: Run** `pnpm test:e2e e2e/soundtrack.spec.ts --project=chromium -g "dock:"`. Expected: FAIL. The fade-in samples carry the condense's inline transform, and the deep load rises 12px.
+- [ ] **Step 7: Run.** Serve on 3290 (Global Constraints), then `E2E_BASE_URL=http://localhost:3290 pnpm test:e2e e2e/soundtrack.spec.ts --project=chromium -g "dock:"`. Expected: FAIL. The fade-in samples carry the condense's inline transform, and the deep load rises 12px.
 
 - [ ] **Step 8: Implement.** Create `components/soundtrack/usePillFade.ts`:
 
@@ -264,19 +263,19 @@ export function usePillFade(target: RefObject<HTMLElement | null>, shown: boolea
 }
 ```
 
-  - `PlaybackPill.tsx`: replace the `usePillArrival` import with `import { usePillFade } from "./usePillFade";`. Replace the call with `const { present, landed } = usePillFade(wrapperRef, shown);`. In the header comment, replace "it condenses out of the band control the visitor pressed (usePillArrival), lands open" with "it fades in at its dock once the band has left the viewport (usePillFade), opens".
+  - `PlaybackPill.tsx`: import `usePillFade` in place of `usePillArrival`, and call `const { present, landed } = usePillFade(wrapperRef, shown);`. In the header comment, replace "it condenses out of the band control the visitor pressed (usePillArrival), lands open" with "it fades in at its dock once the band has left the viewport (usePillFade), opens".
   - `BandInvite.tsx`:
     - Delete the `lib/waveform/dock` import, the `docked` line and the header paragraph about the arrival source.
-    - Make `act` just `moveFocus.current = event.currentTarget.dataset.focusTo === "note" ? "note" : "control"; write();`.
-    - Give the controls `div` `className="grid"`.
+    - `act`'s body becomes `moveFocus.current = event.currentTarget.dataset.focusTo === "note" ? "note" : "control"; write();`.
+    - The controls `div` takes `className="grid"`.
   - `BandStage.tsx`:
-    - Replace the `inView` state with `const [band, setBand] = useState({ inView: false, passed: false });`.
-    - Make the observer callback `([entry]) => setBand({ inView: entry.isIntersecting, passed: bandPassed(entry.boundingClientRect.bottom, entry.rootBounds?.top ?? null, entry.isIntersecting) })` and its rootMargin `` `-${DOCK.headerPx}px 0px 0px 0px` ``.
-    - Change the JSX to `<WaveCanvas active={band.inView} frozen={frozen} />` and `<PlaybackPill reached={band.passed} />`.
-    - Delete `const reached = …`, the `useDockReached` function and the `useCallback` and `RefObject` imports. Import `bandPassed`.
+    - `const [band, setBand] = useState({ inView: false, passed: false });`
+    - The observer callback becomes `([entry]) => setBand({ inView: entry.isIntersecting, passed: bandPassed(entry.boundingClientRect.bottom, entry.rootBounds?.top ?? null, entry.isIntersecting) })`, with rootMargin `` `-${DOCK.headerPx}px 0px 0px 0px` ``.
+    - JSX: `<WaveCanvas active={band.inView} frozen={frozen} />` and `<PlaybackPill reached={band.passed} />`.
+    - Delete `const reached = …`, `useDockReached`, and the `useCallback` and `RefObject` imports. Import `bandPassed`.
   - `git rm components/soundtrack/usePillArrival.ts`
 
-- [ ] **Step 9: Run** `pnpm test && pnpm tsc --noEmit && pnpm test:e2e e2e/soundtrack.spec.ts --project=chromium`. Expected: PASS.
+- [ ] **Step 9: Run** `pnpm test && pnpm tsc --noEmit`. Then rebuild and serve on 3290, and run `E2E_BASE_URL=http://localhost:3290 pnpm test:e2e e2e/soundtrack.spec.ts --project=chromium`. Expected: PASS.
 
 - [ ] **Step 10: Commit**
 
@@ -289,7 +288,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 ---
 
-### Task 2: Remove the horizon, the sweep, the duck and their probe
+### Task 2: Remove the horizon, the sweep, the duck and their probe; isolate e2e ports
 
 **Files:**
 - Delete:
@@ -297,21 +296,22 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
   - `lib/waveform/{sweep,track,duck,contrast,probe}.ts`
   - `lib/waveform/{sweep,track,duck,contrast}.test.ts`
   - `e2e/horizon.spec.ts`, `e2e/horizon-scrollbar.spec.ts`
-- Modify:
-  - `components/soundtrack/{waveConductor.ts,waveView.ts,WaveCanvas.tsx,viewParts.ts,BandStage.tsx}`
+- Modify (dead imports and horizon-only code or comments only):
+  - `components/soundtrack/{waveConductor.ts,waveView.ts,viewParts.ts,BandStage.tsx}`
   - `lib/waveform/{dots.ts,dots.test.ts,layout.ts,layout.test.ts,field.ts}`
-  - `app/globals.css`
-  - `components/{AboutIntro,WhoIAm,UpToNow,UpToNowList,Connect,Footer}.tsx`
-  - `playwright.config.ts`
-  - `e2e/soundtrack.spec.ts`, `e2e/support/{wave,dock}.ts`
+- Modify (stale comments): `lib/gsap.ts:5`, `lib/soundtrack.ts:15`, `lib/waveform/freeze.ts:4`
+- Modify (other): `app/globals.css`; `components/{AboutIntro,WhoIAm,UpToNow,UpToNowList,Connect,Footer}.tsx`; `playwright.config.ts`; `e2e/support/holding-server.mjs`; `e2e/soundtrack.spec.ts`; `e2e/support/{wave,dock}.ts`
 
 **Interfaces:**
-- Consumes: `DOCK`, `bandPassed` (Task 1).
-- Produces: `WaveConductor` without `sweep`, `setSweepTarget` or `subscribe`; `ViewOptions` without `kind`; `DotLayout` without `maxThick` and `baselineOffset`; `ACCENT_LINE` stays exported.
+- Consumes: `DOCK`, `bandPassed`.
+- Produces:
+  - `WaveConductor` without `setSweepTarget`.
+  - `E2E_FULL_PORT` and `E2E_HOLDING_PORT` env vars in `playwright.config.ts` (defaults 3140 and 3141).
+  - A holding temp dir per port.
 
 - [ ] **Step 1: Failing e2e.** In `e2e/soundtrack.spec.ts`:
-  - Set `const HOME = "/";`. Drop the `HORIZON` import. Import only `parkBand` from `./support/wave` (plus `bandBottomAt`). Delete the probe line in `scrollBandIntoView`.
-  - Replace the test "band: in flow directly under the book; the one fixed canvas is the horizon…" with:
+  - Set `const HOME = "/";`. Drop the `HORIZON` import. Import only `parkBand` and `bandBottomAt` from `./support/wave`. Delete the probe line in `scrollBandIntoView`.
+  - Replace "band: in flow directly under the book; the one fixed canvas is the horizon…" with:
 
 ```ts
 // The wave lives in the band and nowhere else: no canvas fixed to the
@@ -341,7 +341,7 @@ test("band: in flow directly under the book; no canvas is fixed to the viewport"
   expect(layout.bandTop).toBeGreaterThan(layout.bookBottom - 100);
 });
 ```
-  - Footer test: change `"footer [data-wave-avoid]"` to `"footer > div"`.
+  - Footer test: `"footer [data-wave-avoid]"` becomes `"footer > div"`.
   - Decline test: replace the freeze `toBeVisible` line with:
 
 ```ts
@@ -357,7 +357,7 @@ const bandRepaints = async (page: Page, ms: number) => {
   return (await bandPaints(page)) - before;
 };
 ```
-  - Replace the test "dock: the freeze toggle lives in the player card once music is on" with:
+  - Replace "dock: the freeze toggle lives in the player card once music is on" with:
 
 ```ts
 test("dock: the freeze toggle lives in the player card once music is on, and stops the band", async ({ page }) => {
@@ -386,7 +386,7 @@ test("dock: the freeze toggle lives in the player card once music is on, and sto
 });
 ```
   - Reduced-motion toggle test: delete its last line (the `sweep` poll).
-  - In `e2e/support/dock.ts`, import `DOCK` from `@/lib/waveform/dock` and replace `dockGeometry` with:
+  - `e2e/support/dock.ts`: import `DOCK` from `@/lib/waveform/dock` and replace `dockGeometry` with:
 
 ```ts
 // Where the capsule sits: its left edge DOCK.insetPx in, its centre on the dock's line.
@@ -397,12 +397,9 @@ export async function dockGeometry(page: Page) {
   }, DOCK.baselineFromBottomPx);
 }
 ```
-  - In `e2e/support/wave.ts`:
-    - Delete the `DUCK_SPLIT` and `WaveProbe` imports, `ProbeWindow`, `AVOID_BLOCKS`, `hasProbe`, `sweep`, `horizonPaints`, `paintedColumns`, `sweepTriggers`, `sweepTriggersCreated`, `themeOf`, `scrollHeld`, `paintsOver`, `DuckReport`, `duckReport` and `stripPixelsUnder`.
-    - Keep `BAND_PARK`, `documentTop`, `parkBand` and `bandBottomAt`.
-    - Header comment: `// Placing the page against the band.`
+  - `e2e/support/wave.ts`: keep only `BAND_PARK`, `documentTop`, `parkBand` and `bandBottomAt` (with their `Page` and `scrollToY` imports). The header becomes `// Placing the page against the band.`
 
-- [ ] **Step 2: Run** `pnpm test:e2e e2e/soundtrack.spec.ts --project=chromium -g "band:|dock: the freeze|declin"`. Expected: FAIL: `canvases fixed to the viewport` is 1, and the freeze toggle is not inert.
+- [ ] **Step 2: Run.** Serve on 3290, then `E2E_BASE_URL=http://localhost:3290 pnpm test:e2e e2e/soundtrack.spec.ts --project=chromium -g "band:|dock: the freeze|declin"`. Expected: FAIL: `canvases fixed to the viewport` is 1, and the toggle is not inert.
 
 - [ ] **Step 3: Implement.**
 
@@ -414,87 +411,49 @@ git rm components/soundtrack/horizonView.ts components/soundtrack/HorizonCanvas.
 ```
 
 `waveConductor.ts`:
-- Delete the `sweep` import, the `sweep` field, `setSweepTarget` (interface and object), and `subscribe`, `listeners` and `listeners.clear()`.
-- `regimeNow` becomes `const regimeNow = (): Regime => regimeOf(getSoundtrackState());`.
-- In `step`, delete `const sweeping = …` and `listeners.forEach(…)`, and end it with:
+- Replace the `sweep` import with PR 20's stub:
 
 ```ts
-    const calm = regime !== "reactive" && arrived && !drifting;
-    minFrameMs = calm ? SLOW_FRAME_MS : FAST_FRAME_MS;
-    return settled && !moving && !views.some((view) => view.busy());
+// Stand-in since the horizon left (wave-path rewrites this file): nothing
+// sets a sweep target, so the band stays at rest, as before PR 21.
+type SweepState = { value: number; target: number };
+const stepSweep = (): boolean => false;
 ```
-- Then:
-
-```ts
-  const running = () => !destroyed && !still && !frozen && !document.hidden && views.some((view) => view.active() || view.busy());
-```
-- Header comment: "the field, the loop, the audio sample, the regime, the clock and the scroll conveyor".
+- `stepSweep(conductor.sweep, dt)` becomes `stepSweep()`; `createSweep()` becomes `{ value: 0, target: 0 }`.
+- Delete `setSweepTarget` from the interface and the object (its only caller is gone).
 
 `waveView.ts`:
-- Imports: drop `DotLayout`, `trainX`, `layTrack` and `createHorizonView`.
-- Delete `kind` from `ViewOptions`, the `kind === "horizon"` dispatch, `xs`, `offsets`, `trackWeights`, `track`, `carveLayout`, `scratch`, `atX`, `sweepNow`, the five track lines in `measure`, and the header's train paragraph.
-- `prepare` calls `carveTargets(layout, cursor, carve);`. `paint` is:
+- Delete the imports of `trainX`, `layTrack` and `createHorizonView`, the `DotLayout` type import, the `kind === "horizon"` dispatch line, and the header's train paragraph.
+- Header: "This file is the band's view."
+- Delete the transit state that only those served: `xs`, `offsets`, `trackWeights`, `track`, `scratch`, `atX`, the four matching lines in `measure` (`xs`, `offsets`, `trackWeights`, `track` assignments), and the `carveLayout.startX = trainX(…)` line.
+- In `paint`, replace the `if (sweep === 0) { … } else { … }` block with `buildDots(conductor.field, layout, time, weights, cursor, muted, accent);`. Everything else stays.
 
-```ts
-  const paint = (time: number) => {
-    ctx.clearRect(0, 0, width, height);
-    buildDots(conductor.field, layout, time, weights, cursor, muted, accent);
-    painter.fill(muted, painter.colors.muted, alphas.muted);
-    painter.fill(accent, painter.colors.accent, alphas.accent);
-    ctx.globalAlpha = 1;
-  };
-```
-
-`WaveCanvas.tsx`: drop `kind: "band",`.
-
-`viewParts.ts`: delete `measureAvoidRects`, `inkBox` and the `Rect` import. Header: "What the band view draws with: colors read once per theme, the batched dot fills, the canvas sizing and the pointer."
+`viewParts.ts`: delete `measureAvoidRects`, `inkBox` and the `Rect` import (horizon-only). The header's first sentence becomes "What the band view (waveView.ts) draws with:".
 
 `dots.ts`:
-- Delete the `DUCK_SPLIT` import, `DuckSplit`, and the `maxThick` and `baselineOffset` fields. Keep `export const ACCENT_LINE`.
-- `buildDots` drops its `ducked` parameter:
+- Delete `import { DUCK_SPLIT } from "./duck";`, the `DuckSplit` interface and comment, the `ducked?: DuckSplit` parameter, the `if (ducked) { … }` reset, and the `under`, `toMuted` and `toAccent` lines.
+- Use `accent` and `muted` where `toAccent` and `toMuted` stood. `maxThick` and `baselineOffset` stay.
+- `dots.test.ts`: delete "a duck past half sends the column to the ducked arrays".
 
-```ts
-  muted.length = 0;
-  accent.length = 0;
-  const { columns, baseline, maxAmp } = layout;
-  for (let i = 0; i < columns; i++) {
-    const x = columnX(i);
-    const weight = weights[i] ?? 1;
-    const magnitude = FLOOR + (field.mag[i] - FLOOR) * weight;
-    const cy = baseline - field.disp[i] * weight * maxAmp;
-    const peak = magnitude > ACCENT_PEAK;
-    pushDot(magnitude > ACCENT_LINE ? accent : muted, x, cy, CENTER_RADIUS, cursor, weight);
-    const thick = Math.floor((magnitude * maxAmp) / DOT_GAP);
-    for (let k = 1; k <= thick; k++) {
-      const offset = k * DOT_GAP;
-      const fade = 1 - k / (thick + 1.5);
-      const shimmer = 0.5 + 0.5 * Math.sin(time * 6 + i * 1.3 + k * 2.1);
-      if (shimmer >= 0.5 + fade * 0.45) continue;
-      const target = k >= thick && peak ? accent : muted;
-      pushDot(target, x, cy - offset, FUZZ_RADIUS, cursor, weight);
-      pushDot(target, x, cy + offset, FUZZ_RADIUS, cursor, weight);
-    }
-  }
-```
+`layout.ts`: delete `HORIZON` and `horizonLayout` (horizon-only). `layout.test.ts`: delete `describe("horizonLayout")` and those imports.
 
-`dots.test.ts`: delete "maxThick 1 stacks…", "baselineOffset moves…" and "a duck past half…".
+`field.ts` comment only: the header's "The two views (… horizonView.ts for the strip)" becomes "The band's view (components/soundtrack/waveView.ts)".
 
-`layout.ts`: delete `HORIZON` and `horizonLayout`. `layout.test.ts`: delete `describe("horizonLayout")` and its imports.
+Stale comments:
+- `lib/gsap.ts`: "the wave's sweep (a number the wave conductor eases, never a tween), the read-along and Up to now" becomes "the read-along and Up to now".
+- `lib/soundtrack.ts`: "still line in the band, calm drift on the horizon;" becomes "still line in the band;".
+- `lib/waveform/freeze.ts`: "so the band and the horizon both stop" becomes "so the whole wave stops".
 
-`field.ts` header: "The band's view (components/soundtrack/waveView.ts) turns these into dots."
-
-`app/globals.css`: delete the `/* The horizon strip's top edge fades out… */` comment and the `.wave-horizon-mask { … }` rule.
+`app/globals.css`: delete the `/* The horizon strip's top edge fades out… */` comment and the `.wave-horizon-mask` rule.
 
 Sections and footer:
 - Delete every `data-wave-avoid` in `AboutIntro`, `WhoIAm`, `UpToNow`, `Connect` and `Footer`.
 - In `UpToNowList`, delete `data-wave-avoid`, `data-wave-avoid-pad={AVOID_PAD}` and `const AVOID_PAD = 80;`.
-- Keep the attributes in `BandInvite` and `BandStage`: the band view measures them.
-
-`playwright.config.ts`: webkit `testIgnore` becomes `/(holding|touch|soundtrack)\.spec\.ts/`.
+- `BandInvite` and `BandStage` keep theirs: the band view measures them.
 
 `BandStage.tsx`:
 - Delete the conductor layout effect, `conductorRef`, `useSweepTrigger(…)`, `<HorizonCanvas />`, the `phone` line and their imports.
-- Set `const freezable = !reduce && (music !== "off" || frozen);`.
+- `const freezable = !reduce && (music !== "off" || frozen);`
 - Header comment:
 
 ```ts
@@ -507,18 +466,20 @@ Sections and footer:
 // once declined, since nothing moves, unless the wave is frozen.
 ```
 
-- [ ] **Step 4: Run**
+`playwright.config.ts`:
+- `const FULL_PORT = Number(process.env.E2E_FULL_PORT ?? 3140);` and `const HOLDING_PORT = Number(process.env.E2E_HOLDING_PORT ?? 3141);`
+- The webkit `testIgnore` becomes `/(holding|touch|soundtrack)\.spec\.ts/`.
+- Add to the header comment: "Every slice after wave-band-only serves its own build on its own port and points the suite at it with E2E_BASE_URL; a full run sets E2E_FULL_PORT and E2E_HOLDING_PORT to the slice's own pair and uses CI=1 after an lsof check, so no run reuses another worktree's server."
 
-```bash
-pnpm test && pnpm tsc --noEmit && pnpm lint && pnpm test:e2e e2e/soundtrack.spec.ts e2e/pixels.spec.ts --project=chromium
-```
-Expected: PASS. The idle stats test still reads `MAIN_PAINTED = 4720` and the extent 60 to 100. `band-still.png` passes with `maxDiffPixels: 0`. Neither is edited.
+`e2e/support/holding-server.mjs`: `const target = join(tmpdir(), \`aaronsulbaran-e2e-holding-${port}\`);`
+
+- [ ] **Step 4: Run.** `pnpm test && pnpm tsc --noEmit && pnpm lint`, then rebuild and serve on 3290, and run `E2E_BASE_URL=http://localhost:3290 pnpm test:e2e e2e/soundtrack.spec.ts e2e/pixels.spec.ts --project=chromium`. Expected: PASS. The idle band numbers live in `soundtrack.spec.ts`, not `pixels.spec.ts` (that spec tests the pixel helpers). They still read `MAIN_PAINTED = 4720` and an extent of 60 to 100, and `band-still.png` passes at `maxDiffPixels: 0`. Neither is edited.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add -A components lib app e2e playwright.config.ts
-git commit -m "refactor(soundtrack): remove the horizon strip, the sweep, the duck and their probe
+git commit -m "refactor(soundtrack): remove the horizon strip, the sweep, the duck and their probe; e2e ports per slice
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
@@ -529,9 +490,9 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 **Files:** Modify `docs/waveform-build-log-2026-10-05.md`.
 
-- [ ] **Step 1: Port preflight.** Run `lsof -nP -iTCP:3140 -sTCP:LISTEN; lsof -nP -iTCP:3141 -sTCP:LISTEN`. Expected: no output. If another worktree holds a port, wait; never kill it.
-- [ ] **Step 2: Run** `pnpm test && pnpm tsc --noEmit && pnpm lint && CI=1 pnpm test:e2e`. Expected: all green. `CI=1` makes a busy port fail loud instead of reusing another build.
-- [ ] **Step 3: Leftovers.** Run `rg -n "horizon|sweep|DUCK|wavedebug|data-wave-avoid-pad|usePillArrival|setDockSource|getDocked" components lib app e2e`. Expected: no matches.
+- [ ] **Step 1: Ports.** Stop the 3290 server you started. Run `lsof -nP -iTCP:3290 -sTCP:LISTEN; lsof -nP -iTCP:3291 -sTCP:LISTEN`. Expected: no output. If anything else holds a port, wait; never kill it.
+- [ ] **Step 2: Run** `pnpm test && pnpm tsc --noEmit && pnpm lint && CI=1 E2E_FULL_PORT=3290 E2E_HOLDING_PORT=3291 pnpm test:e2e`. Expected: all green.
+- [ ] **Step 3: Leftovers.** Run `rg -nw "HorizonCanvas|horizonView|horizonLayout|useSweepTrigger|setSweepTarget|DUCK_SPLIT|wavedebug|__waveProbe|data-wave-avoid-pad|usePillArrival|setDockSource|getDocked|wave-horizon-mask" components lib app e2e`. Expected: no matches.
 - [ ] **Step 4: Build log.** Under "Status after Aaron's hardware pass", replace the last paragraph's final sentence with: "Removed from `main` on 2026-10-06 (`wave-band-only`): the horizon strip, the sweep, the duck, the `?wavedebug` probe and the pill's condense. The pill fades in at its dock (300ms) once the band's bottom edge passes the header bar. The guards for defects 2, 4 to 9, 14 and 17 to 19 left with the code they guarded. AGENTS.md Layer 2 is updated in `go-live`."
 - [ ] **Step 5: Commit**
 
