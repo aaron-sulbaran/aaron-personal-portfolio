@@ -12,8 +12,8 @@ export type BookEntry = { kind: "work"; row: BookWorkRow } | { kind: "photo"; ro
 // new tab) and count as seen on click; "soon" rows are plain text until they
 // have somewhere to go. Photo rows are buttons that open the photo modal
 // through the home controller, which marks them seen at close and returns
-// focus here. A seen row keeps its ring and dims its title (see fx-chrome
-// below). Hovering a list dims every other row's title (never the meta), and a
+// focus here. A seen row keeps its ring, dims its title, and dims its meta to
+// 0.75 (see fx-chrome below). Hovering a list dims every other row's title (never the meta), and a
 // row under the mouse or keyboard focus glides its card to the front of the
 // visible helix (the hover-jump; the scene ignores it when the hero is off
 // screen, unwound, or absent).
