@@ -16,6 +16,12 @@ export interface HoldingSocial {
   href: string | null;
 }
 
+export interface MetricsSlot {
+  value: string;
+  label: string;
+  sub?: string;
+}
+
 export const siteContent = {
   meta: {
     title: "Aaron Sulbaran",
@@ -205,6 +211,39 @@ export const siteContent = {
       "Building out a public voice on AI literacy, product thinking, and whatever else I'm chewing on.",
       "Always open to chatting if you're working on something interesting or just want to trade notes.",
     ],
+  },
+  // The contribution skyline inside Up to now (components/metrics). The two
+  // slots stay null until I supply a LinkedIn figure and a fun one; a null
+  // slot renders nothing.
+  metrics: {
+    groupLabel: "My GitHub contributions",
+    statsLabel: "Contribution figures",
+    streakLabel: "Current streak of contributions",
+    day: "day",
+    days: "days",
+    since: "since",
+    totalLabel: "contributions in the last 6 months",
+    activeLabel: "days I shipped something",
+    asOf: "As of",
+    slots: { linkedin: null as MetricsSlot | null, fun: null as MetricsSlot | null },
+    chart: {
+      viewGroup: "Chart view",
+      flat: "Flat",
+      skyline: "Skyline",
+      unit: "contribution",
+      units: "contributions",
+      none: "No contributions",
+      on: "on",
+      roleDescription: "interactive chart",
+      less: "Less",
+      more: "More",
+      levels: ["No contributions", "Light", "Moderate", "Heavy", "Heaviest"],
+      highlight: (level: string) => `Highlight ${level.toLowerCase()} days`,
+      hintFlat: "Hover a day for details, arrow keys to explore",
+      hintSkyline: "Drag to orbit, double-click to reset",
+      label: (total: string, from: string, to: string, skyline: boolean) =>
+        `${total} contributions from ${from} to ${to}, shown as a ${skyline ? "3D skyline" : "heat map"}. Use the arrow keys to read individual days.`,
+    },
   },
   work: {
     label: "Work",

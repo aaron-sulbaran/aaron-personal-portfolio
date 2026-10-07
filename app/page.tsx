@@ -9,6 +9,11 @@ import { HOLDING_MODE } from "@/lib/holding";
 import { HomeController } from "@/components/home/HomeController";
 import { HeroText } from "@/components/home/HeroText";
 import { Book } from "@/components/book/Book";
+import { Metrics } from "@/components/metrics/Metrics";
+
+// The contribution figures refresh once a day (lib/metrics/github.ts); a
+// literal, because Next reads segment config statically.
+export const revalidate = 86400;
 
 // The whole site is one scrolling document: the Coil hero, the book (#work),
 // the soundtrack band (#listen), About, Connect, Footer. The controller owns the
@@ -37,7 +42,7 @@ export default function Home() {
           <SoundtrackBand />
           <AboutIntro />
           <WhoIAm />
-          <UpToNow />
+          <UpToNow after={<Metrics />} />
           <Connect />
         </main>
         <Footer dock />
