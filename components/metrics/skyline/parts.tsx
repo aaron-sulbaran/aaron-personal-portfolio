@@ -31,29 +31,33 @@ export function SkylineHint({ view }: { view: View }) {
   );
 }
 
+// Hover and focus preview a level; only a press pins it, so aria-pressed
+// tracks the pin and a focused swatch is never announced as pressed.
 export function Legend({
   swatches,
-  level,
-  onLevel,
+  pinned,
+  onPin,
+  onPreview,
 }: {
   swatches: string[];
-  level: number;
-  onLevel: (update: (l: number) => number) => void;
+  pinned: number;
+  onPin: (update: (l: number) => number) => void;
+  onPreview: (level: number | null) => void;
 }) {
   return (
-    <div className="flex items-center gap-1.5 font-label text-label-sm text-muted" onMouseLeave={() => onLevel(() => -1)}>
+    <div className="flex items-center gap-1.5 font-label text-label-sm text-muted" onMouseLeave={() => onPreview(null)}>
       <span className="mr-0.5">{copy.less}</span>
       {swatches.map((c, i) => (
         <button
           key={i}
           type="button"
           aria-label={copy.highlight(copy.levels[i])}
-          aria-pressed={level === i}
+          aria-pressed={pinned === i}
           title={copy.levels[i]}
-          onMouseEnter={() => onLevel(() => i)}
-          onFocus={() => onLevel(() => i)}
-          onBlur={() => onLevel(() => -1)}
-          onClick={() => onLevel((l) => (l === i ? -1 : i))}
+          onMouseEnter={() => onPreview(i)}
+          onFocus={() => onPreview(i)}
+          onBlur={() => onPreview(null)}
+          onClick={() => onPin((l) => (l === i ? -1 : i))}
           className="h-[11px] w-[11px] cursor-pointer rounded-[2px] border-0 p-0 shadow-[inset_0_0_0_1px_var(--color-border)] transition-[background-color,transform] duration-500 hover:scale-125 focus-visible:outline-2 focus-visible:outline-offset-1 motion-reduce:transition-none"
           style={{ background: c }}
         />

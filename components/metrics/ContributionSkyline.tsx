@@ -23,7 +23,9 @@ export function ContributionSkyline({ series, view, onViewChange }: { series: Se
   }, [series]);
   const [theme, setTheme] = useState<ThemeReadout>({ dark: false, swatches: [] });
   const [active, setActive] = useState(-1);
-  const [legendLevel, setLegendLevel] = useState(-1);
+  const [pinnedLevel, setPinnedLevel] = useState(-1);
+  const [previewLevel, setPreviewLevel] = useState<number | null>(null);
+  const legendLevel = previewLevel ?? pinnedLevel;
   const [announce, setAnnounce] = useState("");
   const stageRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -86,7 +88,7 @@ export function ContributionSkyline({ series, view, onViewChange }: { series: Se
       </div>
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 pt-4 font-label text-label-sm text-muted">
         <SkylineHint view={view} />
-        {theme.swatches.length > 0 && <Legend swatches={theme.swatches} level={legendLevel} onLevel={setLegendLevel} />}
+        {theme.swatches.length > 0 && <Legend swatches={theme.swatches} pinned={pinnedLevel} onPin={setPinnedLevel} onPreview={setPreviewLevel} />}
       </div>
       <p aria-live="polite" className="sr-only">{announce}</p>
     </div>

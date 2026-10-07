@@ -152,6 +152,18 @@ test("metrics: Enter on the canvas with nothing pinned announces and shows the l
   await expect(tip).toContainText(expected);
 });
 
+test("metrics: a legend swatch previews on focus and pins only on a press", async ({ page }) => {
+  await openHome(page);
+  await scrollToY(page, await topAt(page, 0.2));
+  const swatch = block(page).getByRole("button", { name: m.chart.highlight(m.chart.levels[2]), exact: true });
+  await swatch.focus();
+  await expect(swatch).toHaveAttribute("aria-pressed", "false");
+  await page.keyboard.press("Enter");
+  await expect(swatch).toHaveAttribute("aria-pressed", "true");
+  await page.keyboard.press("Enter");
+  await expect(swatch).toHaveAttribute("aria-pressed", "false");
+});
+
 test.describe("reduced motion", () => {
   test.use({ contextOptions: { reducedMotion: "reduce" } });
   test("metrics: snaps between flat and skyline, never moving", async ({ page }) => {
