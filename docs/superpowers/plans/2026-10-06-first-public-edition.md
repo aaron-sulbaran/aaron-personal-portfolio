@@ -114,6 +114,17 @@ Slices 2a to 2d build in parallel from the same base and merge in order; 2b, 2c,
 5. **End-to-end time.** The suite builds both modes and runs about ten minutes per slice; six slices in parallel compete for the machine. Mitigation: each controller runs only the affected specs per task and the whole suite once at the end.
 6. **The audio analysis change** (levelling per column) alters the band on `main` too. Mitigation: it ships inside `wave-path` with a pixel test on the band, never in tier 1.
 
+## 7a. Findings from the slice planners (2026-10-06), each confirmed in the code
+
+- **The freeze toggle** (wave): with the horizon gone, a declined desktop visitor has nothing moving, so `wave-band-only` shows the toggle only when the music is on or already frozen (`freezable = !reduce && (music !== "off" || frozen)`); `wave-path` restores `!reduce`, because the band's run breathes after either answer.
+- **Shared test ports.** Several worktrees running e2e at once share ports 3140 and 3141, and Playwright's `reuseExistingServer: !CI` would then quietly test another slice's build. Every final run uses `CI=1` and checks the ports first; the controllers stagger their full runs.
+- **Draw speed, 4000 versus 2800.** The sections lab's "draw speed follows the lag" switch implies about 2800px/s for a 0.8s lag; wave round 6 measured and recommended 4000. Ruling: 4000 ships (it was measured against the catch-up Aaron complained about; the link was a lab switch, not a decision on the number); flagged for his veto.
+- **The pointer mix is a no-op under pluck.** "push 1, carve 0.6, swell 0.5" is read only in the lab's "blend" mode; Aaron's pick is "pluck", so those three numbers do not become constants.
+- **The idle band numbers** live in `e2e/soundtrack.spec.ts` (`MAIN_PAINTED = 4720`, extent 60 to 100px, snapshot `band-still`), not in the pixels spec. Tier 1 leaves them unchanged; `wave-path` re-pins them once for the levelling.
+- **`lib/waveform/probe.ts` and `contrast.ts` go in tier 1** (every reader is horizon or sweep; the lab's `readout.ts` also imported contrast, and the lab never merges). `conveyor.ts` stays: the band uses it.
+- **New leveller rates** for the live analyser (`rangeRate 40`, `targetRate 8` bytes per second, `warmS 3`, `warmBoost 5`) have no lab counterpart because the lab levelled offline over the whole file; they are constants and get a pixel test, and Aaron judges them on the preview port.
+- **`DefinitionModal` is dead code** (imported nowhere); a cleanup for after launch, not this edition.
+
 ## 8. Go-live steps (tier 5)
 
 1. `lib/holding.ts` default to full; `app/sitemap.ts` and `robots` follow; `/work/[slug]` no longer redirects.
