@@ -1,5 +1,5 @@
 import { test, expect } from "./support/fixtures";
-import { openHome, scrollToY } from "./support/coil";
+import { nextFrames, openHome, scrollToY } from "./support/coil";
 
 // The page's chrome: the Menu pill that grows into its panel, the music
 // note beside it, and the header bar that arrives past the hero and tucks
@@ -54,4 +54,24 @@ test("chrome: the header bar arrives past the hero and tucks away on the way dow
 
   await scrollToY(page, 1480);
   await expect(nav).not.toHaveAttribute("inert", "");
+});
+
+// A ScrollTrigger refresh switches the root to an instant scroll while it
+// measures; afterwards the root's own inline value comes back, so the
+// stylesheet decides again and a live switch to reduced motion makes anchor
+// jumps instant (globals.css), with no inline smooth left over to win.
+test("chrome: after a refresh the stylesheet owns the root's scroll behaviour again", async ({ page }) => {
+  await openHome(page);
+  for (const width of [375, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    await nextFrames(page, 3);
+  }
+  const behaviour = () =>
+    page.evaluate(() => ({
+      inline: document.documentElement.style.scrollBehavior,
+      computed: getComputedStyle(document.documentElement).scrollBehavior,
+    }));
+  expect(await behaviour()).toEqual({ inline: "", computed: "smooth" });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  expect(await behaviour()).toEqual({ inline: "", computed: "auto" });
 });
