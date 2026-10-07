@@ -7,7 +7,7 @@ export function MetricsStats({ series }: { series: GithubSeries }) {
   const { metrics } = siteContent;
   return (
     <div>
-      <dl aria-label={metrics.statsLabel} className="grid grid-cols-2 gap-x-6 gap-y-8 md:grid-cols-1">
+      <dl role="group" aria-label={metrics.statsLabel} className="grid grid-cols-2 gap-x-6 gap-y-8 md:grid-cols-1">
         {seriesStats(series).map((s) => (
           <div key={s.key} data-stat={s.key} className="flex min-w-0 flex-col-reverse gap-1.5">
             <dt className="font-label text-label-sm text-muted">
