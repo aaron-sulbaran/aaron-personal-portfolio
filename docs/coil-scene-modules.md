@@ -34,7 +34,7 @@ Every module is a factory: `createX(ctx, ...parts it calls, loop)` returns the f
 | `scene/nameProbe.ts` | QA only: the composite without the cards read back, the per-letter readout (`lib/coil/letterContrast.ts`) and lightness snapshots (`window.__coil.nameProbe`) | name |
 | `scene/cards.ts` | Slot meshes, shared card uniforms, painted faces and the repaint queue, seen levels, the helix frame, per slot poses (entrance, unwind, header band, rebuild, hidden, hover lift, seen ring), the silhouette, the card pass; `quadOf`, `flightQuadOf`, `facesOf`, `slotOfKey` | name (QA hide) |
 | `scene/hover.ts` | Picking (`pickAt`, `cardAt`), the per frame hover and the cursor bridge (`lib/cursor/hover.ts`), the flown card's lift target, the row hold and hover-jump (`focusCard`), `heroVisible` | cards, loop |
-| `scene/input.ts` | Pointer and wheel handlers over `lib/coil/capture.ts`, click and tap opening, the touch drag and its coast, the scroll, conveyor and nudge steps | cards, hover, loop |
+| `scene/input.ts` | Pointer and wheel handlers over `lib/coil/capture.ts` (plus the window scroll listener that disarms capture), click and tap opening, the touch drag and its coast, the scroll, conveyor and nudge steps | cards, hover, loop |
 | `scene/entrance.ts` | The entrance clock on the scene's time (a rebuild starts at rest), the strand held until the band opens, the end reported once, the rebuild fade | name |
 | `scene/unwind.ts` | The double-click toggle and `api.unwind`, the latch held in the frame, rows measured onto the z = 0 plane, the name's move into the list's lead | name, hover, loop |
 | `scene/flightOverlay.ts` | The flown card's own canvas and renderer on the scene canvas's pixel grid, its covers, its face copies, prewarm target, teardown | cards |

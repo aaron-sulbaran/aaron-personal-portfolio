@@ -179,6 +179,14 @@ Picked by Aaron from hero lab 2, 2026-09-29 (the build starts on these; see `doc
 - [x] The test browser is muted; an unmuted suite was playing the soundtrack through the laptop's speakers.
 - [ ] Later, Aaron's idea: once it is background, the wave reshapes into other forms (a helix echoing the hero).
 
+## 2.12 Aaron's hardware pass, 2026-10-05 (the Coil's wheel)
+
+- [x] Supersedes 2.9 and 2.10 where they say the coil owns a gesture anywhere inside the helix silhouette, gaps included. The silhouette took the wheel from empty background, and a page scroll could slide a card under a still pointer and trap the next gesture.
+- [x] The coil takes a gesture only where the cursor shows a card, or in the seam between two cards. Empty background inside the helix scrolls the page.
+- [x] The coil takes a gesture only after a real pointer move since the page last scrolled. A fresh load, or a card the page slid under a still pointer, scrolls the page.
+- [x] Once the coil has a gesture it keeps the next ones until the pointer really moves or the page scrolls. Release is unchanged: only a real move outside the silhouette.
+- [x] Still true: decided once per gesture, no delay, no hover intent, no top-of-page rule. Rules and tests: `docs/coil-input-model.md` section 3.
+
 ## 9a. Surfaced by the overnight build (2026-09-29), yours in the morning
 
 - [ ] The Profa file in `app/fonts/` is the trial cut: it draws a "personal use only" stamp for `*`, `;` and `@`. Slice 2 routes those three glyphs to the fallback font. Drop the full cut from your asset pack into `app/fonts/` (same filename or update `lib/fonts.ts`) and the workaround goes.
