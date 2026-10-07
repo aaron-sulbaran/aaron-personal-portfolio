@@ -211,7 +211,9 @@ test("metrics: a Flat click past the line survives reduced motion switched on an
 });
 
 // The swatches draw at 11px; each one's press target is 24px tall and runs
-// to the middle of the gaps either side, so neighbours never overlap.
+// to the middle of the gaps either side, so neighbours never overlap. The
+// probes stay a pixel or so inside each edge: hit testing snaps the
+// swatches' fractional positions by up to a pixel.
 test("metrics: each legend swatch takes a press across a 24px tall target that meets its neighbours", async ({ page }) => {
   await openHome(page);
   await scrollToY(page, await topAt(page, 0.2));
@@ -224,9 +226,9 @@ test("metrics: each legend swatch takes a press across a 24px tall target that m
       const b = boxes[k];
       const cx = b.left + b.width / 2;
       const cy = b.top + b.height / 2;
-      const left = k > 0 ? (boxes[k - 1].right + b.left) / 2 + 0.5 : cx;
-      const right = k < els.length - 1 ? (b.right + boxes[k + 1].left) / 2 - 0.5 : cx;
-      const probes: [number, number][] = [[cx, cy - 11.5], [cx, cy + 11.5], [left, cy], [right, cy], [left, cy - 11.5], [right, cy + 11.5]];
+      const left = k > 0 ? (boxes[k - 1].right + b.left) / 2 + 1.5 : cx;
+      const right = k < els.length - 1 ? (b.right + boxes[k + 1].left) / 2 - 1.5 : cx;
+      const probes: [number, number][] = [[cx, cy - 11], [cx, cy + 11], [left, cy], [right, cy], [left, cy - 11], [right, cy + 11]];
       for (const [x, y] of probes) if (document.elementFromPoint(x, y) !== el) out.push(`${k} at ${x.toFixed(1)},${y.toFixed(1)}`);
       if (b.width > 12 || b.height > 12) out.push(`${k} draws at ${b.width}x${b.height}`);
     });
