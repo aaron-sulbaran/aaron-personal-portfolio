@@ -1,0 +1,36 @@
+{
+  "light": {
+    "wide": {
+      "offset": 0.9375,
+      "greeting": 0.1658,
+      "lockup": 0.1806
+    },
+    "square": {
+      "offset": 0.9375,
+      "greeting": 0.0063,
+      "lockup": 0.3044
+    },
+    "narrow": {
+      "offset": 0,
+      "greeting": 0,
+      "lockup": 0.3782
+    }
+  },
+  "dark": {
+    "wide": {
+      "offset": 0,
+      "greeting": 0.1459,
+      "lockup": 0.1955
+    },
+    "square": {
+      "offset": 0.25,
+      "greeting": 0.8273,
+      "lockup": 0.2845
+    },
+    "narrow": {
+      "offset": 0,
+      "greeting": 0,
+      "lockup": 0.3674
+    }
+  }
+}
