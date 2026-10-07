@@ -78,7 +78,7 @@ export function CoilStage({
     () =>
       provideNameHandoff({
         target: () => apiRef.current?.nameRect() ?? null,
-        land: () => apiRef.current?.landName(),
+        land: () => apiRef.current?.landName() ?? false,
       }),
     [apiRef],
   );

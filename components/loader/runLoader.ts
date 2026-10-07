@@ -2,14 +2,26 @@ import { gsap } from "@/lib/gsap";
 import { siteEase } from "@/lib/coil/motion";
 import { siteContent } from "@/lib/content";
 import { LOADER, coilDebugFlags, displayPercent, homeLoad, reportHomeLoad } from "@/lib/loader/progress";
-import { landName, nameTarget } from "@/lib/loader/handoff";
-import { landing, landingGradient, landingOpacity, landingTransform, parseRgb } from "@/lib/loader/continuity";
+import { landName, nameTarget, type NameTarget } from "@/lib/loader/handoff";
+import {
+  greetingColor,
+  greetingInBox,
+  landing,
+  landingGradient,
+  landingOpacity,
+  landingTransform,
+  parseRgb,
+} from "@/lib/loader/continuity";
+import { NUM_ARITH, PROFA_METRICS, inkSpan, lockupMetrics, lockupVars, type LockupMetrics } from "@/lib/loader/lockup";
+import { debugLog } from "./loaderDebug";
 
 // The loader's imperative run, outside React: one rAF loop easing the fill
 // toward the tally, the flash guard, the 600ms number rule, the 150ms hold at
-// 100, and the exit (the continuity landing on the canvas name, or a plain
-// fade). Loader.tsx renders the markup and calls runLoader once its mode is
-// known; the returned function tears it all down.
+// 100, and the exit (the continuity landing on the canvas lockup, or a plain
+// fade). A load done inside the guard skips all of that: the resting lockup
+// holds until the scene has drawn and hands to it in one frame. Loader.tsx
+// renders the markup and calls runLoader once its mode is known; the returned
+// function tears it all down.
 
 // How long a CSS animation on `el` has run, or null when it cannot be read.
 function animationTime(el: Element, name: string): number | null {
@@ -28,18 +40,32 @@ export type LoaderParts = {
   count: HTMLDivElement;
   num: HTMLSpanElement;
   bg: HTMLDivElement;
+  greet: HTMLSpanElement;
+  rest: HTMLDivElement;
+};
+
+export type LoaderOptions = {
+  reduced: boolean;
+  // The resting lockup is up (a scene claimed the entrance, no reduced motion).
+  resting: boolean;
+  // The hero shows the canvas: the h1 is visually hidden, the DOM lockup may go.
+  sceneShown: () => boolean;
 };
 
 // The loader's run: the tally loop, the guard, the hold and the exit.
 // Returns the cleanup.
 export function runLoader(
   parts: LoaderParts,
-  reduced: boolean,
+  { reduced, resting, sceneShown }: LoaderOptions,
   reveal: (startMs: number, nameFromLoader: boolean) => void,
   mountedAt: number,
 ): () => void {
-  const { root, pane, count, num } = parts;
+  const { root, count, num, bg } = parts;
   const tally = homeLoad();
+  // ?coildebug=handoff: the hand-off waits on window.__coilLoader.finish()
+  // (cards held back), to compare the frames either side of it.
+  const holdHandoff = coilDebugFlags(window.location.search).has("handoff");
+  let metrics: LockupMetrics = PROFA_METRICS;
   let disposed = false;
   let raf = 0;
   let shown = 0; // the displayed progress, easing toward the tally
@@ -48,35 +74,82 @@ export function runLoader(
   let timeline: gsap.core.Timeline | null = null;
   let holdTimer = 0;
   const note = debugLog(root);
-  note("run", { reduced, items: tally ? tally.progress() : null });
+  note("run", { reduced, resting, items: tally ? tally.progress() : null });
 
-  // The name's face: Profa's real metrics, once loaded, then the tally hears it.
+  // The resting lockup is placed for a hero at the top of the page; a load
+  // that kept a shallow scroll (short of the deep start) moves it with the
+  // hero, which the entrance's lock then holds still.
+  const followHero = () => {
+    parts.rest.style.transform = window.scrollY ? `translateY(${-window.scrollY}px)` : "";
+  };
+  if (resting) followHero();
+
+  // The face's real metrics, once loaded, then the tally hears it.
   const family = getComputedStyle(document.documentElement).getPropertyValue("--font-display").trim() || "sans-serif";
   Promise.all([document.fonts.load(`900 100px ${family}`), document.fonts.ready])
     .then(() => {
       if (disposed) return;
-      measureName(pane, family);
+      const measured = measureLockup(family);
+      if (measured) {
+        metrics = measured;
+        lockupVars(measured).forEach(([key, value]) => root.style.setProperty(key, value));
+      }
       reportHomeLoad("fonts");
     })
     .catch(() => reportHomeLoad("fonts"));
 
   const paint = (done: boolean) => {
-    pane.style.setProperty("--p", shown.toFixed(4));
+    parts.pane.style.setProperty("--p", shown.toFixed(4));
     const percent = displayPercent(shown, done && shown >= 1);
     num.textContent = String(percent);
-    pane.setAttribute("aria-valuenow", String(percent));
+    parts.pane.setAttribute("aria-valuenow", String(percent));
     // Full: the whole name in the accent (no paper hairline above the clip).
     if (shown >= 1) root.setAttribute("data-full", "");
   };
 
   const guardPassed = () => {
-    const time = animationTime(root, "coil-loader-in");
+    const time = animationTime(bg, "coil-loader-in");
     return (time ?? performance.now() - mountedAt) >= LOADER.guardMs;
   };
 
   const gone = () => {
     root.setAttribute("data-state", "gone");
   };
+
+  // Lands the canvas lockup and drops the DOM one in the same task, on the
+  // first frame both are ready (the scene drawn and showing, the entrance
+  // reached); gives up after handoffGiveUpMs, leaving the canvas's fallback.
+  function handOff() {
+    const began = performance.now();
+    const attempt = () => {
+      raf = 0;
+      if (disposed) return;
+      if (sceneShown() && landName()) {
+        gone();
+        note("handoff");
+        return;
+      }
+      if (performance.now() - began > LOADER.handoffGiveUpMs) {
+        gone();
+        note("handoff-gave-up");
+        return;
+      }
+      raf = requestAnimationFrame(attempt);
+    };
+    attempt();
+  }
+
+  // Done inside the guard with a scene drawn: the pane never shows; the
+  // resting lockup (already the landed pose) holds while the entrance reaches
+  // the scene, then the canvas takes it. The band starts at the hand-off.
+  function rest() {
+    followHero();
+    root.setAttribute("data-state", "rest");
+    note("rest");
+    reveal(performance.now() + (holdHandoff ? 600000 : LOADER.restHoldMs), true);
+    if (holdHandoff) exposeFinish(handOff);
+    else holdTimer = window.setTimeout(handOff, LOADER.restHoldMs);
+  }
 
   const tick = (now: number) => {
     raf = 0;
@@ -94,7 +167,14 @@ export function runLoader(
     if (done && !finishing) {
       finishing = true;
       if (!guardPassed()) {
-        // Everything was ready inside the guard: straight to the hero.
+        // Everything was ready inside the guard: no pane. A drawn scene takes
+        // the resting lockup; with none (it failed, or never claimed) the
+        // lockup leaves and the h1 carries the hero.
+        if (resting && nameTarget()) {
+          rest();
+          return;
+        }
+        root.setAttribute("data-rest", "off");
         gone();
         note("skipped");
         reveal(performance.now(), false);
@@ -116,7 +196,8 @@ export function runLoader(
   function exit() {
     if (disposed) return;
     root.setAttribute("data-state", "live");
-    root.style.pointerEvents = "none";
+    // The pane covered the resting lockup; the exit lands the pane's own.
+    root.setAttribute("data-rest", "off");
     const target = reduced ? null : nameTarget();
     if (!target) {
       // Reduced motion, or no scene to land on: a plain fade.
@@ -130,13 +211,12 @@ export function runLoader(
     continuity(target);
   }
 
-  function continuity(target: NonNullable<ReturnType<typeof nameTarget>>) {
-    const { name, base, fill, bg } = parts;
+  function continuity(target: NameTarget) {
+    const { name, base, fill, greet } = parts;
     const accent = parseRgb(getComputedStyle(fill.firstElementChild ?? fill).color) ?? target.gradient.from;
     const nameStyle = getComputedStyle(name);
     const matrix = new DOMMatrixReadOnly(nameStyle.transform === "none" ? undefined : nameStyle.transform);
     const fontPx = parseFloat(nameStyle.fontSize);
-    const capTop = parseFloat(getComputedStyle(pane).getPropertyValue("--capTop")) || 0.11364;
     const box = {
       left: name.offsetLeft,
       top: name.offsetTop,
@@ -145,7 +225,7 @@ export function runLoader(
       rotationDeg: (Math.atan2(matrix.b, matrix.a) * 180) / Math.PI,
     };
     const land = landing(box, target);
-    const glyphTop = -capTop * fontPx;
+    const glyphTop = (metrics.capR - metrics.base) * fontPx;
     const durationS = LOADER.exitMs / 1000;
 
     // The fill is complete; the base glyph carries the color from here.
@@ -154,29 +234,29 @@ export function runLoader(
     base.style.setProperty("-webkit-background-clip", "text");
     base.style.backgroundClip = "text";
     count.setAttribute("data-exit", "");
+    // The greeting placed from the scene's own numbers, so it lands exactly.
+    const greeting = inkSpan(NUM_ARITH, greetingInBox(box, target), metrics.gInkL, metrics.base);
+    greet.style.transition = "none";
+    greet.style.left = `${greeting.left}px`;
+    greet.style.top = `${greeting.top}px`;
+    greet.style.fontSize = `${greeting.fontPx}px`;
 
     const state = { e: 0, c: 0, bg: 1, count: 1 };
     const apply = () => {
       name.style.transform = landingTransform(land, state.e);
       name.style.opacity = String(landingOpacity(target, state.c));
       base.style.backgroundImage = landingGradient(accent, target, box, glyphTop, state.c);
+      greet.style.color = greetingColor(accent, target, state.c);
       bg.style.opacity = String(state.bg);
       count.style.opacity = String(state.count);
     };
     apply();
     note("exit", { land });
-    // ?coildebug=handoff: the exit pauses on its last frame (cards held back)
-    // until window.__coilLoader.finish(), to compare the frames either side.
-    const holdHandoff = coilDebugFlags(window.location.search).has("handoff");
     reveal(performance.now() + (holdHandoff ? 600000 : LOADER.exitMs - LOADER.entranceOverlapMs), true);
     timeline = gsap.timeline({
       onUpdate: apply,
-      onComplete: () => {
-        // One frame: the canvas draws its name now, the DOM name leaves now.
-        landName();
-        gone();
-        note("handoff");
-      },
+      // One frame: the canvas draws its lockup now, the DOM lockup leaves now.
+      onComplete: handOff,
     });
     timeline.to(state, { e: 1, duration: durationS, ease: siteEase }, 0);
     timeline.to(state, { c: 1, duration: durationS * 0.85, ease: "power1.inOut" }, 0);
@@ -185,8 +265,8 @@ export function runLoader(
     if (holdHandoff) {
       const running = timeline;
       running.addPause(durationS - 1e-4);
-      const host = window as unknown as { __coilLoader?: { finish?: () => void } };
-      if (host.__coilLoader) host.__coilLoader.finish = () => running.play();
+      // Finishing jumps to the end, so the hand-off lands in the calling task.
+      exposeFinish(() => running.progress(1));
     }
   }
 
@@ -198,49 +278,18 @@ export function runLoader(
   };
 }
 
-// Profa's real metrics for "Aaron" at this browser's rendering, as the lab
-// does: the ink's width and left bearing, the cap height, and where the cap
-// line sits under a line-height 1 box. Kept only when they look sane.
-function measureName(pane: HTMLElement, family: string) {
-  const g = document.createElement("canvas").getContext("2d");
-  if (!g) return;
-  g.font = `900 1000px ${family}`;
-  const m = g.measureText(siteContent.loader.name);
-  const inkW = (m.actualBoundingBoxLeft + m.actualBoundingBoxRight) / 1000;
-  const inkL = m.actualBoundingBoxLeft / 1000;
-  const capR = m.actualBoundingBoxAscent / 1000;
-  if (!(inkW > 2 && inkW < 3.5) || !(capR > 0.5 && capR < 0.8)) return;
-  pane.style.setProperty("--inkW", inkW.toFixed(5));
-  pane.style.setProperty("--inkL", inkL.toFixed(5));
-  pane.style.setProperty("--capR", capR.toFixed(5));
-  const ascent = m.fontBoundingBoxAscent;
-  const descent = m.fontBoundingBoxDescent;
-  if (Number.isFinite(ascent) && Number.isFinite(descent) && ascent > 0) {
-    // Line-height 1: the half-leading splits (1em - content) above and below.
-    const baseline = ascent + (1000 - ascent - descent) / 2;
-    const capTop = (baseline - m.actualBoundingBoxAscent) / 1000;
-    if (capTop > 0 && capTop < 0.3) pane.style.setProperty("--capTop", capTop.toFixed(5));
-  }
+// ?coildebug=handoff: the held hand-off resumes on window.__coilLoader.finish().
+function exposeFinish(finish: () => void) {
+  const host = window as unknown as { __coilLoader?: { finish?: () => void } };
+  if (host.__coilLoader) host.__coilLoader.finish = finish;
 }
 
-// QA behind ?coildebug: every loader event with its time, plus each time the
-// body scroll lock engages or releases, on window.__coilLoader.
-type LoaderEvent = { t: number; event: string; data?: unknown };
-function debugLog(root: HTMLElement): (event: string, data?: unknown) => void {
-  if (!new URLSearchParams(window.location.search).has("coildebug")) return () => {};
-  const events: LoaderEvent[] = [];
-  const host = window as unknown as { __coilLoader?: { events: LoaderEvent[]; locks: LoaderEvent[] } };
-  const locks: LoaderEvent[] = [];
-  let locked = document.body.style.overflow === "hidden";
-  locks.push({ t: performance.now(), event: locked ? "locked" : "unlocked" });
-  new MutationObserver(() => {
-    const now = document.body.style.overflow === "hidden";
-    if (now === locked) return;
-    locked = now;
-    locks.push({ t: performance.now(), event: now ? "locked" : "unlocked" });
-  }).observe(document.body, { attributes: true, attributeFilter: ["style"] });
-  host.__coilLoader = { events, locks };
-  const inAnimation = root.getAnimations?.().find((a) => (a as CSSAnimation).animationName === "coil-loader-in");
-  events.push({ t: performance.now(), event: "armed", data: { animationTime: inAnimation?.currentTime ?? null } });
-  return (event, data) => events.push({ t: performance.now(), event, data });
+// The display face's metrics for the lockup at this browser's rendering, as
+// the canvas measures them; null when the face does not look loaded.
+function measureLockup(family: string): LockupMetrics | null {
+  const g = document.createElement("canvas").getContext("2d");
+  if (!g) return null;
+  g.font = `900 1000px ${family}`;
+  const { greeting, name } = siteContent.hero;
+  return lockupMetrics(g.measureText(name), g.measureText(greeting), g.measureText("H"), 1000);
 }

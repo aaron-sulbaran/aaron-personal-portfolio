@@ -117,6 +117,22 @@ const values = {
 
   // Name behind the helix.
   nameInk: 0.12,
+  // The "Hi, I'm" over "Aaron" lockup, drawn by the canvas and matched by the
+  // loader's DOM lockup (lib/loader/lockup.ts), so one set of proportions
+  // serves both. The name's advance spans this share of the pane's width;
+  // the greeting's cap height is greetingCap of the name's, its lowest ink
+  // greetingGap of its own cap height above the "A", its ink greetingShift of
+  // the name's size right of the name's ink. pad (of the size) rims the mask;
+  // inkGain is the composite's gain on the --name-ink token.
+  lockup: {
+    widthWide: 0.7,
+    widthNarrow: 0.9,
+    greetingCap: 0.18,
+    greetingGap: 0.45,
+    greetingShift: 0.02,
+    pad: 0.04,
+    inkGain: 2.2,
+  },
 
   // Header.
   markPx: 32,

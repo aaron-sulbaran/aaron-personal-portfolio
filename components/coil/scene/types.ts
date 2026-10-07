@@ -81,12 +81,15 @@ export type CoilSceneApi = CoilFlightApi &
   // Hides one slot's mesh (the flown card) or none.
   hideSlot: (slot: number | null) => void;
   // ---- slice 4: the loader's continuity exit ----
-  // The canvas name in viewport px (its ink box, baseline and gradient), for
-  // the loader to land its DOM name on; null until the scene has laid out.
+  // The canvas lockup in viewport px (the name's ink box, baseline and
+  // gradient, the greeting's ink), for the loader to land its DOM lockup on;
+  // null until the scene has laid out.
   nameRect: () => NameTarget | null;
-  // Shows the canvas name now, rendering this frame synchronously, so the
-  // loader can drop its DOM name in the same task with no frame between.
-  landName: () => void;
+  // Shows the canvas lockup now, rendering this frame synchronously, so the
+  // loader can drop its DOM lockup in the same task with no frame between.
+  // False (nothing drawn) until the entrance that waits for the loader has
+  // reached a frame.
+  landName: () => boolean;
   // ---- end slice 4 ----
 };
 
