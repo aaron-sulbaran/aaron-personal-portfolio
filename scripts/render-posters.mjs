@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 // Renders the hero stills (public/coil/hero-{light,dark}-{wide,square,narrow}.{avif,webp})
-// from a local production build of the full site: the scene at rest with no
-// name (?coildebug=still=<offset>,noname: the cards, the field at
-// fieldClocks(0), the entrance done, the conveyor idle at <offset> cards; the
-// page's h1 lockup is the name in front of the still), no hover, no seen
-// rings (a fresh profile per capture), each theme through lib/theme.ts's
+// from a local production build of the full site: the scene at rest
+// (?coildebug=still=<offset>: the cards, the field at fieldClocks(0), the
+// entrance done, the conveyor idle at <offset> cards, the name and greeting
+// behind the cards at the strong ink, COIL.lockup.stillInk), no hover, no
+// seen rings (a fresh profile per capture), each theme through lib/theme.ts's
 // storage key, at DPR 2. Only the canvas and the field poster stay visible
 // for the shot (the fixed header and the cursor overlap the stage). Encoded
 // with the sharp next ships: AVIF q60 4:4:4 (the commit 49ee8ba recipe) and
@@ -15,14 +15,19 @@
 // scripts/hero-still-phases.json when it exists, else 0 everywhere; the run
 // prints them as a table. --sweep measures them and rewrites that file: per
 // theme and cut it sweeps one card spacing in 16 steps; at each step the
-// canvas is captured twice, still=<offset>,noname as is and with nocards,
-// through identical waits; a pixel is a card pixel when any channel differs
-// by more than 24/255 between the two. The name is in front of the still (the
-// h1 lockup), so what matters is a calm ground behind "Hi, I'm": the offset
-// with the fewest card pixels in the greeting's box wins, then the fewest in
-// the whole lockup's (the name's box and the greeting's), then the lower
-// offset. The boxes come from window.__coil.api.nameRect(), which noname
-// leaves in place. --phases <file> renders from another file of the same shape.
+// canvas is captured twice, still=<offset> as is and with nocards (the name
+// drawn in both), through identical waits; a lockup pixel is covered when any
+// channel differs by more than 24/255 between the two. The name sits behind
+// the cards, so the offset that leaves the most of it showing wins: the
+// fewest covered pixels over the whole lockup (the name's box and the
+// greeting's), then the fewest in the greeting's box, then the lower offset.
+// The boxes come from window.__coil.api.nameRect(). --phases <file> renders
+// from another file of the same shape.
+//
+// Every still is checked for its name before it is written: the same capture
+// with noname at the same offset, and more than 10 percent of the lockup's
+// pixels must differ by more than 24/255 between the two, else the run stops
+// with nothing written for that file. The run prints the measured share.
 // Usage: node scripts/render-posters.mjs http://localhost:3160 [--sweep | --phases <file>]
 
 import { createRequire } from "node:module";
@@ -52,6 +57,7 @@ const CUTS = { wide: { width: 1440, height: 900 }, square: { width: 1000, height
 const SETTLE_MS = 1500; // after the loader has gone: the name's surface growing in (900ms), the cards' last repaints
 const SWEEP_STEPS = 16; // over one card spacing (the conveyor's offset is in cards)
 const COVERED_DELTA = 24; // of 255, any channel
+const NAME_PRESENT = 0.1; // of the lockup's pixels, the still against its noname capture
 const ONLY_STAGE = 'body *{visibility:hidden!important}section[data-scene] :is(canvas,img[src*="/coil/field-"]){visibility:visible!important}';
 const ENCODE = {
   avif: (input) => sharp(input).avif({ quality: 60, chromaSubsampling: "4:4:4" }).toBuffer(),
@@ -155,58 +161,70 @@ function devicePx(box, width, height) {
   };
 }
 
-// Card pixels of the whole lockup (the union of the two boxes) and of the greeting.
-async function coverage(shot, bare) {
+// The pixels of the whole lockup (the union of the two boxes) and of the
+// greeting where two captures differ by more than COVERED_DELTA in any
+// channel. The boxes are the first shot's.
+async function lockupDiff(shot, other) {
   const { width, height, region } = shot;
-  const [a, b] = await Promise.all([shot.png, bare.png].map((input) => sharp(input).removeAlpha().raw().toBuffer()));
+  const [a, b] = await Promise.all([shot.png, other.png].map((input) => sharp(input).removeAlpha().raw().toBuffer()));
   const name = devicePx(region.name, width, height);
   const greet = devicePx(region.greeting, width, height);
   const inside = (box, x, y) => x >= box.x0 && x < box.x1 && y >= box.y0 && y < box.y1;
   let pixels = 0;
-  let cards = 0;
+  let differ = 0;
   let greetPixels = 0;
-  let greetCards = 0;
+  let greetDiffer = 0;
   for (let y = Math.min(name.y0, greet.y0); y < Math.max(name.y1, greet.y1); y++) {
     for (let x = Math.min(name.x0, greet.x0); x < Math.max(name.x1, greet.x1); x++) {
       const inGreet = inside(greet, x, y);
       if (!inGreet && !inside(name, x, y)) continue;
       const i = (y * width + x) * 3;
-      const card =
+      const d =
         Math.abs(a[i] - b[i]) > COVERED_DELTA || Math.abs(a[i + 1] - b[i + 1]) > COVERED_DELTA || Math.abs(a[i + 2] - b[i + 2]) > COVERED_DELTA;
       pixels++;
-      if (card) cards++;
+      if (d) differ++;
       if (inGreet) {
         greetPixels++;
-        if (card) greetCards++;
+        if (d) greetDiffer++;
       }
     }
   }
-  return { greetCards, cards, greeting: greetCards / greetPixels, lockup: cards / pixels };
+  return { differ, greetDiffer, lockup: differ / pixels, greeting: greetDiffer / greetPixels };
 }
 
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const fmt = (v) => v.toFixed(4);
 
-// The calmest ground behind the greeting: fewest greeting card pixels, then
-// fewest lockup card pixels, then the lower offset (the steps run upward).
+// The most of the lockup showing: fewest covered lockup pixels, then fewest
+// covered greeting pixels, then the lower offset (the steps run upward).
 async function sweep(browser, theme, cut) {
   let best = null;
   for (let k = 0; k < SWEEP_STEPS; k++) {
     const offset = k / SWEEP_STEPS;
-    const shot = await capture(browser, theme, cut, `still=${offset},noname`);
-    const bare = await capture(browser, theme, cut, `still=${offset},noname,nocards`);
+    const shot = await capture(browser, theme, cut, `still=${offset}`);
+    const bare = await capture(browser, theme, cut, `still=${offset},nocards`);
     if (!shot.region || !same(shot.region, bare.region)) throw new Error(`${theme} ${cut} ${offset}: the lockup region is missing or moved between the two captures`);
-    if (k === 0) console.log(`${theme} ${cut}: region ${JSON.stringify(devicePx(shot.region.name, shot.width, shot.height))} + ${JSON.stringify(devicePx(shot.region.greeting, shot.width, shot.height))} device px, nameRect() under noname, ${shot.region.source}`);
-    const result = { offset, ...(await coverage(shot, bare)) };
-    console.log(`${theme} ${cut} offset ${offset.toFixed(4)}: greeting ${fmt(result.greeting)} (${result.greetCards} px), lockup ${fmt(result.lockup)} (${result.cards} px)`);
-    if (!best || result.greetCards < best.greetCards || (result.greetCards === best.greetCards && result.cards < best.cards)) best = result;
+    if (k === 0) console.log(`${theme} ${cut}: region ${JSON.stringify(devicePx(shot.region.name, shot.width, shot.height))} + ${JSON.stringify(devicePx(shot.region.greeting, shot.width, shot.height))} device px, ${shot.region.source}`);
+    const covered = await lockupDiff(shot, bare);
+    const result = { offset, ...covered };
+    console.log(`${theme} ${cut} offset ${offset.toFixed(4)}: lockup covered ${fmt(result.lockup)} (${result.differ} px), greeting covered ${fmt(result.greeting)} (${result.greetDiffer} px)`);
+    if (!best || result.differ < best.differ || (result.differ === best.differ && result.greetDiffer < best.greetDiffer)) best = result;
   }
   return best;
 }
 
+// The name is really in the still: against the same capture with noname.
+async function namePresent(browser, theme, cut, offset, shot) {
+  const bare = await capture(browser, theme, cut, `still=${offset},noname`);
+  if (!shot.region || !same(shot.region, bare.region)) throw new Error(`${theme} ${cut}: the lockup region is missing or moved between the still and its noname capture`);
+  const { lockup } = await lockupDiff(shot, bare);
+  console.log(`hero-${theme}-${cut}: the name differs from noname over ${(lockup * 100).toFixed(1)}% of the lockup's pixels`);
+  if (!(lockup > NAME_PRESENT)) throw new Error(`hero-${theme}-${cut}: only ${(lockup * 100).toFixed(1)}% of the lockup differs from noname (needs more than ${NAME_PRESENT * 100}%); nothing written`);
+}
+
 const CUT_NAMES = Object.keys(CUTS);
 
-// A phases file: per theme and cut, { offset, greeting, lockup } (the
+// A phases file: per theme and cut, { offset, lockup, greeting } (the covered
 // fractions from the sweep that picked it) or a bare offset.
 function readPhases(file) {
   const raw = JSON.parse(readFileSync(file, "utf8"));
@@ -228,10 +246,10 @@ function printTable(phases) {
   const rows = THEMES.flatMap((theme) =>
     CUT_NAMES.map((cut) => {
       const { offset, greeting, lockup } = phases[theme][cut];
-      return `| ${theme} | ${cut} | ${offset} | ${frac(greeting)} | ${frac(lockup)} |`;
+      return `| ${theme} | ${cut} | ${offset} | ${frac(lockup)} | ${frac(greeting)} |`;
     }),
   );
-  console.log(["", "| theme | cut | offset (cards) | greeting card fraction | lockup card fraction |", "|---|---|---|---|---|", ...rows, ""].join("\n"));
+  console.log(["", "| theme | cut | offset (cards) | lockup covered fraction | greeting covered fraction |", "|---|---|---|---|---|", ...rows, ""].join("\n"));
 }
 
 const browser = await chromium.launch({ channel: "chromium", args: ["--mute-audio"] });
@@ -243,7 +261,7 @@ try {
       phases[theme] = {};
       for (const cut of CUT_NAMES) {
         const best = await sweep(browser, theme, cut);
-        phases[theme][cut] = { offset: best.offset, greeting: Number(fmt(best.greeting)), lockup: Number(fmt(best.lockup)) };
+        phases[theme][cut] = { offset: best.offset, lockup: Number(fmt(best.lockup)), greeting: Number(fmt(best.greeting)) };
       }
     }
     writeFileSync(PHASES_OUT, `${JSON.stringify(phases, null, 2)}\n`);
@@ -258,7 +276,10 @@ try {
   printTable(phases);
   for (const theme of THEMES) {
     for (const cut of CUT_NAMES) {
-      const { png, width, height } = await capture(browser, theme, cut, `still=${phases[theme][cut].offset},noname`);
+      const { offset } = phases[theme][cut];
+      const shot = await capture(browser, theme, cut, `still=${offset}`);
+      await namePresent(browser, theme, cut, offset, shot);
+      const { png, width, height } = shot;
       for (const [format, encode] of Object.entries(ENCODE)) {
         const buffer = await encode(png);
         const file = `hero-${theme}-${cut}.${format}`;
