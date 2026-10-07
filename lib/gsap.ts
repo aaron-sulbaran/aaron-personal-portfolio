@@ -1,12 +1,11 @@
-// Canonical GSAP entry point. Import gsap, ScrollTrigger, Observer, and
-// useGSAP from here so plugin registration happens exactly once and only in
-// the browser. ScrollTrigger and useGSAP are client-only; the window guard
+// Canonical GSAP entry point. Import gsap, ScrollTrigger, Observer, SplitText
+// and useGSAP from here so plugin registration happens exactly once and only
+// in the browser. ScrollTrigger and useGSAP are client-only; the window guard
 // keeps SSR safe. ScrollTrigger drives the back half's scroll effects: the
 // wave's sweep (a number the wave conductor eases, never a tween), and the
 // sections grammar (lib/sections/engine.ts), whose lines SplitText splits;
-// Observer
-// is the Coil's touch drag-to-spin on coarse pointers (touch only: the wheel
-// is a raw listener in the scene, never Observer). No Draggable or
+// Observer is the Coil's touch drag-to-spin on coarse pointers (touch only:
+// the wheel is a raw listener in the scene, never Observer). No Draggable or
 // InertiaPlugin: the scene coasts the conveyor itself.
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
