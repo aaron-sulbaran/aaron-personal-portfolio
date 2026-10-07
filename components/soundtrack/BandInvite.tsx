@@ -127,4 +127,4 @@ const PRIMARY = `font-display text-[clamp(1.125rem,1.5vw,1.375rem)] leading-[1.1
 
 const QUIET = `text-sm text-muted transition-colors duration-200 hover:text-foreground ${FOCUS}`;
 
-const SMALL = `text-sm text-accent underline decoration-1 underline-offset-[3px] transition-colors duration-200 hover:text-accent-hover ${FOCUS}`;
+const SMALL = `font-label text-label text-accent underline decoration-1 underline-offset-[3px] transition-colors duration-200 hover:text-accent-hover ${FOCUS}`;
