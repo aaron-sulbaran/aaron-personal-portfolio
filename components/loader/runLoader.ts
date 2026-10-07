@@ -191,9 +191,12 @@ export function runLoader(
     root.setAttribute("data-state", "live");
     // The pane covered the resting lockup; the exit lands the pane's own.
     root.setAttribute("data-rest", "off");
-    const target = reduced ? null : nameTarget();
+    // A canvas lockup off screen (the page moved under the pane) is no
+    // landing: the lockup would fly out of view and the hand-off give up.
+    const found = reduced ? null : nameTarget();
+    const target = found && found.baseline > 0 && found.baseline - found.fontPx < window.innerHeight ? found : null;
     if (!target) {
-      // Reduced motion, or no scene to land on: a plain fade.
+      // Reduced motion, no scene to land on, or none on screen: a plain fade.
       const fadeS = LOADER.reducedFadeMs / 1000;
       note("fade");
       reveal(performance.now() + LOADER.reducedFadeMs, false);
