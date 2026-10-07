@@ -1,6 +1,19 @@
 import { describe, expect, it } from "vitest";
 import { snapshotSeries } from "../snapshot";
-import { accentRamp, barHeight, bevelShades, buildGrid, dayMs, FACE_X, FACE_Y, heightShare, levelOf } from "./maths";
+import {
+  accentRamp,
+  barHeight,
+  bevelShades,
+  buildGrid,
+  camera,
+  cameraInto,
+  dayMs,
+  FACE_X,
+  FACE_Y,
+  heightShare,
+  levelOf,
+  type Cam,
+} from "./maths";
 
 describe("level steps (quarters of a busy day)", () => {
   it("maps counts to 0 to 4", () => {
@@ -38,5 +51,22 @@ describe("palette and depth", () => {
   it("shades the bevel's bottom and right edges as the skyline's faces", () => {
     expect([FACE_Y, FACE_X]).toEqual([0.84, 0.68]);
     expect(bevelShades([100, 200, 50])).toEqual({ top: [100, 200, 50], bottom: [84, 168, 42], right: [68, 136, 34] });
+  });
+});
+
+describe("cameraInto", () => {
+  it("writes camera(...) into the given object and returns that same object", () => {
+    const out: Cam = { cs: 0, sn: 0, se: 0, ce: 0 };
+    for (const [e, dYaw, dElev] of [
+      [0, 0, 0],
+      [0.37, 0.2, -0.1],
+      [1, 0, 0],
+      [1, 1.5, 1.5],
+      [1, -1.5, -1.5],
+    ]) {
+      const got = cameraInto(out, e, dYaw, dElev);
+      expect(got).toBe(out);
+      expect(got).toEqual(camera(e, dYaw, dElev));
+    }
   });
 });
