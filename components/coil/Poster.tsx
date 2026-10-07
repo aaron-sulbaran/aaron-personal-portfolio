@@ -1,5 +1,6 @@
-import Image, { getImageProps } from "next/image";
-import { HERO_STILL_SIZE, stillFallback, stillSources, type StillCut, type StillTheme } from "@/lib/coil/heroStill";
+import Image from "next/image";
+import type { StillTheme } from "@/lib/coil/heroStill";
+import { stillPicture } from "@/lib/coil/stillPicture";
 
 // The stage's posters, under the canvas, one per theme. The field at
 // fieldTime(0) (?coildebug=poster, 1440x900) carries the hero while a scene
@@ -23,18 +24,15 @@ export function Poster({ stillReady }: { stillReady: boolean }) {
   );
 }
 
-// Next's art direction: getImageProps per source (unoptimized: the render
-// script encodes the stills), one picture, the img the wide WebP.
-const stillProps = (src: string, cut: StillCut) => getImageProps({ src, alt: "", ...HERO_STILL_SIZE[cut], unoptimized: true }).props;
-
+// Next's art direction: one picture, a source per cut and format, the img
+// the wide WebP.
 function StillPicture({ theme, className }: { theme: StillTheme; className: string }) {
-  const img = stillProps(stillFallback(theme), "wide");
+  const { sources, img } = stillPicture(theme);
   return (
     <picture className={`absolute inset-0 ${className}`}>
-      {stillSources(theme).map((source) => {
-        const props = stillProps(source.src, source.cut);
-        return <source key={source.src} media={source.media} type={source.type} srcSet={props.srcSet ?? props.src} />;
-      })}
+      {sources.map((source) => (
+        <source key={source.srcSet} media={source.media} type={source.type} srcSet={source.srcSet} />
+      ))}
       <img {...img} alt="" className="h-full w-full object-cover" />
     </picture>
   );
@@ -43,25 +41,26 @@ function StillPicture({ theme, className }: { theme: StillTheme; className: stri
 const decoding = new Map<StillTheme, Promise<void>>();
 
 // The still this visitor's picture will show, fetched and decoded: a detached
-// copy of the same picture (the same sources, so the same cut and format),
-// memoized per theme, so the loader's decoded() returns the in-flight promise
-// and the visible picture reads the file from cache.
+// copy of the same picture (stillPicture's URLs, so the same file), memoized
+// per theme, so the loader's decoded() returns the in-flight promise and the
+// visible picture reads the file from cache.
 export function decodeHeroStill(): Promise<void> {
   const theme: StillTheme = document.documentElement.dataset.theme === "dark" ? "dark" : "light";
   let promise = decoding.get(theme);
   if (!promise) {
+    const { sources, img: fallback } = stillPicture(theme);
     const picture = document.createElement("picture");
-    for (const s of stillSources(theme)) {
+    for (const s of sources) {
       const source = document.createElement("source");
       if (s.media) source.media = s.media;
       source.type = s.type;
-      source.srcset = s.src;
+      source.srcset = s.srcSet;
       picture.append(source);
     }
     const img = document.createElement("img");
     img.loading = "eager";
     picture.append(img);
-    img.src = stillFallback(theme);
+    img.src = fallback.src;
     promise = img.decode();
     decoding.set(theme, promise);
   }
