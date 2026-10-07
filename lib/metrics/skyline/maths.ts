@@ -1,5 +1,5 @@
 // Adapted from "Contribution Skyline" on 21st.dev (https://21st.dev/).
-// The pure half: dates, grid, stats, levels, camera and colour maths. No DOM.
+// The pure half: dates, grid, levels, camera and colour maths. No DOM.
 
 import type { DayValue, Streak as SeriesStreak } from "../series";
 
@@ -9,16 +9,6 @@ export type ContributionDay = DayValue;
 export type CellKind = "day" | "outside" | "future";
 export type Cell = { date: string; count: number; level: number; week: number; day: number; kind: CellKind };
 export type Streak = SeriesStreak;
-export type ContributionStats = {
-  total: number;
-  active: number;
-  days: number; // real days in range
-  first: string | null;
-  last: string | null;
-  busiest: { count: number; date: string | null };
-  longest: Streak;
-  current: Streak;
-};
 export type RGB = [number, number, number];
 export type HeightCurve = "power" | "sqrt" | "log";
 // How a day's share of a busy day maps to the four colour steps.
@@ -116,48 +106,6 @@ export const buildGrid = (
   return { cells, weeks: cells.length ? cells[cells.length - 1].week + 1 : 0, max: quantile(nz, heightCap) };
 };
 
-// Total, busiest day, longest run, and the run that reaches today (or yesterday; today is not over).
-export const computeStats = (all: Cell[]): ContributionStats => {
-  const cells = all.filter((c) => c.kind === "day");
-  let total = 0;
-  let active = 0;
-  let best = 0;
-  let bestDate: string | null = null;
-  let run = 0;
-  let runStart: string | null = null;
-  let longest: Streak = { days: 0, start: null, end: null };
-  for (const c of cells) {
-    total += c.count;
-    if (c.count > best) {
-      best = c.count;
-      bestDate = c.date;
-    }
-    if (c.count > 0) {
-      active++;
-      if (run === 0) runStart = c.date;
-      run++;
-      if (run > longest.days) longest = { days: run, start: runStart, end: c.date };
-    } else run = 0;
-  }
-  let j = cells.length - 1;
-  if (j >= 0 && cells[j].count === 0) j--;
-  const endAt = j;
-  while (j >= 0 && cells[j].count > 0) j--;
-  const days = endAt - j;
-  const current: Streak =
-    days > 0 ? { days, start: cells[j + 1].date, end: cells[endAt].date } : { days: 0, start: null, end: null };
-  return {
-    total,
-    active,
-    days: cells.length,
-    first: cells.length ? cells[0].date : null,
-    last: cells.length ? cells[cells.length - 1].date : null,
-    busiest: { count: best, date: bestDate },
-    longest,
-    current,
-  };
-};
-
 // A label on each week whose first drawn day starts a new month; a cramped first label is dropped.
 export const monthLabels = (cells: Cell[], weeks: number, locale = "en-US") => {
   const fmt = new Intl.DateTimeFormat(locale, { month: "short", timeZone: "UTC" });
@@ -219,12 +167,6 @@ export const cameraInto = (out: Cam, e: number, dYaw = 0, dElev = 0): Cam => {
   out.ce = Math.cos(elev);
   return out;
 };
-
-// World (x = week, y = weekday, z = up) to screen, before scale and offset.
-export const project = (c: Cam, x: number, y: number, z: number): [number, number] => [
-  x * c.cs - y * c.sn,
-  (x * c.sn + y * c.cs) * c.se - z * c.ce,
-];
 
 export const mixRGB = (a: RGB, b: RGB, t: number): RGB => [
   a[0] + (b[0] - a[0]) * t,

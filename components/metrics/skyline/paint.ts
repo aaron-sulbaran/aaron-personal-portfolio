@@ -91,25 +91,6 @@ export const pointInQuad = (p: Float32Array, o: number, x: number, y: number): b
   return sign !== 0;
 };
 
-// One quad from `p` at offset `o`, corners rounded by r, shifted by (dx, dy)
-// screen pixels (the flat depth's edges are the same cell, offset).
-export const quadPath = (ctx: CanvasRenderingContext2D, p: Float32Array, o: number, r: number, dx = 0, dy = 0) => {
-  if (r < 0.3) {
-    ctx.moveTo(p[o] + dx, p[o + 1] + dy);
-    ctx.lineTo(p[o + 2] + dx, p[o + 3] + dy);
-    ctx.lineTo(p[o + 4] + dx, p[o + 5] + dy);
-    ctx.lineTo(p[o + 6] + dx, p[o + 7] + dy);
-    ctx.closePath();
-    return;
-  }
-  ctx.moveTo((p[o + 6] + p[o]) / 2 + dx, (p[o + 7] + p[o + 1]) / 2 + dy);
-  for (let k = 0; k < 4; k++) {
-    const b = (k + 1) % 4;
-    ctx.arcTo(p[o + k * 2] + dx, p[o + k * 2 + 1] + dy, p[o + b * 2] + dx, p[o + b * 2 + 1] + dy, r);
-  }
-  ctx.closePath();
-};
-
 // A closed polyline of n points from `p` (x, y pairs), shifted by (dx, dy):
 // the rounded cell's outline and the prism's silhouette.
 export const polyPath = (ctx: CanvasRenderingContext2D, p: Float32Array, n: number, dx = 0, dy = 0) => {
