@@ -6,6 +6,7 @@ import { Moon, Sun } from "lucide-react";
 import { NoteIcon } from "@/components/menu/NoteIcon";
 import { siteContent } from "@/lib/content";
 import { EASE } from "@/lib/motion";
+import { noteState } from "@/lib/note";
 import { THEME_STORAGE_KEY, syncThemeColorMeta, type Theme } from "@/lib/theme";
 import { startSoundtrack, stopSoundtrack, useSoundtrack } from "@/lib/soundtrack";
 
@@ -176,10 +177,7 @@ export function MenuPanel({
             className="inline-flex h-[34px] items-center gap-2 rounded-[17px] pl-2.5 pr-3.5 text-[13px] font-medium text-foreground shadow-[inset_0_0_0_1px_var(--color-border)] transition-shadow duration-200 hover:shadow-[inset_0_0_0_1px_var(--color-muted)]"
           >
             <span aria-hidden="true" className="flex h-4 w-4 items-center justify-center">
-              <NoteIcon
-                on={music === "on"}
-                className={`block h-[15px] w-[9.5px] ${music === "on" ? "text-accent" : "text-muted"}`}
-              />
+              <NoteIcon state={noteState(music)} className="block h-4 w-[14px]" />
             </span>
             <span>{music === "on" ? menuToggleOn : music === "paused" ? menuTogglePaused : menuToggleOff}</span>
           </button>

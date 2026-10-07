@@ -281,64 +281,33 @@ body {
   inset: calc(-1 * var(--pill-hit-inset, 4px));
 }
 
-/* The soundtrack note (components/menu/NoteIcon.tsx), in the Menu pill and
-   the panel's chip. Off: the silhouette drains to an outline while the slash
-   (and its knockout in the mask) draws from the top left, 240ms on the site
-   ease. On: the slash retracts, then hides, and the note fills. The slash
-   paths use pathLength=1, so a dashoffset of 1 is fully retracted. While on
-   in the pill the note sways 2.5 degrees about its head. */
+/* The soundtrack note (components/menu/NoteIcon.tsx). Paused and off, the
+   slash (and its knockout in the mask) draws from the bottom left; playing,
+   it retracts and then hides. pathLength=1, so a dashoffset of 1 is fully
+   retracted. Reduced motion swaps at once. */
+:root {
+  --note-slash-ms: 200ms;
+}
 .note-icon {
   overflow: visible;
-  transition: color 240ms var(--ease-out);
-}
-.note-icon .note-body {
-  fill: currentColor;
-  fill-opacity: 0;
-  transition: fill-opacity 240ms var(--ease-out);
-}
-.note-icon[data-on="true"] .note-body {
-  fill-opacity: 1;
+  transition: color var(--note-slash-ms) var(--ease-out);
 }
 .note-icon .note-slash {
   stroke-dasharray: 1 1;
   stroke-dashoffset: 0;
-  opacity: 1;
-  transition: stroke-dashoffset 240ms var(--ease-out), opacity 0s;
+  visibility: visible;
+  transition: stroke-dashoffset var(--note-slash-ms) var(--ease-out), visibility 0s;
 }
-.note-icon[data-on="true"] .note-slash {
+.note-icon[data-note="playing"] .note-slash {
   stroke-dashoffset: 1;
-  opacity: 0;
-  transition: stroke-dashoffset 240ms var(--ease-out), opacity 0s linear 240ms;
-}
-.note-icon .note-sway {
-  transform-box: fill-box;
-  transform-origin: 45% 88%;
-}
-@keyframes note-sway {
-  from {
-    transform: rotate(-2.5deg);
-  }
-  to {
-    transform: rotate(2.5deg);
-  }
-}
-.note-icon[data-living="true"] .note-sway {
-  animation: note-sway 1.6s ease-in-out infinite alternate;
+  visibility: hidden;
+  transition: stroke-dashoffset var(--note-slash-ms) var(--ease-out), visibility 0s linear var(--note-slash-ms);
 }
 @media (prefers-reduced-motion: reduce) {
-  /* A plain 150ms fade between the two states; beats the global zeroing
-     rule on specificity. */
   .note-icon,
-  .note-icon .note-body {
-    transition-duration: 150ms !important;
-  }
   .note-icon .note-slash,
-  .note-icon[data-on="true"] .note-slash {
-    stroke-dashoffset: 0;
-    transition: opacity 150ms linear !important;
-  }
-  .note-icon[data-living="true"] .note-sway {
-    animation: none !important;
+  .note-icon[data-note="playing"] .note-slash {
+    transition: none !important;
   }
 }
 
