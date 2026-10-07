@@ -12,7 +12,7 @@ import { getSoundtrackPlayer } from "./audio";
 //   on      music playing -> reactive wave, the pill's note fills and sways.
 //   paused  opted in but audio paused / awaiting input -> thin waiting line,
 //           pill drops to a flat line. Holds; does NOT bloom back to idle.
-//   off     opted out -> still line in the band, calm drift on the horizon;
+//   off     opted out -> still line in the band;
 //           the pill stays as a quiet "Music" capsule, one click from playing.
 
 export type SoundtrackState = "before" | "on" | "paused" | "off";

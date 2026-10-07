@@ -156,7 +156,7 @@ export const siteContent = {
       { key: "min-max", title: "min/Max", meta: "Live, link soon", target: { kind: "soon" as const } },
       { key: "capital-one-pm", title: "Capital One", meta: "Product manager intern, 2025", target: { kind: "case" as const, slug: "capital-one-pm" } },
       { key: "ieee-president", title: "IEEE UT Austin", meta: "President, 2025", target: { kind: "case" as const, slug: "ieee-president" } },
-      { key: "claude-ambassador", title: "Anthropic ambassador", meta: "Claude ambassador at UT Austin, 2025", target: { kind: "case" as const, slug: "claude-ambassador" } },
+      { key: "claude-ambassador", title: "Anthropic ambassador", meta: "Claude ambassador, 2025", target: { kind: "case" as const, slug: "claude-ambassador" } },
       { key: "hackathon-builds", title: "Hackathon builds", meta: "Weekend builds, ongoing", target: { kind: "case" as const, slug: "hackathon-builds" } },
       { key: "aaronsulbaran-site", title: "This site", meta: "Built in public, 2026", target: { kind: "case" as const, slug: "aaronsulbaran-site" } },
     ],
@@ -215,7 +215,7 @@ export const siteContent = {
     placeholderCta: "Ping me on LinkedIn",
     indexHeading: "Work.",
     indexLede: "Every project, internship, and community I'm proud of. Click in for the story.",
-    backLabel: "← Work",
+    backLabel: "Work",
   },
   connect: {
     label: "Connect",
