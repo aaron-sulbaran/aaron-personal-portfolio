@@ -16,6 +16,8 @@ describe("the stats", () => {
   it("writes dates as Aug 8, the copy sentence case and first person, no dashes", () => {
     expect(shortDate("2026-08-08")).toBe("Aug 8");
     expect([m.streakLabel, m.totalLabel, m.activeLabel]).toEqual(["Current streak of contributions", "contributions in the last 6 months", "days I shipped something"]);
-    expect(JSON.stringify(m)).not.toMatch(/[–—]/);
+    expect(JSON.stringify(m)).not.toMatch(/[\u2013\u2014]/);
+    const built = m.chart.label("1", "a", "b", true) + m.chart.label("1", "a", "b", false) + m.chart.highlight("X");
+    expect(built).not.toMatch(/[\u2013\u2014]/);
   });
 });
