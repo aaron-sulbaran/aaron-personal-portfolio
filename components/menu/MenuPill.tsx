@@ -4,10 +4,12 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import { usePathname } from "next/navigation";
 import { animate, motion, useReducedMotion } from "framer-motion";
 import { Portal } from "@/components/Portal";
+import { Fill } from "@/components/fx/Fill";
 import { AsMark } from "@/components/menu/BrandMark";
 import { ListenDot } from "@/components/menu/ListenDot";
 import { MenuPanel } from "@/components/menu/MenuPanel";
 import { siteContent } from "@/lib/content";
+import { FILL_PICK } from "@/lib/fx/fill";
 import { closeMenu, getMenuOpen, openMenu, takeAfterClose, useHeaderHidden, useMenuOpen } from "@/lib/menu";
 import { useBodyScrollLock, useEscapeKey, useFocusTrap } from "@/lib/modal";
 import { EASE } from "@/lib/motion";
@@ -253,6 +255,7 @@ export function MenuPill() {
     <>
       <div
         ref={pillRef}
+        data-menu-pill
         role={engaged ? "dialog" : undefined}
         aria-modal={engaged ? true : undefined}
         aria-label={engaged ? dialogLabel : undefined}
@@ -262,39 +265,40 @@ export function MenuPill() {
       >
         <div className="relative z-[2] flex h-10 items-center justify-end">
           <ListenDot hidden={engaged} />
-          <button
-            type="button"
+          <Fill
+            {...FILL_PICK.menu}
             onClick={onPillClick}
             aria-label={open ? ariaLabelClose : ariaLabelOpen}
             aria-expanded={open}
             aria-controls={MENU_ID}
             data-cursor-hover
-            className={`group/pill flex h-10 items-center rounded-full pr-[17px] text-sm font-medium tracking-[0.005em] focus-visible:rounded-full focus-visible:outline-offset-[-3px] ${
+            className={`flex h-10 items-center rounded-full pr-[17px] font-label text-label focus-visible:rounded-full focus-visible:outline-offset-[-3px] ${
               engaged ? "pl-[14px]" : "pl-1.5"
             }`}
+            overClassName={`flex items-center pr-[17px] ${engaged ? "pl-[14px]" : "pl-1.5"}`}
           >
-            <span aria-hidden="true" className="relative grid h-[22px] overflow-hidden">
+            <span aria-hidden="true" data-fill-icon className="relative grid h-[22px] overflow-hidden">
               <span
                 className={`col-start-1 row-start-1 block h-[22px] overflow-hidden transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
                   engaged ? "-translate-y-[110%]" : ""
                 }`}
               >
-                <span className="block transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/pill:-translate-y-[22px] group-focus-visible/pill:-translate-y-[22px]">
-                  <span className="flex h-[22px] items-center justify-end">{pillLabel}</span>
+                <span className="fx-odometer block">
+                  <span className="flex h-[22px] items-center justify-end text-accent">{pillLabel}</span>
                   <span className="flex h-[22px] items-center justify-center">
                     <AsMark fit="tight" className="h-[22px] w-[15px]" />
                   </span>
                 </span>
               </span>
               <span
-                className={`col-start-1 row-start-1 flex h-[22px] items-center justify-end transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                className={`col-start-1 row-start-1 flex h-[22px] items-center justify-end text-accent transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
                   engaged ? "" : "translate-y-[110%]"
                 }`}
               >
                 {closeLabel}
               </span>
             </span>
-          </button>
+          </Fill>
         </div>
 
         {asPanel && (

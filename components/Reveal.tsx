@@ -30,11 +30,10 @@ type RevealProps = {
 // screen.
 //
 // Entrance uses a native IntersectionObserver, not GSAP, so a GSAP failure can
-// never trap reveal content invisible (the genuinely scroll-linked effects, the
-// ASCII field, read-along, and parallax, stay on ScrollTrigger). Descendants opt
-// in via className: ".reveal-item" for a staggered fade + rise, ".reveal-mask"
-// for a heading rising from behind a clip. Set "--reveal-i" (revealIndex) on a
-// descendant to stagger it.
+// never trap reveal content invisible (the sections' scrubbed reveals live in
+// lib/sections on ScrollTrigger). The Book is its one user; descendants opt in
+// with ".reveal-item". Set "--reveal-i" (revealIndex) on a descendant to
+// stagger it.
 export function Reveal({ children, as = "div", className, style, ...rest }: RevealProps) {
   const ref = useRef<HTMLElement | null>(null);
   const [armed, setArmed] = useState(false);

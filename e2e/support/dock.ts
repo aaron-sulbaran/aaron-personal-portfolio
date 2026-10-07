@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { DOCK } from "@/lib/waveform/dock";
 import { scrollToY } from "./coil";
 import { documentTop } from "./wave";
 
@@ -119,20 +120,12 @@ export async function dockLanded(page: Page) {
   });
 }
 
-// Where the capsule sits, against where the dock says it should: its left
-// edge DOCK.insetPx from the viewport's left, its centre on the horizon's
-// baseline (the probe's strip).
+// Where the capsule sits: its left edge DOCK.insetPx in, its centre on the dock's line.
 export async function dockGeometry(page: Page) {
-  return page.evaluate(() => {
+  return page.evaluate((fromBottom) => {
     const r = document.querySelector("[data-pill] .pill-hit")!.getBoundingClientRect();
-    return {
-      left: r.left,
-      x: r.left + r.width / 2,
-      y: r.top + r.height / 2,
-      height: r.height,
-      baseline: window.__waveProbe!.strip()!.baseline,
-    };
-  });
+    return { left: r.left, x: r.left + r.width / 2, y: r.top + r.height / 2, height: r.height, baseline: window.innerHeight - fromBottom };
+  }, DOCK.baselineFromBottomPx);
 }
 
 export async function toAbout(page: Page) {

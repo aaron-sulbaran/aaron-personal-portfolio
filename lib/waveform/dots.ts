@@ -1,4 +1,3 @@
-import { DUCK_SPLIT } from "./duck";
 import { FLOOR, type Field } from "./field";
 
 // Turns the field into dots: each column is a centerline dot displaced off the
@@ -17,19 +16,11 @@ export interface DotLayout {
   spacing: number;
   baseline: number;
   maxAmp: number;
-  // The most fuzz dots a column stacks on each side of its centre (the
-  // horizon caps it so the loudest passage is a dense column, never a wall).
+  // The most fuzz dots a column stacks on each side of its centre (a cap
+  // keeps the loudest passage a dense column, never a wall).
   maxThick?: number;
-  // Per-column px added to the baseline (the sweep's junction curl).
+  // Per-column px added to the baseline.
   baselineOffset?: Float32Array;
-}
-
-// Columns whose duck is past DUCK_SPLIT paint into their own arrays, so a view can
-// fill them at a lower alpha than the open air.
-export interface DuckSplit {
-  duck: ArrayLike<number>;
-  muted: number[];
-  accent: number[];
 }
 
 export interface Cursor {
@@ -92,27 +83,19 @@ export function buildDots(
   muted: number[],
   accent: number[],
   columnX: (i: number) => number = (i) => layout.startX + i * layout.spacing,
-  ducked?: DuckSplit,
 ): void {
   muted.length = 0;
   accent.length = 0;
-  if (ducked) {
-    ducked.muted.length = 0;
-    ducked.accent.length = 0;
-  }
   const { columns, baseline, maxAmp, maxThick = Infinity, baselineOffset } = layout;
   for (let i = 0; i < columns; i++) {
     const x = columnX(i);
     const weight = weights[i] ?? 1;
-    const under = ducked !== undefined && ducked.duck[i] > DUCK_SPLIT;
-    const toMuted = under ? ducked.muted : muted;
-    const toAccent = under ? ducked.accent : accent;
     // Under a carve at weight below 1 this differs slightly from the old
     // weighting in the field (the carve now scales the floor share too); kept.
     const magnitude = FLOOR + (field.mag[i] - FLOOR) * weight;
     const cy = baseline + (baselineOffset?.[i] ?? 0) - field.disp[i] * weight * maxAmp;
     const peak = magnitude > ACCENT_PEAK;
-    pushDot(magnitude > ACCENT_LINE ? toAccent : toMuted, x, cy, CENTER_RADIUS, cursor, weight);
+    pushDot(magnitude > ACCENT_LINE ? accent : muted, x, cy, CENTER_RADIUS, cursor, weight);
 
     const thick = Math.min(maxThick, Math.floor((magnitude * maxAmp) / DOT_GAP));
     for (let k = 1; k <= thick; k++) {
@@ -120,7 +103,7 @@ export function buildDots(
       const fade = 1 - k / (thick + 1.5);
       const shimmer = 0.5 + 0.5 * Math.sin(time * 6 + i * 1.3 + k * 2.1);
       if (shimmer >= 0.5 + fade * 0.45) continue;
-      const target = k >= thick && peak ? toAccent : toMuted;
+      const target = k >= thick && peak ? accent : muted;
       pushDot(target, x, cy - offset, FUZZ_RADIUS, cursor, weight);
       pushDot(target, x, cy + offset, FUZZ_RADIUS, cursor, weight);
     }

@@ -7,6 +7,10 @@ import { defineConfig, devices, type Project } from "@playwright/test";
 // never the dev server, a Vercel preview or the production domain: the full
 // site on 3140 and the holding page on 3141 (a separate build, see
 // e2e/support/holding-server.mjs, since both modes cannot share one .next).
+// Every slice after wave-band-only serves its own build on its own port and
+// points the suite at it with E2E_BASE_URL; a full run sets E2E_FULL_PORT and
+// E2E_HOLDING_PORT to the slice's own pair and uses CI=1 after an lsof check,
+// so no run reuses another worktree's server.
 //
 // Chromium runs through the "chromium" channel (the full browser in its new
 // headless mode): it gets the machine's GPU, so the scene renders at the
@@ -22,8 +26,8 @@ import { defineConfig, devices, type Project } from "@playwright/test";
 
 const CI = !!process.env.CI;
 const MUTED_ARGS = ["--mute-audio"];
-const FULL_PORT = 3140;
-const HOLDING_PORT = 3141;
+const FULL_PORT = Number(process.env.E2E_FULL_PORT ?? 3140);
+const HOLDING_PORT = Number(process.env.E2E_HOLDING_PORT ?? 3141);
 // E2E_BASE_URL points the suite at another local build of the full site
 // (an older commit, to prove a test fails where the defect lived); the suite
 // then starts no servers of its own.
@@ -54,7 +58,7 @@ const otherEngines: Project[] =
   process.env.E2E_ALL === "1"
     ? [
         ...(installed("webkit-")
-          ? [{ name: "webkit", testIgnore: /(holding|touch|soundtrack|horizon)\.spec\.ts/, use: { ...devices["Desktop Safari"], baseURL: FULL_URL } }]
+          ? [{ name: "webkit", testIgnore: /(holding|touch|soundtrack)\.spec\.ts/, use: { ...devices["Desktop Safari"], baseURL: FULL_URL } }]
           : []),
         ...(installed("firefox-")
           ? [{ name: "firefox", testIgnore: /(holding|touch)\.spec\.ts/, use: { ...devices["Desktop Firefox"], baseURL: FULL_URL, launchOptions: { firefoxUserPrefs: { "media.volume_scale": "0.0" } } } }]
@@ -98,7 +102,8 @@ export default defineConfig({
       // E2E_NO_BUILD=1 starts the last build as it is (a rerun with no source change).
       command: process.env.E2E_NO_BUILD === "1" ? `pnpm start -p ${FULL_PORT}` : `pnpm build && pnpm start -p ${FULL_PORT}`,
       url: FULL_URL,
-      env: { NEXT_PUBLIC_SITE_MODE: "full" },
+      // No token: the committed contribution snapshot is the path under test.
+      env: { NEXT_PUBLIC_SITE_MODE: "full", GITHUB_CONTRIB_TOKEN: "" },
       reuseExistingServer: !CI,
       timeout: 240_000,
       stdout: "ignore",

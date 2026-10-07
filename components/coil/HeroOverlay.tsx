@@ -8,6 +8,8 @@ import { useHomeController } from "@/components/home/HomeController";
 import { hintStore } from "@/lib/cursor/hover";
 import type { CoilEntrance, CoilSceneApi } from "./CoilScene";
 import { NameReadout } from "./NameReadout";
+import { Fill, FillArrow, FillSeed } from "@/components/fx/Fill";
+import { FILL_PICK } from "@/lib/fx/fill";
 
 // The hero's DOM layer over the canvas. The greeting and the name are both
 // drawn in the canvas (fx-hero), so at rest this layer holds only the chevron
@@ -247,16 +249,20 @@ export function HeroOverlay({ ref, api, onRowOpen, entrance = null }: Props) {
         </div>
       </div>
 
-      <button
+      <Fill
         ref={coilControlRef}
-        type="button"
+        {...FILL_PICK.hero}
         onClick={windBack}
         tabIndex={listOn ? 0 : -1}
-        className={`${CONTROL_CLASS} absolute bottom-[24px] left-[28px] font-sans text-[color:var(--hero-greeting)]`}
+        className={`${CONTROL_CLASS} absolute bottom-[24px] left-[28px]`}
+        overClassName="flex items-center gap-2.5 pl-4 pr-1"
         style={{ opacity: 0, visibility: "hidden" }}
       >
         {coilControl}
-      </button>
+        <FillSeed className="h-8 w-8">
+          <FillArrow />
+        </FillSeed>
+      </Fill>
 
       <div
         ref={nudgeRef}
@@ -371,4 +377,4 @@ function HintLine({ rootRef, entrance }: { rootRef: RefObject<HTMLDivElement | n
 // ---- end fx-hero ----
 
 const CONTROL_CLASS =
-  "pointer-events-auto whitespace-nowrap rounded px-2 py-[14px] leading-none transition-colors duration-200 [transition-timing-function:var(--ease-out)] hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-accent";
+  "pointer-events-auto flex min-h-10 items-center gap-2.5 whitespace-nowrap rounded-full bg-[var(--menu-pill)] pl-4 pr-1 font-label leading-none text-accent backdrop-blur-[8px] [box-shadow:inset_0_0_0_1px_var(--color-border)] focus-visible:rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-accent";

@@ -16,6 +16,12 @@ export interface HoldingSocial {
   href: string | null;
 }
 
+export interface MetricsSlot {
+  value: string;
+  label: string;
+  sub?: string;
+}
+
 export const siteContent = {
   meta: {
     title: "Aaron Sulbaran",
@@ -156,7 +162,7 @@ export const siteContent = {
       { key: "min-max", title: "min/Max", meta: "Live, link soon", target: { kind: "soon" as const } },
       { key: "capital-one-pm", title: "Capital One", meta: "Product manager intern, 2025", target: { kind: "case" as const, slug: "capital-one-pm" } },
       { key: "ieee-president", title: "IEEE UT Austin", meta: "President, 2025", target: { kind: "case" as const, slug: "ieee-president" } },
-      { key: "claude-ambassador", title: "Anthropic ambassador", meta: "Claude ambassador at UT Austin, 2025", target: { kind: "case" as const, slug: "claude-ambassador" } },
+      { key: "claude-ambassador", title: "Anthropic ambassador", meta: "Claude ambassador, 2025", target: { kind: "case" as const, slug: "claude-ambassador" } },
       { key: "hackathon-builds", title: "Hackathon builds", meta: "Weekend builds, ongoing", target: { kind: "case" as const, slug: "hackathon-builds" } },
       { key: "aaronsulbaran-site", title: "This site", meta: "Built in public, 2026", target: { kind: "case" as const, slug: "aaronsulbaran-site" } },
     ],
@@ -206,6 +212,39 @@ export const siteContent = {
       "Always open to chatting if you're working on something interesting or just want to trade notes.",
     ],
   },
+  // The contribution skyline inside Up to now (components/metrics). The two
+  // slots stay null until I supply a LinkedIn figure and a fun one; a null
+  // slot renders nothing.
+  metrics: {
+    groupLabel: "My GitHub contributions",
+    statsLabel: "Contribution figures",
+    streakLabel: "Current streak of contributions",
+    day: "day",
+    days: "days",
+    since: "since",
+    totalLabel: "contributions in the last 6 months",
+    activeLabel: "days I shipped something",
+    asOf: "As of",
+    slots: { linkedin: null as MetricsSlot | null, fun: null as MetricsSlot | null },
+    chart: {
+      viewGroup: "Chart view",
+      flat: "Flat",
+      skyline: "Skyline",
+      unit: "contribution",
+      units: "contributions",
+      none: "No contributions",
+      on: "on",
+      roleDescription: "interactive chart",
+      less: "Less",
+      more: "More",
+      levels: ["No contributions", "Light", "Moderate", "Heavy", "Heaviest"],
+      highlight: (level: string) => `Highlight ${level.toLowerCase()} days`,
+      hintFlat: "Hover a day for details, arrow keys to explore",
+      hintSkyline: "Drag to orbit, double-click to reset",
+      label: (total: string, from: string, to: string, skyline: boolean) =>
+        `${total} contributions from ${from} to ${to}, shown as a ${skyline ? "3D skyline" : "heat map"}. Use the arrow keys to read individual days.`,
+    },
+  },
   work: {
     label: "Work",
     heading: "Things I've built and shipped.",
@@ -215,7 +254,7 @@ export const siteContent = {
     placeholderCta: "Ping me on LinkedIn",
     indexHeading: "Work.",
     indexLede: "Every project, internship, and community I'm proud of. Click in for the story.",
-    backLabel: "← Work",
+    backLabel: "Work",
   },
   connect: {
     label: "Connect",
