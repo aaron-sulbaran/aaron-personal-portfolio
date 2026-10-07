@@ -42,7 +42,9 @@ export function SkylineHint({ view }: { view: View }) {
 }
 
 // Hover and focus preview a level; only a press pins it, so aria-pressed
-// tracks the pin and a focused swatch is never announced as pressed.
+// tracks the pin and a focused swatch is never announced as pressed. Each
+// swatch draws at 11px; its before element is the press target, 24px tall
+// and out to the middle of the 6px gaps, so neighbours meet and never overlap.
 export function Legend({
   swatches,
   pinned,
@@ -68,7 +70,7 @@ export function Legend({
           onFocus={() => onPreview(i)}
           onBlur={() => onPreview(null)}
           onClick={() => onPin((l) => (l === i ? -1 : i))}
-          className="h-[11px] w-[11px] cursor-pointer rounded-[2px] border-0 p-0 shadow-[inset_0_0_0_1px_var(--color-border)] transition-[background-color,transform] duration-500 hover:scale-125 focus-visible:outline-2 focus-visible:outline-offset-1 motion-reduce:transition-none"
+          className="relative h-[11px] w-[11px] cursor-pointer rounded-[2px] before:absolute before:-inset-x-[3px] before:-inset-y-[6.5px] before:content-[''] border-0 p-0 shadow-[inset_0_0_0_1px_var(--color-border)] transition-[background-color,transform] duration-500 hover:scale-125 focus-visible:outline-2 focus-visible:outline-offset-1 motion-reduce:transition-none"
           style={{ background: c }}
         />
       ))}

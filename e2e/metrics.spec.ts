@@ -210,6 +210,31 @@ test("metrics: a Flat click past the line survives reduced motion switched on an
   await expect(button(page, "flat")).toHaveAttribute("aria-pressed", "true");
 });
 
+// The swatches draw at 11px; each one's press target is 24px tall and runs
+// to the middle of the gaps either side, so neighbours never overlap.
+test("metrics: each legend swatch takes a press across a 24px tall target that meets its neighbours", async ({ page }) => {
+  await openHome(page);
+  await scrollToY(page, await topAt(page, 0.2));
+  const swatches = block(page).locator("button[title]");
+  await expect(swatches).toHaveCount(5);
+  const misses = await swatches.evaluateAll((els) => {
+    const out: string[] = [];
+    const boxes = els.map((el) => el.getBoundingClientRect());
+    els.forEach((el, k) => {
+      const b = boxes[k];
+      const cx = b.left + b.width / 2;
+      const cy = b.top + b.height / 2;
+      const left = k > 0 ? (boxes[k - 1].right + b.left) / 2 + 0.5 : cx;
+      const right = k < els.length - 1 ? (b.right + boxes[k + 1].left) / 2 - 0.5 : cx;
+      const probes: [number, number][] = [[cx, cy - 11.5], [cx, cy + 11.5], [left, cy], [right, cy], [left, cy - 11.5], [right, cy + 11.5]];
+      for (const [x, y] of probes) if (document.elementFromPoint(x, y) !== el) out.push(`${k} at ${x.toFixed(1)},${y.toFixed(1)}`);
+      if (b.width > 12 || b.height > 12) out.push(`${k} draws at ${b.width}x${b.height}`);
+    });
+    return out;
+  });
+  expect(misses).toEqual([]);
+});
+
 test("metrics: Enter on the canvas with nothing pinned announces and shows the last day", async ({ page }) => {
   await openHome(page);
   await scrollToY(page, await topAt(page, 0.2));
