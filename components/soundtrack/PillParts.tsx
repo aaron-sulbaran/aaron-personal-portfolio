@@ -133,17 +133,8 @@ export function FreezeRow({ reduce }: { reduce: boolean }) {
       type="button"
       onClick={() => setFrozen(!frozen)}
       data-cursor-hover
-      style={{
-        ...iconButton(),
-        justifyContent: "flex-start",
-        minHeight: 24,
-        marginTop: 10,
-        fontFamily: "var(--font-sans)",
-        fontSize: 12,
-        color: "var(--color-muted)",
-        textDecoration: "underline",
-        textUnderlineOffset: 3,
-      }}
+      className="font-label text-label-sm text-accent underline underline-offset-[3px] transition-colors duration-200 hover:text-accent-hover"
+      style={{ ...iconButton(), color: undefined, justifyContent: "flex-start", minHeight: 24, marginTop: 10 }}
     >
       {frozen ? c.unfreeze : c.freeze}
     </button>

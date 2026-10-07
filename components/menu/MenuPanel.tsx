@@ -164,7 +164,7 @@ export function MenuPanel({
             className="inline-flex h-[34px] items-center gap-2 rounded-[17px] pl-2.5 pr-3.5 font-label text-label text-accent shadow-[inset_0_0_0_1px_var(--color-border)]"
             overClassName="flex items-center gap-2 pl-2.5 pr-3.5"
           >
-            <span data-fill-icon className="flex h-4 w-4 items-center justify-center">
+            <span data-fill-icon className="relative -top-px flex h-4 w-4 items-center justify-center">
               {theme === "dark" ? (
                 <Sun aria-hidden="true" className="h-4 w-4" strokeWidth={1.6} />
               ) : (
@@ -182,18 +182,18 @@ export function MenuPanel({
             className="inline-flex h-[34px] items-center gap-2 rounded-[17px] pl-2.5 pr-3.5 font-label text-label text-accent shadow-[inset_0_0_0_1px_var(--color-border)]"
             overClassName="flex items-center gap-2 pl-2.5 pr-3.5"
           >
-            <span aria-hidden="true" data-fill-icon className="flex h-4 w-4 items-center justify-center">
+            <span aria-hidden="true" data-fill-icon className="relative -top-px flex h-4 w-4 items-center justify-center">
               <NoteIcon state={noteState(music)} className="block h-4 w-[14px]" />
             </span>
             <span>{music === "on" ? menuToggleOn : music === "paused" ? menuTogglePaused : menuToggleOff}</span>
           </Fill>
         </div>
         <div
-          className={`flex text-[13px] ${
+          className={`flex font-label text-label ${
             sheet ? "flex-col gap-2.5" : "flex-wrap justify-between gap-x-5 gap-y-2.5"
           }`}
         >
-          <a href={email.href} data-cursor-hover className="text-muted transition-colors duration-200 hover:text-foreground">
+          <a href={email.href} data-cursor-hover className="text-accent transition-colors duration-200 hover:text-accent-hover">
             {email.label}
           </a>
           <span className="flex gap-4">
@@ -204,7 +204,7 @@ export function MenuPanel({
                 target="_blank"
                 rel="noopener noreferrer"
                 data-cursor-hover
-                className="text-muted transition-colors duration-200 hover:text-foreground"
+                className="text-accent transition-colors duration-200 hover:text-accent-hover"
               >
                 {social.label}
               </a>

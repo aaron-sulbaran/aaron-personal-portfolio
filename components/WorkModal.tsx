@@ -126,13 +126,13 @@ export function WorkModal({ item, onClose, renderMedia = false }: WorkModalProps
                   </>
                 )}
               </div>
-              <div className="flex flex-col gap-1">
-                <span className="text-sm text-muted">
-                  {item.role}, {item.year}
-                </span>
+              <div className="flex flex-col gap-1.5">
                 <h2 className="font-display text-3xl leading-tight text-foreground md:text-4xl">
                   {item.title}
                 </h2>
+                <p className="font-label text-label text-accent">
+                  {item.role}, {item.year}
+                </p>
               </div>
             </div>
 
@@ -147,7 +147,7 @@ export function WorkModal({ item, onClose, renderMedia = false }: WorkModalProps
                   <FillArrow />
                 </FillSeed>
               </Fill>
-              <span className="text-sm text-muted">
+              <span className="font-label text-label text-muted">
                 {closeHint}
               </span>
             </div>

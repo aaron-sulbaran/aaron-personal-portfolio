@@ -15,7 +15,7 @@ export default function NotFound() {
       <p className="mt-6 max-w-sm text-body-lg text-muted">{body}</p>
       <Link
         href="/"
-        className="mt-10 text-base font-medium text-accent transition-colors duration-200 hover:text-accent-hover"
+        className="mt-10 font-label text-label leading-6 text-accent transition-colors duration-200 hover:text-accent-hover"
       >
         {cta}
       </Link>

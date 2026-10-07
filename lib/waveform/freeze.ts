@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from "react";
 
 // The visitor's "Freeze the wave", one flag for the whole wave: the band's
-// canvas forwards it to the conductor, so the band and the horizon both stop.
+// canvas forwards it to the conductor, so the whole wave stops.
 // Written by the player card (and the band's own toggle on phones). Not
 // persisted: a reload lets the wave move again.
 let frozen = false;

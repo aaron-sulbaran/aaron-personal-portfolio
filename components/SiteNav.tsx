@@ -144,7 +144,7 @@ export function SiteNav() {
         <nav
           aria-label={siteContent.menu.navAriaLabel}
           inert={!navShown}
-          className={`absolute left-1/2 top-0 hidden h-[72px] -translate-x-1/2 items-center gap-8 transition-opacity duration-300 md:flex ${
+          className={`absolute left-1/2 top-0 hidden h-[72px] -translate-x-1/2 items-center gap-8 font-label text-label transition-opacity duration-300 md:flex ${
             bar ? "pointer-events-auto opacity-100" : "opacity-0"
           }`}
         >

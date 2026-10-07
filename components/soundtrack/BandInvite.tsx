@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useSyncExternalStore, type MouseEvent, type ReactNode } from "react";
+import { useEffect, useRef, type MouseEvent, type ReactNode } from "react";
 import { Fill } from "@/components/fx/Fill";
 import { siteContent } from "@/lib/content";
 import { FILL_PICK } from "@/lib/fx/fill";
@@ -11,7 +11,6 @@ import {
   stopSoundtrack,
   useSoundtrack,
 } from "@/lib/soundtrack";
-import { getDocked, setDockSource, subscribeDocked } from "@/lib/waveform/dock";
 
 // The band's copy and controls, the one place the music is offered. The
 // heading is the question; the controls beside it and the note under it swap
@@ -23,11 +22,6 @@ import { getDocked, setDockSource, subscribeDocked } from "@/lib/waveform/dock";
 // pill's quiet capsule on desktop and "Play it" beside the note on phones
 // (the Menu's note works everywhere).
 //
-// The pressed control is the pill's arrival source: the pill condenses out of
-// it at the dock, and while the pill is out the controls fade (150ms), so the
-// pill reads as the control that left. Faded controls stay focusable and
-// reappear under keyboard focus.
-//
 // The root carries data-wave-avoid: the waveform measures it and keeps its
 // moving dots out from under this text.
 export function BandInvite() {
@@ -35,7 +29,6 @@ export function BandInvite() {
   const c = siteContent.listen;
   const moveFocus = useRef<"note" | "control" | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
-  const docked = useSyncExternalStore(subscribeDocked, getDocked, () => false);
 
   useEffect(() => {
     initSoundtrackFromStorage();
@@ -51,25 +44,20 @@ export function BandInvite() {
   }, [music]);
 
   // Each runs inside the click, which is what lets audio start under the
-  // browser's autoplay policy. The press is recorded in page coordinates.
-  // Answering the question lands focus on the note, so the question is not
-  // read again; Pause and Resume hand focus to each other.
+  // browser's autoplay policy. Answering the question lands focus on the
+  // note, so the question is not read again; Pause and Resume hand focus to
+  // each other.
   const act = (write: () => void) => (event: MouseEvent<HTMLButtonElement>) => {
-    const r = event.currentTarget.getBoundingClientRect();
-    setDockSource(new DOMRect(r.x + window.scrollX, r.y + window.scrollY, r.width, r.height));
     moveFocus.current = event.currentTarget.dataset.focusTo === "note" ? "note" : "control";
     write();
   };
 
   return (
     <div ref={rootRef} data-wave-avoid className="pointer-events-auto w-fit max-w-full">
-      <div className="flex flex-wrap items-baseline gap-x-7 gap-y-3">
+      <div className="flex flex-wrap items-baseline gap-x-9 gap-y-3">
         <h2 className="font-display text-[clamp(1.375rem,2vw,1.75rem)] leading-[1.1] text-foreground">{c.line}</h2>
-        <div
-          data-band-controls
-          className={`grid transition-opacity duration-150 has-[:focus-visible]:opacity-100 ${docked ? "pointer-events-none opacity-0" : "opacity-100"}`}
-        >
-          <Layer shown={music === "before"} className="flex items-baseline gap-6">
+        <div data-band-controls className="grid items-baseline">
+          <Layer shown={music === "before"} className="flex items-baseline gap-4">
             <Fill {...FILL_PICK.band} shape="rect" type="button" data-control="before" data-focus-to="note" onClick={act(startSoundtrack)} data-cursor-hover {...PRIMARY}>
               {c.accept}
             </Fill>
@@ -135,7 +123,7 @@ const PRIMARY = {
 // "Not now" keeps its muted underline; no rise line.
 const QUIET = {
   line: 0,
-  className: `-mx-1.5 inline-flex items-baseline px-1.5 pb-[3px] pt-px font-label text-label text-muted underline decoration-1 underline-offset-[4px] decoration-[color-mix(in_srgb,var(--color-muted)_40%,transparent)] dark:decoration-[color-mix(in_srgb,var(--color-muted)_55%,transparent)] ${FOCUS}`,
+  className: `-mx-1.5 inline-flex items-baseline px-1.5 pb-[3px] pt-px font-label text-label text-muted underline decoration-1 underline-offset-[4px] decoration-[color:color-mix(in_srgb,var(--color-muted)_40%,transparent)] dark:decoration-[color:color-mix(in_srgb,var(--color-muted)_55%,transparent)] ${FOCUS}`,
   overClassName: "flex items-baseline px-1.5 pb-[3px] pt-px",
 };
 

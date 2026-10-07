@@ -1,10 +1,7 @@
 import { DPR_CAP } from "@/lib/waveform/layout";
-import type { Rect } from "@/lib/waveform/weights";
 
-// What the band view (waveView.ts) and the horizon view (horizonView.ts)
-// share: the colors read once per theme, the batched dot fills, the canvas
-// sizing and the pointer, and the horizon's measurement of the text it
-// ducks under. The track each lays per frame is lib/waveform/track.ts.
+// What the band view (waveView.ts) draws with: the colors read once per
+// theme, the batched dot fills, the canvas sizing and the pointer.
 
 export type Theme = "light" | "dark";
 export type Alphas = { muted: number; accent: number };
@@ -76,58 +73,4 @@ export function trackPointer(fine: boolean, onChange: () => void) {
       document.removeEventListener("mouseleave", onLeave);
     },
   };
-}
-
-// The boxes the elements matching `selector` under `root` cover, in document px, padded by
-// `pad` and sorted by top (duckTargets stops at the first one past its reach).
-// An element whose words sit outside its own box (offset or parallaxed
-// children) sets `data-wave-avoid-pad` to pad its top and bottom further.
-export function measureAvoidRects(root: ParentNode, selector: string, pad: number): Rect[] {
-  const y = window.scrollY;
-  const next: Rect[] = [];
-  root.querySelectorAll<HTMLElement>(selector).forEach((el) => {
-    const r = inkBox(el);
-    if (!r) return;
-    const own = Number(el.dataset.waveAvoidPad);
-    const vertical = Number.isFinite(own) && own > 0 ? own : pad;
-    next.push({
-      left: r.left - pad,
-      right: r.right + pad,
-      top: r.top + y - vertical,
-      bottom: r.bottom + y + vertical,
-    });
-  });
-  return next.sort((a, b) => a.top - b.top);
-}
-
-// The box the element's words cover, viewport px: a block heading spans its
-// whole container, but only its words need the wave out of the way, so the
-// air beside a short heading keeps the wave. Left and right come from the
-// text, top and bottom from the element: a reveal holds a heading's words
-// translated below their box until it plays, and no observer sees a
-// transform end, so the element's own box is the steadier vertical. Falls
-// back to the element's box when it holds no text. Icons count as words.
-function inkBox(el: HTMLElement): Rect | null {
-  const own = el.getBoundingClientRect();
-  if (!own.width || !own.height) return null;
-  const range = document.createRange();
-  const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
-  let left = Infinity;
-  let right = -Infinity;
-  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-    if (!node.textContent?.trim()) continue;
-    range.selectNodeContents(node);
-    const r = range.getBoundingClientRect();
-    if (!r.width) continue;
-    left = Math.min(left, r.left);
-    right = Math.max(right, r.right);
-  }
-  el.querySelectorAll("svg, img").forEach((icon) => {
-    const r = icon.getBoundingClientRect();
-    if (!r.width) return;
-    left = Math.min(left, r.left);
-    right = Math.max(right, r.right);
-  });
-  if (left > right) return { left: own.left, right: own.right, top: own.top, bottom: own.bottom };
-  return { left: Math.max(left, own.left), right: Math.min(right, own.right), top: own.top, bottom: own.bottom };
 }

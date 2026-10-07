@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { HORIZON, PHONE_MAX_PX, bandLayout, horizonLayout } from "@/lib/waveform/layout";
+import { PHONE_MAX_PX, bandLayout } from "@/lib/waveform/layout";
 
 describe("bandLayout", () => {
   it("spreads columns across the full width, centered", () => {
@@ -21,16 +21,5 @@ describe("bandLayout", () => {
 
   it("keeps an empty canvas empty", () => {
     expect(bandLayout(0, 0).columns).toBe(0);
-  });
-});
-
-describe("horizonLayout", () => {
-  it("shares the band's columns at one width, on a baseline 72px above the bottom", () => {
-    const band = bandLayout(1440, 300);
-    const horizon = horizonLayout(1440);
-    expect([horizon.columns, horizon.startX, horizon.spacing]).toEqual([band.columns, band.startX, band.spacing]);
-    expect(horizon.baseline).toBe(HORIZON.height - 72);
-    expect(horizon.maxAmp).toBe(44);
-    expect(horizon.maxThick).toBe(6);
   });
 });

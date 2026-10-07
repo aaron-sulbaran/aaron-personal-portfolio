@@ -1,7 +1,7 @@
 import localFont from "next/font/local";
 
 // Profa Black, the display face site-wide. A single upright 900 cut, Aaron's
-// own licensed file, the one allowlisted entry in app/fonts/. The variable
+// own licensed file, one of the two allowlisted entries in app/fonts/. The variable
 // lands on <html> (app/layout.tsx) so Tailwind's font-display (and the serif
 // alias the recruiting dashboard still uses) resolve to it everywhere.
 //
@@ -13,6 +13,19 @@ export const profaBlack = localFont({
   weight: "900",
   display: "swap",
   variable: "--font-display",
+  declarations: [
+    { prop: "unicode-range", value: "U+0000-0029, U+002B-003A, U+003C-003F, U+0041-10FFFF" },
+  ],
+});
+
+// Profa Bold, the label face: small non-body text (controls, meta beside a
+// title, kickers, nav, the pill, the credit). A trial cut until the full
+// license lands, so it takes the same unicode-range carve-out as Black.
+export const profaBold = localFont({
+  src: "../app/fonts/ProfaTrial-Bold.ttf",
+  weight: "700",
+  display: "swap",
+  variable: "--font-label",
   declarations: [
     { prop: "unicode-range", value: "U+0000-0029, U+002B-003A, U+003C-003F, U+0041-10FFFF" },
   ],
