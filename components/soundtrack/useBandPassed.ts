@@ -11,17 +11,19 @@ import { DOCK } from "@/lib/waveform/dock";
 // still flips it both ways. Creation and every refresh read it directly, so a
 // load that starts past the band is passed with no scroll.
 //
-// Passed is read as "scroll at or past start", never isActive: the end stays
-// the default, and every crossing of start fires one of the four callbacks (a
+// Passed is read as "scroll past start", never isActive: the end stays the
+// default, and every crossing of start fires one of the four callbacks (a
 // jump over the whole range fires onEnter then onLeave, and back, onEnterBack
-// then onLeaveBack). An end of "max" would be wrong: the trigger is created
+// then onLeaveBack). Strictly past: GSAP counts progress 0 as before, so a
+// return that stops exactly on start fires onLeaveBack there and nothing on
+// the way up from it. An end of "max" would be wrong: the trigger is created
 // under the entrance's scroll lock, when the max scroll is 0, so it resolves
 // to start + 1 until the next refresh.
 export function useBandPassed(): boolean {
   const [passed, setPassed] = useState(false);
 
   useGSAP(() => {
-    const read = (self: ScrollTrigger) => setPassed(self.scroll() >= self.start);
+    const read = (self: ScrollTrigger) => setPassed(self.scroll() > self.start);
     const st = ScrollTrigger.create({
       trigger: "#listen",
       start: `bottom ${DOCK.passedPx}px`,

@@ -532,6 +532,24 @@ test("dock: turning back mid-fade reverses from the opacity it has", async ({ pa
   await expect(page.locator(PILL)).toHaveAttribute("inert", "");
 });
 
+// Progress 0 is "before" to GSAP: a return that stops exactly on the start
+// fires onLeaveBack there and nothing above it, so the read at start must say
+// "not passed", or the pill stays out over the book and the Coil.
+test("dock: back up to exactly the dock line, then on up through the band, the pill fades away", async ({ page }) => {
+  await armDock(page);
+  await openHome(page, { path: HOME });
+  await scrollBandIntoView(page);
+  await bandBottomAt(page, DOCK.passedPx - 12);
+  await dockLanded(page);
+  await bandBottomAt(page, DOCK.passedPx);
+  // The start is the band's bottom edge on the dock line, so a bottom edge at
+  // exactly DOCK.passedPx is a scroll at exactly the trigger's start.
+  const bottom = await page.evaluate(() => document.getElementById("listen")!.getBoundingClientRect().bottom);
+  expect(bottom, "the band's bottom edge exactly on the dock line").toBe(DOCK.passedPx);
+  await bandBottomAt(page, DOCK.passedPx + 200);
+  await expect(page.locator(PILL)).toHaveAttribute("inert", "", { timeout: DOCK.fadeMs + 2000 });
+});
+
 // Reduced motion makes every anchor jump instant, so the reader can cross the
 // band in one step, with no frame where it shows: the dock must still follow.
 test("dock: under reduced motion an instant jump past the band lands the pill, and a jump back above it hides it", async ({ page }) => {
