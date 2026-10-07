@@ -1,5 +1,5 @@
 import { Color, Mesh, ShaderMaterial, Vector2, Vector4, type IUniform, type Texture } from "three";
-import { heldFieldS } from "@/lib/coil/debugFlags";
+import { heldFieldS, nameCompositeInk } from "@/lib/coil/debugFlags";
 import { DRIFT_PRESETS, fieldClocks, parseDriftPreset, type DriftPreset } from "@/lib/coil/drift";
 import { COMPOSITE_FRAG, COMPOSITE_VERT, FIELD, FIELD_FRAG, FULLSCREEN_VERT, NAME, nameComposite } from "@/lib/coil/field.glsl";
 import { applyColor } from "@/lib/coil/theme";
@@ -113,8 +113,8 @@ export function createField(ctx: SceneCtx, gl: Gl, init: CompositeInit) {
     applyColor(cu.uPaper.value, st.theme.paper);
     applyColor(cu.uGradTop.value, st.theme.name.top);
     applyColor(cu.uGradBottom.value, st.theme.name.bottom);
-    // QA (?coildebug=ink=100): the whole surface through the letters.
-    cu.uNameK.value = flags.inkOverride === null ? st.theme.name.ink * FIELD.nameInkGain : Math.min(1, flags.inkOverride * FIELD.nameInkGain);
+    // The still's strong ink; QA (?coildebug=ink=100): the whole surface through the letters.
+    cu.uNameK.value = nameCompositeInk(flags, st.theme.name.ink);
     applyColor(cu.uSurfMean.value, st.theme.name.surface.mean);
     const name = nameComposite(st.theme.dark);
     cu.uFloor.value = name.floor;

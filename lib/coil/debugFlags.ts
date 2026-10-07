@@ -1,3 +1,5 @@
+import { COIL } from "@/lib/coil/constants";
+
 // The scene's ?coildebug and ?drift flags, parsed from a query string. Pure,
 // so the token rules are tested; components/coil/scene/debug.ts reads the
 // page's own search. Token list and meanings: scene/debug.ts.
@@ -54,4 +56,14 @@ export function parseDebugFlags(search: string): DebugFlags {
 // The field's clock (seconds) this frame: 0 when pinned, else the at= hold, else the live clock.
 export function heldFieldS(flags: Pick<DebugFlags, "pinned" | "heldAt">, elapsedS: number): number {
   return flags.pinned ? 0 : (flags.heldAt ?? elapsedS);
+}
+
+// The name composite's ink (the letters' layer opacity, field.ts's uNameK and
+// name.ts's reported inkAlpha): the theme's --name-ink times the composite's
+// gain live; in still mode the strong ink, COIL.lockup.stillInk, so the hero
+// still bakes the name behind its cards at the h1's ink; an ink= token wins
+// over both for QA.
+export function nameCompositeInk(flags: Pick<DebugFlags, "stillMode" | "inkOverride">, themeInk: number): number {
+  if (flags.inkOverride !== null) return Math.min(1, flags.inkOverride * COIL.lockup.inkGain);
+  return flags.stillMode ? COIL.lockup.stillInk : themeInk * COIL.lockup.inkGain;
 }

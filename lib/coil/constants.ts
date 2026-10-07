@@ -124,9 +124,11 @@ const values = {
   // greetingGap of its own cap height above the "A", its ink greetingShift of
   // the name's size right of the name's ink. pad (of the size) rims the mask;
   // inkGain is the composite's gain on the --name-ink token. stillInk is the
-  // h1 lockup's ink in front of the hero still (and the loader's resting
-  // lockup eases to it as the still fades in): the layer's opacity, over
-  // the same gradient and greeting color.
+  // strong ink: the name the hero still bakes behind its cards (the scene's
+  // composite in still mode, lib/coil/debugFlags.ts nameCompositeInk) and the
+  // h1 lockup's while the still is loading or never decodes (and the loader's
+  // resting lockup eases to it as the still fades in): the layer's opacity,
+  // over the same gradient and greeting color.
   lockup: {
     widthWide: 0.7,
     widthNarrow: 0.9,

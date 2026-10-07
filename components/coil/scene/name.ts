@@ -13,6 +13,7 @@ import { siteContent } from "@/lib/content";
 import { COIL } from "@/lib/coil/constants";
 import { entranceNameAlpha, type EntranceClock } from "@/lib/coil/entrance";
 import { FIELD, FULLSCREEN_VERT, GLYPH_FRAG, NAME } from "@/lib/coil/field.glsl";
+import { nameCompositeInk } from "@/lib/coil/debugFlags";
 import { clamp01, isNarrow } from "@/lib/coil/geometry";
 import { siteEase } from "@/lib/coil/motion";
 import { toBytes } from "@/lib/coil/theme";
@@ -332,7 +333,7 @@ export function createName(
         from: toBytes(st.theme.name.top),
         to: toBytes(st.theme.name.bottom),
       },
-      inkAlpha: Math.min(1, Math.max(0, st.theme.name.ink * FIELD.nameInkGain)),
+      inkAlpha: Math.min(1, Math.max(0, nameCompositeInk(flags, st.theme.name.ink))),
     };
   }
 
