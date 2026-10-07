@@ -139,6 +139,104 @@ test("metrics: a click hold survives ScrollTrigger refreshes", async ({ page }) 
   await held();
 });
 
+// The engine rethemes (resolving every token, measuring every label) on a
+// theme switch only: ScrollTrigger's refresh guard and the scroll lock write
+// <html>'s inline style, and those writes must not retheme it. retheme is
+// the engine's only measureText caller, so the count of those on the
+// skyline's canvas counts rethemes.
+test("metrics: a theme switch repaints the skyline; a style write on <html> does not retheme it", async ({ page }) => {
+  await openHome(page);
+  await scrollToY(page, await topAt(page, 0.2));
+  await expect.poll(() => state(page), { timeout: 5000 }).toBe("skyline");
+  await nextFrames(page, 30);
+  await page.evaluate(() => {
+    const canvas = document.querySelector("[data-skyline-stage] canvas");
+    const w = window as unknown as { __measures: number };
+    w.__measures = 0;
+    const measure = CanvasRenderingContext2D.prototype.measureText;
+    CanvasRenderingContext2D.prototype.measureText = function (this: CanvasRenderingContext2D, text: string) {
+      if (this.canvas === canvas) w.__measures++;
+      return measure.call(this, text);
+    };
+  });
+  const measures = () => page.evaluate(() => (window as unknown as { __measures: number }).__measures);
+  const ink = () =>
+    page.evaluate(() => {
+      const c = document.querySelector<HTMLCanvasElement>("[data-skyline-stage] canvas")!;
+      const d = c.getContext("2d")!.getImageData(0, 0, c.width, c.height).data;
+      let sum = 0;
+      for (let i = 0; i < d.length; i += 4) sum += d[i] + d[i + 1] + d[i + 2];
+      return sum;
+    });
+
+  for (const write of [
+    () => document.documentElement.style.setProperty("--scrollbar-comp", "15px"),
+    () => (document.documentElement.style.scrollBehavior = "auto"),
+    () => document.documentElement.style.removeProperty("scroll-behavior"),
+    () => document.documentElement.style.setProperty("--scrollbar-comp", "0px"),
+    () => document.documentElement.setAttribute("data-theme", document.documentElement.getAttribute("data-theme") ?? "light"),
+  ]) {
+    await page.evaluate(write);
+    await nextFrames(page, 3);
+  }
+  expect(await measures(), "style writes and an unchanged theme must not retheme").toBe(0);
+
+  const before = await ink();
+  await page.evaluate(() => {
+    const root = document.documentElement;
+    root.setAttribute("data-theme", root.getAttribute("data-theme") === "dark" ? "light" : "dark");
+  });
+  await expect.poll(measures).toBeGreaterThan(0);
+  await expect.poll(ink, { timeout: 5000 }).not.toBe(before);
+});
+
+// A Flat click holds until the line is next crossed, and a live switch of
+// reduced motion (which rebuilds the trigger) is not a crossing.
+test("metrics: a Flat click past the line survives reduced motion switched on and off", async ({ page }) => {
+  await openHome(page);
+  await scrollToY(page, await topAt(page, 0.2));
+  await expect.poll(() => state(page), { timeout: 5000 }).toBe("skyline");
+  await button(page, "flat").click();
+  await expect.poll(() => state(page)).toBe("flat");
+  await record(page);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.waitForTimeout(400);
+  await nextFrames(page, 10);
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.waitForTimeout(1500);
+  await nextFrames(page, 10);
+  expect(await states(page)).toEqual([]);
+  expect(await state(page)).toBe("flat");
+  await expect(button(page, "flat")).toHaveAttribute("aria-pressed", "true");
+});
+
+// The swatches draw at 11px; each one's press target is 24px tall and runs
+// to the middle of the gaps either side, so neighbours never overlap. The
+// probes stay a pixel or so inside each edge: hit testing snaps the
+// swatches' fractional positions by up to a pixel.
+test("metrics: each legend swatch takes a press across a 24px tall target that meets its neighbours", async ({ page }) => {
+  await openHome(page);
+  await scrollToY(page, await topAt(page, 0.2));
+  const swatches = block(page).locator("button[title]");
+  await expect(swatches).toHaveCount(5);
+  const misses = await swatches.evaluateAll((els) => {
+    const out: string[] = [];
+    const boxes = els.map((el) => el.getBoundingClientRect());
+    els.forEach((el, k) => {
+      const b = boxes[k];
+      const cx = b.left + b.width / 2;
+      const cy = b.top + b.height / 2;
+      const left = k > 0 ? (boxes[k - 1].right + b.left) / 2 + 1.5 : cx;
+      const right = k < els.length - 1 ? (b.right + boxes[k + 1].left) / 2 - 1.5 : cx;
+      const probes: [number, number][] = [[cx, cy - 11], [cx, cy + 11], [left, cy], [right, cy], [left, cy - 11], [right, cy + 11]];
+      for (const [x, y] of probes) if (document.elementFromPoint(x, y) !== el) out.push(`${k} at ${x.toFixed(1)},${y.toFixed(1)}`);
+      if (b.width > 12 || b.height > 12) out.push(`${k} draws at ${b.width}x${b.height}`);
+    });
+    return out;
+  });
+  expect(misses).toEqual([]);
+});
+
 test("metrics: Enter on the canvas with nothing pinned announces and shows the last day", async ({ page }) => {
   await openHome(page);
   await scrollToY(page, await topAt(page, 0.2));

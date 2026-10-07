@@ -10,8 +10,7 @@ import { createDotPainter, sizeCanvas, themeNow, trackPointer, type Alphas } fro
 // is the band's view.
 //
 // The canvas fills its parent and is sized by a ResizeObserver, never the
-// viewport. `still` (reduced motion) draws one flat line and takes no cursor;
-// it stays at sweep 0.
+// viewport. `still` (reduced motion) draws one flat line and takes no cursor.
 
 const AVOID_PAD = 6; // px of air kept between the copy and the nearest dot
 const FEATHER = 48;
@@ -55,14 +54,8 @@ export function createWaveView(canvas: HTMLCanvasElement, conductor: WaveConduct
     alphas = typeof options.alphas === "function" ? options.alphas(themeNow()) : options.alphas;
   };
 
-  // Reduced motion keeps the band at rest.
-  const sweepNow = () => (still ? 0 : conductor.sweep.value);
-
   const paint = (time: number) => {
     ctx.clearRect(0, 0, width, height);
-    const sweep = sweepNow();
-    // Whole train past the band: every column sits left of the canvas.
-    if (sweep >= 1) return;
     buildDots(conductor.field, layout, time, weights, cursor, muted, accent);
     painter.fill(muted, painter.colors.muted, alphas.muted);
     painter.fill(accent, painter.colors.accent, alphas.accent);

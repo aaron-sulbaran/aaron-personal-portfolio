@@ -1,7 +1,8 @@
 import { FACE_X, FACE_Y } from "@/lib/metrics/skyline/maths";
 import type { Scene } from "./draw";
 import { OUTLINE_LEN } from "@/lib/metrics/skyline/prism";
-import { alphaCss, polyPath, rgbString } from "./paint";
+import { rgbCss } from "@/lib/metrics/skyline/cssCache";
+import { alphaCss, polyPath, SLOT_FACE_X, SLOT_FACE_Y, SLOT_TOP } from "./paint";
 
 // The flat view's depth (lift, bevel, inset), painted per cell while the real
 // faces have not yet arrived. draw() calls flatCell inside its cell loop.
@@ -9,13 +10,14 @@ import { alphaCss, polyPath, rgbString } from "./paint";
 // One flat cell with depth, at strength fd (1 flat, 0 gone). An empty day
 // stands half as high (its slab in 3D is half the lowest active bar), so its
 // edge is half as wide and it carries no highlight. The cell is s.outline
-// raised by `rise` screen pixels, the bar's top while the morph begins.
-export const flatCell = (s: Scene, rise: number, r: number, g: number, b: number, fd: number, empty: boolean) => {
+// raised by `rise` screen pixels, the bar's top while the morph begins; `slot`
+// is the cell's first colour slot, shared with draw()'s faces.
+export const flatCell = (s: Scene, slot: number, rise: number, r: number, g: number, b: number, fd: number, empty: boolean) => {
   const { ctx, depth } = s;
   const up = -rise;
   const L = depth.lift * fd * (empty ? 0.5 : 1);
   const hiA = empty ? 0 : (depth.hi / 100) * s.hiA * fd;
-  const top = rgbString(r, g, b);
+  const top = rgbCss(s.cellCss, slot + SLOT_TOP, r, g, b);
   if (depth.mode === "lift") {
     if (L > 0.05) {
       cellPath(s, L, up + L);
@@ -42,10 +44,10 @@ export const flatCell = (s: Scene, rise: number, r: number, g: number, b: number
   ctx.save();
   ctx.clip();
   if (L > 0.05) {
-    ctx.fillStyle = rgbString(r * FACE_X, g * FACE_X, b * FACE_X);
+    ctx.fillStyle = rgbCss(s.cellCss, slot + SLOT_FACE_X, r * FACE_X, g * FACE_X, b * FACE_X);
     ctx.fill();
     cellPath(s, dir * L, up);
-    ctx.fillStyle = rgbString(r * FACE_Y, g * FACE_Y, b * FACE_Y);
+    ctx.fillStyle = rgbCss(s.cellCss, slot + SLOT_FACE_Y, r * FACE_Y, g * FACE_Y, b * FACE_Y);
     ctx.fill();
     cellPath(s, dir * L, up + dir * L);
   }

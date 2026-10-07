@@ -12,7 +12,8 @@ import {
 } from "@/lib/metrics/skyline/maths";
 import { SKYLINE } from "@/lib/metrics/settings";
 import { frontEdgeX, OUTLINE_LEN, prismSilhouette, roundedCell } from "@/lib/metrics/skyline/prism";
-import { alphaCss, polyPath, rgbString, rgbaString, type AlphaCss } from "./paint";
+import { rgbCss, rgbaCss, type CssCache } from "@/lib/metrics/skyline/cssCache";
+import { alphaCss, CELL_SLOTS, polyPath, SLOT_FACE_X, SLOT_FACE_Y, SLOT_HOVER, SLOT_TOP, type AlphaCss } from "./paint";
 import { flatCell } from "./flat";
 
 // The scene's mutable state and the one function that paints it. The engine
@@ -77,7 +78,9 @@ export type Scene = {
   shade: RGB; // lift's cast shadow: the page's ink over paper, or deeper than the page in dark
   // Reused every frame so the paint allocates nothing: the camera, the screen
   // transform (px, py), the bounds, the month label widths in s.font (measured
-  // on retheme), the steady colour strings and the tooltip's last placement.
+  // on retheme), the steady colour strings, each cell's colour strings
+  // (CELL_SLOTS per cell, rebuilt only when a rounded colour changes) and the
+  // tooltip's last placement.
   cam: Cam;
   ox: number;
   oy: number;
@@ -89,6 +92,7 @@ export type Scene = {
   label2Css: AlphaCss;
   label3Css: AlphaCss;
   hiCss: AlphaCss;
+  cellCss: CssCache;
   tipAt: Float64Array;
 };
 
@@ -260,6 +264,7 @@ export const draw = (s: Scene) => {
     }
     roundedCell(s.outline, cam, x0, y0, w, SKYLINE.prismRadius * w, 0, sc, s.ox, s.oy);
     const rise = z * ce * sc;
+    const slot = i * CELL_SLOTS;
     if (f) {
       const m = prismSilhouette(s.sil, s.outline, OUTLINE_LEN, rise);
       const front = frontEdgeX(s.outline, OUTLINE_LEN);
@@ -267,17 +272,17 @@ export const draw = (s: Scene) => {
       ctx.beginPath();
       polyPath(ctx, s.sil, m);
       ctx.clip();
-      ctx.fillStyle = rgbString(r * FACE_Y, g * FACE_Y, bl * FACE_Y);
+      ctx.fillStyle = rgbCss(s.cellCss, slot + SLOT_FACE_Y, r * FACE_Y, g * FACE_Y, bl * FACE_Y);
       ctx.fillRect(0, 0, front, s.Hmax);
-      ctx.fillStyle = rgbString(r * FACE_X, g * FACE_X, bl * FACE_X);
+      ctx.fillStyle = rgbCss(s.cellCss, slot + SLOT_FACE_X, r * FACE_X, g * FACE_X, bl * FACE_X);
       ctx.fillRect(front, 0, W - front, s.Hmax);
       ctx.restore();
     }
-    if (fd > 0.004) flatCell(s, rise, r, g, bl, fd, lv[i] === 0 || lv[i] === 5);
+    if (fd > 0.004) flatCell(s, slot, rise, r, g, bl, fd, lv[i] === 0 || lv[i] === 5);
     else {
       ctx.beginPath();
       polyPath(ctx, s.outline, OUTLINE_LEN, 0, -rise);
-      ctx.fillStyle = rgbString(r, g, bl);
+      ctx.fillStyle = rgbCss(s.cellCss, slot + SLOT_TOP, r, g, bl);
       ctx.fill();
     }
     if (outline > 0.004 || hv > 0.02) {
@@ -290,7 +295,7 @@ export const draw = (s: Scene) => {
       ctx.stroke();
     }
     if (hv > 0.02) {
-      ctx.strokeStyle = rgbaString(fg, 0.85 * hv);
+      ctx.strokeStyle = rgbaCss(s.cellCss, slot + SLOT_HOVER, fg, 0.85 * hv);
       ctx.lineWidth = 1.5;
       ctx.stroke();
     }

@@ -22,21 +22,38 @@ test("chrome: the Menu pill opens into the panel and closes again", async ({ pag
   await expect(page.getByRole("button", { name: "Open menu" })).toHaveAttribute("aria-expanded", "false");
 });
 
-test("chrome: the music note toggles the soundtrack and says what it will do", async ({ page, browserName }) => {
+// A toggle keeps one name and says its state by aria-pressed alone; a name
+// that also flipped read "Pause, toggle button, pressed".
+test("chrome: the music note toggles the soundtrack under one name, its state in aria-pressed", async ({ page, browserName }) => {
   // Pressing the note starts playback, and WebKit has no mute switch.
   test.skip(browserName === "webkit", "WebKit cannot be launched muted");
   await openHome(page);
   // The note is the toggle (aria-pressed); the locator requires the attribute so only the note matches.
-  const toggle = (name: string) => page.locator("button[aria-pressed]").and(page.getByRole("button", { name }));
-  const note = toggle("Play my soundtrack");
+  const note = page.locator("button[aria-pressed]").and(page.getByRole("button", { name: "Play my soundtrack", exact: true }));
   await expect(note).toHaveAttribute("aria-pressed", "false");
 
   await note.click();
-  const playing = toggle("Pause my soundtrack");
-  await expect(playing).toHaveAttribute("aria-pressed", "true");
+  await expect(note).toHaveAttribute("aria-pressed", "true");
 
-  await playing.click();
-  await expect(toggle("Play my soundtrack")).toHaveAttribute("aria-pressed", "false");
+  await note.click();
+  await expect(note).toHaveAttribute("aria-pressed", "false");
+});
+
+test("chrome: the panel's soundtrack switch keeps one name while its label says on or off", async ({ page, browserName }) => {
+  test.skip(browserName === "webkit", "WebKit cannot be launched muted");
+  await openHome(page);
+  await page.getByRole("button", { name: "Open menu" }).click();
+  const panel = page.getByRole("dialog", { name: "Site menu" });
+  const chip = panel.getByRole("button", { name: "Soundtrack", exact: true });
+  await expect(chip).toHaveAttribute("aria-pressed", "false");
+  await expect(chip).toContainText("Soundtrack off");
+
+  await chip.click();
+  await expect(chip).toHaveAttribute("aria-pressed", "true");
+  await expect(chip).toContainText("Soundtrack on");
+
+  await chip.click();
+  await expect(chip).toHaveAttribute("aria-pressed", "false");
 });
 
 test("chrome: the header bar arrives past the hero and tucks away on the way down, back on the way up", async ({ page }) => {

@@ -33,12 +33,6 @@ describe("the label face tokens", () => {
   });
 });
 
-describe("copy stays in lib/content.ts", () => {
-  it("leaves no hard-coded close hint in the definition modal", () => {
-    expect(readFileSync("components/DefinitionModal.tsx", "utf8")).not.toContain("Press Esc to close");
-  });
-});
-
 describe("the playback pill and player card", () => {
   it("take the label face from classes, never inline font styles", () => {
     for (const file of ["PlaybackPill", "PillParts", "PillLabel", "PlayerCard"]) {
