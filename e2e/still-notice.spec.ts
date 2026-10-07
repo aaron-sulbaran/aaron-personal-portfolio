@@ -73,8 +73,13 @@ const lum = ([r, g, b]: number[]) => {
   return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
 };
 
-for (const colorScheme of ["light", "dark"] as const) {
-  test(`the notice reads at 4.5:1 over the still in ${colorScheme}`, async ({ page }) => {
+// The default viewport (the wide cut) and a phone (the narrow cut, the
+// notice over a different part of the picture).
+const cases = [null, { width: 390, height: 844 }].flatMap((viewport) => (["light", "dark"] as const).map((colorScheme) => ({ viewport, colorScheme })));
+for (const { viewport, colorScheme } of cases) {
+  const at = viewport ? ` at ${viewport.width}x${viewport.height}` : "";
+  test(`the notice reads at 4.5:1 over the still in ${colorScheme}${at}`, async ({ page }) => {
+    if (viewport) await page.setViewportSize(viewport);
     await page.emulateMedia({ colorScheme });
     await page.addInitScript(noWebgl2Api);
     await page.goto("/");
@@ -96,6 +101,8 @@ for (const colorScheme of ["light", "dark"] as const) {
     const bg = mean.map((v) => v / pixels);
     const fg = (color.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number);
     const [hi, lo] = [lum(fg), lum(bg)].sort((a, b) => b - a);
-    expect((hi + 0.05) / (lo + 0.05), `notice text ${color} over the still`).toBeGreaterThanOrEqual(4.5);
+    const ratio = (hi + 0.05) / (lo + 0.05);
+    test.info().annotations.push({ type: "contrast", description: ratio.toFixed(2) });
+    expect(ratio, `notice text ${color} over the still`).toBeGreaterThanOrEqual(4.5);
   });
 }
