@@ -103,6 +103,36 @@ export const startDock = (page: Page, every = 50) => page.evaluate((every) => (w
 export const peekDock = (page: Page) => page.evaluate(() => (window as unknown as DockWindow).__e2eDock.peek());
 export const stopDock = (page: Page) => page.evaluate(() => (window as unknown as DockWindow).__e2eDock.stop());
 
+// Records the pill across a live reduced-motion switch by the page's clock,
+// not by a count of samples: recording starts before the switch and stops
+// only once a sample lands `settleMs` past it. `flip` is the change event's
+// own timestamp, stamped when the query flipped and before any listener's
+// work, so a rebuild that holds the main thread delays the interval's ticks
+// but never shortens the window. The observer still records every write to
+// the pill whenever it happens.
+export async function recordDockAcrossReducedMotion(page: Page, reducedMotion: "reduce" | "no-preference", settleMs: number) {
+  await startDock(page);
+  await page.evaluate(() => {
+    const flipWindow = window as unknown as { __e2eFlip?: number };
+    delete flipWindow.__e2eFlip;
+    window.matchMedia("(prefers-reduced-motion: reduce)").addEventListener(
+      "change",
+      (event) => {
+        flipWindow.__e2eFlip = event.timeStamp;
+      },
+      { once: true },
+    );
+  });
+  await page.emulateMedia({ reducedMotion });
+  const flipHandle = await page.waitForFunction((settleMs) => {
+    const recorderWindow = window as unknown as DockWindow & { __e2eFlip?: number };
+    const flip = recorderWindow.__e2eFlip;
+    return flip !== undefined && recorderWindow.__e2eDock.peek().some((s) => s.t >= flip + settleMs) && flip;
+  }, settleMs);
+  const flip = (await flipHandle.jsonValue()) as number;
+  return { flip, samples: await stopDock(page) };
+}
+
 // The pill out, at rest on the dock: the root shown and reachable, the
 // arrival's transform and opacity cleared.
 export async function dockLanded(page: Page) {

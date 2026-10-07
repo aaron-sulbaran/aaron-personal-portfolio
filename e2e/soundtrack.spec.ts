@@ -18,6 +18,7 @@ import {
   dockText,
   peekDock,
   readDock,
+  recordDockAcrossReducedMotion,
   startDock,
   stopDock,
   storedChoice,
@@ -772,13 +773,14 @@ test("dock: a live reduced-motion toggle leaves the docked pill where it is", as
   await settled(page);
   await dockLanded(page);
   const rest = (await readDock(page))!;
+  // The switch back to no-preference rebuilds every sections Block and holds
+  // the main thread for 100ms or more, so the window is a span of the page's
+  // clock on both sides of the switch, never a count of 50ms ticks.
+  const settleMs = 700;
   for (const reducedMotion of ["reduce", "no-preference"] as const) {
-    await startDock(page);
-    await page.emulateMedia({ reducedMotion });
-    await page.waitForFunction((reduce) => window.matchMedia("(prefers-reduced-motion: reduce)").matches === reduce, reducedMotion === "reduce");
-    await page.waitForTimeout(700);
-    const samples = await stopDock(page);
-    expect(samples.length, `samples across the toggle to ${reducedMotion}`).toBeGreaterThanOrEqual(14);
+    const { flip, samples } = await recordDockAcrossReducedMotion(page, reducedMotion, settleMs);
+    expect(samples[0].t, `a sample before the toggle to ${reducedMotion}`).toBeLessThan(flip);
+    expect(samples.at(-1)!.t - flip, `sampled ${settleMs}ms past the toggle to ${reducedMotion}`).toBeGreaterThanOrEqual(settleMs);
     for (const s of samples) {
       expect({ inert: s.inert, shown: s.shown, opacity: s.opacity, transform: s.transform }, `docked through the toggle to ${reducedMotion}`).toEqual({
         inert: false,
