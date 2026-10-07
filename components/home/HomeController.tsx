@@ -202,7 +202,7 @@ export function HomeController({ hero, children }: Props) {
     // A layout-effect state write re-renders before paint, which is the point:
     // consumers of fastStart must see it on the first painted frame.
     setFastStart(fast);
-    setLoaderMode(recovery.deep ? { kind: "off" } : { kind: "on", reducedMotion: reduced });
+    setLoaderMode(recovery.deep ? { kind: "off" } : { kind: "on", reducedMotion: reduced, scene: entering });
     if (!entering) setEntrance(AT_REST);
     return () => {
       endHomeLoad(tally);
@@ -379,7 +379,7 @@ export function HomeController({ hero, children }: Props) {
 
   return (
     <HomeControllerContext.Provider value={value}>
-      <Loader mode={loaderMode} onReveal={revealHero} />
+      <Loader mode={loaderMode} onReveal={revealHero} sceneOn={sceneOn} />
       <section
         aria-labelledby={HERO_HEADING_ID}
         data-scene={sceneOn ? "on" : "off"}

@@ -48,7 +48,15 @@ export type CoilHooks = {
     unwind: (on?: boolean) => void;
     cardAt: (clientX: number, clientY: number) => { key: string; slot: number } | null;
     slotOfKey: (key: string) => number;
-    nameRect: () => { left: number; baseline: number; width: number; fontPx: number; gradient: { top: number; height: number } } | null;
+    freeze: (on: boolean) => void;
+    nameRect: () => {
+      left: number;
+      baseline: number;
+      width: number;
+      fontPx: number;
+      greeting: { left: number; baseline: number; fontPx: number };
+      gradient: { top: number; height: number };
+    } | null;
   };
 };
 

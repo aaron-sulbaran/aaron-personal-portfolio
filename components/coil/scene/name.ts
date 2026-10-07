@@ -10,17 +10,17 @@ import {
   type Vector4,
 } from "three";
 import { siteContent } from "@/lib/content";
+import { COIL } from "@/lib/coil/constants";
 import { entranceNameAlpha, type EntranceClock } from "@/lib/coil/entrance";
 import { FIELD, FULLSCREEN_VERT, GLYPH_FRAG, NAME } from "@/lib/coil/field.glsl";
 import { clamp01, isNarrow } from "@/lib/coil/geometry";
 import { siteEase } from "@/lib/coil/motion";
 import { toBytes } from "@/lib/coil/theme";
-import { LOADER } from "@/lib/loader/progress";
 import type { NameTarget } from "@/lib/loader/handoff";
 import type { NameSurface } from "./nameSurface";
 import type { Gl } from "./renderer";
 import type { LoopLink, SceneCtx } from "./state";
-import type { CoilEntrance, CoilSceneProps } from "./types";
+import type { CoilSceneProps } from "./types";
 
 // The canvas name: "Hi, I'm" and "Aaron" in one mask the composite pass
 // fills with the lit surface (nameSurface.ts), its layout, its fades (the
@@ -32,6 +32,7 @@ import type { CoilEntrance, CoilSceneProps } from "./types";
 // greeting small (its cap height NAME.greetingCap of the name's), on the
 // name's left edge, its lowest ink a fraction of its own cap height above the
 // top of the "A". Everything in CSS px; the canvas is `scale` times that.
+// The proportions are COIL.lockup's, which the loader's DOM lockup shares.
 type NameLockup = {
   canvas: HTMLCanvasElement;
   width: number;
@@ -43,6 +44,8 @@ type NameLockup = {
   greetBlock: number; // the greeting's band above the name's own mask
   split: number; // where the greeting's alpha gives way to the name's
   greetCap: number; // the greeting's cap height (its "H")
+  greetPx: number; // the greeting's font size
+  greetBaseline: number; // the greeting's baseline, from the mask's top
   glyphs: { x0: number; x1: number }[]; // each letter's advance box, from the mask's left
   greetX: { x0: number; x1: number }; // the greeting's ink, from the mask's left
 };
@@ -64,11 +67,11 @@ function paintNameLockup(greeting: string, name: string, family: string, sizePx:
   const gDescent = Math.max(0, gm.actualBoundingBoxDescent);
   const gap = NAME.greetingGap * gAscent;
   const greetBlock = gAscent + gDescent + gap;
-  const pad = Math.ceil(sizePx * 0.04);
+  const pad = Math.ceil(sizePx * COIL.lockup.pad);
   const nameInkWidth = nm.actualBoundingBoxLeft + nm.actualBoundingBoxRight;
   const greetInkWidth = gm.actualBoundingBoxLeft + gm.actualBoundingBoxRight;
   // The greeting's stem sits a hair inside the A's foot, as the lab's did.
-  const greetShift = sizePx * 0.02;
+  const greetShift = sizePx * COIL.lockup.greetingShift;
   const width = Math.ceil(Math.max(nameInkWidth, greetShift + greetInkWidth) + pad * 2);
   const height = Math.ceil(greetBlock + nm.actualBoundingBoxAscent + nm.actualBoundingBoxDescent + pad * 2);
   canvas.width = Math.ceil(width * scale);
@@ -98,20 +101,15 @@ function paintNameLockup(greeting: string, name: string, family: string, sizePx:
     greetBlock,
     split: pad + gAscent + gDescent + gap / 2,
     greetCap: (greetPx * cap100) / 100,
+    greetPx,
+    greetBaseline: pad + gAscent,
     glyphs,
     greetX: { x0: greetX0, x1: greetX0 + greetInkWidth },
   };
 }
 
-// The greeting's alpha. After the loader it fades up over NAME.
-// greetingFadeMs from the middle of the loader's exit (the loader lands on
-// "Aaron" only); otherwise it rises with the name as the band opens.
-function greetingAlpha(entrance: CoilEntrance | null, nowMs: number, nameAlpha: number) {
-  if (!entrance || !entrance.nameFromLoader || !Number.isFinite(entrance.startMs)) return nameAlpha;
-  const startMs = entrance.startMs - (LOADER.exitMs - LOADER.entranceOverlapMs) + LOADER.exitMs / 2;
-  const x = clamp01((nowMs - startMs) / NAME.greetingFadeMs);
-  return siteEase(x);
-}
+// The greeting shows with the name: the loader lands both, or both rise as
+// the band opens.
 // ---- end fx-hero ----
 
 // The per-letter reduction's two targets (one texel per letter; each frame
@@ -176,9 +174,20 @@ export function createName(
   let nameTexture: Texture | null = null;
   let lockup: (NameLockup & { scale: number }) | null = null;
   // ---- slice 4 state: the name handoff ----
-  let nameBox: { left: number; baseline: number; inkWidth: number; size: number; maskTop: number; maskHeight: number } | null =
-    null;
+  let nameBox: {
+    left: number;
+    baseline: number;
+    inkWidth: number;
+    size: number;
+    maskTop: number;
+    maskHeight: number;
+    greeting: { left: number; baseline: number; fontPx: number };
+  } | null = null;
   let nameLanded = false;
+  // An entrance that waits for the loader has reached the frame: the name and
+  // the greeting are held at 0 and the surface has not begun, so a landing
+  // draws exactly the solid gradient the loader holds.
+  let awaitingLoader = false;
 
   function layoutName() {
     if (!st.geo) return;
@@ -188,7 +197,7 @@ export function createName(
     if (!probe) return;
     probe.font = `900 100px ${st.nameFamily}`;
     const w100 = probe.measureText(siteContent.hero.name).width || 1;
-    const size = ((W * (narrow ? 0.9 : 0.7)) / w100) * 100;
+    const size = ((W * (narrow ? COIL.lockup.widthNarrow : COIL.lockup.widthWide)) / w100) * 100;
     // ---- fx-hero: "Hi, I'm" drawn with the name, one mask ----
     const scale = Math.min(2, window.devicePixelRatio || 1);
     const mask = paintNameLockup(siteContent.hero.greeting, siteContent.hero.name, st.nameFamily, size, scale);
@@ -221,8 +230,9 @@ export function createName(
     cu.uGlyphN.value = glyphs.length;
     // The greeting in the last slot (its mean, for the greeting's cap).
     boxes[NAME.maxGlyphs - 1].set(mask.greetX.x0 / mask.width, mask.pad / mask.height, mask.greetX.x1 / mask.width, mask.split / mask.height);
-    // Slice 4: the name's geometry for the loader's handoff (canvas px): the
-    // name alone, never the greeting.
+    // Slice 4: the lockup's geometry for the loader's handoff (canvas px):
+    // the name's ink and gradient band, and the greeting's ink.
+    const maskTop = capTop - mask.pad - mask.greetBlock;
     nameBox = {
       left,
       baseline: capTop + mask.ascent,
@@ -230,6 +240,7 @@ export function createName(
       size,
       maskTop: capTop - mask.pad,
       maskHeight: span,
+      greeting: { left: left - mask.pad + mask.greetX.x0, baseline: maskTop + mask.greetBaseline, fontPx: mask.greetPx },
     };
     // The overlay keeps only the unwound list's "Coil" control, sized off the
     // greeting's old size.
@@ -251,7 +262,8 @@ export function createName(
     const nameAlpha = posterMode ? 0 : entranceNameAlpha(clock, handedOff);
     cu.uNameA.value = nameAlpha;
     cu.uGrain.value = FIELD.grain * nameAlpha;
-    cu.uGreetA.value = posterMode ? 0 : greetingAlpha(entrance ?? null, now, nameAlpha);
+    cu.uGreetA.value = nameAlpha;
+    awaitingLoader = !!entrance?.nameFromLoader && !handedOff;
     if (entrance?.nameFromLoader && surfaceInFrom === null && handedOff) surfaceInFrom = now;
     cu.uSurfIn.value = !entrance?.nameFromLoader
       ? 1
@@ -309,6 +321,11 @@ export function createName(
       baseline: rect.top + nameBox.baseline,
       width: nameBox.inkWidth,
       fontPx: nameBox.size,
+      greeting: {
+        left: rect.left + nameBox.greeting.left,
+        baseline: rect.top + nameBox.greeting.baseline,
+        fontPx: nameBox.greeting.fontPx,
+      },
       gradient: {
         top: rect.top + nameBox.maskTop,
         height: nameBox.maskHeight,
@@ -319,12 +336,18 @@ export function createName(
     };
   }
 
+  // True when the canvas drew the lockup this frame; false (and nothing
+  // changed) while the scene cannot take it: not drawn yet, or the entrance
+  // that waits for the loader has not reached a frame.
   function landName() {
+    if (!st.ready || st.contextLost || st.disposed || posterMode || !awaitingLoader) return false;
     nameLanded = true;
-    if (!st.ready || st.contextLost || st.disposed || posterMode) return;
+    awaitingLoader = false;
     cu.uNameA.value = 1;
+    cu.uGreetA.value = 1;
     cu.uGrain.value = FIELD.grain;
     loop.render(0);
+    return true;
   }
   // ---- end slice 4 ----
 
