@@ -36,6 +36,11 @@ const Calendar = z.object({
   }),
 });
 
+// GraphQL answers a rate limit or a missing scope with 200 and an errors list.
+const GraphqlErrors = z.object({ errors: z.array(z.object({ message: z.string() })).min(1) });
+
+const TIMEOUT_MS = 8000;
+
 export type Result<T> = { data: T; error: null } | { data: null; error: string };
 
 const explain = (status: number) =>
@@ -58,9 +63,13 @@ export async function fetchGithubSeries(
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       body: JSON.stringify({ query: QUERY, variables: { login: LOGIN, from: `${from}T00:00:00Z`, to: `${today}T23:59:59Z` } }),
       next: { revalidate: 86400 },
+      signal: AbortSignal.timeout(TIMEOUT_MS),
     });
     if (!res.ok) return { data: null, error: explain(res.status) };
-    const parsed = Calendar.safeParse(await res.json());
+    const body: unknown = await res.json();
+    const failed = GraphqlErrors.safeParse(body);
+    if (failed.success) return { data: null, error: `GitHub GraphQL: ${failed.data.errors.map((e) => e.message).join(" ")}` };
+    const parsed = Calendar.safeParse(body);
     if (!parsed.success) return { data: null, error: "GitHub's calendar did not have the expected shape." };
     const user = parsed.data.data.user;
     if (!user) return { data: null, error: `GitHub has no user ${LOGIN}.` };
@@ -69,6 +78,7 @@ export async function fetchGithubSeries(
       .map((d) => ({ date: d.date, count: d.contributionCount }));
     return { data: { kind: "github", window, range: { from, to: today }, ...summarize(raw, from, today), stale: false }, error: null };
   } catch (error) {
+    if (error instanceof Error && error.name === "TimeoutError") return { data: null, error: `GitHub did not answer within ${TIMEOUT_MS / 1000} seconds.` };
     return { data: null, error: error instanceof Error ? error.message : String(error) };
   }
 }
