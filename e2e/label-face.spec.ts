@@ -145,3 +145,9 @@ test("label face: the nav bar, the Menu pill and the panel are Profa Bold in the
   await expectLabel(page.getByRole("link", { name: m.email.label, exact: true }), "label", "accent");
   await expectLabel(page.getByRole("link", { name: m.socials[0].label, exact: true }).last(), "label", "accent");
 });
+
+test("label face: the footer copyright is Profa Bold, muted, at the small step", async ({ page }) => {
+  await page.goto("/");
+  await settled(page);
+  await expectLabel(page.locator("footer").getByText(siteContent.footer.copyright, { exact: true }), "label-sm", "muted");
+});
