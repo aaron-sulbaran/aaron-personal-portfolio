@@ -61,6 +61,20 @@ export const rgbString = (r: number, g: number, b: number) =>
 export const rgbaString = (c: RGB, a: number) =>
   "rgba(" + Math.round(c[0]) + "," + Math.round(c[1]) + "," + Math.round(c[2]) + "," + a.toFixed(3) + ")";
 
+// One rgba string, rebuilt only when its colour or alpha changes, so a steady
+// frame paints without allocating. Colours are replaced on retheme, never
+// mutated, so the reference check sees a new theme.
+export type AlphaCss = { rgb: RGB | null; a: number; css: string };
+export const newAlphaCss = (): AlphaCss => ({ rgb: null, a: NaN, css: "" });
+export const alphaCss = (c: AlphaCss, rgb: RGB, a: number): string => {
+  if (c.a !== a || c.rgb !== rgb) {
+    c.rgb = rgb;
+    c.a = a;
+    c.css = rgbaString(rgb, a);
+  }
+  return c.css;
+};
+
 export const pointInQuad = (p: Float32Array, o: number, x: number, y: number): boolean => {
   let sign = 0;
   for (let k = 0; k < 4; k++) {
