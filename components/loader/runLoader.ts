@@ -4,7 +4,8 @@ import { siteContent } from "@/lib/content";
 import { LOADER, coilDebugFlags, displayPercent, homeLoad, reportHomeLoad, slowSceneMs } from "@/lib/loader/progress";
 import { landName, nameTarget, type NameTarget } from "@/lib/loader/handoff";
 import { loaderEnd, stillPoster, type StillPoster } from "@/lib/loader/still";
-import { createStillWait } from "@/lib/loader/stillWait";
+import { createStillWait, type StillWaitTimers } from "@/lib/loader/stillWait";
+import { giveUpToHeading, raceStill } from "@/lib/loader/stillGiveUp";
 import { createInkEase, type InkEase } from "@/lib/loader/inkEase";
 import { COIL } from "@/lib/coil/constants";
 import { HERO_HEADING_ID } from "@/components/home/HeroText";
@@ -81,8 +82,7 @@ export function runLoader(
   let holdTimer = 0;
   let paneShown = false;
   let endBegan = 0;
-  let stillTimer = 0;
-  let stopStillWait = () => {};
+  let stopStill = () => {};
   let ink: InkEase | null = null;
   const note = debugLog(root);
   note("run", { reduced, items: tally ? tally.progress() : null });
@@ -243,22 +243,20 @@ export function runLoader(
   // lockup over stillFadeMs (loaderMarkup.ts lifts its hold on
   // data-dissolve) while the lockup's ink eases to the h1's (lib/loader/inkEase.ts),
   // and the lockup leaves in one frame onto the h1 when that fade ends.
-  // A still that fails to decode, or not within handoffGiveUpMs: the plain
-  // fade, and the h1 carries the hero.
+  // A still that fails to decode, or not within handoffGiveUpMs, hands off
+  // the same way minus the still, never fading the lockup (lib/loader/stillGiveUp.ts).
   function dissolve(poster: StillPoster) {
     note("still");
-    let decided = false;
-    const giveUp = () => {
-      if (decided || disposed) return;
-      decided = true;
-      window.clearTimeout(stillTimer);
-      note("still-failed");
-      fade();
+    const layer = root.querySelector<HTMLElement>(LOADER_LOCKUP.layer);
+    const inkEase = () => (ink = createInkEase(layer, () => getComputedStyle(layer!).opacity, COIL.lockup.stillInk, LOADER.stillFadeMs));
+    const fadePane = (done: () => void) => {
+      timeline = gsap.timeline({ onComplete: done });
+      timeline.to([parts.bg, parts.pane], { opacity: 0, duration: LOADER.stillFadeMs / 1000, ease: "none" });
     };
     const handTo = () => {
       if (disposed) return;
       ink?.settle();
-      stopStillWait();
+      stopStill();
       gone();
       note("still-handoff");
     };
@@ -267,21 +265,17 @@ export function runLoader(
     // transitionrun, not from here (lib/loader/stillWait.ts).
     const afterStillFade = () => {
       const still = document.querySelector<HTMLElement>("[data-hero-still]");
-      const layer = root.querySelector<HTMLElement>(LOADER_LOCKUP.layer);
-      ink = createInkEase(layer, () => getComputedStyle(layer!).opacity, COIL.lockup.stillInk, LOADER.stillFadeMs);
       const wait = createStillWait({
         fadeMs: LOADER.stillFadeMs, slackMs: LOADER.stillFadeSlackMs,
         startGuardMs: LOADER.stillFadeMs + LOADER.stillFadeSlackMs + LOADER.handoffGiveUpMs,
-        timers: { set: (fn, ms) => window.setTimeout(fn, ms), clear: (id) => window.clearTimeout(id) },
-        leave: holdHandoff ? () => {} : handTo,
-        onStart: ink.start,
+        timers: WINDOW_TIMERS, leave: holdHandoff ? () => {} : handTo, onStart: inkEase().start,
       });
       const phases: Record<string, () => void> = { transitionrun: wait.started, transitionend: wait.ended, transitioncancel: wait.cancelled };
       const onPhase = (event: Event) => {
         if (event.target === still && (event as TransitionEvent).propertyName === "opacity") phases[event.type]();
       };
       Object.keys(phases).forEach((type) => still?.addEventListener(type, onPhase));
-      stopStillWait = () => {
+      stopStill = () => {
         Object.keys(phases).forEach((type) => still?.removeEventListener(type, onPhase));
         wait.dispose();
       };
@@ -295,21 +289,25 @@ export function runLoader(
       afterStillFade();
       if (holdHandoff) exposeFinish(handTo);
     };
-    const begin = () => {
-      if (!paneShown) return under();
-      timeline = gsap.timeline({ onComplete: under });
-      timeline.to([parts.bg, parts.pane], { opacity: 0, duration: LOADER.stillFadeMs / 1000, ease: "none" });
-    };
-    const decodedNow = () => {
-      if (decided || disposed) return;
-      decided = true;
-      window.clearTimeout(stillTimer);
+    const decoded = () => {
+      if (disposed) return;
+      const begin = () => (paneShown ? fadePane(under) : under());
       if (!holdHandoff) return begin();
       note("still-held");
       exposeFinish(begin);
     };
-    stillTimer = window.setTimeout(giveUp, LOADER.handoffGiveUpMs);
-    poster.decoded().then(decodedNow, giveUp);
+    const gaveUp = () => {
+      if (disposed) return;
+      stopStill = giveUpToHeading({
+        paneShown, fadeMs: LOADER.stillFadeMs, timers: WINDOW_TIMERS, fadePane: (_, done) => fadePane(done), ink: inkEase(), gone, note,
+        rest: () => {
+          root.setAttribute("data-state", "rest");
+          reveal(performance.now() + LOADER.stillFadeMs, false);
+        },
+        hold: holdHandoff ? exposeFinish : undefined,
+      });
+    };
+    stopStill = raceStill(poster.decoded(), LOADER.handoffGiveUpMs, WINDOW_TIMERS, { decoded, gaveUp });
   }
 
   function continuity(target: NameTarget) {
@@ -376,12 +374,13 @@ export function runLoader(
     disposed = true;
     if (raf) cancelAnimationFrame(raf);
     window.clearTimeout(holdTimer);
-    window.clearTimeout(stillTimer);
-    stopStillWait();
+    stopStill();
     ink?.cancel();
     timeline?.kill();
   };
 }
+
+const WINDOW_TIMERS: StillWaitTimers = { set: (fn, ms) => window.setTimeout(fn, ms), clear: (id) => window.clearTimeout(id) };
 
 // ?coildebug=handoff: the held hand-off resumes on window.__coilLoader.finish().
 function exposeFinish(finish: () => void) {

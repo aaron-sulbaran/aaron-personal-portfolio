@@ -93,6 +93,17 @@ export async function shoot(page: Page, box: Box): Promise<Image> {
   return { ...decodePng(png), png };
 }
 
+// The spread between an image's darker and lighter pixels (5th to 95th
+// percentile of luminance, of 255).
+export function luminanceSpread(image: Image) {
+  const values: number[] = [];
+  for (let i = 0; i < image.rgba.length; i += 4) {
+    values.push(0.2126 * image.rgba[i] + 0.7152 * image.rgba[i + 1] + 0.0722 * image.rgba[i + 2]);
+  }
+  values.sort((a, b) => a - b);
+  return values[Math.floor(values.length * 0.95)] - values[Math.floor(values.length * 0.05)];
+}
+
 function inside(outline: ProbePoint[], x: number, y: number) {
   let hit = false;
   for (let i = 0, j = outline.length - 1; i < outline.length; j = i++) {

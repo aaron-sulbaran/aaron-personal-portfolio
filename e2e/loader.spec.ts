@@ -5,7 +5,7 @@ import { COIL } from "@/lib/coil/constants";
 import { test, expect } from "./support/fixtures";
 import { waitForCoil } from "./support/coil";
 import type { HookWindow } from "./support/hooks";
-import { cardRegion, pixelDiff, shoot, type Image } from "./support/pixels";
+import { cardRegion, luminanceSpread, pixelDiff, shoot } from "./support/pixels";
 import { noWebglContext } from "./support/webgl";
 import { heroSamples, sampleHero } from "./support/heroSamples";
 
@@ -15,17 +15,6 @@ import { heroSamples, sampleHero } from "./support/heroSamples";
 // pane, only the resting lockup, which the canvas takes over in one frame;
 // the fallback h1 never shows while a scene is on its way; the scroll lock
 // over loader and entrance releases exactly once.
-
-// The spread between the name box's darker and lighter pixels (5th to 95th
-// percentile of luminance, of 255).
-function luminanceSpread(image: Image) {
-  const values: number[] = [];
-  for (let i = 0; i < image.rgba.length; i += 4) {
-    values.push(0.2126 * image.rgba[i] + 0.7152 * image.rgba[i + 1] + 0.0722 * image.rgba[i + 2]);
-  }
-  values.sort((a, b) => a - b);
-  return values[Math.floor(values.length * 0.95)] - values[Math.floor(values.length * 0.05)];
-}
 
 type LoaderFrame = { event: string; data?: { shown?: number; numberHidden?: boolean } };
 type Lockup = NonNullable<ReturnType<NonNullable<HookWindow["__coil"]>["api"]["nameRect"]>>;
