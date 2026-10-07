@@ -1,19 +1,29 @@
 "use client";
 
+import { Fill } from "@/components/fx/Fill";
 import { siteContent } from "@/lib/content";
 
 const copy = siteContent.metrics.chart;
 export type View = "flat" | "skyline";
 
-// Flat and Skyline: native buttons with aria-pressed, so Enter and Space work.
-// The fallback until the controls slice's Fill lands (Task 14 swaps it).
+// Flat and Skyline: quiet rise Fills on native buttons with aria-pressed, so
+// Enter and Space work. The shown view reads in the accent, the other muted.
 export function ViewToggle({ view, onChange }: { view: View; onChange: (v: View) => void }) {
   return (
     <div role="group" aria-label={copy.viewGroup} className="-mx-2 flex items-baseline gap-1">
       {(["flat", "skyline"] as const).map((v) => (
-        <button key={v} type="button" aria-pressed={view === v} onClick={() => onChange(v)} className="metrics-toggle rounded-[10px] px-2 py-1 font-label text-label">
+        <Fill
+          key={v}
+          variant="rise"
+          colorway="quiet"
+          shape="rect"
+          aria-pressed={view === v}
+          onClick={() => onChange(v)}
+          className={`px-2 py-1 font-label text-label ${view === v ? "text-accent" : "text-muted"}`}
+          overClassName="flex items-center px-2 py-1"
+        >
           {copy[v]}
-        </button>
+        </Fill>
       ))}
     </div>
   );
