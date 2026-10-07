@@ -10,11 +10,12 @@ import { GRAMMAR } from "@/lib/sections/grammar";
 // once SplitText has run, and the sticky holds. Each section lists the prose
 // it must keep, word for word.
 
-const { about, whoIAm, upToNow } = siteContent;
+const { about, whoIAm, upToNow, connect } = siteContent;
 const PROSE: Record<string, string[]> = {
   "#about": [about.heading, about.lede],
   "#who-i-am": [whoIAm.paragraph],
   "#up-to-now": [upToNow.heading, ...upToNow.items],
+  "#connect": [connect.heading, connect.lede, ...connect.links.map((link) => link.value)],
 };
 const STICKY = ["#who-i-am", "#up-to-now"];
 // Decoration with transforms of its own: icons and controls' Fill copy and arrows.
@@ -139,4 +140,27 @@ test("sections: an Up to now item below the fold is masked before its band and r
   // Its top at 30 percent of the viewport: past the band's end (60, less the 6 an item follows by).
   await scrollToY(page, Math.round(top - page.viewportSize()!.height * 0.3));
   await expect.poll(async () => Math.abs(await lift()) < 0.5, { message: "the words in place once the scrub has caught up" }).toBe(true);
+});
+
+test("sections: a Connect link focused before its row has risen shows at once", async ({ page }) => {
+  await openHome(page);
+  await blocksIn(page, "armed");
+  const row = page.locator("#connect [data-sections-row]").first();
+  const shown = () =>
+    row.evaluate((el) => {
+      const style = getComputedStyle(el.querySelector("[data-sections-rowinner]")!);
+      return style.opacity === "1" && style.transform === "none";
+    });
+  expect(await shown(), "masked before its band").toBe(false);
+  await row.locator("a").evaluate((a) => (a as HTMLElement).focus({ preventScroll: true }));
+  expect(await shown()).toBe(true);
+});
+
+test("sections: Connect's columns fit a 390px viewport", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openHome(page);
+  const rights = await page.evaluate(() =>
+    [...document.querySelector("#connect > div")!.children].map((child) => Math.round(child.getBoundingClientRect().right)),
+  );
+  for (const right of rights) expect(right, "inside the 24px gutter").toBeLessThanOrEqual(390 - 24);
 });
