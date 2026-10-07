@@ -72,7 +72,8 @@ export function useScrollMorph(blockRef: RefObject<HTMLElement | null>) {
     window.addEventListener("resize", evaluate);
     const ctx = gsap.context(() => {
       // The range runs to the page's end, so a fling past the block is still one crossing.
-      const st = ScrollTrigger.create({ trigger: block, start: `top ${MORPH.triggerPct}%`, end: "max", invalidateOnRefresh: true, onEnter: () => cross(true), onLeaveBack: () => cross(false) });
+      // No invalidateOnRefresh: with it, a refresh at an unchanged ratio resets progress to 0 and refires onEnter, breaking a click hold.
+      const st = ScrollTrigger.create({ trigger: block, start: `top ${MORPH.triggerPct}%`, end: "max", onEnter: () => cross(true), onLeaveBack: () => cross(false) });
       cross(st.scroll() > st.start);
     });
     // Reflow above the block moves the line; only the block's own top counts,
