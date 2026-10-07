@@ -75,14 +75,14 @@ export function BandStage() {
         <WaveCanvas active={inView === true} frozen={frozen} />
       </div>
       <div className="relative z-10 px-[6vw] pb-5 md:absolute md:inset-x-0 md:bottom-0">
-        <div className="mx-auto flex max-w-[1240px] flex-wrap items-baseline justify-between gap-x-8 gap-y-2 text-xs leading-[1.5] text-muted">
+        <div className="mx-auto flex max-w-[1240px] flex-wrap items-baseline justify-between gap-x-8 gap-y-2 font-label text-label-sm leading-[1.5] text-muted">
           <button
             type="button"
             data-wave-avoid
             inert={!freezable}
             onClick={() => setFrozen(!frozen)}
             data-cursor-hover
-            className={`rounded-sm underline ${inCard ? "md:hidden" : ""} decoration-1 underline-offset-[3px] transition-[color,opacity] duration-200 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+            className={`rounded-sm underline ${inCard ? "md:hidden" : ""} decoration-1 underline-offset-[3px] text-accent transition-[color,opacity] duration-200 hover:text-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
               freezable ? "opacity-100" : "opacity-0"
             }`}
           >
@@ -121,4 +121,4 @@ function useDockReached(conductorRef: RefObject<WaveConductor | null>, reduce: b
 }
 
 const LINK =
-  "rounded-sm underline decoration-1 underline-offset-[3px] transition-colors duration-200 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
+  "rounded-sm text-accent underline decoration-1 underline-offset-[3px] transition-colors duration-200 hover:text-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
