@@ -1,6 +1,7 @@
 import {
   barHeight,
   camera,
+  cameraInto,
   dayMs,
   luminance,
   mixRGB,
@@ -9,7 +10,7 @@ import {
   type RGB,
 } from "@/lib/metrics/skyline/maths";
 import { draw, extent, NO_DEPTH, type DepthSpec, type Scene } from "./draw";
-import { resolveColor, resolveRGBA, rgbString } from "./paint";
+import { newAlphaCss, resolveColor, resolveRGBA, rgbString } from "./paint";
 import { attachInput, type Ctl } from "./input";
 
 // The imperative half: one scene per mount, a rAF loop that only runs while
@@ -100,6 +101,9 @@ export function createEngine(el: EngineElements, cfg: { current: EngineConfig })
     polys: new Float32Array(0),
     faces: new Uint8Array(0),
     order: [],
+    sortKey: new Float64Array(0),
+    sortCs: NaN,
+    sortSn: NaN,
     months: [],
     weekdayRows: [],
     activeIdx: -1,
@@ -108,6 +112,18 @@ export function createEngine(el: EngineElements, cfg: { current: EngineConfig })
     hi: FALLBACK,
     hiA: 0,
     shade: FALLBACK,
+    cam: camera(0),
+    ox: 0,
+    oy: 0,
+    sc: 1,
+    ext: { minx: 0, maxx: 0, miny: 0, maxy: 0 },
+    monthW: new Float64Array(0),
+    shadeCss: "",
+    outlineCss: newAlphaCss(),
+    label2Css: newAlphaCss(),
+    label3Css: newAlphaCss(),
+    hiCss: newAlphaCss(),
+    tipAt: new Float64Array(3).fill(NaN),
   };
 
   const reduceMq = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -136,7 +152,9 @@ export function createEngine(el: EngineElements, cfg: { current: EngineConfig })
       s.polys = new Float32Array(n * 24);
       s.faces = new Uint8Array(n);
       s.order = Array.from({ length: n }, (_, i) => i);
+      s.sortKey = new Float64Array(n);
     }
+    s.sortCs = NaN;
     for (let i = 0; i < n; i++) {
       const c = m.cells[i];
       s.wk[i] = c.week;
@@ -177,6 +195,7 @@ export function createEngine(el: EngineElements, cfg: { current: EngineConfig })
     // Lift's shadow: the page's ink at about a tenth over paper; in dark, ink
     // would glow, so the shadow is the page at half its brightness instead.
     s.shade = isDark ? [s.bg[0] * 0.5, s.bg[1] * 0.5, s.bg[2] * 0.5] : mixRGB(s.bg, s.fg, 0.1);
+    s.shadeCss = rgbString(s.shade[0], s.shade[1], s.shade[2]);
     const future = mixRGB(empty, s.bg, 0.55);
     const all: RGB[] = [empty, ...cfg.current.palette.slice(0, 4).map((c) => resolveColor(el.probe, c, FALLBACK)), future];
     for (let k = 0; k < 6; k++) for (let ch = 0; ch < 3; ch++) colGoal[k * 3 + ch] = all[k][ch];
@@ -186,6 +205,8 @@ export function createEngine(el: EngineElements, cfg: { current: EngineConfig })
     }
     ctx.font = s.font;
     s.labelW = Math.ceil(Math.max(20, ...s.weekdayRows.map((r) => ctx.measureText(r.label).width))) + 8;
+    if (s.monthW.length !== s.months.length) s.monthW = new Float64Array(s.months.length);
+    for (let k = 0; k < s.months.length; k++) s.monthW[k] = ctx.measureText(s.months[k].label).width;
     const sw = all.slice(0, 5).map((c) => rgbString(c[0], c[1], c[2]));
     cfg.current.setTheme((prev) => (prev.dark === isDark && prev.swatches.join() === sw.join() ? prev : { dark: isDark, swatches: sw }));
     kick();
@@ -198,9 +219,10 @@ export function createEngine(el: EngineElements, cfg: { current: EngineConfig })
     // Narrow charts give the weekday names' column to the grid instead; rows get too tight to label.
     s.gutter = w < 520 ? 0 : s.labelW;
     s.dpr = Math.min(2, window.devicePixelRatio || 1);
-    const b2 = extent(s, camera(0), 0, true);
+    // extent() reuses one bounds object, so each result is read before the next call.
+    const b2 = extent(s, cameraInto(s.cam, 0), 0, true);
     s.H2 = 20 + 4 + ((b2.maxy - b2.miny) / (b2.maxx - b2.minx)) * (w - s.gutter - 4);
-    const b3 = extent(s, camera(1), 1, true);
+    const b3 = extent(s, cameraInto(s.cam, 1), 1, true);
     const natural = ((b3.maxy - b3.miny) / (b3.maxx - b3.minx)) * (w - 40) + 40;
     s.H3 = Math.max(Math.min(natural, w * 0.72, 620), Math.min(natural, 240));
     s.Hmax = Math.ceil(Math.max(s.H2, s.H3));
