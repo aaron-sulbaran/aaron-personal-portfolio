@@ -142,6 +142,7 @@ test("metrics: a click hold survives ScrollTrigger refreshes", async ({ page }) 
 test("metrics: Enter on the canvas with nothing pinned announces and shows the last day", async ({ page }) => {
   await openHome(page);
   await scrollToY(page, await topAt(page, 0.2));
+  await expect.poll(() => state(page), { timeout: 5000 }).toBe("skyline");
   const last = snap.days[snap.days.length - 1] as { date: string; count: number };
   const [y, mo, d] = last.date.split("-").map(Number);
   const longDay = new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
