@@ -48,6 +48,7 @@ export const LOADER = {
   // No scene can run: the hero still fades in under the resting lockup over
   // this (linear), then the lockup leaves in one frame.
   stillFadeMs: 400,
+  stillFadeSlackMs: 100, // the lockup's fallback leave, past stillFadeMs, should the still's transitionend never come
   // The greeting rests in the paper tint through the fill (only the name is
   // the progress) and takes the accent over this once the name is full, so
   // the lockup leaves as one color.

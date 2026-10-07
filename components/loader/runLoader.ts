@@ -78,6 +78,7 @@ export function runLoader(
   let paneShown = false;
   let endBegan = 0;
   let stillTimer = 0;
+  let stopStillWait = () => {};
   const note = debugLog(root);
   note("run", { reduced, items: tally ? tally.progress() : null });
 
@@ -252,6 +253,29 @@ export function runLoader(
       gone();
       note("still-handoff");
     };
+    // The lockup leaves on the still's own transitionend (the fade starts at
+    // the style recalc after data-dissolve, not here), or stillFadeSlackMs
+    // past the fade should none come; whichever is first, once.
+    const afterStillFade = () => {
+      const still = document.querySelector<HTMLElement>("[data-hero-still]");
+      let left = false;
+      const once = () => {
+        if (left) return;
+        left = true;
+        stopStillWait();
+        handTo();
+      };
+      const ended = (event: TransitionEvent) => {
+        if (event.target === still && event.propertyName === "opacity") once();
+      };
+      still?.addEventListener("transitionend", ended);
+      stillTimer = window.setTimeout(once, LOADER.stillFadeMs + LOADER.stillFadeSlackMs);
+      stopStillWait = () => {
+        still?.removeEventListener("transitionend", ended);
+        window.clearTimeout(stillTimer);
+        stopStillWait = () => {};
+      };
+    };
     const under = () => {
       if (disposed) return;
       root.setAttribute("data-state", "rest");
@@ -259,7 +283,7 @@ export function runLoader(
       note("dissolve");
       reveal(performance.now() + LOADER.stillFadeMs, false);
       if (holdHandoff) exposeFinish(handTo);
-      else stillTimer = window.setTimeout(handTo, LOADER.stillFadeMs);
+      else afterStillFade();
     };
     const begin = () => {
       if (!paneShown) return under();
@@ -343,6 +367,7 @@ export function runLoader(
     if (raf) cancelAnimationFrame(raf);
     window.clearTimeout(holdTimer);
     window.clearTimeout(stillTimer);
+    stopStillWait();
     timeline?.kill();
   };
 }
