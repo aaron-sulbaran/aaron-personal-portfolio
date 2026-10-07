@@ -2,7 +2,7 @@ import type { Locator, Page } from "@playwright/test";
 import { siteContent } from "@/lib/content";
 import { test, expect } from "./support/fixtures";
 import { settled } from "./support/fallback";
-import { GREETED_KEY, SOUNDTRACK_KEY } from "./support/dock";
+import { CAPSULE, GREETED_KEY, PILL, SOUNDTRACK_KEY } from "./support/dock";
 import { openHome } from "./support/coil";
 import { FILL_PICK, type ControlKey } from "@/lib/fx/fill";
 
@@ -99,4 +99,51 @@ test("controls: under reduced motion the fill has no transition and lands at onc
   expect(await slashIn(listen(page)).evaluate((el) => getComputedStyle(el).transitionDuration)).toBe("0s");
   await menu.hover();
   expect(await fxP(menu)).toBe(1);
+});
+
+type Widths = { menuPill: number; note: number; capsuleLessWords: number };
+const widths = (page: Page): Promise<Widths> =>
+  page.evaluate(() => {
+    const round = (n: number) => Math.round(n * 10) / 10;
+    const capsule = document.querySelector<HTMLElement>("[data-pill] .pill-hit")!;
+    const words = [...capsule.children]
+      .filter((el): el is HTMLElement => el instanceof HTMLElement && el.style.maxWidth !== "")
+      .reduce((sum, el) => sum + el.getBoundingClientRect().width, 0);
+    return {
+      menuPill: round(document.querySelector("[data-menu-pill]")!.getBoundingClientRect().width),
+      note: round(capsule.querySelector("[data-fill-icon]")!.getBoundingClientRect().width),
+      capsuleLessWords: round(capsule.getBoundingClientRect().width - words),
+    };
+  });
+async function settledWidths(page: Page): Promise<Widths> {
+  await expect(page.locator(PILL)).not.toHaveAttribute("inert", "");
+  let last = await widths(page);
+  await expect.poll(async () => {
+    const next = await widths(page);
+    const same = JSON.stringify(next) === JSON.stringify(last);
+    last = next;
+    return same;
+  }, { intervals: [150], timeout: 5000 }).toBe(true);
+  return last;
+}
+
+// The capsule's words are state copy (siteContent.soundtrack); every other
+// width, and the whole Menu pill, holds through the three note states.
+test("controls: the playback pill and the Menu pill keep their width in all three note states", async ({ page, browserName }) => {
+  test.skip(browserName === "webkit", "WebKit cannot be launched muted");
+  await storeFromQuery(page);
+  const capsule = page.locator(CAPSULE);
+  await openWith(page, "off");
+  await expectFill(capsule, "capsule");
+  const off = await settledWidths(page);
+  await expect(slashIn(capsule)).toBeVisible();
+  await openWith(page, "on");
+  const paused = await settledWidths(page);
+  await expect(slashIn(capsule)).toBeVisible();
+  await listen(page).click();
+  await expect(noteIn(capsule)).toHaveAttribute("data-note", "playing");
+  const playing = await settledWidths(page);
+  await expect(slashIn(capsule)).toBeHidden();
+  expect(paused).toEqual(off);
+  expect(playing).toEqual(off);
 });

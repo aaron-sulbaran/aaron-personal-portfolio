@@ -2,7 +2,9 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type FocusEvent, type MouseEvent } from "react";
 import { Portal } from "@/components/Portal";
+import { Fill } from "@/components/fx/Fill";
 import { siteContent } from "@/lib/content";
+import { FILL_PICK, FILL_TRANSITION } from "@/lib/fx/fill";
 import { getSoundtrackPlayer } from "@/lib/audio";
 import { getPlayFailed, getRestoredSoundtrack, startSoundtrack, subscribeSoundtrack, useSoundtrack } from "@/lib/soundtrack";
 import { DOCK, capsuleName, capsuleText, dockLabel, dockMode, type DockLabel } from "@/lib/waveform/dock";
@@ -148,9 +150,8 @@ function PillInner({ reached }: { reached: boolean }) {
     padding: preview ? "8px 16px 8px 8px" : "0 16px 0 13px",
     borderRadius: 999,
     cursor: "pointer",
-    fontFamily: "var(--font-sans)",
     color: "var(--color-foreground)",
-    transition: reduce ? "opacity 280ms ease" : `opacity 280ms ease, transform 320ms ${EASE}, padding 300ms ease`,
+    transition: reduce ? `opacity 280ms ease, ${FILL_TRANSITION}` : `opacity 280ms ease, transform 320ms ${EASE}, padding 300ms ease, ${FILL_TRANSITION}`,
     opacity: expanded ? 0 : 1,
     transform: reduce || !expanded ? "none" : "scale(0.92)",
     pointerEvents: expanded ? "none" : "auto",
@@ -202,10 +203,10 @@ function PillInner({ reached }: { reached: boolean }) {
           <div aria-hidden="true" style={tip}>
             {c.prompt}
           </div>
-          <button
+          <Fill
             ref={capsuleRef}
-            type="button"
-            className="pill-hit"
+            {...FILL_PICK.capsule}
+            className="pill-hit font-label text-label-sm"
             inert={expanded}
             onClick={press}
             onMouseEnter={() => previewable && send("enter")}
@@ -213,6 +214,7 @@ function PillInner({ reached }: { reached: boolean }) {
             aria-label={capsuleName(capsuleText(music, track.title), startsMusic ? c.invite : c.ariaOpen)}
             data-cursor-hover
             style={{ ...capsule, ["--pill-hit-inset" as string]: `${(DOCK.hitPx - DOCK.capsulePx) / 2}px` }}
+            overClassName={`flex items-center ${preview ? "py-2 pl-2 pr-4" : "pl-[13px] pr-4"} ${reduce ? "" : "transition-[padding] duration-300 ease-[ease]"}`}
           >
             <PillSlot visible={preview} maxWidth={40} reduce={reduce}>
               <Cover size={38} cover={track.cover} />
@@ -230,7 +232,7 @@ function PillInner({ reached }: { reached: boolean }) {
                 {capsuleText(music, track.title)}
               </span>
             </PillSlot>
-          </button>
+          </Fill>
           <PlayerCard
             music={music}
             expanded={expanded}
