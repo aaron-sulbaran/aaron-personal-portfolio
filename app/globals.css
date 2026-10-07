@@ -263,6 +263,41 @@ body {
   }
 }
 
+/* The sections grammar (lib/sections, components/sections). Nothing here
+   applies until the engine arms a block, so without JS and under reduced
+   motion every section renders whole. Sticky columns hold on desktop only
+   (the columns stack on phones); a sticky column's bottom margin ends its
+   hold early. The values come from lib/sections/grammar.ts through
+   StickyColumn's inline custom properties. */
+@media (min-width: 768px) {
+  .sections-sticky-col {
+    margin-bottom: var(--sections-sticky-stop);
+  }
+  .sections-sticky-col > [data-sections-sticky] {
+    position: sticky;
+    top: var(--sections-sticky-top);
+  }
+}
+
+/* A masked block or line leaves room for Profa's ink; the negative margin
+   keeps the layout unchanged. */
+[data-sections-state="armed"][data-sections-split="block"] {
+  overflow: clip;
+  padding-block: 0.04em;
+  margin-block: -0.04em;
+}
+.sections-line-mask {
+  padding-block: 0.04em;
+  margin-block: -0.04em;
+}
+
+/* A focused Connect link shows whatever its scroll state. */
+[data-sections-row]:focus-within [data-sections-rowinner],
+[data-sections-row]:focus-within [data-sections-hair] {
+  opacity: 1 !important;
+  transform: none !important;
+}
+
 /* The horizon strip's top edge fades out (components/soundtrack/HorizonCanvas.tsx).
    The #000 is mask coverage (fully kept), not a colour; nothing paints it. */
 .wave-horizon-mask {
