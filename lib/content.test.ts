@@ -59,7 +59,7 @@ describe("the book", () => {
     }
   });
 
-  it("keeps the ambassador meta short enough to sit beside its title", () => {
+  it("reads the ambassador meta as Claude ambassador, 2025", () => {
     expect(book.workRows.find((row) => row.key === "claude-ambassador")?.meta).toBe("Claude ambassador, 2025");
   });
 });
