@@ -8,7 +8,8 @@ import { stillPicture } from "@/lib/coil/stillPicture";
 // at rest, ?coildebug=still through scripts/render-posters.mjs, three cuts at
 // 2x in AVIF and WebP) covers it in data-scene="still": no scene can run. Its
 // images load lazily, so a scene visitor never fetches them. data-still-ready
-// marks a decoded still: the h1 hides only then (HeroText.tsx), and while the
+// marks a decoded still: the h1 hides only then (HeroText.tsx), and the still
+// waits at opacity 0 until then, so the two never show together. While the
 // loader's resting lockup holds, its stylesheet keeps the still at opacity 0
 // until the lockup hands to it (loaderMarkup.ts).
 export function Poster({ stillReady }: { stillReady: boolean }) {
@@ -16,7 +17,7 @@ export function Poster({ stillReady }: { stillReady: boolean }) {
     <div aria-hidden="true" className="absolute inset-0">
       <Image src="/coil/field-light.avif" alt="" fill unoptimized sizes="100vw" className="object-cover dark:hidden" />
       <Image src="/coil/field-dark.avif" alt="" fill unoptimized sizes="100vw" className="hidden object-cover dark:block" />
-      <div data-hero-still data-still-ready={stillReady ? "" : undefined} className="absolute inset-0 hidden group-data-[scene=still]/hero:block">
+      <div data-hero-still data-still-ready={stillReady ? "" : undefined} className="absolute inset-0 hidden group-data-[scene=still]/hero:block [&:not([data-still-ready])]:opacity-0">
         <StillPicture theme="light" className="dark:hidden" />
         <StillPicture theme="dark" className="hidden dark:block" />
       </div>
