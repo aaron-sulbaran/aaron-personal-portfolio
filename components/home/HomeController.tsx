@@ -396,6 +396,7 @@ export function HomeController({ hero, children }: Props) {
           frozen={modalOpen || flight !== null}
           interactive={phase === "ready"}
           input={drivers.input}
+          scene={heroScene}
           onSceneChange={setHeroScene}
           api={sceneApiRef}
           onCardClick={handleCardClick}
