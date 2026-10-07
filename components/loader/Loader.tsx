@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { siteContent } from "@/lib/content";
+import type { HeroScene } from "@/lib/coil/heroStill";
 import { LOADER_CSS, LOADER_NOSCRIPT, LOADER_SKIP_SCRIPT } from "./loaderMarkup";
 import { runLoader } from "./runLoader";
 
@@ -41,14 +42,14 @@ type Props = {
   // The pane is being handed to the hero: the entrance starts at startMs (the
   // performance.now() clock), and nameFromLoader says the loader lands the name.
   onReveal: (startMs: number, nameFromLoader: boolean) => void;
-  // The hero shows the canvas (data-scene="on"): the DOM lockup may leave.
-  sceneOn: boolean;
+  // The hero's scene state: the DOM lockup hands to the canvas only once it is "on".
+  scene: HeroScene;
 };
 
 const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 
-export function Loader({ mode, onReveal, sceneOn }: Props) {
+export function Loader({ mode, onReveal, scene }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
   const greetRef = useRef<HTMLSpanElement>(null);
   const paneRef = useRef<HTMLDivElement>(null);
@@ -60,11 +61,11 @@ export function Loader({ mode, onReveal, sceneOn }: Props) {
   const bgRef = useRef<HTMLDivElement>(null);
   const onRevealRef = useRef(onReveal);
   const mountedAtRef = useRef(0);
-  const sceneOnRef = useRef(sceneOn);
+  const sceneRef = useRef(scene);
 
   useEffect(() => {
     onRevealRef.current = onReveal;
-    sceneOnRef.current = sceneOn;
+    sceneRef.current = scene;
   });
 
   // Out of the content layer to <body>, before paint; back home before React
@@ -121,7 +122,7 @@ export function Loader({ mode, onReveal, sceneOn }: Props) {
     };
     return runLoader(
       parts,
-      { reduced: mode.reducedMotion, resting, sceneShown: () => sceneOnRef.current },
+      { reduced: mode.reducedMotion, resting, sceneShown: () => sceneRef.current === "on" },
       (startMs, nameFromLoader) => onRevealRef.current(startMs, nameFromLoader),
       mountedAtRef.current,
     );

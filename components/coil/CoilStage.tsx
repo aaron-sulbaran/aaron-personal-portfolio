@@ -1,12 +1,13 @@
 "use client";
 
-import Image from "next/image";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ComponentType, type RefObject } from "react";
 import { HOLDING_MODE } from "@/lib/holding";
 import type { InputDriver } from "@/lib/coil/drivers";
 import { CoilErrorBoundary } from "./CoilErrorBoundary";
 import { HeroOverlay, type HeroOverlayHandle } from "./HeroOverlay";
 import { canCreateWebGL2 } from "./webglProbe";
+import { Poster, decodeHeroStill } from "./Poster";
+import type { HeroScene } from "@/lib/coil/heroStill";
 import type { CoilCardRef, CoilSceneApi, CoilSceneProps } from "./CoilScene";
 // Slice 4: the entrance claim, the loader's tally and the name handoff.
 import { COIL } from "@/lib/coil/constants";
@@ -14,16 +15,18 @@ import { useHomeController } from "@/components/home/HomeController";
 import { SCENE_ITEMS, reportHomeLoad, settleHomeLoad } from "@/lib/loader/progress";
 import { provideNameHandoff } from "@/lib/loader/handoff";
 
-// The Coil hero's stage: a layer filling the 100svh hero with the poster (the
-// field at its tuned moment, one per theme), the WebGL scene over it, and the
-// DOM overlay. The canvas is sized from this container, never the viewport.
+// The Coil hero's stage: a layer filling the 100svh hero with the posters
+// (Poster.tsx), the WebGL scene over them, and the DOM overlay. The canvas is
+// sized from this container, never the viewport.
 //
 // The scene chunk (three and all) is imported only after first paint and only
 // when it can run: not under reduced motion, not in holding mode, and with a
-// WebGL 2 context this browser can actually create. Until its first frame,
-// and forever when it cannot run or fails, the poster and the server-rendered
-// h1 carry the hero. A lost context shows the poster and remounts once; a
-// second loss stays on the poster.
+// WebGL 2 context this browser can actually create. Until its first frame the
+// field poster waits with it (data-scene="off"); once it cannot run at all
+// (no context, a failed chunk, the boundary, a second lost context, reduced
+// motion) the hero is "still": the hero still once decoded, the h1 visually
+// hidden only then, and the notice. A first lost context shows the field
+// poster and remounts once.
 // Reduced motion is live: turning it on tears the scene down, off rebuilds it.
 
 type Props = {
@@ -31,8 +34,8 @@ type Props = {
   frozen: boolean;
   interactive: boolean;
   input: InputDriver;
-  // The hero shows the canvas name (data-scene="on") only once it has drawn.
-  onSceneChange: (drawn: boolean) => void;
+  // "on" once the scene has drawn, "off" while one is on its way, "still" once none can run.
+  onSceneChange: (scene: HeroScene) => void;
   // Slice 5: the controller's handle on the live scene (the flight, the book's
   // hover-jump), a card click in the canvas, and a row of the unwound list.
   api?: RefObject<CoilSceneApi | null>;
@@ -53,6 +56,7 @@ export function CoilStage({
   const [Scene, setScene] = useState<ComponentType<CoilSceneProps> | null>(null);
   const [generation, setGeneration] = useState(0);
   const [failed, setFailed] = useState(false);
+  const [stillDecoded, setStillDecoded] = useState(false);
   const lossesRef = useRef(0);
   const overlayRef = useRef<HeroOverlayHandle>(null);
   const ownApiRef = useRef<CoilSceneApi>(null);
@@ -84,9 +88,20 @@ export function CoilStage({
   );
   useEffect(() => {
     if (eligible) return;
-    // No scene will draw: nothing left to wait for, nothing left to play.
+    // No scene will draw: the still decodes now (the h1 hides only once it
+    // has), nothing left to wait for, nothing left to play.
+    let live = true;
+    decodeHeroStill().then(
+      () => {
+        if (live) setStillDecoded(true);
+      },
+      () => undefined,
+    );
     settleHomeLoad(SCENE_ITEMS.filter((item) => item !== "fonts"));
     completeEntrance?.();
+    return () => {
+      live = false;
+    };
   }, [eligible, completeEntrance]);
   useEffect(() => {
     if (!entrance || !Number.isFinite(entrance.startMs) || !completeEntrance) return;
@@ -101,7 +116,7 @@ export function CoilStage({
     let cancelled = false;
     // After first paint: the poster and the greeting are already on screen.
     const frame = requestAnimationFrame(() => {
-      // No real context, no chunk: the poster carries the hero.
+      // No real context, no chunk: the hero still carries the hero.
       if (!canCreateWebGL2()) {
         setFailed(true);
         return;
@@ -125,25 +140,25 @@ export function CoilStage({
   const mounted = eligible && Scene !== null;
 
   useEffect(() => {
-    if (!mounted) onSceneChange(false);
-  }, [mounted, onSceneChange]);
+    if (!mounted) onSceneChange(eligible ? "off" : "still");
+  }, [mounted, eligible, onSceneChange]);
 
   const handleFirstFrame = useCallback(() => {
     reportHomeLoad("frame"); // slice 4: the loader's tally
-    onSceneChange(true);
+    onSceneChange("on");
   }, [onSceneChange]);
 
   const handleError = useCallback(
     (error: unknown) => {
       console.error("Coil scene failed; the poster stays.", error);
-      onSceneChange(false);
+      onSceneChange("off");
       setFailed(true);
     },
     [onSceneChange],
   );
 
   const handleContextLost = useCallback(() => {
-    onSceneChange(false);
+    onSceneChange("off");
     lossesRef.current += 1;
     if (lossesRef.current === 1) setGeneration((n) => n + 1);
     else setFailed(true);
@@ -151,7 +166,7 @@ export function CoilStage({
 
   return (
     <div className="absolute inset-0 overflow-hidden">
-      <Poster />
+      <Poster stillReady={!eligible && stillDecoded} />
       {mounted && Scene ? (
         <CoilErrorBoundary key={generation} onError={handleError}>
           <Scene
@@ -185,20 +200,8 @@ const ENTRANCE_FALLBACK_MS = 3000;
 
 // The API check only, cheap enough for render; the chunk import also probes
 // for a real context first (webglProbe.ts). A context that still fails to
-// start throws inside the scene and lands on the poster through the boundary.
+// start throws inside the scene and lands on the hero still through the boundary.
 // The server renders no scene either way, so this never changes the markup.
 function hasWebGL2() {
   return typeof window === "undefined" || typeof WebGL2RenderingContext !== "undefined";
-}
-
-// The field at fieldTime(0), the live field's first frame, with the bottom
-// seam, rendered from the scene itself (?coildebug=poster) at 1440x900, one
-// file per theme.
-function Poster() {
-  return (
-    <div aria-hidden="true" className="absolute inset-0">
-      <Image src="/coil/field-light.avif" alt="" fill unoptimized sizes="100vw" className="object-cover dark:hidden" />
-      <Image src="/coil/field-dark.avif" alt="" fill unoptimized sizes="100vw" className="hidden object-cover dark:block" />
-    </div>
-  );
 }
