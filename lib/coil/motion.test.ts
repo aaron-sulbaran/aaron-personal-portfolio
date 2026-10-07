@@ -30,7 +30,7 @@ function frames(count: number, seed = 7) {
   });
 }
 
-const rest = { idleWeight: 1, pageScrollPx: 0 };
+const rest = { idleWeight: 1 };
 
 describe("conveyor", () => {
   it("holds the speed cap under any wheel flood", () => {
@@ -73,12 +73,26 @@ describe("conveyor", () => {
     expect(conveyor.offset).toBeCloseTo(expected, 6);
   });
 
-  it("stops idling at zero weight and turns gently with page scroll", () => {
+  it("stops idling at zero weight", () => {
     const conveyor = createConveyor();
-    stepConveyor(conveyor, { dt: 1 / 60, nowMs: 16, idleWeight: 0, pageScrollPx: 0 });
+    stepConveyor(conveyor, { dt: 1 / 60, nowMs: 16, idleWeight: 0 });
     expect(conveyor.offset).toBe(0);
-    for (let i = 0; i < 240; i++) stepConveyor(conveyor, { dt: 1 / 60, nowMs: i * 16, idleWeight: 0, pageScrollPx: i === 0 ? 150 : 0 });
-    expect(conveyor.offset).toBeCloseTo(1, 3);
+    for (let i = 0; i < 240; i++) stepConveyor(conveyor, { dt: 1 / 60, nowMs: i * 16, idleWeight: 0 });
+    expect(conveyor.offset).toBe(0);
+  });
+
+  // Aaron, 2026-10-06: the coil keeps its natural pace while the page
+  // scrolls; only a captured wheel, a touch drag or a glide moves it faster.
+  it("leaves the target at the idle pace however far the page scrolls", () => {
+    const conveyor = createConveyor();
+    const dt = 1 / 60;
+    // A page scroll delta handed in anyway (a stale caller) must move nothing.
+    const scrolling = { dt, nowMs: 16, idleWeight: 1, pageScrollPx: 900 };
+    stepConveyor(conveyor, scrolling);
+    expect(conveyor.target).toBeCloseTo(COIL.idleCardsPerSecond * dt, 12);
+    expect(conveyor.offset).toBeCloseTo(COIL.idleCardsPerSecond * dt, 12);
+    expect(conveyor.excessVelocity).toBeCloseTo(0, 9);
+    expect("pageScrollCardsPerPixel" in COIL.wheel, "a page-scroll rate in the constants").toBe(false);
   });
 
   it("converts wheel delta modes on the dominant axis", () => {
@@ -294,7 +308,7 @@ describe("row hover hold", () => {
     expect(rowHoldWeight(hold, 5000 + resumeDelayMs + resumeMs)).toBe(1);
   });
 
-  it("holds the coil still on the row's card after its glide, under idle and page scroll", () => {
+  it("holds the coil still on the row's card after its glide, under idle", () => {
     const conveyor = createConveyor(0.37);
     const hold = setRowHold(createRowHold(), true, 0);
     startGlide(conveyor, 4, 0);
@@ -302,7 +316,7 @@ describe("row hover hold", () => {
     for (let i = 0; i < 60 * 4; i++) {
       now += 1000 / 60;
       const weight = rowHoldWeight(hold, now);
-      stepConveyor(conveyor, { dt: 1 / 60, nowMs: now, idleWeight: weight, pageScrollPx: 12 * weight });
+      stepConveyor(conveyor, { dt: 1 / 60, nowMs: now, idleWeight: weight });
     }
     expect(conveyor.offset).toBe(4);
   });
@@ -313,13 +327,13 @@ describe("row hover hold", () => {
     startGlide(conveyor, -2.5, 0);
     let last = conveyor.offset;
     for (let t = 1000 / 60; t < COIL.hoverJumpMs; t += 1000 / 60) {
-      stepConveyor(conveyor, { dt: 1 / 60, nowMs: t, idleWeight: 0, pageScrollPx: 0 });
+      stepConveyor(conveyor, { dt: 1 / 60, nowMs: t, idleWeight: 0 });
       expect(conveyor.offset).toBeLessThanOrEqual(last + 1e-12);
       expect(conveyor.offset).toBeGreaterThanOrEqual(-2.5 - 1e-9);
       last = conveyor.offset;
     }
     expect(conveyor.glide).not.toBeNull();
-    stepConveyor(conveyor, { dt: 1 / 60, nowMs: COIL.hoverJumpMs, idleWeight: 0, pageScrollPx: 0 });
+    stepConveyor(conveyor, { dt: 1 / 60, nowMs: COIL.hoverJumpMs, idleWeight: 0 });
     expect(conveyor.offset).toBe(-2.5);
   });
 });

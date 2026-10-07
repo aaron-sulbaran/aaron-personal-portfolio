@@ -1,4 +1,5 @@
 import type { CDPSession } from "@playwright/test";
+import { COIL } from "@/lib/coil/constants";
 import { test, expect } from "./support/fixtures";
 import { coilPoints, nextFrames, openHome, type Point } from "./support/coil";
 import type { HookWindow } from "./support/hooks";
@@ -30,15 +31,16 @@ test("touch: the phone gets the coarse driver", async ({ page }) => {
 test("touch: a vertical swipe that starts on a card scrolls the page", async ({ page, cdp }) => {
   await openHome(page);
   const { card } = await coilPoints(page);
-  const before = await page.evaluate(() => (window as HookWindow).__coil!.offset());
+  const before = await page.evaluate(() => ({ offset: (window as HookWindow).__coil!.offset(), t: performance.now() }));
 
   await swipe(cdp, card, { x: card.x, y: card.y - 300 });
 
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(150);
   expect(await page.evaluate(() => (window as HookWindow).__coil!.drag().dragging)).toBe(false);
-  // No spin from the swipe: the coil moved by page scroll at most (1/150 card a px).
-  const after = await page.evaluate(() => (window as HookWindow).__coil!.offset());
-  expect(Math.abs(after - before)).toBeLessThan(3);
+  // No spin from the swipe, and none from the page scroll it caused: the coil kept its idle pace.
+  const after = await page.evaluate(() => ({ offset: (window as HookWindow).__coil!.offset(), t: performance.now() }));
+  const idleTravel = (COIL.idleCardsPerSecond * (after.t - before.t)) / 1000;
+  expect(Math.abs(after.offset - before.offset), "coil travel, cards").toBeLessThan(idleTravel + 0.02);
 });
 
 test("touch: a horizontal drag spins the coil, and the release coasts onto a card", async ({ page, cdp }) => {

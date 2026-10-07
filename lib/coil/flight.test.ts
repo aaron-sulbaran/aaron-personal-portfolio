@@ -318,13 +318,13 @@ describe("resume", () => {
   it("holds a glide where the freeze caught it", () => {
     const conveyor = createConveyor(2);
     startGlide(conveyor, 6, 1000);
-    stepConveyor(conveyor, { dt: 1 / 60, nowMs: 1100, idleWeight: 1, pageScrollPx: 0 });
+    stepConveyor(conveyor, { dt: 1 / 60, nowMs: 1100, idleWeight: 1 });
     const caught = conveyor.offset;
     expect(caught).toBeGreaterThan(2);
     expect(caught).toBeLessThan(6);
     // Frozen at 1100 for 1250ms: the next frame is one frame on, not 1250ms on.
     conveyor.glide = afterPause(conveyor.glide, 1250);
-    stepConveyor(conveyor, { dt: 1 / 60, nowMs: 1100 + 1250 + 16, idleWeight: 1, pageScrollPx: 0 });
+    stepConveyor(conveyor, { dt: 1 / 60, nowMs: 1100 + 1250 + 16, idleWeight: 1 });
     expect(conveyor.offset - caught).toBeGreaterThan(0);
     expect(conveyor.offset - caught).toBeLessThan(0.6);
     expect(conveyor.glide).not.toBeNull();

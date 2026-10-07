@@ -57,7 +57,6 @@ const values = {
   wheel: {
     lambda: 11, // one exponential smoothing stage, 1/s (about 90ms)
     cardsPerPixel: 0.0045,
-    pageScrollCardsPerPixel: 1 / 150, // page scroll turns the coil (on)
   },
   // Wheel capture, decided once per gesture (lib/coil/capture.ts): a gesture
   // starting with the pointer on a card (or in the seam between two), capture

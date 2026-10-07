@@ -3,7 +3,6 @@ import { COIL } from "@/lib/coil/constants";
 import {
   createCapture,
   decideWheel,
-  feedsPageScroll,
   gestureOwner,
   heroVisibleFraction,
   nudgeShown,
@@ -344,18 +343,6 @@ describe("continuation: things moving under a still pointer never change the nex
   it("the hero turning non-interactive mid-gesture holds nothing", () => {
     const { state } = replay(downFirstQuick, (index) => ({ ...onCoil, interactive: index < 10 }));
     expect(state.held).toBe(false);
-  });
-});
-
-describe("page scroll feed", () => {
-  it("turns the coil with page scroll except during a coil gesture", () => {
-    const idle = armedCapture();
-    expect(feedsPageScroll(idle, 0)).toBe(true); // keyboard and scrollbar scrolling
-    const page = decideWheel(idle, { ...offCoil, nowMs: 100 });
-    expect(feedsPageScroll(page, 120)).toBe(true);
-    const coil = decideWheel(idle, { ...onCoil, nowMs: 100 });
-    expect(feedsPageScroll(coil, 120)).toBe(false);
-    expect(feedsPageScroll(coil, 100 + GAP)).toBe(true);
   });
 });
 

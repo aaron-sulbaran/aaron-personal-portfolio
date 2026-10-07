@@ -37,7 +37,7 @@ Picked by Aaron on 2026-09-29 (decision record section 2.9). They live in one ty
 | Idle, spin cap | 0.09 cards/s, 12.5 cards/s |
 | Entrance | 1800ms; stack in 0.05, shutter from 0.06 at 0.011 stagger, fly 0.22, pull from 0.58; pull curve (0.55, 0, 0.25, 1) |
 | Camera | FOV 26, lean -12 degrees, band lean -22 degrees |
-| Wheel | one exponential stage, lambda 11 (about 90ms), 0.0045 cards/px, page scroll turns the coil at 1/150 cards/px (on) |
+| Wheel | one exponential stage, lambda 11 (about 90ms), 0.0045 cards/px; page scroll does not turn the coil (Aaron, 2026-10-06) |
 | Capture | per gesture: the helix silhouette (gaps included), hero at least half in view, no intent delay, released only by a real pointer move outside; chevron nudge at 2.6s. Superseded rules: cards only, 400ms intent, top of page only (see `docs/coil-input-model.md`) |
 | Hover-jump, unwind | 600ms site ease; 580ms per card, 8ms stagger |
 | Strand fit | repeats fill the pane (M slots over N cards) |
