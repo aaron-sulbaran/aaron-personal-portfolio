@@ -402,7 +402,8 @@ export function HomeController({ hero, children }: Props) {
           onCardClick={handleCardClick}
           onRowOpen={handleRowOpen}
         />
-        <div className="relative">{hero}</div>
+        {/* The h1 places itself on the section's box, the loader root's box (HeroText). */}
+        {hero}
       </section>
       {children}
       <PhotoModal

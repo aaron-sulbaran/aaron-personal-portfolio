@@ -5,8 +5,9 @@ import { expectStillHeroAndUsableBook, settled, watchHydration } from "./support
 import { heroSamples, sampleHero } from "./support/heroSamples";
 
 // The hero without its scene: reduced motion, a scene that throws, and a
-// browser with no WebGL. The hero still, the hidden h1 and the book carry the
-// page, and the scene's chunk (three) is never fetched where it could not run.
+// browser with no WebGL. The hero still, the h1 lockup in front of it and the
+// book carry the page, and the scene's chunk (three) is never fetched where
+// it could not run.
 
 test("control: a normal load fetches the scene chunk, never the hero still, and never reports still", async ({ page }) => {
   const scripts = watchScripts(page);
@@ -24,7 +25,7 @@ test("control: a normal load fetches the scene chunk, never the hero still, and 
 test.describe("reduced motion", () => {
   test.use({ contextOptions: { reducedMotion: "reduce" } });
 
-  test("no canvas and no scene chunk: the hero still, the hidden h1 and the book", async ({ page }) => {
+  test("no canvas and no scene chunk: no resting lockup, the h1 lockup from first paint, the hero still and the book", async ({ page }) => {
     const scripts = watchScripts(page);
     const hydration = watchHydration(page);
     await sampleHero(page);
@@ -34,7 +35,13 @@ test.describe("reduced motion", () => {
     await expectStillHeroAndUsableBook(page);
     expect(await scripts.sceneChunks(), "scene chunks fetched").toEqual([]);
     expect(hydration).toEqual([]);
-    expect((await heroSamples(page)).filter((s) => s.h1), "frames showing the h1").toEqual([]);
+    // Reduced motion has no resting lockup and nothing holds the h1: the h1
+    // lockup is the greeting from the first frame, under the loader's fade.
+    const samples = (await heroSamples(page)).filter((s) => s.state !== null);
+    expect(samples.length, "frames sampled").toBeGreaterThan(2);
+    expect(samples.filter((s) => s.rest), "frames showing the resting lockup").toEqual([]);
+    const hidden = samples.filter((s) => !s.h1 || s.h1Opacity !== 1);
+    expect(hidden.length, `frames without the h1 lockup (first at ${hidden[0]?.t.toFixed(0)}ms)`).toBe(0);
     const still = page.locator("[data-hero-still]");
     await expect(still).toHaveAttribute("data-still-ready", "");
     await expect.poll(() => still.evaluate((el) => getComputedStyle(el).opacity)).toBe("1");

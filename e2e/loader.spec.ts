@@ -446,8 +446,12 @@ test.describe("no WebGL", () => {
     const samples = (await heroSamples(page)).filter((s) => s.state !== null);
     expect(samples.length, "frames sampled").toBeGreaterThan(2);
     expect(samples.slice(0, 3).every((s) => s.state !== "gone" && s.rest), "the resting lockup in the first frames").toBe(true);
-    const h1Shown = samples.filter((s) => s.h1);
-    expect(h1Shown.length, `frames showing the h1 (first at ${h1Shown[0]?.t.toFixed(0)}ms)`).toBe(0);
+    const goneAt = samples.findIndex((s) => s.state === "gone");
+    expect(goneAt, "a frame with the loader gone").toBeGreaterThan(0);
+    const h1Shown = samples.slice(0, goneAt).filter((s) => s.h1);
+    expect(h1Shown.length, `frames before gone showing the h1 (first at ${h1Shown[0]?.t.toFixed(0)}ms)`).toBe(0);
+    expect(samples[goneAt].h1, "the h1 lockup shows in the first frame the loader has gone").toBe(true);
+    expect(samples[goneAt].h1Opacity, "the h1's opacity in that frame").toBe(1);
     const leaked = samples.filter((s) => s.rest && !s.dissolve && s.state !== "gone" && s.still !== 0);
     expect(leaked.length, "frames with the still showing before the hand-off").toBe(0);
     expect(samples.at(-1)!.state).toBe("gone");
