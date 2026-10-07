@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 import { siteContent } from "@/lib/content";
 import { LOADER } from "@/lib/loader/progress";
+import { COIL } from "@/lib/coil/constants";
 import { test, expect } from "./support/fixtures";
 import { waitForCoil } from "./support/coil";
 import type { HookWindow } from "./support/hooks";
@@ -427,10 +428,11 @@ test("loader: a warm reload never shows the fallback heading; the resting lockup
 });
 
 // No WebGL (the Chrome setting: the API is there, no context starts): the
-// resting lockup is up from the first frames, the h1 never shows, the still
-// fades in under the lockup, and the lockup leaves in one frame. The init
-// script denies every context; a GPU-less launch cannot be set per describe
-// (it forces a new worker), and e2e/no-webgl.spec.ts covers that launch.
+// resting lockup is up from the first frames, the h1 never shows under it,
+// the still fades in under the lockup while its ink eases to the h1's, and
+// the lockup leaves in one frame onto the h1 lockup at the identical pose.
+// The init script denies every context; a GPU-less launch cannot be set per
+// describe (it forces a new worker), and e2e/no-webgl.spec.ts covers that launch.
 test.describe("no WebGL", () => {
   const goneLoader = () => document.querySelector<HTMLElement>(".coil-loader")?.dataset.state === "gone";
 
@@ -464,35 +466,111 @@ test.describe("no WebGL", () => {
     expect(events, "the pane never armed").not.toContain("100");
   });
 
-  test("loader: the still fades in under the resting lockup and the name never weakens", async ({ page }) => {
+  // The decode hold of ?coildebug=handoff, released: the pane-less dissolve
+  // starts, the still's fade and the lockup's ink ease run.
+  async function heldDissolve(page: Page) {
     await page.addInitScript(noWebglContext);
     await page.goto("/?coildebug=1");
     await page.waitForFunction(goneLoader, null, { timeout: 30_000 });
     // handoff: the hand-off waits on __coilLoader.finish() once the still has decoded, then again before the lockup leaves.
     await page.goto("/?coildebug=handoff");
     await page.waitForFunction(() => (window as HookWindow).__coilLoader?.events.some((e) => e.event === "still-held"), null, { timeout: 30_000 });
-    const box = await page.evaluate(() => {
+  }
+  const restBox = (page: Page) =>
+    page.evaluate(() => {
       const r = document.querySelector(".coil-loader__rest-name")!.getBoundingClientRect();
       return { x: Math.floor(r.left), y: Math.floor(r.top), width: Math.ceil(r.width), height: Math.ceil(r.height) };
     });
+
+  test("loader: the still fades in under the resting lockup and the name never weakens", async ({ page }) => {
+    await heldDissolve(page);
+    const box = await restBox(page);
     const rest = luminanceSpread(await shoot(page, box));
+    await page.evaluate(() => (window as HookWindow).__coilLoader!.finish!());
+    // The still's fade and the ink's ease, held together and stepped through.
+    await page.waitForFunction(() => document.querySelector(".coil-loader__rest")!.getAnimations().length > 0);
     await page.evaluate(() => {
-      (window as HookWindow).__coilLoader!.finish!();
-      const fadeIn = document.querySelector("[data-hero-still]")!.getAnimations()[0];
-      fadeIn.pause();
-      (window as unknown as { __stillFade: Animation }).__stillFade = fadeIn;
+      const fades = [document.querySelector("[data-hero-still]")!.getAnimations()[0], document.querySelector(".coil-loader__rest")!.getAnimations()[0]];
+      fades.forEach((fade) => fade.pause());
+      (window as unknown as { __fades: Animation[] }).__fades = fades;
     });
+    const spreads = [`rest ${rest.toFixed(1)}`];
     for (const ms of [0, 100, 200, 300, LOADER.stillFadeMs - 1]) {
-      await page.evaluate((t) => {
-        (window as unknown as { __stillFade: Animation }).__stillFade.currentTime = t;
-      }, ms);
-      expect(luminanceSpread(await shoot(page, box)), `name box spread at ${ms}ms of the fade`).toBeGreaterThanOrEqual(rest - 2);
+      await page.evaluate((t) => (window as unknown as { __fades: Animation[] }).__fades.forEach((fade) => (fade.currentTime = t)), ms);
+      const spread = luminanceSpread(await shoot(page, box));
+      spreads.push(`${ms}ms ${spread.toFixed(1)}`);
+      expect(spread, `name box spread at ${ms}ms of the fade`).toBeGreaterThanOrEqual(rest - 2);
     }
     await page.evaluate(() => {
-      (window as unknown as { __stillFade: Animation }).__stillFade.finish();
+      (window as unknown as { __fades: Animation[] }).__fades.forEach((fade) => fade.finish());
       (window as HookWindow).__coilLoader!.finish!();
     });
     await expect(page.locator(".coil-loader")).toHaveAttribute("data-state", "gone");
-    expect(luminanceSpread(await shoot(page, box)), "name box spread after the lockup left").toBeGreaterThanOrEqual(rest - 3);
+    const after = luminanceSpread(await shoot(page, box));
+    test.info().annotations.push({ type: "name box spread", description: `${spreads.join(", ")}, gone ${after.toFixed(1)}` });
+    expect(after, "name box spread after the lockup left").toBeGreaterThanOrEqual(rest - 3);
+  });
+
+  test("loader: the resting lockup leaves onto the h1 lockup at the identical pose and ink", async ({ page }) => {
+    await heldDissolve(page);
+    await page.evaluate(() => (window as HookWindow).__coilLoader!.finish!());
+    // The fade and the ease run to their ends; the loader holds on the second finish().
+    await expect.poll(() => page.locator("[data-hero-still]").evaluate((el) => getComputedStyle(el).opacity)).toBe("1");
+    await expect
+      .poll(() => page.locator(".coil-loader__rest").evaluate((el) => Number(getComputedStyle(el).opacity)))
+      .toBeCloseTo(COIL.lockup.stillInk, 5);
+    // The two lines of the h1 lockup, padded: its rect, the loader's on top of it.
+    const box = await page.evaluate(() => {
+      const rects = [".hero-lockup__greet", ".hero-lockup__name"].map((s) => document.querySelector(s)!.getBoundingClientRect());
+      const x = Math.floor(Math.min(...rects.map((r) => r.left))) - 4;
+      const y = Math.floor(Math.min(...rects.map((r) => r.top))) - 4;
+      return {
+        x,
+        y,
+        width: Math.ceil(Math.max(...rects.map((r) => r.right))) + 4 - x,
+        height: Math.ceil(Math.max(...rects.map((r) => r.bottom))) + 4 - y,
+      };
+    });
+    const boxes = (greet: string, name: string) =>
+      page.evaluate(
+        (selectors) =>
+          selectors.map((selector) => {
+            const r = document.querySelector(selector)!.getBoundingClientRect();
+            return [r.left, r.top, r.width, r.height].map((v) => Math.round(v * 100) / 100);
+          }),
+        [greet, name],
+      );
+    expect(await boxes(".hero-lockup__greet", ".hero-lockup__name"), "the h1 lockup's lines where the loader's are").toEqual(
+      await boxes(".coil-loader__rest-greet", ".coil-loader__rest-name"),
+    );
+    const before = await shoot(page, box);
+    const handed = await page.evaluate(() => {
+      (window as HookWindow).__coilLoader!.finish!();
+      const h1 = document.getElementById("hero-heading")!;
+      return {
+        gone: document.querySelector<HTMLElement>(".coil-loader")!.dataset.state === "gone",
+        h1: getComputedStyle(h1).opacity,
+        ink: Number(getComputedStyle(h1.querySelector(".hero-lockup__ink")!).opacity),
+      };
+    });
+    expect(handed.gone, "the loader went in the finishing task").toBe(true);
+    expect(handed.h1, "the h1's opacity the frame the loader goes").toBe("1");
+    expect(handed.ink, "the h1 lockup's ink").toBeCloseTo(COIL.lockup.stillInk, 5);
+    const after = await shoot(page, box);
+    let sum = 0;
+    let max = 0;
+    for (let i = 0; i < before.rgba.length; i += 4) {
+      for (let c = 0; c < 3; c++) {
+        const d = Math.abs(before.rgba[i + c] - after.rgba[i + c]);
+        sum += d;
+        max = Math.max(max, d);
+      }
+    }
+    const mean = sum / ((before.rgba.length / 4) * 3);
+    test.info().annotations.push({ type: "hand-off diff", description: `mean ${mean.toFixed(3)}, max ${max} of 255 over ${box.width}x${box.height}` });
+    expect(mean, "mean channel difference across the hand-off, of 255").toBeLessThan(3);
+    // Letters on both sides, not an empty still twice.
+    expect(luminanceSpread(before), "loader side, the lockup's luminance spread").toBeGreaterThan(30);
+    expect(luminanceSpread(after), "h1 side, the lockup's luminance spread").toBeGreaterThan(30);
   });
 });
