@@ -48,10 +48,11 @@ describe("Aaron's pick, 2026-10-06", () => {
       cta: { variant: "circle", colorway: "glass-accent" },
     });
   });
-  it("sets the calls to action at 44px in the large label step", () => {
+  it("sets the calls to action at 44px in the large label step, one line box for the copy and the original", () => {
     expect(CTA_CLASS).toContain("h-11");
     expect(CTA_CLASS).toContain("text-label-lg");
-    expect(CTA_OVER_CLASS).toBe("flex items-center gap-3 pl-5 pr-1.5");
+    expect(CTA_CLASS).toContain("leading-6");
+    expect(CTA_OVER_CLASS).toBe("flex items-center gap-3 pl-5 pr-1.5 leading-6");
   });
 });
 
