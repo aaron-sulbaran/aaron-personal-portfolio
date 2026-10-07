@@ -2,7 +2,8 @@ import type { StillWaitTimers } from "./stillWait";
 
 // The still path's give-up (components/loader/runLoader.ts): the hero still
 // never decodes, or not within the give-up, and the loader hands its lockup
-// to the h1 lockup as a decoded still would, minus the still. The pane (if
+// to the h1 lockup (a decoded still has the lockup fade out onto its own
+// baked name instead, lib/loader/lockupFade.ts). The pane (if
 // it showed) fades off the resting lockup, the lockup's ink eases to the
 // h1's (lib/loader/inkEase.ts) over the fade, and the lockup leaves in one
 // frame once that ink is exactly the h1's. Nothing fades the lockup itself:

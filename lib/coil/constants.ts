@@ -126,9 +126,9 @@ const values = {
   // inkGain is the composite's gain on the --name-ink token. stillInk is the
   // strong ink: the name the hero still bakes behind its cards (the scene's
   // composite in still mode, lib/coil/debugFlags.ts nameCompositeInk) and the
-  // h1 lockup's while the still is loading or never decodes (and the loader's
-  // resting lockup eases to it as the still fades in): the layer's opacity,
-  // over the same gradient and greeting color.
+  // h1 lockup's while the still is loading or never decodes (the loader's
+  // resting lockup eases to it when the still never decodes): the layer's
+  // opacity, over the same gradient and greeting color.
   lockup: {
     widthWide: 0.7,
     widthNarrow: 0.9,

@@ -4,9 +4,10 @@ import { siteContent } from "@/lib/content";
 import { LOADER, coilDebugFlags, displayPercent, homeLoad, reportHomeLoad, slowSceneMs } from "@/lib/loader/progress";
 import { landName, nameTarget, type NameTarget } from "@/lib/loader/handoff";
 import { loaderEnd, stillPoster, type StillPoster } from "@/lib/loader/still";
-import { createStillWait, type StillWaitTimers } from "@/lib/loader/stillWait";
+import { createStillWait, listenStillFade, type StillWaitTimers } from "@/lib/loader/stillWait";
 import { giveUpToHeading, raceStill } from "@/lib/loader/stillGiveUp";
 import { createInkEase, type InkEase } from "@/lib/loader/inkEase";
+import { createLockupFade } from "@/lib/loader/lockupFade";
 import { COIL } from "@/lib/coil/constants";
 import { HERO_HEADING_ID } from "@/components/home/HeroText";
 import {
@@ -240,45 +241,44 @@ export function runLoader(
 
   // No scene can run. Once the still has decoded, the pane (if it showed)
   // fades off the resting lockup; then the still fades in UNDER the resting
-  // lockup over stillFadeMs (loaderMarkup.ts lifts its hold on
-  // data-dissolve) while the lockup's ink eases to the h1's (lib/loader/inkEase.ts),
-  // and the lockup leaves in one frame onto the h1 when that fade ends.
-  // A still that fails to decode, or not within handoffGiveUpMs, hands off
-  // the same way minus the still, never fading the lockup (lib/loader/stillGiveUp.ts).
+  // lockup over stillFadeMs (loaderMarkup.ts lifts its hold on data-dissolve),
+  // the lockup at the composite's ink, and when that fade ends the lockup
+  // fades out over lockupFadeMs onto the name the still bakes behind its cards
+  // (lib/loader/lockupFade.ts), then goes. A still that fails to decode, or not
+  // within handoffGiveUpMs, hands to the h1 lockup in one frame, never fading
+  // the lockup (lib/loader/stillGiveUp.ts).
   function dissolve(poster: StillPoster) {
     note("still");
     const layer = root.querySelector<HTMLElement>(LOADER_LOCKUP.layer);
-    const inkEase = () => (ink = createInkEase(layer, () => getComputedStyle(layer!).opacity, COIL.lockup.stillInk, LOADER.stillFadeMs));
+    const readInk = () => getComputedStyle(layer!).opacity;
     const fadePane = (done: () => void) => {
       timeline = gsap.timeline({ onComplete: done });
       timeline.to([parts.bg, parts.pane], { opacity: 0, duration: LOADER.stillFadeMs / 1000, ease: "none" });
     };
-    const handTo = () => {
-      if (disposed) return;
-      ink?.settle();
+    let fading = false;
+    const fadeLockup = () => {
+      if (disposed || fading) return;
+      fading = true;
       stopStill();
-      gone();
-      note("still-handoff");
+      note("lockup-fade");
+      const done = () => {
+        gone();
+        note("still-handoff");
+      };
+      const fade = createLockupFade({ layer, read: readInk, ms: LOADER.lockupFadeMs, slackMs: LOADER.stillFadeSlackMs, timers: WINDOW_TIMERS, done });
+      stopStill = fade.cancel;
+      fade.start();
     };
-    // The lockup leaves when the still's own fade ends (?coildebug=handoff:
-    // on finish()); the ink and the backup timer run from the fade's
-    // transitionrun, not from here (lib/loader/stillWait.ts).
+    // The lockup's fade starts when the still's own fade ends (?coildebug=handoff:
+    // on finish()); the backup timer runs from the fade's transitionrun, not
+    // from here (lib/loader/stillWait.ts).
     const afterStillFade = () => {
-      const still = document.querySelector<HTMLElement>("[data-hero-still]");
       const wait = createStillWait({
         fadeMs: LOADER.stillFadeMs, slackMs: LOADER.stillFadeSlackMs,
         startGuardMs: LOADER.stillFadeMs + LOADER.stillFadeSlackMs + LOADER.handoffGiveUpMs,
-        timers: WINDOW_TIMERS, leave: holdHandoff ? () => {} : handTo, onStart: inkEase().start,
+        timers: WINDOW_TIMERS, leave: holdHandoff ? () => {} : fadeLockup,
       });
-      const phases: Record<string, () => void> = { transitionrun: wait.started, transitionend: wait.ended, transitioncancel: wait.cancelled };
-      const onPhase = (event: Event) => {
-        if (event.target === still && (event as TransitionEvent).propertyName === "opacity") phases[event.type]();
-      };
-      Object.keys(phases).forEach((type) => still?.addEventListener(type, onPhase));
-      stopStill = () => {
-        Object.keys(phases).forEach((type) => still?.removeEventListener(type, onPhase));
-        wait.dispose();
-      };
+      stopStill = listenStillFade(document.querySelector("[data-hero-still]"), wait);
     };
     const under = () => {
       if (disposed) return;
@@ -287,7 +287,7 @@ export function runLoader(
       note("dissolve");
       reveal(performance.now() + LOADER.stillFadeMs, false);
       afterStillFade();
-      if (holdHandoff) exposeFinish(handTo);
+      if (holdHandoff) exposeFinish(fadeLockup);
     };
     const decoded = () => {
       if (disposed) return;
@@ -299,7 +299,8 @@ export function runLoader(
     const gaveUp = () => {
       if (disposed) return;
       stopStill = giveUpToHeading({
-        paneShown, fadeMs: LOADER.stillFadeMs, timers: WINDOW_TIMERS, fadePane: (_, done) => fadePane(done), ink: inkEase(), gone, note,
+        paneShown, fadeMs: LOADER.stillFadeMs, timers: WINDOW_TIMERS, fadePane: (_, done) => fadePane(done), gone, note,
+        ink: (ink = createInkEase(layer, readInk, COIL.lockup.stillInk, LOADER.stillFadeMs)),
         rest: () => {
           root.setAttribute("data-state", "rest");
           reveal(performance.now() + LOADER.stillFadeMs, false);

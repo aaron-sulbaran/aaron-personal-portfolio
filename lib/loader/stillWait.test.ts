@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createStillWait, type StillWaitTimers } from "@/lib/loader/stillWait";
+import { createStillWait, listenStillFade, type StillWait, type StillWaitTimers } from "@/lib/loader/stillWait";
 
 const FADE = 400;
 const SLACK = 100;
@@ -95,21 +95,35 @@ describe("the wait for the still's fade", () => {
     vi.advanceTimersByTime(GUARD * 2);
     expect(unstarted.leave).not.toHaveBeenCalled();
   });
+});
 
-  it("tells onStart when the fade starts, once, and never after it has left or been disposed", () => {
-    const onStart = vi.fn();
-    const leave = vi.fn();
-    const wait = createStillWait({ fadeMs: FADE, slackMs: SLACK, startGuardMs: GUARD, timers: fakeTimers(), leave, onStart });
-    expect(onStart).not.toHaveBeenCalled();
-    wait.started();
-    expect(onStart).toHaveBeenCalledTimes(1);
-    wait.ended();
-    wait.started();
-    expect(onStart).toHaveBeenCalledTimes(1);
-    const disposed = vi.fn();
-    const other = createStillWait({ fadeMs: FADE, slackMs: SLACK, startGuardMs: GUARD, timers: fakeTimers(), leave, onStart: disposed });
-    other.dispose();
-    other.started();
-    expect(disposed).not.toHaveBeenCalled();
+describe("the still's own opacity transition drives the wait", () => {
+  const phase = (type: string, propertyName: string) => Object.assign(new Event(type), { propertyName });
+  const spyWait = (): StillWait => ({ started: vi.fn(), ended: vi.fn(), cancelled: vi.fn(), dispose: vi.fn() });
+
+  it("run, end and cancel of the still's opacity reach the wait; other properties and targets do not", () => {
+    const still = new EventTarget();
+    const wait = spyWait();
+    listenStillFade(still, wait);
+    still.dispatchEvent(phase("transitionrun", "opacity"));
+    still.dispatchEvent(phase("transitionend", "transform"));
+    still.dispatchEvent(phase("transitionend", "opacity"));
+    still.dispatchEvent(phase("transitioncancel", "opacity"));
+    expect(wait.started).toHaveBeenCalledTimes(1);
+    expect(wait.ended).toHaveBeenCalledTimes(1);
+    expect(wait.cancelled).toHaveBeenCalledTimes(1);
+  });
+
+  it("stop takes the listeners off and disposes the wait; no still listens to nothing", () => {
+    const still = new EventTarget();
+    const wait = spyWait();
+    const stop = listenStillFade(still, wait);
+    stop();
+    still.dispatchEvent(phase("transitionend", "opacity"));
+    expect(wait.ended).not.toHaveBeenCalled();
+    expect(wait.dispose).toHaveBeenCalledTimes(1);
+    const none = spyWait();
+    listenStillFade(null, none)();
+    expect(none.dispose).toHaveBeenCalledTimes(1);
   });
 });

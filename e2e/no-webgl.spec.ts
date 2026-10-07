@@ -11,9 +11,10 @@ import { noWebgl2Api, noWebglContext } from "./support/webgl";
 import type { HookWindow } from "./support/hooks";
 
 // No WebGL: a browser launched without the GPU, and WebGL taken away in the
-// page, the two ways a visitor's browser can lack it. The hero still, the h1
-// lockup in front of it and the book carry the page, and the scene's chunk is
-// never fetched.
+// page, the two ways a visitor's browser can lack it. The hero still (the
+// name baked behind its cards, the h1 visually hidden once it has decoded)
+// and the book carry the page, and the scene's chunk is never fetched. A
+// still that never decodes leaves the h1 lockup as the hero's name.
 
 test.use({ launchOptions: { args: [...MUTED_ARGS, "--disable-gpu"] } });
 
