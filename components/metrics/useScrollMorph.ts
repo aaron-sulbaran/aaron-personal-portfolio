@@ -18,6 +18,11 @@ export function useScrollMorph(blockRef: RefObject<HTMLElement | null>) {
   const pendingRef = useRef(false);
   // Outlives the effect, so a Strict Mode remount never zeroes a count beside a view that already played.
   const playsRef = useRef(0);
+  // A click's hold and the side of the line it was made on also outlive the
+  // effect: a live reduced-motion switch rebuilds the trigger, and that
+  // rebuild is not a crossing, so it must not replay the skyline over a click.
+  const heldRef = useRef(false);
+  const sideRef = useRef<boolean | null>(null);
   const reduced = useReducedMotionLive();
   const show = useCallback((v: View) => {
     viewRef.current = v;
@@ -59,6 +64,9 @@ export function useScrollMorph(blockRef: RefObject<HTMLElement | null>) {
       evaluate();
     };
     const cross = (past: boolean) => {
+      if (heldRef.current && past === sideRef.current) return;
+      heldRef.current = false;
+      sideRef.current = past;
       if (!past) {
         hold(false);
         show("flat");
@@ -101,6 +109,7 @@ export function useScrollMorph(blockRef: RefObject<HTMLElement | null>) {
 
   const choose = useCallback(
     (v: View) => {
+      heldRef.current = true;
       pendingRef.current = false;
       if (blockRef.current) blockRef.current.dataset.morphPending = "false";
       show(v);

@@ -23,11 +23,7 @@ async function openWith(page: Page, stored: "on" | "off") {
   await settled(page);
 }
 const listen = (page: Page) =>
-  page.locator("button[aria-pressed]").and(
-    page
-      .getByRole("button", { name: M.listenAriaLabelPlay, exact: true })
-      .or(page.getByRole("button", { name: M.listenAriaLabelPause, exact: true })),
-  );
+  page.locator("button[aria-pressed]").and(page.getByRole("button", { name: M.listenAriaLabel, exact: true }));
 const noteIn = (control: Locator) => control.locator("svg[data-note]").first();
 const slashIn = (control: Locator) => control.locator("[data-note-slash]").first();
 
