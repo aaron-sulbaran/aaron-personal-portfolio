@@ -14,7 +14,9 @@ Aaron used the merged build on real hardware the day it merged. His verdict, whi
 - **The pill's arrival is too fast and reads as a gimmick.** Other introductions are to be explored, including no animation at all.
 - **Process.** The feature was built too autonomously. The rework goes the way the Coil did: small lab pages with sliders, tuned by hand, before anything is specified or built.
 
-So sections 3 to 5 of the spec (the handoff, the duck rule, the pill's arrival) are under review. The engine split below (one conductor, views that only paint) stands and is what makes the rework cheap. Nothing here is removed from `main` until the labs settle a replacement.
+So sections 3 to 5 of the spec (the handoff, the duck rule, the pill's arrival) are under review.
+
+**Removed from `main` on 2026-10-06 (`wave-band-only`, PR 28):** the horizon strip, the sweep, the duck, the `?wavedebug` probe and the pill's condense. The band keeps its ask, its controls, the freeze toggle and its wave. The pill fades in at its dock (300ms) once the band's bottom edge passes a 112px line below the header bar (the header's own 72px line missed a deep load at About and the Menu's jump), driven by one ScrollTrigger so an instant jump across the band docks and undocks it too. The guards for defects 2, 4 to 9, 14 and 17 to 19 left with the code they guarded; the idle band numbers and `band-still` are unchanged. The freeze toggle shows only while something moves (music on, or already frozen); the path slice restores it. Playwright's ports and the holding temp directory are now per checkout (`E2E_FULL_PORT`, `E2E_HOLDING_PORT`). The scroll-drawn path replaces the strip in `wave-path`; AGENTS.md Layer 2 is updated in `go-live`. The engine split below (one conductor, views that only paint) stands and is what makes the rework cheap. Nothing here is removed from `main` until the labs settle a replacement.
 
 ## Pull requests, all merged into `main` on 2026-10-05 (merge commits, never squashed)
 
