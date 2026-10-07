@@ -10,7 +10,7 @@ import { isPhone, subscribePhone } from "@/lib/waveform/layout";
 import { Cover, DockGlyph, EASE, PillSlot, glass } from "./PillParts";
 import { PillAnnouncer, PillLabel, labelLine, useLabelHold } from "./PillLabel";
 import { PlayerCard } from "./PlayerCard";
-import { usePillArrival } from "./usePillArrival";
+import { usePillFade } from "./usePillFade";
 import { usePillHover } from "./usePillHover";
 import { useReducedMotionLive } from "./useReducedMotionLive";
 
@@ -26,8 +26,8 @@ function readGreeted(): boolean {
 
 // The glass playback pill, docked at the bottom left on the wave's line
 // (lib/waveform/dock). From the band down it is there in every music state:
-// it condenses out of the band control the visitor pressed (usePillArrival),
-// lands open with one line for the state (PillLabel), then collapses to a
+// it fades in at its dock once the band is above the dock line (usePillFade),
+// opens with one line for the state (PillLabel), then collapses to a
 // 36px capsule: the track title, "Paused", "Music?" or "Music". Before a yes
 // (or after a failed start) one click plays; otherwise hover grows the
 // now-playing preview and a click opens the player card. Every hidden layer
@@ -77,11 +77,10 @@ function PillInner({ reached }: { reached: boolean }) {
   if (shown && mode !== lastFace) setLastFace(mode);
   const line = labelLine(kind);
 
-  const { present, landed } = usePillArrival(wrapperRef, shown, reduce);
-  // The face the pill shows: on its way back to the band it keeps the slots it
-  // had, so its box holds its size while the return carries it (the dock is
-  // left-anchored, so a collapsing slot would drag its centre off the tween);
-  // once it is away the slots close, so each arrival opens from closed.
+  const { present, landed } = usePillFade(wrapperRef, shown);
+  // The face the pill shows: while it fades out it keeps the slots it had, so
+  // its box holds still in place; once it is away the slots close, so each
+  // fade in opens from closed.
   const face = shown ? mode : present ? lastFace : "hidden";
   const [hover, send] = usePillHover(reduce, shown);
   const expanded = hover.mode === "expanded";
