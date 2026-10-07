@@ -1,15 +1,10 @@
 import { getSoundtrackPlayer } from "@/lib/audio";
 import { getSoundtrackState, subscribeSoundtrack } from "@/lib/soundtrack";
 import { createConveyor, feedScroll, stepConveyor, type ConveyorState } from "@/lib/waveform/conveyor";
-import { FLOOR, createField, levelTargets, regimeOf, stepField, type Field, type Regime } from "@/lib/waveform/field";
-
-// Stand-in since the horizon left (wave-path rewrites this file): nothing
-// sets a sweep target, so the band stays at rest, as before PR 21.
-type SweepState = { value: number; target: number };
-const stepSweep = (): boolean => false;
+import { FLOOR, createField, levelTargets, regimeOf, stepField, type Field } from "@/lib/waveform/field";
 
 // The waveform's one engine: the field, the loop, the audio sample, the
-// regime, the clock, the scroll conveyor and the sweep. Views (waveView.ts)
+// regime, the clock and the scroll conveyor. Views (waveView.ts)
 // attach to it and paint the field it steps; they own their canvas, colors,
 // weights and cursor. The math lives in lib/waveform; this file only feeds it.
 //
@@ -22,8 +17,8 @@ const stepSweep = (): boolean => false;
 // and the wave is not frozen. It eases by elapsed time, so a 120Hz display
 // neither burns twice the frames nor runs the transitions faster; it caps at
 // 60fps, and at 30fps while nothing moves fast (the calm regimes with the
-// conveyor and the sweep at rest). Once the field settles (the still regime,
-// "Maybe later") with the conveyor and the sweep at rest, the loop stops until
+// conveyor at rest). Once the field settles (the still regime, "Maybe
+// later") with the conveyor at rest, the loop stops until
 // the music, the scroll, the cursor or a view wakes it. `still` (reduced
 // motion) never loops: the views draw one flat line.
 
@@ -54,7 +49,6 @@ export interface WaveConductor {
   columns: number;
   carve: Float32Array; // this frame's carve targets, the max over the views
   conveyor: ConveyorState;
-  sweep: SweepState; // 0 all in the band, 1 all on the horizon
   time: number; // seconds, last stepped
   attach(view: WaveView): void;
   detach(view: WaveView): void;
@@ -92,14 +86,6 @@ function createInstance(still: boolean): Instance {
   let last = 0;
   let minFrameMs = FAST_FRAME_MS;
 
-  // The band reads "off" as the still line. Once the wave is mostly on the
-  // horizon (sweep past half) a declined visitor gets the calm idle drift
-  // instead, travelling with the scroll as a quiet background.
-  const regimeNow = (): Regime => {
-    const state = getSoundtrackState();
-    return conductor.sweep.value > 0.5 && state === "off" ? "idle" : regimeOf(state);
-  };
-
   const resize = () => {
     let columns = 0;
     requests.forEach((n) => (columns = Math.max(columns, n)));
@@ -118,13 +104,12 @@ function createInstance(still: boolean): Instance {
   const step = (t: number, dt: number): boolean => {
     const time = t / 1000; // the rAF clock is ms; every wave sine runs in seconds
     conductor.time = time;
-    const regime = regimeNow();
+    const regime = regimeOf(getSoundtrackState());
     conductor.carve.fill(0);
     for (const view of views) if (view.active()) view.prepare();
     const frame = player.sample(t, conductor.columns);
     const idle = regime === "idle" && !still;
     const { moving } = stepConveyor(conductor.conveyor, dt, idle);
-    const sweeping = stepSweep();
     const { settled } = stepField(conductor.field, {
       time,
       dt,
@@ -145,20 +130,13 @@ function createInstance(still: boolean): Instance {
       Math.abs(levels.paused - goal.paused) < LEVEL_EPSILON &&
       Math.abs(levels.reactive - goal.reactive) < LEVEL_EPSILON;
     const drifting = moving && Math.abs(conductor.conveyor.target - conductor.conveyor.phase) >= DRIFT_LAG_COLUMNS;
-    const calm = regime !== "reactive" && arrived && !drifting && !sweeping;
+    const calm = regime !== "reactive" && arrived && !drifting;
     minFrameMs = calm ? SLOW_FRAME_MS : FAST_FRAME_MS;
-    return settled && !moving && !sweeping && !views.some((view) => view.busy());
+    return settled && !moving && !views.some((view) => view.busy());
   };
 
-  // A sweep still easing runs the loop on its own: after a jump past the band
-  // no view is active yet (the horizon waits for sweep > 0), so the sweep
-  // must step itself there. Under `still` it never eases (the target snaps).
   const running = () =>
-    !destroyed &&
-    !still &&
-    !frozen &&
-    !document.hidden &&
-    (conductor.sweep.value !== conductor.sweep.target || views.some((view) => view.active() || view.busy()));
+    !destroyed && !still && !frozen && !document.hidden && views.some((view) => view.active() || view.busy());
 
   const tick = (t: number) => {
     raf = 0;
@@ -194,7 +172,6 @@ function createInstance(still: boolean): Instance {
     columns: 0,
     carve: new Float32Array(0),
     conveyor: createConveyor(),
-    sweep: { value: 0, target: 0 },
     time: 0,
     attach(view) {
       if (!views.includes(view)) views.push(view);

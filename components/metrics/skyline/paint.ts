@@ -55,6 +55,14 @@ export const resolveRGBA = (probe: HTMLElement, css: string, fallback: [RGB, num
   return [[+m[1], +m[2], +m[3]], a];
 };
 
+// A cell's colour slots in the scene's CssCache (lib/metrics/skyline/cssCache.ts):
+// its top, its two side faces and its hover stroke.
+export const CELL_SLOTS = 4;
+export const SLOT_TOP = 0;
+export const SLOT_FACE_X = 1;
+export const SLOT_FACE_Y = 2;
+export const SLOT_HOVER = 3;
+
 export const rgbString = (r: number, g: number, b: number) =>
   "rgb(" + Math.round(r) + "," + Math.round(g) + "," + Math.round(b) + ")";
 
