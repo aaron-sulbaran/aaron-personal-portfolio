@@ -14,6 +14,7 @@ import { COIL } from "@/lib/coil/constants";
 import { useHomeController } from "@/components/home/HomeController";
 import { SCENE_ITEMS, reportHomeLoad, settleHomeLoad } from "@/lib/loader/progress";
 import { provideNameHandoff } from "@/lib/loader/handoff";
+import { provideStillPoster } from "@/lib/loader/still";
 
 // The Coil hero's stage: a layer filling the 100svh hero with the posters
 // (Poster.tsx), the WebGL scene over them, and the DOM overlay. The canvas is
@@ -89,7 +90,8 @@ export function CoilStage({
   useEffect(() => {
     if (eligible) return;
     // No scene will draw: the still decodes now (the h1 hides only once it
-    // has), nothing left to wait for, nothing left to play.
+    // has), the loader hands its lockup to the still (provided before the
+    // tally settles), nothing left to wait for, nothing left to play.
     let live = true;
     decodeHeroStill().then(
       () => {
@@ -97,10 +99,12 @@ export function CoilStage({
       },
       () => undefined,
     );
+    const releaseStill = provideStillPoster({ decoded: decodeHeroStill });
     settleHomeLoad(SCENE_ITEMS.filter((item) => item !== "fonts"));
     completeEntrance?.();
     return () => {
       live = false;
+      releaseStill();
     };
   }, [eligible, completeEntrance]);
   useEffect(() => {

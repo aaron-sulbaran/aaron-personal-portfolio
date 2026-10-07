@@ -29,13 +29,17 @@ import { runLoader } from "./runLoader";
 //         exit (800ms, the site ease) that lands the lockup and hands it to
 //         the canvas in one frame; the entrance starts 200ms before the exit
 //         ends
-//   on + reduced motion (or no scene to land on): no resting lockup, the
-//         name in accent, the number counts, a 300ms fade
+//   on, no scene can run (the still): the resting lockup holds from first
+//         paint as above; the pane only past the guard, fading off the
+//         lockup at the end; the still fades in under the lockup over 400ms
+//         once decoded and the lockup leaves in one frame; a still that
+//         never decodes gets the plain fade and the h1
+//   on + reduced motion: no resting lockup, the name in accent, the number
+//         counts, a 300ms fade
 //
 // The number shows only for loads still running at 600ms, never a status word.
 
-// scene: a scene has claimed the entrance (it may still fail to draw).
-export type LoaderMode = { kind: "pending" } | { kind: "off" } | { kind: "on"; reducedMotion: boolean; scene: boolean };
+export type LoaderMode = { kind: "pending" } | { kind: "off" } | { kind: "on"; reducedMotion: boolean };
 
 type Props = {
   mode: LoaderMode;
@@ -106,8 +110,8 @@ export function Loader({ mode, onReveal, scene }: Props) {
     }
     // This page decides from here on (a later client visit must not inherit the skip).
     document.documentElement.removeAttribute("data-coil-loader");
-    const resting = !mode.reducedMotion && mode.scene;
-    // No scene to hand to: the h1 carries the hero from this paint.
+    const resting = !mode.reducedMotion;
+    // Reduced motion: no resting lockup, the h1 or the still from this paint.
     if (!resting) root.setAttribute("data-rest", "off");
     const parts = {
       root,
@@ -122,7 +126,7 @@ export function Loader({ mode, onReveal, scene }: Props) {
     };
     return runLoader(
       parts,
-      { reduced: mode.reducedMotion, resting, sceneShown: () => sceneRef.current === "on" },
+      { reduced: mode.reducedMotion, sceneShown: () => sceneRef.current === "on" },
       (startMs, nameFromLoader) => onRevealRef.current(startMs, nameFromLoader),
       mountedAtRef.current,
     );

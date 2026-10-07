@@ -35,6 +35,9 @@ test.describe("reduced motion", () => {
     expect(await scripts.sceneChunks(), "scene chunks fetched").toEqual([]);
     expect(hydration).toEqual([]);
     expect((await heroSamples(page)).filter((s) => s.h1), "frames showing the h1").toEqual([]);
+    const still = page.locator("[data-hero-still]");
+    await expect(still).toHaveAttribute("data-still-ready", "");
+    await expect.poll(() => still.evaluate((el) => getComputedStyle(el).opacity)).toBe("1");
   });
 });
 
