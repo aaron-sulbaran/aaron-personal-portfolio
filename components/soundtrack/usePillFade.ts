@@ -64,7 +64,17 @@ export function usePillFade(target: RefObject<HTMLElement | null>, shown: boolea
     });
   }, [shown, target]);
 
-  useLayoutEffect(() => () => void tween.current?.kill(), []);
+  // Forgetting the direction too lets a remount (StrictMode's double run in
+  // dev, Fast Refresh) fade in again from the 0 the killed tween left; the
+  // main effect cannot own this reset, since its cleanup runs on every turn.
+  useLayoutEffect(
+    () => () => {
+      tween.current?.kill();
+      tween.current = null;
+      out.current = false;
+    },
+    [],
+  );
 
   return { present: shown || exiting, landed };
 }
