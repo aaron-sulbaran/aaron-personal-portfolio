@@ -62,7 +62,7 @@ export default async function WorkDetailPage({ params }: Params) {
                 />
               </div>
               <div className="flex flex-col gap-2">
-                <span className="text-sm text-muted">
+                <span className="font-label text-label-lg leading-5 text-accent">
                   {item.role}, {item.year}
                 </span>
                 <h1 className="font-display text-display-page text-foreground">
