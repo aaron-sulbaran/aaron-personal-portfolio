@@ -173,3 +173,47 @@ test("label face: the pill and the player card are Profa Bold at the small step"
   expect(await time.evaluate((el) => getComputedStyle(el).fontVariantNumeric)).toBe("tabular-nums");
   await expectLabel(card.locator("button", { hasText: siteContent.listen.freeze }), "label-sm", "accent");
 });
+
+test("label face: the band's answers sit on the question's baseline, 36px after it, 16px apart", async ({ page }) => {
+  const read = () =>
+    page.evaluate(() => {
+      const baseline = (el: Element) => {
+        const probe = document.createElement("span");
+        probe.style.cssText = "display:inline-block;width:0;height:0;vertical-align:baseline";
+        el.append(probe);
+        const y = probe.getBoundingClientRect().top;
+        probe.remove();
+        return y;
+      };
+      const text = (el: Element) => {
+        const r = document.createRange();
+        r.selectNodeContents(el.firstChild!);
+        return r.getBoundingClientRect();
+      };
+      const q = document.querySelector("#listen h2")!;
+      const play = document.querySelector('#listen [data-control="before"]')!;
+      const not = play.nextElementSibling!;
+      const s = getComputedStyle(not);
+      return {
+        drift: ["before", "on", "paused"].map((k) => Math.abs(baseline(document.querySelector(`#listen [data-control="${k}"]`)!) - baseline(q))),
+        afterQuestion: text(play).left - text(q).right,
+        inPair: text(not).left - text(play).right,
+        line: s.textDecorationLine,
+        offset: s.textUnderlineOffset,
+        alpha: Number(s.textDecorationColor.match(/([\d.]+)\)$/)![1]),
+      };
+    });
+  await page.goto("/");
+  await settled(page);
+  await expectLabel(page.locator("#listen button", { hasText: siteContent.listen.decline }), "label", "muted");
+  const light = await read();
+  for (const d of light.drift) expect(d, "control baseline to the question's").toBeLessThanOrEqual(0.5);
+  expect(light.afterQuestion).toBeCloseTo(36, 0);
+  expect(light.inPair).toBeCloseTo(16, 0);
+  expect({ line: light.line, offset: light.offset }).toEqual({ line: "underline", offset: "4px" });
+  expect(light.alpha).toBeCloseTo(0.4, 2);
+  await page.emulateMedia({ colorScheme: "dark" });
+  await page.reload();
+  await settled(page);
+  expect((await read()).alpha).toBeCloseTo(0.55, 2);
+});
