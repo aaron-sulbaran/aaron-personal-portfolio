@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowLeft, ArrowUpRight } from "lucide-react";
 import { siteContent, type WorkBodySection } from "@/lib/content";
 import { HOLDING_MODE } from "@/lib/holding";
 import { Footer } from "@/components/Footer";
@@ -46,8 +46,9 @@ export default async function WorkDetailPage({ params }: Params) {
           <div className="mx-auto max-w-4xl">
             <Link
               href="/#work"
-              className="mb-12 inline-flex items-center gap-2 font-label text-label text-accent transition-colors duration-200 hover:text-accent-hover md:mb-16"
+              className="mb-12 inline-flex items-center gap-1 font-label text-label text-accent transition-colors duration-200 hover:text-accent-hover md:mb-16"
             >
+              <ArrowLeft aria-hidden="true" size={14} strokeWidth={2.5} className="relative -top-px shrink-0" />
               {backLabel}
             </Link>
 

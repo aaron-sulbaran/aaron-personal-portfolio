@@ -215,7 +215,7 @@ export const siteContent = {
     placeholderCta: "Ping me on LinkedIn",
     indexHeading: "Work.",
     indexLede: "Every project, internship, and community I'm proud of. Click in for the story.",
-    backLabel: "← Work",
+    backLabel: "Work",
   },
   connect: {
     label: "Connect",
