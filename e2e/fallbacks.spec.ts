@@ -5,9 +5,9 @@ import { expectStillHeroAndUsableBook, settled, watchHydration } from "./support
 import { heroSamples, sampleHero } from "./support/heroSamples";
 
 // The hero without its scene: reduced motion, a scene that throws, and a
-// browser with no WebGL. The hero still, the h1 lockup in front of it and the
-// book carry the page, and the scene's chunk (three) is never fetched where
-// it could not run.
+// browser with no WebGL. The hero still (its name baked behind the cards,
+// the h1 visually hidden once it has decoded) and the book carry the page,
+// and the scene's chunk (three) is never fetched where it could not run.
 
 test("control: a normal load fetches the scene chunk, never the hero still, and never reports still", async ({ page }) => {
   const scripts = watchScripts(page);
@@ -25,7 +25,7 @@ test("control: a normal load fetches the scene chunk, never the hero still, and 
 test.describe("reduced motion", () => {
   test.use({ contextOptions: { reducedMotion: "reduce" } });
 
-  test("no canvas and no scene chunk: no resting lockup, the h1 lockup from first paint, the hero still and the book", async ({ page }) => {
+  test("no canvas and no scene chunk: no resting lockup, the h1 lockup until the still decodes, then the still at once and the book", async ({ page }) => {
     const scripts = watchScripts(page);
     const hydration = watchHydration(page);
     await sampleHero(page);
@@ -36,12 +36,20 @@ test.describe("reduced motion", () => {
     expect(await scripts.sceneChunks(), "scene chunks fetched").toEqual([]);
     expect(hydration).toEqual([]);
     // Reduced motion has no resting lockup and nothing holds the h1: the h1
-    // lockup is the greeting from the first frame, under the loader's fade.
+    // lockup is the greeting from the first frame, under the loader's fade,
+    // until the still has decoded; from that frame the still shows at full
+    // opacity (no fade) and the h1 is visually hidden.
     const samples = (await heroSamples(page)).filter((s) => s.state !== null);
     expect(samples.length, "frames sampled").toBeGreaterThan(2);
     expect(samples.filter((s) => s.rest), "frames showing the resting lockup").toEqual([]);
-    const hidden = samples.filter((s) => !s.h1 || s.h1Opacity !== 1);
-    expect(hidden.length, `frames without the h1 lockup (first at ${hidden[0]?.t.toFixed(0)}ms)`).toBe(0);
+    const readyAt = samples.findIndex((s) => s.ready);
+    expect(readyAt, "a sampled frame with the still marked decoded").toBeGreaterThanOrEqual(0);
+    const before = samples.slice(0, readyAt).filter((s) => !s.h1 || s.h1Opacity !== 1);
+    expect(before.length, `frames before the still without the h1 lockup (first at ${before[0]?.t.toFixed(0)}ms)`).toBe(0);
+    const after = samples.slice(readyAt);
+    test.info().annotations.push({ type: "still marked decoded", description: `frame ${readyAt} of ${samples.length}, at ${samples[readyAt].t.toFixed(0)}ms, loader ${samples[readyAt].state}` });
+    expect(after.filter((s) => s.h1).length, "frames from the still on showing the h1").toBe(0);
+    expect(after.filter((s) => s.still !== 1).map((s) => s.still), "the still's opacity from its first frame").toEqual([]);
     const still = page.locator("[data-hero-still]");
     await expect(still).toHaveAttribute("data-still-ready", "");
     await expect.poll(() => still.evaluate((el) => getComputedStyle(el).opacity)).toBe("1");

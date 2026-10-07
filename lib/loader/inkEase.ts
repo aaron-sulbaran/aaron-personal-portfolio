@@ -1,7 +1,7 @@
-// The resting lockup's ink on the still path (components/loader/runLoader.ts):
-// as the hero still fades in under it, the layer eases from the composite's
-// ink to the h1's (COIL.lockup.stillInk), linear over the still's fade, so
-// the frame the loader goes the h1 lockup underneath is the same picture.
+// The resting lockup's ink on the give-up path (lib/loader/stillGiveUp.ts,
+// a hero still that never decodes): the layer eases from the composite's ink
+// to the h1's (COIL.lockup.stillInk), linear over stillFadeMs, so the frame
+// the loader goes the h1 lockup underneath is the same picture.
 // A Web Animation, like the still's own transition, so a test can hold both
 // at one time. settle() pins the target exactly for the hand-off frame;
 // nothing starts after it.

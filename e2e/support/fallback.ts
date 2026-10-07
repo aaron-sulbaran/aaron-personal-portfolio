@@ -18,8 +18,8 @@ export function watchHydration(page: Page) {
 }
 
 // What the hero looks like when no scene can run: the hero still (the scene
-// at rest, decoded, with no name of its own), the h1 lockup in front of it
-// ("Hi, I'm" over "Aaron", the whole heading as its accessible name), and a
+// at rest, decoded, the name baked behind its cards), the h1 visually hidden
+// once it has decoded (the whole heading still its accessible name), and a
 // book that still opens its photos.
 export async function expectStillHeroAndUsableBook(page: Page) {
   const hero = page.locator("section[data-scene]");
@@ -29,7 +29,7 @@ export async function expectStillHeroAndUsableBook(page: Page) {
   const still = hero.locator("[data-hero-still] img").filter({ visible: true });
   await expect(still).toHaveCount(1);
   await expect.poll(() => still.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
-  await expectHeadingLockup(page);
+  await expectHeadingHidden(page);
   // The book still opens a photo.
   const row = page.locator("#work button.book-row", { hasText: "Drum major" });
   await row.scrollIntoViewIfNeeded();
@@ -39,7 +39,17 @@ export async function expectStillHeroAndUsableBook(page: Page) {
   await expect(page.getByRole("dialog")).toHaveCount(0);
 }
 
-// The h1 as the lockup: shown at opacity 1 with both lines laid out, and the
+// The h1 once the still carries the name: visually hidden (sr-only, a box of
+// 1px at most), the whole heading as its accessible name.
+export async function expectHeadingHidden(page: Page) {
+  const h1 = page.getByRole("heading", { level: 1, name: siteContent.hero.heading, exact: true });
+  await expect(h1).toHaveAccessibleName(siteContent.hero.heading);
+  await expect(page.locator(".coil-loader")).toHaveAttribute("data-state", "gone");
+  await expect.poll(() => h1.evaluate((el) => el.getBoundingClientRect().width)).toBeLessThanOrEqual(1);
+  expect(await h1.evaluate((el) => el.getBoundingClientRect().height)).toBeLessThanOrEqual(1);
+}
+
+// The h1 as the lockup (the still never decoded): shown at opacity 1 with both lines laid out, and the
 // whole heading as its accessible name.
 export async function expectHeadingLockup(page: Page) {
   const h1 = page.getByRole("heading", { level: 1, name: siteContent.hero.heading, exact: true });
