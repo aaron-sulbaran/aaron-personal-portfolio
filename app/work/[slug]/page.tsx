@@ -2,10 +2,12 @@ import Link from "next/link";
 import Image from "next/image";
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
-import { ArrowLeft, ArrowUpRight } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { siteContent, type WorkBodySection } from "@/lib/content";
 import { HOLDING_MODE } from "@/lib/holding";
 import { Footer } from "@/components/Footer";
+import { Fill, FillArrow, FillSeed } from "@/components/fx/Fill";
+import { CTA_CLASS, CTA_OVER_CLASS, FILL_PICK } from "@/lib/fx/fill";
 
 export const dynamicParams = false;
 
@@ -82,15 +84,20 @@ export default async function WorkDetailPage({ params }: Params) {
                   {placeholderBody}
                 </p>
                 {linkedinHref && (
-                  <Link
+                  <Fill
+                    as="link"
+                    {...FILL_PICK.cta}
                     href={linkedinHref}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mt-5 inline-flex items-center gap-2 font-label text-label-lg leading-6 text-accent transition-colors duration-200 hover:text-accent-hover"
+                    className={`mt-5 ${CTA_CLASS}`}
+                    overClassName={CTA_OVER_CLASS}
                   >
                     {placeholderCta}
-                    <ArrowUpRight aria-hidden="true" className="relative -top-px h-4 w-4" />
-                  </Link>
+                    <FillSeed className="h-8 w-8">
+                      <FillArrow dir="up-right" />
+                    </FillSeed>
+                  </Fill>
                 )}
               </div>
             ) : (
@@ -110,16 +117,21 @@ export default async function WorkDetailPage({ params }: Params) {
             {item.links.length > 0 && (
               <div className="mt-14 flex flex-wrap gap-6 border-t border-border pt-8">
                 {item.links.map((link) => (
-                  <Link
+                  <Fill
                     key={link.href}
+                    as="link"
+                    {...FILL_PICK.cta}
                     href={link.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="group inline-flex items-center gap-2 font-label text-label-lg leading-6 text-accent transition-colors duration-200 hover:text-accent-hover"
+                    className={CTA_CLASS}
+                    overClassName={CTA_OVER_CLASS}
                   >
                     {link.label}
-                    <ArrowUpRight aria-hidden="true" className="relative -top-px h-4 w-4 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-                  </Link>
+                    <FillSeed className="h-8 w-8">
+                      <FillArrow dir="up-right" />
+                    </FillSeed>
+                  </Fill>
                 ))}
               </div>
             )}

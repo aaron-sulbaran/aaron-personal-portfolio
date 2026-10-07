@@ -132,7 +132,7 @@ test("label face: kickers and the Connect labels are Profa Bold, muted", async (
   for (const label of [about.label, whoIAm.label, upToNow.label, connect.label]) {
     await expectLabel(page.locator(`section[aria-label="${label}"]`).getByText(label, { exact: true }).first(), "label", "muted");
   }
-  await expectLabel(page.locator("#connect li a > span").first(), "label", "muted");
+  await expectLabel(page.locator("#connect li a [data-sections-rowinner] > span").first(), "label", "muted");
 });
 
 test("label face: the nav bar, the Menu pill and the panel are Profa Bold in the accent", async ({ page }) => {
