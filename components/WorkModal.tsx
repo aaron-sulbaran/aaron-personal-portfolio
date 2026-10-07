@@ -148,7 +148,7 @@ export function WorkModal({ item, onClose, renderMedia = false }: WorkModalProps
                 {cta}
                 <ArrowRight aria-hidden="true" className="relative -top-px h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
               </Link>
-              <span className="text-sm text-muted">
+              <span className="font-label text-label text-muted">
                 {closeHint}
               </span>
             </div>
