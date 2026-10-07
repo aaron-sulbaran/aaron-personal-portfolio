@@ -596,7 +596,7 @@ From the brief: fixed overlays Portal to body; one ref-counted scroll lock; z sc
       const { mark } = siteContent;
       const strings = [mark.dialogLabel, mark.eyebrow, mark.title, ...mark.lines, mark.cta.label];
       for (const text of strings) {
-        expect(text).not.toMatch(/—/);
+        expect(text).not.toMatch(/\u2014/);
         expect(text[0]).toBe(text[0].toUpperCase());
       }
       expect(mark.lines.length).toBeLessThanOrEqual(3);
@@ -1429,7 +1429,7 @@ From the brief: fixed overlays Portal to body; one ref-counted scroll lock; z sc
 
 - [ ] Run `pnpm test && pnpm tsc --noEmit && pnpm lint`. Expect all green.
 - [ ] Run `pnpm test:e2e e2e/mark.spec.ts e2e/chrome.spec.ts e2e/a11y.spec.ts e2e/modal.spec.ts`. Expect all PASS. The a11y spec still finds "Back to top" before "Open menu", and nothing focusable sits inside aria-hidden.
-- [ ] Run `grep -rn "—" lib/mark components/mark e2e/mark.spec.ts lib/cursor/hover.ts` and `grep -rnE "#[0-9A-Fa-f]{3,8}\b" lib/mark components/mark`. Expect no output from either.
+- [ ] Run `grep -rnP "\x{2014}" lib/mark components/mark e2e/mark.spec.ts lib/cursor/hover.ts` and `grep -rnE "#[0-9A-Fa-f]{3,8}\b" lib/mark components/mark`. Expect no output from either.
 - [ ] Preview on port 3310: master plan section 4 numbers slice previews from 3250 upward in steps of 10 in slice order, and mark-strike is the seventh. Run `NEXT_PUBLIC_SITE_MODE=full pnpm build && pnpm start -p 3310` in the background, and stop only that process afterwards. Check in both themes at 1440, 1024 and 390:
   - the 10px growth from the corner;
   - the fill rising in light mode;
