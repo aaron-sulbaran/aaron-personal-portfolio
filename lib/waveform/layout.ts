@@ -37,18 +37,3 @@ export function bandLayout(width: number, height: number): DotLayout {
     maxAmp: height * AMPLITUDE,
   };
 }
-
-// The horizon strip along the viewport bottom: the band's column grid at the
-// same width (so the two tracks share one train), on a baseline 72px above
-// the viewport's bottom edge, a quieter amplitude, and at most six fuzz dots
-// a side so the loudest passage is a dense column, never a wall.
-export const HORIZON = { height: 176, lift: 72, maxAmp: 44, maxThick: 6 };
-
-export function horizonLayout(width: number): DotLayout {
-  return {
-    ...bandLayout(width, HORIZON.height),
-    baseline: HORIZON.height - HORIZON.lift,
-    maxAmp: HORIZON.maxAmp,
-    maxThick: HORIZON.maxThick,
-  };
-}

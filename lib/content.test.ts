@@ -58,10 +58,20 @@ describe("the book", () => {
       }
     }
   });
+
+  it("reads the ambassador meta as Claude ambassador, 2025", () => {
+    expect(book.workRows.find((row) => row.key === "claude-ambassador")?.meta).toBe("Claude ambassador, 2025");
+  });
 });
 
 describe("menu", () => {
   it("includes Connect", () => {
     expect(siteContent.menu.items.map((item) => item.key)).toEqual(["home", "work", "about", "connect"]);
+  });
+});
+
+describe("the case page", () => {
+  it("labels the back link with the word alone; the page draws the arrow", () => {
+    expect(siteContent.work.backLabel).toBe("Work");
   });
 });
