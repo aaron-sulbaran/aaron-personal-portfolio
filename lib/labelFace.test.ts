@@ -32,3 +32,9 @@ describe("the label face tokens", () => {
     expect(readFileSync("app/layout.tsx", "utf8")).toContain("profaBold.variable");
   });
 });
+
+describe("copy stays in lib/content.ts", () => {
+  it("leaves no hard-coded close hint in the definition modal", () => {
+    expect(readFileSync("components/DefinitionModal.tsx", "utf8")).not.toContain("Press Esc to close");
+  });
+});

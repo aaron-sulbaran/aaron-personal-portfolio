@@ -107,3 +107,18 @@ test("label face: meta beside a title is Profa Bold in the accent", async ({ pag
   const shown = siteContent.workItems.find((i) => i.title === shownTitle)!;
   await expectLabel(dialog.getByText(`${shown.role}, ${shown.year}`, { exact: true }), "label", "accent");
 });
+
+test("label face: hints and the credit prose are Profa Bold, muted", async ({ page, cdp }) => {
+  const dialog = await openWorkModal(page, cdp);
+  await expectLabel(dialog.getByText(siteContent.modals.closeHintKeyboard, { exact: true }), "label", "muted");
+  await dialog.getByRole("button", { name: siteContent.modals.closeAriaLabel }).click();
+  await expect(dialog).toBeHidden();
+
+  await expectLabel(page.locator("#listen p", { hasText: siteContent.soundtrack.creditLead }), "label-sm", "muted");
+  const row = page.locator("#work button.book-row", { hasText: "Public speaking" });
+  await row.scrollIntoViewIfNeeded();
+  await row.focus();
+  await page.keyboard.press("Enter");
+  const photo = page.getByRole("dialog");
+  await expectLabel(photo.getByText(siteContent.modals.closeHintKeyboard, { exact: true }), "label", "muted");
+});
