@@ -465,3 +465,7 @@ body {
     transition-duration: 0s !important;
   }
 }
+
+/* Metrics (components/metrics): the skyline's keyboard ring. The Flat and
+   Skyline toggle is a quiet rise Fill (see "The fill" above). */
+.metrics-stage:has(canvas:focus-visible) { outline: 2px solid var(--color-accent); outline-offset: 4px; }
