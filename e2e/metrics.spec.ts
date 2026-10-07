@@ -190,6 +190,26 @@ test("metrics: a theme switch repaints the skyline; a style write on <html> does
   await expect.poll(ink, { timeout: 5000 }).not.toBe(before);
 });
 
+// A Flat click holds until the line is next crossed, and a live switch of
+// reduced motion (which rebuilds the trigger) is not a crossing.
+test("metrics: a Flat click past the line survives reduced motion switched on and off", async ({ page }) => {
+  await openHome(page);
+  await scrollToY(page, await topAt(page, 0.2));
+  await expect.poll(() => state(page), { timeout: 5000 }).toBe("skyline");
+  await button(page, "flat").click();
+  await expect.poll(() => state(page)).toBe("flat");
+  await record(page);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.waitForTimeout(400);
+  await nextFrames(page, 10);
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.waitForTimeout(1500);
+  await nextFrames(page, 10);
+  expect(await states(page)).toEqual([]);
+  expect(await state(page)).toBe("flat");
+  await expect(button(page, "flat")).toHaveAttribute("aria-pressed", "true");
+});
+
 test("metrics: Enter on the canvas with nothing pinned announces and shows the last day", async ({ page }) => {
   await openHome(page);
   await scrollToY(page, await topAt(page, 0.2));
