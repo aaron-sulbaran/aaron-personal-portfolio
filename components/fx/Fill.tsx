@@ -21,6 +21,8 @@ import { FILL, arrowShift, fillVars, type ArrowDir, type FillColorway, type Fill
 // clipped by --fx-p. overClassName must give that copy the root's inner
 // layout (display, gap, padding) or the two labels part mid-fill. Server
 // components import FILL_PICK and CTA_CLASS from lib/fx/fill, never from here.
+// A Fill's children render twice (the root and the copy), so refs, ids, effects,
+// live regions and autofocus never go inside a Fill.
 
 type FillOwn = {
   variant: FillVariant;
