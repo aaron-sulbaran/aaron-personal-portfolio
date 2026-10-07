@@ -32,8 +32,8 @@ type RevealProps = {
 // Entrance uses a native IntersectionObserver, not GSAP, so a GSAP failure can
 // never trap reveal content invisible (the sections' scrubbed reveals live in
 // lib/sections on ScrollTrigger). The Book is its one user; descendants opt in
-// with ".reveal-item". Set "--reveal-i" (revealIndex) on a
-// descendant to stagger it.
+// with ".reveal-item". Set "--reveal-i" (revealIndex) on a descendant to
+// stagger it.
 export function Reveal({ children, as = "div", className, style, ...rest }: RevealProps) {
   const ref = useRef<HTMLElement | null>(null);
   const [armed, setArmed] = useState(false);

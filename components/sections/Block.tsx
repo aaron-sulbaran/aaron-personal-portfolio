@@ -18,7 +18,9 @@ type BlockProps = {
 // it whole and readable, and after mount this arms its one timeline when
 // motion is allowed or marks it still when it is not. Both conditions are
 // listed because matchMedia runs the function only while one of them matches;
-// a change of preference reverts and rebuilds, live, both directions.
+// a change of preference reverts and rebuilds, live, both directions. A
+// lines-split Block's children must be static text: SplitText's revert
+// restores innerHTML, so any marker or React child inside is recreated.
 export function Block({ kind, as = "div", index = 0, split = "lines", className, children }: BlockProps) {
   const ref = useRef<HTMLElement | null>(null);
 
