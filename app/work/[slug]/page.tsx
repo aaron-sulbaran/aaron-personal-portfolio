@@ -2,10 +2,12 @@ import Link from "next/link";
 import Image from "next/image";
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { siteContent, type WorkBodySection } from "@/lib/content";
 import { HOLDING_MODE } from "@/lib/holding";
 import { Footer } from "@/components/Footer";
+import { Fill, FillArrow, FillSeed } from "@/components/fx/Fill";
+import { CTA_CLASS, CTA_OVER_CLASS, FILL_PICK } from "@/lib/fx/fill";
 
 export const dynamicParams = false;
 
@@ -46,8 +48,9 @@ export default async function WorkDetailPage({ params }: Params) {
           <div className="mx-auto max-w-4xl">
             <Link
               href="/#work"
-              className="mb-12 inline-flex items-center gap-2 text-sm text-muted transition-colors duration-200 hover:text-accent md:mb-16"
+              className="mb-12 inline-flex items-center gap-1 font-label text-label text-accent transition-colors duration-200 hover:text-accent-hover md:mb-16"
             >
+              <ArrowLeft aria-hidden="true" size={14} strokeWidth={2.5} className="relative -top-px shrink-0" />
               {backLabel}
             </Link>
 
@@ -61,13 +64,13 @@ export default async function WorkDetailPage({ params }: Params) {
                   className="object-contain p-3"
                 />
               </div>
-              <div className="flex flex-col gap-2">
-                <span className="text-sm text-muted">
-                  {item.role}, {item.year}
-                </span>
+              <div className="flex flex-col gap-3.5">
                 <h1 className="font-display text-display-page text-foreground">
                   {item.title}
                 </h1>
+                <p className="font-label text-label-lg leading-5 text-accent">
+                  {item.role}, {item.year}
+                </p>
               </div>
             </div>
 
@@ -81,15 +84,20 @@ export default async function WorkDetailPage({ params }: Params) {
                   {placeholderBody}
                 </p>
                 {linkedinHref && (
-                  <Link
+                  <Fill
+                    as="link"
+                    {...FILL_PICK.cta}
                     href={linkedinHref}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mt-5 inline-flex items-center gap-2 text-base font-medium text-accent transition-colors duration-200 hover:text-accent-hover"
+                    className={`mt-5 ${CTA_CLASS}`}
+                    overClassName={CTA_OVER_CLASS}
                   >
                     {placeholderCta}
-                    <ArrowUpRight aria-hidden="true" className="h-4 w-4" />
-                  </Link>
+                    <FillSeed className="h-8 w-8">
+                      <FillArrow dir="up-right" />
+                    </FillSeed>
+                  </Fill>
                 )}
               </div>
             ) : (
@@ -109,16 +117,21 @@ export default async function WorkDetailPage({ params }: Params) {
             {item.links.length > 0 && (
               <div className="mt-14 flex flex-wrap gap-6 border-t border-border pt-8">
                 {item.links.map((link) => (
-                  <Link
+                  <Fill
                     key={link.href}
+                    as="link"
+                    {...FILL_PICK.cta}
                     href={link.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="group inline-flex items-center gap-2 text-base font-medium text-accent transition-colors duration-200 hover:text-accent-hover"
+                    className={CTA_CLASS}
+                    overClassName={CTA_OVER_CLASS}
                   >
                     {link.label}
-                    <ArrowUpRight aria-hidden="true" className="h-4 w-4 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-                  </Link>
+                    <FillSeed className="h-8 w-8">
+                      <FillArrow dir="up-right" />
+                    </FillSeed>
+                  </Fill>
                 ))}
               </div>
             )}

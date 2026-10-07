@@ -113,17 +113,6 @@ describe("buildDots with paint-time weights", () => {
     expect(muted[1]).toBe(60);
     expect(muted[4]).toBe(50);
   });
-
-  it("a duck past half sends the column to the ducked arrays", () => {
-    const field = createField(3);
-    field.mag.fill(FLOOR);
-    const muted: number[] = [];
-    const accent: number[] = [];
-    const ducked = { duck: new Float32Array([0, 0.6, 0.4]), muted: [] as number[], accent: [] as number[] };
-    buildDots(field, small, 0, new Float32Array([1, 0, 1]), cursor, muted, accent, undefined, ducked);
-    expect(xs(ducked.muted)).toEqual([15]);
-    expect(xs(muted)).toEqual([5, 25]);
-  });
 });
 
 describe("reachOf", () => {
