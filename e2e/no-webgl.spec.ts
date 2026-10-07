@@ -1,7 +1,12 @@
+import type { Page } from "@playwright/test";
+import { COIL } from "@/lib/coil/constants";
+import { LOADER } from "@/lib/loader/progress";
 import { test, expect } from "./support/fixtures";
 import { watchScripts } from "./support/chunks";
 import { expectHeadingLockup, expectStillHeroAndUsableBook, settled, watchHydration } from "./support/fallback";
+import { heroSamples, sampleHero } from "./support/heroSamples";
 import { MUTED_ARGS } from "./support/launch";
+import { luminanceSpread, shoot } from "./support/pixels";
 import { noWebgl2Api, noWebglContext } from "./support/webgl";
 import type { HookWindow } from "./support/hooks";
 
@@ -36,25 +41,131 @@ test("a context that cannot be created never fetches the scene chunk", async ({ 
   expect(hydration).toEqual([]);
 });
 
-test("stills that never load: the loader fades and the h1 lockup carries the hero over the field poster", async ({ page }) => {
+// A still that never decodes: the loader hands its lockup to the h1 lockup
+// as a decoded still would, minus the still. The resting lockup never fades
+// (its drawn opacity only rises, as its ink eases to the h1's) and leaves in
+// one frame onto the identical h1 lockup; no frame shows the h1 before then.
+type Events = string[];
+const loaderEvents = (page: Page): Promise<Events> =>
+  page.evaluate(() => (window as HookWindow).__coilLoader!.events.map((e) => e.event));
+const goneLoader = () => document.querySelector<HTMLElement>(".coil-loader")?.dataset.state === "gone";
+
+function expectGaveUp(events: Events) {
+  expect(events).toContain("still-failed");
+  expect(events, "the give-up hand-off").toContain("still-gaveup");
+  expect(events.indexOf("still-failed")).toBeLessThan(events.indexOf("still-gaveup"));
+  expect(events, "no fade on the still path").not.toContain("fade");
+  expect(events).not.toContain("dissolve");
+}
+
+async function expectNoFadeAndOneFrame(page: Page) {
+  const samples = (await heroSamples(page)).filter((s) => s.state !== null);
+  const goneAt = samples.findIndex((s) => s.state === "gone");
+  expect(goneAt, "a frame with the loader gone").toBeGreaterThan(0);
+  const held = samples.slice(0, goneAt);
+  const runs: string[] = [];
+  for (const s of held) {
+    const value = s.restOpacity.toFixed(3);
+    const last = runs.at(-1);
+    if (last?.startsWith(`${value} x`)) runs[runs.length - 1] = `${value} x${Number(last.split(" x")[1]) + 1}`;
+    else runs.push(`${value} x1`);
+  }
+  test.info().annotations.push({ type: "resting lockup opacity per frame", description: `${runs.join(", ")}, then gone` });
+  expect(held.every((s) => s.rest), "the resting lockup shows in every frame before gone").toBe(true);
+  const dips = held.filter((s, i) => i > 0 && s.restOpacity < held[i - 1].restOpacity - 1e-4);
+  expect(dips.map((s) => `${s.t.toFixed(0)}ms ${s.restOpacity.toFixed(3)}`), "frames where the resting lockup's opacity fell").toEqual([]);
+  expect(held.at(-1)!.restOpacity, "the resting lockup's ink near the h1's in its last frame").toBeGreaterThan(0.85 * COIL.lockup.stillInk);
+  const h1Early = held.filter((s) => s.h1 || s.h1Opacity > 0);
+  expect(h1Early.length, `frames before gone showing the h1 (first at ${h1Early[0]?.t.toFixed(0)}ms)`).toBe(0);
+  expect(samples[goneAt].h1, "the h1 lockup shows in the first frame the loader has gone").toBe(true);
+  expect(samples[goneAt].h1Opacity, "the h1's opacity in that frame").toBe(1);
+}
+
+async function expectFieldPoster(page: Page) {
+  const field = page.locator('section[data-scene] img[src*="/coil/field-"]').filter({ visible: true });
+  await expect(field, "the field poster under the h1 lockup").toHaveCount(1);
+  await expect.poll(() => field.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
+}
+
+test("stills that never load: the resting lockup hands to the h1 lockup in one frame, never fading, over the field poster", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.route("**/coil/hero-*", (route) => route.abort());
   await page.addInitScript(noWebglContext);
+  await sampleHero(page);
   await page.goto("/?coildebug=1");
   await settled(page);
   await expect(page.locator(".coil-loader")).toHaveAttribute("data-state", "gone");
   await expect(page.locator("section[data-scene]")).toHaveAttribute("data-scene", "still");
   expect(await page.locator("[data-hero-still]").getAttribute("data-still-ready")).toBeNull();
-  const events = await page.evaluate(() => (window as HookWindow).__coilLoader!.events.map((e) => e.event));
-  expect(events).toContain("still-failed");
-  expect(events).toContain("fade");
-  expect(events).not.toContain("dissolve");
+  const events = await loaderEvents(page);
+  test.info().annotations.push({ type: "loader events", description: events.filter((e) => e !== "frame").join(", ") });
+  expectGaveUp(events);
+  await expectNoFadeAndOneFrame(page);
   await expectHeadingLockup(page);
-  const field = page.locator('section[data-scene] img[src*="/coil/field-"]').filter({ visible: true });
-  await expect(field, "the field poster under the h1 lockup").toHaveCount(1);
-  await expect.poll(() => field.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
+  await expectFieldPoster(page);
   expect(errors).toEqual([]);
+});
+
+test("stills that never load: the name never weakens through the give-up's ink ease", async ({ page }) => {
+  await page.route("**/coil/hero-*", (route) => route.abort());
+  await page.addInitScript(noWebglContext);
+  await page.goto("/?coildebug=1");
+  await page.waitForFunction(goneLoader, null, { timeout: 30_000 });
+  // handoff: the give-up waits on __coilLoader.finish() before its hand-off, then again before the lockup leaves.
+  await page.goto("/?coildebug=handoff");
+  await page.waitForFunction(() => (window as HookWindow).__coilLoader?.events.some((e) => e.event === "still-failed"), null, { timeout: 30_000 });
+  expect(await loaderEvents(page), "a warm load: the pane never armed").not.toContain("100");
+  const box = await page.evaluate(() => {
+    const r = document.querySelector(".coil-loader__rest-name")!.getBoundingClientRect();
+    return { x: Math.floor(r.left), y: Math.floor(r.top), width: Math.ceil(r.width), height: Math.ceil(r.height) };
+  });
+  const rest = luminanceSpread(await shoot(page, box));
+  await page.evaluate(() => (window as HookWindow).__coilLoader!.finish!());
+  await page.waitForFunction(() => document.querySelector(".coil-loader__rest")!.getAnimations().length > 0);
+  await page.evaluate(() => {
+    const ease = document.querySelector(".coil-loader__rest")!.getAnimations()[0];
+    ease.pause();
+    (window as unknown as { __ease: Animation }).__ease = ease;
+  });
+  const spreads = [`rest ${rest.toFixed(1)}`];
+  for (const ms of [0, 100, 200, 300, LOADER.stillFadeMs - 1]) {
+    await page.evaluate((t) => ((window as unknown as { __ease: Animation }).__ease.currentTime = t), ms);
+    const spread = luminanceSpread(await shoot(page, box));
+    spreads.push(`${ms}ms ${spread.toFixed(1)}`);
+    expect(spread, `name box spread at ${ms}ms of the ease`).toBeGreaterThanOrEqual(rest - 2);
+  }
+  const handed = await page.evaluate(() => {
+    (window as unknown as { __ease: Animation }).__ease.finish();
+    (window as HookWindow).__coilLoader!.finish!();
+    return {
+      gone: document.querySelector<HTMLElement>(".coil-loader")!.dataset.state === "gone",
+      h1: getComputedStyle(document.getElementById("hero-heading")!).opacity,
+    };
+  });
+  expect(handed.gone, "the loader went in the finishing task").toBe(true);
+  expect(handed.h1, "the h1's opacity the frame the loader goes").toBe("1");
+  const after = luminanceSpread(await shoot(page, box));
+  test.info().annotations.push({ type: "name box spread", description: `${spreads.join(", ")}, gone ${after.toFixed(1)}` });
+  expect(after, "name box spread after the lockup left").toBeGreaterThanOrEqual(rest - 3);
+  expectGaveUp(await loaderEvents(page));
+});
+
+test("a still that never answers: the give-up fires at handoffGiveUpMs and hands off the same way", async ({ page }) => {
+  // Never fulfilled: the request stays pending, so the decode neither resolves nor rejects.
+  await page.route("**/coil/hero-*", () => {});
+  await page.addInitScript(noWebglContext);
+  await sampleHero(page);
+  // The pending still holds the load event back: no waiting on it.
+  await page.goto("/?coildebug=1", { waitUntil: "commit" });
+  await page.waitForFunction(goneLoader, null, { timeout: 30_000 });
+  const timed = await page.evaluate(() => (window as HookWindow).__coilLoader!.events.filter((e) => e.event !== "frame").map((e) => ({ event: e.event, t: e.t })));
+  const at = (event: string) => timed.find((e) => e.event === event)?.t ?? NaN;
+  test.info().annotations.push({ type: "loader events", description: timed.map((e) => `${e.event} ${e.t.toFixed(0)}`).join(", ") });
+  expectGaveUp(timed.map((e) => e.event));
+  expect(at("still-failed") - at("still"), "the give-up waited handoffGiveUpMs").toBeGreaterThanOrEqual(LOADER.handoffGiveUpMs - 5);
+  await expectNoFadeAndOneFrame(page);
+  await expectHeadingLockup(page);
 });
 
 test("a deep reload with no WebGL 2 shows the still at full opacity", async ({ page }) => {

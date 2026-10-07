@@ -33,7 +33,8 @@ import { runLoader } from "./runLoader";
 //         paint as above; the pane only past the guard, fading off the
 //         lockup at the end; the still fades in under the lockup over 400ms
 //         once decoded and the lockup leaves in one frame; a still that
-//         never decodes gets the plain fade and the h1
+//         never decodes (or not within 1500ms) gets the same hand-off with
+//         no still: the ink eases to the h1's, then one frame onto the h1
 //   on + reduced motion: no resting lockup, the name in accent, the number
 //         counts, a 300ms fade
 //
