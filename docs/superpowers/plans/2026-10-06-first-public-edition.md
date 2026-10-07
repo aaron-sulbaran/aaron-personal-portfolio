@@ -23,7 +23,7 @@
 | 2 | `label-face`, `controls`, `sections`, `metrics` in parallel worktrees, merged in that order | Everything decided end to end, each one PR |
 | 3 | `wave-path`: the scroll-drawn line from wave lab round 6 | The biggest slice and the one with the newest lab round; it lands on top of tier 1, never instead of it |
 | 4 | `mark-strike`: the easter egg | Delight, not structure; last because its copy is Aaron's and its keyboard route is a judgment call |
-| 5 | `go-live`: the site mode flips to full, OG metadata, the holding page retired from the default path, AGENTS.md Layer 2 | Aaron pushes `main` |
+| 5 | `go-live`: the site mode flips to full, OG metadata, the holding page retired from the default path, AGENTS.md Layer 2 | **Held by Aaron (2026-10-06): the final version is verified locally first, then his content pass (copy, photos, music, logos; `docs/aaron-before-launch.md`), and only then the push.** Nothing deploys before his explicit word |
 
 **Options considered and rejected.** (a) One integration branch with everything, merged once: the Coil way, but it makes tier boundaries impossible and tonight needs them. (b) Ship the wave path before the band-only cut: if the path slips, production would carry the rejected strip; the band-only cut costs under an hour and removes that risk. (c) Build the toggle, the pill introductions and the content pass tonight: none has a lab decision; they stay out.
 
