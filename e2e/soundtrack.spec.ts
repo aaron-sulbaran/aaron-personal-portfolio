@@ -586,16 +586,26 @@ test("dock: under reduced motion an instant jump past the band lands the pill, a
   await page.waitForFunction(() => document.querySelector<HTMLElement>("[data-pill]")!.style.opacity === "0");
 });
 
+// Each width change crosses a gsap.matchMedia query, and its ScrollTrigger
+// refresh parks the window at 0 to measure. Two frames after each resize the
+// refresh has run, and the reader must still be where they were.
 test("dock: a phone width removes the pill and desktop fades it back in", async ({ page }) => {
   await armDock(page);
   await page.goto(`${HOME}#about`);
   await settled(page);
   await dockLanded(page);
+  const place = await page.evaluate(() => window.scrollY);
   await page.setViewportSize({ width: 375, height: 812 });
+  await nextFrames(page, 2);
+  expect(await page.evaluate(() => window.scrollY), "scroll after the phone width's refresh").toBe(place);
   await expect(page.locator(PILL)).toHaveCount(0);
   // Still past the band: the resize's refresh re-derives "passed" with no scroll.
   await startDock(page, 16);
   await page.setViewportSize({ width: 1440, height: 900 });
+  await nextFrames(page, 2);
+  expect(await page.evaluate(() => window.scrollY), "scroll after the desktop width's refresh").toBe(place);
+  await nextFrames(page, 45);
+  expect(await page.evaluate(() => window.scrollY), "no glide after the refresh").toBe(place);
   await dockLanded(page);
   const samples = (await stopDock(page)).filter((s) => s.shown);
   expect(samples.some((s) => s.opacity > 0 && s.opacity < 1), "a fade back in").toBe(true);
