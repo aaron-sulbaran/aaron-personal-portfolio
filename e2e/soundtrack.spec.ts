@@ -317,7 +317,7 @@ test("band: a deep load at #about keeps its layout still (CLS under 0.05)", asyn
 
 const near = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.hypot(a.x - b.x, a.y - b.y);
 
-test("dock: the accept path plays, condenses to the dock, says where the music lives, then shows the track", async ({ page }) => {
+test("dock: the accept path plays, fades in at the dock, says where the music lives, then shows the track", async ({ page }) => {
   await instrument(page);
   await armDock(page);
   await openHome(page, { path: HOME });
