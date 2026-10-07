@@ -35,7 +35,7 @@ const CLICK_SLOP_PX = 6;
 export function createInput(ctx: SceneCtx, cards: Cards, hover: Hover, loop: LoopLink) {
   const { st, host, live, tiles, debug, flags } = ctx;
   const { pointer, view, conveyor, envelope, rowHold, unwind } = st;
-  const { posterMode } = flags;
+  const { pinned } = flags;
   const { slots } = cards;
 
   function updatePointerLocal() {
@@ -293,7 +293,7 @@ export function createInput(ctx: SceneCtx, cards: Cards, hover: Hover, loop: Loo
   function feedConveyor(f: SceneFrame) {
     const { dt, now } = f;
     const previous = conveyor.offset;
-    if (!posterMode) {
+    if (!pinned) {
       // Slice 7: a released drag's throw decays into the target, which the
       // one smoothing stage and the speed cap then carry, as for the wheel.
       if (st.coast) conveyor.target += (st.coast.rest - conveyor.target) * (1 - Math.exp(-dt / COAST_TAU_S));

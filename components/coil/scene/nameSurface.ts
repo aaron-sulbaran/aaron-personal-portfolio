@@ -34,7 +34,7 @@ export type NameRectCss = { x: number; y: number; w: number; h: number };
 export function createNameSurface(ctx: SceneCtx, gl: Gl) {
   const { st, flags, debug } = ctx;
   const { pointer } = st;
-  const { posterMode, heldAt } = flags;
+  const { posterMode, pinned, heldAt } = flags;
   const { renderer, orthoCamera, surfaceScene, surfaceTarget, quad } = gl;
 
   const wake = createWake();
@@ -134,7 +134,7 @@ export function createNameSurface(ctx: SceneCtx, gl: Gl) {
   function step(dt: number, live: boolean) {
     const started = debug ? performance.now() : 0;
     const reduced = reducedMotion.matches;
-    clock = heldAt ?? (reduced || posterMode ? clock : clock + dt);
+    clock = heldAt ?? (reduced || pinned ? clock : clock + dt);
     const u = material.uniforms;
     u.uT.value = NAME_SURFACE.start + clock * NAME_SURFACE.speed;
     const a = (clock / NAME_SURFACE.lightPeriod) * Math.PI * 2;
@@ -142,7 +142,7 @@ export function createNameSurface(ctx: SceneCtx, gl: Gl) {
       NAME_SURFACE.lightRest[0] + Math.cos(a) * NAME_SURFACE.lightDrift,
       NAME_SURFACE.lightRest[1] + Math.sin(a) * NAME_SURFACE.lightDrift,
     );
-    const stirring = live && !reduced && !posterMode;
+    const stirring = live && !reduced && !pinned;
     if (stirring && pointer.known && Number.isFinite(last.clientX) && dt > 0) {
       // Every frame, a still pointer included: the stroke's speed is smoothed.
       const dx = pointer.clientX - last.clientX;
