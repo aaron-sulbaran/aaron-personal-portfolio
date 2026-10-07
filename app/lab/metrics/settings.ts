@@ -1,4 +1,5 @@
 import type { ContributionWindow } from "./data";
+import type { FlatDepth } from "./skyline/draw";
 import { accentRamp, type HeightCurve, type LevelCurve } from "./skyline/maths";
 
 // Everything the panel can set, the presets (Aaron's pick first), and the
@@ -37,6 +38,16 @@ export type Settings = {
   scrubBand: number; // scrub only: viewport percent of scroll the morph spans after the trigger line
   scrubLag: number; // scrub only: seconds the morph trails the scroll
   reveal: boolean; // a stand-in for the block's own mask-in (the sections grammar), so the two can be judged together
+  morphWaitsForView: boolean; // play only: a crossing the reader cannot watch holds the morph until the chart is in view and the scroll settles
+  inViewShare: number; // percent of the chart's height inside the viewport that counts as in view
+  settledMs: number; // how long the scroll must stay under settleSpeed to count as settled
+  settleSpeed: number; // px per second
+  toggleMorphs: boolean; // a click on Flat or Skyline plays the morph from the current clock (off: it snaps)
+  flatDepth: FlatDepth;
+  cellLift: number; // px: lift's shadow offset, bevel's edge, inset's wall
+  edgeAlpha: number; // the hairline round each cell, ink alpha
+  innerHighlight: number; // percent of the Coil card's flat 1px highlight (--card-hi), active cells only
+  paperTone: number; // percent of ink mixed into the page for an empty day
 };
 
 // The sections lab's grammar the reveal stand-in borrows: band 90 to 60, lag 0.8s, power3.
@@ -63,6 +74,26 @@ export const MORPH_NOTES: Record<MorphMode, string> = {
 
 export const TOGGLE_RULE =
   "A click on Flat or Skyline holds until the trigger line is next crossed; that crossing hands the view back to the scroll (down: skyline, up: flat).";
+
+export const SEEN_RULE =
+  "A crossing the reader cannot watch (the chart would leave before the morph ends) keeps the block flat; the morph plays the next time the chart is in view and the scroll has settled, or as a slow return arrives at it.";
+
+// The fast-scroll test: from the top to the footer at this speed.
+export const FAST_SCROLL_PX_S = 3000;
+
+export const DEPTH_NAMES: Record<FlatDepth, string> = {
+  none: "Paper (round 3)",
+  lift: "Lift",
+  bevel: "Bevel",
+  inset: "Inset",
+};
+
+export const DEPTH_NOTES: Record<FlatDepth, string> = {
+  none: "Round 3: flat on paper, empty days in the hairline colour, a faint outline. The depth sliders do not apply.",
+  lift: "Shadow only: each cell casts a hard shadow down and to the right in the page's ink, the Coil's inner highlight on top. Raised, but the shadow has no counterpart in the skyline, so it fades out as the faces arrive.",
+  bevel: "Highlight plus shade: the skyline's own side faces at height zero. The bottom edge carries the left face's shade, the right edge the right face's, the top-left the Coil's 1px inner highlight; as the morph starts, those edges become the faces.",
+  inset: "Sunk into the paper: the top and left walls in shade, the highlight on the far lip. The light agrees with the skyline, the geometry does not: wells first, then towers.",
+};
 
 export const PLACEMENT_NAMES: Record<Placement, string> = {
   section: "Own section",
@@ -98,6 +129,29 @@ export const LEAD_NAMES: Record<Lead, string> = {
 
 export type Preset = { id: string; name: string; note: string; settings: Settings };
 
+// The round 4 keys at their round 3 behaviour: no wait, no depth. The toggle
+// already ran the engine's clock in round 3, so it morphs here too.
+const ROUND3_EXTRAS = {
+  morphWaitsForView: false,
+  inViewShare: 60,
+  settledMs: 120,
+  settleSpeed: 300,
+  toggleMorphs: true,
+  flatDepth: "none",
+  cellLift: 1.5,
+  edgeAlpha: 0.08,
+  innerHighlight: 100,
+  paperTone: 3,
+} as const satisfies Partial<Settings>;
+
+// Round 4: the morph waits to be seen; the flat view carries the skyline's
+// faces at height zero.
+const ROUND4_EXTRAS = {
+  ...ROUND3_EXTRAS,
+  morphWaitsForView: true,
+  flatDepth: "bevel",
+} as const satisfies Partial<Settings>;
+
 // Aaron's copied JSON from round 2, verbatim in settings.
 const AARON_PASTED: Settings = {
   placement: "inside",
@@ -120,14 +174,25 @@ const AARON_PASTED: Settings = {
   scrubBand: 30,
   scrubLag: 0.8,
   reveal: false,
+  ...ROUND3_EXTRAS,
 };
+
+// Aaron's round 3 pick as it shipped: the last 6 months, the full morph once
+// the block's top crosses 60 percent, the reveal stand-in on.
+const ROUND3_PICK: Settings = { ...AARON_PASTED, window: "6mo", morph: "play", triggerPct: 60, reveal: true };
 
 export const PRESETS: readonly Preset[] = [
   {
     id: "aaron-6mo",
     name: "Aaron's pick, 6 months, scroll morph",
-    note: "His round 2 pick on the last 6 months: flat until the block's top crosses 60 percent of the viewport (where the reveal's band ends, so the whole flat grid is on screen first), then the full 1300ms morph to the skyline; back to flat when the reader scrolls back above it. The toggle overrides until the next crossing.",
-    settings: { ...AARON_PASTED, window: "6mo", morph: "play", triggerPct: 60, reveal: true },
+    note: "Round 4: flat until the block's top crosses 60 percent of the viewport, then the full 1300ms morph, but only once it can be watched: a fast pass keeps it flat, and it plays when the chart is 60 percent in view and the scroll has settled (under 300 px/s for 120ms). The flat view is the bevel: the skyline's faces at height zero. A click on Flat or Skyline plays the same morph from wherever the clock is.",
+    settings: { ...ROUND3_PICK, ...ROUND4_EXTRAS },
+  },
+  {
+    id: "aaron-r3",
+    name: "Aaron's pick, round 3",
+    note: "Round 3 as it was, for comparison: the morph plays at the crossing however fast the page is moving, and the flat view is plain paper.",
+    settings: ROUND3_PICK,
   },
   {
     id: "aaron-pasted",
@@ -160,6 +225,7 @@ export const PRESETS: readonly Preset[] = [
       scrubBand: 30,
       scrubLag: 0.8,
       reveal: false,
+      ...ROUND3_EXTRAS,
     },
   },
   {
@@ -187,6 +253,7 @@ export const PRESETS: readonly Preset[] = [
       scrubBand: 30,
       scrubLag: 0.8,
       reveal: false,
+      ...ROUND3_EXTRAS,
     },
   },
   {
@@ -214,6 +281,7 @@ export const PRESETS: readonly Preset[] = [
       scrubBand: 30,
       scrubLag: 0.8,
       reveal: false,
+      ...ROUND3_EXTRAS,
     },
   },
 ];
@@ -250,6 +318,26 @@ export const exportValues = (s: Settings, theme: string) => {
       TOGGLE_FILL.radiusPx +
       "px radius; the shown view in the accent, the other muted; Enter and Space",
     toggleOverride: s.morph === "load" ? "n/a, the toggle alone decides after the entrance" : TOGGLE_RULE,
+    morphWaitsForView:
+      s.morph !== "play"
+        ? "n/a, play mode only"
+        : s.morphWaitsForView
+          ? "on: " + SEEN_RULE
+          : "off: the morph plays at the crossing however fast the page moves",
+    inViewShare: s.morph === "play" && s.morphWaitsForView ? s.inViewShare + "% of the chart's height inside the viewport" : "n/a",
+    settledMs:
+      s.morph === "play" && s.morphWaitsForView
+        ? s.settledMs + "ms under " + s.settleSpeed + " px/s (or slow enough that the chart stays in view for the whole morph)"
+        : "n/a",
+    settleSpeed: s.morph === "play" && s.morphWaitsForView ? s.settleSpeed + " px/s" : "n/a",
+    toggleMorphs: s.toggleMorphs
+      ? "on: a click or Enter/Space plays the " + s.duration + "ms morph from the current clock, either way; a click mid-morph reverses from where it is"
+      : "off: a click snaps to the other view",
+    flatDepth: DEPTH_NAMES[s.flatDepth],
+    cellLift: s.flatDepth === "none" ? "n/a" : s.cellLift + "px" + (s.flatDepth === "lift" ? " shadow offset" : s.flatDepth === "bevel" ? " edge" : " wall") + ", half on empty days",
+    edgeAlpha: s.flatDepth === "none" ? "n/a (round 3 outline 0.07)" : s.edgeAlpha,
+    innerHighlight: s.flatDepth === "none" ? "n/a" : s.innerHighlight + "% of --card-hi, 1px, active days only",
+    paperTone: s.flatDepth === "none" ? "n/a, empty days in --color-border" : s.paperTone + "% ink in the page",
     revealStandIn: s.reveal
       ? "on: rise " + REVEAL_BAND.rise + "px and fade, block top " + REVEAL_BAND.start + "% to " + REVEAL_BAND.end + "%, scrub " + REVEAL_BAND.lag + "s, power3.out"
       : "off",

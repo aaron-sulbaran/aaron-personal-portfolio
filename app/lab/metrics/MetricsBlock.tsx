@@ -6,6 +6,7 @@ import { NumbersRow } from "./NumbersRow";
 import { useContributions } from "./context";
 import { isRolling, windowPeriod, yearOf } from "./derive";
 import type { ContributionData } from "./data";
+import type { DepthSpec } from "./skyline/draw";
 import { accentRamp, DAY_MS, dayMs, toKey } from "./skyline/maths";
 import type { Settings } from "./settings";
 import { useRevealStandIn, useScrollMorph } from "./useScrollMorph";
@@ -39,6 +40,14 @@ export const chartRange = (d: ContributionData, s: Settings) =>
     ? { from: sundayOf(d.range.from), through: undefined }
     : { from: d.range.from, through: s.future === "slabs" ? yearOf(d) + "-12-31" : undefined };
 
+export const depthOf = (s: Settings): DepthSpec => ({
+  mode: s.flatDepth,
+  lift: s.cellLift,
+  edge: s.edgeAlpha,
+  hi: s.innerHighlight,
+  paper: s.paperTone,
+});
+
 const common = (d: ContributionData, s: Settings, pin: number | null) => ({
   data: s.data === "real" ? d.days : undefined,
   streak: s.data === "real" ? d.streaks.current : undefined,
@@ -53,6 +62,7 @@ const common = (d: ContributionData, s: Settings, pin: number | null) => ({
   heightCap: s.heightCap,
   duration: s.duration,
   card: s.card,
+  depth: depthOf(s),
   pin,
 });
 
@@ -64,7 +74,7 @@ export function MetricsBlock({ settings: s, pin, replay }: BlockProps) {
   useRevealStandIn(outer, inner, s.reveal);
   const key = [replay, s.view, s.data, s.future, d.window, s.morph].join("-");
   const driver = morph.scrolled
-    ? { view: morph.view, onViewChange: morph.choose, gate: "none" as const, drive: morph.drive, driven: morph.driven }
+    ? { view: morph.view, onViewChange: morph.choose, gate: "none" as const, drive: morph.drive, driven: morph.driven, snap: morph.snap }
     : { defaultView: s.view };
   return (
     <div ref={outer} data-metrics-block="">

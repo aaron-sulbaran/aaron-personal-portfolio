@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Field, PanelButton, Segmented, Slider } from "../type/controls";
 import { accentRamp } from "./skyline/maths";
 import { setLabTheme, useLabTheme } from "./labTheme";
+import { DepthControls, SeenControls } from "./PanelDepth";
 import {
   COMPANION_NAMES,
   LEAD_NAMES,
@@ -172,6 +173,7 @@ export function Panel({ settings: s, onChange, pin, onPin, onReplay }: PanelProp
           format={(n) => n.toFixed(2) + " s"}
           onChange={(v) => set("scrubLag", v)}
         />
+        <SeenControls s={s} set={set} />
         <p className={"leading-snug text-muted " + (s.morph === "load" ? "opacity-40" : "")}>Toggle: {TOGGLE_RULE}</p>
         <Field label="Block reveal stand-in (sections grammar)">
           <Segmented options={["off", "on"] as const} value={s.reveal ? "on" : "off"} onChange={(v) => set("reveal", v === "on")} />
@@ -194,6 +196,8 @@ export function Panel({ settings: s, onChange, pin, onPin, onReplay }: PanelProp
             <span key={c} className="h-3 flex-1 rounded-sm" style={{ background: c }} />
           ))}
         </div>
+
+        <DepthControls s={s} set={set} />
 
         <Field label="Height curve">
           <Segmented

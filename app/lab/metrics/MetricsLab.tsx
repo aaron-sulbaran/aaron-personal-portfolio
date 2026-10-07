@@ -16,7 +16,7 @@ import { DEFAULT_SETTINGS, type Settings } from "./settings";
 // The lab shell: the real Up to now and Connect (rendered on the server and
 // passed through) with the metrics placed between, in, or under them.
 
-const STORAGE_KEY = "lab-metrics-v4";
+const STORAGE_KEY = "lab-metrics-v5";
 
 function Kicker({ children }: { children: ReactNode }) {
   return (
