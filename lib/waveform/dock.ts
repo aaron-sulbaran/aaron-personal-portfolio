@@ -11,7 +11,7 @@ export type DockLabel = "accepted" | "declined" | "unanswered" | "returning" | "
 
 export interface DockInput {
   music: SoundtrackState;
-  reached: boolean; // the band's centre has crossed the viewport (sweep target > DOCK.arriveAtSweep)
+  reached: boolean; // the band's bottom edge is above the dock line, DOCK.passedPx (bandPassed)
   phone: boolean;
   labelShown: boolean; // this page load already showed the label for this state
   returning: boolean; // a stored "on" restored this session and not yet greeted
@@ -19,10 +19,12 @@ export interface DockInput {
 }
 
 export const DOCK = {
-  arriveMs: 600,
+  fadeMs: 300,
   holdMs: 2600,
   collapseMs: 360,
-  arriveAtSweep: 0.35,
+  // The dock line: the header bar (72px) plus the sections' anchor landing
+  // (scroll-mt-24, 96px) and slack: a reader at an anchor below the band has passed it.
+  passedPx: 112,
   capsulePx: 36,
   hitPx: 44,
   baselineFromBottomPx: 72,
@@ -56,41 +58,9 @@ export function capsuleName(text: string, action: string): string {
   return /[.?!]$/.test(text) ? `${text} ${action}` : `${text}. ${action}`;
 }
 
-// The arrival source: the band records the control the visitor pressed and
-// the pill takes it once, when it next arrives, to condense out of it. The
-// band records it in page coordinates (the viewport rect plus the scroll at
-// the press), since the reader scrolls between the press and the arrival.
-let source: DOMRect | null = null;
-
-export function setDockSource(rect: DOMRect | null): void {
-  source = rect;
-}
-
-export function takeDockSource(): DOMRect | null {
-  const taken = source;
-  source = null;
-  return taken;
-}
-
-// While the pill is out on the dock the band's controls fade, so the pill
-// reads as the control that left and came back. The pill writes it; the band
-// reads it through useSyncExternalStore.
-let docked = false;
-const dockListeners = new Set<() => void>();
-
-export function getDocked(): boolean {
-  return docked;
-}
-
-export function setDocked(next: boolean): void {
-  if (next === docked) return;
-  docked = next;
-  dockListeners.forEach((listener) => listener());
-}
-
-export function subscribeDocked(listener: () => void): () => void {
-  dockListeners.add(listener);
-  return () => {
-    dockListeners.delete(listener);
-  };
+// The reader has scrolled past the band: its bottom edge is above the dock
+// line (DOCK.passedPx from the viewport's top, under the header bar and an
+// anchor's landing). A band below the viewport (the hero, the book) is not passed.
+export function bandPassed(bottom: number, rootTop: number | null, intersecting: boolean): boolean {
+  return !intersecting && bottom <= (rootTop ?? DOCK.passedPx);
 }
