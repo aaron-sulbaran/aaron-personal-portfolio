@@ -1,7 +1,7 @@
 import { gsap } from "@/lib/gsap";
 import { siteEase } from "@/lib/coil/motion";
 import { siteContent } from "@/lib/content";
-import { LOADER, coilDebugFlags, displayPercent, homeLoad, reportHomeLoad } from "@/lib/loader/progress";
+import { LOADER, coilDebugFlags, displayPercent, homeLoad, reportHomeLoad, slowSceneMs } from "@/lib/loader/progress";
 import { landName, nameTarget, type NameTarget } from "@/lib/loader/handoff";
 import {
   greetingColor,
@@ -41,7 +41,6 @@ export type LoaderParts = {
   num: HTMLSpanElement;
   bg: HTMLDivElement;
   greet: HTMLSpanElement;
-  rest: HTMLDivElement;
 };
 
 export type LoaderOptions = {
@@ -64,7 +63,10 @@ export function runLoader(
   const tally = homeLoad();
   // ?coildebug=handoff: the hand-off waits on window.__coilLoader.finish()
   // (cards held back), to compare the frames either side of it.
-  const holdHandoff = coilDebugFlags(window.location.search).has("handoff");
+  const debugFlags = coilDebugFlags(window.location.search);
+  const holdHandoff = debugFlags.has("handoff");
+  // ?coildebug=slowscene: the scene cannot take the lockup before this time.
+  const sceneTakesAt = slowSceneMs(debugFlags) ?? 0;
   let metrics: LockupMetrics = PROFA_METRICS;
   let disposed = false;
   let raf = 0;
@@ -75,14 +77,6 @@ export function runLoader(
   let holdTimer = 0;
   const note = debugLog(root);
   note("run", { reduced, resting, items: tally ? tally.progress() : null });
-
-  // The resting lockup is placed for a hero at the top of the page; a load
-  // that kept a shallow scroll (short of the deep start) moves it with the
-  // hero, which the entrance's lock then holds still.
-  const followHero = () => {
-    parts.rest.style.transform = window.scrollY ? `translateY(${-window.scrollY}px)` : "";
-  };
-  if (resting) followHero();
 
   // The face's real metrics, once loaded, then the tally hears it.
   const family = getComputedStyle(document.documentElement).getPropertyValue("--font-display").trim() || "sans-serif";
@@ -124,7 +118,7 @@ export function runLoader(
     const attempt = () => {
       raf = 0;
       if (disposed) return;
-      if (sceneShown() && landName()) {
+      if (sceneShown() && performance.now() >= sceneTakesAt && landName()) {
         gone();
         note("handoff");
         return;
@@ -143,7 +137,6 @@ export function runLoader(
   // resting lockup (already the landed pose) holds while the entrance reaches
   // the scene, then the canvas takes it. The band starts at the hand-off.
   function rest() {
-    followHero();
     root.setAttribute("data-state", "rest");
     note("rest");
     reveal(performance.now() + (holdHandoff ? 600000 : LOADER.restHoldMs), true);
@@ -198,9 +191,12 @@ export function runLoader(
     root.setAttribute("data-state", "live");
     // The pane covered the resting lockup; the exit lands the pane's own.
     root.setAttribute("data-rest", "off");
-    const target = reduced ? null : nameTarget();
+    // A canvas lockup off screen (the page moved under the pane) is no
+    // landing: the lockup would fly out of view and the hand-off give up.
+    const found = reduced ? null : nameTarget();
+    const target = found && found.baseline > 0 && found.baseline - found.fontPx < window.innerHeight ? found : null;
     if (!target) {
-      // Reduced motion, or no scene to land on: a plain fade.
+      // Reduced motion, no scene to land on, or none on screen: a plain fade.
       const fadeS = LOADER.reducedFadeMs / 1000;
       note("fade");
       reveal(performance.now() + LOADER.reducedFadeMs, false);

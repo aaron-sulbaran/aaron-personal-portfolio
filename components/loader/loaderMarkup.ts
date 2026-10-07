@@ -13,6 +13,14 @@ import { HERO_HEADING_ID } from "@/components/home/HeroText";
 // over never shows the h1. The pane (the dark ground, the big name, the
 // number) fades in over it only if the load outlives the 250ms guard.
 //
+// The root is the hero's box at the top of the document (the hero is the
+// first thing in #main, at least 100svh tall), not the viewport: the resting lockup
+// scrolls with the hero by itself, before any JavaScript and on the
+// compositor, so a page moved under the hold (a script, an anchor jump,
+// find-in-page; the entrance lock stops only wheels and swipes) never leaves
+// it floating over the book. The pane and its ground are fixed: a slow load
+// covers the viewport wherever the page is.
+//
 // The pane's geometry is ported from labs/loader-lab.html (mode a): the
 // name's ink fills the pane edge to edge inside a 16px gutter, a box one cap
 // height tall whose bottom edge is the baseline; the fill is a clipped copy
@@ -33,7 +41,7 @@ const L = COIL.lockup;
 const BAIL_MS = 9400;
 
 export const LOADER_CSS = `
-.coil-loader{position:fixed;inset:0;z-index:60;container-type:size;pointer-events:none;${lockupVarDefaults()};
+.coil-loader{position:absolute;top:0;left:0;right:0;height:100vh;height:100svh;z-index:60;container-type:size;pointer-events:none;${lockupVarDefaults()};
   animation:coil-loader-bail 400ms linear 9s forwards}
 .coil-loader[data-js]{animation:none}
 .coil-loader__bg,.coil-loader__pane{animation:coil-loader-in 180ms ${EASE} ${LOADER.guardMs}ms both}
@@ -48,8 +56,8 @@ export const LOADER_CSS = `
   html:not([data-coil-loader=skip]):has(.coil-loader:not([data-state=gone]):not([data-rest=off])) #${HERO_HEADING_ID}{animation:coil-loader-h1 ${BAIL_MS}ms linear}
 }
 ${restLockupCss()}
-.coil-loader__bg{position:absolute;inset:0;background:var(--loader-bg)}
-.coil-loader__pane{position:absolute;inset:0;
+.coil-loader__bg{position:fixed;inset:0;background:var(--loader-bg)}
+.coil-loader__pane{position:fixed;inset:0;
   --gut:16px;--pad:.06;--p:0;
   --fs:calc((100cqw - 2 * var(--gut)) / var(--inkW));
   --cap:calc(var(--fs) * var(--capR));

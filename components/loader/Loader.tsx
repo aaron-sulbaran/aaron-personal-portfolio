@@ -16,7 +16,9 @@ import { runLoader } from "./runLoader";
 // The overlay is in the server's HTML, armed by CSS alone: the pane shows
 // only after 250ms, so a fast load never flashes it. Hydration then moves the
 // node itself to <body> (a createPortal could not render on the server), out
-// of the page's z-10 content layer, so it covers the header at z 60. From
+// of the page's z-10 content layer, so it covers the header at z 60. Either
+// way its root is the hero's box at the document's top, so the resting
+// lockup scrolls with the hero; the pane is fixed over the viewport. From
 // there it runs imperatively, one rAF loop, no per-frame React state.
 //
 //   off   a fast start (deep reload): gone before paint, the h1 as before
@@ -49,7 +51,6 @@ const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : use
 export function Loader({ mode, onReveal, sceneOn }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
   const greetRef = useRef<HTMLSpanElement>(null);
-  const restRef = useRef<HTMLDivElement>(null);
   const paneRef = useRef<HTMLDivElement>(null);
   const nameRef = useRef<HTMLDivElement>(null);
   const baseRef = useRef<HTMLSpanElement>(null);
@@ -117,7 +118,6 @@ export function Loader({ mode, onReveal, sceneOn }: Props) {
       num: numRef.current!,
       bg: bgRef.current!,
       greet: greetRef.current!,
-      rest: restRef.current!,
     };
     return runLoader(
       parts,
@@ -137,7 +137,7 @@ export function Loader({ mode, onReveal, sceneOn }: Props) {
       </style>
       <div hidden dangerouslySetInnerHTML={{ __html: `<script>${LOADER_SKIP_SCRIPT}</script>` }} />
       <noscript dangerouslySetInnerHTML={{ __html: LOADER_NOSCRIPT }} />
-      <div ref={restRef} className="coil-loader__rest" aria-hidden="true">
+      <div className="coil-loader__rest" aria-hidden="true">
         <span className="coil-loader__rest-greet">{greeting}</span>
         <span className="coil-loader__rest-name">{heroName}</span>
       </div>

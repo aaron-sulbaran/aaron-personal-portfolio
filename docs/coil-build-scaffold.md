@@ -113,7 +113,7 @@ Retire in slice 9, after the flip: `TileRing`, `MobileHome`, `GlassTile`, `ArcIn
 
 ## 4. Contracts that survive
 
-- **Portal to body** for every fixed overlay (modals, FlyingTile, PlaybackPill, Waveform, Loader, menu scrim).
+- **Portal to body** for every fixed overlay (modals, FlyingTile, PlaybackPill, Waveform, menu scrim) and the Loader, whose root is absolute at the document top (the hero's box) with a fixed pane and ground, so the resting lockup scrolls with the hero.
 - **Ref-counted scroll lock** (`lib/modal.ts:14-52`) for entrance, Menu and modals; it writes `--scrollbar-comp` (`lib/modal.ts:34`), read as a right offset by the pill, bar and modal close buttons.
 - **Canvas sized from its container**: `position:absolute; inset:0` in the 100svh hero, sized by ResizeObserver, not the viewport. A deliberate change from the lab's fixed full-screen canvas: with no scroll-straighten nothing leaves the hero, so the lock's padding cannot resize it mid-flight, the one-frame lag and scissor go, and `uHeroShift` is dropped.
 - **Explicit readiness**: `lib/home/readiness.ts` replaces `[data-state]` (TileRing.tsx:2012, read by SiteNav.tsx:80-95 and ScrollProgress.tsx:112-128 through first-match `querySelector`). Consumers: SiteNav, HeroOverlay, the entrance lock. Other routes never wait. TileRing publishes to it until it retires.
