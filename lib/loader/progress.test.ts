@@ -6,7 +6,10 @@ import {
   SCENE_ITEMS,
   createLoadTally,
   displayPercent,
+  SLOW_SCENE_DEFAULT_MS,
+  coilDebugFlags,
   slowDelay,
+  slowSceneMs,
 } from "@/lib/loader/progress";
 
 describe("load tally", () => {
@@ -111,5 +114,18 @@ describe("slow debug schedule", () => {
     expect(slowDelay("chunk", 1, 5000)).toBe(0);
     expect(slowDelay("textures", 0, 0)).toBe(1300);
     expect(slowDelay("textures", 1, 0)).toBe(2700);
+  });
+});
+
+describe("the slow scene debug flag", () => {
+  it("reads slowscene alone as the default delay and slowscene=<ms> as that delay", () => {
+    expect(slowSceneMs(coilDebugFlags("?coildebug=slowscene"))).toBe(SLOW_SCENE_DEFAULT_MS);
+    expect(slowSceneMs(coilDebugFlags("?coildebug=handoff,slowscene=1500,at=3"))).toBe(1500);
+  });
+
+  it("is null without the token, or with a value that is not whole milliseconds", () => {
+    expect(slowSceneMs(coilDebugFlags(""))).toBeNull();
+    expect(slowSceneMs(coilDebugFlags("?coildebug=slow,handoff"))).toBeNull();
+    expect(slowSceneMs(coilDebugFlags("?coildebug=slowscene=soon"))).toBeNull();
   });
 });

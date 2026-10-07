@@ -167,6 +167,22 @@ export function coilDebugFlags(search: string): Set<string> {
   return new Set(value ? value.split(",").map((token) => token.trim()) : []);
 }
 
+// ?coildebug=slowscene or slowscene=<ms>: the scene takes the loader's
+// lockup no earlier than this long after navigation (1200ms by default), as a
+// software GPU or a throttled CPU does when its first entrance frames come
+// late. Past the hand-off's give-up the loader leaves without it. Null
+// without the token.
+export const SLOW_SCENE_DEFAULT_MS = 1200;
+
+export function slowSceneMs(flags: ReadonlySet<string>): number | null {
+  for (const token of flags) {
+    if (token === "slowscene") return SLOW_SCENE_DEFAULT_MS;
+    const match = token.match(/^slowscene=(\d+)$/);
+    if (match) return Number(match[1]);
+  }
+  return null;
+}
+
 export function beginHomeLoad(items: readonly LoadItem[], startMs: number, slow = false): LoadTally {
   const tally = createLoadTally({ items, startMs });
   if (!slow) {
