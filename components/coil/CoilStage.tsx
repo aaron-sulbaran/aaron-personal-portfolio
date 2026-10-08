@@ -28,8 +28,8 @@ import { provideNameHandoff } from "@/lib/loader/handoff";
 // field poster waits with it (data-scene="off"); once it cannot run at all
 // (no context, a failed chunk, the boundary, a second lost context, reduced
 // motion) the hero is "still": the hero still once the current theme's has
-// decoded (useHeroStill.ts), the h1 visually hidden only then, and the notice. A first lost context shows the field
-// poster and remounts once.
+// decoded (useHeroStill.ts), the h1 visually hidden only then, and the
+// notice. A first lost context shows the field poster and remounts once.
 // Reduced motion is live: turning it on tears the scene down, off rebuilds it.
 
 type Props = {
