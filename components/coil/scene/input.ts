@@ -9,6 +9,7 @@ import {
 } from "@/lib/coil/capture";
 import { insideSilhouette } from "@/lib/coil/geometry";
 import { addWheel, rowHoldWeight, stepConveyor, stepEnvelope, wheelPixels } from "@/lib/coil/motion";
+import { shapeCardPx } from "@/lib/coil/shape";
 import { Observer } from "@/lib/gsap";
 import type { Cards } from "./cards";
 import { pushStat } from "./debug";
@@ -246,7 +247,7 @@ export function createInput(ctx: SceneCtx, cards: Cards, hover: Hover, loop: Loo
   // across the screen.
   function dragCardsPerPx() {
     if (!st.geo) return 0;
-    return 1 / Math.max(1, st.geo.step * st.geo.cardPx * Math.cos(st.geo.axisRad));
+    return 1 / Math.max(1, st.geo.step * shapeCardPx(st.geo, live.current.shape ?? "coil") * Math.cos(st.geo.axisRad));
   }
   function listenDrag() {
     const dragObserver = Observer.create({
