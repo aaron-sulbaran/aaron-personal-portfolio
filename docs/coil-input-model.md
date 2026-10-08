@@ -60,6 +60,8 @@ Row hold. While a row is hovered or focused: idle 0, one glide to the card's vis
 
 Flight handoff. The flying object renders exactly what the mesh renders (same shader, bend, shading, lift), and releases bend, shading and lift over the flight. The mesh reappears only on the frame every value equals its rest value; the scene unfreezes on the next frame with `dt` clamped to one frame.
 
+Shape switch (the Coil and Band toggle, PR 39, 2026-10-08). While the helix is between coil and band the strand holds where the switch began, as it does in the entrance and the unwind: the seam's two ends sit apart mid-pull, so a card crossing it would jump (123px at pull 0.2, 878px at 0.8 on 1440x900). The band spins on the coil's feeds once the switch has landed; a held book row aims again on the landing frame (`hover.rejump()`); the touch drag's cards per pixel and the row's hover-jump follow the band's own card size and turn (`shapeCardPx`, `shapeJump`). Rule A is card-based, so capture holds for either shape; release is more lenient around the band (the hull is a strip along the axis), accepted.
+
 ## 4. Trade-offs
 
 | Decision | Gain | Cost |

@@ -73,6 +73,7 @@ CoilScene.tsx (root)      React component + startCoil(): creates, wires, dispose
   scene/input.ts          pointer, wheel ownership, taps, touch drag, conveyor feed, nudge
   scene/hover.ts          picking, cursor bridge, row hold, hover-jump
   scene/entrance.ts       entrance clock wiring and the rebuild fade
+  scene/shape.ts          the Coil and Band toggle's pull (added 2026-10-08, step `shape` after `entrance`)
   scene/unwind.ts         unwind latch wiring, column, name move, double-click
   scene/flightOverlay.ts  the flown card's canvas, renderer, covers, pixel grid
   scene/flight.ts         the handoff: freeze, draw, land, abort, prewarm

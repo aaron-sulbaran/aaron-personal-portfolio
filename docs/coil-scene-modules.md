@@ -5,7 +5,7 @@ The map of `components/coil/scene/`, the modules behind the Coil hero's WebGL sc
 ## The shape in one picture
 
 ```
-CoilStage.tsx ──import() after first paint──> CoilScene.tsx (composition root, 220 lines)
+CoilStage.tsx ──import() after first paint──> CoilScene.tsx (composition root, 227 lines)
                                                  │ creates, in the old closure's order:
    state.ts   SceneCtx { host, canvas, live, tiles, flags, debug, flightLog, st: SceneState }
    renderer.ts ─> nameSurface.ts ─> field.ts ─> name.ts ─> cards.ts ─> entrance.ts
@@ -36,6 +36,7 @@ Every module is a factory: `createX(ctx, ...parts it calls, loop)` returns the f
 | `scene/hover.ts` | Picking (`pickAt`, `cardAt`), the per frame hover and the cursor bridge (`lib/cursor/hover.ts`), the flown card's lift target, the row hold and hover-jump (`focusCard`), `heroVisible` | cards, loop |
 | `scene/input.ts` | Pointer and wheel handlers over `lib/coil/capture.ts` (plus the window scroll listener that disarms capture), click and tap opening, the touch drag and its coast, the scroll, conveyor and nudge steps | cards, hover, loop |
 | `scene/entrance.ts` | The entrance clock on the scene's time (a rebuild starts at rest), the strand held until the band opens, the end reported once, the rebuild fade | name |
+| `scene/shape.ts` | The Coil and Band toggle (PR 39): the helix pulled toward the entrance's closed band by one value on the pull curve (`lib/coil/shape.ts`, 756ms on the entrance's own curve), the shape read from the `shape` prop at creation (a scene mounted in the band starts there), waiting for the entrance to rest, the strand held where the switch began while switching, `hover.rejump()` on the landing frame so a held book row aims again | hover |
 | `scene/unwind.ts` | The double-click toggle and `api.unwind`, the latch held in the frame, rows measured onto the z = 0 plane, the name's move into the list's lead | name, hover, loop |
 | `scene/flightOverlay.ts` | The flown card's own canvas and renderer on the scene canvas's pixel grid, its covers, its face copies, prewarm target, teardown | cards |
 | `scene/flight.ts` | The handoff (`beginFlight`: draw, arrive, close, land, abort), `freeze`, `hideSlot`, the still frame redraw, the landed frame, prewarm | cards, hover, flightOverlay, debugProbe, loop |
@@ -57,7 +58,7 @@ Every module is a factory: `createX(ctx, ...parts it calls, loop)` returns the f
 | `poses`, `rendered`, `sil` | cards.ts |
 | `hoveredSlot` | hover.ts |
 | `pointer`, `capture`, `dragging`, `coast`, `pressCaughtCoil` | input.ts (`coast` also cleared by entrance.ts while the strand is held) |
-| `conveyor` | input.ts (feeds), entrance.ts (held at 0), unwind.ts (latched), hover.ts (glide) |
+| `conveyor` | input.ts (feeds), entrance.ts (held at 0), shape.ts (held mid-switch), unwind.ts (latched), hover.ts (glide) |
 | `envelope` | input.ts |
 | `rowHold` | hover.ts |
 | `unwind` | unwind.ts (and loop.ts shifts its start after a stop) |
@@ -76,6 +77,7 @@ Every module is a factory: `createX(ctx, ...parts it calls, loop)` returns the f
 | conveyor | input | (moves `st.conveyor`, `st.envelope`) |
 | helix | cards | `helix` |
 | entrance | entrance (and name's fades) | `clock`, `realElapsedMs`, `helix` |
+| shape | shape | `shapePull`, `helix` |
 | rebuild | entrance (and name's fade) | `rebuilt` |
 | unwind | unwind | `listProgress` |
 | name | name (nameSurface: the surface's clock, the pointer's stroke, the wake's step and upload) | |
