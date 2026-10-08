@@ -484,8 +484,8 @@ body {
 .shape-toggle[data-dir="right"] { --tg-da: var(--tg-lag); }
 .shape-toggle[data-dir="left"] { --tg-db: var(--tg-lag); }
 @media (hover: hover) {
-  .shape-toggle[data-state="coil"]:has([data-seg="band"]:hover) { --tg-b: 0.57; }
-  .shape-toggle[data-state="band"]:has([data-seg="coil"]:hover) { --tg-a: 0.43; }
+  .shape-toggle[data-state="coil"]:has([data-seg="band"]:not([aria-disabled="true"]):hover) { --tg-b: 0.57; }
+  .shape-toggle[data-state="band"]:has([data-seg="coil"]:not([aria-disabled="true"]):hover) { --tg-a: 0.43; }
 }
 .shape-toggle[data-state="coil"]:has([data-seg="band"]:focus-visible) { --tg-b: 0.57; }
 .shape-toggle[data-state="band"]:has([data-seg="coil"]:focus-visible) { --tg-a: 0.43; }
@@ -500,7 +500,7 @@ body {
   );
 }
 .shape-toggle__seg { color: var(--color-muted); transition: color 200ms var(--ease-out); }
-.shape-toggle__seg:hover { color: var(--color-foreground); }
+.shape-toggle__seg:not([aria-disabled="true"]):hover { color: var(--color-foreground); }
 .shape-toggle__seg:focus-visible { outline: none; }
 @media (prefers-reduced-motion: reduce) { .shape-toggle { transition: none !important; } }
 /* End of the Coil and Band toggle. */

@@ -192,7 +192,15 @@ export function CoilStage({
           />
         </CoilErrorBoundary>
       ) : null}
-      <HeroOverlay ref={overlayRef} api={apiRef} onRowOpen={onRowOpen} entrance={entrance} shape={shape} onShapeChange={setShape} />
+      <HeroOverlay
+        ref={overlayRef}
+        api={apiRef}
+        onRowOpen={onRowOpen}
+        entrance={entrance}
+        shape={shape}
+        onShapeChange={setShape}
+        sceneOn={heroScene === "on"}
+      />
       {heroScene === "still" && ready && hero
         ? createPortal(<StillNotice cause={stillCause({ reducedMotion, hasApi: hasWebGL2(), failure })} />, hero)
         : null}

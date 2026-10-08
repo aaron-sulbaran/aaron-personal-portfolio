@@ -84,7 +84,7 @@ export function createUnwindWiring(ctx: SceneCtx, comp: ShaderMaterial, name: Na
   // A layout or theme change rewrites the rest values; they are recaptured
   // whenever the uniforms hold something this block did not write.
   function unwindFrame(progress: number) {
-    live.current.overlay.current?.unwindFrame(progress, unwind.on);
+    live.current.overlay.current?.unwindFrame(progress, unwind.on, unwind.latched !== null);
     const cu = comp.uniforms;
     const rect = cu.uNameRect.value as Vector4;
     if (!rect.equals(nameWritten)) nameRest.copy(rect);
