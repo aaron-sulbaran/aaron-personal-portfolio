@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { useReducedMotion } from "framer-motion";
 import { AsMark } from "@/components/menu/BrandMark";
 import { MARK_HOLD_IDLE, setMarkHold } from "@/lib/cursor/hover";
+import { loadCard } from "@/lib/mark/cardChunk";
 import { MARK } from "@/lib/mark/constants";
 import { BAR_D, BOLT_D, FILL_BOTTOM, FILL_TOP, LEG_D, VIEW_BOX } from "@/lib/mark/geometry";
 import { HOLD_IDLE, advance, cancel, click, press, release, sample, settle, type HoldSource } from "@/lib/mark/hold";
@@ -21,8 +22,7 @@ const HOLD_KEYS = new Set(["Enter", " "]);
 
 // The card carries GSAP and the cel strike, so it is its own chunk: the first
 // pointerenter, focus or press arms it and starts the load, well before a hold
-// can fire. Armed, it stays mounted so the dialog's exit still plays.
-const loadCard = () => import("@/components/mark/MarkCard");
+// can fire (lib/mark/cardChunk). Armed, it stays mounted so the exit plays.
 const MarkCard = dynamic(() => loadCard().then((m) => m.MarkCard), { ssr: false });
 
 // After a keyboard hold opens the card, focus lands on Close while the key
