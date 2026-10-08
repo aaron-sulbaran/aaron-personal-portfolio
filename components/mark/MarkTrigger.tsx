@@ -110,6 +110,7 @@ export function MarkTrigger({ ariaLabel, className, onActivate }: Props) {
   };
   const close = () => {
     openRef.current = false;
+    hold.current = { ...hold.current, swallowClick: false };
     setOpen(false);
     setMarkHold(MARK_HOLD_IDLE);
   };
