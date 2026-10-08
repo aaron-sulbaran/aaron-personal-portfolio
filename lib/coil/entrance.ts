@@ -48,7 +48,7 @@ const smooth = (x: number) => x * x * (3 - 2 * x);
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
 const pullCurves = new WeakMap<CoilConstants, (x: number) => number>();
-function pullCurve(c: CoilConstants) {
+export function pullCurve(c: CoilConstants) {
   let curve = pullCurves.get(c);
   if (!curve) {
     curve = cubicBezier(...c.entrance.pullCurve);
@@ -73,16 +73,13 @@ export function pullPhases(pull: number, c: CoilConstants = COIL) {
 }
 
 // Frame level: the band's winding, radius, rise, card size and lean pulled
-// toward the rested helix (`rest` may already carry the stretch envelope).
-export function entranceHelix(
-  rest: HelixFrame,
-  geo: CoilGeometry,
-  clock: EntranceClock,
-  c: CoilConstants = COIL,
-): HelixFrame {
-  if (isRested(clock)) return rest;
+// toward the rested helix (`rest` may already carry the stretch envelope) by
+// the pull itself: 0 is the closed band; 1 returns the rest frame as is, so a
+// rested coil is exactly the rest frame. The Coil and Band toggle
+// (lib/coil/shape.ts) drives the same pull.
+export function pullHelix(rest: HelixFrame, geo: CoilGeometry, pull: number, c: CoilConstants = COIL): HelixFrame {
+  if (pull >= 1) return rest;
   const n = geo.cardCount;
-  const pull = pullProgress(clock, c);
   const { part, wind } = pullPhases(pull, c);
   const angStep = lerp(TAU / n, rest.angStep, wind);
   return {
@@ -93,6 +90,14 @@ export function entranceHelix(
     cardWorld: lerp(geo.bandCardWorld, rest.cardWorld, pull),
     leanRad: lerp(c.camera.bandLeanDeg * DEG, rest.leanRad, pull),
   };
+}
+export function entranceHelix(rest: HelixFrame, geo: CoilGeometry, clock: EntranceClock, c: CoilConstants = COIL): HelixFrame {
+  if (isRested(clock)) return rest;
+  return pullHelix(rest, geo, pullProgress(clock, c), c);
+}
+// The copies outside the one band wait hidden and fade in late in the pull.
+export function outOfBandAlpha(pull: number) {
+  return smooth(seg(pull, 0.35, 0.9));
 }
 
 export type EntranceCard = {
@@ -132,7 +137,7 @@ export function entrancePose<P extends CardPose>(
   if (isBeforeEntrance(clock)) return { ...pose, alpha: 0 };
   const n = card.cardCount;
   if (!inBand(card.strandPosition, n)) {
-    return { ...pose, alpha: pose.alpha * smooth(seg(pullProgress(clock, c), 0.35, 0.9)) };
+    return { ...pose, alpha: pose.alpha * outOfBandAlpha(pullProgress(clock, c)) };
   }
   const rank = shutterRank(card.strandPosition, n);
   const flown = shutterProgress(rank, clock, c);

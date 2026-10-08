@@ -7,19 +7,21 @@
 //
 // Update: scroll (the pointer's canvas position at the page's scroll),
 // conveyor (idle, wheel, the touch throw; one smoothing stage and the spin
-// cap; the stretch envelope), helix frame, entrance (the
-// strand held until the band opens; the name's fade), rebuild fade, unwind
-// (latch, column, overlay fades, the name's move), name (the surface's clock
-// and the pointer's wake), seen levels, slots (pose, entrance, unwind, header
-// band, rebuild, hidden slot, hover lift, seen ring), silhouette, picking,
-// nudge, repaint. Render: field (only when its clock moved), surface (the
-// name's lit surface, only while the name shows), composite, cards.
+// cap; the stretch envelope), helix frame, entrance (the strand held until
+// the band opens; the name's fade), shape (the Coil and Band toggle's pull),
+// rebuild fade, unwind (latch, column, overlay fades, the name's move), name
+// (the surface's clock and the pointer's wake), seen levels, slots (pose,
+// entrance, unwind, header band, rebuild, hidden slot, hover lift, seen
+// ring), silhouette, picking, nudge, repaint. Render: field (only when its
+// clock moved), surface (the name's lit surface, only while the name shows),
+// composite, cards.
 
 export type UpdateSteps<F> = {
   scroll: (frame: F) => void;
   conveyor: (frame: F) => void;
   helix: (frame: F) => void;
   entrance: (frame: F) => void;
+  shape: (frame: F) => void;
   rebuild: (frame: F) => void;
   unwind: (frame: F) => void;
   name: (frame: F) => void;
@@ -43,6 +45,7 @@ export function runUpdate<F>(steps: UpdateSteps<F>, frame: F) {
   steps.conveyor(frame);
   steps.helix(frame);
   steps.entrance(frame);
+  steps.shape(frame);
   steps.rebuild(frame);
   steps.unwind(frame);
   steps.name(frame);
