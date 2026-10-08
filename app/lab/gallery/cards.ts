@@ -20,6 +20,9 @@ export interface LabPhoto {
   // is drawn at 3:4 whatever this says.
   shape: number;
   caption?: string;
+  // A shorter caption for the phone stage only, so one long caption does not
+  // set the stage's height for every photo (cards.md, "Phone fit notes").
+  captionShort?: string;
   // The widest it may draw, for a source that should show at 1x or smaller.
   maxWidth?: number;
   // What photos.md puts here, so the stand-in is never mistaken for the pick.
@@ -36,6 +39,9 @@ export interface LabCard {
   logo?: { light: string; dark: string };
   title: string;
   meta: string;
+  // A shorter meta line for the modal where the book's is long; the book row
+  // keeps the full one (cards.md, "Phone fit notes").
+  modalMeta?: string;
   blocks: string[];
   photos: LabPhoto[];
   links: { label: string; href: string }[];
@@ -61,10 +67,10 @@ export const shapeLabel = (aspect: number) => SHAPES.find((s) => Math.abs(s.aspe
 const V = 3 / 4;
 const H43 = 4 / 3;
 
-function photo(src: string, block: number | undefined, shape: number, caption: string | undefined, intended: string, maxWidth?: number): LabPhoto {
+function photo(src: string, block: number | undefined, shape: number, caption: string | undefined, intended: string, extra: Partial<Pick<LabPhoto, "maxWidth" | "captionShort">> = {}): LabPhoto {
   const found = photoBySrc.get(src);
   if (!found) throw new Error(`No photo ${src} in lib/content.ts`);
-  return { src, width: found.width, height: found.height, alt: found.alt, block, shape, caption, intended, maxWidth };
+  return { src, width: found.width, height: found.height, alt: found.alt, block, shape, caption, intended, ...extra };
 }
 
 export const CARDS: readonly LabCard[] = [
@@ -95,14 +101,14 @@ export const CARDS: readonly LabCard[] = [
     title: "Hackathons",
     meta: "Builder, 2026 to now",
     blocks: [
-      "**Hook 'Em Hacks, spring 2026.** Won the finance track with the first build and MVP/Proof of Concept of min/Max.",
       "**UFCU Develop U, fall 2026.** Won with UFCU Front Desk, a digital front desk assistant that makes joining a credit union simple and still sounds like them.",
+      "**Hook 'Em Hacks, spring 2026.** Won the finance track with the first build and MVP/Proof of Concept of min/Max.",
       "**Vercel one-day hackathon, New York.** Where I started Talos.",
       "HackTX & others, coming soon.",
     ],
     photos: [
       photo("/photos/claude-hackathon.jpeg", undefined, V, "Me and my team winning UFCU Develop U.", "card picture: the UFCU check, 3:4"),
-      photo("/photos/hsf-speaking.jpeg", 0, 1.41, "Me at Hook 'Em Hacks, winning.", "the min/Max winner slide, horizontal 1.41:1"),
+      photo("/photos/hsf-speaking.jpeg", 1, 1.41, "Me at Hook 'Em Hacks, winning.", "the min/Max winner slide, horizontal 1.41:1"),
       photo("/photos/mt-fuji.jpeg", 2, V, "Me at a one-day Vercel hackathon in New York City.", "the Built in NYC poster, vertical"),
     ],
     links: [],
@@ -120,8 +126,8 @@ export const CARDS: readonly LabCard[] = [
     photos: [
       photo("/photos/hsf-speaking.jpeg", undefined, V, "Me at my first HSF.", "card picture: the HSF speaking original, 3:4"),
       photo("/photos/drum-major.jpeg", 0, 1.15, "Me at my second HSF, this time as a mentor.", "the STEM Summit photo booth print, 1.15:1"),
-      photo("/photos/hsf-speaking.jpeg", undefined, H43, "Me at HSF my first year, as a scholar.", "the red sponsor backdrop group, horizontal 4:3"),
-      photo("/photos/drum-major.jpeg", undefined, H43, "Me at my first SHPE national convention, 2023. I've been to every one since.", "the SHPE Familia sign group, horizontal 4:3"),
+      photo("/photos/hsf-speaking.jpeg", 0, H43, "Me at HSF my first year, as a scholar.", "the red sponsor backdrop group, horizontal 4:3"),
+      photo("/photos/drum-major.jpeg", 1, H43, "Me at my first SHPE national convention, 2023. I've been to every one since.", "the SHPE Familia sign group, horizontal 4:3"),
     ],
     links: [{ label: "Grab some time with me", href: "https://cal.com/aaron-sulbaran" }],
   },
@@ -131,6 +137,7 @@ export const CARDS: readonly LabCard[] = [
     logo: { light: "/work/logos/ieee.svg", dark: "/work/logos/ieee.svg" },
     title: "IEEE UT Austin",
     meta: "President, Corporate Director, and [AO](tip:ieee-ao), 2023 to 2026",
+    modalMeta: "President, 2023 to 2026",
     blocks: [
       "IEEE UT was my home away from home at UT. I credit much of my leadership development to my experience here. From assistant officer my freshman year to president my junior year, I made some of my closest friends in this organization.",
       "My Freshman year I helped host events to bring ECE majors together, particularly my fellow freshmen going through the same struggles I was going through. I also performed at Cockrell's yearly Ramshorn Talent show as \"Aango,\" a [Rango](tip:aango) knockoff that rapped.",
@@ -139,9 +146,9 @@ export const CARDS: readonly LabCard[] = [
       "My proudest moments in IEEE came when ECE students told me that a company I brought to an IEEE event is the reason they got their internships or jobs. I aim to never stop making an impact, no matter where I go.",
     ],
     photos: [
-      photo("/photos/hsf-speaking.jpeg", 1, 1.5, "Me at a rock climbing social with IEEE and other engineering orgs.", "the Austin Boulder Project social, horizontal 3:2"),
+      photo("/photos/hsf-speaking.jpeg", 0, 1.5, "Me at a rock climbing social with IEEE and other engineering orgs.", "the Austin Boulder Project social, horizontal 3:2"),
       photo("/photos/drum-major.jpeg", 3, 1.87, "Us receiving our Outstanding Large Student Branch plaque.", "the award group, horizontal 1.87:1"),
-      photo("/photos/yosemite-hiking.jpeg", undefined, V, "Me at my last IEEE Rising Stars conference as president of the chapter.", "the Rising Stars banner, vertical"),
+      photo("/photos/yosemite-hiking.jpeg", 4, V, "Me at my last IEEE Rising Stars conference as president of the chapter.", "the Rising Stars banner, vertical"),
     ],
     links: [{ label: "ieee.ece.utexas.edu", href: "https://ieee.ece.utexas.edu/" }],
   },
@@ -158,7 +165,7 @@ export const CARDS: readonly LabCard[] = [
     photos: [
       photo("/photos/hsf-speaking.jpeg", 0, H43, "Me, my co-ambassadors and the judges at Hooked on Claude, our hackathon.", "the Hooked on Claude group, horizontal 4:3"),
       photo("/photos/claude-hackathon.jpeg", 1, V, "Me teaching a live Claude session for Longhorn Neurotech.", "the context is key session, vertical"),
-      photo("/photos/drum-major.jpeg", undefined, H43, "Me teaching during one of our learning sessions.", "the lesson plan lecture hall, horizontal 4:3"),
+      photo("/photos/drum-major.jpeg", 1, H43, "Me teaching during one of our learning sessions.", "the lesson plan lecture hall, horizontal 4:3"),
     ],
     links: [{ label: "txclaude.org", href: "https://txclaude.org" }],
   },
@@ -176,7 +183,9 @@ export const CARDS: readonly LabCard[] = [
       photo("/photos/traveling.jpeg", undefined, V, undefined, "card picture: the parking deck at golden hour, 3:4"),
       photo("/photos/uncs-grad.jpeg", 0, V, "I drove Misuki to my high school graduation and had to take a photo with her.", "the graduation night, vertical, levelled"),
       photo("/photos/misuki.jpeg", 1, V, "Misuki breaks down on me (a lot), but I keep her going.", "the engine on the lift, vertical"),
-      photo("/photos/hsf-speaking.jpeg", undefined, H43, "Owning a manual Miata is part of why I went to the Mazda Museum in Hiroshima, where I saw the real Mazda 787B that won Le Mans in 1991.", "the Mazda 787B, horizontal 4:3"),
+      photo("/photos/hsf-speaking.jpeg", 1, H43, "Owning a manual Miata is part of why I went to the Mazda Museum in Hiroshima, where I saw the real Mazda 787B that won Le Mans in 1991.", "the Mazda 787B, horizontal 4:3", {
+        captionShort: "The real Mazda 787B that won Le Mans in 1991, at the Mazda Museum in Hiroshima.",
+      }),
     ],
     links: [],
   },
@@ -193,8 +202,8 @@ export const CARDS: readonly LabCard[] = [
     ],
     photos: [
       photo("/photos/mt-fuji.jpeg", undefined, V, "Me at Vercel Ship in New York City, one door LinkedIn opened this summer.", "card picture: the Ship NYC selfie, flipped, 3:4"),
-      photo("/photos/capital-one.jpeg", 0, 532 / 517, "My top performing posts on LinkedIn.", "the LinkedIn analytics screenshot, 532 by 517, 1x at most", 532),
-      photo("/photos/yosemite-hiking.jpeg", undefined, V, "Me in Toronto, another one.", "the Toronto window and the CN Tower, vertical"),
+      photo("/photos/capital-one.jpeg", 0, 532 / 517, "My top performing posts on LinkedIn.", "the LinkedIn analytics screenshot, 532 by 517, 1x at most", { maxWidth: 532 }),
+      photo("/photos/yosemite-hiking.jpeg", 0, V, "Me in Toronto, another one.", "the Toronto window and the CN Tower, vertical"),
     ],
     links: [
       { label: "LinkedIn", href: "https://www.linkedin.com/in/aaron-sulbaran/" },

@@ -5,8 +5,8 @@ const V = 3 / 4;
 const H = 4 / 3;
 
 describe("interleave", () => {
-  it("pairs vertical photos beside their blocks, alternating sides from the left", () => {
-    // Capital One: five blocks, three vertical summers.
+  it("pairs vertical photos beside the blocks they name, alternating sides from the left", () => {
+    // Capital One: five blocks, three vertical summers on blocks 1 to 3.
     const rows = interleave(5, [
       { block: 1, aspect: V },
       { block: 2, aspect: V },
@@ -21,89 +21,94 @@ describe("interleave", () => {
     ]);
   });
 
-  it("stacks a horizontal photo above its block and alternates only the side-by-side rows", () => {
-    // Hackathons: a horizontal, then two verticals.
-    const rows = interleave(4, [
-      { block: 0, aspect: 1.41 },
-      { block: 1, aspect: V },
-      { block: 2, aspect: V },
+  it("pairs by the block value, never by position (IEEE)", () => {
+    // IEEE: the climbing social on block 0, the award on 3, Rising Stars on 4.
+    const rows = interleave(5, [
+      { block: 0, aspect: 1.5 },
+      { block: 3, aspect: 1.87 },
+      { block: 4, aspect: V },
     ]);
     expect(rows).toEqual([
       { kind: "stack", block: 0, photo: 0 },
-      { kind: "pair", block: 1, photo: 1, side: "left" },
-      { kind: "pair", block: 2, photo: 2, side: "right" },
-      { kind: "text", block: 3 },
+      { kind: "text", block: 1 },
+      { kind: "text", block: 2 },
+      { kind: "stack", block: 3, photo: 1 },
+      { kind: "pair", block: 4, photo: 2, side: "left" },
     ]);
   });
 
-  it("gives each horizontal extra its own row and groups vertical extras between them", () => {
-    // Misuki: two paired verticals, then a horizontal and a vertical extra.
-    const misuki = interleave(2, [{ block: 0, aspect: V }, { block: 1, aspect: V }, { aspect: H }, { aspect: V }]);
-    expect(misuki.slice(2)).toEqual([
+  it("stacks further photos of a block under it: horizontals alone, verticals sharing a row", () => {
+    // Anthropic: the hackathon on block 0; two teaching photos on block 1.
+    expect(interleave(2, [{ block: 0, aspect: H }, { block: 1, aspect: V }, { block: 1, aspect: H }])).toEqual([
+      { kind: "stack", block: 0, photo: 0 },
+      { kind: "pair", block: 1, photo: 1, side: "left" },
       { kind: "wide", photo: 2 },
-      { kind: "photos", photos: [3], side: "left" },
     ]);
-    const mixed = interleave(1, [{ aspect: V }, { aspect: V }, { aspect: 2 }, { aspect: V }, { aspect: 0.8 }]);
-    expect(mixed).toEqual([
+    const shared = interleave(2, [{ block: 0, aspect: V }, { block: 0, aspect: V }, { block: 0, aspect: 0.8 }, { block: 0, aspect: 2 }]);
+    expect(shared).toEqual([
+      { kind: "pair", block: 0, photo: 0, side: "left" },
+      { kind: "photos", photos: [1, 2], side: "right" },
+      { kind: "wide", photo: 3 },
+      { kind: "text", block: 1 },
+    ]);
+  });
+
+  it("puts photos with no block, or a block the card lacks, after the last block", () => {
+    const rows = interleave(2, [{ block: 0, aspect: V }, { aspect: 2 }, { block: 9, aspect: V }]);
+    expect(rows.slice(2)).toEqual([
+      { kind: "wide", photo: 1 },
+      { kind: "photos", photos: [2], side: "right" },
+    ]);
+  });
+
+  it("puts every photo after a card's only block", () => {
+    expect(interleave(1, [{ block: 0, aspect: V }, { block: 0, aspect: V }])).toEqual([
       { kind: "text", block: 0 },
       { kind: "photos", photos: [0, 1], side: "left" },
-      { kind: "wide", photo: 2 },
-      { kind: "photos", photos: [3, 4], side: "right" },
     ]);
   });
 
   it("decides wide by the threshold, so the 1.15:1 booth print can go either way", () => {
-    // Mentorship: the flown 3:4 card picture, the 1.15:1 booth print, two 4:3 extras.
-    const photos = [{ block: 0, aspect: V }, { block: 1, aspect: 1.15 }, { aspect: H }, { aspect: H }];
-    expect(interleave(2, photos, { wideFrom: 1.1 }).map((r) => r.kind)).toEqual(["pair", "stack", "wide", "wide"]);
-    expect(interleave(2, photos, { wideFrom: 1.2 }).map((r) => r.kind)).toEqual(["pair", "pair", "wide", "wide"]);
+    // Mentorship: the card picture, the booth print and the red backdrop on block 0, SHPE on block 1.
+    const photos = [{ aspect: V }, { block: 0, aspect: 1.15 }, { block: 0, aspect: H }, { block: 1, aspect: H }];
+    expect(interleave(2, photos, { lead: 0, wideFrom: 1.1 })).toEqual([
+      { kind: "lead", photo: 0, block: 0 },
+      { kind: "wide", photo: 1 },
+      { kind: "wide", photo: 2 },
+      { kind: "stack", block: 1, photo: 3 },
+    ]);
+    expect(interleave(2, photos, { lead: 0, wideFrom: 1.2 })[1]).toEqual({ kind: "photos", photos: [1], side: "left" });
     expect(isWide(1.1, 1.1)).toBe(true);
   });
 
-  it("puts every photo after a card's only block; a taken block slides the photo to the next free one", () => {
-    expect(interleave(1, [{ block: 0, aspect: V }]).map((r) => r.kind)).toEqual(["text", "photos"]);
-    const rows = interleave(3, [{ block: 0, aspect: V }, { block: 0, aspect: V }, { block: 2, aspect: V }, { block: 7, aspect: V }]);
-    expect(rows).toEqual([
-      { kind: "pair", block: 0, photo: 0, side: "left" },
-      { kind: "pair", block: 1, photo: 1, side: "right" },
-      { kind: "pair", block: 2, photo: 2, side: "left" },
-      { kind: "photos", photos: [3], side: "right" },
-    ]);
-  });
-
-  it("leads with the card picture beside the title and the first block, that block's photo right under it", () => {
-    // Hackathons: the card picture, Hook 'Em (horizontal, block 0), Vercel (block 2).
-    const photos = [{ aspect: V }, { block: 0, aspect: 1.41 }, { block: 2, aspect: V }];
+  it("leads with the card picture beside the title and the first block, that block's photos under it", () => {
+    // Hackathons, reordered: UFCU (block 0, the card picture), Hook 'Em (block 1), Vercel (block 2).
+    const photos = [{ aspect: V }, { block: 1, aspect: 1.41 }, { block: 2, aspect: V }];
     expect(interleave(4, photos, { lead: 0 })).toEqual([
       { kind: "lead", photo: 0, block: 0 },
-      { kind: "wide", photo: 1 },
-      { kind: "text", block: 1 },
+      { kind: "stack", block: 1, photo: 1 },
       { kind: "pair", block: 2, photo: 2, side: "left" },
       { kind: "text", block: 3 },
     ]);
-    // Misuki: a vertical photo of block 0 sits under the lead on a side; the
-    // alternation carries on from it.
-    const misuki = interleave(2, [{ aspect: V }, { block: 0, aspect: V }, { block: 1, aspect: V }, { aspect: H }], { lead: 0 });
-    expect(misuki).toEqual([
+    // Building in public: two photos on block 0 share a row under the lead.
+    expect(interleave(3, [{ aspect: V }, { block: 0, aspect: 532 / 517 }, { block: 0, aspect: V }], { lead: 0 })).toEqual([
       { kind: "lead", photo: 0, block: 0 },
-      { kind: "photos", photos: [1], side: "left" },
-      { kind: "pair", block: 1, photo: 2, side: "right" },
-      { kind: "wide", photo: 3 },
+      { kind: "photos", photos: [1, 2], side: "left" },
+      { kind: "text", block: 1 },
+      { kind: "text", block: 2 },
     ]);
-    // A card with no blocks keeps the lead row with the title alone.
     expect(interleave(0, [{ aspect: V }], { lead: 0 })).toEqual([{ kind: "lead", photo: 0 }]);
   });
 
-  it("can lead with the card picture beside the first block instead, sliding the rest along", () => {
-    // Misuki: the card picture, the graduation (block 0), the engine (block 1), the Mazda (extra).
-    const photos = [{ aspect: V }, { block: 0, aspect: V }, { block: 1, aspect: V }, { aspect: H }];
+  it("can lead with the card picture beside the first block instead, its block's photos stacking under", () => {
+    // Misuki: the card picture, the graduation (block 0), the shop and Hiroshima (block 1).
+    const photos = [{ aspect: V }, { block: 0, aspect: V }, { block: 1, aspect: V }, { block: 1, aspect: H }];
     expect(interleave(2, photos, { lead: 0, leadMode: "block" })).toEqual([
       { kind: "pair", block: 0, photo: 0, side: "left" },
-      { kind: "pair", block: 1, photo: 1, side: "right" },
-      { kind: "photos", photos: [2], side: "left" },
+      { kind: "photos", photos: [1], side: "right" },
+      { kind: "pair", block: 1, photo: 2, side: "left" },
       { kind: "wide", photo: 3 },
     ]);
-    expect(readingOrder(interleave(2, photos, { lead: 0, leadMode: "block" }))).toEqual([0, 1, 2, 3]);
     expect(readingOrder(interleave(2, photos, { lead: 0 }))).toEqual([0, 1, 2, 3]);
   });
 

@@ -62,7 +62,7 @@ export function Header({ card, theme, compact }: { card: LabCard; theme: "light"
         </div>
         <div data-mask={partId.meta} data-mask-kind="text">
           <p data-mask-inner="" data-mask-split="" className="text-accent" style={labelFace}>
-            <Runs runs={runsOf(card.meta)} />
+            <Runs runs={runsOf(card.modalMeta ?? card.meta)} />
           </p>
         </div>
       </div>
