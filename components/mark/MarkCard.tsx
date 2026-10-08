@@ -2,7 +2,7 @@
 
 import { useLayoutEffect, useRef } from "react";
 import { X } from "lucide-react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, motion, useIsPresent, useReducedMotion } from "framer-motion";
 import { MarkStrike } from "@/components/mark/MarkStrike";
 import { useCloseHint } from "@/components/PhotoModal";
 import { Portal } from "@/components/Portal";
@@ -20,7 +20,11 @@ import { navigateToSection } from "@/lib/scroll";
 // strike, the surface and the words; they never animate one element. The
 // surface is opaque bg-background, since bg-background/NN emits nothing with
 // var() colors. Reduced motion: the static mark, the panel fades in over 180ms.
+// A close mid-strike pauses the open and GSAP lifts the night and flash within
+// the panel's exit, so the page never pops back at unmount.
 const COPY = siteContent.mark;
+const EXIT_S = 0.2;
+const DIP_LIFT_S = 0.16;
 
 export function MarkCard({ open, onClose }: { open: boolean; onClose: () => void }) {
   const reduced = !!useReducedMotion();
@@ -56,18 +60,36 @@ function MarkDialog({ reduced, onClose, onCta }: { reduced: boolean; onClose: ()
   useEscapeKey(true, onClose);
   useFocusTrap(dialogRef, true);
 
+  const isPresent = useIsPresent();
+  const strike = useRef<{ ctx: gsap.Context; open: gsap.core.Timeline } | null>(null);
+
   useLayoutEffect(() => {
     const scope = dialogRef.current;
     if (!scope || reduced) return;
+    const built: { open?: gsap.core.Timeline } = {};
     const ctx = gsap.context(() => {
-      buildCardOpen(scope).play(0);
+      built.open = buildCardOpen(scope).play(0);
     }, scope);
-    return () => ctx.revert();
+    if (built.open) strike.current = { ctx, open: built.open };
+    return () => {
+      strike.current = null;
+      ctx.revert();
+    };
   }, [reduced]);
+
+  useLayoutEffect(() => {
+    const live = strike.current;
+    const dips = dialogRef.current?.querySelectorAll("[data-cel-night], [data-cel-flash]");
+    if (isPresent || !live || !dips?.length) return;
+    live.ctx.add(() => {
+      live.open.pause();
+      gsap.to(dips, { opacity: 0, duration: DIP_LIFT_S, ease: "power1.out", overwrite: true });
+    });
+  }, [isPresent]);
 
   const panel = reduced
     ? { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { duration: 0.18, ease: "linear" as const } }, exit: { opacity: 0, transition: { duration: 0.12 } } }
-    : { hidden: { opacity: 1 }, visible: { opacity: 1 }, exit: { opacity: 0, transition: { duration: 0.2, ease: "easeIn" as const } } };
+    : { hidden: { opacity: 1 }, visible: { opacity: 1 }, exit: { opacity: 0, transition: { duration: EXIT_S, ease: "easeIn" as const } } };
 
   return (
     <motion.div
