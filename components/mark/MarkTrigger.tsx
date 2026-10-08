@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import { useReducedMotion } from "framer-motion";
-import { MarkCard } from "@/components/mark/MarkCard";
 import { AsMark } from "@/components/menu/BrandMark";
 import { MARK_HOLD_IDLE, setMarkHold } from "@/lib/cursor/hover";
 import { MARK } from "@/lib/mark/constants";
@@ -18,6 +18,12 @@ import { closeMenu, getMenuOpen } from "@/lib/menu";
 // Touch: no pan, no callout, no context menu on the mark. The card never
 // opens over the Menu: a hold that fires with the Menu open closes it first.
 const HOLD_KEYS = new Set(["Enter", " "]);
+
+// The card carries GSAP and the cel strike, so it is its own chunk: the first
+// pointerenter, focus or press arms it and starts the load, well before a hold
+// can fire. Armed, it stays mounted so the dialog's exit still plays.
+const loadCard = () => import("@/components/mark/MarkCard");
+const MarkCard = dynamic(() => loadCard().then((m) => m.MarkCard), { ssr: false });
 
 // After a keyboard hold opens the card, focus lands on Close while the key
 // may still be down; its repeats and its release must not press Close.
@@ -46,6 +52,7 @@ export function MarkTrigger({ ariaLabel, className, onActivate }: Props) {
   const openRef = useRef(false);
   const kick = useRef<() => void>(() => {});
   const [open, setOpen] = useState(false);
+  const [armed, setArmed] = useState(false);
   const [scale, setScale] = useState(1);
 
   useEffect(() => {
@@ -57,6 +64,7 @@ export function MarkTrigger({ ariaLabel, className, onActivate }: Props) {
         state = settle(state);
         if (getMenuOpen()) closeMenu();
         openRef.current = true;
+        setArmed(true);
         setOpen(true);
         if (heldKey.current) swallowHeldKey(heldKey.current);
         heldKey.current = null;
@@ -80,7 +88,13 @@ export function MarkTrigger({ ariaLabel, className, onActivate }: Props) {
   }, []);
 
   const now = () => performance.now();
+  const arm = () => {
+    if (armed) return;
+    void loadCard();
+    setArmed(true);
+  };
   const begin = (source: HoldSource) => {
+    arm();
     if (openRef.current) return;
     hold.current = press(hold.current, now(), source);
     kick.current();
@@ -90,6 +104,7 @@ export function MarkTrigger({ ariaLabel, className, onActivate }: Props) {
     kick.current();
   };
   const grow = () => {
+    arm();
     const size = buttonRef.current?.offsetWidth ?? 32;
     setScale((size + MARK.growPx) / size);
   };
@@ -122,9 +137,7 @@ export function MarkTrigger({ ariaLabel, className, onActivate }: Props) {
           setScale(1);
           stop();
         }}
-        onFocus={(e) => {
-          if (e.currentTarget.matches(":focus-visible")) grow();
-        }}
+        onFocus={(e) => (e.currentTarget.matches(":focus-visible") ? grow() : arm())}
         onBlur={() => setScale(1)}
         onContextMenu={(e) => e.preventDefault()}
         onClick={(e) => {
@@ -171,7 +184,7 @@ export function MarkTrigger({ ariaLabel, className, onActivate }: Props) {
           </svg>
         </span>
       </button>
-      <MarkCard open={open} onClose={close} />
+      {armed && <MarkCard open={open} onClose={close} />}
     </>
   );
 }
