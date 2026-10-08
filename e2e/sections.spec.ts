@@ -247,3 +247,163 @@ test("sections: a live reduced-motion toggle at #connect keeps the reader where 
     expect(Math.abs((await page.evaluate(() => window.scrollY)) - before), `scroll held through the toggle to ${reducedMotion}`).toBeLessThan(2);
   }
 });
+
+// Aaron, 2026-10-08: scrolling down masks every block in; scrolling back up
+// leaves each where it got to, whole or half way. A refresh starts over.
+async function partsOff(page: Page, ids: string[]) {
+  return page.evaluate(
+    ({ ids, skip }) => {
+      const off: string[] = [];
+      for (const id of ids) {
+        for (const block of document.querySelectorAll<HTMLElement>(`${id} [data-sections-block]`)) {
+          for (const el of block.querySelectorAll<HTMLElement>("*")) {
+            if (el.matches(skip)) continue;
+            const style = getComputedStyle(el);
+            const whole = style.transform === "none" || new DOMMatrixReadOnly(style.transform).isIdentity;
+            if (style.opacity !== "1" || !whole || style.filter !== "none") {
+              off.push(`${id} ${block.dataset.sectionsBlock} ${el.tagName} ${style.opacity} ${style.transform} ${style.filter}`);
+            }
+          }
+        }
+      }
+      return off;
+    },
+    { ids, skip: SKIP },
+  );
+}
+
+// Reads twice, a beat apart, until the reading stops changing: the scrub's
+// lag has run out.
+async function steady<T>(page: Page, read: () => Promise<T>): Promise<T> {
+  let last = JSON.stringify(await read());
+  await expect
+    .poll(async () => {
+      await page.waitForTimeout(250);
+      const now = JSON.stringify(await read());
+      const same = now === last;
+      last = now;
+      return same;
+    }, { message: "the reveal settles", timeout: 8000 })
+    .toBe(true);
+  return JSON.parse(last) as T;
+}
+
+test("sections: once risen, About and Who I am stay whole when the reader scrolls back up", async ({ page }) => {
+  await openHome(page);
+  await blocksIn(page, "armed");
+  const risen = ["#about", "#who-i-am"];
+  await scrollToY(page, await page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight));
+  await expect.poll(() => partsOff(page, risen), { message: "whole at the footer", timeout: 8000 }).toEqual([]);
+  await scrollToY(page, 0);
+  expect(await steady(page, () => partsOff(page, risen)), "still whole back at the top").toEqual([]);
+});
+
+test("sections: a block scrolled back above its band half revealed stays as it was", async ({ page }) => {
+  await openHome(page);
+  await blocksIn(page, "armed");
+  const item = page.locator('#up-to-now [data-sections-block="item"]').last();
+  const lift = () =>
+    item.locator("[data-sections-text]").evaluate((el) => {
+      const transform = getComputedStyle(el).transform;
+      return transform === "none" ? 0 : Math.round(new DOMMatrixReadOnly(transform).m42 * 10) / 10;
+    });
+  const masked = await lift();
+  expect(masked, "masked before its band").toBeGreaterThan(10);
+  const top = await item.evaluate((el) => el.getBoundingClientRect().top + window.scrollY);
+  // Its top at 72 percent of the viewport: inside its band (84 to 54).
+  await scrollToY(page, Math.round(top - page.viewportSize()!.height * 0.72));
+  const halfway = await steady(page, lift);
+  expect(halfway, "part way up").toBeGreaterThan(0.5);
+  expect(halfway, "part way up").toBeLessThan(masked - 0.5);
+  await scrollToY(page, 0);
+  expect(Math.abs((await steady(page, lift)) - halfway), "held where it got to").toBeLessThan(0.5);
+});
+
+// autoSplit re-splits Who I am on a width change and builds a new timeline
+// for the same block; it starts where the old one was shown, not masked.
+test("sections: a re-split after Who I am has risen keeps it whole", async ({ page }) => {
+  await openHome(page);
+  await blocksIn(page, "armed");
+  await scrollToY(page, await page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight));
+  await expect.poll(() => partsOff(page, ["#who-i-am"]), { timeout: 8000 }).toEqual([]);
+  await scrollToY(page, 0);
+  await resplit(page, "#who-i-am");
+  expect(await steady(page, () => partsOff(page, ["#who-i-am"])), "whole after the re-split").toEqual([]);
+});
+
+// Narrows the page to 1000px and waits for SplitText to replace the block's
+// lines: a line from before the resize leaves the document.
+async function resplit(page: Page, id: string) {
+  await page.evaluate((id) => {
+    Object.assign(window, { __e2eOldLine: document.querySelector(`${id} .sections-line`) });
+  }, id);
+  await page.setViewportSize({ width: 1000, height: 900 });
+  await expect
+    .poll(() => page.evaluate(() => !(window as unknown as { __e2eOldLine: Element }).__e2eOldLine.isConnected), { message: "re-split at the new width" })
+    .toBe(true);
+}
+
+// Each line's drop below its mask, as a percent of its own height.
+async function lineDrops(page: Page, block: string) {
+  return page.locator(block).evaluate((el) =>
+    [...el.querySelectorAll<HTMLElement>(".sections-line")].map((line) => {
+      const transform = getComputedStyle(line).transform;
+      const drop = transform === "none" ? 0 : new DOMMatrixReadOnly(transform).m42;
+      return Math.round((drop / line.offsetHeight) * 1000) / 10;
+    }),
+  );
+}
+
+// A re-split mid-reveal carries on from the share the old timeline showed.
+// Narrower means more lines on a longer stagger, so at the same share every
+// line by index is as far up as it was, or further.
+test("sections: a re-split while Who I am is part way in drops no line", async ({ page }) => {
+  await openHome(page);
+  await blocksIn(page, "armed");
+  const body = '#who-i-am [data-sections-block="body"]';
+  const top = await page.locator(body).evaluate((el) => el.getBoundingClientRect().top + window.scrollY);
+  // Its top at 74 percent of the viewport: a third of the way through its band (84 to 54).
+  await scrollToY(page, Math.round(top - page.viewportSize()!.height * 0.74));
+  const before = await steady(page, () => lineDrops(page, body));
+  expect(before.some((drop) => drop < 1), "some lines risen").toBe(true);
+  expect(before.some((drop) => drop > 100), "some lines still masked").toBe(true);
+  await scrollToY(page, 0);
+  await resplit(page, "#who-i-am");
+  // From the first frame of the new lines through the chase's tail: a
+  // timeline that started over masked would chase back up to the same mark,
+  // so only the frames in between can tell.
+  for (let sample = 0; sample < 15; sample += 1) {
+    const after = await lineDrops(page, body);
+    expect(after.length, "more lines at the narrower width").toBeGreaterThan(before.length);
+    for (const [line, drop] of before.entries()) expect(after[line], `sample ${sample}: line ${line} sits no lower than before`).toBeLessThanOrEqual(drop + 1);
+    await page.waitForTimeout(100);
+  }
+});
+
+// The flip to reduced motion reverts every block, risen, half way or masked,
+// to the markup a reduced-motion load serves. GSAP's revert leaves an empty
+// style attribute behind (it did before reveals stayed risen too), which
+// styles nothing.
+test("sections: a live flip to reduced motion mid-page returns every block's server markup", async ({ page }) => {
+  const blocks = (target: Page) =>
+    target.evaluate(() =>
+      [...document.querySelectorAll<HTMLElement>("[data-sections-block]")].map((block) => block.outerHTML.replaceAll(' style=""', "")),
+    );
+  const still = await page.context().newPage();
+  await still.emulateMedia({ reducedMotion: "reduce" });
+  await still.goto("/");
+  await settled(still);
+  await blocksIn(still, "still");
+  const served = await blocks(still);
+  await still.close();
+
+  await openHome(page);
+  await blocksIn(page, "armed");
+  const item = page.locator('#up-to-now [data-sections-block="item"]').last();
+  const top = await item.evaluate((el) => el.getBoundingClientRect().top + window.scrollY);
+  await scrollToY(page, Math.round(top - page.viewportSize()!.height * 0.72));
+  await nextFrames(page, 10);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await blocksIn(page, "still");
+  expect(await blocks(page)).toEqual(served);
+});
