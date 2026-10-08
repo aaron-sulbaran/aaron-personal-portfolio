@@ -9,7 +9,7 @@ import { coverScale } from "@/lib/photoSizes";
 export type Side = "left" | "right";
 
 export type Row =
-  | { kind: "lead"; photo: number; block?: number } // the card picture beside the title, and the first block if no photo claims it
+  | { kind: "lead"; photo: number; block?: number } // the card picture beside the title and the first block
   | { kind: "pair"; block: number; photo: number; side: Side } // a vertical photo beside its paragraph
   | { kind: "stack"; block: number; photo: number } // a horizontal photo across the row, its paragraph under it
   | { kind: "text"; block: number }
@@ -39,8 +39,10 @@ export interface InterleaveOptions {
 
 export const isWide = (aspect: number, wideFrom: number) => aspect >= wideFrom;
 
-// The card picture, when there is one, comes first. Each other photo sits
-// with its block: a vertical one beside it, the sides alternating from the
+// The card picture, when there is one, comes first. Beside the title, its row
+// also carries the first block, and a photo belonging to that block follows
+// directly under the row (on its own row, by its shape). Each other photo
+// sits with its block: a vertical one beside it, the sides alternating from the
 // left among the side-by-side rows; a horizontal one across the row above it.
 // A photo whose block is taken slides to the next free block after it, so
 // the reading order holds. Extras follow the last block in reading order:
@@ -61,10 +63,13 @@ export function interleave(blockCount: number, photos: readonly PhotoRef[], { ex
     }
     return false;
   };
+  const leadTitle = hasLead && leadMode === "title" && blockCount > 0;
+  const underLead: number[] = [];
   if (hasLead && leadMode === "block" && !claim(lead, 0)) extras.push(lead);
   photos.forEach((photo, index) => {
     if (hasLead && index === lead) return;
-    if (!claim(index, photo.block)) extras.push(index);
+    if (leadTitle && photo.block === 0 && underLead.length === 0) underLead.push(index);
+    else if (!claim(index, leadTitle && photo.block === 0 ? 1 : photo.block)) extras.push(index);
   });
 
   const rows: Row[] = [];
@@ -73,11 +78,11 @@ export function interleave(blockCount: number, photos: readonly PhotoRef[], { ex
   const wide = (photo: number) => isWide(photos[photo].aspect, wideFrom);
 
   let firstBlock = 0;
-  if (hasLead && leadMode === "title") {
-    const carries = blockCount > 0 && !pairedTo.has(0);
-    rows.push(carries ? { kind: "lead", photo: lead, block: 0 } : { kind: "lead", photo: lead });
-    if (carries) firstBlock = 1;
-  }
+  if (leadTitle) {
+    rows.push({ kind: "lead", photo: lead, block: 0 });
+    for (const photo of underLead) rows.push(wide(photo) ? { kind: "wide", photo } : { kind: "photos", photos: [photo], side: nextSide() });
+    firstBlock = 1;
+  } else if (hasLead && leadMode === "title") rows.push({ kind: "lead", photo: lead });
   for (let block = firstBlock; block < blockCount; block++) {
     const photo = pairedTo.get(block);
     if (photo === undefined) rows.push({ kind: "text", block });

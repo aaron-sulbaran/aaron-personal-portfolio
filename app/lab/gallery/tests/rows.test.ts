@@ -71,19 +71,27 @@ describe("interleave", () => {
     ]);
   });
 
-  it("leads with the card picture beside the title, carrying the first block when no photo claims it", () => {
+  it("leads with the card picture beside the title and the first block, that block's photo right under it", () => {
     // Hackathons: the card picture, Hook 'Em (horizontal, block 0), Vercel (block 2).
     const photos = [{ aspect: V }, { block: 0, aspect: 1.41 }, { block: 2, aspect: V }];
     expect(interleave(4, photos, { lead: 0 })).toEqual([
-      { kind: "lead", photo: 0 },
-      { kind: "stack", block: 0, photo: 1 },
+      { kind: "lead", photo: 0, block: 0 },
+      { kind: "wide", photo: 1 },
       { kind: "text", block: 1 },
       { kind: "pair", block: 2, photo: 2, side: "left" },
       { kind: "text", block: 3 },
     ]);
-    // Building in public: block 0 is claimed by the screenshot, so the lead
-    // row carries none; with no claim on block 0 it carries it.
-    expect(interleave(2, [{ aspect: V }, { block: 1, aspect: V }], { lead: 0 })[0]).toEqual({ kind: "lead", photo: 0, block: 0 });
+    // Misuki: a vertical photo of block 0 sits under the lead on a side; the
+    // alternation carries on from it.
+    const misuki = interleave(2, [{ aspect: V }, { block: 0, aspect: V }, { block: 1, aspect: V }, { aspect: H }], { lead: 0 });
+    expect(misuki).toEqual([
+      { kind: "lead", photo: 0, block: 0 },
+      { kind: "photos", photos: [1], side: "left" },
+      { kind: "pair", block: 1, photo: 2, side: "right" },
+      { kind: "wide", photo: 3 },
+    ]);
+    // A card with no blocks keeps the lead row with the title alone.
+    expect(interleave(0, [{ aspect: V }], { lead: 0 })).toEqual([{ kind: "lead", photo: 0 }]);
   });
 
   it("can lead with the card picture beside the first block instead, sliding the rest along", () => {
