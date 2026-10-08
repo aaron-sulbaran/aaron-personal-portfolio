@@ -32,9 +32,6 @@ export const FIELD = {
   secondScale: [0.7, 1.45] as const, // lobe falloff, x (times aspect) and y
   // The static grain inside the letters: plus or minus 4/255, one device px.
   grain: 0.016,
-  // The name's gradient mix: the lab mixes at ink * 2.2, so 12 percent ink is
-  // 26.4 percent of the gradient color (review item 6, kept and written down).
-  nameInkGain: COIL.lockup.inkGain,
   // The field fades to paper over the last 14 percent of the hero (item 8).
   seamFade: 0.14,
 } as const;
