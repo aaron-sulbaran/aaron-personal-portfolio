@@ -197,7 +197,10 @@ function Readout({ measure, doneAtMs }: { measure: Measure | null; doneAtMs: num
 // One shape per photo on this card, 4:5 vertical to 2:1 horizontal. The
 // stand-ins are cropped to it; the defaults are the real photos' shapes.
 function ShapePicker({ card, shapes, setShape, resetShapes, wideFrom }: { card: LabCard; shapes: number[]; setShape: (index: number, aspect: number) => void; resetShapes: () => void; wideFrom: number }) {
-  const options = SHAPES.map((shape) => ({ value: String(shape.aspect), label: shape.label }));
+  // The list, plus the photo's own shape when it is not one of them (the
+  // LinkedIn screenshot is 1.03:1), sorted from tall to wide.
+  const optionsFor = (own: number, current: number) =>
+    [...new Set([...SHAPES.map((sh) => sh.aspect), own, current])].sort((a, b) => a - b).map((aspect) => ({ value: String(aspect), label: shapeLabel(aspect) }));
   return (
     <Field label="Photo shapes on this card" hint="Stand-ins cropped to the real photos' shapes (photos.md). Change one to see the layout adapt.">
       <div className="flex flex-col gap-2">
@@ -214,7 +217,7 @@ function ShapePicker({ card, shapes, setShape, resetShapes, wideFrom }: { card: 
               ) : (
                 <div className="flex shrink-0 items-center gap-1.5">
                   <span className="text-[11px] text-muted">{aspect >= wideFrom ? "row" : "beside"}</span>
-                  <Select label={`Shape of photo ${i + 1}`} value={String(SHAPES.find((sh) => Math.abs(sh.aspect - aspect) < 0.005)?.aspect ?? aspect)} options={options} onChange={(v) => setShape(i, Number(v))} />
+                  <Select label={`Shape of photo ${i + 1}`} value={String(aspect)} options={optionsFor(photo.shape, aspect)} onChange={(v) => setShape(i, Number(v))} />
                 </div>
               )}
             </div>
