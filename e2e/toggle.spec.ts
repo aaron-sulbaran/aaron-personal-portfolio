@@ -290,7 +290,7 @@ test("toggle: a card flown from the band lands back in the band", async ({ page 
   for (let i = 0; i < 4; i++) expect(Math.hypot(quadAfter[i].x - quadBefore[i].x, quadAfter[i].y - quadBefore[i].y)).toBeLessThan(4);
 });
 test("toggle: a round trip to the band leaves the hero's still frame as it was", async ({ page }) => {
-  // ?coildebug=still holds the field, the name's surface and the conveyor,
+  // ?coildebug=still holds the field, the name surface's clock and the conveyor,
   // so the frame repeats; the keyboard drives the toggle so no pointer stirs
   // the name; the toggle and the cursor are masked.
   await openHome(page, { debug: "still" });
@@ -301,7 +301,10 @@ test("toggle: a round trip to the band leaves the hero's still frame as it was",
   // loader's solid name (scene/name.ts, uSurfIn): both run in real time after
   // the hand-off, still mode or not.
   await page.waitForFunction(
-    () => document.querySelector<HTMLElement>(".coil-loader")?.dataset.state !== "rest" && (window as HookWindow).__coil!.nameFx().surfIn === 1,
+    () => {
+      const loader = document.querySelector<HTMLElement>(".coil-loader");
+      return (!loader || loader.dataset.state === "gone") && (window as HookWindow).__coil!.nameFx().surfIn === 1;
+    },
     null,
     { timeout: 5_000 },
   );
