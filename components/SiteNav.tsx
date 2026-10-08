@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useReducedMotion } from "framer-motion";
 import { Fill } from "@/components/fx/Fill";
-import { AsMark } from "@/components/menu/BrandMark";
+import { MarkTrigger } from "@/components/mark/MarkTrigger";
 import { FILL_PICK } from "@/lib/fx/fill";
 import { siteContent } from "@/lib/content";
 import { useHomeReadiness } from "@/lib/home/readiness";
@@ -25,6 +25,8 @@ import { navigateToSection } from "@/lib/scroll";
 //
 // The mark lives in the pill's layer (z-40), above the menu scrim, so it
 // stays sharp and clickable while the menu is open; the bar sits at z-30.
+// The mark is MarkTrigger: a click scrolls to the top, a 650ms hold opens the
+// mark's card.
 const NAV_ITEMS = siteContent.menu.items.filter((item) => item.key !== "home");
 const SPY_IDS = NAV_ITEMS.map((item) => item.href.slice(1));
 const EASE_CLASS = "ease-[cubic-bezier(0.22,1,0.36,1)]";
@@ -118,17 +120,13 @@ export function SiteNav() {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => goTo("#main")}
-        aria-label={siteContent.menu.markAriaLabel}
-        data-cursor-hover
-        className={`fixed left-4 top-[18px] z-40 block h-[26px] w-[26px] text-foreground transition-transform duration-[450ms] ${EASE_CLASS} focus-visible:translate-y-0 sm:left-6 sm:top-5 sm:h-8 sm:w-8 ${
+      <MarkTrigger
+        ariaLabel={siteContent.menu.markAriaLabel}
+        onActivate={() => goTo("#main")}
+        className={`fixed left-4 top-4 z-40 block h-8 w-8 text-foreground transition-transform duration-[450ms] ${EASE_CLASS} focus-visible:translate-y-0 sm:left-6 sm:h-10 sm:w-10 ${
           tucked ? "-translate-y-[90px]" : ""
         }`}
-      >
-        <AsMark className="block h-full w-full" />
-      </button>
+      />
 
       <header
         className={`pointer-events-none fixed left-0 right-[var(--scrollbar-comp)] top-0 z-30 h-[72px] transition-transform duration-[450ms] ${EASE_CLASS} ${

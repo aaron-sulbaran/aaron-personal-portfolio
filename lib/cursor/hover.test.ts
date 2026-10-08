@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { HINT_OPENED_KEY, createHintStore, getSceneHover, setSceneHover, subscribeSceneHover } from "@/lib/cursor/hover";
+import { HINT_OPENED_KEY, MARK_HOLD_IDLE, createHintStore, getMarkHold, getSceneHover, setMarkHold, setSceneHover, subscribeMarkHold, subscribeSceneHover } from "@/lib/cursor/hover";
 
 describe("scene hover store", () => {
   it("notifies only on a change", () => {
@@ -66,5 +66,18 @@ describe("first-visit hint store", () => {
     const next = createHintStore(storage);
     expect(next.takeOnce("aaron-hint-tap")).toBe(false);
     expect(next.opened()).toBe(false);
+  });
+});
+
+describe("the mark's hold", () => {
+  it("publishes the hold and notifies only on a change", () => {
+    const listener = vi.fn();
+    const unsubscribe = subscribeMarkHold(listener);
+    setMarkHold({ fill: 0.5, spent: 0, closed: false, hidden: false });
+    setMarkHold({ fill: 0.5, spent: 0, closed: false, hidden: false });
+    expect(getMarkHold().fill).toBe(0.5);
+    setMarkHold(MARK_HOLD_IDLE);
+    expect(listener).toHaveBeenCalledTimes(2);
+    unsubscribe();
   });
 });

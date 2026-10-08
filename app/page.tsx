@@ -10,6 +10,7 @@ import { HomeController } from "@/components/home/HomeController";
 import { HeroText } from "@/components/home/HeroText";
 import { Book } from "@/components/book/Book";
 import { Metrics } from "@/components/metrics/Metrics";
+import { MarkCardSource } from "@/components/mark/MarkCardSource";
 
 // The contribution figures refresh once a day (lib/metrics/github.ts); a
 // literal, because Next reads segment config statically.
@@ -48,6 +49,7 @@ export default function Home() {
         </main>
         <Footer dock />
       </div>
+      <MarkCardSource />
     </>
   );
 }
