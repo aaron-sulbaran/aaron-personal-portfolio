@@ -195,6 +195,12 @@ Picked by Aaron from hero lab 2, 2026-09-29 (the build starts on these; see `doc
 - [x] A short notice tells those visitors why the page is still, one sentence per cause in his words, dismissible, remembered per browser. Copy in `siteContent.hero.still`.
 - [x] Reduced motion keeps its own loader branch (no fill, a 300ms fade) and gets the same still.
 
+## 2.14 Aaron's localhost pass, 2026-10-08 (the reveals, the mark, the toggle)
+
+- [x] The section reveals are one-way: mask in on the way down, stay put on the way up, a refresh starts over; only the metrics skyline may return to flat (PR 37). Supersedes the sections lab's "fully reversible".
+- [x] The mark strike ships from the mark lab's picks (PR 38), with the resting mark grown to the Menu pill's band (40px on desktop, 32px on phones, centred on the pill) and the hover growth 10px from the corner.
+- [x] The Coil and Band toggle ships (PR 39): bottom left on the pill's glass, one value on the entrance's pull curve, the strand held mid-switch, coil on every load. Rulings made for him and open to veto: the placement, the hold, the cross-fade with the wind-back button, the capsule inert until the wind-back lands.
+
 ## 9a. Surfaced by the overnight build (2026-09-29), yours in the morning
 
 - [ ] The Profa file in `app/fonts/` is the trial cut: it draws a "personal use only" stamp for `*`, `;` and `@`. Slice 2 routes those three glyphs to the fallback font. Drop the full cut from your asset pack into `app/fonts/` (same filename or update `lib/fonts.ts`) and the workaround goes.

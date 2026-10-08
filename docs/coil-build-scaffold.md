@@ -42,6 +42,8 @@ Picked by Aaron on 2026-09-29 (decision record section 2.9). They live in one ty
 | Hover-jump, unwind | 600ms site ease; 580ms per card, 8ms stagger |
 | Strand fit | repeats fill the pane (M slots over N cards) |
 | Mark, light panel dim | 32px, 30 percent |
+| `toggle.durationMs` | 756ms: the Coil and Band toggle's switch, the entrance's own pull `(1 - entrance.pullStart) * entrance.durationMs` on `entrance.pullCurve` (PR 39, 2026-10-08); the strand holds mid-switch; the band needs at least two spare slots (`M >= N + 2`) |
+| `toggle.trailingDelayMs` | 99ms: the capsule's trailing edge behind its leading edge on the fill's 450ms clock (Aaron's pick, controls lab) |
 
 ## 2. Stack after the rebuild
 
