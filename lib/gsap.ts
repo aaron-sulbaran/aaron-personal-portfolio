@@ -8,15 +8,18 @@
 // raw listener in the scene, never Observer). No Draggable or
 // InertiaPlugin: the scene coasts the conveyor itself. Every full refresh
 // passes through guardRefreshScroll, so a resize never moves the reader.
+// CustomEase names the site's ease "site" for the mark card's GSAP open.
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { Observer } from "gsap/Observer";
 import { SplitText } from "gsap/SplitText";
+import { CustomEase } from "gsap/CustomEase";
 import { useGSAP } from "@gsap/react";
 import { guardRefreshScroll, type RecordedScroll } from "./scrollRefresh";
 
 if (typeof window !== "undefined") {
-  gsap.registerPlugin(useGSAP, ScrollTrigger, Observer, SplitText);
+  gsap.registerPlugin(useGSAP, ScrollTrigger, Observer, SplitText, CustomEase);
+  if (!CustomEase.get("site")) CustomEase.create("site", "0.22,1,0.36,1");
   // Once per page: a dev Fast Refresh re-runs this module, and a second guard
   // would take the first one's auto for the root's own value and keep it.
   const host = window as { __refreshGuard?: true };
@@ -35,4 +38,4 @@ if (typeof window !== "undefined") {
   }
 }
 
-export { gsap, ScrollTrigger, Observer, SplitText, useGSAP };
+export { gsap, ScrollTrigger, Observer, SplitText, CustomEase, useGSAP };
