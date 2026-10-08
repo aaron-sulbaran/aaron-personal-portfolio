@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ComponentType, type RefObject } from "react";
+import { createPortal } from "react-dom";
 import { HOLDING_MODE } from "@/lib/holding";
 import type { InputDriver } from "@/lib/coil/drivers";
 import { CoilErrorBoundary } from "./CoilErrorBoundary";
@@ -65,6 +66,9 @@ export function CoilStage({
   const overlayRef = useRef<HeroOverlayHandle>(null);
   const ownApiRef = useRef<CoilSceneApi>(null);
   const apiRef = api ?? ownApiRef;
+  // The hero section (this stage's parent): the notice renders into it, after the h1.
+  const [hero, setHero] = useState<HTMLElement | null>(null);
+  const stageRef = useCallback((stage: HTMLDivElement | null) => setHero(stage?.parentElement ?? null), []);
 
   const eligible = !reducedMotion && !HOLDING_MODE && !failure && hasWebGL2();
 
@@ -163,7 +167,7 @@ export function CoilStage({
   }, [onSceneChange]);
 
   return (
-    <div className="absolute inset-0 overflow-hidden">
+    <div ref={stageRef} className="absolute inset-0 overflow-hidden">
       <Poster still={still} />
       {mounted && Scene ? (
         <CoilErrorBoundary key={generation} onError={handleError}>
@@ -183,9 +187,9 @@ export function CoilStage({
         </CoilErrorBoundary>
       ) : null}
       <HeroOverlay ref={overlayRef} api={apiRef} onRowOpen={onRowOpen} entrance={entrance} />
-      {heroScene === "still" && ready ? (
-        <StillNotice cause={stillCause({ reducedMotion, hasApi: hasWebGL2(), failure })} />
-      ) : null}
+      {heroScene === "still" && ready && hero
+        ? createPortal(<StillNotice cause={stillCause({ reducedMotion, hasApi: hasWebGL2(), failure })} />, hero)
+        : null}
     </div>
   );
 }

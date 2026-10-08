@@ -80,11 +80,22 @@ test("a11y: nothing focusable sits inside aria-hidden, and every reachable contr
   expect(report.unnamed, "focusable elements with no accessible name").toEqual([]);
 });
 
-test("a11y (no WebGL 2): the notice's Got it is a named tab stop between the Menu pill and the book, nothing focusable hides", async ({ page }) => {
+test("a11y (no WebGL 2): the notice's Got it follows the h1 and is a named tab stop between the Menu pill and the book, nothing focusable hides", async ({ page }) => {
   await page.addInitScript(noWebgl2Api);
   await page.goto("/");
   await settled(page);
   await expect(page.locator("[data-still-notice]")).toBeVisible();
+  const order = await page.evaluate(() => {
+    const h1 = document.getElementById("hero-heading")!;
+    const gotIt = document.querySelector("[data-still-notice] button")!;
+    const book = document.getElementById("work")!;
+    return {
+      afterH1: !!(h1.compareDocumentPosition(gotIt) & Node.DOCUMENT_POSITION_FOLLOWING),
+      beforeBook: !!(gotIt.compareDocumentPosition(book) & Node.DOCUMENT_POSITION_FOLLOWING),
+    };
+  });
+  expect(order.afterH1, "Got it after the h1 in the DOM").toBe(true);
+  expect(order.beforeBook, "and before the book").toBe(true);
   const stops = await tabStops(page);
   const pill = stops.findIndex((stop) => stop.name === "Open menu");
   const gotIt = stops.findIndex((stop) => stop.name.startsWith(siteContent.hero.still.dismiss));

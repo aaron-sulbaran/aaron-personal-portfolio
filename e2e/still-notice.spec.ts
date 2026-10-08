@@ -37,15 +37,29 @@ test("no WebGL 2: the notice says why, and Got it dismisses it for good", async 
   expect(hydration).toEqual([]);
 });
 
-test("a context that cannot be created: the same notice, dismissed from the keyboard, focus to body", async ({ page }) => {
+test("a context that cannot be created: the same notice, after the h1, dismissed from the keyboard, focus to the h1", async ({ page }) => {
   await page.addInitScript(noWebglContext);
   await page.goto("/");
   await settled(page);
   await expectNotice(page, copy.noWebgl);
+  const order = await page.evaluate(() => {
+    const h1 = document.getElementById("hero-heading")!;
+    const status = document.querySelector("[data-still-notice]")!;
+    return { after: !!(h1.compareDocumentPosition(status) & Node.DOCUMENT_POSITION_FOLLOWING), inHero: status.parentElement === h1.closest("section") };
+  });
+  expect(order.after, "the notice follows the h1 in the DOM").toBe(true);
+  expect(order.inHero, "the notice sits in the hero section itself").toBe(true);
   await dismiss(page).focus();
   await page.keyboard.press("Enter");
   await expect(notice(page)).toHaveCount(0);
-  expect(await page.evaluate(() => document.activeElement === document.body)).toBe(true);
+  const focused = await page.evaluate(() => {
+    const style = getComputedStyle(document.activeElement!);
+    const alpha = Number(style.outlineColor.match(/rgba?\(([^)]+)\)/)?.[1].split(",")[3] ?? 1);
+    return { id: document.activeElement?.id ?? "", ring: style.outlineStyle !== "none" && parseFloat(style.outlineWidth) > 0 && alpha > 0 };
+  });
+  expect(focused.id, "focus lands on the h1").toBe("hero-heading");
+  expect(focused.ring, "with no ring drawn around the whole hero").toBe(false);
+  await expect(page.locator("#hero-heading")).toHaveAttribute("tabindex", "-1");
 });
 
 test("a scene that throws: the notice says it could not start", async ({ page }) => {
