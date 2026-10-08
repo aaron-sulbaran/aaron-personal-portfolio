@@ -137,18 +137,18 @@ const ROUND_ONE: Settings = {
   ease: "site",
 };
 
-// My pick for round two. A photo card's card picture leads beside the title,
-// so the flight lands at the top of the modal and every other photo stays
-// beside its own words. Captions made every vertical row taller, so
-// vertical photos drop to the 320px floor and the rows close to 56px apart:
-// that is what keeps Capital One's first photo above the fold at 1024 by 768
-// behind its unpaired opening paragraph, and it gives the text beside a
-// photo a 486px measure. Anything from 1.1:1 spans the row but stops at
-// 420px tall, so a 4:3 or 3:2 group photo, its caption and its paragraph's
-// first lines clear the fold. On phones the stage holds the tallest photo's
-// height, so the text under it never jumps while the pass runs, and the cap
-// drops to 50 percent: free at 390 by 844 (the width binds there) and the
-// 14px that lets Capital One's first lines show at 360 by 740. Masks
+// My pick, rounds two and three. A photo card's card picture leads beside
+// the title, so the flight lands at the top of the modal and every other
+// photo stays beside its own words. Captions made every vertical row taller,
+// so vertical photos drop to the 320px floor and the rows close to 56px
+// apart: that keeps Capital One's first photo above the fold at 1024 by 768
+// behind its unpaired opening paragraph, and gives the text beside a photo a
+// 486px measure. Anything from 1.1:1 spans the row but stops at 400px tall,
+// 12px over its paragraph, so a 4:3 or 3:2 group photo, its caption and its
+// paragraph clear the fold at 1024 by 768 (IEEE ends at 762 of 768). On
+// phones the stage holds the tallest photo's height, so the text under it
+// never jumps while the pass runs, capped at 48 percent so every card's first
+// lines show at 360 by 740 (IEEE, the tightest, at 735 of 740). Masks
 // unchanged from round one.
 const RECOMMENDED: Settings = {
   panelWidth: 944,
@@ -160,9 +160,9 @@ const RECOMMENDED: Settings = {
   leadMode: "title",
   wideFrom: 1.1,
   wideWidth: 100,
-  wideMaxHeight: 420,
-  stackGap: 20,
-  stageMaxHeight: 50,
+  wideMaxHeight: 400,
+  stackGap: 12,
+  stageMaxHeight: 48,
   autoAdvance: 4,
   crossfadeMs: 420,
   stageFit: "tallest",
@@ -181,7 +181,7 @@ export const PRESETS: readonly { id: string; name: string; note: string; setting
   {
     id: "recommended",
     name: "Recommended",
-    note: "The card picture leads beside the title, so the flight lands at the top. Vertical photos at the 320px floor beside their paragraph, rows 56px apart (Capital One's first photo clears the fold at 1024 by 768); anything from 1.1:1 spans the row up to 420px tall with its caption and paragraph under it; the phone stage holds the tallest photo, capped at 50 percent of the height, so the text never jumps. Masks as round one.",
+    note: "The card picture leads beside the title, so the flight lands at the top. Vertical photos at the 320px floor beside their paragraph, rows 56px apart (Capital One's first photo clears the fold at 1024 by 768); anything from 1.1:1 spans the row up to 400px tall with its caption and paragraph 12px under it; the phone stage holds the tallest photo, capped at 48 percent of the height, so the text never jumps. Masks as round one.",
     settings: RECOMMENDED,
   },
   {

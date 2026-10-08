@@ -14,8 +14,9 @@ import { partId } from "./timing";
 // between them, or holds the tallest, with a shorter photo standing on the
 // stage's floor so it sits on its caption and the spare height joins the
 // space under the close button. Crossfade only, no drift. The caption
-// under it changes with the photo; every caption shares one grid cell, so the
-// longest sets the height and nothing under it moves. Under reduced motion
+// under it changes with the photo (the short caption where one is given);
+// every caption shares one grid cell, so the longest sets the height and
+// nothing under it moves. Under reduced motion
 // the swap is instant and nothing advances on its own.
 
 type Props = {
@@ -132,7 +133,7 @@ export function PhoneStage({ photos, aspects, order, innerWidth, maxHeightPx, fi
                 className="text-sm leading-snug text-muted transition-opacity ease-linear [grid-area:1/1]"
                 style={{ opacity: i === state.index ? 1 : 0, transitionDuration: `${fade}ms` }}
               >
-                {photo.caption ?? ""}
+                {photo.captionShort ?? photo.caption ?? ""}
               </p>
             ))}
           </div>
@@ -155,7 +156,7 @@ export function PhoneStage({ photos, aspects, order, innerWidth, maxHeightPx, fi
         </div>
       )}
       <p className="sr-only" aria-live={state.auto ? "off" : "polite"}>
-        {`Photo ${state.index + 1} of ${photos.length}: ${current?.caption ?? current?.alt ?? ""}`}
+        {`Photo ${state.index + 1} of ${photos.length}: ${current?.captionShort ?? current?.caption ?? current?.alt ?? ""}`}
       </p>
     </div>
   );

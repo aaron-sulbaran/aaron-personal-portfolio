@@ -16,6 +16,16 @@ describe("runsOf", () => {
 });
 
 describe("the lab's cards", () => {
+  it("carry the creative director's pairings, the short modal meta and the phone caption", () => {
+    const byId = (id: string) => CARDS.find((c) => c.id === id)!;
+    expect(byId("ieee").photos.map((p) => p.block)).toEqual([0, 3, 4]);
+    expect(byId("ieee").modalMeta).toBe("President, 2023 to 2026");
+    expect(byId("hackathons").photos.map((p) => p.block)).toEqual([undefined, 1, 2]);
+    expect(byId("mentorship").photos.map((p) => p.block)).toEqual([undefined, 0, 0, 1]);
+    expect(byId("misuki").photos.map((p) => p.block)).toEqual([undefined, 0, 1, 1]);
+    expect(byId("misuki").photos[3].captionShort).toMatch(/^The real Mazda 787B/);
+  });
+
   it("keep the brief's rules: at most four photos, first-person alt text, every photo placed once", () => {
     for (const card of CARDS) {
       expect(card.photos.length).toBeLessThanOrEqual(4);
@@ -31,6 +41,7 @@ describe("the lab's cards", () => {
     const hackathons = CARDS.find((c) => c.id === "hackathons")!;
     expect(drawnShape(hackathons, 0, 2)).toBe(CARD_PICTURE);
     expect(drawnShape(hackathons, 1)).toBeCloseTo(1.41);
+    expect(hackathons.blocks[0]).toMatch(/^\*\*UFCU Develop U/);
     expect(drawnShape(hackathons, 1, 2)).toBe(2);
   });
 

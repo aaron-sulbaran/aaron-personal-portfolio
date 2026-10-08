@@ -39,70 +39,71 @@ export interface InterleaveOptions {
 
 export const isWide = (aspect: number, wideFrom: number) => aspect >= wideFrom;
 
-// The card picture, when there is one, comes first. Beside the title, its row
-// also carries the first block, and a photo belonging to that block follows
-// directly under the row (on its own row, by its shape). Each other photo
-// sits with its block: a vertical one beside it, the sides alternating from the
-// left among the side-by-side rows; a horizontal one across the row above it.
-// A photo whose block is taken slides to the next free block after it, so
-// the reading order holds. Extras follow the last block in reading order:
-// consecutive vertical extras share a row (up to `extrasPerRow`), each
-// horizontal extra takes its own. A card with one block puts every photo
-// after it.
+// The card picture, when there is one, comes first, beside the title; its
+// row also carries the first block (cards.md: "The card picture sits beside
+// the title; it is not paired"). Every other photo pairs with the block its
+// `block` names, never by position. The first photo of a block sits beside
+// it (vertical, the sides alternating from the left among the side-by-side
+// rows) or spans the row above it (horizontal); further photos of the same
+// block stack under it, consecutive vertical ones sharing a row (up to
+// `extrasPerRow`), each horizontal one on its own. Photos naming no block, or
+// one the card lacks, follow the last block the same way. A card with one
+// block puts every photo after it.
 export function interleave(blockCount: number, photos: readonly PhotoRef[], { extrasPerRow = 2, wideFrom = 1.1, lead, leadMode = "title" }: InterleaveOptions = {}): Row[] {
-  const pairedTo = new Map<number, number>();
-  const extras: number[] = [];
   const hasLead = lead !== undefined && lead >= 0 && lead < photos.length;
-  const claim = (index: number, wanted: number | undefined) => {
-    if (blockCount < 2 || wanted === undefined || !Number.isInteger(wanted) || wanted < 0) return false;
-    for (let block = wanted; block < blockCount; block++) {
-      if (!pairedTo.has(block)) {
-        pairedTo.set(block, index);
-        return true;
-      }
-    }
-    return false;
-  };
-  const leadTitle = hasLead && leadMode === "title" && blockCount > 0;
-  const underLead: number[] = [];
-  if (hasLead && leadMode === "block" && !claim(lead, 0)) extras.push(lead);
+  const byBlock: number[][] = Array.from({ length: Math.max(0, blockCount) }, () => []);
+  const extras: number[] = [];
+  const valid = (block: number | undefined): block is number => block !== undefined && Number.isInteger(block) && block >= 0 && block < blockCount;
   photos.forEach((photo, index) => {
     if (hasLead && index === lead) return;
-    if (leadTitle && photo.block === 0 && underLead.length === 0) underLead.push(index);
-    else if (!claim(index, leadTitle && photo.block === 0 ? 1 : photo.block)) extras.push(index);
+    if (valid(photo.block)) byBlock[photo.block].push(index);
+    else extras.push(index);
   });
+  if (hasLead && leadMode === "block") {
+    if (blockCount > 0) byBlock[0].unshift(lead);
+    else extras.unshift(lead);
+  }
 
   const rows: Row[] = [];
   let sideRows = 0;
   const nextSide = (): Side => (sideRows++ % 2 === 0 ? "left" : "right");
   const wide = (photo: number) => isWide(photos[photo].aspect, wideFrom);
+  const perRow = Math.max(1, Math.floor(extrasPerRow));
+  const follow = (list: readonly number[]) => {
+    let run: number[] = [];
+    const flush = () => {
+      for (let i = 0; i < run.length; i += perRow) rows.push({ kind: "photos", photos: run.slice(i, i + perRow), side: nextSide() });
+      run = [];
+    };
+    for (const photo of list) {
+      if (wide(photo)) {
+        flush();
+        rows.push({ kind: "wide", photo });
+      } else run.push(photo);
+    }
+    flush();
+  };
 
   let firstBlock = 0;
-  if (leadTitle) {
-    rows.push({ kind: "lead", photo: lead, block: 0 });
-    for (const photo of underLead) rows.push(wide(photo) ? { kind: "wide", photo } : { kind: "photos", photos: [photo], side: nextSide() });
-    firstBlock = 1;
-  } else if (hasLead && leadMode === "title") rows.push({ kind: "lead", photo: lead });
+  if (hasLead && leadMode === "title") {
+    if (blockCount > 0) {
+      rows.push({ kind: "lead", photo: lead, block: 0 });
+      follow(byBlock[0]);
+      firstBlock = 1;
+    } else rows.push({ kind: "lead", photo: lead });
+  }
   for (let block = firstBlock; block < blockCount; block++) {
-    const photo = pairedTo.get(block);
-    if (photo === undefined) rows.push({ kind: "text", block });
-    else if (wide(photo)) rows.push({ kind: "stack", block, photo });
-    else rows.push({ kind: "pair", block, photo, side: nextSide() });
+    const list = byBlock[block];
+    if (list.length === 0 || blockCount === 1) {
+      rows.push({ kind: "text", block });
+      follow(list);
+      continue;
+    }
+    const [first, ...rest] = list;
+    rows.push(wide(first) ? { kind: "stack", block, photo: first } : { kind: "pair", block, photo: first, side: nextSide() });
+    follow(rest);
   }
-
-  const perRow = Math.max(1, Math.floor(extrasPerRow));
-  let run: number[] = [];
-  const flush = () => {
-    for (let i = 0; i < run.length; i += perRow) rows.push({ kind: "photos", photos: run.slice(i, i + perRow), side: nextSide() });
-    run = [];
-  };
-  for (const photo of extras) {
-    if (wide(photo)) {
-      flush();
-      rows.push({ kind: "wide", photo });
-    } else run.push(photo);
-  }
-  flush();
+  follow(extras);
   return rows;
 }
 
