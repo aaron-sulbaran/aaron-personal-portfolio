@@ -12,7 +12,7 @@ import { PageBehind } from "./PageBehind";
 import { Panel, type View } from "./Panel";
 import { exportValues, INITIAL, PRESETS, sameSettings, type Settings } from "./settings";
 import { desktopSteps, phoneSteps } from "./timing";
-import type { Schedule } from "./useMaskIn";
+import { seekMasks, type Schedule } from "./useMaskIn";
 import "./gallery.css";
 
 // The bench for the photos inside a card's modal (docs/content/modal-gallery.md):
@@ -22,7 +22,7 @@ import "./gallery.css";
 
 declare global {
   interface Window {
-    __galleryLab?: { set: (patch: Partial<Settings>) => void; view: (patch: Partial<View>) => void; replay: () => void; get: () => { s: Settings; view: View; measure: Measure | null; schedule: Schedule | null } };
+    __galleryLab?: { set: (patch: Partial<Settings>) => void; view: (patch: Partial<View>) => void; replay: () => void; seek: (ms: number | null) => boolean; get: () => { s: Settings; view: View; measure: Measure | null; schedule: Schedule | null } };
   }
 }
 
@@ -79,6 +79,7 @@ export function GalleryLab() {
       set: (patch) => setS((x) => ({ ...x, ...patch })),
       view: (patch) => setViewState((v) => ({ ...v, ...patch })),
       replay,
+      seek: seekMasks,
       get: () => ({ s, view, measure, schedule }),
     };
     return () => {

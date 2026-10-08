@@ -94,14 +94,14 @@ export function GalleryContent({ card, s, phone, theme, reduced, frame, runKey, 
 
   if (!phone) {
     return (
-      <div ref={rootRef} className="flex flex-col gap-8">
+      <div key={card.id} ref={rootRef} className="flex flex-col gap-8">
         <DesktopGallery card={card} rows={rows} s={s} theme={theme} firstPhoto={firstPhoto} />
       </div>
     );
   }
 
   return (
-    <div ref={rootRef} className="mt-12 flex flex-col gap-6">
+    <div key={card.id} ref={rootRef} className="mt-12 flex flex-col gap-6">
       <PhoneStage
         key={`${card.id}-${runKey}-${s.autoAdvance}`}
         photos={order.map((i) => card.photos[i])}

@@ -23,6 +23,15 @@ if (typeof window !== "undefined") {
 
 export type Schedule = { steps: MaskStep[]; endMs: number };
 
+// The live run, for the lab's probe: window.__galleryLab.seek(ms) pins it.
+let live: gsap.core.Timeline | null = null;
+export function seekMasks(ms: number | null) {
+  if (!live) return false;
+  if (ms === null) live.play();
+  else live.pause(ms / 1000);
+  return true;
+}
+
 type Options = {
   active: boolean;
   reduced: boolean;
@@ -49,9 +58,12 @@ export function useMaskIn(rootRef: RefObject<HTMLElement | null>, { active, redu
 
     const splits = new Map<string, SplitText>();
     if (s.textSplit === "lines") {
+      // Only a marked paragraph splits (the links mask as one block), and
+      // only its children move: GalleryContent keys its root by card, so
+      // React replaces a split paragraph whole and never patches inside it.
       for (const el of root.querySelectorAll<HTMLElement>('[data-mask-kind="text"]')) {
-        const target = el.querySelector<HTMLElement>("[data-mask-split]") ?? el;
-        splits.set(el.dataset.mask ?? "", SplitText.create(target, { type: "lines", mask: "lines", linesClass: "gallery-line" }));
+        const target = el.querySelector<HTMLElement>("[data-mask-split]");
+        if (target) splits.set(el.dataset.mask ?? "", SplitText.create(target, { type: "lines", mask: "lines", linesClass: "gallery-line" }));
       }
     }
     const lines = (id: string) => splits.get(id)?.lines.length ?? 1;
@@ -74,6 +86,7 @@ export function useMaskIn(rootRef: RefObject<HTMLElement | null>, { active, redu
       },
     });
 
+    live = tl;
     gsap.set(flown, { opacity: 0 });
     tl.set(flown, { opacity: 1 }, s.landingMs / 1000);
 
@@ -101,6 +114,7 @@ export function useMaskIn(rootRef: RefObject<HTMLElement | null>, { active, redu
     }
 
     return () => {
+      if (live === tl) live = null;
       tl.kill();
       for (const split of splits.values()) split.revert();
       gsap.set(touched, { clearProps: WRITTEN });
