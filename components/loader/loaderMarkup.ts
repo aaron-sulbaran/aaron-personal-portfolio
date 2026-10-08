@@ -13,7 +13,7 @@ import { HERO_HEADING_ID } from "@/components/home/HeroText";
 // hides under it, so a load the scene takes over never shows the h1. The
 // pane (the dark ground, the big name, the number) fades in over it only if
 // the load outlives the 250ms guard.
-// With no scene the hero still waits at opacity 0 under the resting lockup and fades in under it (data-dissolve), the lockup at the composite's ink; the lockup then fades out onto the name the still bakes behind its cards (runLoader.ts).
+// With no scene the hero still waits at opacity 0 under the resting lockup (which first lands on the name the still bakes, should cover move it) and fades in under it (data-dissolve), the lockup at the composite's ink; the lockup then fades out onto the name the still bakes behind its cards (runLoader.ts).
 // Only a live loader fades the still: off it (a deep reload's skip, a scene failure after the loader has gone) the still shows in the frame it decodes.
 //
 // The root is the hero's box at the top of the document (the hero is the
