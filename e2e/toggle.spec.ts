@@ -100,8 +100,25 @@ test("toggle: cross-fades its seat to the unwound list's Coil control, and comes
   await expect(toggle(page)).toBeHidden();
   const seat = await page.evaluate(() => (window as unknown as { __seat: number[][] }).__seat);
   expect(seat.filter(([a, b]) => Math.abs(a + b - 1) > 0.01), "one cross-fade, the seat never empty").toEqual([]);
+  // The wind-back: the toggle stays inert until the list's progress is back at 0.
+  await page.evaluate(() => {
+    const w = window as HookWindow & { __back?: [number, boolean][] };
+    const back: [number, boolean][] = (w.__back = []);
+    const tick = () => {
+      const progress = w.__coil!.unwindState().progress;
+      back.push([progress, document.querySelector("[data-shape-toggle]")!.closest("[inert]") !== null]);
+      if (progress > 0) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
   await page.evaluate(() => (window as HookWindow).__coil!.api.unwind(false));
   await page.waitForFunction(() => (window as HookWindow).__coil!.unwindState().progress === 0, null, { timeout: 5_000 });
+  await nextFrames(page, 2);
+  const back = await page.evaluate(() => (window as unknown as { __back: [number, boolean][] }).__back);
+  const windingBack = back.filter(([progress]) => progress > 0);
+  expect(windingBack.length, "frames sampled on the wind-back").toBeGreaterThan(10);
+  expect(windingBack.filter(([, inert]) => !inert), "the toggle is inert while the list winds back").toEqual([]);
+  expect(await page.evaluate(() => document.querySelector("[data-shape-toggle]")!.closest("[inert]") !== null)).toBe(false);
   await expect(toggle(page)).toBeVisible();
   expect(await shape(page)).toMatchObject({ pull: 0, shown: await cardCount(page) });
 });
@@ -117,9 +134,15 @@ test("toggle: on a phone-width pane the first-visit line clears it", async ({ pa
   }, siteContent.hero.hints.tapCard);
   expect(overlap).toBe(0);
 });
+// The overlay (and the toggle in it) is always rendered; without a scene the
+// overlay's root keeps it hidden (visibility), so it is neither seen nor reachable.
 async function expectNoToggle(page: Page) {
   await page.goto("/");
   await settled(page);
+  await expect(page.locator("section[data-scene]")).toHaveAttribute("data-scene", "still");
+  const el = page.locator("[data-shape-toggle]");
+  await expect(el).toHaveCount(1);
+  await expect(el).toBeHidden();
   await expect(toggle(page)).toBeHidden();
 }
 test.describe("reduced motion", () => {

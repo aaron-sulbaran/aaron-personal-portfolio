@@ -99,6 +99,9 @@ export function HeroOverlay({ ref, api, onRowOpen, entrance = null, shape, onSha
   const boxesRef = useRef(new Map<string, HTMLSpanElement>());
   const frameRef = useRef({ progress: -1, on: false });
   const [listOn, setListOn] = useState(false);
+  // The seat stays the list's from the unwind's start until its progress is back at 0.
+  const [seatHeld, setSeatHeld] = useState(false);
+  const seatHeldRef = useRef(false);
   const seen = useSeen();
 
   useImperativeHandle(
@@ -126,6 +129,11 @@ export function HeroOverlay({ ref, api, onRowOpen, entrance = null, shape, onSha
       unwindFrame(progress, on) {
         const last = frameRef.current;
         if (on !== last.on) setListOn(on);
+        const held = on || progress > 0;
+        if (held !== seatHeldRef.current) {
+          seatHeldRef.current = held;
+          setSeatHeld(held);
+        }
         if (Math.abs(progress - last.progress) < 1e-4 && on === last.on) return;
         frameRef.current = { progress, on };
         // The list's text and the Coil control come in once the cards have
@@ -262,7 +270,7 @@ export function HeroOverlay({ ref, api, onRowOpen, entrance = null, shape, onSha
         </div>
       </div>
 
-      <ShapeToggle ref={seatRef} shape={shape} onShapeChange={onShapeChange} entrance={entrance} listOn={listOn} />
+      <ShapeToggle ref={seatRef} shape={shape} onShapeChange={onShapeChange} entrance={entrance} listOn={seatHeld} />
       <Fill
         ref={coilControlRef}
         {...FILL_PICK.hero}
