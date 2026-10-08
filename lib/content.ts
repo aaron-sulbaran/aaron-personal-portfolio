@@ -100,6 +100,9 @@ export const siteContent = {
     greeting: "Hi, I'm",
     name: "Aaron",
     coilControl: "Coil",
+    // The Coil and Band toggle: the group's name and its two halves
+    // (placeholders; words and no glyphs per Aaron's pick).
+    shapeToggle: { ariaLabel: "Hero layout", coil: "Coil", band: "Band" },
     // First visit only, decorative (aria-hidden): the cursor's pill over a
     // card until the first card opens, the one line after that first card
     // flies home, and the touch screen's one line after the entrance.
