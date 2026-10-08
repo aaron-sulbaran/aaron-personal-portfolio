@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { LOADER } from "@/lib/loader/progress";
-import { loaderEnd, provideStillPoster, stillPoster, type LoaderEndInput } from "@/lib/loader/still";
+import { loaderEnd, markStillGaveUp, provideStillPoster, stillGaveUp, stillPoster, type LoaderEndInput } from "@/lib/loader/still";
 
 const at = (over: Partial<LoaderEndInput>): LoaderEndInput => ({
   reduced: false, paneShown: false, target: "none", still: false, waitedMs: 0, ...over,
@@ -39,5 +39,17 @@ describe("the loader's end", () => {
     expect(stillPoster()).toBe(b);
     releaseB();
     expect(stillPoster()).toBeNull();
+  });
+  it("hears the loader give up on the still, until a new still is provided", () => {
+    const poster = { decoded: () => Promise.resolve(), target: () => null };
+    const release = provideStillPoster(poster);
+    expect(stillGaveUp()).toBe(false);
+    markStillGaveUp();
+    expect(stillGaveUp()).toBe(true);
+    release();
+    expect(stillGaveUp(), "the give-up outlives its provider (the hero still decodes later)").toBe(true);
+    const again = provideStillPoster(poster);
+    expect(stillGaveUp(), "a new provider starts a new load").toBe(false);
+    again();
   });
 });

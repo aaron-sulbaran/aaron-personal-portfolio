@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { bakedLockupRect, stillCut, type BakedLockup, type StillCut, type StillTheme } from "@/lib/coil/heroStill";
 import { stillPicture } from "@/lib/coil/stillPicture";
+import type { StillView } from "@/lib/home/stillReadiness";
 
 // The stage's posters, under the canvas, one per theme. The field at
 // fieldTime(0) (?coildebug=poster, 1440x900) carries the hero while a scene
@@ -13,15 +14,22 @@ import { stillPicture } from "@/lib/coil/stillPicture";
 // (useHeroStill.ts): the h1 hides only then (HeroText.tsx), and the still
 // waits at opacity 0 until then, so the two never show together. While the
 // loader's resting lockup holds, its stylesheet keeps the still at opacity 0
-// until the lockup hands to it (loaderMarkup.ts).
-export function Poster({ stillReady, warm }: { stillReady: boolean; warm: boolean }) {
+// until the lockup hands to it (loaderMarkup.ts). data-still-late: a still
+// arriving after the h1 lockup took the name dissolves in under it by CSS
+// (loaderMarkup.ts), the h1 hidden only once that ends.
+export function Poster({ still }: { still: StillView }) {
   return (
     <div aria-hidden="true" className="absolute inset-0">
       <Image src="/coil/field-light.avif" alt="" fill unoptimized sizes="100vw" className="object-cover dark:hidden" />
       <Image src="/coil/field-dark.avif" alt="" fill unoptimized sizes="100vw" className="hidden object-cover dark:block" />
-      <div data-hero-still data-still-ready={stillReady ? "" : undefined} className="absolute inset-0 hidden group-data-[scene=still]/hero:block [&:not([data-still-ready])]:opacity-0">
-        <StillPicture theme="light" warm={warm} className="dark:hidden" />
-        <StillPicture theme="dark" warm={warm} className="hidden dark:block" />
+      <div
+        data-hero-still
+        data-still-ready={still.ready ? "" : undefined}
+        data-still-late={still.late ? "" : undefined}
+        className="absolute inset-0 hidden group-data-[scene=still]/hero:block [&:not([data-still-ready])]:opacity-0"
+      >
+        <StillPicture theme="light" warm={still.warm} className="dark:hidden" />
+        <StillPicture theme="dark" warm={still.warm} className="hidden dark:block" />
       </div>
     </div>
   );

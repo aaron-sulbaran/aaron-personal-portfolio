@@ -164,7 +164,7 @@ export function CoilStage({
 
   return (
     <div className="absolute inset-0 overflow-hidden">
-      <Poster stillReady={still.ready} warm={still.warm} />
+      <Poster still={still} />
       {mounted && Scene ? (
         <CoilErrorBoundary key={generation} onError={handleError}>
           <Scene

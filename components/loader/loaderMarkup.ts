@@ -15,6 +15,7 @@ import { HERO_HEADING_ID } from "@/components/home/HeroText";
 // the load outlives the 250ms guard.
 // With no scene the hero still waits at opacity 0 under the resting lockup (which first lands on the name the still bakes, should cover move it) and fades in under it (data-dissolve), the lockup at the composite's ink; the lockup then fades out onto the name the still bakes behind its cards (runLoader.ts).
 // Only a live loader fades the still: off it (a deep reload's skip, a scene failure after the loader has gone) the still shows in the frame it decodes.
+// A late still (data-still-late, lib/home/stillReadiness.ts: it decoded after the loader gave up on it, or after a theme toggle brought the h1 back) has its own dissolve: it fades in under the h1 lockup over stillFadeMs, then the h1 lockup fades out over lockupFadeMs, both linear, no landing; the h1 is visually hidden only when its fade ends (useHeroStill.ts). While the loader is still up both wait for it to go. Under reduced motion it is never late.
 //
 // The root is the hero's box at the top of the document (the hero is the
 // first thing in #main, at least 100svh tall), not the viewport: the resting lockup
@@ -43,6 +44,9 @@ const L = COIL.lockup;
 // JavaScript never arrive to take the loader down.
 const BAIL_MS = 9400;
 
+// The late still's h1 fade, by name: its end ends data-still-late.
+export const STILL_LATE_OUT = "coil-still-late-out";
+
 // The still notice waits for the loader to go (and leaves the tab order meanwhile).
 //
 // Reduced motion has no resting lockup: the h1 lockup shows from first paint and the loader fades off onto it.
@@ -59,7 +63,12 @@ html:not([data-coil-loader=skip]):has(.coil-loader:not([data-state=gone])) [data
 @keyframes coil-loader-in{from{opacity:0;visibility:hidden}to{opacity:1;visibility:visible}}
 @keyframes coil-loader-bail{to{opacity:0;visibility:hidden}}
 @keyframes coil-loader-h1{from,to{opacity:0}}
+@keyframes coil-still-late-in{from{opacity:0}to{opacity:1}}
+@keyframes ${STILL_LATE_OUT}{from{opacity:1}to{opacity:0}}
 @media (prefers-reduced-motion: no-preference){
+  [data-hero-still][data-still-late]{animation:coil-still-late-in ${LOADER.stillFadeMs}ms linear both}
+  section:has([data-still-late]) #${HERO_HEADING_ID}{animation:${STILL_LATE_OUT} ${LOADER.lockupFadeMs}ms linear ${LOADER.stillFadeMs}ms both}
+  html:not([data-coil-loader=skip]):has(.coil-loader:not([data-state=gone])) [data-hero-still]{animation:none}
   html:not([data-coil-loader=skip]):has(.coil-loader:not([data-state=gone]):not([data-rest=off])) #${HERO_HEADING_ID}{animation:coil-loader-h1 ${BAIL_MS}ms linear}
   html:not([data-coil-loader=skip]):has(.coil-loader:not([data-state=gone]):not([data-rest=off]):not([data-dissolve])) [data-hero-still]{opacity:0}
   html:not([data-coil-loader=skip]):has(.coil-loader:not([data-state=gone])) [data-hero-still]{transition:opacity ${LOADER.stillFadeMs}ms linear}

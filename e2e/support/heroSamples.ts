@@ -2,8 +2,10 @@ import type { Page } from "@playwright/test";
 
 // The hero sampled every frame from the first one until the loader has gone,
 // the hero has decided (data-scene not "off") and a still hero has marked its
-// still decoded (data-still-ready), at most 2000 frames. h1 is whether the h1
-// lockup shows; h1Opacity is the h1 element's own opacity; restOpacity the
+// still decoded (data-still-ready) and any late dissolve has ended
+// (data-still-late), at most 2000 frames. h1 is whether the h1 lockup shows;
+// h1Opacity is the h1 element's own opacity, h1Width its box (1px at most
+// once sr-only); late is data-still-late; restOpacity the
 // resting lockup's as drawn (its layer's opacity times the loader root's, 0
 // while it does not show); ready is data-still-ready; locked is the body
 // scroll lock (lib/modal.ts writes overflow hidden on the body); restBox the
@@ -12,8 +14,8 @@ import type { Page } from "@playwright/test";
 // frame it showed, for a shot after the loader has gone.
 export type HeroSample = {
   t: number; scene: string | null; state: string | null; dissolve: boolean;
-  h1: boolean; h1Opacity: number; rest: boolean; restOpacity: number; still: number; stillReady: boolean;
-  ready: boolean; locked: boolean; restBox: { left: number; top: number; width: number; height: number } | null;
+  h1: boolean; h1Opacity: number; h1Width: number; rest: boolean; restOpacity: number; still: number; stillReady: boolean;
+  ready: boolean; late: boolean; locked: boolean; restBox: { left: number; top: number; width: number; height: number } | null;
 };
 
 export async function sampleHero(page: Page) {
@@ -41,20 +43,23 @@ export async function sampleHero(page: Page) {
       }
       const layer = document.querySelector(".coil-loader__rest");
       const ready = !!still?.hasAttribute("data-still-ready");
+      const late = !!still?.hasAttribute("data-still-late");
       samples.push({
         t: performance.now(), scene, state,
         dissolve: !!loader?.hasAttribute("data-dissolve"),
         h1: shows(document.getElementById("hero-heading")),
         h1Opacity: Number(getComputedStyle(document.getElementById("hero-heading") ?? document.body).opacity),
+        h1Width: document.getElementById("hero-heading")?.getBoundingClientRect().width ?? 0,
         rest,
         restOpacity: rest && layer && loader ? Number(getComputedStyle(layer).opacity) * Number(getComputedStyle(loader).opacity) : 0,
         still: still && still.getClientRects().length ? Number(getComputedStyle(still).opacity) : 0,
         stillReady: !!img && img.complete && img.naturalWidth > 0,
         ready,
+        late,
         locked: document.body.style.overflow === "hidden",
         restBox: drawn && { left: drawn.left, top: drawn.top, width: drawn.width, height: drawn.height },
       });
-      if ((state !== "gone" || scene === "off" || (scene === "still" && !ready)) && samples.length < 2000) requestAnimationFrame(sample);
+      if ((state !== "gone" || scene === "off" || (scene === "still" && !ready) || late) && samples.length < 2000) requestAnimationFrame(sample);
     };
     requestAnimationFrame(sample);
   });
