@@ -1,0 +1,13 @@
+/* The stand-in field's drift: the poster breathes slowly when no WebGL 2
+   context can be made. Lab only. */
+@keyframes footer-lab-drift {
+  from { transform: scale(1.08) translate3d(-1.5%, 0.5%, 0); }
+  to { transform: scale(1.18) translate3d(1.5%, -2%, 0); }
+}
+.footer-lab-drift {
+  animation: footer-lab-drift 22s ease-in-out infinite alternate;
+  transform-origin: 40% 60%;
+}
+@media (prefers-reduced-motion: reduce) {
+  .footer-lab-drift { animation: none; }
+}
