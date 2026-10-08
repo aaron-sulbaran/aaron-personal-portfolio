@@ -17,7 +17,7 @@ const REBUILD_FADE_MS = 450;
 export function createEntrance(ctx: SceneCtx, name: Name) {
   const { st, live, flags } = ctx;
   const { conveyor } = st;
-  const { posterMode, forcedEntranceMs } = flags;
+  const { pinned, forcedEntranceMs } = flags;
   // ---- slice 4 state: the entrance clock ----
   let entranceBase: number | null = null; // when this scene's entrance clock reads 0
   let entranceEnded = false;
@@ -46,7 +46,7 @@ export function createEntrance(ctx: SceneCtx, name: Name) {
   // Update step.
   function entrance(f: SceneFrame) {
     const { now, props } = f;
-    const realElapsedMs = posterMode ? Number.POSITIVE_INFINITY : entranceElapsedMs(now);
+    const realElapsedMs = pinned ? Number.POSITIVE_INFINITY : entranceElapsedMs(now);
     const clock = entranceClock(forcedEntranceMs ?? realElapsedMs);
     f.realElapsedMs = realElapsedMs;
     f.clock = clock;

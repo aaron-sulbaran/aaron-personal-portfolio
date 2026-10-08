@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { COIL } from "@/lib/coil/constants";
 import type { NameTarget } from "@/lib/loader/handoff";
@@ -5,8 +6,12 @@ import { greetingInBox, landing, landingGradient, type NameBox } from "@/lib/loa
 import {
   CSS_ARITH,
   NUM_ARITH,
+  HERO_LOCKUP,
+  LOADER_LOCKUP,
   PROFA_METRICS,
+  heroLockupCss,
   lockupMetrics,
+  lockupVarDefaults,
   lockupPose,
   lockupSpans,
   restLockupCss,
@@ -145,6 +150,39 @@ describe("the resting lockup", () => {
     expect(css).toContain("var(--name-grad-top)");
     expect(css).toContain("var(--name-grad-bottom)");
     expect(css).toContain(`calc(var(--name-ink) * ${L.inkGain})`);
+    expect(css).not.toMatch(/NaN|undefined/);
+  });
+});
+
+describe("one stylesheet, two lockups (the loader's resting lockup and the h1)", () => {
+  it("keeps the loader's rules byte for byte (sha256 of the output before the h1 shared them)", () => {
+    const css = restLockupCss(LOADER_LOCKUP);
+    expect(css).toBe(restLockupCss());
+    expect(createHash("sha256").update(css).digest("hex")).toBe("1c50a19d92ad984282e5599692e69c00d7b469412ab5017f53e59af6c4925cc5");
+  });
+
+  it("gives the h1 the loader's rules under its own selectors", () => {
+    let css = restLockupCss(HERO_LOCKUP);
+    for (const part of ["layer", "greet", "name"] as const) css = css.replaceAll(HERO_LOCKUP[part], LOADER_LOCKUP[part]);
+    expect(css).toBe(restLockupCss());
+  });
+
+  it("puts the h1's container on the loader root's box, with the default metrics and the ink at stillInk", () => {
+    const css = heroLockupCss();
+    expect(css).toContain(restLockupCss(HERO_LOCKUP));
+    const container = css.match(new RegExp(`\\${HERO_LOCKUP.container}\\{([^}]*)\\}`))?.[1] ?? "";
+    for (const rule of ["position:absolute", "top:0", "left:0", "right:0", "height:100vh", "height:100svh", "container-type:size", "margin:0", "pointer-events:none"]) {
+      expect(container).toContain(rule);
+    }
+    expect(container).toContain(lockupVarDefaults());
+    const ink = css.match(new RegExp(`\\${HERO_LOCKUP.layer}\\{--name-ink:calc\\(([\\d.]+) / ([\\d.]+)\\)\\}`));
+    expect(ink, "the layer's ink override").not.toBeNull();
+    expect(Number(ink![1])).toBe(L.stillInk);
+    expect(Number(ink![2])).toBe(L.inkGain);
+    // The shared rule's opacity, calc(var(--name-ink) * gain), comes out at stillInk.
+    expect((Number(ink![1]) / Number(ink![2])) * L.inkGain).toBeCloseTo(L.stillInk, 12);
+    expect(L.stillInk).toBeGreaterThan(0);
+    expect(L.stillInk).toBeLessThanOrEqual(1);
     expect(css).not.toMatch(/NaN|undefined/);
   });
 });

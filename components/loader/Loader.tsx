@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { siteContent } from "@/lib/content";
+import type { HeroScene } from "@/lib/coil/heroStill";
 import { LOADER_CSS, LOADER_NOSCRIPT, LOADER_SKIP_SCRIPT } from "./loaderMarkup";
 import { runLoader } from "./runLoader";
 
@@ -28,27 +29,35 @@ import { runLoader } from "./runLoader";
 //         exit (800ms, the site ease) that lands the lockup and hands it to
 //         the canvas in one frame; the entrance starts 200ms before the exit
 //         ends
-//   on + reduced motion (or no scene to land on): no resting lockup, the
-//         name in accent, the number counts, a 300ms fade
+//   on, no scene can run (the still): the resting lockup holds from first
+//         paint as above; the pane only past the guard, fading off the
+//         lockup at the end; once the still has decoded, on a box whose
+//         aspect differs from the still's cut the lockup first lands on the
+//         name the still bakes (cover moves it; 800ms, the site ease), then
+//         the still fades in under the lockup over 400ms, then the lockup
+//         fades out over 300ms onto that name; a still that never decodes (or
+//         not within 1500ms) gets no fade: the ink eases to the h1's, then
+//         one frame onto the h1
+//   on + reduced motion: no resting lockup, the name in accent, the number
+//         counts, a 300ms fade
 //
 // The number shows only for loads still running at 600ms, never a status word.
 
-// scene: a scene has claimed the entrance (it may still fail to draw).
-export type LoaderMode = { kind: "pending" } | { kind: "off" } | { kind: "on"; reducedMotion: boolean; scene: boolean };
+export type LoaderMode = { kind: "pending" } | { kind: "off" } | { kind: "on"; reducedMotion: boolean };
 
 type Props = {
   mode: LoaderMode;
   // The pane is being handed to the hero: the entrance starts at startMs (the
   // performance.now() clock), and nameFromLoader says the loader lands the name.
   onReveal: (startMs: number, nameFromLoader: boolean) => void;
-  // The hero shows the canvas (data-scene="on"): the DOM lockup may leave.
-  sceneOn: boolean;
+  // The hero's scene state: the DOM lockup hands to the canvas only once it is "on".
+  scene: HeroScene;
 };
 
 const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 
-export function Loader({ mode, onReveal, sceneOn }: Props) {
+export function Loader({ mode, onReveal, scene }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
   const greetRef = useRef<HTMLSpanElement>(null);
   const paneRef = useRef<HTMLDivElement>(null);
@@ -60,11 +69,11 @@ export function Loader({ mode, onReveal, sceneOn }: Props) {
   const bgRef = useRef<HTMLDivElement>(null);
   const onRevealRef = useRef(onReveal);
   const mountedAtRef = useRef(0);
-  const sceneOnRef = useRef(sceneOn);
+  const sceneRef = useRef(scene);
 
   useEffect(() => {
     onRevealRef.current = onReveal;
-    sceneOnRef.current = sceneOn;
+    sceneRef.current = scene;
   });
 
   // Out of the content layer to <body>, before paint; back home before React
@@ -105,8 +114,8 @@ export function Loader({ mode, onReveal, sceneOn }: Props) {
     }
     // This page decides from here on (a later client visit must not inherit the skip).
     document.documentElement.removeAttribute("data-coil-loader");
-    const resting = !mode.reducedMotion && mode.scene;
-    // No scene to hand to: the h1 carries the hero from this paint.
+    const resting = !mode.reducedMotion;
+    // Reduced motion: no resting lockup, the h1 or the still from this paint.
     if (!resting) root.setAttribute("data-rest", "off");
     const parts = {
       root,
@@ -121,7 +130,7 @@ export function Loader({ mode, onReveal, sceneOn }: Props) {
     };
     return runLoader(
       parts,
-      { reduced: mode.reducedMotion, resting, sceneShown: () => sceneOnRef.current },
+      { reduced: mode.reducedMotion, sceneShown: () => sceneRef.current === "on" },
       (startMs, nameFromLoader) => onRevealRef.current(startMs, nameFromLoader),
       mountedAtRef.current,
     );

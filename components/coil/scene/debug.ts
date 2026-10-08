@@ -1,5 +1,6 @@
 import { Vector2 } from "three";
 import { gestureOwner } from "@/lib/coil/capture";
+import { parseDebugFlags, type DebugFlags } from "@/lib/coil/debugFlags";
 import {
   cardDistancesPx,
   insideSilhouette,
@@ -28,57 +29,26 @@ import type { UnwindWiring } from "./unwind";
 // Playwright suite reads, and (with the flight token) the probe's scene hooks.
 // Without the query nothing here is created and every call is a null check.
 //
-// Tokens: poster (the field's first frame, no cards, no name), nocards,
-// noname, at=<s> (the field and the name's surface held on one moment),
-// entrance=<ms> (the drawn entrance frozen there), throw=render, throw=frame
-// (the error boundary paths), flight (lib/coil/flightProbe.ts), name (the
-// wake grid and the per-letter readout over the hero, NameReadout.tsx),
-// ink=<percent> (the name's ink held there; 100 shows the whole surface, the
-// crease check). Any value turns on window.__coil.
+// Tokens: poster (the field's first frame, no cards, no name), still or
+// still=<offset> (the scene at rest for the hero stills: cards and name drawn, the name at COIL.lockup.stillInk,
+// the field at its first frame, the entrance done, the conveyor idle at
+// <offset> cards, 0 for plain still; scripts/render-posters.mjs), nocards, noname, at=<s> (the field and the
+// name's surface held on one moment), entrance=<ms> (the drawn entrance
+// frozen there), throw=render, throw=frame (the error boundary paths), flight
+// (lib/coil/flightProbe.ts), name (the wake grid and the per-letter readout
+// over the hero, NameReadout.tsx), ink=<percent> (the name's ink held there;
+// 100 shows the whole surface, the crease check). Any value turns on
+// window.__coil.
 
 export function debugTokens() {
   const value = new URLSearchParams(window.location.search).get("coildebug");
   return new Set(value ? value.split(",").map((token) => token.trim()) : []);
 }
 
-export type DebugFlags = {
-  debugMode: string | null;
-  posterMode: boolean;
-  // QA only: ?coildebug=nocards hides the helix and noname the name (contrast
-  // and warm-share reads); at=<seconds> holds the field and the name's
-  // surface on one moment.
-  hideCards: boolean;
-  hideName: boolean;
-  heldAt: number | null;
-  // ?coildebug=entrance=<ms> freezes the drawn entrance at that moment (the
-  // real clock still ends it, so the page unlocks).
-  forcedEntranceMs: number | null;
-  // ?coildebug=ink=<percent>: the name's ink held there (0..1), else null.
-  inkOverride: number | null;
-  // The drift preset pick: ?drift=<preset>.
-  driftParam: string | null;
-};
+export type { DebugFlags };
 
 export function readDebugFlags(): DebugFlags {
-  const params = new URLSearchParams(window.location.search);
-  const debugMode = params.get("coildebug");
-  const qaTokens = debugTokens();
-  const heldAtToken = [...qaTokens].map((token) => token.match(/^at=(\d+(?:\.\d+)?)$/)).find(Boolean);
-  const inkToken = [...qaTokens].map((token) => token.match(/^ink=(\d+(?:\.\d+)?)$/)).find(Boolean);
-  const forcedEntrance = debugMode
-    ?.split(",")
-    .map((token) => token.trim().match(/^entrance=(-?\d+(?:\.\d+)?)$/))
-    .find(Boolean);
-  return {
-    debugMode,
-    posterMode: debugMode === "poster",
-    hideCards: qaTokens.has("nocards"),
-    hideName: qaTokens.has("noname"),
-    heldAt: heldAtToken ? Number(heldAtToken[1]) : null,
-    inkOverride: inkToken ? Math.min(1, Number(inkToken[1]) / 100) : null,
-    forcedEntranceMs: forcedEntrance ? Number(forcedEntrance[1]) : null,
-    driftParam: params.get("drift"),
-  };
+  return parseDebugFlags(window.location.search);
 }
 
 // Slice 7, QA only: ?coildebug=throw=frame throws from the loop a second in.

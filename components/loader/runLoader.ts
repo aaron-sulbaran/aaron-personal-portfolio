@@ -3,6 +3,10 @@ import { siteEase } from "@/lib/coil/motion";
 import { siteContent } from "@/lib/content";
 import { LOADER, coilDebugFlags, displayPercent, homeLoad, reportHomeLoad, slowSceneMs } from "@/lib/loader/progress";
 import { landName, nameTarget, type NameTarget } from "@/lib/loader/handoff";
+import { loaderEnd, stillPoster, type StillPoster } from "@/lib/loader/still";
+import { stillDissolve } from "@/lib/loader/stillDissolve";
+import type { StillWaitTimers } from "@/lib/loader/stillWait";
+import { HERO_HEADING_ID } from "@/components/home/HeroText";
 import {
   greetingColor,
   greetingInBox,
@@ -17,9 +21,10 @@ import { debugLog } from "./loaderDebug";
 
 // The loader's imperative run, outside React: one rAF loop easing the fill
 // toward the tally, the flash guard, the 600ms number rule, the 150ms hold at
-// 100, and the exit (the continuity landing on the canvas lockup, or a plain
-// fade). A load done inside the guard skips all of that: the resting lockup
-// holds until the scene has drawn and hands to it in one frame. Loader.tsx
+// 100, and the exit (the continuity landing on the canvas lockup, the
+// hand-off to the hero still, or a plain fade). A load done inside the guard
+// skips all of that: the resting lockup holds until the scene has drawn and
+// hands to it in one frame (or to the still, when no scene can run). Loader.tsx
 // renders the markup and calls runLoader once its mode is known; the returned
 // function tears it all down.
 
@@ -45,8 +50,6 @@ export type LoaderParts = {
 
 export type LoaderOptions = {
   reduced: boolean;
-  // The resting lockup is up (a scene claimed the entrance, no reduced motion).
-  resting: boolean;
   // The hero shows the canvas: the h1 is visually hidden, the DOM lockup may go.
   sceneShown: () => boolean;
 };
@@ -55,7 +58,7 @@ export type LoaderOptions = {
 // Returns the cleanup.
 export function runLoader(
   parts: LoaderParts,
-  { reduced, resting, sceneShown }: LoaderOptions,
+  { reduced, sceneShown }: LoaderOptions,
   reveal: (startMs: number, nameFromLoader: boolean) => void,
   mountedAt: number,
 ): () => void {
@@ -75,10 +78,13 @@ export function runLoader(
   let finishing = false;
   let timeline: gsap.core.Timeline | null = null;
   let holdTimer = 0;
+  let paneShown = false;
+  let endBegan = 0;
+  let stopDissolve = () => {};
   const note = debugLog(root);
-  note("run", { reduced, resting, items: tally ? tally.progress() : null });
+  note("run", { reduced, items: tally ? tally.progress() : null });
 
-  // The face's real metrics, once loaded, then the tally hears it.
+  // The face's real metrics, once loaded, on both lockups (the h1 hands over at the same pose), then the tally hears it.
   const family = getComputedStyle(document.documentElement).getPropertyValue("--font-display").trim() || "sans-serif";
   Promise.all([document.fonts.load(`900 100px ${family}`), document.fonts.ready])
     .then(() => {
@@ -86,7 +92,8 @@ export function runLoader(
       const measured = measureLockup(family);
       if (measured) {
         metrics = measured;
-        lockupVars(measured).forEach(([key, value]) => root.style.setProperty(key, value));
+        const heading = document.getElementById(HERO_HEADING_ID);
+        lockupVars(measured).forEach(([key, value]) => [root, heading].forEach((el) => el?.style.setProperty(key, value)));
       }
       reportHomeLoad("fonts");
     })
@@ -159,18 +166,12 @@ export function runLoader(
     note("frame", { tally: target, shown, done });
     if (done && !finishing) {
       finishing = true;
-      if (!guardPassed()) {
-        // Everything was ready inside the guard: no pane. A drawn scene takes
-        // the resting lockup; with none (it failed, or never claimed) the
-        // lockup leaves and the h1 carries the hero.
-        if (resting && nameTarget()) {
-          rest();
-          return;
-        }
-        root.setAttribute("data-rest", "off");
-        gone();
-        note("skipped");
-        reveal(performance.now(), false);
+      paneShown = guardPassed();
+      if (!paneShown) {
+        // Everything was ready inside the guard: no pane. The resting lockup
+        // holds (the pane can no longer arm) while end() picks who takes it.
+        if (!reduced) root.setAttribute("data-state", "rest");
+        end();
         return;
       }
       const numberTime = animationTime(count, "coil-loader-count");
@@ -189,25 +190,61 @@ export function runLoader(
   function exit() {
     if (disposed) return;
     root.setAttribute("data-state", "live");
-    // The pane covered the resting lockup; the exit lands the pane's own.
-    root.setAttribute("data-rest", "off");
-    // A canvas lockup off screen (the page moved under the pane) is no
-    // landing: the lockup would fly out of view and the hand-off give up.
+    end();
+  }
+
+  // Who takes the lockup (lib/loader/still.ts): the scene (the resting hold or
+  // the continuity), the hero still, or nobody (a fade, a skip). A canvas
+  // lockup off screen is no landing: it would fly out of view.
+  function end() {
+    raf = 0;
+    if (disposed) return;
+    const now = performance.now();
+    endBegan ||= now;
     const found = reduced ? null : nameTarget();
-    const target = found && found.baseline > 0 && found.baseline - found.fontPx < window.innerHeight ? found : null;
-    if (!target) {
-      // Reduced motion, no scene to land on, or none on screen: a plain fade.
-      const fadeS = LOADER.reducedFadeMs / 1000;
-      note("fade");
-      reveal(performance.now() + LOADER.reducedFadeMs, false);
-      timeline = gsap.timeline({ onComplete: gone });
-      timeline.to(root, { opacity: 0, duration: fadeS, ease: "none" });
+    const target = !found ? "none" : found.baseline > 0 && found.baseline - found.fontPx < window.innerHeight ? "landable" : "away";
+    const poster = stillPoster();
+    const choice = loaderEnd({ reduced, paneShown, target, still: poster !== null, waitedMs: now - endBegan });
+    if (choice === "wait") {
+      raf = requestAnimationFrame(end);
       return;
     }
-    continuity(target);
+    note("end", { choice });
+    if (choice === "rest") rest();
+    else if (choice === "skip") skip();
+    else if (choice === "dissolve") dissolve(poster!);
+    else if (choice === "continuity") continuity(found!);
+    else fade();
+  }
+
+  function skip() {
+    root.setAttribute("data-rest", "off");
+    gone();
+    note("skipped");
+    reveal(performance.now(), false);
+  }
+
+  // A plain fade. The pane covered the resting lockup, so it leaves with
+  // the pane; without a pane the resting lockup fades with the root and the
+  // h1 shows at gone.
+  function fade() {
+    if (paneShown) root.setAttribute("data-rest", "off");
+    note("fade");
+    reveal(performance.now() + LOADER.reducedFadeMs, false);
+    timeline = gsap.timeline({ onComplete: gone });
+    timeline.to(root, { opacity: 0, duration: LOADER.reducedFadeMs / 1000, ease: "none" });
+  }
+
+  // No scene can run: the hand-off to the hero still (lib/loader/stillDissolve.ts).
+  function dissolve(poster: StillPoster) {
+    stopDissolve = stillDissolve(poster, {
+      root, bg, pane: parts.pane, paneShown, metrics: () => metrics, hold: holdHandoff ? exposeFinish : null,
+      timers: WINDOW_TIMERS, reveal, gone, note, disposed: () => disposed,
+    });
   }
 
   function continuity(target: NameTarget) {
+    root.setAttribute("data-rest", "off"); // The pane covered the resting lockup; the exit lands the pane's own.
     const { name, base, fill, greet } = parts;
     const accent = parseRgb(getComputedStyle(fill.firstElementChild ?? fill).color) ?? target.gradient.from;
     const nameStyle = getComputedStyle(name);
@@ -270,9 +307,12 @@ export function runLoader(
     disposed = true;
     if (raf) cancelAnimationFrame(raf);
     window.clearTimeout(holdTimer);
+    stopDissolve();
     timeline?.kill();
   };
 }
+
+const WINDOW_TIMERS: StillWaitTimers = { set: (fn, ms) => window.setTimeout(fn, ms), clear: (id) => window.clearTimeout(id) };
 
 // ?coildebug=handoff: the held hand-off resumes on window.__coilLoader.finish().
 function exposeFinish(finish: () => void) {

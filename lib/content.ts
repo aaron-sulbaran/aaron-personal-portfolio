@@ -118,6 +118,14 @@ export const siteContent = {
       range: "Range",
       greeting: "Greeting",
     },
+    // The still page's notice (no scene can run): why the page is still, by
+    // cause, and its dismiss. Placeholders; Aaron rewrites them.
+    still: {
+      noWebgl: "I can see your browser has graphics acceleration off, so you'll miss the best part of this page.",
+      unavailable: "Your browser couldn't start the moving scene, so you'll miss the best part of this page.",
+      reducedMotion: "Your system asks for less motion, so you're seeing the still version of this page.",
+      dismiss: "Got it",
+    },
   },
   // The Coil's loader: the name it fills while the page loads (the same word
   // the scene draws, so the exit hands one to the other) and the progress

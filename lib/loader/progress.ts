@@ -45,6 +45,11 @@ export const LOADER = {
   // A hand-off the scene never takes gives up after this: the DOM lockup
   // leaves and the canvas's own fallback (or the h1) carries on.
   handoffGiveUpMs: 1500,
+  // No scene can run: the hero still fades in under the resting lockup over
+  // this (linear), then the lockup fades out over lockupFadeMs.
+  stillFadeMs: 400,
+  stillFadeSlackMs: 100, // the lockup's fallback leave, past stillFadeMs (or lockupFadeMs), should the fade's end never come
+  lockupFadeMs: 300, // the resting lockup's fade (linear) onto the name the still bakes behind its cards
   // The greeting rests in the paper tint through the fill (only the name is
   // the progress) and takes the accent over this once the name is full, so
   // the lockup leaves as one color.

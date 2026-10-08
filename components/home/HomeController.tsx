@@ -28,6 +28,7 @@ import { PhotoModal } from "@/components/PhotoModal";
 import { WorkModal } from "@/components/WorkModal";
 import { CoilStage } from "@/components/coil/CoilStage";
 import type { CoilEntrance } from "@/components/coil/CoilScene";
+import type { HeroScene } from "@/lib/coil/heroStill";
 import { Loader, type LoaderMode } from "@/components/loader/Loader";
 import { FONT_ITEMS, SCENE_ITEMS, beginHomeLoad, coilDebugFlags, endHomeLoad } from "@/lib/loader/progress";
 import type { CoilCardRef, CoilSceneApi } from "@/components/coil/CoilScene";
@@ -167,9 +168,10 @@ export function HomeController({ hero, children }: Props) {
   const [selection, setSelection] = useState<Selection | null>(null);
   const [flight, setFlight] = useState<CoilFlight | null>(null);
   const sceneApiRef = useRef<CoilSceneApi>(null);
-  // The scene has drawn its first frame: the canvas name replaces the DOM h1
-  // (which stays for assistive tech) until the scene goes away.
-  const [sceneOn, setSceneOn] = useState(false);
+  // data-scene: "on" once the scene has drawn (the canvas name replaces the DOM
+  // h1, which stays for assistive tech), "off" while one is on its way, "still"
+  // once none can run (the hero still).
+  const [heroScene, setHeroScene] = useState<HeroScene>("off");
   const entranceClaimsRef = useRef(0);
   // The loader: armed by the server's HTML, resolved before paint.
   const [loaderMode, setLoaderMode] = useState<LoaderMode>({ kind: "pending" });
@@ -202,7 +204,7 @@ export function HomeController({ hero, children }: Props) {
     // A layout-effect state write re-renders before paint, which is the point:
     // consumers of fastStart must see it on the first painted frame.
     setFastStart(fast);
-    setLoaderMode(recovery.deep ? { kind: "off" } : { kind: "on", reducedMotion: reduced, scene: entering });
+    setLoaderMode(recovery.deep ? { kind: "off" } : { kind: "on", reducedMotion: reduced });
     if (!entering) setEntrance(AT_REST);
     return () => {
       endHomeLoad(tally);
@@ -379,10 +381,10 @@ export function HomeController({ hero, children }: Props) {
 
   return (
     <HomeControllerContext.Provider value={value}>
-      <Loader mode={loaderMode} onReveal={revealHero} sceneOn={sceneOn} />
+      <Loader mode={loaderMode} onReveal={revealHero} scene={heroScene} />
       <section
         aria-labelledby={HERO_HEADING_ID}
-        data-scene={sceneOn ? "on" : "off"}
+        data-scene={heroScene}
         data-composition={drivers.composition}
         data-input={drivers.input}
         // Slice 7: the browser keeps every vertical swipe (and pinch zoom);
@@ -394,12 +396,14 @@ export function HomeController({ hero, children }: Props) {
           frozen={modalOpen || flight !== null}
           interactive={phase === "ready"}
           input={drivers.input}
-          onSceneChange={setSceneOn}
+          scene={heroScene}
+          onSceneChange={setHeroScene}
           api={sceneApiRef}
           onCardClick={handleCardClick}
           onRowOpen={handleRowOpen}
         />
-        <div className="relative">{hero}</div>
+        {/* The h1 places itself on the section's box, the loader root's box (HeroText). */}
+        {hero}
       </section>
       {children}
       <PhotoModal
