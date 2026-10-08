@@ -21,6 +21,19 @@ const mark = (page: Page) => page.locator("[data-mark-trigger]");
 const card = (page: Page) => page.getByRole("dialog", { name: siteContent.mark.dialogLabel });
 const progress = async (page: Page) => Number(await mark(page).getAttribute("data-hold-progress"));
 const scrollY = (page: Page) => page.evaluate(() => window.scrollY);
+const menuPill = (page: Page) => page.getByRole("button", { name: siteContent.menu.ariaLabelOpen });
+const menuPanel = (page: Page) => page.getByRole("dialog", { name: siteContent.menu.dialogLabel });
+const surfaceOpacity = (page: Page) => card(page).locator('[data-card="surface"]').evaluate((el) => getComputedStyle(el).opacity);
+
+// How far the page sits from #connect's resting scroll: its top less its
+// scroll margin, or the bottom of the page if that comes first.
+const offConnect = (page: Page) =>
+  page.evaluate(() => {
+    const section = document.getElementById("connect")!;
+    const margin = parseFloat(getComputedStyle(section).scrollMarginTop) || 0;
+    const resting = Math.min(window.scrollY + section.getBoundingClientRect().top - margin, document.documentElement.scrollHeight - window.innerHeight);
+    return Math.abs(window.scrollY - resting);
+  });
 
 async function markBox(page: Page) {
   const box = await mark(page).boundingBox();
@@ -190,6 +203,36 @@ for (const mode of ["scene", "no-webgl"] as const) {
       await page.keyboard.up("Space");
       await sleep(300);
       await expect(card(page)).toBeVisible();
+    });
+
+    test(`mark: a hold with the Menu open closes the Menu, opens the card on Close, and Escape returns to the mark (${mode})`, async ({ page }) => {
+      await open(page);
+      await menuPill(page).click();
+      await expect(menuPanel(page)).toBeVisible();
+      await holdMark(page, 700);
+      await expect(card(page)).toBeVisible();
+      await expect(menuPanel(page)).toHaveCount(0);
+      await expect(menuPill(page)).toHaveAttribute("aria-expanded", "false");
+      await expect(card(page).getByRole("button", { name: CLOSE })).toBeFocused();
+      await sleep(600);
+      await expect(card(page).getByRole("button", { name: CLOSE })).toBeFocused();
+      await page.keyboard.press("Escape");
+      await expect(card(page)).toHaveCount(0);
+      await expect(mark(page)).toBeFocused();
+    });
+
+    test(`mark: Say hi closes the card and the page lands at #connect (${mode})`, async ({ page }) => {
+      await open(page);
+      await scrollToY(page, Y);
+      await holdMark(page, 700);
+      await expect.poll(() => surfaceOpacity(page), { timeout: 4000 }).toBe("1");
+      expect(await offConnect(page)).toBeGreaterThan(100);
+      await card(page).getByRole("link", { name: siteContent.mark.cta.label }).click();
+      await expect(card(page)).toHaveCount(0);
+      await expect.poll(() => offConnect(page), { timeout: 10_000 }).toBeLessThan(3);
+      await sleep(500);
+      expect(await offConnect(page)).toBeLessThan(3);
+      expect(new URL(page.url()).hash).toBe(siteContent.mark.cta.href);
     });
 
     test.describe("reduced motion", () => {
