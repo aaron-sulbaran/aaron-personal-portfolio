@@ -69,6 +69,13 @@ export const STILL_MEDIA: Readonly<Record<Exclude<StillCut, "wide">, string>> = 
   square: below(SQUARE_BELOW),
 };
 
+// The cut the picture's sources pick, by the same media queries in the same
+// order: matches is window.matchMedia(query).matches in the browser.
+export function mediaStillCut(matches: (query: string) => boolean): StillCut {
+  if (matches(STILL_MEDIA.narrow)) return "narrow";
+  return matches(STILL_MEDIA.square) ? "square" : "wide";
+}
+
 export function heroStillSrc(theme: StillTheme, cut: StillCut, format: StillFormat): string {
   return `/coil/hero-${theme}-${cut}.${format}`;
 }
