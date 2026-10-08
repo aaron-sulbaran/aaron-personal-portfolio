@@ -12,7 +12,8 @@ import { HERO_LOCKUP, heroLockupCss } from "@/lib/loader/lockup";
 // behind its cards (data-still-ready) it is visually hidden, staying the
 // page's one top-level heading for assistive tech; its accessible name is the
 // whole heading. A late still (data-still-late) fades in under it first, and
-// it fades out (loaderMarkup.ts) before it is hidden.
+// it fades out (loaderMarkup.ts) before it is hidden. tabIndex -1: the still
+// notice's "Got it" hands focus here (StillNotice.tsx).
 export const HERO_HEADING_ID = "hero-heading";
 
 const cls = (selector: string) => selector.slice(1);
@@ -24,7 +25,7 @@ export function HeroText() {
       <style href="hero-lockup" precedence="medium">
         {heroLockupCss()}
       </style>
-      <h1 id={HERO_HEADING_ID} className={`${cls(HERO_LOCKUP.container)} group-data-[scene=on]/hero:sr-only group-has-[[data-still-ready]:not([data-still-late])]/hero:sr-only`}>
+      <h1 id={HERO_HEADING_ID} tabIndex={-1} className={`${cls(HERO_LOCKUP.container)} focus-visible:outline-none group-data-[scene=on]/hero:sr-only group-has-[[data-still-ready]:not([data-still-late])]/hero:sr-only`}>
         <span className={cls(HERO_LOCKUP.layer)}>
           <span className={cls(HERO_LOCKUP.greet)}>{greeting}</span>
           {between}
