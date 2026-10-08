@@ -327,10 +327,57 @@ test("sections: a re-split after Who I am has risen keeps it whole", async ({ pa
   await scrollToY(page, await page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight));
   await expect.poll(() => partsOff(page, ["#who-i-am"]), { timeout: 8000 }).toEqual([]);
   await scrollToY(page, 0);
-  const linesBefore = await page.locator("#who-i-am .sections-line").count();
-  await page.setViewportSize({ width: 1000, height: 900 });
-  await expect.poll(() => page.locator("#who-i-am .sections-line").count(), { message: "re-split at the new width" }).not.toBe(linesBefore);
+  await resplit(page, "#who-i-am");
   expect(await steady(page, () => partsOff(page, ["#who-i-am"])), "whole after the re-split").toEqual([]);
+});
+
+// Narrows the page to 1000px and waits for SplitText to replace the block's
+// lines: a line from before the resize leaves the document.
+async function resplit(page: Page, id: string) {
+  await page.evaluate((id) => {
+    Object.assign(window, { __e2eOldLine: document.querySelector(`${id} .sections-line`) });
+  }, id);
+  await page.setViewportSize({ width: 1000, height: 900 });
+  await expect
+    .poll(() => page.evaluate(() => !(window as unknown as { __e2eOldLine: Element }).__e2eOldLine.isConnected), { message: "re-split at the new width" })
+    .toBe(true);
+}
+
+// Each line's drop below its mask, as a percent of its own height.
+async function lineDrops(page: Page, block: string) {
+  return page.locator(block).evaluate((el) =>
+    [...el.querySelectorAll<HTMLElement>(".sections-line")].map((line) => {
+      const transform = getComputedStyle(line).transform;
+      const drop = transform === "none" ? 0 : new DOMMatrixReadOnly(transform).m42;
+      return Math.round((drop / line.offsetHeight) * 1000) / 10;
+    }),
+  );
+}
+
+// A re-split mid-reveal carries on from the share the old timeline showed.
+// Narrower means more lines on a longer stagger, so at the same share every
+// line by index is as far up as it was, or further.
+test("sections: a re-split while Who I am is part way in drops no line", async ({ page }) => {
+  await openHome(page);
+  await blocksIn(page, "armed");
+  const body = '#who-i-am [data-sections-block="body"]';
+  const top = await page.locator(body).evaluate((el) => el.getBoundingClientRect().top + window.scrollY);
+  // Its top at 74 percent of the viewport: a third of the way through its band (84 to 54).
+  await scrollToY(page, Math.round(top - page.viewportSize()!.height * 0.74));
+  const before = await steady(page, () => lineDrops(page, body));
+  expect(before.some((drop) => drop < 1), "some lines risen").toBe(true);
+  expect(before.some((drop) => drop > 100), "some lines still masked").toBe(true);
+  await scrollToY(page, 0);
+  await resplit(page, "#who-i-am");
+  // From the first frame of the new lines through the chase's tail: a
+  // timeline that started over masked would chase back up to the same mark,
+  // so only the frames in between can tell.
+  for (let sample = 0; sample < 15; sample += 1) {
+    const after = await lineDrops(page, body);
+    expect(after.length, "more lines at the narrower width").toBeGreaterThan(before.length);
+    for (const [line, drop] of before.entries()) expect(after[line], `sample ${sample}: line ${line} sits no lower than before`).toBeLessThanOrEqual(drop + 1);
+    await page.waitForTimeout(100);
+  }
 });
 
 // The flip to reduced motion reverts every block, risen, half way or masked,
