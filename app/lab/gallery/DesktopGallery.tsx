@@ -1,7 +1,7 @@
 "use client";
 
 import type { LabCard } from "./cards";
-import type { Row } from "./layout";
+import type { Row } from "./rows";
 import { CloseHint, Header, Links, MaskedPhoto, TextBlock } from "./parts";
 import type { Settings } from "./settings";
 

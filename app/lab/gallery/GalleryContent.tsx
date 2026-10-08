@@ -3,7 +3,7 @@
 import { useCallback, useLayoutEffect, useMemo, useRef } from "react";
 import type { LabCard } from "./cards";
 import { DesktopGallery } from "./DesktopGallery";
-import { interleave, readingOrder } from "./layout";
+import { interleave, readingOrder } from "./rows";
 import { CloseHint, Header, Links, TextBlock } from "./parts";
 import { PhoneStage } from "./PhoneStage";
 import type { Settings } from "./settings";

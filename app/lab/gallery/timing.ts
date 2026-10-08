@@ -1,4 +1,4 @@
-import type { Row } from "./layout";
+import type { Row } from "./rows";
 
 // The mask-in as a table: which parts start together, when each starts and
 // when the last one is done. Everything runs on a timer from the landing, on

@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useEffect, useReducer, useRef } from "react";
 import type { LabPhoto } from "./cards";
-import { gallerySizes } from "./layout";
+import { gallerySizes } from "./rows";
 import { autoAdvanceMs, gestureOf, initialStage, stageReducer } from "./stage";
 import { partId } from "./timing";
 

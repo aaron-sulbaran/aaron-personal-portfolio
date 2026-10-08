@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { gallerySizes, interleave, panelWidthIn, readingOrder, stageBox, textColumn } from "../layout";
+import { gallerySizes, interleave, panelWidthIn, readingOrder, stageBox, textColumn } from "../rows";
 
 describe("interleave", () => {
   it("pairs each photo with its block, alternating sides from the left", () => {

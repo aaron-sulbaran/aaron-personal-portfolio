@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { interleave } from "../layout";
+import { interleave } from "../rows";
 import { desktopSteps, maskTable, partId, phoneSteps } from "../timing";
 
 const T = { startMs: 520, lengthMs: 450, staggerMs: 120, lineStaggerMs: 40 };

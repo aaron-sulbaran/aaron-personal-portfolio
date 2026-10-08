@@ -3,7 +3,7 @@
 import Image from "next/image";
 import type { CSSProperties } from "react";
 import { useCloseHint } from "@/components/PhotoModal";
-import { gallerySizes } from "./layout";
+import { gallerySizes } from "./rows";
 import { partId } from "./timing";
 import { runsOf, type LabCard, type LabPhoto } from "./cards";
 

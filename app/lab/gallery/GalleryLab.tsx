@@ -7,7 +7,7 @@ import { cardById } from "./cards";
 import { Frame } from "./Frame";
 import { GalleryContent, type Measure } from "./GalleryContent";
 import { GalleryModal } from "./GalleryModal";
-import { interleave, readingOrder } from "./layout";
+import { interleave, readingOrder } from "./rows";
 import { PageBehind } from "./PageBehind";
 import { Panel, type View } from "./Panel";
 import { exportValues, INITIAL, PRESETS, sameSettings, type Settings } from "./settings";
