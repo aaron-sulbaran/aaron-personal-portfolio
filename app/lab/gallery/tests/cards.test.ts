@@ -21,18 +21,21 @@ describe("the lab's cards", () => {
       expect(card.photos.length).toBeLessThanOrEqual(4);
       for (const photo of card.photos) expect(photo.alt).toMatch(/^(Me|My|Our)\b/);
       const refs = card.photos.map((p, i) => ({ block: p.block, aspect: drawnShape(card, i) }));
-      expect(readingOrder(interleave(card.blocks.length, refs)).sort()).toEqual(card.photos.map((_, i) => i));
+      const order = readingOrder(interleave(card.blocks.length, refs, { lead: card.flownPhoto }));
+      expect([...order].sort()).toEqual(card.photos.map((_, i) => i));
+      if (card.flownPhoto !== undefined) expect(order[0]).toBe(card.flownPhoto);
     }
   });
 
   it("draw the flown card picture at 3:4 and every other photo at its own shape or the override", () => {
     const hackathons = CARDS.find((c) => c.id === "hackathons")!;
-    expect(drawnShape(hackathons, 1, 2)).toBe(CARD_PICTURE);
-    expect(drawnShape(hackathons, 0)).toBeCloseTo(1.41);
-    expect(drawnShape(hackathons, 0, 2)).toBe(2);
+    expect(drawnShape(hackathons, 0, 2)).toBe(CARD_PICTURE);
+    expect(drawnShape(hackathons, 1)).toBeCloseTo(1.41);
+    expect(drawnShape(hackathons, 1, 2)).toBe(2);
   });
 
-  it("carry the four-photo cards and a caption on every non-flown photo", () => {
+  it("hold one card picture and up to three photos, and a caption on every photo but the card picture", () => {
+    for (const card of CARDS) expect(card.photos.length - (card.flownPhoto === undefined ? 0 : 1)).toBeLessThanOrEqual(3);
     expect(CARDS.filter((c) => c.photos.length === 4).map((c) => c.id)).toEqual(["mentorship", "misuki"]);
     for (const card of CARDS) card.photos.forEach((p, i) => i !== card.flownPhoto && expect(p.caption).toBeTruthy());
   });

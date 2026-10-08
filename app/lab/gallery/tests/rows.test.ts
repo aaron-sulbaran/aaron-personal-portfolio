@@ -60,10 +60,43 @@ describe("interleave", () => {
     expect(isWide(1.1, 1.1)).toBe(true);
   });
 
-  it("puts every photo after a card's only block, and a second claim on a block becomes an extra", () => {
+  it("puts every photo after a card's only block; a taken block slides the photo to the next free one", () => {
     expect(interleave(1, [{ block: 0, aspect: V }]).map((r) => r.kind)).toEqual(["text", "photos"]);
-    const rows = interleave(3, [{ block: 0, aspect: V }, { block: 0, aspect: V }, { block: 7, aspect: V }]);
-    expect(rows[3]).toEqual({ kind: "photos", photos: [1, 2], side: "right" });
+    const rows = interleave(3, [{ block: 0, aspect: V }, { block: 0, aspect: V }, { block: 2, aspect: V }, { block: 7, aspect: V }]);
+    expect(rows).toEqual([
+      { kind: "pair", block: 0, photo: 0, side: "left" },
+      { kind: "pair", block: 1, photo: 1, side: "right" },
+      { kind: "pair", block: 2, photo: 2, side: "left" },
+      { kind: "photos", photos: [3], side: "right" },
+    ]);
+  });
+
+  it("leads with the card picture beside the title, carrying the first block when no photo claims it", () => {
+    // Hackathons: the card picture, Hook 'Em (horizontal, block 0), Vercel (block 2).
+    const photos = [{ aspect: V }, { block: 0, aspect: 1.41 }, { block: 2, aspect: V }];
+    expect(interleave(4, photos, { lead: 0 })).toEqual([
+      { kind: "lead", photo: 0 },
+      { kind: "stack", block: 0, photo: 1 },
+      { kind: "text", block: 1 },
+      { kind: "pair", block: 2, photo: 2, side: "left" },
+      { kind: "text", block: 3 },
+    ]);
+    // Building in public: block 0 is claimed by the screenshot, so the lead
+    // row carries none; with no claim on block 0 it carries it.
+    expect(interleave(2, [{ aspect: V }, { block: 1, aspect: V }], { lead: 0 })[0]).toEqual({ kind: "lead", photo: 0, block: 0 });
+  });
+
+  it("can lead with the card picture beside the first block instead, sliding the rest along", () => {
+    // Misuki: the card picture, the graduation (block 0), the engine (block 1), the Mazda (extra).
+    const photos = [{ aspect: V }, { block: 0, aspect: V }, { block: 1, aspect: V }, { aspect: H }];
+    expect(interleave(2, photos, { lead: 0, leadMode: "block" })).toEqual([
+      { kind: "pair", block: 0, photo: 0, side: "left" },
+      { kind: "pair", block: 1, photo: 1, side: "right" },
+      { kind: "photos", photos: [2], side: "left" },
+      { kind: "wide", photo: 3 },
+    ]);
+    expect(readingOrder(interleave(2, photos, { lead: 0, leadMode: "block" }))).toEqual([0, 1, 2, 3]);
+    expect(readingOrder(interleave(2, photos, { lead: 0 }))).toEqual([0, 1, 2, 3]);
   });
 
   it("reads the photos in row order, every kind included", () => {
@@ -83,6 +116,7 @@ describe("boxes", () => {
   it("draws a vertical photo at the column's width and its own height", () => {
     expect(columnBox(V, 356).height).toBeCloseTo(474.67);
     expect(columnBox(0.8, 356).height).toBeCloseTo(445);
+    expect(columnBox(532 / 517, 600, 532)).toEqual({ width: 532, height: 517 });
   });
 
   it("spans a horizontal photo across the row up to the height cap, never under 320px", () => {

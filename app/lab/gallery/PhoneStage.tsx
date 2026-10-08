@@ -11,7 +11,9 @@ import { partId } from "./timing";
 // shape), tap or swipe for the next, arrow keys from anywhere in the dialog,
 // dots for where you are, and one gentle auto-advance pass that stops on the
 // last photo or at a touch. The stage takes each photo's height and eases
-// between them, or holds the tallest. Crossfade only, no drift. The caption
+// between them, or holds the tallest, with a shorter photo standing on the
+// stage's floor so it sits on its caption and the spare height joins the
+// space under the close button. Crossfade only, no drift. The caption
 // under it changes with the photo; every caption shares one grid cell, so the
 // longest sets the height and nothing under it moves. Under reduced motion
 // the swap is instant and nothing advances on its own.
@@ -108,7 +110,7 @@ export function PhoneStage({ photos, aspects, order, innerWidth, maxHeightPx, fi
                 style={{
                   width: box.width,
                   height: box.height,
-                  top: `calc(50% - ${box.height / 2}px)`,
+                  bottom: 0,
                   transform: "translateX(-50%)",
                   opacity: i === state.index ? 1 : 0,
                   transitionDuration: `${fade}ms`,

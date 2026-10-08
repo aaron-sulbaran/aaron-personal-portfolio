@@ -5,7 +5,8 @@ import { columnBox, wideBox, type Row } from "./rows";
 import { CloseHint, Header, Links, MaskedPhoto, TextBlock } from "./parts";
 import type { Settings } from "./settings";
 
-// Desktop: the header, then the rows. A vertical photo sits beside its
+// Desktop: the header (beside the card picture on a photo card when it
+// leads with the title), then the rows. A vertical photo sits beside its
 // paragraph, the sides alternating; a horizontal one spans the row with its
 // paragraph under it; extras follow the last block. Then the links and the
 // close hint.
@@ -22,16 +23,26 @@ export function DesktopGallery({ card, rows, s, theme, shapes, innerWidth }: Pro
       index={p}
       aspect={aspect(p)}
       flown={p === card.flownPhoto}
-      box={wide ? wideBox(aspect(p), rowWidth, s.wideMaxHeight) : columnBox(aspect(p), s.photoWidth)}
+      box={wide ? wideBox(aspect(p), rowWidth, s.wideMaxHeight) : columnBox(aspect(p), s.photoWidth, card.photos[p].maxWidth)}
     />
   );
 
   return (
     <>
-      <Header card={card} theme={theme} compact={false} />
+      {rows[0]?.kind !== "lead" && <Header card={card} theme={theme} compact={false} />}
       <div className="flex flex-col" style={{ rowGap: s.rowGap }}>
         {rows.map((row) => {
           switch (row.kind) {
+            case "lead":
+              return (
+                <div key="lead" className={`flex flex-row ${s.textAlign === "center" ? "items-center" : "items-start"}`} style={{ columnGap: s.columnGap }} data-row="lead">
+                  {photo(row.photo, false)}
+                  <div className="flex min-w-0 flex-1 flex-col gap-6">
+                    <Header card={card} theme={theme} compact={false} />
+                    {row.block !== undefined && <TextBlock card={card} block={row.block} compact={false} />}
+                  </div>
+                </div>
+              );
             case "text":
               return <TextBlock key={`text-${row.block}`} card={card} block={row.block} compact={false} className="max-w-[62ch]" />;
             case "stack":

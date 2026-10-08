@@ -82,6 +82,7 @@ export function desktopSteps(rows: readonly Row[], o: StepOptions): MaskStep[] {
   };
   for (const row of rows) {
     if (row.kind === "text") push([part(partId.block(row.block), o)]);
+    else if (row.kind === "lead") push([...photoParts(row.photo, o), ...(row.block === undefined ? [] : [part(partId.block(row.block), o)])]);
     else if (row.kind === "pair" || row.kind === "stack") push([...photoParts(row.photo, o), part(partId.block(row.block), o)]);
     else if (row.kind === "wide") push(photoParts(row.photo, o));
     else push(row.photos.flatMap((p) => photoParts(p, o)));

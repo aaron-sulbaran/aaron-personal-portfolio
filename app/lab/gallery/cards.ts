@@ -2,7 +2,9 @@ import { photoBySrc } from "@/lib/content";
 
 // The cards the brief names for tuning, with Aaron's approved words
 // (docs/content/cards.md), the block each photo belongs with, its shape and
-// its caption (docs/content/photos.md, second round). The real modal photos
+// its caption (docs/content/photos.md, second round). A photo card's first
+// image is its card picture (the flown card, 3:4, captioned where Aaron gave
+// one), then up to three modal photos; a logo card has up to three photos. The real modal photos
 // are not exported yet, so each slot holds a stand-in from public/photos,
 // cropped by the lab to the real photo's shape, with the stand-in's own true
 // first-person alt text. The caption is the real one: visible text that the
@@ -18,6 +20,8 @@ export interface LabPhoto {
   // is drawn at 3:4 whatever this says.
   shape: number;
   caption?: string;
+  // The widest it may draw, for a source that should show at 1x or smaller.
+  maxWidth?: number;
   // What photos.md puts here, so the stand-in is never mistaken for the pick.
   intended: string;
 }
@@ -26,9 +30,9 @@ export interface LabCard {
   id: string;
   name: string;
   // Where the flight lands: the logo slot for a logo card (no flownPhoto),
-  // else the photo that is the card picture, drawn at 3:4
+  // else the card picture, always the first image, drawn at 3:4
   // (modal-gallery.md, "Rules that hold").
-  flownPhoto?: number;
+  flownPhoto?: 0;
   logo?: { light: string; dark: string };
   title: string;
   meta: string;
@@ -57,10 +61,10 @@ export const shapeLabel = (aspect: number) => SHAPES.find((s) => Math.abs(s.aspe
 const V = 3 / 4;
 const H43 = 4 / 3;
 
-function photo(src: string, block: number | undefined, shape: number, caption: string | undefined, intended: string): LabPhoto {
+function photo(src: string, block: number | undefined, shape: number, caption: string | undefined, intended: string, maxWidth?: number): LabPhoto {
   const found = photoBySrc.get(src);
   if (!found) throw new Error(`No photo ${src} in lib/content.ts`);
-  return { src, width: found.width, height: found.height, alt: found.alt, block, shape, caption, intended };
+  return { src, width: found.width, height: found.height, alt: found.alt, block, shape, caption, intended, maxWidth };
 }
 
 export const CARDS: readonly LabCard[] = [
@@ -87,7 +91,7 @@ export const CARDS: readonly LabCard[] = [
   {
     id: "hackathons",
     name: "Hackathons",
-    flownPhoto: 1,
+    flownPhoto: 0,
     title: "Hackathons",
     meta: "Builder, 2026 to now",
     blocks: [
@@ -97,8 +101,8 @@ export const CARDS: readonly LabCard[] = [
       "HackTX & others, coming soon.",
     ],
     photos: [
+      photo("/photos/claude-hackathon.jpeg", undefined, V, "Me and my team winning UFCU Develop U.", "card picture: the UFCU check, 3:4"),
       photo("/photos/hsf-speaking.jpeg", 0, 1.41, "Me at Hook 'Em Hacks, winning.", "the min/Max winner slide, horizontal 1.41:1"),
-      photo("/photos/claude-hackathon.jpeg", 1, V, "Me and my team winning UFCU Develop U.", "the UFCU check, the card picture at 3:4"),
       photo("/photos/mt-fuji.jpeg", 2, V, "Me at a one-day Vercel hackathon in New York City.", "the Built in NYC poster, vertical"),
     ],
     links: [],
@@ -114,10 +118,10 @@ export const CARDS: readonly LabCard[] = [
       "I take coffee chats in both directions. If I'm asking people for their time, I should be willing to give mine, and I lose track of time in them.",
     ],
     photos: [
-      photo("/photos/hsf-speaking.jpeg", 0, V, "Me at my first HSF.", "the HSF speaking photo, the card picture at 3:4"),
-      photo("/photos/drum-major.jpeg", 1, 1.15, "Me at my second HSF, this time as a mentor.", "the STEM Summit photo booth print, 1.15:1"),
+      photo("/photos/hsf-speaking.jpeg", undefined, V, "Me at my first HSF.", "card picture: the HSF speaking original, 3:4"),
+      photo("/photos/drum-major.jpeg", 0, 1.15, "Me at my second HSF, this time as a mentor.", "the STEM Summit photo booth print, 1.15:1"),
       photo("/photos/hsf-speaking.jpeg", undefined, H43, "Me at HSF my first year, as a scholar.", "the red sponsor backdrop group, horizontal 4:3"),
-      photo("/photos/drum-major.jpeg", undefined, H43, "Me at my first SHPE national convention, 2023.", "the SHPE Familia sign group, horizontal 4:3"),
+      photo("/photos/drum-major.jpeg", undefined, H43, "Me at my first SHPE national convention, 2023. I've been to every one since.", "the SHPE Familia sign group, horizontal 4:3"),
     ],
     links: [{ label: "Grab some time with me", href: "https://cal.com/aaron-sulbaran" }],
   },
@@ -153,7 +157,7 @@ export const CARDS: readonly LabCard[] = [
     ],
     photos: [
       photo("/photos/hsf-speaking.jpeg", 0, H43, "Me, my co-ambassadors and the judges at Hooked on Claude, our hackathon.", "the Hooked on Claude group, horizontal 4:3"),
-      photo("/photos/claude-hackathon.jpeg", 1, V, "Me teaching a live Claude session for a student org.", "the context is key session, vertical"),
+      photo("/photos/claude-hackathon.jpeg", 1, V, "Me teaching a live Claude session for Longhorn Neurotech.", "the context is key session, vertical"),
       photo("/photos/drum-major.jpeg", undefined, H43, "Me teaching during one of our learning sessions.", "the lesson plan lecture hall, horizontal 4:3"),
     ],
     links: [{ label: "txclaude.org", href: "https://txclaude.org" }],
@@ -161,7 +165,7 @@ export const CARDS: readonly LabCard[] = [
   {
     id: "misuki",
     name: "Misuki",
-    flownPhoto: 3,
+    flownPhoto: 0,
     title: "Misuki",
     meta: "2001 Mazda Miata, five-speed",
     blocks: [
@@ -169,12 +173,33 @@ export const CARDS: readonly LabCard[] = [
       "Her engine blew in college, a family friend in Houston rebuilt it, and she's still my daily driver. I named her Misuki, from the M in Mazda and a nod to [Fast and Furious](tip:misuki-suk). I took her around Circuit of the Americas once, and it was one of the most fun days of my life.",
     ],
     photos: [
+      photo("/photos/traveling.jpeg", undefined, V, undefined, "card picture: the parking deck at golden hour, 3:4"),
       photo("/photos/uncs-grad.jpeg", 0, V, "I drove Misuki to my high school graduation and had to take a photo with her.", "the graduation night, vertical, levelled"),
-      photo("/photos/misuki.jpeg", 1, V, "Misuki breaks down on me, but I keep her going.", "the engine on the lift, vertical"),
+      photo("/photos/misuki.jpeg", 1, V, "Misuki breaks down on me (a lot), but I keep her going.", "the engine on the lift, vertical"),
       photo("/photos/hsf-speaking.jpeg", undefined, H43, "Owning a manual Miata is part of why I went to the Mazda Museum in Hiroshima, where I saw the real Mazda 787B that won Le Mans in 1991.", "the Mazda 787B, horizontal 4:3"),
-      photo("/photos/traveling.jpeg", undefined, V, "Misuki outside Gregory Gym.", "the interim card picture, Texas Fight stairs, 3:4"),
     ],
     links: [],
+  },
+  {
+    id: "building-in-public",
+    name: "Building in public",
+    flownPhoto: 0,
+    title: "Building in public",
+    meta: "LinkedIn and X, ongoing",
+    blocks: [
+      "I'm trying to build in public (tbh, I fell off for a couple of months and I'm easing back in). So far: 2,500+ people follow me on LinkedIn, and my posts have had 450,000 impressions in three months. Being active on LinkedIn opened doors in Toronto and NYC this summer and got me a few brand deals. After talking to enough founders and investors, I know I have to get on X next.",
+      "While I love building, I also love creating and sharing. So why not share what works and what doesn't, with no polish on the parts that didn't. I'd rather be useful than look flawless.",
+      "For every 100 people who think it's cringe, I get 1 person who DMs me saying \"your post inspired me to...\" and that makes it worth it to me.",
+    ],
+    photos: [
+      photo("/photos/mt-fuji.jpeg", undefined, V, "Me at Vercel Ship in New York City, one door LinkedIn opened this summer.", "card picture: the Ship NYC selfie, flipped, 3:4"),
+      photo("/photos/capital-one.jpeg", 0, 532 / 517, "My top performing posts on LinkedIn.", "the LinkedIn analytics screenshot, 532 by 517, 1x at most", 532),
+      photo("/photos/yosemite-hiking.jpeg", undefined, V, "Me in Toronto, another one.", "the Toronto window and the CN Tower, vertical"),
+    ],
+    links: [
+      { label: "LinkedIn", href: "https://www.linkedin.com/in/aaron-sulbaran/" },
+      { label: "X (@imaaronsulbaran)", href: "https://x.com/imaaronsulbaran" },
+    ],
   },
 ];
 

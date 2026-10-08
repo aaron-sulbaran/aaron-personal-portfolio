@@ -6,7 +6,7 @@ import { Check, Chip, Field, Segmented, Select, Slider } from "../mark/ui";
 import { CARD_PICTURE, CARDS, SHAPES, shapeLabel, type LabCard } from "./cards";
 import { FRAMES, type FrameKey } from "./Frame";
 import type { Measure } from "./GalleryContent";
-import { ALIGN_LABELS, EASES, FIT_LABELS, PHOTO_MASK_LABELS, PRESETS, RANGES, SPLIT_LABELS, sameSettings, type Settings } from "./settings";
+import { ALIGN_LABELS, EASES, FIT_LABELS, LEAD_LABELS, PHOTO_MASK_LABELS, PRESETS, RANGES, SPLIT_LABELS, sameSettings, type Settings } from "./settings";
 
 // The lab's controls, set in system-ui like the other labs so the chrome never
 // reads as part of what is being judged.
@@ -90,7 +90,7 @@ export function Panel({ s, view, theme, osReduced, phone, measure, doneAtMs, val
         <div className="grid grid-cols-2 gap-1.5">
           {CARDS.map((c) => (
             <Chip key={c.id} pressed={view.card === c.id} onClick={() => setView((v) => ({ ...v, card: c.id, open: true }))}>
-              {`${c.name} (${c.photos.length})`}
+              {`${c.name} (${c.flownPhoto === undefined ? "logo" : "picture"} + ${c.flownPhoto === undefined ? c.photos.length : c.photos.length - 1})`}
             </Chip>
           ))}
         </div>
@@ -115,6 +115,9 @@ export function Panel({ s, view, theme, osReduced, phone, measure, doneAtMs, val
       <Readout measure={measure} doneAtMs={doneAtMs} />
 
       <Group title="Desktop rows">
+        <Field label="A photo card's card picture leads" hint="The modal opens on the card picture (the flown card), then up to three photos. Beside the title keeps every other photo beside its own words.">
+          <Segmented options={["title", "block"] as const} value={s.leadMode} format={(m) => LEAD_LABELS[m]} onChange={set("leadMode")} />
+        </Field>
         <Slider label="Panel width" value={s.panelWidth} {...range("panelWidth")} format={px} hint="Today's modals are 576px (WorkModal) and 896px (PhotoModal)." onChange={set("panelWidth")} />
         <Slider label="Photo width" value={s.photoWidth} {...range("photoWidth")} format={(n) => `${n}px (${Math.round((n * 4) / 3)}px tall)`} onChange={set("photoWidth")} />
         <Slider label="Gap between rows" value={s.rowGap} {...range("rowGap")} format={px} onChange={set("rowGap")} />
@@ -176,7 +179,8 @@ function Readout({ measure, doneAtMs }: { measure: Measure | null; doneAtMs: num
   if (measure?.flownTopPx === null) lines.push("The flown card picture is not the stage's first photo, so the flight has nowhere on screen to land.");
   else if (measure?.flownTopPx !== undefined) lines.push(`The flight lands at ${measure.flownTopPx}px: ${measure.flownTopPx < measure.foldPx ? "on screen" : "below the fold"}.`);
   if (measure?.mode === "desktop") {
-    lines.push(`First row ends at ${measure.keyBottomPx}px of ${measure.foldPx}: ${measure.fits ? "above the fold" : "below the fold"}.`);
+    lines.push(`First photo row, caption and paragraph included, ends at ${measure.keyBottomPx}px of ${measure.foldPx}: ${measure.fits ? "above the fold" : "below the fold"}.`);
+    if (measure.photoBottomPx !== undefined) lines.push(`The first photo itself ends at ${measure.photoBottomPx}px.`);
     if (measure.textColumnPx) lines.push(`The text beside the first photo is ${measure.textColumnPx}px wide.`);
   }
   if (measure?.mode === "phone") {

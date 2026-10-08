@@ -2,7 +2,7 @@
 // presets, and what "Copy values" puts on the clipboard. Lengths are px at
 // 1x, times are ms unless named seconds.
 
-import type { StageFit } from "./rows";
+import type { LeadMode, StageFit } from "./rows";
 import { maskTable, type MaskStep } from "./timing";
 
 export type TextSplit = "lines" | "block";
@@ -18,6 +18,7 @@ export interface Settings {
   columnGap: number;
   textAlign: TextAlign;
   extrasPerRow: number;
+  leadMode: LeadMode; // where a photo card's card picture leads
   // Horizontal photos on desktop
   wideFrom: number; // width over height from which a photo spans the row
   wideWidth: number; // percent of the panel's inner width a spanning photo may take
@@ -74,6 +75,7 @@ export const EASES: Record<EaseKey, { name: string; gsap: string; css: string }>
 
 export const SPLIT_LABELS: Record<TextSplit, string> = { lines: "By line, as the sections", block: "Whole block" };
 export const PHOTO_MASK_LABELS: Record<PhotoMask, string> = { wipe: "Wipe up (the edge rises)", rise: "Rise (as a text line)" };
+export const LEAD_LABELS: Record<LeadMode, string> = { title: "Beside the title", block: "Beside the first block" };
 export const FIT_LABELS: Record<StageFit, string> = { each: "Each photo's height (eases)", tallest: "The tallest photo's height (text stays put)" };
 export const ALIGN_LABELS: Record<TextAlign, string> = { center: "Middle of the photo", start: "Top of the photo" };
 
@@ -86,6 +88,7 @@ const BARE: Settings = {
   columnGap: 48,
   textAlign: "start",
   extrasPerRow: 2,
+  leadMode: "block",
   wideFrom: 1.05,
   wideWidth: 100,
   wideMaxHeight: 720,
@@ -114,6 +117,7 @@ const ROUND_ONE: Settings = {
   columnGap: 56,
   textAlign: "center",
   extrasPerRow: 2,
+  leadMode: "block",
   wideFrom: 1.1,
   wideWidth: 100,
   wideMaxHeight: 720,
@@ -133,24 +137,32 @@ const ROUND_ONE: Settings = {
   ease: "site",
 };
 
-// My pick for round two. Vertical photos narrow to 356px so the text beside
-// them keeps a comfortable measure; anything wider than 1.1:1 spans the row
-// but stops at 420px tall, so a 4:3 or 3:2 group photo, its caption and the
-// first lines of its paragraph still clear the fold at 1024 by 768. On
-// phones the stage holds the tallest photo's height, so the text under it
-// never jumps while the pass runs. Masks unchanged from round one.
+// My pick for round two. A photo card's card picture leads beside the title,
+// so the flight lands at the top of the modal and every other photo stays
+// beside its own words. Captions made every vertical row taller, so
+// vertical photos drop to the 320px floor and the rows close to 56px apart:
+// that is what keeps Capital One's first photo above the fold at 1024 by 768
+// behind its unpaired opening paragraph, and it gives the text beside a
+// photo a 486px measure. Anything from 1.1:1 spans the row but stops at
+// 420px tall, so a 4:3 or 3:2 group photo, its caption and its paragraph's
+// first lines clear the fold. On phones the stage holds the tallest photo's
+// height, so the text under it never jumps while the pass runs, and the cap
+// drops to 50 percent: free at 390 by 844 (the width binds there) and the
+// 14px that lets Capital One's first lines show at 360 by 740. Masks
+// unchanged from round one.
 const RECOMMENDED: Settings = {
   panelWidth: 944,
-  photoWidth: 356,
-  rowGap: 80,
+  photoWidth: 320,
+  rowGap: 56,
   columnGap: 56,
   textAlign: "center",
   extrasPerRow: 2,
+  leadMode: "title",
   wideFrom: 1.1,
   wideWidth: 100,
   wideMaxHeight: 420,
   stackGap: 20,
-  stageMaxHeight: 55,
+  stageMaxHeight: 50,
   autoAdvance: 4,
   crossfadeMs: 420,
   stageFit: "tallest",
@@ -169,7 +181,7 @@ export const PRESETS: readonly { id: string; name: string; note: string; setting
   {
     id: "recommended",
     name: "Recommended",
-    note: "Vertical photos 356px beside their paragraph; anything from 1.1:1 spans the row up to 420px tall with its caption and paragraph under it; the phone stage holds the tallest photo so the text never jumps. Masks as round one.",
+    note: "The card picture leads beside the title, so the flight lands at the top. Vertical photos at the 320px floor beside their paragraph, rows 56px apart (Capital One's first photo clears the fold at 1024 by 768); anything from 1.1:1 spans the row up to 420px tall with its caption and paragraph under it; the phone stage holds the tallest photo, capped at 50 percent of the height, so the text never jumps. Masks as round one.",
     settings: RECOMMENDED,
   },
   {
@@ -209,6 +221,7 @@ export function exportValues(s: Settings, label: string, theme: string, steps: {
       rowGap: `${s.rowGap}px`,
       photoTextGap: `${s.columnGap}px`,
       textBesidePhoto: ALIGN_LABELS[s.textAlign],
+      cardPictureLeads: `${LEAD_LABELS[s.leadMode]}: a photo card's modal opens on its card picture (the flown card, 3:4), then up to three photos`,
       extrasPerRow: s.extrasPerRow,
       sides: "alternate from the left, extras continue the alternation",
     },

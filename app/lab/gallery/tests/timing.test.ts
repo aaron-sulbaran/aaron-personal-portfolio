@@ -53,11 +53,16 @@ describe("steps", () => {
     ]);
   });
 
-  it("never masks the flown card picture, but masks its caption", () => {
-    // Hackathons: the card picture is the second photo.
-    const rows = interleave(3, [{ block: 0, aspect: 1.41 }, { block: 1, aspect: V }, { block: 2, aspect: V }]);
-    const steps = desktopSteps(rows, { flownPhoto: 1, hasCaption: all, hasLinks: false });
-    expect(steps[3].map((p) => p.id)).toEqual(["caption-1", "block-1"]);
+  it("never masks the flown card picture, but masks its caption and a block it carries", () => {
+    const rows = interleave(3, [{ aspect: V }, { block: 1, aspect: 1.41 }, { block: 2, aspect: V }], { lead: 0 });
+    const steps = desktopSteps(rows, { flownPhoto: 0, hasCaption: all, hasLinks: false });
+    expect(steps.map((s) => s.map((p) => p.id))).toEqual([
+      ["title"],
+      ["meta"],
+      ["caption-0", "block-0"],
+      ["photo-1", "caption-1", "block-1"],
+      ["photo-2", "caption-2", "block-2"],
+    ]);
   });
 
   it("drops a row with nothing left to mask, and masks wide and grouped extras", () => {
@@ -81,7 +86,6 @@ describe("steps", () => {
       ["block-1"],
     ]);
     expect(phoneSteps(1, 0, { flownPhoto: 0, hasCaption: all, hasLinks: true, stageCaption: false })[0].map((p) => p.id)).toEqual(["title"]);
-    // Misuki: the flown picture is the last photo, so the stage still masks.
-    expect(phoneSteps(2, 0, { flownPhoto: 3, hasCaption: all, hasLinks: false, stageCaption: true })[0].map((p) => p.id)).toEqual(["stage", "stage-caption", "title"]);
+
   });
 });

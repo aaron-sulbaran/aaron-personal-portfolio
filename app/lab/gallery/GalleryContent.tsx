@@ -25,6 +25,8 @@ export type Measure = {
   keyBottomPx: number;
   fits: boolean;
   textColumnPx?: number;
+  // Desktop: the bottom of the first photo itself, without its caption.
+  photoBottomPx?: number;
   stagePx?: number;
   // Where the flown card picture's slot starts; null when it has no slot on
   // screen (a phone stage that opens on another photo).
@@ -53,8 +55,8 @@ export function GalleryContent({ card, shapes, s, phone, theme, reduced, frame, 
   const rootRef = useRef<HTMLDivElement | null>(null);
   const aspects = useMemo(() => card.photos.map((_, i) => drawnShape(card, i, shapes[i])), [card, shapes]);
   const rows = useMemo(
-    () => interleave(card.blocks.length, card.photos.map((p, i) => ({ block: p.block, aspect: aspects[i] })), { extrasPerRow: s.extrasPerRow, wideFrom: s.wideFrom }),
-    [card, aspects, s.extrasPerRow, s.wideFrom],
+    () => interleave(card.blocks.length, card.photos.map((p, i) => ({ block: p.block, aspect: aspects[i] })), { extrasPerRow: s.extrasPerRow, wideFrom: s.wideFrom, lead: card.flownPhoto, leadMode: s.leadMode }),
+    [card, aspects, s.extrasPerRow, s.wideFrom, s.leadMode],
   );
   const order = useMemo(() => readingOrder(rows), [rows]);
   const hasLinks = card.links.length > 0;
@@ -71,7 +73,7 @@ export function GalleryContent({ card, shapes, s, phone, theme, reduced, frame, 
   const shapeKey = aspects.map((a) => a.toFixed(3)).join(",");
   useMaskIn(rootRef, { active: true, reduced, s, runKey: `${runKey}|${phone ? "phone" : "desktop"}|${shapeKey}`, stepsFor, onSchedule });
 
-  const settingsKey = `${s.panelWidth}|${s.photoWidth}|${s.rowGap}|${s.columnGap}|${s.textAlign}|${s.extrasPerRow}|${s.stageMaxHeight}|${s.wideFrom}|${s.wideWidth}|${s.wideMaxHeight}|${s.stackGap}|${s.stageFit}|${shapeKey}`;
+  const settingsKey = `${s.panelWidth}|${s.photoWidth}|${s.rowGap}|${s.columnGap}|${s.textAlign}|${s.extrasPerRow}|${s.stageMaxHeight}|${s.wideFrom}|${s.wideWidth}|${s.wideMaxHeight}|${s.stackGap}|${s.stageFit}|${s.leadMode}|${shapeKey}`;
   useLayoutEffect(() => {
     const root = rootRef.current;
     const scroller = root?.closest<HTMLElement>("[data-gallery-dialog]");
@@ -83,13 +85,15 @@ export function GalleryContent({ card, shapes, s, phone, theme, reduced, frame, 
       if (!phone) {
         const firstRow = root.querySelector<HTMLElement>("[data-row]");
         const bottom = firstRow ? local(firstRow.getBoundingClientRect().bottom) : 0;
-        const text = root.querySelector<HTMLElement>('[data-row="pair"] [data-mask-kind="text"]');
+        const text = root.querySelector<HTMLElement>('[data-row="pair"] > [data-mask^="block-"]');
+        const firstPhoto = firstRow?.querySelector<HTMLElement>("[data-photo-frame] > div");
         onMeasure({
           mode: "desktop",
           foldPx: frame.height,
           keyBottomPx: Math.round(bottom),
           fits: bottom <= frame.height,
           textColumnPx: text ? Math.round(text.getBoundingClientRect().width / frame.scale) : undefined,
+          photoBottomPx: firstPhoto ? Math.round(local(firstPhoto.getBoundingClientRect().bottom)) : undefined,
           flownTopPx: flown ? Math.round(local(flown.getBoundingClientRect().top)) : undefined,
         });
         return;
@@ -115,7 +119,7 @@ export function GalleryContent({ card, shapes, s, phone, theme, reduced, frame, 
 
   // Keyed by card and shapes: React replaces the content whole rather than
   // patching inside a paragraph SplitText has split.
-  const contentKey = `${card.id}|${shapeKey}`;
+  const contentKey = `${card.id}|${shapeKey}|${s.leadMode}`;
 
   if (!phone) {
     return (

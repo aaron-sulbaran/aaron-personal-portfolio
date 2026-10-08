@@ -9,6 +9,7 @@ import { coverScale } from "@/lib/photoSizes";
 export type Side = "left" | "right";
 
 export type Row =
+  | { kind: "lead"; photo: number; block?: number } // the card picture beside the title, and the first block if no photo claims it
   | { kind: "pair"; block: number; photo: number; side: Side } // a vertical photo beside its paragraph
   | { kind: "stack"; block: number; photo: number } // a horizontal photo across the row, its paragraph under it
   | { kind: "text"; block: number }
@@ -23,28 +24,47 @@ export interface PhotoRef {
   aspect: number;
 }
 
+export type LeadMode = "title" | "block";
+
 export interface InterleaveOptions {
   extrasPerRow?: number;
   // A photo at least this wide for its height spans the row.
   wideFrom?: number;
+  // The card picture (a photo card's flown card), which the modal shows
+  // first (modal-gallery.md): beside the title ("title"), or claiming the
+  // first block like any other photo ("block").
+  lead?: number;
+  leadMode?: LeadMode;
 }
 
 export const isWide = (aspect: number, wideFrom: number) => aspect >= wideFrom;
 
-// Each paired photo sits with its block: a vertical one beside it, the sides
-// alternating from the left among the side-by-side rows; a horizontal one
-// across the row above it. Extras follow the last block in reading order:
+// The card picture, when there is one, comes first. Each other photo sits
+// with its block: a vertical one beside it, the sides alternating from the
+// left among the side-by-side rows; a horizontal one across the row above it.
+// A photo whose block is taken slides to the next free block after it, so
+// the reading order holds. Extras follow the last block in reading order:
 // consecutive vertical extras share a row (up to `extrasPerRow`), each
 // horizontal extra takes its own. A card with one block puts every photo
-// after it. A second photo naming a block already taken becomes an extra.
-export function interleave(blockCount: number, photos: readonly PhotoRef[], { extrasPerRow = 2, wideFrom = 1.1 }: InterleaveOptions = {}): Row[] {
+// after it.
+export function interleave(blockCount: number, photos: readonly PhotoRef[], { extrasPerRow = 2, wideFrom = 1.1, lead, leadMode = "title" }: InterleaveOptions = {}): Row[] {
   const pairedTo = new Map<number, number>();
   const extras: number[] = [];
+  const hasLead = lead !== undefined && lead >= 0 && lead < photos.length;
+  const claim = (index: number, wanted: number | undefined) => {
+    if (blockCount < 2 || wanted === undefined || !Number.isInteger(wanted) || wanted < 0) return false;
+    for (let block = wanted; block < blockCount; block++) {
+      if (!pairedTo.has(block)) {
+        pairedTo.set(block, index);
+        return true;
+      }
+    }
+    return false;
+  };
+  if (hasLead && leadMode === "block" && !claim(lead, 0)) extras.push(lead);
   photos.forEach((photo, index) => {
-    const block = photo.block;
-    const pairable = blockCount > 1 && block !== undefined && Number.isInteger(block) && block >= 0 && block < blockCount && !pairedTo.has(block);
-    if (pairable) pairedTo.set(block, index);
-    else extras.push(index);
+    if (hasLead && index === lead) return;
+    if (!claim(index, photo.block)) extras.push(index);
   });
 
   const rows: Row[] = [];
@@ -52,7 +72,13 @@ export function interleave(blockCount: number, photos: readonly PhotoRef[], { ex
   const nextSide = (): Side => (sideRows++ % 2 === 0 ? "left" : "right");
   const wide = (photo: number) => isWide(photos[photo].aspect, wideFrom);
 
-  for (let block = 0; block < blockCount; block++) {
+  let firstBlock = 0;
+  if (hasLead && leadMode === "title") {
+    const carries = blockCount > 0 && !pairedTo.has(0);
+    rows.push(carries ? { kind: "lead", photo: lead, block: 0 } : { kind: "lead", photo: lead });
+    if (carries) firstBlock = 1;
+  }
+  for (let block = firstBlock; block < blockCount; block++) {
     const photo = pairedTo.get(block);
     if (photo === undefined) rows.push({ kind: "text", block });
     else if (wide(photo)) rows.push({ kind: "stack", block, photo });
@@ -81,6 +107,11 @@ export function readingOrder(rows: readonly Row[]): number[] {
   return rows.flatMap((row) => (row.kind === "photos" ? row.photos : row.kind === "text" ? [] : [row.photo]));
 }
 
+// The blocks a row shows, for the mask steps and the markup.
+export function rowBlock(row: Row): number | undefined {
+  return row.kind === "photos" || row.kind === "wide" ? undefined : row.block;
+}
+
 export const MIN_TEXT_WIDTH = 280;
 export const MIN_PHOTO_WIDTH = 320;
 
@@ -107,9 +138,11 @@ export function fitWhole(aspect: number, boxWidth: number, boxHeight: number): B
   return { width, height: width / aspect };
 }
 
-// A vertical photo in the column: the column's width, its own height.
-export function columnBox(aspect: number, columnWidth: number): Box {
-  return { width: columnWidth, height: aspect > 0 ? columnWidth / aspect : 0 };
+// A vertical photo in the column: the column's width, its own height, and
+// never wider than its source at 1x (the LinkedIn screenshot is 532px).
+export function columnBox(aspect: number, columnWidth: number, maxWidth = Infinity): Box {
+  const width = Math.min(columnWidth, maxWidth);
+  return { width, height: aspect > 0 ? width / aspect : 0 };
 }
 
 // A horizontal photo across the row: the row's width, unless that would make

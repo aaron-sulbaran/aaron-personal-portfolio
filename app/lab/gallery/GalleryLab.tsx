@@ -100,13 +100,13 @@ export function GalleryLab() {
 
   const steps = useMemo(() => {
     const refs = card.photos.map((p, i) => ({ block: p.block, aspect: drawnShape(card, i, shapes[i]) }));
-    const rows = interleave(card.blocks.length, refs, { extrasPerRow: s.extrasPerRow, wideFrom: s.wideFrom });
+    const rows = interleave(card.blocks.length, refs, { extrasPerRow: s.extrasPerRow, wideFrom: s.wideFrom, lead: card.flownPhoto, leadMode: s.leadMode });
     const o = { flownPhoto: card.flownPhoto, hasCaption: (p: number) => !!card.photos[p].caption, hasLinks: card.links.length > 0 };
     return {
       desktop: desktopSteps(rows, o),
       phone: phoneSteps(card.blocks.length, readingOrder(rows)[0], { ...o, stageCaption: card.photos.some((p) => p.caption) }),
     };
-  }, [card, shapes, s.extrasPerRow, s.wideFrom]);
+  }, [card, shapes, s.extrasPerRow, s.wideFrom, s.leadMode]);
   const preset = PRESETS.find((p) => sameSettings(p.settings, s));
   // The live run's steps carry the measured line counts; the other layout's
   // count every part as one line.
@@ -115,7 +115,7 @@ export function GalleryLab() {
     ...exportValues(s, preset ? preset.name : "custom", theme, live, card.name),
     shapesOnThisCard: card.photos.map((p, i) => {
       const aspect = drawnShape(card, i, shapes[i]);
-      const where = i === card.flownPhoto ? "the flown card picture" : isWide(aspect, s.wideFrom) ? "spans the row" : "beside its paragraph";
+      const where = i === card.flownPhoto ? `the flown card picture, leading ${s.leadMode === "title" ? "beside the title" : "beside the first block"}` : isWide(aspect, s.wideFrom) ? "spans the row" : "beside its paragraph";
       return `${p.intended}: drawn ${shapeLabel(aspect)}, ${where}`;
     }),
   };
