@@ -29,9 +29,11 @@ function fakeLayer(opacity = "0.264") {
     resolve = res;
     reject = rej;
   });
+  let play = () => {};
+  const ready = new Promise<void>((res) => (play = res));
   const cancel = vi.fn(() => reject(new DOMException("cancelled", "AbortError")));
-  const animate = vi.fn((keyframes: Keyframe[], options: KeyframeAnimationOptions) => ({ keyframes, options, cancel, finished }));
-  return { layer: { animate, style: { opacity: "" } }, animate, cancel, finish: () => resolve(), read: () => opacity };
+  const animate = vi.fn((keyframes: Keyframe[], options: KeyframeAnimationOptions) => ({ keyframes, options, cancel, finished, ready }));
+  return { layer: { animate, style: { opacity: "" } }, animate, cancel, finish: () => resolve(), play: () => play(), read: () => opacity };
 }
 
 const flush = () => new Promise((done) => setTimeout(done, 0));
@@ -40,7 +42,7 @@ describe("the resting lockup's fade onto the still's baked name", () => {
   it("runs linear from the layer's composite ink to 0 over the fade, holding the end", () => {
     const { layer, animate, read } = fakeLayer();
     const { timers } = fakeTimers();
-    createLockupFade({ layer, read, ms: 300, slackMs: 100, timers, done: () => {} }).start();
+    createLockupFade({ layer, read, ms: 300, slackMs: 100, startGuardMs: 1900, timers, done: () => {} }).start();
     expect(animate).toHaveBeenCalledTimes(1);
     const [keyframes, options] = animate.mock.calls[0];
     expect(keyframes).toEqual([{ opacity: "0.264" }, { opacity: "0" }]);
@@ -51,7 +53,7 @@ describe("the resting lockup's fade onto the still's baked name", () => {
     const { layer, finish, read } = fakeLayer();
     const clock = fakeTimers();
     const done = vi.fn(() => expect(layer.style.opacity).toBe("0"));
-    const fade = createLockupFade({ layer, read, ms: 300, slackMs: 100, timers: clock.timers, done });
+    const fade = createLockupFade({ layer, read, ms: 300, slackMs: 100, startGuardMs: 1900, timers: clock.timers, done });
     fade.start();
     fade.start();
     expect(done).not.toHaveBeenCalled();
@@ -63,12 +65,18 @@ describe("the resting lockup's fade onto the still's baked name", () => {
     expect(done).toHaveBeenCalledTimes(1);
   });
 
-  it("is done at the backup timer, fade plus slack, should the fade's end never come", async () => {
-    const { layer, read } = fakeLayer();
+  it("is done at the backup timer, fade plus slack from the fade's own start, should its end never come", async () => {
+    const { layer, read, play } = fakeLayer();
     const clock = fakeTimers();
     const done = vi.fn();
-    createLockupFade({ layer, read, ms: 300, slackMs: 100, timers: clock.timers, done }).start();
-    expect(clock.timers.set).toHaveBeenCalledWith(expect.any(Function), 400);
+    createLockupFade({ layer, read, ms: 300, slackMs: 100, startGuardMs: 1900, timers: clock.timers, done }).start();
+    expect(clock.timers.set, "a guard should the fade never start").toHaveBeenCalledTimes(1);
+    expect(clock.timers.set).toHaveBeenLastCalledWith(expect.any(Function), 1900);
+    play();
+    await flush();
+    expect(clock.timers.set, "re-armed when the fade starts").toHaveBeenCalledTimes(2);
+    expect(clock.timers.set).toHaveBeenLastCalledWith(expect.any(Function), 400);
+    expect(clock.pending.size, "one timer, the one from the fade's start").toBe(1);
     clock.fire();
     expect(done).toHaveBeenCalledTimes(1);
     expect(layer.style.opacity).toBe("0");
@@ -80,7 +88,7 @@ describe("the resting lockup's fade onto the still's baked name", () => {
     const { layer, cancel, finish, read } = fakeLayer();
     const clock = fakeTimers();
     const done = vi.fn();
-    const fade = createLockupFade({ layer, read, ms: 300, slackMs: 100, timers: clock.timers, done });
+    const fade = createLockupFade({ layer, read, ms: 300, slackMs: 100, startGuardMs: 1900, timers: clock.timers, done });
     fade.start();
     fade.cancel();
     expect(cancel).toHaveBeenCalledTimes(1);
@@ -92,10 +100,38 @@ describe("the resting lockup's fade onto the still's baked name", () => {
     expect(done).not.toHaveBeenCalled();
   });
 
+  it("a stall before the fade starts never cuts it short: the clock runs from its start", async () => {
+    const { layer, read, play, finish } = fakeLayer();
+    const clock = fakeTimers();
+    const done = vi.fn();
+    createLockupFade({ layer, read, ms: 300, slackMs: 100, startGuardMs: 1900, timers: clock.timers, done }).start();
+    const guard = [...clock.pending.keys()][0];
+    play();
+    await flush();
+    expect(clock.pending.has(guard), "the guard from start() cleared").toBe(false);
+    finish();
+    await flush();
+    expect(done).toHaveBeenCalledTimes(1);
+  });
+
+  it("with no slack (a held hand-off) arms no timer, so a paused fade holds", async () => {
+    const { layer, read, play, finish } = fakeLayer();
+    const clock = fakeTimers();
+    const done = vi.fn();
+    createLockupFade({ layer, read, ms: 300, slackMs: null, startGuardMs: 1900, timers: clock.timers, done }).start();
+    play();
+    await flush();
+    expect(clock.timers.set).not.toHaveBeenCalled();
+    expect(done).not.toHaveBeenCalled();
+    finish();
+    await flush();
+    expect(done).toHaveBeenCalledTimes(1);
+  });
+
   it("no layer: done at once", () => {
     const clock = fakeTimers();
     const done = vi.fn();
-    createLockupFade({ layer: null, read: () => "1", ms: 300, slackMs: 100, timers: clock.timers, done }).start();
+    createLockupFade({ layer: null, read: () => "1", ms: 300, slackMs: 100, startGuardMs: 1900, timers: clock.timers, done }).start();
     expect(done).toHaveBeenCalledTimes(1);
   });
 });

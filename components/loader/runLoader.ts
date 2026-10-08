@@ -267,7 +267,10 @@ export function runLoader(
         gone();
         note("still-handoff");
       };
-      const fade = createLockupFade({ layer, read: readInk, ms: LOADER.lockupFadeMs, slackMs: LOADER.stillFadeSlackMs, timers: WINDOW_TIMERS, done });
+      const fade = createLockupFade({
+        layer, read: readInk, ms: LOADER.lockupFadeMs, slackMs: holdHandoff ? null : LOADER.stillFadeSlackMs,
+        startGuardMs: LOADER.lockupFadeMs + LOADER.stillFadeSlackMs + LOADER.handoffGiveUpMs, timers: WINDOW_TIMERS, done,
+      });
       stopStill = fade.cancel;
       fade.start();
     };
