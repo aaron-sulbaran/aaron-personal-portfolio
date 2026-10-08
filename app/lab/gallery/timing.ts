@@ -48,41 +48,57 @@ export const partId = {
   meta: "meta",
   logo: "logo",
   stage: "stage",
+  stageCaption: "stage-caption",
   block: (b: number) => `block-${b}`,
   photo: (p: number) => `photo-${p}`,
+  caption: (p: number) => `caption-${p}`,
   links: "links",
 };
 
 export interface StepOptions {
   // The flown card is already in its slot when the masks start, so it never
-  // masks: the logo slot for a logo card, the first photo for a photo card.
-  flown: "logo" | "first-photo";
+  // masks: the logo slot for a logo card (no flownPhoto), else the photo
+  // that is the card picture. Its caption still masks.
+  flownPhoto?: number;
+  hasCaption: (photo: number) => boolean;
   hasLinks: boolean;
   lines?: (id: string) => number;
 }
 
 const part = (id: string, o: StepOptions): MaskPart => ({ id, lines: o.lines?.(id) ?? 1 });
 
-// Desktop: title, meta line, then each row with its photo, then the links.
-export function desktopSteps(rows: readonly Row[], firstPhoto: number | undefined, o: StepOptions): MaskStep[] {
-  const skip = (photo: number) => o.flown === "first-photo" && photo === firstPhoto;
+function photoParts(photo: number, o: StepOptions): MaskPart[] {
+  const parts: MaskPart[] = photo === o.flownPhoto ? [] : [{ id: partId.photo(photo) }];
+  if (o.hasCaption(photo)) parts.push(part(partId.caption(photo), o));
+  return parts;
+}
+
+// Desktop: title, meta line, then each row with its photo and caption, then
+// the links. A row with nothing left to mask adds no step.
+export function desktopSteps(rows: readonly Row[], o: StepOptions): MaskStep[] {
   const steps: MaskStep[] = [[part(partId.title, o)], [part(partId.meta, o)]];
+  const push = (step: MaskStep) => {
+    if (step.length) steps.push(step);
+  };
   for (const row of rows) {
-    if (row.kind === "text") steps.push([part(partId.block(row.block), o)]);
-    else if (row.kind === "pair") steps.push([part(partId.block(row.block), o), ...(skip(row.photo) ? [] : [{ id: partId.photo(row.photo) }])]);
-    else {
-      const photos = row.photos.filter((p) => !skip(p)).map((p) => ({ id: partId.photo(p) }));
-      if (photos.length) steps.push(photos);
-    }
+    if (row.kind === "text") push([part(partId.block(row.block), o)]);
+    else if (row.kind === "lead") push([...photoParts(row.photo, o), ...(row.block === undefined ? [] : [part(partId.block(row.block), o)])]);
+    else if (row.kind === "pair" || row.kind === "stack") push([...photoParts(row.photo, o), part(partId.block(row.block), o)]);
+    else if (row.kind === "wide") push(photoParts(row.photo, o));
+    else push(row.photos.flatMap((p) => photoParts(p, o)));
   }
   if (o.hasLinks) steps.push([part(partId.links, o)]);
   return steps;
 }
 
-// Phone: the stage (unless it is the flown card) with the title, then the
-// meta line, then every block in order, then the links.
-export function phoneSteps(blockCount: number, o: StepOptions): MaskStep[] {
-  const first: MaskStep = o.flown === "first-photo" ? [part(partId.title, o)] : [{ id: partId.stage }, part(partId.title, o)];
+// Phone: the stage and its caption with the title (the stage only when its
+// first photo is not the flown card), then the meta line, then every block
+// in order, then the links.
+export function phoneSteps(blockCount: number, firstStagePhoto: number | undefined, o: StepOptions & { stageCaption: boolean }): MaskStep[] {
+  const first: MaskStep = [];
+  if (firstStagePhoto !== undefined && firstStagePhoto !== o.flownPhoto) first.push({ id: partId.stage });
+  if (o.stageCaption) first.push({ id: partId.stageCaption });
+  first.push(part(partId.title, o));
   const steps: MaskStep[] = [first, [part(partId.meta, o)]];
   for (let b = 0; b < blockCount; b++) steps.push([part(partId.block(b), o)]);
   if (o.hasLinks) steps.push([part(partId.links, o)]);

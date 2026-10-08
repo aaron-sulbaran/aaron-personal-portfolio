@@ -1,10 +1,14 @@
 import { photoBySrc } from "@/lib/content";
 
-// The four cards the brief names for the first tuning pass, with Aaron's
-// approved words (docs/content/cards.md) and the block each photo belongs
-// beside (docs/content/photos.md). The real gallery photos are not exported
-// yet, so each slot holds a stand-in from public/photos with its own true,
-// first-person alt text; the slot keeps the pairing the real photo will take.
+// The cards the brief names for tuning, with Aaron's approved words
+// (docs/content/cards.md), the block each photo belongs with, its shape and
+// its caption (docs/content/photos.md, second round). A photo card's first
+// image is its card picture (the flown card, 3:4, captioned where Aaron gave
+// one), then up to three modal photos; a logo card has up to three photos. The real modal photos
+// are not exported yet, so each slot holds a stand-in from public/photos,
+// cropped by the lab to the real photo's shape, with the stand-in's own true
+// first-person alt text. The caption is the real one: visible text that the
+// real photo will carry.
 
 export interface LabPhoto {
   src: string;
@@ -12,6 +16,12 @@ export interface LabPhoto {
   height: number;
   alt: string;
   block?: number;
+  // The real photo's width over height (photos.md). The flown card picture
+  // is drawn at 3:4 whatever this says.
+  shape: number;
+  caption?: string;
+  // The widest it may draw, for a source that should show at 1x or smaller.
+  maxWidth?: number;
   // What photos.md puts here, so the stand-in is never mistaken for the pick.
   intended: string;
 }
@@ -19,9 +29,10 @@ export interface LabPhoto {
 export interface LabCard {
   id: string;
   name: string;
-  // Where the flight lands: the logo slot for a logo card, the first photo
-  // for a photo card (modal-gallery.md, "Rules that hold").
-  flown: "logo" | "first-photo";
+  // Where the flight lands: the logo slot for a logo card (no flownPhoto),
+  // else the card picture, always the first image, drawn at 3:4
+  // (modal-gallery.md, "Rules that hold").
+  flownPhoto?: 0;
   logo?: { light: string; dark: string };
   title: string;
   meta: string;
@@ -30,17 +41,36 @@ export interface LabCard {
   links: { label: string; href: string }[];
 }
 
-function photo(src: string, block: number | undefined, intended: string): LabPhoto {
+export const CARD_PICTURE = 3 / 4;
+
+// The shapes the real photos come in, 4:5 vertical to 2:1 horizontal.
+export const SHAPES: readonly { label: string; aspect: number }[] = [
+  { label: "4:5", aspect: 4 / 5 },
+  { label: "3:4", aspect: 3 / 4 },
+  { label: "1:1", aspect: 1 },
+  { label: "1.15:1", aspect: 1.15 },
+  { label: "4:3", aspect: 4 / 3 },
+  { label: "1.41:1", aspect: 1.41 },
+  { label: "3:2", aspect: 3 / 2 },
+  { label: "1.87:1", aspect: 1.87 },
+  { label: "2:1", aspect: 2 },
+];
+
+export const shapeLabel = (aspect: number) => SHAPES.find((s) => Math.abs(s.aspect - aspect) < 0.005)?.label ?? `${aspect.toFixed(2)}:1`;
+
+const V = 3 / 4;
+const H43 = 4 / 3;
+
+function photo(src: string, block: number | undefined, shape: number, caption: string | undefined, intended: string, maxWidth?: number): LabPhoto {
   const found = photoBySrc.get(src);
   if (!found) throw new Error(`No photo ${src} in lib/content.ts`);
-  return { src, width: found.width, height: found.height, alt: found.alt, block, intended };
+  return { src, width: found.width, height: found.height, alt: found.alt, block, shape, caption, intended, maxWidth };
 }
 
 export const CARDS: readonly LabCard[] = [
   {
     id: "capital-one",
     name: "Capital One",
-    flown: "logo",
     logo: { light: "/work/logos/capital-one.svg", dark: "/work/logos/capital-one.svg" },
     title: "Capital One",
     meta: "Intern, 2024 to 2026",
@@ -52,16 +82,16 @@ export const CARDS: readonly LabCard[] = [
       "If you want to learn more, I'll say what I can in person.",
     ],
     photos: [
-      photo("/photos/capital-one.jpeg", 1, "the 2024 welcome banner"),
-      photo("/photos/uncs-grad.jpeg", 2, "the McLean office, 2025"),
-      photo("/photos/traveling.jpeg", 3, "the New York rooftop, 2026"),
+      photo("/photos/capital-one.jpeg", 1, V, "Me at my first internship, the Analyst Early Internship Program.", "the 2024 welcome banner, vertical"),
+      photo("/photos/uncs-grad.jpeg", 2, V, "Me with my co-interns my second summer.", "the McLean office, vertical"),
+      photo("/photos/traveling.jpeg", 3, V, "Me in New York City for my final Capital One internship.", "the New York rooftop, vertical"),
     ],
     links: [],
   },
   {
     id: "hackathons",
     name: "Hackathons",
-    flown: "first-photo",
+    flownPhoto: 0,
     title: "Hackathons",
     meta: "Builder, 2026 to now",
     blocks: [
@@ -71,16 +101,16 @@ export const CARDS: readonly LabCard[] = [
       "HackTX & others, coming soon.",
     ],
     photos: [
-      photo("/photos/claude-hackathon.jpeg", 0, "the min/Max winner slide"),
-      photo("/photos/mt-fuji.jpeg", 1, "the giant UFCU check"),
-      photo("/photos/yosemite-hiking.jpeg", 2, "the Built in NYC poster"),
+      photo("/photos/claude-hackathon.jpeg", undefined, V, "Me and my team winning UFCU Develop U.", "card picture: the UFCU check, 3:4"),
+      photo("/photos/hsf-speaking.jpeg", 0, 1.41, "Me at Hook 'Em Hacks, winning.", "the min/Max winner slide, horizontal 1.41:1"),
+      photo("/photos/mt-fuji.jpeg", 2, V, "Me at a one-day Vercel hackathon in New York City.", "the Built in NYC poster, vertical"),
     ],
     links: [],
   },
   {
     id: "mentorship",
     name: "Mentorship",
-    flown: "first-photo",
+    flownPhoto: 0,
     title: "Mentorship",
     meta: "Coach, tutor and speaker, ongoing",
     blocks: [
@@ -88,16 +118,36 @@ export const CARDS: readonly LabCard[] = [
       "I take coffee chats in both directions. If I'm asking people for their time, I should be willing to give mine, and I lose track of time in them.",
     ],
     photos: [
-      photo("/photos/hsf-speaking.jpeg", 0, "the HSF STEM Summit photo booth (a big group)"),
-      photo("/photos/drum-major.jpeg", 1, "the HSF event on the red backdrop"),
-      photo("/photos/misuki.jpeg", undefined, "the SHPE familia sign, photo only"),
+      photo("/photos/hsf-speaking.jpeg", undefined, V, "Me at my first HSF.", "card picture: the HSF speaking original, 3:4"),
+      photo("/photos/drum-major.jpeg", 0, 1.15, "Me at my second HSF, this time as a mentor.", "the STEM Summit photo booth print, 1.15:1"),
+      photo("/photos/hsf-speaking.jpeg", undefined, H43, "Me at HSF my first year, as a scholar.", "the red sponsor backdrop group, horizontal 4:3"),
+      photo("/photos/drum-major.jpeg", undefined, H43, "Me at my first SHPE national convention, 2023. I've been to every one since.", "the SHPE Familia sign group, horizontal 4:3"),
     ],
     links: [{ label: "Grab some time with me", href: "https://cal.com/aaron-sulbaran" }],
   },
   {
+    id: "ieee",
+    name: "IEEE UT Austin",
+    logo: { light: "/work/logos/ieee.svg", dark: "/work/logos/ieee.svg" },
+    title: "IEEE UT Austin",
+    meta: "President, Corporate Director, and [AO](tip:ieee-ao), 2023 to 2026",
+    blocks: [
+      "IEEE UT was my home away from home at UT. I credit much of my leadership development to my experience here. From assistant officer my freshman year to president my junior year, I made some of my closest friends in this organization.",
+      "My Freshman year I helped host events to bring ECE majors together, particularly my fellow freshmen going through the same struggles I was going through. I also performed at Cockrell's yearly Ramshorn Talent show as \"Aango,\" a [Rango](tip:aango) knockoff that rapped.",
+      "My Sophomore year I jumped to an exec role and started the year out with a balance sheet that said the previous year had $200 in profit (because we were spending everything we earned). I set a goal of $5K, answered company emails almost every day for a school year, and we ended at about $10K.",
+      "My Junior year I helped lead the org I came to love and helped bring home the Outstanding Large Student Branch Chapter award, served as the broader IEEE Central Texas Section student representative, and wore many hats as I supported my fellow officers for one final year.",
+      "My proudest moments in IEEE came when ECE students told me that a company I brought to an IEEE event is the reason they got their internships or jobs. I aim to never stop making an impact, no matter where I go.",
+    ],
+    photos: [
+      photo("/photos/hsf-speaking.jpeg", 1, 1.5, "Me at a rock climbing social with IEEE and other engineering orgs.", "the Austin Boulder Project social, horizontal 3:2"),
+      photo("/photos/drum-major.jpeg", 3, 1.87, "Us receiving our Outstanding Large Student Branch plaque.", "the award group, horizontal 1.87:1"),
+      photo("/photos/yosemite-hiking.jpeg", undefined, V, "Me at my last IEEE Rising Stars conference as president of the chapter.", "the Rising Stars banner, vertical"),
+    ],
+    links: [{ label: "ieee.ece.utexas.edu", href: "https://ieee.ece.utexas.edu/" }],
+  },
+  {
     id: "anthropic",
     name: "Anthropic",
-    flown: "logo",
     logo: { light: "/work/logos/anthropic-symbol.svg", dark: "/work/logos/anthropic-symbol-dark.svg" },
     title: "Anthropic",
     meta: "Claude Campus Ambassador, 2026",
@@ -106,28 +156,75 @@ export const CARDS: readonly LabCard[] = [
       "What I loved most was teaching people to use these tools fast. By the end of the meetings, students were already building their own things with skills they developed in one hour classes I helped lead.",
     ],
     photos: [
-      photo("/photos/claude-hackathon.jpeg", 0, "the Hooked on Claude group (landscape, cropped left)"),
-      photo("/photos/hsf-speaking.jpeg", 1, "the context is key workshop slide (landscape)"),
-      photo("/photos/yosemite-hiking.jpeg", undefined, "the networking reception"),
+      photo("/photos/hsf-speaking.jpeg", 0, H43, "Me, my co-ambassadors and the judges at Hooked on Claude, our hackathon.", "the Hooked on Claude group, horizontal 4:3"),
+      photo("/photos/claude-hackathon.jpeg", 1, V, "Me teaching a live Claude session for Longhorn Neurotech.", "the context is key session, vertical"),
+      photo("/photos/drum-major.jpeg", undefined, H43, "Me teaching during one of our learning sessions.", "the lesson plan lecture hall, horizontal 4:3"),
     ],
     links: [{ label: "txclaude.org", href: "https://txclaude.org" }],
+  },
+  {
+    id: "misuki",
+    name: "Misuki",
+    flownPhoto: 0,
+    title: "Misuki",
+    meta: "2001 Mazda Miata, five-speed",
+    blocks: [
+      "I worked all through high school to set myself up for college. That included an ongoing hunt for a car. I ended up buying this car early Senior year in cash, because I didn't want a car loan. The day my dad went to buy her for me, I was conducting a game-day halftime show and got a bank alert on my watch for a huge withdrawal from my bank account. I was nervous the whole performance, and then found out later he was trying to surprise me.",
+      "Her engine blew in college, a family friend in Houston rebuilt it, and she's still my daily driver. I named her Misuki, from the M in Mazda and a nod to [Fast and Furious](tip:misuki-suk). I took her around Circuit of the Americas once, and it was one of the most fun days of my life.",
+    ],
+    photos: [
+      photo("/photos/traveling.jpeg", undefined, V, undefined, "card picture: the parking deck at golden hour, 3:4"),
+      photo("/photos/uncs-grad.jpeg", 0, V, "I drove Misuki to my high school graduation and had to take a photo with her.", "the graduation night, vertical, levelled"),
+      photo("/photos/misuki.jpeg", 1, V, "Misuki breaks down on me (a lot), but I keep her going.", "the engine on the lift, vertical"),
+      photo("/photos/hsf-speaking.jpeg", undefined, H43, "Owning a manual Miata is part of why I went to the Mazda Museum in Hiroshima, where I saw the real Mazda 787B that won Le Mans in 1991.", "the Mazda 787B, horizontal 4:3"),
+    ],
+    links: [],
+  },
+  {
+    id: "building-in-public",
+    name: "Building in public",
+    flownPhoto: 0,
+    title: "Building in public",
+    meta: "LinkedIn and X, ongoing",
+    blocks: [
+      "I'm trying to build in public (tbh, I fell off for a couple of months and I'm easing back in). So far: 2,500+ people follow me on LinkedIn, and my posts have had 450,000 impressions in three months. Being active on LinkedIn opened doors in Toronto and NYC this summer and got me a few brand deals. After talking to enough founders and investors, I know I have to get on X next.",
+      "While I love building, I also love creating and sharing. So why not share what works and what doesn't, with no polish on the parts that didn't. I'd rather be useful than look flawless.",
+      "For every 100 people who think it's cringe, I get 1 person who DMs me saying \"your post inspired me to...\" and that makes it worth it to me.",
+    ],
+    photos: [
+      photo("/photos/mt-fuji.jpeg", undefined, V, "Me at Vercel Ship in New York City, one door LinkedIn opened this summer.", "card picture: the Ship NYC selfie, flipped, 3:4"),
+      photo("/photos/capital-one.jpeg", 0, 532 / 517, "My top performing posts on LinkedIn.", "the LinkedIn analytics screenshot, 532 by 517, 1x at most", 532),
+      photo("/photos/yosemite-hiking.jpeg", undefined, V, "Me in Toronto, another one.", "the Toronto window and the CN Tower, vertical"),
+    ],
+    links: [
+      { label: "LinkedIn", href: "https://www.linkedin.com/in/aaron-sulbaran/" },
+      { label: "X (@imaaronsulbaran)", href: "https://x.com/imaaronsulbaran" },
+    ],
   },
 ];
 
 export const cardById = (id: string) => CARDS.find((card) => card.id === id) ?? CARDS[0];
 
-// The approved copy marks emphasis with **bold** and *italic*; a block is
-// split into plain and emphasised runs for the markup to render.
-export type Run = { text: string; bold?: boolean; italic?: boolean };
+// The shape a photo is drawn at: the flown card picture at 3:4, every other
+// photo at its own shape (or the lab's override for it).
+export function drawnShape(card: LabCard, index: number, override?: number) {
+  return index === card.flownPhoto ? CARD_PICTURE : (override ?? card.photos[index].shape);
+}
+
+// The approved copy marks emphasis with **bold** and *italic*, and tips as
+// [words](tip:key); a block is split into runs for the markup to render.
+export type Run = { text: string; bold?: boolean; italic?: boolean; tip?: string };
 
 export function runsOf(block: string): Run[] {
   const runs: Run[] = [];
-  const pattern = /\*\*([^*]+)\*\*|\*([^*]+)\*/g;
+  const pattern = /\*\*([^*]+)\*\*|\*([^*]+)\*|\[([^\]]+)\]\((?:tip|pop):([^)]+)\)/g;
   let last = 0;
   for (const match of block.matchAll(pattern)) {
     const at = match.index ?? 0;
     if (at > last) runs.push({ text: block.slice(last, at) });
-    runs.push(match[1] !== undefined ? { text: match[1], bold: true } : { text: match[2], italic: true });
+    if (match[1] !== undefined) runs.push({ text: match[1], bold: true });
+    else if (match[2] !== undefined) runs.push({ text: match[2], italic: true });
+    else runs.push({ text: match[3], tip: match[4] });
     last = at + match[0].length;
   }
   if (last < block.length) runs.push({ text: block.slice(last) });

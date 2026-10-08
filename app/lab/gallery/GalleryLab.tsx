@@ -3,11 +3,11 @@
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useReducedMotionLive } from "@/components/soundtrack/useReducedMotionLive";
 import { syncThemeColorMeta, type Theme } from "@/lib/theme";
-import { cardById } from "./cards";
+import { cardById, drawnShape, shapeLabel } from "./cards";
 import { Frame } from "./Frame";
 import { GalleryContent, type Measure } from "./GalleryContent";
 import { GalleryModal } from "./GalleryModal";
-import { interleave, readingOrder } from "./rows";
+import { interleave, isWide, readingOrder } from "./rows";
 import { PageBehind } from "./PageBehind";
 import { Panel, type View } from "./Panel";
 import { exportValues, INITIAL, PRESETS, sameSettings, type Settings } from "./settings";
@@ -68,6 +68,17 @@ export function GalleryLab() {
   const osReduced = useReducedMotionLive();
   const reduced = view.reduce || osReduced;
   const card = cardById(view.card);
+  const [shapeOverrides, setShapeOverrides] = useState<Record<string, number[]>>({});
+  const shapes = useMemo(() => shapeOverrides[card.id] ?? card.photos.map((p) => p.shape), [shapeOverrides, card]);
+  const setShape = useCallback(
+    (index: number, aspect: number) =>
+      setShapeOverrides((all) => {
+        const current = all[card.id] ?? card.photos.map((p) => p.shape);
+        return { ...all, [card.id]: current.map((a, i) => (i === index ? aspect : a)) };
+      }),
+    [card],
+  );
+  const resetShapes = useCallback(() => setShapeOverrides((all) => ({ ...all, [card.id]: card.photos.map((p) => p.shape) })), [card]);
 
   const setView = useCallback((update: (v: View) => View) => setViewState(update), []);
   const replay = useCallback(() => setReplays((n) => n + 1), []);
@@ -88,15 +99,26 @@ export function GalleryLab() {
   }, [s, view, measure, schedule, replay]);
 
   const steps = useMemo(() => {
-    const rows = interleave(card.blocks.length, card.photos, s.extrasPerRow);
-    const o = { flown: card.flown, hasLinks: card.links.length > 0 };
-    return { desktop: desktopSteps(rows, readingOrder(rows)[0], o), phone: phoneSteps(card.blocks.length, o) };
-  }, [card, s.extrasPerRow]);
+    const refs = card.photos.map((p, i) => ({ block: p.block, aspect: drawnShape(card, i, shapes[i]) }));
+    const rows = interleave(card.blocks.length, refs, { extrasPerRow: s.extrasPerRow, wideFrom: s.wideFrom, lead: card.flownPhoto, leadMode: s.leadMode });
+    const o = { flownPhoto: card.flownPhoto, hasCaption: (p: number) => !!card.photos[p].caption, hasLinks: card.links.length > 0 };
+    return {
+      desktop: desktopSteps(rows, o),
+      phone: phoneSteps(card.blocks.length, readingOrder(rows)[0], { ...o, stageCaption: card.photos.some((p) => p.caption) }),
+    };
+  }, [card, shapes, s.extrasPerRow, s.wideFrom, s.leadMode]);
   const preset = PRESETS.find((p) => sameSettings(p.settings, s));
   // The live run's steps carry the measured line counts; the other layout's
   // count every part as one line.
   const live = schedule && measure ? { ...steps, [measure.mode]: schedule.steps } : steps;
-  const values = exportValues(s, preset ? preset.name : "custom", theme, live, card.name);
+  const values = {
+    ...exportValues(s, preset ? preset.name : "custom", theme, live, card.name),
+    shapesOnThisCard: card.photos.map((p, i) => {
+      const aspect = drawnShape(card, i, shapes[i]);
+      const where = i === card.flownPhoto ? `the flown card picture, leading ${s.leadMode === "title" ? "beside the title" : "beside the first block"}` : isWide(aspect, s.wideFrom) ? "spans the row" : "beside its paragraph";
+      return `${p.intended}: drawn ${shapeLabel(aspect)}, ${where}`;
+    }),
+  };
 
   const close = useCallback(() => setViewState((v) => ({ ...v, open: false })), []);
   const open = useCallback((id: string) => setViewState((v) => ({ ...v, card: id, open: true })), []);
@@ -110,7 +132,7 @@ export function GalleryLab() {
             <>
               <PageBehind compact={frame.width < BREAKPOINT} onOpen={open} />
               <GalleryModal open={view.open} onClose={close} reduced={reduced} compact={phone} panelWidth={s.panelWidth} label={`${card.title}, photos and story`}>
-                <GalleryContent card={card} s={s} phone={phone} theme={theme} reduced={reduced} frame={frame} runKey={runKey} onSchedule={setSchedule} onMeasure={setMeasure} />
+                <GalleryContent card={card} shapes={shapes} s={s} phone={phone} theme={theme} reduced={reduced} frame={frame} runKey={runKey} onSchedule={setSchedule} onMeasure={setMeasure} />
               </GalleryModal>
             </>
           );
@@ -126,6 +148,10 @@ export function GalleryLab() {
           measure={view.open ? measure : null}
           doneAtMs={view.open && schedule ? Math.round(schedule.endMs) : null}
           values={values}
+          card={card}
+          shapes={shapes}
+          setShape={setShape}
+          resetShapes={resetShapes}
           edit={(update) => setS(update)}
           setView={setView}
           setTheme={setTheme}

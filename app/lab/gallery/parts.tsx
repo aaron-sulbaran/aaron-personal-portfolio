@@ -3,13 +3,15 @@
 import Image from "next/image";
 import type { CSSProperties } from "react";
 import { useCloseHint } from "@/components/PhotoModal";
-import { gallerySizes } from "./rows";
+import { gallerySizes, type Box } from "./rows";
 import { partId } from "./timing";
-import { runsOf, type LabCard, type LabPhoto } from "./cards";
+import { runsOf, type LabCard, type LabPhoto, type Run } from "./cards";
 
 // The pieces both layouts share: the header (the logo slot, the title, the
-// meta line in the label face), a text block, a masked photo, the links and
-// the close hint. Each maskable piece carries data-mask for useMaskIn.
+// meta line in the label face), a text block, a photo with its caption, the
+// links and the close hint. Each maskable piece carries data-mask for
+// useMaskIn. The md: and lg: classes of the real modals are picked from the
+// frame here (see GalleryModal).
 
 // WorkModal's glass wash behind a logo that lands without a flight.
 const workTint: CSSProperties = {
@@ -21,10 +23,30 @@ const workTint: CSSProperties = {
 // line). The lab branch predates it, so the lab's own Profa variable stands in.
 const labelFace: CSSProperties = { fontFamily: "var(--lab-profa), var(--font-sans), system-ui, sans-serif", fontSize: "0.9275rem", lineHeight: "1.25rem", letterSpacing: "0.01em", fontWeight: 700 };
 
+// A tip is drawn as its words with a dotted underline; the popover itself is
+// another build (tooltips.md).
+function Runs({ runs }: { runs: Run[] }) {
+  return runs.map((run, i) =>
+    run.bold ? (
+      <strong key={i} className="font-semibold">
+        {run.text}
+      </strong>
+    ) : run.italic ? (
+      <em key={i}>{run.text}</em>
+    ) : run.tip ? (
+      <span key={i} className="underline decoration-dotted underline-offset-4">
+        {run.text}
+      </span>
+    ) : (
+      <span key={i}>{run.text}</span>
+    ),
+  );
+}
+
 export function Header({ card, theme, compact }: { card: LabCard; theme: "light" | "dark"; compact: boolean }) {
   return (
     <div className={`flex items-center gap-5 ${compact ? "" : "pr-12"}`}>
-      {card.flown === "logo" && card.logo && (
+      {card.flownPhoto === undefined && card.logo && (
         <div data-tile-slot="work" data-mask-flown="" className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl">
           <span aria-hidden="true" className="absolute inset-0" style={workTint} />
           <div className="absolute inset-0 flex items-center justify-center p-2.5">
@@ -40,7 +62,7 @@ export function Header({ card, theme, compact }: { card: LabCard; theme: "light"
         </div>
         <div data-mask={partId.meta} data-mask-kind="text">
           <p data-mask-inner="" data-mask-split="" className="text-accent" style={labelFace}>
-            {card.meta}
+            <Runs runs={runsOf(card.meta)} />
           </p>
         </div>
       </div>
@@ -52,33 +74,40 @@ export function TextBlock({ card, block, compact, className = "" }: { card: LabC
   return (
     <div data-mask={partId.block(block)} data-mask-kind="text" className={className}>
       <p data-mask-inner="" data-mask-split="" className={`text-foreground ${compact ? "text-base leading-relaxed" : "text-lg leading-[1.55]"}`}>
-        {runsOf(card.blocks[block]).map((run, i) =>
-          run.bold ? (
-            <strong key={i} className="font-semibold">
-              {run.text}
-            </strong>
-          ) : run.italic ? (
-            <em key={i}>{run.text}</em>
-          ) : (
-            <span key={i}>{run.text}</span>
-          ),
-        )}
+        <Runs runs={runsOf(card.blocks[block])} />
       </p>
     </div>
   );
 }
 
-// A 3:4 photo at a set width. The outer box keeps the size; the mask clips
-// the inner layer, so a mask never moves the layout. The md: and lg: classes
-// of the real modals are picked from the frame here (see GalleryModal).
-export function MaskedPhoto({ photo, index, width, flown, sizesWidth }: { photo: LabPhoto; index: number; width: number | string; flown: boolean; sizesWidth: number }) {
+export function Caption({ id, text, className = "" }: { id: string; text: string; className?: string }) {
   return (
-    <figure className="relative m-0 aspect-[3/4] shrink-0" style={{ width }} data-photo-frame={index}>
-      <div data-mask={partId.photo(index)} data-mask-kind="photo" {...(flown ? { "data-mask-flown": "", "data-tile-slot": "photo" } : {})} className="absolute inset-0 overflow-hidden rounded-xl">
-        <div data-mask-media="" className="absolute inset-0">
-          <Image src={photo.src} alt={photo.alt} fill quality={90} sizes={gallerySizes(photo.width / photo.height, sizesWidth)} className="object-cover" />
+    <div data-mask={id} data-mask-kind="text" className={className}>
+      <p data-mask-inner="" data-mask-split="" className="text-sm leading-snug text-muted">
+        {text}
+      </p>
+    </div>
+  );
+}
+
+// A photo drawn at its own shape and a set width, its caption under it. The
+// outer box keeps the size; the mask clips the inner layer, so a mask never
+// moves the layout. The stand-in is cropped to the real photo's shape.
+export function MaskedPhoto({ photo, index, box, aspect, flown }: { photo: LabPhoto; index: number; box: Box; aspect: number; flown: boolean }) {
+  return (
+    <figure className="m-0 flex shrink-0 flex-col gap-2.5" style={{ width: box.width }} data-photo-frame={index}>
+      <div className="relative w-full" style={{ aspectRatio: aspect }}>
+        <div data-mask={partId.photo(index)} data-mask-kind="photo" {...(flown ? { "data-mask-flown": "", "data-tile-slot": "photo" } : {})} className="absolute inset-0 overflow-hidden rounded-xl">
+          <div data-mask-media="" className="absolute inset-0">
+            <Image src={photo.src} alt={photo.alt} fill quality={90} sizes={gallerySizes(photo.width / photo.height, aspect, box.width)} className="object-cover" />
+          </div>
         </div>
       </div>
+      {photo.caption && (
+        <figcaption>
+          <Caption id={partId.caption(index)} text={photo.caption} />
+        </figcaption>
+      )}
     </figure>
   );
 }

@@ -1,10 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { gallerySizes, interleave, panelWidthIn, readingOrder, stageBox, textColumn } from "../rows";
+import { columnBox, fitWhole, gallerySizes, interleave, isWide, panelWidthIn, readingOrder, stageLayout, textColumn, wideBox } from "../rows";
+
+const V = 3 / 4;
+const H = 4 / 3;
 
 describe("interleave", () => {
-  it("pairs each photo with its block, alternating sides from the left", () => {
-    // Capital One: five blocks, the three summers carry a photo each.
-    const rows = interleave(5, [{ block: 1 }, { block: 2 }, { block: 3 }]);
+  it("pairs vertical photos beside their blocks, alternating sides from the left", () => {
+    // Capital One: five blocks, three vertical summers.
+    const rows = interleave(5, [
+      { block: 1, aspect: V },
+      { block: 2, aspect: V },
+      { block: 3, aspect: V },
+    ]);
     expect(rows).toEqual([
       { kind: "text", block: 0 },
       { kind: "pair", block: 1, photo: 0, side: "left" },
@@ -14,71 +21,149 @@ describe("interleave", () => {
     ]);
   });
 
-  it("puts extras after the last block and keeps alternating", () => {
-    // Mentorship: two blocks, two paired photos and one after.
-    const rows = interleave(2, [{ block: 0 }, { block: 1 }, {}]);
+  it("stacks a horizontal photo above its block and alternates only the side-by-side rows", () => {
+    // Hackathons: a horizontal, then two verticals.
+    const rows = interleave(4, [
+      { block: 0, aspect: 1.41 },
+      { block: 1, aspect: V },
+      { block: 2, aspect: V },
+    ]);
+    expect(rows).toEqual([
+      { kind: "stack", block: 0, photo: 0 },
+      { kind: "pair", block: 1, photo: 1, side: "left" },
+      { kind: "pair", block: 2, photo: 2, side: "right" },
+      { kind: "text", block: 3 },
+    ]);
+  });
+
+  it("gives each horizontal extra its own row and groups vertical extras between them", () => {
+    // Misuki: two paired verticals, then a horizontal and a vertical extra.
+    const misuki = interleave(2, [{ block: 0, aspect: V }, { block: 1, aspect: V }, { aspect: H }, { aspect: V }]);
+    expect(misuki.slice(2)).toEqual([
+      { kind: "wide", photo: 2 },
+      { kind: "photos", photos: [3], side: "left" },
+    ]);
+    const mixed = interleave(1, [{ aspect: V }, { aspect: V }, { aspect: 2 }, { aspect: V }, { aspect: 0.8 }]);
+    expect(mixed).toEqual([
+      { kind: "text", block: 0 },
+      { kind: "photos", photos: [0, 1], side: "left" },
+      { kind: "wide", photo: 2 },
+      { kind: "photos", photos: [3, 4], side: "right" },
+    ]);
+  });
+
+  it("decides wide by the threshold, so the 1.15:1 booth print can go either way", () => {
+    // Mentorship: the flown 3:4 card picture, the 1.15:1 booth print, two 4:3 extras.
+    const photos = [{ block: 0, aspect: V }, { block: 1, aspect: 1.15 }, { aspect: H }, { aspect: H }];
+    expect(interleave(2, photos, { wideFrom: 1.1 }).map((r) => r.kind)).toEqual(["pair", "stack", "wide", "wide"]);
+    expect(interleave(2, photos, { wideFrom: 1.2 }).map((r) => r.kind)).toEqual(["pair", "pair", "wide", "wide"]);
+    expect(isWide(1.1, 1.1)).toBe(true);
+  });
+
+  it("puts every photo after a card's only block; a taken block slides the photo to the next free one", () => {
+    expect(interleave(1, [{ block: 0, aspect: V }]).map((r) => r.kind)).toEqual(["text", "photos"]);
+    const rows = interleave(3, [{ block: 0, aspect: V }, { block: 0, aspect: V }, { block: 2, aspect: V }, { block: 7, aspect: V }]);
     expect(rows).toEqual([
       { kind: "pair", block: 0, photo: 0, side: "left" },
       { kind: "pair", block: 1, photo: 1, side: "right" },
+      { kind: "pair", block: 2, photo: 2, side: "left" },
+      { kind: "photos", photos: [3], side: "right" },
+    ]);
+  });
+
+  it("leads with the card picture beside the title and the first block, that block's photo right under it", () => {
+    // Hackathons: the card picture, Hook 'Em (horizontal, block 0), Vercel (block 2).
+    const photos = [{ aspect: V }, { block: 0, aspect: 1.41 }, { block: 2, aspect: V }];
+    expect(interleave(4, photos, { lead: 0 })).toEqual([
+      { kind: "lead", photo: 0, block: 0 },
+      { kind: "wide", photo: 1 },
+      { kind: "text", block: 1 },
+      { kind: "pair", block: 2, photo: 2, side: "left" },
+      { kind: "text", block: 3 },
+    ]);
+    // Misuki: a vertical photo of block 0 sits under the lead on a side; the
+    // alternation carries on from it.
+    const misuki = interleave(2, [{ aspect: V }, { block: 0, aspect: V }, { block: 1, aspect: V }, { aspect: H }], { lead: 0 });
+    expect(misuki).toEqual([
+      { kind: "lead", photo: 0, block: 0 },
+      { kind: "photos", photos: [1], side: "left" },
+      { kind: "pair", block: 1, photo: 2, side: "right" },
+      { kind: "wide", photo: 3 },
+    ]);
+    // A card with no blocks keeps the lead row with the title alone.
+    expect(interleave(0, [{ aspect: V }], { lead: 0 })).toEqual([{ kind: "lead", photo: 0 }]);
+  });
+
+  it("can lead with the card picture beside the first block instead, sliding the rest along", () => {
+    // Misuki: the card picture, the graduation (block 0), the engine (block 1), the Mazda (extra).
+    const photos = [{ aspect: V }, { block: 0, aspect: V }, { block: 1, aspect: V }, { aspect: H }];
+    expect(interleave(2, photos, { lead: 0, leadMode: "block" })).toEqual([
+      { kind: "pair", block: 0, photo: 0, side: "left" },
+      { kind: "pair", block: 1, photo: 1, side: "right" },
       { kind: "photos", photos: [2], side: "left" },
+      { kind: "wide", photo: 3 },
     ]);
+    expect(readingOrder(interleave(2, photos, { lead: 0, leadMode: "block" }))).toEqual([0, 1, 2, 3]);
+    expect(readingOrder(interleave(2, photos, { lead: 0 }))).toEqual([0, 1, 2, 3]);
   });
 
-  it("puts every photo after a card's only block", () => {
-    const rows = interleave(1, [{ block: 0 }, { block: 0 }, {}]);
-    expect(rows).toEqual([
-      { kind: "text", block: 0 },
-      { kind: "photos", photos: [0, 1], side: "left" },
-      { kind: "photos", photos: [2], side: "right" },
-    ]);
+  it("reads the photos in row order, every kind included", () => {
+    const rows = interleave(3, [{ aspect: H }, { block: 2, aspect: V }, { block: 0, aspect: 2 }, { aspect: V }]);
+    expect(readingOrder(rows)).toEqual([2, 1, 0, 3]);
+  });
+});
+
+describe("boxes", () => {
+  it("fits a photo whole inside a box, by width or by height", () => {
+    expect(fitWhole(V, 318, 464)).toEqual({ width: 318, height: 424 });
+    expect(fitWhole(2, 318, 464)).toEqual({ width: 318, height: 159 });
+    expect(fitWhole(0.8, 600, 300)).toEqual({ width: 240, height: 300 });
+    expect(fitWhole(0, 300, 300)).toEqual({ width: 0, height: 0 });
   });
 
-  it("turns a second claim on a block, or a block the card lacks, into an extra", () => {
-    const rows = interleave(3, [{ block: 0 }, { block: 0 }, { block: 7 }]);
-    expect(rows.map((r) => r.kind)).toEqual(["pair", "text", "text", "photos"]);
-    expect(rows[3]).toEqual({ kind: "photos", photos: [1, 2], side: "right" });
+  it("draws a vertical photo at the column's width and its own height", () => {
+    expect(columnBox(V, 356).height).toBeCloseTo(474.67);
+    expect(columnBox(0.8, 356).height).toBeCloseTo(445);
+    expect(columnBox(532 / 517, 600, 532)).toEqual({ width: 532, height: 517 });
   });
 
-  it("honours the extras per row, never below one", () => {
-    expect(interleave(2, [{}, {}, {}], 1).filter((r) => r.kind === "photos")).toHaveLength(3);
-    expect(interleave(2, [{}, {}, {}], 0).filter((r) => r.kind === "photos")).toHaveLength(3);
+  it("spans a horizontal photo across the row up to the height cap, never under 320px", () => {
+    expect(wideBox(2, 864, 420)).toEqual({ width: 840, height: 420 });
+    const fourThree = wideBox(H, 864, 420);
+    expect(fourThree.width).toBeCloseTo(560);
+    expect(fourThree.height).toBeCloseTo(420);
+    expect(wideBox(1.15, 864, 200).width).toBe(320);
+    expect(wideBox(1.87, 600, 720).width).toBe(600);
   });
 
-  it("reads the photos in row order", () => {
-    expect(readingOrder(interleave(4, [{}, { block: 2 }, { block: 0 }]))).toEqual([2, 1, 0]);
-  });
-
-  it("has no rows for no blocks and no photos", () => {
-    expect(interleave(0, [])).toEqual([]);
+  it("lays out the phone stage per photo or at the tallest", () => {
+    // 390 by 844: inner width 318, cap 55 percent of 844.
+    const each = stageLayout([V, H, 2], 318, 464.2, "each");
+    expect(each.heights.map(Math.round)).toEqual([424, 239, 159]);
+    const tallest = stageLayout([V, H, 2], 318, 464.2, "tallest");
+    expect(tallest.heights.map(Math.round)).toEqual([424, 424, 424]);
+    expect(tallest.boxes[2].width).toBe(318);
+    // 360 by 740 with a 4:5 photo: the height cap binds.
+    const short = stageLayout([0.8], 288, 333, "each");
+    expect(short.boxes[0].height).toBeCloseTo(333);
+    expect(short.boxes[0].width).toBeCloseTo(266.4);
   });
 });
 
 describe("widths", () => {
   it("leaves the text column the panel's inner width less the photo and the gap", () => {
-    expect(textColumn(928, 40, 380, 56)).toEqual({ inner: 848, width: 412, roomy: true });
+    expect(textColumn(944, 40, 356, 56)).toEqual({ inner: 864, width: 452, roomy: true });
     expect(textColumn(840, 40, 440, 96).roomy).toBe(false);
   });
 
   it("caps the panel by the viewport less the backdrop's padding", () => {
-    expect(panelWidthIn(1440, 928, 40)).toBe(928);
+    expect(panelWidthIn(1440, 944, 40)).toBe(944);
     expect(panelWidthIn(1024, 1040, 40)).toBe(944);
   });
 
-  it("bounds the phone stage by height share or by width", () => {
-    // 390 by 844: the panel's inner width is 318, so the width binds.
-    const phone = stageBox(318, 844, 55);
-    expect(phone.width).toBe(318);
-    expect(phone.height).toBeCloseTo(424);
-    expect(phone.heightBound).toBe(false);
-    // A short, wide viewport: the height binds at its share.
-    const short = stageBox(600, 600, 50);
-    expect(short.height).toBeCloseTo(300);
-    expect(short.share).toBeCloseTo(0.5);
-    expect(short.heightBound).toBe(true);
-  });
-
-  it("scales sizes for a source wider than 3:4", () => {
-    expect(gallerySizes(3 / 4, 380)).toBe("(max-width: 1023px) calc(100vw - 72px), 380px");
-    expect(gallerySizes(1084 / 724, 380)).toBe("(max-width: 1023px) calc((100vw - 72px) * 1.996), 759px");
+  it("asks for the drawn width, scaled when the source is wider than the drawn shape", () => {
+    expect(gallerySizes(V, V, 356)).toBe("(max-width: 1023px) calc(100vw - 72px), 356px");
+    expect(gallerySizes(1.5, V, 356)).toBe("(max-width: 1023px) calc((100vw - 72px) * 2), 712px");
+    expect(gallerySizes(1.5, 1.5, 840)).toBe("(max-width: 1023px) calc(100vw - 72px), 840px");
   });
 });
