@@ -46,8 +46,8 @@ export function shapePose<P extends CardPose>(pose: P, cardCount: number, pull: 
 }
 // The book row's hover-jump (scene/hover.ts) aims a card at the front of a
 // turn on this frame: the rest helix on the coil; in the band one turn of all
-// N cards, inside the band's window. A switch under way aims at the shape it
-// is heading to.
+// N cards, inside the band's window. A switch under way holds the strand and
+// drops the glide; the landing aims a held row again at the landed shape.
 export type ShapeJump = { frame: HelixFrame; cardsPerTurn: number; maxU: number };
 export function shapeJump(geo: CoilGeometry, rest: HelixFrame, shape: CoilShape, c: CoilConstants = COIL): ShapeJump {
   if (shape === "coil") return { frame: rest, cardsPerTurn: geo.cardsPerTurn, maxU: geo.slotCount / 2 - c.lab.endFadeSlots };

@@ -126,7 +126,13 @@ export function createHover(ctx: SceneCtx, cards: Cards, loop: LoopLink) {
     // ---- end fx-input ----
   }
 
-  return { pickAt, nearCardAt, cardAt, picking, liftTarget, focusCard, focusKey: () => focusKey };
+  // A held row aims again (scene/shape.ts, on a switch's landing: the switch
+  // held the strand and dropped any glide).
+  function rejump() {
+    if (focusKey !== null && st.rowHold.held && canRowHold()) hoverJump(focusKey);
+  }
+
+  return { pickAt, nearCardAt, cardAt, picking, liftTarget, focusCard, rejump, focusKey: () => focusKey };
 }
 
 export type Hover = ReturnType<typeof createHover>;
