@@ -1,4 +1,5 @@
 import { register } from "./content/register";
+import { bookPeopleOrder, bookWorkOrder, cards, strandOrder } from "./content/cards";
 export interface SoundtrackTrack {
   title: string;
   artist: string;
@@ -32,6 +33,9 @@ export const siteContent = {
   },
   // Every inline link the copy may point at (lib/content/register.ts).
   register,
+  // The fourteen launch cards (lib/content/cards.ts). C3 moves the Coil and the
+  // book onto them; until then the legacy strand and rows below drive both.
+  cards,
   // The soundtrack band under the book (components/soundtrack): the one place
   // the music is offered and controlled, with the waveform running through
   // it. Each note describes what is on screen when it shows. Draft copy in my
@@ -149,6 +153,10 @@ export const siteContent = {
     ariaLabel: "Work and photos",
     workHeading: "Work",
     photosHeading: "Photos",
+    // The cards' book (C3 renders it): two columns of card keys, every row a modal.
+    peopleHeading: "People",
+    workOrder: bookWorkOrder,
+    peopleOrder: bookPeopleOrder,
     seenLabel: "opened",
     externalLabel: "opens in a new tab",
     workRows: [
@@ -179,6 +187,9 @@ export const siteContent = {
   // never enter the coil; they return here as real photos arrive. Keys are
   // homeTiles keys; see strandTiles below.
   strand: {
+    // The fourteen cards in Coil order, lead card first. strandTiles still reads
+    // the legacy pattern and lists below until C3 swaps the scene.
+    order: strandOrder,
     pattern: "PWPPWPPWPWPPWP",
     photos: ["hsf-speaking", "drum-major", "yosemite-hiking", "capital-one", "uncs-grad", "claude-hackathon", "misuki", "traveling", "mt-fuji"],
     work: ["capital-one-pm", "claude-ambassador", "ieee-president", "aaronsulbaran-site", "hackathon-builds"],
@@ -823,7 +834,10 @@ export type WorkItem = (typeof siteContent.workItems)[number];
 export type MenuItem = (typeof siteContent.menu.items)[number];
 export type Track = SoundtrackTrack;
 export type HomeTile = (typeof siteContent.homeTiles)[number];
-export type { DefinitionEntry, InlineRegister, PhotoCrop, PopEntry, TipEntry } from "./content/types";
+export type {
+  CardContent, CardGroup, CardKey, CardLink, CardModal, CardModalKind, CardPicture, Cards, CardVisual, DefinitionEntry, ImageRef,
+  InlineRegister, LogoRef, Mentor, MentorsList, ModalPhoto, PhotoCrop, PhotoRef, PopEntry, TimelineEntry, TipEntry,
+} from "./content/types";
 
 // O(1) lookups for the card and row resolvers (HomeController, BookRow),
 // built once at module load so per-render resolution never scans the arrays.
