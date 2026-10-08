@@ -3,6 +3,7 @@ import { siteContent } from "@/lib/content";
 import { test, expect } from "./support/fixtures";
 import { openHome, scrollToY } from "./support/coil";
 import { settled } from "./support/fallback";
+import { noWebglContext } from "./support/webgl";
 
 // The top-left mark (components/mark): a click still scrolls to the top; a
 // 650ms hold strikes and opens the card and swallows the click it ends with;
@@ -11,7 +12,7 @@ import { settled } from "./support/fallback";
 // The cursor's ring paints the same fill as the mark.
 //
 // The mark is DOM and GSAP only, so every test runs twice: with the scene, and
-// with WebGL taken away in the page (the poster hero, as Aaron's own browser
+// with WebGL taken away in the page (the hero still, as Aaron's own browser
 // shows it).
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -53,25 +54,15 @@ async function holdMark(page: Page, ms: number) {
   await page.mouse.up();
 }
 
-function blockWebGL(page: Page) {
-  return page.addInitScript(() => {
-    const original = HTMLCanvasElement.prototype.getContext;
-    HTMLCanvasElement.prototype.getContext = function (this: HTMLCanvasElement, kind: string, ...rest: unknown[]) {
-      if (kind === "webgl" || kind === "webgl2") return null;
-      return (original as (...args: unknown[]) => unknown).call(this, kind, ...rest);
-    } as typeof original;
-  });
-}
-
 for (const mode of ["scene", "no-webgl"] as const) {
   test.describe(mode, () => {
-    if (mode === "no-webgl") test.beforeEach(({ page }) => blockWebGL(page));
+    if (mode === "no-webgl") test.beforeEach(({ page }) => page.addInitScript(noWebglContext));
 
     async function open(page: Page) {
       if (mode === "scene") return openHome(page);
       await page.goto("/");
       await settled(page);
-      await expect(page.locator("section[data-scene]")).toHaveAttribute("data-scene", "off");
+      await expect(page.locator("section[data-scene]")).toHaveAttribute("data-scene", "still");
     }
 
     test(`mark: hover grows it 10px from its corner, and a click still scrolls to the top with no card (${mode})`, async ({ page }) => {
