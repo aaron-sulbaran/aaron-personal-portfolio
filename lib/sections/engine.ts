@@ -106,7 +106,10 @@ export function buildBlock(el: HTMLElement, { kind, index, split, reduce, measur
 
   const timeline = (lines: Element[] = []) => {
     const shown = drop();
+    // Paused always: a released block that re-splits has no trigger to pause
+    // it, and a playing timeline would fight the chase.
     const tl = gsap.timeline({
+      paused: true,
       defaults: { ease: plan.ease, duration: plan.duration },
       scrollTrigger:
         reached < 1
