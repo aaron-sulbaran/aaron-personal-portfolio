@@ -108,11 +108,14 @@ export function MarkTrigger({ ariaLabel, className, onActivate }: Props) {
     const size = buttonRef.current?.offsetWidth ?? 32;
     setScale((size + MARK.growPx) / size);
   };
+  // The ring returns when the dialog's exit ends, never over the fading card.
   const close = () => {
     openRef.current = false;
     hold.current = { ...hold.current, swallowClick: false };
     setOpen(false);
-    setMarkHold(MARK_HOLD_IDLE);
+  };
+  const exited = () => {
+    if (!openRef.current && hold.current.phase === "idle") setMarkHold(MARK_HOLD_IDLE);
   };
 
   return (
@@ -185,7 +188,7 @@ export function MarkTrigger({ ariaLabel, className, onActivate }: Props) {
           </svg>
         </span>
       </button>
-      {armed && <MarkCard open={open} onClose={close} />}
+      {armed && <MarkCard open={open} onClose={close} onExited={exited} />}
     </>
   );
 }
