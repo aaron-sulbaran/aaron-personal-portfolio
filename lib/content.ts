@@ -803,6 +803,16 @@ export const siteContent = {
     { kind: "photo" as const, key: "photo-13", src: "/photos/photo-13.svg" }, // PLACEHOLDER
     { kind: "photo" as const, key: "photo-14", src: "/photos/photo-14.svg" }, // PLACEHOLDER
   ],
+  // The mark's card (components/mark/MarkCard.tsx), opened by holding the
+  // top-left mark. PLACEHOLDER: every line below is the shortest true line,
+  // for Aaron to replace with his own words about the name and the gamertag.
+  mark: {
+    dialogLabel: "The mark",
+    eyebrow: "The mark",
+    title: "My initials, A and S",
+    lines: ["The bolt's tail is also the A's right leg."],
+    cta: { label: "Say hi", href: "#connect" },
+  },
 } as const;
 
 export type Photo = (typeof siteContent.photos)[number];

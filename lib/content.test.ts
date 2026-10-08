@@ -75,3 +75,16 @@ describe("the case page", () => {
     expect(siteContent.work.backLabel).toBe("Work");
   });
 });
+
+describe("the mark card", () => {
+  it("is short, sentence case, and never uses an em dash", () => {
+    const { mark } = siteContent;
+    const strings = [mark.dialogLabel, mark.eyebrow, mark.title, ...mark.lines, mark.cta.label];
+    for (const text of strings) {
+      expect(text).not.toMatch(/\u2014/);
+      expect(text[0]).toBe(text[0].toUpperCase());
+    }
+    expect(mark.lines.length).toBeLessThanOrEqual(3);
+    expect(mark.cta.href).toBe("#connect");
+  });
+});
