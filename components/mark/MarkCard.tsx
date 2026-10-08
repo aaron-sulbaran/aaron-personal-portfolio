@@ -3,10 +3,12 @@
 import { useLayoutEffect, useRef } from "react";
 import { X } from "lucide-react";
 import { AnimatePresence, motion, useIsPresent, useReducedMotion } from "framer-motion";
+import { Fill, FillArrow, FillSeed } from "@/components/fx/Fill";
 import { MarkStrike } from "@/components/mark/MarkStrike";
 import { useCloseHint } from "@/components/PhotoModal";
 import { Portal } from "@/components/Portal";
 import { siteContent } from "@/lib/content";
+import { CTA_CLASS, CTA_OVER_CLASS, FILL_PICK } from "@/lib/fx/fill";
 import { gsap } from "@/lib/gsap";
 import { MARK } from "@/lib/mark/constants";
 import { buildCardOpen } from "@/lib/mark/timeline";
@@ -131,18 +133,13 @@ function MarkDialog({ reduced, onClose, onCta }: { reduced: boolean; onClose: ()
             {COPY.lines.map((line) => (
               <p key={line} data-card="text" className="text-base leading-relaxed text-foreground">{line}</p>
             ))}
-            {/* Swap for the controls slice's Fill once components/fx/Fill.tsx exists (Task 10). */}
             <span data-card="text" className="w-fit">
-              <a
-                href={COPY.cta.href}
-                onClick={(e) => {
-                  e.preventDefault();
-                  onCta();
-                }}
-                className="text-base font-medium text-accent underline underline-offset-4 transition-colors duration-200 hover:text-accent-hover"
-              >
+              <Fill as="link" {...FILL_PICK.cta} href={COPY.cta.href} onClick={(e) => { e.preventDefault(); onCta(); }} className={CTA_CLASS} overClassName={CTA_OVER_CLASS}>
                 {COPY.cta.label}
-              </a>
+                <FillSeed className="h-8 w-8">
+                  <FillArrow />
+                </FillSeed>
+              </Fill>
             </span>
             <span data-card="text" className="pt-1 text-sm text-muted">{closeHint}</span>
           </div>
