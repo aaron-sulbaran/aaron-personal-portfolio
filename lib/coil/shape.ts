@@ -1,6 +1,6 @@
 import { COIL, type CoilConstants } from "./constants";
-import { outOfBandAlpha, pullCurve } from "./entrance";
-import type { CardPose } from "./geometry";
+import { outOfBandAlpha, pullCurve, pullHelix } from "./entrance";
+import type { CardPose, CoilGeometry, HelixFrame } from "./geometry";
 // The Coil and Band toggle's pure half (lab log, "The Coil and Band
 // toggle"). The band is the entrance's pose at pull 0 (entrance.ts,
 // pullHelix). One value, `progress`, runs linearly in time between 0 (the
@@ -43,4 +43,18 @@ export function bandCopy(u: number, cardCount: number) {
 export function shapePose<P extends CardPose>(pose: P, cardCount: number, pull: number): P {
   if (pull >= 1 || bandCopy(pose.u, cardCount)) return pose;
   return { ...pose, alpha: pose.alpha * outOfBandAlpha(pull) };
+}
+// The book row's hover-jump (scene/hover.ts) aims a card at the front of a
+// turn on this frame: the rest helix on the coil; in the band one turn of all
+// N cards, inside the band's window. A switch under way aims at the shape it
+// is heading to.
+export type ShapeJump = { frame: HelixFrame; cardsPerTurn: number; maxU: number };
+export function shapeJump(geo: CoilGeometry, rest: HelixFrame, shape: CoilShape, c: CoilConstants = COIL): ShapeJump {
+  if (shape === "coil") return { frame: rest, cardsPerTurn: geo.cardsPerTurn, maxU: geo.slotCount / 2 - c.lab.endFadeSlots };
+  return { frame: pullHelix(rest, geo, 0, c), cardsPerTurn: geo.cardCount, maxU: geo.cardCount / 2 - 1 };
+}
+// A card's height in CSS px in a shape: the touch drag moves one card per
+// card of finger travel (scene/input.ts).
+export function shapeCardPx(geo: CoilGeometry, shape: CoilShape) {
+  return shape === "band" ? geo.bandCardWorld / geo.camera.worldPerPx : geo.cardPx;
 }
