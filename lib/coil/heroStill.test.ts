@@ -4,6 +4,7 @@ import {
   STILL_MEDIA,
   bakedLockupRect,
   heroStillSrc,
+  mediaStillCut,
   stillCause,
   stillCut,
   stillFallback,
@@ -26,6 +27,17 @@ describe("hero still", () => {
   it("writes each line as a strict less-than old Safari understands", () => {
     expect(STILL_MEDIA.narrow).toBe("not all and (min-aspect-ratio: 800/1000)");
     expect(STILL_MEDIA.square).toBe("not all and (min-aspect-ratio: 1200/1000)");
+  });
+  it("picks the cut the picture's media queries pick, in the picture's order", () => {
+    // A viewport of the given aspect, answering the two queries as a browser would.
+    const viewport = (aspect: number) => (query: string) => {
+      const [n, d] = query.match(/(\d+)\/(\d+)/)!.slice(1).map(Number);
+      return !(aspect >= n / d);
+    };
+    for (const aspect of [390 / 844, 0.7999, 0.8, 1, 1.1999, 1.2, 1440 / 900]) {
+      expect(mediaStillCut(viewport(aspect)), `aspect ${aspect}`).toBe(stillCut(aspect));
+    }
+    expect(mediaStillCut(() => true), "narrow is tried first").toBe("narrow");
   });
   it("names the files and orders the sources AVIF before WebP, narrow to wide", () => {
     expect(heroStillSrc("dark", "square", "webp")).toBe("/coil/hero-dark-square.webp");
