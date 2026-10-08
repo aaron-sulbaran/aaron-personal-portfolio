@@ -26,18 +26,23 @@ const loadCard = () => import("@/components/mark/MarkCard");
 const MarkCard = dynamic(() => loadCard().then((m) => m.MarkCard), { ssr: false });
 
 // After a keyboard hold opens the card, focus lands on Close while the key
-// may still be down; its repeats and its release must not press Close.
+// may still be down; its repeats and its release must not press Close. A
+// window blur ends it too, since that keyup may never arrive here.
 function swallowHeldKey(key: string) {
-  const swallow = (event: KeyboardEvent) => {
+  function swallow(event: KeyboardEvent) {
     if (event.key !== key) return;
     event.preventDefault();
     event.stopPropagation();
-    if (event.type !== "keyup") return;
+    if (event.type === "keyup") done();
+  }
+  function done() {
     window.removeEventListener("keydown", swallow, true);
     window.removeEventListener("keyup", swallow, true);
-  };
+    window.removeEventListener("blur", done);
+  }
   window.addEventListener("keydown", swallow, true);
   window.addEventListener("keyup", swallow, true);
+  window.addEventListener("blur", done);
 }
 
 type Props = { ariaLabel: string; className: string; onActivate: () => void };
