@@ -40,13 +40,13 @@ export function CustomCursor() {
   // value actually flips (hover changes rarely; position changes every pixel).
   const hoverRef = useRef(false);
   // ---- mark-strike: the cursor rings the mark ----
-  // Over the nav mark the cursor centres a ring on the grown mark (its box
-  // plus MARK.growPx, plus RING.padPx) and paints the hold from the hover
-  // store. The box is read once on entry; it snaps there with no glide, so
-  // the transform stays a direct write.
+  // Over the nav mark the cursor snaps (no glide, a direct write) to a ring
+  // centred on the grown mark (box + MARK.growPx + RING.padPx), painting the
+  // hold from the hover store.
   const reduced = !!useReducedMotion();
   const markRef = useRef<Element | null>(null);
   const ringAt = useRef<{ x: number; y: number } | null>(null);
+  const pointerAt = useRef({ x: -100, y: -100 });
   const [ringDiameter, setRingDiameter] = useState(0);
   const ringing = ringDiameter > 0;
   // ---- end mark-strike ----
@@ -91,32 +91,16 @@ export function CustomCursor() {
 
     document.documentElement.classList.add("cursor-none");
 
-    const handleMove = (event: MouseEvent) => {
-      const target = event.target as Element | null;
+    // The mark under the pointer (its box re-read on `remeasure`), and hover.
+    const resolveTarget = (target: Element | null, remeasure: boolean) => {
       const mark = target?.closest("[data-mark-trigger]") ?? null;
-      if (mark !== markRef.current) {
+      if (mark !== markRef.current || (mark && remeasure)) {
         markRef.current = mark;
         const box = mark?.getBoundingClientRect();
         const grown = box ? box.width + MARK.growPx : 0;
         ringAt.current = box ? { x: box.left + grown / 2, y: box.top + grown / 2 } : null;
         setRingDiameter(box ? grown + RING.padPx : 0);
       }
-      // Compositor-only transform (translate3d) written synchronously in the
-      // input handler. No layout, no animation loop, no spring. Instant.
-      const el = dotRef.current;
-      if (el) {
-        el.style.transform = ringAt.current
-          ? `translate3d(${ringAt.current.x}px, ${ringAt.current.y}px, 0)`
-          : `translate3d(${event.clientX}px, ${event.clientY}px, 0)`;
-      }
-      // Reveal on the first move. handleMove writes the transform above BEFORE
-      // this flips visible, so the dot always appears at the live pointer, never
-      // a stale spot; no separate mouseenter handler (which would reveal at the
-      // previous coords) is needed. setVisible is unconditional: React bails on
-      // the unchanged value, so keeping `visible` out of this effect's deps
-      // avoids tearing down and re-registering every listener on each toggle.
-      setVisible(true);
-
       const hit = Boolean(target?.closest(HOVER_SELECTOR));
       if (hit !== hoverRef.current) {
         hoverRef.current = hit;
@@ -124,15 +108,48 @@ export function CustomCursor() {
       }
     };
 
+    // A compositor-only transform, written synchronously; no loop, no spring.
+    const place = () => {
+      const at = ringAt.current ?? pointerAt.current;
+      if (dotRef.current) dotRef.current.style.transform = `translate3d(${at.x}px, ${at.y}px, 0)`;
+    };
+
+    // The mark moves under a still pointer (scroll, tuck, resize): re-resolve.
+    const recheckMark = () => {
+      if (!markRef.current) return;
+      resolveTarget(document.elementFromPoint(pointerAt.current.x, pointerAt.current.y), true);
+      place();
+    };
+    const handleMarkTransition = (event: TransitionEvent) => event.target === markRef.current && recheckMark();
+
+    const handleMove = (event: MouseEvent) => {
+      pointerAt.current = { x: event.clientX, y: event.clientY };
+      resolveTarget(event.target as Element | null, false);
+      place();
+      // Reveal on the first move. handleMove writes the transform above BEFORE
+      // this flips visible, so the dot always appears at the live pointer, never
+      // a stale spot; no separate mouseenter handler (which would reveal at the
+      // previous coords) is needed. setVisible is unconditional: React bails on
+      // the unchanged value, so keeping `visible` out of this effect's deps
+      // avoids tearing down and re-registering every listener on each toggle.
+      setVisible(true);
+    };
+
     const handleLeave = () => setVisible(false);
 
     window.addEventListener("mousemove", handleMove, { passive: true });
     document.addEventListener("mouseleave", handleLeave);
+    window.addEventListener("scroll", recheckMark, { passive: true, capture: true });
+    window.addEventListener("resize", recheckMark, { passive: true });
+    document.addEventListener("transitionend", handleMarkTransition);
 
     return () => {
       document.documentElement.classList.remove("cursor-none");
       window.removeEventListener("mousemove", handleMove);
       document.removeEventListener("mouseleave", handleLeave);
+      window.removeEventListener("scroll", recheckMark, { capture: true });
+      window.removeEventListener("resize", recheckMark);
+      document.removeEventListener("transitionend", handleMarkTransition);
     };
   }, [enabled]);
 
