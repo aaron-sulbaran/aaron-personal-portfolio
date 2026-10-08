@@ -187,6 +187,14 @@ Picked by Aaron from hero lab 2, 2026-09-29 (the build starts on these; see `doc
 - [x] Once the coil has a gesture it keeps the next ones until the pointer really moves or the page scrolls. Release is unchanged: only a real move outside the silhouette.
 - [x] Still true: decided once per gesture, no delay, no hover intent, no top-of-page rule. Rules and tests: `docs/coil-input-model.md` section 3.
 
+## 2.13 The still fallback, 2026-10-07 and 08 (PR 36)
+
+- [x] A visitor with no WebGL, a failed scene or reduced motion sees the site at rest, not a safety floor: a real still of the scene per theme and aspect, the loader's lockup handing to it, and the book below. Aaron met the old poster in his own Chrome (graphics acceleration off) and ruled it out.
+- [x] The name stays behind the cards in the still, at the strong ink that separates background, coil and name. "Name in front" was tried on his first call and reversed on sight: it took away from the coil.
+- [x] The square and narrow stills cover part of the name with the helix; accepted.
+- [x] A short notice tells those visitors why the page is still, one sentence per cause in his words, dismissible, remembered per browser. Copy in `siteContent.hero.still`.
+- [x] Reduced motion keeps its own loader branch (no fill, a 300ms fade) and gets the same still.
+
 ## 9a. Surfaced by the overnight build (2026-09-29), yours in the morning
 
 - [ ] The Profa file in `app/fonts/` is the trial cut: it draws a "personal use only" stamp for `*`, `;` and `@`. Slice 2 routes those three glyphs to the fallback font. Drop the full cut from your asset pack into `app/fonts/` (same filename or update `lib/fonts.ts`) and the workaround goes.
