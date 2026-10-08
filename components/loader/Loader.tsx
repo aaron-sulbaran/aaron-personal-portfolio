@@ -31,9 +31,11 @@ import { runLoader } from "./runLoader";
 //         ends
 //   on, no scene can run (the still): the resting lockup holds from first
 //         paint as above; the pane only past the guard, fading off the
-//         lockup at the end; the still fades in under the lockup over 400ms
-//         once decoded, then the lockup fades out over 300ms onto the name
-//         the still bakes behind its cards; a still that never decodes (or
+//         lockup at the end; once the still has decoded, on a box whose
+//         aspect differs from the still's cut the lockup first lands on the
+//         name the still bakes (cover moves it; 800ms, the site ease), then
+//         the still fades in under the lockup over 400ms, then the lockup
+//         fades out over 300ms onto that name; a still that never decodes (or
 //         not within 1500ms) gets no fade: the ink eases to the h1's, then
 //         one frame onto the h1
 //   on + reduced motion: no resting lockup, the name in accent, the number
