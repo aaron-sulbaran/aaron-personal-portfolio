@@ -28,13 +28,16 @@ const COPY = siteContent.mark;
 const EXIT_S = 0.2;
 const DIP_LIFT_S = 0.16;
 
-export function MarkCard({ open, onClose }: { open: boolean; onClose: () => void }) {
+type Props = { open: boolean; onClose: () => void; onExited: () => void };
+
+export function MarkCard({ open, onClose, onExited }: Props) {
   const reduced = !!useReducedMotion();
   const pending = useRef<string | null>(null);
   return (
     <Portal>
       <AnimatePresence
         onExitComplete={() => {
+          onExited();
           if (pending.current) navigateToSection(pending.current, reduced);
           pending.current = null;
         }}
