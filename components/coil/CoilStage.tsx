@@ -6,7 +6,8 @@ import type { InputDriver } from "@/lib/coil/drivers";
 import { CoilErrorBoundary } from "./CoilErrorBoundary";
 import { HeroOverlay, type HeroOverlayHandle } from "./HeroOverlay";
 import { canCreateWebGL2 } from "./webglProbe";
-import { Poster, decodeHeroStill, heroStillTarget } from "./Poster";
+import { Poster } from "./Poster";
+import { useHeroStill } from "./useHeroStill";
 import { StillNotice } from "./StillNotice";
 import { stillCause, type HeroScene, type StillFailure } from "@/lib/coil/heroStill";
 import type { CoilCardRef, CoilSceneApi, CoilSceneProps } from "./CoilScene";
@@ -15,7 +16,6 @@ import { COIL } from "@/lib/coil/constants";
 import { useHomeController } from "@/components/home/HomeController";
 import { SCENE_ITEMS, reportHomeLoad, settleHomeLoad } from "@/lib/loader/progress";
 import { provideNameHandoff } from "@/lib/loader/handoff";
-import { provideStillPoster } from "@/lib/loader/still";
 
 // The Coil hero's stage: a layer filling the 100svh hero with the posters
 // (Poster.tsx), the WebGL scene over them, and the DOM overlay. The canvas is
@@ -26,8 +26,8 @@ import { provideStillPoster } from "@/lib/loader/still";
 // WebGL 2 context this browser can actually create. Until its first frame the
 // field poster waits with it (data-scene="off"); once it cannot run at all
 // (no context, a failed chunk, the boundary, a second lost context, reduced
-// motion) the hero is "still": the hero still once decoded, the h1 visually
-// hidden only then, and the notice. A first lost context shows the field
+// motion) the hero is "still": the hero still once the current theme's has
+// decoded (useHeroStill.ts), the h1 visually hidden only then, and the notice. A first lost context shows the field
 // poster and remounts once.
 // Reduced motion is live: turning it on tears the scene down, off rebuilds it.
 
@@ -61,7 +61,6 @@ export function CoilStage({
   const [Scene, setScene] = useState<ComponentType<CoilSceneProps> | null>(null);
   const [generation, setGeneration] = useState(0);
   const [failure, setFailure] = useState<StillFailure | null>(null);
-  const [stillDecoded, setStillDecoded] = useState(false);
   const lossesRef = useRef(0);
   const overlayRef = useRef<HeroOverlayHandle>(null);
   const ownApiRef = useRef<CoilSceneApi>(null);
@@ -92,25 +91,15 @@ export function CoilStage({
       }),
     [apiRef],
   );
+  // No scene will draw: the still decodes now (the h1 hides only once it
+  // has) and the loader hands its lockup to it (provided before the tally
+  // settles, so called before the next effect); nothing left to wait for,
+  // nothing left to play.
+  const still = useHeroStill(!eligible);
   useEffect(() => {
     if (eligible) return;
-    // No scene will draw: the still decodes now (the h1 hides only once it
-    // has), the loader hands its lockup to the still (provided before the
-    // tally settles), nothing left to wait for, nothing left to play.
-    let live = true;
-    decodeHeroStill().then(
-      () => {
-        if (live) setStillDecoded(true);
-      },
-      () => undefined,
-    );
-    const releaseStill = provideStillPoster({ decoded: decodeHeroStill, target: heroStillTarget });
     settleHomeLoad(SCENE_ITEMS.filter((item) => item !== "fonts"));
     completeEntrance?.();
-    return () => {
-      live = false;
-      releaseStill();
-    };
   }, [eligible, completeEntrance]);
   useEffect(() => {
     if (!entrance || !Number.isFinite(entrance.startMs) || !completeEntrance) return;
@@ -175,7 +164,7 @@ export function CoilStage({
 
   return (
     <div className="absolute inset-0 overflow-hidden">
-      <Poster stillReady={!eligible && stillDecoded} />
+      <Poster stillReady={still.ready} warm={still.warm} />
       {mounted && Scene ? (
         <CoilErrorBoundary key={generation} onError={handleError}>
           <Scene

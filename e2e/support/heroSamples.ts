@@ -68,3 +68,49 @@ export async function heroSamples(page: Page): Promise<HeroSample[]> {
 export async function restNameRect(page: Page): Promise<{ x: number; y: number; width: number; height: number }> {
   return page.evaluate(() => (window as unknown as { __restNameRect: { x: number; y: number; width: number; height: number } }).__restNameRect);
 }
+
+// The hero's name, sampled every frame for a while from now (a theme toggle,
+// a late still): theme is <html data-theme>; h1 whether the h1 lockup shows
+// (laid out, not sr-only, visible) and h1Opacity its own opacity, h1Width its
+// box (1px at most once sr-only); ready and late are data-still-ready and
+// data-still-late; still the still box's opacity; stillReady the visible img
+// complete with a natural width.
+export type NameSample = {
+  t: number; theme: string; h1: boolean; h1Opacity: number; h1Width: number;
+  ready: boolean; late: boolean; still: number; stillReady: boolean;
+};
+
+export async function startNameSamples(page: Page, ms: number) {
+  await page.evaluate((forMs) => {
+    const samples: unknown[] = [];
+    (window as unknown as { __nameSamples: unknown[] }).__nameSamples = samples;
+    const until = performance.now() + forMs;
+    const sample = () => {
+      const h1 = document.getElementById("hero-heading")!;
+      const box = document.querySelector<HTMLElement>("[data-hero-still]")!;
+      const img = [...box.querySelectorAll("img")].find((el) => el.getClientRects().length > 0);
+      const r = h1.getBoundingClientRect();
+      samples.push({
+        t: performance.now(),
+        theme: document.documentElement.dataset.theme ?? "",
+        h1: r.width > 1 && r.height > 1 && h1.checkVisibility({ opacityProperty: true, visibilityProperty: true }),
+        h1Opacity: Number(getComputedStyle(h1).opacity),
+        h1Width: r.width,
+        ready: box.hasAttribute("data-still-ready"),
+        late: box.hasAttribute("data-still-late"),
+        still: box.getClientRects().length ? Number(getComputedStyle(box).opacity) : 0,
+        stillReady: !!img && img.complete && img.naturalWidth > 0,
+      });
+      if (performance.now() < until) requestAnimationFrame(sample);
+    };
+    requestAnimationFrame(sample);
+  }, ms);
+}
+
+export async function nameSamples(page: Page): Promise<NameSample[]> {
+  return page.evaluate(() => (window as unknown as { __nameSamples: NameSample[] }).__nameSamples);
+}
+
+// A name shows in the frame: the h1 lockup above half its opacity, or the
+// still (which bakes the name) decoded, marked ready and at least at stillAt.
+export const hasName = (s: NameSample, stillAt: number) => (s.h1 && s.h1Opacity > 0.5) || (s.ready && s.stillReady && s.still >= stillAt);
