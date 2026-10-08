@@ -121,9 +121,9 @@ export const siteContent = {
     // The still page's notice (no scene can run): why the page is still, by
     // cause, and its dismiss. Placeholders; Aaron rewrites them.
     still: {
-      noWebgl: "This page is built around a moving scene. Your browser has graphics acceleration off, so this is the still version.",
-      unavailable: "This page is built around a moving scene your browser could not start, so this is the still version.",
-      reducedMotion: "This page is built around a moving scene. Your system asks for less motion, so this is the still version.",
+      noWebgl: "I can see your browser has graphics acceleration off, so you'll miss the best part of this page.",
+      unavailable: "Your browser couldn't start the moving scene, so you'll miss the best part of this page.",
+      reducedMotion: "Your system asks for less motion, so you're seeing the still version of this page.",
       dismiss: "Got it",
     },
   },
