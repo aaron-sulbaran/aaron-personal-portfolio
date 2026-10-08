@@ -51,3 +51,29 @@ export function sizeForWidth(text: string, weight: number, tracking: number, sta
   const unit = layoutWord(text, 1, [weight], tracking).width;
   return unit > 0 ? (stageWidth * share) / unit : 0;
 }
+
+// The wordmark's band in the footer, in px. The band holds a gap (in
+// ascender units) over the tallest swell, the ascender, and a clearance under
+// the baseline that the bleed eats into (a bleed past the clearance sinks the
+// letters under the footer's bottom edge). The baseline never moves with the
+// swell.
+export const BAND = { bottomClear: 0.08 } as const;
+
+export function wordBand(size: number, weight: number, swell: number, bleed: number, gap: number) {
+  const below = (weight / 2 + BAND.bottomClear - bleed) * size;
+  const above = (gap + 1 + (weight + swell) / 2) * size;
+  return { height: Math.max(0, above + below), baselineFromBottom: below };
+}
+
+// The field's alpha down the footer: it rises from paper over the top share,
+// holds, and fades out over the last fade, ending where the choice says. On a
+// short footer the rise and the fade can overlap; then they meet at a point
+// split in proportion to their lengths, so no stop ever sits out of order
+// (CSS would snap that into a hard edge).
+export function fieldStops(fadeInPx: number, fadePx: number, stop: number) {
+  const rise = Math.max(0, fadeInPx);
+  const fall = Math.max(0, fadePx);
+  if (rise + fall <= stop) return { inEnd: rise, start: stop - fall };
+  const meet = rise + fall > 0 ? (stop * rise) / (rise + fall) : 0;
+  return { inEnd: meet, start: meet };
+}

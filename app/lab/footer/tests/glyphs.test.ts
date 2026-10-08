@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ALPHABET, GLYPHS, METRICS, glyphPaths, renderGlyph, sampleStroke } from "../glyphs";
-import { boxWidth, layoutWord, sizeForWidth } from "../layout";
+import { boxWidth, fieldStops, layoutWord, sizeForWidth } from "../wordLayout";
 
 const WEIGHTS = [0.04, 0.1, 0.17, 0.26];
 const EPS = 1e-9;
@@ -89,5 +89,23 @@ describe("the layout", () => {
   it("finds the size that spans a share of the stage", () => {
     const size = sizeForWidth("build.stuff", 0.17, 0.06, 1200, 0.9);
     expect(layoutWord("build.stuff", size, [0.17], 0.06).width).toBeCloseTo(1080, 6);
+  });
+});
+
+describe("the field's stops", () => {
+  it("keeps the rise, the hold and the fade in order", () => {
+    expect(fieldStops(100, 150, 400)).toEqual({ inEnd: 100, start: 250 });
+  });
+
+  it("meets in proportion when the rise and the fade overlap, never out of order", () => {
+    const { inEnd, start } = fieldStops(120, 60, 90);
+    expect(inEnd).toBeCloseTo(60, 9);
+    expect(start).toBe(inEnd);
+    for (const [rise, fall, stop] of [[0, 0, 50], [300, 0, 50], [0, 300, 50], [10, 10, 0]]) {
+      const r = fieldStops(rise, fall, stop);
+      expect(r.inEnd).toBeLessThanOrEqual(r.start);
+      expect(r.start).toBeLessThanOrEqual(stop);
+      expect(r.inEnd).toBeGreaterThanOrEqual(0);
+    }
   });
 });
