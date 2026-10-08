@@ -8,6 +8,8 @@ import { useHomeController } from "@/components/home/HomeController";
 import { hintStore } from "@/lib/cursor/hover";
 import type { CoilEntrance, CoilSceneApi } from "./CoilScene";
 import { NameReadout } from "./NameReadout";
+import { ShapeToggle } from "./ShapeToggle";
+import type { CoilShape } from "@/lib/coil/shape";
 import { Fill, FillArrow, FillSeed } from "@/components/fx/Fill";
 import { FILL_PICK } from "@/lib/fx/fill";
 
@@ -55,6 +57,9 @@ type Props = {
   // The controller's entrance: null while the loader holds the pane. The
   // touch line waits for it.
   entrance?: CoilEntrance | null;
+  // The Coil and Band toggle: the shape in use and the visitor's pick.
+  shape: CoilShape;
+  onShapeChange: (shape: CoilShape) => void;
 };
 
 // The nudge sits this far off the pointer, toward where the page scrolls.
@@ -83,13 +88,14 @@ const LIST_GROUPS: { heading: string; rows: ListRow[] }[] = [
 ];
 const LIST_ROW_COUNT = LIST_GROUPS.reduce((sum, group) => sum + group.rows.length, 0);
 
-export function HeroOverlay({ ref, api, onRowOpen, entrance = null }: Props) {
+export function HeroOverlay({ ref, api, onRowOpen, entrance = null, shape, onShapeChange }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
   const nudgeRef = useRef<HTMLDivElement>(null);
   const nudgeOnRef = useRef(false);
   const listRef = useRef<HTMLDivElement>(null);
   const nameSlotRef = useRef<HTMLSpanElement>(null);
   const coilControlRef = useRef<HTMLButtonElement>(null);
+  const seatRef = useRef<HTMLDivElement>(null);
   const boxesRef = useRef(new Map<string, HTMLSpanElement>());
   const frameRef = useRef({ progress: -1, on: false });
   const [listOn, setListOn] = useState(false);
@@ -132,10 +138,16 @@ export function HeroOverlay({ ref, api, onRowOpen, entrance = null }: Props) {
           list.dataset.live = on && progress > 0.9 ? "true" : "false";
         }
         const coil = coilControlRef.current;
+        const shown = on ? smooth(seg(progress, 0.5, 1)) : 0;
         if (coil) {
-          const shown = on ? smooth(seg(progress, 0.5, 1)) : 0;
           coil.style.opacity = shown.toFixed(3);
           coil.style.visibility = shown > 0.01 ? "visible" : "hidden";
+        }
+        // The toggle and the Coil control share one seat: one cross-fade on the unwind's clock.
+        const seat = seatRef.current;
+        if (seat) {
+          seat.style.opacity = (1 - shown).toFixed(3);
+          seat.style.visibility = shown > 0.99 ? "hidden" : "";
         }
       },
       listTargets() {
@@ -250,6 +262,7 @@ export function HeroOverlay({ ref, api, onRowOpen, entrance = null }: Props) {
         </div>
       </div>
 
+      <ShapeToggle ref={seatRef} shape={shape} onShapeChange={onShapeChange} entrance={entrance} listOn={listOn} />
       <Fill
         ref={coilControlRef}
         {...FILL_PICK.hero}
@@ -369,8 +382,9 @@ function HintLine({ rootRef, entrance }: { rootRef: RefObject<HTMLDivElement | n
   return (
     <p
       ref={lineRef}
+      data-hint-line
       aria-hidden="true"
-      className="absolute bottom-[max(32px,7svh)] left-1/2 -translate-x-1/2 whitespace-nowrap font-sans text-[14px] leading-none text-[color:var(--hero-greeting)] opacity-0 transition-opacity [transition-timing-function:var(--ease-out)]"
+      className="absolute bottom-[max(32px,7svh)] max-sm:bottom-[76px] left-1/2 -translate-x-1/2 whitespace-nowrap font-sans text-[14px] leading-none text-[color:var(--hero-greeting)] opacity-0 transition-opacity [transition-timing-function:var(--ease-out)]"
     />
   );
 }

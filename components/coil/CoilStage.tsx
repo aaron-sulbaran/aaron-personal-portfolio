@@ -6,6 +6,7 @@ import { HOLDING_MODE } from "@/lib/holding";
 import type { InputDriver } from "@/lib/coil/drivers";
 import { CoilErrorBoundary } from "./CoilErrorBoundary";
 import { HeroOverlay, type HeroOverlayHandle } from "./HeroOverlay";
+import type { CoilShape } from "@/lib/coil/shape";
 import { canCreateWebGL2 } from "./webglProbe";
 import { Poster } from "./Poster";
 import { useHeroStill } from "./useHeroStill";
@@ -65,6 +66,10 @@ export function CoilStage({
   const lossesRef = useRef(0);
   const overlayRef = useRef<HeroOverlayHandle>(null);
   const ownApiRef = useRef<CoilSceneApi>(null);
+  // The Coil and Band toggle: the visitor's choice for this visit (coil on
+  // every load, no storage), held here beside both readers so a scene that
+  // remounts keeps it.
+  const [shape, setShape] = useState<CoilShape>("coil");
   const apiRef = api ?? ownApiRef;
   // The hero section (this stage's parent): the notice renders into it, after the h1.
   const [hero, setHero] = useState<HTMLElement | null>(null);
@@ -182,11 +187,12 @@ export function CoilStage({
             onError={handleError}
             entrance={entrance}
             onEntranceEnd={completeEntrance}
+            shape={shape}
             onCardClick={onCardClick}
           />
         </CoilErrorBoundary>
       ) : null}
-      <HeroOverlay ref={overlayRef} api={apiRef} onRowOpen={onRowOpen} entrance={entrance} />
+      <HeroOverlay ref={overlayRef} api={apiRef} onRowOpen={onRowOpen} entrance={entrance} shape={shape} onShapeChange={setShape} />
       {heroScene === "still" && ready && hero
         ? createPortal(<StillNotice cause={stillCause({ reducedMotion, hasApi: hasWebGL2(), failure })} />, hero)
         : null}
