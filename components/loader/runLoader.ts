@@ -8,6 +8,7 @@ import { createStillWait, listenStillFade, type StillWaitTimers } from "@/lib/lo
 import { giveUpToHeading, raceStill } from "@/lib/loader/stillGiveUp";
 import { createInkEase, type InkEase } from "@/lib/loader/inkEase";
 import { createLockupFade } from "@/lib/loader/lockupFade";
+import { stillMove } from "@/lib/loader/stillLanding";
 import { COIL } from "@/lib/coil/constants";
 import { HERO_HEADING_ID } from "@/components/home/HeroText";
 import {
@@ -240,13 +241,14 @@ export function runLoader(
   }
 
   // No scene can run. Once the still has decoded, the pane (if it showed)
-  // fades off the resting lockup; then the still fades in UNDER the resting
-  // lockup over stillFadeMs (loaderMarkup.ts lifts its hold on data-dissolve),
-  // the lockup at the composite's ink, and when that fade ends the lockup
-  // fades out over lockupFadeMs onto the name the still bakes behind its cards
-  // (lib/loader/lockupFade.ts), then goes. A still that fails to decode, or not
-  // within handoffGiveUpMs, hands to the h1 lockup in one frame, never fading
-  // the lockup (lib/loader/stillGiveUp.ts).
+  // fades off the resting lockup; the lockup lands on the name the still
+  // bakes, where cover shows it (lib/loader/stillLanding.ts: the continuity's
+  // landing and timing; none within 1px); then the still fades in UNDER it
+  // over stillFadeMs (loaderMarkup.ts lifts its hold on data-dissolve), the
+  // lockup at the composite's ink, and when that fade ends the lockup fades
+  // out over lockupFadeMs onto the baked name (lib/loader/lockupFade.ts), then
+  // goes. A still that fails to decode, or not within handoffGiveUpMs, hands
+  // to the h1 lockup in one frame, never fading the lockup (stillGiveUp.ts).
   function dissolve(poster: StillPoster) {
     note("still");
     const layer = root.querySelector<HTMLElement>(LOADER_LOCKUP.layer);
@@ -289,9 +291,19 @@ export function runLoader(
       afterStillFade();
       if (holdHandoff) exposeFinish(fadeLockup);
     };
+    const land = () => {
+      const name = root.querySelector<HTMLElement>(LOADER_LOCKUP.name);
+      const move = layer && name && stillMove(layer, name, poster.target(), metrics);
+      if (disposed || !move) return under();
+      note("still-land", { land: move.land });
+      const state = { e: 0 };
+      const step = () => void (layer!.style.transform = landingTransform(move.land, state.e));
+      layer!.style.transformOrigin = move.origin;
+      timeline = gsap.timeline({ onComplete: under }).to(state, { e: 1, duration: LOADER.exitMs / 1000, ease: siteEase, onUpdate: step });
+    };
     const decoded = () => {
       if (disposed) return;
-      const begin = () => (paneShown ? fadePane(under) : under());
+      const begin = () => (paneShown ? fadePane(land) : land());
       if (!holdHandoff) return begin();
       note("still-held");
       exposeFinish(begin);

@@ -1,3 +1,4 @@
+import type { BakedLockup } from "@/lib/coil/heroStill";
 import { LOADER } from "./progress";
 
 // The loader's end, decided once the tally is done (and each frame while it
@@ -6,7 +7,11 @@ import { LOADER } from "./progress";
 // effects flush before the loader starts, so the provider is normally there
 // already and "wait" is only a safety net on the fast path.
 
-export type StillPoster = { decoded: () => Promise<void> };
+// decoded: the still fetched and decoded. target: the lockup it bakes behind
+// its cards, where the visible still shows it (viewport px, after object-fit
+// cover), or null while no still box shows; the loader lands its resting
+// lockup there (lib/loader/stillLanding.ts).
+export type StillPoster = { decoded: () => Promise<void>; target: () => BakedLockup | null };
 
 let provider: StillPoster | null = null;
 

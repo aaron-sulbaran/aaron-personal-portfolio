@@ -6,13 +6,14 @@ import type { Page } from "@playwright/test";
 // lockup shows; h1Opacity is the h1 element's own opacity; restOpacity the
 // resting lockup's as drawn (its layer's opacity times the loader root's, 0
 // while it does not show); ready is data-still-ready; locked is the body
-// scroll lock (lib/modal.ts writes overflow hidden on the body).
+// scroll lock (lib/modal.ts writes overflow hidden on the body); restBox the
+// resting name's text box as drawn (its transform included), CSS px, while it shows.
 // window.__restNameRect keeps the resting lockup's name box from the last
 // frame it showed, for a shot after the loader has gone.
 export type HeroSample = {
   t: number; scene: string | null; state: string | null; dissolve: boolean;
   h1: boolean; h1Opacity: number; rest: boolean; restOpacity: number; still: number; stillReady: boolean;
-  ready: boolean; locked: boolean;
+  ready: boolean; locked: boolean; restBox: { left: number; top: number; width: number; height: number } | null;
 };
 
 export async function sampleHero(page: Page) {
@@ -33,8 +34,9 @@ export async function sampleHero(page: Page) {
       const scene = hero?.dataset.scene ?? null;
       const restName = document.querySelector(".coil-loader__rest-name");
       const rest = shows(document.querySelector(".coil-loader__rest-greet")) && shows(restName);
+      const drawn = rest ? restName!.getBoundingClientRect() : null;
       if (rest) {
-        const r = restName!.getBoundingClientRect();
+        const r = drawn!;
         (window as unknown as { __restNameRect: object }).__restNameRect = { x: Math.floor(r.left), y: Math.floor(r.top), width: Math.ceil(r.width), height: Math.ceil(r.height) };
       }
       const layer = document.querySelector(".coil-loader__rest");
@@ -50,6 +52,7 @@ export async function sampleHero(page: Page) {
         stillReady: !!img && img.complete && img.naturalWidth > 0,
         ready,
         locked: document.body.style.overflow === "hidden",
+        restBox: drawn && { left: drawn.left, top: drawn.top, width: drawn.width, height: drawn.height },
       });
       if ((state !== "gone" || scene === "off" || (scene === "still" && !ready)) && samples.length < 2000) requestAnimationFrame(sample);
     };
