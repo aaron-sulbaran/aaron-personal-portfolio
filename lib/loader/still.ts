@@ -14,9 +14,12 @@ import { LOADER } from "./progress";
 export type StillPoster = { decoded: () => Promise<void>; target: () => BakedLockup | null };
 
 let provider: StillPoster | null = null;
+let gaveUp = false;
 
+// A new provider is a new load: the give-up below starts over.
 export function provideStillPoster(poster: StillPoster): () => void {
   provider = poster;
+  gaveUp = false;
   return () => {
     if (provider === poster) provider = null;
   };
@@ -24,6 +27,17 @@ export function provideStillPoster(poster: StillPoster): () => void {
 
 export function stillPoster(): StillPoster | null {
   return provider;
+}
+
+// The loader gave up on the still (lib/loader/stillGiveUp.ts) and handed its
+// lockup to the h1 lockup: a still that decodes after this arrives late and
+// brings its own dissolve (lib/home/stillReadiness.ts, data-still-late).
+export function markStillGaveUp(): void {
+  gaveUp = true;
+}
+
+export function stillGaveUp(): boolean {
+  return gaveUp;
 }
 
 // The scene's lockup: none drawn, on screen to land on, or off screen.

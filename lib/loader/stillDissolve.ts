@@ -2,7 +2,7 @@ import { gsap } from "@/lib/gsap";
 import { siteEase } from "@/lib/coil/motion";
 import { COIL } from "@/lib/coil/constants";
 import { LOADER } from "./progress";
-import type { StillPoster } from "./still";
+import { markStillGaveUp, type StillPoster } from "./still";
 import { createStillWait, listenStillFade, type StillWaitTimers } from "./stillWait";
 import { giveUpToHeading, raceStill } from "./stillGiveUp";
 import { createInkEase, type InkEase } from "./inkEase";
@@ -20,7 +20,8 @@ import { LOADER_LOCKUP, type LockupMetrics } from "./lockup";
 // when that fade ends the lockup fades out over lockupFadeMs onto the baked
 // name (lockupFade.ts), then goes. A still that fails to decode, or not within
 // handoffGiveUpMs, hands to the h1 lockup in one frame, never fading the
-// lockup (stillGiveUp.ts).
+// lockup (stillGiveUp.ts); should it decode later, it brings its own dissolve
+// (still.ts stillGaveUp, data-still-late).
 
 export type StillDissolveParts = {
   root: HTMLElement;
@@ -107,6 +108,7 @@ export function stillDissolve(poster: StillPoster, parts: StillDissolveParts): (
   };
   const gaveUp = () => {
     if (disposed()) return;
+    markStillGaveUp();
     stopStill = giveUpToHeading({
       paneShown, fadeMs: LOADER.stillFadeMs, timers, fadePane: (_, done) => fadePane(done), gone, note,
       ink: (ink = createInkEase(layer, readInk, COIL.lockup.stillInk, LOADER.stillFadeMs)),
