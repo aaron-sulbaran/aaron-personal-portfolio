@@ -110,6 +110,26 @@ for (const mode of ["scene", "no-webgl"] as const) {
       await expect(card(page)).toHaveCount(0);
     });
 
+    test(`mark: a scroll under a parked pointer tucks the mark and the ring goes with it @ring (${mode})`, async ({ page }) => {
+      await open(page);
+      await scrollToY(page, Y);
+      await pointAtMark(page);
+      await expect(page.locator("[data-mark-ring]")).toHaveCount(1);
+      await page.evaluate(() => {
+        const rec = { moves: 0 };
+        Object.assign(window, { __moves: rec });
+        window.addEventListener("mousemove", () => rec.moves++);
+      });
+      // Headroom tucks after a long enough scroll down; wheel until it starts.
+      for (let i = 0; i < 4 && (await markBox(page)).y > 0; i++) {
+        await page.mouse.wheel(0, 400);
+        await sleep(250);
+      }
+      await expect.poll(async () => (await mark(page).boundingBox())?.y ?? 0).toBeLessThan(-40);
+      await expect(page.locator("[data-mark-ring]")).toHaveCount(0);
+      expect(await page.evaluate(() => (window as unknown as { __moves: { moves: number } }).__moves.moves)).toBe(0);
+    });
+
     test(`mark: a quick tap shows at least 0.3 of the fill for 200ms, then drains (${mode})`, async ({ page }) => {
       await open(page);
       await pointAtMark(page);
