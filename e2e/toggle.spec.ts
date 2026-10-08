@@ -2,9 +2,10 @@ import type { Page } from "@playwright/test";
 import { siteContent } from "@/lib/content";
 import { COIL } from "@/lib/coil/constants";
 import { test, expect } from "./support/fixtures";
-import { nextFrames, openHome } from "./support/coil";
+import { coilPoints, nextFrames, openHome } from "./support/coil";
 import { settled } from "./support/fallback";
 import type { HookWindow } from "./support/hooks";
+import { decodePng, type Image } from "./support/pixels";
 import { noWebgl2Api } from "./support/webgl";
 // The Coil and Band toggle (lab log, "Controls lab"): a capsule at the
 // hero's bottom left that pulls the coil into the entrance's band and back,
@@ -152,4 +153,76 @@ test.describe("reduced motion", () => {
 test("toggle: the still fallback (no WebGL 2) has no toggle", async ({ page }) => {
   await page.addInitScript(noWebgl2Api);
   await expectNoToggle(page);
+});
+function maxChannelDelta(a: Image, b: Image) {
+  let max = 0;
+  for (let i = 0; i < a.rgba.length; i++) if ((i & 3) !== 3) max = Math.max(max, Math.abs(a.rgba[i] - b.rgba[i]));
+  return max;
+}
+function differingPixels(a: Image, b: Image, threshold = 24) {
+  let count = 0;
+  for (let i = 0; i < a.rgba.length; i += 4) {
+    const d = Math.abs(a.rgba[i] - b.rgba[i]) + Math.abs(a.rgba[i + 1] - b.rgba[i + 1]) + Math.abs(a.rgba[i + 2] - b.rgba[i + 2]);
+    if (d > threshold) count++;
+  }
+  return count;
+}
+test("toggle: a card flown from the band lands back in the band", async ({ page }) => {
+  // ?coildebug=still pins the conveyor: the idle drift (about 0.09 cards a
+  // second) would otherwise move every card some 4px in the time the scene
+  // runs around the flight, on the coil as in the band.
+  await openHome(page, { debug: "still" });
+  const cards = await cardCount(page);
+  await half(page, labels.band).click();
+  await waitForPull(page, 0);
+  const { card } = await coilPoints(page);
+  await page.mouse.move(card.x - 20, card.y + 10);
+  await page.mouse.move(card.x, card.y);
+  await page.waitForFunction(() => (window as HookWindow).__coil!.hovered() >= 0);
+  await page.waitForTimeout(800); // the hover lift settles (6.5/s), so the landing carries the same lift
+  const slot = (await page.evaluate(({ x, y }) => (window as HookWindow).__coil!.api.cardAt(x, y), card))!.slot;
+  const quadBefore = (await page.evaluate((s) => (window as HookWindow).__coil!.api.quadOf(s), slot))!;
+  await page.mouse.click(card.x, card.y);
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await page.waitForTimeout(700); // the flight out (520ms) before the close, as a visitor looks
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.locator("[data-flying-tile]")).toHaveCount(0);
+  await nextFrames(page, 3);
+  const landed = await shape(page);
+  expect(landed).toMatchObject({ pull: 0, shown: cards });
+  expect(landed.angStep).toBeCloseTo(landed.bandAngStep, 9);
+  const quadAfter = (await page.evaluate((s) => (window as HookWindow).__coil!.api.quadOf(s), slot))!;
+  for (let i = 0; i < 4; i++) expect(Math.hypot(quadAfter[i].x - quadBefore[i].x, quadAfter[i].y - quadBefore[i].y)).toBeLessThan(4);
+});
+test("toggle: a round trip to the band leaves the hero's still frame as it was", async ({ page }) => {
+  // ?coildebug=still holds the field, the name's surface and the conveyor,
+  // so the frame repeats; the keyboard drives the toggle so no pointer stirs
+  // the name; the toggle and the cursor are masked.
+  await openHome(page, { debug: "still" });
+  const canvas = page.locator("section[data-scene] canvas");
+  const mask = [page.locator("[data-shape-toggle]"), page.locator(".z-\\[100\\]")];
+  // The frame repeats only once the loader has gone (its resting lockup sits
+  // over the canvas until then) and the name's surface has grown over the
+  // loader's solid name (scene/name.ts, uSurfIn): both run in real time after
+  // the hand-off, still mode or not.
+  await page.waitForFunction(
+    () => document.querySelector<HTMLElement>(".coil-loader")?.dataset.state !== "rest" && (window as HookWindow).__coil!.nameFx().surfIn === 1,
+    null,
+    { timeout: 5_000 },
+  );
+  await nextFrames(page, 3);
+  const before = decodePng(await canvas.screenshot({ mask }));
+  await half(page, labels.band).focus();
+  await page.keyboard.press("Space");
+  await waitForPull(page, 0);
+  const band = decodePng(await canvas.screenshot({ mask }));
+  await page.keyboard.press("Shift+Tab");
+  await page.keyboard.press("Space");
+  await waitForPull(page, 1);
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  await nextFrames(page, 3);
+  const after = decodePng(await canvas.screenshot({ mask }));
+  expect(differingPixels(before, band), "the band draws a different frame").toBeGreaterThan(1000);
+  expect(maxChannelDelta(before, after), "the coil after a round trip").toBeLessThanOrEqual(2);
 });

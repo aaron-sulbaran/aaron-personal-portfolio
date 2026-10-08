@@ -50,6 +50,7 @@ export type CoilHooks = {
     unwind: (on?: boolean) => void;
     cardAt: (clientX: number, clientY: number) => { key: string; slot: number } | null;
     slotOfKey: (key: string) => number;
+    quadOf: (slot: number) => Quad | null;
     freeze: (on: boolean) => void;
     nameRect: () => {
       left: number;
