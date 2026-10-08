@@ -1,3 +1,4 @@
+import { register } from "./content/register";
 export interface SoundtrackTrack {
   title: string;
   artist: string;
@@ -29,6 +30,8 @@ export const siteContent = {
       "Building products (and community) with people, not just for them.",
     url: "https://aaronsulbaran.com",
   },
+  // Every inline link the copy may point at (lib/content/register.ts).
+  register,
   // The soundtrack band under the book (components/soundtrack): the one place
   // the music is offered and controlled, with the waveform running through
   // it. Each note describes what is on screen when it shows. Draft copy in my
@@ -820,6 +823,7 @@ export type WorkItem = (typeof siteContent.workItems)[number];
 export type MenuItem = (typeof siteContent.menu.items)[number];
 export type Track = SoundtrackTrack;
 export type HomeTile = (typeof siteContent.homeTiles)[number];
+export type { DefinitionEntry, InlineRegister, PhotoCrop, PopEntry, TipEntry } from "./content/types";
 
 // O(1) lookups for the card and row resolvers (HomeController, BookRow),
 // built once at module load so per-render resolution never scans the arrays.
