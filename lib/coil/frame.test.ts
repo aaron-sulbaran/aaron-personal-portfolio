@@ -11,6 +11,7 @@ const UPDATE = [
   "conveyor",
   "helix",
   "entrance",
+  "shape",
   "rebuild",
   "unwind",
   "name",
@@ -63,6 +64,6 @@ describe("frame order", () => {
       throw new Error("unwind failed");
     };
     expect(() => runUpdate(steps, null)).toThrow("unwind failed");
-    expect(calls).toEqual(["scroll", "conveyor", "helix", "entrance", "rebuild", "unwind"]);
+    expect(calls).toEqual(["scroll", "conveyor", "helix", "entrance", "shape", "rebuild", "unwind"]);
   });
 });

@@ -11,6 +11,7 @@ import { boot, resync } from "./scene/boot";
 import { createCards } from "./scene/cards";
 import { createDebugStats, debugReads, debugTokens, installSceneHooks, readDebugFlags, removeDebugStats } from "./scene/debug";
 import { createProbe } from "./scene/debugProbe";
+import { createShape } from "./scene/shape";
 import { createEntrance } from "./scene/entrance";
 import { createField } from "./scene/field";
 import { createFlight } from "./scene/flight";
@@ -35,11 +36,11 @@ import { createUnwindWiring } from "./scene/unwind";
 //
 // Frame order (lib/coil/frame.ts runs it; its test holds it): scroll delta,
 // conveyor (idle, wheel, page scroll; one smoothing stage and the spin cap;
-// the stretch envelope), helix frame, entrance, rebuild fade, unwind, name
-// (the surface's clock and the wake), seen levels, slots (pose, entrance,
-// unwind, header band, hover lift, seen ring), silhouette, picking, nudge,
-// repaint; then field (only when its clock moved), the name's surface, the
-// composite, cards.
+// the stretch envelope), helix frame, entrance, shape (the Coil and Band
+// toggle), rebuild fade, unwind, name (the surface's clock and the wake),
+// seen levels, slots (pose, entrance, unwind, header band, hover lift, seen
+// ring), silhouette, picking, nudge, repaint; then field (only when its
+// clock moved), the name's surface, the composite, cards.
 //
 // It renders only when needed: never while the tab is hidden, the hero is
 // off screen, a modal holds the scene frozen, or the context is lost.
@@ -130,6 +131,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   const heroName = createName(ctx, gl, field.compMaterial, surface, glyphTargets, loop);
   const cards = createCards(ctx, gl);
   const entrance = createEntrance(ctx, heroName);
+  const shape = createShape(ctx);
   const parts = { resizePasses: field.resizePasses, ensureSlots: cards.ensureSlots, layoutName: heroName.layoutName };
   const layout = createLayout(ctx, gl, parts, loop);
   const hover = createHover(ctx, cards, loop);
@@ -153,6 +155,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
       conveyor: input.conveyor,
       helix: cards.helix,
       entrance: entrance.entrance,
+      shape: shape.step,
       rebuild: entrance.rebuild,
       unwind: unwinder.step,
       name: heroName.step,
@@ -187,7 +190,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   if (live.current.api) live.current.api.current = api;
   probe.install();
   const nameProbe = createNameProbe(ctx, gl, field.compMaterial, heroName);
-  installSceneHooks(ctx, { gl, cards, field, name: heroName, surface, probe: nameProbe, entrance, hover, input, unwinder, api });
+  installSceneHooks(ctx, { gl, cards, field, name: heroName, surface, probe: nameProbe, entrance, shape, hover, input, unwinder, api });
   probe.installFlight(flyer.current);
 
   boot(ctx, cards, { applyTheme, layout, warm: flyer.warm }, loop);

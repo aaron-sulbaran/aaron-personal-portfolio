@@ -11,6 +11,7 @@ import {
   type Quad,
   type Silhouette,
 } from "@/lib/coil/geometry";
+import type { CoilShape } from "@/lib/coil/shape";
 import type { Cards } from "./cards";
 import type { Entrance } from "./entrance";
 import type { Field } from "./field";
@@ -20,6 +21,7 @@ import type { Name } from "./name";
 import type { NameDelta, NameProbe } from "./nameProbe";
 import type { NameSurface } from "./nameSurface";
 import type { Gl } from "./renderer";
+import type { Shape } from "./shape";
 import type { SceneCtx, SceneState } from "./state";
 import type { CoilSceneApi } from "./types";
 import type { UnwindWiring } from "./unwind";
@@ -106,6 +108,10 @@ export type DebugStats = {
   // ---- end the name debug ----
   // Slice 4: the entrance clock and the name.
   entrance?: () => object;
+  // The Coil and Band toggle: the shape asked for, the clock (0 band, 1
+  // coil), the pull, this frame's angular step beside the band's and the
+  // rest's, and how many cards show.
+  shape?: () => ShapeProbe;
   // Slice 5: the unwind and the row focus.
   unwindAt?: number[];
   unwindState?: () => object;
@@ -177,6 +183,8 @@ export type NameFx = {
   greetingInMask: boolean;
 };
 
+export type ShapeProbe = { target: CoilShape; progress: number; pull: number; angStep: number; bandAngStep: number; restAngStep: number | null; shown: number };
+
 type HookParts = {
   gl: Gl;
   cards: Cards;
@@ -185,6 +193,7 @@ type HookParts = {
   surface: NameSurface;
   probe: NameProbe;
   entrance: Entrance;
+  shape: Shape;
   hover: Hover;
   input: Input;
   unwinder: UnwindWiring;
@@ -198,7 +207,7 @@ type HookParts = {
 export function installSceneHooks(ctx: SceneCtx, parts: HookParts) {
   const { debug, st, host, live, tileCount } = ctx;
   if (!debug) return;
-  const { gl, cards, field, name, surface, probe, entrance, hover, input, unwinder, api } = parts;
+  const { gl, cards, field, name, surface, probe, entrance, shape, hover, input, unwinder, api } = parts;
   debug.budget = () => {
     const buffer = gl.renderer.getDrawingBufferSize(new Vector2());
     const sizes = cards.textureSizes();
@@ -248,6 +257,10 @@ export function installSceneHooks(ctx: SceneCtx, parts: HookParts) {
     nameLanded: name.landed(),
     nameA: field.compMaterial.uniforms.uNameA.value,
     offset: st.conveyor.offset,
+  });
+  debug.shape = () => ({
+    ...shape.state(), bandAngStep: (Math.PI * 2) / tileCount, restAngStep: st.geo?.angStep ?? null,
+    shown: st.rendered.filter((pose) => pose && pose.alpha > 0.01).length,
   });
   Object.assign(debug, {
     unwindAt: [] as number[],
