@@ -42,10 +42,12 @@ test("a context that cannot be created never fetches the scene chunk", async ({ 
   expect(hydration).toEqual([]);
 });
 
-// A still that never decodes: the loader hands its lockup to the h1 lockup
-// as a decoded still would, minus the still. The resting lockup never fades
-// (its drawn opacity only rises, as its ink eases to the h1's) and leaves in
-// one frame onto the identical h1 lockup; no frame shows the h1 before then.
+// A still that never decodes: no dissolve (a decoded still fades in under
+// the resting lockup, which then fades out onto its baked name); the loader
+// gives up and hands its lockup to the h1 lockup in one frame. The resting
+// lockup never fades (its drawn opacity only rises, as its ink eases to the
+// h1's) and leaves in one frame onto the identical h1 lockup; no frame shows
+// the h1 before then.
 type Events = string[];
 const loaderEvents = (page: Page): Promise<Events> =>
   page.evaluate(() => (window as HookWindow).__coilLoader!.events.map((e) => e.event));
@@ -173,10 +175,11 @@ test("a deep reload with no WebGL 2 shows the still at full opacity", async ({ p
   await page.addInitScript(noWebgl2Api);
   // lib/scroll.ts's saved position, past half a viewport: the fast start.
   await page.addInitScript(() => sessionStorage.setItem("aps:home-scroll-y", String(window.innerHeight * 2)));
-  // The still's opacity one frame after it is marked decoded, and whether the
-  // loader was skipped then: off the loader's hand-off the still never fades.
+  // The still's opacity one frame after it is marked decoded, the h1's box in
+  // that frame, and whether the loader was skipped then: off the loader's
+  // hand-off the still never fades.
   await page.addInitScript(() => {
-    const host = window as unknown as { __stillReadyFrame?: { opacity: string; loaderSkipped: boolean } };
+    const host = window as unknown as { __stillReadyFrame?: { opacity: string; loaderSkipped: boolean; h1: { width: number; height: number } } };
     new MutationObserver((records, observer) => {
       const still = records
         .map((record) => record.target)
@@ -184,8 +187,10 @@ test("a deep reload with no WebGL 2 shows the still at full opacity", async ({ p
       if (!still) return;
       observer.disconnect();
       requestAnimationFrame(() => {
+        const h1 = document.getElementById("hero-heading")!.getBoundingClientRect();
         host.__stillReadyFrame = {
           opacity: getComputedStyle(still).opacity,
+          h1: { width: h1.width, height: h1.height },
           loaderSkipped: document.documentElement.dataset.coilLoader === "skip" || !document.querySelector(".coil-loader"),
         };
       });
@@ -197,9 +202,11 @@ test("a deep reload with no WebGL 2 shows the still at full opacity", async ({ p
   await expect(still).toHaveAttribute("data-still-ready", "");
   await expect.poll(() => still.evaluate((el) => getComputedStyle(el).opacity)).toBe("1");
   const frame = await page.waitForFunction(() => (window as unknown as { __stillReadyFrame?: object }).__stillReadyFrame);
-  const { opacity, loaderSkipped } = (await frame.jsonValue()) as { opacity: string; loaderSkipped: boolean };
+  const { opacity, loaderSkipped, h1 } = (await frame.jsonValue()) as { opacity: string; loaderSkipped: boolean; h1: { width: number; height: number } };
   expect(loaderSkipped, "the loader was skipped (the deep path)").toBe(true);
   expect(opacity, "the still's opacity one frame after data-still-ready").toBe("1");
+  expect(h1.width, "the h1 visually hidden (sr-only) in that same frame: width").toBeLessThanOrEqual(1);
+  expect(h1.height, "the h1 visually hidden in that same frame: height").toBeLessThanOrEqual(1);
 });
 
 for (const [width, height, cut] of [[390, 844, "narrow"], [800, 1000, "square"], [1000, 1000, "square"], [1440, 900, "wide"]] as const) {
