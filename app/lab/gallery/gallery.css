@@ -1,0 +1,17 @@
+/* The gallery lab's masks, in the sections grammar's language
+   (app/globals.css on main, the .sections-line-mask rules): a masked block or
+   line leaves room for Profa's ink and the negative margin keeps the layout
+   unchanged. Nothing applies until useMaskIn arms the root, so under reduced
+   motion and after the masks finish every part renders whole. */
+[data-mask-armed="block"] [data-mask-kind="text"] {
+  overflow: clip;
+  padding-block: 0.04em;
+  margin-block: -0.04em;
+}
+.gallery-line-mask {
+  padding-block: 0.04em;
+  margin-block: -0.04em;
+}
+.gallery-line-mask + .gallery-line-mask {
+  margin-top: -0.08em;
+}
