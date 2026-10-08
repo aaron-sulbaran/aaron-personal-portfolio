@@ -169,25 +169,49 @@ test("toggle: cross-fades its seat to the unwound list's Coil control, and comes
   await expect(toggle(page)).toBeHidden();
   const seat = await page.evaluate(() => (window as unknown as { __seat: number[][] }).__seat);
   expect(seat.filter(([a, b]) => Math.abs(a + b - 1) > 0.01), "one cross-fade, the seat never empty").toEqual([]);
-  // The wind-back: the toggle stays inert until the list's progress is back at 0.
+  // The wind-back: the toggle stays held until the latch lets go: shown and
+  // hit-testable, its halves aria-disabled and dead, so a press mid-hold
+  // changes nothing and never falls through to a card under it.
+  const isHeld = () =>
+    page.evaluate(() => {
+      const segs = [...document.querySelectorAll("[data-shape-toggle] [data-seg]")];
+      return segs.length === 2 && segs.every((seg) => seg.getAttribute("aria-disabled") === "true");
+    });
   await page.evaluate(() => {
-    const w = window as HookWindow & { __back?: [number, boolean][] };
-    const back: [number, boolean][] = (w.__back = []);
+    const w = window as HookWindow & { __back?: [boolean, boolean][]; __press?: { latched: boolean; onToggle: boolean } };
+    const back: [boolean, boolean][] = (w.__back = []);
     const tick = () => {
-      const progress = w.__coil!.unwindState().progress;
-      back.push([progress, document.querySelector("[data-shape-toggle]")!.closest("[inert]") !== null]);
-      if (progress > 0) requestAnimationFrame(tick);
+      const { latched } = w.__coil!.unwindState();
+      const segs = [...document.querySelectorAll("[data-shape-toggle] [data-seg]")];
+      back.push([latched, segs.length === 2 && segs.every((seg) => seg.getAttribute("aria-disabled") === "true")]);
+      if (latched) requestAnimationFrame(tick);
     };
     requestAnimationFrame(tick);
+    const onClick = (event: MouseEvent) => {
+      w.__press = { latched: w.__coil!.unwindState().latched, onToggle: !!(event.target as Element).closest("[data-shape-toggle]") };
+    };
+    document.addEventListener("click", onClick, { capture: true, once: true });
+  });
+  const coilHalf = await page.evaluate(() => {
+    const r = document.querySelector('[data-shape-toggle] [data-seg="coil"]')!.getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
   });
   await page.evaluate(() => (window as HookWindow).__coil!.api.unwind(false));
-  await page.waitForFunction(() => (window as HookWindow).__coil!.unwindState().progress === 0, null, { timeout: 5_000 });
+  await nextFrames(page, 2); // the list's Coil control leaves the seat on the next frame
+  await page.mouse.click(coilHalf.x, coilHalf.y);
+  const press = await page.evaluate(() => (window as unknown as { __press?: { latched: boolean; onToggle: boolean } }).__press);
+  expect(press, "the press lands on the toggle while the strand is latched").toEqual({ latched: true, onToggle: true });
+  await page.waitForFunction(() => !(window as HookWindow).__coil!.unwindState().latched, null, { timeout: 5_000 });
   await nextFrames(page, 2);
-  const back = await page.evaluate(() => (window as unknown as { __back: [number, boolean][] }).__back);
-  const windingBack = back.filter(([progress]) => progress > 0);
-  expect(windingBack.length, "frames sampled on the wind-back").toBeGreaterThan(10);
-  expect(windingBack.filter(([, inert]) => !inert), "the toggle is inert while the list winds back").toEqual([]);
+  const back = await page.evaluate(() => (window as unknown as { __back: [boolean, boolean][] }).__back);
+  const latchedFrames = back.filter(([latched]) => latched);
+  expect(latchedFrames.length, "frames sampled while latched").toBeGreaterThan(10);
+  expect(latchedFrames.filter(([, held]) => !held), "the toggle is held while the strand is latched").toEqual([]);
+  expect(await isHeld(), "held no longer").toBe(false);
   expect(await page.evaluate(() => document.querySelector("[data-shape-toggle]")!.closest("[inert]") !== null)).toBe(false);
+  await expect(half(page, labels.band), "the press mid-hold changed nothing").toHaveAttribute("aria-pressed", "true");
+  expect((await shape(page)).target).toBe("band");
+  await expect(page.getByRole("dialog"), "no card opened under the toggle").toHaveCount(0);
   await expect(toggle(page)).toBeVisible();
   expect(await shape(page)).toMatchObject({ pull: 0, shown: await cardCount(page) });
 });
@@ -204,13 +228,15 @@ test("toggle: on a phone-width pane the first-visit line clears it", async ({ pa
   expect(overlap).toBe(0);
 });
 // The overlay (and the toggle in it) is always rendered; without a scene the
-// overlay's root keeps it hidden (visibility), so it is neither seen nor reachable.
+// toggle is inert and invisible on its own (and the overlay's root hides it
+// too), so it is neither seen nor reachable.
 async function expectNoToggle(page: Page) {
   await page.goto("/");
   await settled(page);
   await expect(page.locator("section[data-scene]")).toHaveAttribute("data-scene", "still");
   const el = page.locator("[data-shape-toggle]");
   await expect(el).toHaveCount(1);
+  await expect(el, "the toggle itself is inert").toHaveAttribute("inert", "");
   await expect(el).toBeHidden();
   await expect(toggle(page)).toBeHidden();
 }

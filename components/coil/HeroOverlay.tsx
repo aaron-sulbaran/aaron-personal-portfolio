@@ -40,9 +40,10 @@ export type OverlayNudge = { x: number; y: number; angle: number };
 export type HeroOverlayHandle = {
   layout: (layout: OverlayLayout | null) => void;
   nudge: (nudge: OverlayNudge | null) => void;
-  // Per scene frame: list progress 0 (coiled) to 1 (unwound), and whether the
-  // egg is on (it is on at progress 0 on the frame it starts).
-  unwindFrame: (progress: number, on: boolean) => void;
+  // Per scene frame: list progress 0 (coiled) to 1 (unwound), whether the
+  // egg is on (it is on at progress 0 on the frame it starts), and whether the
+  // strand is still latched (until the wind-back's last card is home).
+  unwindFrame: (progress: number, on: boolean, latched: boolean) => void;
   // Each row's card box in viewport px, by tile key.
   listTargets: () => ReadonlyMap<string, DOMRect>;
   // The lead's name slot in viewport px, and its font size.
@@ -60,6 +61,8 @@ type Props = {
   // The Coil and Band toggle: the shape in use and the visitor's pick.
   shape: CoilShape;
   onShapeChange: (shape: CoilShape) => void;
+  // The scene draws (data-scene="on"): without one the toggle is out of reach.
+  sceneOn: boolean;
 };
 
 // The nudge sits this far off the pointer, toward where the page scrolls.
@@ -88,7 +91,7 @@ const LIST_GROUPS: { heading: string; rows: ListRow[] }[] = [
 ];
 const LIST_ROW_COUNT = LIST_GROUPS.reduce((sum, group) => sum + group.rows.length, 0);
 
-export function HeroOverlay({ ref, api, onRowOpen, entrance = null, shape, onShapeChange }: Props) {
+export function HeroOverlay({ ref, api, onRowOpen, entrance = null, shape, onShapeChange, sceneOn }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
   const nudgeRef = useRef<HTMLDivElement>(null);
   const nudgeOnRef = useRef(false);
@@ -99,7 +102,7 @@ export function HeroOverlay({ ref, api, onRowOpen, entrance = null, shape, onSha
   const boxesRef = useRef(new Map<string, HTMLSpanElement>());
   const frameRef = useRef({ progress: -1, on: false });
   const [listOn, setListOn] = useState(false);
-  // The seat stays the list's from the unwind's start until its progress is back at 0.
+  // The seat stays the list's from the unwind's start until the latch lets go.
   const [seatHeld, setSeatHeld] = useState(false);
   const seatHeldRef = useRef(false);
   const seen = useSeen();
@@ -126,10 +129,10 @@ export function HeroOverlay({ ref, api, onRowOpen, entrance = null, shape, onSha
         const y = nudge.y + Math.sin(nudge.angle) * NUDGE_OFFSET_PX;
         el.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) rotate(${nudge.angle.toFixed(3)}rad)`;
       },
-      unwindFrame(progress, on) {
+      unwindFrame(progress, on, latched) {
         const last = frameRef.current;
         if (on !== last.on) setListOn(on);
-        const held = on || progress > 0;
+        const held = on || latched;
         if (held !== seatHeldRef.current) {
           seatHeldRef.current = held;
           setSeatHeld(held);
@@ -270,7 +273,7 @@ export function HeroOverlay({ ref, api, onRowOpen, entrance = null, shape, onSha
         </div>
       </div>
 
-      <ShapeToggle ref={seatRef} shape={shape} onShapeChange={onShapeChange} entrance={entrance} listOn={seatHeld} />
+      <ShapeToggle ref={seatRef} shape={shape} onShapeChange={onShapeChange} entrance={entrance} sceneOn={sceneOn} held={seatHeld} />
       <Fill
         ref={coilControlRef}
         {...FILL_PICK.hero}
