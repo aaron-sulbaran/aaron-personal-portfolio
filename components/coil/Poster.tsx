@@ -1,5 +1,5 @@
 import Image from "next/image";
-import type { StillTheme } from "@/lib/coil/heroStill";
+import { bakedLockupRect, stillCut, type BakedLockup, type StillCut, type StillTheme } from "@/lib/coil/heroStill";
 import { stillPicture } from "@/lib/coil/stillPicture";
 
 // The stage's posters, under the canvas, one per theme. The field at
@@ -66,4 +66,24 @@ export function decodeHeroStill(): Promise<void> {
     decoding.set(theme, promise);
   }
   return promise;
+}
+
+// The lockup the visible still bakes, where it shows: the cut the picture
+// chose (its img's file; the box's aspect should it not say) through
+// object-fit cover in the still's own box, then into viewport px. null while
+// the box does not show (no still mode yet).
+export function heroStillTarget(): BakedLockup | null {
+  const box = document.querySelector<HTMLElement>("[data-hero-still]");
+  if (!box || !box.clientWidth || !box.clientHeight) return null;
+  const img = [...box.querySelectorAll("img")].find((el) => el.getClientRects().length > 0);
+  const chosen = img?.currentSrc.match(/hero-(?:light|dark)-(wide|square|narrow)\./)?.[1] as StillCut | undefined;
+  const b = bakedLockupRect(chosen ?? stillCut(box.clientWidth / box.clientHeight), box.clientWidth, box.clientHeight);
+  const { left: x, top: y } = box.getBoundingClientRect();
+  return {
+    ...b,
+    left: b.left + x,
+    baseline: b.baseline + y,
+    greeting: { ...b.greeting, left: b.greeting.left + x, baseline: b.greeting.baseline + y },
+    gradient: { ...b.gradient, top: b.gradient.top + y },
+  };
 }

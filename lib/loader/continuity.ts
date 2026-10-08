@@ -16,9 +16,13 @@ export type NameBox = {
 
 export type Landing = { dx: number; dy: number; scale: number; rotationDeg: number };
 
+// The ink a landing aims at: its left edge, baseline and width, all it reads
+// (the canvas lockup's NameTarget, or a hero still's baked lockup).
+export type InkTarget = Pick<NameTarget, "left" | "baseline" | "width">;
+
 // The transform (about the box's center) that puts the box's ink on the
 // target's ink: the same width, baselines on one line.
-export function landing(box: NameBox, target: NameTarget): Landing {
+export function landing(box: NameBox, target: InkTarget): Landing {
   const scale = target.width / box.width;
   const toX = target.left + target.width / 2;
   const toY = target.baseline - (box.height * scale) / 2;

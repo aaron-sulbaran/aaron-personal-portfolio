@@ -6,7 +6,7 @@ import type { InputDriver } from "@/lib/coil/drivers";
 import { CoilErrorBoundary } from "./CoilErrorBoundary";
 import { HeroOverlay, type HeroOverlayHandle } from "./HeroOverlay";
 import { canCreateWebGL2 } from "./webglProbe";
-import { Poster, decodeHeroStill } from "./Poster";
+import { Poster, decodeHeroStill, heroStillTarget } from "./Poster";
 import { StillNotice } from "./StillNotice";
 import { stillCause, type HeroScene, type StillFailure } from "@/lib/coil/heroStill";
 import type { CoilCardRef, CoilSceneApi, CoilSceneProps } from "./CoilScene";
@@ -104,7 +104,7 @@ export function CoilStage({
       },
       () => undefined,
     );
-    const releaseStill = provideStillPoster({ decoded: decodeHeroStill });
+    const releaseStill = provideStillPoster({ decoded: decodeHeroStill, target: heroStillTarget });
     settleHomeLoad(SCENE_ITEMS.filter((item) => item !== "fonts"));
     completeEntrance?.();
     return () => {

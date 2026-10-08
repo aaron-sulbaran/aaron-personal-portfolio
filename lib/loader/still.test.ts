@@ -31,8 +31,8 @@ describe("the loader's end", () => {
     expect(loaderEnd(at({ waitedMs: LOADER.handoffGiveUpMs }))).toBe("skip");
   });
   it("has one still provider, released only by its own owner", () => {
-    const a = { decoded: () => Promise.resolve() };
-    const b = { decoded: () => Promise.resolve() };
+    const a = { decoded: () => Promise.resolve(), target: () => null };
+    const b = { decoded: () => Promise.resolve(), target: () => null };
     const releaseA = provideStillPoster(a);
     const releaseB = provideStillPoster(b);
     releaseA();
