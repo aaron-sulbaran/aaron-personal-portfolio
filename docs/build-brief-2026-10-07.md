@@ -95,3 +95,5 @@ Two things came out of it:
 - A deep link to `#listen` lands with the band's question under the fixed header bar; it needs a scroll margin. Logged as a follow-up, no owner yet.
 
 The in-app browser pane is hidden and never runs the scene; visual checks of the hero go through a visible Chrome with a GPU.
+
+**2026-10-08:** Aaron checked PR 36 himself and said merge; the notice copy became one sentence per cause in his words first. Merged as the tenth slice; rulings in `docs/design-decisions-2026-09-28.md` 2.13, the record in the Coil build log. The 3002 preview and the `hero-still` worktree are retired. Found in the same check: the mark strike (tier 4) and the Coil and Band toggle were never built, and the sections' reversible reveal is replaced by a one-way one; all three are in flight.
