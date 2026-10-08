@@ -19,6 +19,8 @@ export type CoilHooks = {
   budget: () => Record<string, unknown>;
   visibleQuads: () => Quad[];
   entrance: () => { base: number | null; elapsedMs: number | null; ended: boolean; nameLanded: boolean; nameA: number; offset: number };
+  // The Coil and Band toggle (scene/shape.ts).
+  shape: () => { target: "coil" | "band"; progress: number; pull: number; angStep: number; bandAngStep: number; restAngStep: number | null; shown: number };
   drag: () => { dragging: boolean; coast: number | null; offset: number; target: number; velocity: number; cardsPerPx: number };
   unwindState: () => { on: boolean; latched: boolean; progress: number };
   focusKey: () => string | null;
@@ -48,6 +50,8 @@ export type CoilHooks = {
     unwind: (on?: boolean) => void;
     cardAt: (clientX: number, clientY: number) => { key: string; slot: number } | null;
     slotOfKey: (key: string) => number;
+    focusCard: (key: string | null) => void;
+    quadOf: (slot: number) => Quad | null;
     freeze: (on: boolean) => void;
     nameRect: () => {
       left: number;
@@ -82,6 +86,7 @@ export type SlotInfo = {
   slot: number;
   key: string;
   kind: "photo" | "work";
+  u: number;
   quad: Quad;
   center: ProbePoint;
   outline: ProbePoint[][];
@@ -106,7 +111,7 @@ export type FlightHooks = {
     slots: () => SlotInfo[];
     hide: (slot: number | null) => void;
     seam: () => number;
-    flown: () => Omit<SlotInfo, "slot" | "key" | "kind" | "hover" | "hovered" | "hidden" | "depth" | "alpha" | "fade"> | null;
+    flown: () => Omit<SlotInfo, "slot" | "key" | "kind" | "u" | "hover" | "hovered" | "hidden" | "depth" | "alpha" | "fade"> | null;
     flight: () => { slot: number; state: string; gap: number } | null;
   };
 };

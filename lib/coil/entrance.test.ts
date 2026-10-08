@@ -10,12 +10,16 @@ import {
   isBeforeEntrance,
   isEntering,
   isRested,
+  outOfBandAlpha,
+  pullCurve,
+  pullHelix,
   pullPhases,
   pullProgress,
   quatToBasis,
   shutterProgress,
   shutterRank,
   slerpBasis,
+  type EntranceClock,
 } from "@/lib/coil/entrance";
 import { coilPose, restHelix, solveGeometry, type Basis, type CoilGeometry, type HelixFrame } from "@/lib/coil/geometry";
 
@@ -238,5 +242,53 @@ describe("rotations", () => {
     expect(dot(mid.x, mid.x)).toBeCloseTo(1, 9);
     expect(dot(mid.x, mid.y)).toBeCloseTo(0, 9);
     expect(dot(mid.y, mid.z)).toBeCloseTo(0, 9);
+  });
+});
+
+// entranceHelix as it stood at 278dfe3 (lib/coil/entrance.ts:77-96), frozen for this test.
+const legacyLerp = (a: number, b: number, t: number) => a + (b - a) * t;
+function legacyEntranceHelix(rest: HelixFrame, geo: CoilGeometry, clock: EntranceClock): HelixFrame {
+  if (isRested(clock)) return rest;
+  const n = geo.cardCount;
+  const pull = pullProgress(clock);
+  const { part, wind } = pullPhases(pull);
+  const angStep = legacyLerp(TAU / n, rest.angStep, wind);
+  return { ...rest, angStep, radius: geo.step / angStep, dy: legacyLerp((COIL.lab.washerPitch / n) * part, rest.dy, wind),
+    cardWorld: legacyLerp(geo.bandCardWorld, rest.cardWorld, pull),
+    leanRad: legacyLerp(COIL.camera.bandLeanDeg * (Math.PI / 180), rest.leanRad, pull) };
+}
+describe("the pull as a value (the Coil and Band toggle reuses it)", () => {
+  it("reproduces the entrance's frame exactly, swept", () => {
+    for (const [, geo] of cases) for (const recede of [COIL.lab.recedeLight, COIL.lab.recedeDark]) {
+      const rest = restHelix(geo, recede);
+      for (let ms = 0; ms <= 1800; ms += 25) expect(entranceHelix(rest, geo, entranceClock(ms))).toEqual(legacyEntranceHelix(rest, geo, entranceClock(ms)));
+    }
+  });
+  it("is the rest frame itself at pull 1, so the coil at rest is untouched", () => {
+    for (const [, geo] of cases) {
+      const rest = restHelix(geo);
+      expect(pullHelix(rest, geo, 1)).toBe(rest);
+      expect(pullHelix(rest, geo, 1.2)).toBe(rest);
+    }
+  });
+  it("closes the band at pull 0: every card on one turn, no rise, the band's size and lean", () => {
+    for (const [, geo] of cases) {
+      const band = pullHelix(restHelix(geo), geo, 0);
+      expect(band.angStep).toBeCloseTo(TAU / geo.cardCount, 12);
+      expect(band.dy).toBe(0);
+      expect(band.cardWorld).toBe(geo.bandCardWorld);
+      expect(band.leanRad).toBeCloseTo((COIL.camera.bandLeanDeg * Math.PI) / 180, 12);
+    }
+  });
+  it("fades the copies outside the band in over pull 0.35 to 0.9", () => {
+    expect([outOfBandAlpha(0), outOfBandAlpha(0.35), outOfBandAlpha(0.9), outOfBandAlpha(1)]).toEqual([0, 0, 1, 1]);
+    expect(outOfBandAlpha(0.625)).toBeCloseTo(0.5, 9);
+  });
+  it("the pull curve is the entrance's cubic-bezier(0.55, 0, 0.25, 1)", () => {
+    expect(COIL.entrance.pullCurve).toEqual([0.55, 0, 0.25, 1]);
+    const curve = pullCurve(COIL);
+    expect(curve(0)).toBeCloseTo(0, 9);
+    expect(curve(1)).toBeCloseTo(1, 9);
+    expect(curve(0.5)).toBeCloseTo(0.6856, 3);
   });
 });

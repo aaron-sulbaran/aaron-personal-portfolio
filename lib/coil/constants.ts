@@ -107,6 +107,16 @@ const values = {
     pullCurve: [0.55, 0, 0.25, 1] as const,
   },
 
+  // The Coil and Band toggle (lab log, "Controls lab" and "The Coil and Band
+  // toggle"): the band is the entrance's pose at pull 0, so a switch plays
+  // the entrance's pull on its curve and over its length, (1 - pullStart) of
+  // the entrance: 0.42 of 1800ms. trailingDelayMs is the capsule's trailing
+  // edge (Aaron's pick, 2026-10-06: 22 percent of the fill's 450ms).
+  toggle: {
+    durationMs: 756,
+    trailingDelayMs: 99,
+  },
+
   // Unwind egg and hover-jump.
   unwind: {
     perCardMs: 580,

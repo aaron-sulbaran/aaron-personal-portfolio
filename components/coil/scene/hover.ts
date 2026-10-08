@@ -3,6 +3,7 @@ import { FIELD } from "@/lib/coil/field.glsl";
 import { nearCard, pickCard, poseAt, projectPoint, rayThrough, restHelix, seamMarginPx } from "@/lib/coil/geometry";
 import { hoverJumpTarget, setRowHold, startGlide, type JumpBand } from "@/lib/coil/motion";
 import { heroVisibleFraction } from "@/lib/coil/capture";
+import { shapeJump } from "@/lib/coil/shape";
 import { setSceneHover } from "@/lib/cursor/hover";
 import type { Cards } from "./cards";
 import type { LoopLink, SceneCtx, SceneFrame } from "./state";
@@ -101,11 +102,10 @@ export function createHover(ctx: SceneCtx, cards: Cards, loop: LoopLink) {
       left: inset,
       right: view.width - inset,
     };
-    const frame = restHelix(st.geo, st.theme.card.recede);
+    const jump = shapeJump(st.geo, restHelix(st.geo, st.theme.card.recede), props.shape ?? "coil");
     const camera = st.geoCamera;
-    const maxU = st.geo.slotCount / 2 - COIL.lab.endFadeSlots;
-    const { to } = hoverJumpTarget(tile, conveyor.offset, tileCount, st.geo.cardsPerTurn, maxU, (u) =>
-      projectPoint(camera, poseAt(frame, u).position), band);
+    const { to } = hoverJumpTarget(tile, conveyor.offset, tileCount, jump.cardsPerTurn, jump.maxU, (u) =>
+      projectPoint(camera, poseAt(jump.frame, u).position), band);
     startGlide(conveyor, to, performance.now());
     loop.wake();
   }
@@ -126,7 +126,13 @@ export function createHover(ctx: SceneCtx, cards: Cards, loop: LoopLink) {
     // ---- end fx-input ----
   }
 
-  return { pickAt, nearCardAt, cardAt, picking, liftTarget, focusCard, focusKey: () => focusKey };
+  // A held row aims again (scene/shape.ts, on a switch's landing: the switch
+  // held the strand and dropped any glide).
+  function rejump() {
+    if (focusKey !== null && st.rowHold.held && canRowHold()) hoverJump(focusKey);
+  }
+
+  return { pickAt, nearCardAt, cardAt, picking, liftTarget, focusCard, rejump, focusKey: () => focusKey };
 }
 
 export type Hover = ReturnType<typeof createHover>;

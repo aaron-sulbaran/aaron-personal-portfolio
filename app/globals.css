@@ -466,6 +466,45 @@ body {
   }
 }
 
+/* The Coil and Band toggle (components/coil/ShapeToggle.tsx; lab log,
+   "Controls lab"). The selection is a fill: an accent clip over a second
+   copy of both labels, its edges --tg-a and --tg-b, on the fill's clock. On a
+   switch the leading edge goes first and the trailing edge follows --tg-lag
+   later (COIL.toggle.trailingDelayMs). Hovering or focusing the other half
+   leans the leading edge toward it. On the Menu pill's glass. */
+@property --tg-a { syntax: "<number>"; inherits: true; initial-value: 0; }
+@property --tg-b { syntax: "<number>"; inherits: true; initial-value: 0.5; }
+.shape-toggle {
+  --tg-a: 0; --tg-b: 0.5; --tg-da: 0ms; --tg-db: 0ms; --tg-pad: 3px;
+  display: grid; border-radius: 999px; background: var(--menu-pill);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); box-shadow: inset 0 0 0 1px var(--color-border);
+  transition: --tg-a var(--fx-ms) var(--fx-ease) var(--tg-da), --tg-b var(--fx-ms) var(--fx-ease) var(--tg-db);
+}
+.shape-toggle[data-state="band"] { --tg-a: 0.5; --tg-b: 1; }
+.shape-toggle[data-dir="right"] { --tg-da: var(--tg-lag); }
+.shape-toggle[data-dir="left"] { --tg-db: var(--tg-lag); }
+@media (hover: hover) {
+  .shape-toggle[data-state="coil"]:has([data-seg="band"]:not([aria-disabled="true"]):hover) { --tg-b: 0.57; }
+  .shape-toggle[data-state="band"]:has([data-seg="coil"]:not([aria-disabled="true"]):hover) { --tg-a: 0.43; }
+}
+.shape-toggle[data-state="coil"]:has([data-seg="band"]:focus-visible) { --tg-b: 0.57; }
+.shape-toggle[data-state="band"]:has([data-seg="coil"]:focus-visible) { --tg-a: 0.43; }
+.shape-toggle:has(:focus-visible) { outline: 2px solid var(--color-accent); outline-offset: 3px; }
+.shape-toggle > .shape-toggle__base,
+.shape-toggle > .shape-toggle__over { grid-area: 1 / 1; }
+.shape-toggle > .shape-toggle__over {
+  pointer-events: none; border-radius: 999px; background: var(--color-accent); color: var(--color-background);
+  clip-path: inset(
+    var(--tg-pad) calc((1 - var(--tg-b)) * (100% - 2 * var(--tg-pad)) + var(--tg-pad)) var(--tg-pad)
+      calc(var(--tg-a) * (100% - 2 * var(--tg-pad)) + var(--tg-pad)) round 999px
+  );
+}
+.shape-toggle__seg { color: var(--color-muted); transition: color 200ms var(--ease-out); }
+.shape-toggle__seg:not([aria-disabled="true"]):hover { color: var(--color-foreground); }
+.shape-toggle__seg:focus-visible { outline: none; }
+@media (prefers-reduced-motion: reduce) { .shape-toggle { transition: none !important; } }
+/* End of the Coil and Band toggle. */
+
 /* Metrics (components/metrics): the skyline's keyboard ring. The Flat and
    Skyline toggle is a quiet rise Fill (see "The fill" above). */
 .metrics-stage:has(canvas:focus-visible) { outline: 2px solid var(--color-accent); outline-offset: 4px; }
