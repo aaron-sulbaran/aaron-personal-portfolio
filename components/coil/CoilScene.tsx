@@ -11,7 +11,6 @@ import { boot, resync } from "./scene/boot";
 import { createCards } from "./scene/cards";
 import { createDebugStats, debugReads, debugTokens, installSceneHooks, readDebugFlags, removeDebugStats } from "./scene/debug";
 import { createProbe } from "./scene/debugProbe";
-import { createShape } from "./scene/shape";
 import { createEntrance } from "./scene/entrance";
 import { createField } from "./scene/field";
 import { createFlight } from "./scene/flight";
@@ -23,6 +22,7 @@ import { createGlyphTargets, createName } from "./scene/name";
 import { createNameProbe } from "./scene/nameProbe";
 import { createNameSurface } from "./scene/nameSurface";
 import { createLayout, createPasses, createRenderer, observeResize, watchContext } from "./scene/renderer";
+import { createShape } from "./scene/shape";
 import { createSceneState, type LoopLink, type SceneCtx } from "./scene/state";
 import type { CoilRuntime, CoilSceneProps } from "./scene/types";
 import { createUnwindWiring } from "./scene/unwind";
@@ -131,10 +131,10 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   const heroName = createName(ctx, gl, field.compMaterial, surface, glyphTargets, loop);
   const cards = createCards(ctx, gl);
   const entrance = createEntrance(ctx, heroName);
-  const shape = createShape(ctx);
   const parts = { resizePasses: field.resizePasses, ensureSlots: cards.ensureSlots, layoutName: heroName.layoutName };
   const layout = createLayout(ctx, gl, parts, loop);
   const hover = createHover(ctx, cards, loop);
+  const shape = createShape(ctx, hover);
   const input = createInput(ctx, cards, hover, loop);
   const probe = createProbe(ctx, cards, loop);
   // fx-flight: the flown card's canvas and the handoff.

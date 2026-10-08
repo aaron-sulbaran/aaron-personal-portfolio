@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { siteContent } from "@/lib/content";
+import { siteContent, strandTiles } from "@/lib/content";
 import { COIL } from "@/lib/coil/constants";
 import { test, expect } from "./support/fixtures";
 import { coilPoints, nextFrames, openHome } from "./support/coil";
@@ -69,6 +69,74 @@ test("toggle: Band pulls the coil into the entrance's band over the pull, Coil w
   const coil = await shape(page);
   expect(coil.angStep).toBe(coil.restAngStep);
   expect(coil.shown).toBeGreaterThan(cards);
+});
+// A held book row's card at the front of the band: its drawn copy within a
+// facing step of the strand's center, and the card picked at its center.
+async function expectRowAtBandFront(page: Page, key: string) {
+  const at = await page.evaluate((k) => {
+    const w = window as HookWindow;
+    const slot = w.__coil!.api.slotOfKey(k);
+    const info = slot >= 0 ? w.__coilFlight!.scene.slot(slot) : null;
+    return info && { u: info.u, alpha: info.alpha, picked: w.__coil!.api.cardAt(info.center.x, info.center.y)?.key ?? null };
+  }, key);
+  expect(at, `${key} is drawn in the band`).not.toBeNull();
+  expect(Math.abs(at!.u), `${key} sits at the band's front`).toBeLessThanOrEqual(1.01);
+  expect(at!.picked, `${key} is the card at its own center`).toBe(key);
+}
+test("toggle: a held book row keeps its card at the front across a switch", async ({ page }) => {
+  await openHome(page, { debug: "flight" });
+  const focus = (key: string) => page.evaluate((k) => (window as HookWindow).__coil!.api.focusCard(k), key);
+  const toCoil = async () => {
+    await half(page, labels.coil).click();
+    await waitForPull(page, 1);
+    await page.waitForTimeout(800);
+  };
+  // (a) Held on the coil at rest, then the band: the landing aims the row's card again.
+  const first = strandTiles[2].key;
+  await focus(first);
+  await page.waitForTimeout(800);
+  await half(page, labels.band).click();
+  await waitForPull(page, 0);
+  await page.waitForTimeout(800);
+  await expectRowAtBandFront(page, first);
+  // The same with the row's glide still under way at the press: the switch
+  // holds the strand where the glide had got to, and the landing finishes the aim.
+  await toCoil();
+  const across = strandTiles[(2 + strandTiles.length / 2) % strandTiles.length].key;
+  const gliding = await page.evaluate((k) => {
+    const w = window as HookWindow;
+    w.__coil!.api.focusCard(k);
+    document.querySelector<HTMLButtonElement>('[data-shape-toggle] [data-seg="band"]')!.click();
+    return w.__coilFlight!.scene.state().glide;
+  }, across);
+  expect(gliding, "the row's glide is under way at the press").toBe(true);
+  await waitForPull(page, 0);
+  await page.waitForTimeout(800);
+  await expectRowAtBandFront(page, across);
+  // (b) A row focused mid-switch: its glide waits for the landing.
+  await toCoil();
+  const second = strandTiles[7].key;
+  await half(page, labels.band).click();
+  const focusedAt = await page.evaluate(
+    (k) =>
+      new Promise<number>((resolve) => {
+        const w = window as HookWindow;
+        const tick = () => {
+          const { progress } = w.__coil!.shape();
+          if (progress > 0 && progress < 1) {
+            w.__coil!.api.focusCard(k);
+            resolve(progress);
+          } else requestAnimationFrame(tick);
+        };
+        tick();
+      }),
+    second,
+  );
+  expect(focusedAt, "focused mid-switch").toBeGreaterThan(0);
+  expect(focusedAt, "focused mid-switch").toBeLessThan(1);
+  await waitForPull(page, 0);
+  await page.waitForTimeout(800);
+  await expectRowAtBandFront(page, second);
 });
 test("toggle: the keyboard reaches each half and Space or Enter picks it", async ({ page }) => {
   await openHome(page);
