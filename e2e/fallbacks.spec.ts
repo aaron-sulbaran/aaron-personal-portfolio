@@ -38,7 +38,8 @@ test.describe("reduced motion", () => {
     // Reduced motion has no resting lockup and nothing holds the h1: the h1
     // lockup is the greeting from the first frame, under the loader's fade,
     // until the still has decoded; from that frame the still shows at full
-    // opacity (no fade) and the h1 is visually hidden.
+    // opacity (no fade) and the h1 is visually hidden, and the visible
+    // picture has its pixels (no frame paints neither name).
     const samples = (await heroSamples(page)).filter((s) => s.state !== null);
     expect(samples.length, "frames sampled").toBeGreaterThan(2);
     expect(samples.filter((s) => s.rest), "frames showing the resting lockup").toEqual([]);
@@ -50,6 +51,8 @@ test.describe("reduced motion", () => {
     test.info().annotations.push({ type: "still marked decoded", description: `frame ${readyAt} of ${samples.length}, at ${samples[readyAt].t.toFixed(0)}ms, loader ${samples[readyAt].state}` });
     expect(after.filter((s) => s.h1).length, "frames from the still on showing the h1").toBe(0);
     expect(after.filter((s) => s.still !== 1).map((s) => s.still), "the still's opacity from its first frame").toEqual([]);
+    const gaps = after.filter((s) => !s.stillReady).map((s) => `${s.t.toFixed(0)}ms`);
+    expect(gaps, "frames from the still on whose visible picture has no pixels yet").toEqual([]);
     const still = page.locator("[data-hero-still]");
     await expect(still).toHaveAttribute("data-still-ready", "");
     await expect.poll(() => still.evaluate((el) => getComputedStyle(el).opacity)).toBe("1");

@@ -7,7 +7,7 @@ import { waitForCoil } from "./support/coil";
 import type { HookWindow } from "./support/hooks";
 import { cardRegion, luminanceSpread, pixelDiff, shoot, type Image } from "./support/pixels";
 import { noWebglContext } from "./support/webgl";
-import { heroSamples, restNameRect, sampleHero, type HeroSample } from "./support/heroSamples";
+import { heroSamples, restNameRect, sampleHero, spanMs, type HeroSample } from "./support/heroSamples";
 import { expectHeadingHidden } from "./support/fallback";
 
 // The loader and the entrance (docs/coil-build-scaffold.md, slice 4): a slow
@@ -510,7 +510,7 @@ test.describe("no WebGL", () => {
     // already on the baked name, so there is no landing.
     expect(events, "no landing at the cut's own aspect").not.toContain("still-land");
     const shares = coverUnderStill(samples, await bakedLockup(page));
-    expect(shares.length, "frames with the still under the lockup").toBeGreaterThan(5);
+    expect(spanMs(shares), "frames with the still under the lockup, at least 80ms of them").toBeGreaterThanOrEqual(80);
     expect(Math.min(...shares.map((f) => f.share)), "the resting name over the baked name in every such frame").toBeGreaterThanOrEqual(0.98);
   });
 
@@ -532,7 +532,7 @@ test.describe("no WebGL", () => {
       description: `${fade.map((s) => `${(s.t - samples[stillIn].t).toFixed(0)}ms ${s.restOpacity.toFixed(3)}${s.state === "gone" ? " gone" : ""}`).join(", ")}; frame ${frameMs.toFixed(1)}ms, composite ${composite.toFixed(3)}`,
     });
     expect(rises.map((s) => s.t.toFixed(0)), "frames where the lockup's opacity rose").toEqual([]);
-    expect(fade.filter((s) => s.restOpacity > 0 && s.restOpacity < composite - 1e-3).length, "frames in the middle of the fade").toBeGreaterThan(5);
+    expect(spanMs(fade.filter((s) => s.restOpacity > 0 && s.restOpacity < composite - 1e-3)), "frames in the middle of the fade, at least 80ms of them").toBeGreaterThanOrEqual(80);
     expect(took, "the lockup reached 0 within lockupFadeMs plus two frames").toBeLessThanOrEqual(LOADER.lockupFadeMs + 2 * frameMs + 1);
     expect(took, "the lockup took about lockupFadeMs to reach 0").toBeGreaterThanOrEqual(LOADER.lockupFadeMs - 2 * frameMs);
     expect(samples[zeroAt].locked, "the scroll lock released by the time the lockup reaches 0").toBe(false);
@@ -616,7 +616,7 @@ test.describe("no WebGL", () => {
       });
       expect(atRest, "the resting pose is off the baked name (the case under test)").toBeLessThan(0.9);
       expect(stillIn, "a frame with the still at 1 under the lockup").toBeGreaterThan(0);
-      expect(fade.length, "frames of the lockup's fade").toBeGreaterThan(5);
+      expect(spanMs(fade), "frames of the lockup's fade, at least 80ms of them").toBeGreaterThanOrEqual(80);
       const off = shares.filter((f) => f.share < 0.95);
       expect(off.map((f) => `${f.t.toFixed(0)}ms ${f.share.toFixed(3)}`), "frames with the still showing and the resting name off the baked one").toEqual([]);
       const events = await page.evaluate(() => (window as HookWindow).__coilLoader!.events.map((e) => e.event));
