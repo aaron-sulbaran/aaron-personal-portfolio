@@ -1,12 +1,7 @@
 import { register } from "./content/register";
 import { bookPeopleOrder, bookWorkOrder, cards, strandOrder } from "./content/cards";
-export interface SoundtrackTrack {
-  title: string;
-  artist: string;
-  src: string;
-  spotifyUrl: string | null;
-  cover: string | null;
-}
+import type { SoundtrackTrack } from "./content/types";
+import { liveTracks } from "./content/tracks";
 
 // One link on the holding page. `icon` picks the brand mark in
 // components/BrandIcons.tsx. `href: null` keeps the entry defined but hides it
@@ -584,29 +579,7 @@ export const siteContent = {
     creditJoin: ", licensed",
     creditLicense: "CC BY 4.0",
     creditLicenseUrl: "https://creativecommons.org/licenses/by/4.0/",
-    tracks: [
-      {
-        title: "Small Steps",
-        artist: "Lee Rosevere",
-        src: "/audio/track-01.mp3",
-        spotifyUrl: null,
-        cover: null,
-      },
-      {
-        title: "Waves of Sleep",
-        artist: "Lee Rosevere",
-        src: "/audio/track-02.mp3",
-        spotifyUrl: null,
-        cover: null,
-      },
-      {
-        title: "Slow Lights",
-        artist: "Lee Rosevere",
-        src: "/audio/track-03.mp3",
-        spotifyUrl: null,
-        cover: null,
-      },
-    ] satisfies SoundtrackTrack[],
+    tracks: liveTracks,
   },
   // Work items. `bodySections: []` means the detail page renders a quiet
   // "case study in progress" block. Populate with { kind: 'paragraph', text }
@@ -836,8 +809,10 @@ export type Track = SoundtrackTrack;
 export type HomeTile = (typeof siteContent.homeTiles)[number];
 export type {
   CardContent, CardGroup, CardKey, CardLink, CardModal, CardModalKind, CardPicture, Cards, CardVisual, DefinitionEntry, ImageRef,
-  InlineRegister, LogoRef, Mentor, MentorsList, ModalPhoto, PhotoCrop, PhotoRef, PopEntry, TimelineEntry, TipEntry,
+  InlineRegister, InspiredBy, LogoRef, Mentor, MentorsList, ModalPhoto, PhotoCrop, PhotoRef, PopEntry, SoundtrackTrack, TimelineEntry,
+  TipEntry, TrackLicenseKind,
 } from "./content/types";
+export { tipText } from "./content/tracks";
 
 // O(1) lookups for the card and row resolvers (HomeController, BookRow),
 // built once at module load so per-render resolution never scans the arrays.

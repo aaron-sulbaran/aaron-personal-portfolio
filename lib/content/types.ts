@@ -100,3 +100,27 @@ export type Cards = Record<Exclude<CardKey, "mentorship" | "jobs">, CardContent>
   mentorship: CardContent & { mentors: MentorsList };
   jobs: CardContent & { timeline: readonly TimelineEntry[] };
 };
+
+// The soundtrack (docs/content/music.md). An adapted track is credited as adapted, never as
+// licensed for this site.
+export type TrackLicenseKind = "cc-by-3.0" | "cc-by-4.0" | "licensed" | "adapted";
+
+// Shown as a link, never played or embedded.
+export interface InspiredBy { title: string; artist: string; href: string }
+
+export interface SoundtrackTrack {
+  title: string;
+  // Whom the license says to credit: the original's author, never me for a track I only adapted.
+  artist: string;
+  src: string;
+  // Author, title, collection, named funders, license, and "Compressed for web." for a re-encode.
+  credit: string;
+  licenseKind: TrackLicenseKind;
+  licenseUrl: string | null;
+  // Two sentences in Aaron's voice; null until he writes them.
+  why: string | null;
+  inspiredBy: InspiredBy | null;
+  spotifyUrl: string | null;
+  // A tile designed for the site; the music license never covers album art.
+  cover: string | null;
+}
