@@ -1,6 +1,7 @@
 import type { RefObject } from "react";
 import type { Quad } from "@/lib/coil/geometry";
 import type { InputDriver } from "@/lib/coil/drivers";
+import type { CoilShape } from "@/lib/coil/shape";
 import type { Rect } from "@/lib/coil/flight";
 import type { NameTarget } from "@/lib/loader/handoff";
 import type { HeroOverlayHandle } from "../HeroOverlay";
@@ -116,6 +117,8 @@ export type CoilSceneProps = {
   entrance?: CoilEntrance | null;
   // Once, when the entrance's clock has run out (at once for a fast start).
   onEntranceEnd?: () => void;
+  // The Coil and Band toggle: the shape the visitor picked (the coil when absent).
+  shape?: CoilShape;
   // ---- end slice 4 ----
 };
 

@@ -18,6 +18,7 @@ import {
 } from "@/lib/coil/geometry";
 import { createCardGeometry, createCardMaterial, type CardUniforms, type SharedCardUniforms } from "@/lib/coil/material";
 import { stretchedDy } from "@/lib/coil/motion";
+import { shapePose } from "@/lib/coil/shape";
 import { paintCard, type CardSource } from "@/lib/coil/textures";
 import { applyColor, createRepaintQueue } from "@/lib/coil/theme";
 import { unwindPose } from "@/lib/coil/unwind";
@@ -63,6 +64,7 @@ type CardFrame = {
   helix: HelixFrame | null;
   clock: EntranceClock | null;
   rebuilt: number;
+  shapePull: number;
   listProgress: number;
 };
 
@@ -210,6 +212,7 @@ export function createCards(ctx: SceneCtx, gl: Gl) {
       const tile = mod(strandPosition, tileCount);
       bindTile(slot, tile);
       pose = entrancePose(pose, { strandPosition, cardCount: tileCount }, geo, clock);
+      pose = shapePose(pose, tileCount, f.shapePull);
       if (listProgress > 0) pose = unwindPose(pose, tile, unwind, now, null);
       // ---- slice 7: the narrow pane's clear top band (header and greeting) ----
       if (geo.clearTopPx > 0 && listProgress < 1) {
