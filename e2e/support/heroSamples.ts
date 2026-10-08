@@ -69,6 +69,10 @@ export async function heroSamples(page: Page): Promise<HeroSample[]> {
   return page.evaluate(() => (window as unknown as { __heroSamples: HeroSample[] }).__heroSamples);
 }
 
+// How long a run of frames lasts (ms, first to last): bounds stated in time,
+// not in frame counts, hold on a slow or busy machine.
+export const spanMs = (frames: { t: number }[]) => (frames.length ? frames.at(-1)!.t - frames[0].t : 0);
+
 // The resting lockup's name box from the last frame it showed (CSS px).
 export async function restNameRect(page: Page): Promise<{ x: number; y: number; width: number; height: number }> {
   return page.evaluate(() => (window as unknown as { __restNameRect: { x: number; y: number; width: number; height: number } }).__restNameRect);
