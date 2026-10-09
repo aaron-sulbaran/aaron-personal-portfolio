@@ -30,15 +30,21 @@ export function imageSize(file: string): [number, number] {
 }
 
 // A JPEG that still carries Exif or XMP (APP1), an ICC profile (APP2), IPTC (APP13) or a comment.
+// Fails closed: bytes before SOS that are not a well-formed marker sequence throw rather than pass as clean.
 export function jpegHasMetadata(file: string): boolean {
   const bytes = readFileSync(file);
+  const malformed = () => new Error(`malformed JPEG segments in ${file}`);
+  if (bytes.length < 2 || bytes[0] !== 0xff || bytes[1] !== 0xd8) throw malformed();
   let i = 2;
-  while (i + 4 <= bytes.length && bytes[i] === 0xff) {
+  while (i + 2 <= bytes.length) {
+    if (bytes[i] !== 0xff) throw malformed();
     const marker = bytes[i + 1];
     if (marker === 0xda) return false;
+    if (i + 4 > bytes.length) throw malformed();
     const length = bytes.readUInt16BE(i + 2);
+    if (length < 2 || i + 2 + length > bytes.length) throw malformed();
     if (marker === 0xe1 || marker === 0xe2 || marker === 0xed || marker === 0xfe) return true;
     i += 2 + length;
   }
-  return false;
+  throw malformed();
 }

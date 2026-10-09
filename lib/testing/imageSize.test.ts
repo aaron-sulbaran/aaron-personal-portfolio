@@ -1,10 +1,11 @@
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
 import { imageSize, jpegHasMetadata } from "./imageSize";
 
 const dir = mkdtempSync(join(tmpdir(), "image-size-"));
+afterAll(() => rmSync(dir, { recursive: true, force: true }));
 function file(name: string, bytes: Buffer | string): string {
   const path = join(dir, name);
   writeFileSync(path, bytes);
@@ -52,5 +53,15 @@ describe("jpegHasMetadata", () => {
     expect(jpegHasMetadata(file("exif.jpg", jpeg(0xe1)))).toBe(true);
     expect(jpegHasMetadata(file("icc.jpg", jpeg(0xe2)))).toBe(true);
     expect(jpegHasMetadata(file("jfif.jpg", jpeg(0xe0)))).toBe(false);
+  });
+  it("throws on a file that is not a well-formed marker sequence", () => {
+    const truncated = jpeg(0xe0).subarray(0, 8);
+    expect(() => jpegHasMetadata(file("truncated.jpg", truncated))).toThrow(/malformed JPEG/);
+    const notAMarker = Buffer.from(jpeg());
+    notAMarker[2] = 0x00;
+    expect(() => jpegHasMetadata(file("not-a-marker.jpg", notAMarker))).toThrow(/malformed JPEG/);
+    expect(() => jpegHasMetadata(file("no-soi.jpg", Buffer.from([0x00, 0x01, 0x02])))).toThrow(/malformed JPEG/);
+    expect(() => jpegHasMetadata(file("no-sos.jpg", jpeg().subarray(0, 2 + 13)))).toThrow(/malformed JPEG/);
+    expect(() => jpegHasMetadata(file("short-length.jpg", Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x01, 0x00, 0x00])))).toThrow(/malformed JPEG/);
   });
 });
