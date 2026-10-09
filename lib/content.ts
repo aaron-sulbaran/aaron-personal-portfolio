@@ -1,6 +1,6 @@
 import { register } from "./content/register";
 import { bookPeopleOrder, bookWorkOrder, cards, strandOrder } from "./content/cards";
-import type { SoundtrackTrack } from "./content/types";
+import type { SoundtrackTrack, WhoIAmBlock } from "./content/types";
 import { liveTracks } from "./content/tracks";
 
 // One link on the holding page. `icon` picks the brand mark in
@@ -53,11 +53,6 @@ export const siteContent = {
     resume: "Resume",
     freeze: "Freeze the wave",
     unfreeze: "Let the wave move",
-  },
-  about: {
-    label: "About",
-    heading: "About.",
-    lede: "The longer version of who I am, what I'm working on, and how to reach me.",
   },
   menu: {
     ariaLabelOpen: "Open menu",
@@ -204,20 +199,35 @@ export const siteContent = {
     body: "That one's on me, not you. Try again, and if it keeps breaking, let me know.",
     retry: "Try again",
   },
+  // The #about section (docs/content/who-i-am.md, approved 2026-10-08): four
+  // labeled blocks, the third with a sub-block. Parentheses and the lowercase
+  // labels are how I typed them. Link markup is lib/content/links.ts.
   whoIAm: {
     label: "Who I am",
-    paragraph:
-      "I'm a third-year Electrical and Computer Engineering major at UT Austin with a business minor, graduating May 2027. I love the engineering side of building, but I'm happiest when I'm working with people to solve problems together, which is why PM pulled me in. I've interned at Capital One as both a business analyst and a product manager, led IEEE at UT Austin as president, and built an AI community on campus as an Anthropic Claude Ambassador. I was born in Maracaibo, Venezuela, moved to the U.S. young, and I've stayed close to my Hispanic roots the whole way through. I care about AI literacy, financial literacy especially for immigrants, and community building in Austin's startup scene. Outside of that I'm usually building something, whether it's a side project, a hackathon entry, or a 3D-printed fix for a problem I'd rather not buy a solution to.",
-  },
-  upToNow: {
-    label: "What I'm up to",
-    heading: "What I'm up to right now.",
-    items: [
-      "Competing in hackathons and shipping personal projects. This site is one of them, built in public.",
-      "Investing in Austin's startup community because I think it's one of the most underrated builder hubs in the country.",
-      "Building out a public voice on AI literacy, product thinking, and whatever else I'm chewing on.",
-      "Always open to chatting if you're working on something interesting or just want to trade notes.",
-    ],
+    heading: "who I am",
+    blocks: [
+      {
+        label: "what I do",
+        body: "I'm a [product](def:product)-focused engineer. I study Electrical and Computer Engineering (ECE) at UT Austin, but I spend most of my time building and talking to the people I'm building for. I like products that bend for the person using them, not the other way around.",
+      },
+      {
+        label: "what I love (to work on)",
+        body: "I tend to gravitate towards [leadership positions](pop:leadership-award) because I love getting a group of people with very different skillsets working towards one goal. I learned it as a drum major in high school, continued doing it in my orgs on campus, and want to do the same in my full-time work.",
+      },
+      {
+        label: "what I love (outside of work)",
+        body: "I love people (family & friends) outside of work too. I strive to surround myself with people who lift each other up and help me grow every day. Most of my favorite experiences involve spending time with others!",
+        sub: {
+          label: "(hobbies)",
+          body: "I love to travel, tinker on personal projects, and getting active. I love credit card-maxxing since it allows me to fulfill my wanderlust, recently got into 3D printing because it lets me work on the engineering I don't get to do in class, and love [extreme sports](pop:sandboarding) like [downhill skating](pop:downhill-skating), [skydiving](pop:skydiving), and [rock climbing](pop:rock-climbing).",
+        },
+      },
+      {
+        label: "where I'm from",
+        body: "I was born in Maracaibo, [Venezuela](pop:venezuela-flag), and moved to the U.S. when I was around 4. I grew up in Texas, mostly in Katy, watching my dad figure out a business as he went. I worked in it too, which is where I learned to wear a lot of hats.",
+      },
+    ] as readonly WhoIAmBlock[],
+    smallPrint: "Fourth-year Electrical and Computer Engineering student at UT Austin (and a business minor from McCombs)",
   },
   // The numbers strip under Who I am (components/metrics): the GitHub chart
   // and its figures, then my LinkedIn line (docs/content/right-now-and-metrics.md,
@@ -819,7 +829,7 @@ export type HomeTile = (typeof siteContent.homeTiles)[number];
 export type {
   CardContent, CardGroup, CardKey, CardLink, CardModal, CardModalKind, CardPicture, Cards, CardVisual, DefinitionEntry, ImageRef,
   InlineRegister, InspiredBy, LogoRef, Mentor, MentorsList, ModalPhoto, PhotoCrop, PhotoRef, PopEntry, SoundtrackTrack, TimelineEntry,
-  TipEntry, TrackLicenseKind,
+  TipEntry, TrackLicenseKind, WhoIAmBlock,
 } from "./content/types";
 export { tipText } from "./content/tracks";
 

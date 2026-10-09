@@ -132,3 +132,7 @@ export interface SoundtrackTrack {
   // A tile designed for the site; the music license never covers album art.
   cover: string | null;
 }
+
+// One labeled block in Who I am (docs/content/who-i-am.md). Bodies carry the inline link markup
+// (lib/content/links.ts); sub is a nested block under the body, today only the hobbies.
+export interface WhoIAmBlock { label: string; body: string; sub?: { label: string; body: string } }
