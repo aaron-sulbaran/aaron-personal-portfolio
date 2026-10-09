@@ -235,6 +235,7 @@ test("focus rings: the mouse leaves none behind on the mark, a hold, the Menu pi
   await none("with the Menu open");
   await page.getByRole("button", { name: siteContent.menu.ariaLabelClose }).click();
   await expect(page.getByRole("button", { name: siteContent.menu.ariaLabelOpen })).toBeFocused();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   await none("after the Menu closed by mouse and focus came back to the pill");
 
   // A card in the canvas has no element to take the click, so Chrome never
@@ -244,7 +245,7 @@ test("focus rings: the mouse leaves none behind on the mark, a hold, the Menu pi
   await page.mouse.move(card.x, card.y);
   await page.waitForTimeout(400);
   await page.mouse.click(card.x, card.y);
-  const dialog = page.getByRole("dialog").first();
+  const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
   await expect(dialog.getByRole("button", { name: siteContent.modals.closeAriaLabel })).toBeFocused();
   await none("with a card's modal open and Close focused");
