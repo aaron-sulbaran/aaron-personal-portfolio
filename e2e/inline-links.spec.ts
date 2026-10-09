@@ -232,9 +232,15 @@ test("inline links: hover fills the word and its line together from the centre, 
     const link = page.locator(selector).first();
     const timing = await link.evaluate((el) => {
       const style = getComputedStyle(el);
-      return [style.transitionProperty, style.transitionDuration, style.transitionTimingFunction, getComputedStyle(el, "::after").transformOrigin, style.backgroundPosition];
+      return [style.transitionProperty, style.transitionDuration, style.transitionTimingFunction, style.backgroundPosition];
     });
-    expect(timing, `${kind}: one tween for the word and the line`).toEqual(["--inline-p", "0.35s", "cubic-bezier(0.65, 0, 0.35, 1)", expect.stringMatching(/^[\d.]+px 0\.?\d*px$/), "50% 50%, 50% 50%"]);
+    expect(timing, `${kind}: one tween for the word and the line`).toEqual(["--inline-p", "0.35s", "cubic-bezier(0.65, 0, 0.35, 1)", "50% 50%, 50% 50%"]);
+    const origin = await link.evaluate((el) => {
+      const bar = getComputedStyle(el, "::after");
+      const [x, y] = bar.transformOrigin.split(" ").map(parseFloat);
+      return { x: x - parseFloat(bar.width) / 2, y: y - parseFloat(bar.height) / 2 };
+    });
+    expect(Math.abs(origin.x) + Math.abs(origin.y), `${kind}: the line draws from its centre`).toBeLessThan(0.01);
     const box = (await link.boundingBox())!;
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
     await expect.poll(() => fillOf(link), { message: `${kind}: fills` }).toBe(1);
