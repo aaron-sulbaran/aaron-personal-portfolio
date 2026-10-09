@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, type MouseEvent, type ReactNode } from "react";
 import { Fill } from "@/components/fx/Fill";
+import { InlineCopy } from "@/components/inline/InlineCopy";
 import { siteContent } from "@/lib/content";
 import { FILL_PICK } from "@/lib/fx/fill";
 import {
@@ -79,10 +80,10 @@ export function BandInvite() {
       </div>
       <div data-band-note tabIndex={-1} className="mt-2 grid max-w-[42rem] text-sm leading-[1.5] text-muted outline-none" aria-live="polite">
         <Layer shown={music === "before"}>
-          <p>{c.body}</p>
+          <p><InlineCopy source={c.body} /></p>
         </Layer>
         <Layer shown={music === "on"}>
-          <p>{c.acceptedNote}</p>
+          <p><InlineCopy source={c.acceptedNote} /></p>
         </Layer>
         <Layer shown={music === "paused"}>
           <p>{c.pausedNote}</p>

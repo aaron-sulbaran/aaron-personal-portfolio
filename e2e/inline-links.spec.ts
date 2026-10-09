@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 import { siteContent } from "@/lib/content";
 import { tipText } from "@/lib/content/tracks";
+import { openHome } from "./support/coil";
 import { test, expect } from "./support/fixtures";
 import { bubble, CALENDAR, DEF, MATCHA, MATCHA_HREF, openFixture, POP, productLink, rango, tabTo, TIP } from "./support/inline";
 // The copy's inline links (components/inline) by mouse and keyboard, each on a
@@ -196,4 +197,9 @@ test("inline links: a focused link's ring is not clipped by its line's mask, mid
     });
     expect(clipped).toEqual({ left: false, right: false, top: false, bottom: false });
   }
+});
+
+test("inline links: no markup leaks onto the home as text", async ({ page }) => {
+  await openHome(page);
+  expect(await page.evaluate(() => document.body.innerText)).not.toMatch(/\]\((?:def|tip|pop):|\]\(https:|\*\*/);
 });

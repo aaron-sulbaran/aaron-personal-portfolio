@@ -3,6 +3,7 @@ import { test, expect } from "./support/fixtures";
 import { nextFrames, openHome, scrollToY } from "./support/coil";
 import { settled } from "./support/fallback";
 import { siteContent } from "@/lib/content";
+import { visibleText } from "@/lib/content/links";
 import { GRAMMAR } from "@/lib/sections/grammar";
 
 // The sections grammar on the home (lib/sections, components/sections): what
@@ -11,12 +12,14 @@ import { GRAMMAR } from "@/lib/sections/grammar";
 // it must keep, word for word.
 
 const { about, whoIAm, upToNow, connect } = siteContent;
-const PROSE: Record<string, string[]> = {
-  "#about": [about.heading, about.lede],
-  "#who-i-am": [whoIAm.paragraph],
-  "#up-to-now": [upToNow.heading, ...upToNow.items],
-  "#connect": [connect.heading, connect.lede, ...connect.links.map((link) => link.value)],
-};
+const PROSE: Record<string, string[]> = Object.fromEntries(
+  Object.entries({
+    "#about": [about.heading, about.lede],
+    "#who-i-am": [whoIAm.paragraph],
+    "#up-to-now": [upToNow.heading, ...upToNow.items],
+    "#connect": [connect.heading, connect.lede, ...connect.links.map((link) => link.value)],
+  }).map(([id, prose]) => [id, prose.map(visibleText)]),
+);
 const STICKY = ["#who-i-am", "#up-to-now"];
 // Decoration with transforms of its own: icons and controls' Fill copy and arrows.
 const SKIP = "svg, svg *, .fx-over, .fx-over *, .fx-arrow, .fx-arrow *";

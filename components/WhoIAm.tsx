@@ -1,4 +1,5 @@
 import { siteContent } from "@/lib/content";
+import { InlineCopy } from "./inline/InlineCopy";
 import { Block } from "./sections/Block";
 import { Kicker } from "./sections/Kicker";
 import { StickyColumn } from "./sections/StickyColumn";
@@ -15,7 +16,7 @@ export function WhoIAm() {
         </StickyColumn>
         <div className="md:col-span-8">
           <Block kind="body" as="p" className="text-balance text-xl leading-[1.6] text-foreground md:text-[22px] md:leading-[1.55]">
-            {paragraph}
+            <InlineCopy source={paragraph} />
           </Block>
         </div>
       </div>
