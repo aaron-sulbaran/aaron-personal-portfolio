@@ -4,7 +4,9 @@ import { Portal } from "@/components/Portal";
 import { siteContent } from "@/lib/content";
 import { descriptionId, type TipKind } from "@/lib/inline/attrs";
 import { tipView } from "@/lib/inline/view";
+import { DefinitionModal } from "./DefinitionModal";
 import { TipBubble } from "./TipBubble";
+import { useDefinition } from "./useDefinition";
 import { useTipController } from "./useTipController";
 const { register } = siteContent;
 const DESCRIBED: Array<readonly [TipKind, string]> = [
@@ -12,11 +14,12 @@ const DESCRIBED: Array<readonly [TipKind, string]> = [
   ...Object.keys(register.pop).map((key) => ["pop", key] as const),
 ];
 // The copy's inline links come alive here, once per page (app/layout.tsx):
-// tips and pops share one label, and every tip and pop link is described by
-// a hidden element listed below.
+// definitions open the house text modal, tips and pops share one label, and
+// every tip and pop link is described by a hidden element listed below.
 export function InlineLayer() {
   const bubbleRef = useRef<HTMLDivElement | null>(null);
   const tip = useTipController(bubbleRef);
+  const definition = useDefinition(tip.dismiss);
   useEffect(() => {
     document.documentElement.dataset.inlineLinks = "ready";
     return () => void delete document.documentElement.dataset.inlineLinks;
@@ -31,6 +34,7 @@ export function InlineLayer() {
       <Portal>
         <TipBubble ref={bubbleRef} state={tip.state} />
       </Portal>
+      <DefinitionModal entry={definition.entry} onClose={definition.close} />
     </>
   );
 }

@@ -1,5 +1,8 @@
 import type { Locator, Page } from "@playwright/test";
 import { siteContent } from "@/lib/content";
+import { walkStrings } from "@/lib/testing/walk";
+import { openHome } from "./coil";
+import { expect } from "./fixtures";
 // The inline links' e2e helpers (e2e/inline-links.spec.ts and
 // e2e/inline-links-touch.spec.ts). Until C5 lands Aaron's copy the links come
 // from fixture strings on /fixtures/inline, a route that exists only while the
@@ -26,3 +29,13 @@ export async function tabTo(page: Page, link: Locator) {
 }
 export const bubble = (page: Page) => page.locator("[data-inline-tip]");
 export const rango = (page: Page) => page.locator('[data-inline="tip"][data-inline-key="aango"]');
+const PRODUCT_ON_HOME = walkStrings(siteContent.whoIAm).some((leaf) => leaf.text.includes("](def:product)"));
+// The definition lives in Who I am once C5 lands it; until then, on the fixture.
+export async function productLink(page: Page): Promise<Locator> {
+  if (PRODUCT_ON_HOME) await openHome(page);
+  else await openFixture(page, DEF);
+  const link = page.locator('[data-inline="def"][data-inline-key="product"]').first();
+  await link.scrollIntoViewIfNeeded();
+  await expect(link).toBeVisible();
+  return link;
+}
