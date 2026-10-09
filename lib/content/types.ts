@@ -16,7 +16,7 @@ export interface TipEntry {
 }
 
 export interface PopEntry {
-  // The exported file; null until C4 lands it.
+  // The exported file (scripts/export-photos.mjs); null only for a pop whose photo is not exported.
   file: { src: string; width: number; height: number } | null;
   alt: string;
   caption: string | null;
@@ -64,9 +64,9 @@ interface ModalPhotoBase extends PhotoRef {
 export type ModalPhoto = ModalPhotoBase & ({ block: number; timeline?: never } | { timeline: number; block?: never });
 export interface LogoRef { src: string; srcDark: string | null; width: number; height: number }
 
-// What the Coil shows. A null ref is an asset C4 has not landed.
+// What the Coil shows. A null ref is an asset not exported yet; every launch card has its asset.
 export type CardVisual =
-  // flipX mirrors left to right when drawn. If C4 bakes the mirror into the export, it sets this false in the same commit.
+  // flipX mirrors left to right when drawn. The export bakes the manifest's mirrors in, so every launch card is false.
   | { kind: "photo"; flipX: boolean; photo: CardPicture | null }
   // subtitle: the line the min/Max slide-out animation reveals (the animation comes later).
   | { kind: "logo"; logo: LogoRef | null; tile: "plain" | "anvil"; subtitle?: string }

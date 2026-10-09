@@ -67,3 +67,6 @@ docs/review-sweep/
 app/fonts/*
 !app/fonts/ProfaTrial-Black.ttf
 !app/fonts/ProfaTrial-Bold.ttf
+
+# The photo export manifest holds local paths to the originals; scripts/export-photos.mjs reads it at run time.
+docs/content/photo-export-manifest.json
