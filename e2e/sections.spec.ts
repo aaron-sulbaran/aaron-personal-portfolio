@@ -11,7 +11,7 @@ import { GRAMMAR } from "@/lib/sections/grammar";
 // once SplitText has run, and the sticky holds. Each section lists the prose
 // it must keep, word for word.
 
-const { whoIAm, connect } = siteContent;
+const { whoIAm, connect, metrics } = siteContent;
 const PROSE: Record<string, string[]> = Object.fromEntries(
   Object.entries({
     "#about": [
@@ -19,6 +19,7 @@ const PROSE: Record<string, string[]> = Object.fromEntries(
       whoIAm.smallPrint,
       ...whoIAm.blocks.flatMap((block) => [block.label, block.body, ...(block.sub ? [block.sub.label, block.sub.body] : [])]),
     ],
+    "#numbers": [metrics.title, metrics.groupLabel],
     "#connect": [connect.heading, connect.body, connect.primary.label, ...connect.links.map((link) => link.handle)],
   }).map(([id, prose]) => [id, prose.map(visibleText)]),
 );
