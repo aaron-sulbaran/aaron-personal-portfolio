@@ -27,7 +27,7 @@ describe("the page description", () => {
 });
 
 describe("Who I am", () => {
-  it("keeps the label for the kicker and the nav, the lowercase heading and the small print as typed", () => {
+  it("keeps the label for the landmark and the nav, the lowercase heading and the small print as typed", () => {
     expect(whoIAm.label).toBe("Who I am");
     expect(whoIAm.heading).toBe("who I am");
     expect(whoIAm.smallPrint).toBe("Fourth-year Electrical and Computer Engineering student at UT Austin (and a business minor from McCombs)");
@@ -100,7 +100,8 @@ describe("where the links sit, pinned as raw markup", () => {
 });
 
 describe("the numbers strip", () => {
-  it("labels the GitHub chart and holds my LinkedIn line as one figure", () => {
+  it("heads the strip with its own lowercase title, labels the GitHub chart and holds my LinkedIn line as one figure", () => {
+    expect(metrics.title).toBe("proof of work");
     expect(metrics.groupLabel).toBe("My GitHub contributions");
     expect(metrics.slots.linkedin).toEqual({ value: "450,000", label: "LinkedIn impressions in 3 months", sub: "2,500+ followers" });
     expect(metrics.slots.fun).toBeNull();
@@ -108,9 +109,9 @@ describe("the numbers strip", () => {
 });
 
 describe("Connect", () => {
-  it("asks wanna talk? in lowercase and reads the body as a visitor sees it", () => {
+  it("asks wanna chat? in lowercase and reads the body as a visitor sees it", () => {
     expect(connect.label).toBe("Connect");
-    expect(connect.heading).toBe("wanna talk?");
+    expect(connect.heading).toBe("wanna chat?");
     expect(visibleText(connect.body)).toBe(
       "I check everything (or Talos does) so take your pick. If you want to talk screen to screen, grab a time on my calendar. If you're in my city, let's grab a coffee (or matcha). I take coffee chats with anyone, no matter what you're building*.",
     );
@@ -121,8 +122,8 @@ describe("Connect", () => {
     expect(externals(connect.body)).toEqual(["https://cal.com/aaron-sulbaran"]);
   });
 
-  it("has one big link, Book a chat, to the same calendar", () => {
-    expect(connect.primary).toEqual({ label: "Book a chat", href: "https://cal.com/aaron-sulbaran" });
+  it("has one big link, Book some time, to the same calendar", () => {
+    expect(connect.primary).toEqual({ label: "Book some time", href: "https://cal.com/aaron-sulbaran" });
   });
 
   it("lists the five links in order with the handle each shows, and drops the school address", () => {

@@ -125,12 +125,13 @@ test("label face: hints and the credit prose are Profa Bold, muted", async ({ pa
   await expectLabel(photo.getByText(siteContent.modals.closeHintKeyboard, { exact: true }), "label", "muted");
 });
 
-test("label face: kickers and the Connect labels are Profa Bold, muted", async ({ page }) => {
+test("label face: Who I am's block kickers and the Connect labels are Profa Bold, muted, and no section draws a kicker over its heading", async ({ page }) => {
   await page.goto("/");
   await settled(page);
-  const { whoIAm, connect } = siteContent;
-  for (const label of [whoIAm.label, connect.label]) {
-    await expectLabel(page.locator(`section[aria-label="${label}"]`).getByText(label, { exact: true }).first(), "label", "muted");
+  const { whoIAm } = siteContent;
+  for (const id of ["#about", "#numbers", "#connect"]) {
+    const first = await page.locator(`${id} [data-sections-block]`).first().evaluate((el) => `${el.tagName.toLowerCase()} ${el.getAttribute("data-sections-block")}`);
+    expect(first, `${id}: the first block in the section is its big heading, no kicker over it`).toBe("h2 heading");
   }
   for (const block of whoIAm.blocks) {
     for (const label of [block.label, ...(block.sub ? [block.sub.label] : [])]) {
