@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useLayoutEffect, useReducer, useRef, type RefObject } from "react";
 import { anchorPosition, followPosition, type Size } from "@/lib/inline/placement";
 import { sameTarget, TIP_IDLE, tipMode, tipReducer, type TipState, type TipTarget } from "@/lib/inline/tipState";
+import { isKeyboardFocus } from "@/lib/input/modality";
 import { useEscapeKey } from "@/lib/modal";
 const linkOf = (node: EventTarget | null) => (node instanceof Element ? node.closest<HTMLElement>('[data-inline="tip"], [data-inline="pop"]') : null);
 function targetOf({ dataset: { inline: kind, inlineKey: key } }: HTMLElement): TipTarget | null {
@@ -72,7 +73,7 @@ export function useTipController(bubbleRef: RefObject<HTMLElement | null>): { st
       if (linkOf(event.target)) place(); // a write, never a render
       else dispatch({ type: "unhover" });
     };
-    const onFocusIn = (event: FocusEvent) => { const link = linkOf(event.target); if (link?.matches(":focus-visible")) show(link, "focus"); };
+    const onFocusIn = (event: FocusEvent) => { const link = linkOf(event.target); if (link && isKeyboardFocus(link)) show(link, "focus"); };
     const onFocusOut = (event: FocusEvent) => { if (linkOf(event.target)) dispatch({ type: "blur" }); };
     // A tap (any pointer but a mouse, pressed on this same link) pins the
     // label, holding a pop's href; a second tap on a pinned pop anchor follows

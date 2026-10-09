@@ -4,6 +4,7 @@ import { SiteNav } from "@/components/SiteNav";
 import { MenuPill } from "@/components/menu/MenuPill";
 import { CustomCursor } from "@/components/CustomCursor";
 import { InlineLayer } from "@/components/inline/InlineLayer";
+import { InputModality } from "@/components/InputModality";
 import { siteContent } from "@/lib/content";
 import { profaBlack, profaBold } from "@/lib/fonts";
 import { HOLDING_MODE } from "@/lib/holding";
@@ -62,6 +63,7 @@ export default function RootLayout({
         {/* Holding mode has no sections to navigate; nav and menu stay out. */}
         {!HOLDING_MODE && <SiteNav />}
         {!HOLDING_MODE && <MenuPill />}
+        <InputModality />
         <CustomCursor />
         {!HOLDING_MODE && <InlineLayer />}
         {children}

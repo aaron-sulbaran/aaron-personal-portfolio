@@ -171,6 +171,18 @@ body {
   border-radius: 2px;
 }
 
+/* A ring is for the keyboard. Chrome's :focus-visible leaks after a click
+   (a modal's first control, focus returning to its opener, a ring a key press
+   earned), so lib/input/modality writes data-input="pointer" on <html> after a
+   press and the ring is dropped while it is set. Text entry keeps its ring: a
+   caret alone is a weak cue. The two groups below ring a container, not the
+   focused control. */
+html[data-input="pointer"] :focus-visible:not(input, textarea, select, [contenteditable="true"]),
+html[data-input="pointer"] .shape-toggle:has(:focus-visible),
+html[data-input="pointer"] .metrics-stage:has(canvas:focus-visible) {
+  outline: none;
+}
+
 .skip-link {
   position: absolute;
   top: -100px;
@@ -401,7 +413,7 @@ body {
     --fx-p: 1;
   }
 }
-.fx:focus-visible,
+html:not([data-input="pointer"]) .fx:focus-visible,
 .fx[data-pressed] {
   --fx-p: 1;
 }
