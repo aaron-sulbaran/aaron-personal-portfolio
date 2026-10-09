@@ -74,7 +74,7 @@ describe("the fourteen cards", () => {
       mentorship: "Me speaking at my first HSF STEM Summit.",
       band: "Me as drum major in my last year of high school.",
       hackathons: "Me and my team winning UFCU Develop U, September 2026.",
-      misuki: "Me and Misuki at a Longhorn Card Club photo shoot.",
+      misuki: "Me and Misuki at a Longhorn Car Club photo shoot.",
       travel: "Me at Yosemite on a trip to San Francisco with my friends.",
       "building-in-public": "Me at Vercel Ship in New York City, one door LinkedIn opened this summer.",
     });

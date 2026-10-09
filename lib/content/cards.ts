@@ -80,7 +80,7 @@ export const cards: Cards = {
   misuki: {
     group: "people", visual: { kind: "photo", flipX: false, photo: null },
     book: { title: "Misuki", meta: "2001 Mazda Miata, five-speed" },
-    modal: { kind: "photo", title: "Misuki", picture: { caption: "Me and Misuki at a Longhorn Card Club photo shoot." }, links: [], photos: [], blocks: [
+    modal: { kind: "photo", title: "Misuki", picture: { caption: "Me and Misuki at a Longhorn Car Club photo shoot." }, links: [], photos: [], blocks: [
       "I worked all through high school to set myself up for college. That included an ongoing hunt for a car. I ended up buying this car early Senior year in cash, because I didn't want a car loan. The day my dad went to buy her for me, I was conducting a game-day halftime show and got a bank alert on my watch for a huge withdrawal from my bank account. I was nervous the whole performance, and then found out later he was trying to surprise me.",
       "Her engine blew in college, a family friend in Houston rebuilt it, and she's still my daily driver. I named her Misuki, from the M in Mazda and a nod to [Fast and Furious](tip:misuki-suk). I took her around Circuit of the Americas once, and it was one of the most fun days of my life.",
     ] },
