@@ -18,12 +18,18 @@ const roundFour = (id: string) => {
 // The rows as Aaron reads them: which photos, beside which blocks.
 const rows = (plan: Plan) => plan.slides.map((s) => ({ photos: s.photos ?? [s.photo], words: slideText(s).blocks }));
 const all = () => true;
+// A round five slide or page without its group, to hold against round four.
+const withoutPhotos = <T extends { photos?: number[] }>(item: T) => {
+  const copy = { ...item };
+  delete copy.photos;
+  return copy;
+};
 
 describe("rotatingPlan, words enough for every photo", () => {
   it("keeps round four's rows unchanged where every photo already had words (Capital One, Hackathons, IEEE)", () => {
     for (const id of ["capital-one", "hackathons", "ieee"]) {
       const plan = rotating(id);
-      expect({ ...plan, slides: plan.slides.map(({ photos, ...slide }) => slide) }).toEqual(roundFour(id));
+      expect({ ...plan, slides: plan.slides.map(withoutPhotos) }).toEqual(roundFour(id));
       expect(plan.slides.every((s) => s.photos?.length === 1)).toBe(true);
     }
   });
@@ -127,8 +133,7 @@ describe("rotatingPages", () => {
   });
 
   it("matches round four's pages where nothing takes turns (Capital One)", () => {
-    const strip = (pages: ReturnType<typeof pagesOf>) => pages.map(({ photos, ...page }) => page);
-    expect(strip(rotatingPages(rotating("capital-one")))).toEqual(pagesOf(roundFour("capital-one")));
+    expect(rotatingPages(rotating("capital-one")).map(withoutPhotos)).toEqual(pagesOf(roundFour("capital-one")));
   });
 });
 

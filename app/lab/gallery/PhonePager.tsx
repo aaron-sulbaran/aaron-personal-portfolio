@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useLayoutEffect, useReducer, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { LAB_COPY, type LabCard } from "./cards";
 import { PagerPage } from "./PagerPage";
-import { pagerStage, type Page } from "./plan";
+import { pagerStage, repeatedBlocks, type Page } from "./plan";
 import { Header } from "./parts";
 import { autoAdvanceMs, axisOf, initialStage, pagerReducer, releaseOf, rubberBand, type Axis } from "./stage";
 import { partId } from "./timing";
@@ -52,6 +52,7 @@ export function PhonePager({ card, pages, aspects, theme, innerWidth, capPx, sli
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const drag = useRef<Drag | null>(null);
   const firstTick = useRef(true);
+  const repeats = repeatedBlocks(pages);
   const stage = pagerStage(pages.map((p) => aspects[p.photo]), room ? Math.min(innerWidth, room.width) : innerWidth, capPx, room ? room.height - WORDS_ROOM : Infinity);
 
   useLayoutEffect(() => {
@@ -169,7 +170,7 @@ export function PhonePager({ card, pages, aspects, theme, innerWidth, capPx, sli
           data-pager-track=""
         >
           {pages.map((page, i) => (
-            <PagerPage key={page.photo} card={card} page={page} index={i} count={count} box={stage.boxes[i]} current={i === state.index} innerWidth={innerWidth} aspect={aspects[page.photo]} />
+            <PagerPage key={page.photo} card={card} page={page} index={i} count={count} box={stage.boxes[i]} current={i === state.index} innerWidth={innerWidth} aspect={aspects[page.photo]} repeated={repeats[i]} />
           ))}
         </div>
       </div>

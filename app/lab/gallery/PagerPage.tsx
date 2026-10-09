@@ -13,9 +13,11 @@ import { partId } from "./timing";
 // scrolls only when they are longer than the room (a soft fade at its foot
 // says so). Pages off screen are inert and hidden from assistive tech.
 
-type Props = { card: LabCard; page: Page; index: number; count: number; box: Box; current: boolean; innerWidth: number; aspect: number };
+// `repeated`: blocks an earlier page already shows (a round five group's
+// words), which take a mask id of this page's own.
+type Props = { card: LabCard; page: Page; index: number; count: number; box: Box; current: boolean; innerWidth: number; aspect: number; repeated: number[] };
 
-export function PagerPage({ card, page, index, count, box, current, innerWidth, aspect }: Props) {
+export function PagerPage({ card, page, index, count, box, current, innerWidth, aspect, repeated }: Props) {
   const textRef = useRef<HTMLDivElement | null>(null);
   const [scrolls, setScrolls] = useState(false);
   const photo = card.photos[page.photo];
@@ -28,6 +30,7 @@ export function PagerPage({ card, page, index, count, box, current, innerWidth, 
   // stage cropping the photo; the real photo is that shape and loses nothing,
   // so the stand-in's crop keeps the top, where the faces are.
   const standInTop = photo.width / photo.height < aspect - 0.01;
+  const maskId = (b: number) => (repeated.includes(b) ? `${partId.block(b)}-page-${index}` : undefined);
 
   useLayoutEffect(() => {
     const text = textRef.current;
@@ -77,11 +80,11 @@ export function PagerPage({ card, page, index, count, box, current, innerWidth, 
       >
         <div className="flex flex-col gap-4 pb-6">
           {blocks.slice(0, beforeCount).map((b) => (
-            <TextBlock key={b} card={card} block={b} compact />
+            <TextBlock key={b} card={card} block={b} compact maskId={maskId(b)} />
           ))}
           {note && <Note photo={photo} index={page.photo} compact />}
           {blocks.slice(beforeCount).map((b) => (
-            <TextBlock key={b} card={card} block={b} compact />
+            <TextBlock key={b} card={card} block={b} compact maskId={maskId(b)} />
           ))}
           {page.links && <Links card={card} />}
         </div>

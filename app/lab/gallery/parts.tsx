@@ -72,9 +72,11 @@ export function Header({ card, theme, compact, tight = false }: { card: LabCard;
   );
 }
 
-export function TextBlock({ card, block, compact, className = "" }: { card: LabCard; block: number; compact: boolean; className?: string }) {
+// A block shown twice (a round five group's pages on a phone) takes its own
+// mask id the second time, so no two parts share one.
+export function TextBlock({ card, block, compact, className = "", maskId }: { card: LabCard; block: number; compact: boolean; className?: string; maskId?: string }) {
   return (
-    <div data-mask={partId.block(block)} data-mask-kind="text" className={className}>
+    <div data-mask={maskId ?? partId.block(block)} data-mask-kind="text" className={className}>
       <p data-mask-inner="" data-mask-split="" className={`text-foreground ${compact ? "text-base leading-relaxed" : "text-lg leading-[1.55]"}`}>
         <Runs runs={runsOf(card.blocks[block])} />
       </p>
