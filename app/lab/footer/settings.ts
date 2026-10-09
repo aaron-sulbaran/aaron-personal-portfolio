@@ -15,6 +15,12 @@ export type Ink = "foreground" | "accent";
 // axis; the waist slice is the path faces' (procedural and constructed).
 export type TypeResponse = "swell" | "lean" | "grow" | "none" | "slice";
 export type ConnectPlacement = "above" | "below";
+// The field behind the footer: the hero's own (its framing, drift, upsample
+// and dither, round 4) or the lab's footer-framed one (rounds 1 to 3).
+export type Backdrop = "hero" | "footer";
+// What starts the period's hop: a click on the period, or one anywhere on
+// the footer (its ripple then starts where the click landed).
+export type EggTrigger = "period" | "anywhere";
 
 export type FooterSettings = {
   face: Face;
@@ -67,8 +73,24 @@ export type FooterSettings = {
     stiffness: number;
     damping: number; // damping ratio: under 1 overshoots and settles
   };
+  egg: {
+    trigger: EggTrigger;
+    anticipationMs: number; // the squash before takeoff
+    hop: number; // units: how high the period's bottom rises at the apex
+    airMs: number; // takeoff to touchdown
+    turnDeg: number; // the turn in the air
+    overshootDeg: number; // past the turn on landing, settling back
+    squash: number; // share of the height lost at the deepest squash
+    shadow: number; // the shadow's opacity on the ground, in the letter ink
+    rippleSpeed: number; // units per second
+    rippleLetters: number; // share of a letter's height the passing ripple dents
+    rippleField: number; // units: how far the passing ring pushes the field
+    rippleDecay: number; // per second: the ripple fades as exp(-decay * t)
+  };
   field: {
     on: boolean;
+    backdrop: Backdrop;
+    nameSurface: boolean; // hero backdrop, clip: the letters show the hero name's lit surface over the field
     intensity: number; // the field behind the footer: 1 is the hero's, 0 paper, above 1 deeper
     letterIntensity: number; // clip only: the field seen through the letters
     ending: Ending;
@@ -118,9 +140,37 @@ export const RANGES = {
   fadeIn: { min: 0, max: 0.6, step: 0.01 },
   letterTint: { min: 0, max: 1, step: 0.01 },
   discLean: { min: 0, max: 80, step: 1 },
+  anticipationMs: { min: 0, max: 300, step: 10 },
+  hop: { min: 0.1, max: 0.65, step: 0.01 },
+  airMs: { min: 240, max: 1000, step: 10 },
+  turnDeg: { min: 0, max: 180, step: 5 },
+  overshootDeg: { min: 0, max: 20, step: 0.5 },
+  squash: { min: 0, max: 0.5, step: 0.01 },
+  shadow: { min: 0, max: 0.6, step: 0.01 },
+  rippleSpeed: { min: 2, max: 20, step: 0.5 },
+  rippleLetters: { min: 0, max: 0.6, step: 0.01 },
+  rippleField: { min: 0, max: 0.6, step: 0.01 },
+  rippleDecay: { min: 0.3, max: 6, step: 0.1 },
 } as const;
 
 const SEED_FONT = candidateFont(FONT_CANDIDATES[0]);
+
+// The period's Easter egg (round 4). Every preset carries it; the period
+// stays a plain square at rest.
+const EGG: FooterSettings["egg"] = {
+  trigger: "period",
+  anticipationMs: 110,
+  hop: 0.42,
+  airMs: 520,
+  turnDeg: 90,
+  overshootDeg: 7,
+  squash: 0.28,
+  shadow: 0.34,
+  rippleSpeed: 5,
+  rippleLetters: 0.3,
+  rippleField: 0.22,
+  rippleDecay: 1.2,
+};
 
 // Round 1 (2026-10-08). Every round 1 preset now rises as one (Aaron: no
 // stagger) and rests whole (the bleed that cut Zephyr's letters is gone; a
@@ -154,7 +204,20 @@ const DESIGNER: FooterSettings = {
   leanDeg: 7,
   grow: 0.12,
   slice: { shift: 0.08, stiffness: 320, damping: 0.42 },
-  field: { on: true, intensity: 1.35, letterIntensity: 1.35, ending: "under", fade: 1.1, fadeIn: 0.3, drift: "visible", flip: false, letterTint: 0.35 },
+  egg: EGG,
+  field: {
+    on: true,
+    backdrop: "footer",
+    nameSurface: false,
+    intensity: 1.35,
+    letterIntensity: 1.35,
+    ending: "under",
+    fade: 1.1,
+    fadeIn: 0.3,
+    drift: "visible",
+    flip: false,
+    letterTint: 0.35,
+  },
   connect: "above",
   disc: { on: false, lean: 24 },
 };
@@ -202,7 +265,7 @@ const ROUND2: FooterSettings = {
   floor: 0,
   riseStaggerMs: 0,
   response: "swell",
-  field: { on: true, intensity: 1.2, letterIntensity: 1.8, ending: "clip", fade: 1.6, fadeIn: 0.3, drift: "visible", flip: false, letterTint: 0.2 },
+  field: { ...DESIGNER.field, on: true, intensity: 1.2, letterIntensity: 1.8, ending: "clip", fade: 1.6, fadeIn: 0.3, drift: "visible", flip: false, letterTint: 0.2 },
 };
 
 // Round 3 (2026-10-09, Aaron found the procedural letters too rounded and
@@ -219,21 +282,78 @@ const ROUND3: FooterSettings = {
   aperture: { ...ROUND2.aperture, on: true },
 };
 
+// Round 4 (2026-10-09): Aaron's copied values exactly (the constructed face
+// at S 0.235 and B 0.18, no shutter, the round 2 field with a calm drift),
+// then the two additions he asked for: the period's Easter egg, and the
+// hero's own field behind the footer, its letters showing the hero name's
+// lit surface the way "Hi, I'm Aaron" does.
+const ROUND4: FooterSettings = {
+  ...ROUND3,
+  face: "constructed",
+  weight: 0.2,
+  heightVw: 14.5,
+  tracking: 0,
+  caps: "round",
+  join: "round",
+  corners: 0,
+  constructed: { stem: 0.235, bar: 0.18, roundness: 0.45, gap: 0.095 },
+  aperture: { on: false, blades: 4, scale: 1.3, gap: 0.08, ease: 0.12 },
+  ink: "accent",
+  inkFade: 0,
+  floor: 0,
+  gap: 0.35,
+  swellRadius: 1.8,
+  swellAmount: 0.06,
+  swellEaseS: 0.14,
+  reflow: true,
+  pressDepth: 0.32,
+  pressStiffness: 380,
+  pressDamping: 0.42,
+  riseMs: 1000,
+  riseStaggerMs: 0,
+  riseEase: "expo",
+  response: "swell",
+  leanDeg: 7,
+  grow: 0.12,
+  slice: { shift: 0.08, stiffness: 320, damping: 0.42 },
+  egg: EGG,
+  field: {
+    on: true,
+    backdrop: "hero",
+    nameSurface: true,
+    intensity: 1.2,
+    letterIntensity: 1.8,
+    ending: "clip",
+    fade: 1.6,
+    fadeIn: 0.3,
+    drift: "calm",
+    flip: false,
+    letterTint: 0.2,
+  },
+  connect: "above",
+  disc: { on: false, lean: 24 },
+};
+
 // `tag` marks the new proposal and Aaron's last pick in the panel.
 export type Preset = { id: string; name: string; note: string; settings: FooterSettings; tag?: "new" | "pick" };
 
 export const PRESETS: readonly Preset[] = [
   {
+    id: "round4",
+    name: "Round 4, Aaron's pick",
+    tag: "new",
+    note: "Aaron's round 3 pick exactly (the constructed face at stem 0.235 and bar 0.18, a plain square period, the round 2 field with a calm drift), with the hero's own field behind it (its framing, drift, upsample and dither; the letters show the hero name's lit surface) and the period's Easter egg: click the period (or Tab to it and press Enter) and it hops, turns a quarter and lands, and a ripple runs out through the letters and the field.",
+    settings: ROUND4,
+  },
+  {
     id: "round3",
     name: "Round 3, constructed",
-    tag: "new",
     note: "Round 2's field, floor and Connect row with the constructed face: stems and bars cut flat, D bowls, the period a four blade shutter whose pivot leans toward the pointer. Spans the width round 2 does. The swell thickens the stems and bars near the pointer; the press dents a letter without thinning its bars.",
     settings: ROUND3,
   },
   {
     id: "round2",
     name: "Round 2, designer field with Zephyr weight",
-    tag: "pick",
     note: "Zephyr's heavy letters (0.2 weight, 12.5 percent of the width) as windows onto the field at Zephyr's depth, over a field held back to the designer's quiet. Every letter whole, the word rising as one, the swell and press Aaron kept.",
     settings: ROUND2,
   },
@@ -253,7 +373,7 @@ export const PRESETS: readonly Preset[] = [
   { id: "profa", name: "Profa lean", note: "Profa Black, leaning toward the pointer, pressed on click. No weight swell is possible.", settings: PROFA },
 ];
 
-export const DEFAULT_SETTINGS = ROUND3;
+export const DEFAULT_SETTINGS = ROUND4;
 
 export function sameSettings(a: FooterSettings, b: FooterSettings): boolean {
   return JSON.stringify(a) === JSON.stringify(b);

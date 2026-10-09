@@ -7,7 +7,7 @@ import { DEFAULT_SETTINGS, type FooterSettings } from "./settings";
 // convenience, every read and write guarded), loaded after the first paint
 // so the server render and hydration agree. Bump the key when the shape
 // changes.
-const STORE_KEY = "footer-lab-settings-v4";
+const STORE_KEY = "footer-lab-settings-v5";
 
 function merge(stored: Partial<FooterSettings>): FooterSettings {
   const d = DEFAULT_SETTINGS;
@@ -18,6 +18,7 @@ function merge(stored: Partial<FooterSettings>): FooterSettings {
     constructed: { ...d.constructed, ...stored.constructed },
     aperture: { ...d.aperture, ...stored.aperture },
     slice: { ...d.slice, ...stored.slice },
+    egg: { ...d.egg, ...stored.egg },
     field: { ...d.field, ...stored.field },
     disc: { ...d.disc, ...stored.disc },
   };

@@ -43,7 +43,8 @@ function runs(contours: readonly Contour[], y: number, x1: number, step = 0.0005
   return out;
 }
 
-const SHAPE = DEFAULT_SETTINGS.constructed;
+// Round 3's shape (round 4's defaults are Aaron's; round4.test.ts holds them).
+const SHAPE = PRESETS.find((p) => p.id === "round3")!.settings.constructed;
 const pose = (stem = SHAPE.stem, bar = SHAPE.bar, swell = 0, squash = 1): GlyphPose => glyphPose({ stem, bar, roundness: SHAPE.roundness }, 0.06, swell, squash);
 const POSES = [pose(0.08, 0.06), pose(), pose(0.2, 0.15, 1), pose(0.2, 0.15, 1, 0.68), pose(0.26, 0.2, 1), pose(0.26, 0.26, 1, 0.3)];
 
@@ -274,17 +275,17 @@ describe("the round 3 preset", () => {
   const round2 = PRESETS.find((p) => p.id === "round2")!.settings;
   const round3 = PRESETS.find((p) => p.id === "round3")!;
 
-  it("is first, new, and the default; round 2 stays selectable as Aaron's pick", () => {
-    expect(PRESETS[0]).toBe(round3);
+  it("stays selectable second, after round 4, which is the default now", () => {
+    expect(PRESETS[1]).toBe(round3);
     expect(round3.name).toBe("Round 3, constructed");
-    expect(round3.tag).toBe("new");
-    expect(round3.settings).toBe(DEFAULT_SETTINGS);
-    expect(PRESETS.find((p) => p.id === "round2")!.tag).toBe("pick");
+    expect(round3.tag).toBeUndefined();
+    expect(round3.settings).not.toBe(DEFAULT_SETTINGS);
   });
 
   it("takes round 2's field, floor and Connect row, with the constructed face, the shutter and the swell", () => {
     const s = round3.settings;
     expect(s.field).toEqual(round2.field);
+    expect(s.field.backdrop).toBe("footer");
     expect(s.floor).toBe(round2.floor);
     expect(s.connect).toBe(round2.connect);
     expect(s.face).toBe("constructed");

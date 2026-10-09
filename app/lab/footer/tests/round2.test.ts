@@ -12,14 +12,14 @@ const AARON_ROUND1 = {
   riseMs: 1000, riseEase: "expo", leanDeg: 7, grow: 0.12, connect: "above",
 } as const;
 
-// Round 3 is the default now; round 2 stays, second, as Aaron's pick.
+// Round 4 is the default now; round 2 stays, third.
 const ROUND2 = PRESETS.find((p) => p.id === "round2")!.settings;
 
 describe("the round 2 preset", () => {
-  it("is second, Aaron's pick, and keeps his round 1 values where his notes kept them", () => {
-    expect(PRESETS[1].settings).toBe(ROUND2);
-    expect(PRESETS[1].name).toBe("Round 2, designer field with Zephyr weight");
-    expect(PRESETS[1].tag).toBe("pick");
+  it("is third, and keeps his round 1 values where his notes kept them", () => {
+    expect(PRESETS[2].settings).toBe(ROUND2);
+    expect(PRESETS[2].name).toBe("Round 2, designer field with Zephyr weight");
+    expect(PRESETS[2].tag).toBeUndefined();
     expect(ROUND2).toMatchObject(AARON_ROUND1);
   });
 
@@ -41,7 +41,7 @@ describe("the round 2 preset", () => {
   });
 
   it("leaves no preset with a stagger or a crop, and keeps every round 1 preset selectable", () => {
-    expect(PRESETS.map((p) => p.id)).toEqual(["round3", "round2", "designer", "bare", "zephyr", "profa"]);
+    expect(PRESETS.map((p) => p.id)).toEqual(["round4", "round3", "round2", "designer", "bare", "zephyr", "profa"]);
     for (const p of PRESETS) {
       expect(p.settings.riseStaggerMs, p.id).toBe(0);
       expect(p.settings.floor, p.id).toBe(0);

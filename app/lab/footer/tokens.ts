@@ -41,3 +41,34 @@ export function readDocumentTokens(dark: boolean): FieldTokens {
   const style = getComputedStyle(document.documentElement);
   return fieldTokens((name) => style.getPropertyValue(name), dark);
 }
+
+// The hero name's tokens (--name-ink and the --name-surface-* stops), for
+// the hero backdrop's letters, read the same way.
+export type NameTokens = {
+  readonly ink: number;
+  readonly c1: Rgb;
+  readonly c2: Rgb;
+  readonly c3: Rgb;
+  readonly shadow: Rgb;
+  readonly sheen: Rgb;
+  readonly mean: Rgb;
+};
+
+export function nameTokens(read: (name: string) => string, paper: Rgb): NameTokens {
+  const color = (name: string) => parseToken(read(name)) ?? paper;
+  const ink = parseFloat(read("--name-ink").trim());
+  return {
+    ink: Number.isFinite(ink) ? ink : 0.12,
+    c1: color("--name-surface-1"),
+    c2: color("--name-surface-2"),
+    c3: color("--name-surface-3"),
+    shadow: color("--name-surface-shadow"),
+    sheen: color("--name-surface-sheen"),
+    mean: color("--name-surface-mean"),
+  };
+}
+
+export function readNameTokens(paper: Rgb): NameTokens {
+  const style = getComputedStyle(document.documentElement);
+  return nameTokens((name) => style.getPropertyValue(name), paper);
+}
