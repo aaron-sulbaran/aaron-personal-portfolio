@@ -9,8 +9,8 @@ const musicNoteWithoutAdapting =
 describe("the inline register", () => {
   it("holds the approved keys and only those", () => {
     expect(Object.keys(register.def)).toEqual(["product"]);
-    expect(Object.keys(register.tip)).toEqual(["voltage", "two-as", "voltaage", "killer-drones", "evolving-isle", "music-note", "ieee-ao", "aango", "this-site-playground", "misuki-suk"]);
-    expect(Object.keys(register.pop)).toEqual(["leadership-award", "sandboarding", "downhill-skating", "skydiving", "rock-climbing", "venezuela-flag", "matcha", "sister-kyoto", "contrabass-clarinet"]);
+    expect(Object.keys(register.tip)).toEqual(["voltage", "two-as", "voltaage", "killer-drones", "evolving-isle", "music-note", "ieee-ao", "this-site-playground", "misuki-suk"]);
+    expect(Object.keys(register.pop)).toEqual(["leadership-award", "sandboarding", "downhill-skating", "skydiving", "rock-climbing", "venezuela-flag", "matcha", "sister-kyoto", "contrabass-clarinet", "rango"]);
   });
 
   it("is the register siteContent carries", () => {
@@ -36,9 +36,17 @@ describe("the inline register", () => {
       "leadership-award": "Getting the Cockrell School undergraduate leadership award.",
       matcha: "7T+ is my favorite matcha place in the world, literally in the world. This one is in Kyoto.",
       "contrabass-clarinet": "Bass clarinet was my main instrument. In concert season I played contrabass.",
+      rango: "yeah, this guy from that one kid's movie",
     });
     expect(Object.values(register.pop).every((entry) => entry.crop === null)).toBe(true);
     expect(Object.entries(register.pop).filter(([, entry]) => entry.href).map(([key, entry]) => [key, entry.href])).toEqual([["matcha", "https://www.google.com/maps/search/?api=1&query=35.0025497%2C135.7652173"]]);
+  });
+
+  it("shows Rango as a photo pop with a film character's alt, and no longer as a tip", () => {
+    expect(register.pop.rango).toEqual({ file: { src: "/photos/pops/rango.jpg", width: 599, height: 800 }, alt: "Rango, the chameleon in a Hawaiian shirt, in a dance pose", caption: "yeah, this guy from that one kid's movie", crop: null });
+    expect(registerHas("pop", "rango")).toBe(true);
+    expect(registerHas("tip", "aango")).toBe(false);
+    expect(registerHas("tip", "rango")).toBe(false);
   });
 
   it("knows a key only when the register itself holds it", () => {
@@ -55,7 +63,7 @@ describe("the inline register", () => {
     for (const [key, entry] of Object.entries(register.tip)) if (entry.adaptedClause) expect(entry.text.includes(entry.adaptedClause), key).toBe(true);
     expect(resolveTip(note, false)).toBe(musicNoteWithoutAdapting);
     expect(resolveTip(note, true)).toBe(note.text);
-    expect(resolveTip(register.tip.aango, false)).toBe("yes, the chameleon from that one kid's movie");
+    expect(resolveTip(register.tip["killer-drones"], false)).toBe("unless it's killer drones, I don't do that");
   });
   it("labels every pop link for the touch label", () => {
     for (const [key, entry] of Object.entries(register.pop)) if (entry.href) expect(entry.hrefLabel, key).toBeTruthy();
