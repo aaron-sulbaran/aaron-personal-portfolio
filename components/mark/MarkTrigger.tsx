@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { useReducedMotion } from "framer-motion";
 import { AsMark } from "@/components/menu/BrandMark";
 import { MARK_HOLD_IDLE, setMarkHold } from "@/lib/cursor/hover";
+import { isKeyboardFocus } from "@/lib/input/modality";
 import { loadCard } from "@/lib/mark/cardChunk";
 import { MARK } from "@/lib/mark/constants";
 import { BAR_D, BOLT_D, FILL_BOTTOM, FILL_TOP, LEG_D, VIEW_BOX } from "@/lib/mark/geometry";
@@ -146,7 +147,7 @@ export function MarkTrigger({ ariaLabel, className, onActivate }: Props) {
           setScale(1);
           stop();
         }}
-        onFocus={(e) => (e.currentTarget.matches(":focus-visible") ? grow() : arm())}
+        onFocus={(e) => (isKeyboardFocus(e.currentTarget) ? grow() : arm())}
         onBlur={() => setScale(1)}
         onContextMenu={(e) => e.preventDefault()}
         onClick={(e) => {
