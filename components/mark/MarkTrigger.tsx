@@ -7,7 +7,7 @@ import { AsMark } from "@/components/menu/BrandMark";
 import { MARK_HOLD_IDLE, setMarkHold } from "@/lib/cursor/hover";
 import { loadCard } from "@/lib/mark/cardChunk";
 import { MARK } from "@/lib/mark/constants";
-import { BAR_D, BOLT_D, FILL_BOTTOM, FILL_TOP, LEG_D, VIEW_BOX } from "@/lib/mark/geometry";
+import { BAR_D, BOLT_D, FILL_BOTTOM, LEG_D, VIEW_BOX, risePaint } from "@/lib/mark/geometry";
 import { HOLD_IDLE, advance, cancel, click, press, release, sample, settle, type HoldSource } from "@/lib/mark/hold";
 import { closeMenu, getMenuOpen } from "@/lib/menu";
 
@@ -76,11 +76,11 @@ export function MarkTrigger({ ariaLabel, className, onActivate }: Props) {
       }
       hold.current = state;
       const { fill, spent } = sample(state, now);
-      const span = FILL_BOTTOM - FILL_TOP;
-      riseRef.current?.setAttribute("y", String(FILL_BOTTOM - span * fill));
-      riseRef.current?.setAttribute("height", String(Math.max(0, span * (fill - spent))));
+      const rise = risePaint(fill, spent);
+      riseRef.current?.setAttribute("y", String(rise.y));
+      riseRef.current?.setAttribute("height", String(rise.height));
       buttonRef.current?.setAttribute("data-hold-progress", fill.toFixed(3));
-      setMarkHold({ fill, spent, closed: state.phase === "discharging", hidden: openRef.current });
+      setMarkHold({ fill, spent, hidden: openRef.current });
       frame = state.phase === "idle" ? 0 : requestAnimationFrame(tick);
     };
     kick.current = () => {

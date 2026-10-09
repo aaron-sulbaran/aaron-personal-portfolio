@@ -1,5 +1,7 @@
 import type { Page } from "@playwright/test";
 import { siteContent } from "@/lib/content";
+import { HOLD } from "@/lib/mark/constants";
+import { FILL_BOTTOM, FILL_TOP } from "@/lib/mark/geometry";
 import { test, expect } from "./support/fixtures";
 import { openHome, scrollToY } from "./support/coil";
 import { settled } from "./support/fallback";
@@ -109,10 +111,59 @@ for (const mode of ["scene", "no-webgl"] as const) {
       await page.mouse.up();
       expect(mid.fill).toBeGreaterThan(0.3);
       expect(mid.fill).toBeLessThan(0.75);
-      expect(Math.abs(mid.arc / 75 - mid.fill)).toBeLessThan(0.002);
+      expect(Math.abs(mid.arc / 360 - mid.fill)).toBeLessThan(0.002);
       await expect.poll(() => progress(page)).toBe(0);
       await sleep(600);
       await expect(card(page)).toHaveCount(0);
+    });
+
+    // Each frame reads the mark's rise clip, the ring's arc and the ring's wash
+    // back from the DOM; all three are one progress, close on one frame at
+    // HOLD.holdMs, and the card opens only after that, past the discharge.
+    test(`mark: the ring's arc and wash fill with the mark and close on the same frame @ring (${mode})`, async ({ page }) => {
+      await open(page);
+      await scrollToY(page, Y);
+      await pointAtMark(page);
+      await expect(page.locator("[data-mark-ring]")).toHaveCount(1);
+      await page.evaluate(
+        ([top, bottom]) => {
+          const rise = document.querySelector<SVGRectElement>("[data-mark-trigger] clipPath rect")!;
+          const ring = document.querySelector<SVGSVGElement>("[data-mark-ring]")!;
+          const wash = ring.querySelector<SVGRectElement>("clipPath rect")!;
+          const rec = { samples: [] as { t: number; mark: number; arc: number; wash: number }[], pressedAt: 0, openedAt: 0 };
+          Object.assign(window, { __sync: rec });
+          window.addEventListener("pointerdown", () => (rec.pressedAt = performance.now()), { once: true, capture: true });
+          const start = performance.now();
+          const tick = () => {
+            const t = performance.now();
+            if (!rec.openedAt && document.querySelector("[data-mark-strike]")) rec.openedAt = t;
+            if (!rec.openedAt) rec.samples.push({ t, mark: (bottom - Number(rise.getAttribute("y"))) / (bottom - top), arc: Number(ring.dataset.ringArc) / 360, wash: 1 - Number(wash.getAttribute("y")) / 100 });
+            if (t - start < 2500) requestAnimationFrame(tick);
+          };
+          requestAnimationFrame(tick);
+        },
+        [FILL_TOP, FILL_BOTTOM],
+      );
+      await holdMark(page, HOLD.holdMs + HOLD.dischargeMs + 200);
+      await expect(card(page)).toBeVisible();
+      type Sample = { t: number; mark: number; arc: number; wash: number };
+      const { samples, pressedAt, openedAt } = await page.evaluate(() => (window as unknown as { __sync: { samples: Sample[]; pressedAt: number; openedAt: number } }).__sync);
+      const during = samples.filter((s) => s.t >= pressedAt);
+      expect(during.length).toBeGreaterThan(20);
+      for (const s of during) {
+        expect(Math.abs(s.arc - s.mark)).toBeLessThan(0.001);
+        expect(Math.abs(s.wash - s.mark)).toBeLessThan(1e-6);
+      }
+      const markFull = during.findIndex((s) => s.mark > 1 - 1e-6);
+      const washFull = during.findIndex((s) => s.wash > 1 - 1e-6);
+      expect(markFull).toBeGreaterThan(0);
+      expect(washFull).toBe(markFull);
+      expect(during[markFull].arc).toBe(1);
+      expect(during[markFull - 1].mark).toBeLessThan(1);
+      const fullAt = during[markFull].t - pressedAt;
+      expect(fullAt).toBeGreaterThanOrEqual(HOLD.holdMs - 5);
+      expect(fullAt).toBeLessThan(HOLD.holdMs + 60);
+      expect(openedAt - during[markFull].t).toBeGreaterThanOrEqual(HOLD.dischargeMs - 20);
     });
 
     test(`mark: a scroll under a parked pointer tucks the mark and the ring goes with it @ring (${mode})`, async ({ page }) => {
