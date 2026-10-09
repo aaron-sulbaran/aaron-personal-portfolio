@@ -23,6 +23,8 @@ export interface PopEntry {
   crop: PhotoCrop | null;
   // Opens in a new tab on click; hover and the first tap still show the pop.
   href?: string;
+  // The words of the link inside a tap-pinned pop (touch only).
+  hrefLabel?: string;
 }
 
 export interface InlineRegister {

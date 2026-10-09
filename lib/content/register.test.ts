@@ -57,4 +57,8 @@ describe("the inline register", () => {
     expect(resolveTip(note, true)).toBe(note.text);
     expect(resolveTip(register.tip.aango, false)).toBe("yes, the chameleon from that one kid's movie");
   });
+  it("labels every pop link for the touch label", () => {
+    for (const [key, entry] of Object.entries(register.pop)) if (entry.href) expect(entry.hrefLabel, key).toBeTruthy();
+    expect(register.pop.matcha.hrefLabel).toBe("Open in Google Maps");
+  });
 });
