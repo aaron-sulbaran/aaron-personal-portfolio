@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseInlineLinks, plainText, visibleText, type InlineKind } from "@/lib/content/links";
+import { inlineRuns, parseInlineLinks, plainText, visibleText, type InlineKind } from "@/lib/content/links";
 
 const known = (kind: InlineKind, key: string) =>
   (kind === "tip" && (key === "ieee-ao" || key === "aango")) || (kind === "pop" && key === "sister-kyoto") || (kind === "def" && key === "product");
@@ -80,5 +80,23 @@ describe("visibleText", () => {
     expect(visibleText("**2024, business analyst.** My first look at corporate America.")).toBe("2024, business analyst. My first look at corporate America.");
     expect(visibleText("an invitational I *know* it had been chasing")).toBe("an invitational I know it had been chasing");
     expect(visibleText("building[*](tip:aango).")).toBe("building*.");
+  });
+});
+
+const t = (text: string, strong = false, em = false) => ({ kind: "text", text, strong, em });
+describe("inlineRuns", () => {
+  it("carries bold and italic as flags and drops the markers", () => { expect(inlineRuns("**2024, business analyst.** My first look, I *know* it.", known)).toEqual([t("2024, business analyst.", true), t(" My first look, I "), t("know", false, true), t(" it.")]); });
+  it("keeps a link whole and lets emphasis wrap it", () => { expect(inlineRuns("*see [Rango](tip:aango) now*", known)).toEqual([t("see ", false, true), { kind: "tip", text: "Rango", key: "aango", strong: false, em: true }, t(" now", false, true)]); });
+  it("never pairs a link's asterisk with a marker in the text", () => { expect(inlineRuns("building[*](tip:aango). I *know* it", known)).toEqual([t("building"), { kind: "tip", text: "*", key: "aango", strong: false, em: false }, t(". I "), t("know", false, true), t(" it")]); });
+  it("returns nothing for an empty string and keeps an unknown link as its words", () => {
+    expect(inlineRuns("", known)).toEqual([]);
+    expect(inlineRuns("a [Rango](tip:rango) knockoff", known)).toEqual([t("a Rango knockoff")]);
+  });
+});
+describe("visibleText and the footnote", () => {
+  it("never pairs a link's asterisk with emphasis", () => { expect(visibleText("no matter what you're building[*](tip:killer-drones). I *know* it")).toBe("no matter what you're building*. I know it"); });
+  it("reads the approved Connect body as a visitor sees it", () => {
+    const body = "I check everything (or Talos does) so take your pick. If you want to talk screen to screen, [grab a time on my calendar](https://cal.com/aaron-sulbaran). If you're in my city, let's grab a coffee ([or matcha](pop:matcha)). I take coffee chats with anyone, no matter what you're building[*](tip:killer-drones).";
+    expect(visibleText(body)).toBe("I check everything (or Talos does) so take your pick. If you want to talk screen to screen, grab a time on my calendar. If you're in my city, let's grab a coffee (or matcha). I take coffee chats with anyone, no matter what you're building*.");
   });
 });

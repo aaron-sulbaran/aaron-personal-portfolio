@@ -55,7 +55,45 @@ export function plainText(source: string): string {
   return source.replace(LINK, "$1");
 }
 
-// The words a reader sees: links as their words, paired ** and * removed; a lone * stays.
+// A run is a segment with the emphasis around it. While asterisks pair, a
+// link is one opaque cell, so a link whose words are an asterisk (Connect's
+// footnote, [*](tip:killer-drones)) never pairs with a marker in the text.
+export type InlineRun = InlineSegment & { strong: boolean; em: boolean };
+interface Cell { char: string; link: InlineSegment | null; strong: boolean; em: boolean }
+const ATOM = "\uE000";
+const BOLD = /\*\*(?=\S)(.+?)\*\*/g;
+const ITALIC = /\*(?=\S)([^*]+?)\*/g;
+const anyKey: KnownKey = () => true;
+function pairMarkers(cells: Cell[], pattern: RegExp, width: number, flag: "strong" | "em"): Cell[] {
+  const line = cells.map((cell) => cell.char).join("");
+  const dropped = new Set<number>();
+  for (const match of line.matchAll(pattern)) {
+    const start = match.index ?? 0;
+    const end = start + match[0].length;
+    for (let i = 0; i < width; i++) dropped.add(start + i).add(end - 1 - i);
+    for (let i = start + width; i < end - width; i++) cells[i] = flag === "strong" ? { ...cells[i], strong: true } : { ...cells[i], em: true };
+  }
+  return cells.filter((_, i) => !dropped.has(i));
+}
+export function inlineRuns(source: string, known: KnownKey): InlineRun[] {
+  let cells: Cell[] = [];
+  for (const segment of parseInlineLinks(source, known).segments) {
+    if (segment.kind !== "text") cells.push({ char: ATOM, link: segment, strong: false, em: false });
+    else for (const char of segment.text.split("")) cells.push({ char, link: null, strong: false, em: false });
+  }
+  cells = pairMarkers(cells, BOLD, 2, "strong");
+  cells = pairMarkers(cells, ITALIC, 1, "em");
+  const runs: InlineRun[] = [];
+  for (const { char, link, strong, em } of cells) {
+    const last = runs[runs.length - 1];
+    if (link) runs.push({ ...link, strong, em });
+    else if (last && last.kind === "text" && last.strong === strong && last.em === em) last.text += char;
+    else runs.push({ kind: "text", text: char, strong, em });
+  }
+  return runs;
+}
+// The words a reader sees: links as their words, paired ** and * removed; a
+// lone * stays, and a link's own asterisk never pairs.
 export function visibleText(source: string): string {
-  return plainText(source).replace(/\*\*(?=\S)(.+?)\*\*/g, "$1").replace(/\*(?=\S)([^*]+?)\*/g, "$1");
+  return inlineRuns(source, anyKey).map((run) => run.text).join("");
 }
