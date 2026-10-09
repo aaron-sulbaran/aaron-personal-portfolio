@@ -1,6 +1,6 @@
 import { siteContent } from "@/lib/content";
 import { test, expect } from "./support/fixtures";
-import { bubble, MATCHA, MATCHA_HREF, openFixture, productLink, tipLink, TIP } from "./support/inline";
+import { bubble, fillOf, MATCHA, MATCHA_HREF, openFixture, productLink, tipLink, TIP } from "./support/inline";
 
 // The inline links on a phone. The touch project (playwright.config.ts) runs
 // this file as a Pixel 7 with touch; chromium, webkit and firefox skip it.
@@ -10,11 +10,24 @@ test("inline links (touch): a tap pins a tip under its link and a tap elsewhere 
   await openFixture(page, TIP);
   await tipLink(page).tap();
   await expect(bubble(page)).toHaveAttribute("data-mode", "tap");
+  await expect(tipLink(page)).toHaveAttribute("data-inline-open", "");
+  await expect.poll(() => fillOf(tipLink(page))).toBe(1);
   await page.waitForTimeout(250);
   const link = (await tipLink(page).boundingBox())!;
   expect((await bubble(page).boundingBox())!.y).toBeGreaterThanOrEqual(link.y + link.height);
   await page.locator("main").tap({ position: { x: 4, y: 4 } });
   await expect(bubble(page)).toHaveAttribute("data-shown", "false");
+  await expect(tipLink(page)).not.toHaveAttribute("data-inline-open", "");
+  // A tap is a click: the link stays filled, like a visited one.
+  expect(await fillOf(tipLink(page))).toBe(1);
+});
+
+test("inline links (touch): a link never tapped stays empty on a touch screen, and a tap marks it for the next visit", async ({ page }) => {
+  await openFixture(page, TIP);
+  expect(await fillOf(tipLink(page))).toBe(0);
+  await tipLink(page).tap();
+  await expect(bubble(page)).toHaveAttribute("data-mode", "tap");
+  expect(await page.evaluate(() => localStorage.getItem("aaron-inline-visited"))).toBe(JSON.stringify(["tip:killer-drones"]));
 });
 
 test("inline links (touch): the first tap on the matcha shows its pop and Maps link; that link opens the pin", async ({ page, offsite }) => {

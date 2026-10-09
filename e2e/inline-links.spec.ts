@@ -3,7 +3,7 @@ import { siteContent } from "@/lib/content";
 import { tipText } from "@/lib/content/tracks";
 import { openHome } from "./support/coil";
 import { test, expect } from "./support/fixtures";
-import { bubble, CALENDAR, DEF, MATCHA, MATCHA_HREF, openFixture, POP, productLink, tipLink, tabTo, TIP } from "./support/inline";
+import { barScale, bubble, CALENDAR, DEF, fillOf, MATCHA, MATCHA_HREF, openFixture, POP, productLink, rest, tipLink, tabTo, TIP } from "./support/inline";
 // The copy's inline links (components/inline) by mouse and keyboard, each on a
 // lines-split Block; touch is e2e/inline-links-touch.spec.ts (the touch project).
 const { register } = siteContent;
@@ -165,19 +165,53 @@ test("inline links (reduced motion): the label and the definition only fade", as
   expect(await panel.evaluate((el) => getComputedStyle(el).transform)).toBe("none");
 });
 
+const LINE_CASES = [
+  ["definition", DEF, '[data-inline="def"]'],
+  ["tip", TIP, '[data-inline="tip"]'],
+  ["pop", POP, '[data-inline="pop"]'],
+  ["external link", CALENDAR, '[data-inline="external"]'],
+] as const;
+
 for (const colorScheme of ["light", "dark"] as const) {
-  test(`inline links: underlines come from the accent token and the label reads at 4.5:1 in ${colorScheme}`, async ({ page }) => {
+  test(`inline links: every kind rests as its paragraph's ink with a quiet line and fills with the accent in ${colorScheme}`, async ({ page }) => {
     await page.emulateMedia({ colorScheme });
-    await openFixture(page, DEF, TIP);
-    const read = await page.evaluate(() => {
-      const probe = document.body.appendChild(Object.assign(document.createElement("span"), { style: "color: var(--color-accent)" }));
-      const accent = getComputedStyle(probe).color;
-      probe.remove();
-      const line = (s: CSSStyleDeclaration) => [s.textDecorationColor, s.textDecorationStyle];
-      return { accent, def: line(getComputedStyle(document.querySelector('[data-inline="def"]')!)), tip: line(getComputedStyle(document.querySelector('[data-inline="tip"]')!)) };
-    });
-    expect(read.def).toEqual([read.accent, "solid"]);
-    expect(read.tip).toEqual([read.accent, "dotted"]);
+    await openFixture(page, ...LINE_CASES.map(([, copy]) => copy));
+    for (const [kind, , selector] of LINE_CASES) {
+      const link = page.locator(selector).first();
+      const read = await link.evaluate((el) => {
+        const probe = (css: string) => {
+          const node = (el.parentElement as HTMLElement).appendChild(Object.assign(document.createElement("span"), { style: css }));
+          const style = getComputedStyle(node);
+          const out = { color: style.color, background: style.backgroundColor };
+          node.remove();
+          return out;
+        };
+        const own = getComputedStyle(el);
+        const before = getComputedStyle(el, "::before");
+        const after = getComputedStyle(el, "::after");
+        const paragraph = getComputedStyle(el.parentElement as HTMLElement);
+        return {
+          ink: own.color,
+          paragraphInk: paragraph.color,
+          line: before.backgroundColor,
+          restingLine: probe("background: color-mix(in srgb, currentColor var(--inline-line-rest), transparent)").background,
+          fill: after.backgroundColor,
+          accent: probe("color: var(--color-accent)").color,
+          decoration: own.textDecorationLine,
+          barHeight: before.height,
+          fillHeight: after.height,
+          barBottom: before.bottom === after.bottom,
+        };
+      });
+      expect(read.ink, `${kind}: the word is its paragraph's ink at rest`).toBe(read.paragraphInk);
+      expect(read.line, `${kind}: a quiet line in that ink`).toBe(read.restingLine);
+      expect(read.fill, `${kind}: filled from the accent token`).toBe(read.accent);
+      expect(read.decoration, `${kind}: a bar, not text-decoration`).toBe("none");
+      expect([read.barHeight === read.fillHeight, read.barBottom], `${kind}: the fill is the line's size and place`).toEqual([true, true]);
+      await rest(page);
+      expect(await fillOf(link), `${kind}: empty at rest`).toBe(0);
+      expect(await barScale(link)).toBe(0);
+    }
     await tipLink(page).hover();
     await expect(bubble(page)).toHaveAttribute("data-shown", "true");
     const ratio = await bubble(page).locator("span").first().evaluate((el) => {
@@ -192,6 +226,185 @@ for (const colorScheme of ["light", "dark"] as const) {
   });
 }
 
+test("inline links: hover fills the word and its line together from the centre, on the same 350ms curve, and hover out empties them", async ({ page }) => {
+  await openFixture(page, ...LINE_CASES.map(([, copy]) => copy));
+  for (const [kind, , selector] of LINE_CASES) {
+    const link = page.locator(selector).first();
+    const timing = await link.evaluate((el) => {
+      const style = getComputedStyle(el);
+      return [style.transitionProperty, style.transitionDuration, style.transitionTimingFunction, style.backgroundPosition];
+    });
+    expect(timing, `${kind}: one tween for the word and the line`).toEqual(["--inline-p", "0.35s", "cubic-bezier(0.65, 0, 0.35, 1)", "50% 50%, 50% 50%"]);
+    const origin = await link.evaluate((el) => {
+      const bar = getComputedStyle(el, "::after");
+      const [x, y] = bar.transformOrigin.split(" ").map(parseFloat);
+      return { x: x - parseFloat(bar.width) / 2, y: y - parseFloat(bar.height) / 2 };
+    });
+    expect(Math.abs(origin.x) + Math.abs(origin.y), `${kind}: the line draws from its centre`).toBeLessThan(0.01);
+    const box = (await link.boundingBox())!;
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await expect.poll(() => fillOf(link), { message: `${kind}: fills` }).toBe(1);
+    expect(await barScale(link)).toBe(1);
+    await rest(page);
+    await expect.poll(() => fillOf(link), { message: `${kind}: empties` }).toBe(0);
+    expect(await barScale(link)).toBe(0);
+  }
+});
+
+test("inline links: the word and its line pass through the same fraction at every moment of the tween", async ({ page }) => {
+  await openFixture(page, TIP);
+  const link = tipLink(page);
+  const box = (await link.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  const samples = await link.evaluate((el) => new Promise<number[][]>((resolve) => {
+    const out: number[][] = [];
+    const tick = () => {
+      out.push([Number(getComputedStyle(el).getPropertyValue("--inline-p")), new DOMMatrixReadOnly(getComputedStyle(el, "::after").transform).a]);
+      if (out.length < 40) requestAnimationFrame(tick);
+      else resolve(out);
+    };
+    requestAnimationFrame(tick);
+  }));
+  expect(samples.some(([p]) => p > 0 && p < 1), "the tween shows in between").toBe(true);
+  for (const [p, scale] of samples) expect(scale).toBeCloseTo(p, 5);
+});
+
+test("inline links: keyboard focus fills a link while its ring shows, and the ring still fits", async ({ page }) => {
+  await openFixture(page, TIP);
+  await tabTo(page, tipLink(page));
+  await expect.poll(() => fillOf(tipLink(page))).toBe(1);
+  expect(await tipLink(page).evaluate((el) => getComputedStyle(el).outlineStyle)).toBe("solid");
+  await page.keyboard.press("Tab");
+  await expect.poll(() => fillOf(tipLink(page))).toBe(0);
+});
+
+test("inline links: a link stays filled while its tip is open, hovered or focused, and neither marks it clicked; Enter does", async ({ page }) => {
+  await openFixture(page, TIP);
+  const link = tipLink(page);
+  await tabTo(page, link);
+  await expect(link).toHaveAttribute("data-inline-open", "");
+  await page.keyboard.press("Escape");
+  await expect(link).not.toHaveAttribute("data-inline-open", "");
+  await expect.poll(() => fillOf(link)).toBe(1); // still focused with a ring
+  await page.keyboard.press("Tab");
+  await expect.poll(() => fillOf(link)).toBe(0);
+  await link.hover();
+  await expect(link).toHaveAttribute("data-inline-open", "");
+  await rest(page);
+  await expect(link).not.toHaveAttribute("data-inline-open", "");
+  await expect.poll(() => fillOf(link)).toBe(0);
+  expect(await page.evaluate(() => localStorage.getItem("aaron-inline-visited"))).toBeNull();
+  await tabTo(page, tipLink(page));
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Enter");
+  await expect(link).toHaveAttribute("data-inline-open", "");
+  expect(await page.evaluate(() => localStorage.getItem("aaron-inline-visited"))).toBe(JSON.stringify(["tip:killer-drones"]));
+  await page.keyboard.press("Tab");
+  await rest(page);
+  await expect.poll(() => fillOf(link)).toBe(1); // clicked: stays filled
+});
+
+test("inline links (reduced motion): the word and its line switch with no tween", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await openFixture(page, TIP);
+  const link = tipLink(page);
+  // The global reduced-motion rule leaves 0.001ms, a switch.
+  expect(await link.evaluate((el) => parseFloat(getComputedStyle(el).transitionDuration))).toBeLessThan(0.00001);
+  const box = (await link.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await expect.poll(() => fillOf(link), { timeout: 1000 }).toBe(1); // within a frame, never a 350ms tween
+  expect(await barScale(link)).toBe(1);
+  await rest(page);
+  await expect.poll(() => fillOf(link), { timeout: 1000 }).toBe(0);
+  expect(await barScale(link)).toBe(0);
+});
+
+// Descenders everywhere: g, p, y, j and a comma.
+const DESCENDERS = "Gypsy [jumpy pygmy](tip:killer-drones), [grab a quip](def:product) (and [pop quiz](pop:contrabass-clarinet)), [py gy](https://example.com/).";
+test("inline links: the line sits below every descender with a clear gap, inside its box's text area and its line's mask", async ({ page }) => {
+  await openFixture(page, DESCENDERS, "No [marker](tip:killer-drones) here.");
+  const report = await page.evaluate(() => {
+    const canvas = document.createElement("canvas").getContext("2d")!;
+    return [...document.querySelectorAll<HTMLElement>(".inline-link")].map((link) => {
+      const style = getComputedStyle(link);
+      const rect = link.getBoundingClientRect();
+      const before = getComputedStyle(link, "::before");
+      const barBottom = rect.bottom - parseFloat(before.bottom);
+      const barTop = barBottom - parseFloat(before.height);
+      const probe = link.appendChild(Object.assign(document.createElement("span"), { style: "display:inline-block;width:0;height:0;vertical-align:baseline" }));
+      const baseline = probe.getBoundingClientRect().bottom;
+      probe.remove();
+      canvas.font = `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+      const ink = canvas.measureText(link.textContent!);
+      const mask = link.closest(".sections-line-mask")!.getBoundingClientRect();
+      return {
+        text: link.textContent,
+        clearGap: barTop - (baseline + ink.actualBoundingBoxDescent),
+        fromBox: barTop - rect.bottom,
+        inkInsideBox: baseline + ink.actualBoundingBoxDescent <= rect.bottom && baseline - ink.actualBoundingBoxAscent >= rect.top,
+        maskSlack: mask.bottom - barBottom,
+      };
+    });
+  });
+  expect(report).toHaveLength(5);
+  for (const item of report) {
+    expect(item.clearGap, `${item.text}: clear of the descenders`).toBeGreaterThanOrEqual(1.25);
+    expect(item.fromBox, `${item.text}: still attached to the word`).toBeLessThanOrEqual(2);
+    expect(item.inkInsideBox, `${item.text}: the text-clipped fill reaches every glyph`).toBe(true);
+    expect(item.maskSlack, `${item.text}: not clipped by its mask`).toBeGreaterThanOrEqual(0.5);
+  }
+});
+
+test("inline links: a clicked definition stays filled once its modal closes and after a reload, with no flash on load", async ({ page }) => {
+  const link = await productLink(page);
+  await rest(page);
+  await expect.poll(() => fillOf(link)).toBe(0);
+  await link.click();
+  const dialog = page.getByRole("dialog", { name: register.def.product.title });
+  await expect(dialog).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  await rest(page);
+  await expect.poll(() => fillOf(link)).toBe(1);
+  expect(await barScale(link)).toBe(1);
+  expect(await page.evaluate(() => localStorage.getItem("aaron-inline-visited"))).toBe(JSON.stringify(["def:product"]));
+  await page.reload({ waitUntil: "domcontentloaded" });
+  // Before React has hydrated: the head script already wrote the rule.
+  expect(await page.evaluate(() => document.getElementById("inline-visited")?.textContent ?? "")).toContain('data-inline-key="product"');
+  expect(await page.evaluate(() => Number(getComputedStyle(document.querySelector('[data-inline="def"][data-inline-key="product"]')!).getPropertyValue("--inline-p")))).toBe(1);
+  await page.waitForSelector("html[data-inline-links='ready']", { state: "attached" });
+  const again = page.locator('[data-inline="def"][data-inline-key="product"]').first();
+  expect(await fillOf(again)).toBe(1);
+  expect(await again.evaluate((el) => getComputedStyle(el).transitionDuration)).toBe("0s");
+});
+
+test("inline links: an external link followed stays filled, and links never clicked stay empty", async ({ page, offsite }) => {
+  await openFixture(page, TIP, CALENDAR);
+  const calendar = page.getByRole("link", { name: "grab a time on my calendar" });
+  const popup = page.waitForEvent("popup");
+  await calendar.click();
+  await (await popup).close();
+  await expect.poll(() => offsite).toContain("https://cal.com/aaron-sulbaran");
+  await rest(page);
+  await expect.poll(() => fillOf(calendar)).toBe(1);
+  await expect.poll(() => fillOf(tipLink(page))).toBe(0);
+  await page.reload();
+  await page.waitForSelector("html[data-inline-links='ready']", { state: "attached" });
+  expect(await fillOf(page.getByRole("link", { name: "grab a time on my calendar" }))).toBe(1);
+  expect(await fillOf(tipLink(page))).toBe(0);
+});
+
+test("inline links: storage that throws does not break clicking; the link fills for this page view", async ({ page }) => {
+  await page.addInitScript(() => {
+    Storage.prototype.setItem = () => { throw new Error("QuotaExceededError"); };
+  });
+  const link = await productLink(page);
+  await link.click();
+  await page.keyboard.press("Escape");
+  await rest(page);
+  await expect.poll(() => fillOf(link)).toBe(1);
+});
+
 // "Anything" opens this paragraph, so it sits at the left edge of its line's mask.
 const LEAD = "[Anything](tip:killer-drones) leads this line.";
 test("inline links: a focused link's ring is not clipped by its line's mask, mid-line or at a line's start", async ({ page }) => {
@@ -201,7 +414,7 @@ test("inline links: a focused link's ring is not clipped by its line's mask, mid
     await tabTo(page, link);
     const clipped = await link.evaluate((el) => {
       const ring = el.getBoundingClientRect();
-      const reach = 3; // a 2px outline at a 1px offset
+      const reach = 3 - parseFloat(getComputedStyle(el).paddingBottom); // a 2px outline at a 1px offset from the text box; the padding is part of the border box
       const mask = el.closest(".sections-line-mask");
       const clipNode = (axis: "overflowX" | "overflowY") => {
         let node = el.parentElement;
