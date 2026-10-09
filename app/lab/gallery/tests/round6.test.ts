@@ -216,12 +216,12 @@ describe("reveal directions", () => {
   it("sweeps one edge across a rotating frame, even when the two photos' boxes differ", () => {
     const vertical = { left: 52, width: 320 };
     const horizontal = { left: 0, width: 424 };
-    expect(sweepInsets(0, 424, horizontal, vertical)).toEqual({ incoming: "inset(0px 424px 0px 0px round 12px)", outgoing: "inset(0px 0px 0px 0px round 12px)" });
-    expect(sweepInsets(1, 424, horizontal, vertical)).toEqual({ incoming: "inset(0px 0px 0px 0px round 12px)", outgoing: "inset(0px 0px 0px 320px round 12px)" });
+    expect(sweepInsets(0, 424, horizontal, vertical)).toEqual({ incoming: "inset(0px 424px 0px 0px)", outgoing: "inset(0px 0px 0px 0px)" });
+    expect(sweepInsets(1, 424, horizontal, vertical)).toEqual({ incoming: "inset(0px 0px 0px 0px)", outgoing: "inset(0px 0px 0px 320px)" });
     // At a quarter the edge is at 106px: the horizontal photo shows its first
     // 106px, the vertical one (from 52px) is cleared up to the same edge.
-    expect(sweepInsets(0.25, 424, horizontal, vertical)).toEqual({ incoming: "inset(0px 318px 0px 0px round 12px)", outgoing: "inset(0px 0px 0px 54px round 12px)" });
-    expect(sweepInsets(0.1, 424, vertical, horizontal).incoming).toBe("inset(0px 320px 0px 0px round 12px)");
+    expect(sweepInsets(0.25, 424, horizontal, vertical)).toEqual({ incoming: "inset(0px 318px 0px 0px)", outgoing: "inset(0px 0px 0px 54px)" });
+    expect(sweepInsets(0.1, 424, vertical, horizontal).incoming).toBe("inset(0px 320px 0px 0px)");
   });
 });
 

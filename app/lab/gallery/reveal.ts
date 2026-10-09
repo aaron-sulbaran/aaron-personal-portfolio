@@ -59,7 +59,9 @@ export function textOut(direction: MaskDirection) {
 // each box would move two edges at two speeds when the boxes differ (a
 // vertical photo handing over to a horizontal one). One edge crosses the
 // frame instead: the incoming photo shows left of it, the outgoing right of
-// it. Lengths are px from each box's own left edge.
+// it. Lengths are px from each box's own left edge. No rounding: each photo
+// is rounded by its own mask, and rounded corners on the two clips would
+// notch the edge where the photos meet.
 export type Span = { left: number; width: number };
 
 export function sweepInsets(progress: number, frameWidth: number, incoming: Span, outgoing: Span) {
@@ -67,7 +69,7 @@ export function sweepInsets(progress: number, frameWidth: number, incoming: Span
   const within = (span: Span) => Math.min(span.width, Math.max(0, edge - span.left));
   const px = (n: number) => `${Number(n.toFixed(2))}px`;
   return {
-    incoming: `inset(0px ${px(incoming.width - within(incoming))} 0px 0px ${RADIUS})`,
-    outgoing: `inset(0px 0px 0px ${px(within(outgoing))} ${RADIUS})`,
+    incoming: `inset(0px ${px(incoming.width - within(incoming))} 0px 0px)`,
+    outgoing: `inset(0px 0px 0px ${px(within(outgoing))})`,
   };
 }

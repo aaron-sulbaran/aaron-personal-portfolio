@@ -4,14 +4,17 @@ import { useLayoutEffect, type RefObject } from "react";
 import { gsap } from "gsap";
 import { CustomEase } from "gsap/CustomEase";
 import { SplitText } from "gsap/SplitText";
+import { photoMoveIn, photoWipeIn, textIn } from "./reveal";
 import { EASES, type Settings } from "./settings";
 import { maskTable, type MaskStep } from "./timing";
 
 // Turns the mask table into one GSAP timeline when the modal lands. The
 // markup marks each part: [data-mask=id] with data-mask-kind "text" (a block
 // or a line set rising inside an overflow clip, yPercent 110 to 0, the
-// sections grammar's MASKED) or "photo" (a wipe or a rise, with its media in
-// [data-mask-media] for the settle). [data-mask-flown] is the flown card's
+// sections grammar's MASKED, or round six's clip opening left to right in
+// place) or "photo" (a wipe or a move in, bottom up or left to right, with its
+// media in [data-mask-media] for the settle). A caption takes the caption
+// direction, every other text part the text direction. [data-mask-flown] is the flown card's
 // slot: empty until the landing, then there. Every tween is a fromTo on an
 // element React gives no inline style, and the cleanup clears only what GSAP
 // wrote, so a replay starts from the server's markup.
@@ -42,7 +45,6 @@ type Options = {
 };
 
 const WRITTEN = "transform,clipPath,opacity,visibility";
-const RADIUS = "round 12px";
 
 export function useMaskIn(rootRef: RefObject<HTMLElement | null>, { active, reduced, s, runKey, stepsFor, onSchedule }: Options) {
   useLayoutEffect(() => {
@@ -99,17 +101,20 @@ export function useMaskIn(rootRef: RefObject<HTMLElement | null>, { active, redu
         const targets = split ? split.lines : el.querySelector("[data-mask-inner]");
         if (!targets) continue;
         touched.push(...(Array.isArray(targets) ? targets : [targets]));
-        tl.fromTo(targets, { yPercent: 110 }, { yPercent: 0, duration, ease, stagger: split ? timing.lineStaggerMs / 1000 : 0 }, at);
+        const reveal = textIn(entry.id.startsWith("caption-") ? s.captionDirection : s.textDirection);
+        tl.fromTo(targets, reveal.from, { ...reveal.to, duration, ease, stagger: split ? timing.lineStaggerMs / 1000 : 0 }, at);
         continue;
       }
       const media = el.querySelector<HTMLElement>("[data-mask-media]");
       touched.push(el);
       if (media) touched.push(media);
       if (s.photoMask === "wipe") {
-        tl.fromTo(el, { clipPath: `inset(100% 0% 0% 0% ${RADIUS})` }, { clipPath: `inset(0% 0% 0% 0% ${RADIUS})`, duration, ease }, at);
+        const wipe = photoWipeIn(s.photoDirection);
+        tl.fromTo(el, { clipPath: wipe.from }, { clipPath: wipe.to, duration, ease }, at);
         if (media && settle > 1) tl.fromTo(media, { scale: settle }, { scale: 1, duration, ease }, at);
       } else if (media) {
-        tl.fromTo(media, { yPercent: 110, scale: settle }, { yPercent: 0, scale: 1, duration, ease }, at);
+        const move = photoMoveIn(s.photoDirection);
+        tl.fromTo(media, { ...move.from, scale: settle }, { ...move.to, scale: 1, duration, ease }, at);
       }
     }
 

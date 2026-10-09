@@ -83,7 +83,9 @@ export function GalleryLab() {
 
   const setView = useCallback((update: (v: View) => View) => setViewState(update), []);
   const replay = useCallback(() => setReplays((n) => n + 1), []);
-  const timingKey = useRestingKey(`${s.landingMs}|${s.maskMs}|${s.staggerMs}|${s.textSplit}|${s.lineStaggerMs}|${s.photoMask}|${s.settle}|${s.ease}`);
+  const timingKey = useRestingKey(
+    `${s.landingMs}|${s.maskMs}|${s.staggerMs}|${s.textSplit}|${s.lineStaggerMs}|${s.photoMask}|${s.settle}|${s.ease}|${s.photoDirection}|${s.captionDirection}|${s.textDirection}`,
+  );
   const runKey = `${card.id}|${replays}|${timingKey}`;
 
   useEffect(() => {

@@ -2,132 +2,42 @@
 
 import { Pause, Play } from "lucide-react";
 import Image from "next/image";
-import { gsap } from "gsap";
-import { useEffect, useLayoutEffect, useRef, useState, type FocusEvent, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
+import { useRef, useState, type FocusEvent, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { LAB_COPY, type LabCard } from "./cards";
 import { Caption } from "./parts";
 import { groupFrame } from "./plan";
 import { gallerySizes, type Box } from "./rows";
-import { EASES, type Settings } from "./settings";
-import { remainingAfter, ROTATOR_VISIBLE, rotatorRuns, wrap } from "./stage";
+import type { Settings } from "./settings";
 import { partId } from "./timing";
+import { useRotator } from "./useRotator";
 
 // Round five on desktop: a row's photos take turns in one frame beside its
 // words, which never change. The frame holds the group's largest box, and
 // each photo is drawn at its own box inside it, so nothing changes size. The
 // caption under it changes with the photo; the dots under the caption say
 // where it is (the current one fills over the interval), and a person steps
-// it with them or the arrow keys. A loop on a timer that starts after the
-// landing and stops while hovered, keyboard-focused, mostly off screen or
-// paused, resuming with the time it had left. Under reduced motion it never
-// turns on its own and a step is instant. The change is the photo mask (the
-// new photo wipes up as the old one clears, or rises in its box) or a
-// cross-fade; React only says which photo is current, GSAP writes the
-// change and clears what it wrote.
+// it with them or the arrow keys. The clock and the change are useRotator's
+// (shared with a phone page's stage from round six): it stops while hovered,
+// keyboard-focused, mostly off screen or paused.
 
 type Props = { card: LabCard; photos: number[]; boxes: Box[]; s: Settings; reduced: boolean };
 
-const RADIUS = "round 12px";
-const WRITTEN = "clipPath,opacity,visibility,transform,zIndex";
 // The current dot's track: the accent, faint, so it reads as the current one
 // before its fill starts (bg-accent/NN emits nothing with var() colors).
-const track = { backgroundColor: "color-mix(in srgb, var(--color-accent) 28%, transparent)" };
+export const rotatorTrack = { backgroundColor: "color-mix(in srgb, var(--color-accent) 28%, transparent)" };
 
 export function RotatingPhoto({ card, photos, boxes, s, reduced }: Props) {
   const count = photos.length;
   const frame = groupFrame(boxes);
-  const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
-  const [visible, setVisible] = useState(false);
-  const [started, setStarted] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const frameRef = useRef<HTMLDivElement | null>(null);
-  const intervalMs = Math.round(s.rotateSeconds * 1000);
-  const remaining = useRef(intervalMs);
-  const shown = useRef(0);
-  const change = useRef<gsap.core.Timeline | null>(null);
-  const runs = rotatorRuns({ count, reduced, started, paused, hovered, focused, visible });
-
-  useEffect(() => {
-    const id = window.setTimeout(() => setStarted(true), s.landingMs + s.rotateDelayMs);
-    return () => window.clearTimeout(id);
-  }, [s.landingMs, s.rotateDelayMs]);
-
-  useEffect(() => {
-    const el = frameRef.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(([entry]) => setVisible(entry.intersectionRatio >= ROTATOR_VISIBLE - 0.01), { threshold: [0, ROTATOR_VISIBLE, 0.66, 1] });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
-  // A new photo gets the whole interval; a stopped timer keeps what it had
-  // left. The reset runs before the timer, so a change starts it full.
-  useEffect(() => {
-    remaining.current = intervalMs;
-  }, [index, intervalMs]);
-
-  useEffect(() => {
-    if (!runs) return;
-    const startedAt = performance.now();
-    const id = window.setTimeout(() => setIndex((i) => wrap(i + 1, count)), remaining.current);
-    return () => {
-      window.clearTimeout(id);
-      remaining.current = remainingAfter(remaining.current, performance.now() - startedAt);
-    };
-  }, [runs, index, intervalMs, count]);
-
-  useLayoutEffect(() => {
-    const from = shown.current;
-    shown.current = index;
-    const root = rootRef.current;
-    if (from === index || !root) return;
-    const pick = (attr: string) => [...root.querySelectorAll<HTMLElement>(`[${attr}]`)];
-    const layers = pick("data-rotator-layer");
-    const media = pick("data-rotator-media");
-    const captions = pick("data-rotator-caption");
-    const written = [...layers, ...media, ...captions];
-    change.current?.kill();
-    gsap.set(written, { clearProps: WRITTEN });
-    if (reduced || s.rotateMs <= 0) return;
-
-    const duration = s.rotateMs / 1000;
-    const fade = s.rotateStyle === "fade";
-    const ease = fade ? "none" : EASES[s.ease].gsap;
-    const settle = 1 + s.settle / 100;
-    const tl = gsap.timeline({ onComplete: () => gsap.set(written, { clearProps: WRITTEN }) });
-    change.current = tl;
-    const [incoming, outgoing] = [layers[index], layers[from]];
-    tl.set(outgoing, { visibility: "visible", zIndex: 1 }, 0).set(incoming, { zIndex: 2 }, 0);
-    if (captions.length) tl.set(captions[from], { visibility: "visible" }, 0);
-    if (fade) {
-      tl.fromTo([incoming, captions[index]].filter(Boolean), { opacity: 0 }, { opacity: 1, duration, ease }, 0);
-      tl.fromTo([outgoing, captions[from]].filter(Boolean), { opacity: 1 }, { opacity: 0, duration, ease }, 0);
-      return;
-    }
-    if (s.photoMask === "wipe") {
-      tl.fromTo(incoming, { clipPath: `inset(100% 0% 0% 0% ${RADIUS})` }, { clipPath: `inset(0% 0% 0% 0% ${RADIUS})`, duration, ease }, 0);
-      tl.fromTo(outgoing, { clipPath: `inset(0% 0% 0% 0% ${RADIUS})` }, { clipPath: `inset(0% 0% 100% 0% ${RADIUS})`, duration, ease }, 0);
-      if (settle > 1) tl.fromTo(media[index], { scale: settle }, { scale: 1, duration, ease }, 0);
-    } else {
-      tl.fromTo(media[index], { yPercent: 110, scale: settle }, { yPercent: 0, scale: 1, duration, ease }, 0);
-      tl.fromTo(media[from], { yPercent: 0 }, { yPercent: -110, duration, ease }, 0);
-    }
-    if (captions.length) {
-      tl.fromTo(captions[index], { yPercent: 110 }, { yPercent: 0, duration, ease }, 0);
-      tl.fromTo(captions[from], { yPercent: 0 }, { yPercent: -110, duration, ease }, 0);
-    }
-    // Only the photo index starts a change; the settings are read as it starts.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [index]);
-
-  useEffect(() => () => void change.current?.kill(), []);
+  const { index, step, runs, intervalMs } = useRotator(rootRef, frameRef, { count, s, reduced, paused, hovered, focused });
 
   const go = (next: number, focusDot: boolean) => {
-    const target = wrap(next, count);
-    setIndex(target);
+    const target = step(next);
     if (focusDot) rootRef.current?.querySelector<HTMLElement>(`[data-rotator-dot="${target}"]`)?.focus();
   };
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
@@ -216,7 +126,7 @@ export function RotatingPhoto({ card, photos, boxes, s, reduced }: Props) {
                 data-rotator-dot={i}
               >
                 {i === index ? (
-                  <span className="relative block h-1.5 w-5 overflow-hidden rounded-full" style={track}>
+                  <span className="relative block h-1.5 w-5 overflow-hidden rounded-full" style={rotatorTrack}>
                     <span
                       key={`${index}-${intervalMs}`}
                       className="absolute inset-0 rounded-full bg-accent"
