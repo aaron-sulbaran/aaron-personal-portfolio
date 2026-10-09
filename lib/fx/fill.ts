@@ -30,6 +30,10 @@ export const FILL_PICK: Record<ControlKey, ControlFill> = {
 export const CTA_CLASS =
   "inline-flex h-11 items-center gap-3 rounded-full pl-5 pr-1.5 font-label text-label-lg leading-6 text-accent [box-shadow:inset_0_0_0_1px_var(--color-border)]";
 export const CTA_OVER_CLASS = "flex items-center gap-3 pl-5 pr-1.5 leading-6";
+// The same pill with no arrow: the label alone, evenly padded (no seed, so the circle sweeps in from the right).
+export const CTA_LABEL_CLASS =
+  "inline-flex h-11 items-center rounded-full px-5 font-label text-label-lg leading-6 text-accent [box-shadow:inset_0_0_0_1px_var(--color-border)]";
+export const CTA_LABEL_OVER_CLASS = "flex items-center px-5 leading-6";
 
 const px = (n: number) => `${Math.round(n * 100) / 100}px`;
 

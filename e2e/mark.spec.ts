@@ -78,7 +78,8 @@ for (const mode of ["scene", "no-webgl"] as const) {
       await expect(dialog).toBeVisible();
       await expect(dialog.locator("[data-mark-strike]")).toHaveAttribute("data-mode", "cel");
       await expect.poll(() => dialog.locator('[data-card="surface"]').evaluate((el) => getComputedStyle(el).opacity), { timeout: 4000 }).toBe("1");
-      await expect(dialog.getByRole("button", { name: siteContent.mark.button }).locator("svg")).not.toHaveCount(0);
+      await expect(dialog.getByRole("button", { name: siteContent.mark.button })).toBeVisible();
+      await expect(dialog.getByRole("button", { name: siteContent.mark.button }).locator("svg")).toHaveCount(0);
       expect(Math.abs((await scrollY(page)) - Y)).toBeLessThan(1);
       await expect.poll(() => page.evaluate(() => document.querySelector<SVGElement>("[data-mark-ring]")?.style.opacity ?? "0")).toBe("0");
       await dialog.getByRole("button", { name: CLOSE }).click();
