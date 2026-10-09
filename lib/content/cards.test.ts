@@ -32,27 +32,23 @@ describe("the fourteen cards", () => {
     expect(Object.fromEntries(keys.map((key) => [key, cards[key].modal.kind]))).toEqual({
       ...Object.fromEntries(STRAND.map((key) => [key, "logo"])), travel: "photo", misuki: "photo", jobs: "timeline",
     });
-    expect(cards.talos.visual).toEqual({ kind: "logo", logo: null, tile: "anvil" });
+    expect(cards.talos.visual).toEqual({ kind: "logo", logo: { src: "/work/logos/talos/mark.svg", srcDark: null, width: 512, height: 512 }, tile: "anvil" });
   });
 
-  it("lead with the HSF speaking photo, cropped 3:4 inside its source", () => {
+  it("lead with the HSF speaking picture, exported 3:4 from the original", () => {
     const visual = cards.mentorship.visual;
     const photo = visual.kind === "photo" ? visual.photo : null;
-    const crop = photo?.crop;
-    if (!photo || !crop) throw new Error("the lead card needs its cropped photo");
-    expect(photo.src).toBe("/photos/hsf-speaking.jpeg");
-    expect(jpegSize(join(process.cwd(), "public", photo.src))).toEqual([photo.width, photo.height]);
-    expect(crop).toEqual({ x: 220, y: 0, w: 543, h: 724 });
-    expect(crop.x + crop.w).toBeLessThanOrEqual(photo.width);
-    expect(crop.y + crop.h).toBeLessThanOrEqual(photo.height);
-    expect(photo.alt).toBe("Me speaking into a microphone at a Hispanic Scholarship Fund event");
+    if (!photo) throw new Error("the lead card needs its picture");
+    expect(photo).toEqual({ src: "/photos/cards/mentorship-picture.jpg", width: 1200, height: 1600, crop: null, alt: "Me speaking into a microphone at a Hispanic Scholarship Fund event" });
+    expect(jpegSize(join(process.cwd(), "public", photo.src))).toEqual([1200, 1600]);
   });
 
   it("keep every card picture 3:4 and at most three modal photos after it (four on the jobs timeline, whose picture is the circles), each tied to a block or, on the jobs card, a timeline entry", () => {
     for (const key of keys) {
       const { visual, modal } = cards[key];
       const picture = visual.kind === "photo" ? visual.photo : null;
-      if (picture?.crop) expect(picture.crop.w / picture.crop.h, key).toBeCloseTo(3 / 4, 2);
+      if (picture) expect(Math.abs(picture.width - (picture.height * 3) / 4), key).toBeLessThanOrEqual(1);
+      if (picture) expect(picture.crop, key).toBeNull();
       expect(modal.photos.length, key).toBeLessThanOrEqual(modal.kind === "timeline" ? 4 : 3);
       for (const photo of modal.photos) {
         if (photo.block !== undefined) expect(photo.block, key).toBeLessThan(modal.blocks.length);
@@ -81,11 +77,11 @@ describe("the fourteen cards", () => {
     for (const key of keys) if (cards[key].modal.picture) expect(cards[key].visual.kind, key).toBe("photo");
   });
 
-  it("mirror only the Building in public picture", () => {
-    expect(keys.filter((key) => { const visual = cards[key].visual; return visual.kind === "photo" && visual.flipX; })).toEqual(["building-in-public"]);
+  it("mirror no picture at draw time: the export baked the Building in public mirror in", () => {
+    expect(keys.filter((key) => { const visual = cards[key].visual; return visual.kind === "photo" && visual.flipX; })).toEqual([]);
   });
 
-  it("name the cards still waiting on C4's assets", () => {
+  it("leave no card waiting on an asset", () => {
     const awaiting = keys.filter((key) => {
       const visual = cards[key].visual;
       if (visual.kind === "photo") return visual.photo === null;
@@ -93,12 +89,12 @@ describe("the fourteen cards", () => {
       if (visual.kind === "circles") return cards.jobs.timeline.some((entry) => entry.logo === null);
       return false;
     });
-    expect(awaiting).toEqual(["min-max", "band", "talos", "travel", "capital-one", "hackathons", "anthropic", "misuki", "ieee", "jobs", "fsdatalink", "building-in-public"]);
+    expect(awaiting).toEqual([]);
   });
 
   it("hold the approved words (spot checks)", () => {
     expect(cards.ieee.book.meta).toBe("President, Corporate Director, and [AO](tip:ieee-ao), 2023 to 2026");
-    expect(cards["min-max"].visual).toEqual({ kind: "logo", logo: null, tile: "plain", subtitle: "minimize spend. Maximize rewards" });
+    expect(cards["min-max"].visual).toEqual({ kind: "logo", logo: { src: "/work/logos/min-max/mark.svg", srcDark: "/work/logos/min-max/mark-on-dark.svg", width: 548, height: 497 }, tile: "plain", subtitle: "minimize spend. Maximize rewards" });
     expect(cards["this-site"].book.meta).toBe("Portfolio (design playground), 2026");
     expect(cards.jobs.book).toEqual({ title: "\"unflattering\" jobs that paid for school", meta: "Popeyes to Aritzia, 2021 to 2026" });
     expect(cards.band.modal.blocks[1]).toContain("an invitational I *know* it had been chasing");
