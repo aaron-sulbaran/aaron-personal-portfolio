@@ -5,7 +5,7 @@ import type { CSSProperties } from "react";
 import { useCloseHint } from "@/components/PhotoModal";
 import { gallerySizes, type Box } from "./rows";
 import { partId } from "./timing";
-import { runsOf, type LabCard, type LabPhoto, type Run } from "./cards";
+import { LAB_COPY, runsOf, type LabCard, type LabPhoto, type Run } from "./cards";
 
 // The pieces both layouts share: the header (the logo slot, the title, the
 // meta line in the label face), a text block, a photo with its caption, the
@@ -43,20 +43,22 @@ function Runs({ runs }: { runs: Run[] }) {
   );
 }
 
-export function Header({ card, theme, compact }: { card: LabCard; theme: "light" | "dark"; compact: boolean }) {
+// The pager's header is tighter: a smaller logo tile and title, clear of
+// the close button, so the pages keep the height.
+export function Header({ card, theme, compact, tight = false }: { card: LabCard; theme: "light" | "dark"; compact: boolean; tight?: boolean }) {
   return (
-    <div className={`flex items-center gap-5 ${compact ? "" : "pr-12"}`}>
+    <div className={`flex items-center ${tight ? "gap-4 pr-12" : "gap-5"} ${compact || tight ? "" : "pr-12"}`}>
       {card.flownPhoto === undefined && card.logo && (
-        <div data-tile-slot="work" data-mask-flown="" className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl">
+        <div data-tile-slot="work" data-mask-flown="" className={`relative shrink-0 overflow-hidden rounded-xl ${tight ? "h-14 w-14" : "h-20 w-20"}`}>
           <span aria-hidden="true" className="absolute inset-0" style={workTint} />
-          <div className="absolute inset-0 flex items-center justify-center p-2.5">
+          <div className={`absolute inset-0 flex items-center justify-center ${tight ? "p-2" : "p-2.5"}`}>
             <Image src={theme === "dark" ? card.logo.dark : card.logo.light} alt={`${card.title} logo`} width={120} height={120} className="h-auto w-[86%] object-contain opacity-90" />
           </div>
         </div>
       )}
-      <div className="flex min-w-0 flex-col gap-1.5">
+      <div className={`flex min-w-0 flex-col ${tight ? "gap-1" : "gap-1.5"}`}>
         <div data-mask={partId.title} data-mask-kind="text">
-          <h2 data-mask-inner="" data-mask-split="" className={`font-display leading-tight text-foreground ${compact ? "text-3xl" : "text-4xl"}`}>
+          <h2 data-mask-inner="" data-mask-split="" className={`font-display leading-tight text-foreground ${tight ? "text-[1.75rem]" : compact ? "text-3xl" : "text-4xl"}`}>
             {card.title}
           </h2>
         </div>
@@ -76,6 +78,19 @@ export function TextBlock({ card, block, compact, className = "" }: { card: LabC
       <p data-mask-inner="" data-mask-split="" className={`text-foreground ${compact ? "text-base leading-relaxed" : "text-lg leading-[1.55]"}`}>
         <Runs runs={runsOf(card.blocks[block])} />
       </p>
+    </div>
+  );
+}
+
+// Where a photo has no sentence yet: a marked slot Aaron fills, naming the
+// photo it waits for. Clearly not copy.
+export function Note({ photo, index, compact }: { photo: LabPhoto; index: number; compact: boolean }) {
+  return (
+    <div data-mask={partId.note(index)} data-mask-kind="text" data-mask-clip="" data-note="">
+      <div data-mask-inner="" className={`flex flex-col gap-1 rounded-xl border border-dashed border-muted ${compact ? "px-3.5 py-3" : "px-5 py-4"}`}>
+        <p className={`font-medium text-accent ${compact ? "text-sm" : "text-base"}`}>{LAB_COPY.placeholder}</p>
+        <p className="text-sm leading-snug text-muted">{LAB_COPY.placeholderShows(photo.intended)}</p>
+      </div>
     </div>
   );
 }

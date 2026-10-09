@@ -15,3 +15,9 @@
 .gallery-line-mask + .gallery-line-mask {
   margin-top: -0.08em;
 }
+/* Round four's placeholder and pager controls are blocks with no split
+   paragraph; they clip only while the masks run, so a focus ring is never
+   cut afterwards. */
+[data-mask-armed] [data-mask-clip] {
+  overflow: clip;
+}

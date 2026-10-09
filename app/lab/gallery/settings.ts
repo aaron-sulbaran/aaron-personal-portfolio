@@ -115,7 +115,7 @@ const EARLIER = {
   horizontalWidth: 424,
   horizontalShape: "4:3",
   textWidth: 460,
-  photoAlign: "text",
+  photoAlign: "edge",
   slideMs: 360,
   flickPx: 96,
 } as const satisfies Partial<Settings>;
@@ -230,8 +230,11 @@ const RECOMMENDED: Settings = {
 // horizontal photo reads as the same size as a vertical one; anything wider
 // than square takes the horizontal box. The text column is 460px (about 52
 // characters of 18px Inter), so the panel is 916px on an all-vertical card
-// like Capital One and 1020px on a card with a horizontal photo; a narrower
-// photo sits against its words. Rows 64px apart. Phone: a pager, one photo
+// like Capital One and 1020px on a card with a horizontal photo. A narrower
+// photo sits against the panel edge, so the photo, its caption and the title
+// share one edge and the words keep their place on each side (against its
+// words, a vertical photo on a mixed card sat 104px in under a flush title).
+// Rows 64px apart. Phone: a pager, one photo
 // and its words a page, the header fixed above, the stage at most 40
 // percent of the height (every photo whole at 360 to 430 wide), 360ms of
 // travel, a 96px vertical flick to close. Auto-advance off: the words
@@ -245,7 +248,7 @@ const ROUND_FOUR: Settings = {
   horizontalWidth: 424,
   horizontalShape: "4:3",
   textWidth: 460,
-  photoAlign: "text",
+  photoAlign: "edge",
   wideFrom: 1,
   rowGap: 64,
   stageMaxHeight: 40,
@@ -362,8 +365,8 @@ function roundFourPhone(s: Settings) {
     sheet: "the modal fills the visible height less 24px top and bottom; nothing scrolls but a long page's words",
     header: "fixed above the pages: the logo tile (logo cards), the title, the meta line",
     page: "one photo, its caption and its words; the first page carries the opening blocks, the last the closing ones and the links",
-    stageHeight: `at most ${s.stageMaxHeight}% of the visible height, as tall as the card's tallest photo fitted whole, the same on every page`,
-    fit: "each photo whole inside the inner width and the stage, standing on its caption; never cropped by the stage",
+    stageHeight: `at most ${s.stageMaxHeight}% of the visible height; each page's stage exactly as tall as its photo fitted whole`,
+    fit: "each photo whole inside the inner width and the height, its caption right under it; never cropped by the stage",
     longWords: "scroll inside their own area under the caption; the photo never leaves view",
     controls: "previous and next buttons and the dots in one row under the page, all real buttons, the ends disabled",
     travel: s.slideMs > 0 ? `${s.slideMs}ms, ${EASES[s.ease].css}, the photo and its words together` : "instant",

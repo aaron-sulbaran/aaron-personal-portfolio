@@ -140,16 +140,15 @@ export function uniformColumns(aspects: readonly number[], boxes: Boxes, wideFro
   return { slot, panel: 2 * padding + slot + columnGap + textWidth };
 }
 
-// The pager's stage: every photo of the card fitted whole inside the inner
-// width and the stage height, the stage as tall as the tallest of them, so
-// the stage never changes height between pages and never crops a photo. The
-// height is the cap, or less when the page is too short to leave the words
-// their room, and never below a floor.
+// The pager's stage: each page's photo fitted whole inside the inner width
+// and the height, its stage exactly that tall, so a stage never crops its
+// photo and a horizontal photo leaves its words the room a vertical one
+// would take (the photo and its words travel together, so nothing jumps).
+// The height is the cap, or less when the page is too short to leave the
+// words their room, and never below a floor.
 export function pagerStage(aspects: readonly number[], innerWidth: number, capPx: number, roomPx = Infinity, floorPx = 120) {
   const height = Math.max(floorPx, Math.min(capPx, roomPx));
-  const boxes = aspects.map((aspect) => fitWhole(aspect, innerWidth, height));
-  const tallest = boxes.reduce((most, box) => Math.max(most, box.height), 0);
-  return { boxes, height: tallest };
+  return { boxes: aspects.map((aspect) => fitWhole(aspect, innerWidth, height)), height };
 }
 
 // A box's area against another's, for the readout ("about the same size").

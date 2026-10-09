@@ -105,19 +105,16 @@ describe("boxes", () => {
 });
 
 describe("pagerStage", () => {
-  it("fits every photo whole inside the width and the cap, at the tallest photo's height", () => {
+  it("fits every photo whole inside the width and the cap, each page's stage its own photo's height", () => {
     // IEEE at 390 by 844: inner width 318, the cap 40 percent of 844.
-    const ieee = [1.5, 1.87, 0.75];
-    const stage = pagerStage(ieee, 318, 337.6);
-    for (const box of stage.boxes) {
-      expect(box.width).toBeLessThanOrEqual(318 + 1e-9);
-      expect(box.height).toBeLessThanOrEqual(stage.height + 1e-9);
-    }
+    const stage = pagerStage([1.5, 1.87, 0.75], 318, 337.6);
     expect(stage.height).toBeCloseTo(337.6);
-    // Only horizontal photos: the stage shrinks to the tallest of them.
-    expect(pagerStage([1.5, 1.87], 318, 337.6).height).toBeCloseTo(212);
+    expect(stage.boxes[0]).toEqual({ width: 318, height: 212 });
+    expect(stage.boxes[1].width).toBe(318);
+    expect(stage.boxes[2].height).toBeCloseTo(337.6);
+    expect(stage.boxes[2].width).toBeCloseTo(253.2);
     // A short page leaves the words their room, never under the floor.
-    expect(pagerStage([0.75], 288, 312, 200).height).toBe(200);
+    expect(pagerStage([0.75], 288, 312, 200).boxes[0].height).toBe(200);
     expect(pagerStage([0.75], 288, 312, 60).height).toBe(120);
   });
 
@@ -130,7 +127,7 @@ describe("pagerStage", () => {
           const stage = pagerStage(aspects, inner, height * 0.4);
           stage.boxes.forEach((box, i) => {
             expect(box.width).toBeLessThanOrEqual(inner + 1e-9);
-            expect(box.height).toBeLessThanOrEqual(stage.height + 1e-9);
+            expect(box.height).toBeLessThanOrEqual(height * 0.4 + 1e-9);
             expect(box.width / box.height).toBeCloseTo(aspects[i]);
           });
         }

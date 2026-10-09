@@ -1,37 +1,23 @@
 "use client";
 
-import { useCallback, useLayoutEffect, useMemo, useRef } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { drawnShape, type LabCard } from "./cards";
+import { cardLayout, DESKTOP_PAD, desktopColumns, stepsOf } from "./cardSteps";
 import { DesktopGallery } from "./DesktopGallery";
-import { interleave, panelWidthIn, readingOrder } from "./rows";
 import { CloseHint, Header, Links, TextBlock } from "./parts";
+import { PhonePager } from "./PhonePager";
 import { PhoneStage } from "./PhoneStage";
-import type { Settings } from "./settings";
-import { desktopSteps, phoneSteps, type StepOptions } from "./timing";
+import { EASES, type Settings } from "./settings";
+import { UniformGallery } from "./UniformGallery";
+import { useGalleryMeasure, type Frame, type Measure } from "./useGalleryMeasure";
 import { useMaskIn, type Schedule } from "./useMaskIn";
 
-// What the modal holds: the desktop rows or the phone stage, the masks that
-// bring them in, and the measurements the panel reports (does the first row
-// fit above the fold, where the flight lands, how much of the height the
-// stage takes).
+// What the modal holds: on desktop the round four rows (every photo its own
+// row) or the interleaved rows of rounds one to three; on a phone the round
+// four pager or the earlier stage over a scroll. The masks bring them in and
+// the measurements feed the panel's readout.
 
-export type Frame = { width: number; height: number; scale: number };
-
-export type Measure = {
-  mode: "desktop" | "phone";
-  foldPx: number;
-  // Desktop: the bottom of the first row with a photo. Phone: the top of
-  // the first block's second line, so its first two lines are in view.
-  keyBottomPx: number;
-  fits: boolean;
-  textColumnPx?: number;
-  // Desktop: the bottom of the first photo itself, without its caption.
-  photoBottomPx?: number;
-  stagePx?: number;
-  // Where the flown card picture's slot starts; null when it has no slot on
-  // screen (a phone stage that opens on another photo).
-  flownTopPx?: number | null;
-};
+export type { Frame, Measure };
 
 type Props = {
   card: LabCard;
@@ -41,90 +27,71 @@ type Props = {
   theme: "light" | "dark";
   reduced: boolean;
   frame: Frame;
+  // The panel's width on desktop: the setting, or round four's columns.
+  panelWidth: number;
   runKey: string;
   onSchedule: (schedule: Schedule) => void;
   onMeasure: (measure: Measure) => void;
+  onDismiss: () => void;
 };
 
-// The backdrop's side padding and the panel's padding, by layout.
+// The backdrop's side padding, and on a phone the backdrop's and the panel's
+// padding with the panel's 1px border.
 const DESKTOP_SIDE = 40;
-const DESKTOP_PAD = 40;
-const PHONE_INSET = 72;
+const PHONE_INSET = 74;
 
-export function GalleryContent({ card, shapes, s, phone, theme, reduced, frame, runKey, onSchedule, onMeasure }: Props) {
+export function GalleryContent({ card, shapes, s, phone, theme, reduced, frame, panelWidth, runKey, onSchedule, onMeasure, onDismiss }: Props) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const aspects = useMemo(() => card.photos.map((_, i) => drawnShape(card, i, shapes[i])), [card, shapes]);
-  const rows = useMemo(
-    () => interleave(card.blocks.length, card.photos.map((p, i) => ({ block: p.block, aspect: aspects[i] })), { extrasPerRow: s.extrasPerRow, wideFrom: s.wideFrom, lead: card.flownPhoto, leadMode: s.leadMode }),
-    [card, aspects, s.extrasPerRow, s.wideFrom, s.leadMode],
-  );
-  const order = useMemo(() => readingOrder(rows), [rows]);
-  const hasLinks = card.links.length > 0;
-  const innerWidth = phone ? frame.width - PHONE_INSET : panelWidthIn(frame.width, s.panelWidth, DESKTOP_SIDE) - 2 * DESKTOP_PAD;
+  const layout = useMemo(() => cardLayout(card, aspects, s), [card, aspects, s]);
+  const rows = s.desktopLayout === "rows";
+  const pager = s.phoneLayout === "pager";
+  const innerWidth = phone ? frame.width - PHONE_INSET : Math.max(0, Math.min(panelWidth, frame.width - 2 * DESKTOP_SIDE)) - 2 * DESKTOP_PAD;
 
-  const stepsFor = useCallback(
-    (lines: (id: string) => number) => {
-      const o: StepOptions = { flownPhoto: card.flownPhoto, hasCaption: (p) => !!card.photos[p].caption, hasLinks, lines };
-      return phone ? phoneSteps(card.blocks.length, order[0], { ...o, stageCaption: card.photos.some((p) => p.caption) }) : desktopSteps(rows, o);
-    },
-    [phone, card, hasLinks, rows, order],
-  );
-
+  const stepsFor = useCallback((lines: (id: string) => number) => stepsOf(card, layout, s, phone ? "phone" : "desktop", lines), [card, layout, s, phone]);
   const shapeKey = aspects.map((a) => a.toFixed(3)).join(",");
-  useMaskIn(rootRef, { active: true, reduced, s, runKey: `${runKey}|${phone ? "phone" : "desktop"}|${shapeKey}`, stepsFor, onSchedule });
+  const modeKey = phone ? (pager ? "pager" : "stage") : rows ? "rows" : "interleaved";
+  useMaskIn(rootRef, { active: true, reduced, s, runKey: `${runKey}|${modeKey}|${shapeKey}`, stepsFor, onSchedule });
 
-  const settingsKey = `${s.panelWidth}|${s.photoWidth}|${s.rowGap}|${s.columnGap}|${s.textAlign}|${s.extrasPerRow}|${s.stageMaxHeight}|${s.wideFrom}|${s.wideWidth}|${s.wideMaxHeight}|${s.stackGap}|${s.stageFit}|${s.leadMode}|${shapeKey}`;
-  useLayoutEffect(() => {
-    const root = rootRef.current;
-    const scroller = root?.closest<HTMLElement>("[data-gallery-dialog]");
-    if (!root || !scroller) return;
-    const measure = () => {
-      const top = scroller.getBoundingClientRect().top - scroller.scrollTop * frame.scale;
-      const local = (y: number) => (y - top) / frame.scale;
-      const flown = root.querySelector<HTMLElement>("[data-tile-slot]");
-      if (!phone) {
-        const firstRow = root.querySelector<HTMLElement>("[data-row]");
-        const bottom = firstRow ? local(firstRow.getBoundingClientRect().bottom) : 0;
-        const text = root.querySelector<HTMLElement>('[data-row="pair"] > [data-mask^="block-"]');
-        const firstPhoto = firstRow?.querySelector<HTMLElement>("[data-photo-frame] > div");
-        onMeasure({
-          mode: "desktop",
-          foldPx: frame.height,
-          keyBottomPx: Math.round(bottom),
-          fits: bottom <= frame.height,
-          textColumnPx: text ? Math.round(text.getBoundingClientRect().width / frame.scale) : undefined,
-          photoBottomPx: firstPhoto ? Math.round(local(firstPhoto.getBoundingClientRect().bottom)) : undefined,
-          flownTopPx: flown ? Math.round(local(flown.getBoundingClientRect().top)) : undefined,
-        });
-        return;
-      }
-      const stage = root.querySelector<HTMLElement>("[data-stage-frame]");
-      const block = root.querySelector<HTMLElement>('[data-mask="block-0"] p');
-      const lineHeight = block ? parseFloat(getComputedStyle(block).lineHeight) || 24 : 24;
-      const secondLine = block ? local(block.getBoundingClientRect().top) + 2 * lineHeight : 0;
-      const flownOnStage = card.flownPhoto !== undefined && order[0] === card.flownPhoto;
-      onMeasure({
-        mode: "phone",
-        foldPx: frame.height,
-        keyBottomPx: Math.round(secondLine),
-        fits: secondLine <= frame.height,
-        stagePx: stage ? Math.round(stage.getBoundingClientRect().height / frame.scale) : undefined,
-        flownTopPx: card.flownPhoto === undefined ? (flown ? Math.round(local(flown.getBoundingClientRect().top)) : undefined) : flownOnStage && stage ? Math.round(local(stage.getBoundingClientRect().top)) : null,
-      });
-    };
-    // After the panel's own 280ms entrance, which scales it, and the stage's ease.
-    const id = window.setTimeout(measure, 340 + (phone ? s.stageEaseMs : 0));
-    return () => window.clearTimeout(id);
-  }, [phone, frame.width, frame.height, frame.scale, settingsKey, card, order, onMeasure, s.stageEaseMs]);
+  const settingsKey = `${panelWidth}|${s.photoWidth}|${s.rowGap}|${s.columnGap}|${s.textAlign}|${s.extrasPerRow}|${s.stageMaxHeight}|${s.wideFrom}|${s.wideWidth}|${s.wideMaxHeight}|${s.stackGap}|${s.stageFit}|${s.leadMode}|${s.verticalWidth}|${s.horizontalWidth}|${s.horizontalShape}|${s.textWidth}|${s.photoAlign}|${modeKey}|${shapeKey}`;
+  useGalleryMeasure(rootRef, { phone, pager, frame, card, firstStagePhoto: layout.order[0], settingsKey, delayMs: 340 + (phone && !pager ? s.stageEaseMs : 0), onMeasure });
 
-  // Keyed by card and shapes: React replaces the content whole rather than
-  // patching inside a paragraph SplitText has split.
-  const contentKey = `${card.id}|${shapeKey}|${s.leadMode}`;
+  // Keyed by card, shapes and layout: React replaces the content whole
+  // rather than patching inside a paragraph SplitText has split.
+  const contentKey = `${card.id}|${shapeKey}|${s.leadMode}|${modeKey}`;
 
   if (!phone) {
     return (
       <div key={contentKey} ref={rootRef} className="flex flex-col gap-8">
-        <DesktopGallery card={card} rows={rows} s={s} theme={theme} shapes={shapes} innerWidth={innerWidth} />
+        {rows ? (
+          <UniformGallery card={card} plan={layout.plan} aspects={aspects} s={s} theme={theme} slot={desktopColumns(aspects, s).slot} />
+        ) : (
+          <DesktopGallery card={card} rows={layout.rows} s={s} theme={theme} shapes={shapes} innerWidth={innerWidth} />
+        )}
+      </div>
+    );
+  }
+
+  if (pager) {
+    return (
+      <div key={contentKey} ref={rootRef} className="flex min-h-0 flex-1 flex-col">
+        <PhonePager
+          key={`${card.id}-${runKey}-${s.autoAdvance}`}
+          card={card}
+          pages={layout.pages}
+          aspects={aspects}
+          theme={theme}
+          innerWidth={innerWidth}
+          capPx={(frame.height * s.stageMaxHeight) / 100}
+          slideMs={s.slideMs}
+          flickPx={s.flickPx}
+          ease={EASES[s.ease].css}
+          autoSeconds={s.autoAdvance}
+          startAfterMs={s.landingMs + s.maskMs}
+          reduced={reduced}
+          scale={frame.scale}
+          onDismiss={onDismiss}
+        />
       </div>
     );
   }
@@ -133,9 +100,9 @@ export function GalleryContent({ card, shapes, s, phone, theme, reduced, frame, 
     <div key={contentKey} ref={rootRef} className="mt-12 flex flex-col gap-6">
       <PhoneStage
         key={`${card.id}-${runKey}-${s.autoAdvance}`}
-        photos={order.map((i) => card.photos[i])}
-        aspects={order.map((i) => aspects[i])}
-        order={order}
+        photos={layout.order.map((i) => card.photos[i])}
+        aspects={layout.order.map((i) => aspects[i])}
+        order={layout.order}
         innerWidth={innerWidth}
         maxHeightPx={(frame.height * s.stageMaxHeight) / 100}
         fit={s.stageFit}

@@ -4,14 +4,15 @@ import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 
 import { useReducedMotionLive } from "@/components/soundtrack/useReducedMotionLive";
 import { syncThemeColorMeta, type Theme } from "@/lib/theme";
 import { cardById, drawnShape, shapeLabel } from "./cards";
+import { cardLayout, desktopColumns, stepsOf } from "./cardSteps";
 import { Frame } from "./Frame";
 import { GalleryContent, type Measure } from "./GalleryContent";
 import { GalleryModal } from "./GalleryModal";
-import { interleave, isWide, readingOrder } from "./rows";
+import { boxFor, uniformBoxes } from "./plan";
+import { isWide } from "./rows";
 import { PageBehind } from "./PageBehind";
 import { Panel, type View } from "./Panel";
 import { exportValues, INITIAL, PRESETS, sameSettings, type Settings } from "./settings";
-import { desktopSteps, phoneSteps } from "./timing";
 import { seekMasks, type Schedule } from "./useMaskIn";
 import "./gallery.css";
 
@@ -98,15 +99,15 @@ export function GalleryLab() {
     };
   }, [s, view, measure, schedule, replay]);
 
+  const aspects = useMemo(() => card.photos.map((_, i) => drawnShape(card, i, shapes[i])), [card, shapes]);
   const steps = useMemo(() => {
-    const refs = card.photos.map((p, i) => ({ block: p.block, aspect: drawnShape(card, i, shapes[i]) }));
-    const rows = interleave(card.blocks.length, refs, { extrasPerRow: s.extrasPerRow, wideFrom: s.wideFrom, lead: card.flownPhoto, leadMode: s.leadMode });
-    const o = { flownPhoto: card.flownPhoto, hasCaption: (p: number) => !!card.photos[p].caption, hasLinks: card.links.length > 0 };
-    return {
-      desktop: desktopSteps(rows, o),
-      phone: phoneSteps(card.blocks.length, readingOrder(rows)[0], { ...o, stageCaption: card.photos.some((p) => p.caption) }),
-    };
-  }, [card, shapes, s.extrasPerRow, s.wideFrom, s.leadMode]);
+    const layout = cardLayout(card, aspects, s);
+    return { desktop: stepsOf(card, layout, s, "desktop"), phone: stepsOf(card, layout, s, "phone") };
+  }, [card, aspects, s]);
+  // Round four sizes the panel from the card's photo column and the text
+  // column; the earlier rounds from the panel width setting.
+  const panelWidth = s.desktopLayout === "rows" ? desktopColumns(aspects, s).panel : s.panelWidth;
+  const boxes = uniformBoxes(s.verticalWidth, s.horizontalWidth, s.horizontalShape);
   const preset = PRESETS.find((p) => sameSettings(p.settings, s));
   // The live run's steps carry the measured line counts; the other layout's
   // count every part as one line.
@@ -114,10 +115,16 @@ export function GalleryLab() {
   const values = {
     ...exportValues(s, preset ? preset.name : "custom", theme, live, card.name),
     shapesOnThisCard: card.photos.map((p, i) => {
-      const aspect = drawnShape(card, i, shapes[i]);
+      const aspect = aspects[i];
+      if (s.desktopLayout === "rows") {
+        const box = boxFor(aspect, boxes, s.wideFrom);
+        const which = box === boxes.horizontal ? "the horizontal box" : "the vertical box";
+        return `${p.intended}: ${shapeLabel(aspect)}, ${i === card.flownPhoto ? "the flown card picture, first row, " : ""}drawn in ${which} (${box.width} by ${Math.round(box.height)}px)`;
+      }
       const where = i === card.flownPhoto ? `the flown card picture, leading ${s.leadMode === "title" ? "beside the title" : "beside the first block"}` : isWide(aspect, s.wideFrom) ? "spans the row" : "beside its paragraph";
       return `${p.intended}: drawn ${shapeLabel(aspect)}, ${where}`;
     }),
+    ...(s.desktopLayout === "rows" ? { panelOnThisCard: `${panelWidth}px asked, ${measure?.panelPx ?? "unmeasured"}px drawn` } : {}),
   };
 
   const close = useCallback(() => setViewState((v) => ({ ...v, open: false })), []);
@@ -131,8 +138,16 @@ export function GalleryLab() {
           return (
             <>
               <PageBehind compact={frame.width < BREAKPOINT} onOpen={open} />
-              <GalleryModal open={view.open} onClose={close} reduced={reduced} compact={phone} panelWidth={s.panelWidth} label={`${card.title}, photos and story`}>
-                <GalleryContent card={card} shapes={shapes} s={s} phone={phone} theme={theme} reduced={reduced} frame={frame} runKey={runKey} onSchedule={setSchedule} onMeasure={setMeasure} />
+              <GalleryModal
+                open={view.open}
+                onClose={close}
+                reduced={reduced}
+                compact={phone}
+                panelWidth={panelWidth}
+                sheetHeight={phone && s.phoneLayout === "pager" ? frame.height - 48 : undefined}
+                label={`${card.title}, photos and story`}
+              >
+                <GalleryContent card={card} shapes={shapes} s={s} phone={phone} theme={theme} reduced={reduced} frame={frame} panelWidth={panelWidth} runKey={runKey} onSchedule={setSchedule} onMeasure={setMeasure} onDismiss={close} />
               </GalleryModal>
             </>
           );
