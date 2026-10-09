@@ -11,9 +11,11 @@ import { areaRatio, HORIZONTAL_SHAPES, uniformBoxes, type HorizontalShape } from
 import {
   ALIGN_LABELS,
   DESKTOP_LABELS,
+  DIRECTION_LABELS,
   EASES,
   EXTRAS_LABELS,
   FIT_LABELS,
+  GROUPING_LABELS,
   LEAD_LABELS,
   PHONE_LABELS,
   PHOTO_ALIGN_LABELS,
@@ -142,7 +144,7 @@ export function Panel({ s, view, theme, osReduced, phone, measure, doneAtMs, val
       </Group>
 
       {(s.desktopLayout === "rows" || s.phoneLayout === "pager") && (
-        <Group title="Rotating photos (round 5)">
+        <Group title="Rotating photos (rounds 5 and 6)">
           <RotateControls s={s} set={set} />
         </Group>
       )}
@@ -159,6 +161,7 @@ export function Panel({ s, view, theme, osReduced, phone, measure, doneAtMs, val
           hint={s.phoneLayout === "pager" ? "At most this much of the visible height; each page's stage is exactly its photo fitted whole, so no photo is ever cropped." : undefined}
           onChange={set("stageMaxHeight")}
         />
+        {s.phoneLayout === "pager" && s.extras === "rotate" && <GroupingControls s={s} set={set} />}
         {s.phoneLayout === "pager" ? (
           <>
             <Slider label="Page travel" value={s.slideMs} {...range("slideMs")} format={(n) => (n === 0 ? "instant" : ms(n))} hint="The photo and its words move together, on the mask ease." onChange={set("slideMs")} />
@@ -187,6 +190,7 @@ export function Panel({ s, view, theme, osReduced, phone, measure, doneAtMs, val
         <Field label="Photo mask">
           <Select label="Photo mask" value={s.photoMask} options={options(PHOTO_MASK_LABELS)} onChange={set("photoMask")} />
         </Field>
+        <DirectionControls s={s} set={set} />
         <Slider label="Settle" value={s.settle} {...range("settle")} format={(n) => (n === 0 ? "off" : `${(1 + n / 100).toFixed(3)} to 1`)} hint="A time-based scale on each photo over its mask; never scroll-linked." onChange={set("settle")} />
         <Field label="Ease">
           <Select label="Ease" value={s.ease} options={options({ site: EASES.site.name, power3: EASES.power3.name })} onChange={set("ease")} />
@@ -317,12 +321,61 @@ function InterleavedControls({ s, set }: { s: Settings; set: Set }) {
   );
 }
 
+// Round six: which way each part's reveal travels. Left to right is Aaron's
+// pick; bottom up is rounds one to five, kept to compare.
+const DIRECTIONS = [
+  { key: "photoDirection", label: "Photo reveal", hint: "The photo mask's clip edge (or its move in) as each photo masks in." },
+  { key: "rotateDirection", label: "Rotator change", hint: "Left to right: one edge crosses the frame, the new photo left of it, the old clearing to the right." },
+  { key: "captionDirection", label: "Caption", hint: "A caption's mask-in, and its change in a rotator." },
+  { key: "textDirection", label: "Text", hint: "The title, meta line, words, links and controls; each line's clip opens in place, same staggers." },
+] as const;
+
+function DirectionControls({ s, set }: { s: Settings; set: Set }) {
+  return (
+    <>
+      {DIRECTIONS.map(({ key, label, hint }) => (
+        <Field key={key} label={`${label} travels`} hint={hint}>
+          <Segmented options={["ltr", "up"] as const} value={s[key]} format={(d) => DIRECTION_LABELS[d]} onChange={set(key)} />
+        </Field>
+      ))}
+    </>
+  );
+}
+
+// Round six: how a group of photos sits in the pager.
+const GROUPING_HINTS: Record<Settings["phoneGrouping"], string> = {
+  paragraph: "A page holds one paragraph; a group turns inside the page's stage on the desktop rules, small marks in its corner, a tap stepping it. The dots and arrows only change pages.",
+  photo: "A page a photo, but only a group's first page carries the words; its later pages show the photo larger with its caption as the only words.",
+  strip: "A page a paragraph with the group's first photo; the rest follow under the words as a strip of smaller frames, two whole and a third peeking, each with its caption. The words scroll if needed.",
+  repeat: "Round five: a page a photo, a group's pages repeating its words.",
+};
+
+function GroupingControls({ s, set }: { s: Settings; set: Set }) {
+  return (
+    <>
+      <Field label="Phone grouping" hint={GROUPING_HINTS[s.phoneGrouping]}>
+        <Select label="Phone grouping" value={s.phoneGrouping} options={options(GROUPING_LABELS)} onChange={set("phoneGrouping")} />
+      </Field>
+      {s.phoneGrouping === "photo" && (
+        <Slider
+          label="Stage on a photo-only page"
+          value={s.wordlessMaxHeight}
+          {...RANGES.wordlessMaxHeight}
+          format={(n) => `${n}% of the height`}
+          hint="At most this much, since the page has no words. A horizontal photo is held by the width first, so only a vertical one grows."
+          onChange={set("wordlessMaxHeight")}
+        />
+      )}
+    </>
+  );
+}
+
 // Round five: what a photo with no words of its own gets, and how a frame's
 // photos take turns. The frame itself follows from the boxes above.
 function RotateControls({ s, set }: { s: Settings; set: Set }) {
   return (
     <>
-      <Field label="A photo with no words of its own" hint="Round 5 takes turns: on desktop the photos rotate in one frame beside the words, which never change; on a phone each still gets its own page, the words repeating.">
+      <Field label="A photo with no words of its own" hint="Rounds 5 and 6 take turns: on desktop the photos rotate in one frame beside the words, which never change; on a phone as the phone grouping says.">
         <Segmented options={["rotate", "placeholder"] as const} value={s.extras} format={(e) => EXTRAS_LABELS[e]} onChange={set("extras")} />
       </Field>
       {s.extras === "rotate" && (
