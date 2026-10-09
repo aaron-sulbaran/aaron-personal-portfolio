@@ -124,3 +124,28 @@ export function rubberBand(dx: number, index: number, count: number) {
   const pastEnd = index >= count - 1 && dx < 0;
   return pastStart || pastEnd ? dx / 3 : dx;
 }
+
+// Round five's rotating frame on desktop: its photos take turns on a timer
+// that loops, and the timer runs only when it has two photos or more, the
+// reader has not asked for reduced motion or pressed pause, the start delay
+// after the landing has passed, nothing hovers or keyboard-focuses it, and at
+// least a third of the frame is on screen.
+export const ROTATOR_VISIBLE = 1 / 3;
+
+export interface RotatorGate {
+  count: number;
+  reduced: boolean;
+  started: boolean;
+  paused: boolean;
+  hovered: boolean;
+  focused: boolean;
+  visible: boolean;
+}
+
+export function rotatorRuns(g: RotatorGate): boolean {
+  return g.count > 1 && !g.reduced && g.started && !g.paused && !g.hovered && !g.focused && g.visible;
+}
+
+// The time left on the current photo once the timer stops: what ran is
+// spent, so a pause resumes where it left off rather than from the top.
+export const remainingAfter = (remainingMs: number, ranMs: number) => Math.max(0, remainingMs - Math.max(0, ranMs));

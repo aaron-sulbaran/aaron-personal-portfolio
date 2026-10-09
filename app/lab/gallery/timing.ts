@@ -56,6 +56,8 @@ export const partId = {
   links: "links",
   note: (p: number) => `note-${p}`,
   pager: "pager",
+  // Round five: a rotating frame's dots and pause button, named by its first photo.
+  rotator: (p: number) => `rotator-${p}`,
 };
 
 export interface StepOptions {
@@ -113,14 +115,17 @@ export function phoneSteps(blockCount: number, firstStagePhoto: number | undefin
 // links.
 function slideParts(slide: Slide, o: StepOptions): MaskPart[] {
   const block = (b: number) => part(partId.block(b), o);
-  const middle = slide.own === undefined ? part(partId.note(slide.photo), o) : block(slide.own);
-  return [...photoParts(slide.photo, o), ...slide.before.map(block), middle, ...slide.after.map(block)];
+  // Round five never shows a placeholder; a group with no block has no words.
+  const middle = slide.own !== undefined ? [block(slide.own)] : slide.photos ? [] : [part(partId.note(slide.photo), o)];
+  return [...photoParts(slide.photo, o), ...slide.before.map(block), ...middle, ...slide.after.map(block)];
 }
 
+// Round five: a row whose photos take turns masks its first photo, caption
+// and words as round four does, then its dots and pause button with them.
 export function planSteps(plan: Plan, o: StepOptions): MaskStep[] {
   const steps: MaskStep[] = [[part(partId.title, o)], [part(partId.meta, o)]];
   for (const b of plan.intro) steps.push([part(partId.block(b), o)]);
-  for (const slide of plan.slides) steps.push(slideParts(slide, o));
+  for (const slide of plan.slides) steps.push([...slideParts(slide, o), ...((slide.photos?.length ?? 1) > 1 ? [{ id: partId.rotator(slide.photo) }] : [])]);
   for (const b of plan.closing) steps.push([part(partId.block(b), o)]);
   if (o.hasLinks) steps.push([part(partId.links, o)]);
   return steps;
