@@ -11,8 +11,10 @@ import { Kicker } from "./sections/Kicker";
 // from 1280; below 1024 even 2xl's "name@" outgrows the cell, so it is xl and
 // wraps after the at sign. break-words only ever acts on a cell narrower than
 // any segment (a 360px phone). The arrow's box is one line of the value tall,
-// so it sits centered on the first line whether or not the value wraps.
-const VALUE_SIZE = "text-xl lg:text-2xl xl:text-3xl";
+// so it sits centered on the first line whether or not the value wraps. On a
+// phone the label column is narrow and the value a step smaller below 400px,
+// so "@imaaronsulbaran" (the longest handle) stays on one line from 360 up.
+const VALUE_SIZE = "text-lg min-[400px]:text-xl lg:text-2xl xl:text-3xl";
 
 // A mailto opens in place; every web link opens in a new tab.
 const isWeb = (href: string) => href.startsWith("https://");
@@ -76,7 +78,7 @@ export function Connect() {
               >
                 <span className="-my-[0.15em] flex min-w-0 flex-1 overflow-clip py-[0.15em]">
                   <span data-sections-rowinner className="flex min-w-0 flex-1 items-baseline gap-4">
-                    <span className="w-28 shrink-0 font-label text-label text-muted md:w-32">{link.label}</span>
+                    <span className="w-20 shrink-0 font-label text-label text-muted sm:w-28 md:w-32">{link.label}</span>
                     <span data-connect-value className={`min-w-0 flex-1 break-words font-display ${VALUE_SIZE}`}>
                       {breakAfterAt(link.handle)}
                     </span>
