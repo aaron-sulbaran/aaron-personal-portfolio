@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import { SiteNav } from "@/components/SiteNav";
 import { MenuPill } from "@/components/menu/MenuPill";
 import { CustomCursor } from "@/components/CustomCursor";
+import { InlineLayer } from "@/components/inline/InlineLayer";
 import { siteContent } from "@/lib/content";
 import { profaBlack, profaBold } from "@/lib/fonts";
 import { HOLDING_MODE } from "@/lib/holding";
@@ -62,6 +63,7 @@ export default function RootLayout({
         {!HOLDING_MODE && <SiteNav />}
         {!HOLDING_MODE && <MenuPill />}
         <CustomCursor />
+        {!HOLDING_MODE && <InlineLayer />}
         {children}
       </body>
     </html>
