@@ -10,8 +10,6 @@ describe("the footer's last updated month", () => {
   });
 
   it("reads as the tagline", () => {
-    expect(siteContent.footer.tagline(lastUpdatedMonth("2026-09-29T15:00:00.000Z"))).toBe(
-      "This site grows with me. Last updated September 2026",
-    );
+    expect(siteContent.footer.tagline(lastUpdatedMonth("2026-09-29T15:00:00.000Z"))).toBe("Last updated September 2026");
   });
 });
