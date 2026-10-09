@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import type { Theme } from "@/lib/theme";
 import { ConnectRow } from "./ConnectRow";
 import { FOOTER_COPY } from "./content";
@@ -33,6 +33,7 @@ type Props = {
   reduced: boolean;
   replay: number;
   drop: number; // the panel's "Drop the period", counted
+  backdrop: BackdropKind | null; // what the field is drawn with, as the backdrop reported it
   forceStandIn: boolean;
   onBackdrop: (kind: BackdropKind) => void;
   onReadout: (r: Readout) => void;
@@ -47,7 +48,11 @@ function fieldMask(s: FooterSettings, geo: WordGeometry, size: number, share: nu
   return { maskImage: image, WebkitMaskImage: image };
 }
 
-export function FooterStage({ s, typeface, theme, reduced, replay, drop, forceStandIn, onBackdrop, onReadout }: Props) {
+// The word's padded box, stage px, for the hero name's surface: as the
+// hero pads its lockup (COIL.lockup.pad, 0.04 of the size).
+const SURFACE_PAD = 0.04;
+
+export function FooterStage({ s, typeface, theme, reduced, replay, drop, backdrop, forceStandIn, onBackdrop, onReadout }: Props) {
   const stage = useRef<HTMLElement>(null);
   const bandRef = useRef<HTMLDivElement>(null);
   const [box, setBox] = useState({ w: 0, h: 0, bandTop: 0 });
@@ -97,7 +102,26 @@ export function FooterStage({ s, typeface, theme, reduced, replay, drop, forceSt
     wordTop: baselineY - ink.top * size,
     clipBottom: s.connect === "below" ? Math.min(riseFloor, box.bandTop + band.height) : riseFloor,
   };
-  const depths = fieldDepths(s.field);
+  // The hero backdrop draws the field at each depth itself (behind the
+  // footer, and inside the letters with the name's surface).
+  const heroGl = backdrop === "webgl" && s.field.backdrop === "hero";
+  const depths = fieldDepths(s.field, heroGl);
+  const clipping = s.field.on && s.field.ending === "clip";
+  const wordW = unitWidth * size;
+  const pad = SURFACE_PAD * size;
+  const wordTop = geo.wordTop;
+  const letters = useMemo(
+    () =>
+      clipping
+        ? {
+            band: wordTop - 2,
+            rect: { x: (box.w - wordW) / 2 - pad, y: wordTop - pad, w: wordW + 2 * pad, h: baselineY - wordTop + 2 * pad },
+            intensity: s.field.letterIntensity,
+            surface: s.field.nameSurface,
+          }
+        : null,
+    [clipping, wordTop, box.w, wordW, pad, baselineY, s.field.letterIntensity, s.field.nameSurface],
+  );
 
   const spanPct = box.w ? ((unitWidth * size) / box.w) * 100 : 0;
   const croppedPct = croppedShare(ink, restInk, s.floor) * 100;
@@ -113,7 +137,19 @@ export function FooterStage({ s, typeface, theme, reduced, replay, drop, forceSt
       {s.field.on && box.w > 0 && (
         <div className="pointer-events-none absolute inset-0" style={fieldMask(s, geo, size, depths.backdropShare)}>
           <div className="absolute inset-0" style={s.field.flip ? { transform: "scaleY(-1)" } : undefined}>
-            <FieldBackdrop theme={theme} intensity={depths.canvas} drift={s.field.drift} forceStandIn={forceStandIn} reduced={reduced} onKind={onBackdrop} />
+            <FieldBackdrop
+              theme={theme}
+              field={s.field}
+              canvasIntensity={depths.canvas}
+              letters={letters}
+              wordMidY={(geo.wordTop + baselineY) / 2}
+              egg={egg}
+              eggShape={s.egg}
+              unitPx={size}
+              forceStandIn={forceStandIn}
+              reduced={reduced}
+              onKind={onBackdrop}
+            />
           </div>
         </div>
       )}

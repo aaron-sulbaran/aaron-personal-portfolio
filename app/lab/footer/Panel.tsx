@@ -1,16 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import type { DriftPreset } from "@/lib/coil/drift";
 import type { Theme } from "@/lib/theme";
 import { Check, Chip, Field, Segmented, Slider } from "../controls/ui";
 import { EggControls } from "./EggControls";
 import type { BackdropKind } from "./FieldBackdrop";
+import { FieldControls } from "./FieldControls";
 import { FIT_SHARE, type Readout } from "./FooterStage";
 import type { RiseEase } from "./motion";
 import { LettersControls } from "./LettersControls";
 import { PointerControls } from "./PointerControls";
-import { PRESETS, RANGES, exportValues, sameSettings, type ConnectPlacement, type Ending, type FooterSettings, type Ink } from "./settings";
+import { PRESETS, RANGES, exportValues, sameSettings, type ConnectPlacement, type FooterSettings, type Ink } from "./settings";
 import type { Typeface } from "./useTypeface";
 
 export type View = { reduce: boolean; forceStandIn: boolean; collapsed: boolean };
@@ -30,19 +30,6 @@ type Props = {
   onDrop: () => void;
 };
 
-const BACKDROP_NOTE: Record<BackdropKind, string> = {
-  webgl: "Backdrop: the site's field shader, live in WebGL 2.",
-  standin: "Backdrop: the poster stand-in (no WebGL 2 in this browser), recolored and drifted by CSS.",
-  "standin-forced": "Backdrop: the poster stand-in, forced (what a browser without WebGL 2 shows).",
-};
-
-const ENDING_LABELS: Record<Ending, string> = { under: "fades under", clip: "clipped by the letters", above: "dies out above" };
-const ENDING_HINTS: Record<Ending, string> = {
-  under: "The field runs down behind the letters and is gone by the baseline; the letters are ink on top.",
-  clip: "The field ends at the cap line outside the letters and keeps going inside them: the letters are windows onto it.",
-  above: "The field is gone before the letters start; they stand on paper.",
-};
-
 const fx = (digits: number, unit = "") => (n: number) => `${n.toFixed(digits)}${unit}`;
 const ms = (n: number) => `${Math.round(n)}ms`;
 
@@ -53,7 +40,6 @@ export function Panel({ s, typeface, view, theme, backdrop, readout, systemReduc
   const faceName = "label" in typeface ? `${typeface.label} (${typeface.kind})` : typeface.kind;
   const values = exportValues(s, preset ? preset.name : "custom", theme, backdropName, readout, faceName);
   const set = (patch: Partial<FooterSettings>) => edit((x) => ({ ...x, ...patch }));
-  const setField = (patch: Partial<FooterSettings["field"]>) => edit((x) => ({ ...x, field: { ...x.field, ...patch } }));
   const R = RANGES;
 
   const copy = async () => {
@@ -150,27 +136,7 @@ export function Panel({ s, typeface, view, theme, backdrop, readout, systemReduc
       </Section>
 
       <Section title="The field">
-        <Check label="Field behind the footer" checked={s.field.on} onChange={(on) => setField({ on })} />
-        <p className="leading-snug text-muted">{s.field.on ? (backdrop ? BACKDROP_NOTE[backdrop] : "Backdrop: starting.") : "Backdrop: off."}</p>
-        {s.field.on && (
-          <>
-            <Check label="Force the poster stand-in" checked={view.forceStandIn} onChange={(forceStandIn) => setView((v) => ({ ...v, forceStandIn }))} />
-            <Field label="How it ends" hint={ENDING_HINTS[s.field.ending]}>
-              <Segmented options={["under", "clip", "above"] as readonly Ending[]} value={s.field.ending} format={(e) => ENDING_LABELS[e]} onChange={(ending) => setField({ ending })} />
-            </Field>
-            <Slider label="Intensity behind the footer" value={s.field.intensity} {...R.intensity} format={fx(2)} hint="1 is the hero's field; 0 is paper; above 1 pushes it further from paper." onChange={(intensity) => setField({ intensity })} />
-            {s.field.ending === "clip" && (
-              <Slider label="Intensity inside the letters" value={s.field.letterIntensity} {...R.intensity} format={fx(2)} hint="The field the letters are windows onto, set apart from the field behind them." onChange={(letterIntensity) => setField({ letterIntensity })} />
-            )}
-            <Slider label="Last fade length" value={s.field.fade} {...R.fade} format={fx(2)} hint="In letter heights, ending where the choice above says." onChange={(fade) => setField({ fade })} />
-            <Slider label="Rise from paper at the top" value={s.field.fadeIn} {...R.fadeIn} format={fx(2)} hint="Share of the footer's height." onChange={(fadeIn) => setField({ fadeIn })} />
-            {s.field.ending === "clip" && <Slider label="Accent inside the letters" value={s.field.letterTint} {...R.letterTint} format={fx(2)} onChange={(letterTint) => setField({ letterTint })} />}
-            <Field label="Drift">
-              <Segmented options={["calm", "visible", "lively"] as readonly DriftPreset[]} value={s.field.drift} onChange={(drift) => setField({ drift })} />
-            </Field>
-            <Check label="Flip it (the glow pours from the top)" checked={s.field.flip} onChange={(flip) => setField({ flip })} />
-          </>
-        )}
+        <FieldControls s={s} backdrop={backdrop} forceStandIn={view.forceStandIn} setForceStandIn={(forceStandIn) => setView((v) => ({ ...v, forceStandIn }))} edit={edit} />
       </Section>
 
       <Section title="Around it">

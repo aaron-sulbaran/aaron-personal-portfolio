@@ -4,11 +4,15 @@ import { adaptFieldFrag } from "../fieldGl";
 import { fieldTokens, parseToken } from "../tokens";
 
 describe("the field port", () => {
-  it("moves the site's shader to GLSL ES 3.00 with the intensity knob", () => {
+  it("moves the site's shader to GLSL ES 3.00 with the intensity knob, the frame and the ripple", () => {
     const src = adaptFieldFrag(FIELD_FRAG);
     expect(src.startsWith("#version 300 es\n")).toBe(true);
     expect(src).not.toMatch(/\bvarying\b|gl_FragColor/);
-    expect(src).toContain("in vec2 vUv;");
+    expect(src).toContain("in vec2 vUv0;");
+    expect(src).toContain("vec2 vUv;");
+    expect(src).toContain("void fieldMain()");
+    expect(src.match(/void main\(\)/g)).toHaveLength(1);
+    expect(src).toContain("vUv = rippled(vUv0) * uFrame.xy + uFrame.zw;");
     expect(src).toContain("uPaper + (col - uPaper) * uIntensity");
     expect(src).toContain("uniform float uT, uTw, uWarp, uAspect, uAmt, uSec;");
   });

@@ -6,7 +6,11 @@ import type { FooterSettings } from "./settings";
 // one. Depth is the shader's intensity, a linear move away from paper, so a
 // share of a deeper field over paper is the shallower field (short of the
 // shader's clamp, which these depths never reach).
-export function fieldDepths(field: FooterSettings["field"]) {
+//
+// `perRegion`: the hero backdrop draws each depth where it belongs, so the
+// canvas is shown whole and nothing veils the letters.
+export function fieldDepths(field: FooterSettings["field"], perRegion = false) {
+  if (perRegion) return { canvas: field.intensity, backdropShare: 1, letterVeil: 0 };
   const clip = field.on && field.ending === "clip";
   const deepest = clip ? Math.max(field.intensity, field.letterIntensity) : field.intensity;
   return {

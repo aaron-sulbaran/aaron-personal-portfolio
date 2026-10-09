@@ -59,7 +59,7 @@ export function FooterLab() {
           <h2 className="font-display text-section">{FOOTER_COPY.heading}</h2>
           <p className="max-w-md text-muted">The end of Connect sits here on the site; the footer follows it.</p>
         </div>
-        <FooterStage s={s} typeface={typeface} theme={theme} reduced={reduced} replay={replay} drop={drop} forceStandIn={view.forceStandIn} onBackdrop={onBackdrop} onReadout={onReadout} />
+        <FooterStage s={s} typeface={typeface} theme={theme} reduced={reduced} replay={replay} drop={drop} backdrop={s.field.on ? backdrop : null} forceStandIn={view.forceStandIn} onBackdrop={onBackdrop} onReadout={onReadout} />
       </div>
       <Panel
         s={s}
