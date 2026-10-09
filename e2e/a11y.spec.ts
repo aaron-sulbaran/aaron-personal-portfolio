@@ -3,7 +3,7 @@ import type { Page } from "@playwright/test";
 import { siteContent } from "../lib/content";
 import { test, expect } from "./support/fixtures";
 import { SEEN_STORAGE_KEY } from "@/lib/home/seen";
-import { openHome, scrollToY } from "./support/coil";
+import { coilPoints, openHome, scrollToY } from "./support/coil";
 import { settled } from "./support/fallback";
 import { noWebgl2Api } from "./support/webgl";
 
@@ -162,3 +162,133 @@ for (const colorScheme of ["light", "dark"] as const) {
     expect(report.failures, "label-face texts under 4.5:1").toEqual([]);
   });
 }
+
+// Focus rings are for the keyboard (lib/input/modality). A mouse press, a hold
+// or a tap never leaves one behind, however focus then moves; Tab brings it
+// back on the same controls.
+
+// Every element painting an outline right now. The outline-none utility draws a
+// transparent 2px outline, which paints nothing.
+async function paintedRings(page: Page) {
+  return page.evaluate(() => {
+    const rings: string[] = [];
+    for (const el of document.querySelectorAll<HTMLElement>("body *")) {
+      const style = getComputedStyle(el);
+      if (style.outlineStyle === "none" || style.outlineStyle === "hidden" || parseFloat(style.outlineWidth) === 0) continue;
+      if (/^rgba\(\d+, \d+, \d+, 0\)$/.test(style.outlineColor) || style.outlineColor === "transparent") continue;
+      if (!el.getClientRects().length) continue;
+      rings.push(`${el.tagName.toLowerCase()} "${(el.getAttribute("aria-label") ?? el.textContent ?? "").trim().slice(0, 30)}" ${style.outlineWidth} ${style.outlineStyle}`);
+    }
+    return rings;
+  });
+}
+
+async function focusedRing(page: Page) {
+  return page.evaluate(() => {
+    const el = document.activeElement as HTMLElement;
+    // The Coil and Band toggle rings its group, not the segment that has focus.
+    const ringed = (node: HTMLElement) => {
+      const style = getComputedStyle(node);
+      return style.outlineStyle === "solid" && parseFloat(style.outlineWidth) >= 2 && !/, 0\)$/.test(style.outlineColor);
+    };
+    return {
+      name: (el.getAttribute("aria-label") ?? el.textContent ?? "").trim().slice(0, 30),
+      inBook: !!el.closest("#work"),
+      painted: ringed(el) || ringed(el.closest<HTMLElement>("[data-shape-toggle]") ?? el),
+    };
+  });
+}
+
+test("focus rings: the mouse leaves none behind on the mark, a hold, the Menu pill or a card's modal", async ({ page }) => {
+  await openHome(page);
+  const mark = page.locator("[data-mark-trigger]");
+  const markCard = page.getByRole("dialog", { name: siteContent.mark.dialogLabel });
+  const none = async (when: string) => expect(await paintedRings(page), when).toEqual([]);
+
+  async function holdMark() {
+    const box = (await mark.boundingBox())!;
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.waitForTimeout(900);
+    await page.mouse.up();
+    await expect(markCard).toBeVisible();
+  }
+
+  await mark.click();
+  await none("after a click on the mark");
+
+  await holdMark();
+  await none("with the mark's card open");
+  await markCard.getByRole("button", { name: siteContent.modals.closeAriaLabel }).click();
+  await expect(markCard).toHaveCount(0);
+  await expect(mark).toBeFocused();
+  await none("after the card closed by mouse and focus came back to the mark");
+
+  await holdMark();
+  await page.keyboard.press("Escape");
+  await expect(markCard).toHaveCount(0);
+  await expect(mark).toBeFocused();
+  await none("after Escape closed a card the mouse opened");
+
+  await page.getByRole("button", { name: siteContent.menu.ariaLabelOpen }).click();
+  await expect(page.getByRole("button", { name: siteContent.menu.ariaLabelClose })).toBeFocused();
+  await none("with the Menu open");
+  await page.getByRole("button", { name: siteContent.menu.ariaLabelClose }).click();
+  await expect(page.getByRole("button", { name: siteContent.menu.ariaLabelOpen })).toBeFocused();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await none("after the Menu closed by mouse and focus came back to the pill");
+
+  // A card in the canvas has no element to take the click, so Chrome never
+  // saw a mouse focus before the modal's own script focus.
+  const { card } = await coilPoints(page);
+  await page.mouse.move(card.x - 20, card.y + 10);
+  await page.mouse.move(card.x, card.y);
+  await page.waitForTimeout(400);
+  await page.mouse.click(card.x, card.y);
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole("button", { name: siteContent.modals.closeAriaLabel })).toBeFocused();
+  await none("with a card's modal open and Close focused");
+  await dialog.getByRole("button", { name: siteContent.modals.closeAriaLabel }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await none("after the card's modal closed by mouse");
+});
+
+test("focus rings: Tab draws one on the mark, the Menu pill and a book row; a click clears it; Tab brings it back", async ({ page }) => {
+  await openHome(page);
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+
+  const stops: Awaited<ReturnType<typeof focusedRing>>[] = [];
+  for (let i = 0; i < 12; i++) {
+    await page.keyboard.press("Tab");
+    const stop = await focusedRing(page);
+    stops.push(stop);
+    if (stop.inBook) break;
+  }
+  expect(stops.map((stop) => stop.name)).toEqual(expect.arrayContaining([siteContent.menu.markAriaLabel, siteContent.menu.ariaLabelOpen]));
+  expect(stops.at(-1)?.inBook, `tab stops: ${JSON.stringify(stops.map((s) => s.name))}`).toBe(true);
+  expect(stops.filter((stop) => !stop.painted).map((stop) => stop.name), "tab stops with no ring").toEqual([]);
+
+  // The keyboard opens the Menu and Escape closes it: focus returns to the pill, ringed.
+  const pill = page.getByRole("button", { name: siteContent.menu.ariaLabelOpen });
+  await pill.focus();
+  await page.keyboard.press("Enter");
+  const closeMenu = page.getByRole("button", { name: siteContent.menu.ariaLabelClose });
+  await expect(closeMenu).toBeFocused();
+  expect((await focusedRing(page)).painted, "Close menu after Enter").toBe(true);
+  await page.keyboard.press("Escape");
+  await expect(pill).toBeFocused();
+  expect((await focusedRing(page)).painted, "the pill after Escape").toBe(true);
+
+  // A click on a control the keyboard just ringed clears the ring, and Tab draws the next.
+  const mark = page.locator("[data-mark-trigger]");
+  await mark.focus();
+  await page.keyboard.press("Shift+Tab");
+  await page.keyboard.press("Tab");
+  await expect(mark).toBeFocused();
+  expect((await focusedRing(page)).painted, "the mark after Tab").toBe(true);
+  await mark.click();
+  expect(await paintedRings(page), "after a click on the ringed mark").toEqual([]);
+  await page.keyboard.press("Tab");
+  expect((await focusedRing(page)).painted, "the next stop after Tab").toBe(true);
+});

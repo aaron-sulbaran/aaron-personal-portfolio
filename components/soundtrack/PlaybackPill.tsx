@@ -5,6 +5,7 @@ import { Portal } from "@/components/Portal";
 import { Fill } from "@/components/fx/Fill";
 import { siteContent } from "@/lib/content";
 import { FILL_PICK, FILL_TRANSITION } from "@/lib/fx/fill";
+import { isKeyboardFocus } from "@/lib/input/modality";
 import { getSoundtrackPlayer } from "@/lib/audio";
 import { getPlayFailed, getRestoredSoundtrack, startSoundtrack, subscribeSoundtrack, useSoundtrack } from "@/lib/soundtrack";
 import { DOCK, capsuleName, capsuleText, dockLabel, dockMode, type DockLabel } from "@/lib/waveform/dock";
@@ -134,7 +135,7 @@ function PillInner({ reached }: { reached: boolean }) {
   // Only keyboard focus holds the label: a mouse click focuses the capsule too,
   // and that must not pin the label open.
   const focus = (event: FocusEvent<HTMLDivElement>) => {
-    if (event.target.matches(":focus-visible")) setHeld((h) => ({ ...h, focus: true }));
+    if (isKeyboardFocus(event.target)) setHeld((h) => ({ ...h, focus: true }));
   };
   const blur = (event: FocusEvent<HTMLDivElement>) => {
     if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setHeld((h) => ({ ...h, focus: false }));

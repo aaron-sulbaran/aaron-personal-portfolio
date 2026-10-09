@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { FocusEvent, PointerEvent } from "react";
 import { photoBySrc, siteContent, bookWorkTarget, type BookPhotoRow, type BookWorkRow } from "@/lib/content";
 import { useIsSeen } from "@/lib/home/seen";
+import { isKeyboardFocus } from "@/lib/input/modality";
 import { useHomeController } from "@/components/home/HomeController";
 
 export type BookEntry = { kind: "work"; row: BookWorkRow } | { kind: "photo"; row: BookPhotoRow };
@@ -28,7 +29,7 @@ export function BookRow({ entry }: { entry: BookEntry }) {
     },
     onPointerLeave: () => controller?.focusCard(null, "pointer"),
     onFocus: (event: FocusEvent<HTMLElement>) => {
-      if (event.currentTarget.matches(":focus-visible")) controller?.focusCard(rowKey, "focus");
+      if (isKeyboardFocus(event.currentTarget)) controller?.focusCard(rowKey, "focus");
     },
     onBlur: () => controller?.focusCard(null, "focus"),
   };
