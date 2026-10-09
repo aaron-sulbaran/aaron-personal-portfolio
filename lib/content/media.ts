@@ -85,7 +85,7 @@ export const logos = {
   "capital-one": { src: "/work/logos/capital-one/capital-one-logo.svg", srcDark: null, width: 418, height: 150 },
   anthropic: { src: "/work/logos/anthropic/anthropic-wordmark.svg", srcDark: "/work/logos/anthropic/anthropic-wordmark-white.svg", width: 578.9, height: 65 },
   ieee: { src: "/work/logos/ieee/ieee-ut-logo.jpg", srcDark: null, width: 1382, height: 1383 },
-  fsdatalink: { src: "/work/logos/fsdatalink/fsdatalink-logo.avif", srcDark: null, width: 512, height: 129 },
+  fsdatalink: { src: "/work/logos/fsdatalink/fsdatalink-logo.avif", srcDark: "/work/logos/fsdatalink/fsdatalink-logo-light.png", width: 512, height: 129 },
   popeyes: { src: "/work/logos/jobs/popeyes-logo.svg", srcDark: null, width: 249.2, height: 42.6 },
   mod: { src: "/work/logos/jobs/mod-pizza-logo.svg", srcDark: null, width: 86.31, height: 83.21 },
   "ut-austin": { src: "/work/logos/jobs/ut-austin-logo.svg", srcDark: "/work/logos/jobs/ut-austin-logo-white.svg", width: 1021, height: 285.73 },
