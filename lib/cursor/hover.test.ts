@@ -73,8 +73,8 @@ describe("the mark's hold", () => {
   it("publishes the hold and notifies only on a change", () => {
     const listener = vi.fn();
     const unsubscribe = subscribeMarkHold(listener);
-    setMarkHold({ fill: 0.5, spent: 0, closed: false, hidden: false });
-    setMarkHold({ fill: 0.5, spent: 0, closed: false, hidden: false });
+    setMarkHold({ fill: 0.5, spent: 0, hidden: false });
+    setMarkHold({ fill: 0.5, spent: 0, hidden: false });
     expect(getMarkHold().fill).toBe(0.5);
     setMarkHold(MARK_HOLD_IDLE);
     expect(listener).toHaveBeenCalledTimes(2);

@@ -109,7 +109,7 @@ for (const mode of ["scene", "no-webgl"] as const) {
       await page.mouse.up();
       expect(mid.fill).toBeGreaterThan(0.3);
       expect(mid.fill).toBeLessThan(0.75);
-      expect(Math.abs(mid.arc / 75 - mid.fill)).toBeLessThan(0.002);
+      expect(Math.abs(mid.arc / 360 - mid.fill)).toBeLessThan(0.002);
       await expect.poll(() => progress(page)).toBe(0);
       await sleep(600);
       await expect(card(page)).toHaveCount(0);
