@@ -40,3 +40,9 @@ export async function productLink(page: Page): Promise<Locator> {
   await expect(link).toBeVisible();
   return link;
 }
+
+// The registered number that runs both fills (app/globals.css, "inline links"):
+// 0 at rest, 1 filled. Read from the computed style, so a tween shows as a fraction.
+export const fillOf = (link: Locator) => link.evaluate((el) => Number(getComputedStyle(el).getPropertyValue("--inline-p")));
+export const barScale = (link: Locator) => link.evaluate((el) => new DOMMatrixReadOnly(getComputedStyle(el, "::after").transform).a);
+export const rest = (page: Page) => page.mouse.move(2, 2);

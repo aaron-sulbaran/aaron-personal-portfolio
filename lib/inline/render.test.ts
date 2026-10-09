@@ -52,12 +52,23 @@ describe("InlineCopy", () => {
 describe("the inline link tokens", () => {
   const css = readFileSync(join(process.cwd(), "app/globals.css"), "utf8");
   const block = css.slice(css.indexOf("/* ---- inline links"), css.indexOf("/* ---- end inline links ---- */"));
-  it("draws solid definitions and dotted tips from tokens, with no hex, keeps a ring out of the mask, and fades under reduced motion", () => {
+  it("draws one look for every kind from tokens, with no hex: the text colour at rest, the accent filling from the centre by one number, a ring kept out of the mask, and no tween under reduced motion", () => {
     expect(block.length).toBeGreaterThan(0);
-    expect(block).toMatch(/\.inline-link\[data-inline="def"\] \{ text-decoration-style: solid; \}/);
-    expect(block).toMatch(/\.inline-link\[data-inline="tip"\], \.inline-link\[data-inline="pop"\] \{ text-decoration-style: dotted; \}/);
+    expect(block).not.toMatch(/text-decoration-style|dotted|underline-external/);
     expect(block).not.toMatch(/#[0-9a-f]{3,8}\b/i);
+    expect(block).toContain("--inline-line-width: 1.5px;");
+    expect(block).toContain("@media (max-resolution: 1.24dppx) { :root { --inline-line-width: 2px; } }");
+    expect(block).toContain("--inline-fill-ease: cubic-bezier(0.65, 0, 0.35, 1);");
+    expect(block).toContain("--inline-fill-ms: 350ms;");
+    expect(block).toMatch(/\.inline-link::before \{ background: color-mix\(in srgb, currentColor var\(--inline-line-rest\), transparent\); \}/);
+    expect(block).toContain("transform: scaleX(var(--inline-p)); transform-origin: 50% 50%;");
+    expect(block).toContain("background-size: calc(var(--inline-p) * 100%) 100%, 100% 100%;");
+    expect(block).toContain("linear-gradient(var(--color-accent), var(--color-accent)), linear-gradient(currentColor, currentColor)");
+    expect(block).toContain("transition: --inline-p var(--inline-fill-ms) var(--inline-fill-ease);");
+    expect(block).toContain('.inline-link[data-inline-open], html:not([data-input="pointer"]) .inline-link:focus-visible { --inline-p: 1; }');
+    expect(block).toContain("@media (hover: hover) { .inline-link:hover { --inline-p: 1; } }");
     expect(block).toContain(".sections-line-mask:has(.inline-link) { overflow-x: visible !important; }");
-    expect(block).toContain("prefers-reduced-motion: reduce");
+    expect(block).toMatch(/prefers-reduced-motion: reduce\) \{ \.inline-link \{ transition: none; \} \}/);
+    expect(block).toMatch(/forced-colors: active\), print \{[^}]*-webkit-text-fill-color: currentColor;[^}]*text-decoration: underline;/);
   });
 });

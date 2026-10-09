@@ -8,6 +8,7 @@ import { InputModality } from "@/components/InputModality";
 import { siteContent } from "@/lib/content";
 import { profaBlack, profaBold } from "@/lib/fonts";
 import { HOLDING_MODE } from "@/lib/holding";
+import { visitedInitScript } from "@/lib/inline/visited";
 import { THEME_BG_DARK, THEME_BG_LIGHT, themeInitScript } from "@/lib/theme";
 import "./globals.css";
 
@@ -55,6 +56,7 @@ export default function RootLayout({
     <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning className={`${inter.variable} ${profaBlack.variable} ${profaBold.variable}`}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        {!HOLDING_MODE && <script dangerouslySetInnerHTML={{ __html: visitedInitScript }} />}
       </head>
       <body className="font-sans">
         <a href="#main" className="skip-link">

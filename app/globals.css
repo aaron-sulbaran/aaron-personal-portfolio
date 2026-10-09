@@ -526,34 +526,77 @@ html:not([data-input="pointer"]) .fx:focus-visible,
   --shadow-card: 0 40px 80px -20px rgba(10, 10, 10, 0.45);
 }
 /* ---- end mark-strike ---- */
-/* ---- inline links (components/inline): definitions solid, tips and pops
-   dotted, both in the accent; external links solid in the muted ink. A link
-   never wraps and is inline-block like a button, because SplitText clones a
-   plain inline anchor into an empty, focusable copy. Its ring fits the masked
-   line vertically (every link is 1.15 lines tall), and a mask that holds a
-   link clips only vertically, so a link at a line's start or end keeps its
-   whole ring. The label is one fixed element above modals (58) and below the
-   loader (60); under a mouse it trails the pointer slightly, after landing in
-   place (data-trail). ---- */
+/* ---- inline links (components/inline): one look for every kind. At rest a
+   link is a word of its paragraph (it inherits the text colour) with a quiet
+   line under it: a separate bar, not text-decoration, so it sits below the
+   descenders with a clear gap and one thickness, in the text colour at a low
+   share. One registered number, --inline-p, runs 0 to 1 and drives both fills
+   at once, as --fx-p drives the house fill: the word's ink fills with the
+   accent from the centre outward (a centred accent layer clipped to the text,
+   over the base colour) while a second bar of the same size draws over the
+   resting line from the centre (scaleX 0 to 1). It runs on hover, on keyboard
+   focus, while the link's tip, pop or definition is open or pinned
+   (data-inline-open, written by useTipController and useDefinition), and for
+   good once the link has been clicked (the visited rules that
+   components/inline/useVisitedLinks injects from lib/inline/visited.ts: a rule
+   keeps the browser's :visited out of it, which cannot style a background).
+   What a link does is told by the cursor label, not by its line. A link never
+   wraps and is inline-block like a button, because SplitText clones a plain
+   inline anchor into an empty, focusable copy. Its box is padded by
+   --inline-pad (and pulled back by the same negative margin, so nothing moves)
+   because a text-clipped background paints only inside the box, and a
+   descender sits within a hair of the 1.15 line box; the ring's offset gives the
+   padding back, so it still fits the masked line vertically, and a mask that
+   holds a link clips only vertically, so a link at a line's start or end keeps
+   its whole ring. The bar reaches no farther below the text than the ring, so it
+   fits the same mask. The label is one fixed element above modals (58) and below
+   the loader (60); under a mouse it trails the pointer slightly, after landing
+   in place (data-trail). ---- */
+@property --inline-p {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
 :root {
-  --inline-underline: var(--color-accent);
-  --inline-underline-external: var(--color-muted);
-  --inline-underline-width: 0.08em;
-  --inline-underline-offset: 0.2em;
+  --inline-line-rest: 35%;
+  --inline-line-width: 1.5px;
+  --inline-line-gap: 1.5px;
+  --inline-pad: 0.1em;
+  --inline-fill-ms: 350ms;
+  --inline-fill-ease: cubic-bezier(0.65, 0, 0.35, 1);
   --inline-tip-ms: 140ms;
   --inline-tip-trail-ms: 80ms;
 }
 .inline-link {
-  display: inline-block; margin: 0; padding: 0; border: 0; background: none; white-space: nowrap;
-  font: inherit; line-height: 1.15; color: inherit; letter-spacing: inherit; text-align: inherit;
-  text-decoration: underline var(--inline-underline); text-decoration-thickness: max(1px, var(--inline-underline-width));
-  text-underline-offset: var(--inline-underline-offset); transition: color 150ms var(--ease-out);
+  position: relative; display: inline-block; margin: calc(-1 * var(--inline-pad)); padding: var(--inline-pad); border: 0; white-space: nowrap;
+  font: inherit; line-height: 1.15; color: inherit; letter-spacing: inherit; text-align: inherit; text-decoration: none;
+  -webkit-text-fill-color: transparent;
+  background-color: transparent;
+  background-image: linear-gradient(var(--color-accent), var(--color-accent)), linear-gradient(currentColor, currentColor);
+  background-repeat: no-repeat;
+  background-position: center, center;
+  background-size: calc(var(--inline-p) * 100%) 100%, 100% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  transition: --inline-p var(--inline-fill-ms) var(--inline-fill-ease);
 }
-.inline-link[data-inline="def"] { text-decoration-style: solid; }
-.inline-link[data-inline="tip"], .inline-link[data-inline="pop"] { text-decoration-style: dotted; }
-.inline-link[data-inline="external"] { text-decoration-style: solid; text-decoration-color: var(--inline-underline-external); }
-@media (hover: hover) { .inline-link:hover { color: var(--color-accent); } }
-.inline-link:focus-visible { outline-offset: 1px; }
+.inline-link::before, .inline-link::after {
+  content: ""; position: absolute; left: var(--inline-pad); right: var(--inline-pad); pointer-events: none;
+  bottom: calc(var(--inline-pad) - var(--inline-line-gap) - var(--inline-line-width)); height: var(--inline-line-width);
+}
+.inline-link::before { background: color-mix(in srgb, currentColor var(--inline-line-rest), transparent); }
+.inline-link::after { background: var(--color-accent); transform: scaleX(var(--inline-p)); transform-origin: 50% 50%; }
+.inline-link[data-inline-open], html:not([data-input="pointer"]) .inline-link:focus-visible { --inline-p: 1; }
+@media (hover: hover) { .inline-link:hover { --inline-p: 1; } }
+/* 1.5px is three device pixels at 2x but unevenly one or two at 1x; the whole pixel nearest to it, there only. */
+@media (max-resolution: 1.24dppx) { :root { --inline-line-width: 2px; } }
+@media (prefers-reduced-motion: reduce) { .inline-link { transition: none; } }
+.inline-link::selection { -webkit-text-fill-color: var(--color-background); }
+@media (forced-colors: active), print {
+  .inline-link { -webkit-text-fill-color: currentColor; background: none; text-decoration: underline; }
+  .inline-link::before, .inline-link::after { display: none; }
+}
+.inline-link:focus-visible { outline-offset: calc(1px - var(--inline-pad)); }
 .sections-line-mask:has(.inline-link) { overflow-x: visible !important; }
 /* A link is an atomic inline, which allows a wrap on both sides; the glue span keeps the characters touching it on its line. */
 .inline-glue { display: inline-block; white-space: nowrap; }

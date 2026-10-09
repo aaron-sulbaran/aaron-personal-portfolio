@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { siteContent } from "@/lib/content";
 import type { DefinitionEntry } from "@/lib/content/types";
+import { markOpen } from "@/lib/inline/open";
 const { def } = siteContent.register;
 const BLOCK = "[data-sections-block]";
 const WATCH_CAP_MS = 2000;
@@ -73,6 +74,8 @@ export function useDefinition(dismissTip: () => void): { entry: DefinitionEntry 
       stopRef.current();
     };
   }, []);
+  // The trigger keeps its underline filled while its definition is open.
+  useEffect(() => (key === null ? undefined : markOpen(triggerRef.current)), [key]);
   const close = useCallback(() => {
     if (key === null) return;
     setKey(null);
