@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { Kicker } from "@/components/sections/Kicker";
 import { StickyColumn } from "@/components/sections/StickyColumn";
-import { UpToNow } from "@/components/UpToNow";
+import { WhoIAm } from "@/components/WhoIAm";
 import { siteContent } from "@/lib/content";
 
 // The sections leaves as the server renders them: whole, readable, unarmed.
@@ -28,19 +28,35 @@ describe("the sticky column", () => {
   });
 });
 
-describe("Up to now", () => {
-  it("renders every item as a block in one list, held heading beside it, words in a clip", () => {
-    const html = renderToStaticMarkup(createElement(UpToNow));
-    expect(html.match(/data-sections-block="item"/g)).toHaveLength(siteContent.upToNow.items.length);
-    expect(html.match(/class="[^"]*overflow-clip[^"]*"><p data-sections-text/g)).toHaveLength(siteContent.upToNow.items.length);
-    expect(html.indexOf("sections-sticky-col")).toBeLessThan(html.indexOf("<ol"));
+describe("Who I am", () => {
+  const html = renderToStaticMarkup(createElement(WhoIAm));
+  const { label, heading, blocks, smallPrint } = siteContent.whoIAm;
+  const labels = [label, ...blocks.flatMap((block) => [block.label, ...(block.sub ? [block.sub.label] : [])])];
+
+  it("is the page's #about, the About screen and Right now sections gone", () => {
+    expect(html).toMatch(new RegExp(`^<section id="about" aria-label="${label}"`));
+    expect(html).not.toContain('id="up-to-now"');
     expect(html).not.toContain("data-up-to-now-slot");
+    expect(html).not.toContain('data-sections-block="item"');
   });
-  it("gives the metrics slice one mount point after the items, outside the list and the hold", () => {
-    const html = renderToStaticMarkup(createElement<NonNullable<ComponentProps<typeof UpToNow>>>(UpToNow, { after: createElement("div", { id: "skyline-probe" }) }));
-    const slot = html.indexOf("data-up-to-now-slot");
-    expect(slot).toBeGreaterThan(html.indexOf("</ol>"));
-    expect(html.indexOf('id="skyline-probe"')).toBeGreaterThan(slot);
-    expect(html.endsWith('<div id="skyline-probe"></div></div></section>')).toBe(true);
+
+  it("holds the label, the lowercase heading and the small print in the sticky column, ahead of the blocks", () => {
+    const held = html.slice(html.indexOf("sections-sticky-col"), html.indexOf(`data-sections-label="true">${blocks[0].label}`));
+    expect(held).toContain(`<h2 class="font-display text-section" data-sections-block="heading" data-sections-split="lines">${heading}</h2>`);
+    expect(held).toContain(smallPrint);
+  });
+
+  it("draws a kicker for the section and for every block and sub-block, in order, each followed by its body", () => {
+    expect([...html.matchAll(/data-sections-label="true">([^<]*)</g)].map((match) => match[1].replaceAll("&#x27;", "'"))).toEqual(labels);
+    expect(html.match(/data-sections-block="kicker"/g)).toHaveLength(labels.length);
+    expect(html.match(/data-sections-block="body"/g)).toHaveLength(blocks.length + blocks.filter((block) => block.sub).length + 1);
+  });
+
+  it("renders the definition and the photo pops as marked inline links", () => {
+    expect(html.match(/data-inline="def"/g)).toHaveLength(1);
+    expect([...html.matchAll(/data-inline="pop" data-inline-key="([a-z-]+)"/g)].map((match) => match[1])).toEqual([
+      "leadership-award", "sandboarding", "downhill-skating", "skydiving", "rock-climbing", "venezuela-flag",
+    ]);
+    expect(html).not.toContain("](");
   });
 });

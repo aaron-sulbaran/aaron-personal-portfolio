@@ -3,10 +3,11 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 // Where the copy carries links (docs/content/who-i-am.md,
-// connect-footer-band.md, mark-card.md). C5 reshapes the strings; these sites
-// must keep rendering through InlineCopy, or the markup shows as text.
+// connect-footer-band.md, mark-card.md). These sites must keep rendering
+// through InlineCopy, or the markup shows as text.
 const WIRED: Array<[string, string]> = [
-  ["components/WhoIAm.tsx", "paragraph"],
+  ["components/WhoIAm.tsx", "block.body"],
+  ["components/WhoIAm.tsx", "block.sub.body"],
   ["components/Connect.tsx", "lede"],
   ["components/soundtrack/BandInvite.tsx", "c.body"],
   ["components/soundtrack/BandInvite.tsx", "c.acceptedNote"],

@@ -5,7 +5,7 @@ import { test, expect } from "./support/fixtures";
 import { nextFrames, openHome, scrollToY } from "./support/coil";
 import { settled } from "./support/fallback";
 
-// The skyline inside Up to now: snapshot figures with no token, flat until
+// The skyline in the numbers strip under Who I am: snapshot figures with no token, flat until
 // seen, a fling leaves it pending, the toggle plays the morph, reduced motion snaps.
 const m = siteContent.metrics;
 const snap = JSON.parse(readFileSync("lib/metrics/data/contributions-6mo.json", "utf8"));
@@ -130,7 +130,7 @@ test("metrics: a click hold survives ScrollTrigger refreshes", async ({ page }) 
     const el = document.querySelector<HTMLElement>("[data-metrics-block]")!;
     const docTop = () => el.getBoundingClientRect().top + scrollY;
     const before = docTop();
-    document.querySelector<HTMLElement>("#up-to-now")!.style.marginTop = "200px";
+    document.querySelector<HTMLElement>("#numbers")!.style.marginTop = "200px";
     return docTop() - before;
   });
   expect(moved, "the reflow must move the block's top").toBe(200);

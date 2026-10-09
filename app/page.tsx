@@ -1,6 +1,4 @@
-import { AboutIntro } from "@/components/AboutIntro";
 import { WhoIAm } from "@/components/WhoIAm";
-import { UpToNow } from "@/components/UpToNow";
 import { Connect } from "@/components/Connect";
 import { Footer } from "@/components/Footer";
 import { SoundtrackBand } from "@/components/soundtrack/SoundtrackBand";
@@ -17,10 +15,11 @@ import { MarkCardSource } from "@/components/mark/MarkCardSource";
 export const revalidate = 86400;
 
 // The whole site is one scrolling document: the Coil hero, the book (#work),
-// the soundtrack band (#listen), About, Connect, Footer. The controller owns the
-// hero (the server-rendered greeting, the scene, the loader) and the book
-// directly under it. Nothing pins, so the page scrolls natively; overflow-x is
-// clipped (clip, not hidden, so no scroll container is created).
+// the soundtrack band (#listen), Who I am (#about), the numbers strip, Connect,
+// Footer. The controller owns the hero (the server-rendered greeting, the
+// scene, the loader) and the book directly under it. Nothing pins, so the page
+// scrolls natively; overflow-x is clipped (clip, not hidden, so no scroll
+// container is created).
 //
 // The soundtrack band sits in flow directly under the book: the waveform runs
 // through it and nowhere else, so nothing ever moves behind body text. Its
@@ -42,9 +41,8 @@ export default function Home() {
             <Book />
           </HomeController>
           <SoundtrackBand />
-          <AboutIntro />
           <WhoIAm />
-          <UpToNow after={<Metrics />} />
+          <NumbersStrip />
           <Connect />
         </main>
         <Footer dock />
@@ -64,5 +62,18 @@ function HeroSentinel() {
       data-hero-sentinel
       className="pointer-events-none absolute inset-x-0 top-0 h-[90vh] supports-[height:100svh]:h-[90svh]"
     />
+  );
+}
+
+// The numbers strip under Who I am: the GitHub chart with its figures and my
+// LinkedIn line (docs/content/right-now-and-metrics.md). It has no kicker or
+// heading; the chart's own group label names it.
+function NumbersStrip() {
+  return (
+    <section id="numbers" className="relative w-full scroll-mt-24 border-t border-border px-6 py-24 md:px-10 md:py-40">
+      <div className="mx-auto max-w-6xl">
+        <Metrics />
+      </div>
+    </section>
   );
 }
