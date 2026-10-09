@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FLIP_OVERRIDES, cropRegion, exportJobs, outputSize } from "../../scripts/photo-export-plan.mjs";
+import { FLIP_OVERRIDES, cropRegion, exportJobs, outputSize, vectorDensity } from "../../scripts/photo-export-plan.mjs";
 
 // A manifest in the real one's shape, with made-up paths.
 const manifest = {
@@ -9,7 +9,10 @@ const manifest = {
     { card: "jobs", id: "jobs-1-mod-selfie", source: "/assets/mod.jpg", crop: null, transform: null, spare: false, timeline: 1 },
     { card: "jobs", id: "jobs-spare-aritzia-domain", source: "/assets/spare.jpg", crop: null, transform: null, spare: true, timeline: 4 },
   ],
-  popovers: [{ key: "matcha", source: "/assets/matcha.jpg", crop: [1000, 2100, 3600, 5567] }],
+  popovers: [
+    { key: "matcha", source: "/assets/matcha.jpg", crop: [1000, 2100, 3600, 5567] },
+    { key: "trace", source: "/assets/trace.svg", format: "svg", crop: null },
+  ],
   logos: [
     { card: "talos", files: ["pack/mark/mark.svg", "pack/animation/"] },
     { card: "this-site", files: ["app/icon.svg (in the repo)"] },
@@ -22,6 +25,7 @@ describe("exportJobs", () => {
       ["card", "photos/cards/band-picture.jpg", "/assets/band.jpg"],
       ["modal", "photos/cards/jobs-1-mod-selfie.jpg", "/assets/mod.jpg"],
       ["pop", "photos/pops/matcha.jpg", "/assets/matcha.jpg"],
+      ["pop", "photos/pops/trace.jpg", "/assets/trace.svg"],
       ["logo", "work/logos/talos/mark.svg", "/assets/pack/mark/mark.svg"],
     ]);
   });
@@ -35,11 +39,20 @@ describe("exportJobs", () => {
     expect(exportJobs({ ...manifest, modalPhotos: [override] })[1]).toMatchObject({ id: "hackathons-2-vercel", flip: true });
     expect(exportJobs(manifest)[1]).toMatchObject({ id: "jobs-1-mod-selfie", flip: false });
   });
+  it("marks only an svg popover as a vector", () => {
+    expect(exportJobs(manifest).map((job) => [job.id, job.vector])).toEqual([["band-picture", false], ["jobs-1-mod-selfie", false], ["matcha", false], ["trace", true], ["talos/mark.svg", false]]);
+  });
   it("refuses a manifest it cannot trust", () => {
     expect(() => exportJobs({ ...manifest, popovers: [{ key: "Matcha Kyoto", source: "/a.jpg", crop: null }] })).toThrow();
     expect(() => exportJobs({ ...manifest, popovers: [{ key: "matcha", source: "/a.jpg", crop: [10, 10, 5, 20] }] })).toThrow();
     expect(() => exportJobs({ ...manifest, modalPhotos: [{ ...manifest.modalPhotos[0], transform: "rotate" }] })).toThrow();
     expect(() => exportJobs({ ...manifest, popovers: [...manifest.popovers, ...manifest.popovers] })).toThrow(/two manifest entries/);
+  });
+  it("takes a format on a popover only, and only \"svg\" uncropped", () => {
+    expect(() => exportJobs({ ...manifest, popovers: [{ key: "trace", source: "/a.svg", format: "svg", crop: [0, 0, 10, 10] }] })).toThrow(/cannot be cropped/);
+    expect(() => exportJobs({ ...manifest, popovers: [{ key: "trace", source: "/a.png", format: "png", crop: null }] })).toThrow();
+    expect(() => exportJobs({ ...manifest, cardPictures: [{ ...manifest.cardPictures[0], format: "svg" }] })).toThrow();
+    expect(() => exportJobs({ ...manifest, modalPhotos: [{ ...manifest.modalPhotos[0], format: "svg" }] })).toThrow();
   });
 });
 
@@ -65,5 +78,25 @@ describe("outputSize", () => {
     expect(outputSize("modal", { width: 2170, height: 3480 })).toEqual({ width: 998, height: 1600 });
     expect(outputSize("modal", { width: 532, height: 517 })).toEqual({ width: 532, height: 517 });
     expect(outputSize("pop", { width: 1536, height: 1376 })).toEqual({ width: 800, height: 717 });
+  });
+  it("never upscales a raster pop, but renders a vector pop to fill its long edge", () => {
+    expect(outputSize("pop", { width: 349, height: 466 })).toEqual({ width: 349, height: 466 });
+    expect(outputSize("pop", { width: 349, height: 466 }, true)).toEqual({ width: 599, height: 800 });
+    expect(outputSize("pop", { width: 1536, height: 1376 }, true)).toEqual({ width: 800, height: 717 });
+  });
+});
+
+describe("vectorDensity", () => {
+  it("opens a vector at a density that renders at or above the output, never below", () => {
+    expect(vectorDensity({ width: 349, height: 466 }, { width: 599, height: 800 })).toBe(124);
+    for (const [intrinsic, size] of [
+      [{ width: 349, height: 466 }, { width: 599, height: 800 }],
+      [{ width: 100, height: 150 }, { width: 533, height: 800 }],
+      [{ width: 3000, height: 2000 }, { width: 800, height: 533 }],
+    ] as const) {
+      const density = vectorDensity(intrinsic, size);
+      expect((intrinsic.width * density) / 72, `${intrinsic.width} wide`).toBeGreaterThanOrEqual(size.width);
+      expect((intrinsic.height * density) / 72, `${intrinsic.width} wide`).toBeGreaterThanOrEqual(size.height);
+    }
   });
 });

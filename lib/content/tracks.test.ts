@@ -56,7 +56,7 @@ describe("soundtrack credits", () => {
 
   it("tip the music note without the adapting clause while no adapted track plays", () => {
     expect(tipText("music-note")).toBe("I'm not playing my usual playlist (a lot of Tyler, the Creator, Childish Gambino and Steve Lacy) because I don't own it, and I picked music that's easy to read to. The credits are in the corner.");
-    expect(tipText("aango")).toBe("yes, the chameleon from that one kid's movie");
+    expect(tipText("killer-drones")).toBe("unless it's killer drones, I don't do that");
     expect(tipText("constructor")).toBeNull();
   });
 });

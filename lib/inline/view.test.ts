@@ -6,8 +6,8 @@ import { popView, tipView } from "@/lib/inline/view";
 const { pop } = siteContent.register;
 describe("tipView", () => {
   it("shows a tip's words, and the music note as tipText gives it", () => {
-    const aango = "yes, the chameleon from that one kid's movie";
-    expect(tipView("tip", "aango")).toEqual({ text: aango, photo: null, caption: null, link: null, description: aango });
+    const drones = "unless it's killer drones, I don't do that";
+    expect(tipView("tip", "killer-drones")).toEqual({ text: drones, photo: null, caption: null, link: null, description: drones });
     expect(tipView("tip", "music-note")?.text).toBe(tipText("music-note"));
   });
   it("returns null for a key the register lacks, prototype keys included", () => {
@@ -24,6 +24,15 @@ describe("tipView", () => {
       description: `${clarinet.alt}. ${clarinet.caption}`,
     });
     expect(tipView("pop", "sandboarding")).toMatchObject({ text: null, caption: null, description: pop.sandboarding.alt });
+  });
+  it("shows Rango as a landed pop, described by its alt and caption", () => {
+    expect(tipView("pop", "rango")).toEqual({
+      text: null,
+      photo: { ...pop.rango.file, alt: pop.rango.alt, displayWidth: 280, displayHeight: 374 },
+      caption: "yeah, this guy from that one kid's movie",
+      link: null,
+      description: "Rango, the chameleon in a Hawaiian shirt, in a dance pose. yeah, this guy from that one kid's movie",
+    });
   });
   it("carries the matcha's Maps link and label", () => { expect(tipView("pop", "matcha")?.link).toEqual({ href: pop.matcha.href, label: "Open in Google Maps" }); });
 });
