@@ -28,6 +28,7 @@ test("inline links: a tip follows a mouse with no render per move, leaves with i
   await page.mouse.move(box.x + box.width / 2, box.y + box.height + 160);
   await expect(bubble(page)).toHaveAttribute("data-shown", "false");
   await rango(page).hover();
+  await expect(bubble(page)).toHaveAttribute("data-shown", "true");
   await page.keyboard.press("Escape");
   await expect(bubble(page)).toHaveAttribute("data-shown", "false");
 });
@@ -81,6 +82,20 @@ test("inline links: every link is a named button or link, the footnote included;
   expect(tags).toHaveLength(5);
   expect(tags.every((tag) => tag === "A" || tag === "BUTTON")).toBe(true);
   await expect(bubble(page)).toHaveAttribute("aria-hidden", "true");
+});
+test("inline links: a link never wraps away from the text glued to it", async ({ page }) => {
+  await page.setViewportSize({ width: 300, height: 800 });
+  await openFixture(page, DEF, MATCHA);
+  const glued = await page.locator("main .inline-glue").evaluateAll((spans) => spans.map((span) => {
+    const link = span.querySelector<HTMLElement>("[data-inline]")!.getBoundingClientRect();
+    const box = span.getBoundingClientRect();
+    return { text: span.textContent, height: box.height, linkHeight: link.height, holdsLink: box.top <= link.top + 1 && box.bottom >= link.bottom - 1 };
+  }));
+  expect(glued.map((item) => item.text)).toEqual(["product-focused", "(or matcha).", "building*."]);
+  for (const item of glued) {
+    expect(item.height).toBeLessThan(item.linkHeight * 1.5);
+    expect(item.holdsLink).toBe(true);
+  }
 });
 test("inline links: a definition opens the house text modal by mouse; Escape closes it and focus returns", async ({ page }) => {
   const link = await productLink(page);
@@ -187,15 +202,20 @@ test("inline links: a focused link's ring is not clipped by its line's mask, mid
     const clipped = await link.evaluate((el) => {
       const ring = el.getBoundingClientRect();
       const reach = 3; // a 2px outline at a 1px offset
-      const clipBox = (axis: "overflowX" | "overflowY") => {
+      const mask = el.closest(".sections-line-mask");
+      const clipNode = (axis: "overflowX" | "overflowY") => {
         let node = el.parentElement;
         while (node && getComputedStyle(node)[axis] === "visible") node = node.parentElement;
-        return node?.getBoundingClientRect() ?? null;
+        return node;
       };
-      const [x, y] = [clipBox("overflowX"), clipBox("overflowY")];
-      return { left: !!x && ring.left - reach < x.left, right: !!x && ring.right + reach > x.right, top: !!y && ring.top - reach < y.top, bottom: !!y && ring.bottom + reach > y.bottom };
+      const [x, y] = [clipNode("overflowX")?.getBoundingClientRect() ?? null, clipNode("overflowY")?.getBoundingClientRect() ?? null];
+      return {
+        inMask: !!mask,
+        maskClipsY: !!mask && clipNode("overflowY") === mask,
+        left: !!x && ring.left - reach < x.left, right: !!x && ring.right + reach > x.right, top: !!y && ring.top - reach < y.top, bottom: !!y && ring.bottom + reach > y.bottom,
+      };
     });
-    expect(clipped).toEqual({ left: false, right: false, top: false, bottom: false });
+    expect(clipped).toEqual({ inMask: true, maskClipsY: true, left: false, right: false, top: false, bottom: false });
   }
 });
 
