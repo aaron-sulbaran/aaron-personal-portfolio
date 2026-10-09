@@ -22,7 +22,7 @@ export interface TipView {
 }
 
 // A pop whose photo has not landed (C4) shows its caption, or its alt when it
-// has none, so a dotted link never opens onto nothing.
+// has none, so a pop link never opens onto nothing.
 export function popView(entry: PopEntry): TipView {
   const photo = entry.file
     ? {
