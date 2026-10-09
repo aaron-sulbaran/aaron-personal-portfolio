@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { inlineRuns, parseInlineLinks, plainText, visibleText, type InlineKind } from "@/lib/content/links";
 
 const known = (kind: InlineKind, key: string) =>
-  (kind === "tip" && (key === "ieee-ao" || key === "aango")) || (kind === "pop" && key === "sister-kyoto") || (kind === "def" && key === "product");
+  (kind === "tip" && (key === "ieee-ao" || key === "killer-drones")) || (kind === "pop" && key === "sister-kyoto") || (kind === "def" && key === "product");
 
 describe("parseInlineLinks", () => {
   it("returns nothing for an empty string and one text segment for plain copy", () => {
@@ -44,14 +44,14 @@ describe("parseInlineLinks", () => {
   });
 
   it("leaves malformed markup literal and never throws", () => {
-    for (const source of ["[x] (tip:aango)", "[](tip:aango)", "[ ](tip:aango)", "[x](tip:aango", "x](tip:aango)", "[[x]](tip:aango)", "[x](javascript:alert(1))"]) {
+    for (const source of ["[x] (tip:killer-drones)", "[](tip:killer-drones)", "[ ](tip:killer-drones)", "[x](tip:killer-drones", "x](tip:killer-drones)", "[[x]](tip:killer-drones)", "[x](javascript:alert(1))"]) {
       expect(parseInlineLinks(source, known)).toEqual({ segments: [{ kind: "text", text: source }], unknown: [] });
     }
   });
 
   it("reads adjacent links, a lone asterisk, a link in parentheses, and leaves literal brackets", () => {
-    expect(parseInlineLinks("[a](tip:aango)[b](tip:ieee-ao)", known).segments).toEqual([{ kind: "tip", text: "a", key: "aango" }, { kind: "tip", text: "b", key: "ieee-ao" }]);
-    expect(parseInlineLinks("no matter what you're building[*](tip:aango).", known).segments[1]).toEqual({ kind: "tip", text: "*", key: "aango" });
+    expect(parseInlineLinks("[a](tip:killer-drones)[b](tip:ieee-ao)", known).segments).toEqual([{ kind: "tip", text: "a", key: "killer-drones" }, { kind: "tip", text: "b", key: "ieee-ao" }]);
+    expect(parseInlineLinks("no matter what you're building[*](tip:killer-drones).", known).segments[1]).toEqual({ kind: "tip", text: "*", key: "killer-drones" });
     expect(parseInlineLinks("a coffee ([or matcha](pop:sister-kyoto)).", known).segments.map((segment) => segment.text)).toEqual(["a coffee (", "or matcha", ")."]);
     expect(parseInlineLinks("I said [sic] and [AO](tip:ieee-ao)", known).segments[0]).toEqual({ kind: "text", text: "I said [sic] and " });
     expect(parseInlineLinks("[Rango](https://en.wikipedia.org/wiki/Rango_(2011_film))", known).unknown).toEqual([]);
@@ -69,7 +69,7 @@ describe("plainText", () => {
   });
 
   it("matches the parsed segments' words for known, unknown, external and malformed links", () => {
-    for (const source of ["a [Rango](tip:rango) knockoff", "[product](def:product)-focused", "go [check her out](https://www.instagram.com/travelwithbarbss/)!", "[x] (tip:aango)"]) {
+    for (const source of ["a [Rango](tip:rango) knockoff", "[product](def:product)-focused", "go [check her out](https://www.instagram.com/travelwithbarbss/)!", "[x] (tip:killer-drones)"]) {
       expect(parseInlineLinks(source, known).segments.map((segment) => segment.text).join("")).toBe(plainText(source));
     }
   });
@@ -79,15 +79,15 @@ describe("visibleText", () => {
   it("drops paired emphasis markers and keeps a lone asterisk", () => {
     expect(visibleText("**2024, business analyst.** My first look at corporate America.")).toBe("2024, business analyst. My first look at corporate America.");
     expect(visibleText("an invitational I *know* it had been chasing")).toBe("an invitational I know it had been chasing");
-    expect(visibleText("building[*](tip:aango).")).toBe("building*.");
+    expect(visibleText("building[*](tip:killer-drones).")).toBe("building*.");
   });
 });
 
 const t = (text: string, strong = false, em = false) => ({ kind: "text", text, strong, em });
 describe("inlineRuns", () => {
   it("carries bold and italic as flags and drops the markers", () => { expect(inlineRuns("**2024, business analyst.** My first look, I *know* it.", known)).toEqual([t("2024, business analyst.", true), t(" My first look, I "), t("know", false, true), t(" it.")]); });
-  it("keeps a link whole and lets emphasis wrap it", () => { expect(inlineRuns("*see [Rango](tip:aango) now*", known)).toEqual([t("see ", false, true), { kind: "tip", text: "Rango", key: "aango", strong: false, em: true }, t(" now", false, true)]); });
-  it("never pairs a link's asterisk with a marker in the text", () => { expect(inlineRuns("building[*](tip:aango). I *know* it", known)).toEqual([t("building"), { kind: "tip", text: "*", key: "aango", strong: false, em: false }, t(". I "), t("know", false, true), t(" it")]); });
+  it("keeps a link whole and lets emphasis wrap it", () => { expect(inlineRuns("*see [drone](tip:killer-drones) now*", known)).toEqual([t("see ", false, true), { kind: "tip", text: "drone", key: "killer-drones", strong: false, em: true }, t(" now", false, true)]); });
+  it("never pairs a link's asterisk with a marker in the text", () => { expect(inlineRuns("building[*](tip:killer-drones). I *know* it", known)).toEqual([t("building"), { kind: "tip", text: "*", key: "killer-drones", strong: false, em: false }, t(". I "), t("know", false, true), t(" it")]); });
   it("returns nothing for an empty string and keeps an unknown link as its words", () => {
     expect(inlineRuns("", known)).toEqual([]);
     expect(inlineRuns("a [Rango](tip:rango) knockoff", known)).toEqual([t("a Rango knockoff")]);

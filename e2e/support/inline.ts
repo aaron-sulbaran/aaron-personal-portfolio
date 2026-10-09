@@ -8,7 +8,7 @@ import { expect } from "./fixtures";
 // from fixture strings on /fixtures/inline, a route that exists only while the
 // server runs with E2E_FIXTURES=1 (playwright.config.ts).
 export const DEF = "I'm a [product](def:product)-focused engineer.";
-export const TIP = "I performed as a [Rango](tip:aango) knockoff that rapped.";
+export const TIP = "I'll build [anything](tip:killer-drones) that helps people.";
 export const POP = "I played [bass clarinet](pop:contrabass-clarinet).";
 export const MATCHA = "Let's grab a coffee ([or matcha](pop:matcha)). No matter what you're building[*](tip:killer-drones).";
 export const CALENDAR = "Or [grab a time on my calendar](https://cal.com/aaron-sulbaran).";
@@ -28,7 +28,7 @@ export async function tabTo(page: Page, link: Locator) {
   throw new Error("Tab never reached the link");
 }
 export const bubble = (page: Page) => page.locator("[data-inline-tip]");
-export const rango = (page: Page) => page.locator('[data-inline="tip"][data-inline-key="aango"]');
+export const tipLink = (page: Page) => page.locator('[data-inline="tip"][data-inline-key="killer-drones"]');
 const PRODUCT_ON_HOME = walkStrings(siteContent.whoIAm).some((leaf) => leaf.text.includes("](def:product)"));
 // The definition lives in Who I am once C5 lands it; until then, on the fixture.
 export async function productLink(page: Page): Promise<Locator> {
