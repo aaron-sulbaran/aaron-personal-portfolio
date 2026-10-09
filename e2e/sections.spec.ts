@@ -71,7 +71,8 @@ test("sections: after SplitText the page still reads every heading and paragraph
     blocks: [...document.querySelectorAll<HTMLElement>("[data-sections-block]")].map((el) => el.textContent ?? ""),
     lines: document.querySelectorAll("[data-sections-block] .sections-line").length,
     masks: document.querySelectorAll("[data-sections-block] .sections-line-mask").length,
-    labelled: document.querySelectorAll("[data-sections-block][aria-label], [data-sections-block] [aria-label]").length,
+    // An inline link whose words are only a symbol (Connect's footnote) carries a name; no label may stand in for words.
+    labelled: document.querySelectorAll("[data-sections-block][aria-label], [data-sections-block] [aria-label]:not([data-inline])").length,
     hidden: [...document.querySelectorAll("[data-sections-block] [aria-hidden='true']")].filter(
       (el) => !el.matches("[data-sections-rule], [data-sections-hair], svg, .fx-over, .fx-over *, .fx-arrow"),
     ).length,
