@@ -46,7 +46,9 @@ export function useTipController(bubbleRef: RefObject<HTMLElement | null>): { st
   useEffect(() => {
     const show = (link: HTMLElement, type: "hover" | "focus" | "press" | "tap") => {
       const target = targetOf(link);
-      if (target) { linkRef.current = link; dispatch({ type, target }); }
+      if (!target) return;
+      if (tipReducer(stateRef.current, { type, target }) !== stateRef.current) linkRef.current = link;
+      dispatch({ type, target });
     };
     const onPointerDown = (event: PointerEvent) => {
       const link = linkOf(event.target);
