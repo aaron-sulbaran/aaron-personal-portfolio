@@ -1,11 +1,12 @@
 import type { LabCard } from "./cards";
-import { boxFor, groupFrame, pagesOf, photoPlan, rotatingPages, rotatingPlan, slideText, uniformBoxes, uniformColumns, type Page, type Plan } from "./plan";
+import { boxFor, groupFrame, pagesOf, phonePages, photoPlan, rotatingPlan, slideText, uniformBoxes, uniformColumns, type Page, type Plan } from "./plan";
 import { interleave, readingOrder, type Row } from "./rows";
 import type { Settings } from "./settings";
 import { desktopSteps, pagerSteps, phoneSteps, planSteps, type MaskStep, type StepOptions } from "./timing";
 
 // One card's layouts and mask steps under the settings: the interleaved rows
-// of rounds one to three, the round four or five plan and its pager pages.
+// of rounds one to three, the round four or five plan and its pager pages
+// (round six: as the phone grouping lays a group out).
 // The live run asks with the measured line counts; the copied values without.
 
 export interface CardLayout {
@@ -23,7 +24,7 @@ export function cardLayout(card: LabCard, aspects: readonly number[], s: Setting
   );
   const rotate = s.extras === "rotate";
   const plan = (rotate ? rotatingPlan : photoPlan)(card.blocks.length, card.photos, card.flownPhoto);
-  return { rows, order: readingOrder(rows), plan, pages: rotate ? rotatingPages(plan) : pagesOf(plan) };
+  return { rows, order: readingOrder(rows), plan, pages: rotate ? phonePages(plan, s.phoneGrouping) : pagesOf(plan) };
 }
 
 export function stepsOf(card: LabCard, layout: CardLayout, s: Settings, mode: "desktop" | "phone", lines?: (id: string) => number): MaskStep[] {

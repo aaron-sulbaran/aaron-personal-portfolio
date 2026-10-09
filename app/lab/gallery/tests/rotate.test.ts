@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { CARDS, drawnShape } from "../cards";
 import { groupingOf } from "../cardSteps";
 import { groupFrame, pagesOf, photoPlan, repeatedBlocks, rotatingPages, rotatingPlan, slideText, uniformBoxes, type Plan } from "../plan";
-import { exportValues, INITIAL, PRESETS } from "../settings";
+import { exportValues, PRESETS } from "../settings";
 import { remainingAfter, ROTATOR_VISIBLE, rotatorRuns, type RotatorGate } from "../stage";
 import { pagerSteps, planSteps } from "../timing";
 
@@ -173,18 +173,19 @@ describe("round five steps", () => {
   });
 });
 
+// Round six is the pick now; round five stays selectable as it was.
+const FIVE = PRESETS.find((p) => p.id === "round-five")!.settings;
+
 describe("the round five preset", () => {
-  it("is the pick, round four with rotating photos, round four still selectable", () => {
-    expect(PRESETS[0].id).toBe("round-five");
-    expect(INITIAL).toBe(PRESETS[0].settings);
+  it("is round four with rotating photos, round four still selectable", () => {
     const four = PRESETS.find((p) => p.id === "round-four")!.settings;
-    expect(INITIAL).toEqual({ ...four, extras: "rotate" });
+    expect(FIVE).toEqual({ ...four, extras: "rotate" });
     expect(four.extras).toBe("placeholder");
-    expect(INITIAL).toMatchObject({ rotateSeconds: 4.5, rotateMs: 640, rotateDelayMs: 1200, rotateStyle: "mask", rotateAlign: "center" });
+    expect(FIVE).toMatchObject({ rotateSeconds: 4.5, rotateMs: 640, rotateDelayMs: 1200, rotateStyle: "mask", rotateAlign: "center", phoneGrouping: "repeat" });
   });
 
   it("copies the rotation with the values, and not under round four", () => {
-    const values = exportValues(INITIAL, "Round 5", "light", { desktop: [], phone: [] }, "Mentorship") as Record<string, unknown>;
+    const values = exportValues(FIVE, "Round 5", "light", { desktop: [], phone: [] }, "Mentorship") as Record<string, unknown>;
     expect(values.rotation).toMatchObject({ interval: "4.5s a photo, looping", words: "never change" });
     const four = PRESETS.find((p) => p.id === "round-four")!.settings;
     expect((exportValues(four, "Round 4", "light", { desktop: [], phone: [] }, "Mentorship") as Record<string, unknown>).rotation).toBeUndefined();
@@ -192,12 +193,12 @@ describe("the round five preset", () => {
 
   it("reads the grouping back per card for the panel", () => {
     const c = card("mentorship");
-    expect(groupingOf(c, c.photos.map((_, i) => drawnShape(c, i)), INITIAL)).toEqual({
+    expect(groupingOf(c, c.photos.map((_, i) => drawnShape(c, i)), FIVE)).toEqual({
       summary: "4 photos, 2 paragraphs: more photos than words; 4 pages on a phone",
       rows: ["Row 1: photo 1 (card picture), still, beside paragraph 1", "Row 2: photos 2, 3 and 4 take turns (424 by 318px frame), beside paragraph 2"],
     });
     const capitalOne = card("capital-one");
-    expect(groupingOf(capitalOne, capitalOne.photos.map((_, i) => drawnShape(capitalOne, i)), INITIAL).rows).toEqual([
+    expect(groupingOf(capitalOne, capitalOne.photos.map((_, i) => drawnShape(capitalOne, i)), FIVE).rows).toEqual([
       "Opens with paragraph 1",
       "Row 1: photo 1, beside paragraph 2",
       "Row 2: photo 2, beside paragraph 3",

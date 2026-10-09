@@ -172,6 +172,9 @@ function giveEveryPhotoWords(placed: Placed[], blockCount: number, lead?: number
 // and the closing ones on the last, so every page is one photo and its words.
 export interface Page extends Slide {
   links: boolean;
+  // Round six, B: a group's later page, its photo larger and its caption the
+  // only words.
+  wordless?: boolean;
 }
 
 export function pagesOf(plan: Plan): Page[] {
@@ -190,6 +193,70 @@ export function pagesOf(plan: Plan): Page[] {
 export function rotatingPages(plan: Plan): Page[] {
   const slides = plan.slides.flatMap((slide) => (slide.photos ?? [slide.photo]).map((photo) => ({ ...slide, photo, before: [...slide.before], after: [...slide.after] })));
   return pagesOf({ ...plan, slides });
+}
+
+// Round six on a phone (Aaron, 2026-10-09: round five's pages repeating a
+// paragraph were "really, really sloppy"). How a group of photos that take
+// turns on desktop sits in the pager:
+// - "paragraph" (A): pages follow the words. A page is a row of the plan,
+//   one paragraph (with any blocks riding beside it), and a group turns
+//   inside that page's stage as the desktop frame does.
+// - "photo" (B): a page a photo, but only a group's first page carries the
+//   words; its later pages are the photo alone, larger, with its caption.
+// - "strip" (C): a page a paragraph with the group's first photo; the rest
+//   follow under the words as a strip of smaller frames.
+// - "repeat": round five, a page a photo, a group's pages repeating its words.
+export type PhoneGrouping = "paragraph" | "photo" | "strip" | "repeat";
+
+export function phonePages(plan: Plan, grouping: PhoneGrouping): Page[] {
+  if (grouping === "repeat") return rotatingPages(plan);
+  if (grouping === "photo") return photoPages(plan);
+  return pagesOf(plan);
+}
+
+// B: the links stay with the last page that has words, so a wordless page
+// ends the card with its photo and caption alone.
+export function photoPages(plan: Plan): Page[] {
+  return pagesOf(plan).flatMap((page) => {
+    const [first, ...rest] = page.photos ?? [page.photo];
+    const wordless = rest.map((photo): Page => ({ photo, photos: [photo], own: undefined, before: [], after: [], links: false, wordless: true }));
+    return [{ ...page, photo: first, photos: [first] }, ...wordless];
+  });
+}
+
+// What a page's stage holds: one photo standing still, a group taking turns
+// (A), or a group's first photo with the rest in a strip under the words (C).
+export type StageKind = "still" | "turns" | "strip";
+
+export function stageKind(page: Page, grouping: PhoneGrouping): StageKind {
+  if ((page.photos?.length ?? 1) < 2) return "still";
+  return grouping === "paragraph" ? "turns" : grouping === "strip" ? "strip" : "still";
+}
+
+// The photos a page's stage draws and the strip's, in order.
+export function stagePhotos(page: Page, kind: StageKind): { stage: number[]; strip: number[] } {
+  const group = page.photos ?? [page.photo];
+  if (kind === "turns") return { stage: group, strip: [] };
+  if (kind === "strip") return { stage: [group[0]], strip: group.slice(1) };
+  return { stage: [page.photo], strip: [] };
+}
+
+// A page's stage: every photo it draws fitted whole inside the inner width
+// and the height, and the frame that holds the largest of them, so a group
+// taking turns never changes size and no photo is ever cropped by its stage.
+export function pageStage(photos: readonly number[], aspects: readonly number[], innerWidth: number, height: number): { frame: Box; boxes: Box[] } {
+  const boxes = photos.map((p) => fitWhole(aspects[p], innerWidth, height));
+  return { frame: groupFrame(boxes), boxes };
+}
+
+// C's strip: two frames whole and a third peeking at the inner width. Each
+// photo is fitted whole inside a square of the frame's width and stands on
+// the frames' common floor, so every caption starts on one line.
+export const STRIP_VISIBLE = 2.3;
+export function stripLayout(aspects: readonly number[], innerWidth: number, gap: number) {
+  const itemWidth = Math.max(0, (innerWidth - 2 * gap) / STRIP_VISIBLE);
+  const boxes = aspects.map((aspect) => fitWhole(aspect, itemWidth, itemWidth));
+  return { itemWidth, height: boxes.reduce((most, box) => Math.max(most, box.height), 0), boxes };
 }
 
 // For each page, the blocks an earlier page already shows: the repeat takes

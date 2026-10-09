@@ -2,7 +2,8 @@
 // presets, and what "Copy values" puts on the clipboard. Lengths are px at
 // 1x, times are ms unless named seconds.
 
-import { areaRatio, uniformBoxes, type HorizontalShape } from "./plan";
+import { areaRatio, uniformBoxes, type HorizontalShape, type PhoneGrouping } from "./plan";
+import type { MaskDirection } from "./reveal";
 import type { LeadMode, StageFit } from "./rows";
 import { maskTable, type MaskStep } from "./timing";
 
@@ -25,6 +26,7 @@ export type Extras = "placeholder" | "rotate";
 export type RotateStyle = "mask" | "fade";
 // Where a smaller box sits in its frame: centred, or on the caption.
 export type RotateAlign = "center" | "bottom";
+export type { MaskDirection, PhoneGrouping };
 
 export interface Settings {
   desktopLayout: DesktopLayout;
@@ -45,6 +47,14 @@ export interface Settings {
   rotateDelayMs: number; // after the landing, before the timer starts
   rotateStyle: RotateStyle;
   rotateAlign: RotateAlign;
+  // Round six: which way each part's reveal travels, and how a group of
+  // photos sits in the phone pager.
+  photoDirection: MaskDirection; // a photo's mask-in
+  rotateDirection: MaskDirection; // a rotating frame's change
+  captionDirection: MaskDirection; // a caption's mask-in and its change in a rotator
+  textDirection: MaskDirection; // the title, meta line, words, links and controls
+  phoneGrouping: PhoneGrouping;
+  wordlessMaxHeight: number; // percent of the visible height, B's photo-only pages
   // Desktop (rounds one to three)
   panelWidth: number;
   photoWidth: number;
@@ -101,6 +111,7 @@ export const RANGES = {
   rotateSeconds: { min: 2, max: 10, step: 0.5 },
   rotateMs: { min: 200, max: 1400, step: 20 },
   rotateDelayMs: { min: 0, max: 6000, step: 100 },
+  wordlessMaxHeight: { min: 40, max: 65, step: 1 },
   autoAdvance: { min: 0, max: 6, step: 0.5 },
   crossfadeMs: { min: 120, max: 800, step: 20 },
   landingMs: { min: 0, max: 800, step: 20 },
@@ -116,7 +127,14 @@ export const EASES: Record<EaseKey, { name: string; gsap: string; css: string }>
 };
 
 export const SPLIT_LABELS: Record<TextSplit, string> = { lines: "By line, as the sections", block: "Whole block" };
-export const PHOTO_MASK_LABELS: Record<PhotoMask, string> = { wipe: "Wipe up (the edge rises)", rise: "Rise (as a text line)" };
+export const PHOTO_MASK_LABELS: Record<PhotoMask, string> = { wipe: "Wipe (a clip edge crosses the photo)", rise: "Move in (as a text line)" };
+export const DIRECTION_LABELS: Record<MaskDirection, string> = { ltr: "Left to right", up: "Bottom up" };
+export const GROUPING_LABELS: Record<PhoneGrouping, string> = {
+  paragraph: "A. One page per paragraph",
+  photo: "B. Photo pages without repeats",
+  strip: "C. Paragraph then its photos",
+  repeat: "Round 5, a page a photo, words repeating",
+};
 export const LEAD_LABELS: Record<LeadMode, string> = { title: "Beside the title", block: "Beside the first block" };
 export const FIT_LABELS: Record<StageFit, string> = { each: "Each photo's height (eases)", tallest: "The tallest photo's height (text stays put)" };
 export const ALIGN_LABELS: Record<TextAlign, string> = { center: "Middle of the photo", start: "Top of the photo" };
@@ -145,6 +163,12 @@ const EARLIER = {
   rotateDelayMs: 1200,
   rotateStyle: "mask",
   rotateAlign: "center",
+  photoDirection: "up",
+  rotateDirection: "up",
+  captionDirection: "up",
+  textDirection: "up",
+  phoneGrouping: "repeat",
+  wordlessMaxHeight: 55,
 } as const satisfies Partial<Settings>;
 
 // The brief's numbers, nothing added: block masks, no settle, every photo
@@ -303,7 +327,34 @@ const ROUND_FOUR: Settings = {
 // round four's pager, one photo a page, a group's pages repeating its words.
 const ROUND_FIVE: Settings = { ...ROUND_FOUR, extras: "rotate" };
 
+// Round six, Aaron's pick (2026-10-09): his copied round five values with
+// the photos turning every 3s instead of 4.5s. Two changes on top. Every
+// reveal travels left to right, "just in a readable direction": a photo's
+// clip edge crosses it from the left, a rotator's new photo wipes in from the
+// left as the old one clears to the right, a caption's and each line's clip
+// opens left to right in place; lengths, staggers and the ease unchanged. On
+// a phone, pages follow the words (A): a page is a paragraph, and a group
+// turns inside that page's stage on the desktop rules (3s, left to right,
+// the caption changing with it, held while touched, still under reduced
+// motion), with small marks in the stage's corner and a tap stepping it, so
+// Mentorship is 2 pages and no paragraph shows twice.
+const ROUND_SIX: Settings = {
+  ...ROUND_FIVE,
+  rotateSeconds: 3,
+  photoDirection: "ltr",
+  rotateDirection: "ltr",
+  captionDirection: "ltr",
+  textDirection: "ltr",
+  phoneGrouping: "paragraph",
+};
+
 export const PRESETS: readonly { id: string; name: string; note: string; settings: Settings }[] = [
+  {
+    id: "round-six",
+    name: "Round 6, Aaron's pick",
+    note: "Round five as Aaron copied it, the photos turning every 3s. Every reveal travels left to right: a photo's clip edge crosses it from the left, a rotator's new photo wipes in from the left as the old one clears to the right, a caption's and each line's clip opens left to right in place (same lengths, staggers and ease). Phone: a page a paragraph (A); a group turns inside its page's stage on the desktop rules, small marks in its corner, a tap steps it, so no paragraph shows twice. B and C are under Phone grouping.",
+    settings: ROUND_SIX,
+  },
   {
     id: "round-five",
     name: "Round 5, rotating photos",
@@ -360,14 +411,34 @@ export function exportValues(s: Settings, label: string, theme: string, steps: {
       photo: PHOTO_MASK_LABELS[s.photoMask],
       settle: s.settle > 0 ? `${(1 + s.settle / 100).toFixed(4)} to 1 over the mask` : "off",
       ease: EASES[s.ease].css,
-      textMask: "each line or block inside an overflow clip, yPercent 110 to 0 (the sections grammar's MASKED)",
+      direction: {
+        photo: DIRECTION_LABELS[s.photoDirection],
+        rotator: DIRECTION_LABELS[s.rotateDirection],
+        caption: DIRECTION_LABELS[s.captionDirection],
+        text: DIRECTION_LABELS[s.textDirection],
+      },
+      photoMask: photoMaskNote(s),
+      textMask: textMaskNote(s.textDirection, s.textSplit),
+      captionMask: textMaskNote(s.captionDirection, s.textSplit),
       wholeModalDoneAt: {
         desktop: `${Math.round(maskTable(steps.desktop, timing).endMs)}ms`,
         phone: `${Math.round(maskTable(steps.phone, timing).endMs)}ms`,
       },
     },
-    reducedMotion: `no masks, no settle, no auto-advance, an instant stage swap or page turn with no travel${s.extras === "rotate" ? ", a rotating frame that never turns on its own (its dots and arrow keys step it, with no transition) and no pause button" : ""}; the panel's own 180ms fade only`,
+    reducedMotion: `no masks, no settle, no auto-advance, an instant stage swap or page turn with no travel${s.extras === "rotate" ? `, a rotating frame that never turns on its own (its dots and arrow keys step it${s.phoneGrouping === "paragraph" ? ", or a tap on a phone page's stage" : ""}, with no transition) and no pause button` : ""}; the panel's own 180ms fade only`,
   };
+}
+
+function photoMaskNote(s: Settings) {
+  if (s.photoMask === "rise") return s.photoDirection === "ltr" ? "the photo moves in from the left inside its clip, xPercent -110 to 0" : "the photo rises inside its clip, yPercent 110 to 0";
+  return s.photoDirection === "ltr" ? "clip-path inset, the right edge from 100% to 0 (the edge travels from the left edge to the right), 12px corners" : "clip-path inset, the top edge from 100% to 0 (the edge rises from the foot), 12px corners";
+}
+
+function textMaskNote(direction: Settings["textDirection"], split: TextSplit) {
+  const what = split === "lines" ? "each line" : "each block";
+  return direction === "ltr"
+    ? `${what} in place, its clip opening left to right (clip-path inset, the right edge from 102% to -2%, 25% room above and below for the ink)`
+    : `${what} inside an overflow clip, yPercent 110 to 0 (the sections grammar's MASKED)`;
 }
 
 function roundFourDesktop(s: Settings) {
@@ -401,13 +472,25 @@ function rotation(s: Settings) {
     rule: "N photos, P blocks. N <= P: round four's rows, every photo given words. N > P: the card picture (a logo card's first photo) still beside block 1, then each later block beside a group of the remaining photos in order, the extras to the later rows; one block: every photo takes turns beside it, the card picture first",
     frame: `the group's largest box, so it never changes size; each photo drawn in its own orientation's box, ${ROTATE_ALIGN_LABELS[s.rotateAlign].toLowerCase()}`,
     interval: `${s.rotateSeconds}s a photo, looping`,
-    change: `${s.rotateMs}ms, ${s.rotateStyle === "fade" ? "a cross-fade" : `${PHOTO_MASK_LABELS[s.photoMask].toLowerCase()}, the old photo clearing as the new one comes in`}, ${s.rotateStyle === "fade" ? "linear" : EASES[s.ease].css}`,
-    caption: s.rotateStyle === "fade" ? "changes with the photo, cross-faded" : "changes with the photo, the new one rising as the old one rises out",
+    change: `${s.rotateMs}ms, ${s.rotateStyle === "fade" ? "a cross-fade" : rotateChangeNote(s)}, ${s.rotateStyle === "fade" ? "linear" : EASES[s.ease].css}`,
+    caption:
+      s.rotateStyle === "fade"
+        ? "changes with the photo, cross-faded"
+        : s.captionDirection === "ltr"
+          ? "changes with the photo, one clip edge crossing both from the left: the new caption left of it, the old right of it"
+          : "changes with the photo, the new one rising as the old one rises out",
     words: "never change",
     startsAt: `${s.rotateDelayMs}ms after the landing, then one interval to the first change`,
     controls: "dots under the caption (the current one fills over the interval), clickable, arrow keys step it; a pause and play button",
     pauses: "while hovered, while keyboard focus is inside it, while less than a third of the frame is on screen, and when paused; it resumes with the time it had left",
   };
+}
+
+function rotateChangeNote(s: Settings) {
+  if (s.photoMask === "rise") return s.rotateDirection === "ltr" ? "the new photo moves in from the left as the old one moves out to the right" : "the new photo rises in as the old one rises out";
+  return s.rotateDirection === "ltr"
+    ? "one clip edge crosses the frame from the left: the new photo wipes in left of it as the old one clears to the right"
+    : "the new photo wipes up as the old one clears upward";
 }
 
 function interleavedDesktop(s: Settings) {
@@ -429,15 +512,53 @@ function interleavedDesktop(s: Settings) {
   };
 }
 
+// What a page is under each phone grouping (round six), for the copied values.
+function pageNote(s: Settings) {
+  const ends = "the first page carries the opening blocks, the last the closing ones and the links";
+  if (s.extras !== "rotate") return `one photo, its caption and its words; ${ends}`;
+  switch (s.phoneGrouping) {
+    case "paragraph":
+      return `one paragraph (with any blocks riding beside it) a page, never a photo a page; a page whose paragraph has a group of photos turns them inside its stage; ${ends}`;
+    case "photo":
+      return "one photo a page; a group's first page carries its words, its later pages the photo alone, larger, with its caption as the only words; the first page carries the opening blocks, the last page with words the closing ones and the links";
+    case "strip":
+      return `one paragraph a page with its group's first photo in the stage; the group's other photos follow under the words as a strip of smaller frames, each with its caption; ${ends}`;
+    case "repeat":
+      return `one photo, its caption and its words, never a placeholder; a group's photos each get a page with the group's words, so pages side by side may repeat them; ${ends}`;
+  }
+}
+
+function groupNote(s: Settings) {
+  switch (s.phoneGrouping) {
+    case "paragraph":
+      return {
+        stage: "the group's frame is its largest photo fitted whole, each photo drawn at its own fit inside it, so the stage never changes size",
+        turns: `${s.rotateSeconds}s a photo, looping, ${s.rotateMs}ms ${s.rotateStyle === "fade" ? "cross-fade" : rotateChangeNote(s)}; the caption under the stage changes with the photo; the words never do`,
+        marks: "small marks in a pill in the frame's bottom right corner, the current one filling over the interval; the page dots and arrows only change pages",
+        tap: "a tap on the stage steps the group (Enter or Space when it has focus); a swipe still turns the page",
+        pauses: "while a finger is down on the pager, while the page is not the current one, while keyboard focus is on the stage; it starts after the landing and the start delay",
+        reducedMotion: "never turns on its own; a tap steps it with no transition",
+      };
+    case "photo":
+      return { laterPages: `the photo alone with its caption, its stage at most ${s.wordlessMaxHeight}% of the visible height (a horizontal photo is held by the width first, so only a vertical one grows)` };
+    case "strip":
+      return {
+        strip: "the group's other photos under the paragraph, each fitted whole inside a square of the frame's width on one floor, its caption under it; frames sized so two show whole and a third peeks",
+        swipe: "a sideways swipe on the strip moves the strip when it has more than fits; anywhere else, or on a strip that fits, it turns the page",
+        height: "the page height is fixed; the words, the strip and the links scroll together in their own area",
+      };
+    case "repeat":
+      return { pages: "every photo of a group its own page, each repeating the group's words under a mask id of its own" };
+  }
+}
+
 function roundFourPhone(s: Settings) {
   return {
     layout: PHONE_LABELS.pager,
+    ...(s.extras === "rotate" ? { grouping: GROUPING_LABELS[s.phoneGrouping], group: groupNote(s) } : {}),
     sheet: "the modal fills the visible height less 24px top and bottom; nothing scrolls but a long page's words",
     header: "fixed above the pages: the logo tile (logo cards), the title, the meta line",
-    page:
-      s.extras === "rotate"
-        ? "one photo, its caption and its words, never a placeholder; a group's photos each get a page with the group's words, so pages side by side may repeat them; the first page carries the opening blocks, the last the closing ones and the links"
-        : "one photo, its caption and its words; the first page carries the opening blocks, the last the closing ones and the links",
+    page: pageNote(s),
     stageHeight: `at most ${s.stageMaxHeight}% of the visible height; each page's stage exactly as tall as its photo fitted whole`,
     fit: "each photo whole inside the inner width and the height, its caption right under it; never cropped by the stage",
     longWords: "scroll inside their own area under the caption; the photo never leaves view",
