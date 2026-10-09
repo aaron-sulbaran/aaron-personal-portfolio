@@ -129,7 +129,10 @@ export function useWordMotion(stage: RefObject<HTMLElement | null>, config: RefO
     };
 
     const io = new IntersectionObserver(
-      ([entry]) => {
+      (entries) => {
+        // A quick scroll out and back can batch both changes into one call;
+        // the last entry is the stage as it is now.
+        const entry = entries[entries.length - 1];
         visible = entry.isIntersecting;
         if (visible && !seen.current && entry.intersectionRatio >= 0.3) {
           seen.current = true;
