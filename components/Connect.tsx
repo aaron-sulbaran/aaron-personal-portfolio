@@ -30,7 +30,7 @@ function breakAfterAt(value: string) {
 
 // Stays a Server Component. The heading and body arrive by the sections
 // grammar, line by line; the section's label names the landmark (aria-label)
-// and the nav, and is not drawn, since the heading says it; "Book a chat" is the
+// and the nav, and is not drawn, since the heading says it; "Book some time" is the
 // one big link and lifts out of its clip as a single-row block; the link list
 // is one block whose rows draw their rules and lift out of a clip in turn.
 // The rule under each link is this section's, so the row's Fill rises from
