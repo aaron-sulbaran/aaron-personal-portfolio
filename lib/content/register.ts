@@ -38,6 +38,7 @@ export const register: InlineRegister = {
       caption: "7T+ is my favorite matcha place in the world, literally in the world. This one is in Kyoto.",
       crop: null,
       href: "https://www.google.com/maps/search/?api=1&query=35.0025497%2C135.7652173",
+      hrefLabel: "Open in Google Maps",
     },
     "sister-kyoto": { file: { src: "/photos/pops/sister-kyoto.jpg", width: 800, height: 717 }, alt: "Me and my sister in the Arashiyama bamboo grove in Kyoto", caption: null, crop: null },
     "contrabass-clarinet": { file: { src: "/photos/pops/contrabass-clarinet.jpg", width: 600, height: 800 }, alt: "Me, on the right, holding a contrabass clarinet next to my friend with a baritone saxophone", caption: "Bass clarinet was my main instrument. In concert season I played contrabass.", crop: null },

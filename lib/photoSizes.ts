@@ -22,3 +22,8 @@ export function photoSlotSizes(src: string): string {
   const narrow = scale === 1 ? `calc${SLOT_WIDTH_NARROW}` : `calc(${SLOT_WIDTH_NARROW} * ${scale})`;
   return `(max-width: 767px) ${narrow}, ${Math.ceil(SLOT_WIDTH_WIDE * scale)}px`;
 }
+
+// A photo pop (components/inline/TipBubble) shows its photo about 280px wide
+// (docs/content/tooltips.md); its export caps the long edge at 800px.
+export const POP_PHOTO_WIDTH = 280;
+export const POP_PHOTO_SIZES = `${POP_PHOTO_WIDTH}px`;

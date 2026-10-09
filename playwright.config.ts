@@ -31,6 +31,9 @@ const HOLDING_PORT = Number(process.env.E2E_HOLDING_PORT ?? 3141);
 // E2E_BASE_URL points the suite at another local build of the full site
 // (an older commit, to prove a test fails where the defect lived); the suite
 // then starts no servers of its own.
+// The full server runs with E2E_FIXTURES=1, which serves /fixtures/inline
+// (e2e/inline-links*.spec.ts). Under E2E_BASE_URL that route is a 404 unless
+// that server was started with E2E_FIXTURES=1.
 const OTHER_BUILD = process.env.E2E_BASE_URL;
 if (OTHER_BUILD && !/^http:\/\/localhost:\d+\/?$/.test(OTHER_BUILD)) throw new Error("E2E_BASE_URL must be a localhost URL");
 const FULL_URL = OTHER_BUILD ?? `http://localhost:${FULL_PORT}`;
@@ -103,7 +106,7 @@ export default defineConfig({
       command: process.env.E2E_NO_BUILD === "1" ? `pnpm start -p ${FULL_PORT}` : `pnpm build && pnpm start -p ${FULL_PORT}`,
       url: FULL_URL,
       // No token: the committed contribution snapshot is the path under test.
-      env: { NEXT_PUBLIC_SITE_MODE: "full", GITHUB_CONTRIB_TOKEN: "" },
+      env: { NEXT_PUBLIC_SITE_MODE: "full", GITHUB_CONTRIB_TOKEN: "", E2E_FIXTURES: "1" },
       reuseExistingServer: !CI,
       timeout: 240_000,
       stdout: "ignore",

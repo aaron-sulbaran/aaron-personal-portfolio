@@ -4,6 +4,7 @@ import { useLayoutEffect, useRef } from "react";
 import { X } from "lucide-react";
 import { AnimatePresence, motion, useIsPresent, useReducedMotion } from "framer-motion";
 import { Fill, FillArrow, FillSeed } from "@/components/fx/Fill";
+import { InlineCopy } from "@/components/inline/InlineCopy";
 import { MarkStrike } from "@/components/mark/MarkStrike";
 import { useCloseHint } from "@/components/PhotoModal";
 import { Portal } from "@/components/Portal";
@@ -134,7 +135,7 @@ function MarkDialog({ reduced, onClose, onCta }: { reduced: boolean; onClose: ()
             <span data-card="text" className="text-sm text-muted">{COPY.eyebrow}</span>
             <h2 data-card="text" className="font-display text-3xl leading-tight text-foreground">{COPY.title}</h2>
             {COPY.lines.map((line) => (
-              <p key={line} data-card="text" className="text-base leading-relaxed text-foreground">{line}</p>
+              <p key={line} data-card="text" className="text-base leading-relaxed text-foreground"><InlineCopy source={line} /></p>
             ))}
             <span data-card="text" className="w-fit">
               <Fill as="link" {...FILL_PICK.cta} href={COPY.cta.href} onClick={(e) => { e.preventDefault(); onCta(); }} className={CTA_CLASS} overClassName={CTA_OVER_CLASS}>
