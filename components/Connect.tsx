@@ -1,7 +1,7 @@
 import { Fragment } from "react";
-import { Fill, FillArrow } from "@/components/fx/Fill";
+import { Fill, FillArrow, FillSeed } from "@/components/fx/Fill";
 import { siteContent } from "@/lib/content";
-import { FILL_PICK } from "@/lib/fx/fill";
+import { CTA_CLASS, CTA_OVER_CLASS, FILL_PICK } from "@/lib/fx/fill";
 import { InlineCopy } from "./inline/InlineCopy";
 import { Block } from "./sections/Block";
 import { Kicker } from "./sections/Kicker";
@@ -13,6 +13,9 @@ import { Kicker } from "./sections/Kicker";
 // so it sits centered on the first line whether or not the value wraps.
 const VALUE_SIZE = "text-xl lg:text-2xl xl:text-3xl";
 
+// A mailto opens in place; every web link opens in a new tab.
+const isWeb = (href: string) => href.startsWith("https://");
+
 function breakAfterAt(value: string) {
   return value.split(/(?<=@)/).map((part, i) => (
     <Fragment key={i}>
@@ -22,12 +25,14 @@ function breakAfterAt(value: string) {
   ));
 }
 
-// Stays a Server Component. The kicker, heading and lede arrive by the
-// sections grammar, the heading and lede line by line; the link list is one
-// block whose rows draw their rules and lift out of a clip in turn. The rule
-// under each link is this section's, so the row's Fill rises from line 0.
+// Stays a Server Component. The kicker, heading and body arrive by the
+// sections grammar, the heading and body line by line; "Book a chat" is the
+// one big link and lifts out of its clip as a single-row block; the link list
+// is one block whose rows draw their rules and lift out of a clip in turn.
+// The rule under each link is this section's, so the row's Fill rises from
+// line 0.
 export function Connect() {
-  const { label, heading, lede, links } = siteContent.connect;
+  const { label, heading, body, primary, links } = siteContent.connect;
   return (
     <section id="connect" aria-label={label} className="relative w-full scroll-mt-24 border-t border-border px-6 py-24 md:px-10 md:py-40">
       <div className="mx-auto grid max-w-6xl grid-cols-1 gap-12 md:grid-cols-12 md:gap-16">
@@ -36,8 +41,22 @@ export function Connect() {
           <Block kind="heading" as="h2" className="mt-6 font-display text-section">
             {heading}
           </Block>
-          <Block kind="body" as="p" className="mt-5 max-w-sm text-base leading-relaxed text-muted md:text-lg">
-            <InlineCopy source={lede} />
+          <Block kind="body" as="p" className="mt-5 max-w-md text-base leading-relaxed text-muted md:text-lg">
+            <InlineCopy source={body} />
+          </Block>
+          <Block kind="links" as="div" className="mt-8">
+            <div data-sections-row>
+              <span className="-my-[0.15em] block overflow-clip py-[0.15em]">
+                <span data-sections-rowinner className="block w-fit">
+                  <Fill as="a" {...FILL_PICK.cta} href={primary.href} target="_blank" rel="noopener noreferrer" className={CTA_CLASS} overClassName={CTA_OVER_CLASS}>
+                    {primary.label}
+                    <FillSeed className="h-8 w-8">
+                      <FillArrow dir="up-right" />
+                    </FillSeed>
+                  </Fill>
+                </span>
+              </span>
+            </div>
           </Block>
         </div>
         <Block kind="links" as="ul" className="md:col-span-7">
@@ -49,8 +68,8 @@ export function Connect() {
                 shape="rect"
                 line={0}
                 href={link.href}
-                target={link.external ? "_blank" : undefined}
-                rel={link.external ? "noopener noreferrer" : undefined}
+                target={isWeb(link.href) ? "_blank" : undefined}
+                rel={isWeb(link.href) ? "noopener noreferrer" : undefined}
                 className="-mx-4 flex min-h-[56px] items-baseline px-4 py-5 text-foreground"
                 overClassName="flex items-baseline px-4 py-5"
               >
@@ -58,7 +77,7 @@ export function Connect() {
                   <span data-sections-rowinner className="flex min-w-0 flex-1 items-baseline gap-4">
                     <span className="w-28 shrink-0 font-label text-label text-muted md:w-32">{link.label}</span>
                     <span data-connect-value className={`min-w-0 flex-1 break-words font-display ${VALUE_SIZE}`}>
-                      {breakAfterAt(link.value)}
+                      {breakAfterAt(link.handle)}
                     </span>
                     <span className={`flex h-[1lh] shrink-0 items-center self-start ${VALUE_SIZE}`}>
                       <FillArrow dir="up-right" size={20} className="text-muted" />
