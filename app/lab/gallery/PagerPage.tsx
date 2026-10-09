@@ -23,6 +23,11 @@ export function PagerPage({ card, page, index, count, box, current, innerWidth, 
   const { blocks, note } = slideText(page);
   const beforeCount = page.before.length;
   const flown = page.photo === card.flownPhoto;
+  // The stand-ins are cropped to the real photo's shape. A vertical stand-in
+  // in a horizontal slot loses its top at a centred crop, which reads as the
+  // stage cropping the photo; the real photo is that shape and loses nothing,
+  // so the stand-in's crop keeps the top, where the faces are.
+  const standInTop = photo.width / photo.height < aspect - 0.01;
 
   useLayoutEffect(() => {
     const text = textRef.current;
@@ -49,7 +54,15 @@ export function PagerPage({ card, page, index, count, box, current, innerWidth, 
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2" style={{ width: box.width, height: box.height }} data-photo-frame={page.photo}>
           <div data-mask={partId.photo(page.photo)} data-mask-kind="photo" {...(flown ? { "data-mask-flown": "", "data-tile-slot": "photo" } : {})} className="absolute inset-0 overflow-hidden rounded-xl">
             <div data-mask-media="" className="absolute inset-0">
-              <Image src={photo.src} alt={photo.alt} fill quality={90} draggable={false} sizes={gallerySizes(photo.width / photo.height, aspect, innerWidth)} className="object-cover" />
+              <Image
+                src={photo.src}
+                alt={photo.alt}
+                fill
+                quality={90}
+                draggable={false}
+                sizes={gallerySizes(photo.width / photo.height, aspect, innerWidth)}
+                className={`object-cover ${standInTop ? "object-[50%_18%]" : ""}`}
+              />
             </div>
           </div>
         </div>
