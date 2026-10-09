@@ -6,11 +6,12 @@ import { seriesStats, shortDate } from "./format";
 const m = siteContent.metrics;
 
 describe("the stats", () => {
-  it("reads the snapshot as the current streak, the total and the active days; empty slots render nothing", () => {
+  it("reads the snapshot as the current streak, the total and the active days, then my LinkedIn line; the empty fun slot renders nothing", () => {
     expect(seriesStats(snapshotSeries()).map((s) => [s.key, s.value, s.unit, s.label, s.sub])).toEqual([
       ["streak", "60", m.days, m.streakLabel, `${m.since} Aug 8`],
       ["total", "2,501", undefined, m.totalLabel, undefined],
       ["active", "94", undefined, m.activeLabel, undefined],
+      ["linkedin", "450,000", undefined, "LinkedIn impressions in 3 months", "2,500+ followers"],
     ]);
   });
   it("writes dates as Aug 8, the copy sentence case and first person, no dashes", () => {

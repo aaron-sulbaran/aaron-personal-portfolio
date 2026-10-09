@@ -23,7 +23,7 @@ export const siteContent = {
   meta: {
     title: "Aaron Sulbaran",
     description:
-      "Building products (and community) with people, not just for them.",
+      "I'm a product-focused engineer at UT Austin. I build for people, and I love leading them towards building great things.",
     url: "https://aaronsulbaran.com",
   },
   // Every inline link the copy may point at (lib/content/register.ts).
@@ -38,16 +38,16 @@ export const siteContent = {
   cards,
   // The soundtrack band under the book (components/soundtrack): the one place
   // the music is offered and controlled, with the waveform running through
-  // it. Each note describes what is on screen when it shows. Draft copy in my
-  // voice, to be tightened by Aaron.
+  // it. Each note describes what is on screen when it shows (docs/content/
+  // connect-footer-band.md, approved 2026-10-08).
   listen: {
     ariaLabel: "Soundtrack",
     line: "Want some music while you scroll?",
-    body: "I put together a short playlist for this site. The wave follows you down the page.",
+    body: "Yeah, I put [music](tip:music-note) on my website. It moves with you.",
     accept: "Play it",
     decline: "Not now",
-    acceptedNote: "Keep going, the music will follow.",
-    declinedNote: "No problem. It'll be here if you change your mind.",
+    acceptedNote: "Enjoy! Control it from the [evolving isle](tip:evolving-isle).",
+    declinedNote: "No problem, it's here if you change your mind.",
     pausedNote: "Paused. Resume whenever you like.",
     pause: "Pause",
     resume: "Resume",
@@ -201,7 +201,7 @@ export const siteContent = {
   },
   errorPage: {
     title: "Something went wrong.",
-    body: "An unexpected error occurred. It's on my end, not yours.",
+    body: "That one's on me, not you. Try again, and if it keeps breaking, let me know.",
     retry: "Try again",
   },
   whoIAm: {
@@ -219,8 +219,9 @@ export const siteContent = {
       "Always open to chatting if you're working on something interesting or just want to trade notes.",
     ],
   },
-  // The contribution skyline inside Up to now (components/metrics). The two
-  // slots stay null until I supply a LinkedIn figure and a fun one; a null
+  // The numbers strip under Who I am (components/metrics): the GitHub chart
+  // and its figures, then my LinkedIn line (docs/content/right-now-and-metrics.md,
+  // approved 2026-10-08). The fun slot stays null until I supply one; a null
   // slot renders nothing.
   metrics: {
     groupLabel: "My GitHub contributions",
@@ -232,7 +233,10 @@ export const siteContent = {
     totalLabel: "contributions in the last 6 months",
     activeLabel: "days I shipped something",
     asOf: "As of",
-    slots: { linkedin: null as MetricsSlot | null, fun: null as MetricsSlot | null },
+    slots: {
+      linkedin: { value: "450,000", label: "LinkedIn impressions in 3 months", sub: "2,500+ followers" } as MetricsSlot | null,
+      fun: null as MetricsSlot | null,
+    },
     chart: {
       viewGroup: "Chart view",
       flat: "Flat",
@@ -337,7 +341,7 @@ export const siteContent = {
   },
   footer: {
     // The month comes from the build (lib/buildDate.ts).
-    tagline: (month: string) => `This site grows with me. Last updated ${month}`,
+    tagline: (month: string) => `Last updated ${month}`,
     copyright: "© 2026 Aaron Sulbaran",
   },
   // Private recruiting dashboard at /recruiting (app/recruiting/page.tsx),
