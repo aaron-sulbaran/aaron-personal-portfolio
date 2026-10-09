@@ -10,6 +10,7 @@ type BlockProps = {
   as?: "div" | "h2" | "p" | "li" | "ul";
   index?: number;
   split?: Split;
+  id?: string;
   className?: string;
   children: ReactNode;
 };
@@ -18,10 +19,11 @@ type BlockProps = {
 // it whole and readable, and after mount this arms its one timeline when
 // motion is allowed or marks it still when it is not. Both conditions are
 // listed because matchMedia runs the function only while one of them matches;
-// a change of preference reverts and rebuilds, live, both directions. A
+// a change of preference reverts and rebuilds, live, both directions. An id
+// names the block for a group that is labelled by it (aria-labelledby). A
 // lines-split Block's children must be static text: SplitText's revert
 // restores innerHTML, so any marker or React child inside is recreated.
-export function Block({ kind, as = "div", index = 0, split = "lines", className, children }: BlockProps) {
+export function Block({ kind, as = "div", index = 0, split = "lines", id, className, children }: BlockProps) {
   const ref = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -46,6 +48,7 @@ export function Block({ kind, as = "div", index = 0, split = "lines", className,
     as,
     {
       ref,
+      id,
       className,
       "data-sections-block": kind,
       "data-sections-split": kind === "heading" || kind === "body" ? split : undefined,
