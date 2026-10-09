@@ -28,7 +28,7 @@ export function TipBubble({ state, ref }: { state: TipState; ref: Ref<HTMLDivEle
           )}
           {view.caption && <span className="px-1 font-label text-label-sm leading-snug text-muted">{view.caption}</span>}
           {pinnedLink && (
-            <a href={pinnedLink.href} target="_blank" rel="noopener noreferrer" tabIndex={-1} className="px-1 pb-1 font-label text-label-sm text-accent underline underline-offset-2">{pinnedLink.label}</a>
+            <a href={pinnedLink.href} target="_blank" rel="noopener noreferrer" tabIndex={-1} onMouseDown={(event) => event.preventDefault()} className="px-1 pb-1 font-label text-label-sm text-accent underline underline-offset-2">{pinnedLink.label}</a>
           )}
         </span>
       )}

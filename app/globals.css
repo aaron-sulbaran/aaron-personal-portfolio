@@ -540,7 +540,7 @@ body {
 .inline-link[data-inline="def"] { text-decoration-style: solid; }
 .inline-link[data-inline="tip"], .inline-link[data-inline="pop"] { text-decoration-style: dotted; }
 .inline-link[data-inline="external"] { text-decoration-style: solid; text-decoration-color: var(--inline-underline-external); }
-.inline-link:hover { color: var(--color-accent); }
+@media (hover: hover) { .inline-link:hover { color: var(--color-accent); } }
 .inline-link:focus-visible { outline-offset: 1px; }
 .sections-line-mask:has(.inline-link) { overflow-x: visible !important; }
 /* A link is an atomic inline, which allows a wrap on both sides; the glue span keeps the characters touching it on its line. */
