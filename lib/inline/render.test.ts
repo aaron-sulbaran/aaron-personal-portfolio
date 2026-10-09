@@ -17,9 +17,9 @@ describe("InlineCopy", () => {
     );
   });
   it("wraps emphasis around text and links", () => {
-    const out = html("**Bold** and *a [Rango](tip:aango) knockoff*");
+    const out = html("**Bold** and *a [drone](tip:killer-drones) knockoff*");
     expect(out).toContain("<strong>Bold</strong> and ");
-    expect(out).toMatch(/<em>a <\/em><em><button [^>]*data-inline="tip"[^>]*>Rango<\/button><\/em><em> knockoff<\/em>$/);
+    expect(out).toMatch(/<em>a <\/em><em><button [^>]*data-inline="tip"[^>]*>drone<\/button><\/em><em> knockoff<\/em>$/);
   });
   it("renders an https link and the matcha pop as new-tab anchors", () => {
     expect(html("[grab a time on my calendar](https://cal.com/aaron-sulbaran)")).toMatch(
@@ -35,13 +35,13 @@ describe("InlineCopy", () => {
     );
   });
   it("nests emphasis on a glued neighbour inside the glue span", () => {
-    expect(html("**bold**[Rango](tip:aango) rest")).toMatch(
-      /^<span class="inline-glue"><strong>bold<\/strong><button [^>]*data-inline="tip"[^>]*>Rango<\/button><\/span> rest$/,
+    expect(html("**bold**[drone](tip:killer-drones) rest")).toMatch(
+      /^<span class="inline-glue"><strong>bold<\/strong><button [^>]*data-inline="tip"[^>]*>drone<\/button><\/span> rest$/,
     );
   });
   it("adds no glue span to a link between spaces or at an edge", () => {
-    expect(html("a [Rango](tip:aango) knockoff")).not.toContain("inline-glue");
-    expect(html("[Rango](tip:aango) knockoff")).not.toContain("inline-glue");
+    expect(html("a [drone](tip:killer-drones) knockoff")).not.toContain("inline-glue");
+    expect(html("[drone](tip:killer-drones) knockoff")).not.toContain("inline-glue");
   });
   it("renders an unknown key or a bad target as plain words and never throws", () => {
     expect(html("a [Rango](tip:rango) knockoff")).toBe("a Rango knockoff");

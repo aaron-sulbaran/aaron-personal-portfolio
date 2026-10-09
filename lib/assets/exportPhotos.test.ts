@@ -53,6 +53,20 @@ async function pixel(path: string, x: number, y: number): Promise<number[]> {
 function isRed([r, g, b]: number[]) { return r > 200 && g < 60 && b < 60; }
 function isBlue([r, g, b]: number[]) { return b > 200 && r < 60 && g < 60; }
 
+// A 100 by 150 vector: white on the left with a hairline black stripe 0.4 wide at x 25, blue on the
+// right. Drawn at 100 by 150 the stripe is a 40% grey pixel column; rendered at the pop's 533 by 800
+// it is a 2 px black line. Stretching the small raster could never produce that line.
+const SPLIT_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="150"><rect width="100" height="150" fill="#ffffff"/><rect x="50" width="50" height="150" fill="#0000ff"/><rect x="24.8" width="0.4" height="150" fill="#000000"/></svg>';
+
+// The darkest grey in a window of one row.
+async function darkest(input: string | Buffer, y: number, from: number, to: number): Promise<number> {
+  const { data, info } = await sharp(input).greyscale().raw().toBuffer({ resolveWithObject: true });
+  let min = 255;
+  for (let x = from; x <= to; x++) min = Math.min(min, data[y * info.width + x]);
+  return min;
+}
+
 const manifest = {
   root: `${root}/`,
   cardPictures: [
@@ -63,7 +77,10 @@ const manifest = {
     { card: "band", id: "band-1-top", source: join(root, "rotated.jpg"), crop: [0, 0, 1200, 400], transform: null, spare: false },
     { card: "jobs", id: "jobs-spare-x", source: join(root, "rotated.jpg"), crop: null, transform: null, spare: true },
   ],
-  popovers: [{ key: "matcha", source: join(root, "wide.jpg"), crop: null }],
+  popovers: [
+    { key: "matcha", source: join(root, "wide.jpg"), crop: null },
+    { key: "split", source: join(root, "split.svg"), format: "svg", crop: null },
+  ],
   logos: [{ card: "talos", files: ["logos/mark.svg", "animation/"] }],
 };
 
@@ -74,6 +91,7 @@ beforeAll(async () => {
   await rotatedSource(join(root, "rotated.jpg"));
   await mirroredSource(join(root, "mirrored.jpg"));
   await halves(join(root, "wide.jpg"), 2400, 1200);
+  writeFileSync(join(root, "split.svg"), SPLIT_SVG);
   mkdirSync(join(root, "logos"));
   writeFileSync(join(root, "logos", "mark.svg"), '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"></svg>');
   out = tempDir("export-out-");
@@ -89,6 +107,7 @@ describe("exportAll", () => {
       ["card", "photos/cards/building-in-public-picture.jpg", 1200, 1600],
       ["modal", "photos/cards/band-1-top.jpg", 1200, 400],
       ["pop", "photos/pops/matcha.jpg", 800, 400],
+      ["pop", "photos/pops/split.jpg", 533, 800],
       ["logo", "work/logos/talos/mark.svg", null, null],
     ]);
     for (const row of rows) expect(row.bytes).toBe(readFileSync(join(out, row.out)).length);
@@ -133,6 +152,16 @@ describe("exportAll", () => {
     expect(imageSize(modal)).toEqual([900, 1200]);
     expect(isRed(await pixel(modal, 800, 600))).toBe(true);
     expect(isBlue(await pixel(modal, 100, 600))).toBe(true);
+  });
+  it("renders a vector popover at the pop size instead of stretching a small raster", async () => {
+    const file = join(out, "photos/pops/split.jpg");
+    expect(imageSize(file)).toEqual([533, 800]);
+    expect((await pixel(file, 60, 400)).every((channel) => channel > 230)).toBe(true);
+    expect(isBlue(await pixel(file, 430, 400))).toBe(true);
+    expect(await darkest(file, 400, 124, 142)).toBeLessThan(70);
+    // The same picture at its own 100 by 150, stretched to 533 by 800, only reaches the stripe's 40% grey.
+    const small = await sharp(Buffer.from(SPLIT_SVG)).png().toBuffer();
+    expect(await darkest(await sharp(small).resize(533, 800).png().toBuffer(), 400, 124, 142)).toBeGreaterThan(120);
   });
   it("strips every metadata block and stays under budget", () => {
     for (const row of rows.filter((row) => row.kind !== "logo")) {
