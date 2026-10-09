@@ -12,9 +12,11 @@ import { UniformGallery } from "./UniformGallery";
 import { useGalleryMeasure, type Frame, type Measure } from "./useGalleryMeasure";
 import { useMaskIn, type Schedule } from "./useMaskIn";
 
-// What the modal holds: on desktop the round four rows (every photo its own
-// row) or the interleaved rows of rounds one to three; on a phone the round
-// four pager or the earlier stage over a scroll. The masks bring them in and
+// What the modal holds: on desktop the round four or five rows (every photo
+// its own row, or a group's photos taking turns in one) or the interleaved
+// rows of rounds one to three; on a phone the round four pager (round five
+// gives it one page a photo, a group's pages sharing its words) or the
+// earlier stage over a scroll. The masks bring them in and
 // the measurements feed the panel's readout.
 
 export type { Frame, Measure };
@@ -50,7 +52,7 @@ export function GalleryContent({ card, shapes, s, phone, theme, reduced, frame, 
 
   const stepsFor = useCallback((lines: (id: string) => number) => stepsOf(card, layout, s, phone ? "phone" : "desktop", lines), [card, layout, s, phone]);
   const shapeKey = aspects.map((a) => a.toFixed(3)).join(",");
-  const modeKey = phone ? (pager ? "pager" : "stage") : rows ? "rows" : "interleaved";
+  const modeKey = phone ? (pager ? `pager-${s.extras}` : "stage") : rows ? `rows-${s.extras}` : "interleaved";
   useMaskIn(rootRef, { active: true, reduced, s, runKey: `${runKey}|${modeKey}|${shapeKey}`, stepsFor, onSchedule });
 
   const settingsKey = `${panelWidth}|${s.photoWidth}|${s.rowGap}|${s.columnGap}|${s.textAlign}|${s.extrasPerRow}|${s.stageMaxHeight}|${s.wideFrom}|${s.wideWidth}|${s.wideMaxHeight}|${s.stackGap}|${s.stageFit}|${s.leadMode}|${s.verticalWidth}|${s.horizontalWidth}|${s.horizontalShape}|${s.textWidth}|${s.photoAlign}|${modeKey}|${shapeKey}`;
@@ -64,7 +66,7 @@ export function GalleryContent({ card, shapes, s, phone, theme, reduced, frame, 
     return (
       <div key={contentKey} ref={rootRef} className="flex flex-col gap-8">
         {rows ? (
-          <UniformGallery card={card} plan={layout.plan} aspects={aspects} s={s} theme={theme} slot={desktopColumns(aspects, s).slot} />
+          <UniformGallery card={card} plan={layout.plan} aspects={aspects} s={s} theme={theme} slot={desktopColumns(aspects, s).slot} reduced={reduced} runKey={runKey} />
         ) : (
           <DesktopGallery card={card} rows={layout.rows} s={s} theme={theme} shapes={shapes} innerWidth={innerWidth} />
         )}

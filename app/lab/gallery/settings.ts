@@ -375,7 +375,7 @@ function roundFourDesktop(s: Settings) {
   const round = (n: number) => Math.round(n);
   return {
     breakpoint: "1024px and up",
-    layout: DESKTOP_LABELS.rows,
+    layout: s.extras === "rotate" ? `${DESKTOP_LABELS.rows}, a group of photos taking turns in one frame (round 5)` : DESKTOP_LABELS.rows,
     header: "the logo tile (logo cards), the title and the meta line at the top left; a photo card's picture is its first row, not beside the title",
     verticalBox: `${boxes.vertical.width} by ${round(boxes.vertical.height)}px (3:4), every vertical photo and the card picture`,
     horizontalBox: `${boxes.horizontal.width} by ${round(boxes.horizontal.height)}px (${s.horizontalShape}), every photo from ${s.wideFrom.toFixed(2)}:1 wide`,
@@ -387,7 +387,7 @@ function roundFourDesktop(s: Settings) {
     rowGap: `${s.rowGap}px`,
     photoTextGap: `${s.columnGap}px`,
     textBesidePhoto: ALIGN_LABELS[s.textAlign],
-    sides: "alternate from the left, one photo a row",
+    sides: s.extras === "rotate" ? "alternate from the left, one photo or one group a row" : "alternate from the left, one photo a row",
     words:
       s.extras === "rotate"
         ? "no placeholders. Photos no more than blocks: each photo's own block, the card picture the first; a photo whose block another took takes the first free block between the photos around it, else takes turns with a neighbour. More photos than blocks: the card picture still beside the first block, every later block a group of the rest taking turns, extras to the later rows. Blocks no photo took open or close the card, or ride with the nearest photo"

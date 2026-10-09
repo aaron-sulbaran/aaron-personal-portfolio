@@ -47,8 +47,9 @@ export interface LabCard {
   links: { label: string; href: string }[];
 }
 
-// The words round four adds to the modal: the placeholder where a photo has
-// no sentence yet (Aaron writes them), and the pager's controls.
+// The words rounds four and five add to the modal: the placeholder where a
+// photo has no sentence yet (Aaron writes them), the pager's controls, and
+// the rotating frame's.
 export const LAB_COPY = {
   placeholder: "Aaron writes a sentence for this photo",
   placeholderShows: (intended: string) => `Shown here: ${intended}.`,
@@ -58,6 +59,9 @@ export const LAB_COPY = {
   pagerLabel: (count: number) => `Photos and their stories, ${count}`,
   pageLabel: (page: number, count: number) => `${page} of ${count}`,
   announce: (page: number, count: number, caption: string) => `Photo ${page} of ${count}${caption ? `: ${caption}` : ""}`,
+  rotatorLabel: (count: number) => `Photos taking turns, ${count}`,
+  pausePhotos: "Pause the photos",
+  playPhotos: "Play the photos",
 };
 
 export const CARD_PICTURE = 3 / 4;

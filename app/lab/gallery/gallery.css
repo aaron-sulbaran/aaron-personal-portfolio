@@ -21,3 +21,24 @@
 [data-mask-armed] [data-mask-clip] {
   overflow: clip;
 }
+/* Round five's rotating frame: only the current photo and caption show;
+   GSAP holds the old one visible while it clears and then lets go. The
+   current dot fills over the interval and freezes while the timer waits. */
+[data-rotator-layer]:not([data-current]),
+[data-rotator-caption]:not([data-current]) {
+  visibility: hidden;
+}
+[data-rotator-fill="timed"] {
+  transform-origin: left center;
+  animation-name: gallery-rotator-fill;
+  animation-timing-function: linear;
+  animation-fill-mode: both;
+}
+@keyframes gallery-rotator-fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
