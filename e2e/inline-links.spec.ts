@@ -3,17 +3,17 @@ import { siteContent } from "@/lib/content";
 import { tipText } from "@/lib/content/tracks";
 import { openHome } from "./support/coil";
 import { test, expect } from "./support/fixtures";
-import { bubble, CALENDAR, DEF, MATCHA, MATCHA_HREF, openFixture, POP, productLink, rango, tabTo, TIP } from "./support/inline";
+import { bubble, CALENDAR, DEF, MATCHA, MATCHA_HREF, openFixture, POP, productLink, tipLink, tabTo, TIP } from "./support/inline";
 // The copy's inline links (components/inline) by mouse and keyboard, each on a
 // lines-split Block; touch is e2e/inline-links-touch.spec.ts (the touch project).
 const { register } = siteContent;
 const shift = (page: Page) => bubble(page).evaluate((el) => (({ m41: x, m42: y }) => ({ x, y }))(new DOMMatrixReadOnly(getComputedStyle(el).transform)));
 test("inline links: a tip follows a mouse with no render per move, leaves with it, and Escape hides it", async ({ page }) => {
   await openFixture(page, TIP);
-  const box = (await rango(page).boundingBox())!;
+  const box = (await tipLink(page).boundingBox())!;
   await page.mouse.move(box.x + 4, box.y + box.height / 2);
   await expect(bubble(page)).toHaveAttribute("data-mode", "hover");
-  await expect(bubble(page)).toHaveText(tipText("aango")!);
+  await expect(bubble(page)).toHaveText(tipText("killer-drones")!);
   expect(await bubble(page).evaluate((el) => getComputedStyle(el).transitionProperty)).toContain("transform"); // the trail
   const before = await shift(page);
   await page.evaluate(() => {
@@ -27,24 +27,24 @@ test("inline links: a tip follows a mouse with no render per move, leaves with i
   expect(await page.evaluate(() => (window as Window & { __tipMutations?: number }).__tipMutations)).toBe(0); // style writes are not child mutations
   await page.mouse.move(box.x + box.width / 2, box.y + box.height + 160);
   await expect(bubble(page)).toHaveAttribute("data-shown", "false");
-  await rango(page).hover();
+  await tipLink(page).hover();
   await expect(bubble(page)).toHaveAttribute("data-shown", "true");
   await page.keyboard.press("Escape");
   await expect(bubble(page)).toHaveAttribute("data-shown", "false");
 });
 test("inline links: keyboard focus anchors a tip under its link; Escape, Enter and Tab drive it", async ({ page }) => {
   await openFixture(page, TIP);
-  await expect(rango(page)).toHaveAccessibleDescription(tipText("aango")!);
-  await tabTo(page, rango(page));
+  await expect(tipLink(page)).toHaveAccessibleDescription(tipText("killer-drones")!);
+  await tabTo(page, tipLink(page));
   await expect(bubble(page)).toHaveAttribute("data-mode", "focus");
   await page.waitForTimeout(250);
-  const link = (await rango(page).boundingBox())!;
+  const link = (await tipLink(page).boundingBox())!;
   const tip = (await bubble(page).boundingBox())!;
   expect(tip.y).toBeGreaterThanOrEqual(link.y + link.height);
   expect(Math.abs(tip.x + tip.width / 2 - (link.x + link.width / 2))).toBeLessThanOrEqual(1);
   await page.keyboard.press("Escape");
   await expect(bubble(page)).toHaveAttribute("data-shown", "false");
-  await expect(rango(page)).toBeFocused();
+  await expect(tipLink(page)).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(bubble(page)).toHaveAttribute("data-shown", "true");
   await page.keyboard.press("Tab");
@@ -153,7 +153,7 @@ test("inline links: focus comes home when the line is rebuilt after the definiti
 test("inline links (reduced motion): the label and the definition only fade", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await openFixture(page, DEF, TIP);
-  await rango(page).hover();
+  await tipLink(page).hover();
   await expect(bubble(page)).toHaveAttribute("data-shown", "true");
   expect(await bubble(page).evaluate((el) => getComputedStyle(el).scale)).toBe("none");
   expect(await bubble(page).evaluate((el) => getComputedStyle(el).transitionProperty)).not.toContain("transform"); // no trail
@@ -178,7 +178,7 @@ for (const colorScheme of ["light", "dark"] as const) {
     });
     expect(read.def).toEqual([read.accent, "solid"]);
     expect(read.tip).toEqual([read.accent, "dotted"]);
-    await rango(page).hover();
+    await tipLink(page).hover();
     await expect(bubble(page)).toHaveAttribute("data-shown", "true");
     const ratio = await bubble(page).locator("span").first().evaluate((el) => {
       const lum = (c: string) => {
@@ -192,12 +192,12 @@ for (const colorScheme of ["light", "dark"] as const) {
   });
 }
 
-// Rango opens this paragraph, so it sits at the left edge of its line's mask.
-const LEAD = "[Rango](tip:aango) leads this line.";
+// "Anything" opens this paragraph, so it sits at the left edge of its line's mask.
+const LEAD = "[Anything](tip:killer-drones) leads this line.";
 test("inline links: a focused link's ring is not clipped by its line's mask, mid-line or at a line's start", async ({ page }) => {
   await openFixture(page, TIP, LEAD, CALENDAR);
   expect(await page.locator("main .sections-line-mask").count()).toBeGreaterThan(0);
-  for (const link of [rango(page).first(), rango(page).nth(1), page.getByRole("link", { name: "grab a time on my calendar" })]) {
+  for (const link of [tipLink(page).first(), tipLink(page).nth(1), page.getByRole("link", { name: "grab a time on my calendar" })]) {
     await tabTo(page, link);
     const clipped = await link.evaluate((el) => {
       const ring = el.getBoundingClientRect();

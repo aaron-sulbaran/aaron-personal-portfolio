@@ -6,8 +6,8 @@ import { popView, tipView } from "@/lib/inline/view";
 const { pop } = siteContent.register;
 describe("tipView", () => {
   it("shows a tip's words, and the music note as tipText gives it", () => {
-    const aango = "yes, the chameleon from that one kid's movie";
-    expect(tipView("tip", "aango")).toEqual({ text: aango, photo: null, caption: null, link: null, description: aango });
+    const drones = "unless it's killer drones, I don't do that";
+    expect(tipView("tip", "killer-drones")).toEqual({ text: drones, photo: null, caption: null, link: null, description: drones });
     expect(tipView("tip", "music-note")?.text).toBe(tipText("music-note"));
   });
   it("returns null for a key the register lacks, prototype keys included", () => {

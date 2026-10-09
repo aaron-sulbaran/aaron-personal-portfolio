@@ -8,7 +8,7 @@ const linkRun = (source: string) => inlineRuns(source, registerHas).find((run) =
 const NEW_TAB = { target: "_blank", rel: "noopener noreferrer" };
 describe("inlineLinkElement", () => {
   it("makes a definition a button that opens a dialog", () => { expect(inlineLinkElement(linkRun("[product](def:product)"))).toEqual({ tag: "button", props: { className: "inline-link", "data-inline": "def", "data-inline-key": "product", type: "button", "aria-haspopup": "dialog" } }); });
-  it("makes a tip a button described by its hidden words", () => { expect(inlineLinkElement(linkRun("a [Rango](tip:aango) knockoff"))).toEqual({ tag: "button", props: { className: "inline-link", "data-inline": "tip", "data-inline-key": "aango", "aria-describedby": "inline-desc-tip-aango", type: "button" } }); });
+  it("makes a tip a button described by its hidden words", () => { expect(inlineLinkElement(linkRun("a [drone](tip:killer-drones) knockoff"))).toEqual({ tag: "button", props: { className: "inline-link", "data-inline": "tip", "data-inline-key": "killer-drones", "aria-describedby": "inline-desc-tip-killer-drones", type: "button" } }); });
   it("makes a pop with an href a new-tab anchor, and one without a button", () => {
     expect(inlineLinkElement(linkRun("([or matcha](pop:matcha))"))).toEqual({ tag: "a", props: { className: "inline-link", "data-inline": "pop", "data-inline-key": "matcha", "aria-describedby": "inline-desc-pop-matcha", href: siteContent.register.pop.matcha.href, ...NEW_TAB } });
     expect(inlineLinkElement(linkRun("[bass clarinet](pop:contrabass-clarinet)"))?.tag).toBe("button");
@@ -17,7 +17,7 @@ describe("inlineLinkElement", () => {
   it("names a link whose words are only a symbol, and no other", () => {
     expect(siteContent.inline.symbolLabel).toBe("Footnote");
     expect(inlineLinkElement(linkRun("building[*](tip:killer-drones)."))?.props["aria-label"]).toBe("Footnote");
-    expect(inlineLinkElement(linkRun("[Rango](tip:aango)"))?.props["aria-label"]).toBeUndefined();
+    expect(inlineLinkElement(linkRun("[drone](tip:killer-drones)"))?.props["aria-label"]).toBeUndefined();
   });
   it("returns null for text", () => { expect(inlineLinkElement({ kind: "text", text: "plain", strong: false, em: false })).toBeNull(); });
 });

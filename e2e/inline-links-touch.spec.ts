@@ -1,6 +1,6 @@
 import { siteContent } from "@/lib/content";
 import { test, expect } from "./support/fixtures";
-import { bubble, MATCHA, MATCHA_HREF, openFixture, productLink, rango, TIP } from "./support/inline";
+import { bubble, MATCHA, MATCHA_HREF, openFixture, productLink, tipLink, TIP } from "./support/inline";
 
 // The inline links on a phone. The touch project (playwright.config.ts) runs
 // this file as a Pixel 7 with touch; chromium, webkit and firefox skip it.
@@ -8,10 +8,10 @@ const { register } = siteContent;
 
 test("inline links (touch): a tap pins a tip under its link and a tap elsewhere lets it go", async ({ page }) => {
   await openFixture(page, TIP);
-  await rango(page).tap();
+  await tipLink(page).tap();
   await expect(bubble(page)).toHaveAttribute("data-mode", "tap");
   await page.waitForTimeout(250);
-  const link = (await rango(page).boundingBox())!;
+  const link = (await tipLink(page).boundingBox())!;
   expect((await bubble(page).boundingBox())!.y).toBeGreaterThanOrEqual(link.y + link.height);
   await page.locator("main").tap({ position: { x: 4, y: 4 } });
   await expect(bubble(page)).toHaveAttribute("data-shown", "false");
