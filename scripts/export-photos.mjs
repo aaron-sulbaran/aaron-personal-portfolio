@@ -19,13 +19,15 @@
 // refuses to run if anything else is in those folders.
 //
 // Usage: node scripts/export-photos.mjs [manifest] [--out <dir>]
-//   manifest defaults to docs/content/photo-export-manifest.json, out to public.
+//   manifest defaults to docs/content/photo-export-manifest.json, out to public, both under the repo root
+//   wherever the script is run from; an explicit manifest or --out resolves against the current directory.
 import { createRequire } from "node:module";
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { BYTE_BUDGET, QUALITIES, cropRegion, exportJobs, outputSize } from "./photo-export-plan.mjs";
 
+const REPO_ROOT = fileURLToPath(new URL("..", import.meta.url));
 const require = createRequire(import.meta.url);
 // The sharp Next ships (as scripts/render-posters.mjs uses it); exported for the tests.
 export const sharp = createRequire(require.resolve("next/package.json"))("sharp");
@@ -81,6 +83,10 @@ export async function exportAll(manifest, outDir) {
 }
 
 function printTable(rows) {
+  if (rows.length === 0) {
+    console.log("0 files, 0 bytes");
+    return;
+  }
   const lines = rows.map((row) => [row.kind, `/${row.out}`, row.width ? `${row.width}x${row.height}` : "svg", String(row.bytes), row.quality ? `q${row.quality}` : "copy"]);
   const widths = lines[0].map((_, column) => Math.max(...lines.map((line) => line[column].length)));
   for (const line of lines) console.log(line.map((cell, column) => (column === 3 ? cell.padStart(widths[column]) : cell.padEnd(widths[column]))).join("  "));
@@ -90,13 +96,13 @@ function printTable(rows) {
 async function main() {
   const args = process.argv.slice(2);
   const outFlag = args.indexOf("--out");
-  const outDir = resolve(outFlag >= 0 ? args[outFlag + 1] ?? "" : "public");
+  const outDir = outFlag >= 0 ? resolve(args[outFlag + 1] ?? "") : resolve(REPO_ROOT, "public");
   const positional = outFlag >= 0 ? args.filter((_, index) => index !== outFlag && index !== outFlag + 1) : args;
   if ((outFlag >= 0 && !args[outFlag + 1]) || positional.length > 1) {
     console.error("Usage: node scripts/export-photos.mjs [manifest] [--out <dir>]");
     process.exit(1);
   }
-  const manifestPath = resolve(positional[0] ?? "docs/content/photo-export-manifest.json");
+  const manifestPath = positional[0] !== undefined ? resolve(positional[0]) : resolve(REPO_ROOT, "docs/content/photo-export-manifest.json");
   const rows = await exportAll(JSON.parse(readFileSync(manifestPath, "utf8")), outDir);
   printTable(rows);
 }
