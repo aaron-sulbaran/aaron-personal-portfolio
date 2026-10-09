@@ -133,3 +133,67 @@ test("inline links: focus comes home when the line is rebuilt after the definiti
   });
   await expect(page.locator('[data-inline="def"][data-inline-key="product"]').first()).toBeFocused();
 });
+
+test("inline links (reduced motion): the label and the definition only fade", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await openFixture(page, DEF, TIP);
+  await rango(page).hover();
+  await expect(bubble(page)).toHaveAttribute("data-shown", "true");
+  expect(await bubble(page).evaluate((el) => getComputedStyle(el).scale)).toBe("none");
+  expect(await bubble(page).evaluate((el) => getComputedStyle(el).transitionProperty)).not.toContain("transform"); // no trail
+  await page.mouse.move(2, 700);
+  await page.locator('[data-inline="def"]').click();
+  const panel = page.locator("[data-definition-panel]");
+  await panel.waitFor();
+  // Read at once: the rise would still be moving the panel; the fade never writes a transform.
+  expect(await panel.evaluate((el) => getComputedStyle(el).transform)).toBe("none");
+});
+
+for (const colorScheme of ["light", "dark"] as const) {
+  test(`inline links: underlines come from the accent token and the label reads at 4.5:1 in ${colorScheme}`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme });
+    await openFixture(page, DEF, TIP);
+    const read = await page.evaluate(() => {
+      const probe = document.body.appendChild(Object.assign(document.createElement("span"), { style: "color: var(--color-accent)" }));
+      const accent = getComputedStyle(probe).color;
+      probe.remove();
+      const line = (s: CSSStyleDeclaration) => [s.textDecorationColor, s.textDecorationStyle];
+      return { accent, def: line(getComputedStyle(document.querySelector('[data-inline="def"]')!)), tip: line(getComputedStyle(document.querySelector('[data-inline="tip"]')!)) };
+    });
+    expect(read.def).toEqual([read.accent, "solid"]);
+    expect(read.tip).toEqual([read.accent, "dotted"]);
+    await rango(page).hover();
+    await expect(bubble(page)).toHaveAttribute("data-shown", "true");
+    const ratio = await bubble(page).locator("span").first().evaluate((el) => {
+      const lum = (c: string) => {
+        const [r, g, b] = (c.match(/[\d.]+/g) ?? []).map(Number).map((v) => ((v /= 255) <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      };
+      const [hi, lo] = [lum(getComputedStyle(el).color), lum(getComputedStyle(el).backgroundColor)].sort((x, y) => y - x);
+      return (hi + 0.05) / (lo + 0.05);
+    });
+    expect(ratio).toBeGreaterThanOrEqual(4.5);
+  });
+}
+
+// Rango opens this paragraph, so it sits at the left edge of its line's mask.
+const LEAD = "[Rango](tip:aango) leads this line.";
+test("inline links: a focused link's ring is not clipped by its line's mask, mid-line or at a line's start", async ({ page }) => {
+  await openFixture(page, TIP, LEAD, CALENDAR);
+  expect(await page.locator("main .sections-line-mask").count()).toBeGreaterThan(0);
+  for (const link of [rango(page).first(), rango(page).nth(1), page.getByRole("link", { name: "grab a time on my calendar" })]) {
+    await tabTo(page, link);
+    const clipped = await link.evaluate((el) => {
+      const ring = el.getBoundingClientRect();
+      const reach = 3; // a 2px outline at a 1px offset
+      const clipBox = (axis: "overflowX" | "overflowY") => {
+        let node = el.parentElement;
+        while (node && getComputedStyle(node)[axis] === "visible") node = node.parentElement;
+        return node?.getBoundingClientRect() ?? null;
+      };
+      const [x, y] = [clipBox("overflowX"), clipBox("overflowY")];
+      return { left: !!x && ring.left - reach < x.left, right: !!x && ring.right + reach > x.right, top: !!y && ring.top - reach < y.top, bottom: !!y && ring.bottom + reach > y.bottom };
+    });
+    expect(clipped).toEqual({ left: false, right: false, top: false, bottom: false });
+  }
+});
