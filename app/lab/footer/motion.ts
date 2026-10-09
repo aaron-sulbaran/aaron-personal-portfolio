@@ -75,3 +75,47 @@ export function leanAngle(maxDeg: number, dx: number, influence: number, radius:
   const side = Math.max(-1, Math.min(1, dx / radius));
   return maxDeg * side * influence;
 }
+
+// Frame-rate independent easing by a share `k` of the way each 60fps frame:
+// to + (from - to) * (1 - k)^(dt * 60). The shutter's pivot rides it.
+export function easeToward(from: number, to: number, k: number, dt: number): number {
+  if (k >= 1) return to;
+  return to + (from - to) * Math.pow(1 - Math.max(0, k), Math.max(0, dt) * 60);
+}
+
+// The shutter pivot's target, toward the pointer: the pointer's offset from
+// the period's center (stage px, y down) over the pivot's reach, held to
+// the unit disc, y up. Over the period it follows the pointer; from afar it
+// leans the whole reach toward it.
+export function pivotTarget(dx: number, dy: number, reachPx: number): [number, number] {
+  if (reachPx <= 0) return [0, 0];
+  const x = dx / reachPx;
+  const y = -dy / reachPx;
+  const r = Math.hypot(x, y);
+  return r > 1 ? [x / r, y / r] : [x, y];
+}
+
+// The letter under the pointer for the waist slice: inside the word's band
+// and within a letter's half width (plus a margin) of its center, the
+// nearest such letter; -1 when the pointer is over none.
+export function hoveredLetter(
+  px: number,
+  py: number,
+  centersX: readonly number[],
+  halfWidths: readonly number[],
+  top: number,
+  bottom: number,
+  margin: number,
+): number {
+  if (py < top || py > bottom) return -1;
+  let best = -1;
+  let bestDx = Infinity;
+  centersX.forEach((cx, i) => {
+    const dx = Math.abs(px - cx);
+    if (dx <= (halfWidths[i] ?? 0) + margin && dx < bestDx) {
+      best = i;
+      bestDx = dx;
+    }
+  });
+  return best;
+}
