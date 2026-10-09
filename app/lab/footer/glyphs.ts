@@ -123,18 +123,39 @@ export function glyphFor(char: string): Glyph {
 
 const n = (x: number) => +x.toFixed(3);
 
+// How square a bowl is drawn: 0 a circle, 1 a superellipse of exponent 6
+// (|x|^6 + |y|^6 = 1), whose flat sides meet the stems at a sharper corner.
+// Its extremes stay where the circle's are, so the metrics hold.
+export const SQUARE_EXPONENT = { round: 2, square: 6 } as const;
+
+export function bowlPoint(cx: number, cy: number, r: number, deg: number, corners: number): [number, number] {
+  const c = Math.cos(rad(deg));
+  const s = Math.sin(rad(deg));
+  if (corners <= 0) return [cx + r * c, cy + r * s];
+  const n = SQUARE_EXPONENT.round + (SQUARE_EXPONENT.square - SQUARE_EXPONENT.round) * Math.min(1, corners);
+  const shape = (v: number) => Math.sign(v) * Math.pow(Math.abs(v), 2 / n);
+  return [cx + r * shape(c), cy + r * shape(s)];
+}
+
 // The skeleton as SVG path data at `size` px per ascender unit, y down, the
-// skeleton's left edge at x = 0 and the baseline at y = 0. Arcs are split into
-// pieces of at most 120 degrees so no large-arc flag is ever ambiguous. Dots
-// are zero-length subpaths, drawn by the stroke's caps.
-export function glyphPaths(char: string, size: number): { d: string; dots: string } {
+// skeleton's left edge at x = 0 and the baseline at y = 0. Round arcs are
+// split into pieces of at most 120 degrees so no large-arc flag is ever
+// ambiguous; squared ones are polylines, 4 degrees a segment. Dots are
+// zero-length subpaths, drawn by the stroke's caps.
+export function glyphPaths(char: string, size: number, corners = 0): { d: string; dots: string } {
   const g = glyphFor(char);
   const P = (x: number, y: number) => `${n(x * size)} ${n(-y * size)}`;
   const parts = g.strokes.map((s) => {
     if (s.kind === "line") return `M${P(s.x1, s.y1)}L${P(s.x2, s.y2)}`;
     if (s.kind === "poly") return s.pts.map(([x, y], i) => `${i === 0 ? "M" : "L"}${P(x, y)}`).join("");
+    const at = (a: number) => P(...bowlPoint(s.cx, s.cy, s.r, a, corners));
+    if (corners > 0) {
+      const steps = Math.max(2, Math.ceil((s.a1 - s.a0) / 4));
+      let d = `M${at(s.a0)}`;
+      for (let i = 1; i <= steps; i++) d += `L${at(s.a0 + ((s.a1 - s.a0) * i) / steps)}`;
+      return d;
+    }
     const pieces = Math.max(1, Math.ceil((s.a1 - s.a0) / 120));
-    const at = (a: number) => P(s.cx + s.r * Math.cos(rad(a)), s.cy + s.r * Math.sin(rad(a)));
     let d = `M${at(s.a0)}`;
     for (let i = 1; i <= pieces; i++) {
       const a = s.a0 + ((s.a1 - s.a0) * i) / pieces;
