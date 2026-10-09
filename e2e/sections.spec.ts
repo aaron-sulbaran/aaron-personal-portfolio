@@ -201,9 +201,10 @@ test("sections: no Connect value is cut short at 1024 or at 390", async ({ page 
   }
 });
 
-test("sections: the X handle never leaves a lone @ on a line at 390 or 1024", async ({ page }) => {
+test("sections: the X handle stays on one line from 360 up, never a lone @ or a stray letter", async ({ page }) => {
   const x = connect.links.find((link) => link.key === "x")!;
   for (const viewport of [
+    { width: 360, height: 780 },
     { width: 390, height: 844 },
     { width: 1024, height: 768 },
   ]) {
@@ -217,7 +218,7 @@ test("sections: the X handle never leaves a lone @ on a line at 390 or 1024", as
       range.selectNodeContents(el);
       return [...range.getClientRects()].map((rect) => Math.round(rect.width));
     });
-    for (const width of widths) expect(width, `a line of the handle at ${viewport.width}px is wider than a lone @`).toBeGreaterThan(40);
+    expect(widths, `the handle is one line at ${viewport.width}px`).toHaveLength(1);
   }
 });
 
