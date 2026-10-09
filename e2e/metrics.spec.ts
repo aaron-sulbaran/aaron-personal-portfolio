@@ -68,12 +68,37 @@ test("metrics: my LinkedIn line is a figure of its own, outside the GitHub group
   await expect(linkedin).toContainText(slot.value);
   await expect(linkedin).toContainText(slot.label);
   await expect(linkedin).toContainText(slot.sub!);
-  const group = page.getByRole("group", { name: m.groupLabel, exact: true });
+  const group = page.getByRole("group", { name: `${m.title} ${m.groupLabel}`, exact: true });
   await expect(group).toHaveCount(1);
   await expect(page.locator("#numbers").getByText(m.groupLabel, { exact: true })).toBeVisible();
   await expect(group.locator('[data-stat="streak"]')).toHaveCount(1);
   await expect(group.locator('[data-stat="linkedin"]')).toHaveCount(0);
   await expect(page.locator('dl:has([data-stat="linkedin"]) [data-stat="streak"]')).toHaveCount(0);
+});
+
+// Aaron, 2026-10-09: no little kicker over a section's title. The strip has its own big heading,
+// set exactly as Who I am's is, and the GitHub line under it, set exactly as the line under Who I am's.
+test("metrics: the strip is headed by its own big title and the GitHub line, set as Who I am's heading and line are", async ({ page }) => {
+  await openHome(page);
+  const heading = page.locator("#numbers h2");
+  await expect(heading).toHaveCount(1);
+  await expect(heading).toHaveText(m.title);
+  await expect(page.locator("h1")).toHaveCount(1);
+  const line = page.locator("#numbers p[data-sections-block='body']").first();
+  await expect(line).toHaveText(m.groupLabel);
+  const group = page.getByRole("group", { name: `${m.title} ${m.groupLabel}`, exact: true });
+  await expect(group).toHaveAttribute("aria-labelledby", `${await heading.getAttribute("id")} ${await line.getAttribute("id")}`);
+  expect(await page.locator("#numbers [data-sections-block='kicker']").count(), "no kicker over the title").toBe(0);
+  expect(await page.locator("#numbers [data-sections-block]").first().evaluate((el) => el.tagName), "the title comes first").toBe("H2");
+  const look = (selector: string) =>
+    page.locator(selector).first().evaluate((el) => {
+      const style = getComputedStyle(el);
+      return { tag: el.tagName, family: style.fontFamily, size: style.fontSize, weight: style.fontWeight, lineHeight: style.lineHeight, color: style.color, letterSpacing: style.letterSpacing };
+    });
+  expect(await look("#numbers h2"), "the title looks like Who I am's").toEqual(await look("#about h2"));
+  expect(await look("#numbers p[data-sections-block='body']"), "the line looks like the one under Who I am's").toEqual(
+    await look("#about .sections-sticky-col p[data-sections-block='body']"),
+  );
 });
 
 test("metrics: flat at 95 percent down the viewport, skyline after a slow scroll past the line", async ({ page }) => {
