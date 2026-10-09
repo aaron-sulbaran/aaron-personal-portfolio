@@ -8,6 +8,7 @@ import { DefinitionModal } from "./DefinitionModal";
 import { TipBubble } from "./TipBubble";
 import { useDefinition } from "./useDefinition";
 import { useTipController } from "./useTipController";
+import { useVisitedLinks } from "./useVisitedLinks";
 const { register } = siteContent;
 const DESCRIBED: Array<readonly [TipKind, string]> = [
   ...Object.keys(register.tip).map((key) => ["tip", key] as const),
@@ -15,11 +16,13 @@ const DESCRIBED: Array<readonly [TipKind, string]> = [
 ];
 // The copy's inline links come alive here, once per page (app/layout.tsx):
 // definitions open the house text modal, tips and pops share one label, and
-// every tip and pop link is described by a hidden element listed below.
+// every tip and pop link is described by a hidden element listed below, and a
+// clicked link stays filled (useVisitedLinks).
 export function InlineLayer() {
   const bubbleRef = useRef<HTMLDivElement | null>(null);
   const tip = useTipController(bubbleRef);
   const definition = useDefinition(tip.dismiss);
+  useVisitedLinks();
   useEffect(() => {
     document.documentElement.dataset.inlineLinks = "ready";
     return () => void delete document.documentElement.dataset.inlineLinks;
