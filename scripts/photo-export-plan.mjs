@@ -10,7 +10,7 @@ export const MODAL_LONG_EDGE = 1600;
 export const POP_LONG_EDGE = 800;
 export const BYTE_BUDGET = 300_000;
 export const QUALITIES = [85, 82, 80, 78, 75];
-// A crop box's own aspect may miss 3:4 by a rounding pixel; the export trims the rest.
+// A card crop box's width to height ratio may miss 3:4 by up to 1 percent; the resize trims the rest.
 const CARD_ASPECT_SLACK = 0.01;
 
 const kebab = z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
