@@ -35,6 +35,11 @@ type Options = {
 };
 
 const WRITTEN = "clipPath,opacity,visibility,transform,zIndex";
+// A left to right caption change: the old caption clears over the first half
+// of the change, the new one comes in over the last 75 percent (the old one
+// is always ahead of it, so they never meet).
+const CAPTION_OUT = 0.5;
+const CAPTION_IN_AT = 0.25;
 
 export function useRotator(rootRef: RefObject<HTMLElement | null>, frameRef: RefObject<HTMLElement | null>, { count, s, reduced, paused = false, hovered = false, focused = false, active = true }: Options) {
   const [index, setIndex] = useState(0);
@@ -132,9 +137,14 @@ export function useRotator(rootRef: RefObject<HTMLElement | null>, frameRef: Ref
       if (media[from]) tl.fromTo(media[from], moveOut.from, { ...moveOut.to, duration, ease }, 0);
     }
     if (captionIn && captionOut) {
+      // Two captions share one cell, so a left to right sweep that showed both
+      // at once would glue half of one to half of the other. The old one's
+      // clip closes left to right first, then the new one's opens, so the
+      // words are only ever read whole or being written in.
       const [enter, leave] = [textIn(s.captionDirection), textOut(s.captionDirection)];
-      tl.fromTo(captionIn, enter.from, { ...enter.to, duration, ease }, 0);
-      tl.fromTo(captionOut, leave.from, { ...leave.to, duration, ease }, 0);
+      const ltr = s.captionDirection === "ltr";
+      tl.fromTo(captionOut, leave.from, { ...leave.to, duration: ltr ? duration * CAPTION_OUT : duration, ease }, 0);
+      tl.fromTo(captionIn, enter.from, { ...enter.to, duration: ltr ? duration * (1 - CAPTION_IN_AT) : duration, ease }, ltr ? duration * CAPTION_IN_AT : 0);
     }
     // Only the photo index starts a change; the settings are read as it starts.
     // eslint-disable-next-line react-hooks/exhaustive-deps

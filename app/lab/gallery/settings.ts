@@ -477,7 +477,7 @@ function rotation(s: Settings) {
       s.rotateStyle === "fade"
         ? "changes with the photo, cross-faded"
         : s.captionDirection === "ltr"
-          ? "changes with the photo, one clip edge crossing both from the left: the new caption left of it, the old right of it"
+          ? "changes with the photo, left to right in two moves so two captions never share the edge: the old one's clip closes left to right over the first half of the change, the new one's opens left to right over the last 75 percent"
           : "changes with the photo, the new one rising as the old one rises out",
     words: "never change",
     startsAt: `${s.rotateDelayMs}ms after the landing, then one interval to the first change`,
@@ -534,8 +534,8 @@ function groupNote(s: Settings) {
       return {
         stage: "the group's frame is its largest photo fitted whole, each photo drawn at its own fit inside it, so the stage never changes size",
         turns: `${s.rotateSeconds}s a photo, looping, ${s.rotateMs}ms ${s.rotateStyle === "fade" ? "cross-fade" : rotateChangeNote(s)}; the caption under the stage changes with the photo; the words never do`,
-        marks: "small marks in a pill in the frame's bottom right corner, the current one filling over the interval; the page dots and arrows only change pages",
-        tap: "a tap on the stage steps the group (Enter or Space when it has focus); a swipe still turns the page",
+        marks: "small marks in a pill inside the current photo's bottom right corner (gliding to the next photo's corner with the change when the shapes differ), the current one filling over the interval; the page dots and arrows only change pages",
+        tap: "a tap on the stage steps the group (Enter or Space when it has focus); a swipe still turns the page, and a press held over 500ms only holds it",
         pauses: "while a finger is down on the pager, while the page is not the current one, while keyboard focus is on the stage; it starts after the landing and the start delay",
         reducedMotion: "never turns on its own; a tap steps it with no transition",
       };

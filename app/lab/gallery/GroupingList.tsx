@@ -13,7 +13,7 @@ type Props = { s: Settings; card: LabCard; shapes: number[]; onPick: (id: string
 export function GroupingList({ s, card, shapes, onPick }: Props) {
   return (
     <details open className="flex flex-col gap-2" data-grouping-list="">
-      <summary className="cursor-pointer text-foreground">{s.extras === "rotate" ? "Grouping per card (round 5 rule)" : "Rows per card (round 4)"}</summary>
+      <summary className="cursor-pointer text-foreground">{s.extras === "rotate" ? "Grouping per card (the rounds 5 and 6 rule)" : "Rows per card (round 4)"}</summary>
       <div className="mt-2 flex flex-col gap-2.5">
         {CARDS.map((c) => {
           const aspects = c.photos.map((_, i) => drawnShape(c, i, c.id === card.id ? shapes[i] : undefined));

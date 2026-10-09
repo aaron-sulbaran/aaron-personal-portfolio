@@ -100,7 +100,7 @@ export function Panel({ s, view, theme, osReduced, phone, measure, doneAtMs, val
         <div className="grid grid-cols-2 gap-1.5">
           {PRESETS.map((p, i) => (
             <Chip key={p.id} pressed={sameSettings(s, p.settings)} onClick={() => edit(() => p.settings)}>
-              {i === 0 ? `${p.name} (pick)` : p.name}
+              {i === 0 && !/pick/i.test(p.name) ? `${p.name} (pick)` : p.name}
             </Chip>
           ))}
         </div>
