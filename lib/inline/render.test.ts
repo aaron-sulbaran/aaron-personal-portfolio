@@ -13,7 +13,7 @@ describe("InlineCopy", () => {
   });
   it("renders a definition as a dialog button inside the sentence", () => {
     expect(html("I am a [product](def:product)-focused engineer.")).toMatch(
-      /^I am a <button [^>]*data-inline="def" data-inline-key="product"[^>]*aria-haspopup="dialog">product<\/button>-focused engineer\.$/,
+      /^I am a <span class="inline-glue"><button [^>]*data-inline="def" data-inline-key="product"[^>]*aria-haspopup="dialog">product<\/button>-focused<\/span> engineer\.$/,
     );
   });
   it("wraps emphasis around text and links", () => {
@@ -26,8 +26,22 @@ describe("InlineCopy", () => {
       /^<a [^>]*href="https:\/\/cal.com\/aaron-sulbaran" target="_blank" rel="noopener noreferrer"[^>]*>grab a time on my calendar<\/a>$/,
     );
     expect(html("([or matcha](pop:matcha))")).toMatch(
-      /^\(<a [^>]*data-inline="pop"[^>]*target="_blank" rel="noopener noreferrer"[^>]*>or matcha<\/a>\)$/,
+      /^<span class="inline-glue">\(<a [^>]*data-inline="pop"[^>]*target="_blank" rel="noopener noreferrer"[^>]*>or matcha<\/a>\)<\/span>$/,
     );
+  });
+  it("keeps a link, the word before it and the punctuation after it in one glue span", () => {
+    expect(html("building[*](tip:killer-drones). Next")).toMatch(
+      /^<span class="inline-glue">building<button [^>]*data-inline="tip" data-inline-key="killer-drones"[^>]*>\*<\/button>\.<\/span> Next$/,
+    );
+  });
+  it("nests emphasis on a glued neighbour inside the glue span", () => {
+    expect(html("**bold**[Rango](tip:aango) rest")).toMatch(
+      /^<span class="inline-glue"><strong>bold<\/strong><button [^>]*data-inline="tip"[^>]*>Rango<\/button><\/span> rest$/,
+    );
+  });
+  it("adds no glue span to a link between spaces or at an edge", () => {
+    expect(html("a [Rango](tip:aango) knockoff")).not.toContain("inline-glue");
+    expect(html("[Rango](tip:aango) knockoff")).not.toContain("inline-glue");
   });
   it("renders an unknown key or a bad target as plain words and never throws", () => {
     expect(html("a [Rango](tip:rango) knockoff")).toBe("a Rango knockoff");

@@ -543,6 +543,8 @@ body {
 .inline-link:hover { color: var(--color-accent); }
 .inline-link:focus-visible { outline-offset: 1px; }
 .sections-line-mask:has(.inline-link) { overflow-x: visible !important; }
+/* A link is an atomic inline, which allows a wrap on both sides; the glue span keeps the characters touching it on its line. */
+.inline-glue { display: inline-block; white-space: nowrap; }
 .inline-tip {
   position: fixed; left: 0; top: 0; z-index: 58;
   opacity: 0; visibility: hidden; scale: 0.96; transform-origin: top left;
