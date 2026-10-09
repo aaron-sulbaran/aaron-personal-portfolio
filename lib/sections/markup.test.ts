@@ -1,6 +1,7 @@
 import { createElement, type ComponentProps } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { MetricsSlots } from "@/components/metrics/MetricsStats";
 import { Kicker } from "@/components/sections/Kicker";
 import { StickyColumn } from "@/components/sections/StickyColumn";
 import { WhoIAm } from "@/components/WhoIAm";
@@ -16,6 +17,25 @@ describe("the kicker", () => {
     expect(html).toContain('<span data-sections-label="true">About</span>');
     expect(html).not.toContain("data-sections-state");
     expect(html).not.toContain("data-wave");
+  });
+
+  it("puts a label id on its words, for a group named by them", () => {
+    expect(renderToStaticMarkup(createElement(Kicker, { label: "My GitHub contributions", labelId: "metrics-label" }))).toContain(
+      '<span data-sections-label="true" id="metrics-label">My GitHub contributions</span>',
+    );
+  });
+});
+
+describe("the numbers strip's figures", () => {
+  it("keeps my LinkedIn line in a list of its own, not in a group, and renders nothing for the empty fun slot", () => {
+    const html = renderToStaticMarkup(createElement(MetricsSlots));
+    expect(html).toMatch(/^<dl class="[^"]*">/);
+    expect(html).not.toContain('role="group"');
+    expect(html.match(/data-stat="/g)).toHaveLength(1);
+    expect(html).toContain('data-stat="linkedin"');
+    expect(html).toContain("450,000");
+    expect(html).toContain("LinkedIn impressions in 3 months");
+    expect(html).toContain("2,500+ followers");
   });
 });
 

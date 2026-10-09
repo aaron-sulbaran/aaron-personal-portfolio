@@ -7,7 +7,9 @@ import { HOLDING_MODE } from "@/lib/holding";
 import { HomeController } from "@/components/home/HomeController";
 import { HeroText } from "@/components/home/HeroText";
 import { Book } from "@/components/book/Book";
-import { Metrics } from "@/components/metrics/Metrics";
+import { Metrics, METRICS_LABEL_ID } from "@/components/metrics/Metrics";
+import { Kicker } from "@/components/sections/Kicker";
+import { siteContent } from "@/lib/content";
 import { MarkCardSource } from "@/components/mark/MarkCardSource";
 
 // The contribution figures refresh once a day (lib/metrics/github.ts); a
@@ -66,12 +68,13 @@ function HeroSentinel() {
 }
 
 // The numbers strip under Who I am: the GitHub chart with its figures and my
-// LinkedIn line (docs/content/right-now-and-metrics.md). It has no kicker or
-// heading; the chart's own group label names it.
+// LinkedIn line (docs/content/right-now-and-metrics.md). With Right now gone
+// its only label is the group label, which is also the GitHub group's name.
 function NumbersStrip() {
   return (
     <section id="numbers" className="relative w-full scroll-mt-24 border-t border-border px-6 py-24 md:px-10 md:py-40">
-      <div className="mx-auto max-w-6xl">
+      <div className="mx-auto flex max-w-6xl flex-col gap-8">
+        <Kicker label={siteContent.metrics.groupLabel} labelId={METRICS_LABEL_ID} />
         <Metrics />
       </div>
     </section>

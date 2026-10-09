@@ -60,6 +60,22 @@ test("metrics: the stats show the snapshot's figures, stamped, with no token", a
   await expect(page.locator("[data-metrics-stale]")).toHaveText(`${m.asOf} ${shortDay(snap.range.to)}`);
 });
 
+test("metrics: my LinkedIn line is a figure of its own, outside the GitHub group the strip's label names", async ({ page }) => {
+  await openHome(page);
+  const slot = m.slots.linkedin!;
+  const linkedin = page.locator('[data-stat="linkedin"]');
+  await expect(linkedin).toHaveCount(1);
+  await expect(linkedin).toContainText(slot.value);
+  await expect(linkedin).toContainText(slot.label);
+  await expect(linkedin).toContainText(slot.sub!);
+  const group = page.getByRole("group", { name: m.groupLabel, exact: true });
+  await expect(group).toHaveCount(1);
+  await expect(page.locator("#numbers").getByText(m.groupLabel, { exact: true })).toBeVisible();
+  await expect(group.locator('[data-stat="streak"]')).toHaveCount(1);
+  await expect(group.locator('[data-stat="linkedin"]')).toHaveCount(0);
+  await expect(page.locator('dl:has([data-stat="linkedin"]) [data-stat="streak"]')).toHaveCount(0);
+});
+
 test("metrics: flat at 95 percent down the viewport, skyline after a slow scroll past the line", async ({ page }) => {
   await openHome(page);
   await scrollToY(page, await topAt(page, 0.95));
