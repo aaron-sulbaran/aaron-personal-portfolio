@@ -1,6 +1,6 @@
 import { register } from "./content/register";
 import { bookPeopleOrder, bookWorkOrder, cards, strandOrder } from "./content/cards";
-import type { SoundtrackTrack } from "./content/types";
+import type { SoundtrackTrack, WhoIAmBlock } from "./content/types";
 import { liveTracks } from "./content/tracks";
 
 // One link on the holding page. `icon` picks the brand mark in
@@ -23,7 +23,7 @@ export const siteContent = {
   meta: {
     title: "Aaron Sulbaran",
     description:
-      "Building products (and community) with people, not just for them.",
+      "I'm a product-focused engineer at UT Austin. I build for people, and I love leading them towards building great things.",
     url: "https://aaronsulbaran.com",
   },
   // Every inline link the copy may point at (lib/content/register.ts).
@@ -38,26 +38,21 @@ export const siteContent = {
   cards,
   // The soundtrack band under the book (components/soundtrack): the one place
   // the music is offered and controlled, with the waveform running through
-  // it. Each note describes what is on screen when it shows. Draft copy in my
-  // voice, to be tightened by Aaron.
+  // it. Each note describes what is on screen when it shows (docs/content/
+  // connect-footer-band.md, approved 2026-10-08).
   listen: {
     ariaLabel: "Soundtrack",
     line: "Want some music while you scroll?",
-    body: "I put together a short playlist for this site. The wave follows you down the page.",
+    body: "Yeah, I put [music](tip:music-note) on my website. It moves with you.",
     accept: "Play it",
     decline: "Not now",
-    acceptedNote: "Keep going, the music will follow.",
-    declinedNote: "No problem. It'll be here if you change your mind.",
+    acceptedNote: "Enjoy! Control it from the [evolving isle](tip:evolving-isle).",
+    declinedNote: "No problem, it's here if you change your mind.",
     pausedNote: "Paused. Resume whenever you like.",
     pause: "Pause",
     resume: "Resume",
     freeze: "Freeze the wave",
     unfreeze: "Let the wave move",
-  },
-  about: {
-    label: "About",
-    heading: "About.",
-    lede: "The longer version of who I am, what I'm working on, and how to reach me.",
   },
   menu: {
     ariaLabelOpen: "Open menu",
@@ -201,26 +196,42 @@ export const siteContent = {
   },
   errorPage: {
     title: "Something went wrong.",
-    body: "An unexpected error occurred. It's on my end, not yours.",
+    body: "That one's on me, not you. Try again, and if it keeps breaking, let me know.",
     retry: "Try again",
   },
+  // The #about section (docs/content/who-i-am.md, approved 2026-10-08): four
+  // labeled blocks, the third with a sub-block. Parentheses and the lowercase
+  // labels are how I typed them. Link markup is lib/content/links.ts.
   whoIAm: {
     label: "Who I am",
-    paragraph:
-      "I'm a third-year Electrical and Computer Engineering major at UT Austin with a business minor, graduating May 2027. I love the engineering side of building, but I'm happiest when I'm working with people to solve problems together, which is why PM pulled me in. I've interned at Capital One as both a business analyst and a product manager, led IEEE at UT Austin as president, and built an AI community on campus as an Anthropic Claude Ambassador. I was born in Maracaibo, Venezuela, moved to the U.S. young, and I've stayed close to my Hispanic roots the whole way through. I care about AI literacy, financial literacy especially for immigrants, and community building in Austin's startup scene. Outside of that I'm usually building something, whether it's a side project, a hackathon entry, or a 3D-printed fix for a problem I'd rather not buy a solution to.",
+    heading: "who I am",
+    blocks: [
+      {
+        label: "what I do",
+        body: "I'm a [product](def:product)-focused engineer. I study Electrical and Computer Engineering (ECE) at UT Austin, but I spend most of my time building and talking to the people I'm building for. I like products that bend for the person using them, not the other way around.",
+      },
+      {
+        label: "what I love (to work on)",
+        body: "I tend to gravitate towards [leadership positions](pop:leadership-award) because I love getting a group of people with very different skillsets working towards one goal. I learned it as a drum major in high school, continued doing it in my orgs on campus, and want to do the same in my full-time work.",
+      },
+      {
+        label: "what I love (outside of work)",
+        body: "I love people (family & friends) outside of work too. I strive to surround myself with people who lift each other up and help me grow every day. Most of my favorite experiences involve spending time with others!",
+        sub: {
+          label: "(hobbies)",
+          body: "I love to travel, tinker on personal projects, and getting active. I love credit card-maxxing since it allows me to fulfill my wanderlust, recently got into 3D printing because it lets me work on the engineering I don't get to do in class, and love [extreme sports](pop:sandboarding) like [downhill skating](pop:downhill-skating), [skydiving](pop:skydiving), and [rock climbing](pop:rock-climbing).",
+        },
+      },
+      {
+        label: "where I'm from",
+        body: "I was born in Maracaibo, [Venezuela](pop:venezuela-flag), and moved to the U.S. when I was around 4. I grew up in Texas, mostly in Katy, watching my dad figure out a business as he went. I worked in it too, which is where I learned to wear a lot of hats.",
+      },
+    ] as readonly WhoIAmBlock[],
+    smallPrint: "Fourth-year Electrical and Computer Engineering student at UT Austin (and a business minor from McCombs)",
   },
-  upToNow: {
-    label: "What I'm up to",
-    heading: "What I'm up to right now.",
-    items: [
-      "Competing in hackathons and shipping personal projects. This site is one of them, built in public.",
-      "Investing in Austin's startup community because I think it's one of the most underrated builder hubs in the country.",
-      "Building out a public voice on AI literacy, product thinking, and whatever else I'm chewing on.",
-      "Always open to chatting if you're working on something interesting or just want to trade notes.",
-    ],
-  },
-  // The contribution skyline inside Up to now (components/metrics). The two
-  // slots stay null until I supply a LinkedIn figure and a fun one; a null
+  // The numbers strip under Who I am (components/metrics): the GitHub chart
+  // and its figures, then my LinkedIn line (docs/content/right-now-and-metrics.md,
+  // approved 2026-10-08). The fun slot stays null until I supply one; a null
   // slot renders nothing.
   metrics: {
     groupLabel: "My GitHub contributions",
@@ -232,7 +243,10 @@ export const siteContent = {
     totalLabel: "contributions in the last 6 months",
     activeLabel: "days I shipped something",
     asOf: "As of",
-    slots: { linkedin: null as MetricsSlot | null, fun: null as MetricsSlot | null },
+    slots: {
+      linkedin: { value: "450,000", label: "LinkedIn impressions in 3 months", sub: "2,500+ followers" } as MetricsSlot | null,
+      fun: null as MetricsSlot | null,
+    },
     chart: {
       viewGroup: "Chart view",
       flat: "Flat",
@@ -263,39 +277,21 @@ export const siteContent = {
     indexLede: "Every project, internship, and community I'm proud of. Click in for the story.",
     backLabel: "Work",
   },
+  // Connect (docs/content/connect-footer-band.md, approved 2026-10-08): the
+  // body carries the calendar link, the matcha pop and the killer-drones
+  // footnote; "Book a chat" is the one big link; handle is what a link shows
+  // beside its name.
   connect: {
     label: "Connect",
-    heading: "Let's talk.",
-    lede: "I read everything. The fastest way in is LinkedIn or a quick email.",
+    heading: "wanna talk?",
+    body: "I check everything (or Talos does) so take your pick. If you want to talk screen to screen, [grab a time on my calendar](https://cal.com/aaron-sulbaran). If you're in my city, let's grab a coffee ([or matcha](pop:matcha)). I take coffee chats with anyone, no matter what you're building[*](tip:killer-drones).",
+    primary: { label: "Book a chat", href: "https://cal.com/aaron-sulbaran" },
     links: [
-      {
-        key: "linkedin",
-        label: "LinkedIn",
-        value: "in/aaron-sulbaran",
-        href: "https://www.linkedin.com/in/aaron-sulbaran/",
-        external: true,
-      },
-      {
-        key: "github",
-        label: "GitHub",
-        value: "aaron-sulbaran",
-        href: "https://github.com/aaron-sulbaran",
-        external: true,
-      },
-      {
-        key: "email-primary",
-        label: "Email",
-        value: "aarondsulbaran@gmail.com",
-        href: "mailto:aarondsulbaran@gmail.com",
-        external: false,
-      },
-      {
-        key: "email-school",
-        label: "Email (UT Austin)",
-        value: "aaronsulbaran@utexas.edu",
-        href: "mailto:aaronsulbaran@utexas.edu",
-        external: false,
-      },
+      { key: "linkedin", label: "LinkedIn", handle: "in/aaron-sulbaran", href: "https://www.linkedin.com/in/aaron-sulbaran/" },
+      { key: "github", label: "GitHub", handle: "aaron-sulbaran", href: "https://github.com/aaron-sulbaran" },
+      { key: "email", label: "Email", handle: "aarondsulbaran@gmail.com", href: "mailto:aarondsulbaran@gmail.com" },
+      { key: "instagram", label: "Instagram", handle: "aaron.sulbaran", href: "https://www.instagram.com/aaron.sulbaran/" },
+      { key: "x", label: "X", handle: "@imaaronsulbaran", href: "https://x.com/imaaronsulbaran" },
     ],
   },
   // Holding page (components/Holding.tsx), served at / while
@@ -337,7 +333,7 @@ export const siteContent = {
   },
   footer: {
     // The month comes from the build (lib/buildDate.ts).
-    tagline: (month: string) => `This site grows with me. Last updated ${month}`,
+    tagline: (month: string) => `Last updated ${month}`,
     copyright: "© 2026 Aaron Sulbaran",
   },
   // Private recruiting dashboard at /recruiting (app/recruiting/page.tsx),
@@ -796,14 +792,19 @@ export const siteContent = {
     { kind: "photo" as const, key: "photo-14", src: "/photos/photo-14.svg" }, // PLACEHOLDER
   ],
   // The mark's card (components/mark/MarkCard.tsx), opened by holding the
-  // top-left mark. PLACEHOLDER: every line below is the shortest true line,
-  // for Aaron to replace with his own words about the name and the gamertag.
+  // top-left mark (docs/content/mark-card.md, approved 2026-10-08). The subtitle
+  // is lowercase as I typed it. The last line links no tip on "Voltaage": that
+  // tip is still proposed in the register.
   mark: {
     dialogLabel: "The mark",
-    eyebrow: "The mark",
-    title: "My initials, A and S",
-    lines: ["The bolt's tail is also the A's right leg."],
-    cta: { label: "Say hi", href: "#connect" },
+    title: "I wanted a personal logo, so I made one",
+    subtitle: "good job, you found my easter egg!",
+    lines: [
+      "It represents a few things: Catatumbo lightning, over Lake Maracaibo, where I was born. Most people have never heard of it, so I hope you learned something new.",
+      "The A is me. The bolt (which forms the S) is also where my gamer tag comes from, Voltaage: [voltage](tip:voltage), + two [A's](tip:two-as).",
+      "I always thought Voltaage would be an awesome streamer name. I took a different career path.",
+    ],
+    button: "Keep exploring!",
   },
 } as const;
 
@@ -815,7 +816,7 @@ export type HomeTile = (typeof siteContent.homeTiles)[number];
 export type {
   CardContent, CardGroup, CardKey, CardLink, CardModal, CardModalKind, CardPicture, Cards, CardVisual, DefinitionEntry, ImageRef,
   InlineRegister, InspiredBy, LogoRef, Mentor, MentorsList, ModalPhoto, PhotoCrop, PhotoRef, PopEntry, SoundtrackTrack, TimelineEntry,
-  TipEntry, TrackLicenseKind,
+  TipEntry, TrackLicenseKind, WhoIAmBlock,
 } from "./content/types";
 export { tipText } from "./content/tracks";
 

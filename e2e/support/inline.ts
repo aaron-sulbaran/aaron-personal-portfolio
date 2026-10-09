@@ -4,9 +4,10 @@ import { walkStrings } from "@/lib/testing/walk";
 import { openHome } from "./coil";
 import { expect } from "./fixtures";
 // The inline links' e2e helpers (e2e/inline-links.spec.ts and
-// e2e/inline-links-touch.spec.ts). Until C5 lands Aaron's copy the links come
-// from fixture strings on /fixtures/inline, a route that exists only while the
-// server runs with E2E_FIXTURES=1 (playwright.config.ts).
+// e2e/inline-links-touch.spec.ts). Tips, pops and calendar links come from
+// fixture strings on /fixtures/inline, a route that exists only while the
+// server runs with E2E_FIXTURES=1 (playwright.config.ts); the definition is
+// Who I am's own.
 export const DEF = "I'm a [product](def:product)-focused engineer.";
 export const TIP = "I'll build [anything](tip:killer-drones) that helps people.";
 export const POP = "I played [bass clarinet](pop:contrabass-clarinet).";
@@ -30,7 +31,7 @@ export async function tabTo(page: Page, link: Locator) {
 export const bubble = (page: Page) => page.locator("[data-inline-tip]");
 export const tipLink = (page: Page) => page.locator('[data-inline="tip"][data-inline-key="killer-drones"]');
 const PRODUCT_ON_HOME = walkStrings(siteContent.whoIAm).some((leaf) => leaf.text.includes("](def:product)"));
-// The definition lives in Who I am once C5 lands it; until then, on the fixture.
+// The definition lives in Who I am; the fixture stands in only if the copy ever drops it.
 export async function productLink(page: Page): Promise<Locator> {
   if (PRODUCT_ON_HOME) await openHome(page);
   else await openFixture(page, DEF);

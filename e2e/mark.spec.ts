@@ -28,16 +28,6 @@ const menuPill = (page: Page) => page.getByRole("button", { name: siteContent.me
 const menuPanel = (page: Page) => page.getByRole("dialog", { name: siteContent.menu.dialogLabel });
 const surfaceOpacity = (page: Page) => card(page).locator('[data-card="surface"]').evaluate((el) => getComputedStyle(el).opacity);
 
-// How far the page sits from #connect's resting scroll: its top less its
-// scroll margin, or the bottom of the page if that comes first.
-const offConnect = (page: Page) =>
-  page.evaluate(() => {
-    const section = document.getElementById("connect")!;
-    const margin = parseFloat(getComputedStyle(section).scrollMarginTop) || 0;
-    const resting = Math.min(window.scrollY + section.getBoundingClientRect().top - margin, document.documentElement.scrollHeight - window.innerHeight);
-    return Math.abs(window.scrollY - resting);
-  });
-
 async function markBox(page: Page) {
   const box = await mark(page).boundingBox();
   if (!box) throw new Error("the mark is not on screen");
@@ -88,7 +78,8 @@ for (const mode of ["scene", "no-webgl"] as const) {
       await expect(dialog).toBeVisible();
       await expect(dialog.locator("[data-mark-strike]")).toHaveAttribute("data-mode", "cel");
       await expect.poll(() => dialog.locator('[data-card="surface"]').evaluate((el) => getComputedStyle(el).opacity), { timeout: 4000 }).toBe("1");
-      await expect(dialog.getByRole("link", { name: siteContent.mark.cta.label }).locator("svg")).not.toHaveCount(0);
+      await expect(dialog.getByRole("button", { name: siteContent.mark.button })).toBeVisible();
+      await expect(dialog.getByRole("button", { name: siteContent.mark.button }).locator("svg")).toHaveCount(0);
       expect(Math.abs((await scrollY(page)) - Y)).toBeLessThan(1);
       await expect.poll(() => page.evaluate(() => document.querySelector<SVGElement>("[data-mark-ring]")?.style.opacity ?? "0")).toBe("0");
       await dialog.getByRole("button", { name: CLOSE }).click();
@@ -263,18 +254,17 @@ for (const mode of ["scene", "no-webgl"] as const) {
       await expect(mark(page)).toBeFocused();
     });
 
-    test(`mark: Say hi closes the card and the page lands at #connect (${mode})`, async ({ page }) => {
+    test(`mark: Keep exploring! closes the card and leaves the page where it was (${mode})`, async ({ page }) => {
       await open(page);
       await scrollToY(page, Y);
       await holdMark(page, 700);
       await expect.poll(() => surfaceOpacity(page), { timeout: 4000 }).toBe("1");
-      expect(await offConnect(page)).toBeGreaterThan(100);
-      await card(page).getByRole("link", { name: siteContent.mark.cta.label }).click();
+      await card(page).getByRole("button", { name: siteContent.mark.button }).click();
       await expect(card(page)).toHaveCount(0);
-      await expect.poll(() => offConnect(page), { timeout: 10_000 }).toBeLessThan(3);
       await sleep(500);
-      expect(await offConnect(page)).toBeLessThan(3);
-      expect(new URL(page.url()).hash).toBe(siteContent.mark.cta.href);
+      expect(Math.abs((await scrollY(page)) - Y)).toBeLessThan(1);
+      expect(new URL(page.url()).hash).toBe("");
+      await expect(mark(page)).toBeFocused();
     });
 
     test.describe("reduced motion", () => {

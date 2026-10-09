@@ -128,9 +128,14 @@ test("label face: hints and the credit prose are Profa Bold, muted", async ({ pa
 test("label face: kickers and the Connect labels are Profa Bold, muted", async ({ page }) => {
   await page.goto("/");
   await settled(page);
-  const { about, whoIAm, upToNow, connect } = siteContent;
-  for (const label of [about.label, whoIAm.label, upToNow.label, connect.label]) {
+  const { whoIAm, connect } = siteContent;
+  for (const label of [whoIAm.label, connect.label]) {
     await expectLabel(page.locator(`section[aria-label="${label}"]`).getByText(label, { exact: true }).first(), "label", "muted");
+  }
+  for (const block of whoIAm.blocks) {
+    for (const label of [block.label, ...(block.sub ? [block.sub.label] : [])]) {
+      await expectLabel(page.locator("#about").getByText(label, { exact: true }), "label", "muted");
+    }
   }
   await expectLabel(page.locator("#connect li a [data-sections-rowinner] > span").first(), "label", "muted");
 });

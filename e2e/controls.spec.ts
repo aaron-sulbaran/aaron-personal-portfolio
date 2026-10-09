@@ -152,7 +152,8 @@ test("controls: the nav bar and the Connect links rise with the quiet tint", asy
 
 test("controls: the band's controls rise with glass to accent", async ({ page }) => {
   await openHome(page);
-  await expectFill(page.locator("#listen [data-band-controls] button, #listen [data-band-note] button"), "band");
+  // The note's own tips (the music and the evolving isle) are inline links, not controls.
+  await expectFill(page.locator("#listen [data-band-controls] button, #listen [data-band-note] button:not([data-inline])"), "band");
 });
 
 test("controls: the hero control is a circle on the Menu pill's glass", async ({ page }) => {

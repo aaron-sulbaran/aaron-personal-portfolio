@@ -1,6 +1,4 @@
-import { AboutIntro } from "@/components/AboutIntro";
 import { WhoIAm } from "@/components/WhoIAm";
-import { UpToNow } from "@/components/UpToNow";
 import { Connect } from "@/components/Connect";
 import { Footer } from "@/components/Footer";
 import { SoundtrackBand } from "@/components/soundtrack/SoundtrackBand";
@@ -9,7 +7,9 @@ import { HOLDING_MODE } from "@/lib/holding";
 import { HomeController } from "@/components/home/HomeController";
 import { HeroText } from "@/components/home/HeroText";
 import { Book } from "@/components/book/Book";
-import { Metrics } from "@/components/metrics/Metrics";
+import { Metrics, METRICS_LABEL_ID } from "@/components/metrics/Metrics";
+import { Kicker } from "@/components/sections/Kicker";
+import { siteContent } from "@/lib/content";
 import { MarkCardSource } from "@/components/mark/MarkCardSource";
 
 // The contribution figures refresh once a day (lib/metrics/github.ts); a
@@ -17,10 +17,11 @@ import { MarkCardSource } from "@/components/mark/MarkCardSource";
 export const revalidate = 86400;
 
 // The whole site is one scrolling document: the Coil hero, the book (#work),
-// the soundtrack band (#listen), About, Connect, Footer. The controller owns the
-// hero (the server-rendered greeting, the scene, the loader) and the book
-// directly under it. Nothing pins, so the page scrolls natively; overflow-x is
-// clipped (clip, not hidden, so no scroll container is created).
+// the soundtrack band (#listen), Who I am (#about), the numbers strip, Connect,
+// Footer. The controller owns the hero (the server-rendered greeting, the
+// scene, the loader) and the book directly under it. Nothing pins, so the page
+// scrolls natively; overflow-x is clipped (clip, not hidden, so no scroll
+// container is created).
 //
 // The soundtrack band sits in flow directly under the book: the waveform runs
 // through it and nowhere else, so nothing ever moves behind body text. Its
@@ -42,9 +43,8 @@ export default function Home() {
             <Book />
           </HomeController>
           <SoundtrackBand />
-          <AboutIntro />
           <WhoIAm />
-          <UpToNow after={<Metrics />} />
+          <NumbersStrip />
           <Connect />
         </main>
         <Footer dock />
@@ -64,5 +64,19 @@ function HeroSentinel() {
       data-hero-sentinel
       className="pointer-events-none absolute inset-x-0 top-0 h-[90vh] supports-[height:100svh]:h-[90svh]"
     />
+  );
+}
+
+// The numbers strip under Who I am: the GitHub chart with its figures and my
+// LinkedIn line (docs/content/right-now-and-metrics.md). With Right now gone
+// its only label is the group label, which is also the GitHub group's name.
+function NumbersStrip() {
+  return (
+    <section id="numbers" className="relative w-full scroll-mt-24 border-t border-border px-6 py-24 md:px-10 md:py-40">
+      <div className="mx-auto flex max-w-6xl flex-col gap-8">
+        <Kicker label={siteContent.metrics.groupLabel} labelId={METRICS_LABEL_ID} />
+        <Metrics />
+      </div>
+    </section>
   );
 }
