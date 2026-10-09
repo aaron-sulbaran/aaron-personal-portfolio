@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { CARDS } from "../cards";
+import { CARDS, drawnShape } from "../cards";
+import { groupingOf } from "../cardSteps";
 import { groupFrame, pagesOf, photoPlan, repeatedBlocks, rotatingPages, rotatingPlan, slideText, uniformBoxes, type Plan } from "../plan";
+import { exportValues, INITIAL, PRESETS } from "../settings";
 import { remainingAfter, ROTATOR_VISIBLE, rotatorRuns, type RotatorGate } from "../stage";
 import { pagerSteps, planSteps } from "../timing";
 
@@ -163,5 +165,39 @@ describe("round five steps", () => {
   it("masks the pager's first page as round four does", () => {
     const steps = pagerSteps(rotatingPages(rotating("mentorship")), { flownPhoto: 0, hasCaption: all, hasLinks: true });
     expect(steps.map((s) => s.map((p) => p.id))).toEqual([["title"], ["meta"], ["caption-0"], ["block-0"], ["pager"]]);
+  });
+});
+
+describe("the round five preset", () => {
+  it("is the pick, round four with rotating photos, round four still selectable", () => {
+    expect(PRESETS[0].id).toBe("round-five");
+    expect(INITIAL).toBe(PRESETS[0].settings);
+    const four = PRESETS.find((p) => p.id === "round-four")!.settings;
+    expect(INITIAL).toEqual({ ...four, extras: "rotate" });
+    expect(four.extras).toBe("placeholder");
+    expect(INITIAL).toMatchObject({ rotateSeconds: 4.5, rotateMs: 640, rotateDelayMs: 1200, rotateStyle: "mask", rotateAlign: "center" });
+  });
+
+  it("copies the rotation with the values, and not under round four", () => {
+    const values = exportValues(INITIAL, "Round 5", "light", { desktop: [], phone: [] }, "Mentorship") as Record<string, unknown>;
+    expect(values.rotation).toMatchObject({ interval: "4.5s a photo, looping", words: "never change" });
+    const four = PRESETS.find((p) => p.id === "round-four")!.settings;
+    expect((exportValues(four, "Round 4", "light", { desktop: [], phone: [] }, "Mentorship") as Record<string, unknown>).rotation).toBeUndefined();
+  });
+
+  it("reads the grouping back per card for the panel", () => {
+    const c = card("mentorship");
+    expect(groupingOf(c, c.photos.map((_, i) => drawnShape(c, i)), INITIAL)).toEqual({
+      summary: "4 photos, 2 paragraphs: more photos than words; 4 pages on a phone",
+      rows: ["Row 1: photo 1 (card picture), still, beside paragraph 1", "Row 2: photos 2, 3 and 4 take turns (424 by 318px frame), beside paragraph 2"],
+    });
+    const capitalOne = card("capital-one");
+    expect(groupingOf(capitalOne, capitalOne.photos.map((_, i) => drawnShape(capitalOne, i)), INITIAL).rows).toEqual([
+      "Opens with paragraph 1",
+      "Row 1: photo 1, beside paragraph 2",
+      "Row 2: photo 2, beside paragraph 3",
+      "Row 3: photo 3, beside paragraph 4",
+      "Closes with paragraph 5",
+    ]);
   });
 });

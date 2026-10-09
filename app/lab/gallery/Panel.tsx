@@ -6,8 +6,26 @@ import { Check, Chip, Field, Segmented, Select, Slider } from "../mark/ui";
 import { CARD_PICTURE, CARDS, SHAPES, shapeLabel, type LabCard } from "./cards";
 import { FRAMES, type FrameKey } from "./Frame";
 import type { Measure } from "./GalleryContent";
+import { GroupingList } from "./GroupingList";
 import { areaRatio, HORIZONTAL_SHAPES, uniformBoxes, type HorizontalShape } from "./plan";
-import { ALIGN_LABELS, DESKTOP_LABELS, EASES, FIT_LABELS, LEAD_LABELS, PHONE_LABELS, PHOTO_ALIGN_LABELS, PHOTO_MASK_LABELS, PRESETS, RANGES, SPLIT_LABELS, sameSettings, type Settings } from "./settings";
+import {
+  ALIGN_LABELS,
+  DESKTOP_LABELS,
+  EASES,
+  EXTRAS_LABELS,
+  FIT_LABELS,
+  LEAD_LABELS,
+  PHONE_LABELS,
+  PHOTO_ALIGN_LABELS,
+  PHOTO_MASK_LABELS,
+  PRESETS,
+  RANGES,
+  ROTATE_ALIGN_LABELS,
+  ROTATE_STYLE_LABELS,
+  SPLIT_LABELS,
+  sameSettings,
+  type Settings,
+} from "./settings";
 
 // The lab's controls, set in system-ui like the other labs so the chrome never
 // reads as part of what is being judged.
@@ -97,6 +115,7 @@ export function Panel({ s, view, theme, osReduced, phone, measure, doneAtMs, val
         </div>
       </Field>
       <ShapePicker card={card} shapes={shapes} setShape={setShape} resetShapes={resetShapes} wideFrom={s.wideFrom} rows={s.desktopLayout === "rows"} />
+      {(s.desktopLayout === "rows" || s.phoneLayout === "pager") && <GroupingList s={s} card={card} shapes={shapes} onPick={(id) => setView((v) => ({ ...v, card: id, open: true }))} />}
       <Field label="Viewport">
         <Select label="Viewport" value={view.frame} options={(Object.keys(FRAMES) as FrameKey[]).map((k) => ({ value: k, label: FRAMES[k].label }))} onChange={(frame) => setView((v) => ({ ...v, frame }))} />
       </Field>
@@ -121,6 +140,12 @@ export function Panel({ s, view, theme, osReduced, phone, measure, doneAtMs, val
         </Field>
         {s.desktopLayout === "rows" ? <RowsControls s={s} set={set} /> : <InterleavedControls s={s} set={set} />}
       </Group>
+
+      {(s.desktopLayout === "rows" || s.phoneLayout === "pager") && (
+        <Group title="Rotating photos (round 5)">
+          <RotateControls s={s} set={set} />
+        </Group>
+      )}
 
       <Group title="Phone">
         <Field label="Layout on a phone">
@@ -288,6 +313,31 @@ function InterleavedControls({ s, set }: { s: Settings; set: Set }) {
       <Slider label="Width at most" value={s.wideWidth} {...RANGES.wideWidth} format={(n) => `${n}% of the row`} onChange={set("wideWidth")} />
       <Slider label="Height at most" value={s.wideMaxHeight} {...RANGES.wideMaxHeight} format={px} hint="A wide photo narrows to stay under this, never below 320px wide." onChange={set("wideMaxHeight")} />
       <Slider label="Caption to paragraph" value={s.stackGap} {...RANGES.stackGap} format={px} onChange={set("stackGap")} />
+    </>
+  );
+}
+
+// Round five: what a photo with no words of its own gets, and how a frame's
+// photos take turns. The frame itself follows from the boxes above.
+function RotateControls({ s, set }: { s: Settings; set: Set }) {
+  return (
+    <>
+      <Field label="A photo with no words of its own" hint="Round 5 takes turns: on desktop the photos rotate in one frame beside the words, which never change; on a phone each still gets its own page, the words repeating.">
+        <Segmented options={["rotate", "placeholder"] as const} value={s.extras} format={(e) => EXTRAS_LABELS[e]} onChange={set("extras")} />
+      </Field>
+      {s.extras === "rotate" && (
+        <>
+          <Slider label="Each photo stays" value={s.rotateSeconds} {...RANGES.rotateSeconds} format={(n) => `${n}s`} hint="Loops. The current dot fills over this time." onChange={set("rotateSeconds")} />
+          <Slider label="Change length" value={s.rotateMs} {...RANGES.rotateMs} format={ms} onChange={set("rotateMs")} />
+          <Field label="Change">
+            <Segmented options={["mask", "fade"] as const} value={s.rotateStyle} format={(r) => ROTATE_STYLE_LABELS[r]} onChange={set("rotateStyle")} />
+          </Field>
+          <Slider label="Starts after the landing" value={s.rotateDelayMs} {...RANGES.rotateDelayMs} format={ms} hint="Then one interval to the first change. Pauses while hovered, keyboard-focused or less than a third on screen; never turns on its own under reduced motion." onChange={set("rotateDelayMs")} />
+          <Field label="A smaller box in its frame">
+            <Segmented options={["center", "bottom"] as const} value={s.rotateAlign} format={(a) => ROTATE_ALIGN_LABELS[a]} onChange={set("rotateAlign")} />
+          </Field>
+        </>
+      )}
     </>
   );
 }

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 
 import { useReducedMotionLive } from "@/components/soundtrack/useReducedMotionLive";
 import { syncThemeColorMeta, type Theme } from "@/lib/theme";
 import { cardById, drawnShape, shapeLabel } from "./cards";
-import { cardLayout, desktopColumns, stepsOf } from "./cardSteps";
+import { cardLayout, desktopColumns, groupingOf, stepsOf } from "./cardSteps";
 import { Frame } from "./Frame";
 import { GalleryContent, type Measure } from "./GalleryContent";
 import { GalleryModal } from "./GalleryModal";
@@ -125,6 +125,7 @@ export function GalleryLab() {
       return `${p.intended}: drawn ${shapeLabel(aspect)}, ${where}`;
     }),
     ...(s.desktopLayout === "rows" ? { panelOnThisCard: `${panelWidth}px asked, ${measure?.panelPx ?? "unmeasured"}px drawn` } : {}),
+    ...(s.desktopLayout === "rows" || s.phoneLayout === "pager" ? { groupingOnThisCard: groupingOf(card, aspects, s) } : {}),
   };
 
   const close = useCallback(() => setViewState((v) => ({ ...v, open: false })), []);

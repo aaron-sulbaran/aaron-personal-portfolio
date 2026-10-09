@@ -17,6 +17,14 @@ export type DesktopLayout = "rows" | "interleaved";
 export type PhoneLayout = "pager" | "stage";
 // Where a photo narrower than its card's photo column sits in it.
 export type PhotoAlign = "text" | "center" | "edge";
+// Round five: what a photo with no words of its own gets, Aaron's
+// placeholder (round four) or a turn beside another photo's words.
+export type Extras = "placeholder" | "rotate";
+// How a rotating frame changes photo: the photo mask above (a wipe up or a
+// rise), or a cross-fade.
+export type RotateStyle = "mask" | "fade";
+// Where a smaller box sits in its frame: centred, or on the caption.
+export type RotateAlign = "center" | "bottom";
 
 export interface Settings {
   desktopLayout: DesktopLayout;
@@ -30,6 +38,13 @@ export interface Settings {
   // Round four, phone
   slideMs: number; // the pager's travel between pages
   flickPx: number; // a vertical drag this far closes the modal
+  // Round five, the rotating frame on desktop
+  extras: Extras;
+  rotateSeconds: number; // seconds a photo stays
+  rotateMs: number; // the change from one photo to the next
+  rotateDelayMs: number; // after the landing, before the timer starts
+  rotateStyle: RotateStyle;
+  rotateAlign: RotateAlign;
   // Desktop (rounds one to three)
   panelWidth: number;
   photoWidth: number;
@@ -83,6 +98,9 @@ export const RANGES = {
   textWidth: { min: 320, max: 600, step: 8 },
   slideMs: { min: 0, max: 700, step: 10 },
   flickPx: { min: 40, max: 240, step: 8 },
+  rotateSeconds: { min: 2, max: 10, step: 0.5 },
+  rotateMs: { min: 200, max: 1400, step: 20 },
+  rotateDelayMs: { min: 0, max: 6000, step: 100 },
   autoAdvance: { min: 0, max: 6, step: 0.5 },
   crossfadeMs: { min: 120, max: 800, step: 20 },
   landingMs: { min: 0, max: 800, step: 20 },
@@ -105,6 +123,9 @@ export const ALIGN_LABELS: Record<TextAlign, string> = { center: "Middle of the 
 export const DESKTOP_LABELS: Record<DesktopLayout, string> = { rows: "Every photo its own row (round 4)", interleaved: "Interleaved (rounds 1 to 3)" };
 export const PHONE_LABELS: Record<PhoneLayout, string> = { pager: "Pager (round 4)", stage: "Stage over a scroll (rounds 1 to 3)" };
 export const PHOTO_ALIGN_LABELS: Record<PhotoAlign, string> = { text: "Against its words", center: "Centred", edge: "Against the panel edge" };
+export const EXTRAS_LABELS: Record<Extras, string> = { placeholder: "A placeholder for Aaron's sentence (round 4)", rotate: "Take turns beside the words (round 5)" };
+export const ROTATE_STYLE_LABELS: Record<RotateStyle, string> = { mask: "The photo mask (as set below)", fade: "Cross-fade" };
+export const ROTATE_ALIGN_LABELS: Record<RotateAlign, string> = { center: "Centred in the frame", bottom: "On its caption" };
 
 // What rounds one to three never had: the round four values at their
 // defaults, with both layouts set back to the old ones.
@@ -118,6 +139,12 @@ const EARLIER = {
   photoAlign: "edge",
   slideMs: 360,
   flickPx: 96,
+  extras: "placeholder",
+  rotateSeconds: 4.5,
+  rotateMs: 640,
+  rotateDelayMs: 1200,
+  rotateStyle: "mask",
+  rotateAlign: "center",
 } as const satisfies Partial<Settings>;
 
 // The brief's numbers, nothing added: block masks, no settle, every photo
@@ -257,7 +284,32 @@ const ROUND_FOUR: Settings = {
   autoAdvance: 0,
 };
 
+// Round five (Aaron, 2026-10-09): "instead of having a forced set of
+// sentences for each photo, if there are not enough sentences and there is
+// space to rotate between sections, just the photo rotates, and the actual
+// text itself stays." Round four's rows where a card has words for every
+// photo (Capital One, Hackathons, IEEE, and Building in public, whose two
+// waiting photos take its two free blocks). Where it has more photos than
+// words, the card picture stands still beside the first block, where the
+// flight lands, and the rest take turns beside the later ones (Mentorship:
+// photos 2, 3 and 4 beside the last block; Misuki the same; Anthropic its
+// second and third). A frame holds its group's largest box, every photo
+// drawn at its own box centred in it, so nothing changes size; its caption
+// changes with it and its words never do. 4.5s a photo, a 640ms change in
+// the photo mask's wipe (the caption rises with it), the timer starting
+// 1200ms after the landing, once the row has masked in. Dots and a pause
+// button under the caption; it pauses while hovered, keyboard-focused or
+// mostly off screen, and never turns on its own under reduced motion. Phone:
+// round four's pager, one photo a page, a group's pages repeating its words.
+const ROUND_FIVE: Settings = { ...ROUND_FOUR, extras: "rotate" };
+
 export const PRESETS: readonly { id: string; name: string; note: string; settings: Settings }[] = [
+  {
+    id: "round-five",
+    name: "Round 5, rotating photos",
+    note: "Round four's rows, but no placeholders. A card with words for every photo keeps a photo a row (a photo whose words the card picture took gets the next free block). A card with more photos than words keeps the card picture still beside the first block and lets the rest take turns beside the later ones, the words staying put, the caption changing with the photo: 4.5s a photo, a 640ms wipe, starting 1200ms after the landing, paused while hovered, focused or off screen, with dots and a pause button. Phone: the pager, one photo a page, a group's pages repeating its words.",
+    settings: ROUND_FIVE,
+  },
   {
     id: "round-four",
     name: "Round 4, Capital One everywhere",
@@ -297,6 +349,7 @@ export function exportValues(s: Settings, label: string, theme: string, steps: {
     theme,
     measuredOn: card,
     desktop: s.desktopLayout === "rows" ? roundFourDesktop(s) : interleavedDesktop(s),
+    ...(s.desktopLayout === "rows" && s.extras === "rotate" ? { rotation: rotation(s) } : {}),
     phone: s.phoneLayout === "pager" ? roundFourPhone(s) : stagePhone(s),
     mask: {
       startsAt: `${s.landingMs}ms after open (the flight's landing)`,
@@ -313,7 +366,7 @@ export function exportValues(s: Settings, label: string, theme: string, steps: {
         phone: `${Math.round(maskTable(steps.phone, timing).endMs)}ms`,
       },
     },
-    reducedMotion: "no masks, no settle, no auto-advance, an instant stage swap or page turn with no travel; the panel's own 180ms fade only",
+    reducedMotion: `no masks, no settle, no auto-advance, an instant stage swap or page turn with no travel${s.extras === "rotate" ? ", a rotating frame that never turns on its own (its dots and arrow keys step it, with no transition) and no pause button" : ""}; the panel's own 180ms fade only`,
   };
 }
 
@@ -335,8 +388,25 @@ function roundFourDesktop(s: Settings) {
     photoTextGap: `${s.columnGap}px`,
     textBesidePhoto: ALIGN_LABELS[s.textAlign],
     sides: "alternate from the left, one photo a row",
-    words: "each photo's own block; the card picture takes the first block; a photo whose block another took shows a placeholder; blocks no photo took open or close the card, or ride with the nearest photo",
+    words:
+      s.extras === "rotate"
+        ? "no placeholders. Photos no more than blocks: each photo's own block, the card picture the first; a photo whose block another took takes the first free block between the photos around it, else takes turns with a neighbour. More photos than blocks: the card picture still beside the first block, every later block a group of the rest taking turns, extras to the later rows. Blocks no photo took open or close the card, or ride with the nearest photo"
+        : "each photo's own block; the card picture takes the first block; a photo whose block another took shows a placeholder; blocks no photo took open or close the card, or ride with the nearest photo",
     captions: "under each photo, text-sm muted, masked with its photo",
+  };
+}
+
+function rotation(s: Settings) {
+  return {
+    rule: "N photos, P blocks. N <= P: round four's rows, every photo given words. N > P: the card picture (a logo card's first photo) still beside block 1, then each later block beside a group of the remaining photos in order, the extras to the later rows; one block: every photo takes turns beside it, the card picture first",
+    frame: `the group's largest box, so it never changes size; each photo drawn in its own orientation's box, ${ROTATE_ALIGN_LABELS[s.rotateAlign].toLowerCase()}`,
+    interval: `${s.rotateSeconds}s a photo, looping`,
+    change: `${s.rotateMs}ms, ${s.rotateStyle === "fade" ? "a cross-fade" : `${PHOTO_MASK_LABELS[s.photoMask].toLowerCase()}, the old photo clearing as the new one comes in`}, ${s.rotateStyle === "fade" ? "linear" : EASES[s.ease].css}`,
+    caption: s.rotateStyle === "fade" ? "changes with the photo, cross-faded" : "changes with the photo, the new one rising as the old one rises out",
+    words: "never change",
+    startsAt: `${s.rotateDelayMs}ms after the landing, then one interval to the first change`,
+    controls: "dots under the caption (the current one fills over the interval), clickable, arrow keys step it; a pause and play button",
+    pauses: "while hovered, while keyboard focus is inside it, while less than a third of the frame is on screen, and when paused; it resumes with the time it had left",
   };
 }
 
@@ -364,7 +434,10 @@ function roundFourPhone(s: Settings) {
     layout: PHONE_LABELS.pager,
     sheet: "the modal fills the visible height less 24px top and bottom; nothing scrolls but a long page's words",
     header: "fixed above the pages: the logo tile (logo cards), the title, the meta line",
-    page: "one photo, its caption and its words; the first page carries the opening blocks, the last the closing ones and the links",
+    page:
+      s.extras === "rotate"
+        ? "one photo, its caption and its words, never a placeholder; a group's photos each get a page with the group's words, so pages side by side may repeat them; the first page carries the opening blocks, the last the closing ones and the links"
+        : "one photo, its caption and its words; the first page carries the opening blocks, the last the closing ones and the links",
     stageHeight: `at most ${s.stageMaxHeight}% of the visible height; each page's stage exactly as tall as its photo fitted whole`,
     fit: "each photo whole inside the inner width and the height, its caption right under it; never cropped by the stage",
     longWords: "scroll inside their own area under the caption; the photo never leaves view",
