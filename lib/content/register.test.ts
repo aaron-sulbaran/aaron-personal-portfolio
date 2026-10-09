@@ -52,6 +52,7 @@ describe("the inline register", () => {
   it("drops the music note's adapting clause while no adapted track plays", () => {
     const note = register.tip["music-note"];
     expect(Boolean(note.adaptedClause && note.text.includes(note.adaptedClause))).toBe(true);
+    for (const [key, entry] of Object.entries(register.tip)) if (entry.adaptedClause) expect(entry.text.includes(entry.adaptedClause), key).toBe(true);
     expect(resolveTip(note, false)).toBe(musicNoteWithoutAdapting);
     expect(resolveTip(note, true)).toBe(note.text);
     expect(resolveTip(register.tip.aango, false)).toBe("yes, the chameleon from that one kid's movie");

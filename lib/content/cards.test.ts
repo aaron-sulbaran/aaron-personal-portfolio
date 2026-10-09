@@ -55,7 +55,7 @@ describe("the fourteen cards", () => {
       if (picture?.crop) expect(picture.crop.w / picture.crop.h, key).toBeCloseTo(3 / 4, 2);
       expect(modal.photos.length, key).toBeLessThanOrEqual(modal.kind === "timeline" ? 4 : 3);
       for (const photo of modal.photos) {
-        if ("block" in photo) expect(photo.block, key).toBeLessThan(modal.blocks.length);
+        if (photo.block !== undefined) expect(photo.block, key).toBeLessThan(modal.blocks.length);
         else expect(key === "jobs" && photo.timeline < cards.jobs.timeline.length, key).toBe(true);
         expect(photo.src, key).not.toBe(picture?.src);
       }
