@@ -1,18 +1,23 @@
 "use client";
 
 import { useEffect, useRef, type RefObject } from "react";
-import { approach, falloff, leanAngle, pressTarget, riseProgress, springStep, type Spring } from "./motion";
+import type { Pivot } from "./aperture";
+import { approach, easeToward, falloff, hoveredLetter, leanAngle, pivotTarget, pressTarget, riseProgress, springStep, type Spring } from "./motion";
 import type { FooterSettings, TypeResponse } from "./settings";
 
 // One loop for the wordmark: it reads the pointer over the footer, eases
 // each letter's swell, springs its press, clocks the rise from the first
-// time the footer is seen, leans the disc and slab, and hands the frame to
-// `apply`, which writes attributes directly (no React render per frame).
+// time the footer is seen, springs the hovered letter's waist slice, eases
+// the shutter period's pivot toward the pointer, leans the disc and slab, and
+// hands the frame to `apply`, which writes attributes directly (no React
+// render per frame).
 
 export type Point = { readonly x: number; readonly y: number };
 // weight: the procedural stroke; swell: the pointer's share (0 to 1), which a
-// typeset face spends on its axes.
-export type LetterFrame = { weight: number; swell: number; squash: number; rise: number; lean: number; grow: number };
+// typeset face spends on its axes and the constructed face on its stems and
+// bars; slice: how far apart the waist slice has slid (0 at rest, 1 the full
+// shift, past 1 on the spring's overshoot).
+export type LetterFrame = { weight: number; swell: number; squash: number; rise: number; lean: number; grow: number; slice: number };
 export type DiscFrame = { comp: number; dx: number; dy: number };
 
 export type MotionConfig = {
@@ -22,7 +27,9 @@ export type MotionConfig = {
   reduced: boolean;
   typeset: boolean; // Profa or a web font: lean and grow apply
   response: TypeResponse; // what the face does at the pointer, after what it can do
-  apply: (letters: readonly LetterFrame[], disc: DiscFrame) => void;
+  hit: { halfWidths: readonly number[]; top: number; bottom: number; margin: number }; // the slice's hit test, stage px
+  aperture: { index: number; reachPx: number } | null; // the shutter period, when on
+  apply: (letters: readonly LetterFrame[], disc: DiscFrame, pivot: Pivot) => void;
 };
 
 export const COMPOSITIONS = 3;
@@ -41,8 +48,11 @@ export function useWordMotion(stage: RefObject<HTMLElement | null>, config: RefO
     const pointer = { x: 0, y: 0, inside: false, pressed: false };
     const infl = Array.from({ length: count }, () => 0);
     const springs: Spring[] = Array.from({ length: count }, () => ({ x: 1, v: 0 }));
+    const slices: Spring[] = Array.from({ length: count }, () => ({ x: 0, v: 0 }));
+    const centersX: number[] = Array.from({ length: count }, () => 0);
+    const pivot: Pivot = { x: 0, y: 0 };
     const disc = { comp: 0, dx: 0, dy: 0 };
-    const frames: LetterFrame[] = Array.from({ length: count }, () => ({ weight: 0, swell: 0, squash: 1, rise: 1, lean: 0, grow: 1 }));
+    const frames: LetterFrame[] = Array.from({ length: count }, () => ({ weight: 0, swell: 0, squash: 1, rise: 1, lean: 0, grow: 1, slice: 0 }));
     let visible = false;
     let raf = 0;
     let last = performance.now();
@@ -74,10 +84,14 @@ export function useWordMotion(stage: RefObject<HTMLElement | null>, config: RefO
     const tick = (now: number) => {
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
-      const { settings: s, size, centers, reduced, typeset, response, apply } = config.current;
+      const { settings: s, size, centers, reduced, typeset, response, hit, aperture, apply } = config.current;
       const radius = s.swellRadius * size;
       const riseOn = s.riseMs > 0 && !reduced;
       const elapsed = riseStart.current === null ? 0 : now - riseStart.current;
+      const swelling = response === "swell";
+      for (let i = 0; i < count; i++) centersX[i] = centers[i]?.x ?? 0;
+      const hovered =
+        response === "slice" && pointer.inside && !reduced ? hoveredLetter(pointer.x, pointer.y, centersX, hit.halfWidths, hit.top, hit.bottom, hit.margin) : -1;
       for (let i = 0; i < count; i++) {
         const c = centers[i] ?? { x: 0, y: 0 };
         const near = pointer.inside && !reduced ? falloff(Math.hypot(pointer.x - c.x, pointer.y - c.y), radius) : 0;
@@ -85,8 +99,10 @@ export function useWordMotion(stage: RefObject<HTMLElement | null>, config: RefO
         const target = pointer.pressed && !reduced ? pressTarget(s.pressDepth, near) : 1;
         springs[i] = reduced ? { x: 1, v: 0 } : springStep(springs[i], target, s.pressStiffness, s.pressDamping, dt);
         const f = frames[i];
-        f.weight = s.weight + s.swellAmount * infl[i];
-        f.swell = infl[i];
+        slices[i] = reduced ? { x: 0, v: 0 } : springStep(slices[i], i === hovered ? 1 : 0, s.slice.stiffness, s.slice.damping, dt);
+        f.weight = s.weight + (swelling ? s.swellAmount * infl[i] : 0);
+        f.swell = swelling ? infl[i] : 0;
+        f.slice = slices[i].x;
         f.squash = Math.max(0.05, springs[i].x);
         f.rise = !riseOn ? 1 : riseStart.current === null ? 0 : riseProgress(elapsed, i, s.riseMs, s.riseStaggerMs, s.riseEase);
         f.lean = typeset && response === "lean" ? leanAngle(s.leanDeg, pointer.x - c.x, infl[i], radius) : 0;
@@ -97,7 +113,18 @@ export function useWordMotion(stage: RefObject<HTMLElement | null>, config: RefO
       const lean = pointer.inside && !reduced ? s.disc.lean : 0;
       disc.dx = approach(disc.dx, lean * ((pointer.x - w / 2) / (w / 2)), dt, 0.35);
       disc.dy = approach(disc.dy, lean * ((pointer.y - h / 2) / (h / 2)), dt, 0.35);
-      apply(frames, disc);
+      // The shutter leans toward the pointer while it is over the footer and
+      // eases back to rest when it leaves; reduced motion holds it at rest.
+      if (aperture && !reduced) {
+        const c = centers[aperture.index] ?? { x: 0, y: 0 };
+        const [tx, ty] = pointer.inside ? pivotTarget(pointer.x - c.x, pointer.y - c.y, aperture.reachPx) : [0, 0];
+        pivot.x = easeToward(pivot.x, tx, s.aperture.ease, dt);
+        pivot.y = easeToward(pivot.y, ty, s.aperture.ease, dt);
+      } else {
+        pivot.x = 0;
+        pivot.y = 0;
+      }
+      apply(frames, disc, pivot);
       raf = visible ? requestAnimationFrame(tick) : 0;
     };
 

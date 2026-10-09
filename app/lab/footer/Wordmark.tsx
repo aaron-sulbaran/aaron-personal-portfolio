@@ -1,17 +1,22 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, type RefObject } from "react";
-import { glyphFor, glyphPaths } from "./glyphs";
-import { layoutWord, typesetRow, type InkExtent } from "./wordLayout";
+import type { Pivot } from "./aperture";
+import { glyphPaths } from "./glyphs";
+import { apertureReachPx, glyphOutline, isDynamicGlyph, pathRow } from "./pathFace";
 import type { FooterSettings, TypeResponse } from "./settings";
-import type { TypesetFace } from "./useTypeface";
-import { COMPOSITIONS, useWordMotion, type DiscFrame, type LetterFrame, type MotionConfig, type Point } from "./useWordMotion";
+import type { PathKind, TypesetFace } from "./useTypeface";
+import { COMPOSITIONS, useWordMotion, type DiscFrame, type LetterFrame, type MotionConfig } from "./useWordMotion";
 import { poseAt, variationSettings } from "./webFont";
+import { wordRest, writeOutline, writeSlice } from "./wordFrame";
+import { sliceClipIds, WordLetters, type LetterSlot } from "./WordLetters";
+import { typesetRow, type InkExtent } from "./wordLayout";
 
 // The wordmark over the whole footer stage, in one SVG whose units are stage
-// px. The letters live once in <defs> and are drawn by <use>: as ink, as the
-// accent tint, and as holes in a paper cover when the field is clipped by
-// the letters. One loop writes their transforms, stroke widths and axes.
+// px. The letters live once in <defs> (WordLetters) and are drawn by <use>:
+// as ink, as the accent tint, and as holes in a paper cover when the field
+// is clipped by the letters. One loop writes their transforms, stroke widths,
+// outlines, slices and axes.
 
 export type WordGeometry = {
   stageW: number;
@@ -27,7 +32,8 @@ type Props = {
   size: number;
   geo: WordGeometry;
   ink: InkExtent;
-  face: TypesetFace | null; // null draws the procedural alphabet
+  face: TypesetFace | null; // null draws a path face
+  pathKind: PathKind | null; // which path face, when face is null
   response: TypeResponse;
   letterVeil: number; // clip only: paper over the letters, so they show the field shallower than the cover's
   reduced: boolean;
@@ -45,42 +51,60 @@ const DISC_COMPS = [
   { disc: [0.56, 0.86, 0.58], slab: [0.48, 0.24, 0.72, 0.22, -4] },
 ] as const;
 
-export function Wordmark({ text, s, size, geo, ink, face, response, letterVeil, reduced, replay, stage }: Props) {
+const REST_PIVOT: Pivot = { x: 0, y: 0 };
+
+export function Wordmark({ text, s, size, geo, ink, face, pathKind, response, letterVeil, reduced, replay, stage }: Props) {
   const id = useId().replace(/:/g, "");
   const chars = useMemo(() => [...text], [text]);
   const letters = useRef<(SVGGElement | null)[]>([]);
-  const glyphText = useRef<(SVGTextElement | null)[]>([]);
+  const texts = useRef<(SVGTextElement | null)[]>([]);
+  const outlines = useRef<(SVGPathElement | null)[]>([]);
+  const uppers = useRef<(SVGGElement | null)[]>([]);
+  const lowers = useRef<(SVGGElement | null)[]>([]);
   const written = useRef<string[]>([]);
+  const drawn = useRef<string[]>([]);
+  const parted = useRef<(number | undefined)[]>([]);
   const disc = useRef<SVGCircleElement>(null);
   const slab = useRef<SVGRectElement>(null);
   const discGroup = useRef<SVGGElement>(null);
   const lastComp = useRef(-1);
 
-  const paths = useMemo(() => chars.map((c) => glyphPaths(c, size, s.corners)), [chars, size, s.corners]);
+  const bind = (slot: LetterSlot, i: number) => (el: SVGElement | null) => {
+    const slots = { letters, texts, outlines, uppers, lowers };
+    (slots[slot].current as (SVGElement | null)[])[i] = el;
+  };
+  const kind = face ? null : pathKind;
+  const strokes = useMemo(() => chars.map((c) => glyphPaths(c, size, s.corners)), [chars, size, s.corners]);
+  const restOutlines = useMemo(
+    () => chars.map((c) => (kind && isDynamicGlyph(kind, c, s) ? glyphOutline(kind, c, size, s, { swell: 0, squash: 1, weight: s.weight }, REST_PIVOT) : "")),
+    [chars, kind, size, s],
+  );
   const fontSize = face ? size / face.metrics.ascent : size;
   const riseDistance = (ink.top + ink.bottom + 0.06) * size + 4;
   const swellAxes = face !== null && response === "swell" && face.canSwell;
+  const slicing = kind !== null && response === "slice";
 
-  // Where each letter sits at rest, for the swell's distances.
-  const rest = useMemo(() => {
-    if (face) {
-      const m = face.metrics;
-      const row = typesetRow(m, fontSize, s.tracking * size);
-      const offset = (geo.stageW - row.width) / 2;
-      const xs = row.xs.map((x) => offset + x);
-      const centers: Point[] = xs.map((x, i) => ({ x: x + (m.advances[i] * fontSize) / 2, y: geo.baselineY - m.mids[i] * fontSize }));
-      return { centers, xs, pivots: m.advances.map((a) => (a * fontSize) / 2) };
-    }
-    const base = layoutWord(text, size, [s.weight], s.tracking);
-    const offset = (geo.stageW - base.width) / 2;
-    const centers: Point[] = base.placements.map((p) => ({ x: offset + p.centerX, y: geo.baselineY - p.centerY }));
-    return { centers, xs: base.placements.map((p) => offset + p.inkX), pivots: chars.map((c) => (glyphFor(c).width * size) / 2) };
-  }, [face, chars, text, size, fontSize, s.weight, s.tracking, geo.stageW, geo.baselineY]);
+  const rest = useMemo(() => wordRest(face, kind, text, size, fontSize, s, geo.stageW, geo.baselineY), [face, kind, text, size, fontSize, s, geo.stageW, geo.baselineY]);
 
-  const config = useRef<MotionConfig>({ settings: s, size, centers: rest.centers, reduced, typeset: false, response: "swell", apply: () => {} });
+  const config = useRef<MotionConfig>({
+    settings: s,
+    size,
+    centers: rest.centers,
+    reduced,
+    typeset: false,
+    response: "swell",
+    hit: { halfWidths: [], top: 0, bottom: 0, margin: 0 },
+    aperture: null,
+    apply: () => {},
+  });
   useEffect(() => {
-    // A render may have reset the axes to rest; write them again.
+    // A render may have reset the axes, outlines and halves to rest; write them again.
     written.current = [];
+    drawn.current = [];
+    parted.current = [];
+    const clips = sliceClipIds(id);
+    const period = chars.indexOf(".");
+
     config.current = {
       settings: s,
       size,
@@ -88,12 +112,14 @@ export function Wordmark({ text, s, size, geo, ink, face, response, letterVeil, 
       reduced,
       typeset: face !== null,
       response,
-      apply: (frames: readonly LetterFrame[], d: DiscFrame) => {
+      hit: { halfWidths: rest.halfWidths, top: geo.wordTop, bottom: geo.baselineY + 0.15 * size, margin: 0.04 * size },
+      aperture: kind && s.aperture.on && period >= 0 ? { index: period, reachPx: apertureReachPx(kind, s, size) } : null,
+      apply: (frames: readonly LetterFrame[], d: DiscFrame, pivot: Pivot) => {
         let xs = rest.xs;
-        if (s.reflow && !face) {
-          const flow = layoutWord(text, size, frames.map((f) => f.weight), s.tracking);
+        if (s.reflow && kind && response === "swell") {
+          const flow = pathRow(kind, text, size, s, frames.map((f) => f.swell));
           const offset = (geo.stageW - flow.width) / 2;
-          xs = flow.placements.map((p) => offset + p.inkX);
+          xs = flow.xs.map((x) => offset + x);
         } else if (s.reflow && face && swellAxes) {
           const flow = typesetRow(face.metrics, fontSize, s.tracking * size, frames.map((f) => f.swell));
           const offset = (geo.stageW - flow.width) / 2;
@@ -102,14 +128,19 @@ export function Wordmark({ text, s, size, geo, ink, face, response, letterVeil, 
         frames.forEach((f, i) => {
           const g = letters.current[i];
           if (!g) return;
-          const pivot = rest.pivots[i];
+          const pivotX = rest.pivots[i];
           const y = geo.baselineY + (1 - f.rise) * riseDistance;
           g.setAttribute(
             "transform",
-            `translate(${(xs[i] + pivot).toFixed(2)} ${y.toFixed(2)}) rotate(${f.lean.toFixed(3)}) scale(${f.grow.toFixed(4)} ${(f.grow * f.squash).toFixed(4)}) translate(${(-pivot).toFixed(2)} 0)`,
+            `translate(${(xs[i] + pivotX).toFixed(2)} ${y.toFixed(2)}) rotate(${f.lean.toFixed(3)}) scale(${f.grow.toFixed(4)} ${(f.grow * f.squash).toFixed(4)}) translate(${(-pivotX).toFixed(2)} 0)`,
           );
-          if (!face) g.setAttribute("stroke-width", (f.weight * size).toFixed(2));
-          const t = glyphText.current[i];
+          if (kind === "procedural") g.setAttribute("stroke-width", (f.weight * size).toFixed(2));
+          const outline = outlines.current[i];
+          if (kind && outline && restOutlines[i]) writeOutline(outline, drawn.current, i, kind, chars[i], size, s, f, pivot);
+          const upper = uppers.current[i];
+          const lower = lowers.current[i];
+          if (slicing && upper && lower) writeSlice(upper, lower, parted.current, i, f.slice * s.slice.shift * size, clips);
+          const t = texts.current[i];
           if (face && swellAxes && t) {
             const axes = variationSettings(poseAt(face.rest, face.heavy, f.swell));
             if (written.current[i] !== axes) {
@@ -130,7 +161,7 @@ export function Wordmark({ text, s, size, geo, ink, face, response, letterVeil, 
       },
     };
     lastComp.current = -1;
-  }, [s, size, rest, reduced, face, response, swellAxes, fontSize, text, geo, riseDistance]);
+  }, [id, chars, s, size, rest, reduced, face, kind, response, swellAxes, slicing, fontSize, text, geo, riseDistance, restOutlines]);
 
   useWordMotion(stage, config, chars.length, replay);
 
@@ -142,35 +173,21 @@ export function Wordmark({ text, s, size, geo, ink, face, response, letterVeil, 
   return (
     <svg aria-hidden="true" className="pointer-events-none absolute inset-0 h-full w-full" width={geo.stageW} height={geo.stageH} viewBox={`0 0 ${geo.stageW} ${geo.stageH}`}>
       <defs>
-        <g id={`${id}-word`}>
-          {chars.map((c, i) => (
-            <g key={`${c}-${i}`} ref={(el) => void (letters.current[i] = el)} transform={`translate(${rest.xs[i]} ${geo.baselineY})`} strokeWidth={s.weight * size}>
-              {face ? (
-                <text
-                  ref={(el) => void (glyphText.current[i] = el)}
-                  x={0}
-                  y={0}
-                  fontSize={fontSize}
-                  stroke="none"
-                  style={{
-                    fontFamily: face.family,
-                    fontWeight: face.restWeight,
-                    fontVariationSettings: variationSettings(face.rest),
-                    fontVariantLigatures: "none",
-                    fontSynthesis: "none",
-                  }}
-                >
-                  {c}
-                </text>
-              ) : (
-                <>
-                  <path d={paths[i].d} fill="none" vectorEffect="non-scaling-stroke" strokeLinecap={s.caps} strokeLinejoin={s.join} />
-                  <path d={paths[i].dots} fill="none" vectorEffect="non-scaling-stroke" strokeLinecap={s.caps === "round" ? "round" : "square"} />
-                </>
-              )}
-            </g>
-          ))}
-        </g>
+        <WordLetters
+          id={id}
+          chars={chars}
+          s={s}
+          size={size}
+          baselineY={geo.baselineY}
+          restXs={rest.xs}
+          face={face}
+          fontSize={fontSize}
+          pathKind={kind}
+          strokes={strokes}
+          outlines={restOutlines}
+          slicing={slicing}
+          bind={bind}
+        />
         <clipPath id={`${id}-rise`} clipPathUnits="userSpaceOnUse">
           <rect x={0} y={0} width={geo.stageW} height={Math.max(0, geo.clipBottom)} />
         </clipPath>

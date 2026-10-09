@@ -6,13 +6,14 @@ import { FONT_CANDIDATES, candidateFont } from "./webFont";
 // in "units" are shares of the wordmark's ascender height (the top of the b,
 // d, l and f), so a value survives any letter size.
 
-export type Face = "procedural" | "profa" | "font";
+export type Face = "procedural" | "constructed" | "profa" | "font";
 export type Ending = "under" | "clip" | "above";
 export type Caps = "round" | "butt" | "square";
 export type Join = "round" | "miter" | "bevel";
 export type Ink = "foreground" | "accent";
-// How a typeset face answers the pointer: a swell needs a weight axis.
-export type TypeResponse = "swell" | "lean" | "grow" | "none";
+// How the word answers the pointer. A typeset face's swell needs a weight
+// axis; the waist slice is the path faces' (procedural and constructed).
+export type TypeResponse = "swell" | "lean" | "grow" | "none" | "slice";
 export type ConnectPlacement = "above" | "below";
 
 export type FooterSettings = {
@@ -31,6 +32,19 @@ export type FooterSettings = {
   caps: Caps;
   join: Join;
   corners: number; // 0 round bowls, 1 squared: how sharply a bowl meets its stem
+  constructed: {
+    stem: number; // units: a vertical's thickness (S)
+    bar: number; // units: a horizontal's thickness (B)
+    roundness: number; // 0 true elliptical bowls, 1 squared superellipses
+    gap: number; // units between two straight sides
+  };
+  aperture: {
+    on: boolean; // the period is a shutter of blades meeting at a pivot
+    blades: 3 | 4;
+    scale: number; // the constructed period's square, in stems
+    gap: number; // between the blades, a share of the square
+    ease: number; // share of the way the pivot moves toward its target each 60fps frame
+  };
   ink: Ink;
   inkFade: number; // how far the ink fades toward the baseline: 0 none, 1 gone
   floor: number; // how the word meets the bottom edge: 0 whole, resting just above it; 0.3 crops 30 percent of the letters' height
@@ -48,6 +62,11 @@ export type FooterSettings = {
   response: TypeResponse;
   leanDeg: number;
   grow: number; // the typeset stand-in for a weight swell: extra scale at the pointer
+  slice: {
+    shift: number; // units: how far apart the hovered letter's halves slide
+    stiffness: number;
+    damping: number; // damping ratio: under 1 overshoots and settles
+  };
   field: {
     on: boolean;
     intensity: number; // the field behind the footer: 1 is the hero's, 0 paper, above 1 deeper
@@ -68,6 +87,16 @@ export const RANGES = {
   heightVw: { min: 5, max: 24, step: 0.25 },
   tracking: { min: -0.1, max: 0.4, step: 0.005 },
   corners: { min: 0, max: 1, step: 0.01 },
+  stem: { min: 0.08, max: 0.32, step: 0.005 },
+  bar: { min: 0.06, max: 0.26, step: 0.005 },
+  roundness: { min: 0, max: 1, step: 0.01 },
+  letterGap: { min: 0, max: 0.3, step: 0.005 },
+  apertureScale: { min: 1, max: 1.8, step: 0.01 },
+  apertureGap: { min: 0.02, max: 0.2, step: 0.005 },
+  apertureEase: { min: 0.02, max: 0.5, step: 0.01 },
+  sliceShift: { min: 0.02, max: 0.24, step: 0.005 },
+  sliceStiffness: { min: 60, max: 900, step: 10 },
+  sliceDamping: { min: 0.15, max: 1.2, step: 0.01 },
   inkFade: { min: 0, max: 1, step: 0.01 },
   floor: { min: 0, max: 0.3, step: 0.01 },
   gap: { min: 0, max: 1.5, step: 0.01 },
@@ -105,6 +134,8 @@ const DESIGNER: FooterSettings = {
   caps: "round",
   join: "round",
   corners: 0,
+  constructed: { stem: 0.2, bar: 0.15, roundness: 0.35, gap: 0.09 },
+  aperture: { on: false, blades: 4, scale: 1.3, gap: 0.08, ease: 0.12 },
   ink: "accent",
   inkFade: 0.25,
   floor: 0,
@@ -122,6 +153,7 @@ const DESIGNER: FooterSettings = {
   response: "lean",
   leanDeg: 7,
   grow: 0.12,
+  slice: { shift: 0.08, stiffness: 320, damping: 0.42 },
   field: { on: true, intensity: 1.35, letterIntensity: 1.35, ending: "under", fade: 1.1, fadeIn: 0.3, drift: "visible", flip: false, letterTint: 0.35 },
   connect: "above",
   disc: { on: false, lean: 24 },

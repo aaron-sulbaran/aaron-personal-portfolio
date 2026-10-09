@@ -6,7 +6,8 @@ import { ConnectRow } from "./ConnectRow";
 import { FOOTER_COPY } from "./content";
 import { FieldBackdrop, type BackdropKind } from "./FieldBackdrop";
 import { fieldDepths } from "./fieldDepths";
-import { croppedShare, fieldStops, layoutWord, proceduralInk, typesetInk, typesetRow, wordBand } from "./wordLayout";
+import { pathInk, pathKindOf, pathRow } from "./pathFace";
+import { croppedShare, fieldStops, typesetInk, typesetRow, wordBand } from "./wordLayout";
 import type { FooterSettings } from "./settings";
 import { effectiveResponse, type Typeface } from "./useTypeface";
 import { Wordmark, type WordGeometry } from "./Wordmark";
@@ -61,16 +62,17 @@ export function FooterStage({ s, typeface, theme, reduced, replay, forceStandIn,
 
   const text = FOOTER_COPY.wordmark;
   const face = typeface.kind === "typeset" ? typeface : null;
+  const pathKind = face ? null : pathKindOf(s);
   const response = effectiveResponse(s.response, face);
   // The word's width at rest per px of ascender height, to fit the stage.
-  const unitWidth = face ? typesetRow(face.metrics, 1 / face.metrics.ascent, s.tracking).width : layoutWord(text, 1, [s.weight], s.tracking).width;
+  const unitWidth = face ? typesetRow(face.metrics, 1 / face.metrics.ascent, s.tracking).width : pathRow(pathKindOf(s), text, 1, s).width;
   const asked = (s.heightVw / 100) * box.w;
   const size = unitWidth > 0 ? Math.min(asked, (FIT_SHARE * box.w) / unitWidth) : asked;
   const fittedVw = size < asked - 0.01 && box.w ? (size / box.w) * 100 : null;
   const ink = face
     ? typesetInk(face.metrics, { leanDeg: response === "lean" ? s.leanDeg : 0, grow: response === "grow" ? s.grow : 0 })
-    : proceduralInk(text, s.weight, s.swellAmount);
-  const restInk = face ? typesetInk(face.metrics, { leanDeg: 0, grow: 0 }) : proceduralInk(text, s.weight, 0);
+    : pathInk(pathKindOf(s), text, s, response === "swell");
+  const restInk = face ? typesetInk(face.metrics, { leanDeg: 0, grow: 0 }) : pathInk(pathKindOf(s), text, s, false);
   const band = wordBand(size, ink, restInk, s.floor, s.gap);
   const baselineY = box.bandTop + band.height - band.baselineFromBottom;
   // Under the ink's lowest reach (the press can overshoot a little, and a
@@ -112,6 +114,7 @@ export function FooterStage({ s, typeface, theme, reduced, replay, forceStandIn,
           geo={geo}
           ink={ink}
           face={face}
+          pathKind={pathKind}
           response={response}
           letterVeil={depths.letterVeil}
           reduced={reduced}

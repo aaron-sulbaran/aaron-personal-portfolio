@@ -11,7 +11,16 @@ const STORE_KEY = "footer-lab-settings-v3";
 
 function merge(stored: Partial<FooterSettings>): FooterSettings {
   const d = DEFAULT_SETTINGS;
-  return { ...d, ...stored, font: { ...d.font, ...stored.font }, field: { ...d.field, ...stored.field }, disc: { ...d.disc, ...stored.disc } };
+  return {
+    ...d,
+    ...stored,
+    font: { ...d.font, ...stored.font },
+    constructed: { ...d.constructed, ...stored.constructed },
+    aperture: { ...d.aperture, ...stored.aperture },
+    slice: { ...d.slice, ...stored.slice },
+    field: { ...d.field, ...stored.field },
+    disc: { ...d.disc, ...stored.disc },
+  };
 }
 
 export function useFooterSettings() {

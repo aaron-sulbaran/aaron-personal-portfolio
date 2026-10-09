@@ -8,7 +8,8 @@ import type { BackdropKind } from "./FieldBackdrop";
 import { FIT_SHARE, type Readout } from "./FooterStage";
 import type { RiseEase } from "./motion";
 import { LettersControls } from "./LettersControls";
-import { PRESETS, RANGES, exportValues, sameSettings, type ConnectPlacement, type Ending, type FooterSettings, type Ink, type TypeResponse } from "./settings";
+import { PointerControls } from "./PointerControls";
+import { PRESETS, RANGES, exportValues, sameSettings, type ConnectPlacement, type Ending, type FooterSettings, type Ink } from "./settings";
 import type { Typeface } from "./useTypeface";
 
 export type View = { reduce: boolean; forceStandIn: boolean; collapsed: boolean };
@@ -47,12 +48,11 @@ export function Panel({ s, typeface, view, theme, backdrop, readout, systemReduc
   const [copied, setCopied] = useState<"idle" | "done" | "failed">("idle");
   const preset = PRESETS.find((p) => sameSettings(p.settings, s));
   const backdropName = !s.field.on ? "off" : (backdrop ?? "pending");
-  const faceName = typeface.kind === "procedural" ? "procedural" : `${typeface.label} (${typeface.kind})`;
+  const faceName = "label" in typeface ? `${typeface.label} (${typeface.kind})` : typeface.kind;
   const values = exportValues(s, preset ? preset.name : "custom", theme, backdropName, readout, faceName);
   const set = (patch: Partial<FooterSettings>) => edit((x) => ({ ...x, ...patch }));
   const setField = (patch: Partial<FooterSettings["field"]>) => edit((x) => ({ ...x, field: { ...x.field, ...patch } }));
   const R = RANGES;
-  const typeset = typeface.kind === "typeset" ? typeface : null;
 
   const copy = async () => {
     try {
@@ -131,23 +131,7 @@ export function Panel({ s, typeface, view, theme, backdrop, readout, systemReduc
       </Section>
 
       <Section title="Pointer">
-        <Slider label="Swell radius" value={s.swellRadius} {...R.swellRadius} format={fx(2)} hint="In letter heights." onChange={(swellRadius) => set({ swellRadius })} />
-        {typeset ? (
-          <>
-            <Field label="Response" hint={typeset.canSwell ? "Swell moves the family's axes by the swells set under Letters." : `${typeset.label} has no axis to swell, so swell grows it.`}>
-              <Segmented options={["swell", "lean", "grow", "none"] as readonly TypeResponse[]} value={s.response} onChange={(response) => set({ response })} />
-            </Field>
-            {s.response === "lean" && <Slider label="Lean" value={s.leanDeg} {...R.leanDeg} format={fx(1, "deg")} onChange={(leanDeg) => set({ leanDeg })} />}
-            {(s.response === "grow" || (s.response === "swell" && !typeset.canSwell)) && <Slider label="Grow" value={s.grow} {...R.grow} format={fx(2)} onChange={(grow) => set({ grow })} />}
-          </>
-        ) : (
-          <Slider label="Swell amount" value={s.swellAmount} {...R.swellAmount} format={fx(3)} hint="Extra stroke weight at the pointer." onChange={(swellAmount) => set({ swellAmount })} />
-        )}
-        {(!typeset || (s.response === "swell" && typeset.canSwell)) && <Check label="A swelling letter pushes its neighbors" checked={s.reflow} onChange={(reflow) => set({ reflow })} />}
-        <Slider label="Swell easing" value={s.swellEaseS} {...R.swellEaseS} format={fx(2, "s")} onChange={(swellEaseS) => set({ swellEaseS })} />
-        <Slider label="Press depth" value={s.pressDepth} {...R.pressDepth} format={fx(2)} hint="Click and hold over the letters: how flat the nearest press." onChange={(pressDepth) => set({ pressDepth })} />
-        <Slider label="Press spring stiffness" value={s.pressStiffness} {...R.pressStiffness} format={fx(0)} onChange={(pressStiffness) => set({ pressStiffness })} />
-        <Slider label="Press spring damping" value={s.pressDamping} {...R.pressDamping} format={fx(2)} hint="Under 1 bounces back; 1 and over settles without a bounce." onChange={(pressDamping) => set({ pressDamping })} />
+        <PointerControls s={s} typeface={typeface} edit={edit} />
       </Section>
 
       <Section title="Rise, the first time it is seen">
