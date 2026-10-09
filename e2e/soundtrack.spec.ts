@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 import { test, expect } from "./support/fixtures";
 import { siteContent } from "@/lib/content";
+import { visibleText } from "@/lib/content/links";
 import { DOCK } from "@/lib/waveform/dock";
 import { THEME_STORAGE_KEY } from "@/lib/theme";
 import { nextFrames, openHome, scrollToY } from "./support/coil";
@@ -339,7 +340,7 @@ test("dock: the accept path plays, fades in at the dock, says where the music li
   await expect.poll(async () => (await media(page)).some((el) => el.paused === false), { message: "a playing media element" }).toBe(true);
   // Answering moves focus to the note under the question, which now reads the accepted line.
   await expect(band.locator("[data-band-note]")).toBeFocused();
-  await expect(band.locator("[data-band-note] > :not([inert])")).toHaveText(L.acceptedNote);
+  await expect(band.locator("[data-band-note] > :not([inert])")).toHaveText(visibleText(L.acceptedNote));
 
   await toAbout(page);
   await expect(pill).not.toHaveAttribute("inert", "", { timeout: 1000 });
