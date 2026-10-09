@@ -201,6 +201,26 @@ test("sections: no Connect value is cut short at 1024 or at 390", async ({ page 
   }
 });
 
+test("sections: the X handle never leaves a lone @ on a line at 390 or 1024", async ({ page }) => {
+  const x = connect.links.find((link) => link.key === "x")!;
+  for (const viewport of [
+    { width: 390, height: 844 },
+    { width: 1024, height: 768 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await openHome(page);
+    const value = page.locator("#connect li[data-sections-row] [data-connect-value]", { hasText: x.handle }).first();
+    await expect(value).toHaveText(x.handle);
+    expect(await value.locator("wbr").count(), "no break offered after a leading @").toBe(0);
+    const widths = await value.evaluate((el) => {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      return [...range.getClientRects()].map((rect) => Math.round(rect.width));
+    });
+    for (const width of widths) expect(width, `a line of the handle at ${viewport.width}px is wider than a lone @`).toBeGreaterThan(40);
+  }
+});
+
 // A block already past its band on a deep load must never paint masked. The
 // observer's callback is a microtask after the task that armed the block,
 // which is the first moment the browser could paint it.

@@ -1,5 +1,6 @@
 import { Fragment } from "react";
 import { Fill, FillArrow, FillSeed } from "@/components/fx/Fill";
+import { splitAfterAt } from "@/lib/connect";
 import { siteContent } from "@/lib/content";
 import { CTA_CLASS, CTA_OVER_CLASS, FILL_PICK } from "@/lib/fx/fill";
 import { InlineCopy } from "./inline/InlineCopy";
@@ -17,7 +18,7 @@ const VALUE_SIZE = "text-xl lg:text-2xl xl:text-3xl";
 const isWeb = (href: string) => href.startsWith("https://");
 
 function breakAfterAt(value: string) {
-  return value.split(/(?<=@)/).map((part, i) => (
+  return splitAfterAt(value).map((part, i) => (
     <Fragment key={i}>
       {i > 0 && <wbr />}
       {part}
