@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { autoAdvanceMs, gestureOf, initialStage, stageReducer, wrap, type StageState } from "../stage";
+import { autoAdvanceMs, axisOf, clampPage, gestureOf, initialStage, pagerReducer, releaseOf, rubberBand, stageReducer, wrap, type StageState } from "../stage";
 
 describe("wrap", () => {
   it("wraps both ways and survives an empty stage", () => {
@@ -58,5 +58,43 @@ describe("gestureOf", () => {
     expect(gestureOf(70, -12)).toBe("prev");
     expect(gestureOf(-30, 2)).toBeNull();
     expect(gestureOf(-50, 120)).toBeNull();
+  });
+});
+
+describe("the round four pager", () => {
+  it("stops at either end instead of wrapping, and stops the pass on any move", () => {
+    const start = initialStage(3, true);
+    expect(pagerReducer(start, { type: "prev" })).toEqual({ index: 0, count: 3, auto: false });
+    expect(pagerReducer({ ...start, index: 2 }, { type: "next" })).toEqual({ index: 2, count: 3, auto: false });
+    expect(pagerReducer(start, { type: "goto", index: 9 }).index).toBe(2);
+    expect(pagerReducer(start, { type: "tick" })).toEqual({ index: 1, count: 3, auto: true });
+    expect(clampPage(-1, 0)).toBe(0);
+  });
+
+  it("locks a drag to the axis it first moves along", () => {
+    expect(axisOf(3, 4)).toBeNull();
+    expect(axisOf(-12, 5)).toBe("x");
+    expect(axisOf(4, 20)).toBe("y");
+  });
+
+  it("turns the page sideways, closes on a vertical flick, never closes sideways", () => {
+    const o = { flickPx: 96 };
+    expect(releaseOf("x", -60, 0, 0.1, o)).toBe("next");
+    expect(releaseOf("x", 60, 0, 0.1, o)).toBe("prev");
+    expect(releaseOf("x", -30, 0, 0.1, o)).toBe("stay");
+    expect(releaseOf("x", -30, 0, -0.9, o)).toBe("next");
+    expect(releaseOf("x", -400, 0, 2, o)).toBe("next");
+    expect(releaseOf("y", 0, 120, 0.1, o)).toBe("dismiss");
+    expect(releaseOf("y", 0, -120, 0.1, o)).toBe("dismiss");
+    expect(releaseOf("y", 0, 60, 0.2, o)).toBe("stay");
+    expect(releaseOf("y", 0, 40, 1.1, o)).toBe("dismiss");
+    expect(releaseOf("y", 0, 16, 2, o)).toBe("stay");
+    expect(releaseOf(null, 0, 0, 0, o)).toBe("stay");
+  });
+
+  it("follows the finger at a third past either end", () => {
+    expect(rubberBand(90, 0, 3)).toBe(30);
+    expect(rubberBand(-90, 2, 3)).toBe(-30);
+    expect(rubberBand(-90, 0, 3)).toBe(-90);
   });
 });

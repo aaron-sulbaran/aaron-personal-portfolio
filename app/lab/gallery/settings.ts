@@ -2,6 +2,7 @@
 // presets, and what "Copy values" puts on the clipboard. Lengths are px at
 // 1x, times are ms unless named seconds.
 
+import { areaRatio, uniformBoxes, type HorizontalShape } from "./plan";
 import type { LeadMode, StageFit } from "./rows";
 import { maskTable, type MaskStep } from "./timing";
 
@@ -9,9 +10,27 @@ export type TextSplit = "lines" | "block";
 export type PhotoMask = "wipe" | "rise";
 export type EaseKey = "site" | "power3";
 export type TextAlign = "center" | "start";
+// Round four: every photo its own row (the Capital One model), or the
+// interleaved rows of rounds one to three.
+export type DesktopLayout = "rows" | "interleaved";
+// Round four: a pager of photo-and-words pages, or the stage over a scroll.
+export type PhoneLayout = "pager" | "stage";
+// Where a photo narrower than its card's photo column sits in it.
+export type PhotoAlign = "text" | "center" | "edge";
 
 export interface Settings {
-  // Desktop
+  desktopLayout: DesktopLayout;
+  phoneLayout: PhoneLayout;
+  // Round four, desktop: one box per orientation and the text column
+  verticalWidth: number; // px, the vertical box is 3:4
+  horizontalWidth: number; // px
+  horizontalShape: HorizontalShape;
+  textWidth: number; // px, the text beside a photo; the panel follows
+  photoAlign: PhotoAlign;
+  // Round four, phone
+  slideMs: number; // the pager's travel between pages
+  flickPx: number; // a vertical drag this far closes the modal
+  // Desktop (rounds one to three)
   panelWidth: number;
   photoWidth: number;
   rowGap: number;
@@ -58,7 +77,12 @@ export const RANGES = {
   wideMaxHeight: { min: 320, max: 720, step: 10 },
   stackGap: { min: 8, max: 48, step: 2 },
   stageEaseMs: { min: 0, max: 600, step: 10 },
-  stageMaxHeight: { min: 45, max: 65, step: 1 },
+  stageMaxHeight: { min: 30, max: 65, step: 1 },
+  verticalWidth: { min: 260, max: 400, step: 4 },
+  horizontalWidth: { min: 320, max: 560, step: 4 },
+  textWidth: { min: 320, max: 600, step: 8 },
+  slideMs: { min: 0, max: 700, step: 10 },
+  flickPx: { min: 40, max: 240, step: 8 },
   autoAdvance: { min: 0, max: 6, step: 0.5 },
   crossfadeMs: { min: 120, max: 800, step: 20 },
   landingMs: { min: 0, max: 800, step: 20 },
@@ -78,10 +102,28 @@ export const PHOTO_MASK_LABELS: Record<PhotoMask, string> = { wipe: "Wipe up (th
 export const LEAD_LABELS: Record<LeadMode, string> = { title: "Beside the title", block: "Beside the first block" };
 export const FIT_LABELS: Record<StageFit, string> = { each: "Each photo's height (eases)", tallest: "The tallest photo's height (text stays put)" };
 export const ALIGN_LABELS: Record<TextAlign, string> = { center: "Middle of the photo", start: "Top of the photo" };
+export const DESKTOP_LABELS: Record<DesktopLayout, string> = { rows: "Every photo its own row (round 4)", interleaved: "Interleaved (rounds 1 to 3)" };
+export const PHONE_LABELS: Record<PhoneLayout, string> = { pager: "Pager (round 4)", stage: "Stage over a scroll (rounds 1 to 3)" };
+export const PHOTO_ALIGN_LABELS: Record<PhotoAlign, string> = { text: "Against its words", center: "Centred", edge: "Against the panel edge" };
+
+// What rounds one to three never had: the round four values at their
+// defaults, with both layouts set back to the old ones.
+const EARLIER = {
+  desktopLayout: "interleaved",
+  phoneLayout: "stage",
+  verticalWidth: 320,
+  horizontalWidth: 424,
+  horizontalShape: "4:3",
+  textWidth: 460,
+  photoAlign: "text",
+  slideMs: 360,
+  flickPx: 96,
+} as const satisfies Partial<Settings>;
 
 // The brief's numbers, nothing added: block masks, no settle, every photo
 // wider than square across the whole row, the stage easing to each photo.
 const BARE: Settings = {
+  ...EARLIER,
   panelWidth: 912,
   photoWidth: 320,
   rowGap: 64,
@@ -111,6 +153,7 @@ const BARE: Settings = {
 // Round one's pick, before photos kept their own shape: kept so Aaron can
 // compare. Every photo was 3:4, so nothing spanned the row.
 const ROUND_ONE: Settings = {
+  ...EARLIER,
   panelWidth: 944,
   photoWidth: 372,
   rowGap: 88,
@@ -151,6 +194,7 @@ const ROUND_ONE: Settings = {
 // lines show at 360 by 740 (IEEE, the tightest, at 735 of 740). Masks
 // unchanged from round one.
 const RECOMMENDED: Settings = {
+  ...EARLIER,
   panelWidth: 944,
   photoWidth: 320,
   rowGap: 56,
@@ -177,7 +221,46 @@ const RECOMMENDED: Settings = {
   ease: "site",
 };
 
+// Round four (Aaron, 2026-10-09: "I like the way that the actual Capital
+// One looked, and I would like to have that applied across all of them"),
+// on the recommendation. Desktop: the header at the top left, then every
+// photo its own row with its words beside it, vertically centred, the sides
+// alternating. One vertical box (320 by 427, the card picture's 3:4) and one
+// horizontal box (424 by 318, 4:3), the same area within 2 percent, so a
+// horizontal photo reads as the same size as a vertical one; anything wider
+// than square takes the horizontal box. The text column is 460px (about 52
+// characters of 18px Inter), so the panel is 916px on an all-vertical card
+// like Capital One and 1020px on a card with a horizontal photo; a narrower
+// photo sits against its words. Rows 64px apart. Phone: a pager, one photo
+// and its words a page, the header fixed above, the stage at most 40
+// percent of the height (every photo whole at 360 to 430 wide), 360ms of
+// travel, a 96px vertical flick to close. Auto-advance off: the words
+// change with the photo, and a page that turns on its own moves what you are
+// reading.
+const ROUND_FOUR: Settings = {
+  ...RECOMMENDED,
+  desktopLayout: "rows",
+  phoneLayout: "pager",
+  verticalWidth: 320,
+  horizontalWidth: 424,
+  horizontalShape: "4:3",
+  textWidth: 460,
+  photoAlign: "text",
+  wideFrom: 1,
+  rowGap: 64,
+  stageMaxHeight: 40,
+  slideMs: 360,
+  flickPx: 96,
+  autoAdvance: 0,
+};
+
 export const PRESETS: readonly { id: string; name: string; note: string; settings: Settings }[] = [
+  {
+    id: "round-four",
+    name: "Round 4, Capital One everywhere",
+    note: "Every card as Capital One: the header at the top left, then every photo its own row with its words beside it, centred, sides alternating. One vertical box (320 by 427) and one horizontal box (424 by 318), the same area; a photo with no words yet shows a placeholder. Phone: a pager, one photo and its words a page, the header fixed above, arrows, dots and swipes, a vertical flick closes. Auto-advance off.",
+    settings: ROUND_FOUR,
+  },
   {
     id: "recommended",
     name: "Recommended",
@@ -210,30 +293,8 @@ export function exportValues(s: Settings, label: string, theme: string, steps: {
     label,
     theme,
     measuredOn: card,
-    desktop: {
-      breakpoint: "1024px and up",
-      panelWidth: `${s.panelWidth}px`,
-      verticalPhotoWidth: `${s.photoWidth}px, its own height`,
-      horizontalFrom: `${s.wideFrom.toFixed(2)}:1 and wider spans the row`,
-      horizontalWidth: `up to ${s.wideWidth}% of the inner width, at most ${s.wideMaxHeight}px tall, never under 320px wide`,
-      horizontalToParagraph: `${s.stackGap}px`,
-      captions: "under each photo, text-sm muted, masked with its photo",
-      rowGap: `${s.rowGap}px`,
-      photoTextGap: `${s.columnGap}px`,
-      textBesidePhoto: ALIGN_LABELS[s.textAlign],
-      cardPictureLeads: `${LEAD_LABELS[s.leadMode]}: a photo card's modal opens on its card picture (the flown card, 3:4), then up to three photos`,
-      extrasPerRow: s.extrasPerRow,
-      sides: "alternate from the left, extras continue the alternation",
-    },
-    phone: {
-      stageMaxHeight: `${s.stageMaxHeight}svh`,
-      autoAdvance: s.autoAdvance > 0 ? `${s.autoAdvance}s, one pass, stops on the last photo or at a touch` : "off",
-      crossfade: `${s.crossfadeMs}ms`,
-      stageHeight: FIT_LABELS[s.stageFit],
-      stageEase: s.stageFit === "each" ? `${s.stageEaseMs}ms` : "n/a",
-      fit: "each photo whole inside the inner width and the height cap",
-      input: "tap or swipe left for the next photo, swipe right for the previous, arrow keys, dots",
-    },
+    desktop: s.desktopLayout === "rows" ? roundFourDesktop(s) : interleavedDesktop(s),
+    phone: s.phoneLayout === "pager" ? roundFourPhone(s) : stagePhone(s),
     mask: {
       startsAt: `${s.landingMs}ms after open (the flight's landing)`,
       length: `${s.maskMs}ms`,
@@ -249,6 +310,79 @@ export function exportValues(s: Settings, label: string, theme: string, steps: {
         phone: `${Math.round(maskTable(steps.phone, timing).endMs)}ms`,
       },
     },
-    reducedMotion: "no masks, no settle, no auto-advance, an instant stage swap; the panel's own 180ms fade only",
+    reducedMotion: "no masks, no settle, no auto-advance, an instant stage swap or page turn with no travel; the panel's own 180ms fade only",
+  };
+}
+
+function roundFourDesktop(s: Settings) {
+  const boxes = uniformBoxes(s.verticalWidth, s.horizontalWidth, s.horizontalShape);
+  const round = (n: number) => Math.round(n);
+  return {
+    breakpoint: "1024px and up",
+    layout: DESKTOP_LABELS.rows,
+    header: "the logo tile (logo cards), the title and the meta line at the top left; a photo card's picture is its first row, not beside the title",
+    verticalBox: `${boxes.vertical.width} by ${round(boxes.vertical.height)}px (3:4), every vertical photo and the card picture`,
+    horizontalBox: `${boxes.horizontal.width} by ${round(boxes.horizontal.height)}px (${s.horizontalShape}), every photo from ${s.wideFrom.toFixed(2)}:1 wide`,
+    horizontalArea: `${Math.round(areaRatio(boxes.horizontal, boxes.vertical) * 100)}% of the vertical box`,
+    fit: "each photo cropped to its box (object-fit: cover), so every photo of one orientation is the same size",
+    textColumn: `${s.textWidth}px`,
+    panel: "2 x 40px padding + the card's widest box + the photo to text gap + the text column, capped by the viewport",
+    narrowerPhoto: PHOTO_ALIGN_LABELS[s.photoAlign],
+    rowGap: `${s.rowGap}px`,
+    photoTextGap: `${s.columnGap}px`,
+    textBesidePhoto: ALIGN_LABELS[s.textAlign],
+    sides: "alternate from the left, one photo a row",
+    words: "each photo's own block; the card picture takes the first block; a photo whose block another took shows a placeholder; blocks no photo took open or close the card, or ride with the nearest photo",
+    captions: "under each photo, text-sm muted, masked with its photo",
+  };
+}
+
+function interleavedDesktop(s: Settings) {
+  return {
+    breakpoint: "1024px and up",
+    layout: DESKTOP_LABELS.interleaved,
+    panelWidth: `${s.panelWidth}px`,
+    verticalPhotoWidth: `${s.photoWidth}px, its own height`,
+    horizontalFrom: `${s.wideFrom.toFixed(2)}:1 and wider spans the row`,
+    horizontalWidth: `up to ${s.wideWidth}% of the inner width, at most ${s.wideMaxHeight}px tall, never under 320px wide`,
+    horizontalToParagraph: `${s.stackGap}px`,
+    captions: "under each photo, text-sm muted, masked with its photo",
+    rowGap: `${s.rowGap}px`,
+    photoTextGap: `${s.columnGap}px`,
+    textBesidePhoto: ALIGN_LABELS[s.textAlign],
+    cardPictureLeads: `${LEAD_LABELS[s.leadMode]}: a photo card's modal opens on its card picture (the flown card, 3:4), then up to three photos`,
+    extrasPerRow: s.extrasPerRow,
+    sides: "alternate from the left, extras continue the alternation",
+  };
+}
+
+function roundFourPhone(s: Settings) {
+  return {
+    layout: PHONE_LABELS.pager,
+    sheet: "the modal fills the visible height less 24px top and bottom; nothing scrolls but a long page's words",
+    header: "fixed above the pages: the logo tile (logo cards), the title, the meta line",
+    page: "one photo, its caption and its words; the first page carries the opening blocks, the last the closing ones and the links",
+    stageHeight: `at most ${s.stageMaxHeight}% of the visible height, as tall as the card's tallest photo fitted whole, the same on every page`,
+    fit: "each photo whole inside the inner width and the stage, standing on its caption; never cropped by the stage",
+    longWords: "scroll inside their own area under the caption; the photo never leaves view",
+    controls: "previous and next buttons and the dots in one row under the page, all real buttons, the ends disabled",
+    travel: s.slideMs > 0 ? `${s.slideMs}ms, ${EASES[s.ease].css}, the photo and its words together` : "instant",
+    swipe: "left or right on the photo or the words turns one page; past an end it springs back",
+    dismiss: `a vertical flick of ${s.flickPx}px (or a quick one of 24px) on the photo, the header or words that fit closes the modal; a sideways swipe never does`,
+    keys: "left and right arrows turn the page",
+    autoAdvance: s.autoAdvance > 0 ? `${s.autoAdvance}s, one pass, stops on the last page or at a touch` : "off",
+  };
+}
+
+function stagePhone(s: Settings) {
+  return {
+    layout: PHONE_LABELS.stage,
+    stageMaxHeight: `${s.stageMaxHeight}svh`,
+    autoAdvance: s.autoAdvance > 0 ? `${s.autoAdvance}s, one pass, stops on the last photo or at a touch` : "off",
+    crossfade: `${s.crossfadeMs}ms`,
+    stageHeight: FIT_LABELS[s.stageFit],
+    stageEase: s.stageFit === "each" ? `${s.stageEaseMs}ms` : "n/a",
+    fit: "each photo whole inside the inner width and the height cap",
+    input: "tap or swipe left for the next photo, swipe right for the previous, arrow keys, dots",
   };
 }

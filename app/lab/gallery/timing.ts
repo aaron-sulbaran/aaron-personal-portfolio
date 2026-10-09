@@ -1,3 +1,4 @@
+import type { Page, Plan, Slide } from "./plan";
 import type { Row } from "./rows";
 
 // The mask-in as a table: which parts start together, when each starts and
@@ -53,6 +54,8 @@ export const partId = {
   photo: (p: number) => `photo-${p}`,
   caption: (p: number) => `caption-${p}`,
   links: "links",
+  note: (p: number) => `note-${p}`,
+  pager: "pager",
 };
 
 export interface StepOptions {
@@ -102,5 +105,40 @@ export function phoneSteps(blockCount: number, firstStagePhoto: number | undefin
   const steps: MaskStep[] = [first, [part(partId.meta, o)]];
   for (let b = 0; b < blockCount; b++) steps.push([part(partId.block(b), o)]);
   if (o.hasLinks) steps.push([part(partId.links, o)]);
+  return steps;
+}
+
+// Round four, desktop: title, meta line, the opening blocks one by one, then
+// each row's photo, caption and words together, the closing blocks, the
+// links.
+function slideParts(slide: Slide, o: StepOptions): MaskPart[] {
+  const block = (b: number) => part(partId.block(b), o);
+  const middle = slide.own === undefined ? part(partId.note(slide.photo), o) : block(slide.own);
+  return [...photoParts(slide.photo, o), ...slide.before.map(block), middle, ...slide.after.map(block)];
+}
+
+export function planSteps(plan: Plan, o: StepOptions): MaskStep[] {
+  const steps: MaskStep[] = [[part(partId.title, o)], [part(partId.meta, o)]];
+  for (const b of plan.intro) steps.push([part(partId.block(b), o)]);
+  for (const slide of plan.slides) steps.push(slideParts(slide, o));
+  for (const b of plan.closing) steps.push([part(partId.block(b), o)]);
+  if (o.hasLinks) steps.push([part(partId.links, o)]);
+  return steps;
+}
+
+// Round four, phone: title, meta line, the first page's photo and caption,
+// its words, then the pager's controls. The other pages are off screen until
+// the reader turns to them, long after the masks are done.
+export function pagerSteps(pages: readonly Page[], o: StepOptions): MaskStep[] {
+  const steps: MaskStep[] = [[part(partId.title, o)], [part(partId.meta, o)]];
+  const first = pages[0];
+  if (first) {
+    const photo = photoParts(first.photo, o);
+    if (photo.length) steps.push(photo);
+    const words = slideParts(first, o).slice(photo.length);
+    if (first.links && o.hasLinks) words.push(part(partId.links, o));
+    if (words.length) steps.push(words);
+  }
+  if (pages.length > 1) steps.push([{ id: partId.pager }]);
   return steps;
 }

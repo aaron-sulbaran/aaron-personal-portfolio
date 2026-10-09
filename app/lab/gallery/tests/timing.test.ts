@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { interleave } from "../rows";
-import { desktopSteps, maskTable, partId, phoneSteps } from "../timing";
+import { pagesOf, photoPlan } from "../plan";
+import { desktopSteps, maskTable, pagerSteps, partId, phoneSteps, planSteps } from "../timing";
 
 const T = { startMs: 520, lengthMs: 450, staggerMs: 120, lineStaggerMs: 40 };
 const V = 3 / 4;
@@ -87,5 +88,51 @@ describe("steps", () => {
     ]);
     expect(phoneSteps(1, 0, { flownPhoto: 0, hasCaption: all, hasLinks: true, stageCaption: false })[0].map((p) => p.id)).toEqual(["title"]);
 
+  });
+});
+
+describe("round four steps", () => {
+  it("masks the opening line, then each photo with its caption and words, then the closing line (Capital One)", () => {
+    const plan = photoPlan(5, [{ block: 1 }, { block: 2 }, { block: 3 }]);
+    const steps = planSteps(plan, { hasCaption: all, hasLinks: false });
+    expect(steps.map((s) => s.map((p) => p.id))).toEqual([
+      ["title"],
+      ["meta"],
+      ["block-0"],
+      ["photo-0", "caption-0", "block-1"],
+      ["photo-1", "caption-1", "block-2"],
+      ["photo-2", "caption-2", "block-3"],
+      ["block-4"],
+    ]);
+  });
+
+  it("masks a placeholder where a photo has no words, and carried blocks around its own (IEEE, Mentorship)", () => {
+    const ieee = planSteps(photoPlan(5, [{ block: 0 }, { block: 3 }, { block: 4 }]), { hasCaption: all, hasLinks: true });
+    expect(ieee.slice(2).map((s) => s.map((p) => p.id))).toEqual([
+      ["photo-0", "caption-0", "block-0", "block-1"],
+      ["photo-1", "caption-1", "block-2", "block-3"],
+      ["photo-2", "caption-2", "block-4"],
+      ["links"],
+    ]);
+    const mentorship = planSteps(photoPlan(2, [{}, { block: 0 }, { block: 0 }, { block: 1 }], 0), { flownPhoto: 0, hasCaption: all, hasLinks: false });
+    expect(mentorship.slice(2).map((s) => s.map((p) => p.id))).toEqual([
+      ["caption-0", "block-0"],
+      ["photo-1", "caption-1", "note-1"],
+      ["photo-2", "caption-2", "note-2"],
+      ["photo-3", "caption-3", "block-1"],
+    ]);
+  });
+
+  it("masks only the pager's first page, then its controls", () => {
+    const pages = pagesOf(photoPlan(5, [{ block: 1 }, { block: 2 }, { block: 3 }]));
+    expect(pagerSteps(pages, { hasCaption: all, hasLinks: false }).map((s) => s.map((p) => p.id))).toEqual([
+      ["title"],
+      ["meta"],
+      ["photo-0", "caption-0"],
+      ["block-0", "block-1"],
+      ["pager"],
+    ]);
+    const single = pagesOf(photoPlan(1, [{}], 0));
+    expect(pagerSteps(single, { flownPhoto: 0, hasCaption: none, hasLinks: true }).map((s) => s.map((p) => p.id))).toEqual([["title"], ["meta"], ["block-0", "links"]]);
   });
 });
