@@ -10,6 +10,8 @@ export const MODAL_LONG_EDGE = 1600;
 export const POP_LONG_EDGE = 800;
 export const BYTE_BUDGET = 300_000;
 export const QUALITIES = [85, 82, 80, 78, 75];
+// sharp's default SVG density: a vector's intrinsic width and height are pixels at this many dots per inch.
+export const SVG_BASE_DENSITY = 72;
 // A card crop box's width to height ratio may miss 3:4 by up to 1 percent; the resize trims the rest.
 const CARD_ASPECT_SLACK = 0.01;
 
@@ -18,9 +20,14 @@ const box = z
   .tuple([z.number().int().nonnegative(), z.number().int().nonnegative(), z.number().int().positive(), z.number().int().positive()])
   .refine(([x0, y0, x1, y1]) => x1 > x0 && y1 > y0, "a crop box is x0,y0,x1,y1 with x1 > x0 and y1 > y0");
 
-const cardPicture = z.object({ card: kebab, id: kebab, source: z.string().min(1), crop: box.nullable(), flipHorizontal: z.boolean() });
-const modalPhoto = z.object({ card: kebab, id: kebab, source: z.string().min(1), crop: box.nullable(), transform: z.literal("flipHorizontal").nullable(), spare: z.boolean() });
-const popover = z.object({ key: kebab, source: z.string().min(1), crop: box.nullable() });
+const noFormat = z.never().optional();
+const cardPicture = z.object({ card: kebab, id: kebab, source: z.string().min(1), crop: box.nullable(), flipHorizontal: z.boolean(), format: noFormat });
+const modalPhoto = z.object({ card: kebab, id: kebab, source: z.string().min(1), crop: box.nullable(), transform: z.literal("flipHorizontal").nullable(), spare: z.boolean(), format: noFormat });
+// A popover may be a vector ("svg"), rasterized to a JPEG like any other; it is never cropped, since
+// the crop box would be in the vector's own units, not the rendered pixels. No other kind takes a format.
+const popover = z
+  .object({ key: kebab, source: z.string().min(1), crop: box.nullable(), format: z.literal("svg").optional() })
+  .refine((entry) => entry.format !== "svg" || entry.crop === null, "a vector popover cannot be cropped");
 const logo = z.object({ card: kebab, files: z.array(z.string().min(1)).min(1) });
 
 export const manifestSchema = z.object({
@@ -45,11 +52,11 @@ function isExportedLogo(file) {
 export function exportJobs(input) {
   const manifest = manifestSchema.parse(input);
   const jobs = [
-    ...manifest.cardPictures.map((entry) => ({ kind: "card", id: entry.id, source: entry.source, crop: entry.crop, flip: entry.flipHorizontal, out: `photos/cards/${entry.id}.jpg` })),
-    ...manifest.modalPhotos.filter((entry) => !entry.spare).map((entry) => ({ kind: "modal", id: entry.id, source: entry.source, crop: entry.crop, flip: entry.transform === "flipHorizontal" || FLIP_OVERRIDES.has(entry.id), out: `photos/cards/${entry.id}.jpg` })),
-    ...manifest.popovers.map((entry) => ({ kind: "pop", id: entry.key, source: entry.source, crop: entry.crop, flip: false, out: `photos/pops/${entry.key}.jpg` })),
+    ...manifest.cardPictures.map((entry) => ({ kind: "card", id: entry.id, source: entry.source, crop: entry.crop, flip: entry.flipHorizontal, vector: false, out: `photos/cards/${entry.id}.jpg` })),
+    ...manifest.modalPhotos.filter((entry) => !entry.spare).map((entry) => ({ kind: "modal", id: entry.id, source: entry.source, crop: entry.crop, flip: entry.transform === "flipHorizontal" || FLIP_OVERRIDES.has(entry.id), vector: false, out: `photos/cards/${entry.id}.jpg` })),
+    ...manifest.popovers.map((entry) => ({ kind: "pop", id: entry.key, source: entry.source, crop: entry.crop, flip: false, vector: entry.format === "svg", out: `photos/pops/${entry.key}.jpg` })),
     ...manifest.logos.flatMap((entry) =>
-      entry.files.filter(isExportedLogo).map((file) => ({ kind: "logo", id: `${entry.card}/${basename(file)}`, source: join(manifest.root, file), crop: null, flip: false, out: `work/logos/${entry.card}/${basename(file)}` })),
+      entry.files.filter(isExportedLogo).map((file) => ({ kind: "logo", id: `${entry.card}/${basename(file)}`, source: join(manifest.root, file), crop: null, flip: false, vector: false, out: `work/logos/${entry.card}/${basename(file)}` })),
     ),
   ];
   const seen = new Set();
@@ -70,8 +77,9 @@ export function cropRegion(crop, source) {
   return { left: x0, top: y0, width: x1 - x0, height: y1 - y0 };
 }
 
-// The written file's pixels. Never upscales.
-export function outputSize(kind, region) {
+// The written file's pixels. A raster source is never upscaled; a vector has no pixels of its own,
+// so it is rendered to fill the long edge.
+export function outputSize(kind, region, vector = false) {
   const { width, height } = region;
   if (kind === "card") {
     if (Math.abs(width / height - 3 / 4) > CARD_ASPECT_SLACK) throw new Error(`a card picture's crop must be 3:4, got ${width} by ${height}`);
@@ -80,6 +88,14 @@ export function outputSize(kind, region) {
     return { width: outWidth, height: Math.round((outWidth * 4) / 3) };
   }
   const longEdge = kind === "pop" ? POP_LONG_EDGE : MODAL_LONG_EDGE;
-  const scale = Math.min(1, longEdge / Math.max(width, height));
+  const fit = longEdge / Math.max(width, height);
+  const scale = vector ? fit : Math.min(1, fit);
   return { width: Math.round(width * scale), height: Math.round(height * scale) };
+}
+
+// The density to open a vector at so it renders at or above the output size and the resize only
+// ever shrinks it (by under a pixel of rounding), never stretching a small raster. sharp re-renders
+// an SVG at its resize target on its own; stating the density keeps the export from relying on that.
+export function vectorDensity(intrinsic, size) {
+  return Math.max(1, Math.ceil(SVG_BASE_DENSITY * Math.max(size.width / intrinsic.width, size.height / intrinsic.height)));
 }

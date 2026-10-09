@@ -11,6 +11,8 @@
 // on the long edge, in their own shape), flattened onto white if they carry
 // alpha, then encoded as progressive sRGB JPEG with every metadata block
 // dropped, at quality 85, stepping down until the file is under 300,000 bytes.
+// A popover the manifest marks "svg" is a vector: it is rendered at the output size (opened at the
+// density that lands at or above it, so nothing is stretched), uncropped, then encoded the same way.
 // Logos are official files, copied byte for byte.
 //
 // Nothing is written until every output is encoded and checked. The script owns
@@ -25,7 +27,7 @@ import { createRequire } from "node:module";
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { BYTE_BUDGET, QUALITIES, cropRegion, exportJobs, outputSize } from "./photo-export-plan.mjs";
+import { BYTE_BUDGET, QUALITIES, cropRegion, exportJobs, outputSize, vectorDensity } from "./photo-export-plan.mjs";
 
 const REPO_ROOT = fileURLToPath(new URL("..", import.meta.url));
 const require = createRequire(import.meta.url);
@@ -35,9 +37,11 @@ export const sharp = createRequire(require.resolve("next/package.json"))("sharp"
 async function encodePhoto(job) {
   const source = await sharp(job.source).metadata();
   const region = cropRegion(job.crop, source.autoOrient);
-  const size = outputSize(job.kind, region);
+  const size = outputSize(job.kind, region, job.vector);
   for (const quality of QUALITIES) {
-    let pipeline = sharp(job.source, { autoOrient: true }).extract(region);
+    // A vector is opened at the density that renders it at the output size; the manifest never crops
+    // one, so there is no box to scale into the rendered pixels.
+    let pipeline = job.vector ? sharp(job.source, { density: vectorDensity(region, size) }) : sharp(job.source, { autoOrient: true }).extract(region);
     if (job.flip) pipeline = pipeline.flop();
     pipeline = pipeline.resize(size.width, size.height, { fit: "cover", position: "centre" });
     if (source.hasAlpha) pipeline = pipeline.flatten({ background: "#ffffff" });
