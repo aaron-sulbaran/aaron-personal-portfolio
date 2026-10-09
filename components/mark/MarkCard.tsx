@@ -14,7 +14,6 @@ import { gsap } from "@/lib/gsap";
 import { MARK } from "@/lib/mark/constants";
 import { buildCardOpen } from "@/lib/mark/timeline";
 import { modalBackdropBlurVariants, useBodyScrollLock, useEscapeKey, useFocusTrap } from "@/lib/modal";
-import { navigateToSection } from "@/lib/scroll";
 
 // The mark's card in the site's modal shell (Portal, scroll lock, Escape,
 // focus trap, the shared blur). No veil: the card sits over the blurred page,
@@ -33,33 +32,16 @@ type Props = { open: boolean; onClose: () => void; onExited: () => void };
 
 export function MarkCard({ open, onClose, onExited }: Props) {
   const reduced = !!useReducedMotion();
-  const pending = useRef<string | null>(null);
   return (
     <Portal>
-      <AnimatePresence
-        onExitComplete={() => {
-          onExited();
-          if (pending.current) navigateToSection(pending.current, reduced);
-          pending.current = null;
-        }}
-      >
-        {open && (
-          <MarkDialog
-            key="mark-card"
-            reduced={reduced}
-            onClose={onClose}
-            onCta={() => {
-              pending.current = COPY.cta.href;
-              onClose();
-            }}
-          />
-        )}
+      <AnimatePresence onExitComplete={onExited}>
+        {open && <MarkDialog key="mark-card" reduced={reduced} onClose={onClose} />}
       </AnimatePresence>
     </Portal>
   );
 }
 
-function MarkDialog({ reduced, onClose, onCta }: { reduced: boolean; onClose: () => void; onCta: () => void }) {
+function MarkDialog({ reduced, onClose }: { reduced: boolean; onClose: () => void }) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeHint = useCloseHint();
   useBodyScrollLock(true);
@@ -132,14 +114,14 @@ function MarkDialog({ reduced, onClose, onCta }: { reduced: boolean; onClose: ()
           </button>
           <MarkStrike sizePx={MARK.cardMarkPx} reduced={reduced} />
           <div className="flex min-w-0 flex-col gap-3 sm:pr-6">
-            <span data-card="text" className="text-sm text-muted">{COPY.eyebrow}</span>
             <h2 data-card="text" className="font-display text-3xl leading-tight text-foreground">{COPY.title}</h2>
+            <p data-card="text" className="text-sm text-muted">{COPY.subtitle}</p>
             {COPY.lines.map((line) => (
               <p key={line} data-card="text" className="text-base leading-relaxed text-foreground"><InlineCopy source={line} /></p>
             ))}
             <span data-card="text" className="w-fit">
-              <Fill as="link" {...FILL_PICK.cta} href={COPY.cta.href} onClick={(e) => { e.preventDefault(); onCta(); }} className={CTA_CLASS} overClassName={CTA_OVER_CLASS}>
-                {COPY.cta.label}
+              <Fill {...FILL_PICK.cta} onClick={onClose} className={CTA_CLASS} overClassName={CTA_OVER_CLASS}>
+                {COPY.button}
                 <FillSeed className="h-8 w-8">
                   <FillArrow />
                 </FillSeed>

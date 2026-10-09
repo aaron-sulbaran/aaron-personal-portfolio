@@ -792,14 +792,19 @@ export const siteContent = {
     { kind: "photo" as const, key: "photo-14", src: "/photos/photo-14.svg" }, // PLACEHOLDER
   ],
   // The mark's card (components/mark/MarkCard.tsx), opened by holding the
-  // top-left mark. PLACEHOLDER: every line below is the shortest true line,
-  // for Aaron to replace with his own words about the name and the gamertag.
+  // top-left mark (docs/content/mark-card.md, approved 2026-10-08). The subtitle
+  // is lowercase as I typed it. The last line links no tip on "Voltaage": that
+  // tip is still proposed in the register.
   mark: {
     dialogLabel: "The mark",
-    eyebrow: "The mark",
-    title: "My initials, A and S",
-    lines: ["The bolt's tail is also the A's right leg."],
-    cta: { label: "Say hi", href: "#connect" },
+    title: "I wanted a personal logo, so I made one",
+    subtitle: "good job, you found my easter egg!",
+    lines: [
+      "It represents a few things: Catatumbo lightning, over Lake Maracaibo, where I was born. Most people have never heard of it, so I hope you learned something new.",
+      "The A is me. The bolt (which forms the S) is also where my gamer tag comes from, Voltaage: [voltage](tip:voltage), + two [A's](tip:two-as).",
+      "I always thought Voltaage would be an awesome streamer name. I took a different career path.",
+    ],
+    button: "Keep exploring!",
   },
 } as const;
 

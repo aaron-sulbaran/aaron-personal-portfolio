@@ -77,14 +77,12 @@ describe("the case page", () => {
 });
 
 describe("the mark card", () => {
-  it("is short, sentence case, and never uses an em dash", () => {
+  it("is Aaron's copy: three short lines, no em dash, sentence case except the subtitle he typed lowercase", () => {
     const { mark } = siteContent;
-    const strings = [mark.dialogLabel, mark.eyebrow, mark.title, ...mark.lines, mark.cta.label];
-    for (const text of strings) {
-      expect(text).not.toMatch(/\u2014/);
-      expect(text[0]).toBe(text[0].toUpperCase());
-    }
-    expect(mark.lines.length).toBeLessThanOrEqual(3);
-    expect(mark.cta.href).toBe("#connect");
+    const strings = [mark.dialogLabel, mark.title, mark.subtitle, ...mark.lines, mark.button];
+    for (const text of strings) expect(text).not.toMatch(/\u2014/);
+    for (const text of [mark.dialogLabel, mark.title, ...mark.lines, mark.button]) expect(text[0]).toBe(text[0].toUpperCase());
+    expect(mark.subtitle[0]).toBe(mark.subtitle[0].toLowerCase());
+    expect(mark.lines).toHaveLength(3);
   });
 });
