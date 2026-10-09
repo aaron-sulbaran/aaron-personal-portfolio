@@ -2,7 +2,7 @@ import type { Page } from "@playwright/test";
 import { siteContent } from "@/lib/content";
 import { tipText } from "@/lib/content/tracks";
 import { test, expect } from "./support/fixtures";
-import { bubble, CALENDAR, DEF, MATCHA, MATCHA_HREF, openFixture, POP, rango, tabTo, TIP } from "./support/inline";
+import { bubble, CALENDAR, DEF, MATCHA, MATCHA_HREF, openFixture, POP, productLink, rango, tabTo, TIP } from "./support/inline";
 // The copy's inline links (components/inline) by mouse and keyboard, each on a
 // lines-split Block; touch is e2e/inline-links-touch.spec.ts (the touch project).
 const { register } = siteContent;
@@ -80,4 +80,41 @@ test("inline links: every link is a named button or link, the footnote included;
   expect(tags).toHaveLength(5);
   expect(tags.every((tag) => tag === "A" || tag === "BUTTON")).toBe(true);
   await expect(bubble(page)).toHaveAttribute("aria-hidden", "true");
+});
+test("inline links: a definition opens the house text modal by mouse; Escape closes it and focus returns", async ({ page }) => {
+  const link = await productLink(page);
+  await expect(link).toHaveAttribute("aria-haspopup", "dialog");
+  await link.click();
+  const dialog = page.getByRole("dialog", { name: register.def.product.title });
+  await expect(dialog).toContainText(register.def.product.body);
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  await expect(link).toBeFocused();
+});
+test("inline links: a definition opens from the keyboard, holds focus inside, and returns it", async ({ page }) => {
+  const link = await productLink(page);
+  await tabTo(page, link);
+  await page.keyboard.press("Enter");
+  const dialog = page.getByRole("dialog", { name: register.def.product.title });
+  const close = dialog.getByRole("button", { name: siteContent.modals.closeAriaLabel });
+  await expect(close).toBeFocused();
+  await page.keyboard.press("Tab");
+  expect(await dialog.evaluate((el) => el.contains(document.activeElement))).toBe(true);
+  await close.focus();
+  await page.keyboard.press("Enter");
+  await expect(dialog).toBeHidden();
+  await expect(link).toBeFocused();
+});
+test("inline links: focus returns to the product link even when its line was rebuilt", async ({ page }) => {
+  const link = await productLink(page);
+  await link.click();
+  const dialog = page.getByRole("dialog", { name: register.def.product.title });
+  await expect(dialog).toBeVisible();
+  await page.evaluate(() => {
+    const old = document.querySelector('[data-inline="def"][data-inline-key="product"]')!;
+    old.replaceWith(old.cloneNode(true)); // what a SplitText revert does to the node
+  });
+  await dialog.getByRole("button", { name: siteContent.modals.closeAriaLabel }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.locator('[data-inline="def"][data-inline-key="product"]').first()).toBeFocused();
 });
