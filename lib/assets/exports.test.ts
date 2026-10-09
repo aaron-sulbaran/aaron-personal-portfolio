@@ -27,7 +27,7 @@ const POPS: Record<string, [number, number]> = {
 const LOGOS: Record<string, string[]> = {
   anthropic: ["anthropic-mark-white.svg", "anthropic-mark.svg", "anthropic-wordmark-white.svg", "anthropic-wordmark.svg"],
   "capital-one": ["capital-one-logo.svg"],
-  fsdatalink: ["fsdatalink-logo.avif", "fsdatalink-mark.png"],
+  fsdatalink: ["fsdatalink-logo-light.png", "fsdatalink-logo.avif", "fsdatalink-mark.png"],
   ieee: ["ieee-ut-logo.jpg"],
   jobs: ["apple-logo-black.svg", "apple-logo-white.svg", "aritzia-logo-light.svg", "aritzia-logo-white.svg", "aritzia-logo.svg", "mod-pizza-logo.svg", "popeyes-logo.svg", "ut-austin-logo-white.svg", "ut-austin-logo.svg"],
   "min-max": ["mark-on-dark.svg", "mark.svg", "wordmark-on-dark.svg", "wordmark.svg"],
