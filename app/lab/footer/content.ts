@@ -5,6 +5,7 @@ import type { HoldingSocial } from "@/lib/content";
 // Aaron's round 2 edits to the heading and the call to action).
 export const FOOTER_COPY = {
   wordmark: "build.stuff",
+  dropPeriod: "Drop the period",
   tagline: (month: string) => `Last updated ${month}`,
   copyright: "© 2026 Aaron Sulbaran",
   bookLabel: "Book some time",

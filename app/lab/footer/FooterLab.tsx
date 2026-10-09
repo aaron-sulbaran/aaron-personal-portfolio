@@ -43,6 +43,7 @@ export function FooterLab() {
   const [backdrop, setBackdrop] = useState<BackdropKind | null>(null);
   const [readout, setReadout] = useState<Readout>({ sizePx: 0, spanPct: 0, stageWidth: 0, croppedPct: 0, fittedVw: null });
   const [replay, setReplay] = useState(0);
+  const [drop, setDrop] = useState(0);
   const typeface = useTypeface(FOOTER_COPY.wordmark, s.face, s.font);
   const theme = useSyncExternalStore(subscribeTheme, readTheme, () => "light" as Theme);
   const systemReduced = usePrefersReducedMotion();
@@ -58,7 +59,7 @@ export function FooterLab() {
           <h2 className="font-display text-section">{FOOTER_COPY.heading}</h2>
           <p className="max-w-md text-muted">The end of Connect sits here on the site; the footer follows it.</p>
         </div>
-        <FooterStage s={s} typeface={typeface} theme={theme} reduced={reduced} replay={replay} forceStandIn={view.forceStandIn} onBackdrop={onBackdrop} onReadout={onReadout} />
+        <FooterStage s={s} typeface={typeface} theme={theme} reduced={reduced} replay={replay} drop={drop} forceStandIn={view.forceStandIn} onBackdrop={onBackdrop} onReadout={onReadout} />
       </div>
       <Panel
         s={s}
@@ -72,6 +73,7 @@ export function FooterLab() {
         setView={setView}
         setTheme={setTheme}
         onReplay={() => setReplay((n) => n + 1)}
+        onDrop={() => setDrop((n) => n + 1)}
       />
     </div>
   );

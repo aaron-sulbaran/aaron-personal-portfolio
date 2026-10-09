@@ -2,15 +2,18 @@
 
 import { useEffect, useRef, type RefObject } from "react";
 import type { Pivot } from "./aperture";
+import { REST_POSE, eggPoseAt, letterDip, rippleLifeMs, stepEgg, type EggPose, type EggState } from "./egg";
 import { approach, easeToward, falloff, hoveredLetter, leanAngle, pivotTarget, pressTarget, riseProgress, springStep, type Spring } from "./motion";
 import type { FooterSettings, TypeResponse } from "./settings";
 
 // One loop for the wordmark: it reads the pointer over the footer, eases
 // each letter's swell, springs its press, clocks the rise from the first
 // time the footer is seen, springs the hovered letter's waist slice, eases
-// the shutter period's pivot toward the pointer, leans the disc and slab, and
-// hands the frame to `apply`, which writes attributes directly (no React
-// render per frame).
+// the shutter period's pivot toward the pointer, leans the disc and slab,
+// runs the period's Easter egg (its hop, and the ripple that dents each
+// letter through its press spring as the wavefront passes), and hands the
+// frame to `apply`, which writes attributes directly (no React render per
+// frame).
 
 export type Point = { readonly x: number; readonly y: number };
 // weight: the procedural stroke; swell: the pointer's share (0 to 1), which a
@@ -25,11 +28,16 @@ export type MotionConfig = {
   size: number; // the ascender height, px
   centers: readonly Point[]; // each letter's center at rest, stage px
   reduced: boolean;
+  stretch: boolean; // a letter may spring taller than at rest (not when the field ends in the letters: no field shows above them)
   typeset: boolean; // Profa or a web font: lean and grow apply
   response: TypeResponse; // what the face does at the pointer, after what it can do
   hit: { halfWidths: readonly number[]; top: number; bottom: number; margin: number }; // the slice's hit test, stage px
   aperture: { index: number; reachPx: number } | null; // the shutter period, when on
-  apply: (letters: readonly LetterFrame[], disc: DiscFrame, pivot: Pivot) => void;
+  // The Easter egg: its state (shared with the field, which draws the
+  // ripples), the period's index and its bottom center at rest (stage px),
+  // and the stage's far corner from it, in units (how far a ripple runs).
+  egg: { state: EggState; index: number; landing: Point; reach: number } | null;
+  apply: (letters: readonly LetterFrame[], disc: DiscFrame, pivot: Pivot, egg: EggPose) => void;
 };
 
 export const COMPOSITIONS = 3;
@@ -76,6 +84,8 @@ export function useWordMotion(stage: RefObject<HTMLElement | null>, config: RefO
       pointer.inside = true;
       pointer.pressed = true;
       disc.comp = (disc.comp + 1) % COMPOSITIONS;
+      const { settings, egg } = config.current;
+      if (egg && settings.egg.trigger === "anywhere") egg.state.pending.push({ kind: "point", x: pointer.x, y: pointer.y });
     };
     const onUp = () => {
       pointer.pressed = false;
@@ -84,7 +94,9 @@ export function useWordMotion(stage: RefObject<HTMLElement | null>, config: RefO
     const tick = (now: number) => {
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
-      const { settings: s, size, centers, reduced, typeset, response, hit, aperture, apply } = config.current;
+      const { settings: s, size, centers, reduced, stretch, typeset, response, hit, aperture, egg, apply } = config.current;
+      if (egg) stepEgg(egg.state, now, { e: s.egg, reduced, landing: egg.landing, unitPx: size }, rippleLifeMs(s.egg, egg.reach));
+      const ripples = egg && !reduced ? egg.state.ripples : null;
       const radius = s.swellRadius * size;
       const riseOn = s.riseMs > 0 && !reduced;
       const elapsed = riseStart.current === null ? 0 : now - riseStart.current;
@@ -96,14 +108,18 @@ export function useWordMotion(stage: RefObject<HTMLElement | null>, config: RefO
         const c = centers[i] ?? { x: 0, y: 0 };
         const near = pointer.inside && !reduced ? falloff(Math.hypot(pointer.x - c.x, pointer.y - c.y), radius) : 0;
         infl[i] = approach(infl[i], near, dt, s.swellEaseS);
-        const target = pointer.pressed && !reduced ? pressTarget(s.pressDepth, near) : 1;
+        const pressed = pointer.pressed && !reduced ? pressTarget(s.pressDepth, near) : 1;
+        // A passing ripple dents the letter through the same spring; the
+        // period has its own landing squash.
+        const dip = ripples && ripples.length > 0 && i !== egg?.index ? letterDip(c.x, c.y, ripples, now, size, s.egg) : 0;
+        const target = Math.min(pressed, 1 - dip);
         springs[i] = reduced ? { x: 1, v: 0 } : springStep(springs[i], target, s.pressStiffness, s.pressDamping, dt);
         const f = frames[i];
         slices[i] = reduced ? { x: 0, v: 0 } : springStep(slices[i], i === hovered ? 1 : 0, s.slice.stiffness, s.slice.damping, dt);
         f.weight = s.weight + (swelling ? s.swellAmount * infl[i] : 0);
         f.swell = swelling ? infl[i] : 0;
         f.slice = slices[i].x;
-        f.squash = Math.max(0.05, springs[i].x);
+        f.squash = Math.max(0.05, stretch ? springs[i].x : Math.min(1, springs[i].x));
         f.rise = !riseOn ? 1 : riseStart.current === null ? 0 : riseProgress(elapsed, i, s.riseMs, s.riseStaggerMs, s.riseEase);
         f.lean = typeset && response === "lean" ? leanAngle(s.leanDeg, pointer.x - c.x, infl[i], radius) : 0;
         f.grow = typeset && response === "grow" ? 1 + s.grow * infl[i] : 1;
@@ -124,7 +140,7 @@ export function useWordMotion(stage: RefObject<HTMLElement | null>, config: RefO
         pivot.x = 0;
         pivot.y = 0;
       }
-      apply(frames, disc, pivot);
+      apply(frames, disc, pivot, egg ? eggPoseAt(egg.state, now, s.egg) : REST_POSE);
       raf = visible ? requestAnimationFrame(tick) : 0;
     };
 

@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { DriftPreset } from "@/lib/coil/drift";
 import type { Theme } from "@/lib/theme";
 import { Check, Chip, Field, Segmented, Slider } from "../controls/ui";
+import { EggControls } from "./EggControls";
 import type { BackdropKind } from "./FieldBackdrop";
 import { FIT_SHARE, type Readout } from "./FooterStage";
 import type { RiseEase } from "./motion";
@@ -26,6 +27,7 @@ type Props = {
   setView: (update: (v: View) => View) => void;
   setTheme: (theme: Theme) => void;
   onReplay: () => void;
+  onDrop: () => void;
 };
 
 const BACKDROP_NOTE: Record<BackdropKind, string> = {
@@ -44,7 +46,7 @@ const ENDING_HINTS: Record<Ending, string> = {
 const fx = (digits: number, unit = "") => (n: number) => `${n.toFixed(digits)}${unit}`;
 const ms = (n: number) => `${Math.round(n)}ms`;
 
-export function Panel({ s, typeface, view, theme, backdrop, readout, systemReduced, edit, setView, setTheme, onReplay }: Props) {
+export function Panel({ s, typeface, view, theme, backdrop, readout, systemReduced, edit, setView, setTheme, onReplay, onDrop }: Props) {
   const [copied, setCopied] = useState<"idle" | "done" | "failed">("idle");
   const preset = PRESETS.find((p) => sameSettings(p.settings, s));
   const backdropName = !s.field.on ? "off" : (backdrop ?? "pending");
@@ -141,6 +143,10 @@ export function Panel({ s, typeface, view, theme, backdrop, readout, systemReduc
           <Segmented options={["expo", "cubic", "back"] as readonly RiseEase[]} value={s.riseEase} format={(e) => (e === "back" ? "back (overshoot)" : `out ${e}`)} onChange={(riseEase) => set({ riseEase })} />
         </Field>
         <Chip onClick={onReplay}>Replay the rise</Chip>
+      </Section>
+
+      <Section title="The period, an Easter egg">
+        <EggControls s={s} edit={edit} onDrop={onDrop} />
       </Section>
 
       <Section title="The field">

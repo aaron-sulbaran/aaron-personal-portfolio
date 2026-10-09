@@ -2,13 +2,15 @@
 
 import { useEffect, useId, useMemo, useRef, type RefObject } from "react";
 import type { Pivot } from "./aperture";
+import { FOOTER_COPY } from "./content";
+import { REST_POSE, type EggPose, type EggState } from "./egg";
 import { glyphPaths } from "./glyphs";
 import { apertureReachPx, glyphOutline, isDynamicGlyph, pathRow } from "./pathFace";
 import type { FooterSettings, TypeResponse } from "./settings";
 import type { PathKind, TypesetFace } from "./useTypeface";
 import { COMPOSITIONS, useWordMotion, type DiscFrame, type LetterFrame, type MotionConfig } from "./useWordMotion";
 import { poseAt, variationSettings } from "./webFont";
-import { wordRest, writeOutline, writeSlice } from "./wordFrame";
+import { eggTransform, letterTransform, periodBox, wordRest, writeOutline, writeSlice } from "./wordFrame";
 import { sliceClipIds, WordLetters, type LetterSlot } from "./WordLetters";
 import { typesetRow, type InkExtent } from "./wordLayout";
 
@@ -16,7 +18,8 @@ import { typesetRow, type InkExtent } from "./wordLayout";
 // px. The letters live once in <defs> (WordLetters) and are drawn by <use>:
 // as ink, as the accent tint, and as holes in a paper cover when the field
 // is clipped by the letters. One loop writes their transforms, stroke widths,
-// outlines, slices and axes.
+// outlines, slices and axes, and the period's Easter egg (its hop and its
+// shadow); a button over the period starts the egg.
 
 export type WordGeometry = {
   stageW: number;
@@ -39,6 +42,7 @@ type Props = {
   reduced: boolean;
   replay: number;
   stage: RefObject<HTMLElement | null>;
+  egg: EggState;
 };
 
 // The paper cover and its mask run past the stage's edges, so no
@@ -53,7 +57,7 @@ const DISC_COMPS = [
 
 const REST_PIVOT: Pivot = { x: 0, y: 0 };
 
-export function Wordmark({ text, s, size, geo, ink, face, pathKind, response, letterVeil, reduced, replay, stage }: Props) {
+export function Wordmark({ text, s, size, geo, ink, face, pathKind, response, letterVeil, reduced, replay, stage, egg }: Props) {
   const id = useId().replace(/:/g, "");
   const chars = useMemo(() => [...text], [text]);
   const letters = useRef<(SVGGElement | null)[]>([]);
@@ -67,6 +71,7 @@ export function Wordmark({ text, s, size, geo, ink, face, pathKind, response, le
   const disc = useRef<SVGCircleElement>(null);
   const slab = useRef<SVGRectElement>(null);
   const discGroup = useRef<SVGGElement>(null);
+  const shadow = useRef<SVGEllipseElement>(null);
   const lastComp = useRef(-1);
 
   const bind = (slot: LetterSlot, i: number) => (el: SVGElement | null) => {
@@ -85,16 +90,21 @@ export function Wordmark({ text, s, size, geo, ink, face, pathKind, response, le
   const slicing = kind !== null && response === "slice";
 
   const rest = useMemo(() => wordRest(face, kind, text, size, fontSize, s, geo.stageW, geo.baselineY), [face, kind, text, size, fontSize, s, geo.stageW, geo.baselineY]);
+  const period = chars.indexOf(".");
+  const box = useMemo(() => (period >= 0 ? periodBox(rest.centers[period].y, geo.baselineY, rest.halfWidths[period]) : null), [period, rest, geo.baselineY]);
+  const restX = period >= 0 ? rest.xs[period] + rest.pivots[period] : 0;
 
   const config = useRef<MotionConfig>({
     settings: s,
     size,
     centers: rest.centers,
     reduced,
+    stretch: true,
     typeset: false,
     response: "swell",
     hit: { halfWidths: [], top: 0, bottom: 0, margin: 0 },
     aperture: null,
+    egg: null,
     apply: () => {},
   });
   useEffect(() => {
@@ -103,18 +113,22 @@ export function Wordmark({ text, s, size, geo, ink, face, pathKind, response, le
     drawn.current = [];
     parted.current = [];
     const clips = sliceClipIds(id);
-    const period = chars.indexOf(".");
+    const square = kind === "constructed" || s.aperture.on;
+    const landing = { x: restX, y: geo.baselineY };
+    const reach = Math.hypot(Math.max(landing.x, geo.stageW - landing.x), Math.max(landing.y, geo.stageH - landing.y)) / Math.max(1, size);
 
     config.current = {
       settings: s,
       size,
       centers: rest.centers,
       reduced,
+      stretch: !(s.field.on && s.field.ending === "clip"),
       typeset: face !== null,
       response,
       hit: { halfWidths: rest.halfWidths, top: geo.wordTop, bottom: geo.baselineY + 0.15 * size, margin: 0.04 * size },
       aperture: kind && s.aperture.on && period >= 0 ? { index: period, reachPx: apertureReachPx(kind, s, size) } : null,
-      apply: (frames: readonly LetterFrame[], d: DiscFrame, pivot: Pivot) => {
+      egg: period >= 0 ? { state: egg, index: period, landing, reach } : null,
+      apply: (frames: readonly LetterFrame[], d: DiscFrame, pivot: Pivot, pose: EggPose) => {
         let xs = rest.xs;
         if (s.reflow && kind && response === "swell") {
           const flow = pathRow(kind, text, size, s, frames.map((f) => f.swell));
@@ -130,10 +144,8 @@ export function Wordmark({ text, s, size, geo, ink, face, pathKind, response, le
           if (!g) return;
           const pivotX = rest.pivots[i];
           const y = geo.baselineY + (1 - f.rise) * riseDistance;
-          g.setAttribute(
-            "transform",
-            `translate(${(xs[i] + pivotX).toFixed(2)} ${y.toFixed(2)}) rotate(${f.lean.toFixed(3)}) scale(${f.grow.toFixed(4)} ${(f.grow * f.squash).toFixed(4)}) translate(${(-pivotX).toFixed(2)} 0)`,
-          );
+          const hopping = i === period && box !== null && pose !== REST_POSE;
+          g.setAttribute("transform", letterTransform(xs[i], y, pivotX, f, hopping ? eggTransform(pose, box, size, s, ink.top, square) : undefined));
           if (kind === "procedural") g.setAttribute("stroke-width", (f.weight * size).toFixed(2));
           const outline = outlines.current[i];
           if (kind && outline && restOutlines[i]) writeOutline(outline, drawn.current, i, kind, chars[i], size, s, f, pivot);
@@ -149,6 +161,18 @@ export function Wordmark({ text, s, size, geo, ink, face, pathKind, response, le
             }
           }
         });
+        const ground = shadow.current;
+        if (ground && box) {
+          const alpha = s.egg.shadow * pose.shadow;
+          if (alpha <= 0.001) ground.setAttribute("display", "none");
+          else {
+            ground.removeAttribute("display");
+            ground.setAttribute("cx", (xs[period] + rest.pivots[period]).toFixed(2));
+            ground.setAttribute("rx", (0.75 * box.side * pose.shadowScale).toFixed(2));
+            ground.setAttribute("ry", Math.max(1.5, 0.16 * box.side * pose.shadowScale).toFixed(2));
+            ground.setAttribute("opacity", alpha.toFixed(3));
+          }
+        }
         if (discGroup.current) discGroup.current.setAttribute("transform", `translate(${d.dx.toFixed(2)} ${d.dy.toFixed(2)})`);
         if (d.comp !== lastComp.current && disc.current && slab.current) {
           lastComp.current = d.comp;
@@ -161,7 +185,7 @@ export function Wordmark({ text, s, size, geo, ink, face, pathKind, response, le
       },
     };
     lastComp.current = -1;
-  }, [id, chars, s, size, rest, reduced, face, kind, response, swellAxes, slicing, fontSize, text, geo, riseDistance, restOutlines]);
+  }, [id, chars, s, size, rest, reduced, face, kind, response, swellAxes, slicing, fontSize, text, geo, riseDistance, restOutlines, egg, period, box, restX, ink.top]);
 
   useWordMotion(stage, config, chars.length, replay);
 
@@ -170,7 +194,25 @@ export function Wordmark({ text, s, size, geo, ink, face, pathKind, response, le
   const inkColor = s.ink === "accent" ? "var(--color-accent)" : "var(--color-foreground)";
   const paper = "var(--color-background)";
 
+  // The shadow sits on the ground under the period, a little below the
+  // baseline so it shows under the landed square; in clip it is kept off the
+  // letters, which are windows onto the field.
+  const shadowEl = box && (
+    <ellipse
+      ref={shadow}
+      cx={restX}
+      cy={geo.baselineY + 0.06 * box.side}
+      rx={0.75 * box.side}
+      ry={Math.max(1.5, 0.16 * box.side)}
+      display="none"
+      fill={`url(#${id}-shadow)`}
+      mask={clip ? `url(#${id}-holes)` : undefined}
+    />
+  );
+  const hit = box ? Math.max(box.side + 12, 32) : 0;
+
   return (
+    <>
     <svg aria-hidden="true" className="pointer-events-none absolute inset-0 h-full w-full" width={geo.stageW} height={geo.stageH} viewBox={`0 0 ${geo.stageW} ${geo.stageH}`}>
       <defs>
         <WordLetters
@@ -196,6 +238,11 @@ export function Wordmark({ text, s, size, geo, ink, face, pathKind, response, le
           <stop offset={0} style={{ stopColor: inkColor, stopOpacity: tintTop }} />
           <stop offset={1} style={{ stopColor: inkColor, stopOpacity: tintTop * (1 - s.inkFade) }} />
         </linearGradient>
+        <radialGradient id={`${id}-shadow`}>
+          <stop offset={0} style={{ stopColor: inkColor, stopOpacity: 1 }} />
+          <stop offset={0.55} style={{ stopColor: inkColor, stopOpacity: 0.55 }} />
+          <stop offset={1} style={{ stopColor: inkColor, stopOpacity: 0 }} />
+        </radialGradient>
         {clip && (
           <mask id={`${id}-holes`} maskUnits="userSpaceOnUse" x={-BLEED_PX} y={-BLEED_PX} width={geo.stageW + 2 * BLEED_PX} height={geo.stageH + 2 * BLEED_PX}>
             <rect x={-BLEED_PX} y={-BLEED_PX} width={geo.stageW + 2 * BLEED_PX} height={geo.stageH + 2 * BLEED_PX} fill="white" />
@@ -222,16 +269,29 @@ export function Wordmark({ text, s, size, geo, ink, face, pathKind, response, le
           style={{ fill: paper }}
         />
       )}
+      {clip && shadowEl}
       {clip && letterVeil > 0.001 && (
         <g clipPath={`url(#${id}-rise)`} opacity={letterVeil}>
           <use href={`#${id}-word`} style={{ fill: paper, stroke: paper }} />
         </g>
       )}
+      {!clip && shadowEl}
       {(!clip || s.field.letterTint > 0) && (
         <g clipPath={`url(#${id}-rise)`}>
           <use href={`#${id}-word`} stroke={`url(#${id}-ink)`} fill={`url(#${id}-ink)`} />
         </g>
       )}
     </svg>
+    {box && (
+      <button
+        type="button"
+        aria-label={FOOTER_COPY.dropPeriod}
+        data-egg="period"
+        onClick={() => egg.pending.push({ kind: "period" })}
+        className="absolute z-20 cursor-pointer rounded-sm outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        style={{ left: restX - hit / 2, top: geo.baselineY + box.cy - hit / 2, width: hit, height: hit }}
+      />
+    )}
+    </>
   );
 }

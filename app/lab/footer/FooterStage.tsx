@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import type { Theme } from "@/lib/theme";
 import { ConnectRow } from "./ConnectRow";
 import { FOOTER_COPY } from "./content";
+import { createEggState } from "./egg";
 import { FieldBackdrop, type BackdropKind } from "./FieldBackdrop";
 import { fieldDepths } from "./fieldDepths";
 import { pathInk, pathKindOf, pathRow } from "./pathFace";
@@ -31,6 +32,7 @@ type Props = {
   theme: Theme;
   reduced: boolean;
   replay: number;
+  drop: number; // the panel's "Drop the period", counted
   forceStandIn: boolean;
   onBackdrop: (kind: BackdropKind) => void;
   onReadout: (r: Readout) => void;
@@ -45,10 +47,19 @@ function fieldMask(s: FooterSettings, geo: WordGeometry, size: number, share: nu
   return { maskImage: image, WebkitMaskImage: image };
 }
 
-export function FooterStage({ s, typeface, theme, reduced, replay, forceStandIn, onBackdrop, onReadout }: Props) {
+export function FooterStage({ s, typeface, theme, reduced, replay, drop, forceStandIn, onBackdrop, onReadout }: Props) {
   const stage = useRef<HTMLElement>(null);
   const bandRef = useRef<HTMLDivElement>(null);
   const [box, setBox] = useState({ w: 0, h: 0, bandTop: 0 });
+  // The period's Easter egg: shared by the wordmark's loop (which runs it)
+  // and the field (which draws its ripples).
+  const [egg] = useState(createEggState);
+  const dropped = useRef(drop);
+  useEffect(() => {
+    if (drop === dropped.current) return;
+    dropped.current = drop;
+    egg.pending.push({ kind: "period" });
+  }, [drop, egg]);
 
   useEffect(() => {
     const el = stage.current;
@@ -120,6 +131,7 @@ export function FooterStage({ s, typeface, theme, reduced, replay, forceStandIn,
           reduced={reduced}
           replay={replay}
           stage={stage}
+          egg={egg}
         />
       )}
       <h2 className="sr-only">{text}</h2>
