@@ -205,12 +205,35 @@ const ROUND2: FooterSettings = {
   field: { on: true, intensity: 1.2, letterIntensity: 1.8, ending: "clip", fade: 1.6, fadeIn: 0.3, drift: "visible", flip: false, letterTint: 0.2 },
 };
 
-export type Preset = { id: string; name: string; note: string; settings: FooterSettings };
+// Round 3 (2026-10-09, Aaron found the procedural letters too rounded and
+// soft for Profa Black): the round 2 pick's field, floor and Connect row,
+// with the constructed face (S 0.2 to match round 2's weight, B 0.15),
+// the period as a four blade shutter, and the swell. The constructed word is
+// narrower at a height, so it stands at 14.5 percent of the width to span
+// what round 2's does (about 90 percent).
+const ROUND3: FooterSettings = {
+  ...ROUND2,
+  face: "constructed",
+  heightVw: 14.5,
+  response: "swell",
+  aperture: { ...ROUND2.aperture, on: true },
+};
+
+// `tag` marks the new proposal and Aaron's last pick in the panel.
+export type Preset = { id: string; name: string; note: string; settings: FooterSettings; tag?: "new" | "pick" };
 
 export const PRESETS: readonly Preset[] = [
   {
+    id: "round3",
+    name: "Round 3, constructed",
+    tag: "new",
+    note: "Round 2's field, floor and Connect row with the constructed face: stems and bars cut flat, D bowls, the period a four blade shutter whose pivot leans toward the pointer. Spans the width round 2 does. The swell thickens the stems and bars near the pointer; the press dents a letter without thinning its bars.",
+    settings: ROUND3,
+  },
+  {
     id: "round2",
     name: "Round 2, designer field with Zephyr weight",
+    tag: "pick",
     note: "Zephyr's heavy letters (0.2 weight, 12.5 percent of the width) as windows onto the field at Zephyr's depth, over a field held back to the designer's quiet. Every letter whole, the word rising as one, the swell and press Aaron kept.",
     settings: ROUND2,
   },
@@ -230,7 +253,7 @@ export const PRESETS: readonly Preset[] = [
   { id: "profa", name: "Profa lean", note: "Profa Black, leaning toward the pointer, pressed on click. No weight swell is possible.", settings: PROFA },
 ];
 
-export const DEFAULT_SETTINGS = ROUND2;
+export const DEFAULT_SETTINGS = ROUND3;
 
 export function sameSettings(a: FooterSettings, b: FooterSettings): boolean {
   return JSON.stringify(a) === JSON.stringify(b);

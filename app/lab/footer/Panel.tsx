@@ -86,10 +86,10 @@ export function Panel({ s, typeface, view, theme, backdrop, readout, systemReduc
 
       <Field label="Presets">
         <div className="grid grid-cols-2 gap-1.5">
-          {PRESETS.map((p, i) => (
-            <div key={p.id} className={i === 0 ? "col-span-2 grid" : "grid"}>
+          {PRESETS.map((p) => (
+            <div key={p.id} className={p.tag ? "col-span-2 grid" : "grid"}>
               <Chip pressed={sameSettings(s, p.settings)} onClick={() => edit(() => p.settings)}>
-                {i === 0 ? `${p.name} (pick)` : p.name}
+                {p.tag ? `${p.name} (${p.tag})` : p.name}
               </Chip>
             </div>
           ))}

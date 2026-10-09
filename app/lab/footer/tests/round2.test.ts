@@ -12,15 +12,19 @@ const AARON_ROUND1 = {
   riseMs: 1000, riseEase: "expo", leanDeg: 7, grow: 0.12, connect: "above",
 } as const;
 
+// Round 3 is the default now; round 2 stays, second, as Aaron's pick.
+const ROUND2 = PRESETS.find((p) => p.id === "round2")!.settings;
+
 describe("the round 2 preset", () => {
-  it("is the default, first, and keeps Aaron's round 1 values where his notes kept them", () => {
-    expect(PRESETS[0].settings).toBe(DEFAULT_SETTINGS);
-    expect(PRESETS[0].name).toBe("Round 2, designer field with Zephyr weight");
-    expect(DEFAULT_SETTINGS).toMatchObject(AARON_ROUND1);
+  it("is second, Aaron's pick, and keeps his round 1 values where his notes kept them", () => {
+    expect(PRESETS[1].settings).toBe(ROUND2);
+    expect(PRESETS[1].name).toBe("Round 2, designer field with Zephyr weight");
+    expect(PRESETS[1].tag).toBe("pick");
+    expect(ROUND2).toMatchObject(AARON_ROUND1);
   });
 
   it("rises as one, whole, with the letters deeper than the field behind them", () => {
-    const s = DEFAULT_SETTINGS;
+    const s = ROUND2;
     expect(s.riseStaggerMs).toBe(0);
     expect(s.floor).toBe(0);
     expect(s.response).not.toBe("lean");
@@ -30,14 +34,14 @@ describe("the round 2 preset", () => {
   });
 
   it("fits under the wide-face cap at its own height, so the cap never moves it", () => {
-    const s = DEFAULT_SETTINGS;
+    const s = ROUND2;
     const span = layoutWord("build.stuff", s.heightVw / 100, [s.weight], s.tracking).width;
     expect(span).toBeGreaterThan(0.85);
     expect(span).toBeLessThan(FIT_SHARE);
   });
 
   it("leaves no preset with a stagger or a crop, and keeps every round 1 preset selectable", () => {
-    expect(PRESETS.map((p) => p.id)).toEqual(["round2", "designer", "bare", "zephyr", "profa"]);
+    expect(PRESETS.map((p) => p.id)).toEqual(["round3", "round2", "designer", "bare", "zephyr", "profa"]);
     for (const p of PRESETS) {
       expect(p.settings.riseStaggerMs, p.id).toBe(0);
       expect(p.settings.floor, p.id).toBe(0);
