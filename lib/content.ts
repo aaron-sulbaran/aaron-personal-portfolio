@@ -277,39 +277,21 @@ export const siteContent = {
     indexLede: "Every project, internship, and community I'm proud of. Click in for the story.",
     backLabel: "Work",
   },
+  // Connect (docs/content/connect-footer-band.md, approved 2026-10-08): the
+  // body carries the calendar link, the matcha pop and the killer-drones
+  // footnote; "Book a chat" is the one big link; handle is what a link shows
+  // beside its name.
   connect: {
     label: "Connect",
-    heading: "Let's talk.",
-    lede: "I read everything. The fastest way in is LinkedIn or a quick email.",
+    heading: "wanna talk?",
+    body: "I check everything (or Talos does) so take your pick. If you want to talk screen to screen, [grab a time on my calendar](https://cal.com/aaron-sulbaran). If you're in my city, let's grab a coffee ([or matcha](pop:matcha)). I take coffee chats with anyone, no matter what you're building[*](tip:killer-drones).",
+    primary: { label: "Book a chat", href: "https://cal.com/aaron-sulbaran" },
     links: [
-      {
-        key: "linkedin",
-        label: "LinkedIn",
-        value: "in/aaron-sulbaran",
-        href: "https://www.linkedin.com/in/aaron-sulbaran/",
-        external: true,
-      },
-      {
-        key: "github",
-        label: "GitHub",
-        value: "aaron-sulbaran",
-        href: "https://github.com/aaron-sulbaran",
-        external: true,
-      },
-      {
-        key: "email-primary",
-        label: "Email",
-        value: "aarondsulbaran@gmail.com",
-        href: "mailto:aarondsulbaran@gmail.com",
-        external: false,
-      },
-      {
-        key: "email-school",
-        label: "Email (UT Austin)",
-        value: "aaronsulbaran@utexas.edu",
-        href: "mailto:aaronsulbaran@utexas.edu",
-        external: false,
-      },
+      { key: "linkedin", label: "LinkedIn", handle: "in/aaron-sulbaran", href: "https://www.linkedin.com/in/aaron-sulbaran/" },
+      { key: "github", label: "GitHub", handle: "aaron-sulbaran", href: "https://github.com/aaron-sulbaran" },
+      { key: "email", label: "Email", handle: "aarondsulbaran@gmail.com", href: "mailto:aarondsulbaran@gmail.com" },
+      { key: "instagram", label: "Instagram", handle: "aaron.sulbaran", href: "https://www.instagram.com/aaron.sulbaran/" },
+      { key: "x", label: "X", handle: "@imaaronsulbaran", href: "https://x.com/imaaronsulbaran" },
     ],
   },
   // Holding page (components/Holding.tsx), served at / while

@@ -19,7 +19,7 @@ const PROSE: Record<string, string[]> = Object.fromEntries(
       whoIAm.smallPrint,
       ...whoIAm.blocks.flatMap((block) => [block.label, block.body, ...(block.sub ? [block.sub.label, block.sub.body] : [])]),
     ],
-    "#connect": [connect.heading, connect.lede, ...connect.links.map((link) => link.value)],
+    "#connect": [connect.heading, connect.body, connect.primary.label, ...connect.links.map((link) => link.handle)],
   }).map(([id, prose]) => [id, prose.map(visibleText)]),
 );
 const STICKY = ["#about"];
@@ -157,7 +157,7 @@ test("sections: a Who I am block below the fold is masked before its band and ri
 test("sections: a Connect link focused before its row has risen shows at once", async ({ page }) => {
   await openHome(page);
   await blocksIn(page, "armed");
-  const row = page.locator("#connect [data-sections-row]").first();
+  const row = page.locator("#connect li[data-sections-row]").first();
   const shown = () =>
     row.evaluate((el) => {
       const style = getComputedStyle(el.querySelector("[data-sections-rowinner]")!);

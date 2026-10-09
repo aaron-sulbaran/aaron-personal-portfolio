@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest";
 const WIRED: Array<[string, string]> = [
   ["components/WhoIAm.tsx", "block.body"],
   ["components/WhoIAm.tsx", "block.sub.body"],
-  ["components/Connect.tsx", "lede"],
+  ["components/Connect.tsx", "body"],
   ["components/soundtrack/BandInvite.tsx", "c.body"],
   ["components/soundtrack/BandInvite.tsx", "c.acceptedNote"],
   ["components/mark/MarkCard.tsx", "line"],
