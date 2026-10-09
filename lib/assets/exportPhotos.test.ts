@@ -1,12 +1,22 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { exportAll, sharp } from "../../scripts/export-photos.mjs";
 import { imageSize, jpegHasMetadata } from "@/lib/testing/imageSize";
 
-const root = mkdtempSync(join(tmpdir(), "export-src-"));
+const tempDirs: string[] = [];
+function tempDir(prefix: string): string {
+  const dir = mkdtempSync(join(tmpdir(), prefix));
+  tempDirs.push(dir);
+  return dir;
+}
+afterAll(() => {
+  for (const dir of tempDirs) rmSync(dir, { recursive: true, force: true });
+});
+
+const root = tempDir("export-src-");
 const RED = "#ff0000";
 const BLUE = "#0000ff";
 
@@ -66,7 +76,7 @@ beforeAll(async () => {
   await halves(join(root, "wide.jpg"), 2400, 1200);
   mkdirSync(join(root, "logos"));
   writeFileSync(join(root, "logos", "mark.svg"), '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"></svg>');
-  out = mkdtempSync(join(tmpdir(), "export-out-"));
+  out = tempDir("export-out-");
   mkdirSync(join(out, "photos", "cards"), { recursive: true });
   writeFileSync(join(out, "photos", "cards", "renamed-last-run.jpg"), "stale");
   rows = await exportAll(manifest, out);
@@ -94,6 +104,36 @@ describe("exportAll", () => {
     expect(isBlue(await pixel(file, 300, 400))).toBe(true);
     expect(isBlue(await pixel(file, 300, 1200))).toBe(true);
   });
+  it("crops first and mirrors second, so an off-centre crop keeps its red edge on the right", async () => {
+    // A 1600 by 1200 source with red in x < 400; both outputs keep the crop's 900 by 1200 (no upscaling).
+    // Cropping x 0 to 900 first leaves red at the crop's x 0 to 400, and the mirror then moves it to
+    // x 500 to 900: a probe at x 800 is red and x 100 is blue. Mirroring first would send the red to
+    // source x 1200 to 1600, outside the crop, and the whole output would come out blue.
+    await sharp({ create: { width: 1600, height: 1200, channels: 3, background: BLUE } })
+      .composite([{ input: await sharp({ create: { width: 400, height: 1200, channels: 3, background: RED } }).png().toBuffer(), left: 0, top: 0 }])
+      .jpeg({ quality: 100 })
+      .toFile(join(root, "off-centre.jpg"));
+    const flipOut = tempDir("export-flip-");
+    await exportAll(
+      {
+        ...manifest,
+        cardPictures: [{ card: "band", id: "off-centre-picture", source: join(root, "off-centre.jpg"), crop: [0, 0, 900, 1200], flipHorizontal: true }],
+        modalPhotos: [{ card: "band", id: "off-centre-modal", source: join(root, "off-centre.jpg"), crop: [0, 0, 900, 1200], transform: "flipHorizontal", spare: false }],
+        popovers: [],
+        logos: [],
+      },
+      flipOut,
+    );
+    const card = join(flipOut, "photos/cards/off-centre-picture.jpg");
+    expect(imageSize(card)).toEqual([900, 1200]);
+    expect(isRed(await pixel(card, 800, 600))).toBe(true);
+    expect(isBlue(await pixel(card, 100, 600))).toBe(true);
+    expect(isBlue(await pixel(card, 400, 600))).toBe(true);
+    const modal = join(flipOut, "photos/cards/off-centre-modal.jpg");
+    expect(imageSize(modal)).toEqual([900, 1200]);
+    expect(isRed(await pixel(modal, 800, 600))).toBe(true);
+    expect(isBlue(await pixel(modal, 100, 600))).toBe(true);
+  });
   it("strips every metadata block and stays under budget", () => {
     for (const row of rows.filter((row) => row.kind !== "logo")) {
       const file = join(out, row.out);
@@ -110,7 +150,7 @@ describe("exportAll", () => {
     expect(existsSync(join(out, "photos/cards/renamed-last-run.jpg"))).toBe(false);
   });
   it("refuses to remove anything the export did not write", async () => {
-    const guarded = mkdtempSync(join(tmpdir(), "export-guard-"));
+    const guarded = tempDir("export-guard-");
     mkdirSync(join(guarded, "work", "logos", "talos", "animation"), { recursive: true });
     await expect(exportAll(manifest, guarded)).rejects.toThrow(/not the export's/);
     expect(existsSync(join(guarded, "work", "logos", "talos", "animation"))).toBe(true);
@@ -119,7 +159,7 @@ describe("exportAll", () => {
   // sRGB 200,60,60 stored as Display P3 is about 184,71,65; an export that ignored the profile would keep those.
   it("converts a Display P3 source to untagged sRGB", async () => {
     await sharp({ create: { width: 400, height: 300, channels: 3, background: { r: 200, g: 60, b: 60 } } }).withIccProfile("p3").jpeg({ quality: 100 }).toFile(join(root, "p3.jpg"));
-    const p3Out = mkdtempSync(join(tmpdir(), "export-p3-"));
+    const p3Out = tempDir("export-p3-");
     await exportAll({ ...manifest, cardPictures: [], modalPhotos: [], logos: [], popovers: [{ key: "p3", source: join(root, "p3.jpg"), crop: null }] }, p3Out);
     const file = join(p3Out, "photos/pops/p3.jpg");
     const [r, g, b] = await pixel(file, 200, 150);
@@ -127,7 +167,7 @@ describe("exportAll", () => {
     expect(jpegHasMetadata(file)).toBe(false);
   });
   it("writes nothing when any entry fails", async () => {
-    const empty = mkdtempSync(join(tmpdir(), "export-fail-"));
+    const empty = tempDir("export-fail-");
     const broken = { ...manifest, popovers: [{ key: "matcha", source: join(root, "wide.jpg"), crop: [0, 0, 5000, 100] }] };
     await expect(exportAll(broken, empty)).rejects.toThrow(/outside/);
     expect(existsSync(join(empty, "photos"))).toBe(false);
@@ -135,7 +175,7 @@ describe("exportAll", () => {
   it("reads the manifest path given on the command line, with or without --out", () => {
     const script = join(process.cwd(), "scripts", "export-photos.mjs");
     const missing = join(root, "no-such-manifest.json");
-    for (const args of [[missing], [missing, "--out", mkdtempSync(join(tmpdir(), "export-cli-"))], ["--out", mkdtempSync(join(tmpdir(), "export-cli-")), missing]]) {
+    for (const args of [[missing], [missing, "--out", tempDir("export-cli-")], ["--out", tempDir("export-cli-"), missing]]) {
       const run = spawnSync(process.execPath, [script, ...args], { encoding: "utf8" });
       expect(run.status, args.join(" ")).toBe(1);
       expect(run.stderr, args.join(" ")).toContain(missing);
