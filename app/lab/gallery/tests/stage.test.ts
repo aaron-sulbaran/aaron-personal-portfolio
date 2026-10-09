@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { autoAdvanceMs, axisOf, clampPage, gestureOf, initialStage, pagerReducer, releaseOf, rubberBand, stageReducer, wrap, type StageState } from "../stage";
+import { autoAdvanceMs, axisOf, clampPage, gestureOf, initialStage, pagerReducer, releaseOf, rubberBand, stageReducer, stripSnap, wrap, type StageState } from "../stage";
 
 describe("wrap", () => {
   it("wraps both ways and survives an empty stage", () => {
@@ -96,5 +96,21 @@ describe("the round four pager", () => {
     expect(rubberBand(90, 0, 3)).toBe(30);
     expect(rubberBand(-90, 2, 3)).toBe(-30);
     expect(rubberBand(-90, 0, 3)).toBe(-90);
+  });
+});
+
+describe("stripSnap (round six, C)", () => {
+  const offsets = [0, 126, 252, 378];
+  it("settles on the frame nearest where a slow drag let go", () => {
+    expect(stripSnap(offsets, 70, 0, 400)).toBe(126);
+    expect(stripSnap(offsets, 50, 0, 400)).toBe(0);
+  });
+  it("goes one frame on in the direction of a quick flick", () => {
+    expect(stripSnap(offsets, 20, -0.8, 400)).toBe(126);
+    expect(stripSnap(offsets, 240, 0.8, 400)).toBe(126);
+  });
+  it("never goes past the end it can scroll to, and survives an empty strip", () => {
+    expect(stripSnap(offsets, 370, -0.8, 300)).toBe(300);
+    expect(stripSnap([], 40, 0, 0)).toBe(0);
   });
 });

@@ -15,8 +15,9 @@ import { useMaskIn, type Schedule } from "./useMaskIn";
 // What the modal holds: on desktop the round four or five rows (every photo
 // its own row, or a group's photos taking turns in one) or the interleaved
 // rows of rounds one to three; on a phone the round four pager (round five
-// gives it one page a photo, a group's pages sharing its words) or the
-// earlier stage over a scroll. The masks bring them in and
+// gives it one page a photo, a group's pages sharing its words; round six a
+// page a paragraph with the group turning in its stage, or the other phone
+// groupings) or the earlier stage over a scroll. The masks bring them in and
 // the measurements feed the panel's readout.
 
 export type { Frame, Measure };
@@ -52,10 +53,10 @@ export function GalleryContent({ card, shapes, s, phone, theme, reduced, frame, 
 
   const stepsFor = useCallback((lines: (id: string) => number) => stepsOf(card, layout, s, phone ? "phone" : "desktop", lines), [card, layout, s, phone]);
   const shapeKey = aspects.map((a) => a.toFixed(3)).join(",");
-  const modeKey = phone ? (pager ? `pager-${s.extras}` : "stage") : rows ? `rows-${s.extras}` : "interleaved";
+  const modeKey = phone ? (pager ? `pager-${s.extras}-${s.phoneGrouping}` : "stage") : rows ? `rows-${s.extras}` : "interleaved";
   useMaskIn(rootRef, { active: true, reduced, s, runKey: `${runKey}|${modeKey}|${shapeKey}`, stepsFor, onSchedule });
 
-  const settingsKey = `${panelWidth}|${s.photoWidth}|${s.rowGap}|${s.columnGap}|${s.textAlign}|${s.extrasPerRow}|${s.stageMaxHeight}|${s.wideFrom}|${s.wideWidth}|${s.wideMaxHeight}|${s.stackGap}|${s.stageFit}|${s.leadMode}|${s.verticalWidth}|${s.horizontalWidth}|${s.horizontalShape}|${s.textWidth}|${s.photoAlign}|${modeKey}|${shapeKey}`;
+  const settingsKey = `${panelWidth}|${s.photoWidth}|${s.rowGap}|${s.columnGap}|${s.textAlign}|${s.extrasPerRow}|${s.stageMaxHeight}|${s.wideFrom}|${s.wideWidth}|${s.wideMaxHeight}|${s.stackGap}|${s.stageFit}|${s.leadMode}|${s.verticalWidth}|${s.horizontalWidth}|${s.horizontalShape}|${s.textWidth}|${s.photoAlign}|${s.wordlessMaxHeight}|${modeKey}|${shapeKey}`;
   useGalleryMeasure(rootRef, { phone, pager, frame, card, firstStagePhoto: layout.order[0], settingsKey, delayMs: 340 + (phone && !pager ? s.stageEaseMs : 0), onMeasure });
 
   // Keyed by card, shapes and layout: React replaces the content whole
@@ -81,6 +82,10 @@ export function GalleryContent({ card, shapes, s, phone, theme, reduced, frame, 
           key={`${card.id}-${runKey}-${s.autoAdvance}`}
           card={card}
           pages={layout.pages}
+          grouping={s.extras === "rotate" ? s.phoneGrouping : "repeat"}
+          s={s}
+          runKey={runKey}
+          wordlessCapPx={(frame.height * s.wordlessMaxHeight) / 100}
           aspects={aspects}
           theme={theme}
           innerWidth={innerWidth}

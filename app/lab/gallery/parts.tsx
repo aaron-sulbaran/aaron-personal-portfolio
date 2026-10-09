@@ -97,10 +97,11 @@ export function Note({ photo, index, compact }: { photo: LabPhoto; index: number
   );
 }
 
-export function Caption({ id, text, className = "" }: { id: string; text: string; className?: string }) {
+// `small`: round six's strip, whose frames are a third of the inner width.
+export function Caption({ id, text, className = "", small = false }: { id: string; text: string; className?: string; small?: boolean }) {
   return (
     <div data-mask={id} data-mask-kind="text" className={className}>
-      <p data-mask-inner="" data-mask-split="" className="text-sm leading-snug text-muted">
+      <p data-mask-inner="" data-mask-split="" className={`${small ? "text-[0.8125rem]" : "text-sm"} leading-snug text-muted`}>
         {text}
       </p>
     </div>

@@ -62,6 +62,13 @@ export const LAB_COPY = {
   rotatorLabel: (count: number) => `Photos taking turns, ${count}`,
   pausePhotos: "Pause the photos",
   playPhotos: "Play the photos",
+  // Round six on a phone: pages that follow the words, a group turning in a
+  // page's stage, and C's strip.
+  previousPage: "Previous page",
+  nextPage: "Next page",
+  pageNumber: (page: number, count: number) => `Page ${page} of ${count}`,
+  groupStep: (photo: number, count: number) => `Photo ${photo} of ${count}. Show the next photo`,
+  morePhotos: (count: number) => `More photos, ${count}`,
 };
 
 export const CARD_PICTURE = 3 / 4;

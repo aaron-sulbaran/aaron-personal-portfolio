@@ -149,3 +149,18 @@ export function rotatorRuns(g: RotatorGate): boolean {
 // The time left on the current photo once the timer stops: what ran is
 // spent, so a pause resumes where it left off rather than from the top.
 export const remainingAfter = (remainingMs: number, ranMs: number) => Math.max(0, remainingMs - Math.max(0, ranMs));
+
+// Round six, C: where a strip settles after a mouse drag (a finger scrolls
+// it natively and the snap points settle it). The frame nearest where it was
+// let go, or the next one on in the direction of a quick flick (the pointer
+// moving left, a negative velocity, moves the strip forward); never past the
+// end it can scroll to.
+export function stripSnap(offsets: readonly number[], scrollLeft: number, velocity: number, maxScroll: number, speed = 0.3): number {
+  if (!offsets.length) return 0;
+  let target = offsets.reduce((best, o, i) => (Math.abs(o - scrollLeft) < Math.abs(offsets[best] - scrollLeft) ? i : best), 0);
+  if (Math.abs(velocity) >= speed) {
+    const onward = velocity < 0 ? offsets.findIndex((o) => o > scrollLeft + 1) : offsets.findLastIndex((o) => o < scrollLeft - 1);
+    if (onward >= 0) target = onward;
+  }
+  return Math.min(Math.max(0, maxScroll), Math.max(0, offsets[target]));
+}

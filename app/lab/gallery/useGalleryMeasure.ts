@@ -25,7 +25,7 @@ export type Measure = {
   // Where the flown card's slot starts; null when it has no slot on screen
   // (a phone stage that opens on another photo).
   flownTopPx?: number | null;
-  // The pager: photos whose frame leaves their stage (always 0), and the
+  // The pager: photos whose frame leaves their stage or strip frame (always 0), and the
   // first page's words against the room they have.
   pager?: { pages: number; crops: number; textPx: number; wordsPx: number };
   panelPx?: number;
@@ -66,12 +66,17 @@ export function useGalleryMeasure(rootRef: RefObject<HTMLElement | null>, { phon
       if (pager) {
         const pages = [...root.querySelectorAll<HTMLElement>("[data-pager-page]")];
         let crops = 0;
+        const outside = (photo: DOMRect, box: DOMRect) => photo.top < box.top - 0.5 || photo.bottom > box.bottom + 0.5 || photo.left < box.left - 0.5 || photo.right > box.right + 0.5;
         for (const page of pages) {
-          const stage = page.querySelector("[data-pager-stage]")?.getBoundingClientRect();
-          const photo = page.querySelector("[data-photo-frame]")?.getBoundingClientRect();
-          if (!stage || !photo) continue;
-          const outside = photo.top < stage.top - 0.5 || photo.bottom > stage.bottom + 0.5 || photo.left < stage.left - 0.5 || photo.right > stage.right + 0.5;
-          if (outside) crops++;
+          // Every photo the stage draws (a turning group's too), and every
+          // photo in a strip against its own frame.
+          const stage = page.querySelector("[data-pager-stage]");
+          const box = stage?.getBoundingClientRect();
+          if (stage && box) for (const photo of stage.querySelectorAll("[data-photo-frame]")) if (outside(photo.getBoundingClientRect(), box)) crops++;
+          for (const frame of page.querySelectorAll("[data-strip-frame]")) {
+            const photo = frame.querySelector("[data-photo-frame]");
+            if (photo && outside(photo.getBoundingClientRect(), frame.getBoundingClientRect())) crops++;
+          }
         }
         const controls = root.querySelector<HTMLElement>("[data-pager-controls]");
         const bottom = controls ? local(controls.getBoundingClientRect().bottom) : 0;

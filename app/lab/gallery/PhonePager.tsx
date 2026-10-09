@@ -4,9 +4,10 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useLayoutEffect, useReducer, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { LAB_COPY, type LabCard } from "./cards";
 import { PagerPage } from "./PagerPage";
-import { pagerStage, repeatedBlocks, type Page } from "./plan";
+import { pageStage, repeatedBlocks, stageKind, stagePhotos, stripLayout, type Page, type PhoneGrouping } from "./plan";
 import { Header } from "./parts";
-import { autoAdvanceMs, axisOf, initialStage, pagerReducer, releaseOf, rubberBand, type Axis } from "./stage";
+import type { Settings } from "./settings";
+import { autoAdvanceMs, axisOf, initialStage, pagerReducer, releaseOf, rubberBand, stripSnap, type Axis } from "./stage";
 import { partId } from "./timing";
 
 // Round four on a phone: a pager instead of a long scroll. The header stays
@@ -16,11 +17,20 @@ import { partId } from "./timing";
 // header or words that fit closes the modal (the X does too), a sideways
 // swipe never does. A page whose words are long scrolls them in their own
 // area and the photo never leaves view. Left and right arrow keys turn the
-// page; under reduced motion pages change with no travel.
+// page; under reduced motion pages change with no travel. Round six: what a
+// page is follows the phone grouping (A a paragraph with its group turning
+// in the stage, B a photo, C a paragraph with a strip); the arrows and dots
+// only ever change pages, and a sideways drag that starts on a strip with
+// more than fits moves the strip instead.
 
 type Props = {
   card: LabCard;
   pages: Page[];
+  grouping: PhoneGrouping;
+  s: Settings;
+  runKey: string;
+  // B's photo-only pages: their stage's cap.
+  wordlessCapPx: number;
   aspects: number[];
   theme: "light" | "dark";
   innerWidth: number;
@@ -35,16 +45,36 @@ type Props = {
   onDismiss: () => void;
 };
 
-type Drag = { id: number; x: number; y: number; axis: Axis | null; lastX: number; lastY: number; lastT: number; velocity: number; scrolls: boolean };
+type Drag = {
+  id: number;
+  x: number;
+  y: number;
+  axis: Axis | null;
+  lastX: number;
+  lastY: number;
+  lastT: number;
+  velocity: number;
+  scrolls: boolean;
+  // C: the strip the drag started on, when it has more than fits.
+  strip: HTMLElement | null;
+  stripLeft: number;
+};
 
-// Room under the stage for the caption and two lines of words.
+// Room under the stage for the caption and two lines of words; on a
+// wordless page (B) for the caption alone.
 const WORDS_ROOM = 128;
+const CAPTION_ROOM = 72;
+const STAGE_FLOOR = 120;
+const STRIP_GAP = 12;
 
-export function PhonePager({ card, pages, aspects, theme, innerWidth, capPx, slideMs, flickPx, ease, autoSeconds, startAfterMs, reduced, scale, onDismiss }: Props) {
+export function PhonePager({ card, pages, grouping, s, runKey, wordlessCapPx, aspects, theme, innerWidth, capPx, slideMs, flickPx, ease, autoSeconds, startAfterMs, reduced, scale, onDismiss }: Props) {
   const count = pages.length;
+  const byParagraph = grouping === "paragraph" || grouping === "strip";
   const tickMs = autoAdvanceMs(autoSeconds, count, reduced);
   const [state, dispatch] = useReducer(pagerReducer, initialStage(count, tickMs !== null));
   const [dragPx, setDragPx] = useState<number | null>(null);
+  // A finger (or the mouse) down anywhere on the pager holds a turning group.
+  const [pressing, setPressing] = useState(false);
   // The pages' viewport as drawn: its width is the stage's (the panel's
   // border included), its height less the words' room caps the stage.
   const [room, setRoom] = useState<{ width: number; height: number } | null>(null);
@@ -53,7 +83,15 @@ export function PhonePager({ card, pages, aspects, theme, innerWidth, capPx, sli
   const drag = useRef<Drag | null>(null);
   const firstTick = useRef(true);
   const repeats = repeatedBlocks(pages);
-  const stage = pagerStage(pages.map((p) => aspects[p.photo]), room ? Math.min(innerWidth, room.width) : innerWidth, capPx, room ? room.height - WORDS_ROOM : Infinity);
+  const width = room ? Math.min(innerWidth, room.width) : innerWidth;
+  const heightFor = (cap: number, below: number) => Math.max(STAGE_FLOOR, Math.min(cap, room ? room.height - below : Infinity));
+  const layouts = pages.map((page) => {
+    const kind = stageKind(page, grouping);
+    const shown = stagePhotos(page, kind);
+    const height = page.wordless ? heightFor(wordlessCapPx, CAPTION_ROOM) : heightFor(capPx, WORDS_ROOM);
+    const strip = shown.strip.length ? { photos: shown.strip, ...stripLayout(shown.strip.map((p) => aspects[p]), width, STRIP_GAP) } : null;
+    return { kind, stage: { photos: shown.stage, ...pageStage(shown.stage, aspects, width, height) }, strip };
+  });
 
   useLayoutEffect(() => {
     const viewport = viewportRef.current;
@@ -64,6 +102,17 @@ export function PhonePager({ card, pages, aspects, theme, innerWidth, capPx, sli
     observer.observe(viewport);
     return () => observer.disconnect();
   }, []);
+
+  useEffect(() => {
+    if (!pressing) return;
+    const release = () => setPressing(false);
+    window.addEventListener("pointerup", release);
+    window.addEventListener("pointercancel", release);
+    return () => {
+      window.removeEventListener("pointerup", release);
+      window.removeEventListener("pointercancel", release);
+    };
+  }, [pressing]);
 
   useEffect(() => {
     if (tickMs === null || !state.auto) return;
@@ -99,11 +148,13 @@ export function PhonePager({ card, pages, aspects, theme, innerWidth, capPx, sli
 
   const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     if (e.pointerType === "mouse" && e.button !== 0) return;
+    setPressing(true);
     const target = e.target as HTMLElement;
     if (target.closest("button, a")) return;
     const text = target.closest<HTMLElement>("[data-pager-text]");
     const scrolls = !!text && text.scrollHeight > text.clientHeight + 1;
-    drag.current = { id: e.pointerId, x: e.clientX, y: e.clientY, axis: null, lastX: e.clientX, lastY: e.clientY, lastT: e.timeStamp, velocity: 0, scrolls };
+    const strip = target.closest<HTMLElement>("[data-pager-strip][data-strip-scrolls]");
+    drag.current = { id: e.pointerId, x: e.clientX, y: e.clientY, axis: null, lastX: e.clientX, lastY: e.clientY, lastT: e.timeStamp, velocity: 0, scrolls, strip, stripLeft: strip?.scrollLeft ?? 0 };
     dispatch({ type: "touch" });
   };
 
@@ -119,6 +170,11 @@ export function PhonePager({ card, pages, aspects, theme, innerWidth, capPx, sli
         drag.current = null;
         return;
       }
+      if (d.axis === "x" && d.strip && e.pointerType !== "mouse") {
+        // A finger scrolls the strip itself (its touch-action allows it).
+        drag.current = null;
+        return;
+      }
       if (d.axis) rootRef.current?.setPointerCapture(e.pointerId);
     }
     const dt = e.timeStamp - d.lastT;
@@ -126,7 +182,10 @@ export function PhonePager({ card, pages, aspects, theme, innerWidth, capPx, sli
     d.lastX = e.clientX;
     d.lastY = e.clientY;
     d.lastT = e.timeStamp;
-    if (d.axis === "x") setDragPx(rubberBand(dx, state.index, count));
+    if (d.axis === "x" && d.strip) {
+      d.strip.style.scrollSnapType = "none";
+      d.strip.scrollLeft = d.stripLeft - dx;
+    } else if (d.axis === "x") setDragPx(rubberBand(dx, state.index, count));
     else if (d.axis === "y" && !reduced) movePanel(dy, 0);
   };
 
@@ -135,6 +194,13 @@ export function PhonePager({ card, pages, aspects, theme, innerWidth, capPx, sli
     if (!d || e.pointerId !== d.id) return;
     drag.current = null;
     setDragPx(null);
+    if (d.axis === "x" && d.strip) {
+      const strip = d.strip;
+      const offsets = [...strip.querySelectorAll<HTMLElement>("[data-strip-item]")].map((item) => item.offsetLeft);
+      strip.style.scrollSnapType = "";
+      strip.scrollTo({ left: stripSnap(offsets, strip.scrollLeft, d.velocity, strip.scrollWidth - strip.clientWidth), behavior: reduced ? "auto" : "smooth" });
+      return;
+    }
     const dy = (e.clientY - d.y) / scale;
     const release = cancelled ? "stay" : releaseOf(d.axis, (e.clientX - d.x) / scale, dy, d.velocity, { flickPx });
     if (release === "next" || release === "prev") dispatch({ type: release });
@@ -170,20 +236,39 @@ export function PhonePager({ card, pages, aspects, theme, innerWidth, capPx, sli
           data-pager-track=""
         >
           {pages.map((page, i) => (
-            <PagerPage key={page.photo} card={card} page={page} index={i} count={count} box={stage.boxes[i]} current={i === state.index} innerWidth={innerWidth} aspect={aspects[page.photo]} repeated={repeats[i]} />
+            <PagerPage
+              key={page.photo}
+              card={card}
+              page={page}
+              index={i}
+              count={count}
+              kind={layouts[i].kind}
+              stage={layouts[i].stage}
+              strip={layouts[i].strip}
+              stripGap={STRIP_GAP}
+              current={i === state.index}
+              innerWidth={innerWidth}
+              aspects={aspects}
+              repeated={repeats[i]}
+              s={s}
+              reduced={reduced}
+              pressing={pressing}
+              scale={scale}
+              runKey={runKey}
+            />
           ))}
         </div>
       </div>
       {count > 1 && (
         <div data-mask={partId.pager} data-mask-kind="text" data-mask-clip="" data-pager-controls="">
           <div data-mask-inner="" className="flex items-center justify-between gap-2">
-            <Arrow label={LAB_COPY.previous} disabled={state.index === 0} onClick={() => dispatch({ type: "prev" })} next={false} />
+            <Arrow label={byParagraph ? LAB_COPY.previousPage : LAB_COPY.previous} disabled={state.index === 0} onClick={() => dispatch({ type: "prev" })} next={false} />
             <div className="flex items-center justify-center">
               {pages.map((page, i) => (
                 <button
                   key={`dot-${page.photo}`}
                   type="button"
-                  aria-label={LAB_COPY.pageOf(i + 1, count)}
+                  aria-label={byParagraph ? LAB_COPY.pageNumber(i + 1, count) : LAB_COPY.pageOf(i + 1, count)}
                   aria-current={i === state.index ? "true" : undefined}
                   onClick={() => dispatch({ type: "goto", index: i })}
                   className="group inline-flex h-8 w-7 items-center justify-center"
@@ -193,12 +278,12 @@ export function PhonePager({ card, pages, aspects, theme, innerWidth, capPx, sli
                 </button>
               ))}
             </div>
-            <Arrow label={LAB_COPY.next} disabled={state.index >= count - 1} onClick={() => dispatch({ type: "next" })} next />
+            <Arrow label={byParagraph ? LAB_COPY.nextPage : LAB_COPY.next} disabled={state.index >= count - 1} onClick={() => dispatch({ type: "next" })} next />
           </div>
         </div>
       )}
       <p className="sr-only" aria-live={state.auto ? "off" : "polite"}>
-        {LAB_COPY.announce(state.index + 1, count, caption)}
+        {byParagraph ? LAB_COPY.pageNumber(state.index + 1, count) : LAB_COPY.announce(state.index + 1, count, caption)}
       </p>
     </div>
   );
