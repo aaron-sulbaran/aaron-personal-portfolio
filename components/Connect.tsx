@@ -2,6 +2,7 @@ import { Fragment } from "react";
 import { Fill, FillArrow } from "@/components/fx/Fill";
 import { siteContent } from "@/lib/content";
 import { FILL_PICK } from "@/lib/fx/fill";
+import { InlineCopy } from "./inline/InlineCopy";
 import { Block } from "./sections/Block";
 import { Kicker } from "./sections/Kicker";
 
@@ -36,7 +37,7 @@ export function Connect() {
             {heading}
           </Block>
           <Block kind="body" as="p" className="mt-5 max-w-sm text-base leading-relaxed text-muted md:text-lg">
-            {lede}
+            <InlineCopy source={lede} />
           </Block>
         </div>
         <Block kind="links" as="ul" className="md:col-span-7">

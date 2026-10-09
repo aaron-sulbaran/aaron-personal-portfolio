@@ -28,6 +28,11 @@ export const siteContent = {
   },
   // Every inline link the copy may point at (lib/content/register.ts).
   register,
+  // The inline links' own words (components/inline).
+  inline: {
+    // The accessible name of a link whose words are only a symbol (Connect's footnote).
+    symbolLabel: "Footnote",
+  },
   // The fourteen launch cards (lib/content/cards.ts). C3 moves the Coil and the
   // book onto them; until then the legacy strand and rows below drive both.
   cards,
