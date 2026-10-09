@@ -5,7 +5,7 @@ import { siteContent } from "@/lib/content";
 import { CTA_CLASS, CTA_OVER_CLASS, FILL_PICK } from "@/lib/fx/fill";
 import { InlineCopy } from "./inline/InlineCopy";
 import { Block } from "./sections/Block";
-import { Kicker } from "./sections/Kicker";
+import { SectionHeading } from "./sections/SectionTitle";
 
 // Measured, not guessed: an address fits one line at 2xl from 1024 and at 3xl
 // from 1280; below 1024 even 2xl's "name@" outgrows the cell, so it is xl and
@@ -28,8 +28,9 @@ function breakAfterAt(value: string) {
   ));
 }
 
-// Stays a Server Component. The kicker, heading and body arrive by the
-// sections grammar, the heading and body line by line; "Book a chat" is the
+// Stays a Server Component. The heading and body arrive by the sections
+// grammar, line by line; the section's label names the landmark (aria-label)
+// and the nav, and is not drawn, since the heading says it; "Book a chat" is the
 // one big link and lifts out of its clip as a single-row block; the link list
 // is one block whose rows draw their rules and lift out of a clip in turn.
 // The rule under each link is this section's, so the row's Fill rises from
@@ -40,10 +41,7 @@ export function Connect() {
     <section id="connect" aria-label={label} className="relative w-full scroll-mt-24 border-t border-border px-6 py-24 md:px-10 md:py-40">
       <div className="mx-auto grid max-w-6xl grid-cols-1 gap-12 md:grid-cols-12 md:gap-16">
         <div className="md:col-span-5">
-          <Kicker label={label} />
-          <Block kind="heading" as="h2" className="mt-6 font-display text-section">
-            {heading}
-          </Block>
+          <SectionHeading>{heading}</SectionHeading>
           <Block kind="body" as="p" className="mt-5 max-w-md text-base leading-relaxed text-muted md:text-lg">
             <InlineCopy source={body} />
           </Block>

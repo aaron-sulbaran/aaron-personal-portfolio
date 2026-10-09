@@ -27,7 +27,7 @@ describe("the page description", () => {
 });
 
 describe("Who I am", () => {
-  it("keeps the label for the kicker and the nav, the lowercase heading and the small print as typed", () => {
+  it("keeps the label for the landmark and the nav, the lowercase heading and the small print as typed", () => {
     expect(whoIAm.label).toBe("Who I am");
     expect(whoIAm.heading).toBe("who I am");
     expect(whoIAm.smallPrint).toBe("Fourth-year Electrical and Computer Engineering student at UT Austin (and a business minor from McCombs)");
