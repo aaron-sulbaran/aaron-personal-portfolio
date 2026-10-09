@@ -11,7 +11,7 @@ const manifest = {
   ],
   popovers: [{ key: "matcha", source: "/assets/matcha.jpg", crop: [1000, 2100, 3600, 5567] }],
   logos: [
-    { card: "talos", files: ["02-talos/mark/mark.svg", "02-talos/animation/"] },
+    { card: "talos", files: ["pack/mark/mark.svg", "pack/animation/"] },
     { card: "this-site", files: ["app/icon.svg (in the repo)"] },
   ],
 };
@@ -22,7 +22,7 @@ describe("exportJobs", () => {
       ["card", "photos/cards/band-picture.jpg", "/assets/band.jpg"],
       ["modal", "photos/cards/jobs-1-mod-selfie.jpg", "/assets/mod.jpg"],
       ["pop", "photos/pops/matcha.jpg", "/assets/matcha.jpg"],
-      ["logo", "work/logos/talos/mark.svg", "/assets/02-talos/mark/mark.svg"],
+      ["logo", "work/logos/talos/mark.svg", "/assets/pack/mark/mark.svg"],
     ]);
   });
   it("carries the crop and the flip, for a card picture, a modal transform and the two overrides", () => {
