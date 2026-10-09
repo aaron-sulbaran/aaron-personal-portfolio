@@ -516,13 +516,13 @@ body {
 /* ---- end mark-strike ---- */
 /* ---- inline links (components/inline): definitions solid, tips and pops
    dotted, both in the accent; external links solid in the muted ink. A link
-   never wraps and is inline-block (a button already is), so SplitText never
-   slices it in two: it leaves an empty clone of a plain inline anchor, a
-   stray focusable link. Its ring fits the masked line vertically (every link
-   is 1.15 lines tall), and a mask that holds a link clips only vertically,
-   so a link at a line's start or end keeps its whole ring. The label is one
-   fixed element above modals (58) and below the loader (60); under a mouse it
-   trails the pointer slightly, after landing in place (data-trail). ---- */
+   never wraps and is inline-block like a button, because SplitText clones a
+   plain inline anchor into an empty, focusable copy. Its ring fits the masked
+   line vertically (every link is 1.15 lines tall), and a mask that holds a
+   link clips only vertically, so a link at a line's start or end keeps its
+   whole ring. The label is one fixed element above modals (58) and below the
+   loader (60); under a mouse it trails the pointer slightly, after landing in
+   place (data-trail). ---- */
 :root {
   --inline-underline: var(--color-accent);
   --inline-underline-external: var(--color-muted);
