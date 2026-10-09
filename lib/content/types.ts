@@ -42,9 +42,11 @@ export type CardGroup = "work" | "people";
 // width and height are the file at src.
 export interface ImageRef { src: string; width: number; height: number; alt: string }
 export interface PhotoRef extends ImageRef { crop: PhotoCrop | null }
-// The Coil card's picture (3:4). The modal shows it first, as the flown card.
-export interface CardPicture extends PhotoRef { caption: string | null }
-// One of up to three photos after the card picture; keeps its own shape.
+// The Coil card's picture (3:4). The modal shows it first, as the flown card, with the caption in
+// modal.picture.
+export type CardPicture = PhotoRef;
+// One of up to three photos after the card picture (four on the jobs card, whose picture is the
+// circles); keeps its own shape.
 interface ModalPhotoBase extends PhotoRef {
   caption: string;
   // The phone stage's caption, so one long caption does not set the stage's height for every
@@ -53,10 +55,11 @@ interface ModalPhotoBase extends PhotoRef {
   captionShort?: string;
 }
 // What a photo sits beside is set per photo from docs/content/cards.md ("Which paragraph each
-// photo sits beside"), never by position: photo i is not block i, two photos may share a block
-// (they stack under it), and the jobs photo pairs with timeline entry 3 (Apple), not a paragraph.
-// block indexes modal.blocks; timeline indexes cards.jobs.timeline.
-export type ModalPhoto = ModalPhotoBase & ({ block: number } | { timeline: number });
+// photo sits beside"), never by position: photo i is not block i, and two photos may share a block
+// (they stack under it). The jobs card's photos pair with timeline entries instead of paragraphs
+// (today 1, 1, 3, 4: the two MOD photos, Apple, Aritzia), so its timeline needs room for a photo
+// under an entry. block indexes modal.blocks; timeline indexes cards.jobs.timeline; never both.
+export type ModalPhoto = ModalPhotoBase & ({ block: number; timeline?: never } | { timeline: number; block?: never });
 export interface LogoRef { src: string; srcDark: string | null; width: number; height: number }
 
 // What the Coil shows. A null ref is an asset C4 has not landed.
@@ -80,6 +83,9 @@ export interface CardModal {
   // A shorter meta beside the modal title, so it fits a phone; absent means the modal shows
   // book.meta (docs/content/cards.md, "Phone fit notes"). The book row keeps the full roles.
   meta?: string;
+  // The card picture as the modal shows it, beside the title (its file is visual.photo); present
+  // where Aaron captioned it (docs/content/cards.md, "Modal photo captions").
+  picture?: { caption: string };
   links: readonly CardLink[];
   photos: readonly ModalPhoto[];
   blocks: readonly string[];

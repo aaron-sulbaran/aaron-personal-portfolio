@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { siteContent, type CardKey } from "@/lib/content";
+import { siteContent, type CardKey, type ModalPhoto } from "@/lib/content";
 import { parseInlineLinks, plainText } from "@/lib/content/links";
 import { registerHas } from "@/lib/content/register";
 import { jpegSize } from "@/lib/testing/jpegSize";
@@ -46,21 +46,39 @@ describe("the fourteen cards", () => {
     expect(crop.x + crop.w).toBeLessThanOrEqual(photo.width);
     expect(crop.y + crop.h).toBeLessThanOrEqual(photo.height);
     expect(photo.alt).toBe("Me speaking into a microphone at a Hispanic Scholarship Fund event");
-    expect(photo.caption).toBeNull();
   });
 
-  it("keep every card picture 3:4 and at most three modal photos after it, each tied to a block or, on the jobs card, a timeline entry", () => {
+  it("keep every card picture 3:4 and at most three modal photos after it (four on the jobs timeline, whose picture is the circles), each tied to a block or, on the jobs card, a timeline entry", () => {
     for (const key of keys) {
       const { visual, modal } = cards[key];
       const picture = visual.kind === "photo" ? visual.photo : null;
       if (picture?.crop) expect(picture.crop.w / picture.crop.h, key).toBeCloseTo(3 / 4, 2);
-      expect(modal.photos.length, key).toBeLessThanOrEqual(3);
+      expect(modal.photos.length, key).toBeLessThanOrEqual(modal.kind === "timeline" ? 4 : 3);
       for (const photo of modal.photos) {
         if ("block" in photo) expect(photo.block, key).toBeLessThan(modal.blocks.length);
         else expect(key === "jobs" && photo.timeline < cards.jobs.timeline.length, key).toBe(true);
         expect(photo.src, key).not.toBe(picture?.src);
       }
     }
+  });
+
+  it("tie a modal photo to a paragraph or a timeline entry, never both", () => {
+    const base = { src: "/photos/hsf-speaking.jpeg", width: 1084, height: 724, alt: "", crop: null, caption: "" };
+    // @ts-expect-error a photo sits beside one thing
+    const both: ModalPhoto = { ...base, block: 0, timeline: 1 };
+    expect("block" in both && "timeline" in both).toBe(true);
+  });
+
+  it("caption each card picture in the modal, in my words", () => {
+    expect(Object.fromEntries(keys.filter((key) => cards[key].modal.picture).map((key) => [key, cards[key].modal.picture?.caption]))).toEqual({
+      mentorship: "Me speaking at my first HSF STEM Summit.",
+      band: "Me as drum major in my last year of high school.",
+      hackathons: "Me and my team winning UFCU Develop U, September 2026.",
+      misuki: "Me and Misuki at a Longhorn Card Club photo shoot.",
+      travel: "Me at Yosemite on a trip to San Francisco with my friends.",
+      "building-in-public": "Me at Vercel Ship in New York City, one door LinkedIn opened this summer.",
+    });
+    for (const key of keys) if (cards[key].modal.picture) expect(cards[key].visual.kind, key).toBe("photo");
   });
 
   it("mirror only the Building in public picture", () => {
@@ -88,6 +106,7 @@ describe("the fourteen cards", () => {
     expect(cards.hackathons.modal.blocks.at(-1)).toBe("HackTX & others, coming soon.");
     expect(cards.hackathons.modal.blocks.slice(0, 3).map((block) => block.slice(0, block.indexOf(".**") + 3))).toEqual(["**UFCU Develop U, fall 2026.**", "**Hook 'Em Hacks, spring 2026.**", "**Vercel one-day hackathon, New York.**"]);
     expect(cards.jobs.timeline.at(-1)?.tip.endsWith("basically unisex products...")).toBe(true);
+    expect(cards.jobs.timeline.at(-1)?.tip).toBe("My most random job. For the interview they asked me to dress in my best clothing, which I thought was funny. If you work here, all the women in your life will want a discount. With that said, the effortless pants and sweatfleece line are basically unisex products...");
     expect(Object.fromEntries(keys.map((key) => [key, cards[key].modal.blocks.length]))).toEqual({
       mentorship: 2, "min-max": 1, band: 3, talos: 2, travel: 2, "capital-one": 5, hackathons: 4,
       anthropic: 2, misuki: 2, ieee: 5, jobs: 3, "this-site": 1, fsdatalink: 2, "building-in-public": 3,

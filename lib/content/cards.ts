@@ -6,9 +6,9 @@ export const cards: Cards = {
   mentorship: {
     // The crop is a box in the 1084 by 724 repo copy (layout only): docs/content/photos.md's
     // 860,0,2984,2832 on the 4240 by 2832 original, scaled. C4 exports the original.
-    group: "people", visual: { kind: "photo", flipX: false, photo: { src: "/photos/hsf-speaking.jpeg", width: 1084, height: 724, crop: { x: 220, y: 0, w: 543, h: 724 }, alt: "Me speaking into a microphone at a Hispanic Scholarship Fund event", caption: null } },
+    group: "people", visual: { kind: "photo", flipX: false, photo: { src: "/photos/hsf-speaking.jpeg", width: 1084, height: 724, crop: { x: 220, y: 0, w: 543, h: 724 }, alt: "Me speaking into a microphone at a Hispanic Scholarship Fund event" } },
     book: { title: "Mentorship", meta: "Coach, tutor and speaker, ongoing" },
-    modal: { kind: "logo", title: "Mentorship", links: [{ label: "Grab some time with me", href: "https://cal.com/aaron-sulbaran" }], photos: [], blocks: [
+    modal: { kind: "logo", title: "Mentorship", picture: { caption: "Me speaking at my first HSF STEM Summit." }, links: [{ label: "Grab some time with me", href: "https://cal.com/aaron-sulbaran" }], photos: [], blocks: [
       "I wouldn't be where I am now without the mentors who have shaped me. People made time for me, so I make time back. I've coached first-year scholars, worked as a student mentor on campus, and been an official mentor to Hispanic Scholarship Fund (HSF) scholars at the annual STEM Summit.",
       "I take coffee chats in both directions. If I'm asking people for their time, I should be willing to give mine, and I lose track of time in them.",
     ] },
@@ -25,7 +25,7 @@ export const cards: Cards = {
   band: {
     group: "people", visual: { kind: "photo", flipX: false, photo: null },
     book: { title: "Jordan High School band", meta: "Section leader to drum major, 2021 to 2023" },
-    modal: { kind: "logo", title: "The band", meta: "Drum major, 2021 to 2023", links: [{ label: "Check out my final performance ever", href: "https://www.youtube.com/watch?v=wra00zjxQcU&list=PLeolsE0k0lv8&index=7" }], photos: [], blocks: [
+    modal: { kind: "logo", title: "The band", meta: "Drum major, 2021 to 2023", picture: { caption: "Me as drum major in my last year of high school." }, links: [{ label: "Check out my final performance ever", href: "https://www.youtube.com/watch?v=wra00zjxQcU&list=PLeolsE0k0lv8&index=7" }], photos: [], blocks: [
       "I joined Jordan High School's band the year the school opened, as a section leader. I became woodwind captain junior year, then drum major in my last year. I played [bass clarinet](pop:contrabass-clarinet).",
       "The band kept growing as the school grew, and we started winning. We won a regional championship just before I left. After I graduated, the band won an invitational I *know* it had been chasing for years. I still count that win as partly mine.",
       "Leading a few hundred students towards the same goal through a score and a marching dot book is where I realized I first fell in love with leadership.",
@@ -42,7 +42,7 @@ export const cards: Cards = {
   travel: {
     group: "people", visual: { kind: "photo", flipX: false, photo: null },
     book: { title: "Travel", meta: "Yosemite, Mt. Fuji and more" },
-    modal: { kind: "photo", title: "Travel", links: [], photos: [], blocks: [
+    modal: { kind: "photo", title: "Travel", picture: { caption: "Me at Yosemite on a trip to San Francisco with my friends." }, links: [], photos: [], blocks: [
       "I love to travel, and I try to be intentional about it. Japan and Dubai are two of my favorite trips ever. I have lots of exciting travel planned soon and can't wait to go! If you have destination recs, feel free to let me know!",
       "A huge inspiration and fuel for my love for travel is [my sister](pop:sister-kyoto), Barbara. I call her hermana but the world knows her as \"Travel with Barbs\" and she owns her own travel agency called \"[Sulara](https://sularatravel.com/).\" She's my inspiration to, above all, follow your dreams, go [check her out](https://www.instagram.com/travelwithbarbss/)!",
     ] },
@@ -62,7 +62,7 @@ export const cards: Cards = {
     group: "work", visual: { kind: "photo", flipX: false, photo: null },
     book: { title: "Hackathons", meta: "Builder, 2026 to now" },
     // UFCU first, so the card picture (the UFCU win, beside the title) sits next to its own paragraph (docs/content/cards.md).
-    modal: { kind: "logo", title: "Hackathons", links: [], photos: [], blocks: [
+    modal: { kind: "logo", title: "Hackathons", picture: { caption: "Me and my team winning UFCU Develop U, September 2026." }, links: [], photos: [], blocks: [
       "**UFCU Develop U, fall 2026.** Won with UFCU Front Desk, a digital front desk assistant that makes joining a credit union simple and still sounds like them.",
       "**Hook 'Em Hacks, spring 2026.** Won the finance track with the first build and MVP/Proof of Concept of min/Max.",
       "**Vercel one-day hackathon, New York.** Where I started Talos.",
@@ -80,7 +80,7 @@ export const cards: Cards = {
   misuki: {
     group: "people", visual: { kind: "photo", flipX: false, photo: null },
     book: { title: "Misuki", meta: "2001 Mazda Miata, five-speed" },
-    modal: { kind: "photo", title: "Misuki", links: [], photos: [], blocks: [
+    modal: { kind: "photo", title: "Misuki", picture: { caption: "Me and Misuki at a Longhorn Card Club photo shoot." }, links: [], photos: [], blocks: [
       "I worked all through high school to set myself up for college. That included an ongoing hunt for a car. I ended up buying this car early Senior year in cash, because I didn't want a car loan. The day my dad went to buy her for me, I was conducting a game-day halftime show and got a bank alert on my watch for a huge withdrawal from my bank account. I was nervous the whole performance, and then found out later he was trying to surprise me.",
       "Her engine blew in college, a family friend in Houston rebuilt it, and she's still my daily driver. I named her Misuki, from the M in Mazda and a nod to [Fast and Furious](tip:misuki-suk). I took her around Circuit of the Americas once, and it was one of the most fun days of my life.",
     ] },
@@ -114,7 +114,7 @@ export const cards: Cards = {
       { employer: "Apple", role: "Specialist, then technical specialist", when: "2024 to 2025", logo: null,
         tip: "Get AppleCare and some sort of cloud storage. Simple as that, it always broke my heart to see people lose their photos and have to shell out $1k for a new phone. And yes, Apple can't recover anything the privacy is real." },
       { employer: "Aritzia", role: null, when: "2025 to 2026", logo: null,
-        tip: "My most random job. If you work here, all the women in your life will want a discount. With that said, the effortless pants and sweatfleece line are basically unisex products..." },
+        tip: "My most random job. For the interview they asked me to dress in my best clothing, which I thought was funny. If you work here, all the women in your life will want a discount. With that said, the effortless pants and sweatfleece line are basically unisex products..." },
     ],
   },
   "this-site": {
@@ -135,7 +135,7 @@ export const cards: Cards = {
   "building-in-public": {
     group: "people", visual: { kind: "photo", flipX: true, photo: null },
     book: { title: "Building in public", meta: "LinkedIn and X, ongoing" },
-    modal: { kind: "logo", title: "Building in public", links: [{ label: "LinkedIn", href: "https://www.linkedin.com/in/aaron-sulbaran/" }, { label: "X (@imaaronsulbaran)", href: "https://x.com/imaaronsulbaran" }], photos: [], blocks: [
+    modal: { kind: "logo", title: "Building in public", picture: { caption: "Me at Vercel Ship in New York City, one door LinkedIn opened this summer." }, links: [{ label: "LinkedIn", href: "https://www.linkedin.com/in/aaron-sulbaran/" }, { label: "X (@imaaronsulbaran)", href: "https://x.com/imaaronsulbaran" }], photos: [], blocks: [
       "I'm trying to build in public (tbh, I fell off for a couple of months and I'm easing back in). So far: 2,500+ people follow me on LinkedIn, and my posts have had 450,000 impressions in three months. Being active on LinkedIn opened doors in Toronto and NYC this summer and got me a few brand deals. After talking to enough founders and investors, I know I have to get on X next.",
       "While I love building, I also love creating and sharing. So why not share what works and what doesn't, with no polish on the parts that didn't. I'd rather be useful than look flawless.",
       "For every 100 people who think it's cringe, I get 1 person who DMs me saying \"your post inspired me to...\" and that makes it worth it to me.",
