@@ -80,7 +80,7 @@ export function MarkTrigger({ ariaLabel, className, onActivate }: Props) {
       riseRef.current?.setAttribute("y", String(FILL_BOTTOM - span * fill));
       riseRef.current?.setAttribute("height", String(Math.max(0, span * (fill - spent))));
       buttonRef.current?.setAttribute("data-hold-progress", fill.toFixed(3));
-      setMarkHold({ fill, spent, closed: state.phase === "discharging", hidden: openRef.current });
+      setMarkHold({ fill, spent, hidden: openRef.current });
       frame = state.phase === "idle" ? 0 : requestAnimationFrame(tick);
     };
     kick.current = () => {
