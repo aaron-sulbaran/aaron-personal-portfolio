@@ -118,3 +118,18 @@ test("inline links: focus returns to the product link even when its line was reb
   await expect(dialog).toBeHidden();
   await expect(page.locator('[data-inline="def"][data-inline-key="product"]').first()).toBeFocused();
 });
+test("inline links: focus comes home when the line is rebuilt after the definition closes", async ({ page }) => {
+  const link = await productLink(page);
+  await link.click();
+  const dialog = page.getByRole("dialog", { name: register.def.product.title });
+  await expect(dialog).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  await expect(link).toBeFocused();
+  await page.waitForTimeout(500);
+  await page.evaluate(() => {
+    const old = document.querySelector('[data-inline="def"][data-inline-key="product"]')!;
+    old.replaceWith(old.cloneNode(true)); // a font landing late re-splits the line like this
+  });
+  await expect(page.locator('[data-inline="def"][data-inline-key="product"]').first()).toBeFocused();
+});
