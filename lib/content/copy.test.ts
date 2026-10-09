@@ -109,9 +109,9 @@ describe("the numbers strip", () => {
 });
 
 describe("Connect", () => {
-  it("asks wanna talk? in lowercase and reads the body as a visitor sees it", () => {
+  it("asks wanna chat? in lowercase and reads the body as a visitor sees it", () => {
     expect(connect.label).toBe("Connect");
-    expect(connect.heading).toBe("wanna talk?");
+    expect(connect.heading).toBe("wanna chat?");
     expect(visibleText(connect.body)).toBe(
       "I check everything (or Talos does) so take your pick. If you want to talk screen to screen, grab a time on my calendar. If you're in my city, let's grab a coffee (or matcha). I take coffee chats with anyone, no matter what you're building*.",
     );
@@ -122,8 +122,8 @@ describe("Connect", () => {
     expect(externals(connect.body)).toEqual(["https://cal.com/aaron-sulbaran"]);
   });
 
-  it("has one big link, Book a chat, to the same calendar", () => {
-    expect(connect.primary).toEqual({ label: "Book a chat", href: "https://cal.com/aaron-sulbaran" });
+  it("has one big link, Book some time, to the same calendar", () => {
+    expect(connect.primary).toEqual({ label: "Book some time", href: "https://cal.com/aaron-sulbaran" });
   });
 
   it("lists the five links in order with the handle each shows, and drops the school address", () => {

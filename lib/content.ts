@@ -235,7 +235,7 @@ export const siteContent = {
   // slot renders nothing. title is the strip's big heading and groupLabel the
   // line under it, which also names the GitHub group; title is the wording
   // Aaron suggested on 2026-10-09 ("Proof of Work or something else"), lowercase
-  // to match "who I am" and "wanna talk?", and not yet his final pick.
+  // to match "who I am" and "wanna chat?", and not yet his final pick.
   metrics: {
     title: "proof of work",
     groupLabel: "My GitHub contributions",
@@ -283,13 +283,13 @@ export const siteContent = {
   },
   // Connect (docs/content/connect-footer-band.md, approved 2026-10-08): the
   // body carries the calendar link, the matcha pop and the killer-drones
-  // footnote; "Book a chat" is the one big link; handle is what a link shows
+  // footnote; "Book some time" is the one big link; handle is what a link shows
   // beside its name.
   connect: {
     label: "Connect",
-    heading: "wanna talk?",
+    heading: "wanna chat?",
     body: "I check everything (or Talos does) so take your pick. If you want to talk screen to screen, [grab a time on my calendar](https://cal.com/aaron-sulbaran). If you're in my city, let's grab a coffee ([or matcha](pop:matcha)). I take coffee chats with anyone, no matter what you're building[*](tip:killer-drones).",
-    primary: { label: "Book a chat", href: "https://cal.com/aaron-sulbaran" },
+    primary: { label: "Book some time", href: "https://cal.com/aaron-sulbaran" },
     links: [
       { key: "linkedin", label: "LinkedIn", handle: "in/aaron-sulbaran", href: "https://www.linkedin.com/in/aaron-sulbaran/" },
       { key: "github", label: "GitHub", handle: "aaron-sulbaran", href: "https://github.com/aaron-sulbaran" },
