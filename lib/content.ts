@@ -232,8 +232,12 @@ export const siteContent = {
   // The numbers strip under Who I am (components/metrics): the GitHub chart
   // and its figures, then my LinkedIn line (docs/content/right-now-and-metrics.md,
   // approved 2026-10-08). The fun slot stays null until I supply one; a null
-  // slot renders nothing.
+  // slot renders nothing. title is the strip's big heading and groupLabel the
+  // line under it, which also names the GitHub group; title is the wording
+  // Aaron suggested on 2026-10-09 ("Proof of Work or something else"), lowercase
+  // to match "who I am" and "wanna talk?", and not yet his final pick.
   metrics: {
+    title: "proof of work",
     groupLabel: "My GitHub contributions",
     statsLabel: "Contribution figures",
     streakLabel: "Current streak of contributions",

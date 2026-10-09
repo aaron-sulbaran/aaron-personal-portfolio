@@ -20,30 +20,24 @@ describe("the kicker", () => {
     expect(html).not.toContain("data-sections-state");
     expect(html).not.toContain("data-wave");
   });
-
-  it("puts a label id on its words, for a group named by them", () => {
-    expect(renderToStaticMarkup(createElement(Kicker, { label: "My GitHub contributions", labelId: "metrics-label" }))).toContain(
-      '<span data-sections-label="true" id="metrics-label">My GitHub contributions</span>',
-    );
-  });
 });
 
 describe("the section title and the line under it", () => {
   it("is the big display heading, an h2 of the heading kind, lines-split", () => {
-    expect(renderToStaticMarkup(createElement(SectionHeading, { children: "proof of work" }))).toBe(
+    expect(renderToStaticMarkup(createElement(SectionHeading, {} as ComponentProps<typeof SectionHeading>, "proof of work"))).toBe(
       '<h2 class="font-display text-section" data-sections-block="heading" data-sections-split="lines">proof of work</h2>',
     );
   });
 
   it("is the muted small line, one block-split body paragraph around its inner span", () => {
-    expect(renderToStaticMarkup(createElement(SectionSubline, { children: "My GitHub contributions" }))).toBe(
+    expect(renderToStaticMarkup(createElement(SectionSubline, {} as ComponentProps<typeof SectionSubline>, "My GitHub contributions"))).toBe(
       '<p class="max-w-xs text-sm leading-relaxed text-muted" data-sections-block="body" data-sections-split="block"><span data-sections-inner="true" class="block">My GitHub contributions</span></p>',
     );
   });
 
   it("puts an id on its block, for a group named by it", () => {
-    expect(renderToStaticMarkup(createElement(SectionHeading, { id: "metrics-title", children: "proof of work" }))).toContain('id="metrics-title"');
-    expect(renderToStaticMarkup(createElement(SectionSubline, { id: "metrics-label", children: "My GitHub contributions" }))).toContain('id="metrics-label"');
+    expect(renderToStaticMarkup(createElement(SectionHeading, { id: "metrics-title" } as ComponentProps<typeof SectionHeading>, "proof of work"))).toContain('id="metrics-title"');
+    expect(renderToStaticMarkup(createElement(SectionSubline, { id: "metrics-label" } as ComponentProps<typeof SectionSubline>, "My GitHub contributions"))).toContain('id="metrics-label"');
   });
 });
 
