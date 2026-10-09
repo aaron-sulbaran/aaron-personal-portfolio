@@ -53,7 +53,7 @@ describe("Who I am", () => {
     );
   });
 
-  it("links the definition, five pops for the hobbies and the roots, and nothing else", () => {
+  it("links the definition and six pops, for leadership, the hobbies and the roots, and nothing else", () => {
     expect(whoIAm.blocks.flatMap((block) => [block.body, ...(block.sub ? [block.sub.body] : [])]).flatMap(referenced)).toEqual([
       "def:product",
       "pop:leadership-award",
@@ -68,6 +68,34 @@ describe("Who I am", () => {
   it("leaves 3D printing as plain words until its photo exists", () => {
     expect(whoIAm.blocks[2].sub?.body).toContain("recently got into 3D printing because");
     expect(registerHas("pop", "3d-print")).toBe(false);
+  });
+});
+
+describe("where the links sit, pinned as raw markup", () => {
+  it("keeps every Who I am link on its approved words", () => {
+    expect(whoIAm.blocks.map((block) => block.body)).toEqual([
+      "I'm a [product](def:product)-focused engineer. I study Electrical and Computer Engineering (ECE) at UT Austin, but I spend most of my time building and talking to the people I'm building for. I like products that bend for the person using them, not the other way around.",
+      "I tend to gravitate towards [leadership positions](pop:leadership-award) because I love getting a group of people with very different skillsets working towards one goal. I learned it as a drum major in high school, continued doing it in my orgs on campus, and want to do the same in my full-time work.",
+      "I love people (family & friends) outside of work too. I strive to surround myself with people who lift each other up and help me grow every day. Most of my favorite experiences involve spending time with others!",
+      "I was born in Maracaibo, [Venezuela](pop:venezuela-flag), and moved to the U.S. when I was around 4. I grew up in Texas, mostly in Katy, watching my dad figure out a business as he went. I worked in it too, which is where I learned to wear a lot of hats.",
+    ]);
+    expect(whoIAm.blocks[2].sub?.body).toBe(
+      "I love to travel, tinker on personal projects, and getting active. I love credit card-maxxing since it allows me to fulfill my wanderlust, recently got into 3D printing because it lets me work on the engineering I don't get to do in class, and love [extreme sports](pop:sandboarding) like [downhill skating](pop:downhill-skating), [skydiving](pop:skydiving), and [rock climbing](pop:rock-climbing).",
+    );
+  });
+
+  it("keeps Connect's calendar link, matcha pop and footnote on their approved words", () => {
+    expect(connect.body).toBe(
+      "I check everything (or Talos does) so take your pick. If you want to talk screen to screen, [grab a time on my calendar](https://cal.com/aaron-sulbaran). If you're in my city, let's grab a coffee ([or matcha](pop:matcha)). I take coffee chats with anyone, no matter what you're building[*](tip:killer-drones).",
+    );
+  });
+
+  it("keeps the mark card's two tips on their approved words, and Voltaage plain", () => {
+    expect(mark.lines).toEqual([
+      "It represents a few things: Catatumbo lightning, over Lake Maracaibo, where I was born. Most people have never heard of it, so I hope you learned something new.",
+      "The A is me. The bolt (which forms the S) is also where my gamer tag comes from, Voltaage: [voltage](tip:voltage), + two [A's](tip:two-as).",
+      "I always thought Voltaage would be an awesome streamer name. I took a different career path.",
+    ]);
   });
 });
 
