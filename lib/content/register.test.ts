@@ -26,10 +26,10 @@ describe("the inline register", () => {
     expect(register.def.product.body.startsWith("A product (to me) is a tool that's genuinely useful")).toBe(true);
   });
 
-  it("describes every pop without the third person, with the approved captions and link; files come with C4", () => {
-    for (const entry of Object.values(register.pop)) {
+  it("describes every pop without the third person, with its exported file, the approved captions and link", () => {
+    for (const [key, entry] of Object.entries(register.pop)) {
       expect(entry.alt).not.toMatch(/\bAaron\b/);
-      expect(entry.file).toBeNull();
+      expect(entry.file?.src, key).toBe(`/photos/pops/${key}.jpg`);
     }
     const captions = Object.fromEntries(Object.entries(register.pop).filter(([, entry]) => entry.caption).map(([key, entry]) => [key, entry.caption]));
     expect(captions).toEqual({
@@ -56,5 +56,9 @@ describe("the inline register", () => {
     expect(resolveTip(note, false)).toBe(musicNoteWithoutAdapting);
     expect(resolveTip(note, true)).toBe(note.text);
     expect(resolveTip(register.tip.aango, false)).toBe("yes, the chameleon from that one kid's movie");
+  });
+  it("labels every pop link for the touch label", () => {
+    for (const [key, entry] of Object.entries(register.pop)) if (entry.href) expect(entry.hrefLabel, key).toBeTruthy();
+    expect(register.pop.matcha.hrefLabel).toBe("Open in Google Maps");
   });
 });
