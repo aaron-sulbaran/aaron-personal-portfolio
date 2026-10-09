@@ -26,7 +26,7 @@ export const revalidate = 86400;
 // through it and nowhere else, so nothing ever moves behind body text. Its
 // playback pill self-Portals to document.body. Every overlay (SiteNav z-30,
 // menu scrim z-[35], the Menu pill and panel z-40, the playback pill z-[45],
-// modals z-50, the flight z-[55], the loader z-60, its root absolute at the
+// modals z-50, the flight z-[55], the inline label z-[58], the loader z-60, its root absolute at the
 // document top, its pane fixed) sits at body level.
 export default function Home() {
   // Holding mode (the default; NEXT_PUBLIC_SITE_MODE=full opts out, see
