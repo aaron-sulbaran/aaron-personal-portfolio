@@ -1,14 +1,15 @@
 import type { HoldingSocial } from "@/lib/content";
 
 // Every string the footer stage shows, in one place (lab only; the approved
-// copy is docs/content/connect-footer-band.md, "Connect" and "Footer").
+// copy is docs/content/connect-footer-band.md, "Connect" and "Footer", with
+// Aaron's round 2 edits to the heading and the call to action).
 export const FOOTER_COPY = {
   wordmark: "build.stuff",
   tagline: (month: string) => `Last updated ${month}`,
   copyright: "© 2026 Aaron Sulbaran",
-  bookLabel: "Book a chat",
+  bookLabel: "Book some time",
   bookHref: "https://cal.com/aaron-sulbaran",
-  heading: "wanna talk?",
+  heading: "wanna chat?",
   links: [
     { key: "linkedin", label: "LinkedIn", handle: "in/aaron-sulbaran", href: "https://www.linkedin.com/in/aaron-sulbaran/", icon: "linkedin" },
     { key: "github", label: "GitHub", handle: "aaron-sulbaran", href: "https://github.com/aaron-sulbaran", icon: "github" },
