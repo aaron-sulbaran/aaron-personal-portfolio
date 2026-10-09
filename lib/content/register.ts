@@ -2,7 +2,7 @@ import type { InlineKind } from "./links";
 import type { InlineRegister, TipEntry } from "./types";
 
 // Every inline link the copy may point at (docs/content/tooltips.md, approved
-// 2026-10-08). Pop photos are exported by C4; until then file is null.
+// 2026-10-08). Pop files are scripts/export-photos.mjs's, at their written pixels.
 export const register: InlineRegister = {
   def: {
     product: {
@@ -26,21 +26,21 @@ export const register: InlineRegister = {
     "misuki-suk": { text: "shoutout suk and her S2000" },
   },
   pop: {
-    "leadership-award": { file: null, alt: "Me holding my Cockrell Student Leadership Award certificate", caption: "Getting the Cockrell School undergraduate leadership award.", crop: null },
-    sandboarding: { file: null, alt: "Me sandboarding down a dune in the Dubai desert", caption: null, crop: null },
-    "downhill-skating": { file: null, alt: "My skateboards and longboards lined up at the back of my Miata", caption: null, crop: null },
-    skydiving: { file: null, alt: "Me in freefall on a tandem skydive", caption: null, crop: null },
-    "rock-climbing": { file: null, alt: "Me climbing a wall at a bouldering gym", caption: null, crop: null },
-    "venezuela-flag": { file: null, alt: "Me holding a Venezuelan flag in a convention hall", caption: null, crop: null },
+    "leadership-award": { file: { src: "/photos/pops/leadership-award.jpg", width: 600, height: 800 }, alt: "Me holding my Cockrell Student Leadership Award certificate", caption: "Getting the Cockrell School undergraduate leadership award.", crop: null },
+    sandboarding: { file: { src: "/photos/pops/sandboarding.jpg", width: 600, height: 800 }, alt: "Me sandboarding down a dune in the Dubai desert", caption: null, crop: null },
+    "downhill-skating": { file: { src: "/photos/pops/downhill-skating.jpg", width: 600, height: 800 }, alt: "My skateboards and longboards lined up at the back of my Miata", caption: null, crop: null },
+    skydiving: { file: { src: "/photos/pops/skydiving.jpg", width: 800, height: 600 }, alt: "Me in freefall on a tandem skydive", caption: null, crop: null },
+    "rock-climbing": { file: { src: "/photos/pops/rock-climbing.jpg", width: 600, height: 800 }, alt: "Me climbing a wall at a bouldering gym", caption: null, crop: null },
+    "venezuela-flag": { file: { src: "/photos/pops/venezuela-flag.jpg", width: 600, height: 800 }, alt: "Me holding a Venezuelan flag in a convention hall", caption: null, crop: null },
     matcha: {
-      file: null,
+      file: { src: "/photos/pops/matcha.jpg", width: 600, height: 800 },
       alt: "A matcha from 7T+ in Kyoto",
       caption: "7T+ is my favorite matcha place in the world, literally in the world. This one is in Kyoto.",
       crop: null,
       href: "https://www.google.com/maps/search/?api=1&query=35.0025497%2C135.7652173",
     },
-    "sister-kyoto": { file: null, alt: "Me and my sister in the Arashiyama bamboo grove in Kyoto", caption: null, crop: null },
-    "contrabass-clarinet": { file: null, alt: "Me, on the right, holding a contrabass clarinet next to my friend with a baritone saxophone", caption: "Bass clarinet was my main instrument. In concert season I played contrabass.", crop: null },
+    "sister-kyoto": { file: { src: "/photos/pops/sister-kyoto.jpg", width: 800, height: 717 }, alt: "Me and my sister in the Arashiyama bamboo grove in Kyoto", caption: null, crop: null },
+    "contrabass-clarinet": { file: { src: "/photos/pops/contrabass-clarinet.jpg", width: 600, height: 800 }, alt: "Me, on the right, holding a contrabass clarinet next to my friend with a baritone saxophone", caption: "Bass clarinet was my main instrument. In concert season I played contrabass.", crop: null },
   },
 };
 

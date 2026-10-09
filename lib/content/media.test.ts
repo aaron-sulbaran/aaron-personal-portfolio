@@ -35,7 +35,7 @@ const allRefs: Ref[] = [
 
 describe("every picture, photo, pop and logo the content names", () => {
   it("is a file in public with the recorded width and height", () => {
-    expect(allRefs.length).toBe(50);
+    expect(allRefs.length).toBe(59);
     for (const ref of allRefs) {
       const [width, height] = imageSize(join(PUBLIC, ref.src));
       expect(ref.width, ref.where).toBeCloseTo(width, 1);
