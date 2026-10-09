@@ -52,17 +52,86 @@ export function sizeForWidth(text: string, weight: number, tracking: number, sta
   return unit > 0 ? (stageWidth * share) / unit : 0;
 }
 
-// The wordmark's band in the footer, in px. The band holds a gap (in
-// ascender units) over the tallest swell, the ascender, and a clearance under
-// the baseline that the bleed eats into (a bleed past the clearance sinks the
-// letters under the footer's bottom edge). The baseline never moves with the
-// swell.
-export const BAND = { bottomClear: 0.08 } as const;
+// The word's ink around its baseline, in ascender units at the tallest swell
+// (or lean or grow): how far it reaches above and below. Every length the
+// stage lays out from (the band, the field's stop, the rise's floor) comes
+// from these, so no face and no swell is ever cut by its own band.
+export type InkExtent = { readonly top: number; readonly bottom: number };
 
-export function wordBand(size: number, weight: number, swell: number, bleed: number, gap: number) {
-  const below = (weight / 2 + BAND.bottomClear - bleed) * size;
-  const above = (gap + 1 + (weight + swell) / 2) * size;
+export function proceduralInk(text: string, weight: number, swell: number): InkExtent {
+  const glyphs = [...text].map(glyphFor).filter((g) => g.strokes.length || g.dots.length);
+  const half = (weight + swell) / 2;
+  if (!glyphs.length) return { top: METRICS.ascender + half, bottom: half };
+  return {
+    top: Math.max(...glyphs.map((g) => g.yMax)) + half,
+    bottom: Math.max(0, -Math.min(...glyphs.map((g) => g.yMin))) + half,
+  };
+}
+
+// For a typeset face, from its measured ink (per px of font size) in units of
+// its ascent. A lean turns each letter about its baseline middle, so a corner
+// half an advance out dips by sin(lean); a grow scales about the baseline.
+export function typesetInk(
+  m: { ascent: number; inkTops: readonly number[]; inkBottoms: readonly number[]; advances: readonly number[]; heavyAdvances: readonly number[] },
+  motion: { leanDeg: number; grow: number },
+): InkExtent {
+  const unit = (n: number) => n / m.ascent;
+  const scale = 1 + Math.max(0, motion.grow);
+  const halfAdvance = unit(Math.max(0, ...m.advances, ...m.heavyAdvances)) / 2;
+  const tilt = halfAdvance * Math.sin((Math.abs(motion.leanDeg) * Math.PI) / 180);
+  return {
+    top: unit(Math.max(0, ...m.inkTops)) * scale + tilt,
+    bottom: unit(Math.max(0, ...m.inkBottoms)) * scale + tilt,
+  };
+}
+
+// The wordmark's band in the footer, in px: a gap (in ascender units) over
+// the ink's top, the ink, and under it the floor. A floor of 0 rests the
+// word a clearance above the footer's bottom edge, whole at its tallest
+// swell; the floor's top end crops exactly that share of the ink's height
+// under the edge, and the way between is linear (no jump at the first step).
+// The baseline never moves with the swell.
+export const BAND = { bottomClear: 0.05, floorMax: 0.3 } as const;
+
+function floorDrop(ink: InkExtent, floor: number) {
+  const height = ink.top + ink.bottom;
+  return Math.max(0, floor) * (height + BAND.bottomClear / BAND.floorMax);
+}
+
+export function wordBand(size: number, ink: InkExtent, floor: number, gap: number) {
+  const below = (ink.bottom + BAND.bottomClear - floorDrop(ink, floor)) * size;
+  const above = (gap + ink.top) * size;
   return { height: Math.max(0, above + below), baselineFromBottom: below };
+}
+
+// The share of the ink's height the floor puts under the bottom edge.
+export function croppedShare(ink: InkExtent, floor: number): number {
+  const height = ink.top + ink.bottom;
+  return height > 0 ? Math.max(0, floorDrop(ink, floor) - BAND.bottomClear) / height : 0;
+}
+
+// A typeset row: each letter's left edge in px, from the measured starts
+// (kerning included) at the base weight, each advance moving toward its
+// heaviest by the letter's swell share (0 to 1), plus the tracking.
+export function typesetRow(
+  m: { starts: readonly number[]; advances: readonly number[]; heavyAdvances: readonly number[] },
+  fontSize: number,
+  trackPx: number,
+  swell: readonly number[] = [],
+): { xs: number[]; width: number } {
+  const n = m.starts.length;
+  const xs: number[] = [];
+  let x = 0;
+  let last = 0;
+  for (let i = 0; i < n; i++) {
+    xs.push(x);
+    const t = Math.min(1, Math.max(0, swell[i] ?? 0));
+    const advance = (m.advances[i] + (m.heavyAdvances[i] - m.advances[i]) * t) * fontSize;
+    last = x + advance;
+    const kern = i < n - 1 ? (m.starts[i + 1] - m.starts[i] - m.advances[i]) * fontSize : 0;
+    x += advance + kern + trackPx;
+  }
+  return { xs, width: n ? last : 0 };
 }
 
 // The field's alpha down the footer: it rises from paper over the top share,

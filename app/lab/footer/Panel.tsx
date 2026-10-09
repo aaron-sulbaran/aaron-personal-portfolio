@@ -5,14 +5,17 @@ import type { DriftPreset } from "@/lib/coil/drift";
 import type { Theme } from "@/lib/theme";
 import { Check, Chip, Field, Segmented, Slider } from "../controls/ui";
 import type { BackdropKind } from "./FieldBackdrop";
-import type { Readout } from "./FooterStage";
+import { FIT_SHARE, type Readout } from "./FooterStage";
 import type { RiseEase } from "./motion";
-import { PRESETS, RANGES, exportValues, sameSettings, type Caps, type ConnectPlacement, type Ending, type Face, type FooterSettings, type Ink, type ProfaResponse } from "./settings";
+import { LettersControls } from "./LettersControls";
+import { PRESETS, RANGES, exportValues, sameSettings, type ConnectPlacement, type Ending, type FooterSettings, type Ink, type TypeResponse } from "./settings";
+import type { Typeface } from "./useTypeface";
 
 export type View = { reduce: boolean; forceStandIn: boolean; collapsed: boolean };
 
 type Props = {
   s: FooterSettings;
+  typeface: Typeface;
   view: View;
   theme: Theme;
   backdrop: BackdropKind | null;
@@ -40,14 +43,16 @@ const ENDING_HINTS: Record<Ending, string> = {
 const fx = (digits: number, unit = "") => (n: number) => `${n.toFixed(digits)}${unit}`;
 const ms = (n: number) => `${Math.round(n)}ms`;
 
-export function Panel({ s, view, theme, backdrop, readout, systemReduced, edit, setView, setTheme, onReplay }: Props) {
+export function Panel({ s, typeface, view, theme, backdrop, readout, systemReduced, edit, setView, setTheme, onReplay }: Props) {
   const [copied, setCopied] = useState<"idle" | "done" | "failed">("idle");
   const preset = PRESETS.find((p) => sameSettings(p.settings, s));
   const backdropName = !s.field.on ? "off" : (backdrop ?? "pending");
-  const values = exportValues(s, preset ? preset.name : "custom", theme, backdropName, readout);
+  const faceName = typeface.kind === "procedural" ? "procedural" : `${typeface.label} (${typeface.kind})`;
+  const values = exportValues(s, preset ? preset.name : "custom", theme, backdropName, readout, faceName);
   const set = (patch: Partial<FooterSettings>) => edit((x) => ({ ...x, ...patch }));
   const setField = (patch: Partial<FooterSettings["field"]>) => edit((x) => ({ ...x, field: { ...x.field, ...patch } }));
   const R = RANGES;
+  const typeset = typeface.kind === "typeset" ? typeface : null;
 
   const copy = async () => {
     try {
@@ -82,9 +87,11 @@ export function Panel({ s, view, theme, backdrop, readout, systemReduced, edit, 
       <Field label="Presets">
         <div className="grid grid-cols-2 gap-1.5">
           {PRESETS.map((p, i) => (
-            <Chip key={p.id} pressed={sameSettings(s, p.settings)} onClick={() => edit(() => p.settings)}>
-              {i === 0 ? `${p.name} (pick)` : p.name}
-            </Chip>
+            <div key={p.id} className={i === 0 ? "col-span-2 grid" : "grid"}>
+              <Chip pressed={sameSettings(s, p.settings)} onClick={() => edit(() => p.settings)}>
+                {i === 0 ? `${p.name} (pick)` : p.name}
+              </Chip>
+            </div>
           ))}
         </div>
         <p className="leading-snug text-muted">{preset?.note ?? "Custom settings."}</p>
@@ -94,50 +101,49 @@ export function Panel({ s, view, theme, backdrop, readout, systemReduced, edit, 
         <Segmented options={["light", "dark"] as const} value={theme} onChange={setTheme} />
       </Field>
 
-      <Field label="Letters" hint="Procedural: this lab's own alphabet, weight is a number. Profa: the hero's face (option 2), one weight, so it leans or grows instead of swelling.">
-        <Segmented options={["procedural", "profa"] as readonly Face[]} value={s.face} format={(f) => (f === "procedural" ? "Procedural" : "Profa Black")} onChange={(face) => set({ face })} />
-      </Field>
+      <LettersControls s={s} typeface={typeface} edit={edit} />
 
       <Section title="The wordmark">
-        {s.face === "procedural" && <Slider label="Stroke weight" value={s.weight} {...R.weight} format={fx(3)} hint="Share of the letter height." onChange={(weight) => set({ weight })} />}
         <Slider
           label="Letter height"
           value={s.heightVw}
           {...R.heightVw}
           format={(n) => `${n.toFixed(2)}% (${Math.round(readout.sizePx)}px)`}
-          hint={`Ascender height as a share of the footer's width (the viewport on the site). The word spans ${Math.round(readout.spanPct)}% of ${Math.round(readout.stageWidth)}px.`}
+          hint={`Ascender height as a share of the footer's width (the viewport on the site). The word spans ${Math.round(readout.spanPct)}% of ${Math.round(readout.stageWidth)}px.${
+            readout.fittedVw === null ? "" : ` This face is wide: held to ${readout.fittedVw.toFixed(2)}% so it spans at most ${Math.round(FIT_SHARE * 100)}% at rest.`
+          }`}
           onChange={(heightVw) => set({ heightVw })}
         />
         <Slider label="Tracking" value={s.tracking} {...R.tracking} format={fx(3)} onChange={(tracking) => set({ tracking })} />
-        {s.face === "procedural" && (
-          <Field label="Stroke ends">
-            <Segmented options={["round", "butt"] as readonly Caps[]} value={s.caps} format={(c) => (c === "round" ? "round" : "flat")} onChange={(caps) => set({ caps })} />
-          </Field>
-        )}
         <Field label="Ink">
           <Segmented options={["accent", "foreground"] as readonly Ink[]} value={s.ink} format={(i) => (i === "accent" ? "sea blue (accent)" : "ink")} onChange={(ink) => set({ ink })} />
         </Field>
         <Slider label="Ink fades toward the baseline" value={s.inkFade} {...R.inkFade} format={fx(2)} onChange={(inkFade) => set({ inkFade })} />
         <Slider label="Gap above the wordmark" value={s.gap} {...R.gap} format={fx(2)} hint="In letter heights, from the row above to the tallest swell." onChange={(gap) => set({ gap })} />
-        <Slider label="Bleed under the edge" value={s.bleed} {...R.bleed} format={fx(2)} hint="Share of the letter height sunk below the footer's bottom edge." onChange={(bleed) => set({ bleed })} />
+        <Slider
+          label="Floor"
+          value={s.floor}
+          {...R.floor}
+          format={(n) => (n === 0 ? "whole" : `${n.toFixed(2)} (${Math.round(readout.croppedPct)}% cropped)`)}
+          hint="How the word meets the bottom edge: 0 rests it whole just above the edge, its swell included; 0.30 crops 30 percent of the letters' height."
+          onChange={(floor) => set({ floor })}
+        />
       </Section>
 
       <Section title="Pointer">
         <Slider label="Swell radius" value={s.swellRadius} {...R.swellRadius} format={fx(2)} hint="In letter heights." onChange={(swellRadius) => set({ swellRadius })} />
-        {s.face === "procedural" ? (
+        {typeset ? (
           <>
-            <Slider label="Swell amount" value={s.swellAmount} {...R.swellAmount} format={fx(3)} hint="Extra stroke weight at the pointer." onChange={(swellAmount) => set({ swellAmount })} />
-            <Check label="A swelling letter pushes its neighbors" checked={s.reflow} onChange={(reflow) => set({ reflow })} />
+            <Field label="Response" hint={typeset.canSwell ? "Swell moves the family's axes by the swells set under Letters." : `${typeset.label} has no axis to swell, so swell grows it.`}>
+              <Segmented options={["swell", "lean", "grow", "none"] as readonly TypeResponse[]} value={s.response} onChange={(response) => set({ response })} />
+            </Field>
+            {s.response === "lean" && <Slider label="Lean" value={s.leanDeg} {...R.leanDeg} format={fx(1, "deg")} onChange={(leanDeg) => set({ leanDeg })} />}
+            {(s.response === "grow" || (s.response === "swell" && !typeset.canSwell)) && <Slider label="Grow" value={s.grow} {...R.grow} format={fx(2)} onChange={(grow) => set({ grow })} />}
           </>
         ) : (
-          <>
-            <Field label="Profa's response">
-              <Segmented options={["lean", "grow", "none"] as readonly ProfaResponse[]} value={s.profaResponse} onChange={(profaResponse) => set({ profaResponse })} />
-            </Field>
-            {s.profaResponse === "lean" && <Slider label="Lean" value={s.leanDeg} {...R.leanDeg} format={fx(1, "deg")} onChange={(leanDeg) => set({ leanDeg })} />}
-            {s.profaResponse === "grow" && <Slider label="Grow" value={s.grow} {...R.grow} format={fx(2)} onChange={(grow) => set({ grow })} />}
-          </>
+          <Slider label="Swell amount" value={s.swellAmount} {...R.swellAmount} format={fx(3)} hint="Extra stroke weight at the pointer." onChange={(swellAmount) => set({ swellAmount })} />
         )}
+        {(!typeset || (s.response === "swell" && typeset.canSwell)) && <Check label="A swelling letter pushes its neighbors" checked={s.reflow} onChange={(reflow) => set({ reflow })} />}
         <Slider label="Swell easing" value={s.swellEaseS} {...R.swellEaseS} format={fx(2, "s")} onChange={(swellEaseS) => set({ swellEaseS })} />
         <Slider label="Press depth" value={s.pressDepth} {...R.pressDepth} format={fx(2)} hint="Click and hold over the letters: how flat the nearest press." onChange={(pressDepth) => set({ pressDepth })} />
         <Slider label="Press spring stiffness" value={s.pressStiffness} {...R.pressStiffness} format={fx(0)} onChange={(pressStiffness) => set({ pressStiffness })} />
@@ -146,7 +152,7 @@ export function Panel({ s, view, theme, backdrop, readout, systemReduced, edit, 
 
       <Section title="Rise, the first time it is seen">
         <Slider label="Duration" value={s.riseMs} {...R.riseMs} format={(n) => (n === 0 ? "off" : ms(n))} onChange={(riseMs) => set({ riseMs })} />
-        <Slider label="Stagger" value={s.riseStaggerMs} {...R.riseStaggerMs} format={ms} onChange={(riseStaggerMs) => set({ riseStaggerMs })} />
+        <Slider label="Stagger" value={s.riseStaggerMs} {...R.riseStaggerMs} format={(n) => (n === 0 ? "none, as one" : ms(n))} hint="0 rises the word as one." onChange={(riseStaggerMs) => set({ riseStaggerMs })} />
         <Field label="Ease">
           <Segmented options={["expo", "cubic", "back"] as readonly RiseEase[]} value={s.riseEase} format={(e) => (e === "back" ? "back (overshoot)" : `out ${e}`)} onChange={(riseEase) => set({ riseEase })} />
         </Field>
@@ -162,7 +168,10 @@ export function Panel({ s, view, theme, backdrop, readout, systemReduced, edit, 
             <Field label="How it ends" hint={ENDING_HINTS[s.field.ending]}>
               <Segmented options={["under", "clip", "above"] as readonly Ending[]} value={s.field.ending} format={(e) => ENDING_LABELS[e]} onChange={(ending) => setField({ ending })} />
             </Field>
-            <Slider label="Intensity" value={s.field.intensity} {...R.intensity} format={fx(2)} hint="1 is the hero's field; 0 is paper; above 1 pushes it further from paper." onChange={(intensity) => setField({ intensity })} />
+            <Slider label="Intensity behind the footer" value={s.field.intensity} {...R.intensity} format={fx(2)} hint="1 is the hero's field; 0 is paper; above 1 pushes it further from paper." onChange={(intensity) => setField({ intensity })} />
+            {s.field.ending === "clip" && (
+              <Slider label="Intensity inside the letters" value={s.field.letterIntensity} {...R.intensity} format={fx(2)} hint="The field the letters are windows onto, set apart from the field behind them." onChange={(letterIntensity) => setField({ letterIntensity })} />
+            )}
             <Slider label="Last fade length" value={s.field.fade} {...R.fade} format={fx(2)} hint="In letter heights, ending where the choice above says." onChange={(fade) => setField({ fade })} />
             <Slider label="Rise from paper at the top" value={s.field.fadeIn} {...R.fadeIn} format={fx(2)} hint="Share of the footer's height." onChange={(fadeIn) => setField({ fadeIn })} />
             {s.field.ending === "clip" && <Slider label="Accent inside the letters" value={s.field.letterTint} {...R.letterTint} format={fx(2)} onChange={(letterTint) => setField({ letterTint })} />}

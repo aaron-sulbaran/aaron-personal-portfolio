@@ -5,19 +5,28 @@ import type { Theme } from "@/lib/theme";
 import { ConnectRow } from "./ConnectRow";
 import { FOOTER_COPY } from "./content";
 import { FieldBackdrop, type BackdropKind } from "./FieldBackdrop";
-import { METRICS } from "./glyphs";
-import { fieldStops, layoutWord, wordBand } from "./wordLayout";
+import { fieldDepths } from "./fieldDepths";
+import { croppedShare, fieldStops, layoutWord, proceduralInk, typesetInk, typesetRow, wordBand } from "./wordLayout";
 import type { FooterSettings } from "./settings";
+import { effectiveResponse, type Typeface } from "./useTypeface";
 import { Wordmark, type WordGeometry } from "./Wordmark";
 
 // The footer as the site would have it, full width of its column: the field
 // rising from paper and ending in the wordmark, the Connect row over or under
-// it, the small lines. Every length comes from the stage's measured width.
+// it, the small lines. Every length comes from the stage's measured width and
+// the face's ink, so no face, swell or lean is ever cut by its own band.
 
-export type Readout = { sizePx: number; spanPct: number; stageWidth: number };
+export type Readout = { sizePx: number; spanPct: number; stageWidth: number; croppedPct: number; fittedVw: number | null };
+
+// The widest the word may sit at rest, as a share of the stage: a heavy,
+// wide face at the asked height is scaled down to this, so no swell pushes a
+// letter off the edge. Just over the procedural default's 90.3 percent at
+// 12.5vw, so that default is never touched.
+export const FIT_SHARE = 0.92;
 
 type Props = {
   s: FooterSettings;
+  typeface: Typeface;
   theme: Theme;
   reduced: boolean;
   replay: number;
@@ -26,15 +35,16 @@ type Props = {
   onReadout: (r: Readout) => void;
 };
 
-function fieldMask(s: FooterSettings, geo: WordGeometry, size: number): CSSProperties {
+function fieldMask(s: FooterSettings, geo: WordGeometry, size: number, share: number): CSSProperties {
   const stop = Math.max(0, s.field.ending === "under" ? geo.baselineY : geo.wordTop);
   const { inEnd, start } = fieldStops(s.field.fadeIn * geo.stageH, s.field.fade * size, stop);
+  const hold = `rgba(0, 0, 0, ${share.toFixed(4)})`;
   const tail = s.field.ending === "clip" ? `, black ${stop}px` : "";
-  const image = `linear-gradient(to bottom, transparent 0px, black ${inEnd}px, black ${start}px, transparent ${stop}px${tail})`;
+  const image = `linear-gradient(to bottom, transparent 0px, ${hold} ${inEnd}px, ${hold} ${start}px, transparent ${stop}px${tail})`;
   return { maskImage: image, WebkitMaskImage: image };
 }
 
-export function FooterStage({ s, theme, reduced, replay, forceStandIn, onBackdrop, onReadout }: Props) {
+export function FooterStage({ s, typeface, theme, reduced, replay, forceStandIn, onBackdrop, onReadout }: Props) {
   const stage = useRef<HTMLElement>(null);
   const bandRef = useRef<HTMLDivElement>(null);
   const [box, setBox] = useState({ w: 0, h: 0, bandTop: 0 });
@@ -49,22 +59,34 @@ export function FooterStage({ s, theme, reduced, replay, forceStandIn, onBackdro
     return () => ro.disconnect();
   }, [s.connect]);
 
-  const size = (s.heightVw / 100) * box.w;
-  const swell = s.face === "profa" ? 0 : s.swellAmount;
-  const band = wordBand(size, s.weight, swell, s.bleed, s.gap);
+  const text = FOOTER_COPY.wordmark;
+  const face = typeface.kind === "typeset" ? typeface : null;
+  const response = effectiveResponse(s.response, face);
+  // The word's width at rest per px of ascender height, to fit the stage.
+  const unitWidth = face ? typesetRow(face.metrics, 1 / face.metrics.ascent, s.tracking).width : layoutWord(text, 1, [s.weight], s.tracking).width;
+  const asked = (s.heightVw / 100) * box.w;
+  const size = unitWidth > 0 ? Math.min(asked, (FIT_SHARE * box.w) / unitWidth) : asked;
+  const fittedVw = size < asked - 0.01 && box.w ? (size / box.w) * 100 : null;
+  const ink = face
+    ? typesetInk(face.metrics, { leanDeg: response === "lean" ? s.leanDeg : 0, grow: response === "grow" ? s.grow : 0 })
+    : proceduralInk(text, s.weight, s.swellAmount);
+  const band = wordBand(size, ink, s.floor, s.gap);
   const baselineY = box.bandTop + band.height - band.baselineFromBottom;
-  const hasDescender = /[gjpqy]/.test(FOOTER_COPY.wordmark);
-  const riseFloor = baselineY + ((s.weight + swell) / 2 + 0.02 + (hasDescender ? -METRICS.descender : 0)) * size;
+  // Under the ink's lowest reach (the press can overshoot a little), so the
+  // rise comes out of a line the letters never cross at rest.
+  const riseFloor = baselineY + (ink.bottom + 0.02) * size;
   const geo: WordGeometry = {
     stageW: box.w,
     stageH: box.h,
     baselineY,
-    wordTop: baselineY - (METRICS.ascender + (s.weight + swell) / 2) * size,
+    wordTop: baselineY - ink.top * size,
     clipBottom: s.connect === "below" ? Math.min(riseFloor, box.bandTop + band.height) : riseFloor,
   };
+  const depths = fieldDepths(s.field);
 
-  const spanPct = box.w ? (layoutWord(FOOTER_COPY.wordmark, size, [s.weight], s.tracking).width / box.w) * 100 : 0;
-  useEffect(() => onReadout({ sizePx: size, spanPct, stageWidth: box.w }), [size, spanPct, box.w, onReadout]);
+  const spanPct = box.w ? ((unitWidth * size) / box.w) * 100 : 0;
+  const croppedPct = croppedShare(ink, s.floor) * 100;
+  useEffect(() => onReadout({ sizePx: size, spanPct, stageWidth: box.w, croppedPct, fittedVw }), [size, spanPct, box.w, croppedPct, fittedVw, onReadout]);
 
   return (
     <section
@@ -74,14 +96,28 @@ export function FooterStage({ s, theme, reduced, replay, forceStandIn, onBackdro
       style={{ touchAction: "pan-y" }}
     >
       {s.field.on && box.w > 0 && (
-        <div className="pointer-events-none absolute inset-0" style={fieldMask(s, geo, size)}>
+        <div className="pointer-events-none absolute inset-0" style={fieldMask(s, geo, size, depths.backdropShare)}>
           <div className="absolute inset-0" style={s.field.flip ? { transform: "scaleY(-1)" } : undefined}>
-            <FieldBackdrop theme={theme} intensity={s.field.intensity} drift={s.field.drift} forceStandIn={forceStandIn} reduced={reduced} onKind={onBackdrop} />
+            <FieldBackdrop theme={theme} intensity={depths.canvas} drift={s.field.drift} forceStandIn={forceStandIn} reduced={reduced} onKind={onBackdrop} />
           </div>
         </div>
       )}
-      {box.w > 0 && <Wordmark text={FOOTER_COPY.wordmark} s={s} size={size} geo={geo} reduced={reduced} replay={replay} stage={stage} />}
-      <h2 className="sr-only">{FOOTER_COPY.wordmark}</h2>
+      {box.w > 0 && typeface.kind !== "loading" && (
+        <Wordmark
+          text={text}
+          s={s}
+          size={size}
+          geo={geo}
+          ink={ink}
+          face={face}
+          response={response}
+          letterVeil={depths.letterVeil}
+          reduced={reduced}
+          replay={replay}
+          stage={stage}
+        />
+      )}
+      <h2 className="sr-only">{text}</h2>
       <div className="relative z-10 flex flex-col px-6 md:px-10">
         {s.connect === "above" && <ConnectRow placement="above" />}
         <div ref={bandRef} style={{ height: band.height }} />

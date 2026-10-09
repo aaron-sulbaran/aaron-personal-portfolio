@@ -1,16 +1,17 @@
 "use client";
 
-import { useEffect, useId, useMemo, useRef, useState, type RefObject } from "react";
-import { METRICS, glyphFor, glyphPaths } from "./glyphs";
-import { layoutWord } from "./wordLayout";
-import { measureProfa, type ProfaMetrics } from "./profaMetrics";
-import type { FooterSettings } from "./settings";
+import { useEffect, useId, useMemo, useRef, type RefObject } from "react";
+import { glyphFor, glyphPaths } from "./glyphs";
+import { layoutWord, typesetRow, type InkExtent } from "./wordLayout";
+import type { FooterSettings, TypeResponse } from "./settings";
+import type { TypesetFace } from "./useTypeface";
 import { COMPOSITIONS, useWordMotion, type DiscFrame, type LetterFrame, type MotionConfig, type Point } from "./useWordMotion";
+import { poseAt, variationSettings } from "./webFont";
 
 // The wordmark over the whole footer stage, in one SVG whose units are stage
 // px. The letters live once in <defs> and are drawn by <use>: as ink, as the
 // accent tint, and as holes in a paper cover when the field is clipped by
-// the letters. One loop writes their transforms and stroke widths.
+// the letters. One loop writes their transforms, stroke widths and axes.
 
 export type WordGeometry = {
   stageW: number;
@@ -25,6 +26,10 @@ type Props = {
   s: FooterSettings;
   size: number;
   geo: WordGeometry;
+  ink: InkExtent;
+  face: TypesetFace | null; // null draws the procedural alphabet
+  response: TypeResponse;
+  letterVeil: number; // clip only: paper over the letters, so they show the field shallower than the cover's
   reduced: boolean;
   replay: number;
   stage: RefObject<HTMLElement | null>;
@@ -40,64 +45,59 @@ const DISC_COMPS = [
   { disc: [0.56, 0.86, 0.58], slab: [0.48, 0.24, 0.72, 0.22, -4] },
 ] as const;
 
-function useProfa(text: string, active: boolean) {
-  const [metrics, setMetrics] = useState<ProfaMetrics | null>(null);
-  useEffect(() => {
-    if (!active || metrics) return;
-    let live = true;
-    measureProfa(text).then((m) => live && setMetrics(m));
-    return () => {
-      live = false;
-    };
-  }, [text, active, metrics]);
-  return metrics;
-}
-
-export function Wordmark({ text, s, size, geo, reduced, replay, stage }: Props) {
+export function Wordmark({ text, s, size, geo, ink, face, response, letterVeil, reduced, replay, stage }: Props) {
   const id = useId().replace(/:/g, "");
   const chars = useMemo(() => [...text], [text]);
-  const profa = useProfa(text, s.face === "profa");
-  const isProfa = s.face === "profa" && profa !== null;
   const letters = useRef<(SVGGElement | null)[]>([]);
+  const glyphText = useRef<(SVGTextElement | null)[]>([]);
+  const written = useRef<string[]>([]);
   const disc = useRef<SVGCircleElement>(null);
   const slab = useRef<SVGRectElement>(null);
   const discGroup = useRef<SVGGElement>(null);
   const lastComp = useRef(-1);
 
-  const paths = useMemo(() => chars.map((c) => glyphPaths(c, size)), [chars, size]);
-  const fontSize = profa ? size / profa.ascent : size;
-  const swell = isProfa ? 0 : s.swellAmount;
-  const riseDistance = (METRICS.ascender - METRICS.descender + s.weight + swell) * size + 4;
+  const paths = useMemo(() => chars.map((c) => glyphPaths(c, size, s.corners)), [chars, size, s.corners]);
+  const fontSize = face ? size / face.metrics.ascent : size;
+  const riseDistance = (ink.top + ink.bottom + 0.04) * size + 4;
+  const swellAxes = face !== null && response === "swell" && face.canSwell;
 
   // Where each letter sits at rest, for the swell's distances.
   const rest = useMemo(() => {
-    if (isProfa && profa) {
-      const track = s.tracking * size;
-      const width = profa.starts[chars.length - 1] * fontSize + profa.advances[chars.length - 1] * fontSize + track * (chars.length - 1);
-      const offset = (geo.stageW - width) / 2;
-      const xs = chars.map((_, i) => offset + profa.starts[i] * fontSize + track * i);
-      const centers: Point[] = xs.map((x, i) => ({ x: x + (profa.advances[i] * fontSize) / 2, y: geo.baselineY - profa.mids[i] * fontSize }));
-      return { centers, xs, pivots: profa.advances.map((a) => (a * fontSize) / 2) };
+    if (face) {
+      const m = face.metrics;
+      const row = typesetRow(m, fontSize, s.tracking * size);
+      const offset = (geo.stageW - row.width) / 2;
+      const xs = row.xs.map((x) => offset + x);
+      const centers: Point[] = xs.map((x, i) => ({ x: x + (m.advances[i] * fontSize) / 2, y: geo.baselineY - m.mids[i] * fontSize }));
+      return { centers, xs, pivots: m.advances.map((a) => (a * fontSize) / 2) };
     }
     const base = layoutWord(text, size, [s.weight], s.tracking);
     const offset = (geo.stageW - base.width) / 2;
     const centers: Point[] = base.placements.map((p) => ({ x: offset + p.centerX, y: geo.baselineY - p.centerY }));
     return { centers, xs: base.placements.map((p) => offset + p.inkX), pivots: chars.map((c) => (glyphFor(c).width * size) / 2) };
-  }, [isProfa, profa, chars, text, size, fontSize, s.weight, s.tracking, geo.stageW, geo.baselineY]);
+  }, [face, chars, text, size, fontSize, s.weight, s.tracking, geo.stageW, geo.baselineY]);
 
-  const config = useRef<MotionConfig>({ settings: s, size, centers: rest.centers, reduced, apply: () => {} });
+  const config = useRef<MotionConfig>({ settings: s, size, centers: rest.centers, reduced, typeset: false, response: "swell", apply: () => {} });
   useEffect(() => {
+    // A render may have reset the axes to rest; write them again.
+    written.current = [];
     config.current = {
       settings: s,
       size,
       centers: rest.centers,
       reduced,
+      typeset: face !== null,
+      response,
       apply: (frames: readonly LetterFrame[], d: DiscFrame) => {
         let xs = rest.xs;
-        if (!isProfa && s.reflow) {
+        if (s.reflow && !face) {
           const flow = layoutWord(text, size, frames.map((f) => f.weight), s.tracking);
           const offset = (geo.stageW - flow.width) / 2;
           xs = flow.placements.map((p) => offset + p.inkX);
+        } else if (s.reflow && face && swellAxes) {
+          const flow = typesetRow(face.metrics, fontSize, s.tracking * size, frames.map((f) => f.swell));
+          const offset = (geo.stageW - flow.width) / 2;
+          xs = flow.xs.map((x) => offset + x);
         }
         frames.forEach((f, i) => {
           const g = letters.current[i];
@@ -108,7 +108,15 @@ export function Wordmark({ text, s, size, geo, reduced, replay, stage }: Props) 
             "transform",
             `translate(${(xs[i] + pivot).toFixed(2)} ${y.toFixed(2)}) rotate(${f.lean.toFixed(3)}) scale(${f.grow.toFixed(4)} ${(f.grow * f.squash).toFixed(4)}) translate(${(-pivot).toFixed(2)} 0)`,
           );
-          if (!isProfa) g.setAttribute("stroke-width", (f.weight * size).toFixed(2));
+          if (!face) g.setAttribute("stroke-width", (f.weight * size).toFixed(2));
+          const t = glyphText.current[i];
+          if (face && swellAxes && t) {
+            const axes = variationSettings(poseAt(face.rest, face.heavy, f.swell));
+            if (written.current[i] !== axes) {
+              written.current[i] = axes;
+              t.style.fontVariationSettings = axes;
+            }
+          }
         });
         if (discGroup.current) discGroup.current.setAttribute("transform", `translate(${d.dx.toFixed(2)} ${d.dy.toFixed(2)})`);
         if (d.comp !== lastComp.current && disc.current && slab.current) {
@@ -122,14 +130,14 @@ export function Wordmark({ text, s, size, geo, reduced, replay, stage }: Props) 
       },
     };
     lastComp.current = -1;
-  }, [s, size, rest, reduced, isProfa, text, geo, riseDistance]);
+  }, [s, size, rest, reduced, face, response, swellAxes, fontSize, text, geo, riseDistance]);
 
   useWordMotion(stage, config, chars.length, replay);
 
   const clip = s.field.on && s.field.ending === "clip";
   const tintTop = clip ? s.field.letterTint : 1;
   const inkColor = s.ink === "accent" ? "var(--color-accent)" : "var(--color-foreground)";
-  const capRound = s.caps === "round";
+  const paper = "var(--color-background)";
 
   return (
     <svg aria-hidden="true" className="pointer-events-none absolute inset-0 h-full w-full" width={geo.stageW} height={geo.stageH} viewBox={`0 0 ${geo.stageW} ${geo.stageH}`}>
@@ -137,14 +145,27 @@ export function Wordmark({ text, s, size, geo, reduced, replay, stage }: Props) 
         <g id={`${id}-word`}>
           {chars.map((c, i) => (
             <g key={`${c}-${i}`} ref={(el) => void (letters.current[i] = el)} transform={`translate(${rest.xs[i]} ${geo.baselineY})`} strokeWidth={s.weight * size}>
-              {isProfa ? (
-                <text x={0} y={0} fontSize={fontSize} stroke="none" style={{ fontFamily: "var(--font-display)", fontWeight: 900 }}>
+              {face ? (
+                <text
+                  ref={(el) => void (glyphText.current[i] = el)}
+                  x={0}
+                  y={0}
+                  fontSize={fontSize}
+                  stroke="none"
+                  style={{
+                    fontFamily: face.family,
+                    fontWeight: face.restWeight,
+                    fontVariationSettings: variationSettings(face.rest),
+                    fontVariantLigatures: "none",
+                    fontSynthesis: "none",
+                  }}
+                >
                   {c}
                 </text>
               ) : (
                 <>
-                  <path d={paths[i].d} fill="none" vectorEffect="non-scaling-stroke" strokeLinecap={capRound ? "round" : "butt"} strokeLinejoin={capRound ? "round" : "miter"} />
-                  <path d={paths[i].dots} fill="none" vectorEffect="non-scaling-stroke" strokeLinecap={capRound ? "round" : "square"} />
+                  <path d={paths[i].d} fill="none" vectorEffect="non-scaling-stroke" strokeLinecap={s.caps} strokeLinejoin={s.join} />
+                  <path d={paths[i].dots} fill="none" vectorEffect="non-scaling-stroke" strokeLinecap={s.caps === "round" ? "round" : "square"} />
                 </>
               )}
             </g>
@@ -154,7 +175,7 @@ export function Wordmark({ text, s, size, geo, reduced, replay, stage }: Props) 
           <rect x={0} y={0} width={geo.stageW} height={Math.max(0, geo.clipBottom)} />
         </clipPath>
         {/* In each letter's own space (baseline at 0), so the fade rides with the rise and the press. */}
-        <linearGradient id={`${id}-ink`} gradientUnits="userSpaceOnUse" x1={0} y1={-(1 + s.weight / 2) * size} x2={0} y2={0}>
+        <linearGradient id={`${id}-ink`} gradientUnits="userSpaceOnUse" x1={0} y1={-ink.top * size} x2={0} y2={0}>
           <stop offset={0} style={{ stopColor: inkColor, stopOpacity: tintTop }} />
           <stop offset={1} style={{ stopColor: inkColor, stopOpacity: tintTop * (1 - s.inkFade) }} />
         </linearGradient>
@@ -181,8 +202,13 @@ export function Wordmark({ text, s, size, geo, reduced, replay, stage }: Props) 
           width={geo.stageW + 2 * BLEED_PX}
           height={Math.max(0, geo.stageH - geo.wordTop + 2 + BLEED_PX)}
           mask={`url(#${id}-holes)`}
-          style={{ fill: "var(--color-background)" }}
+          style={{ fill: paper }}
         />
+      )}
+      {clip && letterVeil > 0.001 && (
+        <g clipPath={`url(#${id}-rise)`} opacity={letterVeil}>
+          <use href={`#${id}-word`} style={{ fill: paper, stroke: paper }} />
+        </g>
       )}
       {(!clip || s.field.letterTint > 0) && (
         <g clipPath={`url(#${id}-rise)`}>

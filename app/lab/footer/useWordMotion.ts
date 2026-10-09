@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, type RefObject } from "react";
 import { approach, falloff, leanAngle, pressTarget, riseProgress, springStep, type Spring } from "./motion";
-import type { FooterSettings } from "./settings";
+import type { FooterSettings, TypeResponse } from "./settings";
 
 // One loop for the wordmark: it reads the pointer over the footer, eases
 // each letter's swell, springs its press, clocks the rise from the first
@@ -10,7 +10,9 @@ import type { FooterSettings } from "./settings";
 // `apply`, which writes attributes directly (no React render per frame).
 
 export type Point = { readonly x: number; readonly y: number };
-export type LetterFrame = { weight: number; squash: number; rise: number; lean: number; grow: number };
+// weight: the procedural stroke; swell: the pointer's share (0 to 1), which a
+// typeset face spends on its axes.
+export type LetterFrame = { weight: number; swell: number; squash: number; rise: number; lean: number; grow: number };
 export type DiscFrame = { comp: number; dx: number; dy: number };
 
 export type MotionConfig = {
@@ -18,6 +20,8 @@ export type MotionConfig = {
   size: number; // the ascender height, px
   centers: readonly Point[]; // each letter's center at rest, stage px
   reduced: boolean;
+  typeset: boolean; // Profa or a web font: lean and grow apply
+  response: TypeResponse; // what the face does at the pointer, after what it can do
   apply: (letters: readonly LetterFrame[], disc: DiscFrame) => void;
 };
 
@@ -38,7 +42,7 @@ export function useWordMotion(stage: RefObject<HTMLElement | null>, config: RefO
     const infl = Array.from({ length: count }, () => 0);
     const springs: Spring[] = Array.from({ length: count }, () => ({ x: 1, v: 0 }));
     const disc = { comp: 0, dx: 0, dy: 0 };
-    const frames: LetterFrame[] = Array.from({ length: count }, () => ({ weight: 0, squash: 1, rise: 1, lean: 0, grow: 1 }));
+    const frames: LetterFrame[] = Array.from({ length: count }, () => ({ weight: 0, swell: 0, squash: 1, rise: 1, lean: 0, grow: 1 }));
     let visible = false;
     let raf = 0;
     let last = performance.now();
@@ -70,7 +74,7 @@ export function useWordMotion(stage: RefObject<HTMLElement | null>, config: RefO
     const tick = (now: number) => {
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
-      const { settings: s, size, centers, reduced, apply } = config.current;
+      const { settings: s, size, centers, reduced, typeset, response, apply } = config.current;
       const radius = s.swellRadius * size;
       const riseOn = s.riseMs > 0 && !reduced;
       const elapsed = riseStart.current === null ? 0 : now - riseStart.current;
@@ -82,10 +86,11 @@ export function useWordMotion(stage: RefObject<HTMLElement | null>, config: RefO
         springs[i] = reduced ? { x: 1, v: 0 } : springStep(springs[i], target, s.pressStiffness, s.pressDamping, dt);
         const f = frames[i];
         f.weight = s.weight + s.swellAmount * infl[i];
+        f.swell = infl[i];
         f.squash = Math.max(0.05, springs[i].x);
         f.rise = !riseOn ? 1 : riseStart.current === null ? 0 : riseProgress(elapsed, i, s.riseMs, s.riseStaggerMs, s.riseEase);
-        f.lean = s.face === "profa" && s.profaResponse === "lean" ? leanAngle(s.leanDeg, pointer.x - c.x, infl[i], radius) : 0;
-        f.grow = s.face === "profa" && s.profaResponse === "grow" ? 1 + s.grow * infl[i] : 1;
+        f.lean = typeset && response === "lean" ? leanAngle(s.leanDeg, pointer.x - c.x, infl[i], radius) : 0;
+        f.grow = typeset && response === "grow" ? 1 + s.grow * infl[i] : 1;
       }
       const w = el.clientWidth || 1;
       const h = el.clientHeight || 1;
