@@ -90,6 +90,5 @@ export const logos = {
   mod: { src: "/work/logos/jobs/mod-pizza-logo.svg", srcDark: null, width: 86.31, height: 83.21 },
   "ut-austin": { src: "/work/logos/jobs/ut-austin-logo.svg", srcDark: "/work/logos/jobs/ut-austin-logo-white.svg", width: 1021, height: 285.73 },
   apple: { src: "/work/logos/jobs/apple-logo-black.svg", srcDark: "/work/logos/jobs/apple-logo-white.svg", width: 41.5, height: 51 },
-  // aritzia-logo-white.svg is a traced bitmap on an opaque black box, so dark waits on Aaron.
-  aritzia: { src: "/work/logos/jobs/aritzia-logo.svg", srcDark: null, width: 53.18, height: 10.71 },
+  aritzia: { src: "/work/logos/jobs/aritzia-logo.svg", srcDark: "/work/logos/jobs/aritzia-logo-light.svg", width: 53.18, height: 10.71 },
 } as const satisfies Record<string, LogoRef>;
