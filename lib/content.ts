@@ -1,10 +1,7 @@
-export interface SoundtrackTrack {
-  title: string;
-  artist: string;
-  src: string;
-  spotifyUrl: string | null;
-  cover: string | null;
-}
+import { register } from "./content/register";
+import { bookPeopleOrder, bookWorkOrder, cards, strandOrder } from "./content/cards";
+import type { SoundtrackTrack } from "./content/types";
+import { liveTracks } from "./content/tracks";
 
 // One link on the holding page. `icon` picks the brand mark in
 // components/BrandIcons.tsx. `href: null` keeps the entry defined but hides it
@@ -29,6 +26,11 @@ export const siteContent = {
       "Building products (and community) with people, not just for them.",
     url: "https://aaronsulbaran.com",
   },
+  // Every inline link the copy may point at (lib/content/register.ts).
+  register,
+  // The fourteen launch cards (lib/content/cards.ts). C3 moves the Coil and the
+  // book onto them; until then the legacy strand and rows below drive both.
+  cards,
   // The soundtrack band under the book (components/soundtrack): the one place
   // the music is offered and controlled, with the waveform running through
   // it. Each note describes what is on screen when it shows. Draft copy in my
@@ -146,6 +148,10 @@ export const siteContent = {
     ariaLabel: "Work and photos",
     workHeading: "Work",
     photosHeading: "Photos",
+    // The cards' book (C3 renders it): two columns of card keys, every row a modal.
+    peopleHeading: "People",
+    workOrder: bookWorkOrder,
+    peopleOrder: bookPeopleOrder,
     seenLabel: "opened",
     externalLabel: "opens in a new tab",
     workRows: [
@@ -176,6 +182,9 @@ export const siteContent = {
   // never enter the coil; they return here as real photos arrive. Keys are
   // homeTiles keys; see strandTiles below.
   strand: {
+    // The fourteen cards in Coil order, lead card first. strandTiles still reads
+    // the legacy pattern and lists below until C3 swaps the scene.
+    order: strandOrder,
     pattern: "PWPPWPPWPWPPWP",
     photos: ["hsf-speaking", "drum-major", "yosemite-hiking", "capital-one", "uncs-grad", "claude-hackathon", "misuki", "traveling", "mt-fuji"],
     work: ["capital-one-pm", "claude-ambassador", "ieee-president", "aaronsulbaran-site", "hackathon-builds"],
@@ -570,29 +579,7 @@ export const siteContent = {
     creditJoin: ", licensed",
     creditLicense: "CC BY 4.0",
     creditLicenseUrl: "https://creativecommons.org/licenses/by/4.0/",
-    tracks: [
-      {
-        title: "Small Steps",
-        artist: "Lee Rosevere",
-        src: "/audio/track-01.mp3",
-        spotifyUrl: null,
-        cover: null,
-      },
-      {
-        title: "Waves of Sleep",
-        artist: "Lee Rosevere",
-        src: "/audio/track-02.mp3",
-        spotifyUrl: null,
-        cover: null,
-      },
-      {
-        title: "Slow Lights",
-        artist: "Lee Rosevere",
-        src: "/audio/track-03.mp3",
-        spotifyUrl: null,
-        cover: null,
-      },
-    ] satisfies SoundtrackTrack[],
+    tracks: liveTracks,
   },
   // Work items. `bodySections: []` means the detail page renders a quiet
   // "case study in progress" block. Populate with { kind: 'paragraph', text }
@@ -820,6 +807,12 @@ export type WorkItem = (typeof siteContent.workItems)[number];
 export type MenuItem = (typeof siteContent.menu.items)[number];
 export type Track = SoundtrackTrack;
 export type HomeTile = (typeof siteContent.homeTiles)[number];
+export type {
+  CardContent, CardGroup, CardKey, CardLink, CardModal, CardModalKind, CardPicture, Cards, CardVisual, DefinitionEntry, ImageRef,
+  InlineRegister, InspiredBy, LogoRef, Mentor, MentorsList, ModalPhoto, PhotoCrop, PhotoRef, PopEntry, SoundtrackTrack, TimelineEntry,
+  TipEntry, TrackLicenseKind,
+} from "./content/types";
+export { tipText } from "./content/tracks";
 
 // O(1) lookups for the card and row resolvers (HomeController, BookRow),
 // built once at module load so per-render resolution never scans the arrays.
