@@ -21,7 +21,6 @@ export const register: InlineRegister = {
       adaptedClause: ", and I adapted a couple of the tracks myself in Epidemic Sound's studio",
     },
     "ieee-ao": { text: "External Activities and Events Assistant Officer" },
-    aango: { text: "yes, the chameleon from that one kid's movie" },
     "this-site-playground": { text: "this site is my design playground" },
     "misuki-suk": { text: "shoutout suk and her S2000" },
   },
@@ -42,6 +41,8 @@ export const register: InlineRegister = {
     },
     "sister-kyoto": { file: { src: "/photos/pops/sister-kyoto.jpg", width: 800, height: 717 }, alt: "Me and my sister in the Arashiyama bamboo grove in Kyoto", caption: null, crop: null },
     "contrabass-clarinet": { file: { src: "/photos/pops/contrabass-clarinet.jpg", width: 600, height: 800 }, alt: "Me, on the right, holding a contrabass clarinet next to my friend with a baritone saxophone", caption: "Bass clarinet was my main instrument. In concert season I played contrabass.", crop: null },
+    // A film character, so the alt describes the picture rather than me.
+    rango: { file: { src: "/photos/pops/rango.jpg", width: 599, height: 800 }, alt: "Rango, the chameleon in a Hawaiian shirt, in a dance pose", caption: "yeah, this guy from that one kid's movie", crop: null },
   },
 };
 

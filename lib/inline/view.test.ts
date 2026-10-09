@@ -25,6 +25,15 @@ describe("tipView", () => {
     });
     expect(tipView("pop", "sandboarding")).toMatchObject({ text: null, caption: null, description: pop.sandboarding.alt });
   });
+  it("shows Rango as a landed pop, described by its alt and caption", () => {
+    expect(tipView("pop", "rango")).toEqual({
+      text: null,
+      photo: { ...pop.rango.file, alt: pop.rango.alt, displayWidth: 280, displayHeight: 374 },
+      caption: "yeah, this guy from that one kid's movie",
+      link: null,
+      description: "Rango, the chameleon in a Hawaiian shirt, in a dance pose. yeah, this guy from that one kid's movie",
+    });
+  });
   it("carries the matcha's Maps link and label", () => { expect(tipView("pop", "matcha")?.link).toEqual({ href: pop.matcha.href, label: "Open in Google Maps" }); });
 });
 describe("popView", () => {
