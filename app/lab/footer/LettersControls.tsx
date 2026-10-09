@@ -4,7 +4,7 @@ import { useState, useSyncExternalStore, type FormEvent } from "react";
 import { Chip, Field, Segmented, Slider } from "../controls/ui";
 import { RANGES, type Caps, type Face, type FooterSettings, type Join } from "./settings";
 import type { Typeface } from "./useTypeface";
-import { FONT_CANDIDATES, candidateFont, fontQueryParams, normalizeFamily } from "./webFont";
+import { FONT_CANDIDATES, candidateFont, fontQueryParams, normalizeFamily, variationSettings, type AxisValues } from "./webFont";
 
 // The panel's "Letters" block: which face draws the word, and that face's
 // own controls. The web font picker takes any Google Fonts family by name;
@@ -66,7 +66,9 @@ function fontStatus(t: Typeface, family: string): string {
   const { wght, wdth, ROND } = t.info.axes;
   const axes = [wght && `weight ${wght[0]} to ${wght[1]}`, wdth && `width ${wdth[0]} to ${wdth[1]}`, ROND && `roundness ${ROND[0]} to ${ROND[1]}`].filter(Boolean);
   if (!axes.length) return `${t.label}: static weights only (${t.info.weights.join(", ")}), so it grows or leans instead of swelling.`;
-  return `${t.label} axes: ${axes.join(", ")}.${t.canSwell ? "" : " Both swells are 0, so it rests."}`;
+  const pose = (v: AxisValues) => variationSettings(v).replace(/"/g, "");
+  const swell = t.canSwell ? ` Swells to ${pose(t.heavy)}.` : " No swell set, so it rests.";
+  return `${t.label} axes: ${axes.join(", ")}. Rests at ${pose(t.rest)}.${swell}`;
 }
 
 function FontPicker({ s, typeface, edit }: Props) {

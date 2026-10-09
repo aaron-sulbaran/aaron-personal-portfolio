@@ -36,10 +36,12 @@ describe("the round 2 preset", () => {
     expect(span).toBeLessThan(FIT_SHARE);
   });
 
-  it("leaves no preset with a stagger, and keeps every round 1 preset selectable", () => {
+  it("leaves no preset with a stagger or a crop, and keeps every round 1 preset selectable", () => {
     expect(PRESETS.map((p) => p.id)).toEqual(["round2", "designer", "bare", "zephyr", "profa"]);
-    for (const p of PRESETS) expect(p.settings.riseStaggerMs, p.id).toBe(0);
-    expect(PRESETS.find((p) => p.id === "zephyr")!.settings.floor).toBe(0);
+    for (const p of PRESETS) {
+      expect(p.settings.riseStaggerMs, p.id).toBe(0);
+      expect(p.settings.floor, p.id).toBe(0);
+    }
   });
 });
 
@@ -52,19 +54,23 @@ describe("the ink and the band", () => {
 
   it("rests the word whole at floor 0, its tallest swell a clearance above the edge", () => {
     const ink = proceduralInk("build.stuff", 0.2, 0.06);
-    const band = wordBand(134, ink, 0, 0.35);
+    const band = wordBand(134, ink, proceduralInk("build.stuff", 0.2, 0), 0, 0.35);
     expect(band.baselineFromBottom - ink.bottom * 134).toBeCloseTo(BAND.bottomClear * 134, 9);
-    expect(croppedShare(ink, 0)).toBe(0);
+    expect(croppedShare(ink, proceduralInk("build.stuff", 0.2, 0), 0)).toBe(0);
   });
 
-  it("crops exactly 30 percent of the ink's height at the floor's top, linearly and without a jump", () => {
+  it("crops exactly 30 percent of the resting ink's height at the floor's top, linearly and without a jump", () => {
     const ink = proceduralInk("build.stuff", 0.2, 0.06);
-    expect(croppedShare(ink, BAND.floorMax)).toBeCloseTo(0.3, 12);
-    const at = (f: number) => wordBand(100, ink, f, 0.35).baselineFromBottom;
+    const rest = proceduralInk("build.stuff", 0.2, 0);
+    expect(croppedShare(ink, rest, BAND.floorMax)).toBeCloseTo(0.3, 12);
+    // The edge sits 30 percent of the resting height above the resting ink's bottom.
+    const band = wordBand(100, ink, rest, BAND.floorMax, 0.35);
+    expect(rest.bottom * 100 - band.baselineFromBottom).toBeCloseTo(0.3 * (rest.top + rest.bottom) * 100, 9);
+    const at = (f: number) => wordBand(100, ink, rest, f, 0.35).baselineFromBottom;
     expect(at(0) - at(0.01)).toBeCloseTo(at(0.2) - at(0.21), 9);
-    let last = croppedShare(ink, 0);
+    let last = croppedShare(ink, rest, 0);
     for (let f = 0; f <= 0.3; f += 0.01) {
-      const c = croppedShare(ink, f);
+      const c = croppedShare(ink, rest, f);
       expect(c).toBeGreaterThanOrEqual(last);
       last = c;
     }
@@ -127,12 +133,15 @@ describe("the web font face", () => {
     expect(axesFrom(null)).toEqual({});
   });
 
-  it("clamps the pose into the axes and swells through them", () => {
-    const pose = fontPose(hubot, { weight: 880, width: 120, round: 0, swell: 50, widthSwell: 17 });
-    expect(pose.rest).toEqual({ wght: 880, wdth: 120 });
-    expect(pose.heavy).toEqual({ wght: 900, wdth: 125 });
+  it("clamps the pose into the axes and swells through them, resting under a ceiling to keep the swell", () => {
+    const capped = fontPose(hubot, { weight: 900, width: 100, round: 0, swell: 50, widthSwell: 0 });
+    expect(capped.rest.wght).toBe(850);
+    expect(capped.heavy.wght).toBe(900);
+    const pose = fontPose(hubot, { weight: 840, width: 120, round: 0, swell: 50, widthSwell: 17 });
+    expect(pose.rest).toEqual({ wght: 840, wdth: 120 });
+    expect(pose.heavy).toEqual({ wght: 890, wdth: 125 });
     expect(pose.canSwell).toBe(true);
-    expect(variationSettings(poseAt(pose.rest, pose.heavy, 0.5))).toBe('"wdth" 122.5, "wght" 890');
+    expect(variationSettings(poseAt(pose.rest, pose.heavy, 0.5))).toBe('"wdth" 122.5, "wght" 865');
     expect(variationSettings({})).toBe("normal");
   });
 

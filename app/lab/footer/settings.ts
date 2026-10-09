@@ -94,8 +94,8 @@ export const RANGES = {
 const SEED_FONT = candidateFont(FONT_CANDIDATES[0]);
 
 // Round 1 (2026-10-08). Every round 1 preset now rises as one (Aaron: no
-// stagger) and keeps its letters whole (the bleed that cut Zephyr is gone;
-// the designer's slight crop is now a floor of 0.04).
+// stagger) and rests whole (the bleed that cut Zephyr's letters is gone; a
+// crop is now the floor slider's, chosen on purpose).
 const DESIGNER: FooterSettings = {
   face: "procedural",
   font: SEED_FONT,
@@ -107,7 +107,7 @@ const DESIGNER: FooterSettings = {
   corners: 0,
   ink: "accent",
   inkFade: 0.25,
-  floor: 0.04,
+  floor: 0,
   gap: 0.35,
   swellRadius: 1.4,
   swellAmount: 0.07,

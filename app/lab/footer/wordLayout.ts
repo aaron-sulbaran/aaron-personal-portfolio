@@ -86,28 +86,30 @@ export function typesetInk(
 }
 
 // The wordmark's band in the footer, in px: a gap (in ascender units) over
-// the ink's top, the ink, and under it the floor. A floor of 0 rests the
-// word a clearance above the footer's bottom edge, whole at its tallest
-// swell; the floor's top end crops exactly that share of the ink's height
-// under the edge, and the way between is linear (no jump at the first step).
-// The baseline never moves with the swell.
+// the ink's top, the ink, and under it the floor. `reach` is the ink at its
+// tallest swell, lean or grow; `rest` is the word as it sits. A floor of 0
+// rests the word a clearance above the footer's bottom edge, whole at its
+// tallest swell; the floor's top end crops exactly that share of the resting
+// ink's height under the edge, and the way between is linear (no jump at the
+// first step). The baseline never moves with the swell.
 export const BAND = { bottomClear: 0.05, floorMax: 0.3 } as const;
 
-function floorDrop(ink: InkExtent, floor: number) {
-  const height = ink.top + ink.bottom;
-  return Math.max(0, floor) * (height + BAND.bottomClear / BAND.floorMax);
+function floorDrop(reach: InkExtent, rest: InkExtent, floor: number) {
+  const slack = BAND.bottomClear + reach.bottom - rest.bottom;
+  return Math.max(0, floor) * (rest.top + rest.bottom + slack / BAND.floorMax);
 }
 
-export function wordBand(size: number, ink: InkExtent, floor: number, gap: number) {
-  const below = (ink.bottom + BAND.bottomClear - floorDrop(ink, floor)) * size;
-  const above = (gap + ink.top) * size;
+export function wordBand(size: number, reach: InkExtent, rest: InkExtent, floor: number, gap: number) {
+  const below = (reach.bottom + BAND.bottomClear - floorDrop(reach, rest, floor)) * size;
+  const above = (gap + reach.top) * size;
   return { height: Math.max(0, above + below), baselineFromBottom: below };
 }
 
-// The share of the ink's height the floor puts under the bottom edge.
-export function croppedShare(ink: InkExtent, floor: number): number {
-  const height = ink.top + ink.bottom;
-  return height > 0 ? Math.max(0, floorDrop(ink, floor) - BAND.bottomClear) / height : 0;
+// The share of the resting ink's height the floor puts under the bottom edge.
+export function croppedShare(reach: InkExtent, rest: InkExtent, floor: number): number {
+  const height = rest.top + rest.bottom;
+  const slack = BAND.bottomClear + reach.bottom - rest.bottom;
+  return height > 0 ? Math.max(0, floorDrop(reach, rest, floor) - slack) / height : 0;
 }
 
 // A typeset row: each letter's left edge in px, from the measured starts

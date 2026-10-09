@@ -70,11 +70,13 @@ export function FooterStage({ s, typeface, theme, reduced, replay, forceStandIn,
   const ink = face
     ? typesetInk(face.metrics, { leanDeg: response === "lean" ? s.leanDeg : 0, grow: response === "grow" ? s.grow : 0 })
     : proceduralInk(text, s.weight, s.swellAmount);
-  const band = wordBand(size, ink, s.floor, s.gap);
+  const restInk = face ? typesetInk(face.metrics, { leanDeg: 0, grow: 0 }) : proceduralInk(text, s.weight, 0);
+  const band = wordBand(size, ink, restInk, s.floor, s.gap);
   const baselineY = box.bandTop + band.height - band.baselineFromBottom;
-  // Under the ink's lowest reach (the press can overshoot a little), so the
-  // rise comes out of a line the letters never cross at rest.
-  const riseFloor = baselineY + (ink.bottom + 0.02) * size;
+  // Under the ink's lowest reach (the press can overshoot a little, and a
+  // web font's measured ink can round), so the rise comes out of a line the
+  // letters never cross at rest. Inside the floor's clearance of 0.05.
+  const riseFloor = baselineY + (ink.bottom + 0.04) * size;
   const geo: WordGeometry = {
     stageW: box.w,
     stageH: box.h,
@@ -85,7 +87,7 @@ export function FooterStage({ s, typeface, theme, reduced, replay, forceStandIn,
   const depths = fieldDepths(s.field);
 
   const spanPct = box.w ? ((unitWidth * size) / box.w) * 100 : 0;
-  const croppedPct = croppedShare(ink, s.floor) * 100;
+  const croppedPct = croppedShare(ink, restInk, s.floor) * 100;
   useEffect(() => onReadout({ sizePx: size, spanPct, stageWidth: box.w, croppedPct, fittedVw }), [size, spanPct, box.w, croppedPct, fittedVw, onReadout]);
 
   return (

@@ -58,7 +58,7 @@ export function Wordmark({ text, s, size, geo, ink, face, response, letterVeil, 
 
   const paths = useMemo(() => chars.map((c) => glyphPaths(c, size, s.corners)), [chars, size, s.corners]);
   const fontSize = face ? size / face.metrics.ascent : size;
-  const riseDistance = (ink.top + ink.bottom + 0.04) * size + 4;
+  const riseDistance = (ink.top + ink.bottom + 0.06) * size + 4;
   const swellAxes = face !== null && response === "swell" && face.canSwell;
 
   // Where each letter sits at rest, for the swell's distances.

@@ -121,8 +121,10 @@ export function fontPose(info: WebFontInfo, f: { weight: number; width: number; 
   const heavy: AxisValues = {};
   const { wght, wdth, ROND } = info.axes;
   if (wght) {
-    rest.wght = clamp(f.weight, wght);
-    heavy.wght = clamp(f.weight + f.swell, wght);
+    // Rest low enough that the swell keeps its size: a family whose axis
+    // stops short of the asked weight rests under its ceiling, not at it.
+    rest.wght = clamp(Math.min(f.weight, wght[1] - f.swell), wght);
+    heavy.wght = clamp(rest.wght + f.swell, wght);
   }
   if (wdth) {
     rest.wdth = clamp(f.width, wdth);
