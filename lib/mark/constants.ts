@@ -33,7 +33,7 @@ export const CEL_PICK: CelSettings = {
 
 export const MARK = { growPx: 10, growMs: 280, ease: "cubic-bezier(0.22, 1, 0.36, 1)", cardMarkPx: 168 } as const;
 
-export const RING = { padPx: 14, baseStrokePx: 1.5, arcStrokePx: 4, arcDegrees: 75, tint: 0.16 } as const;
+export const RING = { padPx: 14, baseStrokePx: 1.5, arcStrokePx: 4, tint: 0.16 } as const;
 
 // Strike first: the bolt lands 40ms after the open, the surface forms 120ms
 // before the mark settles, the words rise 100ms after it.

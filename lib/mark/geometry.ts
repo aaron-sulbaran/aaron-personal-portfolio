@@ -23,3 +23,11 @@ export const BOLT_SPINE: readonly Point[] = [[160.4, 26.6], [94, 100], [176, 115
 // The hold fill rises through the ink, which spans y 22 to 234.
 export const FILL_TOP = 22;
 export const FILL_BOTTOM = 234;
+
+// The mark's rise clip for one hold sample: its top edge is the fill, the
+// same value the cursor's ring paints, and its height what the discharge has
+// not yet spent.
+export function risePaint(fill: number, spent: number): { y: number; height: number } {
+  const span = FILL_BOTTOM - FILL_TOP;
+  return { y: FILL_BOTTOM - span * fill, height: Math.max(0, span * (fill - spent)) };
+}

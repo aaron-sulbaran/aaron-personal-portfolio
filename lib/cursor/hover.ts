@@ -100,10 +100,10 @@ export function hintStore(): HintStore {
 
 // ---- mark-strike: the mark's hold for the cursor's ring ----
 // MarkTrigger publishes its hold each frame it changes; CustomCursor's ring
-// paints from it, so the mark and the ring read one clock. closed is the
-// discharge (the arc becomes a full circle); hidden is the card being open.
-export type MarkHold = { fill: number; spent: number; closed: boolean; hidden: boolean };
-export const MARK_HOLD_IDLE: MarkHold = { fill: 0, spent: 0, closed: false, hidden: false };
+// paints from it, so the mark and the ring read one clock and one fill.
+// hidden is the card being open.
+export type MarkHold = { fill: number; spent: number; hidden: boolean };
+export const MARK_HOLD_IDLE: MarkHold = { fill: 0, spent: 0, hidden: false };
 
 let markHold: MarkHold = MARK_HOLD_IDLE;
 const markHoldListeners = new Set<() => void>();
@@ -113,7 +113,7 @@ export function getMarkHold(): MarkHold {
 }
 
 export function setMarkHold(next: MarkHold) {
-  const same = next.fill === markHold.fill && next.spent === markHold.spent && next.closed === markHold.closed && next.hidden === markHold.hidden;
+  const same = next.fill === markHold.fill && next.spent === markHold.spent && next.hidden === markHold.hidden;
   if (same) return;
   markHold = next;
   markHoldListeners.forEach((listener) => listener());
