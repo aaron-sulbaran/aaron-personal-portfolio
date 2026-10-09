@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useLayoutEffect, useReducer, useRef, type RefObject } from "react";
+import { markOpen } from "@/lib/inline/open";
 import { anchorPosition, followPosition, type Size } from "@/lib/inline/placement";
 import { sameTarget, TIP_IDLE, tipMode, tipReducer, type TipState, type TipTarget } from "@/lib/inline/tipState";
 import { isKeyboardFocus } from "@/lib/input/modality";
@@ -111,6 +112,8 @@ export function useTipController(bubbleRef: RefObject<HTMLElement | null>): { st
       window.removeEventListener("resize", place);
     };
   }, [bubbleRef, place]);
+  // The link whose label is showing keeps its underline filled, hover or not.
+  useEffect(() => (state.target ? markOpen(linkRef.current) : undefined), [state]);
   const dismiss = useCallback(() => dispatch({ type: "dismiss" }), []);
   useEscapeKey(state.target !== null, dismiss);
   return { state, dismiss };
