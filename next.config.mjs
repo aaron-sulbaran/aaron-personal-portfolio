@@ -7,9 +7,9 @@ const nextConfig = {
   },
   // Next 16 only serves qualities listed here (default [75]); the card modal and
   // the flight's sharp copy ask for 90, which would otherwise fall back
-  // silently. 88 was the retired GlassTile's.
+  // silently.
   images: {
-    qualities: [75, 88, 90],
+    qualities: [75, 90],
   },
   // The Coil scene (components/coil/CoilScene.tsx) imports vanilla three as
   // ES modules; transpiling keeps it on the app's own browser targets.
