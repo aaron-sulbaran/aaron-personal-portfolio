@@ -61,3 +61,13 @@ export function computeBands(freq: Uint8Array, edges: BandEdges, out: Float32Arr
   }
   return edges.columns ? clamp01((sum / edges.columns) * LEVEL_GAIN) * intro : 0;
 }
+
+// Each column's mean analyser byte (0 to 255), before any shaping: what the
+// leveller (lib/waveform/level.ts) reads.
+export function columnMeans(freq: Uint8Array, edges: BandEdges, out: Float32Array): void {
+  for (let i = 0; i < edges.columns; i++) {
+    let acc = 0;
+    for (let b = edges.start[i]; b < edges.end[i]; b++) acc += freq[b];
+    out[i] = acc / (edges.end[i] - edges.start[i]);
+  }
+}
