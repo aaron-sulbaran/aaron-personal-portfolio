@@ -20,8 +20,12 @@ const pct = (fraction: number) => `${fraction * 100}%`;
 // this draws the painter's pixel radius exactly at any tile size.
 const corners = (radius: number, width: number, height: number) => `${pct(radius / width)} / ${pct(radius / height)}`;
 
-const PANE = "absolute inset-0 overflow-hidden border border-[color:var(--card-hair)]";
-const PANE_STYLE = { borderRadius: `${pct(DIMS.radius / DIMS.w)} / ${pct(DIMS.radius / DIMS.h)}` };
+// The rim's hairline is an inset shadow, not a border: a border would shrink the
+// box every percent inside the pane resolves against, so a logo would no longer
+// be its share of the whole tile as the painter draws it (Talos's mark on its
+// 51px phone tile would fall to 19.6px, under its kit's 20px).
+const PANE = "absolute inset-0 overflow-hidden";
+const PANE_STYLE = { borderRadius: `${pct(DIMS.radius / DIMS.w)} / ${pct(DIMS.radius / DIMS.h)}`, boxShadow: "inset 0 0 0 1px var(--card-hair)" };
 const WORK = "bg-[color:var(--card-work-pane)]";
 const CENTRED = "absolute left-1/2 top-1/2 h-auto -translate-x-1/2 -translate-y-1/2";
 
