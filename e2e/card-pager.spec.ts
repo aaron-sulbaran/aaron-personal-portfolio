@@ -1,3 +1,4 @@
+import type { Locator, Page } from "@playwright/test";
 import { siteContent, type CardKey } from "@/lib/content";
 import { galleryOf, headerTileOf } from "@/lib/gallery/card";
 import { GALLERY, PHONE_GROUPING } from "@/lib/gallery/constants";
@@ -161,4 +162,65 @@ test("pager: under reduced motion a page changes with no travel", async ({ page 
   const written = await dialog.locator("[data-pager-track]").evaluate((el) => [(el as HTMLElement).style.transitionProperty, (el as HTMLElement).style.transitionDuration]);
   expect(written[0]).toBe("transform");
   expect(written[1]).toMatch(/^0(ms|s)$/);
+});
+
+async function centerOf(locator: Locator) {
+  const box = (await locator.boundingBox())!;
+  return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+}
+
+// A drag slow enough never to count as a quick flick (under 0.6px a ms).
+async function slowDrag(page: Page, from: { x: number; y: number }, by: { x: number; y: number }, steps = 14) {
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  for (let i = 1; i <= steps; i++) {
+    await page.mouse.move(from.x + (by.x * i) / steps, from.y + (by.y * i) / steps);
+    await page.waitForTimeout(20);
+  }
+  await page.mouse.up();
+}
+
+test("pager: a sideways drag turns one page, a short one springs back, and past the start it stays", async ({ page }) => {
+  const { dialog } = await openCardFromBook(page, "capital-one", { settled: true });
+  const pager = dialog.locator("[data-pager]");
+  const stage = (i: number) => dialog.locator(`[data-pager-page="${i}"] [data-pager-stage]`);
+  await slowDrag(page, await centerOf(stage(0)), { x: 120, y: 0 });
+  await expect(pager).toHaveAttribute("data-page", "0");
+  await slowDrag(page, await centerOf(stage(0)), { x: -30, y: 0 });
+  await expect(pager).toHaveAttribute("data-page", "0");
+  await slowDrag(page, await centerOf(stage(0)), { x: -120, y: 0 });
+  await expect(pager).toHaveAttribute("data-page", "1");
+  await page.waitForTimeout(GALLERY.pager.slideMs + 100);
+  await slowDrag(page, await centerOf(stage(1)), { x: 120, y: 0 });
+  await expect(pager).toHaveAttribute("data-page", "0");
+  await expect(dialog).toBeVisible();
+});
+
+test("pager: a vertical drag on the stage springs back short of 96px and closes the modal past it", async ({ page }) => {
+  const { dialog } = await openCardFromBook(page, "capital-one", { settled: true });
+  const panel = dialog.locator("[data-gallery-panel]");
+  const before = (await panel.boundingBox())!.y;
+  const stage = dialog.locator('[data-pager-page="0"] [data-pager-stage]');
+  await slowDrag(page, await centerOf(stage), { x: 0, y: 60 });
+  await expect(dialog).toBeVisible();
+  await expect.poll(async () => Math.round((await panel.boundingBox())!.y)).toBe(Math.round(before));
+  await slowDrag(page, await centerOf(stage), { x: 0, y: 130 });
+  await expect(dialog).toHaveCount(0);
+});
+
+test("pager: long words scroll in their own area and never dismiss, while a drag on the stage still does", async ({ page }) => {
+  const { dialog } = await openCardFromBook(page, "jobs", { settled: true });
+  const first = dialog.locator('[data-pager-page="0"]');
+  const words = first.locator("[data-pager-text]");
+  await expect(words).toHaveAttribute("data-scrolls", "");
+  await slowDrag(page, await centerOf(words), { x: 0, y: -150 });
+  await slowDrag(page, await centerOf(words), { x: 0, y: 150 });
+  await expect(dialog).toBeVisible();
+  const middle = await centerOf(words);
+  await page.mouse.move(middle.x, middle.y);
+  await page.mouse.wheel(0, 300);
+  await expect.poll(() => words.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+  await expect(dialog).toBeVisible();
+  await slowDrag(page, await centerOf(first.locator("[data-pager-stage]")), { x: 0, y: 130 });
+  await expect(dialog).toHaveCount(0);
 });
