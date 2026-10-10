@@ -1,4 +1,5 @@
 import { mkdirSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { CDPSession, Page } from "@playwright/test";
 import { siteContent, type CardKey } from "@/lib/content";
@@ -9,7 +10,7 @@ import type { HookWindow } from "./support/hooks";
 
 // The final pass, by hand and never in a normal run (FINAL_PASS_LOOK=1): the
 // captures the controller looks at, written outside the repo.
-const DIR = process.env.FINAL_PASS_LOOK_DIR ?? "/Users/asulbaran21/Personal Projects/.worktrees/final-pass-look";
+const DIR = process.env.FINAL_PASS_LOOK_DIR ?? join(tmpdir(), "final-pass-look");
 const DESKTOP = { width: 1440, height: 900 };
 const FACE_PADDING = 24;
 
