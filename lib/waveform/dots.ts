@@ -30,11 +30,11 @@ export interface Cursor {
 }
 
 export const CENTER_RADIUS = 2.2;
-const FUZZ_RADIUS = 1.8;
-const DOT_GAP = 6.5;
+export const FUZZ_RADIUS = 1.8;
+export const DOT_GAP = 6.5;
 // Above the idle drift's ~0.25 ceiling, so only music-on peaks turn accent.
 export const ACCENT_LINE = 0.3;
-const ACCENT_PEAK = 0.36;
+export const ACCENT_PEAK = 0.36;
 const REPEL_RADIUS = 92;
 const REPEL_FORCE = 26;
 const CARVE_RADIUS = 74;
