@@ -23,7 +23,7 @@ describe("tipView", () => {
       link: null,
       description: `${clarinet.alt}. ${clarinet.caption}`,
     });
-    expect(tipView("pop", "sandboarding")).toMatchObject({ text: null, caption: null, description: pop.sandboarding.alt });
+    expect(tipView("pop", "sandboarding")).toMatchObject({ text: null, caption: pop.sandboarding.caption, description: `${pop.sandboarding.alt}. ${pop.sandboarding.caption}` });
   });
   it("shows Rango as a landed pop, described by its alt and caption", () => {
     expect(tipView("pop", "rango")).toEqual({
