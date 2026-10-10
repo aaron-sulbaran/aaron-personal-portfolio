@@ -532,6 +532,15 @@ html:not([data-input="pointer"]) .fx:focus-visible,
   --shadow-card: 0 40px 80px -20px rgba(10, 10, 10, 0.45);
 }
 /* ---- end mark-strike ---- */
+/* ---- card modal (C3) ---- */
+/* The card modal's groups of photos taking turns (components/card/GroupParts):
+   only the current photo and caption show; useRotator holds the old one
+   visible while it clears, then lets go. */
+[data-rotator-layer]:not([data-current]),
+[data-rotator-caption]:not([data-current]) {
+  visibility: hidden;
+}
+/* ---- end card modal ---- */
 /* ---- inline links (components/inline): one look for every kind. At rest a
    link is a word of its paragraph (it inherits the text colour) with a quiet
    line under it: a separate bar, not text-decoration, so it sits below the
