@@ -1,6 +1,8 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
+import { cardDims, containBox, logoBox } from "@/lib/coil/cardFace";
+import { COIL } from "@/lib/coil/constants";
 import { strandCardByKey, type CardKey } from "@/lib/content";
 import { CardFace } from "@/components/card/CardFace";
 import { CardHeader } from "@/components/card/CardHeader";
@@ -35,6 +37,65 @@ describe("the header tile's face", () => {
     expect(face("this-site")).toContain("<svg");
     expect(face("mentorship")).toContain('data-face="photo"');
     expect(face("mentorship")).toContain('src="/photos/cards/mentorship-picture.jpg"');
+  });
+});
+
+// The tile is a scaled copy of the painted card: every size and corner here must
+// come out as the painter's own pixels (lib/coil/textures.ts) at its texture size.
+describe("the header tile's face matches the painter's geometry", () => {
+  const [textureW, textureH] = COIL.lab.textureSize;
+  const dims = cardDims(COIL.lab.textureSize);
+  const corner = /border-radius:([\d.]+)% \/ ([\d.]+)%/;
+  const num = (value: string | undefined) => Number(value);
+
+  it("rounds the pane at the painter's rim radius", () => {
+    const [, across, down] = face("capital-one").match(corner) ?? [];
+    expect((num(across) / 100) * textureW).toBeCloseTo(dims.radius, 6);
+    expect((num(down) / 100) * textureH).toBeCloseTo(dims.radius, 6);
+  });
+  it("draws IEEE's square at the photo inset's width with the inset's corners", () => {
+    const [, width, ratio, across, down] = face("ieee").match(/width:([\d.]+)%;aspect-ratio:([\d. /]+);border-radius:([\d.]+)% \/ ([\d.]+)%/) ?? [];
+    const ieee = strandCardByKey.get("ieee")?.face;
+    if (ieee?.kind !== "logo") throw new Error("ieee is not a logo face");
+    const painted = containBox(ieee.logo.width / ieee.logo.height, textureW - dims.inset * 2);
+    const boxW = (num(width) / 100) * textureW;
+    const [ratioW, ratioH] = ratio.split("/").map(Number);
+    expect(boxW).toBeCloseTo(painted.w, 6);
+    expect(boxW * (ratioH / ratioW)).toBeCloseTo(painted.h, 6);
+    expect((num(across) / 100) * boxW).toBeCloseTo(dims.innerRadius, 6);
+    expect((num(down) / 100) * painted.h).toBeCloseTo(dims.innerRadius, 6);
+  });
+  it("rounds the dark theme's plate with the inset's corners", () => {
+    const [, width, height, across, down] = face("capital-one").match(/style="width:([\d.]+)%;height:([\d.]+)%;border-radius:([\d.]+)% \/ ([\d.]+)%" data-plate=""/) ?? [];
+    const capital = strandCardByKey.get("capital-one")?.face;
+    if (capital?.kind !== "logo") throw new Error("capital-one is not a logo face");
+    const painted = logoBox(capital.logo.width / capital.logo.height, textureW, COIL.face);
+    const pad = textureW * COIL.face.plateInset;
+    const plateW = (num(width) / 100) * textureW;
+    const plateH = (num(height) / 100) * textureH;
+    expect(plateW).toBeCloseTo(painted.w + 2 * pad, 6);
+    expect(plateH).toBeCloseTo(painted.h + 2 * pad, 6);
+    expect((num(across) / 100) * plateW).toBeCloseTo(dims.innerRadius, 6);
+    expect((num(down) / 100) * plateH).toBeCloseTo(dims.innerRadius, 6);
+  });
+  it("reads the mark, the disc logos and the plate margin from COIL.face, so a retune reaches the tile", async () => {
+    vi.resetModules();
+    vi.doMock("@/lib/coil/constants", async () => {
+      const real = await vi.importActual<typeof import("@/lib/coil/constants")>("@/lib/coil/constants");
+      const retuned = { ...real.COIL, face: { ...real.COIL.face, markWidth: 0.5, plateInset: 0.2, circles: { ...real.COIL.face.circles, logo: 0.4 } } };
+      return { ...real, COIL: retuned };
+    });
+    const { CardFace: Retuned } = await import("@/components/card/CardFace");
+    const retuned = (key: CardKey) => {
+      const f = strandCardByKey.get(key)?.face;
+      if (!f) throw new Error(`${key} is not on the strand`);
+      return renderToStaticMarkup(createElement(Retuned, { face: f }));
+    };
+    vi.doUnmock("@/lib/coil/constants");
+    vi.resetModules();
+    expect(retuned("this-site")).toContain("width:50%");
+    expect(retuned("jobs")).toContain("max-width:40%;max-height:40%");
+    expect(face("capital-one")).not.toBe(retuned("capital-one"));
   });
 });
 
