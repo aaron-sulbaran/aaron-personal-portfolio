@@ -145,7 +145,9 @@ function LiveField({ text, geo, egg, theme, onFail }: Omit<Props, "reduced"> & {
         size.w = entry.contentRect.width;
         size.h = entry.contentRect.height;
         f.resize(size.w, size.h, dprCap());
-        kick();
+        // A new size clears the buffer (opaque black, no alpha): drawn now, before the paint, even off screen.
+        cancelAnimationFrame(raf);
+        draw(performance.now());
       });
       const io = new IntersectionObserver((entries) => {
         visible = entries[entries.length - 1].isIntersecting;
@@ -178,7 +180,7 @@ function LiveField({ text, geo, egg, theme, onFail }: Omit<Props, "reduced"> & {
       field = createFooterFieldGl(el);
       if (!field) return fail();
       stop = run(field, el);
-    }, fail);
+    }).catch(fail);
     return () => {
       cancelled = true;
       stop();
