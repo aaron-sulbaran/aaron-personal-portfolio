@@ -63,7 +63,7 @@ describe("galleryPlan, more photos than words", () => {
     ];
     for (const [words, named, lead] of cases) {
       const plan = galleryPlan(words, beside(...named), lead);
-      expect(plan.slides.flatMap((slide) => slide.photos).sort()).toEqual(named.map((_, i) => i));
+      expect(plan.slides.flatMap((slide) => slide.photos).sort((a, b) => a - b)).toEqual(named.map((_, i) => i));
       expect([...plan.intro, ...plan.slides.flatMap(slideWords), ...plan.closing]).toEqual(Array.from({ length: words }, (_, i) => i));
       if (lead !== undefined) expect(plan.slides[0].photos).toEqual([lead]);
     }
@@ -103,7 +103,7 @@ describe("namedPlan (the band and Travel, as cards.md pairs them)", () => {
     for (const [words, named] of cases) {
       const plan = namedPlan(words, beside(...named), 0);
       expect(plan.slides[0].photos).toEqual([0]);
-      expect(plan.slides.flatMap((slide) => slide.photos).sort()).toEqual(named.map((_, i) => i));
+      expect(plan.slides.flatMap((slide) => slide.photos).sort((a, b) => a - b)).toEqual(named.map((_, i) => i));
       expect([...plan.intro, ...plan.slides.flatMap(slideWords), ...plan.closing]).toEqual(Array.from({ length: words }, (_, i) => i));
     }
   });
