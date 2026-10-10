@@ -8,8 +8,7 @@ import { GALLERY } from "@/lib/gallery/constants";
 import { isKeyboardFocus } from "@/lib/input/modality";
 import { PAGER_PHOTO_SIZES } from "@/lib/photoSizes";
 import { useReducedMotionLive } from "@/components/soundtrack/useReducedMotionLive";
-import { GroupCaptions, GroupLayer, RotatorAnnounce, RotatorFill } from "./GroupParts";
-import { rotatorTrack } from "./RotatingPhoto";
+import { GroupCaptions, GroupLayer, RotatorAnnounce, RotatorFill, rotatorTrack } from "./GroupParts";
 import { useRotator } from "./useRotator";
 
 // Round six on a phone, grouping A: a page holds one paragraph, and when it
@@ -36,7 +35,7 @@ export function PhoneRotator({ gallery, photos, frame, boxes, active, pressing }
   const frameRef = useRef<HTMLDivElement | null>(null);
   const down = useRef<{ x: number; y: number; t: number } | null>(null);
   const [focused, setFocused] = useState(false);
-  const { index, step, runs } = useRotator(rootRef, frameRef, { count, reduced, held: pressing || focused, active });
+  const { index, step, runs } = useRotator(rootRef, frameRef, { count, reduced, held: pressing || (focused && active), active });
   const { rotate, ease } = GALLERY;
   const captionOf = (photo: number) => gallery.photos[photo].captionShort ?? gallery.photos[photo].caption;
   const shown = boxes[index];
@@ -50,6 +49,9 @@ export function PhoneRotator({ gallery, photos, frame, boxes, active, pressing }
   };
   // A pointer that moved further than a tap was the pager's swipe, and one
   // held longer only held the group; neither steps it.
+  const onPointerCancel = () => {
+    down.current = null;
+  };
   const onClick = (e: MouseEvent<HTMLDivElement>) => {
     const start = down.current;
     down.current = null;
@@ -74,6 +76,7 @@ export function PhoneRotator({ gallery, photos, frame, boxes, active, pressing }
           className="absolute bottom-0 left-1/2 -translate-x-1/2 cursor-pointer rounded-xl"
           style={{ width: frame.width, height: frame.height }}
           onPointerDown={onPointerDown}
+          onPointerCancel={onPointerCancel}
           onClick={onClick}
           onKeyDown={onKeyDown}
           onFocus={(e) => setFocused(isKeyboardFocus(e.currentTarget))}
