@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { FOOTER } from "./constants";
-import { glyphPose, glyphWidth } from "./face";
+import { glyphPose, glyphWidth, layoutWord } from "./face";
 import { falloff } from "./motion";
 import {
   bandShare,
@@ -119,13 +119,34 @@ describe("the field's stops and mask", () => {
 });
 
 describe("the letters' rect and the ripple's reach", () => {
-  it("pads the word's rect as the hero pads its lockup, the band starting just over the word's top", () => {
+  it("pads the word's widest rect as the hero pads its lockup, the band starting just over the word's top", () => {
     const g = footerGeometry(TEXT, 1440, 454, 180);
     const { band, rect } = lettersRect(TEXT, g);
     expect(band).toBeCloseTo(g.wordTop - 2, 9);
-    expect(rect.w).toBeCloseTo(FOOTER.fitShare * 1440 + 2 * FOOTER.field.surfacePad * g.size, 6);
+    const widest = layoutWord(TEXT, g.size, [glyphPose(FOOTER.face, FOOTER.swell.amount, 1)], FOOTER.tracking, FOOTER.face.gap, false).width;
+    expect(widest).toBeGreaterThan(FOOTER.fitShare * 1440);
+    expect(rect.w).toBeCloseTo(widest + 2 * FOOTER.field.surfacePad * g.size, 6);
     expect(rect.x + rect.w / 2).toBeCloseTo(720, 9);
     expect(rect.h).toBeCloseTo(g.size * (1 + 2 * FOOTER.field.surfacePad), 9);
+  });
+
+  it("holds every swelled letter inside the rect, so the surface never clamps", () => {
+    for (const w of WIDTHS) {
+      const g = footerGeometry(TEXT, w, 600, 200);
+      const { rect } = lettersRect(TEXT, g);
+      const rest = wordRest(TEXT, g);
+      const chars = [...TEXT];
+      const radius = FOOTER.swell.radius * g.size;
+      for (let px = -radius; px <= w + radius; px += w / 200) {
+        for (const py of [g.wordTop, (g.wordTop + g.baselineY) / 2, g.baselineY]) {
+          const swells = rest.centers.map((c) => falloff(Math.hypot(px - c.x, py - c.y), radius));
+          const xs = swelledXs(TEXT, g, swells);
+          const right = Math.max(...xs.map((x, i) => x + glyphWidth(chars[i], glyphPose(FOOTER.face, FOOTER.swell.amount, swells[i])) * g.size));
+          expect(xs[0], `${w} at ${px}`).toBeGreaterThanOrEqual(rect.x);
+          expect(right, `${w} at ${px}`).toBeLessThanOrEqual(rect.x + rect.w);
+        }
+      }
+    }
   });
 
   it("runs to the stage's far corner", () => {

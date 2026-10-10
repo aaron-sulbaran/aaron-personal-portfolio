@@ -30,9 +30,16 @@ export type Box = { x: number; y: number; w: number; h: number };
 // Where the hero's poster (public/coil/field-*.avif, the live field's first
 // frame) lands on a canvas `w` by `h`: covering the hero's frame (the
 // canvas's width and the viewport's height `frameH`, at the canvas's scale),
-// centered across, its middle on the word's middle (`midY`).
+// centered across, its middle on the word's middle (`midY`). It also covers
+// the whole canvas: the box reaches at least as far above and below `midY`
+// as the canvas's top and bottom do, so a short viewport never leaves a strip
+// of the canvas bare.
 export function posterBox(w: number, h: number, posterW: number, posterH: number, frameH: number, midY: number): Box {
-  const scale = Math.max(w / Math.max(1, posterW), frameH / Math.max(1, posterH));
+  const scale = Math.max(
+    w / Math.max(1, posterW),
+    frameH / Math.max(1, posterH),
+    (2 * Math.max(midY, h - midY)) / Math.max(1, posterH),
+  );
   const dw = posterW * scale;
   const dh = posterH * scale;
   return { x: (w - dw) / 2, y: midY - dh / 2, w: dw, h: dh };
