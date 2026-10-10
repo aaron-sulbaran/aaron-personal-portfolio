@@ -4,18 +4,17 @@ import { useId, useLayoutEffect, useMemo, useRef, type RefObject } from "react";
 import { FOOTER } from "@/lib/footer/constants";
 import { REST_POSE, askEgg, type EggPose, type EggState } from "@/lib/footer/egg";
 import { glyphOutline, glyphPose } from "@/lib/footer/face";
-import { eggTransform, letterTransform, periodBox, shadowEllipse } from "@/lib/footer/frame";
+import { eggTransform, letterTransform, periodFrame, shadowEllipse } from "@/lib/footer/frame";
 import { reachInk, rippleReach, swelledXs, type FooterGeometry, type WordRest } from "@/lib/footer/geometry";
 import type { LetterFrame } from "@/lib/footer/word";
 import { useWordMotion, type MotionConfig } from "./useWordMotion";
 
-// The wordmark over the whole footer, in one SVG whose units are the footer's
-// px. The letters live once in <defs> and are drawn twice by <use>: as holes
-// in a paper cover over the field (the letters are windows onto it) and as
-// the accent tint. The loop writes their transforms and, as they swell and
-// press, their outlines (bars and dots keep their thickness through the
-// press), and the period's egg and its shadow. A button over the period
-// starts the egg. The SVG is decorative; the footer carries the word's text.
+// The wordmark over the whole footer, in one SVG whose units are the footer's px. The
+// letters live once in <defs> and are drawn twice by <use>: as holes in a paper cover
+// over the field (the letters are windows onto it) and as the accent tint. The loop
+// writes their transforms and, as they swell and press, their outlines (bars and dots
+// keep their thickness through the press), and the period's egg and its shadow. A button
+// over the period starts the egg. The SVG is decorative; the footer carries the word's text.
 
 type Props = {
   text: string;
@@ -40,7 +39,7 @@ export function Wordmark({ text, eggLabel, geo, rest, reduced, stage, egg }: Pro
   const restOutlines = useMemo(() => chars.map((c) => glyphOutline(c, geo.size, poseAt(0, 1))), [chars, geo.size]);
   const inkTop = useMemo(() => reachInk(text).top, [text]);
   const period = chars.indexOf(".");
-  const box = useMemo(() => (period >= 0 ? periodBox(rest.centers[period].y, geo.baselineY, rest.halfWidths[period]) : null), [period, rest, geo.baselineY]);
+  const box = useMemo(() => (period >= 0 ? periodFrame(0, geo.size, geo.baselineY).box : null), [period, geo.size, geo.baselineY]);
   const restX = period >= 0 ? rest.xs[period] + rest.halfWidths[period] : 0;
   const config = useRef<MotionConfig>({ size: geo.size, centers: rest.centers, reduced, egg: null, apply: () => {} });
   const motion = useWordMotion(stage, config, chars.length);
@@ -61,12 +60,13 @@ export function Wordmark({ text, eggLabel, geo, rest, reduced, stage, egg }: Pro
       apply: (frames: readonly LetterFrame[], pose: EggPose, phase) => {
         const swelling = frames.some((f) => f.swell > 0);
         const xs = swelling ? swelledXs(text, geo, frames.map((f) => f.swell)) : rest.xs;
+        const pf = box && periodFrame(frames[period].swell, geo.size, geo.baselineY);
         frames.forEach((f, i) => {
           const g = letters.current[i];
           if (!g) return;
           const y = geo.baselineY + (1 - f.rise) * geo.riseDistance;
-          const hop = i === period && box !== null && pose !== REST_POSE ? eggTransform(pose, box, geo.size, inkTop) : undefined;
-          const transform = letterTransform(xs[i], y, rest.halfWidths[i], f.squash, hop);
+          const hop = i === period && pf && pose !== REST_POSE ? eggTransform(pose, pf.box, geo.size, inkTop) : undefined;
+          const transform = letterTransform(xs[i], y, i === period && pf ? pf.half : rest.halfWidths[i], f.squash, hop);
           if (written.current[i] !== transform) {
             written.current[i] = transform;
             g.setAttribute("transform", transform);
@@ -79,7 +79,7 @@ export function Wordmark({ text, eggLabel, geo, rest, reduced, stage, egg }: Pro
           }
         });
         const ground = shadow.current;
-        const s = box && shadowEllipse(box, pose, xs[period] + rest.halfWidths[period], geo.baselineY);
+        const s = pf && shadowEllipse(pf.box, pose, xs[period] + pf.half, geo.baselineY);
         const attrs = s && s.opacity > 0.001 ? { cx: s.cx.toFixed(2), cy: s.cy.toFixed(2), rx: s.rx.toFixed(2), ry: s.ry.toFixed(2), opacity: s.opacity.toFixed(3) } : null;
         const shade = attrs ? Object.values(attrs).join(" ") : "none";
         if (ground && shade !== shownShadow) {
