@@ -30,7 +30,7 @@ export const revalidate = 86400;
 // modals z-50, the flight z-[55], the inline label z-[58], the loader z-60, its root absolute at the
 // document top, its pane fixed) sits at body level.
 export default function Home() {
-  // Holding mode (the default; NEXT_PUBLIC_SITE_MODE=full opts out, see
+  // Holding mode (opt-in with NEXT_PUBLIC_SITE_MODE=holding, see
   // lib/holding.ts): the "under remodeling" page replaces the scroll journey.
   if (HOLDING_MODE) return <Holding />;
 
