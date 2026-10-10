@@ -97,8 +97,8 @@ test("label face: Who I am's block kickers and the Connect rows draw an icon wit
       await expectLabel(page.locator("#about").getByText(label, { exact: true }), "label", "muted");
     }
   }
-  for (const link of siteContent.connect.links) {
-    const row = page.locator("#connect li > a", { hasText: link.handle }).first();
+  for (const [index, link] of siteContent.connect.links.entries()) {
+    const row = page.locator("#connect li > a").nth(index);
     await expect(row.locator("svg").first(), `${link.label} icon`).toBeVisible();
     await expect(row.locator(".sr-only").first(), link.label).toHaveText(link.label);
   }
