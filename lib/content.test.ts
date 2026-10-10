@@ -34,12 +34,12 @@ describe("menu", () => {
 });
 
 describe("the mark card", () => {
-  it("is Aaron's copy: three short lines, no em dash, sentence case except the subtitle he typed lowercase", () => {
+  it("is Aaron's copy: four short paragraphs, no em dash, sentence case except the subtitle he typed lowercase", () => {
     const { mark } = siteContent;
     const strings = [mark.dialogLabel, mark.title, mark.subtitle, ...mark.lines, mark.button];
     for (const text of strings) expect(text).not.toMatch(/\u2014/);
     for (const text of [mark.dialogLabel, mark.title, ...mark.lines, mark.button]) expect(text[0]).toBe(text[0].toUpperCase());
     expect(mark.subtitle[0]).toBe(mark.subtitle[0].toLowerCase());
-    expect(mark.lines).toHaveLength(3);
+    expect(mark.lines).toHaveLength(4);
   });
 });

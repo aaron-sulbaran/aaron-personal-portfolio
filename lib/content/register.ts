@@ -15,11 +15,21 @@ export const register: InlineRegister = {
       title: "What a product is",
       body: "A product (to me) is a tool that's genuinely useful to someone and easy for them to pick up. If it's for everyone, anyone should get it on their first try. If it's for niche hobbyists, the hobbyists in that community should get it immediately. About 99% of the time a product should be built for the user instead of forcing the user to get used to the product. The other 1% is how you get a moonshot product like the iPhone, which didn't just change the way people use a phone (the product), it changed the world.",
     },
+    voltage: {
+      title: "Voltage",
+      body: "the difference in electric potential between two points",
+    },
+    arc: {
+      title: "Arc",
+      body: "a continuous electrical discharge that occurs when electric current flows through an air gap between two electrodes",
+    },
   },
   tip: {
-    voltage: { text: "the electrical pressure from a power source that pushes electric charges through a conducting path in a circuit" },
-    "two-as": { text: "(it's my name, A-Aron)" },
-    voltaage: { text: "voltage + A + A", proposed: true },
+    "two-as": { text: "as in A-Aron" },
+    voltaage: {
+      text: "I always thought Voltaage would be an awesome streamer name. I guess I took a different career path.",
+      link: { href: "https://profile.playstation.com/VoltaageArc", label: "VoltaageArc on most platforms" },
+    },
     "killer-drones": { text: "unless it's killer drones, I don't do that" },
     "evolving-isle": { text: "not dynamic island, a nod to Apple" },
     "music-note": {
@@ -50,6 +60,10 @@ export const register: InlineRegister = {
     "contrabass-clarinet": { file: { src: "/photos/pops/contrabass-clarinet.jpg", width: 600, height: 800 }, alt: "Me, on the right, holding a contrabass clarinet next to my friend with a baritone saxophone", caption: "Bass clarinet was my main instrument. In concert season I played contrabass.", crop: null },
     // A film character, so the alt describes the picture rather than me.
     rango: { file: { src: "/photos/pops/rango.jpg", width: 599, height: 800 }, alt: "Rango, the chameleon in a Hawaiian shirt, in a dance pose", caption: "yeah, this guy from that one kid's movie", crop: null },
+    // Not me in these three: the alts describe the picture, and the logo's file is flattened onto the light background token so it reads in both themes.
+    "catatumbo-lightning": { file: { src: "/photos/pops/catatumbo-lightning.jpg", width: 800, height: 577 }, alt: "Lightning forking through a huge storm cloud over a dark sea with sailboats at anchor", caption: "The lightning in question", crop: null },
+    "lake-maracaibo": { file: { src: "/photos/pops/lake-maracaibo.jpg", width: 250, height: 342 }, alt: "A vintage Venezuelan stamp showing the bridge over Lake Maracaibo and a tanker passing beneath it", caption: "The famous Puente General Rafael Urdaneta over Lake Maracaibo.", crop: null },
+    "ut-ece-logo": { file: { src: "/photos/pops/ut-ece-logo.jpg", width: 800, height: 243 }, alt: "The UT Austin Chandra Department of Electrical and Computer Engineering logo", caption: "UT Austin Electrical and Computer Engineering", crop: null },
   },
 };
 
