@@ -56,19 +56,27 @@ test("card modal: a book row opens with no flight and draws its own card", async
   await expect(misuki.dialog.getByText("Me and Misuki at a Longhorn Car Club photo shoot.", { exact: true })).toBeVisible();
 });
 
-test("card modal: in the dark theme a logo with no dark file sits on a light plate in the header tile, IEEE's square never does", async ({ page }) => {
+test("card modal: in the dark theme Capital One's header tile shows its white logo with no plate, and IEEE's face is its own navy", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "dark" });
   const { dialog } = await openCardFromBook(page, "capital-one");
-  await expect(dialog.locator('[data-tile-slot="work"] [data-plate]')).toBeVisible();
+  const tile = dialog.locator('[data-tile-slot="work"]');
+  await expect(tile.locator("[data-plate]")).toHaveCount(0);
+  await expect(tile.locator('img[src$="capital-one-logo-white.svg"]')).toBeVisible();
+  await expect(tile.locator('img[src$="capital-one-logo.svg"]')).toBeHidden();
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
   const ieee = await openCardFromBook(page, "ieee", { home: false });
   await expect(ieee.dialog.locator("[data-plate]")).toHaveCount(0);
+  await expect(ieee.dialog.locator('[data-tile-slot="work"] [data-face="logo"]')).toHaveCSS("background-color", "rgb(20, 24, 62)");
   await page.keyboard.press("Escape");
   // The theme is chosen before paint from the preference, so a fresh load reads the new one.
   await page.emulateMedia({ colorScheme: "light" });
   const light = await openCardFromBook(page, "capital-one");
-  await expect(light.dialog.locator('[data-tile-slot="work"] [data-plate]')).toBeHidden();
+  await expect(light.dialog.locator('[data-tile-slot="work"] img[src$="capital-one-logo-white.svg"]')).toBeHidden();
+  await expect(light.dialog.locator('[data-tile-slot="work"] img[src$="capital-one-logo.svg"]')).toBeVisible();
+  await page.keyboard.press("Escape");
+  const ieeeLight = await openCardFromBook(page, "ieee", { home: false });
+  await expect(ieeeLight.dialog.locator('[data-tile-slot="work"] [data-face="logo"]')).toHaveCSS("background-color", "rgb(20, 24, 62)");
 });
 
 test("card modal: IEEE's meta carries its AO tip beside the rows, and a card's links open in a new tab", async ({ page }) => {
