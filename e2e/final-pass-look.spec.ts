@@ -1,7 +1,7 @@
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import type { Page } from "@playwright/test";
-import type { CardKey } from "@/lib/content";
+import { siteContent, type CardKey } from "@/lib/content";
 import { test, expect } from "./support/fixtures";
 import { nextFrames, openHome, scrollToY } from "./support/coil";
 import { openCardFromBook } from "./support/cards";
@@ -19,8 +19,8 @@ async function hideCursor(page: Page) {
   await page.addStyleTag({ content: ".z-\\[100\\]{visibility:hidden!important}" });
 }
 
-async function openThemed(page: Page, theme: "light" | "dark", debug = "1") {
-  await page.setViewportSize(DESKTOP);
+async function openThemed(page: Page, theme: "light" | "dark", debug = "1", size = DESKTOP) {
+  await page.setViewportSize(size);
   await page.emulateMedia({ colorScheme: theme });
   await openHome(page, { debug });
   await hideCursor(page);
@@ -81,3 +81,66 @@ for (const theme of ["light", "dark"] as const) {
     await connect.screenshot({ path: join(DIR, `connect-${theme}.png`) });
   });
 }
+
+async function openMarkCard(page: Page, size = DESKTOP) {
+  await openThemed(page, "dark", "1", size);
+  await scrollToY(page, 600);
+  const mark = page.locator("[data-mark-trigger]");
+  const box = (await mark.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.waitForTimeout(700);
+  await page.mouse.up();
+  const dialog = page.getByRole("dialog", { name: siteContent.mark.dialogLabel });
+  await expect(dialog).toBeVisible();
+  await expect.poll(() => dialog.locator('[data-card="surface"]').evaluate((el) => getComputedStyle(el).opacity), { timeout: 5000 }).toBe("1");
+  await expect(dialog.locator('p[data-card="text"]').last()).toHaveCSS("opacity", "1");
+  await page.mouse.move(2, 2);
+  await page.waitForTimeout(600);
+  return dialog;
+}
+
+test("final pass: the mark card settled, with its tip, a photo pop and a definition open, dark", async ({ page }) => {
+  test.setTimeout(120_000);
+  mkdirSync(DIR, { recursive: true });
+  const dialog = await openMarkCard(page);
+  await page.screenshot({ path: join(DIR, "mark-modal-dark.png") });
+
+  await dialog.getByRole("button", { name: "VoltaageArc", exact: true }).hover();
+  await expect(page.locator("[data-inline-tip]")).toHaveAttribute("data-shown", "true");
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: join(DIR, "mark-tip-open-dark.png") });
+  await page.mouse.move(2, 2);
+  await expect(page.locator("[data-inline-tip]")).toHaveAttribute("data-shown", "false");
+
+  await dialog.getByRole("button", { name: "Catatumbo Lightning", exact: true }).hover();
+  await expect(page.locator("[data-inline-tip] img")).toBeVisible();
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: join(DIR, "mark-pop-open-dark.png") });
+  await page.mouse.move(2, 2);
+  await expect(page.locator("[data-inline-tip]")).toHaveAttribute("data-shown", "false");
+
+  await dialog.getByRole("button", { name: "Electrical and Computer Engineering", exact: true }).hover();
+  await expect(page.locator("[data-inline-tip] img")).toBeVisible();
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: join(DIR, "mark-pop-ece-dark.png") });
+  await page.mouse.move(2, 2);
+  await expect(page.locator("[data-inline-tip]")).toHaveAttribute("data-shown", "false");
+
+  await dialog.getByRole("button", { name: "Voltage", exact: true }).click();
+  const definition = page.getByRole("dialog", { name: "Voltage" });
+  await expect(definition).toBeVisible();
+  await page.mouse.move(2, 2);
+  await page.waitForTimeout(700);
+  await page.screenshot({ path: join(DIR, "mark-definition-open-dark.png") });
+});
+
+test("final pass: the mark card on a phone, dark", async ({ page }) => {
+  test.setTimeout(120_000);
+  mkdirSync(DIR, { recursive: true });
+  const dialog = await openMarkCard(page, { width: 390, height: 844 });
+  await page.screenshot({ path: join(DIR, "mark-modal-phone-dark.png") });
+  await dialog.evaluate((el) => el.scrollTo(0, el.scrollHeight));
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: join(DIR, "mark-modal-phone-bottom-dark.png") });
+});
