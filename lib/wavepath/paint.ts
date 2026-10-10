@@ -4,6 +4,7 @@ import { BREATH, HEAD_SWELL, MAX_THICK, MUSIC, SHAPE_GAIN, SHIMMER, SOFT_FEATHER
 import type { PathColumns } from "./columns";
 import { bandAt, type MusicState } from "./music";
 import { pluckAt, type PluckState } from "./pluck";
+import { rippleAt, rippleSwell, type RippleState } from "./ripple";
 
 // The site's dotted wave laid along the line (the lab's paintTile, shipped
 // options only): the resting shape by arc length, the head's swell, the
@@ -11,7 +12,7 @@ import { pluckAt, type PluckState } from "./pluck";
 // muted inside words, the music owning each column by its share. Pure.
 // runLen is where the band's run ends; later views use it to split the band
 // from the path, and the breath ignores it.
-export interface DotFrame { head: number; tail: number; train: number | null; runLen: number; gate: number; breath: number; shimmer: number; music: MusicState; plucks: PluckState; still: boolean }
+export interface DotFrame { head: number; tail: number; train: number | null; runLen: number; gate: number; breath: number; shimmer: number; music: MusicState; plucks: PluckState; ripple: RippleState; still: boolean }
 export interface DotSink { muted: number[]; accent: number[]; viewTop: number; viewBottom: number; width: number; onScreen: number }
 
 export const createSink = (): DotSink => ({ muted: [], accent: [], viewTop: -Infinity, viewBottom: Infinity, width: Infinity, onScreen: 0 });
@@ -43,6 +44,7 @@ export function buildPathDots(
   const music = f.still ? 0 : f.music.share * MUSIC.share;
   const train = f.train !== null && !f.still;
   const tailFade = (f.train ?? 0) * TRAIN_FADE;
+  const rippling = !f.still && f.ripple.live;
   for (let k = first; k < first + count; k++) {
     const j = list[k];
     const s = cols.s[j];
@@ -50,6 +52,7 @@ export function buildPathDots(
     let w = cols.taper[j] * (weights ? weights[j] : 1);
     let r = 1;
     if (!f.still) w *= 1 + HEAD_SWELL.gain * f.gate * Math.exp(-(((f.head - s) / HEAD_SWELL.px) ** 2));
+    if (rippling) w *= 1 + rippleSwell(f.ripple, s);
     let present = 1;
     if (train) {
       present = smooth((s - f.tail) / tailFade);
@@ -60,6 +63,8 @@ export function buildPathDots(
     const a = (TAU * s) / WAVELENGTH;
     let disp = SHAPE_GAIN * shape(a) + (f.still ? 0 : pluckAt(f.plucks, s));
     if (!f.still) disp *= 1 + BREATH.depth * f.breath * Math.sin(a * 0.5);
+    // After the breath, so the crest keeps its own clean shape.
+    if (rippling) disp += rippleAt(f.ripple, s);
     let mag = FLOOR + (0.05 + 0.17 * (0.5 + 0.5 * Math.sin(a / 0.55 + 0.6)) ** 2) * (1 - music);
     if (music > 1e-3) mag += music * bandAt(f.music.bins, (s % SPECTRUM_PERIOD) / SPECTRUM_PERIOD);
     const magnitude = FLOOR + (mag - FLOOR) * w;

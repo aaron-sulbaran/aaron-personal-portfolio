@@ -32,6 +32,12 @@ export const MUSIC = { share: 1, intensity: 1.2, rise: 0.05, fall: 0.11, attackS
 export const SHIMMER = { rate: 0.8, depth: 0.22 } as const;
 export const SOFT_FEATHER = 0.08;
 export const BREATH = { rate: 0.9, depth: 0.35 } as const;
+// The answer's ripple, matched to the footer period's (lib/footer/constants.ts egg block).
+// amp: the crest's height in amplitudes (the resting shape is SHAPE_GAIN, 0.26).
+// speed: px of arc per second. width: the crest's half width, px. decay: per
+// second (the egg's 1.2). swell: extra dot weight at the crest. lifeS: the cap.
+// Aaron retunes it here.
+export const RIPPLE = { amp: 0.45, speed: 650, width: 70, decay: 1.2, swell: 0.4, lifeS: 3 } as const;
 export const PLUCK = { radius: 49, strength: 0.3, recovery: 0.6, speed: 700, width: 70, wave: 60, max: 4 } as const;
 
 export const TILE_PX = 768;

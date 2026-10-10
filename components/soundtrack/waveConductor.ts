@@ -7,6 +7,7 @@ import { createMusic, stepMusic } from "@/lib/wavepath/music";
 import type { DotFrame } from "@/lib/wavepath/paint";
 import { createNear, createPlucks, createPointer, movePointer, notePointer, stepPlucks, type Near, type PointerTrack } from "@/lib/wavepath/pluck";
 import { attachProbe, pathProbe } from "@/lib/wavepath/probe";
+import { createRipple } from "@/lib/wavepath/ripple";
 
 // The wave's one engine (the engine split): once per frame it steps the
 // clocks, the levelled music, the head and the plucks into one frame, and
@@ -74,7 +75,7 @@ function createInstance(still: boolean): Instance {
   let frozen = false, destroyed = false, snap = false, raf = 0, last = 0, breathClock = 0;
   const frame: WaveFrame = {
     head: 0, tail: -Infinity, train: null, runLen: 0, gate: 0, breath: 0, shimmer: 0,
-    music: createMusic(), plucks: createPlucks(), still, scrollY: window.scrollY,
+    music: createMusic(), plucks: createPlucks(), ripple: createRipple(), still, scrollY: window.scrollY,
     decided: getSoundtrackState() !== "before", length: 0, runFlat: 0,
     state: createHead(), pointer: createPointer(), near: createNear(),
   };
