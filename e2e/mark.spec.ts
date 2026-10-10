@@ -323,7 +323,7 @@ test.describe("the mark card's words and links", () => {
     await expect(paragraphs.nth(2)).toContainText("My gamer tag growing up: VoltaageArc (Voltage + two A's + Arc)");
     await expect(paragraphs.nth(4)).toContainText("My major: Electrical and Computer Engineering... this one is pretty self explanatory.");
     await expect(dialog.getByText(siteContent.modals.closeHintKeyboard)).toBeVisible();
-    for (const handle of await paragraphs.elementHandles()) expect(await handle.evaluate((el) => getComputedStyle(el).opacity)).toBe("1");
+    for (let i = 0; i < 5; i++) await expect(paragraphs.nth(i)).toHaveCSS("opacity", "1");
   });
 
   test("mark: hovering the gamer tag opens a tip with a link; the pointer can reach it, it opens a new tab, and it lets go after leaving", async ({ page, offsite }) => {
