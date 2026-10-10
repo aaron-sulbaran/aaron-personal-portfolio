@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useImperativeHandle, useRef, useState, type RefObject, type Ref } from "react";
-import { siteContent, strandTiles } from "@/lib/content";
+import { bookColumns, siteContent } from "@/lib/content";
 import { useEscapeKey } from "@/lib/modal";
 import { useSeen } from "@/lib/home/seen";
 import { useHomeController } from "@/components/home/HomeController";
@@ -84,11 +84,7 @@ const clamp = (x: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, x
 
 // The unwound list's rows: the strand's cards, grouped as the book groups them.
 type ListRow = { key: string; title: string; meta: string };
-const strandKeys = new Set<string>(strandTiles.map((tile) => tile.key));
-const LIST_GROUPS: { heading: string; rows: ListRow[] }[] = [
-  { heading: siteContent.book.workHeading, rows: siteContent.book.workRows.filter((row) => strandKeys.has(row.key)) },
-  { heading: siteContent.book.photosHeading, rows: siteContent.book.photoRows.filter((row) => strandKeys.has(row.key)) },
-];
+const LIST_GROUPS: { heading: string; rows: readonly ListRow[] }[] = bookColumns.map((column) => ({ heading: column.heading, rows: column.rows }));
 const LIST_ROW_COUNT = LIST_GROUPS.reduce((sum, group) => sum + group.rows.length, 0);
 
 export function HeroOverlay({ ref, api, onRowOpen, entrance = null, shape, onShapeChange, sceneOn }: Props) {

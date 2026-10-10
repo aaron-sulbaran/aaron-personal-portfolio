@@ -8,7 +8,7 @@ import { homography, matrix3d, type Rect } from "@/lib/coil/flight";
 import { siteEase } from "@/lib/coil/motion";
 import { COIL } from "@/lib/coil/constants";
 import { cardPhotoInset } from "@/lib/coil/cardFace";
-import { photoSlotSizes } from "@/lib/photoSizes";
+import { CARD_PICTURE_SIZES } from "@/lib/photoSizes";
 import { flightProbe } from "@/lib/coil/flightProbe";
 import type { CoilFlightHandle, CoilSceneApi } from "@/components/coil/CoilScene";
 
@@ -206,7 +206,7 @@ export function FlyingTile(props: FlyingTileProps) {
               alt=""
               fill
               quality={90}
-              sizes={photoSlotSizes(props.photoSrc)}
+              sizes={CARD_PICTURE_SIZES}
               className="object-cover"
               style={{ objectPosition: inset.objectPosition }}
               onLoad={() => setSharpLoaded(true)}
