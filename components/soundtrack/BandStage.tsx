@@ -16,8 +16,9 @@ import { useReducedMotionLive } from "./useReducedMotionLive";
 // (useBandPassed) decides from the scroll position when the reader has passed
 // the band, and the pill fades in at its dock. Phones stack the wave under the
 // copy and have no pill. The freeze toggle stays here until music is chosen
-// (the player card carries it then on desktop) and goes inert once declined,
-// since nothing moves, unless the wave is frozen.
+// (the player card carries it then on desktop); the band is still until the
+// visitor answers, and its line breathes after either answer, so a decliner
+// can always freeze it.
 export function BandStage() {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const [inView, setInView] = useState(false);
@@ -41,20 +42,19 @@ export function BandStage() {
     return () => observer.disconnect();
   }, []);
 
-  // Nothing moves under reduced motion, nor once the music is off (the band's
-  // line is still), so the toggle has nothing to do then, unless the wave is
-  // frozen and can still be let go. The player card carries the toggle on
-  // desktop while music is on or paused; before a choice and after a decline
-  // the capsule's click plays instead, so the band keeps it there. Phones
-  // always keep it here. A toggle that just let a declined wave go keeps the
-  // keyboard's focus, so it stays live until focus leaves it.
-  const freezable = !reduce && (music !== "off" || frozen);
+  // Nothing moves under reduced motion, so the toggle has nothing to do then.
+  // The player card carries the toggle on desktop while music is on or paused;
+  // before a choice and after a decline the capsule's click plays instead, so
+  // the band keeps it there. Phones always keep it here. A toggle that just
+  // let the wave go keeps the keyboard's focus, so it stays live until focus
+  // leaves it.
+  const freezable = !reduce;
   const live = freezable || focusHeld;
   const inCard = music === "on" || music === "paused";
 
   return (
     <>
-      <div ref={stageRef} className="relative h-[176px] md:absolute md:inset-0 md:h-auto">
+      <div ref={stageRef} data-wave-band-line className="relative h-[176px] md:absolute md:inset-0 md:h-auto">
         <WaveCanvas active={inView} frozen={frozen} />
       </div>
       <div className="relative z-10 px-[6vw] pb-5 md:absolute md:inset-x-0 md:bottom-0">

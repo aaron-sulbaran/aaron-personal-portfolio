@@ -1,7 +1,7 @@
 import { DPR_CAP } from "@/lib/waveform/layout";
 
 // What the band view (waveView.ts) draws with: the colors read once per
-// theme, the batched dot fills, the canvas sizing and the pointer.
+// theme, the batched dot fills and the canvas sizing.
 
 export type Theme = "light" | "dark";
 export type Alphas = { muted: number; accent: number };
@@ -45,32 +45,4 @@ export function sizeCanvas(canvas: HTMLCanvasElement, ctx: CanvasRenderingContex
   canvas.width = Math.round(width * dpr);
   canvas.height = Math.round(height * dpr);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-}
-
-// The latest pointer position for a fine pointer; `onChange` wakes the loop.
-export function trackPointer(fine: boolean, onChange: () => void) {
-  const pointer = { x: -1e4, y: -1e4, on: false };
-  const onMove = (event: PointerEvent) => {
-    pointer.x = event.clientX;
-    pointer.y = event.clientY;
-    pointer.on = true;
-    onChange();
-  };
-  const onLeave = () => {
-    pointer.on = false;
-    // Wake a stopped loop so a carve under a cursor that left the window eases out.
-    onChange();
-  };
-  if (fine) {
-    window.addEventListener("pointermove", onMove, { passive: true });
-    document.addEventListener("mouseleave", onLeave);
-  }
-  return {
-    pointer,
-    dispose() {
-      if (!fine) return;
-      window.removeEventListener("pointermove", onMove);
-      document.removeEventListener("mouseleave", onLeave);
-    },
-  };
 }
