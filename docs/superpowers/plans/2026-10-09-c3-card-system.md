@@ -4,11 +4,11 @@
 
 **Goal:** Move the Coil and the book off the legacy shapes and onto the fourteen launch cards, and give every card its modal: logo cards, photo cards, the jobs timeline and the Mentorship card's mentors, with the photo gallery Aaron picked in the gallery lab (rows on desktop, a pager on phones).
 
-**Architecture:** One derived list, `strandCards` (`lib/content/strand.ts`), drives the Coil's faces, the unwound list, the book rows and the flight's landing kind. The scene keeps its module pattern: only `lib/coil/textures.ts` learns three new faces (a logo on a plain or anvil tile, the AS mark, the jobs circles) and `scene/boot.ts` loads them; no new frame step. One modal, `components/card/CardModal.tsx`, replaces `PhotoModal` and `WorkModal`: a pure plan (`lib/gallery/plan.ts`, the lab's round six rule) decides which photos sit beside which words, and two layouts render it (`CardRows` at 1024px and up, `CardPager` below), with the lab's mask-in and rotator on top. The flown card still lands on `[data-tile-slot]`: the card picture's 3:4 box for a photo card, the header's 3:4 tile for every other card.
+**Architecture:** One derived list, `strandCards` (`lib/content/strand.ts`), drives the Coil's faces, the unwound list, the book rows and the flight's landing kind. The scene keeps its module pattern: only `lib/coil/textures.ts` learns three new faces (a logo on a plain or anvil tile, the AS mark, the jobs circles) and `scene/boot.ts` loads them; no new frame step. One modal, `components/card/CardModal.tsx`, replaces `PhotoModal` and `WorkModal`: a pure plan (`lib/gallery/plan.ts`, the lab's round six rule) decides which photos sit beside which words, and two layouts render it (`CardRows` at 1024px and up, `CardPager` below), with the lab's mask-in and rotator on top. The flown card still lands on `[data-tile-slot]`: beside the rows, the card picture's 3:4 box for a photo card and the header's 3:4 tile for every other card; on a phone, the header's 3:4 tile for every card, because the phone header stays put while the pages turn.
 
 **Tech Stack:** Next.js 16.2 App Router, React 19.2, TypeScript strict, Tailwind 3.4 with CSS custom properties, Framer Motion 12 (modal shell only), GSAP 3.15 (SplitText, CustomEase "site", from `@/lib/gsap`), vanilla three 0.186 (the scene chunk only), vitest (`lib/**/*.test.ts`, node), Playwright (Chromium channel, local production builds).
 
-**Spec:** the untracked hand-off in the main checkout's `docs/content/` (`build-brief.md` GO section, `launch-content-plan.md`, `cards.md`, `modal-gallery.md`, `interactions-brief.md`, `logos.md`, `photos.md`), the gallery lab on branch `lab` at commit `ae9b6dd` (`app/lab/gallery/`, round six, Aaron's pick of 2026-10-09), the merged plans `docs/superpowers/plans/2026-10-08-c1-content-model.md`, `-c4-assets.md`, `-c2-inline-links.md`, and the hand-off notes in PRs 40, 41, 42 and 46. Builders work in worktrees that cannot see `docs/content/`: every string and number a task needs is quoted in that task. Read `docs/coil-input-model.md` and `docs/coil-scene-modules.md` before Tasks 6 and 8.
+**Spec:** the untracked hand-off in the main checkout's `docs/content/` (`build-brief.md` GO section, `launch-content-plan.md`, `cards.md`, `modal-gallery.md`, `interactions-brief.md`, `logos.md`, `photos.md`), the gallery lab on branch `lab` at commit `ae9b6dd` (`app/lab/gallery/`, round six, Aaron's pick of 2026-10-09), the merged plans `docs/superpowers/plans/2026-10-08-c1-content-model.md`, `-c4-assets.md`, `-c2-inline-links.md`, and the hand-off notes in PRs 40, 41, 42 and 46. Builders work in worktrees that cannot see `docs/content/`: every string and number a task needs is quoted in that task. Read `docs/coil-input-model.md` and `docs/coil-scene-modules.md` before Tasks 6, 8 and 9.
 
 ## Global Constraints
 
@@ -19,29 +19,31 @@
 - Reduced motion, live in both directions: the modal panel fades only, no masks, no auto-advance, instant photo changes, no pager travel, no flight.
 - Modal primitives only from `lib/modal.ts` (`useBodyScrollLock`, `useEscapeKey`, `useFocusTrap`, the backdrop variants). Fixed overlays through `components/Portal.tsx`. No new dependency.
 - The Coil's invariants (AGENTS.md Layer 2, "LOAD-BEARING INVARIANTS") hold: three lives only in the CoilScene chunk; `lib/coil/cardFace.ts` stays import-free; the flown card is the rendered card; `components/coil/CoilScene.tsx` stays about 220 lines (227 today; this slice changes two lines there and adds none); a new per-frame concern would be a `components/coil/scene/` module plus a `lib/coil/frame.ts` step, and this slice needs none.
-- Hero values live only in `lib/coil/constants.ts`; gallery values only in `lib/gallery/constants.ts`. Do not change any existing `COIL` value: the retune comes after Aaron's look (Task 15 lists what it would touch).
+- Hero values live only in `lib/coil/constants.ts`; gallery values only in `lib/gallery/constants.ts`. Do not change any existing `COIL` value: the retune comes after Aaron's look (Task 18 lists what it would touch).
 - Component files under 200 lines; scene modules and `lib/coil/textures.ts` under 400.
-- Leave the legacy shapes for the C5 sweep: `strandTiles`, `homeTiles`, `photos`, `workItems`, `book.workRows`, `book.photoRows`, `strand.pattern|photos|work`, `work.*`, `photoBySrc`, `workItemBySlug`, `photoSlotSizes`, the case pages, the placeholder assets, `lib/content.test.ts`. C3 stops reading them. The one exception: `components/PhotoModal.tsx` and `components/WorkModal.tsx` are replaced here and deleted in Task 8.
+- Leave the legacy shapes for the C5 sweep: `strandTiles`, `homeTiles`, `photos`, `workItems`, `book.workRows`, `book.photoRows`, `strand.pattern|photos|work`, `work.*`, `photoBySrc`, `workItemBySlug`, `photoSlotSizes`, the case pages, the placeholder assets, `lib/content.test.ts`. C3 stops reading them. The one exception: `components/PhotoModal.tsx` and `components/WorkModal.tsx` are replaced here and deleted in Task 9.
 - Do not edit `docs/`, `AGENTS.md`, the recruiting files, the holding page or the `lab` branch. Never commit anything from `docs/content/` (untracked, private, kept out through `.git/info/exclude`): never `git add -A` or `git add .`; add files by path.
 - Branch `c3-card-system` from `origin/main`; worktree `/Users/asulbaran21/Personal Projects/.worktrees/aaron-portfolio-website-c3-card-system`; one PR into `main`; small commits, never squashed.
 - Ports: a local full production server on 3370; e2e always `CI=1 E2E_FULL_PORT=3246 E2E_HOLDING_PORT=3247` after `lsof -nP -iTCP:3246 -sTCP:LISTEN; lsof -nP -iTCP:3247 -sTCP:LISTEN; lsof -nP -iTCP:3370 -sTCP:LISTEN` prints nothing for the ports you are about to use.
 - Never `pnpm dev` and `pnpm build` in one checkout. Stop only a server you started, by the PID you wrote to a file in your session scratchpad (`$TMPDIR` below; shell variables do not survive between Bash calls). Never `pkill`, `killall`, a pattern, or a port you did not open. Never `vercel deploy`, never push `main`.
 - Every commit: `git commit -m "<subject>" -m "Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"` for a Sonnet builder, `Claude Opus 5.5` for an Opus builder.
+- Never push a task's intermediate state: every commit leaves the app working (no commit where a Coil click does nothing or opens the wrong modal), and the branch is pushed only in Task 18.
+- A server you start yourself is `./node_modules/.bin/next start -p 3370` in the background with its PID written to a file in `$TMPDIR`; wait for it with `curl --retry 60 --retry-delay 1 --retry-connrefused -sf -o /dev/null http://localhost:3370` (never a `sleep` loop) and stop it by that PID.
 - Shorthand: `E2E` means `CI=1 E2E_FULL_PORT=3246 E2E_HOLDING_PORT=3247 pnpm test:e2e`; `E2E <file>` runs one spec (it builds both modes first; add `E2E_NO_BUILD=1` to rerun against the last build when no source changed).
 - The lab is a reference, not a dependency: `git show ae9b6dd:app/lab/gallery/<file>` prints a lab file from any worktree of this repo. Where this plan and the lab disagree, this plan wins (the lab predates the label face and C2).
 
 ## Rulings taken in this plan (each also a line in "Decisions for Aaron" when it is his call)
 
 1. **One card list.** `strandCards` (strand order) and `bookColumns` (book order) both derive from `siteContent.cards`; the Coil, the unwound list and the book never read a legacy shape again.
-2. **Flight kinds stay `"photo" | "work"`.** A photo card (`visual.kind === "photo"`) flies into the card picture's box (`[data-tile-slot="photo"]`, 320 by 427, the lead of the first gallery row). Every other card flies into the header tile (`[data-tile-slot="work"]`), now 3:4 (60 by 80) so the flown card fills it exactly; `lib/coil/flight.ts` (`fitAspect`) and `FlyingTile` are unchanged.
-3. **Flights only land in the desktop rows.** A card flies only when the viewport is at least 1024px wide (`GALLERY.wideQuery`), the pointer is fine and motion is allowed; otherwise it opens like a book row (the modal draws its own media). While a flown card is parked, the modal holds the layout it opened with (no switch to the pager under a parked card).
+2. **Flight kinds stay `"photo" | "work"`.** Beside the rows (1024px and up) a photo card (`visual.kind === "photo"`) flies into the card picture's box (`[data-tile-slot="photo"]`, 320 by 427, the lead of the first gallery row) and every other card into the header tile (`[data-tile-slot="work"]`), now 3:4 (60 by 80) so the flown card fills it exactly. On a phone every card, photo cards included, flies into the phone header's 3:4 tile (42 by 56, Talos's 51 by 68), which shows the card's face (a photo card's picture in its pane) when nothing lands there. `lib/coil/flight.ts` (`fitAspect`) and `FlyingTile` are unchanged apart from the sharp copy's sizes.
+3. **A mouse click flies at any width, as it does today.** Layer 1 assigns input by capability, never by width: a fine-pointer click on a Coil card (or a row of the unwound list) flies its card into the modal whenever motion is allowed and its slot is on screen, in a window of any width; a touch tap (`tap: true`, slot -1) and a book row open with no flight, the modal drawing its own media. The flight lands on the slot of the layout the modal opens in (Ruling 2). Below 1024px that is the phone header's tile, which stays put while the pages turn, so no pager page can carry a parked flown card off the panel. While a flown card is parked (`flight.phase === "out"`), the modal holds the layout it opened with (no switch between the rows and the pager under a parked card).
 4. **Book rows open with no flight** (as photo rows do today); the unwound list's rows and Coil clicks fly.
-5. **The gallery rule is the lab's round six** (`rotatingPlan` at ae9b6dd), ported as `galleryPlan`, with one guard: the card picture never takes turns (a parked flown card covers it), so a photo card with one paragraph keeps its picture still and turns the rest in a second row.
+5. **The gallery rule is the lab's round six** (`rotatingPlan` at ae9b6dd), ported as `galleryPlan`, with one guard: the card picture never takes turns (a parked flown card covers it), so a photo card with one paragraph keeps its picture still and turns the rest in a second row. The band and Travel, which the lab never showed Aaron, follow cards.md's pairings instead (`namedPlan`): the card picture stands alone in the first row (cards.md: the card picture is not paired), and every other photo sits beside the paragraph it names, photos naming one paragraph taking turns.
 6. **The jobs timeline uses the same rows.** Its "words" are the three paragraphs then the five entries; its photos group by the entry they name (`groupedPlan`: the two MOD photos take turns beside the MOD entry), and entries without photos ride with the nearest row by the lab's `arrange` rule.
 7. **Jobs insider tips are inline tips.** Task 1 registers `job-0` to `job-4` in the tip register from `cards.jobs.timeline[i].tip`, and each entry renders its employer as `[Employer](tip:job-N)` through `InlineCopy`: the shared label, keyboard focus and `aria-describedby` come from C2 with no change to `components/inline/` (this rules on PR 42's hand-off, which proposed a new tip kind).
 8. **The mentors list is a section inside the Mentorship modal** (after the words, before the links), headed by `cards.mentorship.mentors.title`, not a second modal.
-9. **Book metas render with `visibleText`** (PR 42 Decision 15): a link cannot sit inside a row's button. The modal header shows `modal.meta ?? book.meta` (PR 40) through `InlineCopy`.
-10. **Logos on the Coil and in the header tile.** A plain tile is `--card-work-pane`; Talos sits on `--card-anvil` in both themes; in the dark theme a logo with no dark file and not opaque sits on a light plate (`--card-logo-ground`); IEEE (an opaque navy square) is drawn as the tile's face. `srcDark` is used whenever it is set, so the `logo-dark` branch needs no C3 change. Raster logos load through the image optimizer (PR 41: the IEEE JPEG is 525,928 bytes).
+9. **Book metas render with `visibleText`** (PR 42 Decision 15): a link cannot sit inside a row's button. The modal header shows `modal.meta ?? book.meta` (PR 40) through `InlineCopy`, except that beside the rows a book meta holding a tip the row cannot show (IEEE's `[AO](tip:ieee-ao)`) shows whole, so the AO tip lives in the modal as cards.md asks ("keep the tip in the modal only"); a phone keeps IEEE's shorter `modal.meta`, which cards.md made for a 360px screen (`headerMeta`, `lib/gallery/card.ts`).
+10. **Logos on the Coil and in the header tile.** A plain tile is `--card-work-pane`; Talos sits on `--card-anvil` in both themes; in the dark theme a logo with no dark file and not opaque sits on a light plate (`--card-logo-ground`); IEEE (an opaque navy square) is drawn as the tile's face. `srcDark` is used whenever it is set, so the `logo-dark` branch needs no C3 change. Raster logos load through the image optimizer (PR 41: the IEEE JPEG is 525,928 bytes). Talos's phone tile is 51 by 68 (`GALLERY.talosTileCompact`), so its mark, 40 percent of the tile, is 20.4px and never under its kit's 20px minimum (interactions-brief.md section 2); the 42 by 56 tile would draw it at 16.8px.
 11. **The jobs card's circles**: five discs on the card's own diagonal, oldest (Popeyes, smallest) bottom left to newest (Aritzia, largest) top right, each a light disc (`--card-logo-ground`) with the light logo file, in both themes (PR 41: Aritzia has no usable dark file).
 12. **Label face** (docs/label-face-spec.md): the modal meta and links are accent Profa Bold (`font-label text-label` and `text-label-lg`), captions and the close hint muted Profa Bold (`font-label text-label text-muted`). The lab drew captions and links in Inter because it predates the face.
 13. **The backdrop dims for real:** the tint and the glass are `color-mix` at 70 and 85 percent, as the lab showed Aaron, instead of the `bg-background/70` that emits nothing.
@@ -49,15 +51,20 @@
 15. **Phone grouping:** A ("a page a paragraph, the group turning in the page's stage", the lab's round six default) ships behind `PHONE_GROUPING` in `lib/gallery/constants.ts`; B (`"photo"`) is a one-line switch; C (`"strip"`) is refused by the constant's type because its strip component is not built.
 16. **The phone's shapes:** a card with photos is a sheet (the visible height less 24px top and bottom) holding the pager, and only a long page's words scroll; a card with no photos (min/Max, Talos, This site, the family business) is a short modal of its header, words, links and close hint that scrolls with the backdrop. The pager draws no close hint (the lab's pick): the X and a vertical flick close it.
 17. **Holding the turns:** a desktop group holds while hovered by a mouse, while keyboard focus is inside it, while less than a third of its frame is on screen, and while paused; a phone page's group holds while a finger is down on the pager, while its page is not current, and while its stage has keyboard focus. Every rotator dot is its own tab stop, as in the lab.
-18. **The fold:** the lab's numbers stand. The e2e holds the first row above the fold at 1440 by 900 on the four cards the spec tests (Capital One, Hackathons, Mentorship, IEEE); every card's first-row bottom at 1440 by 900 and 1024 by 768 is measured in Task 15 and reported. The jobs card opens on its three paragraphs and the Popeyes entry (Ruling 6), so its first photo row starts below the fold.
+18. **The fold:** the lab's numbers stand. The e2e holds the first row above the fold at 1440 by 900 on the four cards the spec tests (Capital One, Hackathons, Mentorship, IEEE); every card's first-row bottom at 1440 by 900 and 1024 by 768 is measured in Task 18 and reported. The jobs card opens on its three paragraphs and the Popeyes entry (Ruling 6), so its first photo row starts below the fold.
+19. **The mask-in starts at once when nothing lands** (a book row, a touch tap) and at the landing, 520ms, after a flight (`maskStartMs`, `lib/gallery/steps.ts`), so a book open never shows empty glass for half a second. The rotator's clock is unchanged: it starts 1720ms after the body mounts.
+20. **Focus never falls out of a modal** (`useFocusTrap`, `lib/modal.ts`, shared by every modal): when the focused control turns disabled or inert under the visitor (the pager's Next at the last page, a page turning away), focus moves to the nearest live control (the first live one in the closest enclosing element: the other arrow, a page dot, else the close button), and a Tab from the body while a modal is open comes back into it. The trap's own Tab wrap skips controls inside an inert subtree.
 
 ## Review Focus
 
-1. **A resize across 1024px while a modal is open.** With a flown card parked, the layout must hold (no pager page can carry the slot and the flown card off the panel); with no flight it follows the window. Test: Task 8, "the layout holds while a flown card is parked".
-2. **A long page on a phone.** A vertical drag on words that overflow their area scrolls them; only a drag on the stage, the header or words that fit dismisses, and only past 96px. Test: Task 13, "long words scroll in their own area and never dismiss".
-3. **Escape in the middle of the mask-in, then open again.** No split line, inline `clip-path` or `data-mask-armed` may survive a close, and the next open replays from the start. Test: Task 11, "Escape in the middle of the run leaves nothing behind, and the next open replays from the start".
-4. **Dark theme logos with no dark file** (Capital One, FSDATALINK until `logo-dark` lands). They sit on a light plate on the Coil and in the header tile, IEEE never does, Talos stays on the anvil. Tests: Task 6 (`needsGround`), Task 7 (the header face's plate markup), Task 8 ("in the dark theme Capital One's logo sits on a light plate" on the Coil's pixels, and "in the dark theme a logo with no dark file sits on a light plate in the header tile").
-5. **A keyboard-only visitor in a gallery modal.** Tab reaches the inline tips, the rotator's dots and pause button, the mentors' links and the card links; Escape hides a shown tip before it closes the modal; focus returns to the row that opened it. Test: Task 12, "the keyboard path through Mentorship and Misuki".
+1. **A resize across 1024px while a modal is open.** With a flown card parked, the layout must hold (the flown card stays on the slot it landed on); with no flight it follows the window. Test: Task 10, "the layout holds while a flown card is parked".
+2. **A long page on a phone.** A vertical drag on words that overflow their area scrolls them; only a drag on the stage, the header or words that fit dismisses, and only past 96px. Test: Task 16, "long words scroll in their own area and never dismiss".
+3. **Escape in the middle of the mask-in, then open again.** No split line, inline `clip-path` or `data-mask-armed` may survive a close, and the next open replays from the start. Test: Task 13, "Escape in the middle of the run leaves nothing behind, and the next open replays from the start".
+4. **Dark theme logos with no dark file** (Capital One, FSDATALINK until `logo-dark` lands). They sit on a light plate on the Coil and in the header tile, IEEE never does, Talos stays on the anvil. Tests: Task 6 (`needsGround`), Task 7 (the header face's plate markup), Task 10 ("in the dark theme Capital One's logo sits on a light plate" on the Coil's pixels, and "in the dark theme a logo with no dark file sits on a light plate in the header tile").
+5. **A keyboard-only visitor in a gallery modal.** Tab reaches the inline tips, the rotator's dots and pause button, the mentors' links and the card links; Escape hides a shown tip before it closes the modal; focus returns to the row that opened it. Test: Task 14, "the keyboard path through Mentorship and Misuki".
+6. **Keyboard focus in the phone pager.** An arrow that disables under focus, a page that turns inert under focus, and a Tab from the body never leave focus outside the dialog. Test: Task 15, "keyboard focus never falls out of the dialog when its control disables or its page goes inert, and Tab from the body comes back in".
+7. **A mouse click below 1024px.** It still flies, lands exactly on the phone header's tile, and that tile does not move while the pages turn. Tests: Task 10, "under 1024px a mouse click still flies the card, onto the phone header's tile"; Task 15, "a mouse click on the Coil flies a photo card onto the phone header's tile, which stays put while the pages turn".
+8. **Every size read waits for the panel to rest.** The panel scales in from 0.97 over 280ms and Playwright measures through transforms, so `openCardFromBook` returns only once the panel's computed transform is none and its opacity 1 (`panelAtRest`), and the flight tests call `panelAtRest` before they measure. Tests: Tasks 10, 12, 15 and 18 read sizes only after it.
 
 ## File Structure
 
@@ -66,17 +73,18 @@
 | `lib/content/types.ts`, `cards.ts`, `media.ts`, `register.ts`, `lib/content.ts` (modify) | Mentors, `LogoRef.opaque`, the jobs tips, `book.ariaLabel`, `modals.gallery` strings, `bookColumns` and the strand exports |
 | `lib/content/strand.ts` (create) | `StrandCard`, `strandCards`, `strandCardByKey`, `bookRow` |
 | `lib/gallery/plan.ts`, `boxes.ts` (create) | Which photos sit beside which words; boxes, frames, panel width (pure) |
-| `lib/gallery/constants.ts`, `card.ts`, `timeline.ts` (create) | The lab's values, `PHONE_GROUPING`; a card's gallery input; the timeline's employer markup (pure) |
-| `lib/gallery/timing.ts`, `reveal.ts`, `pager.ts`, `rotator.ts`, `steps.ts` (create) | The mask table, the left to right reveals, the pager's state and gestures, the rotator's gate, a card's mask steps by layout (pure) |
+| `lib/gallery/constants.ts`, `card.ts`, `timeline.ts` (create) | The lab's values, `PHONE_GROUPING`; a card's gallery input, the header's tile and meta line; the timeline's employer markup (pure) |
+| `lib/gallery/timing.ts`, `reveal.ts`, `pager.ts`, `rotator.ts` (create, Task 5); `steps.ts` (create, Task 13) | The mask table, the left to right reveals, the pager's state and gestures, the rotator's gate; a card's mask steps by layout and when they start (pure) |
 | `lib/photoSizes.ts` (modify) | `CARD_PICTURE_SIZES`, `galleryRowSizes`, `PAGER_PHOTO_SIZES` |
-| `app/globals.css`, `lib/coil/theme.ts`, `lib/coil/constants.ts`, `lib/coil/cardFace.ts`, `lib/coil/textures.ts` (modify) | Card tokens, theme fields, the `face` block, face layouts (pure), the three new painters and their loaders |
+| `app/globals.css`, `lib/coil/theme.ts`, `lib/coil/constants.ts`, `lib/coil/cardFace.ts`, `lib/coil/textures.ts` (modify); `lib/coil/textures.test.ts` (create) | Card tokens, theme fields, the `face` block, face layouts (pure), the three new painters and their loaders |
 | `components/coil/CoilScene.tsx`, `scene/state.ts`, `scene/boot.ts`, `components/coil/HeroOverlay.tsx` (modify) | The scene and the unwound list on `strandCards` |
 | `public/coil/hero-*`, `lib/coil/heroStill.rects.ts`, `scripts/hero-still-phases.json` (regenerated) | The hero stills with the fourteen cards |
 | `components/card/CardModal.tsx`, `CardBody.tsx`, `useGalleryLayout.ts` (create) | The shell, the body by layout and its mask-in, the layout that holds under a parked flown card |
 | `components/card/CardFace.tsx`, `CardHeader.tsx`, `StillPhoto.tsx`, `Words.tsx`, `TimelineEntry.tsx`, `MentorsList.tsx`, `CardLinks.tsx`, `CloseHint.tsx` (create) | The parts both layouts share |
-| `components/card/CardRows.tsx`, `RotatingPhoto.tsx`, `useRotator.ts`, `useMaskIn.ts` (create) | The desktop rows, a group taking turns, the turns' clock and change, the mask-in |
-| `components/card/CardPager.tsx`, `PagerPage.tsx`, `PagerControls.tsx`, `usePagerDrag.ts`, `PhoneRotator.tsx`, `CardWords.tsx` (create); `CardStack.tsx` (created in Task 10, deleted in Task 13) | The phone: the pager, a page, its controls, its gestures, a page's turning stage, a card with no photos |
+| `components/card/CardRows.tsx`, `GroupParts.tsx`, `RotatingPhoto.tsx`, `useRotator.ts`, `useMaskIn.ts` (create) | The desktop rows, a group's layers and captions, a group taking turns, the turns' clock and change, the mask-in |
+| `components/card/CardPager.tsx`, `PagerPage.tsx`, `PagerControls.tsx`, `usePagerDrag.ts`, `PhoneRotator.tsx`, `CardWords.tsx` (create); `CardStack.tsx` (created in Task 12, deleted in Task 15) | The phone: the pager, a page, its controls, its gestures, a page's turning stage, a card with no photos |
 | `components/modal/useCloseHint.ts` (create); `components/inline/DefinitionModal.tsx`, `components/mark/MarkCard.tsx` (modify) | The close hint, moved out of the deleted `PhotoModal` |
+| `lib/modal.ts` (modify, Task 15) | The focus trap: focus never falls out of a modal (Ruling 20) |
 | `components/home/HomeController.tsx`, `components/book/Book.tsx`, `BookRow.tsx`, `components/FlyingTile.tsx` (modify); `components/PhotoModal.tsx`, `components/WorkModal.tsx` (delete) | Selection by card key, the book on cards, the sharp copy's sizes |
 | `e2e/support/cards.ts`, `e2e/card-modal.spec.ts`, `e2e/coil-faces.spec.ts`, `e2e/card-gallery.spec.ts`, `e2e/card-masks.spec.ts`, `e2e/card-rotator.spec.ts`, `e2e/card-pager.spec.ts`, `e2e/card-look.spec.ts` (create); `e2e/modal.spec.ts`, `label-face.spec.ts`, `a11y.spec.ts`, `toggle.spec.ts`, `support/fallback.ts` (modify) | The suite (`card-look.spec.ts` is Aaron's captures, skipped unless `CARD_LOOK_DIR` is set) |
 
@@ -104,31 +112,19 @@ cd "/Users/asulbaran21/Personal Projects/.worktrees/aaron-portfolio-website-c3-c
 **Interfaces:**
 - Produces: `Mentor { name: string; href: string; line: string | null }`; `LogoRef.opaque?: true`; `jobTipKey(entry: number): string` from `lib/content/register.ts` (`"job-0"` to `"job-4"`); `siteContent.book.ariaLabel` `"Work and people"`; `siteContent.modals.gallery` (below).
 
-The data, verbatim. Aaron, 2026-10-09: all six mentors agreed to be named; each gets "their names and then the one sentence about where they've helped me out or how they've helped me out, with a link to their LinkedIn". No sentence exists yet for any of the six (`aaron-site-assets/07-mentorship/mentors.txt` holds names and links only; one entry carries a private aside in brackets that is not site copy and stays out), so every `line` is `null` and nothing renders for it until Aaron writes them.
-
-| Name | LinkedIn |
-|---|---|
-| Andrew Chang | `https://www.linkedin.com/in/andrewlinchang/` |
-| Diego Jimenez | `https://www.linkedin.com/in/djmora/` |
-| Jared Alonzo | `https://www.linkedin.com/in/jared-alonzo/` |
-| JJ Gonzales | `https://www.linkedin.com/in/jjgonzalesiv/` |
-| Joaquin Escobar | `https://www.linkedin.com/in/jescobar25/` |
-| Mike Ditson | `https://www.linkedin.com/in/mikeditson/` |
+The data, verbatim. Aaron, 2026-10-09: all six mentors agreed to be named; each gets "their names and then the one sentence about where they've helped me out or how they've helped me out, with a link to their LinkedIn". No sentence exists yet for any of the six (`aaron-site-assets/07-mentorship/mentors.txt` holds names and links only; one entry carries a private aside in brackets that is not site copy and stays out), so every `line` is `null` and nothing renders for it until Aaron writes them. The six names and their LinkedIn URLs, verbatim from that file, are in the `cards.ts` block in Step 3. That block is the only place this plan writes the URLs: the tests read them from the content, and they never go in prose, a commit message or the PR body.
 
 - [ ] **Step 1: Failing tests.** In `lib/content/cards.test.ts`, replace the test "model the mentors list and hold it empty until each mentor agrees to be named" with:
 ```ts
-  it("name the six mentors who agreed, each with a LinkedIn link and no line until I write one", () => {
+  it("name the six mentors who agreed, each with their own LinkedIn link and no line until I write one", () => {
     const { title, people } = cards.mentorship.mentors;
     expect(title).toBe("the people who shaped me");
-    expect(people.map((mentor) => [mentor.name, mentor.href])).toEqual([
-      ["Andrew Chang", "https://www.linkedin.com/in/andrewlinchang/"],
-      ["Diego Jimenez", "https://www.linkedin.com/in/djmora/"],
-      ["Jared Alonzo", "https://www.linkedin.com/in/jared-alonzo/"],
-      ["JJ Gonzales", "https://www.linkedin.com/in/jjgonzalesiv/"],
-      ["Joaquin Escobar", "https://www.linkedin.com/in/jescobar25/"],
-      ["Mike Ditson", "https://www.linkedin.com/in/mikeditson/"],
-    ]);
-    for (const mentor of people) expect(mentor.line, mentor.name).toBeNull();
+    expect(people.map((mentor) => mentor.name)).toEqual(["Andrew Chang", "Diego Jimenez", "Jared Alonzo", "JJ Gonzales", "Joaquin Escobar", "Mike Ditson"]);
+    for (const mentor of people) {
+      expect(mentor.href, mentor.name).toMatch(/^https:\/\/www\.linkedin\.com\/in\/[a-z0-9-]+\/$/);
+      expect(mentor.line, mentor.name).toBeNull();
+    }
+    expect(new Set(people.map((mentor) => mentor.href)).size).toBe(people.length);
   });
 
   it("mark only the IEEE square as an opaque logo, its own ground", () => {
@@ -404,7 +400,7 @@ git commit -m "Content: the strand and the book as cards, derived from the fourt
 - Create: `lib/gallery/plan.ts`, `lib/gallery/boxes.ts`, `lib/gallery/plan.test.ts`, `lib/gallery/boxes.test.ts`
 
 **Interfaces:**
-- Produces (`lib/gallery/plan.ts`): `PlanPhoto { beside?: number }`; `Slide { photo: number; photos: number[]; own?: number; before: number[]; after: number[] }`; `Plan { intro: number[]; slides: Slide[]; closing: number[] }`; `Page extends Slide { links: boolean; wordless?: boolean }`; `type PhoneGrouping = "paragraph" | "photo" | "strip"`; `type StageKind = "still" | "turns" | "strip"`; `photoOrder(photos, wordCount, lead?)`; `galleryPlan(wordCount: number, photos: readonly PlanPhoto[], lead?: number): Plan`; `groupedPlan(wordCount: number, photos: readonly PlanPhoto[]): Plan`; `pagesOf(plan: Plan): Page[]`; `photoPages(plan: Plan): Page[]`; `phonePages(plan: Plan, grouping: PhoneGrouping): Page[]`; `stageKind(page: Page, grouping: PhoneGrouping): StageKind`; `slideWords(slide: Slide): number[]`.
+- Produces (`lib/gallery/plan.ts`): `PlanPhoto { beside?: number }`; `Slide { photo: number; photos: number[]; own?: number; before: number[]; after: number[] }`; `Plan { intro: number[]; slides: Slide[]; closing: number[] }`; `Page extends Slide { links: boolean; wordless?: boolean }`; `type PhoneGrouping = "paragraph" | "photo" | "strip"`; `type StageKind = "still" | "turns" | "strip"`; `photoOrder(photos, wordCount, lead?)`; `galleryPlan(wordCount: number, photos: readonly PlanPhoto[], lead?: number): Plan`; `groupedPlan(wordCount: number, photos: readonly PlanPhoto[]): Plan`; `namedPlan(wordCount: number, photos: readonly PlanPhoto[], lead: number): Plan`; `pagesOf(plan: Plan): Page[]`; `photoPages(plan: Plan): Page[]`; `phonePages(plan: Plan, grouping: PhoneGrouping): Page[]`; `stageKind(page: Page, grouping: PhoneGrouping): StageKind`; `slideWords(slide: Slide): number[]`.
 - Produces (`lib/gallery/boxes.ts`): `Box { width: number; height: number }`; `Boxes { vertical: Box; horizontal: Box }`; `isWide(aspect, wideFrom)`; `fitWhole(aspect, boxWidth, boxHeight): Box`; `uniformBoxes(verticalWidth, horizontalWidth): Boxes`; `boxFor(aspect, boxes, wideFrom): Box`; `groupFrame(boxes: readonly Box[]): Box`; `rowColumns(aspects, g: ColumnSettings): { slot: number; panel: number }`; `pageStage(photos: readonly number[], aspects: readonly number[], innerWidth: number, height: number): { frame: Box; boxes: Box[] }`; `stageHeight(capPx: number, roomPx: number, floorPx: number): number`.
 
 "Words" are the units a photo sits beside: a card's paragraphs (`modal.blocks`), and on the jobs card the paragraphs followed by the timeline entries (Task 4). A photo's `beside` is the index of its unit.
@@ -416,10 +412,12 @@ The rule (Aaron, gallery lab rounds four to six, 2026-10-09), as `galleryPlan` i
 
 `groupedPlan` (the jobs timeline): photos that name the same word form one group in that word's row; rows follow word order; photos naming no valid word join the last group; the remaining words ride with rows by the same rule.
 
+`namedPlan` (the band and Travel, the photo cards the lab never showed Aaron; ruled on the plan's review, 2026-10-10): cards.md's pairing to the letter. The card picture stands alone in the first row, where the flight lands (cards.md: "The card picture sits beside the title; it is not paired"), taking only the opening words no photo names; every other photo is grouped as `groupedPlan` groups them, beside the word it names, photos naming one word taking turns. On the real data: the band's section photo sits beside paragraph 0, the practice-lot photo beside paragraph 1 ("the band kept growing") and the competition photo beside paragraph 2; Travel's Fuji, Dubai and Cartagena photos take turns beside paragraph 0 (Japan and Dubai), and paragraph 1 (Barbara) closes the card.
+
 - [ ] **Step 1: Failing tests.** `lib/gallery/plan.test.ts`:
 ```ts
 import { describe, expect, it } from "vitest";
-import { galleryPlan, groupedPlan, pagesOf, phonePages, photoOrder, photoPages, slideWords, stageKind, type Plan } from "@/lib/gallery/plan";
+import { galleryPlan, groupedPlan, namedPlan, pagesOf, phonePages, photoOrder, photoPages, slideWords, stageKind, type Plan } from "@/lib/gallery/plan";
 
 // The rows as Aaron reads them: which photos, beside which words.
 const rows = (plan: Plan) => plan.slides.map((slide) => ({ photos: slide.photos, words: slideWords(slide) }));
@@ -507,6 +505,25 @@ describe("groupedPlan (the jobs timeline)", () => {
     expect(rows(plan)).toEqual([{ photos: [0, 1], words: [1] }]);
     expect([plan.intro, plan.closing]).toEqual([[0], [2]]);
     expect(groupedPlan(2, [])).toEqual({ intro: [0, 1], slides: [], closing: [] });
+  });
+});
+
+describe("namedPlan (the band and Travel, as cards.md pairs them)", () => {
+  it("stands the card picture alone and puts every other photo beside the word it names, a shared word's photos taking turns", () => {
+    expect(rows(namedPlan(3, beside(undefined, 0, 1, 2), 0))).toEqual([{ photos: [0], words: [] }, { photos: [1], words: [0] }, { photos: [2], words: [1] }, { photos: [3], words: [2] }]);
+    const travel = namedPlan(2, beside(undefined, 0, 0, 0), 0);
+    expect(rows(travel)).toEqual([{ photos: [0], words: [] }, { photos: [1, 2, 3], words: [0] }]);
+    expect([travel.intro, travel.closing]).toEqual([[], [1]]);
+  });
+  it("gives the card picture the opening words no photo names, and places every photo and word once", () => {
+    expect(rows(namedPlan(3, beside(undefined, 2), 0))).toEqual([{ photos: [0], words: [0, 1] }, { photos: [1], words: [2] }]);
+    const cases: [number, (number | undefined)[]][] = [[3, [undefined, 0, 1, 2]], [2, [undefined, 0, 0, 0]], [3, [undefined, 2]], [2, [undefined]], [2, [undefined, 5]]];
+    for (const [words, named] of cases) {
+      const plan = namedPlan(words, beside(...named), 0);
+      expect(plan.slides[0].photos).toEqual([0]);
+      expect(plan.slides.flatMap((slide) => slide.photos).sort()).toEqual(named.map((_, i) => i));
+      expect([...plan.intro, ...plan.slides.flatMap(slideWords), ...plan.closing]).toEqual(Array.from({ length: words }, (_, i) => i));
+    }
   });
 });
 
@@ -729,11 +746,14 @@ export function galleryPlan(wordCount: number, photos: readonly PlanPhoto[], lea
   return { intro: [], slides, closing: [] };
 }
 
-export function groupedPlan(wordCount: number, photos: readonly PlanPhoto[]): Plan {
+// Photos grouped by the unit each names, in unit order, those naming none in the
+// last group; skip leaves one photo out (namedPlan's card picture).
+function groupsOf(wordCount: number, photos: readonly PlanPhoto[], skip?: number): Placed[] {
   const valid = validIn(wordCount);
   const groups = new Map<number, number[]>();
   const strays: number[] = [];
   photos.forEach((photo, i) => {
+    if (i === skip) return;
     if (valid(photo.beside)) groups.set(photo.beside, [...(groups.get(photo.beside) ?? []), i]);
     else strays.push(i);
   });
@@ -741,7 +761,22 @@ export function groupedPlan(wordCount: number, photos: readonly PlanPhoto[]): Pl
   const last = placed[placed.length - 1];
   if (last) last.slide.photos.push(...strays);
   else if (strays.length) placed.push({ slide: group(strays), at: Infinity });
-  return arrange(wordCount, placed);
+  return placed;
+}
+
+export function groupedPlan(wordCount: number, photos: readonly PlanPhoto[]): Plan {
+  return arrange(wordCount, groupsOf(wordCount, photos));
+}
+
+// cards.md's pairing to the letter, for the photo cards the lab never showed
+// Aaron (the band and Travel): the card picture stands alone in the first row,
+// where the flight lands (cards.md: it is not paired), taking only the opening
+// units no photo names; every other photo sits beside the unit it names,
+// photos naming one unit taking turns; the other units ride with the rows as
+// they do in groupedPlan.
+export function namedPlan(wordCount: number, photos: readonly PlanPhoto[], lead: number): Plan {
+  const { intro, slides, closing } = arrange(wordCount, groupsOf(wordCount, photos, lead));
+  return { intro: [], slides: [{ ...group([lead]), before: intro }, ...slides], closing };
 }
 
 // A page a row: the opening units on the first page, the closing units and the
@@ -830,7 +865,7 @@ export const stageHeight = (capPx: number, roomPx: number, floorPx: number) => M
 - [ ] **Step 5: Commit.**
 ```bash
 git add lib/gallery/plan.ts lib/gallery/boxes.ts lib/gallery/plan.test.ts lib/gallery/boxes.test.ts
-git commit -m "Gallery: the lab's round six plan (the card picture never turns), the timeline's grouped rows, the boxes" -m "Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
+git commit -m "Gallery: the lab's round six plan (the card picture never turns), the timeline's grouped rows, cards.md's named pairing for the band and Travel, the boxes" -m "Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -842,11 +877,11 @@ git commit -m "Gallery: the lab's round six plan (the card picture never turns),
 - Modify: `lib/photoSizes.ts`, `lib/photoSizes.test.ts`
 
 **Interfaces:**
-- Consumes: Task 3's `galleryPlan`, `groupedPlan`, `Plan`, `rowColumns`, `uniformBoxes`; Task 1's `jobTipKey`; `siteContent.cards`.
+- Consumes: Task 3's `galleryPlan`, `groupedPlan`, `namedPlan`, `Plan`, `rowColumns`, `uniformBoxes`, `Box`; Task 1's `jobTipKey`; `siteContent.cards`; `visibleText` (`lib/content/links.ts`).
 - Produces:
 ```ts
 // lib/gallery/constants.ts
-export const GALLERY: { wideQuery; verticalWidth; horizontalWidth; wideFrom; textWidth; proseMaxWidth; rowGap; columnGap; panelPadding; panelBorder; headerTile; headerTileCompact; pager; rotate; mask; direction; ease }; // values below
+export const GALLERY: { wideQuery; verticalWidth; horizontalWidth; wideFrom; textWidth; proseMaxWidth; rowGap; columnGap; panelPadding; panelBorder; headerTile; headerTileCompact; talosTileCompact; talosMarkMinPx; pager; rotate; mask; direction; ease }; // values below
 export const BOXES: Boxes; // uniformBoxes(GALLERY.verticalWidth, GALLERY.horizontalWidth)
 export const PHONE_GROUPING: Exclude<PhoneGrouping, "strip">;
 // lib/gallery/card.ts
@@ -854,6 +889,8 @@ export interface GalleryPhoto { src: string; width: number; height: number; alt:
 export type WordUnit = { kind: "block"; index: number } | { kind: "entry"; index: number };
 export interface Gallery { key: CardKey; photos: readonly GalleryPhoto[]; lead: number | undefined; words: readonly WordUnit[]; plan: Plan; aspects: readonly number[]; panelWidth: number; slot: number }
 export function galleryOf(key: CardKey): Gallery;
+export function headerTileOf(key: CardKey, compact: boolean): Box; // 60 by 80; on a phone 42 by 56, Talos's 51 by 68
+export function headerMeta(key: CardKey, compact: boolean): string; // the header's meta line (Ruling 9)
 // lib/gallery/timeline.ts
 export function employerSource(entry: number): string; // "[Popeyes](tip:job-0)"
 // lib/photoSizes.ts
@@ -861,7 +898,7 @@ export const CARD_PICTURE_SIZES: string; // "320px"
 export function galleryRowSizes(sourceAspect: number, box: { width: number; height: number }): string;
 export const PAGER_PHOTO_SIZES: string; // "calc(100vw - 74px)"
 ```
-A photo card's gallery starts with its card picture (index 0, the `lead`, captioned with `modal.picture.caption`), then its modal photos in `lib/content/media.ts` order. A logo card's gallery is its modal photos. Words are `modal.blocks`, and on the jobs card the five timeline entries after the three paragraphs (a jobs photo's `beside` is `3 + timeline`).
+A photo card's gallery starts with its card picture (index 0, the `lead`, captioned with `modal.picture.caption`), then its modal photos in `lib/content/media.ts` order. A logo card's gallery is its modal photos. Words are `modal.blocks`, and on the jobs card the five timeline entries after the three paragraphs (a jobs photo's `beside` is `3 + timeline`). The plan is `groupedPlan` for the jobs card, `namedPlan` for the band and Travel (Ruling 5), and `galleryPlan` for every other card. `headerTileOf` and `headerMeta` give Task 7's header its tile (Ruling 10's Talos tile) and its meta line (Ruling 9).
 
 - [ ] **Step 1: Failing tests.** `lib/gallery/card.test.ts`:
 ```ts
@@ -869,7 +906,7 @@ import { describe, expect, it } from "vitest";
 import { siteContent, type CardKey } from "@/lib/content";
 import { parseInlineLinks, visibleText } from "@/lib/content/links";
 import { registerHas } from "@/lib/content/register";
-import { galleryOf } from "@/lib/gallery/card";
+import { galleryOf, headerMeta, headerTileOf } from "@/lib/gallery/card";
 import { GALLERY, PHONE_GROUPING } from "@/lib/gallery/constants";
 import { slideWords } from "@/lib/gallery/plan";
 import { employerSource } from "@/lib/gallery/timeline";
@@ -891,13 +928,13 @@ describe("each card's gallery", () => {
     expect(galleryOf("misuki").photos[3].captionShort).toBe("The real Mazda 787B that won Le Mans in 1991, at the Mazda Museum in Hiroshima.");
   });
 
-  it("sits every photo beside the words Aaron's rule gives it", () => {
+  it("sits every photo beside the words Aaron's rule gives it, and the band's and Travel's beside the words cards.md names", () => {
     expect(Object.fromEntries(keys.map((key) => [key, rows(key)]))).toEqual({
       mentorship: [{ photos: [0], words: [0] }, { photos: [1, 2, 3], words: [1] }],
       "min-max": [],
-      band: [{ photos: [0], words: [0] }, { photos: [1], words: [1] }, { photos: [2, 3], words: [2] }],
+      band: [{ photos: [0], words: [] }, { photos: [1], words: [0] }, { photos: [2], words: [1] }, { photos: [3], words: [2] }],
       talos: [],
-      travel: [{ photos: [0], words: [0] }, { photos: [1, 2, 3], words: [1] }],
+      travel: [{ photos: [0], words: [] }, { photos: [1, 2, 3], words: [0] }],
       "capital-one": [{ photos: [0], words: [1] }, { photos: [1], words: [2] }, { photos: [2], words: [3] }],
       hackathons: [{ photos: [0], words: [0] }, { photos: [1], words: [1] }, { photos: [2], words: [2] }],
       anthropic: [{ photos: [0], words: [0] }, { photos: [1, 2], words: [1] }],
@@ -909,7 +946,7 @@ describe("each card's gallery", () => {
       "building-in-public": [{ photos: [0], words: [0] }, { photos: [1], words: [1] }, { photos: [2], words: [2] }],
     });
     expect(Object.fromEntries(keys.map((key) => [key, [galleryOf(key).plan.intro, galleryOf(key).plan.closing]]))).toMatchObject({
-      "capital-one": [[0], [4]], hackathons: [[], [3]], jobs: [[0, 1, 2, 3], []], "min-max": [[0], []], talos: [[0, 1], []], "this-site": [[0], []], fsdatalink: [[0, 1], []],
+      "capital-one": [[0], [4]], hackathons: [[], [3]], jobs: [[0, 1, 2, 3], []], "min-max": [[0], []], talos: [[0, 1], []], "this-site": [[0], []], fsdatalink: [[0, 1], []], band: [[], []], travel: [[], [1]],
     });
   });
 
@@ -934,7 +971,20 @@ describe("each card's gallery", () => {
     expect(GALLERY.mask).toEqual({ landingMs: 520, lengthMs: 480, staggerMs: 110, lineStaggerMs: 45, settle: 1.02 });
     expect(GALLERY.pager).toMatchObject({ stageMax: 0.4, slideMs: 360, flickPx: 96, sheetInsetPx: 48 });
     expect([GALLERY.direction, GALLERY.headerTile, GALLERY.headerTileCompact]).toEqual(["ltr", { width: 60, height: 80 }, { width: 42, height: 56 }]);
+    expect([GALLERY.talosTileCompact, GALLERY.talosMarkMinPx]).toEqual([{ width: 51, height: 68 }, 20]);
     expect(PHONE_GROUPING).toBe("paragraph");
+  });
+
+  it("gives the header a 3:4 tile, and Talos's on a phone room for its kit's 20px mark", () => {
+    for (const key of keys) for (const compact of [false, true]) expect(headerTileOf(key, compact).width / headerTileOf(key, compact).height, key).toBeCloseTo(0.75, 9);
+    expect([headerTileOf("talos", false), headerTileOf("talos", true), headerTileOf("capital-one", true)]).toEqual([{ width: 60, height: 80 }, { width: 51, height: 68 }, { width: 42, height: 56 }]);
+  });
+
+  it("keeps IEEE's AO tip in the modal beside the rows, and the shorter meta on a phone", () => {
+    expect(headerMeta("ieee", false)).toBe("President, Corporate Director, and [AO](tip:ieee-ao), 2023 to 2026");
+    expect(headerMeta("ieee", true)).toBe("President, 2023 to 2026");
+    expect(keys.filter((key) => headerMeta(key, false) !== headerMeta(key, true))).toEqual(["ieee"]);
+    expect([headerMeta("band", false), headerMeta("this-site", false), headerMeta("anthropic", true)]).toEqual(["Drum major, 2021 to 2023", "Portfolio, 2026", "Claude Campus Ambassador, 2026"]);
   });
 });
 
@@ -989,7 +1039,9 @@ export const GALLERY = {
   panelPadding: 40,
   panelBorder: 1,
   headerTile: { width: 60, height: 80 }, // 3:4, so a flown logo card fills it
-  headerTileCompact: { width: 42, height: 56 }, // the pager's tighter header, clear of the close button
+  headerTileCompact: { width: 42, height: 56 }, // the phone header's, clear of the close button
+  talosTileCompact: { width: 51, height: 68 }, // Talos's phone tile: its mark at 40 percent is 20.4px
+  talosMarkMinPx: 20, // the Talos kit's smallest mark (interactions-brief.md section 2)
   pager: {
     stageMax: 0.4, // of the visible height
     wordlessMax: 0.55, // grouping B's photo-only pages
@@ -1027,17 +1079,23 @@ export const PHONE_GROUPING: Exclude<PhoneGrouping, "strip"> = "paragraph";
 `lib/gallery/card.ts`:
 ```ts
 import { siteContent, type CardKey } from "@/lib/content";
-import { rowColumns } from "./boxes";
+import { visibleText } from "@/lib/content/links";
+import { rowColumns, type Box } from "./boxes";
 import { BOXES, GALLERY } from "./constants";
-import { galleryPlan, groupedPlan, type Plan } from "./plan";
+import { galleryPlan, groupedPlan, namedPlan, type Plan } from "./plan";
 
 // One card's modal as the gallery reads it: its photos (the card picture first
 // on a photo card), the word units they sit beside, Aaron's plan, and the
-// desktop panel's width.
+// desktop panel's width; and the header's tile and meta line by layout.
 
 export interface GalleryPhoto { src: string; width: number; height: number; alt: string; caption: string | null; captionShort: string | null; beside?: number }
 export type WordUnit = { kind: "block"; index: number } | { kind: "entry"; index: number };
 export interface Gallery { key: CardKey; photos: readonly GalleryPhoto[]; lead: number | undefined; words: readonly WordUnit[]; plan: Plan; aspects: readonly number[]; panelWidth: number; slot: number }
+
+// The photo cards the gallery lab never showed Aaron follow cards.md's pairings
+// to the letter (ruled on the plan's review, 2026-10-10); every other photo card
+// keeps the lab's round six rule, as Aaron picked it.
+const NAMED: ReadonlySet<CardKey> = new Set<CardKey>(["band", "travel"]);
 
 const cache = new Map<CardKey, Gallery>();
 
@@ -1057,12 +1115,30 @@ export function galleryOf(key: CardKey): Gallery {
   ];
   const lead = picture ? 0 : undefined;
   const words = [...blocks, ...entries];
-  const plan = key === "jobs" ? groupedPlan(words.length, photos) : galleryPlan(words.length, photos, lead);
+  const plan =
+    key === "jobs" ? groupedPlan(words.length, photos) : lead !== undefined && NAMED.has(key) ? namedPlan(words.length, photos, lead) : galleryPlan(words.length, photos, lead);
   const aspects = photos.map((photo) => photo.width / photo.height);
   const columns = rowColumns(aspects, { boxes: BOXES, wideFrom: GALLERY.wideFrom, columnGap: GALLERY.columnGap, textWidth: GALLERY.textWidth, padding: GALLERY.panelPadding, border: GALLERY.panelBorder });
   const gallery: Gallery = { key, photos, lead, words, plan, aspects, panelWidth: columns.panel, slot: columns.slot };
   cache.set(key, gallery);
   return gallery;
+}
+
+// The header's 3:4 tile, where a flown card lands unless it lands on the card
+// picture: 60 by 80 beside the rows, 42 by 56 on a phone, and Talos's 51 by 68
+// there, so its mark (40 percent of the tile) is never under its kit's 20px.
+export function headerTileOf(key: CardKey, compact: boolean): Box {
+  if (!compact) return GALLERY.headerTile;
+  return key === "talos" ? GALLERY.talosTileCompact : GALLERY.headerTileCompact;
+}
+
+// The header's meta line: modal.meta where cards.md gave a shorter one, else the
+// book's. A book meta holding a tip the book row cannot show (IEEE's AO) shows
+// whole beside the rows, so the tip lives in the modal (cards.md, IEEE); a phone
+// keeps the shorter line cards.md made for it.
+export function headerMeta(key: CardKey, compact: boolean): string {
+  const { book, modal } = siteContent.cards[key];
+  return !compact && visibleText(book.meta) !== book.meta ? book.meta : (modal.meta ?? book.meta);
 }
 ```
 (If TypeScript does not narrow `photo.timeline` in the else branch, write `photo.timeline ?? 0`; the union in `lib/content/types.ts` guarantees one of the two.)
@@ -1098,7 +1174,7 @@ export const PAGER_PHOTO_SIZES = `calc(100vw - ${GALLERY.pager.insetPx}px)`;
 - [ ] **Step 5: Commit.**
 ```bash
 git add lib/gallery/constants.ts lib/gallery/card.ts lib/gallery/timeline.ts lib/gallery/card.test.ts lib/photoSizes.ts lib/photoSizes.test.ts
-git commit -m "Gallery: each card's photos, words and plan, the lab's round six values, the modal's image sizes" -m "Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
+git commit -m "Gallery: each card's photos, words and plan, the header's tile and meta, the lab's round six values, the modal's image sizes" -m "Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -1461,7 +1537,7 @@ git commit -m "Gallery: the mask table, the left to right reveals, the pager's g
 - Create: `lib/coil/cardFace.test.ts`
 
 **Interfaces:**
-- Consumes: `LogoRef` (with Task 1's `opaque`).
+- Consumes: `LogoRef` (with Task 1's `opaque`); Task 4's `GALLERY.talosTileCompact`, `GALLERY.headerTileCompact` and `GALLERY.talosMarkMinPx` (the Talos test only).
 - Produces: `CoilTheme.card.anvil`, `.logoGround`, `.mark`; `COIL.face`; from `lib/coil/cardFace.ts` (still import-free): `logoBox(aspect, cardWidth, f: LogoFit): Fit`, `containBox(aspect, side): Fit`, `needsGround(logo: { srcDark: string | null; opaque?: boolean }, tile: "plain" | "anvil", dark: boolean): boolean`, `circlesLayout(count, aspect, o: { from; to; gap }): Circle[]` (card widths from the card's top left), `MARK_INK_BOX`, `type Fit = { w: number; h: number }`, `type LogoFit`, `type Circle = { x: number; y: number; r: number }`. Task 7's DOM face and Task 8's canvas painters both draw from these, so the header tile and the Coil card agree.
 
 The faces (Rulings 10 and 11): a logo card is `--card-work-pane`, or `--card-anvil` for Talos in both themes, with its logo centred: a mark's longer side at 40 percent of the card's width, a wordmark (2:1 and wider) at 64 percent. In the dark theme a plain tile's logo with no dark file and not opaque sits on a rounded `--card-logo-ground` plate 7 percent of the card's width wider on each side. `srcDark` draws in the dark theme whenever it is set. The opaque IEEE square is drawn as the face: the square at the photo inset's width, centred, its corners rounded like a photo's. This site is the AS mark in the accent at 36 percent of the card's width. The jobs card is five discs on the card's diagonal, diameters 16, 20, 24, 28 and 32 percent of the card's width from Popeyes (bottom left) to Aritzia (top right), 2.5 percent apart, the group centred, each disc `--card-logo-ground` with a hairline and the light logo file at 62 percent of the disc. Backs: Talos's is the anvil; every other non-photo back is the existing plain work back.
@@ -1471,6 +1547,8 @@ The faces (Rulings 10 and 11): a logo card is `--card-work-pane`, or `--card-anv
 import { describe, expect, it } from "vitest";
 import { cardDims, circlesLayout, containBox, logoBox, MARK_INK_BOX, needsGround } from "@/lib/coil/cardFace";
 import { COIL } from "@/lib/coil/constants";
+import { strandCardByKey } from "@/lib/content";
+import { GALLERY } from "@/lib/gallery/constants";
 import { BAR_PTS, BOLT_PTS, LEG_PTS } from "@/lib/mark/geometry";
 
 describe("a logo on its tile", () => {
@@ -1492,6 +1570,15 @@ describe("a logo on its tile", () => {
     expect(needsGround({ srcDark: "/x-on-dark.svg" }, "plain", true)).toBe(false);
     expect(needsGround({ srcDark: null, opaque: true }, "plain", true)).toBe(false);
     expect(needsGround({ srcDark: null }, "anvil", true)).toBe(false);
+  });
+});
+
+describe("Talos's mark in the phone header's tile", () => {
+  it("is never under its kit's 20px, where the plain phone tile would draw it smaller", () => {
+    const face = strandCardByKey.get("talos")?.face;
+    const aspect = face?.kind === "logo" ? face.logo.width / face.logo.height : 0;
+    expect(logoBox(aspect, GALLERY.talosTileCompact.width, COIL.face).w).toBeGreaterThanOrEqual(GALLERY.talosMarkMinPx);
+    expect(logoBox(aspect, GALLERY.headerTileCompact.width, COIL.face).w).toBeLessThan(GALLERY.talosMarkMinPx);
   });
 });
 
@@ -1658,12 +1745,12 @@ git commit -m "Coil faces: the anvil and logo ground tokens, the accent for the 
 - Modify: `components/PhotoModal.tsx`, `components/WorkModal.tsx`, `components/inline/DefinitionModal.tsx`, `components/mark/MarkCard.tsx` (the close hint's import only)
 
 **Interfaces:**
-- Consumes: Task 2's `strandCardByKey`, `StrandFace`; Task 4's `Gallery`, `GalleryPhoto`, `GALLERY`, `employerSource`, `CARD_PICTURE_SIZES`, `galleryRowSizes`; Task 5's `partId`; Task 6's `logoBox`, `needsGround`, `circlesLayout`, `COIL.face`; C2's `InlineCopy`.
-- Produces (props are the contract Tasks 8 to 14 use):
+- Consumes: Task 2's `strandCardByKey`, `StrandFace`; Task 4's `Gallery`, `GalleryPhoto`, `GALLERY`, `headerTileOf`, `headerMeta`, `employerSource`, `CARD_PICTURE_SIZES`, `galleryRowSizes`; Task 5's `partId`; Task 6's `logoBox`, `needsGround`, `circlesLayout`, `COIL.face`; `cardPhotoInset` (`lib/coil/cardFace.ts`); C2's `InlineCopy`.
+- Produces (props are the contract Tasks 9 to 17 use):
 ```ts
 useCloseHint(): string                                         // components/modal/useCloseHint.ts
-CardFace({ face }: { face: Exclude<StrandFace, { kind: "photo" }> })
-CardHeader({ cardKey, renderMedia, compact }: { cardKey: CardKey; renderMedia: boolean; compact: boolean })
+CardFace({ face }: { face: StrandFace })                       // a photo face is the card picture in its pane (the phone header's tile)
+CardHeader({ cardKey, renderMedia, compact }: { cardKey: CardKey; renderMedia: boolean; compact: boolean })  // the tile carries [data-tile-slot]: every card's on a phone, every card but a photo card's beside the rows
 StillPhoto({ photo, index, box, slot?, renderMedia?, sizes?, caption? }: { photo: GalleryPhoto; index: number; box: Box; slot?: boolean; renderMedia?: boolean; sizes?: string; caption?: string | null })
 Words({ gallery, unit, compact?, className? }: { gallery: Gallery; unit: number; compact?: boolean; className?: string })
 TimelineEntry({ entry, unit, compact? }: { entry: number; unit: number; compact?: boolean })
@@ -1671,7 +1758,7 @@ MentorsList({ compact? }: { compact?: boolean })
 CardLinks({ cardKey }: { cardKey: CardKey })
 CloseHint()
 ```
-Mask hooks used later (Task 11): every maskable part carries `data-mask=<partId>` and `data-mask-kind` (`"text"` or `"photo"`); a text part that splits by line carries `data-mask-split` on the same element (no wrapper, so a title's next sibling is still its meta line, as `e2e/label-face.spec.ts` measures); a photo part holds its image in `[data-mask-media]`.
+Mask hooks used later (Task 13): every maskable part carries `data-mask=<partId>` and `data-mask-kind` (`"text"` or `"photo"`); a text part that splits by line carries `data-mask-split` on the same element (no wrapper, so a title's next sibling is still its meta line, as `e2e/label-face.spec.ts` measures); a photo part holds its image in `[data-mask-media]`.
 
 - [ ] **Step 1: Failing test** (`lib/card/parts.test.ts`):
 ```ts
@@ -1680,6 +1767,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { strandCardByKey, type CardKey } from "@/lib/content";
 import { CardFace } from "@/components/card/CardFace";
+import { CardHeader } from "@/components/card/CardHeader";
 import { CardLinks } from "@/components/card/CardLinks";
 import { MentorsList } from "@/components/card/MentorsList";
 import { TimelineEntry } from "@/components/card/TimelineEntry";
@@ -1689,9 +1777,10 @@ vi.mock("next/image", () => ({ default: (props: Record<string, unknown>) => crea
 
 const face = (key: CardKey) => {
   const f = strandCardByKey.get(key)?.face;
-  if (!f || f.kind === "photo") throw new Error(`${key} has no tile face`);
+  if (!f) throw new Error(`${key} is not on the strand`);
   return renderToStaticMarkup(createElement(CardFace, { face: f }));
 };
+const header = (cardKey: CardKey, compact: boolean) => renderToStaticMarkup(createElement(CardHeader, { cardKey, renderMedia: true, compact }));
 
 describe("the header tile's face", () => {
   it("puts a logo with no dark file on a plate that shows only in the dark theme, never IEEE's square or Talos's anvil", () => {
@@ -1705,9 +1794,26 @@ describe("the header tile's face", () => {
     expect(face("min-max")).toContain('src="/work/logos/min-max/mark-on-dark.svg"');
     expect(face("min-max")).toContain('src="/work/logos/min-max/mark.svg"');
   });
-  it("draws the jobs card's five discs and This site's mark", () => {
+  it("draws the jobs card's five discs, This site's mark and a photo card's picture in its pane", () => {
     expect(face("jobs").match(/data-disc=/g)?.length).toBe(5);
     expect(face("this-site")).toContain("<svg");
+    expect(face("mentorship")).toContain('data-face="photo"');
+    expect(face("mentorship")).toContain('src="/photos/cards/mentorship-picture.jpg"');
+  });
+});
+
+describe("the header", () => {
+  it("carries the flight's slot: a photo card's only on a phone, every other card's in both layouts", () => {
+    expect(header("mentorship", false)).not.toContain("data-tile-slot");
+    expect(header("mentorship", true)).toContain('data-tile-slot="photo"');
+    expect(header("talos", false)).toMatch(/data-tile-slot="work"[^>]*style="width:60px;height:80px"/);
+    expect(header("talos", true)).toMatch(/data-tile-slot="work"[^>]*style="width:51px;height:68px"/);
+    expect(header("capital-one", true)).toMatch(/data-tile-slot="work"[^>]*style="width:42px;height:56px"/);
+  });
+  it("shows IEEE's AO tip in the meta beside the rows, and the shorter meta on a phone", () => {
+    expect(header("ieee", false)).toMatch(/<button [^>]*data-inline="tip" data-inline-key="ieee-ao"[^>]*>AO<\/button>/);
+    expect(header("ieee", true)).toContain("President, 2023 to 2026");
+    expect(header("ieee", true)).not.toContain("ieee-ao");
   });
 });
 
@@ -1725,8 +1831,7 @@ describe("the mentors and the links", () => {
   it("links each of the six mentors to LinkedIn in a new tab under my heading", () => {
     const html = renderToStaticMarkup(createElement(MentorsList, {}));
     expect(html).toContain("the people who shaped me");
-    expect(html.match(/<a [^>]*target="_blank" rel="noopener noreferrer"/g)?.length).toBe(6);
-    expect(html).toContain('href="https://www.linkedin.com/in/mikeditson/"');
+    expect(html.match(/<a [^>]*href="https:\/\/www\.linkedin\.com\/in\/[^"]+" target="_blank" rel="noopener noreferrer"/g)?.length).toBe(6);
   });
   it("opens a card's links in a new tab, and renders nothing for a card with none", () => {
     expect(renderToStaticMarkup(createElement(CardLinks, { cardKey: "anthropic" }))).toMatch(/<a [^>]*href="https:\/\/txclaude.org" target="_blank" rel="noopener noreferrer"/);
@@ -1758,7 +1863,7 @@ export function useCloseHint() {
   return coarse ? siteContent.modals.closeHintTouch : siteContent.modals.closeHintKeyboard;
 }
 ```
-Delete `COARSE_POINTER`, `subscribePointer` and `useCloseHint` from `components/PhotoModal.tsx` and import the hook there; point `WorkModal.tsx`, `DefinitionModal.tsx` and `MarkCard.tsx` at `@/components/modal/useCloseHint`.
+Delete `COARSE_POINTER`, `subscribePointer` and `useCloseHint` from `components/PhotoModal.tsx` (and `useSyncExternalStore` from its React import, so lint gains no unused-import warning) and import the hook there; point `WorkModal.tsx`, `DefinitionModal.tsx` and `MarkCard.tsx` at `@/components/modal/useCloseHint`.
 
 `components/card/CloseHint.tsx`:
 ```tsx
@@ -1774,21 +1879,21 @@ export function CloseHint() {
 ```tsx
 import Image from "next/image";
 import type { LogoRef, StrandFace } from "@/lib/content";
-import { circlesLayout, logoBox, needsGround } from "@/lib/coil/cardFace";
+import { cardPhotoInset, circlesLayout, logoBox, needsGround } from "@/lib/coil/cardFace";
 import { COIL } from "@/lib/coil/constants";
 import { AsMark } from "@/components/menu/BrandMark";
 
 // The Coil card's face as markup, for the modal header's tile when no flown card
-// lands there: the same pane tokens, fits and plate rule as lib/coil/textures.ts,
-// so a tapped card's modal shows the card the Coil draws.
-
-type Face = Exclude<StrandFace, { kind: "photo" }>;
+// lands there: the same pane tokens, fits, plate rule and photo inset as
+// lib/coil/textures.ts, so a tapped card's modal shows the card the Coil draws.
+// A photo card's face shows only in the phone header (components/card/CardHeader).
 
 const PANE = "absolute inset-0 overflow-hidden rounded-[5%/3.75%] border border-[color:var(--card-hair)]";
 const WORK = "bg-[color:var(--card-work-pane)]";
 const CENTRED = "absolute left-1/2 top-1/2 h-auto -translate-x-1/2 -translate-y-1/2";
 
-export function CardFace({ face }: { face: Face }) {
+export function CardFace({ face }: { face: StrandFace }) {
+  if (face.kind === "photo") return <PhotoFace src={face.src} />;
   if (face.kind === "mark") {
     return (
       <div className={`${PANE} ${WORK} flex items-center justify-center`} data-face="mark">
@@ -1830,6 +1935,26 @@ function Logo({ logo, tile }: { logo: LogoRef; tile: "plain" | "anvil" }) {
   );
 }
 
+// The card picture inset in its pane, cropped as the paint crops it.
+const INSET = cardPhotoInset(COIL.lab.textureSize);
+const insetBox = {
+  left: `${INSET.x * 100}%`,
+  right: `${INSET.x * 100}%`,
+  top: `${INSET.y * 100}%`,
+  bottom: `${INSET.y * 100}%`,
+  borderRadius: `${(INSET.radius / (1 - 2 * INSET.x)) * 100}% / ${((INSET.radius * COIL.cardAspect) / (1 - 2 * INSET.y)) * 100}%`,
+};
+
+function PhotoFace({ src }: { src: string }) {
+  return (
+    <div className={`${PANE} bg-[color:var(--card-pane)]`} data-face="photo">
+      <div className="absolute overflow-hidden" style={insetBox}>
+        <Image src={src} alt="" fill sizes="80px" className="object-cover" style={{ objectPosition: INSET.objectPosition }} />
+      </div>
+    </div>
+  );
+}
+
 // The light logo file in every disc, in both themes: the disc is its ground.
 function Circles({ logos }: { logos: readonly LogoRef[] }) {
   const height = 1 / COIL.cardAspect;
@@ -1852,32 +1977,34 @@ function Circles({ logos }: { logos: readonly LogoRef[] }) {
 `components/card/CardHeader.tsx`:
 ```tsx
 import { siteContent, strandCardByKey, type CardKey } from "@/lib/content";
-import { GALLERY } from "@/lib/gallery/constants";
+import { headerMeta, headerTileOf } from "@/lib/gallery/card";
 import { partId } from "@/lib/gallery/timing";
 import { InlineCopy } from "@/components/inline/InlineCopy";
 import { CardFace } from "./CardFace";
 
-// The header at the top left: every card but a photo card shows its face in a
-// 3:4 tile (where its flown card lands; with no flight the modal draws the face),
-// then the title and the meta line beside it (modal.meta where it is shorter,
-// else the book's). A phone's header is tighter, clear of the close button.
+// The header at the top left: the card's face in a 3:4 tile (where its flown
+// card lands; with no flight the modal draws the face), then the title and the
+// meta line beside it (lib/gallery/card headerMeta). Beside the rows a photo
+// card has no tile (its flown card lands on the card picture in the first row);
+// on a phone every card has one, because the phone header stays put while the
+// pages turn, so no page can carry a parked flown card off the panel. A phone's
+// header is tighter, clear of the close button.
 export function CardHeader({ cardKey, renderMedia, compact }: { cardKey: CardKey; renderMedia: boolean; compact: boolean }) {
-  const { book, modal } = siteContent.cards[cardKey];
-  const face = strandCardByKey.get(cardKey)?.face;
-  const tile = compact ? GALLERY.headerTileCompact : GALLERY.headerTile;
+  const card = strandCardByKey.get(cardKey);
+  const tile = headerTileOf(cardKey, compact);
   return (
     <div className={`flex items-center pr-12 ${compact ? "gap-4" : "gap-5"}`}>
-      {face && face.kind !== "photo" && (
-        <div data-tile-slot="work" aria-hidden="true" className="relative shrink-0" style={{ width: tile.width, height: tile.height }}>
-          {renderMedia && <CardFace face={face} />}
+      {card && (compact || card.face.kind !== "photo") && (
+        <div data-tile-slot={card.kind} aria-hidden="true" className="relative shrink-0" style={{ width: tile.width, height: tile.height }}>
+          {renderMedia && <CardFace face={card.face} />}
         </div>
       )}
       <div className="flex min-w-0 flex-col gap-1.5">
         <h2 data-mask={partId.title} data-mask-kind="text" data-mask-split="" className={`font-display leading-tight text-foreground ${compact ? "text-[1.75rem]" : "text-4xl"}`}>
-          {modal.title}
+          {siteContent.cards[cardKey].modal.title}
         </h2>
         <p data-mask={partId.meta} data-mask-kind="text" data-mask-split="" className="font-label text-label text-accent">
-          <InlineCopy source={modal.meta ?? book.meta} />
+          <InlineCopy source={headerMeta(cardKey, compact)} />
         </p>
       </div>
     </div>
@@ -2024,40 +2151,76 @@ export function CardLinks({ cardKey }: { cardKey: CardKey }) {
 - [ ] **Step 5: Commit.**
 ```bash
 git add components/modal/useCloseHint.ts components/card/CardFace.tsx components/card/CardHeader.tsx components/card/StillPhoto.tsx components/card/Words.tsx components/card/TimelineEntry.tsx components/card/MentorsList.tsx components/card/CardLinks.tsx components/card/CloseHint.tsx lib/card/parts.test.ts components/PhotoModal.tsx components/WorkModal.tsx components/inline/DefinitionModal.tsx components/mark/MarkCard.tsx
-git commit -m "Card modal parts: the header and its face, a still photo, the words, the timeline entry with its tips, the mentors, the links; the close hint in its own module" -m "Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
+git commit -m "Card modal parts: the header with its tile and meta, every face, a still photo, the words, the timeline entry with its tips, the mentors, the links; the close hint in its own module" -m "Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
 ---
 
-### Task 8: The switch: the Coil, the book and the card modal on the fourteen (Opus)
+### Task 8: The painters and their loaders, beside the legacy path (Opus)
 
 **Files:**
-- Modify: `lib/coil/textures.ts`, `components/coil/scene/state.ts`, `components/coil/scene/boot.ts`, `components/coil/CoilScene.tsx` (two lines), `components/coil/HeroOverlay.tsx`, `components/home/HomeController.tsx`, `components/book/Book.tsx`, `components/book/BookRow.tsx`, `components/FlyingTile.tsx`
-- Create: `components/card/CardModal.tsx`, `components/card/CardBody.tsx`, `components/card/useGalleryLayout.ts`, `e2e/support/cards.ts`, `e2e/card-modal.spec.ts`, `e2e/coil-faces.spec.ts`
-- Delete: `components/PhotoModal.tsx`, `components/WorkModal.tsx`
-- Modify (e2e): `e2e/toggle.spec.ts`, `e2e/modal.spec.ts`, `e2e/label-face.spec.ts`, `e2e/a11y.spec.ts`, `e2e/support/fallback.ts`
+- Modify: `lib/coil/textures.ts`
+- Create: `lib/coil/textures.test.ts`
 
 **Interfaces:**
-- Consumes: Tasks 2, 4, 6 and 7.
-- Produces: `CardSource`, `loadCardSource(card: StrandCard, size?)`, `emptySource(card)`, `paintCard` (`lib/coil/textures.ts`); `HomeControllerValue.openCard(key: CardKey, origin: HTMLElement): void` (replaces `openPhoto` and `openWork`); `CardModal({ cardKey, onClose, renderMedia, flying })`; `useGalleryLayout(hold: boolean): GalleryLayout` with `type GalleryLayout = "rows" | "pager"`; `CardBody({ gallery, layout, renderMedia, flying, onClose })` (Tasks 10, 11 and 13 replace its insides; `flying` is read from Task 11 and `onClose` from Task 13); e2e helpers `cardRow(page, key)`, `cardDialog(page, key)`, `openCardFromBook(page, key, { home? })` (Task 11 adds `settled?`), `flyCard(page, cdp, kind, { parked? })`.
+- Consumes: Task 2's `StrandCard`, `StrandFace`, `strandCards`, `strandCardByKey`; Task 6's `logoBox`, `containBox`, `needsGround`, `circlesLayout`, `MARK_INK_BOX`, `COIL.face`, `CoilTheme.card.anvil`, `.logoGround`, `.mark`.
+- Produces (`lib/coil/textures.ts`): `LogoImage`; `CardSource` gains `{ kind: "logo" }`, `{ kind: "mark" }` and `{ kind: "circles" }` beside the legacy `{ kind: "work" }`, which Task 9 deletes; `loadStrandSource(card: StrandCard, size?): Promise<CardSource>`; `emptySource(card: StrandCard): CardSource`; `paintCard(source, theme, size?)` paints every kind. The scene still loads the legacy tiles through `loadCardSource(tile, logoFor, size)` until Task 9, so this commit changes nothing on screen.
 
-Why one task: the scene's keys, the book's keys and the controller's keys must change together. The row hold glides the Coil to a hovered row's card by key (`focusCard`), and a Coil click opens a modal by key; with the book on cards and the scene on the legacy tiles (or the reverse), the row hold and every Coil click break. Commit after each group of steps; the gate is the full suite at the end.
+Read `docs/coil-scene-modules.md` first. Nothing here touches the scene; the painters wait beside the legacy path so the switch in Task 9 is one atomic commit.
 
-Read `docs/coil-scene-modules.md` and `docs/coil-input-model.md` ("Flight handoff") first. The flight itself does not change: `FlyingTile` still finds `[data-tile-slot="photo"|"work"]`, fits the 3:4 card in it (`lib/coil/flight.ts` `fitAspect`) and tracks it live. What changes is which element carries the slot (Ruling 2) and when a card flies at all (Ruling 3).
+- [ ] **Step 1: Failing unit test** (`lib/coil/textures.test.ts`; `emptySource` is pure, and the module imports cleanly in vitest's node environment):
+```ts
+import { describe, expect, it } from "vitest";
+import { strandCardByKey, strandCards } from "@/lib/content";
+import { emptySource } from "@/lib/coil/textures";
 
-- [ ] **Step 1: The painters and loaders** (`lib/coil/textures.ts`). Replace `import type { HomeTile } from "@/lib/content";` with `import type { LogoRef, StrandCard } from "@/lib/content";`, add `import { BAR_D, BOLT_D, LEG_D } from "@/lib/mark/geometry";`, widen the `./cardFace` import to `cardDims, circlesLayout, containBox, logoBox, MARK_INK_BOX, needsGround, type CardDims, type TextureSize`, and `import { toBytes, toCanvasColor, type CoilTheme, type Rgba } from "./theme";`. Replace the `CardSource` type, `loadCardSource`, `paintWorkFront` and `paintCard` with:
+// What a card paints before its files arrive, or once the loader gives up on them.
+describe("a card's empty source", () => {
+  it("is each card's own face kind, with no image", () => {
+    expect(Object.fromEntries(strandCards.map((card) => [card.key, emptySource(card).kind]))).toEqual({
+      mentorship: "photo", "min-max": "logo", band: "photo", talos: "logo", travel: "photo", "capital-one": "logo", hackathons: "photo",
+      anthropic: "logo", misuki: "photo", ieee: "logo", jobs: "circles", "this-site": "mark", fsdatalink: "logo", "building-in-public": "photo",
+    });
+  });
+  it("keeps a logo's tile and file facts, and every job's disc with its logo's shape", () => {
+    const talos = emptySource(strandCardByKey.get("talos")!);
+    expect(talos.kind === "logo" && [talos.tile, talos.light, talos.dark]).toEqual(["anvil", null, null]);
+    const ieee = emptySource(strandCardByKey.get("ieee")!);
+    expect(ieee.kind === "logo" && ieee.logo.opaque).toBe(true);
+    const jobs = emptySource(strandCardByKey.get("jobs")!);
+    expect(jobs.kind === "circles" && jobs.logos.map((logo) => [logo.image, +logo.aspect.toFixed(3)])).toEqual([
+      [null, 5.85], [null, 1.037], [null, 3.573], [null, 0.814], [null, 4.965],
+    ]);
+  });
+});
+```
+- [ ] **Step 2:** `pnpm vitest run lib/coil/textures.test.ts`. Expected FAIL: `emptySource` is not exported.
+- [ ] **Step 3: Implement** (`lib/coil/textures.ts`). The imports become:
+```ts
+import { getImageProps } from "next/image";
+import type { HomeTile, LogoRef, StrandCard } from "@/lib/content";
+import { BAR_D, BOLT_D, LEG_D } from "@/lib/mark/geometry";
+import { COIL } from "./constants";
+import { toBytes, toCanvasColor, type CoilTheme, type Rgba } from "./theme";
+import { cardDims, circlesLayout, containBox, logoBox, MARK_INK_BOX, needsGround, type CardDims, type TextureSize } from "./cardFace";
+```
+Replace the `CardSource` type (its comment and its two members) with:
 ```ts
 export type LogoImage = { image: HTMLImageElement | null; aspect: number };
 
 // A card's decoded sources, loaded once per scene and kept for repaints (a theme
 // change picks a logo's dark file at paint time). A file that failed to load is
-// null and paints the plain pane.
+// null and paints the plain pane. "work" is the legacy tile's, until the scene
+// moves to the fourteen (Task 9 deletes it with loadCardSource and paintWorkFront).
 export type CardSource =
   | { kind: "photo"; key: string; image: HTMLImageElement | null }
+  | { kind: "work"; key: string; logo: HTMLImageElement | null }
   | { kind: "logo"; key: string; light: HTMLImageElement | null; dark: HTMLImageElement | null; logo: LogoRef; tile: "plain" | "anvil" }
   | { kind: "mark"; key: string }
   | { kind: "circles"; key: string; logos: LogoImage[] };
-
+```
+After the legacy `loadCardSource` (keep it and `paintWorkFront` as they are), add:
+```ts
 // A raster logo goes through the image optimizer at the texture's width (the
 // IEEE square is a 525KB JPEG); an SVG is served as it is.
 function loadLogo(src: string, size: TextureSize): Promise<HTMLImageElement | null> {
@@ -2065,7 +2228,7 @@ function loadLogo(src: string, size: TextureSize): Promise<HTMLImageElement | nu
   return loadImage(url).catch(() => null);
 }
 
-export async function loadCardSource(card: StrandCard, size: TextureSize = COIL.lab.textureSize): Promise<CardSource> {
+export async function loadStrandSource(card: StrandCard, size: TextureSize = COIL.lab.textureSize): Promise<CardSource> {
   const { key, face } = card;
   switch (face.kind) {
     case "photo":
@@ -2095,7 +2258,9 @@ export function emptySource(card: StrandCard): CardSource {
       return { kind: "circles", key, logos: face.logos.map((logo) => ({ image: null, aspect: logo.width / logo.height })) };
   }
 }
-
+```
+After `paintWorkFront`, add the three new fronts:
+```ts
 // A logo on its pane (the anvil for Talos): the opaque IEEE square as the face, at
 // the photo inset's width; any other logo centred at its fit, on a light plate
 // where the dark theme needs one (cardFace.ts needsGround).
@@ -2165,7 +2330,10 @@ function paintCirclesFront(g: CanvasRenderingContext2D, d: Dims, logos: readonly
   });
   finishCard(g, d, theme);
 }
-
+```
+Replace `paintCard` (and the comment above it) with:
+```ts
+// A file that failed or timed out (image null) paints the plain pane.
 export function paintCard(source: CardSource, theme: CoilTheme, size: TextureSize = COIL.lab.textureSize): CardFaces {
   const d = size === COIL.lab.textureSize ? DESKTOP : dimsFor(size);
   const front = document.createElement("canvas");
@@ -2177,6 +2345,10 @@ export function paintCard(source: CardSource, theme: CoilTheme, size: TextureSiz
       paintPhotoFront(f, d, source.image, theme);
       if (source.image) paintPhotoBack(context(back, d, true), d, source.image, theme);
       else plainBack(theme.card.pane);
+      break;
+    case "work":
+      paintWorkFront(f, d, source.logo, theme);
+      plainBack(theme.card.workBack);
       break;
     case "logo":
       paintLogoFront(f, d, source, theme);
@@ -2194,19 +2366,52 @@ export function paintCard(source: CardSource, theme: CoilTheme, size: TextureSiz
   return { front, back };
 }
 ```
-Update the file's header comment: work fronts are now "logo, mark and circle fronts" and their backs the plain pane (the anvil for Talos). The file stays under 400 lines.
-- [ ] **Step 2: The scene and the unwound list.**
+The file stays under 400 lines (`wc -l lib/coil/textures.ts`, about 390).
+- [ ] **Step 4:** `pnpm vitest run lib/coil` passes; `pnpm test`, `pnpm tsc --noEmit`, `pnpm lint` green (the legacy `boot.ts` still calls `loadCardSource(tile, logoFor, size)` and paints `"work"` sources).
+- [ ] **Step 5: Commit.**
+```bash
+git add lib/coil/textures.ts lib/coil/textures.test.ts
+git commit -m "Coil: the logo, mark and circle painters and their loaders, beside the legacy work tile" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+---
+
+### Task 9: The switch: the Coil, the book and the card modal on the fourteen (Opus)
+
+**Files:**
+- Modify: `lib/coil/textures.ts` (the legacy path goes), `components/coil/scene/state.ts`, `components/coil/scene/boot.ts`, `components/coil/CoilScene.tsx` (two lines), `components/coil/HeroOverlay.tsx`, `components/home/HomeController.tsx`, `components/book/Book.tsx`, `components/book/BookRow.tsx`, `components/FlyingTile.tsx`
+- Create: `components/card/CardModal.tsx`, `components/card/CardBody.tsx`, `components/card/useGalleryLayout.ts`, `e2e/support/cards.ts`
+- Delete: `components/PhotoModal.tsx`, `components/WorkModal.tsx`
+- Modify (e2e): `e2e/toggle.spec.ts`, `e2e/modal.spec.ts`, `e2e/label-face.spec.ts`, `e2e/a11y.spec.ts`, `e2e/support/fallback.ts`
+
+**Interfaces:**
+- Consumes: Tasks 2, 4, 6, 7 and 8.
+- Produces: `HomeControllerValue.openCard(key: CardKey, origin: HTMLElement): void` (replaces `openPhoto` and `openWork`); `CardModal({ cardKey, onClose, renderMedia, flying })`; `useGalleryLayout(hold: boolean): GalleryLayout` with `type GalleryLayout = "rows" | "pager"`; `CardBody({ gallery, layout, renderMedia, flying, onClose })` (Tasks 12, 13 and 15 replace its insides; `flying` is read from Task 13, and `onClose` is passed to the pager from Task 15 and read by its drags from Task 16); e2e helpers `cardRow(page, key)`, `cardDialog(page, key)`, `panelAtRest(page, key)`, `openCardFromBook(page, key, { home? })` (it returns once the panel rests; Task 13 adds `settled?`), `flyCard(page, cdp, kind, { parked? })`.
+
+Why one commit: the scene's keys, the book's keys and the controller's keys must change together. The row hold glides the Coil to a hovered row's card by key (`focusCard`), and a Coil click opens a modal by key; with the book on cards and the scene on the legacy tiles (or the reverse), the row hold breaks, most Coil clicks do nothing, and "capital-one" and "misuki" open the wrong legacy modals. So the scene, the controller, the modal, the book and the specs that read the old modals land in one commit, after the full suite.
+
+Read `docs/coil-scene-modules.md` and `docs/coil-input-model.md` ("Flight handoff") first. The flight itself does not change: `FlyingTile` still finds `[data-tile-slot="photo"|"work"]`, fits the 3:4 card in it (`lib/coil/flight.ts` `fitAspect`) and tracks it live. What changes is which element carries the slot (Ruling 2); when a card flies does not change (Ruling 3: a mouse click at any width, never a tap).
+
+- [ ] **Step 1: The scene and the unwound list.**
+  - `lib/coil/textures.ts`: delete the legacy path: the `{ kind: "work" }` member of `CardSource` and the sentence naming it in the comment above (the comment then ends "null and paints the plain pane."), the legacy `loadCardSource`, `paintWorkFront`, the `case "work"` in `paintCard`, and `HomeTile` from the `@/lib/content` import. Replace the file's header comment (from "Card faces, painted" to the line before "Every paint takes the texture size") with:
+```ts
+// Card faces, painted on 2D canvases from the theme tokens, ported from hero
+// lab 2 (391-516) at Aaron's picks: photo fronts in true color inside our
+// pane; logo, mark and circle fronts on --card-work-pane (Talos on
+// --card-anvil) from the layouts lib/coil/cardFace.ts shares with the modal's
+// header tile; photo backs a duotone of the photo in the accent (--card-duo-dark
+// to --card-duo-light); every other back the plain pane (the anvil for Talos),
+// no logo (a mirrored mark reads as backwards text). Every paint returns fresh
+// canvases, so a repaint uploads into a fresh texture and the old one is
+// disposed, never rewritten in place.
+//
+```
   - `components/coil/scene/state.ts`: `import type { StrandCard } from "@/lib/content";` replaces the `HomeTile` import; `tiles: readonly StrandCard[];`.
-  - `components/coil/scene/boot.ts`: drop the `siteContent` import and `logoFor`; import `emptySource` with `loadCardSource`; the per-card load is `withTimeout<CardSource>(loadCardSource(tile, st.budget.textureSize), emptySource(tile)).then(countTexture)`.
+  - `components/coil/scene/boot.ts`: drop the `siteContent` import and `logoFor`; import `{ emptySource, loadStrandSource, type CardSource }` from `@/lib/coil/textures`; the per-card load is `withTimeout<CardSource>(loadStrandSource(tile, st.budget.textureSize), emptySource(tile)).then(countTexture)`.
   - `components/coil/CoilScene.tsx`: `import { strandCards } from "@/lib/content";` and `const tiles = strandCards;` (the file's length does not change).
   - `components/coil/HeroOverlay.tsx`: import `bookColumns` (not `strandTiles`) from `@/lib/content`, delete `strandKeys`, and build the list from the book: `const LIST_GROUPS: { heading: string; rows: readonly ListRow[] }[] = bookColumns.map((column) => ({ heading: column.heading, rows: column.rows }));`. Every card is on the strand, so nothing is filtered; the list keeps 14 rows, Work then People.
   - `e2e/toggle.spec.ts`: import `strandCards` instead of `strandTiles` and rename its three uses.
-- [ ] **Step 3:** `pnpm vitest run lib/coil`, `pnpm tsc --noEmit` (it fails only where the controller and the book still read legacy shapes: fixed next). Commit the scene's half:
-```bash
-git add lib/coil/textures.ts components/coil/scene/state.ts components/coil/scene/boot.ts components/coil/CoilScene.tsx components/coil/HeroOverlay.tsx e2e/toggle.spec.ts
-git commit -m "Coil: the fourteen cards on the strand, with logo, mark and circle faces, and the unwound list from the book" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
-```
-- [ ] **Step 4: The layout hook** (`components/card/useGalleryLayout.ts`):
+- [ ] **Step 2: The layout hook** (`components/card/useGalleryLayout.ts`):
 ```ts
 "use client";
 
@@ -2225,7 +2430,8 @@ const server = (): GalleryLayout => "rows";
 
 // The rows from 1024px up and the pager below, following the window. While a
 // flown card is parked over its slot (hold), the layout keeps what it had, so
-// no pager page can carry the slot, and the flown card with it, off the panel.
+// the slot it landed on (the card picture or a header's tile) never jumps to
+// the other layout's slot under it.
 export function useGalleryLayout(hold: boolean): GalleryLayout {
   const live = useSyncExternalStore(subscribe, read, server);
   const [held, setHeld] = useState<GalleryLayout | null>(null);
@@ -2234,7 +2440,7 @@ export function useGalleryLayout(hold: boolean): GalleryLayout {
   return hold ? (held ?? live) : live;
 }
 ```
-- [ ] **Step 5: The body until the gallery lands** (`components/card/CardBody.tsx`):
+- [ ] **Step 3: The body until the gallery lands** (`components/card/CardBody.tsx`). On a phone the header's tile carries the flight's slot for every card (Task 7), so the card picture in the column carries none and always draws itself:
 ```tsx
 "use client";
 
@@ -2248,10 +2454,11 @@ import { StillPhoto } from "./StillPhoto";
 import type { GalleryLayout } from "./useGalleryLayout";
 import { Words } from "./Words";
 
-// The modal's body: the header; on a photo card the card picture (the flight's
-// landing) beside the first words; every other word unit in order; the mentors
-// on Mentorship; the links and the close hint. Task 10 gives the rows their
-// gallery and Task 13 gives the phone its pager.
+// The modal's body: the header; on a photo card the card picture beside the
+// first words (beside the rows it is the flight's landing; on a phone the
+// header's tile is, so the picture draws itself); every other word unit in
+// order; the mentors on Mentorship; the links and the close hint. Task 12
+// gives the rows their gallery and Task 15 gives the phone its pager.
 type Props = { gallery: Gallery; layout: GalleryLayout; renderMedia: boolean; flying: boolean; onClose: () => void };
 
 export function CardBody({ gallery, layout, renderMedia }: Props) {
@@ -2264,7 +2471,7 @@ export function CardBody({ gallery, layout, renderMedia }: Props) {
       {gallery.lead !== undefined && (
         <div className={compact ? "flex flex-col gap-4" : "flex flex-row items-center"} style={compact ? undefined : { columnGap: GALLERY.columnGap }}>
           <div className="flex shrink-0 justify-start" style={compact ? undefined : { width: gallery.slot }}>
-            <StillPhoto photo={gallery.photos[gallery.lead]} index={gallery.lead} box={BOXES.vertical} slot renderMedia={renderMedia} />
+            <StillPhoto photo={gallery.photos[gallery.lead]} index={gallery.lead} box={BOXES.vertical} slot={!compact} renderMedia={compact || renderMedia} />
           </div>
           {units.length > 0 && (
             <div className="min-w-0 flex-1" style={compact ? undefined : { maxWidth: GALLERY.textWidth }}>
@@ -2285,7 +2492,7 @@ export function CardBody({ gallery, layout, renderMedia }: Props) {
   );
 }
 ```
-- [ ] **Step 6: The shell** (`components/card/CardModal.tsx`):
+- [ ] **Step 4: The shell** (`components/card/CardModal.tsx`):
 ```tsx
 "use client";
 
@@ -2381,27 +2588,27 @@ export function CardModal({ cardKey, onClose, renderMedia, flying }: Props) {
   );
 }
 ```
-(The close button stays the panel's first focusable, so the focus trap lands on it, as `e2e/a11y.spec.ts` expects. The body is keyed by card and layout: SplitText in Task 11 rebuilds a paragraph's nodes, and React must replace the body whole rather than patch inside one.)
-- [ ] **Step 7: The controller** (`components/home/HomeController.tsx`):
-  - Imports: drop `homeTileByKey, photoBySrc, workItemBySlug, type Photo, type WorkItem`, `PhotoModal` and `WorkModal`; add `import { strandCardByKey, type CardKey } from "@/lib/content";`, `import { CardModal } from "@/components/card/CardModal";`, `import { GALLERY } from "@/lib/gallery/constants";`.
+(The close button stays the panel's first focusable, so the focus trap lands on it, as `e2e/a11y.spec.ts` expects. The body is keyed by card and layout: SplitText in Task 13 rebuilds a paragraph's nodes, and React must replace the body whole rather than patch inside one.)
+- [ ] **Step 5: The controller** (`components/home/HomeController.tsx`):
+  - Imports: drop `homeTileByKey, photoBySrc, workItemBySlug, type Photo, type WorkItem`, `PhotoModal` and `WorkModal`; add `import { strandCardByKey, type CardKey } from "@/lib/content";` and `import { CardModal } from "@/components/card/CardModal";`.
   - `type Selection = { key: CardKey; origin: OpenOrigin };`
   - In `HomeControllerValue`, replace `openPhoto` and `openWork` with `openCard: (key: CardKey, origin: HTMLElement) => void;` (a book row: no flight). Keep `markVisited`.
   - Replace `openPhoto` and `openWork` with `const openCard = useCallback((key: CardKey, origin: OpenOrigin) => setSelection((current) => current ?? { key, origin }), []);`
-  - Replace the scene's `openCard` with:
+  - Replace the scene's `openCard` (and its comment) with the one below. The gate is today's: a slot on screen, motion allowed, a scene that can fly it; there is no width condition, and a touch tap already passes slot -1 (`handleCardClick`).
 ```ts
   // A card in the scene (or its row in the unwound list): freeze the scene so
   // the rendered pose is the flight pose, and open its modal with the card
-  // flying in. A card flies only into the desktop gallery (1024px and up, a
-  // fine pointer, motion allowed) and only from a slot on screen; otherwise it
-  // opens like a book row, drawing its own media.
+  // flying in, at any window width (input by capability, Layer 1). A touch tap
+  // (slot -1), reduced motion or a slot off screen opens it like a book row,
+  // the modal drawing its own media. The flown card lands on the slot of the
+  // layout the modal opens in (components/card/CardHeader, StillPhoto).
   const openFromScene = useCallback(
     (key: string, slot: number, origin: OpenOrigin) => {
       if (selection || flight) return;
       const card = strandCardByKey.get(key);
       if (!card) return;
       const api = sceneApiRef.current;
-      const wide = window.matchMedia(GALLERY.wideQuery).matches;
-      if (api && slot >= 0 && wide && !reducedMotion && api.flightQuadOf(slot)) {
+      if (api && slot >= 0 && !reducedMotion && api.flightQuadOf(slot)) {
         api.freeze(true);
         setFlight({ key: card.key, kind: card.kind, slot, photoSrc: card.face.kind === "photo" ? card.face.src : undefined, phase: "out", revealed: false });
       }
@@ -2412,9 +2619,9 @@ export function CardModal({ cardKey, onClose, renderMedia, flying }: Props) {
 ```
   and point `handleCardClick` and `handleRowOpen` at `openFromScene`.
   - The value's memo lists `openCard` in place of `openPhoto` and `openWork` (object and dependency array).
-  - Replace the two modal elements with `<CardModal cardKey={selection?.key ?? null} onClose={closeModal} renderMedia={renderMedia} flying={flight !== null} />`.
+  - Replace the two modal elements with `<CardModal cardKey={selection?.key ?? null} onClose={closeModal} renderMedia={renderMedia} flying={flight?.phase === "out"} />`. `flying` is true only while a flown card is out or parked: a book row opened while the last flown card is still flying home (`phase === "closing"`) gets its own layout and masks.
   - `closeModal` is unchanged (`markSeen(selection.key)` now marks a card key; focus returns to the origin).
-- [ ] **Step 8: The book.** `components/book/Book.tsx`:
+- [ ] **Step 6: The book.** `components/book/Book.tsx`:
 ```tsx
 import { bookColumns, siteContent } from "@/lib/content";
 import { revealIndex } from "@/lib/motion";
@@ -2484,13 +2691,106 @@ export function BookRow({ row }: { row: BookRowEntry }) {
 }
 ```
 (keep `"use client"` at the top and delete the unused `Link` import and `BookEntry` type.)
-- [ ] **Step 9: The flight's sharp copy and the old modals.** In `components/FlyingTile.tsx` replace `photoSlotSizes` with `CARD_PICTURE_SIZES` (`import { CARD_PICTURE_SIZES } from "@/lib/photoSizes";`, `sizes={CARD_PICTURE_SIZES}`), so the sharp copy requests the same file as the slot's own image. Then `git rm components/PhotoModal.tsx components/WorkModal.tsx`. `pnpm test`, `pnpm tsc --noEmit` and `pnpm lint` are green.
-- [ ] **Step 10: Commit the modal's half.**
-```bash
-git add components/card/useGalleryLayout.ts components/card/CardBody.tsx components/card/CardModal.tsx components/home/HomeController.tsx components/book/Book.tsx components/book/BookRow.tsx components/FlyingTile.tsx
-git commit -m "Card modal: one modal for every card, opened by key from the book and the Coil, flying only into the desktop layout; the old photo and work modals go" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+- [ ] **Step 7: The flight's sharp copy and the old modals.** In `components/FlyingTile.tsx` replace `photoSlotSizes` with `CARD_PICTURE_SIZES` (`import { CARD_PICTURE_SIZES } from "@/lib/photoSizes";`, `sizes={CARD_PICTURE_SIZES}`), so the sharp copy requests the same file as the card picture's own image beside the rows (on a phone the slot is the 42px header tile, which the same file covers). Then `git rm components/PhotoModal.tsx components/WorkModal.tsx`.
+- [ ] **Step 8: The card helpers for the e2e** (`e2e/support/cards.ts`). The panel scales in from 0.97 over 280ms and Playwright measures through transforms, so `openCardFromBook` returns only once the panel rests, and every test that measures after a flight calls `panelAtRest` first:
+```ts
+import type { CDPSession, Locator, Page } from "@playwright/test";
+import { siteContent, type CardKey } from "@/lib/content";
+import { expect } from "./fixtures";
+import { openHome } from "./coil";
+import type { HookWindow } from "./hooks";
+import { pointerTo } from "./input";
+
+export const cardRow = (page: Page, key: CardKey) => page.locator(`#work button.book-row[data-card="${key}"]`);
+export const cardDialog = (page: Page, key: CardKey) => page.locator(`[role="dialog"][data-card-modal="${key}"]`);
+
+// The panel rises in (opacity 0 to 1, 16px up and 0.97 to full scale over
+// 280ms; a fade alone under reduced motion), Playwright counts an opacity 0
+// element as visible, and boundingBox measures through transforms. So every
+// size read of a card's modal waits for its panel to rest: no transform, full
+// opacity.
+export async function panelAtRest(page: Page, key: CardKey) {
+  await page.waitForFunction(
+    (k) => {
+      const panel = document.querySelector(`[data-card-modal="${k}"] [data-gallery-panel]`);
+      if (!panel) return false;
+      const { transform, opacity } = getComputedStyle(panel);
+      return (transform === "none" || transform === "matrix(1, 0, 0, 1, 0, 0)") && opacity === "1";
+    },
+    key,
+    { polling: "raf", timeout: 5000 },
+  );
+}
+
+// A card opened the way a reader of the book opens it: a click on its row (no
+// flight). Returns once the panel rests, so every size read after it is final.
+export async function openCardFromBook(page: Page, key: CardKey, { home = true } = {}): Promise<{ row: Locator; dialog: Locator }> {
+  if (home) await openHome(page);
+  const row = cardRow(page, key);
+  await row.scrollIntoViewIfNeeded();
+  await row.click();
+  const dialog = page.getByRole("dialog", { name: siteContent.cards[key].modal.title, exact: true });
+  await expect(dialog).toBeVisible();
+  await panelAtRest(page, key);
+  return { row, dialog };
+}
+
+// A card of one flight kind clicked on the Coil, as a visitor does (hover until
+// the scene picks it, then a click), behind ?coildebug=flight. Resolves with its
+// key once the flown card is parked (parked: false resolves at the click).
+export async function flyCard(page: Page, cdp: CDPSession, kind: "photo" | "work", { parked = true } = {}): Promise<CardKey> {
+  await openHome(page, { debug: "flight" });
+  const find = () =>
+    page.evaluate((k) => {
+      const w = window as HookWindow;
+      const slot = w.__coilFlight!.scene.slots().find(
+        (s) => s.kind === k && s.depth > 0.3 && s.center.x > 80 && s.center.x < innerWidth - 80 && s.center.y > 80 && s.center.y < innerHeight * 0.75 && w.__coil!.api.cardAt(s.center.x, s.center.y)?.slot === s.slot,
+      );
+      return slot ? { slot: slot.slot, key: slot.key } : null;
+    }, kind);
+  await expect.poll(find, { timeout: 20_000, message: `a ${kind} card on screen` }).not.toBeNull();
+  const { slot, key } = (await find())!;
+  await page.evaluate((n) => (window as HookWindow).__coilFlight!.scene.follow(n), slot);
+  const center = await page.evaluate((n) => (window as HookWindow).__coilFlight!.scene.slot(n)!.center, slot);
+  await pointerTo(cdp, center);
+  await page.waitForFunction((n) => (window as HookWindow).__coil!.hovered() === n, slot);
+  await cdp.send("Input.dispatchMouseEvent", { type: "mousePressed", ...center, button: "left", clickCount: 1 });
+  await cdp.send("Input.dispatchMouseEvent", { type: "mouseReleased", ...center, button: "left", clickCount: 1 });
+  if (parked) await page.waitForFunction(() => (window as HookWindow).__coilFlight!.log.some((m) => m.name === "clone-parked"));
+  return key as CardKey;
+}
 ```
-- [ ] **Step 11: The Coil's e2e** (`e2e/coil-faces.spec.ts`):
+- [ ] **Step 9: The specs that read the old book and modals.**
+  - `e2e/modal.spec.ts`: rewrite the one test on cards. The focused row is `cardRow(page, "mentorship")`; the dialog is `page.getByRole("dialog", { name: "Mentorship", exact: true })`; the stored seen key is `"mentorship"`; the unseen row whose title stays at full ink is `cardRow(page, "band")`. Keep every other assertion (Enter opens, Close closes, focus returns, "opened", the 0.55 dim after blur and pointer move).
+  - `e2e/support/fallback.ts`: the row is `page.locator('#work button.book-row[data-card="band"]')` and its comment says the book still opens a card.
+  - `e2e/a11y.spec.ts`: the seeded seen key is `"capital-one"` (was `"capital-one-pm"`).
+  - `e2e/label-face.spec.ts`: delete `openWorkModal` and its now unused imports; open cards with `openCardFromBook` from `./support/cards`:
+    - "controls and links": `const { dialog } = await openCardFromBook(page, "anthropic");` then `expectLabel(dialog.getByRole("link", { name: /txclaude\.org/ }), "label-lg", "accent")` (replaces the work modal's "See more").
+    - "meta beside a title": the book row is `siteContent.cards["capital-one"].book.meta` ("Intern, 2024 to 2026"); the modal check is `expectLabel(dialog.getByText("Claude Campus Ambassador, 2026", { exact: true }), "label", "accent")` on Anthropic's modal. The case page half stays.
+    - "hints and the credit prose": open Anthropic from the book for the close hint; the photo row becomes `cardRow(page, "mentorship")`.
+    - "role lines sit under their titles": the modal half opens Anthropic from the book; the 6px gap and the title block within `[data-tile-slot='work']`'s height still hold (the header keeps the title then the meta as siblings).
+    - "a row's meta wraps": seed `["capital-one"]` and read `siteContent.cards["capital-one"].book.meta`.
+    - Delete "at 1440 every work row's meta sits beside its title": the approved metas are longer (IEEE's, the band's and the jobs row's wrap at 1440, where each column is about 584px), and the test above already holds that a meta wraps only when it must. Record which rows wrap at 1440 for the PR body (Decisions for Aaron).
+- [ ] **Step 10:** `pnpm test`, `pnpm tsc --noEmit`, `pnpm lint`, then the full `E2E`. Every spec passes, including `flight.spec.ts` (pixel swaps at both ends), `row-hold.spec.ts` (book rows and the Coil share keys again), `touch.spec.ts` (a tap opens with no flight), `hero.spec.ts` and `a11y.spec.ts` (a card's modal focuses Close). `hero.spec.ts`, `flight.spec.ts` and `row-hold.spec.ts` click and hover the Coil's cards, so a Coil click that opened nothing, or a row that glided to no card, fails here; the modal is chosen by the clicked card's key, so it can only be that card's.
+- [ ] **Step 11: Commit, once.**
+```bash
+git add lib/coil/textures.ts components/coil/scene/state.ts components/coil/scene/boot.ts components/coil/CoilScene.tsx components/coil/HeroOverlay.tsx components/card/useGalleryLayout.ts components/card/CardBody.tsx components/card/CardModal.tsx components/home/HomeController.tsx components/book/Book.tsx components/book/BookRow.tsx components/FlyingTile.tsx e2e/support/cards.ts e2e/toggle.spec.ts e2e/modal.spec.ts e2e/support/fallback.ts e2e/a11y.spec.ts e2e/label-face.spec.ts
+git commit -m "The switch: the Coil, the unwound list, the book and one card modal on the fourteen, opened by key; the old photo and work modals go" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+(`git rm` in Step 7 already staged the two deletions.)
+
+---
+
+### Task 10: The Coil's faces and the card modal, the new specs (Opus)
+
+**Files:**
+- Create: `e2e/coil-faces.spec.ts`, `e2e/card-modal.spec.ts`
+
+**Interfaces:**
+- Consumes: Task 9's `cardDialog`, `flyCard`, `openCardFromBook`, `panelAtRest`; Task 4's `headerTileOf`; `openHome` (`e2e/support/coil.ts`), `shoot` (`e2e/support/pixels.ts`), the `?coildebug=flight` hooks (`e2e/support/hooks.ts`).
+- Produces: the two specs; no source change. If a test here fails, fix the source in the file that owns it and commit that fix on its own ("Fix: ...").
+
+- [ ] **Step 1: The Coil's e2e** (`e2e/coil-faces.spec.ts`):
 ```ts
 import { siteContent } from "@/lib/content";
 import { test, expect } from "./support/fixtures";
@@ -2558,64 +2858,31 @@ test("coil faces: in the dark theme Capital One's logo sits on a light plate and
 });
 ```
 (If `shoot` hides the cursor or other overlays differently from what a 3 by 3 sample needs, move the pointer to `{ x: 4, y: 4 }` first with `page.mouse.move`; the custom cursor must not sit over the sample.)
-- [ ] **Step 12: The card modal's e2e.** `e2e/support/cards.ts`:
-```ts
-import type { CDPSession, Locator, Page } from "@playwright/test";
-import { siteContent, type CardKey } from "@/lib/content";
-import { expect } from "./fixtures";
-import { openHome } from "./coil";
-import type { HookWindow } from "./hooks";
-import { pointerTo } from "./input";
-
-export const cardRow = (page: Page, key: CardKey) => page.locator(`#work button.book-row[data-card="${key}"]`);
-export const cardDialog = (page: Page, key: CardKey) => page.locator(`[role="dialog"][data-card-modal="${key}"]`);
-
-// A card opened the way a reader of the book opens it: a click on its row (no flight).
-export async function openCardFromBook(page: Page, key: CardKey, { home = true } = {}): Promise<{ row: Locator; dialog: Locator }> {
-  if (home) await openHome(page);
-  const row = cardRow(page, key);
-  await row.scrollIntoViewIfNeeded();
-  await row.click();
-  const dialog = page.getByRole("dialog", { name: siteContent.cards[key].modal.title, exact: true });
-  await expect(dialog).toBeVisible();
-  return { row, dialog };
-}
-
-// A card of one flight kind clicked on the Coil, as a visitor does (hover until
-// the scene picks it, then a click), behind ?coildebug=flight. Resolves with its
-// key once the flown card is parked (parked: false resolves at the click).
-export async function flyCard(page: Page, cdp: CDPSession, kind: "photo" | "work", { parked = true } = {}): Promise<CardKey> {
-  await openHome(page, { debug: "flight" });
-  const find = () =>
-    page.evaluate((k) => {
-      const w = window as HookWindow;
-      const slot = w.__coilFlight!.scene.slots().find(
-        (s) => s.kind === k && s.depth > 0.3 && s.center.x > 80 && s.center.x < innerWidth - 80 && s.center.y > 80 && s.center.y < innerHeight * 0.75 && w.__coil!.api.cardAt(s.center.x, s.center.y)?.slot === s.slot,
-      );
-      return slot ? { slot: slot.slot, key: slot.key } : null;
-    }, kind);
-  await expect.poll(find, { timeout: 20_000, message: `a ${kind} card on screen` }).not.toBeNull();
-  const { slot, key } = (await find())!;
-  await page.evaluate((n) => (window as HookWindow).__coilFlight!.scene.follow(n), slot);
-  const center = await page.evaluate((n) => (window as HookWindow).__coilFlight!.scene.slot(n)!.center, slot);
-  await pointerTo(cdp, center);
-  await page.waitForFunction((n) => (window as HookWindow).__coil!.hovered() === n, slot);
-  await cdp.send("Input.dispatchMouseEvent", { type: "mousePressed", ...center, button: "left", clickCount: 1 });
-  await cdp.send("Input.dispatchMouseEvent", { type: "mouseReleased", ...center, button: "left", clickCount: 1 });
-  if (parked) await page.waitForFunction(() => (window as HookWindow).__coilFlight!.log.some((m) => m.name === "clone-parked"));
-  return key as CardKey;
-}
-```
-`e2e/card-modal.spec.ts`:
+- [ ] **Step 2: The card modal's e2e** (`e2e/card-modal.spec.ts`). Every size read happens after the panel rests; below 1024px a mouse click still flies, onto the phone header's tile (Ruling 3):
 ```ts
 import { siteContent, strandCardByKey, type CardKey } from "@/lib/content";
+import { headerTileOf } from "@/lib/gallery/card";
 import { SEEN_STORAGE_KEY } from "@/lib/home/seen";
 import { test, expect } from "./support/fixtures";
 import { openHome } from "./support/coil";
-import { cardDialog, flyCard, openCardFromBook } from "./support/cards";
+import { cardDialog, flyCard, openCardFromBook, panelAtRest } from "./support/cards";
 import type { HookWindow } from "./support/hooks";
 
 const keys = Object.keys(siteContent.cards) as CardKey[];
+const within = (actual: number, expected: number) => Math.abs(actual - expected) < 1;
+
+// The flown card's four corners where it parked, against its slot's box.
+async function landsOnSlot(page: import("@playwright/test").Page, slot: import("@playwright/test").Locator) {
+  const quad = await page.evaluate(() => (window as HookWindow).__coilFlight!.log.findLast((m) => m.name === "clone-parked")!.data!.quad as { x: number; y: number }[]);
+  const box = (await slot.boundingBox())!;
+  const xs = quad.map((p) => p.x);
+  const ys = quad.map((p) => p.y);
+  expect(Math.abs(Math.min(...xs) - box.x), "left").toBeLessThan(1);
+  expect(Math.abs(Math.max(...xs) - (box.x + box.width)), "right").toBeLessThan(1);
+  expect(Math.abs(Math.min(...ys) - box.y), "top").toBeLessThan(1);
+  expect(Math.abs(Math.max(...ys) - (box.y + box.height)), "bottom").toBeLessThan(1);
+  return box;
+}
 
 test("card modal: every card opens from its row as its own modal, Escape closes it, focus returns and the card reads as seen", async ({ page }) => {
   await openHome(page);
@@ -2661,9 +2928,15 @@ test("card modal: in the dark theme a logo with no dark file sits on a light pla
   await expect(light.dialog.locator('[data-tile-slot="work"] [data-plate]')).toBeHidden();
 });
 
-test("card modal: the meta is the modal's own and a card's links open in a new tab", async ({ page }) => {
+test("card modal: IEEE's meta carries its AO tip beside the rows, and a card's links open in a new tab", async ({ page }) => {
   const { dialog } = await openCardFromBook(page, "ieee");
-  await expect(dialog.getByText("President, 2023 to 2026", { exact: true })).toBeVisible();
+  const meta = dialog.locator('[data-mask="meta"]');
+  await expect(meta).toHaveText("President, Corporate Director, and AO, 2023 to 2026");
+  const ao = meta.getByRole("button", { name: "AO", exact: true });
+  await ao.hover();
+  const tip = page.locator("[data-inline-tip]");
+  await expect(tip).toHaveAttribute("data-shown", "true");
+  await expect(tip).toContainText("External Activities and Events Assistant Officer");
   const link = dialog.getByRole("link", { name: /ieee\.ece\.utexas\.edu/ });
   await expect(link).toHaveAttribute("href", "https://ieee.ece.utexas.edu/");
   await expect(link).toHaveAttribute("target", "_blank");
@@ -2673,9 +2946,10 @@ test("card modal: the meta is the modal's own and a card's links open in a new t
 test("card modal: the mentors are a section of Mentorship's modal, six names linking to LinkedIn", async ({ page }) => {
   const { dialog } = await openCardFromBook(page, "mentorship");
   const mentors = dialog.locator("[data-mentors]");
-  await expect(mentors.getByRole("heading", { name: "the people who shaped me" })).toBeVisible();
-  await expect(mentors.getByRole("link")).toHaveCount(6);
-  await expect(mentors.getByRole("link", { name: /Andrew Chang/ })).toHaveAttribute("href", "https://www.linkedin.com/in/andrewlinchang/");
+  const { title, people } = siteContent.cards.mentorship.mentors;
+  await expect(mentors.getByRole("heading", { name: title })).toBeVisible();
+  await expect(mentors.getByRole("link")).toHaveCount(people.length);
+  await expect(mentors.getByRole("link", { name: new RegExp(people[0].name) })).toHaveAttribute("href", people[0].href);
 });
 
 test("card modal: the jobs timeline runs oldest to newest, each employer's name its insider tip", async ({ page }) => {
@@ -2694,14 +2968,8 @@ for (const kind of ["photo", "work"] as const) {
     const key = await flyCard(page, cdp, kind);
     const dialog = cardDialog(page, key);
     await expect(dialog).toBeVisible();
-    const quad = await page.evaluate(() => (window as HookWindow).__coilFlight!.log.findLast((m) => m.name === "clone-parked")!.data!.quad as { x: number; y: number }[]);
-    const slot = (await dialog.locator(`[data-tile-slot="${kind}"]`).boundingBox())!;
-    const xs = quad.map((p) => p.x);
-    const ys = quad.map((p) => p.y);
-    expect(Math.abs(Math.min(...xs) - slot.x), "left").toBeLessThan(1);
-    expect(Math.abs(Math.max(...xs) - (slot.x + slot.width)), "right").toBeLessThan(1);
-    expect(Math.abs(Math.min(...ys) - slot.y), "top").toBeLessThan(1);
-    expect(Math.abs(Math.max(...ys) - (slot.y + slot.height)), "bottom").toBeLessThan(1);
+    await panelAtRest(page, key);
+    await landsOnSlot(page, dialog.locator(`[data-tile-slot="${kind}"]`));
     if (kind === "photo") await expect(dialog.locator('[data-tile-slot="photo"] img')).toHaveCSS("opacity", "0");
     else await expect(dialog.locator('[data-tile-slot="work"] [data-face]')).toHaveCount(0);
   });
@@ -2721,54 +2989,51 @@ test("card modal: the layout holds while a flown card is parked, and follows the
   await expect(again).toHaveAttribute("data-gallery-layout", "pager");
 });
 
-test("card modal: under 1024px a clicked card opens with no flight and draws its own picture", async ({ page, cdp }) => {
-  await page.setViewportSize({ width: 1000, height: 800 });
-  const key = await flyCard(page, cdp, "photo", { parked: false });
-  const dialog = cardDialog(page, key);
-  await expect(dialog).toBeVisible();
-  await expect(dialog).toHaveAttribute("data-gallery-layout", "pager");
-  await expect(page.locator("[data-flying-tile]")).toHaveCount(0);
-  await expect(dialog.locator('[data-tile-slot="photo"] img')).toHaveCSS("opacity", "1");
+test("card modal: under 1024px a mouse click still flies the card, onto the phone header's tile", async ({ page, cdp }) => {
+  await page.setViewportSize({ width: 900, height: 800 });
+  for (const kind of ["photo", "work"] as const) {
+    const key = await flyCard(page, cdp, kind);
+    const dialog = cardDialog(page, key);
+    await expect(dialog).toHaveAttribute("data-gallery-layout", "pager");
+    await panelAtRest(page, key);
+    const slot = dialog.locator(`[data-tile-slot="${kind}"]`);
+    await expect(slot).toHaveCount(1);
+    const box = await landsOnSlot(page, slot);
+    const tile = headerTileOf(key, true);
+    expect(within(box.width, tile.width) && within(box.height, tile.height), `${key}: ${box.width} by ${box.height}`).toBe(true);
+    await page.keyboard.press("Escape");
+    await expect(dialog).toHaveCount(0);
+    await expect(page.locator("[data-flying-tile]")).toHaveCount(0);
+  }
 });
 ```
 (`clone-parked`'s `quad` is the flown card's four corners in viewport px, as `components/FlyingTile.tsx` logs it; read its shape from `lib/coil/geometry.ts` `Quad` and adapt the cast if a point is not `{ x, y }`.)
-- [ ] **Step 13: The specs that read the old book and modals.**
-  - `e2e/modal.spec.ts`: rewrite the one test on cards. The focused row is `cardRow(page, "mentorship")`; the dialog is `page.getByRole("dialog", { name: "Mentorship", exact: true })`; the stored seen key is `"mentorship"`; the unseen row whose title stays at full ink is `cardRow(page, "band")`. Keep every other assertion (Enter opens, Close closes, focus returns, "opened", the 0.55 dim after blur and pointer move).
-  - `e2e/support/fallback.ts`: the row is `page.locator('#work button.book-row[data-card="band"]')` and its comment says the book still opens a card.
-  - `e2e/a11y.spec.ts`: the seeded seen key is `"capital-one"` (was `"capital-one-pm"`).
-  - `e2e/label-face.spec.ts`: delete `openWorkModal` and its now unused imports; open cards with `openCardFromBook` from `./support/cards`:
-    - "controls and links": `const { dialog } = await openCardFromBook(page, "anthropic");` then `expectLabel(dialog.getByRole("link", { name: /txclaude\.org/ }), "label-lg", "accent")` (replaces the work modal's "See more").
-    - "meta beside a title": the book row is `siteContent.cards["capital-one"].book.meta` ("Intern, 2024 to 2026"); the modal check is `expectLabel(dialog.getByText("Claude Campus Ambassador, 2026", { exact: true }), "label", "accent")` on Anthropic's modal. The case page half stays.
-    - "hints and the credit prose": open Anthropic from the book for the close hint; the photo row becomes `cardRow(page, "mentorship")`.
-    - "role lines sit under their titles": the modal half opens Anthropic from the book; the 6px gap and the title block within `[data-tile-slot='work']`'s height still hold (the header keeps the title then the meta as siblings).
-    - "a row's meta wraps": seed `["capital-one"]` and read `siteContent.cards["capital-one"].book.meta`.
-    - Delete "at 1440 every work row's meta sits beside its title": the approved metas are longer (IEEE's, the band's and the jobs row's wrap at 1440, where each column is about 584px), and the test above already holds that a meta wraps only when it must. Record which rows wrap at 1440 for the PR body (Decisions for Aaron).
-- [ ] **Step 14:** `pnpm test`, `pnpm tsc --noEmit`, `pnpm lint`, then the full `E2E`. Every spec passes, including `flight.spec.ts` (pixel swaps at both ends), `row-hold.spec.ts` (book rows and the Coil share keys again), `touch.spec.ts` (a tap opens with no flight), `hero.spec.ts` and `a11y.spec.ts` (a card's modal focuses Close).
-- [ ] **Step 15: Commit.**
+- [ ] **Step 3:** `E2E e2e/coil-faces.spec.ts e2e/card-modal.spec.ts e2e/flight.spec.ts e2e/hero.spec.ts e2e/touch.spec.ts` pass.
+- [ ] **Step 4: Commit.**
 ```bash
-git add e2e/support/cards.ts e2e/card-modal.spec.ts e2e/coil-faces.spec.ts e2e/modal.spec.ts e2e/support/fallback.ts e2e/a11y.spec.ts e2e/label-face.spec.ts
-git commit -m "e2e: the fourteen on the Coil, every card's modal from the book, the flight's landing on its slot, the layout held under a parked card" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+git add e2e/coil-faces.spec.ts e2e/card-modal.spec.ts
+git commit -m "e2e: the fourteen on the Coil, every card's modal from the book, the flight's landing on its slot at any width, the layout held under a parked card" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
 ---
 
-### Task 9: The hero stills, re-rendered with the fourteen (Sonnet)
+### Task 11: The hero stills, re-rendered with the fourteen (Sonnet)
 
 **Files:**
 - Regenerate: `public/coil/hero-{light,dark}-{wide,square,narrow}.{avif,webp}`, `lib/coil/heroStill.rects.ts`, `scripts/hero-still-phases.json`
 
-The hero still is a real picture of the scene at rest, shown under reduced motion, without WebGL 2 and while the scene loads. It still shows the legacy cards (with facts the sweep removes), so it is re-rendered from Task 8's scene. Nothing else changes; Aaron's retune will mean one more run of this script.
+The hero still is a real picture of the scene at rest, shown under reduced motion, without WebGL 2 and while the scene loads. It still shows the legacy cards (with facts the sweep removes), so it is re-rendered from Task 9's scene. Nothing else changes; Aaron's retune will mean one more run of this script, and so does any merge that changes a logo file or `lib/content/media.ts`'s logos (Task 18, Step 1).
 
-- [ ] **Step 1:** Build and serve the full site (no dev server in this worktree):
+- [ ] **Step 1:** Build and serve the full site (no dev server in this worktree). Start `next start` itself, not `pnpm start`, so the PID you write is the server's own and the kill in Step 3 stops it; wait with curl's own retries, never a `sleep` loop:
 ```bash
 cd "/Users/asulbaran21/Personal Projects/.worktrees/aaron-portfolio-website-c3-card-system"
 lsof -nP -iTCP:3370 -sTCP:LISTEN   # must print nothing
 NEXT_PUBLIC_SITE_MODE=full pnpm build
-(NEXT_PUBLIC_SITE_MODE=full pnpm start -p 3370 > "$TMPDIR/c3-start.log" 2>&1 & echo $! > "$TMPDIR/c3-server.pid")
-until curl -sf http://localhost:3370 > /dev/null; do sleep 1; done
+(NEXT_PUBLIC_SITE_MODE=full ./node_modules/.bin/next start -p 3370 > "$TMPDIR/c3-start.log" 2>&1 & echo $! > "$TMPDIR/c3-server.pid")
+curl --retry 60 --retry-delay 1 --retry-connrefused -sf -o /dev/null http://localhost:3370
 ```
 - [ ] **Step 2:** Re-measure the phases and render: `node scripts/render-posters.mjs http://localhost:3370 --sweep`. It writes nothing unless every theme and cut passes its name check; read its table and keep it for the PR body.
-- [ ] **Step 3:** Stop your server: `kill "$(cat "$TMPDIR/c3-server.pid")"`.
+- [ ] **Step 3:** Stop your server by its PID: `kill "$(cat "$TMPDIR/c3-server.pid")"`, then `lsof -nP -iTCP:3370 -sTCP:LISTEN` prints nothing.
 - [ ] **Step 4:** `pnpm test` (the still files and rects tests), then `E2E e2e/still-theme.spec.ts e2e/still-late.spec.ts e2e/still-notice.spec.ts e2e/fallbacks.spec.ts e2e/no-webgl.spec.ts e2e/loader.spec.ts`. Open two of the twelve images and look: the fourteen cards, the name behind them.
 - [ ] **Step 5: Commit.**
 ```bash
@@ -2778,25 +3043,25 @@ git commit -m "Hero stills: re-rendered with the fourteen cards" -m "Co-Authored
 
 ---
 
-### Task 10: The desktop rows (Sonnet)
+### Task 12: The desktop rows (Sonnet)
 
 **Files:**
 - Create: `components/card/CardRows.tsx`, `components/card/GroupParts.tsx`, `components/card/RotatingPhoto.tsx`, `components/card/CardStack.tsx`, `e2e/card-gallery.spec.ts`
 - Modify: `components/card/CardBody.tsx` (a router by layout), `app/globals.css` (a group shows only its current photo and caption)
 
 **Interfaces:**
-- Consumes: Task 3's `slideWords`, `Slide`, `boxFor`, `groupFrame`, `Box`; Task 4's `Gallery`, `galleryOf`, `BOXES`, `GALLERY`, `galleryRowSizes`; Task 5's `partId`; Task 7's `CardHeader`, `StillPhoto`, `Words`, `MentorsList`, `CardLinks`, `CloseHint`; Task 8's `CardBody` props, `GalleryLayout`, `openCardFromBook`.
+- Consumes: Task 3's `slideWords`, `Slide`, `boxFor`, `groupFrame`, `Box`; Task 4's `Gallery`, `galleryOf`, `BOXES`, `GALLERY`, `galleryRowSizes`; Task 5's `partId`; Task 7's `CardHeader`, `StillPhoto`, `Words`, `MentorsList`, `CardLinks`, `CloseHint`; Task 9's `CardBody` props, `GalleryLayout`, `openCardFromBook` (it returns once the panel rests, so every size below is read at rest).
 - Produces:
 ```ts
 CardRows({ gallery, renderMedia }: { gallery: Gallery; renderMedia: boolean })                 // components/card/CardRows.tsx
 GroupLayer({ gallery, photo, box, frame, layer, current, sizes }: { gallery: Gallery; photo: number; box: Box; frame: Box; layer: number; current: boolean; sizes: string })
 GroupCaptions({ photos, index, caption }: { photos: readonly number[]; index: number; caption: (photo: number) => string | null })   // both components/card/GroupParts.tsx
-RotatingPhoto({ gallery, photos, boxes }: { gallery: Gallery; photos: readonly number[]; boxes: readonly Box[] })   // Task 12 replaces its body, the props stay
-CardStack({ gallery, renderMedia }: { gallery: Gallery; renderMedia: boolean })               // the phone's body until Task 13 deletes it
+RotatingPhoto({ gallery, photos, boxes }: { gallery: Gallery; photos: readonly number[]; boxes: readonly Box[] })   // Task 14 replaces its body, the props stay
+CardStack({ gallery, renderMedia }: { gallery: Gallery; renderMedia: boolean })               // the phone's body until Task 15 deletes it
 ```
   Markup hooks later tasks and the e2e read: `[data-row="photo"]` with `data-side` (`left` or `right`) and `data-turns` (a group's size); `[data-text-column]`; `[data-rotator]` with `data-rotator-index`; `[data-rotator-frame]`; `[data-rotator-layer]` and `[data-rotator-caption]`, each with `data-current` on the shown one; `[data-rotator-dot]`; every group layer also carries `data-photo-frame=<photo>`.
 
-The rows are the lab's round six desktop (`git show ae9b6dd:app/lab/gallery/UniformGallery.tsx`): the header at the top left, then the plan's opening words (each at most `GALLERY.proseMaxWidth`), then one row per slide, the photo column `gallery.slot` wide and the words column at most 460px, `GALLERY.columnGap` (56) apart and vertically centred, the first row's photo on the left and the sides alternating; a photo narrower than the column sits against the panel's edge (justify-start on the left, justify-end on the right, the lab's `photoAlign: "edge"`); rows `GALLERY.rowGap` (64) apart; then the closing words, the mentors on Mentorship, and the links beside the close hint. A slide of two photos or more is a group: one frame the size of its largest box, each photo drawn in its own box centred in it (the lab's `rotateAlign: "center"`), the captions in one grid cell under it and dots under the captions. This task draws the group still on its first photo with dots that step it at once; Task 12 gives it the clock and the change.
+The rows are the lab's round six desktop (`git show ae9b6dd:app/lab/gallery/UniformGallery.tsx`): the header at the top left, then the plan's opening words (each at most `GALLERY.proseMaxWidth`), then one row per slide, the photo column `gallery.slot` wide and the words column at most 460px, `GALLERY.columnGap` (56) apart and vertically centred, the first row's photo on the left and the sides alternating; a photo narrower than the column sits against the panel's edge (justify-start on the left, justify-end on the right, the lab's `photoAlign: "edge"`); rows `GALLERY.rowGap` (64) apart; then the closing words, the mentors on Mentorship, and the links beside the close hint. A slide of two photos or more is a group: one frame the size of its largest box, each photo drawn in its own box centred in it (the lab's `rotateAlign: "center"`), the captions in one grid cell under it and dots under the captions. A row may have no words (the band's and Travel's first row, the card picture alone: Ruling 5); its words column is then empty and keeps its place. This task draws the group still on its first photo with dots that step it at once; Task 14 gives it the clock and the change.
 
 - [ ] **Step 1: Failing e2e** (`e2e/card-gallery.spec.ts`):
 ```ts
@@ -2885,7 +3150,7 @@ test("gallery rows: a group's dots step its photo and its caption together, and 
   expect(await column.evaluateAll((els) => els.map((el) => el.getAttribute("data-mask")))).toEqual(words);
 });
 ```
-- [ ] **Step 2:** `E2E e2e/card-gallery.spec.ts`. Expected FAIL: the dialog has no `[data-row="photo"]` (the Task 8 body has no rows).
+- [ ] **Step 2:** `E2E e2e/card-gallery.spec.ts`. Expected FAIL: the dialog has no `[data-row="photo"]` (the Task 9 body has no rows).
 - [ ] **Step 3: Implement.** `components/card/GroupParts.tsx`:
 ```tsx
 import Image from "next/image";
@@ -3081,7 +3346,7 @@ export function CardRows({ gallery, renderMedia }: Props) {
   );
 }
 ```
-`components/card/CardStack.tsx` (Task 8's compact branch, moved whole):
+`components/card/CardStack.tsx` (Task 9's compact branch, moved whole; the header's tile carries the flight's slot, so the card picture carries none):
 ```tsx
 "use client";
 
@@ -3094,9 +3359,10 @@ import { MentorsList } from "./MentorsList";
 import { StillPhoto } from "./StillPhoto";
 import { Words } from "./Words";
 
-// The phone's body until the pager lands: the header, the card picture over
-// the first words on a photo card, every other word unit, the mentors, the
-// links and the close hint, in one column.
+// The phone's body until the pager lands: the header (its tile is the
+// flight's landing), the card picture over the first words on a photo card,
+// every other word unit, the mentors, the links and the close hint, in one
+// column.
 export function CardStack({ gallery, renderMedia }: { gallery: Gallery; renderMedia: boolean }) {
   const units = gallery.words.map((_, unit) => unit);
   const rest = gallery.lead === undefined ? units : units.slice(1);
@@ -3105,7 +3371,7 @@ export function CardStack({ gallery, renderMedia }: { gallery: Gallery; renderMe
       <CardHeader cardKey={gallery.key} renderMedia={renderMedia} compact />
       {gallery.lead !== undefined && (
         <div className="flex flex-col gap-4">
-          <StillPhoto photo={gallery.photos[gallery.lead]} index={gallery.lead} box={BOXES.vertical} slot renderMedia={renderMedia} />
+          <StillPhoto photo={gallery.photos[gallery.lead]} index={gallery.lead} box={BOXES.vertical} />
           {units.length > 0 && <Words gallery={gallery} unit={0} compact />}
         </div>
       )}
@@ -3157,29 +3423,31 @@ git commit -m "Card modal: the desktop rows, every photo or group its own row be
 
 ---
 
-### Task 11: The mask-in (Opus)
+### Task 13: The mask-in (Opus)
 
 **Files:**
 - Create: `lib/gallery/steps.ts`, `lib/gallery/steps.test.ts`, `components/card/useMaskIn.ts`, `e2e/card-masks.spec.ts`
 - Modify: `components/card/CardBody.tsx` (the root and the hook), `components/card/CardModal.tsx` (a fresh body per open), `e2e/support/cards.ts` (`openCardFromBook` learns `settled`), `e2e/label-face.spec.ts` (opens its modals settled)
 
 **Interfaces:**
-- Consumes: Task 3's `phonePages`; Task 4's `Gallery`, `galleryOf`, `GALLERY`, `PHONE_GROUPING`; Task 5's `maskTable`, `planSteps`, `pagerSteps`, `partId`, `StepOptions`, `MaskStep`, `photoWipeIn`, `textIn`; Task 7's markup (`data-mask`, `data-mask-kind`, `data-mask-split`, `data-mask-media`); `gsap` and `SplitText` from `@/lib/gsap`; `useReducedMotionLive` from `@/components/soundtrack/useReducedMotionLive`.
+- Consumes: Task 3's `phonePages`; Task 4's `Gallery`, `galleryOf`, `GALLERY`, `PHONE_GROUPING`; Task 5's `maskTable`, `planSteps`, `pagerSteps`, `partId`, `StepOptions`, `MaskStep`, `photoWipeIn`, `textIn`; Task 9's `openCardFromBook`, `panelAtRest`; Task 12's `CardRows`, `CardStack`; Task 7's markup (`data-mask`, `data-mask-kind`, `data-mask-split`, `data-mask-media`); `gsap` and `SplitText` from `@/lib/gsap`; `useReducedMotionLive` from `@/components/soundtrack/useReducedMotionLive`.
 - Produces:
 ```ts
 export function cardSteps(gallery: Gallery, layout: "rows" | "pager", flying: boolean, lines?: (id: string) => number): MaskStep[]; // lib/gallery/steps.ts
-export function useMaskIn(rootRef: RefObject<HTMLElement | null>, o: { reduced: boolean; runKey: string; stepsFor: (lines: (id: string) => number) => MaskStep[] }): void; // components/card/useMaskIn.ts
-export async function openCardFromBook(page: Page, key: CardKey, o?: { home?: boolean; settled?: boolean }): Promise<{ row: Locator; dialog: Locator }>; // settled waits for the run to end
+export const maskStartMs: (flying: boolean) => number; // lib/gallery/steps.ts: 520 after a flight, 0 otherwise (Ruling 19)
+export function useMaskIn(rootRef: RefObject<HTMLElement | null>, o: { reduced: boolean; runKey: string; startMs: number; stepsFor: (lines: (id: string) => number) => MaskStep[] }): void; // components/card/useMaskIn.ts
+export async function openCardFromBook(page: Page, key: CardKey, o?: { home?: boolean; settled?: boolean }): Promise<{ row: Locator; dialog: Locator }>; // still returns at the panel's rest; settled also waits for the run to end
 ```
   The body's root is `[data-card-body="rows" | "pager"]` and carries `data-mask-armed` while a run is live; a split line carries the class `card-line`.
 
-How it runs (modal-gallery.md, "Masking in"; the lab's `useMaskIn.ts` at ae9b6dd with round six's directions): when the body mounts, one GSAP timeline is built from `maskTable(cardSteps(...))`, starting at `GALLERY.mask.landingMs` (520, the flight's landing), steps 110ms apart, each mask 480ms on the site ease, lines of a split part 45ms apart. A text part that carries `data-mask-split` is split into lines (`SplitText`, `aria: "none"` as the sections grammar does, no mask wrappers because a left to right clip opens in place), and each line's `clip-path` opens from `inset(-25% 102% -25% -2%)` to `inset(-25% -2% -25% -2%)`; any other text part (a timeline entry, the mentors, the links, the rotator's controls, the pager's controls) opens its own clip the same way. A photo part's clip edge crosses it from the left (`inset(0% 100% 0% 0% round 12px)` to `inset(0% 0% 0% 0% round 12px)`) while its `[data-mask-media]` settles from 1.02 to 1. The flown card's photo is never in the steps (a parked flown card covers it); its caption is. Everything runs on the timer, on screen or not. On completion, and in the cleanup on any close or replay, the splits revert, GSAP clears only the `clipPath` and `transform` it wrote, and `data-mask-armed` goes. Reduced motion builds nothing, and turning it on mid-run runs the cleanup at once (the hook's deps).
+How it runs (modal-gallery.md, "Masking in": "Starts when the flight has landed"; the lab's `useMaskIn.ts` at ae9b6dd with round six's directions): when the body mounts, one GSAP timeline is built from `maskTable(cardSteps(...))`, starting at `maskStartMs(flying)` (`GALLERY.mask.landingMs`, 520, when a flown card lands; 0 when nothing does, a book row or a tap, so the glass never sits empty), steps 110ms apart, each mask 480ms on the site ease, lines of a split part 45ms apart. A text part that carries `data-mask-split` is split into lines (`SplitText`, `aria: "none"` as the sections grammar does, no mask wrappers because a left to right clip opens in place), and each line's `clip-path` opens from `inset(-25% 102% -25% -2%)` to `inset(-25% -2% -25% -2%)`; any other text part (a timeline entry, the mentors, the links, the rotator's controls, the pager's controls) opens its own clip the same way. A photo part's clip edge crosses it from the left (`inset(0% 100% 0% 0% round 12px)` to `inset(0% 0% 0% 0% round 12px)`) while its `[data-mask-media]` settles from 1.02 to 1. Beside the rows the flown card's photo is never in the steps (a parked flown card covers it); its caption is. On a phone the flown card parks on the header's tile, which never masks, so the first page's picture masks like any photo. Everything runs on the timer, on screen or not. On completion, and in the cleanup on any close or replay, the splits revert, GSAP clears only the `clipPath` and `transform` it wrote, and `data-mask-armed` goes. Reduced motion builds nothing, and turning it on mid-run runs the cleanup at once (the hook's deps).
 
 - [ ] **Step 1: Failing unit test** (`lib/gallery/steps.test.ts`):
 ```ts
 import { describe, expect, it } from "vitest";
 import { galleryOf } from "@/lib/gallery/card";
-import { cardSteps } from "@/lib/gallery/steps";
+import { GALLERY } from "@/lib/gallery/constants";
+import { cardSteps, maskStartMs } from "@/lib/gallery/steps";
 
 const ids = (steps: { id: string }[][]) => steps.map((step) => step.map((part) => part.id));
 
@@ -3196,8 +3464,9 @@ describe("a card's mask steps", () => {
       ["photo-0", "caption-0", "words-4", "words-5", "rotator-0"], ["photo-2", "caption-2", "words-6"], ["photo-3", "caption-3", "words-7"], ["links"],
     ]);
   });
-  it("masks a phone's header, its first page and the pager's controls", () => {
+  it("masks a phone's header, its first page and the pager's controls, the card picture too when a flown card parks on the header's tile", () => {
     expect(ids(cardSteps(galleryOf("capital-one"), "pager", false))).toEqual([["title"], ["meta"], ["photo-0", "caption-0"], ["words-0", "words-1"], ["pager"]]);
+    expect(ids(cardSteps(galleryOf("mentorship"), "pager", true))[2]).toEqual(["photo-0", "caption-0"]);
   });
   it("masks a phone card with no photos as its words and its links", () => {
     expect(ids(cardSteps(galleryOf("this-site"), "pager", false))).toEqual([["title"], ["meta"], ["words-0"], ["links"]]);
@@ -3206,25 +3475,31 @@ describe("a card's mask steps", () => {
     const steps = cardSteps(galleryOf("talos"), "rows", false, (id) => (id === "words-0" ? 4 : 1));
     expect(steps[2]).toEqual([{ id: "words-0", lines: 4 }]);
   });
+  it("starts at the landing after a flight, and at once when nothing lands", () => {
+    expect([maskStartMs(true), maskStartMs(false)]).toEqual([GALLERY.mask.landingMs, 0]);
+  });
 });
+```
 ```
 - [ ] **Step 2:** `pnpm vitest run lib/gallery/steps.test.ts`. Expected FAIL: `@/lib/gallery/steps` does not exist.
 - [ ] **Step 3: Implement** `lib/gallery/steps.ts`:
 ```ts
 import { siteContent } from "@/lib/content";
 import type { Gallery } from "./card";
-import { PHONE_GROUPING } from "./constants";
+import { GALLERY, PHONE_GROUPING } from "./constants";
 import { phonePages } from "./plan";
 import { pagerSteps, partId, planSteps, type MaskStep, type StepOptions } from "./timing";
 
 // Which parts of a card's modal mask in, and in what order: the desktop rows
 // (and a phone card with no photos, which is its words alone) through
-// planSteps, the phone pager through pagerSteps. The flown card's photo never
-// masks, because a parked flown card covers it; Mentorship's mentors mask
-// after the rows and before the links. lines counts a split part's lines.
+// planSteps, the phone pager through pagerSteps. Beside the rows the flown
+// card's photo never masks, because a parked flown card covers it; on a phone
+// the flown card parks on the header's tile, which never masks, so the first
+// page's picture masks like any photo. Mentorship's mentors mask after the rows
+// and before the links. lines counts a split part's lines.
 export function cardSteps(gallery: Gallery, layout: "rows" | "pager", flying: boolean, lines?: (id: string) => number): MaskStep[] {
   const o: StepOptions = {
-    flown: flying ? gallery.lead : undefined,
+    flown: flying && layout === "rows" ? gallery.lead : undefined,
     hasCaption: (photo) => gallery.photos[photo]?.caption != null,
     hasLinks: siteContent.cards[gallery.key].modal.links.length > 0,
     trailing: gallery.key === "mentorship" && siteContent.cards.mentorship.mentors.people.length > 0 ? [partId.mentors] : [],
@@ -3233,16 +3508,22 @@ export function cardSteps(gallery: Gallery, layout: "rows" | "pager", flying: bo
   const pages = phonePages(gallery.plan, PHONE_GROUPING);
   return layout === "pager" && pages.length > 0 ? pagerSteps(pages, o) : planSteps(gallery.plan, o);
 }
+
+// When the mask-in starts: at the landing (520ms) when a flown card lands, at
+// once when nothing does (a book row, a touch tap), so the panel never sits
+// empty waiting for a flight that is not coming.
+export const maskStartMs = (flying: boolean) => (flying ? GALLERY.mask.landingMs : 0);
 ```
 - [ ] **Step 4:** `pnpm vitest run lib/gallery` passes. Commit the pure half:
 ```bash
 git add lib/gallery/steps.ts lib/gallery/steps.test.ts
-git commit -m "Gallery: a card's mask steps by layout, the flown card's photo never among them" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+git commit -m "Gallery: a card's mask steps by layout and when they start, the photo a parked flown card covers never among them" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
-- [ ] **Step 5: Failing e2e.** In `e2e/support/cards.ts` replace `openCardFromBook` with:
+- [ ] **Step 5: Failing e2e.** In `e2e/support/cards.ts` replace `openCardFromBook` (and its comment) with:
 ```ts
 // A card opened the way a reader of the book opens it: a click on its row (no
-// flight). settled waits for the mask-in to end (no armed body is left).
+// flight). Returns once the panel rests, so every size read after it is final;
+// settled also waits for the mask-in to end (no armed body is left).
 export async function openCardFromBook(page: Page, key: CardKey, { home = true, settled = false } = {}): Promise<{ row: Locator; dialog: Locator }> {
   if (home) await openHome(page);
   const row = cardRow(page, key);
@@ -3250,6 +3531,7 @@ export async function openCardFromBook(page: Page, key: CardKey, { home = true, 
   await row.click();
   const dialog = page.getByRole("dialog", { name: siteContent.cards[key].modal.title, exact: true });
   await expect(dialog).toBeVisible();
+  await panelAtRest(page, key);
   if (settled) await expect(dialog.locator("[data-mask-armed]")).toHaveCount(0, { timeout: 5000 });
   return { row, dialog };
 }
@@ -3273,7 +3555,7 @@ async function leftovers(page: Page) {
 }
 const CLEAN = { lines: 0, armed: 0, written: 0 };
 
-test("masks: a card's modal masks in on a timer from the landing and leaves nothing behind", async ({ page }) => {
+test("masks: a card's modal masks in on a timer and leaves nothing behind", async ({ page }) => {
   await openHome(page);
   const opened = Date.now();
   const { dialog } = await openCardFromBook(page, "capital-one", { home: false });
@@ -3282,6 +3564,14 @@ test("masks: a card's modal masks in on a timer from the landing and leaves noth
   await expect(dialog.locator("[data-mask-armed]")).toHaveCount(0, { timeout: 5000 });
   expect(Date.now() - opened).toBeLessThan(3500);
   expect(await leftovers(page)).toEqual(CLEAN);
+});
+
+// A book open has no flight to wait for: by the time the panel rests (280ms),
+// the title's first line (step one, 480ms long) is already opening.
+test("masks: a book open starts its masks at once, with nothing landing to wait for", async ({ page }) => {
+  const { dialog } = await openCardFromBook(page, "capital-one");
+  const right = await dialog.locator('[data-mask="title"] .card-line').first().evaluate((el) => parseFloat((el as HTMLElement).style.clipPath.match(/inset\(([^)]*)\)/)?.[1].split(/\s+/)[1] ?? "102"));
+  expect(right).toBeLessThan(100);
 });
 
 test("masks: a photo's clip edge travels left to right, and each line's clip opens left to right in place", async ({ page }) => {
@@ -3361,7 +3651,8 @@ import { maskTable, type MaskStep } from "@/lib/gallery/timing";
 
 // The card modal's mask-in (modal-gallery.md, "Masking in"; the gallery lab's
 // round six): one GSAP timeline from lib/gallery/timing's table, built when
-// the body mounts and run on a timer from the landing, on screen or not. A
+// the body mounts and run on a timer from startMs (the landing after a flight,
+// at once otherwise; lib/gallery/steps maskStartMs), on screen or not. A
 // text part with data-mask-split is split into lines (no mask wrappers: a left
 // to right clip opens in place) and each line's clip opens; any other text
 // part opens its own clip. A photo part's clip edge crosses it from the left
@@ -3370,11 +3661,11 @@ import { maskTable, type MaskStep } from "@/lib/gallery/timing";
 // motion turning on) reverts the splits and clears only what GSAP wrote, so
 // nothing outlives the run. The root carries data-mask-armed while it is live.
 
-type Options = { reduced: boolean; runKey: string; stepsFor: (lines: (id: string) => number) => MaskStep[] };
+type Options = { reduced: boolean; runKey: string; startMs: number; stepsFor: (lines: (id: string) => number) => MaskStep[] };
 
 const WRITTEN = "clipPath,transform";
 
-export function useMaskIn(rootRef: RefObject<HTMLElement | null>, { reduced, runKey, stepsFor }: Options) {
+export function useMaskIn(rootRef: RefObject<HTMLElement | null>, { reduced, runKey, startMs, stepsFor }: Options) {
   useLayoutEffect(() => {
     const root = rootRef.current;
     if (!root || reduced) return;
@@ -3384,7 +3675,7 @@ export function useMaskIn(rootRef: RefObject<HTMLElement | null>, { reduced, run
       if (el.dataset.maskKind === "text" && el.hasAttribute("data-mask-split")) splits.set(id, SplitText.create(el, { type: "lines", linesClass: "card-line", aria: "none" }));
     }
     const { mask, ease, direction } = GALLERY;
-    const table = maskTable(stepsFor((id) => splits.get(id)?.lines.length ?? 1), { startMs: mask.landingMs, lengthMs: mask.lengthMs, staggerMs: mask.staggerMs, lineStaggerMs: mask.lineStaggerMs });
+    const table = maskTable(stepsFor((id) => splits.get(id)?.lines.length ?? 1), { startMs, lengthMs: mask.lengthMs, staggerMs: mask.staggerMs, lineStaggerMs: mask.lineStaggerMs });
     const duration = mask.lengthMs / 1000;
     const touched: Element[] = [];
     root.dataset.maskArmed = "";
@@ -3420,7 +3711,7 @@ export function useMaskIn(rootRef: RefObject<HTMLElement | null>, { reduced, run
       tl.kill();
       finish();
     };
-    // stepsFor is read once per run; runKey names every input that replays the masks.
+    // stepsFor and startMs are read once per run; runKey names every input that replays the masks.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reduced, runKey]);
 }
@@ -3431,7 +3722,7 @@ Replace `components/card/CardBody.tsx` with:
 
 import { useRef } from "react";
 import type { Gallery } from "@/lib/gallery/card";
-import { cardSteps } from "@/lib/gallery/steps";
+import { cardSteps, maskStartMs } from "@/lib/gallery/steps";
 import { useReducedMotionLive } from "@/components/soundtrack/useReducedMotionLive";
 import { CardRows } from "./CardRows";
 import { CardStack } from "./CardStack";
@@ -3439,13 +3730,14 @@ import { useMaskIn } from "./useMaskIn";
 import type { GalleryLayout } from "./useGalleryLayout";
 
 // The modal's body by layout (the desktop rows from 1024px up, the phone's
-// column below) and its mask-in, which never touches the flown card's photo.
+// column below) and its mask-in, which starts at the landing after a flight
+// and at once otherwise, and never touches the photo a parked flown card covers.
 type Props = { gallery: Gallery; layout: GalleryLayout; renderMedia: boolean; flying: boolean; onClose: () => void };
 
 export function CardBody({ gallery, layout, renderMedia, flying }: Props) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const reduced = useReducedMotionLive();
-  useMaskIn(rootRef, { reduced, runKey: `${gallery.key}|${layout}`, stepsFor: (lines) => cardSteps(gallery, layout, flying, lines) });
+  useMaskIn(rootRef, { reduced, runKey: `${gallery.key}|${layout}`, startMs: maskStartMs(flying), stepsFor: (lines) => cardSteps(gallery, layout, flying, lines) });
   return (
     <div ref={rootRef} data-card-body={layout}>
       {layout === "rows" ? <CardRows gallery={gallery} renderMedia={renderMedia} /> : <CardStack gallery={gallery} renderMedia={renderMedia} />}
@@ -3465,27 +3757,27 @@ In `components/card/CardModal.tsx`: change `import { useRef, type CSSProperties 
   }
 ```
 and change the dialog's `key="card-modal"` to ``key={`card-modal-${opens}`}``.
-- [ ] **Step 8:** In `e2e/label-face.spec.ts`, pass `settled: true` to every `openCardFromBook` call (its checks read the computed face and the geometry of whole lines, which a split line in the middle of a run would muddle). Then `pnpm test`, `pnpm tsc --noEmit`, `pnpm lint` green (warnings no more than the baseline), and `E2E e2e/card-masks.spec.ts e2e/card-modal.spec.ts e2e/card-gallery.spec.ts e2e/flight.spec.ts e2e/label-face.spec.ts e2e/a11y.spec.ts e2e/modal.spec.ts e2e/inline-links.spec.ts` pass. The flight spec hides every dialog while it diffs and the masks start at the landing, so its swaps are unchanged.
+- [ ] **Step 8:** In `e2e/label-face.spec.ts`, pass `settled: true` to every `openCardFromBook` call (its checks read the computed face and the geometry of whole lines, which a split line in the middle of a run would muddle). Then `pnpm test`, `pnpm tsc --noEmit`, `pnpm lint` green (warnings no more than the baseline), and `E2E e2e/card-masks.spec.ts e2e/card-modal.spec.ts e2e/card-gallery.spec.ts e2e/flight.spec.ts e2e/label-face.spec.ts e2e/a11y.spec.ts e2e/modal.spec.ts e2e/inline-links.spec.ts` pass. The flight spec hides every dialog while it diffs and a flown open's masks start at the landing, so its swaps are unchanged.
 - [ ] **Step 9: Commit.**
 ```bash
 git add components/card/useMaskIn.ts components/card/CardBody.tsx components/card/CardModal.tsx e2e/support/cards.ts e2e/card-masks.spec.ts e2e/label-face.spec.ts
-git commit -m "Card modal: every part masks in left to right on a timer from the landing, and nothing outlives the run" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+git commit -m "Card modal: every part masks in left to right on a timer, from the landing after a flight and at once otherwise, and nothing outlives the run" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
 ---
 
-### Task 12: The turns: a group's clock, its left to right change, its controls (Opus)
+### Task 14: The turns: a group's clock, its left to right change, its controls (Opus)
 
 **Files:**
 - Create: `components/card/useRotator.ts`, `e2e/card-rotator.spec.ts`
 - Modify: `components/card/RotatingPhoto.tsx` (replaced whole), `app/globals.css` (the current dot's fill)
 
 **Interfaces:**
-- Consumes: Task 4's `GALLERY` (`rotate`, `mask.landingMs`, `mask.settle`, `ease`, `direction`); Task 5's `wrap`, `rotatorRuns`, `remainingAfter`, `RotatorGate`, `sweepInsets`, `Span`, `textIn`, `textOut`; Task 10's `GroupLayer`, `GroupCaptions` and the group markup; `isKeyboardFocus` from `@/lib/input/modality`; `useReducedMotionLive`; `gsap` from `@/lib/gsap`; Task 11's `openCardFromBook(..., { settled })`.
+- Consumes: Task 4's `GALLERY` (`rotate`, `mask.landingMs`, `mask.settle`, `ease`, `direction`); Task 5's `wrap`, `rotatorRuns`, `remainingAfter`, `RotatorGate`, `sweepInsets`, `Span`, `textIn`, `textOut`; Task 12's `GroupLayer`, `GroupCaptions` and the group markup; `isKeyboardFocus` from `@/lib/input/modality`; `useReducedMotionLive`; `gsap` from `@/lib/gsap`; Task 13's `openCardFromBook(..., { settled })`.
 - Produces:
 ```ts
 export function useRotator(rootRef: RefObject<HTMLElement | null>, frameRef: RefObject<HTMLElement | null>, o: { count: number; reduced: boolean; paused?: boolean; held?: boolean; active?: boolean }): { index: number; step: (next: number) => number; runs: boolean }; // components/card/useRotator.ts
-export const rotatorTrack: CSSProperties; // components/card/RotatingPhoto.tsx, the current dot's faint accent track (Task 14 reads it)
+export const rotatorTrack: CSSProperties; // components/card/RotatingPhoto.tsx, the current dot's faint accent track (Task 17 reads it)
 ```
   `[data-rotator]` gains `data-rotator-runs` while its clock runs; the pause button carries `data-rotator-pause` (`"playing"` or `"paused"`); the current dot's fill carries `data-rotator-fill` (`"timed"` or `"still"`).
 
@@ -3944,62 +4236,48 @@ git commit -m "Card modal: a group's photos take turns every 3s, one edge sweepi
 
 ---
 
-### Task 13: The phone pager (Opus)
+### Task 15: The phone pager's shell, and a focus trap that never lets focus fall out (Opus)
 
 **Files:**
-- Create: `components/card/usePagerDrag.ts`, `components/card/PagerControls.tsx`, `components/card/PagerPage.tsx`, `components/card/CardPager.tsx`, `components/card/CardWords.tsx`, `e2e/card-pager.spec.ts`
-- Modify: `components/card/CardBody.tsx` (replaced whole), `components/card/CardModal.tsx` (the sheet)
+- Create: `components/card/PagerControls.tsx`, `components/card/PagerPage.tsx`, `components/card/CardPager.tsx`, `components/card/CardWords.tsx`, `e2e/card-pager.spec.ts`
+- Modify: `lib/modal.ts` (`useFocusTrap`), `components/card/CardBody.tsx` (replaced whole), `components/card/CardModal.tsx` (the sheet)
 - Delete: `components/card/CardStack.tsx`
 
 **Interfaces:**
-- Consumes: Task 3's `phonePages`, `stageKind`, `slideWords`, `Page`, `StageKind`, `pageStage`, `stageHeight`, `Box`; Task 4's `Gallery`, `GALLERY` (`pager`, `ease`), `PHONE_GROUPING`, `PAGER_PHOTO_SIZES`; Task 5's `pagerReducer`, `PagerAction`, `axisOf`, `releaseOf`, `rubberBand`, `Axis`; Task 7's `CardHeader`, `StillPhoto`, `Words`, `MentorsList`, `CardLinks`, `CloseHint`; Task 8's `CardBody` props (`onClose`); Task 11's `useMaskIn`, `cardSteps`, `openCardFromBook(..., { settled })`.
+- Consumes: Task 3's `phonePages`, `stageKind`, `slideWords`, `Page`, `StageKind`, `pageStage`, `stageHeight`, `Box`; Task 4's `Gallery`, `GALLERY` (`pager`, `ease`, `talosTileCompact`, `talosMarkMinPx`), `PHONE_GROUPING`, `PAGER_PHOTO_SIZES`, `headerTileOf`; Task 5's `pagerReducer`, `PagerAction`; Task 7's `CardHeader`, `StillPhoto`, `Words`, `MentorsList`, `CardLinks`, `CloseHint`; Task 9's `CardBody` props, `cardDialog`, `flyCard`, `panelAtRest`; Task 13's `useMaskIn`, `cardSteps`, `maskStartMs`, `openCardFromBook(..., { settled })`.
 - Produces:
 ```ts
-usePagerDrag(rootRef: RefObject<HTMLElement | null>, o: { index: number; count: number; reduced: boolean; dispatch: (action: PagerAction) => void; onDismiss: () => void }): { dragPx: number | null; pressing: boolean; handlers: { onPointerDown; onPointerMove; onPointerUp; onPointerCancel } }
+useFocusTrap(containerRef, active): void // lib/modal.ts, the same signature; focus never falls out (Ruling 20)
 PagerControls({ index, count, dispatch }: { index: number; count: number; dispatch: (action: PagerAction) => void })
-PagerPage({ gallery, page, index, count, kind, stage, current, renderMedia }: { gallery: Gallery; page: Page; index: number; count: number; kind: StageKind; stage: { photos: readonly number[]; frame: Box; boxes: readonly Box[] }; current: boolean; renderMedia: boolean }) // Task 14 adds pressing
-CardPager({ gallery, pages, renderMedia, onClose }: { gallery: Gallery; pages: readonly Page[]; renderMedia: boolean; onClose: () => void })
+PagerPage({ gallery, page, index, count, kind, stage, current }: { gallery: Gallery; page: Page; index: number; count: number; kind: StageKind; stage: { photos: readonly number[]; frame: Box; boxes: readonly Box[] }; current: boolean }) // Task 17 adds pressing
+CardPager({ gallery, pages, renderMedia, onClose }: { gallery: Gallery; pages: readonly Page[]; renderMedia: boolean; onClose: () => void }) // onClose is read from Task 16
 CardWords({ gallery, renderMedia }: { gallery: Gallery; renderMedia: boolean })
 ```
   Markup hooks: `[data-pager]` with `data-page`; `[data-pager-viewport]`; `[data-pager-track]`; `[data-pager-page]` with `data-stage-kind` (and `aria-hidden`, `inert` off the current page); `[data-pager-stage]`; `[data-pager-text]` with `data-scrolls` when its words overflow; `[data-pager-controls]` (also `data-mask="pager"`); `[data-pager-dot]`; `[data-pager-arrow]`.
 
-The phone (the lab's `PhonePager.tsx` and `PagerPage.tsx` at ae9b6dd, grouping A, without the strip and with no auto-advance, which round four turned off): a card with photos is a sheet, the visible height less `GALLERY.pager.sheetInsetPx` (48), the backdrop no longer scrolling. The header (the compact tile, the title, the meta) is fixed above the pages; each page is the stage (its photo, or on a turning page its group's frame, fitted whole, at most 40 percent of the visible height and never under 120px, leaving the caption and two lines of words their room), the caption (`captionShort` where there is one), then the words in their own area, which scroll only when they are longer than the room; the last page carries the mentors (Mentorship) and the links. Previous and next buttons and the page dots sit in one row under the pages, the ends disabled; the left and right arrow keys anywhere in the dialog turn the page; a sideways drag past 48px (or a quick one past 24px) turns one page and past either end the track follows the finger at a third and springs back; a vertical drag on the stage, the header or words that fit moves the panel and closes the modal past 96px (or quick past 24px), a shorter one springs back, a sideways one never closes; a vertical drag on words that scroll is theirs. Travel is 360ms on the site ease, none under reduced motion or while dragging. A card with no photos is `CardWords`, a short modal (Ruling 16). This task draws every stage still on its page's first photo; Task 14 turns a group.
+The phone (the lab's `PhonePager.tsx` and `PagerPage.tsx` at ae9b6dd, grouping A, without the strip and with no auto-advance, which round four turned off): a card with photos is a sheet, the visible height less `GALLERY.pager.sheetInsetPx` (48), the backdrop no longer scrolling. The header (the compact tile, the title, the meta) is fixed above the pages, and its tile carries the flight's slot for every card (Ruling 2), so a parked flown card never moves when a page turns and no page carries a slot: every page photo draws itself. Each page is the stage (its photo, or on a turning page its group's frame, fitted whole, at most 40 percent of the visible height and never under 120px, leaving the caption and two lines of words their room), the caption (`captionShort` where there is one), then the words in their own area, which scroll only when they are longer than the room; the last page carries the mentors (Mentorship) and the links. Previous and next buttons and the page dots sit in one row under the pages, the ends disabled; the left and right arrow keys anywhere in the dialog turn the page. Travel is 360ms on the site ease, none under reduced motion. A card with no photos is `CardWords`, a short modal (Ruling 16). This task draws every stage still on its page's first photo (Task 17 turns a group) and has no drags (Task 16).
 
-- [ ] **Step 1: Failing e2e** (`e2e/card-pager.spec.ts`):
+The pager is the first modal whose controls turn disabled (an arrow at its end) and whose content turns inert (a page turned away) under keyboard focus. Today's trap listens on the dialog only, so the browser's focus fixup drops focus to the body and the next Tab leaves the dialog. Ruling 20 fixes the trap itself, for every modal: a `MutationObserver` on the dialog's `disabled` and `inert` attributes moves focus from a control that went dead to the nearest live one (the first live control in the closest enclosing element that still holds one: Next disabling hands focus to Previous, a link on a page that turns away hands it to the next live control, else the close button), a document-level Tab from outside the topmost trap comes back in, and the Tab wrap skips controls inside an inert subtree. The hook's signature does not change, so every modal that uses it (the definition modal, the mark card, the Menu pill, the recruiting popover and dialog) gains the same behaviour with no change of its own.
+
+- [ ] **Step 1: Failing e2e** (`e2e/card-pager.spec.ts`; Task 16 appends the drags and Task 17 the turns):
 ```ts
-import type { Locator, Page } from "@playwright/test";
 import { siteContent, type CardKey } from "@/lib/content";
-import { galleryOf } from "@/lib/gallery/card";
+import { galleryOf, headerTileOf } from "@/lib/gallery/card";
 import { GALLERY, PHONE_GROUPING } from "@/lib/gallery/constants";
 import { phonePages } from "@/lib/gallery/plan";
 import { test, expect } from "./support/fixtures";
 import { openHome } from "./support/coil";
 import { settled } from "./support/fallback";
-import { openCardFromBook } from "./support/cards";
+import { cardDialog, flyCard, openCardFromBook, panelAtRest } from "./support/cards";
 
 // The phone gallery at 390 by 844 (a fine pointer: the pager follows the
-// width, and a mouse drag is a pointer drag like a finger's).
+// width, a Coil click flies as it does on a desktop, and a mouse drag is a
+// pointer drag like a finger's).
 test.use({ viewport: { width: 390, height: 844 } });
 
 const g = siteContent.modals.gallery;
 const keys = Object.keys(siteContent.cards) as CardKey[];
 const PAGED = keys.filter((key) => galleryOf(key).plan.slides.length > 0);
-
-async function centerOf(locator: Locator) {
-  const box = (await locator.boundingBox())!;
-  return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
-}
-
-// A drag slow enough never to count as a quick flick (under 0.6px a ms).
-async function slowDrag(page: Page, from: { x: number; y: number }, by: { x: number; y: number }, steps = 14) {
-  await page.mouse.move(from.x, from.y);
-  await page.mouse.down();
-  for (let i = 1; i <= steps; i++) {
-    await page.mouse.move(from.x + (by.x * i) / steps, from.y + (by.y * i) / steps);
-    await page.waitForTimeout(20);
-  }
-  await page.mouse.up();
-}
 
 test("pager: a phone opens one page a paragraph, the header above the pages and the controls under them", async ({ page }) => {
   const { dialog } = await openCardFromBook(page, "capital-one");
@@ -4056,6 +4334,570 @@ test("pager: every photo is whole in its stage, and no stage is taller than 40 p
   }
 });
 
+test("pager: the header, the first page and the controls mask in, and nothing is left behind", async ({ page }) => {
+  const { dialog } = await openCardFromBook(page, "capital-one");
+  const controls = await page.waitForFunction(() => document.querySelector<HTMLElement>('[data-card-modal="capital-one"] [data-pager-controls]')?.style.clipPath || null, null, { polling: "raf", timeout: 5000 });
+  expect(await controls.jsonValue()).toMatch(/^inset\(/);
+  await expect(dialog.locator("[data-mask-armed]")).toHaveCount(0, { timeout: 5000 });
+  expect(await dialog.locator(".card-line").count()).toBe(0);
+});
+
+test("pager: a card with no photos is its words and its links in a short modal", async ({ page }) => {
+  const { dialog } = await openCardFromBook(page, "this-site");
+  await expect(dialog.locator("[data-pager]")).toHaveCount(0);
+  await expect(dialog.locator('[data-mask="words-0"]')).toBeVisible();
+  await expect(dialog.getByRole("link", { name: new RegExp(siteContent.cards["this-site"].modal.links[0].label) })).toBeVisible();
+});
+
+test("pager: the phone header keeps a card's shorter meta, so IEEE's reads President, 2023 to 2026", async ({ page }) => {
+  const { dialog } = await openCardFromBook(page, "ieee");
+  await expect(dialog.locator('[data-mask="meta"]')).toHaveText("President, 2023 to 2026");
+  await expect(dialog.locator('[data-inline-key="ieee-ao"]')).toHaveCount(0);
+});
+
+test("pager: Talos's mark in the phone header's tile is never under its kit's 20px", async ({ page }) => {
+  const { dialog } = await openCardFromBook(page, "talos");
+  const tile = (await dialog.locator('[data-tile-slot="work"]').boundingBox())!;
+  expect([Math.round(tile.width), Math.round(tile.height)]).toEqual([GALLERY.talosTileCompact.width, GALLERY.talosTileCompact.height]);
+  const mark = (await dialog.locator('[data-tile-slot="work"] [data-face="logo"] img').first().boundingBox())!;
+  expect(Math.max(mark.width, mark.height)).toBeGreaterThanOrEqual(GALLERY.talosMarkMinPx);
+});
+
+test("pager: a mouse click on the Coil flies a photo card onto the phone header's tile, which stays put while the pages turn", async ({ page, cdp }) => {
+  const key = await flyCard(page, cdp, "photo");
+  const dialog = cardDialog(page, key);
+  await expect(dialog).toHaveAttribute("data-gallery-layout", "pager");
+  await panelAtRest(page, key);
+  const slot = dialog.locator('[data-tile-slot="photo"]');
+  await expect(slot).toHaveCount(1);
+  await expect(dialog.locator("[data-pager-page] [data-tile-slot]")).toHaveCount(0);
+  const before = (await slot.boundingBox())!;
+  const tile = headerTileOf(key, true);
+  expect(Math.abs(before.width - tile.width) < 1 && Math.abs(before.height - tile.height) < 1, `${before.width} by ${before.height}`).toBe(true);
+  await dialog.getByRole("button", { name: g.nextPage }).click();
+  await expect(dialog.locator("[data-pager]")).toHaveAttribute("data-page", "1");
+  await page.waitForTimeout(GALLERY.pager.slideMs + 100);
+  expect(await slot.boundingBox()).toEqual(before);
+  await expect(dialog.locator('[data-pager-page="0"] [data-photo-frame] img').first()).toHaveCSS("opacity", "1");
+});
+
+test("pager: keyboard focus never falls out of the dialog when its control disables or its page goes inert, and Tab from the body comes back in", async ({ page }) => {
+  const capital = await openCardFromBook(page, "capital-one", { settled: true });
+  const next = capital.dialog.getByRole("button", { name: g.nextPage });
+  await next.focus();
+  await page.keyboard.press("Enter");
+  await expect(capital.dialog.locator("[data-pager]")).toHaveAttribute("data-page", "1");
+  await page.keyboard.press("Enter");
+  await expect(capital.dialog.locator("[data-pager]")).toHaveAttribute("data-page", "2");
+  await expect(next).toBeDisabled();
+  await expect(capital.dialog.getByRole("button", { name: g.previousPage })).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(capital.dialog).toHaveCount(0);
+
+  const { dialog } = await openCardFromBook(page, "misuki", { home: false, settled: true });
+  await dialog.getByRole("button", { name: g.nextPage }).click();
+  await expect(dialog.locator("[data-pager]")).toHaveAttribute("data-page", "1");
+  const tip = dialog.getByRole("button", { name: "Fast and Furious", exact: true });
+  await tip.focus();
+  await page.keyboard.press("ArrowLeft");
+  await expect(dialog.locator("[data-pager]")).toHaveAttribute("data-page", "0");
+  await expect(dialog.getByRole("button", { name: g.pageNumber(1, 2) })).toBeFocused();
+
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  expect(await page.evaluate(() => document.activeElement === document.body)).toBe(true);
+  await page.keyboard.press("Tab");
+  await expect(dialog.getByRole("button", { name: siteContent.modals.closeAriaLabel })).toBeFocused();
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  await page.keyboard.press("Shift+Tab");
+  await expect(dialog.getByRole("button", { name: g.nextPage })).toBeFocused();
+});
+
+test("pager: under reduced motion a page changes with no travel", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+  await settled(page);
+  const { dialog } = await openCardFromBook(page, "capital-one", { home: false });
+  await dialog.getByRole("button", { name: g.nextPage }).click();
+  await expect(dialog.locator("[data-pager]")).toHaveAttribute("data-page", "1");
+  expect(await dialog.locator("[data-pager-track]").evaluate((el) => (el as HTMLElement).style.transition)).toMatch(/^transform 0(ms|s)\b/);
+});
+```
+- [ ] **Step 2:** `E2E e2e/card-pager.spec.ts`. Expected FAIL: there is no `[data-pager]` (the phone draws Task 12's column).
+- [ ] **Step 3: The focus trap** (`lib/modal.ts`). Replace `useFocusTrap` and the comment above it with:
+```ts
+// The active traps, innermost last: only the top one pulls a stray Tab back in.
+const trapStack: HTMLElement[] = [];
+
+// Traps Tab/Shift+Tab inside the referenced container while active, among live
+// controls only (not disabled, not inside an inert subtree, rendered). Focus
+// never falls out: a Tab with focus outside the container (the body, once a
+// focused control went away) comes back in, and a focused control that turns
+// inert or disabled under the visitor (a pager page turning away, an arrow at
+// its end) hands focus to the nearest live control, the first one in the
+// closest enclosing element that still holds one. Restores focus to the element
+// that was focused before the modal opened.
+export function useFocusTrap(
+  containerRef: React.RefObject<HTMLElement | null>,
+  active: boolean,
+) {
+  const returnFocusRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!active) return;
+    returnFocusRef.current = document.activeElement as HTMLElement | null;
+    const container = containerRef.current;
+    if (!container) return;
+
+    const live = (el: HTMLElement) => !el.hasAttribute("disabled") && !el.closest("[inert]") && el.offsetParent !== null;
+    const liveIn = (scope: Element) => Array.from(scope.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(live);
+    const focusables = () => liveIn(container);
+
+    // Move focus into the container on open.
+    const first = focusables()[0];
+    // Delay by a frame so the entrance animation can start before focus jumps.
+    // Tracked so cleanup can cancel it; otherwise a trap that unmounts within
+    // the same frame would still steal focus after it is gone.
+    let initialFocusRaf = 0;
+    if (first) {
+      initialFocusRaf = requestAnimationFrame(() => first.focus());
+    }
+
+    const handler = (e: KeyboardEvent) => {
+      if (e.key !== "Tab") return;
+      const items = focusables();
+      if (items.length === 0) return;
+      const firstItem = items[0];
+      const lastItem = items[items.length - 1];
+      if (e.shiftKey && document.activeElement === firstItem) {
+        e.preventDefault();
+        lastItem.focus();
+      } else if (!e.shiftKey && document.activeElement === lastItem) {
+        e.preventDefault();
+        firstItem.focus();
+      }
+    };
+
+    const onDocumentKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Tab" || trapStack[trapStack.length - 1] !== container) return;
+      const current = document.activeElement;
+      if (current && current !== document.body && container.contains(current)) return;
+      const items = focusables();
+      if (items.length === 0) return;
+      e.preventDefault();
+      (e.shiftKey ? items[items.length - 1] : items[0]).focus();
+    };
+
+    let held: HTMLElement | null = null;
+    const onFocusIn = (e: FocusEvent) => {
+      if (e.target instanceof HTMLElement) held = e.target;
+    };
+    const rescue = () => {
+      if (!held || live(held)) return;
+      const current = document.activeElement;
+      if (current && current !== held && current !== document.body) return;
+      let next: HTMLElement | undefined;
+      for (let scope = held.parentElement; scope && !next; scope = scope === container ? null : scope.parentElement) next = liveIn(scope)[0];
+      held = null;
+      next?.focus({ preventScroll: true });
+    };
+    const observer = new MutationObserver(rescue);
+    observer.observe(container, { subtree: true, attributes: true, attributeFilter: ["disabled", "inert"] });
+
+    trapStack.push(container);
+    container.addEventListener("keydown", handler);
+    container.addEventListener("focusin", onFocusIn);
+    document.addEventListener("keydown", onDocumentKeyDown);
+    return () => {
+      if (initialFocusRaf) cancelAnimationFrame(initialFocusRaf);
+      observer.disconnect();
+      const at = trapStack.lastIndexOf(container);
+      if (at !== -1) trapStack.splice(at, 1);
+      container.removeEventListener("keydown", handler);
+      container.removeEventListener("focusin", onFocusIn);
+      document.removeEventListener("keydown", onDocumentKeyDown);
+      returnFocusRef.current?.focus?.();
+    };
+  }, [active, containerRef]);
+}
+```
+`useBodyScrollLock`, `useEscapeKey` and the backdrop variants do not change. Then `pnpm tsc --noEmit`, `pnpm lint` green, and `E2E e2e/a11y.spec.ts e2e/modal.spec.ts e2e/mark.spec.ts e2e/inline-links.spec.ts e2e/chrome.spec.ts e2e/controls.spec.ts e2e/label-face.spec.ts e2e/card-modal.spec.ts` pass: every modal (the card modal, the definition modal, the mark card, the Menu panel) opens with its first control focused, wraps Tab, closes on Escape and returns focus as before. Commit the trap on its own:
+```bash
+git add lib/modal.ts
+git commit -m "Modal: the focus trap never lets focus fall out, a dead control hands focus to the nearest live one and a Tab from the body comes back in" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+- [ ] **Step 4: Implement the shell.** `components/card/PagerControls.tsx`:
+```tsx
+"use client";
+
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { siteContent } from "@/lib/content";
+import { PHONE_GROUPING } from "@/lib/gallery/constants";
+import type { PagerAction } from "@/lib/gallery/pager";
+import { partId } from "@/lib/gallery/timing";
+
+// The pager's one row of controls: previous, the page dots, next. Real
+// buttons, the ends disabled; they only ever change pages.
+
+type Props = { index: number; count: number; dispatch: (action: PagerAction) => void };
+
+const g = siteContent.modals.gallery;
+
+export function PagerControls({ index, count, dispatch }: Props) {
+  const dotLabel = (i: number) => (PHONE_GROUPING === "photo" ? g.photoOf(i + 1, count) : g.pageNumber(i + 1, count));
+  return (
+    <div data-mask={partId.pager} data-mask-kind="text" className="flex shrink-0 items-center justify-between gap-2" data-pager-controls="">
+      <Arrow label={g.previousPage} disabled={index === 0} onClick={() => dispatch({ type: "prev" })} next={false} />
+      <div className="flex items-center justify-center">
+        {Array.from({ length: count }, (_, i) => (
+          <button
+            key={i}
+            type="button"
+            aria-label={dotLabel(i)}
+            aria-current={i === index ? "true" : undefined}
+            onClick={() => dispatch({ type: "goto", index: i })}
+            className="group inline-flex h-8 w-7 items-center justify-center"
+            data-pager-dot={i}
+          >
+            <span className={`block h-1.5 rounded-full motion-safe:transition-all motion-safe:duration-200 ${i === index ? "w-4 bg-accent" : "w-1.5 bg-border group-hover:bg-muted"}`} />
+          </button>
+        ))}
+      </div>
+      <Arrow label={g.nextPage} disabled={index >= count - 1} onClick={() => dispatch({ type: "next" })} next />
+    </div>
+  );
+}
+
+function Arrow({ label, disabled, onClick, next }: { label: string; disabled: boolean; onClick: () => void; next: boolean }) {
+  const Icon = next ? ChevronRight : ChevronLeft;
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      disabled={disabled}
+      onClick={onClick}
+      className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border text-foreground transition-colors duration-200 hover:text-accent disabled:cursor-default disabled:opacity-35 disabled:hover:text-foreground"
+      data-pager-arrow={next ? "next" : "prev"}
+    >
+      <Icon aria-hidden="true" className="h-4 w-4" />
+    </button>
+  );
+}
+```
+`components/card/PagerPage.tsx`:
+```tsx
+"use client";
+
+import { useLayoutEffect, useRef, useState } from "react";
+import { siteContent } from "@/lib/content";
+import type { Box } from "@/lib/gallery/boxes";
+import type { Gallery } from "@/lib/gallery/card";
+import { slideWords, type Page, type StageKind } from "@/lib/gallery/plan";
+import { partId } from "@/lib/gallery/timing";
+import { PAGER_PHOTO_SIZES } from "@/lib/photoSizes";
+import { CardLinks } from "./CardLinks";
+import { MentorsList } from "./MentorsList";
+import { StillPhoto } from "./StillPhoto";
+import { Words } from "./Words";
+
+// One page of the phone pager (the gallery lab's round six): the stage,
+// exactly as tall as what it draws fitted whole; the caption; then the words
+// in their own area, which scrolls only when they are longer than the room (a
+// soft fade at its foot says so), with the mentors and the links on the last
+// page. A page that is not current is inert and hidden from assistive tech.
+// No page carries the flight's slot (a flown card parks on the header's tile,
+// which stays put while the pages turn), so every photo draws itself.
+
+type Stage = { photos: readonly number[]; frame: Box; boxes: readonly Box[] };
+type Props = { gallery: Gallery; page: Page; index: number; count: number; kind: StageKind; stage: Stage; current: boolean };
+
+const g = siteContent.modals.gallery;
+
+export function PagerPage({ gallery, page, index, count, kind, stage, current }: Props) {
+  const textRef = useRef<HTMLDivElement | null>(null);
+  const [scrolls, setScrolls] = useState(false);
+
+  useLayoutEffect(() => {
+    const text = textRef.current;
+    if (!text) return;
+    const read = () => setScrolls(text.scrollHeight > text.clientHeight + 1);
+    read();
+    const observer = new ResizeObserver(read);
+    observer.observe(text);
+    if (text.firstElementChild) observer.observe(text.firstElementChild);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div
+      role="group"
+      aria-roledescription={g.roleSlide}
+      aria-label={g.pageLabel(index + 1, count)}
+      aria-hidden={!current}
+      inert={!current}
+      className="flex h-full w-full shrink-0 flex-col gap-3"
+      data-pager-page={index}
+      data-stage-kind={kind}
+      data-wordless={page.wordless ? "" : undefined}
+    >
+      <StillStage gallery={gallery} photo={page.photo} box={stage.boxes[0]} height={stage.frame.height} />
+      {!page.wordless && (
+        <div
+          ref={textRef}
+          className={`min-h-0 flex-1 overflow-y-auto overscroll-contain ${scrolls ? "[mask-image:linear-gradient(to_bottom,black_calc(100%-28px),transparent)]" : ""}`}
+          style={{ touchAction: scrolls ? "pan-y" : "none" }}
+          data-pager-text=""
+          data-scrolls={scrolls ? "" : undefined}
+        >
+          <div className="flex flex-col gap-4 pb-6">
+            {slideWords(page).map((unit) => (
+              <Words key={unit} gallery={gallery} unit={unit} compact />
+            ))}
+            {page.links && gallery.key === "mentorship" && <MentorsList compact />}
+            {page.links && <CardLinks cardKey={gallery.key} />}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// One photo standing on its stage's floor, whole, its caption under the stage.
+function StillStage({ gallery, photo, box, height }: { gallery: Gallery; photo: number; box: Box; height: number }) {
+  const picture = gallery.photos[photo];
+  const caption = picture.captionShort ?? picture.caption;
+  return (
+    <>
+      <div className="relative flex w-full shrink-0 items-end justify-center" style={{ height }} data-pager-stage="">
+        <StillPhoto photo={picture} index={photo} box={box} sizes={PAGER_PHOTO_SIZES} caption={null} />
+      </div>
+      {caption && (
+        <p data-mask={partId.caption(photo)} data-mask-kind="text" data-mask-split="" className="shrink-0 font-label text-label text-muted">
+          {caption}
+        </p>
+      )}
+    </>
+  );
+}
+```
+`components/card/CardPager.tsx`:
+```tsx
+"use client";
+
+import { useEffect, useLayoutEffect, useReducer, useRef, useState } from "react";
+import { siteContent } from "@/lib/content";
+import { pageStage, stageHeight } from "@/lib/gallery/boxes";
+import type { Gallery } from "@/lib/gallery/card";
+import { GALLERY, PHONE_GROUPING } from "@/lib/gallery/constants";
+import { pagerReducer } from "@/lib/gallery/pager";
+import { stageKind, type Page } from "@/lib/gallery/plan";
+import { useReducedMotionLive } from "@/components/soundtrack/useReducedMotionLive";
+import { CardHeader } from "./CardHeader";
+import { PagerControls } from "./PagerControls";
+import { PagerPage } from "./PagerPage";
+
+// The phone's gallery (under 1024px), the lab's round six pager: the header
+// fixed above (a flown card parks on its tile, so no page carries it), one
+// page a paragraph (PHONE_GROUPING), each page's photo or group whole in a
+// stage at most 40 percent of the visible height with the words under it.
+// The arrows and dots under the pages and the arrow keys anywhere in the
+// dialog change pages. Under reduced motion pages change with no travel.
+
+type Props = { gallery: Gallery; pages: readonly Page[]; renderMedia: boolean; onClose: () => void };
+type Room = { width: number; height: number; visible: number };
+
+const g = siteContent.modals.gallery;
+
+export function CardPager({ gallery, pages, renderMedia }: Props) {
+  const count = pages.length;
+  const reduced = useReducedMotionLive();
+  const [state, dispatch] = useReducer(pagerReducer, { index: 0, count });
+  const [room, setRoom] = useState<Room | null>(null);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const viewportRef = useRef<HTMLDivElement | null>(null);
+  const { pager } = GALLERY;
+  // The stage's cap, or less when the page is too short to leave the words their room.
+  const heightFor = (share: number, below: number) => stageHeight((room?.visible ?? 0) * share, (room?.height ?? 0) - below, pager.stageFloorPx);
+  const layouts = pages.map((page) => {
+    const kind = stageKind(page, PHONE_GROUPING);
+    const photos = kind === "turns" ? page.photos : [page.photo];
+    const height = page.wordless ? heightFor(pager.wordlessMax, pager.captionRoomPx) : heightFor(pager.stageMax, pager.wordsRoomPx);
+    return { kind, stage: { photos, ...pageStage(photos, gallery.aspects, room?.width ?? 0, height) } };
+  });
+
+  useLayoutEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+    const read = () => setRoom({ width: viewport.clientWidth, height: viewport.clientHeight, visible: window.innerHeight });
+    read();
+    const observer = new ResizeObserver(read);
+    observer.observe(viewport);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+      const dialog = rootRef.current?.closest('[role="dialog"]');
+      const target = e.target as Node | null;
+      if (!dialog || !(target === document.body || (target !== null && dialog.contains(target)))) return;
+      e.preventDefault();
+      dispatch({ type: e.key === "ArrowRight" ? "next" : "prev" });
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  const travel = reduced ? 0 : pager.slideMs;
+  const shown = gallery.photos[pages[state.index].photo];
+  const live = PHONE_GROUPING === "photo" ? g.announce(state.index + 1, count, shown.captionShort ?? shown.caption ?? "") : g.pageNumber(state.index + 1, count);
+  return (
+    <div
+      ref={rootRef}
+      role="group"
+      aria-roledescription={g.roleCarousel}
+      aria-label={g.pagerLabel(count)}
+      className="flex min-h-0 flex-1 flex-col gap-4"
+      data-pager=""
+      data-page={state.index}
+    >
+      <CardHeader cardKey={gallery.key} renderMedia={renderMedia} compact />
+      <div ref={viewportRef} className="relative min-h-0 flex-1 overflow-hidden" data-pager-viewport="">
+        <div
+          className="flex h-full"
+          style={{ transform: `translate3d(${-state.index * 100}%, 0, 0)`, transition: `transform ${travel}ms ${GALLERY.ease.css}` }}
+          data-pager-track=""
+        >
+          {pages.map((page, i) => (
+            <PagerPage key={page.photo} gallery={gallery} page={page} index={i} count={count} kind={layouts[i].kind} stage={layouts[i].stage} current={i === state.index} />
+          ))}
+        </div>
+      </div>
+      {count > 1 && <PagerControls index={state.index} count={count} dispatch={dispatch} />}
+      <p className="sr-only" aria-live="polite">
+        {live}
+      </p>
+    </div>
+  );
+}
+```
+`components/card/CardWords.tsx`:
+```tsx
+import type { Gallery } from "@/lib/gallery/card";
+import { CardHeader } from "./CardHeader";
+import { CardLinks } from "./CardLinks";
+import { CloseHint } from "./CloseHint";
+import { Words } from "./Words";
+
+// A phone modal for a card with no photos (min/Max, Talos, This site, the
+// family business): the header, every paragraph, the links and the close
+// hint, a short modal that scrolls with the backdrop.
+export function CardWords({ gallery, renderMedia }: { gallery: Gallery; renderMedia: boolean }) {
+  return (
+    <div className="flex flex-col gap-6">
+      <CardHeader cardKey={gallery.key} renderMedia={renderMedia} compact />
+      <div className="flex flex-col gap-4">
+        {gallery.words.map((_, unit) => (
+          <Words key={unit} gallery={gallery} unit={unit} compact />
+        ))}
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
+        <CardLinks cardKey={gallery.key} />
+        <CloseHint />
+      </div>
+    </div>
+  );
+}
+```
+Replace `components/card/CardBody.tsx` with:
+```tsx
+"use client";
+
+import { useRef } from "react";
+import type { Gallery } from "@/lib/gallery/card";
+import { PHONE_GROUPING } from "@/lib/gallery/constants";
+import { phonePages } from "@/lib/gallery/plan";
+import { cardSteps, maskStartMs } from "@/lib/gallery/steps";
+import { useReducedMotionLive } from "@/components/soundtrack/useReducedMotionLive";
+import { CardPager } from "./CardPager";
+import { CardRows } from "./CardRows";
+import { CardWords } from "./CardWords";
+import { useMaskIn } from "./useMaskIn";
+import type { GalleryLayout } from "./useGalleryLayout";
+
+// The modal's body by layout (the desktop rows from 1024px up; below, the
+// pager for a card with photos and its words alone for a card without) and
+// its mask-in, which starts at the landing after a flight and at once otherwise,
+// and never touches the photo a parked flown card covers.
+type Props = { gallery: Gallery; layout: GalleryLayout; renderMedia: boolean; flying: boolean; onClose: () => void };
+
+export function CardBody({ gallery, layout, renderMedia, flying, onClose }: Props) {
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const reduced = useReducedMotionLive();
+  const pages = phonePages(gallery.plan, PHONE_GROUPING);
+  const paged = layout === "pager" && pages.length > 0;
+  useMaskIn(rootRef, { reduced, runKey: `${gallery.key}|${layout}`, startMs: maskStartMs(flying), stepsFor: (lines) => cardSteps(gallery, layout, flying, lines) });
+  return (
+    <div ref={rootRef} data-card-body={layout} className={paged ? "flex min-h-0 flex-1 flex-col" : undefined}>
+      {layout === "rows" ? (
+        <CardRows gallery={gallery} renderMedia={renderMedia} />
+      ) : paged ? (
+        <CardPager gallery={gallery} pages={pages} renderMedia={renderMedia} onClose={onClose} />
+      ) : (
+        <CardWords gallery={gallery} renderMedia={renderMedia} />
+      )}
+    </div>
+  );
+}
+```
+In `components/card/CardModal.tsx`:
+  - after `const rows = layout === "rows";` add `const sheet = gallery !== null && !rows && gallery.plan.slides.length > 0;` and import `GALLERY` from `@/lib/gallery/constants`;
+  - in the dialog's `className`, replace `overflow-y-auto` with `${sheet ? "overflow-hidden" : "overflow-y-auto"}`;
+  - change the panel's `style` to ``{ ...glass, maxWidth: rows ? gallery.panelWidth : undefined, height: sheet ? `calc(100dvh - ${GALLERY.pager.sheetInsetPx}px)` : undefined }``.
+
+Then `git rm components/card/CardStack.tsx`.
+- [ ] **Step 5:** `pnpm test`, `pnpm tsc --noEmit`, `pnpm lint` green; `E2E e2e/card-pager.spec.ts e2e/card-modal.spec.ts e2e/card-masks.spec.ts e2e/card-gallery.spec.ts e2e/touch.spec.ts e2e/a11y.spec.ts` pass (`card-modal`'s "under 1024px a mouse click still flies the card, onto the phone header's tile" now lands on the pager's header, and "the layout holds while a flown card is parked" reopens the card as a pager). Every new file stays under 200 lines.
+- [ ] **Step 6: Commit.**
+```bash
+git add components/card/PagerControls.tsx components/card/PagerPage.tsx components/card/CardPager.tsx components/card/CardWords.tsx components/card/CardBody.tsx components/card/CardModal.tsx e2e/card-pager.spec.ts
+git commit -m "Card modal: the phone pager in a sheet, one page a paragraph under a header that holds the flight's slot, arrows, dots and keys" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+(`git rm` in Step 4 already staged `CardStack.tsx`'s deletion.)
+
+---
+
+### Task 16: The pager's drags: a sideways drag turns a page, a vertical flick closes (Opus)
+
+**Files:**
+- Create: `components/card/usePagerDrag.ts`
+- Modify: `components/card/CardPager.tsx` (the drags), `e2e/card-pager.spec.ts` (three tests appended)
+
+**Interfaces:**
+- Consumes: Task 4's `GALLERY` (`pager.flickPx`, `ease`); Task 5's `axisOf`, `releaseOf`, `rubberBand`, `Axis`, `PagerAction`; Task 15's `CardPager` and its `[data-pager-text]` markup (`data-scrolls`); Task 13's `openCardFromBook(..., { settled })`.
+- Produces:
+```ts
+usePagerDrag(rootRef: RefObject<HTMLElement | null>, o: { index: number; count: number; reduced: boolean; dispatch: (action: PagerAction) => void; onDismiss: () => void }): { dragPx: number | null; pressing: boolean; handlers: { onPointerDown; onPointerMove; onPointerUp; onPointerCancel } } // Task 17 reads pressing
+```
+
+The drags (the lab's `PhonePager.tsx` at ae9b6dd): a sideways drag past 48px (or a quick one past 24px) turns one page, and past either end the track follows the finger at a third and springs back; a vertical drag on the stage, the header or words that fit moves the panel and closes the modal past 96px (or quick past 24px), a shorter one springs back, a sideways one never closes; a vertical drag on words that scroll is theirs. No travel while dragging.
+
+- [ ] **Step 1: Failing e2e.** Add `import type { Locator, Page } from "@playwright/test";` as the first line of `e2e/card-pager.spec.ts`, and append:
+```ts
+async function centerOf(locator: Locator) {
+  const box = (await locator.boundingBox())!;
+  return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+}
+
+// A drag slow enough never to count as a quick flick (under 0.6px a ms).
+async function slowDrag(page: Page, from: { x: number; y: number }, by: { x: number; y: number }, steps = 14) {
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  for (let i = 1; i <= steps; i++) {
+    await page.mouse.move(from.x + (by.x * i) / steps, from.y + (by.y * i) / steps);
+    await page.waitForTimeout(20);
+  }
+  await page.mouse.up();
+}
+
 test("pager: a sideways drag turns one page, a short one springs back, and past the start it stays", async ({ page }) => {
   const { dialog } = await openCardFromBook(page, "capital-one", { settled: true });
   const pager = dialog.locator("[data-pager]");
@@ -4100,34 +4942,9 @@ test("pager: long words scroll in their own area and never dismiss, while a drag
   await slowDrag(page, await centerOf(first.locator("[data-pager-stage]")), { x: 0, y: 130 });
   await expect(dialog).toHaveCount(0);
 });
-
-test("pager: the header, the first page and the controls mask in, and nothing is left behind", async ({ page }) => {
-  const { dialog } = await openCardFromBook(page, "capital-one");
-  const controls = await page.waitForFunction(() => document.querySelector<HTMLElement>('[data-card-modal="capital-one"] [data-pager-controls]')?.style.clipPath || null, null, { polling: "raf", timeout: 5000 });
-  expect(await controls.jsonValue()).toMatch(/^inset\(/);
-  await expect(dialog.locator("[data-mask-armed]")).toHaveCount(0, { timeout: 5000 });
-  expect(await dialog.locator(".card-line").count()).toBe(0);
-});
-
-test("pager: a card with no photos is its words and its links in a short modal", async ({ page }) => {
-  const { dialog } = await openCardFromBook(page, "this-site");
-  await expect(dialog.locator("[data-pager]")).toHaveCount(0);
-  await expect(dialog.locator('[data-mask="words-0"]')).toBeVisible();
-  await expect(dialog.getByRole("link", { name: new RegExp(siteContent.cards["this-site"].modal.links[0].label) })).toBeVisible();
-});
-
-test("pager: under reduced motion a page changes with no travel", async ({ page }) => {
-  await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.goto("/");
-  await settled(page);
-  const { dialog } = await openCardFromBook(page, "capital-one", { home: false });
-  await dialog.getByRole("button", { name: g.nextPage }).click();
-  await expect(dialog.locator("[data-pager]")).toHaveAttribute("data-page", "1");
-  expect(await dialog.locator("[data-pager-track]").evaluate((el) => (el as HTMLElement).style.transition)).toMatch(/^transform 0(ms|s)\b/);
-});
 ```
-- [ ] **Step 2:** `E2E e2e/card-pager.spec.ts`. Expected FAIL: there is no `[data-pager]` (the phone draws Task 10's column).
-- [ ] **Step 3: Implement.** `components/card/usePagerDrag.ts`:
+- [ ] **Step 2:** `E2E e2e/card-pager.spec.ts`. Expected FAIL: the three new tests, since a drag does nothing yet.
+- [ ] **Step 3: Implement** `components/card/usePagerDrag.ts`:
 ```ts
 "use client";
 
@@ -4226,358 +5043,44 @@ export function usePagerDrag(rootRef: RefObject<HTMLElement | null>, { index, co
   };
 }
 ```
-`components/card/PagerControls.tsx`:
-```tsx
-"use client";
-
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { siteContent } from "@/lib/content";
-import { PHONE_GROUPING } from "@/lib/gallery/constants";
-import type { PagerAction } from "@/lib/gallery/pager";
-import { partId } from "@/lib/gallery/timing";
-
-// The pager's one row of controls: previous, the page dots, next. Real
-// buttons, the ends disabled; they only ever change pages.
-
-type Props = { index: number; count: number; dispatch: (action: PagerAction) => void };
-
-const g = siteContent.modals.gallery;
-
-export function PagerControls({ index, count, dispatch }: Props) {
-  const dotLabel = (i: number) => (PHONE_GROUPING === "photo" ? g.photoOf(i + 1, count) : g.pageNumber(i + 1, count));
-  return (
-    <div data-mask={partId.pager} data-mask-kind="text" className="flex shrink-0 items-center justify-between gap-2" data-pager-controls="">
-      <Arrow label={g.previousPage} disabled={index === 0} onClick={() => dispatch({ type: "prev" })} next={false} />
-      <div className="flex items-center justify-center">
-        {Array.from({ length: count }, (_, i) => (
-          <button
-            key={i}
-            type="button"
-            aria-label={dotLabel(i)}
-            aria-current={i === index ? "true" : undefined}
-            onClick={() => dispatch({ type: "goto", index: i })}
-            className="group inline-flex h-8 w-7 items-center justify-center"
-            data-pager-dot={i}
-          >
-            <span className={`block h-1.5 rounded-full motion-safe:transition-all motion-safe:duration-200 ${i === index ? "w-4 bg-accent" : "w-1.5 bg-border group-hover:bg-muted"}`} />
-          </button>
-        ))}
-      </div>
-      <Arrow label={g.nextPage} disabled={index >= count - 1} onClick={() => dispatch({ type: "next" })} next />
-    </div>
-  );
-}
-
-function Arrow({ label, disabled, onClick, next }: { label: string; disabled: boolean; onClick: () => void; next: boolean }) {
-  const Icon = next ? ChevronRight : ChevronLeft;
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      disabled={disabled}
-      onClick={onClick}
-      className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border text-foreground transition-colors duration-200 hover:text-accent disabled:cursor-default disabled:opacity-35 disabled:hover:text-foreground"
-      data-pager-arrow={next ? "next" : "prev"}
-    >
-      <Icon aria-hidden="true" className="h-4 w-4" />
-    </button>
-  );
-}
-```
-`components/card/PagerPage.tsx`:
-```tsx
-"use client";
-
-import { useLayoutEffect, useRef, useState } from "react";
-import { siteContent } from "@/lib/content";
-import type { Box } from "@/lib/gallery/boxes";
-import type { Gallery } from "@/lib/gallery/card";
-import { slideWords, type Page, type StageKind } from "@/lib/gallery/plan";
-import { partId } from "@/lib/gallery/timing";
-import { PAGER_PHOTO_SIZES } from "@/lib/photoSizes";
-import { CardLinks } from "./CardLinks";
-import { MentorsList } from "./MentorsList";
-import { StillPhoto } from "./StillPhoto";
-import { Words } from "./Words";
-
-// One page of the phone pager (the gallery lab's round six): the stage,
-// exactly as tall as what it draws fitted whole; the caption; then the words
-// in their own area, which scrolls only when they are longer than the room (a
-// soft fade at its foot says so), with the mentors and the links on the last
-// page. A page that is not current is inert and hidden from assistive tech.
-
-type Stage = { photos: readonly number[]; frame: Box; boxes: readonly Box[] };
-type Props = { gallery: Gallery; page: Page; index: number; count: number; kind: StageKind; stage: Stage; current: boolean; renderMedia: boolean };
-
-const g = siteContent.modals.gallery;
-
-export function PagerPage({ gallery, page, index, count, kind, stage, current, renderMedia }: Props) {
-  const textRef = useRef<HTMLDivElement | null>(null);
-  const [scrolls, setScrolls] = useState(false);
-
-  useLayoutEffect(() => {
-    const text = textRef.current;
-    if (!text) return;
-    const read = () => setScrolls(text.scrollHeight > text.clientHeight + 1);
-    read();
-    const observer = new ResizeObserver(read);
-    observer.observe(text);
-    if (text.firstElementChild) observer.observe(text.firstElementChild);
-    return () => observer.disconnect();
-  }, []);
-
-  return (
-    <div
-      role="group"
-      aria-roledescription={g.roleSlide}
-      aria-label={g.pageLabel(index + 1, count)}
-      aria-hidden={!current}
-      inert={!current}
-      className="flex h-full w-full shrink-0 flex-col gap-3"
-      data-pager-page={index}
-      data-stage-kind={kind}
-      data-wordless={page.wordless ? "" : undefined}
-    >
-      <StillStage gallery={gallery} photo={page.photo} box={stage.boxes[0]} height={stage.frame.height} renderMedia={renderMedia} />
-      {!page.wordless && (
-        <div
-          ref={textRef}
-          className={`min-h-0 flex-1 overflow-y-auto overscroll-contain ${scrolls ? "[mask-image:linear-gradient(to_bottom,black_calc(100%-28px),transparent)]" : ""}`}
-          style={{ touchAction: scrolls ? "pan-y" : "none" }}
-          data-pager-text=""
-          data-scrolls={scrolls ? "" : undefined}
-        >
-          <div className="flex flex-col gap-4 pb-6">
-            {slideWords(page).map((unit) => (
-              <Words key={unit} gallery={gallery} unit={unit} compact />
-            ))}
-            {page.links && gallery.key === "mentorship" && <MentorsList compact />}
-            {page.links && <CardLinks cardKey={gallery.key} />}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// One photo standing on its stage's floor, whole, its caption under the stage.
-function StillStage({ gallery, photo, box, height, renderMedia }: { gallery: Gallery; photo: number; box: Box; height: number; renderMedia: boolean }) {
-  const picture = gallery.photos[photo];
-  const caption = picture.captionShort ?? picture.caption;
-  const lead = photo === gallery.lead;
-  return (
-    <>
-      <div className="relative flex w-full shrink-0 items-end justify-center" style={{ height }} data-pager-stage="">
-        <StillPhoto photo={picture} index={photo} box={box} slot={lead} renderMedia={lead ? renderMedia : true} sizes={PAGER_PHOTO_SIZES} caption={null} />
-      </div>
-      {caption && (
-        <p data-mask={partId.caption(photo)} data-mask-kind="text" data-mask-split="" className="shrink-0 font-label text-label text-muted">
-          {caption}
-        </p>
-      )}
-    </>
-  );
-}
-```
-`components/card/CardPager.tsx`:
-```tsx
-"use client";
-
-import { useEffect, useLayoutEffect, useReducer, useRef, useState } from "react";
-import { siteContent } from "@/lib/content";
-import { pageStage, stageHeight } from "@/lib/gallery/boxes";
-import type { Gallery } from "@/lib/gallery/card";
-import { GALLERY, PHONE_GROUPING } from "@/lib/gallery/constants";
-import { pagerReducer } from "@/lib/gallery/pager";
-import { stageKind, type Page } from "@/lib/gallery/plan";
-import { useReducedMotionLive } from "@/components/soundtrack/useReducedMotionLive";
-import { CardHeader } from "./CardHeader";
-import { PagerControls } from "./PagerControls";
-import { PagerPage } from "./PagerPage";
-import { usePagerDrag } from "./usePagerDrag";
-
+In `components/card/CardPager.tsx`:
+  - add `import { usePagerDrag } from "./usePagerDrag";` after the `PagerPage` import;
+  - the comment above `type Props` becomes:
+```ts
 // The phone's gallery (under 1024px), the lab's round six pager: the header
-// fixed above, one page a paragraph (PHONE_GROUPING), each page's photo or
-// group whole in a stage at most 40 percent of the visible height with the
-// words under it. The arrows and dots under the pages, the arrow keys
-// anywhere in the dialog and a sideways drag change pages; a vertical flick
-// on the stage, the header or words that fit closes the modal. Under reduced
-// motion pages change with no travel.
-
-type Props = { gallery: Gallery; pages: readonly Page[]; renderMedia: boolean; onClose: () => void };
-type Room = { width: number; height: number; visible: number };
-
-const g = siteContent.modals.gallery;
-
-export function CardPager({ gallery, pages, renderMedia, onClose }: Props) {
-  const count = pages.length;
-  const reduced = useReducedMotionLive();
-  const [state, dispatch] = useReducer(pagerReducer, { index: 0, count });
-  const [room, setRoom] = useState<Room | null>(null);
-  const rootRef = useRef<HTMLDivElement | null>(null);
-  const viewportRef = useRef<HTMLDivElement | null>(null);
-  const { dragPx, handlers } = usePagerDrag(rootRef, { index: state.index, count, reduced, dispatch, onDismiss: onClose });
-  const { pager } = GALLERY;
-  // The stage's cap, or less when the page is too short to leave the words their room.
-  const heightFor = (share: number, below: number) => stageHeight((room?.visible ?? 0) * share, (room?.height ?? 0) - below, pager.stageFloorPx);
-  const layouts = pages.map((page) => {
-    const kind = stageKind(page, PHONE_GROUPING);
-    const photos = kind === "turns" ? page.photos : [page.photo];
-    const height = page.wordless ? heightFor(pager.wordlessMax, pager.captionRoomPx) : heightFor(pager.stageMax, pager.wordsRoomPx);
-    return { kind, stage: { photos, ...pageStage(photos, gallery.aspects, room?.width ?? 0, height) } };
-  });
-
-  useLayoutEffect(() => {
-    const viewport = viewportRef.current;
-    if (!viewport) return;
-    const read = () => setRoom({ width: viewport.clientWidth, height: viewport.clientHeight, visible: window.innerHeight });
-    read();
-    const observer = new ResizeObserver(read);
-    observer.observe(viewport);
-    return () => observer.disconnect();
-  }, []);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
-      const dialog = rootRef.current?.closest('[role="dialog"]');
-      const target = e.target as Node | null;
-      if (!dialog || !(target === document.body || (target !== null && dialog.contains(target)))) return;
-      e.preventDefault();
-      dispatch({ type: e.key === "ArrowRight" ? "next" : "prev" });
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
-
-  const travel = reduced || dragPx !== null ? 0 : pager.slideMs;
-  const shown = gallery.photos[pages[state.index].photo];
-  const live = PHONE_GROUPING === "photo" ? g.announce(state.index + 1, count, shown.captionShort ?? shown.caption ?? "") : g.pageNumber(state.index + 1, count);
-  return (
-    <div
-      ref={rootRef}
-      role="group"
-      aria-roledescription={g.roleCarousel}
-      aria-label={g.pagerLabel(count)}
-      className="flex min-h-0 flex-1 select-none flex-col gap-4 [touch-action:none]"
-      {...handlers}
-      data-pager=""
-      data-page={state.index}
-    >
-      <CardHeader cardKey={gallery.key} renderMedia={renderMedia} compact />
-      <div ref={viewportRef} className="relative min-h-0 flex-1 overflow-hidden" data-pager-viewport="">
-        <div
-          className="flex h-full"
-          style={{ transform: `translate3d(calc(${-state.index * 100}% + ${dragPx ?? 0}px), 0, 0)`, transition: `transform ${travel}ms ${GALLERY.ease.css}` }}
-          data-pager-track=""
-        >
-          {pages.map((page, i) => (
-            <PagerPage key={page.photo} gallery={gallery} page={page} index={i} count={count} kind={layouts[i].kind} stage={layouts[i].stage} current={i === state.index} renderMedia={renderMedia} />
-          ))}
-        </div>
-      </div>
-      {count > 1 && <PagerControls index={state.index} count={count} dispatch={dispatch} />}
-      <p className="sr-only" aria-live="polite">
-        {live}
-      </p>
-    </div>
-  );
-}
+// fixed above (a flown card parks on its tile, so no page carries it), one
+// page a paragraph (PHONE_GROUPING), each page's photo or group whole in a
+// stage at most 40 percent of the visible height with the words under it.
+// The arrows and dots under the pages, the arrow keys anywhere in the dialog
+// and a sideways drag change pages; a vertical flick on the stage, the header
+// or words that fit closes the modal. Under reduced motion pages change with
+// no travel.
 ```
-`components/card/CardWords.tsx`:
-```tsx
-import type { Gallery } from "@/lib/gallery/card";
-import { CardHeader } from "./CardHeader";
-import { CardLinks } from "./CardLinks";
-import { CloseHint } from "./CloseHint";
-import { Words } from "./Words";
-
-// A phone modal for a card with no photos (min/Max, Talos, This site, the
-// family business): the header, every paragraph, the links and the close
-// hint, a short modal that scrolls with the backdrop.
-export function CardWords({ gallery, renderMedia }: { gallery: Gallery; renderMedia: boolean }) {
-  return (
-    <div className="flex flex-col gap-6">
-      <CardHeader cardKey={gallery.key} renderMedia={renderMedia} compact />
-      <div className="flex flex-col gap-4">
-        {gallery.words.map((_, unit) => (
-          <Words key={unit} gallery={gallery} unit={unit} compact />
-        ))}
-      </div>
-      <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
-        <CardLinks cardKey={gallery.key} />
-        <CloseHint />
-      </div>
-    </div>
-  );
-}
-```
-Replace `components/card/CardBody.tsx` with:
-```tsx
-"use client";
-
-import { useRef } from "react";
-import type { Gallery } from "@/lib/gallery/card";
-import { PHONE_GROUPING } from "@/lib/gallery/constants";
-import { phonePages } from "@/lib/gallery/plan";
-import { cardSteps } from "@/lib/gallery/steps";
-import { useReducedMotionLive } from "@/components/soundtrack/useReducedMotionLive";
-import { CardPager } from "./CardPager";
-import { CardRows } from "./CardRows";
-import { CardWords } from "./CardWords";
-import { useMaskIn } from "./useMaskIn";
-import type { GalleryLayout } from "./useGalleryLayout";
-
-// The modal's body by layout (the desktop rows from 1024px up; below, the
-// pager for a card with photos and its words alone for a card without) and
-// its mask-in, which never touches the flown card's photo.
-type Props = { gallery: Gallery; layout: GalleryLayout; renderMedia: boolean; flying: boolean; onClose: () => void };
-
-export function CardBody({ gallery, layout, renderMedia, flying, onClose }: Props) {
-  const rootRef = useRef<HTMLDivElement | null>(null);
-  const reduced = useReducedMotionLive();
-  const pages = phonePages(gallery.plan, PHONE_GROUPING);
-  const paged = layout === "pager" && pages.length > 0;
-  useMaskIn(rootRef, { reduced, runKey: `${gallery.key}|${layout}`, stepsFor: (lines) => cardSteps(gallery, layout, flying, lines) });
-  return (
-    <div ref={rootRef} data-card-body={layout} className={paged ? "flex min-h-0 flex-1 flex-col" : undefined}>
-      {layout === "rows" ? (
-        <CardRows gallery={gallery} renderMedia={renderMedia} />
-      ) : paged ? (
-        <CardPager gallery={gallery} pages={pages} renderMedia={renderMedia} onClose={onClose} />
-      ) : (
-        <CardWords gallery={gallery} renderMedia={renderMedia} />
-      )}
-    </div>
-  );
-}
-```
-In `components/card/CardModal.tsx`:
-  - after `const rows = layout === "rows";` add `const sheet = gallery !== null && !rows && gallery.plan.slides.length > 0;` and import `GALLERY` from `@/lib/gallery/constants`;
-  - in the dialog's `className`, replace `overflow-y-auto` with `${sheet ? "overflow-hidden" : "overflow-y-auto"}`;
-  - change the panel's `style` to ``{ ...glass, maxWidth: rows ? gallery.panelWidth : undefined, height: sheet ? `calc(100dvh - ${GALLERY.pager.sheetInsetPx}px)` : undefined }``.
-
-Then `git rm components/card/CardStack.tsx`.
-- [ ] **Step 4:** `pnpm test`, `pnpm tsc --noEmit`, `pnpm lint` green; `E2E e2e/card-pager.spec.ts e2e/card-modal.spec.ts e2e/card-masks.spec.ts e2e/card-gallery.spec.ts e2e/touch.spec.ts e2e/a11y.spec.ts` pass (`card-modal`'s "under 1024px a clicked card opens with no flight and draws its own picture" now finds the card picture on the pager's first page, and "the layout holds while a flown card is parked" reopens the card as a pager). Every new file stays under 200 lines.
+  - destructure `onClose` too: `export function CardPager({ gallery, pages, renderMedia, onClose }: Props) {`;
+  - after `const viewportRef = useRef<HTMLDivElement | null>(null);` add `const { dragPx, handlers } = usePagerDrag(rootRef, { index: state.index, count, reduced, dispatch, onDismiss: onClose });`;
+  - `const travel = reduced || dragPx !== null ? 0 : pager.slideMs;`;
+  - the root's class becomes `"flex min-h-0 flex-1 select-none flex-col gap-4 [touch-action:none]"`, with `{...handlers}` on the next line;
+  - the track's transform becomes ``translate3d(calc(${-state.index * 100}% + ${dragPx ?? 0}px), 0, 0)``.
+- [ ] **Step 4:** `pnpm test`, `pnpm tsc --noEmit`, `pnpm lint` green; `E2E e2e/card-pager.spec.ts e2e/touch.spec.ts e2e/card-modal.spec.ts` pass. Both files stay under 200 lines.
 - [ ] **Step 5: Commit.**
 ```bash
-git add components/card/usePagerDrag.ts components/card/PagerControls.tsx components/card/PagerPage.tsx components/card/CardPager.tsx components/card/CardWords.tsx components/card/CardBody.tsx components/card/CardModal.tsx e2e/card-pager.spec.ts
-git commit -m "Card modal: the phone pager, one page a paragraph in a sheet, arrows, dots, keys and drags, a vertical flick to close" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+git add components/card/usePagerDrag.ts components/card/CardPager.tsx e2e/card-pager.spec.ts
+git commit -m "Card modal: the pager's drags, a sideways drag turning a page and a vertical flick closing, long words scrolling in their own area" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
 ---
 
-### Task 14: A phone page's group turning in its stage (Sonnet)
+### Task 17: A phone page's group turning in its stage (Opus)
 
 **Files:**
 - Create: `components/card/PhoneRotator.tsx`
 - Modify: `components/card/PagerPage.tsx` (a turning stage and the `pressing` prop), `components/card/CardPager.tsx` (passes `pressing`), `e2e/card-pager.spec.ts` (three tests appended)
 
 **Interfaces:**
-- Consumes: Task 12's `useRotator` and `rotatorTrack`; Task 10's `GroupLayer` and `GroupCaptions`; Task 13's `PagerPage`, `CardPager`, `usePagerDrag(...).pressing`; Task 4's `GALLERY.rotate` (`intervalMs`, `changeMs`, `marksInsetPx`, `tapPx`, `holdMs`), `GALLERY.ease`, `PAGER_PHOTO_SIZES`; `isKeyboardFocus`; `useReducedMotionLive`.
+- Consumes: Task 14's `useRotator` and `rotatorTrack`; Task 12's `GroupLayer` and `GroupCaptions`; Task 15's `PagerPage` and `CardPager`; Task 16's `usePagerDrag(...).pressing` and the spec's `centerOf`; Task 4's `GALLERY.rotate` (`intervalMs`, `changeMs`, `marksInsetPx`, `tapPx`, `holdMs`), `GALLERY.ease`, `PAGER_PHOTO_SIZES`; `isKeyboardFocus`; `useReducedMotionLive`.
 - Produces: `PhoneRotator({ gallery, photos, frame, boxes, active, pressing }: { gallery: Gallery; photos: readonly number[]; frame: Box; boxes: readonly Box[]; active: boolean; pressing: boolean })`; `PagerPage` gains `pressing: boolean`. Markup: the stage's frame is `[data-rotator-frame]` (a `role="button"` named `groupStep`), the marks pill `[data-rotator-marks]` with one `[data-rotator-mark]` per photo.
 
-Grouping A's turning page (the lab's `PhoneRotator.tsx` at ae9b6dd): the page's group turns inside its stage on the desktop's clock and change (`useRotator`), the frame being the group's largest photo fitted whole (Task 13 already sizes the stage from the whole group) and each photo drawn at its own fit centred in it, so the stage never changes size and nothing is cropped. Small marks in a pill sit inside the current photo's bottom right corner, `GALLERY.rotate.marksInsetPx` in, and glide to the next photo's corner over the change; the current mark fills over the interval. A tap on the stage steps the group (Enter or Space when it has focus); a pointer that moved further than 10px is the pager's swipe and one held longer than 500ms only held it, so neither steps. It holds while a finger is down anywhere on the pager, while its page is not current, and while the stage has keyboard focus; under reduced motion it never turns on its own and a tap steps it at once.
+Grouping A's turning page (the lab's `PhoneRotator.tsx` at ae9b6dd): the page's group turns inside its stage on the desktop's clock and change (`useRotator`), the frame being the group's largest photo fitted whole (Task 15 already sizes the stage from the whole group) and each photo drawn at its own fit centred in it, so the stage never changes size and nothing is cropped. Small marks in a pill sit inside the current photo's bottom right corner, `GALLERY.rotate.marksInsetPx` in, and glide to the next photo's corner over the change; the current mark fills over the interval. A tap on the stage steps the group (Enter or Space when it has focus); a pointer that moved further than 10px is the pager's swipe and one held longer than 500ms only held it, so neither steps. It holds while a finger is down anywhere on the pager, while its page is not current, and while the stage has keyboard focus; under reduced motion it never turns on its own and a tap steps it at once.
 
 - [ ] **Step 1: Failing e2e.** Append to `e2e/card-pager.spec.ts`:
 ```ts
@@ -4631,7 +5134,7 @@ test("pager turns: under reduced motion the group never turns on its own, and a 
   expect(await group.locator("[data-rotator-layer]").evaluateAll((els) => els.map((el) => (el as HTMLElement).style.clipPath))).toEqual(["", "", ""]);
 });
 ```
-- [ ] **Step 2:** `E2E e2e/card-pager.spec.ts`. Expected FAIL: the three new tests find no `[data-rotator]` on Mentorship's second page (Task 13 draws its stage still).
+- [ ] **Step 2:** `E2E e2e/card-pager.spec.ts`. Expected FAIL: the three new tests find no `[data-rotator]` on Mentorship's second page (Task 15 draws its stage still).
 - [ ] **Step 3: Implement** `components/card/PhoneRotator.tsx`:
 ```tsx
 "use client";
@@ -4747,37 +5250,37 @@ export function PhoneRotator({ gallery, photos, frame, boxes, active, pressing }
 ```
 In `components/card/PagerPage.tsx`: add `import { PhoneRotator } from "./PhoneRotator";`; add `pressing: boolean` to `Props` and to the destructured props; replace the line
 ```tsx
-      <StillStage gallery={gallery} photo={page.photo} box={stage.boxes[0]} height={stage.frame.height} renderMedia={renderMedia} />
+      <StillStage gallery={gallery} photo={page.photo} box={stage.boxes[0]} height={stage.frame.height} />
 ```
 with
 ```tsx
       {kind === "turns" ? (
         <PhoneRotator gallery={gallery} photos={stage.photos} frame={stage.frame} boxes={stage.boxes} active={current} pressing={pressing} />
       ) : (
-        <StillStage gallery={gallery} photo={page.photo} box={stage.boxes[0]} height={stage.frame.height} renderMedia={renderMedia} />
+        <StillStage gallery={gallery} photo={page.photo} box={stage.boxes[0]} height={stage.frame.height} />
       )}
 ```
-In `components/card/CardPager.tsx`: change `const { dragPx, handlers } = usePagerDrag(` to `const { dragPx, pressing, handlers } = usePagerDrag(`, and add `pressing={pressing}` to the `<PagerPage ... />` element.
-- [ ] **Step 4:** `pnpm test`, `pnpm tsc --noEmit`, `pnpm lint` green; `E2E e2e/card-pager.spec.ts e2e/card-rotator.spec.ts e2e/card-masks.spec.ts` pass (the stage test of Task 13 now also measures every photo of a turning stage against its stage).
+In `components/card/CardPager.tsx`: change `const { dragPx, handlers } = usePagerDrag(` to `const { dragPx, pressing, handlers } = usePagerDrag(`, and add `pressing={pressing}` to the `<PagerPage ... />` element (after `current={i === state.index}`).
+- [ ] **Step 4:** `pnpm test`, `pnpm tsc --noEmit`, `pnpm lint` green; `E2E e2e/card-pager.spec.ts e2e/card-rotator.spec.ts e2e/card-masks.spec.ts` pass (the stage test of Task 15 now also measures every photo of a turning stage against its stage).
 - [ ] **Step 5: Commit.**
 ```bash
 git add components/card/PhoneRotator.tsx components/card/PagerPage.tsx components/card/CardPager.tsx e2e/card-pager.spec.ts
-git commit -m "Card modal: a phone page's group takes turns in its stage, its marks in the photo's corner, a tap stepping it" -m "Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
+git commit -m "Card modal: a phone page's group takes turns in its stage, its marks in the photo's corner, a tap stepping it" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
 ---
 
-### Task 15: Aaron's look, the full suite and the PR (Opus)
+### Task 18: Aaron's look, the full suite and the PR (Opus)
 
 **Files:**
 - Create: `e2e/card-look.spec.ts` (Aaron's captures and the measures; every test skips unless `CARD_LOOK_DIR` is set)
 - No source change: `lib/coil/constants.ts` keeps every value (the retune waits for Aaron's look)
 
 **Interfaces:**
-- Consumes: every earlier task; `openHome`, `waitForCoilSettled` (`e2e/support/coil.ts`); Task 11's `openCardFromBook(..., { settled })`; Task 4's `galleryOf`.
+- Consumes: every earlier task; `openHome`, `waitForCoilSettled` (`e2e/support/coil.ts`); Task 13's `openCardFromBook(..., { settled })`, which returns at the panel's rest (Task 9), so every bottom measured here is the panel's true layout; Task 4's `galleryOf`; Task 11's stills procedure.
 - Produces: the captures folder `/Users/asulbaran21/Personal Projects/.worktrees/c3-look/` (outside every checkout, so nothing in it can be committed): `coil-<size>-<theme>.png`, `modal-<card>-<size>-<theme>.png`, `measures.json`; the pushed branch `c3-card-system` and its PR into `main`, never merged.
 
-- [ ] **Step 1: Catch up with main.** `git fetch origin` then `git log --oneline HEAD..origin/main`. If it prints anything (PR 49, `logo-dark`, may have merged: it adds `srcDark` for Aritzia and FSDATALINK in `lib/content/media.ts` and files under `public/work/logos/`, and Task 1 edited the `ieee` line of the same file), run `git merge --no-edit origin/main`, keep both sides of any conflict, and commit the merge. Never rebase, never squash.
+- [ ] **Step 1: Catch up with main.** `git fetch origin` then `git log --oneline HEAD..origin/main`. If it prints anything, run `git merge --no-edit origin/main`, keep both sides of any conflict, and commit the merge. Never rebase, never squash. PR 49 (branch `logo-dark`, the dark Aritzia and FSDATALINK logos) may have merged by now: it adds `srcDark` for both in `lib/content/media.ts` and files under `public/work/logos/`, and Task 1 edited the `ieee` line of the same file. If `git log --oneline HEAD..origin/main` listed PR 49's merge, or `git diff HEAD~1 --stat` after your merge touches `lib/content/media.ts` or `public/work/logos/`, the merge gave FSDATALINK a dark file, so its dark Coil face drops the light plate and the dark hero stills from Task 11 are stale: re-run Task 11 whole (Steps 1 to 5: build, `next start` on 3370, `render-posters.mjs --sweep`, stop by the PID, the still specs, the commit) before Step 3 here, and say in the PR body that the stills were re-rendered after the merge.
 - [ ] **Step 2: The capture spec** (`e2e/card-look.spec.ts`):
 ```ts
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -4898,10 +5401,11 @@ cat > "$TMPDIR/c3-pr-body.md" <<'BODY'
 
 - The Coil, the unwound list and the book run on the fourteen launch cards (`strandCards`, `bookColumns` from `lib/content/strand.ts`), in Aaron's strand and book orders; nothing reads the legacy shapes any more (the C5 sweep deletes them).
 - The Coil paints logo, mark and circle faces from layouts it shares with the modal's header tile (`lib/coil/cardFace.ts`): Talos on its anvil, a light plate under a dark-theme logo with no dark file, IEEE's square as its own face, the jobs card's five discs, the AS mark in the accent. New tokens: `--card-anvil`, `--card-logo-ground`.
-- One card modal (`components/card/`) replaces the photo and work modals: every card opens it, from the Coil (flying in at 1024px and up with a mouse) or from the book (no flight). The jobs timeline makes each employer's name its insider tip; Mentorship lists the six mentors with their LinkedIn links.
-- The gallery is the lab's round six: on desktop every photo, or every group of photos, its own row beside its words, the sides alternating; a group takes turns every 3s, one edge sweeping left to right, the caption clearing then writing, held by hover, keyboard focus or pause; every part masks in left to right on a timer from the landing. On a phone, a pager in a sheet, one page a paragraph (grouping A), a group turning in its page's stage, arrows, dots, keys and drags, a vertical flick to close.
+- One card modal (`components/card/`) replaces the photo and work modals: every card opens it, from the Coil (a mouse click flies the card in at any width, as before: onto the card picture or the header's tile beside the rows, onto the phone header's tile below 1024px; a tap opens it with no flight) or from the book (no flight). The jobs timeline makes each employer's name its insider tip; Mentorship lists the six mentors with their LinkedIn links; IEEE's desktop meta carries its AO tip.
+- The gallery is the lab's round six: on desktop every photo, or every group of photos, its own row beside its words, the sides alternating; a group takes turns every 3s, one edge sweeping left to right, the caption clearing then writing, held by hover, keyboard focus or pause; every part masks in left to right on a timer, from the landing after a flight and at once otherwise. The band and Travel, which the lab never showed, follow cards.md's pairings. On a phone, a pager in a sheet, one page a paragraph (grouping A), a group turning in its page's stage, arrows, dots, keys and drags, a vertical flick to close.
+- The shared focus trap (`lib/modal.ts`) never lets focus fall out of a modal: a control that turns disabled or inert under focus hands it to the nearest live one, and a Tab from the body comes back in.
 - The card modal's backdrop dims (color-mix), as the lab showed.
-- The hero stills are re-rendered with the fourteen.
+- The hero stills are re-rendered with the fourteen{if Step 1 merged PR 49: ", and again after that merge"; else nothing}.
 - What the captures show: {two or three sentences from Step 5}
 
 ## Decisions for Aaron
@@ -4930,15 +5434,16 @@ cat > "$TMPDIR/c3-pr-body.md" <<'BODY'
 - The C5 placeholder sweep: the legacy shapes, the case pages and their sitemap rows, the placeholder assets.
 - The Talos sting and the min/Max slide-out; both cards show their static marks.
 - The mentors' one sentences: each mentor shows a name and a link until Aaron writes them.
-- The dark Aritzia and FSDATALINK logos (PR 49): the Coil and the modal draw `srcDark` whenever it is set, so they appear when that PR merges, with no change here.
+- The dark Aritzia and FSDATALINK logos (PR 49): {merged in Step 1, with the stills re-rendered; or still open, and the Coil and the modal draw `srcDark` as soon as it merges, with no change here}.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 BODY
 ```
-Replace every `{...}` slot with its value (the logs in `$TMPDIR`, Task 0's baseline, `measures.json`, Step 5's look, Step 6's list, and this plan's "Decisions for Aaron" section copied word for word), then check the body:
+Replace every `{...}` slot with its value (the logs in `$TMPDIR`, Task 0's baseline, `measures.json`, Step 5's look, Step 6's list, Step 1's merge, and this plan's "Decisions for Aaron" section copied word for word), then check the body. The body names the mentors' section and never pastes their LinkedIn links:
 ```bash
 ! grep -n '[{}]' "$TMPDIR/c3-pr-body.md"          # no slot left
 ! grep -n $'\xe2\x80\x94' "$TMPDIR/c3-pr-body.md"  # no em dash (its UTF-8 bytes)
+! grep -n 'linkedin.com/in/' "$TMPDIR/c3-pr-body.md"  # no mentor's link
 tail -n 1 "$TMPDIR/c3-pr-body.md"                  # the Claude Code line
 gh pr create --base main --head c3-card-system --title "C3: the card system, the fourteen on the Coil and the book, every card's modal and gallery" --body-file "$TMPDIR/c3-pr-body.md"
 ```
@@ -4951,20 +5456,23 @@ Never merge, never push `main`, never `vercel deploy`.
 
 Every ruling in this plan that is Aaron's call, one line each (the PR body carries them, with the measured ones filled in):
 
-1. The modal header's logo tile is the card's own 3:4 face (60 by 80, 42 by 56 on a phone), so a flown logo card fills it exactly; the lab showed an 80px square with the work tint (Ruling 2).
-2. A card flies into its modal only at 1024px and up, with a mouse and motion allowed; a phone, a tablet or a narrower window opens it like a book row, and a parked flown card holds the desktop layout until it flies back (Ruling 3).
-3. The card picture never takes turns, even where the lab's rule would turn it beside a lone paragraph; no launch card hits this today (Ruling 5).
-4. The jobs modal keeps the same rows, its photos beside the entries they name and the two MOD photos taking turns beside the MOD entry; it opens on its three paragraphs and the Popeyes entry, so its first photo row starts below the fold at 1440 by 900 (Rulings 6 and 18).
-5. Each job's insider tip is a dotted-underline tip on the employer's name, the same label the copy's other tips use (Ruling 7).
-6. The mentors are a section of the Mentorship modal under "the people who shaped me" rather than a second modal, each a name linking to LinkedIn until you write the one sentence for them (Ruling 8, Task 1).
-7. The IEEE "AO" tip now shows nowhere: a book row cannot hold a link, and the modal's shorter meta ("President, 2023 to 2026") has no AO; put it in a paragraph or let it go (Ruling 9).
-8. Book metas that now wrap under their titles at 1440 (the approved metas are longer, so the old "every work row's meta beside its title" test is gone): the PR lists them from Task 15's measures (Task 8, Step 13).
-9. Logo tiles: the plain tiles on the work pane, Talos on its anvil in both themes, Capital One and FSDATALINK on a light plate in the dark theme until PR 49's dark files land (they then swap in with no C3 change), and IEEE's navy square drawn as the face itself (Ruling 10).
-10. The jobs card's face is five light discs growing up the card's diagonal, Popeyes smallest at the bottom left to Aritzia largest at the top right, with the light logo files in both themes (Ruling 11).
-11. Captions, metas, links and the close hint are in Profa Bold (the label face), where the lab drew captions and links in Inter (Ruling 12).
-12. The card modal's backdrop now dims for real (a 70 percent tint and an 85 percent glass), as the lab showed; the definition modal and the mark card still blur with no dim, the known Tailwind issue (Ruling 13).
-13. The Talos sting and the min/Max slide-out are not in this slice; both cards show their static marks until their own builds (Ruling 14).
-14. The phone ships grouping A (one page a paragraph, a group turning inside its page); B is a one-line switch in `lib/gallery/constants.ts`, and C needs its strip built first (Ruling 15).
-15. On a phone the pager draws no close hint (the X and a vertical flick close it, as in the lab), and a card with no photos is a short scrolling modal rather than a pager (Ruling 16).
-16. Which first rows end below the fold at 1440 by 900 and 1024 by 768: the lab's numbers stand and nothing was tuned to clear it; the PR lists them from Task 15's measures (Ruling 18).
-17. The Coil's retune waits for your look at the fourteen: the PR lists the values in `lib/coil/constants.ts` a retune would touch, unchanged, with the captures (Task 15).
+1. The modal header's tile is the card's own 3:4 face (60 by 80 beside the rows; 42 by 56 on a phone, and 51 by 68 for Talos so its mark is never under its kit's 20px), so a flown card fills it exactly; the lab showed an 80px square with the work tint (Rulings 2 and 10).
+2. Flights work as they do today: a mouse or trackpad click on a Coil card (or a row of the unwound list) flies the card into its modal at any window width whenever motion is allowed; a touch tap and a book row open it with no flight. At 1024px and up a photo card lands on its card picture in the first row and every other card on the header's 60 by 80 tile; below 1024px every card lands on the phone header's tile (42 by 56, Talos's 51 by 68), which stays put while the pages turn. A parked flown card holds the layout it opened with until it flies home (Ruling 3).
+3. So on a phone a photo card's header shows its card picture in that small tile (where a flown card lands, and where the modal draws the picture when nothing lands), and the first page shows the same picture large with its caption: the picture appears twice. The alternative is to land a photo card on the first page's picture, which a page turn would slide off the panel with the flown card riding over the backdrop (Ruling 2).
+4. The card picture never takes turns, even where the lab's rule would turn it beside a lone paragraph; no launch card hits this today (Ruling 5).
+5. Travel and the band were not in the gallery lab. They follow cards.md's pairings: the card picture stands alone in the first row (its caption under it, no words beside it); then the band's section photo sits beside its first paragraph, the practice-lot photo beside "The band kept growing" and the competition photo beside the last paragraph, and Travel's Fuji, Dubai and Cartagena photos take turns beside the Japan and Dubai paragraph, with the paragraph about Barbara closing the card. The lab's rule would have put Travel's three beside Barbara's paragraph and the practice lot beside the last paragraph (Ruling 5).
+6. The jobs modal keeps the same rows, its photos beside the entries they name and the two MOD photos taking turns beside the MOD entry; it opens on its three paragraphs and the Popeyes entry, so its first photo row starts below the fold at 1440 by 900 (Rulings 6 and 18).
+7. Each job's insider tip is a dotted-underline tip on the employer's name, the same label the copy's other tips use (Ruling 7).
+8. The mentors are a section of the Mentorship modal under "the people who shaped me" rather than a second modal, each a name linking to LinkedIn until you write the one sentence for them (Ruling 8, Task 1).
+9. The IEEE "AO" tip lives in the modal, as cards.md asks: beside the rows the header's meta is the book's full line ("President, Corporate Director, and AO, 2023 to 2026", AO a dotted tip); a phone keeps the shorter "President, 2023 to 2026" that cards.md made for it, so a phone shows no AO; the book row shows the words with no tip (Ruling 9).
+10. Book metas that now wrap under their titles at 1440 (the approved metas are longer, so the old "every work row's meta beside its title" test is gone): the PR lists them from Task 18's measures (Task 9, Step 9).
+11. Logo tiles: the plain tiles on the work pane, Talos on its anvil in both themes, Capital One and FSDATALINK on a light plate in the dark theme until PR 49's dark files land (they then swap in with no C3 change), and IEEE's navy square drawn as the face itself (Ruling 10).
+12. The jobs card's face is five light discs growing up the card's diagonal, Popeyes smallest at the bottom left to Aritzia largest at the top right, with the light logo files in both themes (Ruling 11).
+13. Captions, metas, links and the close hint are in Profa Bold (the label face), where the lab drew captions and links in Inter (Ruling 12).
+14. The card modal's backdrop now dims for real (a 70 percent tint and an 85 percent glass), as the lab showed; the definition modal and the mark card still blur with no dim, the known Tailwind issue (Ruling 13).
+15. A book open (or a tap) masks in at once rather than after the flight's 520ms landing, since nothing lands; after a flight the masks still start at the landing (Ruling 19).
+16. The Talos sting and the min/Max slide-out are not in this slice; both cards show their static marks until their own builds (Ruling 14).
+17. The phone ships grouping A (one page a paragraph, a group turning inside its page); B is a one-line switch in `lib/gallery/constants.ts`, and C needs its strip built first (Ruling 15).
+18. On a phone the pager draws no close hint (the X and a vertical flick close it, as in the lab), and a card with no photos is a short scrolling modal rather than a pager (Ruling 16).
+19. Which first rows end below the fold at 1440 by 900 and 1024 by 768: the lab's numbers stand and nothing was tuned to clear it; the PR lists them from Task 18's measures (Ruling 18).
+20. The Coil's retune waits for your look at the fourteen: the PR lists the values in `lib/coil/constants.ts` a retune would touch, unchanged, with the captures (Task 18).
