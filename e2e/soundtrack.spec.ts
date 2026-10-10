@@ -197,20 +197,9 @@ async function bandInk(page: Page) {
   });
 }
 
-// Before an answer the band is static: the head waits at the run's end and
-// nothing breathes, so a second in view repaints nothing.
-test("band: before an answer the band is static: no repaints in view", async ({ page }) => {
-  await instrument(page);
-  await openHome(page, { path: HOME });
-  await scrollBandIntoView(page);
-  await page.mouse.move(4, 4);
-  await page.waitForTimeout(500);
-  expect(await bandRepaints(page, 1000), "band repaints in a second before any answer").toBe(0);
-});
-
-// The band is the line's first stretch, the level run. Undecided it is still,
-// so its ink is pinned to the reduced-motion run's, measured in the same test,
-// and its height to what the constants allow.
+// The band is the line's first stretch, the level run. Undecided it only
+// breathes, so its ink is pinned to the reduced-motion run's, measured in the
+// same test, and its height to what the constants allow.
 test("band: the undecided run paints the still run's ink, inside the reach the constants allow", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");

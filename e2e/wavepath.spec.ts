@@ -14,6 +14,7 @@ type W = Window & { __wavePath: PathProbe; __e2eMedia: () => boolean[] };
 const frame = (page: Page) => page.evaluate(() => (window as unknown as W).__wavePath.frame()!);
 const paints = (page: Page) => page.evaluate(() => (window as unknown as W).__wavePath.paints);
 const ticks = (page: Page) => page.evaluate(() => (window as unknown as W).__wavePath.ticks);
+const rippleNow = (page: Page) => page.evaluate(() => (window as unknown as W).__wavePath.frame()!.ripple);
 const layouts = (page: Page) => page.evaluate(() => (window as unknown as W).__wavePath.layouts);
 const visibleDots = (page: Page) => page.evaluate(() => (window as unknown as W).__wavePath.visibleDots());
 const maxScroll = (page: Page) => page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight);
@@ -32,6 +33,7 @@ async function open(page: Page) {
   await headAtRest(page);
 }
 const decline = (page: Page) => page.locator("#listen").getByRole("button", { name: L.decline, exact: true }).click();
+const accept = (page: Page) => page.locator("#listen").getByRole("button", { name: L.accept, exact: true }).click();
 // A declined, unfrozen line breathes while in view; the rest tests freeze it first.
 const freeze = (page: Page) => page.locator("#listen").getByRole("button", { name: L.freeze, exact: true }).click();
 
@@ -65,6 +67,18 @@ test("wavepath: before an answer the band run is level and the head waits at its
   await page.waitForTimeout(500);
   f = await frame(page);
   expect(f.head, "held at the run's end past the band").toBe(f.runLen);
+});
+
+// The undecided run breathes slowly (no peaks, no music) and the line does not follow: the head still waits.
+test("wavepath: before an answer the band breathes in view", async ({ page }) => {
+  await open(page);
+  await page.mouse.move(4, 4);
+  const before = await paints(page);
+  await page.waitForTimeout(1000);
+  expect((await paints(page)) - before, "repaints in a second before any answer").toBeGreaterThan(10);
+  const f = await frame(page);
+  expect(f.decided).toBe(false);
+  expect(f.head).toBe(f.runLen);
 });
 
 test("wavepath: after Not now the head leaves the band and reaches the end at max scroll, nothing playing", async ({ page }) => {
@@ -230,7 +244,7 @@ test("wavepath: one section reflow lays the line out once and keeps it in view",
   expect(await visibleDots(page)).toBeGreaterThan(0);
 });
 
-test("wavepath: undecided, a width change snaps the head to the new run and runs no loop", async ({ page }) => {
+test("wavepath: undecided, a width change snaps the head to the new run and keeps it there", async ({ page }) => {
   await open(page);
   const first = await frame(page);
   expect(first.decided).toBe(false);
@@ -246,11 +260,11 @@ test("wavepath: undecided, a width change snaps the head to the new run and runs
   }));
   expect(after.runLen, "the run follows the new width").toBeLessThan(first.runLen);
   expect(after.head, "the head sits on the new run's end").toBe(after.runLen);
-  // A late reflow (fonts, an observer's second pass) may add a step or two; a loop never stops.
-  await expect.poll(async () => { const a = await ticks(page); await page.waitForTimeout(300); return (await ticks(page)) === a; }, { message: "conductor frames stop advancing" }).toBe(true);
-  const settledTicks = await ticks(page);
-  await page.waitForTimeout(700);
-  expect(await ticks(page), "conductor frames while the static band rests").toBe(settledTicks);
+  // The band breathes while undecided, but the head never leaves the run's end.
+  await page.waitForTimeout(500);
+  const later = await frame(page);
+  expect(later.decided).toBe(false);
+  expect(later.head, "the head stays at the run's end while the band breathes").toBe(later.runLen);
 });
 
 test("wavepath: reduced motion toggled live stills the line and back, with no orphan tiles", async ({ page }) => {
@@ -321,4 +335,52 @@ test("wavepath: a theme switch at rest repaints once, then rests", async ({ page
   const rested = await paints(page);
   await page.waitForTimeout(1000);
   expect(await paints(page)).toBe(rested);
+});
+
+// The ripple (revision): one Gaussian crest sent from the answer buttons along
+// the line, then the line settles into breathing. Muted browsers: Play it is safe.
+test("wavepath: Not now sends a ripple that settles into breathing", async ({ page }) => {
+  await open(page);
+  expect(await rippleNow(page), "no ripple before pressing").toBe(0);
+  await decline(page);
+  await expect.poll(() => rippleNow(page), { timeout: 300, message: "a ripple within 300ms" }).toBeGreaterThan(0);
+  await expect.poll(() => rippleNow(page), { timeout: 4000, message: "the ripple ends within 4s" }).toBe(0);
+  await page.mouse.move(4, 4);
+  const before = await paints(page);
+  await page.waitForTimeout(1000);
+  expect((await paints(page)) - before, "repaints continue as the line breathes").toBeGreaterThan(10);
+});
+
+test("wavepath: Play it sends a ripple too", async ({ page }) => {
+  await open(page);
+  await accept(page);
+  await expect.poll(() => rippleNow(page), { timeout: 300, message: "a ripple within 300ms" }).toBeGreaterThan(0);
+  await expect.poll(() => rippleNow(page), { timeout: 4000, message: "the ripple ends within 4s" }).toBe(0);
+});
+
+test("wavepath: a returning visitor with a stored choice gets no ripple", async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("aaron-soundtrack", "off"));
+  await page.goto(HOME);
+  await settled(page);
+  await headAtRest(page);
+  let peak = 0;
+  for (let t = 0; t < 1500; t += 50) {
+    peak = Math.max(peak, await rippleNow(page));
+    await page.waitForTimeout(50);
+  }
+  expect(peak, "ripple height over the first 1.5s").toBe(0);
+});
+
+test("wavepath: reduced motion: no ripple", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto(HOME);
+  await settled(page);
+  await page.waitForFunction(() => ((window as unknown as W).__wavePath.frame()?.length ?? 0) > 0);
+  await decline(page);
+  let peak = 0;
+  for (let t = 0; t < 1000; t += 50) {
+    peak = Math.max(peak, await rippleNow(page));
+    await page.waitForTimeout(50);
+  }
+  expect(peak, "ripple height after declining under reduced motion").toBe(0);
 });
