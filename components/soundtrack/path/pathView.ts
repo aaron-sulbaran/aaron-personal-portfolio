@@ -10,6 +10,7 @@ import { SIGNATURE_ON, resolveSpine } from "@/lib/wavepath/spine";
 import { amplitudeFor, chooseTrain, visibleOptions } from "@/lib/wavepath/visible";
 import { createDotPainter, themeNow } from "../viewParts";
 import type { Changed, WaveConductor, WaveFrame, WaveView } from "../waveConductor";
+import type { Anchors } from "@/lib/wavepath/spine";
 import { docTop, measureAnchors } from "./measure";
 
 type Tile = { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D; painter: ReturnType<typeof createDotPainter>; top: number; height: number; visible: boolean };
@@ -26,7 +27,8 @@ export function createPathView(layer: HTMLElement, root: HTMLElement, conductor:
   let cols: PathColumns = EMPTY_COLUMNS;
   let map: TileMap = mapTiles(EMPTY_COLUMNS, TILE_PX, 0, 0);
   let samples: SpineSamples | null = null;
-  let origin = 0, viewport = 0, maxScrollY = 0, entry = 0, amp = 0, width = 0, raf = 0;
+  let measured: Anchors | null = null;
+  let origin = 0, viewport = 0, maxScrollY = 0, entry = 0, amp = 0, width = 0, raf = 0, innerWidth = 0, runLen = 0, runFlat = 0;
   let dirty = true, laid = false, destroyed = false;
   let alphas = ALPHAS[themeNow()];
 
@@ -88,12 +90,15 @@ export function createPathView(layer: HTMLElement, root: HTMLElement, conductor:
     const anchors = measureAnchors(root, origin);
     if (!anchors) return;
     if (probe) probe.layouts++;
+    measured = anchors;
     width = anchors.width;
+    innerWidth = window.innerWidth;
     viewport = window.innerHeight;
     maxScrollY = Math.max(0, document.documentElement.scrollHeight - viewport);
     amp = amplitudeFor(width);
     samples = sampleSpine(resolveSpine({ points: SIGNATURE_ON }, anchors, { bandRun: true, viewport }), SAMPLE_STEP);
-    const runLen = runLength(samples, width);
+    runLen = runLength(samples, width);
+    runFlat = runFlatness(samples, runLen);
     entry = firstOnScreenY(samples, width);
     cols = layColumns(samples, SPACING, amp, anchors.blocks);
     const height = anchors.box.footer.bottom;
@@ -102,8 +107,18 @@ export function createPathView(layer: HTMLElement, root: HTMLElement, conductor:
     syncTiles(height);
     map = mapTiles(cols, TILE_PX, tiles.length, tileReach(amp));
     dirty = true;
-    conductor.setPath({ runLen, length: samples.length, train: chooseTrain(samples, anchors, visibleOptions(width, viewport)), runFlat: runFlatness(samples, runLen) }, !laid);
+    conductor.setPath({ runLen, length: samples.length, train: chooseTrain(samples, anchors, visibleOptions(width, viewport)), runFlat }, !laid);
     laid = true;
+  };
+  // A window resize that leaves the width alone (a phone's toolbar collapsing
+  // as it scrolls) moves only what hangs on the viewport's height: the scroll
+  // limit and the train check. The anchors, spine and tiles stay as laid.
+  const onResize = () => {
+    if (destroyed || raf) return;
+    if (!laid || !samples || !measured || window.innerWidth !== innerWidth) return schedule();
+    viewport = window.innerHeight;
+    maxScrollY = Math.max(0, document.documentElement.scrollHeight - viewport);
+    conductor.setPath({ runLen, length: samples.length, train: chooseTrain(samples, measured, visibleOptions(width, viewport)), runFlat }, false);
   };
   const schedule = () => {
     if (!destroyed && !raf) raf = requestAnimationFrame(layout);
@@ -151,7 +166,7 @@ export function createPathView(layer: HTMLElement, root: HTMLElement, conductor:
       resize.disconnect();
       theme.disconnect();
       io.disconnect();
-      window.removeEventListener("resize", schedule);
+      window.removeEventListener("resize", onResize);
       tiles.forEach((t) => t.canvas.remove());
       tiles.length = 0;
     },
@@ -167,7 +182,7 @@ export function createPathView(layer: HTMLElement, root: HTMLElement, conductor:
     conductor.wake();
   });
   theme.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-  window.addEventListener("resize", schedule);
+  window.addEventListener("resize", onResize);
   document.fonts?.ready.then(schedule);
   layout();
   return view;

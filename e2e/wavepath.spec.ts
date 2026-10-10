@@ -282,6 +282,31 @@ test("wavepath: reduced motion toggled live stills the line and back, with no or
   expect(await tiles(), "tiles after moving again").toBe(tileCount);
 });
 
+// A phone's toolbar collapsing while it scrolls changes innerHeight and fires
+// a resize, while the page's own boxes (sized in svh) stay put. A real
+// viewport resize would also move the hero above the band, so the test
+// reports the taller window to the page instead.
+test("wavepath: a height-only resize on a phone keeps the layout and the tiles, and still reaches the end", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await open(page);
+  await decline(page);
+  await page.waitForTimeout(800);
+  const before = { length: (await frame(page)).length, layouts: await layouts(page) };
+  await page.evaluate(() => {
+    (document.querySelector("[data-wave-path] canvas") as HTMLCanvasElement & { kept?: boolean }).kept = true;
+    Object.defineProperty(window, "innerHeight", { configurable: true, get: () => 928 });
+    window.dispatchEvent(new Event("resize"));
+  });
+  await page.waitForTimeout(800);
+  expect(await layouts(page), "layouts for a height-only resize").toBe(before.layouts);
+  expect((await frame(page)).length).toBe(before.length);
+  expect(await page.evaluate(() => !!(document.querySelector("[data-wave-path] canvas") as HTMLCanvasElement & { kept?: boolean }).kept), "the first tile is the same element").toBe(true);
+  await scrollToY(page, await maxScroll(page));
+  await headAtRest(page);
+  const end = await frame(page);
+  expect(end.length - end.head, "the head reaches the end at the new max scroll").toBeLessThanOrEqual(1);
+});
+
 test("wavepath: a theme switch at rest repaints once, then rests", async ({ page }) => {
   await open(page);
   await decline(page);
