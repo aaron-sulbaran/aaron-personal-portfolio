@@ -168,15 +168,35 @@ export function groupedPlan(wordCount: number, photos: readonly PlanPhoto[]): Pl
   return arrange(wordCount, groupsOf(wordCount, photos));
 }
 
-// cards.md's pairing to the letter, for the photo cards the lab never showed
-// Aaron (the band and Travel): the card picture stands alone in the first row,
-// where the flight lands (cards.md: it is not paired), taking only the opening
-// units no photo names; every other photo sits beside the unit it names,
-// photos naming one unit taking turns; the other units ride with the rows as
-// they do in groupedPlan.
+// cards.md's pairing for the photo cards the lab never showed Aaron (the band
+// and Travel): every photo sits beside the unit it names, photos naming one
+// unit taking turns. Two rules from the final pass bend it. The card picture
+// stands alone in the first row, where the flight lands and a parked card
+// covers it, so it never takes turns; it takes the first unit, so its row has
+// words. And no row is wordless: the photos that named that first unit join
+// the next row's rotation, behind the photos that row names, or if there is no
+// next row become a row of their own on the first unit nobody holds. Only a
+// card with no unit left (one word beside several photos) keeps a wordless row.
 export function namedPlan(wordCount: number, photos: readonly PlanPhoto[], lead: number): Plan {
-  const { intro, slides, closing } = arrange(wordCount, groupsOf(wordCount, photos, lead));
-  return { intro: [], slides: [{ ...group([lead]), before: intro }, ...slides], closing };
+  const first = wordCount > 0 ? 0 : undefined;
+  const groups = groupsOf(wordCount, photos, lead);
+  const taken = groups.find(({ slide }) => first !== undefined && slide.own === first);
+  const rest = groups.filter((placed) => placed !== taken);
+  if (taken) {
+    const heir = rest[0];
+    if (heir) heir.slide.photos.push(...taken.slide.photos);
+    else rest.push({ slide: { ...taken.slide, own: undefined }, at: Infinity });
+  }
+  const held = new Set<number>([...(first === undefined ? [] : [first]), ...rest.flatMap(({ slide }) => (slide.own === undefined ? [] : [slide.own]))]);
+  const wordless = rest.find(({ slide }) => slide.own === undefined);
+  const free = Array.from({ length: wordCount }, (_, unit) => unit).find((unit) => !held.has(unit));
+  if (wordless && free !== undefined) {
+    wordless.slide.own = free;
+    wordless.at = free;
+  }
+  const leadRow: Placed = { slide: { photo: lead, photos: [lead], own: first, before: [], after: [] }, at: first ?? Infinity };
+  const plan = arrange(wordCount, [leadRow, ...rest]);
+  return { intro: [], slides: plan.slides, closing: plan.closing };
 }
 
 // A page a row: the opening units on the first page, the closing units and the

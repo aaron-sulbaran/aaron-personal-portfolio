@@ -82,3 +82,24 @@ test("gallery rows: a group's dots step its photo and its caption together, and 
   await expect(group.locator('[data-rotator-caption="0"]')).toHaveCSS("visibility", "hidden");
   expect(await column.evaluateAll((els) => els.map((el) => el.getAttribute("data-mask")))).toEqual(words);
 });
+
+test("gallery rows: no photo row sits without words, the band's card picture holds its first row's words and its first turned photo joins the next row's rotation", async ({ page }) => {
+  await openHome(page);
+  for (const key of keys.filter((k) => galleryOf(k).words.length > 0)) {
+    const { dialog } = await openCardFromBook(page, key, { home: false });
+    const rows = dialog.locator('[data-row="photo"]');
+    for (let i = 0; i < (await rows.count()); i++) {
+      await expect(rows.nth(i).locator('[data-text-column] [data-mask^="words-"]').first(), `${key} row ${i}`).toHaveCount(1);
+    }
+    if (key === "band") {
+      await expect(rows).toHaveCount(3);
+      await expect(rows.first()).not.toHaveAttribute("data-turns", /.*/);
+      await expect(rows.first().locator('[data-tile-slot="photo"]')).toHaveCount(1);
+      await expect(rows.first().locator('[data-text-column] [data-mask="words-0"]')).toHaveCount(1);
+      await expect(rows.nth(1)).toHaveAttribute("data-turns", "2");
+      await expect(rows.nth(1).locator("[data-rotator]")).toHaveCount(1);
+    }
+    await page.keyboard.press("Escape");
+    await expect(dialog).toHaveCount(0);
+  }
+});
