@@ -34,7 +34,7 @@ export const SOFT_FEATHER = 0.08;
 export const BREATH = { rate: 0.9, depth: 0.35 } as const;
 // The answer's ripple, matched to the footer period's (lib/footer/constants.ts egg block).
 // amp: the crest's height in amplitudes (the resting shape is SHAPE_GAIN, 0.26).
-// speed: px of arc per second. width: the crest's half width, px. decay: per
+// speed: px of arc per second. width: the crest's 1/e half width, px. decay: per
 // second (the egg's 1.2). swell: extra dot weight at the crest. lifeS: the cap.
 // Aaron retunes it here.
 export const RIPPLE = { amp: 0.45, speed: 650, width: 70, decay: 1.2, swell: 0.4, lifeS: 3 } as const;

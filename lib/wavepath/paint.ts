@@ -40,6 +40,7 @@ function emit(sink: DotSink, out: number[], x: number, y: number, r: number, top
 export function buildPathDots(
   cols: PathColumns, list: ArrayLike<number>, first: number, count: number, f: DotFrame,
   amp: number, top: number, fromS: number, toS: number, weights: Float32Array | null, sink: DotSink,
+  rippleFit: Float32Array | null = null,
 ): void {
   const music = f.still ? 0 : f.music.share * MUSIC.share;
   const train = f.train !== null && !f.still;
@@ -52,7 +53,10 @@ export function buildPathDots(
     let w = cols.taper[j] * (weights ? weights[j] : 1);
     let r = 1;
     if (!f.still) w *= 1 + HEAD_SWELL.gain * f.gate * Math.exp(-(((f.head - s) / HEAD_SWELL.px) ** 2));
-    if (rippling) w *= 1 + rippleSwell(f.ripple, s);
+    const inWords = cols.inWords[j] === 1;
+    // The band's fit keeps the crest clear of its copy; words on the path stay thin, so they take the displacement but not the swell.
+    const fit = rippleFit ? rippleFit[j] : 1;
+    if (rippling && !inWords) w *= 1 + fit * rippleSwell(f.ripple, s);
     let present = 1;
     if (train) {
       present = smooth((s - f.tail) / tailFade);
@@ -64,7 +68,7 @@ export function buildPathDots(
     let disp = SHAPE_GAIN * shape(a) + (f.still ? 0 : pluckAt(f.plucks, s));
     if (!f.still) disp *= 1 + BREATH.depth * f.breath * Math.sin(a * 0.5);
     // After the breath, so the crest keeps its own clean shape.
-    if (rippling) disp += rippleAt(f.ripple, s);
+    if (rippling) disp += fit * rippleAt(f.ripple, s);
     let mag = FLOOR + (0.05 + 0.17 * (0.5 + 0.5 * Math.sin(a / 0.55 + 0.6)) ** 2) * (1 - music);
     if (music > 1e-3) mag += music * bandAt(f.music.bins, (s % SPECTRUM_PERIOD) / SPECTRUM_PERIOD);
     const magnitude = FLOOR + (mag - FLOOR) * w;
@@ -72,7 +76,6 @@ export function buildPathDots(
     const ny = cols.ny[j];
     const cx = cols.x[j] - nx * disp * w * amp;
     const cy = cols.y[j] - top - ny * disp * w * amp;
-    const inWords = cols.inWords[j] === 1;
     const peak = !inWords && magnitude > ACCENT_PEAK;
     const rows = Math.min(MAX_THICK, (magnitude * amp) / DOT_GAP);
     const thick = Math.ceil(rows - 1e-3);

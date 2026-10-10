@@ -81,6 +81,19 @@ test("wavepath: before an answer the band breathes in view", async ({ page }) =>
   expect(f.head).toBe(f.runLen);
 });
 
+// Before an answer the path has no ink, so with the band off screen and no ripple the loop sleeps.
+test("wavepath: undecided, with the band out of view, the loop sleeps", async ({ page }) => {
+  await open(page);
+  await toBlock(page, "#numbers");
+  await page.mouse.move(4, 4);
+  // The band's last frames after it leaves view come a beat late; wait for a full second of none.
+  await expect.poll(async () => { const a = await ticks(page); await page.waitForTimeout(1000); return (await ticks(page)) === a; }, { timeout: 15_000, message: "conductor frames stop advancing" }).toBe(true);
+  const rested = await ticks(page);
+  await page.waitForTimeout(700);
+  expect(await ticks(page), "conductor frames while undecided and out of view").toBe(rested);
+  expect((await frame(page)).decided).toBe(false);
+});
+
 test("wavepath: after Not now the head leaves the band and reaches the end at max scroll, nothing playing", async ({ page }) => {
   await open(page);
   await decline(page);
