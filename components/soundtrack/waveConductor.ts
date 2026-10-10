@@ -180,7 +180,8 @@ function createInstance(still: boolean): Instance {
       frame.length = geometry.length;
       frame.runFlat = geometry.runFlat;
       frame.train = still ? null : geometry.train;
-      if (first) snap = true;
+      // Undecided the target is always the run's end and the band is static: land there, never ease.
+      if (first || !frame.decided) snap = true;
       wake();
     },
     setFrozen(next) {
