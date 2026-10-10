@@ -1,7 +1,7 @@
 "use client";
 
 import { Pause, Play } from "lucide-react";
-import { useRef, useState, type CSSProperties, type FocusEvent, type KeyboardEvent, type PointerEvent } from "react";
+import { useRef, useState, type FocusEvent, type KeyboardEvent, type PointerEvent } from "react";
 import { siteContent } from "@/lib/content";
 import { groupFrame, type Box } from "@/lib/gallery/boxes";
 import type { Gallery } from "@/lib/gallery/card";
@@ -9,7 +9,7 @@ import { partId } from "@/lib/gallery/timing";
 import { isKeyboardFocus } from "@/lib/input/modality";
 import { galleryRowSizes } from "@/lib/photoSizes";
 import { useReducedMotionLive } from "@/components/soundtrack/useReducedMotionLive";
-import { GroupCaptions, GroupLayer, RotatorAnnounce, RotatorFill } from "./GroupParts";
+import { GroupCaptions, GroupLayer, RotatorAnnounce, RotatorFill, rotatorTrack } from "./GroupParts";
 import { useRotator } from "./useRotator";
 
 // A row's photos taking turns in one frame beside words that never change
@@ -23,10 +23,6 @@ import { useRotator } from "./useRotator";
 type Props = { gallery: Gallery; photos: readonly number[]; boxes: readonly Box[] };
 
 const g = siteContent.modals.gallery;
-
-// The current dot's track: the accent, faint, so it reads as the current one
-// before its fill starts (bg-accent/NN emits nothing with var() colors).
-export const rotatorTrack: CSSProperties = { backgroundColor: "color-mix(in srgb, var(--color-accent) 28%, transparent)" };
 
 export function RotatingPhoto({ gallery, photos, boxes }: Props) {
   const count = photos.length;

@@ -1,4 +1,5 @@
 import Image from "next/image";
+import type { CSSProperties } from "react";
 import { siteContent } from "@/lib/content";
 import type { Box } from "@/lib/gallery/boxes";
 import type { Gallery } from "@/lib/gallery/card";
@@ -55,6 +56,10 @@ export function GroupCaptions({ photos, index, caption }: CaptionProps) {
     </div>
   );
 }
+
+// The current dot's track: the accent, faint, so it reads as the current one
+// before its fill starts (bg-accent/NN emits nothing with var() colors).
+export const rotatorTrack: CSSProperties = { backgroundColor: "color-mix(in srgb, var(--color-accent) 28%, transparent)" };
 
 // The current photo's fill, shared by the desktop dots and the phone marks: it
 // grows over the interval while the group runs (keyed by the caller on the
