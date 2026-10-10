@@ -1,17 +1,24 @@
-import { siteContent } from "@/lib/content";
+import { FooterStage } from "@/components/footer/FooterStage";
 import { lastUpdatedMonth } from "@/lib/buildDate";
+import { siteContent } from "@/lib/content";
 
-// `dock`: the home page's playback pill docks over the page end from md up,
-// so the footer's bottom padding keeps its last row clear of the capsule.
-export function Footer({ dock = false }: { dock?: boolean }) {
-  const { tagline, copyright } = siteContent.footer;
-  const clearance = dock ? "md:pb-28 md:pt-14" : "md:py-14";
+// The footer (slice C6): the giant "build.stuff" wordmark with the hero's
+// field ending in it, and over it the two small lines, in the row where the
+// footer lab's Connect row sat (Connect itself is the section above). The
+// row keeps that row's height (its padding and its content's 168px, 100px
+// from md), so the field rises and fades where Aaron saw it. Stays a Server
+// Component: the lines and the word's text alternative render here, and
+// FooterStage is the client part (the reserved band now; the letters,
+// the egg and the field in Tasks 8 and 9).
+export function Footer() {
+  const { wordmark, tagline, copyright } = siteContent.footer;
   return (
-    <footer className={`w-full border-t border-border px-6 py-10 md:px-10 ${clearance}`}>
-      <div className="mx-auto flex max-w-6xl flex-col gap-2 md:flex-row md:items-center md:justify-between">
-        <p className="font-display text-base text-foreground md:text-lg">{tagline(lastUpdatedMonth())}</p>
-        <p className="font-label text-label-sm text-muted">{copyright}</p>
+    <FooterStage text={wordmark}>
+      <div data-footer-lines className="relative z-10 flex min-h-[224px] flex-col justify-end gap-1 px-6 pt-14 md:min-h-[180px] md:items-end md:px-10 md:pt-20">
+        <p className="font-label text-label-sm text-foreground">{tagline(lastUpdatedMonth())}</p>
+        <p className="font-label text-label-sm text-foreground">{copyright}</p>
       </div>
-    </footer>
+      <p className="sr-only">{wordmark}</p>
+    </FooterStage>
   );
 }
