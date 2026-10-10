@@ -47,4 +47,19 @@ describe("the leveller", () => {
     for (let f = 0; f < 600; f++) levelColumns(state, Float32Array.of(100, f % 2 ? 50 : 200), 1 / 60, out);
     expect(out[0]).toBe(0);
   });
+  it("leaves a silent column's range where it was, so it does not read full peak when it sounds again", () => {
+    const state = createLeveller(2);
+    const out = new Float32Array(2);
+    const wave = (f: number) => (Math.floor(f / 30) % 2 ? 200 : 80);
+    for (let f = 0; f < 60 * 10; f++) levelColumns(state, Float32Array.of(wave(f), wave(f)), 1 / 60, out);
+    const range = { lo: state.lo[1], hi: state.hi[1] };
+    for (let f = 0; f < 60 * 30; f++) {
+      levelColumns(state, Float32Array.of(wave(f), 0), 1 / 60, out);
+      expect(out[1]).toBe(0);
+    }
+    expect({ lo: state.lo[1], hi: state.hi[1] }).toEqual(range);
+    // Back at its quiet half of the wave it reads low, not the full peak a collapsed range gives.
+    levelColumns(state, Float32Array.of(80, 80), 1 / 60, out);
+    expect(out[1]).toBeLessThan(LEVEL.peak * 0.5);
+  });
 });

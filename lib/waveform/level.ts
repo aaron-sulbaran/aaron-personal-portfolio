@@ -46,7 +46,12 @@ export function levelColumns(state: Leveller, means: Float32Array, dt: number, o
   const r = LEVEL.rangeRate * boost * dt;
   let total = 0;
   for (let c = 0; c < n; c++) {
-    const byte = means[c] > 0 ? Math.min(255, means[c] + state.lift) : 0;
+    // A silent column keeps its range, so it does not read full peak when it sounds again.
+    if (means[c] <= 0) {
+      out[c] = 0;
+      continue;
+    }
+    const byte = Math.min(255, means[c] + state.lift);
     state.lo[c] += r * (LEVEL.rangeLo - (byte < state.lo[c] ? 1 : 0));
     state.hi[c] += r * (LEVEL.rangeHi - (byte < state.hi[c] ? 1 : 0));
     const range = state.hi[c] - state.lo[c];
