@@ -354,7 +354,11 @@ export const siteContent = {
     ] as HoldingSocial[],
   },
   footer: {
-    // The month comes from the build (lib/buildDate.ts).
+    // The giant wordmark (docs/content/connect-footer-band.md) and the name
+    // of the button over its period (the footer lab's egg). The month comes
+    // from the build (lib/buildDate.ts).
+    wordmark: "build.stuff",
+    dropPeriod: "Drop the period",
     tagline: (month: string) => `Last updated ${month}`,
     copyright: "© 2026 Aaron Sulbaran",
   },

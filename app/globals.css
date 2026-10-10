@@ -646,3 +646,20 @@ html:not([data-input="pointer"]) .fx:focus-visible,
   .inline-tip[data-shown="true"] { scale: none; transition: opacity 120ms linear, visibility 0s; }
 }
 /* ---- end inline links ---- */
+/* ---- footer (C6) ---- */
+/* The poster stand-in's drift (components/footer/PosterField.tsx): the
+   hero's poster breathes slowly where the live field cannot run. Its period
+   is set inline from FOOTER.poster.driftS (lib/footer/constants.ts); the
+   component pauses it off screen and under reduced motion. */
+@keyframes footer-drift {
+  from { transform: scale(1.08) translate3d(-1.5%, 0.5%, 0); }
+  to { transform: scale(1.18) translate3d(1.5%, -2%, 0); }
+}
+.footer-drift {
+  animation: footer-drift 22s ease-in-out infinite alternate;
+  transform-origin: 40% 60%;
+}
+@media (prefers-reduced-motion: reduce) {
+  .footer-drift { animation: none; }
+}
+/* ---- end footer ---- */
