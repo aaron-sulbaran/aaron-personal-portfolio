@@ -1,6 +1,7 @@
 import { columnWeights, type Rect } from "@/lib/waveform/weights";
 import { dotReach, runColumns, type PathColumns } from "@/lib/wavepath/columns";
 import { ALPHAS, RUN_START, SPACING } from "@/lib/wavepath/constants";
+import { rippleFit } from "@/lib/wavepath/fit";
 import { buildPathDots, clearSink, createSink } from "@/lib/wavepath/paint";
 import { nearestColumn } from "@/lib/wavepath/pluck";
 import { pathProbe } from "@/lib/wavepath/probe";
@@ -30,6 +31,7 @@ export function createWaveView(canvas: HTMLCanvasElement, conductor: WaveConduct
   let cols: PathColumns = runColumns(0, 0, SPACING);
   let all = new Int32Array(0);
   let weights: Float32Array = new Float32Array(0);
+  let fit: Float32Array | null = null;
   let width = 0, height = 0, amp = 0, canvasTop = 0, viewport = 0, active = false, measureRaf = 0;
   let originS: number | null = null;
   let alphas = ALPHAS[themeNow()];
@@ -41,7 +43,7 @@ export function createWaveView(canvas: HTMLCanvasElement, conductor: WaveConduct
     sink.viewBottom = sink.viewTop + viewport;
     sink.width = width;
     sink.onScreen = 0;
-    buildPathDots(cols, all, 0, cols.count, f, amp, 0, -Infinity, f.runLen || Infinity, weights, sink);
+    buildPathDots(cols, all, 0, cols.count, f, amp, 0, -Infinity, f.runLen || Infinity, weights, sink, fit);
     painter.fill(sink.muted, painter.colors.muted, alphas.muted);
     painter.fill(sink.accent, painter.colors.accent, alphas.accent);
     ctx.globalAlpha = 1;
@@ -97,7 +99,9 @@ export function createWaveView(canvas: HTMLCanvasElement, conductor: WaveConduct
     const buttons = host.closest("section")?.querySelector<HTMLElement>("[data-wave-ripple-origin]");
     const box = buttons?.getBoundingClientRect();
     originS = box && box.width ? box.left + box.width / 2 - origin.left - RUN_START : null;
-    weights = columnWeights({ columns: cols.count, startX: cols.x[0] ?? 0, spacing: SPACING, baseline: height / 2, reach: dotReach(amp), feather: FEATHER, edgeTaper: 0, rects });
+    const layout = { columns: cols.count, startX: cols.x[0] ?? 0, spacing: SPACING, baseline: height / 2, feather: FEATHER, edgeTaper: 0, rects };
+    weights = columnWeights({ ...layout, reach: dotReach(amp) });
+    fit = rippleFit(layout, amp, fit);
     if (probe) probe.layouts++;
     draw(conductor.frame);
   };

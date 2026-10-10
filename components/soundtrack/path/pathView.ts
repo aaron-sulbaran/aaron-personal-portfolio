@@ -125,7 +125,10 @@ export function createPathView(layer: HTMLElement, root: HTMLElement, conductor:
   };
 
   const view = {
-    breathes: true,
+    // Only while its paint would draw something: with the head at the run's end (before an answer) the path has no ink, and the loop may sleep.
+    get breathes() {
+      return conductor.frame.head > conductor.frame.runLen;
+    },
     prepare(f: WaveFrame) {
       if (!samples) return;
       const raw = headTarget(HEAD_PARAMS, { samples, viewport, scrollY: f.scrollY, maxScrollY, layerTop: origin, runLen: f.runLen, entryY: entry });

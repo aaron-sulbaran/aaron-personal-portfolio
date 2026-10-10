@@ -86,6 +86,20 @@ describe("the answer's ripple", () => {
     const count = (f: DotFrame) => { const d = draw(f); return d.muted.length + d.accent.length; };
     expect(count(frame({ ripple: crest(600, 0.3) }))).toBeGreaterThan(count(frame()));
   });
+  it("with a fit of 0 a live ripple leaves every column as the resting frame", () => {
+    const sink = createSink();
+    buildPathDots(cols, all, 0, cols.count, frame({ ripple: crest(600, 0.3) }), AMPLITUDE, 0, -Infinity, Infinity, null, sink, new Float32Array(cols.count));
+    expect(sink.muted).toEqual(draw(frame()).muted);
+    expect(sink.accent).toEqual(draw(frame()).accent);
+  });
+  it("on the path, words take the displacement but not the swell", () => {
+    const words = { ...cols, inWords: new Uint8Array(cols.count).fill(1) };
+    const sinkOf = (f: DotFrame) => { const sink = createSink(); buildPathDots(words, all, 0, cols.count, f, AMPLITUDE, 0, -Infinity, Infinity, null, sink); return sink; };
+    const rippled = sinkOf(frame({ ripple: crest(600, 0.3) }));
+    const rest = sinkOf(frame());
+    expect(rippled.muted.length, "no extra dots in words").toBe(rest.muted.length);
+    expect(rippled.muted).not.toEqual(rest.muted);
+  });
   it("still frames ignore it", () => {
     expect(draw(frame({ still: true, ripple: crest(600, 0.3) })).muted).toEqual(draw(frame({ still: true })).muted);
   });
