@@ -540,6 +540,23 @@ html:not([data-input="pointer"]) .fx:focus-visible,
 [data-rotator-caption]:not([data-current]) {
   visibility: hidden;
 }
+/* A group's current dot fills over the interval and freezes while its clock
+   waits (components/card/RotatingPhoto, PhoneRotator). Under reduced motion
+   the fill is still and full. */
+[data-rotator-fill="timed"] {
+  transform-origin: left center;
+  animation-name: card-rotator-fill;
+  animation-timing-function: linear;
+  animation-fill-mode: both;
+}
+@keyframes card-rotator-fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
 /* ---- end card modal ---- */
 /* ---- inline links (components/inline): one look for every kind. At rest a
    link is a word of its paragraph (it inherits the text colour) with a quiet
