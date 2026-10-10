@@ -80,7 +80,8 @@ export function useWordMotion(stage: RefObject<HTMLElement | null>, config: RefO
       wake();
     };
     const onDown = (e: PointerEvent) => {
-      if (!fine(e) || (e.target as Element | null)?.closest("a, button")) return;
+      // Only a primary press dents the letters: a right or middle press can open a menu and lose its pointerup.
+      if (!fine(e) || e.button !== 0 || (e.target as Element | null)?.closest("a, button")) return;
       local(e);
       pointer.inside = true;
       pointer.pressed = true;

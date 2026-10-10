@@ -190,7 +190,7 @@ export function Wordmark({ text, eggLabel, geo, rest, reduced, stage, egg }: Pro
             askEgg(egg);
             motion.current.wake();
           }}
-          className="absolute z-20 cursor-pointer rounded-sm outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="absolute z-20 cursor-pointer rounded-sm outline-none [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           style={{ left: restX - hit / 2, top: hitTop, width: hit, height: hit }}
         />
       )}
