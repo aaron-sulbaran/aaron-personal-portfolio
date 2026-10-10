@@ -4,7 +4,7 @@
 // there shipped the card with its own copy of GSAP and the modal kit, fetched
 // again on `/` where the page already has them. The home page provides its own
 // import() (MarkCardSource), built against the page's group; a route without
-// one (a case page, the 404) falls back to the layout's, GSAP included.
+// one (the 404) falls back to the layout's, GSAP included.
 type CardModule = { MarkCard: typeof import("@/components/mark/MarkCard").MarkCard };
 type LoadCard = () => Promise<CardModule>;
 

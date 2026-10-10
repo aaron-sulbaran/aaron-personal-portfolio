@@ -16,11 +16,13 @@ const nextConfig = {
   transpilePackages: ["three"],
   // The standalone /work and /about pages were folded into the single scrolling
   // home document. Redirect their old URLs to the in-page anchors so existing
-  // links and shares still resolve. /work/[slug] case studies stay real routes
-  // (the exact "/work" source does not match nested paths).
+  // links and shares still resolve. Every old /work/... URL, case pages
+  // included, lands on the book. Redirects run before public files, so the
+  // logo assets under /work/logos/ are excluded.
   async redirects() {
     return [
       { source: "/work", destination: "/#work", permanent: false },
+      { source: "/work/:path((?!logos/).*)", destination: "/#work", permanent: false },
       { source: "/about", destination: "/#about", permanent: false },
     ];
   },
