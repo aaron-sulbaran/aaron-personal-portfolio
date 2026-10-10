@@ -25,7 +25,8 @@ import { isPhone, subscribePhone } from "@/lib/waveform/layout";
 // (the Menu's note works everywhere).
 //
 // The root carries data-wave-avoid: the waveform measures it and keeps its
-// moving dots out from under this text.
+// moving dots out from under this text. The controls carry
+// data-wave-ripple-origin: an answer's ripple starts at their centre.
 export function BandInvite() {
   const music = useSoundtrack();
   const c = siteContent.listen;
@@ -61,7 +62,7 @@ export function BandInvite() {
     <div ref={rootRef} data-wave-avoid data-wave-words className="pointer-events-auto w-fit max-w-full">
       <div className="flex flex-wrap items-baseline gap-x-9 gap-y-3">
         <h2 className="font-display text-[clamp(1.375rem,2vw,1.75rem)] leading-[1.1] text-foreground">{c.line}</h2>
-        <div data-band-controls className="grid items-baseline">
+        <div data-band-controls data-wave-ripple-origin className="grid items-baseline">
           <Layer shown={music === "before"} className="flex items-baseline gap-4">
             <Fill {...FILL_PICK.band} shape="rect" type="button" data-control="before" data-focus-to="note" onClick={act(startSoundtrack)} data-cursor-hover {...PRIMARY}>
               {c.accept}

@@ -1,7 +1,7 @@
 // The wave path's QA surface, only with `wavedebug` in the URL (query, or
-// after the hash): window.__wavePath. Without it pathProbe() is null and every
+// after the hash): window.__wavePath. ripple is the answer's crest height now (0 when none). Without it pathProbe() is null and every
 // caller pays one null check.
-export type ProbeFrame = { head: number; target: number; length: number; runLen: number; train: number | null; decided: boolean; runFlat: number };
+export type ProbeFrame = { head: number; target: number; length: number; runLen: number; train: number | null; decided: boolean; runFlat: number; ripple: number };
 export interface PathProbe { paints: number; ticks: number; layouts: number; frame: () => ProbeFrame | null; visibleDots: () => number }
 type Read = { frame: () => ProbeFrame; visibleDots: () => number };
 
