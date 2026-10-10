@@ -2,7 +2,7 @@
 
 This is my personal site. I'm Aaron Sulbaran, a fourth-year ECE student at UT Austin headed into product management. I treat the site as a living product: I'm the only user who matters at first, and I ship new things to it in public as fast as I can think of them. If you're here from LinkedIn, the short version is that it's a hero made of cards you can spin, a few honest sections, and a lot of small details I couldn't leave alone.
 
-Production currently serves a holding page ("Pardon the dust.") while I finish the rebuild. The full site is what `pnpm dev` shows, so everything below is what you get when you run it.
+Production serves the full site. The old holding page ("Pardon the dust.") is still one environment variable away: build with `NEXT_PUBLIC_SITE_MODE=holding`.
 
 ## What's on the page
 
@@ -59,8 +59,8 @@ pnpm dev                       # the full site at http://localhost:3000
 ```
 
 ```bash
-NEXT_PUBLIC_SITE_MODE=full pnpm build && pnpm start -p 3100   # a full production build
-pnpm build                     # what production serves today: the holding page
+pnpm build && pnpm start -p 3100                              # what production serves: the full site
+NEXT_PUBLIC_SITE_MODE=holding pnpm build && pnpm start -p 3100   # the holding page
 ```
 
 ```bash

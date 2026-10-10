@@ -270,9 +270,8 @@ export const siteContent = {
       { key: "x", label: "X", handle: "@imaaronsulbaran", href: "https://x.com/imaaronsulbaran" },
     ],
   },
-  // Holding page (components/Holding.tsx), served at / while
-  // NEXT_PUBLIC_SITE_MODE=full opts out (see lib/holding.ts). Recruiters arriving
-  // from the resume link land here until the full build ships.
+  // Holding page (components/Holding.tsx), served at / only when
+  // NEXT_PUBLIC_SITE_MODE=holding opts in (see lib/holding.ts); the full site is the default.
   holding: {
     label: "Under remodeling",
     heading: "Pardon the dust.",
