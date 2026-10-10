@@ -9,6 +9,8 @@ import { FOOTER, toFooter, waitForField, waitForWord } from "./support/footer";
 // swell or cursor ring is in a shot.
 
 const C = siteContent.footer;
+// The body's theme transition is 250ms (app/globals.css); a shot inside it shows a seam at the footer's top.
+const THEME_SETTLE_MS = 300;
 
 test("capture: the footer in both themes at both sizes, and the egg", async ({ page }) => {
   test.skip(process.env.FOOTER_CAPTURE !== "1", "manual capture");
@@ -21,6 +23,7 @@ test("capture: the footer in both themes at both sizes, and the egg", async ({ p
     await openHome(page);
     for (const theme of ["light", "dark"] as const) {
       await page.evaluate((t) => document.documentElement.setAttribute("data-theme", t), theme);
+      await page.waitForTimeout(THEME_SETTLE_MS);
       await toFooter(page);
       await waitForField(page, "gl");
       await waitForWord(page);
@@ -33,6 +36,7 @@ test("capture: the footer in both themes at both sizes, and the egg", async ({ p
   }
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.evaluate(() => document.documentElement.setAttribute("data-theme", "light"));
+  await page.waitForTimeout(THEME_SETTLE_MS);
   await toFooter(page);
   await waitForWord(page);
   const footer = page.locator(FOOTER);
