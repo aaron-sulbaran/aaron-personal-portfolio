@@ -5,8 +5,8 @@ import { bandLineY, runLength } from "./head";
 import { RUN_START, SAMPLE_STEP } from "./constants";
 import { SIGNATURE_ON, resolveSpine, type Anchors } from "./spine";
 
-// The fixture is a stand-in derived from the lab page (its intro section
-// dropped, "up" renamed "numbers") until Task 7 regenerates it from the real page.
+// The fixture is measured from the real page (measureAnchors at 1440x900,
+// 1024x768 and 390x844).
 const a1440 = pages["1440x900"].anchors as Anchors;
 
 describe("the line", () => {

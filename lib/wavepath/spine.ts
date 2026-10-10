@@ -5,8 +5,8 @@ import { bandRunPoints, runExit } from "./head";
 // shipped subset). A point names a section (y over its words, or its box with
 // `box`) or a gap (one section's last words to the next one's first), and x
 // across the page, which may leave it. It starts as the level run across the band.
-// fixtures/pages.json is a stand-in derived from the lab page until Task 7
-// regenerates it from the real page.
+// fixtures/pages.json is measureAnchors' output on the real page at 1440x900,
+// 1024x768 and 390x844.
 export const SECTION_KEYS = ["band", "who", "numbers", "connect", "footer"] as const;
 export type SectionKey = (typeof SECTION_KEYS)[number];
 export type GapKey = "gap0" | "gap1" | "gap2" | "gap3"; // gapN lies between SECTION_KEYS[N] and SECTION_KEYS[N + 1]
