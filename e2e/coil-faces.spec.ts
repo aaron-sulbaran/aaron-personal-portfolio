@@ -51,14 +51,22 @@ test("coil faces: Talos sits on its dark anvil in the light theme, Capital One o
   expect(await paneLightness(page, "capital-one")).toBeGreaterThan(0.6);
 });
 
-// Capital One's wordmark is 64 percent of the card wide (x 0.18 to 0.82) and
-// its plate reaches 7 percent further (x 0.11 to 0.89), so the point an eighth
-// in at mid height is plate, left of the logo's ink; one pixel keeps the
-// sample off the plate's filtered edge.
-test("coil faces: in the dark theme Capital One's logo sits on a light plate and Talos stays on its anvil", async ({ page }) => {
+// Capital One has a white file for the dark theme, so it stays on the dark pane with no plate: the
+// point an eighth in at mid height, left of the logo's ink, is dark.
+test("coil faces: in the dark theme Capital One's white logo sits on the dark pane and Talos stays on its anvil", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "dark" });
   await openHome(page, { debug: "flight" });
   expect(await paneLightness(page, "capital-one")).toBeLessThan(0.4);
-  expect(await paneLightness(page, "capital-one", { s: 0.125, t: 0.5, size: 1 })).toBeGreaterThan(0.6);
+  expect(await paneLightness(page, "capital-one", { s: 0.125, t: 0.5, size: 1 })).toBeLessThan(0.4);
   expect(await paneLightness(page, "talos")).toBeLessThan(0.4);
 });
+
+// The default point (an eighth in from the top left) is in the frame above IEEE's square, which takes
+// the logo's own navy as its face, so the frame is as dark as the square in both themes.
+for (const theme of ["light", "dark"] as const) {
+  test(`coil faces: IEEE's face is navy edge to edge in the ${theme} theme`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme: theme });
+    await openHome(page, { debug: "flight" });
+    expect(await paneLightness(page, "ieee")).toBeLessThan(0.15);
+  });
+}
