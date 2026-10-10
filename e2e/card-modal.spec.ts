@@ -255,8 +255,9 @@ test("card modal: a card's links are inline links, a line at rest that fills fro
   const link = dialog.getByRole("link", { name: /ieee\.ece\.utexas\.edu/ });
   await expect(link).toHaveClass(/\binline-link\b/);
   await expect(link).toHaveAttribute("data-inline", "external");
-  await expect(link).toHaveClass(/font-label/);
-  await expect(link).toHaveClass(/text-accent/);
+  const item = link.locator("xpath=..");
+  await expect(item).toHaveClass(/font-label/);
+  await expect(item).toHaveClass(/text-accent/);
   await expect(link.locator(".sr-only")).toHaveText(`, ${siteContent.book.externalLabel}`);
   await link.scrollIntoViewIfNeeded();
   await rest(page);
