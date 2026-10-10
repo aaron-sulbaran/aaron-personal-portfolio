@@ -27,8 +27,9 @@ export async function panelAtRest(page: Page, key: CardKey) {
 }
 
 // A card opened the way a reader of the book opens it: a click on its row (no
-// flight). Returns once the panel rests, so every size read after it is final.
-export async function openCardFromBook(page: Page, key: CardKey, { home = true } = {}): Promise<{ row: Locator; dialog: Locator }> {
+// flight). Returns once the panel rests, so every size read after it is final;
+// settled also waits for the mask-in to end (no armed body is left).
+export async function openCardFromBook(page: Page, key: CardKey, { home = true, settled = false } = {}): Promise<{ row: Locator; dialog: Locator }> {
   if (home) await openHome(page);
   const row = cardRow(page, key);
   await row.scrollIntoViewIfNeeded();
@@ -36,6 +37,7 @@ export async function openCardFromBook(page: Page, key: CardKey, { home = true }
   const dialog = page.getByRole("dialog", { name: siteContent.cards[key].modal.title, exact: true });
   await expect(dialog).toBeVisible();
   await panelAtRest(page, key);
+  if (settled) await expect(dialog.locator("[data-mask-armed]")).toHaveCount(0, { timeout: 5000 });
   return { row, dialog };
 }
 

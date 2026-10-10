@@ -60,7 +60,7 @@ test("label face: controls and links are Profa Bold in the accent", async ({ pag
   await page.goto("/label-face-missing");
   await expectLabel(page.getByRole("link", { name: siteContent.notFound.cta }), "label", "accent");
 
-  const { dialog } = await openCardFromBook(page, "anthropic");
+  const { dialog } = await openCardFromBook(page, "anthropic", { settled: true });
   await expectLabel(dialog.getByRole("link", { name: /txclaude\.org/ }), "label-lg", "accent");
 });
 
@@ -73,12 +73,12 @@ test("label face: meta beside a title is Profa Bold in the accent", async ({ pag
   await settled(page);
   await expectLabel(page.locator("#work .book-row").getByText(siteContent.cards["capital-one"].book.meta, { exact: true }), "label", "accent");
 
-  const { dialog } = await openCardFromBook(page, "anthropic");
+  const { dialog } = await openCardFromBook(page, "anthropic", { settled: true });
   await expectLabel(dialog.getByText("Claude Campus Ambassador, 2026", { exact: true }), "label", "accent");
 });
 
 test("label face: hints and the credit prose are Profa Bold, muted", async ({ page }) => {
-  const { dialog } = await openCardFromBook(page, "anthropic");
+  const { dialog } = await openCardFromBook(page, "anthropic", { settled: true });
   await expectLabel(dialog.getByText(siteContent.modals.closeHintKeyboard, { exact: true }), "label", "muted");
   await dialog.getByRole("button", { name: siteContent.modals.closeAriaLabel }).click();
   await expect(dialog).toBeHidden();
@@ -241,7 +241,7 @@ test("label face: role lines sit under their titles, 14px on the case page and 6
     });
   await page.goto("/work/capital-one-pm");
   expect(await gap(page.locator("article h1"))).toBeCloseTo(14, 0);
-  const { dialog } = await openCardFromBook(page, "anthropic");
+  const { dialog } = await openCardFromBook(page, "anthropic", { settled: true });
   expect(await gap(dialog.locator("h2"))).toBeCloseTo(6, 0);
   const fit = await dialog.locator("[data-tile-slot='work']").evaluate((slot) => ({
     block: slot.nextElementSibling!.getBoundingClientRect().height,

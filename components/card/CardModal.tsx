@@ -2,7 +2,7 @@
 
 import { X } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
-import { useRef, type CSSProperties } from "react";
+import { useRef, useState, type CSSProperties } from "react";
 import { siteContent, type CardKey } from "@/lib/content";
 import { galleryOf } from "@/lib/gallery/card";
 import { modalBackdropBlurVariants, modalBackdropTintVariants, useBodyScrollLock, useEscapeKey, useFocusTrap } from "@/lib/modal";
@@ -44,13 +44,21 @@ export function CardModal({ cardKey, onClose, renderMedia, flying }: Props) {
   useFocusTrap(dialogRef, open);
   const gallery = cardKey ? galleryOf(cardKey) : null;
   const rows = layout === "rows";
+  // Every open is a fresh body, even of the card still leaving, so its masks
+  // replay from the start rather than revive the exiting run.
+  const [opens, setOpens] = useState(0);
+  const [openKey, setOpenKey] = useState<CardKey | null>(null);
+  if (cardKey !== openKey) {
+    setOpenKey(cardKey);
+    if (cardKey !== null) setOpens((n) => n + 1);
+  }
 
   return (
     <Portal>
       <AnimatePresence>
         {gallery && (
           <motion.div
-            key="card-modal"
+            key={`card-modal-${opens}`}
             role="dialog"
             aria-modal="true"
             aria-label={siteContent.cards[gallery.key].modal.title}
