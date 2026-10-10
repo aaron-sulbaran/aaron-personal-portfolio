@@ -557,6 +557,29 @@ html:not([data-input="pointer"]) .fx:focus-visible,
     transform: scaleX(1);
   }
 }
+/* A flown card parked on its slot in a scrolling dialog: the compositor moves
+   its layer by the dialog's scroll offset (lib/coil/scrollFollow.ts), in the
+   frame the slot moves. The range is far taller than any dialog, so the
+   translation is exactly the offset. */
+body {
+  timeline-scope: --card-dialog;
+}
+[data-card-modal] {
+  scroll-timeline: --card-dialog y;
+}
+@keyframes card-follow-scroll {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-100000px);
+  }
+}
+[data-flying-follow][data-following="true"] {
+  animation: card-follow-scroll linear both;
+  animation-timeline: --card-dialog;
+  animation-range: 0px 100000px;
+}
 /* ---- end card modal ---- */
 /* ---- inline links (components/inline): one look for every kind. At rest a
    link is a word of its paragraph (it inherits the text colour) with a quiet
