@@ -141,9 +141,12 @@ export function fieldDepths(live: boolean) {
 }
 
 // The letters' band (where the field turns to the letters' depth) and the
-// word's rect, padded, which the hero name's surface covers.
+// word's rect, padded, which the hero name's surface covers. The rect spans
+// the word at its widest swell (every letter swollen, the word reflowed and
+// still centered), so no swelled letter ever reaches past it and the surface
+// never clamps to its edge.
 export function lettersRect(text: string, geo: FooterGeometry) {
-  const wordW = unitWidth(text) * geo.size;
+  const wordW = layoutWord(text, 1, [reachPose()], FOOTER.tracking, FOOTER.face.gap, false).width * geo.size;
   const pad = FOOTER.field.surfacePad * geo.size;
   return {
     band: geo.wordTop - FOOTER.field.bandLeadPx,

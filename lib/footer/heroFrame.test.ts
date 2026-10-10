@@ -29,6 +29,20 @@ describe("the hero's frame", () => {
     expect(box.h).toBeGreaterThanOrEqual(404 - EPS);
   });
 
+  it("covers its whole canvas on a short viewport, the word's middle still on midY", () => {
+    // A 667 by 351 footer under a 375 viewport, in the 480 wide canvas's units, as PosterField passes them.
+    const k = 480 / 667;
+    const h = Math.round(351 * k);
+    const midY = 301 * k;
+    const box = posterBox(480, h, 1440, 900, 375 * k, midY);
+    expect(box.y).toBeLessThanOrEqual(EPS);
+    expect(box.y + box.h).toBeGreaterThanOrEqual(h - EPS);
+    expect(box.x).toBeLessThanOrEqual(EPS);
+    expect(box.x + box.w).toBeGreaterThanOrEqual(480 - EPS);
+    expect(box.y + box.h / 2).toBeCloseTo(midY, 9);
+    expect(box.x + box.w / 2).toBeCloseTo(240, 9);
+  });
+
   it("recolors the poster to a depth from the paper, and leaves it at 1", () => {
     const px = new Uint8ClampedArray([200, 100, 50, 255]);
     recolor(px, [1, 1, 1], 1);
