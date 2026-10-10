@@ -24,6 +24,8 @@ export const GALLERY = {
     wordlessMax: 0.55, // grouping B's photo-only pages
     slideMs: 360,
     flickPx: 96,
+    dismissMs: 240, // the panel's travel off the screen when a flick closes it
+    springBackMs: 260, // the panel's return when a vertical drag falls short
     slopPx: 8, // a drag picks its axis once it has moved this far
     swipePx: 48, // a sideways drag this far turns a page
     flickSpeed: 0.6, // a quicker release (px per ms) turns or closes on a short drag

@@ -11,26 +11,30 @@ import { useReducedMotionLive } from "@/components/soundtrack/useReducedMotionLi
 import { CardHeader } from "./CardHeader";
 import { PagerControls } from "./PagerControls";
 import { PagerPage } from "./PagerPage";
+import { usePagerDrag } from "./usePagerDrag";
 
 // The phone's gallery (under 1024px), the lab's round six pager: the header
 // fixed above (a flown card parks on its tile, so no page carries it), one
 // page a paragraph (PHONE_GROUPING), each page's photo or group whole in a
 // stage at most 40 percent of the visible height with the words under it.
-// The arrows and dots under the pages and the arrow keys anywhere in the
-// dialog change pages. Under reduced motion pages change with no travel.
+// The arrows and dots under the pages, the arrow keys anywhere in the dialog
+// and a sideways drag change pages; a vertical flick on the stage, the header
+// or words that fit closes the modal. Under reduced motion pages change with
+// no travel.
 
 type Props = { gallery: Gallery; pages: readonly Page[]; renderMedia: boolean; onClose: () => void };
 type Room = { width: number; height: number; visible: number };
 
 const g = siteContent.modals.gallery;
 
-export function CardPager({ gallery, pages, renderMedia }: Props) {
+export function CardPager({ gallery, pages, renderMedia, onClose }: Props) {
   const count = pages.length;
   const reduced = useReducedMotionLive();
   const [state, dispatch] = useReducer(pagerReducer, { index: 0, count });
   const [room, setRoom] = useState<Room | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const viewportRef = useRef<HTMLDivElement | null>(null);
+  const { dragPx, handlers } = usePagerDrag(rootRef, { index: state.index, count, reduced, dispatch, onDismiss: onClose });
   const { pager } = GALLERY;
   // The stage's cap, or less when the page is too short to leave the words their room.
   const heightFor = (share: number, below: number) => stageHeight((room?.visible ?? 0) * share, (room?.height ?? 0) - below, pager.stageFloorPx);
@@ -64,7 +68,7 @@ export function CardPager({ gallery, pages, renderMedia }: Props) {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const travel = reduced ? 0 : pager.slideMs;
+  const travel = reduced || dragPx !== null ? 0 : pager.slideMs;
   const shown = gallery.photos[pages[state.index].photo];
   const live = PHONE_GROUPING === "photo" ? g.announce(state.index + 1, count, shown.captionShort ?? shown.caption ?? "") : g.pageNumber(state.index + 1, count);
   return (
@@ -73,7 +77,8 @@ export function CardPager({ gallery, pages, renderMedia }: Props) {
       role="group"
       aria-roledescription={g.roleCarousel}
       aria-label={g.pagerLabel(count)}
-      className="flex min-h-0 flex-1 flex-col gap-4"
+      className="flex min-h-0 flex-1 select-none flex-col gap-4 [touch-action:none]"
+      {...handlers}
       data-pager=""
       data-page={state.index}
     >
@@ -81,7 +86,7 @@ export function CardPager({ gallery, pages, renderMedia }: Props) {
       <div ref={viewportRef} className="relative min-h-0 flex-1 overflow-hidden" data-pager-viewport="">
         <div
           className="flex h-full"
-          style={{ transform: `translate3d(${-state.index * 100}%, 0, 0)`, transition: `transform ${travel}ms ${GALLERY.ease.css}` }}
+          style={{ transform: `translate3d(calc(${-state.index * 100}% + ${dragPx ?? 0}px), 0, 0)`, transition: `transform ${travel}ms ${GALLERY.ease.css}` }}
           data-pager-track=""
         >
           {pages.map((page, i) => (
