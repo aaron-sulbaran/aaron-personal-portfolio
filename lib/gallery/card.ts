@@ -13,8 +13,9 @@ export type WordUnit = { kind: "block"; index: number } | { kind: "entry"; index
 export interface Gallery { key: CardKey; photos: readonly GalleryPhoto[]; lead: number | undefined; words: readonly WordUnit[]; plan: Plan; aspects: readonly number[]; panelWidth: number; slot: number }
 
 // The photo cards the gallery lab never showed Aaron follow cards.md's pairings
-// to the letter (ruled on the plan's review, 2026-10-10); every other photo card
-// keeps the lab's round six rule, as Aaron picked it.
+// (ruled on the plan's review, 2026-10-10), bent so that no row is without words
+// (the final pass); every other photo card keeps the lab's round six rule, as
+// Aaron picked it.
 const NAMED: ReadonlySet<CardKey> = new Set<CardKey>(["band", "travel"]);
 
 const cache = new Map<CardKey, Gallery>();

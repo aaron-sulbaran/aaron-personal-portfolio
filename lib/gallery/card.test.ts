@@ -24,13 +24,13 @@ describe("each card's gallery", () => {
     expect(galleryOf("misuki").photos[3].captionShort).toBe("The real Mazda 787B that won Le Mans in 1991, at the Mazda Museum in Hiroshima.");
   });
 
-  it("sits every photo beside the words Aaron's rule gives it, and the band's and Travel's beside the words cards.md names", () => {
+  it("sits every photo beside the words Aaron's rule gives it, and the band's and Travel's the same, the card picture holding the first word", () => {
     expect(Object.fromEntries(keys.map((key) => [key, rows(key)]))).toEqual({
       mentorship: [{ photos: [0], words: [0] }, { photos: [1, 2, 3], words: [1] }],
       "min-max": [],
-      band: [{ photos: [0], words: [] }, { photos: [1], words: [0] }, { photos: [2], words: [1] }, { photos: [3], words: [2] }],
+      band: [{ photos: [0], words: [0] }, { photos: [2, 1], words: [1] }, { photos: [3], words: [2] }],
       talos: [],
-      travel: [{ photos: [0], words: [] }, { photos: [1, 2, 3], words: [0] }],
+      travel: [{ photos: [0], words: [0] }, { photos: [1, 2, 3], words: [1] }],
       "capital-one": [{ photos: [0], words: [1] }, { photos: [1], words: [2] }, { photos: [2], words: [3] }],
       hackathons: [{ photos: [0], words: [0] }, { photos: [1], words: [1] }, { photos: [2], words: [2] }],
       anthropic: [{ photos: [0], words: [0] }, { photos: [1, 2], words: [1] }],
@@ -42,8 +42,18 @@ describe("each card's gallery", () => {
       "building-in-public": [{ photos: [0], words: [0] }, { photos: [1], words: [1] }, { photos: [2], words: [2] }],
     });
     expect(Object.fromEntries(keys.map((key) => [key, [galleryOf(key).plan.intro, galleryOf(key).plan.closing]]))).toMatchObject({
-      "capital-one": [[0], [4]], hackathons: [[], [3]], jobs: [[0, 1, 2, 3], []], "min-max": [[0], []], talos: [[0, 1], []], "this-site": [[0], []], fsdatalink: [[0, 1], []], band: [[], []], travel: [[], [1]],
+      "capital-one": [[0], [4]], hackathons: [[], [3]], jobs: [[0, 1, 2, 3], []], "min-max": [[0], []], talos: [[0, 1], []], "this-site": [[0], []], fsdatalink: [[0, 1], []], band: [[], []], travel: [[], []],
     });
+  });
+
+  it("gives every photo row of every card a word, the card picture never taking turns, unless the card has no word to give", () => {
+    for (const key of keys) {
+      const { plan, words, lead } = galleryOf(key);
+      for (const slide of plan.slides) {
+        if (words.length > 0) expect(slideWords(slide).length, `${key}: row of photo ${slide.photo}`).toBeGreaterThan(0);
+        if (lead !== undefined && slide.photos.includes(lead)) expect(slide.photos, `${key}: the card picture`).toEqual([lead]);
+      }
+    }
   });
 
   it("reads the jobs card's words as its three paragraphs, then its five entries", () => {
