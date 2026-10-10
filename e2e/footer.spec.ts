@@ -12,6 +12,7 @@ import {
   footerContexts,
   parsePose,
   readWord,
+  recordPeriod,
   recordWord,
   toFooter,
   waitForField,
@@ -156,6 +157,30 @@ test("footer: the period drops, hops a quarter turn, lands, and the ripple runs 
   for (const i of [PERIOD - 1, PERIOD + 1]) expect(Math.min(...frames.map((f) => parsePose(f[i]).squash)), `letter ${i} dips`).toBeLessThan(0.97);
   await waitForWord(page);
   expect((await readWord(page)).transforms).toEqual(rest.transforms);
+});
+
+test("footer: under a resting cursor the swollen period turns about its own center, never under the baseline, and rests where it lands", async ({ page }) => {
+  await openHome(page);
+  await toFooter(page);
+  await waitForWord(page);
+  const { baseline, size } = await readWord(page);
+  const button = page.getByRole("button", { name: C.dropPeriod });
+  // The cursor comes to rest on the period, which swells to its reach and holds there.
+  await button.hover();
+  await waitForWord(page, "moving");
+  await waitForWord(page, "rest");
+  const recording = recordPeriod(page, PERIOD, eggTotalMs(F.egg) + 900);
+  await button.click(); // and stays on it through the whole recording
+  const frames = await recording;
+  const last = frames.map((f) => f.transform.includes("rotate(")).lastIndexOf(true);
+  expect(last, "the hop ends inside the recording").toBeLessThan(frames.length - 1);
+  expect(Math.min(...frames.map((f) => f.bottom)), "the hop's apex").toBeLessThan(baseline - 0.3 * size);
+  const sunk = Math.max(...frames.map((f) => f.bottom - baseline));
+  test.info().annotations.push({ type: "period", description: `lowest ${sunk.toFixed(2)}px under the baseline; the step into rest ${(frames[last + 1].bottom - frames[last].bottom).toFixed(2)}px` });
+  expect(sunk, "px the period's lowest point goes under the baseline").toBeLessThanOrEqual(1);
+  expect(Math.abs(frames[last + 1].bottom - frames[last].bottom), "the last turned frame to the rest frame").toBeLessThan(1);
+  expect(frames[last + 1].bottom).toBeCloseTo(baseline, 0);
+  await page.mouse.move(2, 2);
 });
 
 test("footer: Enter and Space drop the period; five quick clicks make two hops", async ({ page }) => {

@@ -2,7 +2,7 @@ import type { Page } from "@playwright/test";
 import { nextFrames, scrollToY } from "./coil";
 
 // Reading the footer (components/footer): its wordmark's letters through
-// their SVG transforms, its phase (data-word: waiting, moving, rest), its
+// their SVG transforms (and the period's drawn box), its phase (data-word: waiting, moving, rest), its
 // field's kind (data-footer-field: gl or poster), the field's chunk among the
 // page's scripts, and the WebGL 2 contexts made for its canvas.
 
@@ -65,6 +65,40 @@ export function recordWord(page: Page, ms: number): Promise<string[][]> {
         requestAnimationFrame(tick);
       }),
     ms,
+  );
+}
+
+export type PeriodFrame = { transform: string; bottom: number };
+
+// The period's drawn box at every frame for `ms`, starting now (call it, then
+// act, then await it): its transform and its lowest point in the footer's px
+// (the SVG's units). The letters live in the SVG's <defs>, drawn only through
+// their <use> copies, where getBoundingClientRect reads zero; so this maps the
+// glyph's box through the letter's own transform, the box the copies draw.
+export function recordPeriod(page: Page, index: number, ms: number): Promise<PeriodFrame[]> {
+  return page.evaluate(
+    ([at, span]) =>
+      new Promise<PeriodFrame[]>((resolve) => {
+        const g = document.querySelectorAll<SVGGElement>("svg[data-wordmark] [data-letter]")[at];
+        const frames: PeriodFrame[] = [];
+        const start = performance.now();
+        const tick = () => {
+          const b = g.getBBox();
+          const m = g.transform.baseVal.consolidate()?.matrix ?? new DOMMatrix();
+          const corners = [
+            [b.x, b.y],
+            [b.x + b.width, b.y],
+            [b.x, b.y + b.height],
+            [b.x + b.width, b.y + b.height],
+          ];
+          const bottom = Math.max(...corners.map(([x, y]) => new DOMPoint(x, y).matrixTransform(m).y));
+          frames.push({ transform: g.getAttribute("transform") ?? "", bottom });
+          if (performance.now() - start < span) requestAnimationFrame(tick);
+          else resolve(frames);
+        };
+        requestAnimationFrame(tick);
+      }),
+    [index, ms] as const,
   );
 }
 
