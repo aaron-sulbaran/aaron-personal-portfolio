@@ -10,6 +10,7 @@ import { partId } from "@/lib/gallery/timing";
 import { PAGER_PHOTO_SIZES } from "@/lib/photoSizes";
 import { CardLinks } from "./CardLinks";
 import { MentorsList } from "./MentorsList";
+import { PhoneRotator } from "./PhoneRotator";
 import { StillPhoto } from "./StillPhoto";
 import { Words } from "./Words";
 
@@ -22,13 +23,13 @@ import { Words } from "./Words";
 // which stays put while the pages turn), so every photo draws itself.
 
 type Stage = { photos: readonly number[]; frame: Box; boxes: readonly Box[] };
-type Props = { gallery: Gallery; page: Page; index: number; count: number; kind: StageKind; stage: Stage; current: boolean };
+type Props = { gallery: Gallery; page: Page; index: number; count: number; kind: StageKind; stage: Stage; current: boolean; pressing: boolean };
 
 const g = siteContent.modals.gallery;
 const fade = `linear-gradient(to bottom, black calc(100% - ${GALLERY.pager.wordsFadePx}px), transparent)`;
 const WORDS_FADE: CSSProperties = { maskImage: fade, WebkitMaskImage: fade };
 
-export function PagerPage({ gallery, page, index, count, kind, stage, current }: Props) {
+export function PagerPage({ gallery, page, index, count, kind, stage, current, pressing }: Props) {
   const textRef = useRef<HTMLDivElement | null>(null);
   const [scrolls, setScrolls] = useState(false);
 
@@ -55,7 +56,11 @@ export function PagerPage({ gallery, page, index, count, kind, stage, current }:
       data-stage-kind={kind}
       data-wordless={page.wordless ? "" : undefined}
     >
-      <StillStage gallery={gallery} photo={page.photo} box={stage.boxes[0]} height={stage.frame.height} />
+      {kind === "turns" ? (
+        <PhoneRotator gallery={gallery} photos={stage.photos} frame={stage.frame} boxes={stage.boxes} active={current} pressing={pressing} />
+      ) : (
+        <StillStage gallery={gallery} photo={page.photo} box={stage.boxes[0]} height={stage.frame.height} />
+      )}
       {!page.wordless && (
         <div
           ref={textRef}

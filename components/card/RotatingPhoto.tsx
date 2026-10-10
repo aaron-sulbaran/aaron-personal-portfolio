@@ -5,12 +5,11 @@ import { useRef, useState, type CSSProperties, type FocusEvent, type KeyboardEve
 import { siteContent } from "@/lib/content";
 import { groupFrame, type Box } from "@/lib/gallery/boxes";
 import type { Gallery } from "@/lib/gallery/card";
-import { GALLERY } from "@/lib/gallery/constants";
 import { partId } from "@/lib/gallery/timing";
 import { isKeyboardFocus } from "@/lib/input/modality";
 import { galleryRowSizes } from "@/lib/photoSizes";
 import { useReducedMotionLive } from "@/components/soundtrack/useReducedMotionLive";
-import { GroupCaptions, GroupLayer } from "./GroupParts";
+import { GroupCaptions, GroupLayer, RotatorAnnounce, RotatorFill } from "./GroupParts";
 import { useRotator } from "./useRotator";
 
 // A row's photos taking turns in one frame beside words that never change
@@ -97,12 +96,7 @@ export function RotatingPhoto({ gallery, photos, boxes }: Props) {
             >
               {i === index ? (
                 <span className="relative block h-1.5 w-5 overflow-hidden rounded-full" style={rotatorTrack}>
-                  <span
-                    key={index}
-                    className="absolute inset-0 rounded-full bg-accent"
-                    style={reduced ? undefined : { animationDuration: `${GALLERY.rotate.intervalMs}ms`, animationPlayState: runs ? "running" : "paused" }}
-                    data-rotator-fill={reduced ? "still" : "timed"}
-                  />
+                  <RotatorFill key={index} reduced={reduced} runs={runs} />
                 </span>
               ) : (
                 <span className="block h-1.5 w-1.5 rounded-full bg-muted transition-colors duration-200 group-hover:bg-foreground" />
@@ -122,9 +116,7 @@ export function RotatingPhoto({ gallery, photos, boxes }: Props) {
           </button>
         )}
       </div>
-      <p className="sr-only" aria-live={runs ? "off" : "polite"}>
-        {g.announce(index + 1, count, gallery.photos[photos[index]].caption ?? "")}
-      </p>
+      <RotatorAnnounce runs={runs} index={index} count={count} caption={gallery.photos[photos[index]].caption} />
     </div>
   );
 }
