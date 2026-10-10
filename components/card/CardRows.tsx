@@ -28,7 +28,8 @@ const EDGE = { left: "justify-start", right: "justify-end" } as const;
 
 export function CardRows({ gallery, renderMedia }: Props) {
   const { plan, photos, aspects, lead, slot } = gallery;
-  const box = (photo: number) => boxFor(aspects[photo], BOXES, GALLERY.wideFrom);
+  // The card picture is always the vertical box (3:4), so the flown card fits it exactly.
+  const box = (photo: number) => (photo === lead ? BOXES.vertical : boxFor(aspects[photo], BOXES, GALLERY.wideFrom));
   const prose = (unit: number) => (
     <div key={`words-${unit}`} style={{ maxWidth: GALLERY.proseMaxWidth }}>
       <Words gallery={gallery} unit={unit} />
