@@ -1,6 +1,6 @@
 import { columnWeights, type Rect } from "@/lib/waveform/weights";
 import { dotReach, runColumns, type PathColumns } from "@/lib/wavepath/columns";
-import { ALPHAS, SPACING } from "@/lib/wavepath/constants";
+import { ALPHAS, RUN_START, SPACING } from "@/lib/wavepath/constants";
 import { buildPathDots, clearSink, createSink } from "@/lib/wavepath/paint";
 import { nearestColumn } from "@/lib/wavepath/pluck";
 import { pathProbe } from "@/lib/wavepath/probe";
@@ -31,6 +31,7 @@ export function createWaveView(canvas: HTMLCanvasElement, conductor: WaveConduct
   let all = new Int32Array(0);
   let weights: Float32Array = new Float32Array(0);
   let width = 0, height = 0, amp = 0, canvasTop = 0, viewport = 0, active = false, measureRaf = 0;
+  let originS: number | null = null;
   let alphas = ALPHAS[themeNow()];
 
   const draw = (f: WaveFrame) => {
@@ -53,10 +54,11 @@ export function createWaveView(canvas: HTMLCanvasElement, conductor: WaveConduct
       if (f.pointer.moved && active) nearestColumn(cols, f.pointer.x, f.pointer.y + f.scrollY - canvasTop, f.head, f.tail, f.near);
     },
     paint(f, changed: Changed | null) {
-      if (changed && !changed.head && !changed.music && !changed.breath && !changed.plucks) return;
+      if (changed && !changed.head && !changed.music && !changed.breath && !changed.plucks && !changed.ripple) return;
       draw(f);
     },
     active: () => active,
+    rippleOrigin: () => originS ?? conductor.frame.runLen / 2,
     countVisible(f) {
       draw(f);
       return active ? sink.onScreen : 0;
@@ -91,6 +93,10 @@ export function createWaveView(canvas: HTMLCanvasElement, conductor: WaveConduct
       if (r.width && r.height) rects.push({ left: r.left - origin.left - AVOID_PAD, right: r.right - origin.left + AVOID_PAD, top: r.top - origin.top - AVOID_PAD, bottom: r.bottom - origin.top + AVOID_PAD });
     });
     rects.push({ left: -1e6, right: 1e6, top: -1e6, bottom: 0 }, { left: -1e6, right: 1e6, top: height, bottom: 1e6 });
+    // The ripple starts under the answer buttons: their horizontal centre, as the run's arc.
+    const buttons = host.closest("section")?.querySelector<HTMLElement>("[data-wave-ripple-origin]");
+    const box = buttons?.getBoundingClientRect();
+    originS = box && box.width ? box.left + box.width / 2 - origin.left - RUN_START : null;
     weights = columnWeights({ columns: cols.count, startX: cols.x[0] ?? 0, spacing: SPACING, baseline: height / 2, reach: dotReach(amp), feather: FEATHER, edgeTaper: 0, rects });
     if (probe) probe.layouts++;
     draw(conductor.frame);
@@ -103,6 +109,8 @@ export function createWaveView(canvas: HTMLCanvasElement, conductor: WaveConduct
   measure();
   const resizeObserver = new ResizeObserver(scheduleMeasure);
   resizeObserver.observe(host);
+  const originEl = host.closest("section")?.querySelector("[data-wave-ripple-origin]");
+  if (originEl) resizeObserver.observe(originEl);
   const themeObserver = new MutationObserver(() => {
     painter.readColors();
     alphas = ALPHAS[themeNow()];

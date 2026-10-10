@@ -1,13 +1,13 @@
 import { getSoundtrackPlayer } from "@/lib/audio";
-import { getSoundtrackState, subscribeSoundtrack } from "@/lib/soundtrack";
+import { getRestoredSoundtrack, getSoundtrackState, subscribeSoundtrack, type SoundtrackState } from "@/lib/soundtrack";
 import { createLeveller, levelColumns } from "@/lib/waveform/level";
-import { BREATH, PLUCK, SHIMMER, SPECTRUM_BINS, TRAIN_FADE } from "@/lib/wavepath/constants";
+import { BREATH, PLUCK, RIPPLE, SHIMMER, SPECTRUM_BINS, TRAIN_FADE } from "@/lib/wavepath/constants";
 import { createHead, stepHead, tailStart, type HeadState } from "@/lib/wavepath/head";
 import { createMusic, stepMusic } from "@/lib/wavepath/music";
 import type { DotFrame } from "@/lib/wavepath/paint";
 import { createNear, createPlucks, createPointer, movePointer, notePointer, stepPlucks, type Near, type PointerTrack } from "@/lib/wavepath/pluck";
 import { attachProbe, pathProbe } from "@/lib/wavepath/probe";
-import { createRipple } from "@/lib/wavepath/ripple";
+import { createRipple, startRipple, stepRipple } from "@/lib/wavepath/ripple";
 
 // The wave's one engine (the engine split): once per frame it steps the
 // clocks, the levelled music, the head and the plucks into one frame, and
@@ -16,11 +16,13 @@ import { createRipple } from "@/lib/wavepath/ripple";
 // ripple moves; it caps at 60fps and sleeps at rest. Before the visitor
 // answers the band, its level run breathes slowly (no peaks, no music, no
 // pluck) while the head waits at the run's end: the line does not follow until
-// an answer. After either answer the whole line breathes and follows; peaks
-// and the music need "Play it". Freezing stops the clocks, the music and the
-// plucks; the head still follows the scroll. Reduced motion (`still`) never loops: views
-// paint the whole line on layout, theme and probe calls. One conductor per
-// page, ref counted.
+// an answer. Pressing an answer sends one ripple along the line from the
+// buttons (a live press only; a restored choice sends none). After either
+// answer the whole line breathes and follows; peaks and the music need
+// "Play it". Freezing stops the clocks, the music, the plucks and the ripple;
+// the head still follows the scroll. Reduced motion (`still`) never loops:
+// views paint the whole line on layout, theme and probe calls. One conductor
+// per page, ref counted.
 
 const FRAME_MS = 1000 / 60 - 2;
 const MAX_STEP_S = 0.1;
@@ -34,13 +36,14 @@ export interface WaveFrame extends DotFrame {
   pointer: PointerTrack; // client px
   near: Near; // views offer their nearest drawn column in prepare()
 }
-export type Changed = { head: boolean; music: boolean; breath: boolean; plucks: boolean };
+export type Changed = { head: boolean; music: boolean; breath: boolean; plucks: boolean; ripple: boolean };
 export interface WaveView {
   breathes: boolean;
   prepare(f: WaveFrame): void;
   paint(f: WaveFrame, changed: Changed | null): void; // null: paint what shows, now
   active(): boolean;
   countVisible(f: WaveFrame): number;
+  rippleOrigin?(): number; // the arc s an answer's ripple starts at, measured at layout
 }
 export interface PathGeometry { runLen: number; length: number; train: number | null; runFlat: number }
 export interface WaveConductor {
@@ -102,7 +105,7 @@ function createInstance(still: boolean): Instance {
     }
     const before = frame.state.head;
     const moving = stepHead(frame.state, dt, false);
-    let music = false, breath = false, plucks = false;
+    let music = false, breath = false, plucks = false, ripple = false;
     if (!frozen) {
       if (frame.pointer.moved) {
         if (frame.decided) {
@@ -116,15 +119,18 @@ function createInstance(still: boolean): Instance {
       levelColumns(leveller, player.sample(t, SPECTRUM_BINS).means, dt, levelled);
       music = stepMusic(frame.music, dt, getSoundtrackState() === "on", levelled);
       plucks = stepPlucks(frame.plucks, dt);
+      // A crest that ends this frame still repaints once, to clear it.
+      ripple = frame.ripple.live;
+      stepRipple(frame.ripple, dt);
       breath = views.some((v) => v.breathes && v.active());
     }
     frame.pointer.moved = false;
     frame.near.d2 = Infinity;
     sync();
-    const changed = { head: moving || frame.state.head !== before, music, breath, plucks };
+    const changed = { head: moving || frame.state.head !== before, music, breath, plucks, ripple };
     for (const v of views) if (v.active()) v.paint(frame, changed);
     if (probe) probe.ticks++;
-    return moving || (views.some((v) => v.active()) && (music || breath || plucks));
+    return moving || (!frozen && frame.ripple.live) || (views.some((v) => v.active()) && (music || breath || plucks));
   };
 
   const tick = (t: number) => {
@@ -159,8 +165,23 @@ function createInstance(still: boolean): Instance {
     frame.pointer.on = false;
     frame.plucks.nearJ = -1;
   };
+  // A ripple answers a live press only: "before" to "on" or "off", and "off" to
+  // "on" (Play it chosen again). Never pause and resume, and never a restore:
+  // initSoundtrackFromStorage moves "before" to "paused" or "off" without a
+  // press, and getRestoredSoundtrack() is set before that change notifies, so a
+  // move out of "before" with a restored choice is the restore.
+  const isPress = (from: SoundtrackState, to: SoundtrackState) =>
+    (from === "before" && getRestoredSoundtrack() === null && (to === "on" || to === "off")) || (from === "off" && to === "on");
+  const rippleOrigin = () => {
+    for (const v of views) if (v.rippleOrigin) return v.rippleOrigin();
+    return frame.runLen / 2;
+  };
+  let lastState = getSoundtrackState();
   const onSoundtrack = () => {
-    frame.decided = getSoundtrackState() !== "before";
+    const next = getSoundtrackState();
+    frame.decided = next !== "before";
+    if (!still && !frozen && isPress(lastState, next)) startRipple(frame.ripple, rippleOrigin());
+    lastState = next;
     wake();
   };
 
@@ -204,7 +225,7 @@ function createInstance(still: boolean): Instance {
   }
   const unsubscribe = subscribeSoundtrack(onSoundtrack);
   const detachProbe = attachProbe({
-    frame: () => ({ head: frame.head, target: frame.state.target, length: frame.length, runLen: frame.runLen, train: frame.train, decided: frame.decided, runFlat: frame.runFlat }),
+    frame: () => ({ head: frame.head, target: frame.state.target, length: frame.length, runLen: frame.runLen, train: frame.train, decided: frame.decided, runFlat: frame.runFlat, ripple: frame.ripple.live ? RIPPLE.amp * Math.exp(-RIPPLE.decay * frame.ripple.age) : 0 }),
     visibleDots: () => views.reduce((n, v) => n + v.countVisible(frame), 0),
   });
 
