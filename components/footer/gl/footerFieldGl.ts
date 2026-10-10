@@ -133,12 +133,13 @@ export function createFooterFieldGl(canvas: HTMLCanvasElement): FooterFieldGl | 
     const { rect } = frame.letters;
     const [w, h] = surfaceTargetSize(rect.w, rect.h, css.dpr);
     sizeTarget(gl, surfaceTarget, w, h);
-    // The surface's target must not sit on a unit while it is drawn into
-    // (its wake sampler reads unit 0, the composite left it on unit 1).
-    for (const unit of [gl.TEXTURE1, gl.TEXTURE0]) {
-      gl.activeTexture(unit);
-      gl.bindTexture(gl.TEXTURE_2D, null);
-    }
+    // The surface's target must not sit on a unit while it is drawn into (the composite left it on
+    // unit 1, sizing it may leave it on unit 0). Unit 0 holds the field's target, not attached here,
+    // only so the surface's wake sampler (never read: uWakeOn is 0) has a texture.
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, null);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, fieldTarget.tex);
     gl.bindFramebuffer(gl.FRAMEBUFFER, surfaceTarget.fb);
     const p = surface;
     p.use();
