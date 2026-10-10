@@ -1,7 +1,7 @@
 import { test, expect } from "./support/fixtures";
 import { watchScripts } from "./support/chunks";
 
-// The holding build (the default site mode, what production serves today):
+// The holding build (opt-in site mode, built with NEXT_PUBLIC_SITE_MODE=holding):
 // the holding page at /, none of the full site's chrome, no scene chunk, and
 // case pages sent home.
 
