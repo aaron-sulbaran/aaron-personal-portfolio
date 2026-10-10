@@ -158,11 +158,10 @@ export const siteContent = {
     name: "Aaron",
     progressLabel: "Loading the site",
   },
-  // The book under the Coil hero (#work): Work then Photos, text first. Keys
-  // match homeTiles keys where a card exists, so "seen" is shared with the
-  // cards. Work targets: "case" opens /work/[slug], "external" opens a live
-  // site in a new tab, "soon" renders the row without a link. Placeholder
-  // photos never get a row.
+  // The book under the Coil hero (#work): two columns of cards, Work then People
+  // (workOrder and peopleOrder through bookColumns), text first; a row's key is
+  // its card's, so "seen" is shared with the Coil. workRows and photoRows are the
+  // legacy rows, read by nothing on the page, left for the C5 sweep.
   book: {
     ariaLabel: "Work and people",
     workHeading: "Work",

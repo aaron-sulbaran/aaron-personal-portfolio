@@ -1,98 +1,39 @@
 "use client";
 
-import Link from "next/link";
 import type { FocusEvent, PointerEvent } from "react";
-import { photoBySrc, siteContent, bookWorkTarget, type BookPhotoRow, type BookWorkRow } from "@/lib/content";
+import { siteContent, type BookRowEntry } from "@/lib/content";
 import { useIsSeen } from "@/lib/home/seen";
 import { isKeyboardFocus } from "@/lib/input/modality";
 import { useHomeController } from "@/components/home/HomeController";
 
-export type BookEntry = { kind: "work"; row: BookWorkRow } | { kind: "photo"; row: BookPhotoRow };
-
-// One row of the book. Work rows are links (a case study, or a live site in a
-// new tab) and count as seen on click; "soon" rows are plain text until they
-// have somewhere to go. Photo rows are buttons that open the photo modal
-// through the home controller, which marks them seen at close and returns
-// focus here. A seen row keeps its ring, dims its title, and dims its meta to
-// 0.75 (see fx-chrome below). Hovering a list dims every other row's title (never the meta), and a
-// row under the mouse or keyboard focus glides its card to the front of the
-// visible helix (the hover-jump; the scene ignores it when the hero is off
-// screen, unwound, or absent).
-export function BookRow({ entry }: { entry: BookEntry }) {
+// One row of the book: a button that opens its card's modal through the home
+// controller (no flight; the controller marks it seen at close and returns focus
+// here). A seen row keeps its ring, dims its title, and dims its meta to 0.75.
+// Hovering a list dims every other row's title (never the meta), and a row under
+// the mouse or keyboard focus glides its card to the front of the visible helix.
+export function BookRow({ row }: { row: BookRowEntry }) {
   const controller = useHomeController();
-  const { key: rowKey } = entry.row;
-  // fx-input: the row hover signal. Keyboard focus only (a mouse click that
-  // focuses the row is not a keyboard focus).
   const focusProps = {
     onPointerEnter: (event: PointerEvent) => {
-      if (event.pointerType === "mouse" || event.pointerType === "pen") controller?.focusCard(rowKey, "pointer");
+      if (event.pointerType === "mouse" || event.pointerType === "pen") controller?.focusCard(row.key, "pointer");
     },
     onPointerLeave: () => controller?.focusCard(null, "pointer"),
     onFocus: (event: FocusEvent<HTMLElement>) => {
-      if (isKeyboardFocus(event.currentTarget)) controller?.focusCard(rowKey, "focus");
+      if (isKeyboardFocus(event.currentTarget)) controller?.focusCard(row.key, "focus");
     },
     onBlur: () => controller?.focusCard(null, "focus"),
   };
-  const seen = useIsSeen(entry.row.key);
-  const { seenLabel, externalLabel } = siteContent.book;
-  const content = (
-    <>
+  const seen = useIsSeen(row.key);
+  return (
+    <button type="button" className={ROW_CLASS} data-card={row.key} aria-haspopup="dialog" {...focusProps} onClick={(event) => controller?.openCard(row.key, event.currentTarget)}>
       <span className="flex max-w-full items-center">
-        <span className={seen ? `${TITLE_CLASS} ${SEEN_TITLE_CLASS}` : TITLE_CLASS}>{entry.row.title}</span>
+        <span className={seen ? `${TITLE_CLASS} ${SEEN_TITLE_CLASS}` : TITLE_CLASS}>{row.title}</span>
         {seen && <span aria-hidden="true" className={SEEN_RING_CLASS} />}
       </span>
-      <span className={seen ? `${META_CLASS} ${SEEN_META_CLASS}` : META_CLASS}>{entry.row.meta}</span>
-      {seen && <span className="sr-only">, {seenLabel}</span>}
-    </>
+      <span className={seen ? `${META_CLASS} ${SEEN_META_CLASS}` : META_CLASS}>{row.meta}</span>
+      {seen && <span className="sr-only">, {siteContent.book.seenLabel}</span>}
+    </button>
   );
-
-  if (entry.kind === "photo") {
-    const photo = photoBySrc.get(entry.row.src);
-    const { key } = entry.row;
-    return (
-      <button
-        type="button"
-        className={ROW_CLASS}
-        {...focusProps}
-        onClick={(event) => {
-          if (photo) controller?.openPhoto(photo, key, event.currentTarget);
-        }}
-      >
-        {content}
-      </button>
-    );
-  }
-
-  const { row } = entry;
-  const target = bookWorkTarget(row);
-  if (target.kind === "case") {
-    return (
-      <Link
-        href={`/work/${target.slug}`}
-        className={ROW_CLASS}
-        {...focusProps}
-        onClick={() => controller?.markVisited(row.key)}
-      >
-        {content}
-      </Link>
-    );
-  }
-  if (target.kind === "external") {
-    return (
-      <a
-        href={target.href}
-        target="_blank"
-        rel="noopener noreferrer"
-        className={ROW_CLASS}
-        {...focusProps}
-        onClick={() => controller?.markVisited(row.key)}
-      >
-        {content}
-        <span className="sr-only">, {externalLabel}</span>
-      </a>
-    );
-  }
-  return <div className={`${ROW_BASE} cursor-default`}>{content}</div>;
 }
 
 // A wrapping flex row: the meta drops under its title only when the two do
