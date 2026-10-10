@@ -8,12 +8,11 @@ import { siteContent } from "@/lib/content";
 // row keeps that row's height (its padding and its content's 168px, 100px
 // from md), so the field rises and fades where Aaron saw it. Stays a Server
 // Component: the lines and the word's text alternative render here, and
-// FooterStage is the client part (the reserved band now; the letters,
-// the egg and the field in Tasks 8 and 9).
+// FooterStage is the client part (the field, the letters, the egg).
 export function Footer() {
-  const { wordmark, tagline, copyright } = siteContent.footer;
+  const { wordmark, dropPeriod, tagline, copyright } = siteContent.footer;
   return (
-    <FooterStage text={wordmark}>
+    <FooterStage text={wordmark} eggLabel={dropPeriod}>
       <div data-footer-lines className="relative z-10 flex min-h-[224px] flex-col justify-end gap-1 px-6 pt-14 md:min-h-[180px] md:items-end md:px-10 md:pt-20">
         <p className="font-label text-label-sm text-foreground">{tagline(lastUpdatedMonth())}</p>
         <p className="font-label text-label-sm text-foreground">{copyright}</p>
