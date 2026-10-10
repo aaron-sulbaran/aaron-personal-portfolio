@@ -2,6 +2,7 @@ import { register } from "./content/register";
 import { bookPeopleOrder, bookWorkOrder, cards, strandOrder } from "./content/cards";
 import type { SoundtrackTrack, WhoIAmBlock } from "./content/types";
 import { liveTracks } from "./content/tracks";
+import { bookRow, type BookColumn } from "./content/strand";
 
 // One link on the holding page. `icon` picks the brand mark in
 // components/BrandIcons.tsx. `href: null` keeps the entry defined but hides it
@@ -840,6 +841,14 @@ export type {
   InlineRegister, InspiredBy, LogoRef, Mentor, MentorsList, ModalPhoto, PhotoCrop, PhotoRef, PopEntry, SoundtrackTrack, TimelineEntry,
   TipEntry, TrackLicenseKind, WhoIAmBlock,
 } from "./content/types";
+export { bookRow, strandCardByKey, strandCardOf, strandCards } from "./content/strand";
+export type { BookColumn, BookRowEntry, StrandCard, StrandFace } from "./content/strand";
+
+// The book's two columns of cards (components/book/Book.tsx and the unwound list).
+export const bookColumns: readonly BookColumn[] = [
+  { heading: siteContent.book.workHeading, rows: siteContent.book.workOrder.map(bookRow) },
+  { heading: siteContent.book.peopleHeading, rows: siteContent.book.peopleOrder.map(bookRow) },
+];
 export { tipText } from "./content/tracks";
 
 // O(1) lookups for the card and row resolvers (HomeController, BookRow),
