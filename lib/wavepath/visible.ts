@@ -1,3 +1,4 @@
+import { dotReach } from "./columns";
 import { sampleSpine, type SpineSamples } from "./geometry";
 import { HEAD_PARAMS, headTarget, runLength, tailStart, type HeadParams } from "./head";
 import { resolveSpine, type Anchors, type SpinePoint } from "./spine";
@@ -23,7 +24,6 @@ export const visibleOptions = (width: number, viewport: number): CheckOptions =>
 });
 
 const VISIBLE_STEP = 50; // px of scroll between the check's samples
-const DOT_REACH = 0.3; // of the amplitude: how far a column's dots show past its spine point at rest
 
 export interface VisibleReport {
   worstGapPx: number; // the longest scroll with no drawn dot on screen (0: always visible)
@@ -56,9 +56,9 @@ export function visibility(samples: SpineSamples, anchors: Anchors, opts: CheckO
   let worstAt = 0;
   let runStart = -1;
   let positions = 0;
-  // A column's dots reach about this far past its spine point (its wave and
-  // a row or two of fuzz at rest), so a spine just past the edge still shows.
-  const peek = DOT_REACH * opts.amplitude;
+  // The bound is some drawn dot on screen, so a spine point just past an edge
+  // still shows while its column's dots reach back (shape swing and rows).
+  const peek = dotReach(opts.amplitude);
   for (let scroll = 0; ; scroll = Math.min(maxScroll, scroll + VISIBLE_STEP)) {
     positions++;
     const { head, tail } = frameAt(samples, anchors, opts, scroll);

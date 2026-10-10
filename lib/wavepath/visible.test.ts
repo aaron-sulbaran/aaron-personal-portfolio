@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import pages from "./fixtures/pages.json";
-import { SAMPLE_STEP } from "./constants";
+import { SAMPLE_STEP, TRAIN_PX } from "./constants";
 import { sampleSpine } from "./geometry";
 import { SIGNATURE_ON, resolveSpine, type Anchors, type SpinePoint } from "./spine";
 import { checkLine, chooseTrain, visibleOptions } from "./visible";
@@ -9,8 +9,20 @@ const sizes = Object.keys(pages) as (keyof typeof pages)[];
 const optsFor = (size: keyof typeof pages) => visibleOptions(pages[size].anchors.width, pages[size].viewport);
 
 describe("always visible, the shipped line", () => {
-  it.each(sizes)("keeps some wave on screen at every scroll position at %s", (size) => {
-    expect(checkLine(SIGNATURE_ON, pages[size].anchors as Anchors, optsFor(size)).visible.worstGapPx).toBe(0);
+  // The shipped guarantee: with the train chooseTrain picks (the train, or the whole line
+  // drawn when the train would leave a gap), some drawn dot is on screen at every scroll position.
+  const chosenTrain = (size: keyof typeof pages) => {
+    const anchors = pages[size].anchors as Anchors;
+    const opts = optsFor(size);
+    const samples = sampleSpine(resolveSpine({ points: SIGNATURE_ON }, anchors, { bandRun: opts.bandRun, viewport: opts.viewport }), SAMPLE_STEP);
+    return chooseTrain(samples, anchors, opts);
+  };
+  it.each(sizes)("keeps some drawn dot on screen at every scroll position with the train chooseTrain picks at %s", (size) => {
+    const train = chosenTrain(size);
+    expect(checkLine(SIGNATURE_ON, pages[size].anchors as Anchors, { ...optsFor(size), train }).visible.worstGapPx).toBe(0);
+  });
+  it("picks these trains on the measured page", () => {
+    expect(Object.fromEntries(sizes.map((size) => [size, chosenTrain(size)]))).toEqual({ "1440x900": TRAIN_PX, "1024x768": TRAIN_PX, "390x844": TRAIN_PX });
   });
   it("reaches its end at max scroll and ends past an edge at 1440", () => {
     const { end } = checkLine(SIGNATURE_ON, pages["1440x900"].anchors as Anchors, optsFor("1440x900"));
