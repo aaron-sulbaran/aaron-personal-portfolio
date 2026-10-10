@@ -62,6 +62,23 @@ describe("the exported logos", () => {
   });
 });
 
+describe("the public tree after the placeholder sweep", () => {
+  it("keeps only the card and pop folders and the holding deck's graduation photo in public/photos", () => {
+    expect(listed("photos")).toEqual(["cards", "pops", "uncs-grad.jpeg"]);
+  });
+  it("keeps one folder per card in public/work/logos plus the eleven press-kit files", () => {
+    const pressKit = [
+      "anthropic-symbol.svg", "anthropic-symbol-dark.svg", "anthropic-wordmark.svg", "anthropic-wordmark-dark.svg",
+      "claude-mark.svg", "claude-wordmark.svg", "claude-wordmark-dark.svg",
+      "minmax-lockup.svg", "minmax-lockup-dark.svg", "minmax-mark.svg", "minmax-mark-dark.svg",
+    ];
+    expect(listed("work/logos")).toEqual([...Object.keys(LOGOS), ...pressKit].sort());
+  });
+  it("carries no metadata in the graduation photo", () => {
+    expect(jpegHasMetadata(join(PUBLIC, "photos/uncs-grad.jpeg"))).toBe(false);
+  });
+});
+
 describe("the export manifest", () => {
   it("stays out of git: ignored and untracked", () => {
     expect(execFileSync("git", ["ls-files", "--", MANIFEST], { encoding: "utf8" })).toBe("");
