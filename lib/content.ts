@@ -2,6 +2,7 @@ import { register } from "./content/register";
 import { bookPeopleOrder, bookWorkOrder, cards, strandOrder } from "./content/cards";
 import type { SoundtrackTrack, WhoIAmBlock } from "./content/types";
 import { liveTracks } from "./content/tracks";
+import { bookRow, type BookColumn } from "./content/strand";
 
 // One link on the holding page. `icon` picks the brand mark in
 // components/BrandIcons.tsx. `href: null` keeps the entry defined but hides it
@@ -92,8 +93,24 @@ export const siteContent = {
     // touch screen gets the backdrop.
     closeHintKeyboard: "Press Esc to close",
     closeHintTouch: "Tap outside to close",
-    // The work modal's accessible name: "<title> preview".
-    workPreviewSuffix: "preview",
+    // The card modal's gallery (components/card): the pager on a phone and the photos
+    // that take turns, the gallery lab's words (2026-10-09).
+    gallery: {
+      pagerLabel: (count: number) => `Photos and their stories, ${count}`,
+      pageLabel: (page: number, count: number) => `${page} of ${count}`,
+      previousPage: "Previous page",
+      nextPage: "Next page",
+      pageNumber: (page: number, count: number) => `Page ${page} of ${count}`,
+      rotatorLabel: (count: number) => `Photos taking turns, ${count}`,
+      photoOf: (photo: number, count: number) => `Photo ${photo} of ${count}`,
+      announce: (photo: number, count: number, caption: string) => `Photo ${photo} of ${count}${caption ? `: ${caption}` : ""}`,
+      pausePhotos: "Pause the photos",
+      playPhotos: "Play the photos",
+      groupStep: (photo: number, count: number) => `Photo ${photo} of ${count}. Show the next photo`,
+      // aria-roledescription: a group of photos taking turns, and one page of the pager.
+      roleCarousel: "carousel",
+      roleSlide: "slide",
+    },
   },
   // The Coil hero. The heading is the server-rendered h1; greeting and name
   // are the two parts the scene draws, together, in the canvas.
@@ -103,7 +120,7 @@ export const siteContent = {
     name: "Aaron",
     coilControl: "Coil",
     // The Coil and Band toggle: the group's name and its two halves
-    // (placeholders; words and no glyphs per Aaron's pick).
+    // (approved copy; words and no glyphs per Aaron's pick).
     shapeToggle: { ariaLabel: "Hero layout", coil: "Coil", band: "Band" },
     // First visit only, decorative (aria-hidden): the cursor's pill over a
     // card until the first card opens, the one line after that first card
@@ -124,7 +141,7 @@ export const siteContent = {
       greeting: "Greeting",
     },
     // The still page's notice (no scene can run): why the page is still, by
-    // cause, and its dismiss. Placeholders; Aaron rewrites them.
+    // cause, and its dismiss. Approved copy.
     still: {
       noWebgl: "I can see your browser has graphics acceleration off, so you'll miss the best part of this page.",
       unavailable: "Your browser couldn't start the moving scene, so you'll miss the best part of this page.",
@@ -139,55 +156,21 @@ export const siteContent = {
     name: "Aaron",
     progressLabel: "Loading the site",
   },
-  // The book under the Coil hero (#work): Work then Photos, text first. Keys
-  // match homeTiles keys where a card exists, so "seen" is shared with the
-  // cards. Work targets: "case" opens /work/[slug], "external" opens a live
-  // site in a new tab, "soon" renders the row without a link. Placeholder
-  // photos never get a row.
+  // The book under the Coil hero (#work): two columns of cards, Work then People
+  // (workOrder and peopleOrder through bookColumns), text first; a row's key is
+  // its card's, so "seen" is shared with the Coil.
   book: {
-    ariaLabel: "Work and photos",
+    ariaLabel: "Work and people",
     workHeading: "Work",
-    photosHeading: "Photos",
-    // The cards' book (C3 renders it): two columns of card keys, every row a modal.
     peopleHeading: "People",
     workOrder: bookWorkOrder,
     peopleOrder: bookPeopleOrder,
     seenLabel: "opened",
     externalLabel: "opens in a new tab",
-    workRows: [
-      // TODO(Aaron): Talos copy, and whether it gets a case page or stays a coming-soon row.
-      { key: "talos", title: "Talos", meta: "Open source, coming soon", target: { kind: "soon" as const } },
-      // TODO(Aaron): min/Max's live URL; the row becomes { kind: "external", href } once it lands.
-      { key: "min-max", title: "min/Max", meta: "Live, link soon", target: { kind: "soon" as const } },
-      { key: "capital-one-pm", title: "Capital One", meta: "Product manager intern, 2025", target: { kind: "case" as const, slug: "capital-one-pm" } },
-      { key: "ieee-president", title: "IEEE UT Austin", meta: "President, 2025", target: { kind: "case" as const, slug: "ieee-president" } },
-      { key: "claude-ambassador", title: "Anthropic ambassador", meta: "Claude ambassador, 2025", target: { kind: "case" as const, slug: "claude-ambassador" } },
-      { key: "hackathon-builds", title: "Hackathon builds", meta: "Weekend builds, ongoing", target: { kind: "case" as const, slug: "hackathon-builds" } },
-      { key: "aaronsulbaran-site", title: "This site", meta: "Built in public, 2026", target: { kind: "case" as const, slug: "aaronsulbaran-site" } },
-    ],
-    photoRows: [
-      { key: "hsf-speaking", title: "Public speaking", meta: "HSF Scholars", src: "/photos/hsf-speaking.jpeg" },
-      { key: "drum-major", title: "Drum major", meta: "Leading the band", src: "/photos/drum-major.jpeg" },
-      { key: "yosemite-hiking", title: "Yosemite", meta: "Hiking", src: "/photos/yosemite-hiking.jpeg" },
-      { key: "capital-one", title: "Capital One summer", meta: "Internship", src: "/photos/capital-one.jpeg" },
-      { key: "uncs-grad", title: "Graduation", meta: "Family", src: "/photos/uncs-grad.jpeg" },
-      { key: "claude-hackathon", title: "Claude hackathon", meta: "Austin", src: "/photos/claude-hackathon.jpeg" },
-      { key: "misuki", title: "Venezuelan roots", meta: "Maracaibo", src: "/photos/misuki.jpeg" },
-      { key: "traveling", title: "Traveling", meta: "On the road", src: "/photos/traveling.jpeg" },
-      { key: "mt-fuji", title: "Mt. Fuji", meta: "Japan", src: "/photos/mt-fuji.jpeg" },
-    ],
   },
-  // The Coil's strand: real cards only (design review item 9), interleaved by
-  // the pattern (P a photo, W a work card, in the orders below). Placeholders
-  // never enter the coil; they return here as real photos arrive. Keys are
-  // homeTiles keys; see strandTiles below.
+  // The fourteen cards in Coil order, lead card first.
   strand: {
-    // The fourteen cards in Coil order, lead card first. strandTiles still reads
-    // the legacy pattern and lists below until C3 swaps the scene.
     order: strandOrder,
-    pattern: "PWPPWPPWPWPPWP",
-    photos: ["hsf-speaking", "drum-major", "yosemite-hiking", "capital-one", "uncs-grad", "claude-hackathon", "misuki", "traveling", "mt-fuji"],
-    work: ["capital-one-pm", "claude-ambassador", "ieee-president", "aaronsulbaran-site", "hackathon-builds"],
   },
   notFound: {
     title: "Nothing here.",
@@ -235,7 +218,7 @@ export const siteContent = {
   // slot renders nothing. title is the strip's big heading and groupLabel the
   // line under it, which also names the GitHub group; title is the wording
   // Aaron suggested on 2026-10-09 ("Proof of Work or something else"), lowercase
-  // to match "who I am" and "wanna chat?", and not yet his final pick.
+  // to match "who I am" and "wanna chat?"; approved.
   metrics: {
     title: "proof of work",
     groupLabel: "My GitHub contributions",
@@ -269,17 +252,6 @@ export const siteContent = {
       label: (total: string, from: string, to: string, skyline: boolean) =>
         `${total} contributions from ${from} to ${to}, shown as a ${skyline ? "3D skyline" : "heat map"}. Use the arrow keys to read individual days.`,
     },
-  },
-  work: {
-    label: "Work",
-    heading: "Things I've built and shipped.",
-    lede: "Internships, projects, and communities I've poured real time into. More case studies rolling in over the next few weeks.",
-    cta: "See more",
-    placeholderBody: "Case study in progress. Ping me on LinkedIn if you want to hear about it sooner.",
-    placeholderCta: "Ping me on LinkedIn",
-    indexHeading: "Work.",
-    indexLede: "Every project, internship, and community I'm proud of. Click in for the story.",
-    backLabel: "Work",
   },
   // Connect (docs/content/connect-footer-band.md, approved 2026-10-08): the
   // body carries the calendar link, the matcha pop and the killer-drones
@@ -590,214 +562,13 @@ export const siteContent = {
     creditLicenseUrl: "https://creativecommons.org/licenses/by/4.0/",
     tracks: liveTracks,
   },
-  // Work items. `bodySections: []` means the detail page renders a quiet
-  // "case study in progress" block. Populate with { kind: 'paragraph', text }
-  // entries (more kinds added later). Keep `slug` URL-safe and unique.
-  workItems: [
-    {
-      slug: "capital-one-pm",
-      title: "Capital One",
-      role: "Product manager intern",
-      year: "2025",
-      logo: "/work/logos/capital-one.svg",
-      teaser: "Learned how real PM decisions get made when you're accountable to a team, not a deck.",
-      summary: "Product manager intern at Capital One, working on an internal tool used by analysts across the business.",
-      bodySections: [],
-      links: [],
-    },
-    {
-      slug: "capital-one-ba",
-      title: "Capital One",
-      role: "Business analyst intern",
-      year: "2024",
-      logo: "/work/logos/capital-one.svg",
-      teaser: "First real taste of how product and business decisions actually get made inside a big bank.",
-      summary: "Business analyst intern on a customer-facing product team. Shipped analysis that fed directly into roadmap decisions.",
-      bodySections: [],
-      links: [],
-    },
-    {
-      slug: "claude-ambassador",
-      title: "Anthropic",
-      role: "Claude ambassador at UT Austin",
-      year: "2025",
-      logo: "/work/logos/anthropic.svg",
-      teaser: "Building an AI community on campus. Co-hosted the first Claude hackathon in Austin.",
-      summary: "Claude Ambassador at UT Austin. Running workshops, hackathons, and study groups focused on AI literacy for students.",
-      bodySections: [],
-      links: [],
-    },
-    {
-      slug: "ieee-president",
-      title: "IEEE UT Austin",
-      role: "President",
-      year: "2025",
-      logo: "/work/logos/ieee.svg",
-      teaser: "Ran the chapter at scale. More operations lessons than any class I took.",
-      summary: "President of IEEE at UT Austin. Led event planning, sponsor relationships, and a growing exec team across ECE.",
-      bodySections: [],
-      links: [],
-    },
-    {
-      slug: "aaronsulbaran-site",
-      title: "aaronsulbaran.com",
-      role: "Built in public",
-      year: "2026",
-      logo: "/work/logos/site.svg",
-      teaser: "This site. A Phase 1 personal statement that grows with me.",
-      summary: "Next.js 16, Tailwind, Framer Motion. Cursor-driven tile ring with shared-element flight modals, a work surface, and a living-document voice.",
-      bodySections: [],
-      links: [
-        { label: "GitHub", href: "https://github.com/aaron-sulbaran" },
-      ],
-    },
-    {
-      slug: "hackathon-builds",
-      title: "Hackathon builds",
-      role: "Personal projects",
-      year: "Ongoing",
-      logo: "/work/logos/hackathon.svg",
-      teaser: "A running set of weekend builds. Rough, fast, and shipped.",
-      summary: "Hackathon projects across AI, hardware, and 3D printing. Updated every few months.",
-      bodySections: [],
-      links: [],
-    },
-  ],
-  // 14 photos on desktop, 6 on mobile. Each caption is what shows in the
-  // click-to-expand modal; edit freely, first person, no em dashes.
-  // width and height are the source file's pixels (checked by
-  // content.test.ts); the modal sizes its image request for the cover crop.
+  // The holding page's deck (components/HoldingDeck.tsx) draws these five; nothing else reads them.
   photos: [
-    {
-      src: "/photos/hsf-speaking.jpeg",
-      width: 1084,
-      height: 724,
-      alt: "Me speaking on stage at HSF Scholars.",
-      caption: "Speaking at the HSF Scholars summit. One of the first times I realized how much I love sharing what I'm learning with people earlier in the journey.",
-    },
-    {
-      src: "/photos/drum-major.jpeg",
-      width: 886,
-      height: 886,
-      alt: "Me in my drum major uniform during a performance.",
-      caption: "Drum major days. Leading a band is mostly about reading the room, staying calm when things break, and making sure everyone around you feels seen.",
-    },
-    {
-      src: "/photos/capital-one.jpeg",
-      width: 768,
-      height: 1024,
-      alt: "Me at Capital One during my internship.",
-      caption: "Capital One, product manager intern. Learned how real PM decisions get made when you're accountable to a team, not just a deck.",
-    },
-    {
-      src: "/photos/yosemite-hiking.jpeg",
-      width: 666,
-      height: 1182,
-      alt: "Me hiking in Yosemite.",
-      caption: "Yosemite. Long hikes with good people are where I do my best thinking.",
-    },
-    {
-      src: "/photos/uncs-grad.jpeg",
-      width: 627,
-      height: 836,
-      alt: "Me at a UNC-related graduation.",
-      caption: "Family graduation moment. My roots keep me grounded.",
-    },
-    {
-      src: "/photos/claude-hackathon.jpeg",
-      width: 768,
-      height: 1024,
-      alt: "Me with my co-ambassadors at the Claude hackathon.",
-      caption: "Me and my co-ambassadors Rohan and Jessica at the first-ever Claude hackathon in Austin. Watching students ship real AI tools in one weekend was the kind of thing that made me want to stay close to this community.",
-    },
-    {
-      src: "/photos/misuki.jpeg",
-      width: 722,
-      height: 1088,
-      alt: "Me with family from Maracaibo.",
-      caption: "Venezuelan roots. Born in Maracaibo, raised with arepas and a lot of loud love. Carrying that into everything I build.",
-    },
-    // TODO: Replace placeholder with an IEEE UT Austin meeting / president photo
-    {
-      src: "/photos/photo-08.svg",
-      width: 480,
-      height: 640,
-      alt: "Placeholder for an IEEE UT Austin leadership moment.",
-      caption: "TODO caption: IEEE UT Austin as president. Running a student org at scale taught me more about operations than any class.",
-    },
-    {
-      src: "/photos/traveling.jpeg",
-      width: 768,
-      height: 1024,
-      alt: "Me traveling.",
-      caption: "Traveling. Being away from home is one of the fastest ways I learn what I actually care about.",
-    },
-    // TODO: Replace placeholder with an Austin startup community / meetup photo
-    {
-      src: "/photos/photo-10.svg",
-      width: 480,
-      height: 640,
-      alt: "Placeholder for an Austin startup community moment.",
-      caption: "TODO caption: Austin startup community. Builders, late coffees, conversations that go for hours.",
-    },
-    // TODO: Replace placeholder with a 3D-printing / making photo
-    {
-      src: "/photos/photo-11.svg",
-      width: 480,
-      height: 640,
-      alt: "Placeholder for a 3D-printed project.",
-      caption: "TODO caption: 3D-printed fixes. If I can print the solution, I will.",
-    },
-    {
-      src: "/photos/mt-fuji.jpeg",
-      width: 768,
-      height: 1024,
-      alt: "Me with Mt. Fuji in the background.",
-      caption: "Mt. Fuji. Standing in front of it reminded me how small our day-to-day loops can feel once you've looked at something that big.",
-    },
-    // TODO: Replace placeholder with a friends / community photo
-    {
-      src: "/photos/photo-13.svg",
-      width: 480,
-      height: 640,
-      alt: "Placeholder for a friends and community photo.",
-      caption: "TODO caption: The people who make building feel less lonely.",
-    },
-    // TODO: Replace placeholder with a reflective / portrait photo
-    {
-      src: "/photos/photo-14.svg",
-      width: 480,
-      height: 640,
-      alt: "Placeholder for a reflective portrait.",
-      caption: "TODO caption: Quiet moment. Keeping it close to the chest.",
-    },
-  ],
-  // Every card the home can show, by key: photo cards reference the `photos`
-  // array by src, work cards the `workItems` array by slug, so a card opens
-  // the right modal. The Coil's strand (below) picks its cards from here by
-  // key; placeholder SVG photos stay listed but never enter the strand or the
-  // book.
-  homeTiles: [
-    { kind: "photo" as const, key: "hsf-speaking", src: "/photos/hsf-speaking.jpeg" },
-    { kind: "work"  as const, key: "capital-one-pm", slug: "capital-one-pm" },
-    { kind: "photo" as const, key: "drum-major", src: "/photos/drum-major.jpeg" },
-    { kind: "photo" as const, key: "yosemite-hiking", src: "/photos/yosemite-hiking.jpeg" },
-    { kind: "work"  as const, key: "claude-ambassador", slug: "claude-ambassador" },
-    { kind: "photo" as const, key: "capital-one", src: "/photos/capital-one.jpeg" },
-    { kind: "photo" as const, key: "uncs-grad", src: "/photos/uncs-grad.jpeg" },
-    { kind: "work"  as const, key: "ieee-president", slug: "ieee-president" },
-    { kind: "photo" as const, key: "claude-hackathon", src: "/photos/claude-hackathon.jpeg" },
-    { kind: "photo" as const, key: "misuki", src: "/photos/misuki.jpeg" },
-    { kind: "work"  as const, key: "aaronsulbaran-site", slug: "aaronsulbaran-site" },
-    { kind: "photo" as const, key: "photo-08", src: "/photos/photo-08.svg" }, // PLACEHOLDER
-    { kind: "photo" as const, key: "traveling", src: "/photos/traveling.jpeg" },
-    { kind: "work"  as const, key: "capital-one-ba", slug: "capital-one-ba" },
-    { kind: "photo" as const, key: "photo-10", src: "/photos/photo-10.svg" }, // PLACEHOLDER
-    { kind: "photo" as const, key: "photo-11", src: "/photos/photo-11.svg" }, // PLACEHOLDER
-    { kind: "work"  as const, key: "hackathon-builds", slug: "hackathon-builds" },
-    { kind: "photo" as const, key: "mt-fuji", src: "/photos/mt-fuji.jpeg" },
-    { kind: "photo" as const, key: "photo-13", src: "/photos/photo-13.svg" }, // PLACEHOLDER
-    { kind: "photo" as const, key: "photo-14", src: "/photos/photo-14.svg" }, // PLACEHOLDER
+    { src: "/photos/cards/mentorship-picture.jpg", width: 1200, height: 1600 },
+    { src: "/photos/cards/band-picture.jpg", width: 1200, height: 1600 },
+    { src: "/photos/cards/capital-one-1-2024.jpg", width: 1200, height: 1600 },
+    { src: "/photos/cards/travel-picture.jpg", width: 1200, height: 1600 },
+    { src: "/photos/uncs-grad.jpeg", width: 627, height: 836 },
   ],
   // The mark's card (components/mark/MarkCard.tsx), opened by holding the
   // top-left mark (docs/content/mark-card.md, approved 2026-10-08). The subtitle
@@ -816,65 +587,19 @@ export const siteContent = {
   },
 } as const;
 
-export type Photo = (typeof siteContent.photos)[number];
-export type WorkItem = (typeof siteContent.workItems)[number];
 export type MenuItem = (typeof siteContent.menu.items)[number];
 export type Track = SoundtrackTrack;
-export type HomeTile = (typeof siteContent.homeTiles)[number];
 export type {
   CardContent, CardGroup, CardKey, CardLink, CardModal, CardModalKind, CardPicture, Cards, CardVisual, DefinitionEntry, ImageRef,
   InlineRegister, InspiredBy, LogoRef, Mentor, MentorsList, ModalPhoto, PhotoCrop, PhotoRef, PopEntry, SoundtrackTrack, TimelineEntry,
   TipEntry, TrackLicenseKind, WhoIAmBlock,
 } from "./content/types";
+export { bookRow, strandCardByKey, strandCardOf, strandCards } from "./content/strand";
+export type { BookColumn, BookRowEntry, StrandCard, StrandFace } from "./content/strand";
+
+// The book's two columns of cards (components/book/Book.tsx and the unwound list).
+export const bookColumns: readonly BookColumn[] = [
+  { heading: siteContent.book.workHeading, rows: siteContent.book.workOrder.map(bookRow) },
+  { heading: siteContent.book.peopleHeading, rows: siteContent.book.peopleOrder.map(bookRow) },
+];
 export { tipText } from "./content/tracks";
-
-// O(1) lookups for the card and row resolvers (HomeController, BookRow),
-// built once at module load so per-render resolution never scans the arrays.
-export const photoBySrc: ReadonlyMap<string, Photo> = new Map(
-  siteContent.photos.map((p) => [p.src, p]),
-);
-export const workItemBySlug: ReadonlyMap<WorkItem["slug"], WorkItem> = new Map(
-  siteContent.workItems.map((w) => [w.slug, w]),
-);
-
-export type BookWorkRow = (typeof siteContent.book.workRows)[number];
-export type BookPhotoRow = (typeof siteContent.book.photoRows)[number];
-// Every target a work row may have; the literal rows above use a subset.
-export type BookWorkTarget = { kind: "case"; slug: string } | { kind: "external"; href: string } | { kind: "soon" };
-export function bookWorkTarget(row: BookWorkRow): BookWorkTarget {
-  return row.target;
-}
-
-// Placeholder photos are clearly marked SVGs in public/photos; they never
-// appear in the book or the strand.
-export function isPlaceholderPhoto(src: string) {
-  return src.endsWith(".svg");
-}
-
-export const homeTileByKey: ReadonlyMap<string, HomeTile> = new Map(
-  siteContent.homeTiles.map((tile) => [tile.key, tile]),
-);
-
-// The Coil's strand as tiles, in order: the pattern filled from the photo and
-// work key lists. Unknown keys and placeholders are dropped (the content test
-// asserts none are), so the scene only ever sees real cards.
-export const strandTiles: readonly HomeTile[] = (() => {
-  const { pattern, photos, work } = siteContent.strand;
-  let photo = 0;
-  let workIndex = 0;
-  const tiles: HomeTile[] = [];
-  for (const slot of pattern) {
-    const key = slot === "P" ? photos[photo++] : work[workIndex++];
-    const tile = key ? homeTileByKey.get(key) : undefined;
-    if (!tile) continue;
-    if (tile.kind === "photo" && isPlaceholderPhoto(tile.src)) continue;
-    tiles.push(tile);
-  }
-  return tiles;
-})();
-
-// Body section shapes for work detail pages. When a workItem populates its
-// bodySections array, each element must match one of these. More kinds can be
-// added over time (image, quote, gallery, etc.).
-export type WorkBodySection =
-  | { kind: "paragraph"; text: string };

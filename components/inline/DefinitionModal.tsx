@@ -3,14 +3,14 @@ import { X } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useId, useRef } from "react";
 import { Portal } from "@/components/Portal";
-import { useCloseHint } from "@/components/PhotoModal";
+import { useCloseHint } from "@/components/modal/useCloseHint";
 import { siteContent } from "@/lib/content";
 import type { DefinitionEntry } from "@/lib/content/types";
 import { modalBackdropBlurVariants, modalBackdropTintVariants, useBodyScrollLock, useEscapeKey, useFocusTrap } from "@/lib/modal";
 import { InlineCopy } from "./InlineCopy";
 const RISE = { hidden: { opacity: 0, y: 16, scale: 0.97 }, visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.28, ease: "easeOut" as const } }, exit: { opacity: 0, y: 12, scale: 0.98, transition: { duration: 0.2, ease: "easeIn" as const } } };
 const FADE = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { duration: 0.18 } }, exit: { opacity: 0, transition: { duration: 0.12 } } };
-// The house text modal for a definition link (WorkModal's shell: Portal, the
+// The house text modal for a definition link (the card modal's shell: Portal, the
 // lib/modal hooks, the shared backdrop). No flight and no layoutId bloom:
 // the word sits in a masked SplitText line. Reduced motion fades.
 export function DefinitionModal({ entry, onClose }: { entry: DefinitionEntry | null; onClose: () => void }) {

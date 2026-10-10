@@ -1,5 +1,11 @@
+import { cards } from "./cards";
 import type { InlineKind } from "./links";
 import type { InlineRegister, TipEntry } from "./types";
+
+// The jobs timeline's insider tips (cards.jobs.timeline[i].tip), one per entry, so each
+// employer's name in the modal is an ordinary inline tip (components/card/TimelineEntry).
+export const jobTipKey = (entry: number): string => `job-${entry}`;
+const jobTips: Record<string, TipEntry> = Object.fromEntries(cards.jobs.timeline.map((entry, i) => [jobTipKey(i), { text: entry.tip }]));
 
 // Every inline link the copy may point at (docs/content/tooltips.md, approved
 // 2026-10-08). Pop files are scripts/export-photos.mjs's, at their written pixels.
@@ -23,6 +29,7 @@ export const register: InlineRegister = {
     "ieee-ao": { text: "External Activities and Events Assistant Officer" },
     "this-site-playground": { text: "this site is my design playground" },
     "misuki-suk": { text: "shoutout suk and her S2000" },
+    ...jobTips,
   },
   pop: {
     "leadership-award": { file: { src: "/photos/pops/leadership-award.jpg", width: 600, height: 800 }, alt: "Me holding my Cockrell Student Leadership Award certificate", caption: "Getting the Cockrell School undergraduate leadership award.", crop: null },

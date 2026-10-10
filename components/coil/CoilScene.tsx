@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, type RefObject } from "react";
-import { strandTiles } from "@/lib/content";
+import { strandCards } from "@/lib/content";
 import { budgetFor } from "@/lib/coil/drivers";
 import { flightProbe } from "@/lib/coil/flightProbe";
 import { readCoilTheme, watchTheme } from "@/lib/coil/theme";
@@ -104,7 +104,7 @@ export default function CoilScene(props: CoilSceneProps) {
 function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject<CoilSceneProps>): CoilRuntime {
   const flags = readDebugFlags();
   const renderer = createRenderer(canvas);
-  const tiles = strandTiles;
+  const tiles = strandCards;
   // The state more than one part of the scene reads (scene/state.ts).
   const st = createSceneState(readCoilTheme(), budgetFor(live.current.input), flags.stillOffset ?? 0);
   const debug = createDebugStats(flags, debugReads(st));

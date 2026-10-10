@@ -19,7 +19,7 @@ import {
 // (NoteIcon). It mirrors lib/soundtrack, the same store the playback pill and the waveform
 // read, so the three can never disagree.
 //
-// The pill is layout-mounted, so on a case page (where neither ListenInvite
+// The pill is layout-mounted, so on any route but the home page, such as the 404 (where neither ListenInvite
 // nor PlaybackPill mounts) this is the only reader: it seeds the stored
 // choice itself, and a returning visitor who opted in sees the crossed note,
 // one tap from playing. Seeding is idempotent, so the home page's own calls

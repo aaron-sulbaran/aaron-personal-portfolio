@@ -49,6 +49,11 @@
   /* Scalars: rear-card brightness drop and sheen strength. */
   --card-recede: 0.3;
   --card-sheen: 0.1;
+  /* C3: Talos's anvil tile (its kit's ground, the same in both themes), and the
+     light ground under a logo with no dark file in the dark theme and in the
+     jobs card's circles. */
+  --card-anvil: #12141F;
+  --card-logo-ground: #FAFAF7;
   /* "Aaron" behind the coil: a lit shadergradient surface seen through the
      letters at --name-ink (the scene mixes at ink * 2.2). The surface's stops:
      1 to 2 across it, 3 its crests (pale, never the orange), the relief's
@@ -102,6 +107,7 @@
   --card-work-back-dark: #40566A;
   --card-recede: 0.38;
   --card-sheen: 0.07;
+  --card-logo-ground: #F5F2EC;
   --name-ink: 0.14;
   --name-grad-top: #6C93B6;
   --name-grad-bottom: #A6CCE6;
@@ -526,6 +532,32 @@ html:not([data-input="pointer"]) .fx:focus-visible,
   --shadow-card: 0 40px 80px -20px rgba(10, 10, 10, 0.45);
 }
 /* ---- end mark-strike ---- */
+/* ---- card modal (C3) ---- */
+/* The card modal's groups of photos taking turns (components/card/GroupParts):
+   only the current photo and caption show; useRotator holds the old one
+   visible while it clears, then lets go. */
+[data-rotator-layer]:not([data-current]),
+[data-rotator-caption]:not([data-current]) {
+  visibility: hidden;
+}
+/* A group's current dot fills over the interval and freezes while its clock
+   waits (components/card/RotatingPhoto, PhoneRotator). Under reduced motion
+   the fill is still and full. */
+[data-rotator-fill="timed"] {
+  transform-origin: left center;
+  animation-name: card-rotator-fill;
+  animation-timing-function: linear;
+  animation-fill-mode: both;
+}
+@keyframes card-rotator-fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+/* ---- end card modal ---- */
 /* ---- inline links (components/inline): one look for every kind. At rest a
    link is a word of its paragraph (it inherits the text colour) with a quiet
    line under it: a separate bar, not text-decoration, so it sits below the
