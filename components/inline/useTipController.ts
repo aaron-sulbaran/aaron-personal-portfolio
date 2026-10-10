@@ -82,7 +82,10 @@ export function useTipController(bubbleRef: RefObject<HTMLElement | null>): { st
         return;
       }
       const link = linkOf(event.target);
-      if (link && !(to instanceof Node && link.contains(to))) dispatch({ type: holdsOf(targetOf(link)) && !inBubble(to) ? "leave" : "unhover" });
+      if (!link || (to instanceof Node && link.contains(to))) return;
+      const holds = holdsOf(targetOf(link));
+      if (holds && inBubble(to)) return;
+      dispatch({ type: holds ? "leave" : "unhover" });
     };
     // A re-split removes the hovered link without a pointerout; the next move
     // off any link lets the label go (one dispatch: the state is then idle).
