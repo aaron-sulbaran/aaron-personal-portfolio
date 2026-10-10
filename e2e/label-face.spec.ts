@@ -121,10 +121,12 @@ test("label face: the nav bar, the Menu pill and the panel are Profa Bold in the
   await expectLabel(page.getByRole("link", { name: m.socials[0].label, exact: true }).last(), "label", "accent");
 });
 
-test("label face: the footer copyright is Profa Bold, muted, at the small step", async ({ page }) => {
+test("label face: the footer's small lines are Profa Bold, in the foreground ink, at the small step", async ({ page }) => {
   await page.goto("/");
   await settled(page);
-  await expectLabel(page.locator("footer").getByText(siteContent.footer.copyright, { exact: true }), "label-sm", "muted");
+  const footer = page.locator("footer");
+  await expectLabel(footer.getByText(siteContent.footer.copyright, { exact: true }), "label-sm", "foreground");
+  await expectLabel(footer.getByText(/^Last updated /), "label-sm", "foreground");
 });
 
 test("label face: the pill and the player card are Profa Bold at the small step", async ({ page }) => {

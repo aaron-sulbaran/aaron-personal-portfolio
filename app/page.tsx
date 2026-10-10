@@ -47,7 +47,7 @@ export default function Home() {
           <NumbersStrip />
           <Connect />
         </main>
-        <Footer dock />
+        <Footer />
       </div>
       <MarkCardSource />
     </>

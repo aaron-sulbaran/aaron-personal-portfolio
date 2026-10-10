@@ -35,7 +35,7 @@ const allRefs: Ref[] = [
 
 describe("every picture, photo, pop and logo the content names", () => {
   it("is a file in public with the recorded width and height", () => {
-    expect(allRefs.length).toBe(60);
+    expect(allRefs.length).toBe(62);
     for (const ref of allRefs) {
       const [width, height] = imageSize(join(PUBLIC, ref.src));
       expect(ref.width, ref.where).toBeCloseTo(width, 1);
@@ -109,14 +109,14 @@ describe("the logos", () => {
       "capital-one": ["/work/logos/capital-one/capital-one-logo.svg", null],
       anthropic: ["/work/logos/anthropic/anthropic-wordmark.svg", "/work/logos/anthropic/anthropic-wordmark-white.svg"],
       ieee: ["/work/logos/ieee/ieee-ut-logo.jpg", null],
-      fsdatalink: ["/work/logos/fsdatalink/fsdatalink-logo.avif", null],
+      fsdatalink: ["/work/logos/fsdatalink/fsdatalink-logo.avif", "/work/logos/fsdatalink/fsdatalink-logo-light.png"],
     });
     expect(cards.jobs.timeline.map((entry) => [entry.employer, entry.logo?.src, entry.logo?.srcDark])).toEqual([
       ["Popeyes", "/work/logos/jobs/popeyes-logo.svg", null],
       ["MOD Pizza", "/work/logos/jobs/mod-pizza-logo.svg", null],
       ["Student mentor, UT Austin", "/work/logos/jobs/ut-austin-logo.svg", "/work/logos/jobs/ut-austin-logo-white.svg"],
       ["Apple", "/work/logos/jobs/apple-logo-black.svg", "/work/logos/jobs/apple-logo-white.svg"],
-      ["Aritzia", "/work/logos/jobs/aritzia-logo.svg", null],
+      ["Aritzia", "/work/logos/jobs/aritzia-logo.svg", "/work/logos/jobs/aritzia-logo-light.svg"],
     ]);
   });
 });
