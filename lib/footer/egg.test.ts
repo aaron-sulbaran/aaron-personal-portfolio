@@ -24,12 +24,39 @@ import {
   triggerEgg,
   type EggContext,
 } from "./egg";
-import { eggTransform, letterTransform, periodBox, shadowEllipse } from "./frame";
+import { buildGlyph, glyphPose } from "./face";
+import { eggTransform, letterTransform, periodBox, periodFrame, shadowEllipse, type EggTransform } from "./frame";
+import { footerGeometry, wordRest } from "./geometry";
+import { bounds } from "./primitives";
 
 // Ported from the footer lab's round 4 tests (branch lab, app/lab/footer/tests/round4.test.ts).
 
 const E = FOOTER.egg;
 const EPS = 1e-9;
+const TEXT = "build.stuff";
+
+type Pt = readonly [number, number];
+const turn = ([x, y]: Pt, deg: number, cx: number, cy: number): Pt => {
+  const c = Math.cos((deg * Math.PI) / 180);
+  const s = Math.sin((deg * Math.PI) / 180);
+  return [cx + (x - cx) * c - (y - cy) * s, cy + (x - cx) * s + (y - cy) * c];
+};
+
+// An SVG transform list applied to a point, its last function first, as SVG applies them.
+function applySvg(transform: string, p: Pt): Pt {
+  const ops = [...transform.matchAll(/(translate|scale|rotate)\(([^)]*)\)/g)].map((m) => ({ op: m[1], a: m[2].trim().split(/\s+/).map(Number) }));
+  return ops.reduceRight<Pt>((q, { op, a }) => {
+    if (op === "translate") return [q[0] + a[0], q[1] + (a[1] ?? 0)];
+    if (op === "scale") return [q[0] * a[0], q[1] * (a[1] ?? a[0])];
+    return turn(q, a[0], a[1] ?? 0, a[2] ?? 0);
+  }, p);
+}
+
+// letterTransform's chain with an egg and no press, in full precision (its string rounds to hundredths of a px).
+function placeExact(p: Pt, x: number, y: number, pivot: number, t: EggTransform): Pt {
+  const q = turn([p[0] - pivot, p[1]], t.angle, 0, t.cy);
+  return [x + pivot + q[0] * t.sx, y - t.liftPx + t.bottomY + (q[1] - t.bottomY) * t.sy];
+}
 
 describe("Aaron's egg", () => {
   it("is the round 4 preset's, exactly", () => {
@@ -139,6 +166,45 @@ describe("the period's transform", () => {
     const t = eggTransform(apex, box, size, 1);
     const cap = maxHop(1, box.side / size + FOOTER.swell.amount) * size;
     expect(t.liftPx).toBeLessThanOrEqual(cap + box.side + EPS);
+  });
+
+  it("is the rest box at swell 0, so a period at rest is written as before", () => {
+    const p = [...TEXT].indexOf(".");
+    for (const width of [390, 1440]) {
+      const geo = footerGeometry(TEXT, width, 600, 180);
+      const rest = wordRest(TEXT, geo);
+      const { box, half } = periodFrame(0, geo.size, geo.baselineY);
+      expect(half).toBe(rest.halfWidths[p]);
+      expect(box).toEqual(periodBox(rest.centers[p].y, geo.baselineY, rest.halfWidths[p]));
+    }
+  });
+
+  it("turns a swollen period about its own center, its lowest corner on the baseline and never under it", () => {
+    const size = 196; // a unit at 1440
+    const baselineY = 500;
+    const { box, half } = periodFrame(1, size, baselineY);
+    // The square as drawn at the swell's reach, px in its letter's space (y down, the baseline at 0).
+    const g = bounds(buildGlyph(".", glyphPose(FOOTER.face, FOOTER.swell.amount, 1, 1)).contours);
+    const corners: Pt[] = [
+      [g.x0 * size, -g.y0 * size],
+      [g.x1 * size, -g.y0 * size],
+      [g.x0 * size, -g.y1 * size],
+      [g.x1 * size, -g.y1 * size],
+    ];
+    for (let angle = 0; angle <= E.turnDeg + E.overshootDeg; angle += 0.5) {
+      const t = eggTransform({ ...REST_POSE, angle }, box, size, 1);
+      const exact = corners.map((c) => placeExact(c, 100, baselineY, half, t));
+      const lowest = (Math.max(...exact.map((q) => q[1])) - baselineY) / size;
+      expect(Math.abs(lowest), `${angle} degrees`).toBeLessThanOrEqual(1e-6);
+      // The written transform draws the same square (to its string's precision).
+      const written = letterTransform(100, baselineY, half, 1, t);
+      corners.forEach((c, i) => {
+        const q = applySvg(written, c);
+        expect(q[0]).toBeCloseTo(exact[i][0], 1);
+        expect(q[1]).toBeCloseTo(exact[i][1], 1);
+      });
+    }
+    expect(2 * half).toBeCloseTo((FOOTER.face.stem + FOOTER.swell.amount) * size, 9);
   });
 
   it("lays the shadow under the period from the lab's shares, its ry floored, its opacity the pose's share", () => {

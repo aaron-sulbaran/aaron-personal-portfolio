@@ -1,10 +1,12 @@
 import { FOOTER } from "./constants";
 import { maxHop, type EggPose } from "./egg";
+import { glyphPose, glyphWidth } from "./face";
 
 // A letter's SVG transform, pure: placed at x (its ink's left), y (its
 // baseline), pressed about the baseline (scale y by the squash about pivotX,
-// the letter's half width). The period adds the egg: its lift, its turn about
-// its own center, and its squash about its bottom. With no egg it is the
+// the letter's half width; the period's is its current half side). The period
+// adds the egg: its lift, its turn about its own center, and its squash about
+// its bottom. With no egg it is the
 // string a letter at rest always has, so a period back at rest is exactly
 // where it began.
 
@@ -27,6 +29,15 @@ export function periodBox(centerY: number, baselineY: number, halfWidth: number)
 }
 
 export type PeriodBox = ReturnType<typeof periodBox>;
+
+// The period's box at its current swell (a resting cursor swells it), and
+// half its side, its pivot: so the egg turns and lifts the square it draws,
+// and its shadow sits under that square's center. At swell 0 it is the rest
+// box, so a period at rest is written as it always was.
+export function periodFrame(swell: number, size: number, baselineY: number): { box: PeriodBox; half: number } {
+  const half = (glyphWidth(".", glyphPose(FOOTER.face, FOOTER.swell.amount, swell, 1)) * size) / 2;
+  return { box: periodBox(baselineY - half, baselineY, half), half };
+}
 
 // The pose as the period's transform: the lift held under the word's top
 // (inkTop, units), and a turned square lifted so its lowest corner stays on
