@@ -50,7 +50,19 @@ export function useRotator(rootRef: RefObject<HTMLElement | null>, frameRef: Ref
   // a change starts it full.
   useEffect(() => {
     remaining.current = intervalMs;
-  }, [index, intervalMs]);
+  }, [index, intervalMs, reduced]);
+
+  // Reduced motion turning on mid-change ends the sweep at once and clears
+  // what the change wrote.
+  useEffect(() => {
+    if (!reduced) return;
+    change.current?.kill();
+    change.current = null;
+    const root = rootRef.current;
+    if (!root) return;
+    const written = ["data-rotator-layer", "data-rotator-media", "data-rotator-caption"].flatMap((attr) => [...root.querySelectorAll<HTMLElement>(`[${attr}]`)]);
+    gsap.set(written, { clearProps: WRITTEN });
+  }, [reduced, rootRef]);
 
   useEffect(() => {
     if (!runs) return;
