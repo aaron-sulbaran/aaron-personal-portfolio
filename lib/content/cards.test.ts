@@ -131,8 +131,21 @@ describe("the fourteen cards", () => {
     for (const entry of cards.jobs.timeline) expect(entry.tip.length).toBeGreaterThan(0);
   });
 
-  it("model the mentors list and hold it empty until each mentor agrees to be named", () => {
-    expect(cards.mentorship.mentors).toEqual({ title: "the people who shaped me", people: [] });
+  it("name the six mentors who agreed, each with their own LinkedIn link and no line until I write one", () => {
+    const { title, people } = cards.mentorship.mentors;
+    expect(title).toBe("the people who shaped me");
+    expect(people.map((mentor) => mentor.name)).toEqual(["Andrew Chang", "Diego Jimenez", "Jared Alonzo", "JJ Gonzales", "Joaquin Escobar", "Mike Ditson"]);
+    for (const mentor of people) {
+      expect(mentor.href, mentor.name).toMatch(/^https:\/\/www\.linkedin\.com\/in\/[a-z0-9-]+\/$/);
+      expect(mentor.line, mentor.name).toBeNull();
+    }
+    expect(new Set(people.map((mentor) => mentor.href)).size).toBe(people.length);
+  });
+
+  it("mark only the IEEE square as an opaque logo, its own ground", () => {
+    const opaque = keys.filter((key) => { const visual = cards[key].visual; return visual.kind === "logo" && visual.logo?.opaque; });
+    expect(opaque).toEqual(["ieee"]);
+    expect(cards.jobs.timeline.some((entry) => entry.logo?.opaque)).toBe(false);
   });
 
   it("resolve every inline link in a card to the register", () => {

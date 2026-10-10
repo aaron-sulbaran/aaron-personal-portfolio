@@ -94,6 +94,24 @@ export const siteContent = {
     closeHintTouch: "Tap outside to close",
     // The work modal's accessible name: "<title> preview".
     workPreviewSuffix: "preview",
+    // The card modal's gallery (components/card): the pager on a phone and the photos
+    // that take turns, the gallery lab's words (2026-10-09).
+    gallery: {
+      pagerLabel: (count: number) => `Photos and their stories, ${count}`,
+      pageLabel: (page: number, count: number) => `${page} of ${count}`,
+      previousPage: "Previous page",
+      nextPage: "Next page",
+      pageNumber: (page: number, count: number) => `Page ${page} of ${count}`,
+      rotatorLabel: (count: number) => `Photos taking turns, ${count}`,
+      photoOf: (photo: number, count: number) => `Photo ${photo} of ${count}`,
+      announce: (photo: number, count: number, caption: string) => `Photo ${photo} of ${count}${caption ? `: ${caption}` : ""}`,
+      pausePhotos: "Pause the photos",
+      playPhotos: "Play the photos",
+      groupStep: (photo: number, count: number) => `Photo ${photo} of ${count}. Show the next photo`,
+      // aria-roledescription: a group of photos taking turns, and one page of the pager.
+      roleCarousel: "carousel",
+      roleSlide: "slide",
+    },
   },
   // The Coil hero. The heading is the server-rendered h1; greeting and name
   // are the two parts the scene draws, together, in the canvas.
@@ -145,7 +163,7 @@ export const siteContent = {
   // site in a new tab, "soon" renders the row without a link. Placeholder
   // photos never get a row.
   book: {
-    ariaLabel: "Work and photos",
+    ariaLabel: "Work and people",
     workHeading: "Work",
     photosHeading: "Photos",
     // The cards' book (C3 renders it): two columns of card keys, every row a modal.

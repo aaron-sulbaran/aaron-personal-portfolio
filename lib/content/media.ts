@@ -84,7 +84,7 @@ export const logos = {
   talos: { src: "/work/logos/talos/mark.svg", srcDark: null, width: 512, height: 512 },
   "capital-one": { src: "/work/logos/capital-one/capital-one-logo.svg", srcDark: null, width: 418, height: 150 },
   anthropic: { src: "/work/logos/anthropic/anthropic-wordmark.svg", srcDark: "/work/logos/anthropic/anthropic-wordmark-white.svg", width: 578.9, height: 65 },
-  ieee: { src: "/work/logos/ieee/ieee-ut-logo.jpg", srcDark: null, width: 1382, height: 1383 },
+  ieee: { src: "/work/logos/ieee/ieee-ut-logo.jpg", srcDark: null, width: 1382, height: 1383, opaque: true },
   fsdatalink: { src: "/work/logos/fsdatalink/fsdatalink-logo.avif", srcDark: null, width: 512, height: 129 },
   popeyes: { src: "/work/logos/jobs/popeyes-logo.svg", srcDark: null, width: 249.2, height: 42.6 },
   mod: { src: "/work/logos/jobs/mod-pizza-logo.svg", srcDark: null, width: 86.31, height: 83.21 },
