@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { X } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { useRef, useSyncExternalStore } from "react";
+import { useRef } from "react";
 import {
   useBodyScrollLock,
   useEscapeKey,
@@ -13,6 +13,7 @@ import {
 } from "@/lib/modal";
 import { siteContent, type Photo } from "@/lib/content";
 import { photoSlotSizes } from "@/lib/photoSizes";
+import { useCloseHint } from "@/components/modal/useCloseHint";
 import { Portal } from "./Portal";
 
 type PhotoModalProps = {
@@ -24,23 +25,6 @@ type PhotoModalProps = {
   // leaves it false; the flown tile fills the slot.
   renderMedia?: boolean;
 };
-
-// The close hint by pointer type: "Press Esc" for a mouse, "Tap outside" for
-// a touch screen. A coarse primary pointer means touch.
-const COARSE_POINTER = "(pointer: coarse)";
-function subscribePointer(onChange: () => void) {
-  const list = window.matchMedia(COARSE_POINTER);
-  list.addEventListener("change", onChange);
-  return () => list.removeEventListener("change", onChange);
-}
-export function useCloseHint() {
-  const coarse = useSyncExternalStore(
-    subscribePointer,
-    () => window.matchMedia(COARSE_POINTER).matches,
-    () => false,
-  );
-  return coarse ? siteContent.modals.closeHintTouch : siteContent.modals.closeHintKeyboard;
-}
 
 export function PhotoModal({ photo, onClose, renderMedia = false }: PhotoModalProps) {
   const open = photo !== null;

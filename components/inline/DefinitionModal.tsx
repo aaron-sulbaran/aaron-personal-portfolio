@@ -3,7 +3,7 @@ import { X } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useId, useRef } from "react";
 import { Portal } from "@/components/Portal";
-import { useCloseHint } from "@/components/PhotoModal";
+import { useCloseHint } from "@/components/modal/useCloseHint";
 import { siteContent } from "@/lib/content";
 import type { DefinitionEntry } from "@/lib/content/types";
 import { modalBackdropBlurVariants, modalBackdropTintVariants, useBodyScrollLock, useEscapeKey, useFocusTrap } from "@/lib/modal";
