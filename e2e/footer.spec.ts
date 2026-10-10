@@ -293,6 +293,41 @@ test("footer: a theme switch recolors the live field without a new context", asy
   expect(await footerContexts(page)).toBe(1);
 });
 
+// A new canvas size clears the drawing buffer, opaque black with no alpha. An observer made after
+// the field's own runs right after it, in the same task: what the buffer holds there is what that
+// frame paints. Read in light, where the field above the word is far from black.
+test("footer: a resize redraws the live field before the paint, never a cleared buffer", async ({ page }) => {
+  await openHome(page);
+  await toFooter(page);
+  await waitForField(page, "gl");
+  const resized = page.evaluate(
+    () =>
+      new Promise<number[]>((resolve) => {
+        const canvas = document.querySelector<HTMLCanvasElement>("footer canvas[data-footer-canvas]")!;
+        let start: number | null = null;
+        const ro = new ResizeObserver(([entry]) => {
+          const width = entry.contentRect.width;
+          if (start === null) start = width;
+          if (width === start) return;
+          ro.disconnect();
+          const gl = canvas.getContext("webgl2")!;
+          const dpr = gl.drawingBufferWidth / width;
+          const px = new Uint8Array(4 * 8 * 8);
+          gl.readPixels(Math.round(0.2 * gl.drawingBufferWidth), gl.drawingBufferHeight - Math.round(40 * dpr) - 8, 8, 8, gl.RGBA, gl.UNSIGNED_BYTE, px);
+          resolve([...px]);
+        });
+        ro.observe(canvas);
+      }),
+  );
+  await nextFrames(page, 3);
+  await page.setViewportSize({ width: 1200, height: 900 });
+  const px = await resized;
+  let sum = 0;
+  for (let i = 0; i < px.length; i += 4) sum += px[i] + px[i + 1] + px[i + 2];
+  test.info().annotations.push({ type: "resize", description: `mean channel sum ${(sum / (px.length / 4)).toFixed(1)}` });
+  expect(sum / (px.length / 4), "the field above the word in the resized frame").toBeGreaterThan(150);
+});
+
 test("footer: switching reduced motion on swaps the live field for the still poster, and back", async ({ page }) => {
   await openHome(page);
   await toFooter(page);
@@ -329,6 +364,7 @@ for (const theme of ["light", "dark"] as const) {
         const [hi, lo] = [lum(ink), lum([image.rgba[k], image.rgba[k + 1], image.rgba[k + 2]])].sort((a, b) => b - a);
         worst = Math.min(worst, (hi + 0.05) / (lo + 0.05));
       }
+      test.info().annotations.push({ type: "contrast", description: `${theme} line ${i}: ${worst.toFixed(2)}` });
       expect(worst, `line ${i}`).toBeGreaterThanOrEqual(4.5);
     }
   });
