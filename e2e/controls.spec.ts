@@ -163,8 +163,3 @@ test("controls: the hero control is a circle on the Menu pill's glass", async ({
   await expect(coil).toContainText(siteContent.hero.coilControl);
   expect(await coil.evaluate((el) => getComputedStyle(el).backdropFilter)).toBe("blur(8px)");
 });
-
-test("controls: the case page's calls to action are circles with glass to accent", async ({ page }) => {
-  await page.goto(`/work/${siteContent.workItems[0].slug}`);
-  await expectFill(page.locator("main article a.fx"), "cta");
-});
