@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useRef, useState, type CSSProperties } from "react";
 import { siteContent, type CardKey } from "@/lib/content";
 import { galleryOf } from "@/lib/gallery/card";
+import { GALLERY } from "@/lib/gallery/constants";
 import { modalBackdropBlurVariants, modalBackdropTintVariants, useBodyScrollLock, useEscapeKey, useFocusTrap } from "@/lib/modal";
 import { Portal } from "@/components/Portal";
 import { useReducedMotionLive } from "@/components/soundtrack/useReducedMotionLive";
@@ -44,6 +45,7 @@ export function CardModal({ cardKey, onClose, renderMedia, flying }: Props) {
   useFocusTrap(dialogRef, open);
   const gallery = cardKey ? galleryOf(cardKey) : null;
   const rows = layout === "rows";
+  const sheet = gallery !== null && !rows && gallery.plan.slides.length > 0;
   // Every open is a fresh body, even of the card still leaving, so its masks
   // replay from the start rather than revive the exiting run.
   const [opens, setOpens] = useState(0);
@@ -72,7 +74,7 @@ export function CardModal({ cardKey, onClose, renderMedia, flying }: Props) {
             onMouseDown={(e) => {
               if (e.target === e.currentTarget) onClose();
             }}
-            className={`fixed inset-0 z-50 flex justify-center overflow-y-auto overscroll-contain ${rows ? "px-10 py-14" : "px-4 py-6"}`}
+            className={`fixed inset-0 z-50 flex justify-center ${sheet ? "overflow-hidden" : "overflow-y-auto"} overscroll-contain ${rows ? "px-10 py-14" : "px-4 py-6"}`}
           >
             <motion.div aria-hidden="true" variants={modalBackdropTintVariants(0, true)} className="pointer-events-none fixed inset-0" style={tint} />
             <motion.div
@@ -80,7 +82,7 @@ export function CardModal({ cardKey, onClose, renderMedia, flying }: Props) {
               data-gallery-panel=""
               onMouseDown={(e) => e.stopPropagation()}
               className={`relative my-auto flex w-full flex-col overflow-hidden rounded-2xl border border-border shadow-[var(--shadow-card)] backdrop-blur-xl ${rows ? "p-10" : "p-5"}`}
-              style={{ ...glass, maxWidth: rows ? gallery.panelWidth : undefined }}
+              style={{ ...glass, maxWidth: rows ? gallery.panelWidth : undefined, height: sheet ? `calc(100dvh - ${GALLERY.pager.sheetInsetPx}px)` : undefined }}
             >
               <button
                 type="button"

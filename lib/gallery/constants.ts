@@ -31,6 +31,7 @@ export const GALLERY = {
     wordsRoomPx: 128, // under the stage: the caption and two lines of words
     captionRoomPx: 72, // under a wordless page's stage
     stageFloorPx: 120,
+    wordsFadePx: 28, // the soft fade at the foot of a page's words that scroll
     insetPx: 74, // the backdrop's px-4, the panel's p-5 and its 1px border, both sides
     sheetInsetPx: 48, // the backdrop's py-6, top and bottom: the sheet is the visible height less this
   },
