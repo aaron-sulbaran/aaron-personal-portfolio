@@ -9,9 +9,14 @@ import type { HookWindow } from "./support/hooks";
 const keys = Object.keys(siteContent.cards) as CardKey[];
 const within = (actual: number, expected: number) => Math.abs(actual - expected) < 1;
 
-// The flown card's four corners where it parked, against its slot's box.
-async function landsOnSlot(page: import("@playwright/test").Page, slot: import("@playwright/test").Locator) {
-  const quad = await page.evaluate(() => (window as HookWindow).__coilFlight!.log.findLast((m) => m.name === "clone-parked")!.data!.quad as { x: number; y: number }[]);
+// The flown card's four corners against its slot's box: where it parked, or
+// with now, where the scene draws it this frame (parked, its pose is the slot's,
+// flat, so its corners are the parked card's).
+async function landsOnSlot(page: import("@playwright/test").Page, slot: import("@playwright/test").Locator, { now = false } = {}) {
+  const quad = await page.evaluate((current) => {
+    const flight = (window as HookWindow).__coilFlight!;
+    return (current ? flight.scene.flown()!.quad : flight.log.findLast((m) => m.name === "clone-parked")!.data!.quad) as { x: number; y: number }[];
+  }, now);
   const box = (await slot.boundingBox())!;
   const xs = quad.map((p) => p.x);
   const ys = quad.map((p) => p.y);
@@ -113,17 +118,23 @@ for (const kind of ["photo", "work"] as const) {
   });
 }
 
-test("card modal: the layout holds while a flown card is parked, and follows the window once none is", async ({ page, cdp }) => {
+test("card modal: the layout holds while a flown card is parked, the card staying on its slot, and an open modal follows the window once none is", async ({ page, cdp }) => {
   const key = await flyCard(page, cdp, "photo");
   const dialog = cardDialog(page, key);
   await expect(dialog).toHaveAttribute("data-gallery-layout", "rows");
+  await panelAtRest(page, key);
   await page.setViewportSize({ width: 900, height: 900 });
   await page.waitForTimeout(400);
   await expect(dialog).toHaveAttribute("data-gallery-layout", "rows");
+  await expect(page.locator("[data-flying-tile]")).toHaveCount(1);
+  await landsOnSlot(page, dialog.locator('[data-tile-slot="photo"]'), { now: true });
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
   await expect(page.locator("[data-flying-tile]")).toHaveCount(0);
+  await page.setViewportSize({ width: 1440, height: 900 });
   const { dialog: again } = await openCardFromBook(page, key, { home: false });
+  await expect(again).toHaveAttribute("data-gallery-layout", "rows");
+  await page.setViewportSize({ width: 900, height: 900 });
   await expect(again).toHaveAttribute("data-gallery-layout", "pager");
 });
 
