@@ -44,7 +44,6 @@ export default async function OpengraphImage() {
         }}
       >
         {stillSrc && (
-          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={stillSrc}
             alt=""
