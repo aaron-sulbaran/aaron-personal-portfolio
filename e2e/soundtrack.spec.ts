@@ -3,6 +3,8 @@ import { test, expect } from "./support/fixtures";
 import { siteContent } from "@/lib/content";
 import { visibleText } from "@/lib/content/links";
 import { DOCK } from "@/lib/waveform/dock";
+import { dotReach } from "@/lib/wavepath/columns";
+import { AMPLITUDE, SHAPE_GAIN } from "@/lib/wavepath/constants";
 import { THEME_STORAGE_KEY } from "@/lib/theme";
 import { nextFrames, openHome, scrollToY } from "./support/coil";
 import { settled } from "./support/fallback";
@@ -36,7 +38,7 @@ import { bandBottomAt, parkBand } from "./support/wave";
 
 const L = siteContent.listen;
 const S = siteContent.soundtrack;
-const HOME = "/";
+const HOME = "/?wavedebug";
 
 // Counts every repaint of each 2D canvas (the wave clears once per paint) and
 // remembers every media element that was asked to play.
@@ -185,27 +187,67 @@ test("band: a real click on \"Play it\" starts playback", async ({ page }) => {
     .toBeGreaterThan(0.2);
 });
 
-test("band: the wave draws while the band is in view, and \"Not now\" brings it to a stop", async ({ page }) => {
+async function bandInk(page: Page) {
+  return page.evaluate(() => {
+    const canvas = document.querySelector<HTMLCanvasElement>("#listen canvas")!;
+    const { data, width, height } = canvas.getContext("2d")!.getImageData(0, 0, canvas.width, canvas.height);
+    let painted = 0, top = height, bottom = 0;
+    for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) if (data[(y * width + x) * 4 + 3] > 0) { painted++; top = Math.min(top, y); bottom = Math.max(bottom, y); }
+    return { painted, top, bottom, scale: canvas.width / canvas.clientWidth };
+  });
+}
+
+// Before an answer the band is static: the head waits at the run's end and
+// nothing breathes, so a second in view repaints nothing.
+test("band: before an answer the band is static: no repaints in view", async ({ page }) => {
   await instrument(page);
   await openHome(page, { path: HOME });
   await scrollBandIntoView(page);
-  const moving = await bandPaints(page);
-  await expect.poll(async () => (await bandPaints(page)) - moving, { message: "repaints while in view" }).toBeGreaterThan(10);
+  await page.mouse.move(4, 4);
+  await page.waitForTimeout(500);
+  expect(await bandRepaints(page, 1000), "band repaints in a second before any answer").toBe(0);
+});
 
+// The band is the line's first stretch, the level run. Undecided it is still,
+// so its ink is pinned to the reduced-motion run's, measured in the same test,
+// and its height to what the constants allow.
+test("band: the undecided run paints the still run's ink, inside the reach the constants allow", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+  await settled(page);
+  await scrollBandIntoView(page);
+  await page.waitForTimeout(300);
+  const still = await bandInk(page);
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
+  await openHome(page, { path: HOME });
+  await scrollBandIntoView(page);
+  await page.waitForTimeout(1200);
+  const moving = await bandInk(page);
+  expect(moving.painted).toBeGreaterThan(still.painted * 0.85);
+  expect(moving.painted).toBeLessThan(still.painted * 1.15);
+  expect(moving.bottom - moving.top).toBeLessThanOrEqual((2 * dotReach(AMPLITUDE) + 8) * moving.scale);
+  expect(moving.bottom - moving.top).toBeGreaterThanOrEqual(SHAPE_GAIN * AMPLITUDE * moving.scale);
+});
+
+test("band: with the music on, the levelled columns thicken the run", async ({ page }) => {
+  await instrument(page);
+  await openHome(page, { path: HOME });
+  await scrollBandIntoView(page);
+  const quiet = (await bandInk(page)).painted;
+  await page.locator("#listen").getByRole("button", { name: L.accept, exact: true }).click();
+  await expect.poll(async () => (await bandInk(page)).painted, { timeout: 6000, message: "the run's ink with the music on" }).toBeGreaterThan(quiet * 1.2);
+});
+
+test("band: the run breathes in view after either answer and sleeps once the band leaves", async ({ page }) => {
+  await instrument(page);
+  await openHome(page, { path: HOME });
+  await scrollBandIntoView(page);
   await page.locator("#listen").getByRole("button", { name: L.decline, exact: true }).click();
   await page.mouse.move(4, 4);
-
-  // It eases to a still line, then stops painting: a whole second with no repaint.
-  await expect
-    .poll(
-      async () => {
-        const before = await bandPaints(page);
-        await page.waitForTimeout(1000);
-        return (await bandPaints(page)) - before;
-      },
-      { timeout: 10_000, intervals: [0], message: "repaints in a quiet second" },
-    )
-    .toBe(0);
+  await expect.poll(() => bandRepaints(page, 1000), { message: "repaints in view" }).toBeGreaterThan(10);
+  await toAbout(page);
+  await expect.poll(() => bandRepaints(page, 1000), { timeout: 10_000, intervals: [0], message: "repaints out of view" }).toBe(0);
 });
 
 // The engine split's guard: the band must look the same on the conductor and
@@ -224,41 +266,6 @@ test("band: the still line under reduced motion is pixel identical to the baseli
     threshold: 0,
     mask: [page.locator("#listen [data-wave-avoid]")],
   });
-});
-
-// The idle drift runs on a real clock, so frames differ run to run; its dot
-// count and vertical extent stand in for the pixels. The band around them is
-// pinned to main before the split (b18e2e6, 1440 by 270 canvas): 4716 and 4730
-// painted pixels, extents of 76 and 68px. A sign error in the phase, a wrong
-// weight blend or a frozen field moves one of them out of it.
-test("band: idle drift paints the same dot count and extent as before the split", async ({ page }) => {
-  await instrument(page);
-  await openHome(page, { path: HOME });
-  await scrollBandIntoView(page);
-  await page.waitForTimeout(1200);
-  const stats = await page.evaluate(() => {
-    const canvas = document.querySelector<HTMLCanvasElement>("#listen canvas")!;
-    const ctx = canvas.getContext("2d")!;
-    const { data, width, height } = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    let painted = 0;
-    let top = height;
-    let bottom = 0;
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        if (data[(y * width + x) * 4 + 3] > 0) {
-          painted++;
-          if (y < top) top = y;
-          if (y > bottom) bottom = y;
-        }
-      }
-    }
-    return { painted, top, bottom, width, height };
-  });
-  const MAIN_PAINTED = 4720;
-  expect(stats.painted).toBeGreaterThan(MAIN_PAINTED * 0.85);
-  expect(stats.painted).toBeLessThan(MAIN_PAINTED * 1.15);
-  expect(stats.bottom - stats.top).toBeGreaterThanOrEqual(60);
-  expect(stats.bottom - stats.top).toBeLessThanOrEqual(100);
 });
 
 test("band: the pill shows once the band is off screen with music on, and only then takes keyboard focus", async ({ page }) => {
@@ -364,8 +371,8 @@ test("dock: the decline path says it'll be here, settles as \"Music\", and a rel
   await band.getByRole("button", { name: L.decline, exact: true }).click();
   await expect(band.locator("[data-band-note]")).toBeFocused();
   await expect(band.locator("[data-band-note] > :not([inert])")).toHaveText(L.declinedNote, { useInnerText: true });
-  // Declined, nothing in the band moves, so its freeze toggle is inert.
-  await expect(band.locator("button", { hasText: L.freeze })).toHaveAttribute("inert", "");
+  // Declined, the run still breathes, so its freeze toggle stays live.
+  await expect(band.getByRole("button", { name: L.freeze, exact: true })).toBeVisible();
 
   await toAbout(page);
   await expect.poll(() => dockText(page), { timeout: 1000, message: "the label as it lands" }).toBe(S.dockDeclined);

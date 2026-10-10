@@ -54,7 +54,7 @@ export function BandInvite() {
   };
 
   return (
-    <div ref={rootRef} data-wave-avoid className="pointer-events-auto w-fit max-w-full">
+    <div ref={rootRef} data-wave-avoid data-wave-words className="pointer-events-auto w-fit max-w-full">
       <div className="flex flex-wrap items-baseline gap-x-9 gap-y-3">
         <h2 className="font-display text-[clamp(1.375rem,2vw,1.75rem)] leading-[1.1] text-foreground">{c.line}</h2>
         <div data-band-controls className="grid items-baseline">

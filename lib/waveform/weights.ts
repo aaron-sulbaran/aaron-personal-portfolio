@@ -66,11 +66,3 @@ export function columnWeights(layout: WeightLayout): Float32Array {
   }
   return weights;
 }
-
-// The copy only has to clear what the wave is actually doing: the calm set
-// (computed against the idle reach) lets the drift run full size beside the
-// text, and the band hands over to the loud set as the music comes up. Both
-// sets are computed once per resize; this blend is a lerp per column.
-export function blendWeights(calm: Float32Array, loud: Float32Array, reactive: number, out: Float32Array): void {
-  for (let i = 0; i < out.length; i++) out[i] = calm[i] + (loud[i] - calm[i]) * reactive;
-}
