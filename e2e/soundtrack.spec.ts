@@ -260,6 +260,9 @@ test("band: the still line under reduced motion is pixel identical to the baseli
   await settled(page);
   await scrollBandIntoView(page);
   await page.waitForTimeout(300);
+  // The path layer draws the whole line under reduced motion, and its next stretch
+  // passes behind the band; an element screenshot composites it, so it is hidden here.
+  await page.addStyleTag({ content: "[data-wave-path] { visibility: hidden; }" });
   // The band's copy and controls are masked, so a copy change cannot break the wave guard.
   await expect(page.locator("#listen canvas")).toHaveScreenshot("band-still.png", {
     maxDiffPixels: 0,
@@ -640,6 +643,11 @@ test("dock: the freeze toggle lives in the player card once music is on, and sto
   };
   await toggleInCard(L.freeze);
   await scrollBandIntoView(page);
+  // Frozen, the head still follows the scroll; the band repaints while it eases back, so wait for it to rest.
+  await page.waitForFunction(() => {
+    const f = (window as unknown as { __wavePath: { frame: () => { head: number; target: number } | null } }).__wavePath.frame();
+    return !!f && f.head === f.target;
+  });
   await page.waitForTimeout(300);
   expect(await bandRepaints(page, 1000), "band repaints in a frozen second").toBe(0);
   await toggleInCard(L.unfreeze);
