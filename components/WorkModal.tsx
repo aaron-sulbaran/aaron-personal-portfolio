@@ -15,7 +15,7 @@ import { siteContent, type WorkItem } from "@/lib/content";
 import { Fill, FillArrow, FillSeed } from "@/components/fx/Fill";
 import { CTA_CLASS, CTA_OVER_CLASS, FILL_PICK } from "@/lib/fx/fill";
 import { Portal } from "./Portal";
-import { useCloseHint } from "./PhotoModal";
+import { useCloseHint } from "@/components/modal/useCloseHint";
 
 type WorkModalProps = {
   item: WorkItem | null;
