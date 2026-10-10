@@ -27,7 +27,7 @@ export function createPathView(layer: HTMLElement, root: HTMLElement, conductor:
   let map: TileMap = mapTiles(EMPTY_COLUMNS, TILE_PX, 0, 0);
   let samples: SpineSamples | null = null;
   let origin = 0, viewport = 0, maxScrollY = 0, entry = 0, amp = 0, width = 0, raf = 0;
-  let dirty = true, laid = false;
+  let dirty = true, laid = false, destroyed = false;
   let alphas = ALPHAS[themeNow()];
 
   const sizeTile = (tile: Tile) => {
@@ -81,6 +81,7 @@ export function createPathView(layer: HTMLElement, root: HTMLElement, conductor:
 
   const layout = () => {
     raf = 0;
+    if (destroyed) return;
     const band = root.querySelector<HTMLElement>('[data-wave-anchor="band"]');
     if (!band) return;
     origin = docTop(band);
@@ -105,7 +106,7 @@ export function createPathView(layer: HTMLElement, root: HTMLElement, conductor:
     laid = true;
   };
   const schedule = () => {
-    if (!raf) raf = requestAnimationFrame(layout);
+    if (!destroyed && !raf) raf = requestAnimationFrame(layout);
   };
 
   const view = {
@@ -144,7 +145,9 @@ export function createPathView(layer: HTMLElement, root: HTMLElement, conductor:
       return sink.onScreen;
     },
     destroy() {
+      destroyed = true;
       if (raf) cancelAnimationFrame(raf);
+      raf = 0;
       resize.disconnect();
       theme.disconnect();
       io.disconnect();
