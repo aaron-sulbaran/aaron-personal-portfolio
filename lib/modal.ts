@@ -114,7 +114,8 @@ const trapStack: HTMLElement[] = [];
 // focused control went away) comes back in, and a focused control that turns
 // inert or disabled under the visitor (a pager page turning away, an arrow at
 // its end) hands focus to the nearest live control, the first one in the
-// closest enclosing element that still holds one. Restores focus to the element
+// closest enclosing element that still holds one. A body-level element marked
+// data-trap-extension (the inline tip label) counts as inside. Restores focus to the element
 // that was focused before the modal opened.
 export function useFocusTrap(
   containerRef: React.RefObject<HTMLElement | null>,
@@ -160,7 +161,7 @@ export function useFocusTrap(
     const onDocumentKeyDown = (e: KeyboardEvent) => {
       if (e.key !== "Tab" || trapStack[trapStack.length - 1] !== container) return;
       const current = document.activeElement;
-      if (current && current !== document.body && container.contains(current)) return;
+      if (current && current !== document.body && (container.contains(current) || current.closest("[data-trap-extension]"))) return;
       const items = focusables();
       if (items.length === 0) return;
       e.preventDefault();

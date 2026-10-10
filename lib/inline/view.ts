@@ -44,7 +44,19 @@ export function popView(entry: PopEntry): TipView {
 export function tipView(kind: TipKind, key: string): TipView | null {
   if (kind === "tip") {
     const text = tipText(key);
-    return text === null ? null : { text, photo: null, caption: null, link: null, description: text };
+    const link = Object.hasOwn(siteContent.register.tip, key) ? (siteContent.register.tip[key].link ?? null) : null;
+    return text === null ? null : { text, photo: null, caption: null, link, description: text };
   }
   return Object.hasOwn(siteContent.register.pop, key) ? popView(siteContent.register.pop[key]) : null;
+}
+
+// A tip that holds a link: the pointer may leave its word for the label (lib/inline/tipState).
+export function holdsLink(kind: TipKind, key: string): boolean {
+  return kind === "tip" && !!tipView(kind, key)?.link;
+}
+
+// The link a showing label offers: a tip's whenever it shows; a pop's only once a tap pinned it.
+export function shownLink(kind: TipKind, key: string, via: "hover" | "focus" | "tap" | "grace" | null): TipView["link"] {
+  const link = tipView(kind, key)?.link ?? null;
+  return kind === "tip" || via === "tap" ? link : null;
 }
