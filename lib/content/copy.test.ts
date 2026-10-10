@@ -118,6 +118,10 @@ describe("Connect", () => {
     );
   });
 
+  it("draws each link row as its platform's mark, and keeps the platform name for assistive tech", () => {
+    expect(connect.links.map((link) => [link.label, link.icon])).toEqual([["LinkedIn", "linkedin"], ["GitHub", "github"], ["Email", "mail"], ["Instagram", "instagram"], ["X", "x"]]);
+  });
+
   it("links the calendar, the matcha pop and the killer-drones footnote", () => {
     expect(referenced(connect.body)).toEqual(["pop:matcha", "tip:killer-drones"]);
     expect(externals(connect.body)).toEqual(["https://cal.com/aaron-sulbaran"]);
@@ -129,11 +133,11 @@ describe("Connect", () => {
 
   it("lists the five links in order with the handle each shows, and drops the school address", () => {
     expect(connect.links).toEqual([
-      { key: "linkedin", label: "LinkedIn", handle: "in/aaron-sulbaran", href: "https://www.linkedin.com/in/aaron-sulbaran/" },
-      { key: "github", label: "GitHub", handle: "aaron-sulbaran", href: "https://github.com/aaron-sulbaran" },
-      { key: "email", label: "Email", handle: "aarondsulbaran@gmail.com", href: "mailto:aarondsulbaran@gmail.com" },
-      { key: "instagram", label: "Instagram", handle: "aaron.sulbaran", href: "https://www.instagram.com/aaron.sulbaran/" },
-      { key: "x", label: "X", handle: "@imaaronsulbaran", href: "https://x.com/imaaronsulbaran" },
+      { key: "linkedin", icon: "linkedin", label: "LinkedIn", handle: "in/aaron-sulbaran", href: "https://www.linkedin.com/in/aaron-sulbaran/" },
+      { key: "github", icon: "github", label: "GitHub", handle: "aaron-sulbaran", href: "https://github.com/aaron-sulbaran" },
+      { key: "email", icon: "mail", label: "Email", handle: "aarondsulbaran@gmail.com", href: "mailto:aarondsulbaran@gmail.com" },
+      { key: "instagram", icon: "instagram", label: "Instagram", handle: "aaron.sulbaran", href: "https://www.instagram.com/aaron.sulbaran/" },
+      { key: "x", icon: "x", label: "X", handle: "@imaaronsulbaran", href: "https://x.com/imaaronsulbaran" },
     ]);
     expect(JSON.stringify(connect)).not.toContain("utexas.edu");
   });
