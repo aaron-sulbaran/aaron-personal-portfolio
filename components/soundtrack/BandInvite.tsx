@@ -29,7 +29,7 @@ import { isPhone, subscribePhone } from "@/lib/waveform/layout";
 export function BandInvite() {
   const music = useSoundtrack();
   const c = siteContent.listen;
-  // The note only shows after an answer, so the desktop copy is a safe server snapshot.
+  // Hydration renders the server snapshot, so the desktop copy matches the server HTML; the phone copy applies after hydration, while its layer is still hidden.
   const phone = useSyncExternalStore(subscribePhone, isPhone, () => false);
   const acceptedNote = phone ? c.acceptedNotePhone : c.acceptedNote;
   const moveFocus = useRef<"note" | "control" | null>(null);
