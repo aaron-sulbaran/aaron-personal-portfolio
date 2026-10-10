@@ -65,7 +65,7 @@ export function usePagerDrag(rootRef: RefObject<HTMLElement | null>, { index, co
     d.lastX = e.clientX;
     d.lastY = e.clientY;
     d.lastT = e.timeStamp;
-    if (d.axis === "x") setDragPx(rubberBand(dx, index, count));
+    if (d.axis === "x" && !reduced) setDragPx(rubberBand(dx, index, count));
     else if (d.axis === "y" && !reduced) movePanel(dy, 0);
   };
 

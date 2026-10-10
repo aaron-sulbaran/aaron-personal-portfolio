@@ -224,3 +224,39 @@ test("pager: long words scroll in their own area and never dismiss, while a drag
   await slowDrag(page, await centerOf(first.locator("[data-pager-stage]")), { x: 0, y: 130 });
   await expect(dialog).toHaveCount(0);
 });
+
+test("pager: under reduced motion a drag moves nothing, a cancel changes nothing, and a sideways release still turns the page", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+  await settled(page);
+  const { dialog } = await openCardFromBook(page, "capital-one", { home: false, settled: true });
+  const pager = dialog.locator("[data-pager]");
+  const track = dialog.locator("[data-pager-track]");
+  const panel = dialog.locator("[data-gallery-panel]");
+  const moved = () => Promise.all([track.evaluate((el) => (el as HTMLElement).style.transform), panel.evaluate((el) => (el as HTMLElement).style.translate)]);
+  const rest = await moved();
+  const from = await centerOf(dialog.locator('[data-pager-page="0"] [data-pager-stage]'));
+  await page.evaluate(() => {
+    window.addEventListener("pointerdown", (e) => ((window as unknown as { lastPointerId: number }).lastPointerId = e.pointerId), { once: true, capture: true });
+  });
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  for (let i = 1; i <= 8; i++) {
+    await page.mouse.move(from.x - 15 * i, from.y);
+    await page.waitForTimeout(20);
+  }
+  expect(await moved()).toEqual(rest);
+  await pager.evaluate((el) => el.dispatchEvent(new PointerEvent("pointercancel", { pointerId: (window as unknown as { lastPointerId: number }).lastPointerId, bubbles: true })));
+  await page.mouse.up();
+  await expect(pager).toHaveAttribute("data-page", "0");
+  await expect(dialog).toBeVisible();
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  for (let i = 1; i <= 8; i++) {
+    await page.mouse.move(from.x - 15 * i, from.y);
+    await page.waitForTimeout(20);
+  }
+  expect(await moved()).toEqual(rest);
+  await page.mouse.up();
+  await expect(pager).toHaveAttribute("data-page", "1");
+});
