@@ -1,4 +1,4 @@
-import { RUN_PAST, RUN_SPACING, RUN_START } from "./constants";
+import { DRAW_EASE_S, DRAW_SPEED, GATE_S, HEAD_AT, HEAD_REST_PX, HEAD_SMOOTHING, RUN_PAST, RUN_SPACING, RUN_START } from "./constants";
 import { arcAtY, type Point, type SpineSamples } from "./geometry";
 import type { Anchors } from "./spine";
 
@@ -104,4 +104,58 @@ export function tailStart(head: number, train: number, fade: number, runLen: num
   if (runLen <= 0) return naive;
   const intrude = Math.max(0, runLen - train + fade);
   return naive - intrude * Math.min(1, Math.max(0, 1 - (head - runLen) / train));
+}
+
+export const HEAD_PARAMS: HeadParams = { mode: "viewport", headAt: HEAD_AT, preDrawn: 0, fromBand: true };
+
+export interface HeadState {
+  head: number;
+  target: number;
+  vel: number;
+  gate: number;
+  gateTarget: number;
+}
+export const createHead = (): HeadState => ({ head: 0, target: 0, vel: 0, gate: 0, gateTarget: 0 });
+
+// Where the head may go: the whole line under reduced motion, the run's end
+// until the visitor answers the band, else the scroll's target.
+export function gatedTarget(raw: number, runLen: number, length: number, decided: boolean, still: boolean): number {
+  if (still) return length;
+  return decided ? raw : runLen;
+}
+
+// One step toward the target, never faster than DRAW_SPEED px of arc per
+// second, the speed eased in over DRAW_EASE_S; the swell's gate relaxes over
+// GATE_S. True while either still moves.
+export function stepHead(h: HeadState, dt: number, still: boolean): boolean {
+  if (still) {
+    h.head = h.target;
+    h.vel = 0;
+    h.gate = 0;
+    return false;
+  }
+  const gap = h.target - h.head;
+  const want = Math.max(-DRAW_SPEED, Math.min(DRAW_SPEED, gap * HEAD_SMOOTHING));
+  h.vel = Math.abs(want) > Math.abs(h.vel) ? want + (h.vel - want) * Math.exp(-dt / DRAW_EASE_S) : want;
+  h.head += h.vel * dt;
+  if ((gap > 0 && h.head > h.target) || (gap < 0 && h.head < h.target) || Math.abs(h.head - h.target) < HEAD_REST_PX) {
+    h.head = h.target;
+    h.vel = 0;
+  }
+  h.gate = h.gateTarget + (h.gate - h.gateTarget) * Math.exp(-dt / GATE_S);
+  if (Math.abs(h.gate - h.gateTarget) < 0.01) h.gate = h.gateTarget;
+  return h.head !== h.target || h.gate !== h.gateTarget;
+}
+
+// Where the line first comes on screen, layer px.
+export function firstOnScreenY(samples: SpineSamples, width: number): number {
+  for (let i = 0; i < samples.count; i++) if (samples.x[i] > 0 && samples.x[i] < width) return samples.y[i];
+  return samples.y[0];
+}
+
+// The run's largest step off its line, px (0 for a level run).
+export function runFlatness(samples: SpineSamples, runLen: number): number {
+  let worst = 0;
+  for (let i = 0; i * samples.step < runLen; i++) worst = Math.max(worst, Math.abs(samples.y[i] - samples.y[0]));
+  return worst;
 }
