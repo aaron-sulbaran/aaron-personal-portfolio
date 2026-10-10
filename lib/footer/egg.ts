@@ -205,8 +205,13 @@ export function triggerEgg(state: EggState, now: number, ctx: EggContext) {
 }
 
 // Once a frame: the pending asks, the landing's ripple, the next queued egg,
-// and the ripples that have run their course.
+// and the ripples that have run their course. Reduced motion switched on
+// mid-hop ends the hop, and drops the queued one, so the period rests now.
 export function stepEgg(state: EggState, now: number, ctx: EggContext, rippleLife: number) {
+  if (ctx.reduced && state.run && !state.run.reduced) {
+    state.run = null;
+    state.queued = false;
+  }
   for (; state.pending > 0; state.pending--) triggerEgg(state, now, ctx);
   const run = state.run;
   if (run && run.rippleAt !== null && now >= run.rippleAt) {

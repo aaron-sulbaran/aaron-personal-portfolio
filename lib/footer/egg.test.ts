@@ -306,6 +306,25 @@ describe("the queue", () => {
     expect(eggBusy(s)).toBe(false);
   });
 
+  it("ends a hop at once when reduced motion comes on mid-air, the queued one too; a later ask only turns", () => {
+    const s = createEggState();
+    askEgg(s);
+    askEgg(s); // a second click, queued
+    stepEgg(s, 0, ctx, life);
+    const midAir = (eggPhases(E).takeoff + eggPhases(E).landing) / 2;
+    stepEgg(s, midAir, ctx, life);
+    expect(eggPoseAt(s, midAir, E).lift).toBeGreaterThan(0);
+    const still = { ...ctx, reduced: true };
+    stepEgg(s, midAir + 16, still, life);
+    expect(eggPoseAt(s, midAir + 16, E)).toBe(REST_POSE);
+    expect(eggBusy(s)).toBe(false);
+    askEgg(s);
+    stepEgg(s, midAir + 100, still, life);
+    const turning = eggPoseAt(s, midAir + 100 + REDUCED_TURN_MS / 2, E);
+    expect(turning.lift).toBe(0);
+    expect(turning.angle).toBeCloseTo(45, 9);
+  });
+
   it("makes no ripple and no hop under reduced motion", () => {
     const s = createEggState();
     const still = { ...ctx, reduced: true };
