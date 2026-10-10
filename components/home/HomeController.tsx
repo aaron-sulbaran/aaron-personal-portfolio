@@ -12,7 +12,7 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from "react";
-import { homeTileByKey, photoBySrc, workItemBySlug, type Photo, type WorkItem } from "@/lib/content";
+import { strandCardByKey, type CardKey } from "@/lib/content";
 import { useBodyScrollLock } from "@/lib/modal";
 import { claimHomeReadiness, publishHomeReadiness, useHomeReadiness, type HomeReadiness } from "@/lib/home/readiness";
 import { markSeen } from "@/lib/home/seen";
@@ -24,8 +24,7 @@ import {
   takeManualScrollRestoration,
 } from "@/lib/home/recovery";
 import { sameDrivers, selectDrivers, type Drivers } from "@/lib/coil/drivers";
-import { PhotoModal } from "@/components/PhotoModal";
-import { WorkModal } from "@/components/WorkModal";
+import { CardModal } from "@/components/card/CardModal";
 import { CoilStage } from "@/components/coil/CoilStage";
 import type { CoilEntrance } from "@/components/coil/CoilScene";
 import type { HeroScene } from "@/lib/coil/heroStill";
@@ -49,9 +48,7 @@ const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : use
 
 type OpenOrigin = HTMLElement | null;
 
-type Selection =
-  | { kind: "photo"; key: string; photo: Photo; origin: OpenOrigin }
-  | { kind: "work"; key: string; item: WorkItem; origin: OpenOrigin };
+type Selection = { key: CardKey; origin: OpenOrigin };
 
 // The shared-element flight from a curved card into its modal: which card
 // flies and which way. The scene draws the flown card itself and reads its
@@ -75,9 +72,9 @@ export type HomeControllerValue = {
   drivers: Drivers;
   modalOpen: boolean;
   flight: CoilFlight | null;
-  openPhoto: (photo: Photo, key: string, origin: OpenOrigin) => void;
-  openWork: (item: WorkItem, key: string, origin: OpenOrigin) => void;
-  // A work row or card that navigates away still counts as seen.
+  // A book row: its card's modal, no flight.
+  openCard: (key: CardKey, origin: HTMLElement) => void;
+  // Kept for a future row that navigates away: such a row still counts as seen.
   markVisited: (key: string) => void;
   // A book row under the pointer or keyboard focus: its card glides to the
   // front of the visible helix and the coil holds still on it (null when it
@@ -253,13 +250,7 @@ export function HomeController({ hero, children }: Props) {
     publishHomeReadiness("ready");
   }, []);
 
-  const openPhoto = useCallback((photo: Photo, key: string, origin: OpenOrigin) => {
-    setSelection((current) => current ?? { kind: "photo", key, photo, origin });
-  }, []);
-
-  const openWork = useCallback((item: WorkItem, key: string, origin: OpenOrigin) => {
-    setSelection((current) => current ?? { kind: "work", key, item, origin });
-  }, []);
+  const openCard = useCallback((key: CardKey, origin: OpenOrigin) => setSelection((current) => current ?? { key, origin }), []);
 
   const markVisited = useCallback((key: string) => markSeen(key), []);
 
@@ -284,23 +275,21 @@ export function HomeController({ hero, children }: Props) {
 
   // A card in the scene (or its row in the unwound list): freeze the scene so
   // the rendered pose is the flight pose, and open its modal with the card
-  // flying in. Without a scene or a slot on screen it opens like a book row,
-  // drawing its own media.
-  const openCard = useCallback(
+  // flying in, at any window width (input by capability, Layer 1). A touch tap
+  // (slot -1), reduced motion or a slot off screen opens it like a book row,
+  // the modal drawing its own media. The flown card lands on the slot of the
+  // layout the modal opens in (components/card/CardHeader, StillPhoto).
+  const openFromScene = useCallback(
     (key: string, slot: number, origin: OpenOrigin) => {
       if (selection || flight) return;
-      const tile = homeTileByKey.get(key);
-      if (!tile) return;
-      const photo = tile.kind === "photo" ? photoBySrc.get(tile.src) : undefined;
-      const item = tile.kind === "work" ? workItemBySlug.get(tile.slug) : undefined;
-      if (!photo && !item) return;
+      const card = strandCardByKey.get(key);
+      if (!card) return;
       const api = sceneApiRef.current;
       if (api && slot >= 0 && !reducedMotion && api.flightQuadOf(slot)) {
         api.freeze(true);
-        setFlight({ key, kind: tile.kind, slot, photoSrc: photo?.src, phase: "out", revealed: false });
+        setFlight({ key: card.key, kind: card.kind, slot, photoSrc: card.face.kind === "photo" ? card.face.src : undefined, phase: "out", revealed: false });
       }
-      if (photo) setSelection({ kind: "photo", key, photo, origin });
-      else if (item) setSelection({ kind: "work", key, item, origin });
+      setSelection({ key: card.key, origin });
     },
     [selection, flight, reducedMotion],
   );
@@ -308,12 +297,12 @@ export function HomeController({ hero, children }: Props) {
   // A tap on a touch screen opens the modal with no flight: the modal draws
   // its own media (renderMedia), as from a book row.
   const handleCardClick = useCallback(
-    (card: CoilCardRef) => openCard(card.key, card.tap ? -1 : card.slot, null),
-    [openCard],
+    (card: CoilCardRef) => openFromScene(card.key, card.tap ? -1 : card.slot, null),
+    [openFromScene],
   );
   const handleRowOpen = useCallback(
-    (key: string, origin: HTMLElement) => openCard(key, sceneApiRef.current?.slotOfKey(key) ?? -1, origin),
-    [openCard],
+    (key: string, origin: HTMLElement) => openFromScene(key, sceneApiRef.current?.slotOfKey(key) ?? -1, origin),
+    [openFromScene],
   );
 
   const handleFlyOutComplete = useCallback(() => setFlight((f) => (f ? { ...f, revealed: true } : f)), []);
@@ -343,8 +332,9 @@ export function HomeController({ hero, children }: Props) {
   }, [selection, flight]);
 
   const modalOpen = selection !== null;
-  // No flight means the modal draws its own image in the slot.
-  const renderMedia = flight === null;
+  // The modal draws its own image in the slot unless a flown card is parked
+  // over it (a flight going home no longer covers the slot).
+  const renderMedia = flight?.phase !== "out";
 
   const value = useMemo<HomeControllerValue>(
     () => ({
@@ -354,8 +344,7 @@ export function HomeController({ hero, children }: Props) {
       drivers,
       modalOpen,
       flight,
-      openPhoto,
-      openWork,
+      openCard,
       markVisited,
       focusCard,
       claimEntrance,
@@ -369,8 +358,7 @@ export function HomeController({ hero, children }: Props) {
       drivers,
       modalOpen,
       flight,
-      openPhoto,
-      openWork,
+      openCard,
       markVisited,
       focusCard,
       claimEntrance,
@@ -406,12 +394,7 @@ export function HomeController({ hero, children }: Props) {
         {hero}
       </section>
       {children}
-      <PhotoModal
-        photo={selection?.kind === "photo" ? selection.photo : null}
-        onClose={closeModal}
-        renderMedia={renderMedia}
-      />
-      <WorkModal item={selection?.kind === "work" ? selection.item : null} onClose={closeModal} renderMedia={renderMedia} />
+      <CardModal cardKey={selection?.key ?? null} onClose={closeModal} renderMedia={renderMedia} flying={flight?.phase === "out"} />
       <Portal>
         {flight && (
           <FlyingTile

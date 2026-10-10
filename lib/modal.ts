@@ -105,8 +105,17 @@ export function useEscapeKey(active: boolean, onEscape: () => void) {
   }, [active]);
 }
 
-// Traps Tab/Shift+Tab inside the referenced container while active. Restores
-// focus to the element that was focused before the modal opened.
+// The active traps, innermost last: only the top one pulls a stray Tab back in.
+const trapStack: HTMLElement[] = [];
+
+// Traps Tab/Shift+Tab inside the referenced container while active, among live
+// controls only (not disabled, not inside an inert subtree, rendered). Focus
+// never falls out: a Tab with focus outside the container (the body, once a
+// focused control went away) comes back in, and a focused control that turns
+// inert or disabled under the visitor (a pager page turning away, an arrow at
+// its end) hands focus to the nearest live control, the first one in the
+// closest enclosing element that still holds one. Restores focus to the element
+// that was focused before the modal opened.
 export function useFocusTrap(
   containerRef: React.RefObject<HTMLElement | null>,
   active: boolean,
@@ -119,10 +128,9 @@ export function useFocusTrap(
     const container = containerRef.current;
     if (!container) return;
 
-    const focusables = () =>
-      Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
-        (el) => !el.hasAttribute("disabled") && el.offsetParent !== null,
-      );
+    const live = (el: HTMLElement) => !el.hasAttribute("disabled") && !el.closest("[inert]") && el.offsetParent !== null;
+    const liveIn = (scope: Element) => Array.from(scope.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(live);
+    const focusables = () => liveIn(container);
 
     // Move focus into the container on open.
     const first = focusables()[0];
@@ -149,10 +157,44 @@ export function useFocusTrap(
       }
     };
 
+    const onDocumentKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Tab" || trapStack[trapStack.length - 1] !== container) return;
+      const current = document.activeElement;
+      if (current && current !== document.body && container.contains(current)) return;
+      const items = focusables();
+      if (items.length === 0) return;
+      e.preventDefault();
+      (e.shiftKey ? items[items.length - 1] : items[0]).focus();
+    };
+
+    let held: HTMLElement | null = null;
+    const onFocusIn = (e: FocusEvent) => {
+      if (e.target instanceof HTMLElement) held = e.target;
+    };
+    const rescue = () => {
+      if (!held || live(held)) return;
+      const current = document.activeElement;
+      if (current && current !== held && current !== document.body) return;
+      let next: HTMLElement | undefined;
+      for (let scope = held.parentElement; scope && !next; scope = scope === container ? null : scope.parentElement) next = liveIn(scope)[0];
+      held = null;
+      next?.focus({ preventScroll: true });
+    };
+    const observer = new MutationObserver(rescue);
+    observer.observe(container, { subtree: true, attributes: true, attributeFilter: ["disabled", "inert"] });
+
+    trapStack.push(container);
     container.addEventListener("keydown", handler);
+    container.addEventListener("focusin", onFocusIn);
+    document.addEventListener("keydown", onDocumentKeyDown);
     return () => {
       if (initialFocusRaf) cancelAnimationFrame(initialFocusRaf);
+      observer.disconnect();
+      const at = trapStack.lastIndexOf(container);
+      if (at !== -1) trapStack.splice(at, 1);
       container.removeEventListener("keydown", handler);
+      container.removeEventListener("focusin", onFocusIn);
+      document.removeEventListener("keydown", onDocumentKeyDown);
       returnFocusRef.current?.focus?.();
     };
   }, [active, containerRef]);
@@ -171,7 +213,7 @@ export function useFocusTrap(
 // the variant builders below; not exported (nothing outside this file uses it).
 const MODAL_BLUR_PX = 24;
 
-// Photo/work modals pass `heldExit` so the frost HOLDS at full for a beat after
+// The card modal passes `heldExit` so the frost HOLDS at full for a beat after
 // close, then clears. This keeps the deck masked while the flown card dissolves
 // back toward it (the reverse of the frost-in on open), so the return never
 // shows a translucent card clipping across the deck. FlyingTile's dissolve uses

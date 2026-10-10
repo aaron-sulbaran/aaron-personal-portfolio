@@ -72,6 +72,9 @@ export type CoilTheme = {
     readonly duoDark: Rgba;
     readonly duoLight: Rgba;
     readonly workBack: Rgba; // plain work backs: duo light in light, its own pane in dark
+    readonly anvil: Rgba;
+    readonly logoGround: Rgba;
+    readonly mark: Rgba; // the AS mark on This site's card: the accent
     readonly recede: number;
     readonly sheen: number;
   };
@@ -103,10 +106,11 @@ export function themeFromTokens(read: TokenReader, dark: boolean): CoilTheme {
   const paper = parseColor(read("--color-background")) ?? { r: 0.98, g: 0.98, b: 0.97, a: 1 };
   const color = (name: string, fallback: Rgba = paper) => parseColor(read(name)) ?? fallback;
   const duoLight = color("--card-duo-light");
+  const ink = color("--color-foreground", { r: 0.04, g: 0.04, b: 0.04, a: 1 });
   return {
     dark,
     paper,
-    ink: color("--color-foreground", { r: 0.04, g: 0.04, b: 0.04, a: 1 }),
+    ink,
     field: {
       top: color("--shader-top"),
       bottom: color("--shader-bottom"),
@@ -122,6 +126,9 @@ export function themeFromTokens(read: TokenReader, dark: boolean): CoilTheme {
       duoDark: color("--card-duo-dark"),
       duoLight,
       workBack: dark ? color("--card-work-back-dark", duoLight) : duoLight,
+      anvil: color("--card-anvil"),
+      logoGround: color("--card-logo-ground"),
+      mark: color("--color-accent", ink),
       recede: parseScalar(read("--card-recede"), 0.3),
       sheen: parseScalar(read("--card-sheen"), 0.1),
     },

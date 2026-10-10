@@ -1,5 +1,5 @@
 import type { RefObject } from "react";
-import type { HomeTile } from "@/lib/content";
+import type { StrandCard } from "@/lib/content";
 import type { CaptureState } from "@/lib/coil/capture";
 import type { RenderBudget } from "@/lib/coil/drivers";
 import type { FlightProbe } from "@/lib/coil/flightProbe";
@@ -67,7 +67,7 @@ export type SceneCtx = {
   host: HTMLElement;
   canvas: HTMLCanvasElement;
   live: RefObject<CoilSceneProps>;
-  tiles: readonly HomeTile[];
+  tiles: readonly StrandCard[];
   tileCount: number;
   flags: DebugFlags;
   debug: DebugStats | null;

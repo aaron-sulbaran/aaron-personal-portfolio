@@ -124,7 +124,7 @@ test("a11y: the skyline's canvas is named with its total and range", async ({ pa
 for (const colorScheme of ["light", "dark"] as const) {
   test(`a11y: every label-face text in main and the footer meets 4.5:1 in ${colorScheme}`, async ({ page }) => {
     await page.emulateMedia({ colorScheme });
-    await page.addInitScript((key) => sessionStorage.setItem(key, JSON.stringify(["capital-one-pm"])), SEEN_STORAGE_KEY);
+    await page.addInitScript((key) => sessionStorage.setItem(key, JSON.stringify(["capital-one"])), SEEN_STORAGE_KEY);
     await openHome(page);
     const maxScroll = await page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight);
     for (let y = 0; y < maxScroll; y += 600) await scrollToY(page, y);

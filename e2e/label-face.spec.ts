@@ -1,12 +1,10 @@
-import type { CDPSession, Locator, Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { siteContent } from "@/lib/content";
 import { SEEN_STORAGE_KEY } from "@/lib/home/seen";
 import { capsuleText } from "@/lib/waveform/dock";
 import { test, expect } from "./support/fixtures";
-import { openHome } from "./support/coil";
+import { cardRow, openCardFromBook } from "./support/cards";
 import { settled } from "./support/fallback";
-import type { HookWindow } from "./support/hooks";
-import { pointerTo } from "./support/input";
 
 // The label face (docs/label-face-spec.md): every small non-body text is
 // Profa Bold at one of three steps, 0.01em, weight 700, in the accent when
@@ -47,39 +45,7 @@ async function expectLabel(locator: Locator, step: Step, tone: Tone) {
   expect(read.color, `${read.text}: color`).toBe(read.tones[tone]);
 }
 
-// Opens a work card's modal the way a visitor does: hover the card until the
-// scene picks it, then click (as flight.spec.ts does).
-async function openWorkModal(page: Page, cdp: CDPSession) {
-  await openHome(page, { debug: "flight" });
-  const find = () =>
-    page.evaluate(() => {
-      const w = window as HookWindow;
-      const slot = w.__coilFlight!.scene.slots().find(
-        (s) =>
-          s.kind === "work" && s.depth > 0.3 &&
-          s.center.x > 80 && s.center.x < innerWidth - 80 && s.center.y > 80 && s.center.y < innerHeight * 0.75 &&
-          w.__coil!.api.cardAt(s.center.x, s.center.y)?.slot === s.slot,
-      );
-      return slot?.slot ?? null;
-    });
-  await expect.poll(find, { timeout: 20_000, message: "a work card on screen" }).not.toBeNull();
-  const slot = (await find())!;
-  await page.evaluate((n) => (window as HookWindow).__coilFlight!.scene.follow(n), slot);
-  const center = await page.evaluate((n) => (window as HookWindow).__coilFlight!.scene.slot(n)!.center, slot);
-  await pointerTo(cdp, center);
-  await page.waitForFunction((n) => (window as HookWindow).__coil!.hovered() === n, slot);
-  await cdp.send("Input.dispatchMouseEvent", { type: "mousePressed", ...center, button: "left", clickCount: 1 });
-  await cdp.send("Input.dispatchMouseEvent", { type: "mouseReleased", ...center, button: "left", clickCount: 1 });
-  const dialog = page.getByRole("dialog");
-  await expect(dialog).toBeVisible();
-  return dialog;
-}
-
-test("label face: controls and links are Profa Bold in the accent", async ({ page, cdp }) => {
-  await page.goto("/work/capital-one-pm");
-  await expectLabel(page.locator("article a[href='/#work']"), "label", "accent");
-  await expectLabel(page.getByRole("link", { name: siteContent.work.placeholderCta }), "label-lg", "accent");
-
+test("label face: controls and links are Profa Bold in the accent", async ({ page }) => {
   await page.goto("/");
   await settled(page);
   await expectLabel(page.locator('#listen [data-control="on"]'), "label", "accent");
@@ -90,39 +56,32 @@ test("label face: controls and links are Profa Bold in the accent", async ({ pag
   await page.goto("/label-face-missing");
   await expectLabel(page.getByRole("link", { name: siteContent.notFound.cta }), "label", "accent");
 
-  const dialog = await openWorkModal(page, cdp);
-  await expectLabel(dialog.getByRole("link", { name: siteContent.work.cta }), "label-lg", "accent");
+  const { dialog } = await openCardFromBook(page, "anthropic", { settled: true });
+  await expectLabel(dialog.getByRole("link", { name: /txclaude\.org/ }), "label-lg", "accent");
 });
 
-test("label face: meta beside a title is Profa Bold in the accent", async ({ page, cdp }) => {
-  const item = siteContent.workItems.find((i) => i.slug === "capital-one-pm")!;
-  await page.goto(`/work/${item.slug}`);
-  await expectLabel(page.locator("article").getByText(`${item.role}, ${item.year}`, { exact: true }), "label-lg", "accent");
-
-  const row = siteContent.book.workRows.find((r) => r.key === "capital-one-pm")!;
+test("label face: meta beside a title is Profa Bold in the accent", async ({ page }) => {
   await page.goto("/");
   await settled(page);
-  await expectLabel(page.locator("#work .book-row").getByText(row.meta, { exact: true }), "label", "accent");
+  await expectLabel(page.locator("#work .book-row").getByText(siteContent.cards["capital-one"].book.meta, { exact: true }), "label", "accent");
 
-  const dialog = await openWorkModal(page, cdp);
-  const shownTitle = (await dialog.locator("h2").textContent())?.trim();
-  const shown = siteContent.workItems.find((i) => i.title === shownTitle)!;
-  await expectLabel(dialog.getByText(`${shown.role}, ${shown.year}`, { exact: true }), "label", "accent");
+  const { dialog } = await openCardFromBook(page, "anthropic", { settled: true });
+  await expectLabel(dialog.getByText("Claude Campus Ambassador, 2026", { exact: true }), "label", "accent");
 });
 
-test("label face: hints and the credit prose are Profa Bold, muted", async ({ page, cdp }) => {
-  const dialog = await openWorkModal(page, cdp);
+test("label face: hints and the credit prose are Profa Bold, muted", async ({ page }) => {
+  const { dialog } = await openCardFromBook(page, "anthropic", { settled: true });
   await expectLabel(dialog.getByText(siteContent.modals.closeHintKeyboard, { exact: true }), "label", "muted");
   await dialog.getByRole("button", { name: siteContent.modals.closeAriaLabel }).click();
   await expect(dialog).toBeHidden();
 
   await expectLabel(page.locator("#listen p", { hasText: siteContent.soundtrack.creditLead }), "label-sm", "muted");
-  const row = page.locator("#work button.book-row", { hasText: "Public speaking" });
+  const row = cardRow(page, "mentorship");
   await row.scrollIntoViewIfNeeded();
   await row.focus();
   await page.keyboard.press("Enter");
-  const photo = page.getByRole("dialog");
-  await expectLabel(photo.getByText(siteContent.modals.closeHintKeyboard, { exact: true }), "label", "muted");
+  const mentorship = page.getByRole("dialog");
+  await expectLabel(mentorship.getByText(siteContent.modals.closeHintKeyboard, { exact: true }), "label", "muted");
 });
 
 test("label face: Who I am's block kickers and the Connect labels are Profa Bold, muted, and no section draws a kicker over its heading", async ({ page }) => {
@@ -255,28 +214,13 @@ test("label face: the band's answers sit on the question's baseline, 36px after 
   expect((await read()).alpha).toBeCloseTo(0.55, 2);
 });
 
-test("label face: the back link is a drawn 14px arrow, lifted 1px, then Work", async ({ page }) => {
-  await page.goto("/work/capital-one-pm");
-  const link = page.locator("article a[href='/#work']");
-  await expect(link).toHaveText("Work");
-  const icon = link.locator("svg");
-  expect(await icon.evaluate((el) => ({
-    w: el.getBoundingClientRect().width,
-    stroke: el.getAttribute("stroke-width"),
-    top: getComputedStyle(el).top,
-    first: el.parentElement!.firstElementChild === el,
-  }))).toEqual({ w: 14, stroke: "2.5", top: "-1px", first: true });
-});
-
-test("label face: role lines sit under their titles, 14px on the case page and 6px in the modal", async ({ page, cdp }) => {
+test("label face: role lines sit under their titles, 6px in the modal", async ({ page }) => {
   const gap = (title: Locator) =>
     title.evaluate((h) => {
       const p = h.nextElementSibling as HTMLElement | null;
       return p?.tagName === "P" ? p.getBoundingClientRect().top - h.getBoundingClientRect().bottom : null;
     });
-  await page.goto("/work/capital-one-pm");
-  expect(await gap(page.locator("article h1"))).toBeCloseTo(14, 0);
-  const dialog = await openWorkModal(page, cdp);
+  const { dialog } = await openCardFromBook(page, "anthropic", { settled: true });
   expect(await gap(dialog.locator("h2"))).toBeCloseTo(6, 0);
   const fit = await dialog.locator("[data-tile-slot='work']").evaluate((slot) => ({
     block: slot.nextElementSibling!.getBoundingClientRect().height,
@@ -302,7 +246,7 @@ const rowLayout = (page: Page) =>
   );
 
 test("label face: a row's meta wraps under its title only when the two do not fit, and a seen row dims it to 0.75", async ({ page }) => {
-  await page.addInitScript((key) => sessionStorage.setItem(key, JSON.stringify(["capital-one-pm"])), SEEN_STORAGE_KEY);
+  await page.addInitScript((key) => sessionStorage.setItem(key, JSON.stringify(["capital-one"])), SEEN_STORAGE_KEY);
   for (const viewport of [{ width: 1024, height: 768 }, { width: 390, height: 844 }]) {
     await page.setViewportSize(viewport);
     await page.goto("/");
@@ -312,15 +256,9 @@ test("label face: a row's meta wraps under its title only when the two do not fi
       expect(row.wrapped, `${viewport.width}: ${row.text}`).toBe(!row.fits);
     }
   }
-  const meta = page.locator("#work .book-row").getByText(siteContent.book.workRows.find((r) => r.key === "capital-one-pm")!.meta, { exact: true });
+  const meta = page.locator("#work .book-row").getByText(siteContent.cards["capital-one"].book.meta, { exact: true });
   await page.mouse.move(1, 1);
   await expect.poll(() => meta.evaluate((el) => Number(getComputedStyle(el).opacity))).toBeCloseTo(0.75, 2);
   await meta.hover();
   await expect.poll(() => meta.evaluate((el) => Number(getComputedStyle(el).opacity))).toBe(1);
-});
-
-test("label face: at 1440 every work row's meta sits beside its title", async ({ page }) => {
-  await page.goto("/");
-  await settled(page);
-  for (const row of await rowLayout(page)) expect(row.wrapped, row.text ?? "").toBe(false);
 });

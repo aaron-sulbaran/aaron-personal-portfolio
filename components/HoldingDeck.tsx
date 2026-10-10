@@ -30,9 +30,7 @@ const SLOTS = Array.from({ length: CARD_COUNT }, (_, i) => ({
 
 const BACK = SLOTS[CARD_COUNT - 1];
 
-const photos = siteContent.photos
-  .filter((p) => p.src.endsWith(".jpeg"))
-  .slice(0, CARD_COUNT);
+const photos = siteContent.photos.slice(0, CARD_COUNT);
 
 export function HoldingDeck() {
   const reduce = useReducedMotion();

@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { siteContent, strandTiles } from "@/lib/content";
+import { siteContent, strandCards } from "@/lib/content";
 import { COIL } from "@/lib/coil/constants";
 import { test, expect } from "./support/fixtures";
 import { coilPoints, nextFrames, openHome } from "./support/coil";
@@ -92,7 +92,7 @@ test("toggle: a held book row keeps its card at the front across a switch", asyn
     await page.waitForTimeout(800);
   };
   // (a) Held on the coil at rest, then the band: the landing aims the row's card again.
-  const first = strandTiles[2].key;
+  const first = strandCards[2].key;
   await focus(first);
   await page.waitForTimeout(800);
   await half(page, labels.band).click();
@@ -102,7 +102,7 @@ test("toggle: a held book row keeps its card at the front across a switch", asyn
   // The same with the row's glide still under way at the press: the switch
   // holds the strand where the glide had got to, and the landing finishes the aim.
   await toCoil();
-  const across = strandTiles[(2 + strandTiles.length / 2) % strandTiles.length].key;
+  const across = strandCards[(2 + strandCards.length / 2) % strandCards.length].key;
   const gliding = await page.evaluate((k) => {
     const w = window as HookWindow;
     w.__coil!.api.focusCard(k);
@@ -115,7 +115,7 @@ test("toggle: a held book row keeps its card at the front across a switch", asyn
   await expectRowAtBandFront(page, across);
   // (b) A row focused mid-switch: its glide waits for the landing.
   await toCoil();
-  const second = strandTiles[7].key;
+  const second = strandCards[7].key;
   await half(page, labels.band).click();
   const focusedAt = await page.evaluate(
     (k) =>
