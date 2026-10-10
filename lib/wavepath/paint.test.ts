@@ -4,10 +4,11 @@ import { runColumns } from "./columns";
 import { createMusic } from "./music";
 import { buildPathDots, createSink, type DotFrame } from "./paint";
 import { createPlucks } from "./pluck";
+import { createRipple, startRipple, stepRipple, type RippleState } from "./ripple";
 
 const cols = runColumns(1440, 100, SPACING);
 const all = Int32Array.from({ length: cols.count }, (_, j) => j);
-const frame = (over: Partial<DotFrame> = {}): DotFrame => ({ head: 1e9, tail: -Infinity, train: null, runLen: 0, gate: 0, breath: 0, shimmer: 0, music: createMusic(), plucks: createPlucks(), still: false, ...over });
+const frame = (over: Partial<DotFrame> = {}): DotFrame => ({ head: 1e9, tail: -Infinity, train: null, runLen: 0, gate: 0, breath: 0, shimmer: 0, music: createMusic(), plucks: createPlucks(), ripple: createRipple(), still: false, ...over });
 const draw = (f: DotFrame, from = -Infinity, to = Infinity) => {
   const sink = createSink();
   buildPathDots(cols, all, 0, cols.count, f, AMPLITUDE, 0, from, to, null, sink);
@@ -50,5 +51,42 @@ describe("dots along the curve", () => {
     const breathing = draw(frame({ runLen: 100, breath: 1 }), farFrom);
     expect(breathing.muted).not.toEqual(resting.muted);
     expect(draw(frame({ runLen: 100, breath: 0 }), farFrom).muted).toEqual(draw(frame({ runLen: 0, breath: 0 }), farFrom).muted);
+  });
+});
+
+describe("the answer's ripple", () => {
+  const crest = (at: number, age: number): RippleState => {
+    const r = createRipple();
+    startRipple(r, at);
+    stepRipple(r, age);
+    return r;
+  };
+  // Dot y per x, so one column's displacement can be read against the resting shape.
+  const ys = (dots: number[]) => {
+    const byX = new Map<number, number>();
+    for (let k = 0; k < dots.length; k += 3) if (!byX.has(dots[k])) byX.set(dots[k], dots[k + 1]);
+    return byX;
+  };
+  it("displaces columns near its crest and leaves far columns as the resting shape", () => {
+    const rest = ys(draw(frame()).muted);
+    const rippled = ys(draw(frame({ ripple: crest(600, 0.3) })).muted);
+    const crestS = 600 + 650 * 0.3;
+    const near = cols.x.findIndex((_, j) => Math.abs(cols.s[j] - crestS) < SPACING);
+    let moved = 0, farMoved = 0;
+    for (const [x, y] of rippled) {
+      const base = rest.get(x);
+      if (base === undefined) continue;
+      if (Math.abs(x - cols.x[near]) < 20 && Math.abs(y - base) > 1) moved++;
+      if (Math.abs(x - (cols.x[0] + 1400)) < 1 && y !== base) farMoved++;
+    }
+    expect(moved, "columns at the crest that moved").toBeGreaterThan(0);
+    expect(farMoved, "columns far from the crest that moved").toBe(0);
+  });
+  it("swells the dots at its crest", () => {
+    const count = (f: DotFrame) => { const d = draw(f); return d.muted.length + d.accent.length; };
+    expect(count(frame({ ripple: crest(600, 0.3) }))).toBeGreaterThan(count(frame()));
+  });
+  it("still frames ignore it", () => {
+    expect(draw(frame({ still: true, ripple: crest(600, 0.3) })).muted).toEqual(draw(frame({ still: true })).muted);
   });
 });
