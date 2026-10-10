@@ -67,6 +67,29 @@ describe("the wordmark's frame", () => {
     expect(s.frames[10].squash).toBe(1);
   });
 
+  it("stays awake on a release whose first frame has no time, until the dent springs back", () => {
+    const s = createWordState(11);
+    const down: Pointer = { x: rest.centers[3].x, y: rest.centers[3].y, inside: true, pressed: true };
+    const settled = run(s, input({ pointer: down, riseStart: -2000 }), 0, 2000);
+    expect(settled.last.busy).toBe(false);
+    expect(s.frames[3].squash).toBeLessThan(1);
+    const up = input({ pointer: { ...down, pressed: false }, riseStart: -2000 });
+    expect(stepWord(s, up, 2100, 0).busy).toBe(true);
+    const { last } = run(s, up, 2100, 2000);
+    expect(s.frames[3].squash).toBe(1);
+    expect(last.busy).toBe(false);
+  });
+
+  it("drops a full swell at once when reduced motion turns on", () => {
+    const s = createWordState(11);
+    const down: Pointer = { x: rest.centers[3].x, y: rest.centers[3].y, inside: true, pressed: true };
+    run(s, input({ pointer: down, riseStart: -2000 }), 0, 3000);
+    expect(s.frames[3].swell).toBe(1);
+    expect(s.frames[3].squash).toBeLessThan(1);
+    stepWord(s, input({ pointer: down, riseStart: -2000, reduced: true }), 3100, 1 / 60);
+    expect(s.frames.every((f) => f.swell === 0 && f.squash === 1)).toBe(true);
+  });
+
   it("runs the ripple through every letter but the period, which lands in its own squash", () => {
     const s = createWordState(11);
     const egg = createEggState();

@@ -49,7 +49,7 @@ export function stepWord(state: WordState, input: WordInput, now: number, dt: nu
   for (let i = 0; i < state.frames.length; i++) {
     const c = centers[i] ?? { x: 0, y: 0 };
     const near = live ? falloff(Math.hypot(pointer.x - c.x, pointer.y - c.y), radius) : 0;
-    let infl = approach(state.infl[i], near, dt, FOOTER.swell.easeS);
+    let infl = reduced ? 0 : approach(state.infl[i], near, dt, FOOTER.swell.easeS);
     if (Math.abs(infl - near) < EPS) infl = near;
     state.infl[i] = infl;
     const pressed = pointer.pressed && live ? pressTarget(FOOTER.press.depth, near) : 1;
@@ -62,7 +62,7 @@ export function stepWord(state: WordState, input: WordInput, now: number, dt: nu
     f.swell = infl;
     f.squash = Math.max(0.05, Math.min(1, spring.x));
     f.rise = rise;
-    if (infl !== near || spring.v !== 0) busy = true;
+    if (infl !== near || spring.x !== target || spring.v !== 0) busy = true;
   }
   if (egg && eggBusy(egg.state)) busy = true;
   return { pose: egg ? eggPoseAt(egg.state, now, e) : REST_POSE, busy };
