@@ -24,7 +24,7 @@ import {
   triggerEgg,
   type EggContext,
 } from "./egg";
-import { eggTransform, letterTransform, periodBox } from "./frame";
+import { eggTransform, letterTransform, periodBox, shadowEllipse } from "./frame";
 
 // Ported from the footer lab's round 4 tests (branch lab, app/lab/footer/tests/round4.test.ts).
 
@@ -139,6 +139,23 @@ describe("the period's transform", () => {
     const t = eggTransform(apex, box, size, 1);
     const cap = maxHop(1, box.side / size + FOOTER.swell.amount) * size;
     expect(t.liftPx).toBeLessThanOrEqual(cap + box.side + EPS);
+  });
+
+  it("lays the shadow under the period from the lab's shares, its ry floored, its opacity the pose's share", () => {
+    const S = FOOTER.eggShadow;
+    const box = periodBox(185, 200, 15); // a 30px square sitting on the baseline at 200
+    const rest = shadowEllipse(box, REST_POSE, 112, 200);
+    expect(rest.cx).toBe(112);
+    expect(rest.cy).toBeCloseTo(200 + S.drop * 30, 9);
+    expect(rest.rx).toBeCloseTo(S.rx * 30, 9);
+    expect(rest.ry).toBeCloseTo(S.ry * 30, 9);
+    expect(rest.opacity).toBe(0);
+    expect(shadowEllipse(periodBox(199, 200, 1), REST_POSE, 0, 200).ry).toBe(S.minRyPx); // a 2px period: 0.32px, floored
+    const air = shadowEllipse(box, { ...REST_POSE, shadow: 0.5, shadowScale: 0.6 }, 112, 200);
+    expect(air.opacity).toBeCloseTo(E.shadow * 0.5, 9);
+    expect(air.rx).toBeCloseTo(S.rx * 30 * 0.6, 9);
+    expect(air.ry).toBeCloseTo(S.ry * 30 * 0.6, 9);
+    expect(air.cy).toBe(rest.cy);
   });
 });
 

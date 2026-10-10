@@ -93,6 +93,8 @@ test("footer: at rest the word sits whole on its baseline inside the footer, the
   const period = parsePose(w.transforms[PERIOD]);
   expect(rects.button.left + rects.button.width / 2 - rects.footer.left).toBeCloseTo(period.x, 0);
   expect(rects.button.width).toBeGreaterThanOrEqual(F.hitPx.min);
+  // The footer clips its overflow: the button and its focus ring end inside it.
+  expect(rects.button.bottom + F.hitPx.ring).toBeLessThanOrEqual(rects.footer.bottom);
   await expect(page.getByRole("button", { name: C.dropPeriod })).toBeVisible();
   await expect(page.locator("svg[data-wordmark]")).toHaveAttribute("aria-hidden", "true");
   // Seen once: away and back, the word does not rise again.
