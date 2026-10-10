@@ -4,7 +4,21 @@ import { eggTotalMs } from "@/lib/footer/egg";
 import { bandShare } from "@/lib/footer/geometry";
 import { test, expect } from "./support/fixtures";
 import { nextFrames, openHome, scrollToY } from "./support/coil";
-import { FOOTER, footerBoxes, parsePose, readWord, recordWord, toFooter, waitForWord } from "./support/footer";
+import { settled } from "./support/fallback";
+import {
+  FOOTER,
+  countFooterContexts,
+  footerBoxes,
+  footerContexts,
+  parsePose,
+  readWord,
+  recordWord,
+  toFooter,
+  waitForField,
+  waitForWord,
+  watchFieldChunks,
+} from "./support/footer";
+import { shoot, type Box, type Image } from "./support/pixels";
 
 // The footer (slice C6): the server's small lines and reserved band, the
 // wordmark at rest and its egg, the field's chunk and its fallbacks.
@@ -192,4 +206,158 @@ test("footer: a resize mid-hop lands the word at rest at the new size", async ({
     expect(p.x).toBeGreaterThan(0);
     expect(p.x).toBeLessThan(footer.width);
   }
+});
+
+// ---- Task 9: the field ----
+
+function paperDistance(image: Image, paper: [number, number, number]) {
+  let sum = 0;
+  for (let i = 0; i < image.rgba.length; i += 4) {
+    sum += Math.abs(image.rgba[i] - paper[0]) + Math.abs(image.rgba[i + 1] - paper[1]) + Math.abs(image.rgba[i + 2] - paper[2]);
+  }
+  return sum / (image.rgba.length / 4);
+}
+
+async function paperRgb(page: import("@playwright/test").Page): Promise<[number, number, number]> {
+  return page.evaluate(() => {
+    const probe = document.createElement("span");
+    probe.style.color = "var(--color-background)";
+    document.body.append(probe);
+    const rgb = (getComputedStyle(probe).color.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number) as [number, number, number];
+    probe.remove();
+    return rgb;
+  });
+}
+
+// Boxes in page px: inside the l's stem, in the gap after it (paper), and in the field's hold above the word.
+async function probes(page: import("@playwright/test").Page): Promise<{ stem: Box; gap: Box; above: Box }> {
+  const w = await readWord(page);
+  const footer = (await page.locator(FOOTER).boundingBox())!;
+  const l = parsePose(w.transforms[3]);
+  const d = parsePose(w.transforms[4]);
+  const stemHalf = (F.face.stem * w.size) / 2;
+  const top = footer.y + w.baseline - 0.8 * w.size;
+  const gapX = (l.x + stemHalf + d.x - (2 * F.face.stem * w.size + 0.25 * w.size) / 2) / 2;
+  return {
+    stem: { x: Math.round(footer.x + l.x - 2), y: Math.round(top), width: 4, height: Math.round(0.6 * w.size) },
+    gap: { x: Math.round(footer.x + gapX - 1), y: Math.round(top), width: 2, height: Math.round(0.6 * w.size) },
+    above: { x: Math.round(footer.x + 0.2 * footer.width), y: Math.round(footer.y + 40), width: 40, height: 20 },
+  };
+}
+
+test("footer: the hero's field ends in the word: the letters are windows onto it, the gaps paper", async ({ page }) => {
+  await page.addInitScript(countFooterContexts);
+  await openHome(page);
+  await toFooter(page);
+  await waitForField(page, "gl");
+  await waitForWord(page);
+  await page.mouse.move(2, 2);
+  const paper = await paperRgb(page);
+  const p = await probes(page);
+  expect(paperDistance(await shoot(page, p.stem), paper), "inside the l").toBeGreaterThan(20);
+  expect(paperDistance(await shoot(page, p.gap), paper), "between the l and the d").toBeLessThan(4);
+  expect(paperDistance(await shoot(page, p.above), paper), "the field over the word").toBeGreaterThan(4);
+  expect(await footerContexts(page)).toBe(1);
+  await expect(page.locator("footer canvas[data-footer-canvas]")).toHaveCount(1);
+  await expect(page.locator("[data-footer-field]")).toHaveAttribute("aria-hidden", "true");
+});
+
+test("footer: the field's chunk loads only near the footer, once, without three", async ({ page }) => {
+  await page.addInitScript(countFooterContexts);
+  const scripts = watchFieldChunks(page);
+  await openHome(page);
+  await page.waitForLoadState("networkidle");
+  expect(await scripts.fieldChunks(), "at the top of the page").toEqual([]);
+  await toFooter(page);
+  await waitForField(page, "gl");
+  await scrollToY(page, 0);
+  await toFooter(page);
+  await nextFrames(page, 10);
+  const chunks = await scripts.fieldChunks();
+  expect(chunks).toHaveLength(1);
+  expect(chunks[0].three, "three in the footer's chunk").toBe(false);
+  expect(await footerContexts(page)).toBe(1);
+});
+
+test("footer: a theme switch recolors the live field without a new context", async ({ page }) => {
+  await page.addInitScript(countFooterContexts);
+  await openHome(page);
+  await toFooter(page);
+  await waitForField(page, "gl");
+  const { above } = await probes(page);
+  const light = await shoot(page, above);
+  await page.evaluate(() => document.documentElement.setAttribute("data-theme", "dark"));
+  await nextFrames(page, 4);
+  const dark = await shoot(page, above);
+  expect(paperDistance(dark, [light.rgba[0], light.rgba[1], light.rgba[2]])).toBeGreaterThan(40);
+  expect(await footerContexts(page)).toBe(1);
+});
+
+test("footer: switching reduced motion on swaps the live field for the still poster, and back", async ({ page }) => {
+  await openHome(page);
+  await toFooter(page);
+  await waitForField(page, "gl");
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await waitForField(page, "poster");
+  await expect(page.locator("footer canvas[data-footer-canvas]")).toHaveCount(0);
+  await expect(page.locator("[data-footer-poster]")).toHaveCSS("animation-play-state", "paused");
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await waitForField(page, "gl");
+  await expect(page.locator("footer canvas[data-footer-canvas]")).toHaveCount(1);
+});
+
+for (const theme of ["light", "dark"] as const) {
+  test(`footer: the small lines meet 4.5:1 over the field in ${theme}`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme: theme });
+    await openHome(page);
+    await toFooter(page);
+    await waitForField(page, "gl");
+    await waitForWord(page);
+    const lines = page.locator("[data-footer-lines] p");
+    const ink = await lines.first().evaluate((el) => (getComputedStyle(el).color.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number));
+    const lum = ([r, g, b]: number[]) => {
+      const f = (v: number) => ((v /= 255) <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
+      return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+    };
+    await page.addStyleTag({ content: "[data-footer-lines] p { color: transparent !important; }" });
+    await nextFrames(page, 2);
+    for (let i = 0; i < (await lines.count()); i++) {
+      const box = (await lines.nth(i).boundingBox())!;
+      const image = await shoot(page, { x: Math.floor(box.x), y: Math.floor(box.y), width: Math.ceil(box.width), height: Math.ceil(box.height) });
+      let worst = Infinity;
+      for (let k = 0; k < image.rgba.length; k += 4) {
+        const [hi, lo] = [lum(ink), lum([image.rgba[k], image.rgba[k + 1], image.rgba[k + 2]])].sort((a, b) => b - a);
+        worst = Math.min(worst, (hi + 0.05) / (lo + 0.05));
+      }
+      expect(worst, `line ${i}`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+}
+
+test.describe("reduced motion", () => {
+  test.use({ contextOptions: { reducedMotion: "reduce" } });
+
+  test("footer: the still poster, no chunk, the word at rest at once, and the period only turns", async ({ page }) => {
+    const scripts = watchFieldChunks(page);
+    await page.goto("/");
+    await settled(page);
+    const arriving = recordWord(page, 400);
+    await toFooter(page);
+    const early = await arriving;
+    await waitForWord(page);
+    const rest = await readWord(page);
+    // No rise: from the first frame the footer is in view, every letter is on its baseline.
+    for (const f of early) for (const t of f) expect(parsePose(t).y).toBeCloseTo(rest.baseline, 1);
+    await expect(page.locator("[data-footer-field]")).toHaveAttribute("data-footer-field", "poster");
+    await expect(page.locator("[data-footer-poster]")).toHaveCSS("animation-play-state", "paused");
+    const rec = recordWord(page, 600);
+    await page.getByRole("button", { name: C.dropPeriod }).click();
+    const frames = await rec;
+    const side = F.face.stem * rest.size;
+    const period = frames.map((f) => parsePose(f[PERIOD]));
+    expect(period.some((p) => p.angle > 30)).toBe(true);
+    expect(Math.min(...period.map((p) => p.y)), "no hop, only the turned square's corner").toBeGreaterThanOrEqual(rest.baseline - side * 0.21 - 0.5);
+    for (const f of frames) for (let i = 0; i < f.length; i++) if (i !== PERIOD) expect(parsePose(f[i]).squash).toBe(1);
+    expect(await scripts.fieldChunks()).toEqual([]);
+  });
 });
