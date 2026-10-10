@@ -1,35 +1,35 @@
 {
   "light": {
     "wide": {
-      "offset": 0.9375,
-      "lockup": 0.2138,
-      "greeting": 0.1698
+      "offset": 0,
+      "lockup": 0.2044,
+      "greeting": 0.161
     },
     "square": {
-      "offset": 0.3125,
-      "lockup": 0.3561,
-      "greeting": 0.6757
+      "offset": 0.25,
+      "lockup": 0.3474,
+      "greeting": 0.4149
     },
     "narrow": {
       "offset": 0,
-      "lockup": 0.4434,
+      "lockup": 0.4409,
       "greeting": 0
     }
   },
   "dark": {
     "wide": {
-      "offset": 0,
-      "lockup": 0.2213,
-      "greeting": 0.1738
+      "offset": 0.0625,
+      "lockup": 0.2155,
+      "greeting": 0.174
     },
     "square": {
-      "offset": 0.1875,
-      "lockup": 0.3261,
-      "greeting": 0.798
+      "offset": 0.25,
+      "lockup": 0.3294,
+      "greeting": 0.7897
     },
     "narrow": {
-      "offset": 0.1875,
-      "lockup": 0.4463,
+      "offset": 0,
+      "lockup": 0.4482,
       "greeting": 0
     }
   }
