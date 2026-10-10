@@ -72,7 +72,7 @@ test("card modal: in the dark theme a logo with no dark file sits on a light pla
 });
 
 test("card modal: IEEE's meta carries its AO tip beside the rows, and a card's links open in a new tab", async ({ page }) => {
-  const { dialog } = await openCardFromBook(page, "ieee");
+  const { dialog } = await openCardFromBook(page, "ieee", { settled: true });
   const meta = dialog.locator('[data-mask="meta"]');
   await expect(meta).toHaveText("President, Corporate Director, and AO, 2023 to 2026");
   const ao = meta.getByRole("button", { name: "AO", exact: true });
