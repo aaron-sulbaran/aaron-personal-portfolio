@@ -1,8 +1,9 @@
 import type { Page, Plan, Slide } from "./plan";
 
 // The mask-in as a table: which parts start together, when each starts and when
-// the last ends. Everything runs on a timer from the landing, on screen or not,
-// so scrolling never waits (modal-gallery.md, "Masking in"). No DOM and no GSAP:
+// the last ends. Everything runs on a timer from the start (the landing after a
+// flight, at once when nothing lands), on screen or not, so scrolling never
+// waits (modal-gallery.md, "Masking in"). No DOM and no GSAP:
 // components/card/useMaskIn turns the table into one timeline.
 
 export interface MaskPart { id: string; lines?: number }

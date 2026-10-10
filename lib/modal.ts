@@ -213,7 +213,7 @@ export function useFocusTrap(
 // the variant builders below; not exported (nothing outside this file uses it).
 const MODAL_BLUR_PX = 24;
 
-// Photo/work modals pass `heldExit` so the frost HOLDS at full for a beat after
+// The card modal passes `heldExit` so the frost HOLDS at full for a beat after
 // close, then clears. This keeps the deck masked while the flown card dissolves
 // back toward it (the reverse of the frost-in on open), so the return never
 // shows a translucent card clipping across the deck. FlyingTile's dissolve uses
