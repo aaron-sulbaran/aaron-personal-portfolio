@@ -1,6 +1,8 @@
 import Image from "next/image";
+import { siteContent } from "@/lib/content";
 import type { Box } from "@/lib/gallery/boxes";
 import type { Gallery } from "@/lib/gallery/card";
+import { GALLERY } from "@/lib/gallery/constants";
 import { partId } from "@/lib/gallery/timing";
 
 // The pieces of a group of photos taking turns (RotatingPhoto on desktop,
@@ -51,5 +53,28 @@ export function GroupCaptions({ photos, index, caption }: CaptionProps) {
         );
       })}
     </div>
+  );
+}
+
+// The current photo's fill, shared by the desktop dots and the phone marks: it
+// grows over the interval while the group runs (keyed by the caller on the
+// index so each photo's fill starts again) and stands full under reduced motion.
+export function RotatorFill({ reduced, runs }: { reduced: boolean; runs: boolean }) {
+  return (
+    <span
+      className="absolute inset-0 rounded-full bg-accent"
+      style={reduced ? undefined : { animationDuration: `${GALLERY.rotate.intervalMs}ms`, animationPlayState: runs ? "running" : "paused" }}
+      data-rotator-fill={reduced ? "still" : "timed"}
+    />
+  );
+}
+
+// What a screen reader hears when the photo changes; polite only while the
+// group is not turning on its own.
+export function RotatorAnnounce({ runs, index, count, caption }: { runs: boolean; index: number; count: number; caption?: string | null }) {
+  return (
+    <p className="sr-only" aria-live={runs ? "off" : "polite"}>
+      {siteContent.modals.gallery.announce(index + 1, count, caption ?? "")}
+    </p>
   );
 }

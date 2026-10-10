@@ -260,3 +260,53 @@ test("pager: under reduced motion a drag moves nothing, a cancel changes nothing
   await page.mouse.up();
   await expect(pager).toHaveAttribute("data-page", "1");
 });
+
+test("pager turns: a page's group turns in its stage only while its page is current, its marks inside the current photo's corner", async ({ page }) => {
+  const { dialog } = await openCardFromBook(page, "mentorship");
+  const group = dialog.locator('[data-pager-page="1"] [data-rotator]');
+  await page.waitForTimeout(GALLERY.mask.landingMs + GALLERY.rotate.delayMs + 400);
+  await expect(group).not.toHaveAttribute("data-rotator-runs", "");
+  await dialog.getByRole("button", { name: g.nextPage }).click();
+  await expect(group).toHaveAttribute("data-rotator-runs", "");
+  await expect(group).toHaveAttribute("data-rotator-index", "1", { timeout: GALLERY.rotate.intervalMs + 2000 });
+  await page.waitForTimeout(GALLERY.rotate.changeMs + 150);
+  const marks = (await group.locator("[data-rotator-marks]").boundingBox())!;
+  const photo = (await group.locator('[data-rotator-layer="1"]').boundingBox())!;
+  const inset = GALLERY.rotate.marksInsetPx;
+  expect(Math.abs(photo.x + photo.width - inset - (marks.x + marks.width))).toBeLessThan(1.5);
+  expect(Math.abs(photo.y + photo.height - inset - (marks.y + marks.height))).toBeLessThan(1.5);
+});
+
+test("pager turns: a tap on the stage steps the group at once, Enter steps it, and a press held over 500ms only holds it", async ({ page }) => {
+  const { dialog } = await openCardFromBook(page, "mentorship");
+  await dialog.getByRole("button", { name: g.nextPage }).click();
+  await page.waitForTimeout(GALLERY.pager.slideMs + 100);
+  const group = dialog.locator('[data-pager-page="1"] [data-rotator]');
+  const frame = group.locator("[data-rotator-frame]");
+  await frame.click();
+  await expect(group).toHaveAttribute("data-rotator-index", "1");
+  await frame.focus();
+  await page.keyboard.press("Enter");
+  await expect(group).toHaveAttribute("data-rotator-index", "2");
+  const center = await centerOf(frame);
+  await page.mouse.move(center.x, center.y);
+  await page.mouse.down();
+  await expect(group).not.toHaveAttribute("data-rotator-runs", "");
+  await page.waitForTimeout(GALLERY.rotate.holdMs + 200);
+  await page.mouse.up();
+  await expect(group).toHaveAttribute("data-rotator-index", "2");
+});
+
+test("pager turns: under reduced motion the group never turns on its own, and a tap steps it with no transition", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+  await settled(page);
+  const { dialog } = await openCardFromBook(page, "mentorship", { home: false });
+  await dialog.getByRole("button", { name: g.nextPage }).click();
+  const group = dialog.locator('[data-pager-page="1"] [data-rotator]');
+  await page.waitForTimeout(GALLERY.mask.landingMs + GALLERY.rotate.delayMs + 400);
+  await expect(group).not.toHaveAttribute("data-rotator-runs", "");
+  await group.locator("[data-rotator-frame]").click();
+  await expect(group).toHaveAttribute("data-rotator-index", "1");
+  expect(await group.locator("[data-rotator-layer]").evaluateAll((els) => els.map((el) => (el as HTMLElement).style.clipPath))).toEqual(["", "", ""]);
+});

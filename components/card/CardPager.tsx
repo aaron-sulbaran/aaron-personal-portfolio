@@ -34,7 +34,7 @@ export function CardPager({ gallery, pages, renderMedia, onClose }: Props) {
   const [room, setRoom] = useState<Room | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const viewportRef = useRef<HTMLDivElement | null>(null);
-  const { dragPx, handlers } = usePagerDrag(rootRef, { index: state.index, count, reduced, dispatch, onDismiss: onClose });
+  const { dragPx, pressing, handlers } = usePagerDrag(rootRef, { index: state.index, count, reduced, dispatch, onDismiss: onClose });
   const { pager } = GALLERY;
   // The stage's cap, or less when the page is too short to leave the words their room.
   const heightFor = (share: number, below: number) => stageHeight((room?.visible ?? 0) * share, (room?.height ?? 0) - below, pager.stageFloorPx);
@@ -90,7 +90,7 @@ export function CardPager({ gallery, pages, renderMedia, onClose }: Props) {
           data-pager-track=""
         >
           {pages.map((page, i) => (
-            <PagerPage key={page.photo} gallery={gallery} page={page} index={i} count={count} kind={layouts[i].kind} stage={layouts[i].stage} current={i === state.index} />
+            <PagerPage key={page.photo} gallery={gallery} page={page} index={i} count={count} kind={layouts[i].kind} stage={layouts[i].stage} current={i === state.index} pressing={pressing} />
           ))}
         </div>
       </div>
