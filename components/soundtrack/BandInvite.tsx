@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type MouseEvent, type ReactNode } from "react";
+import { useEffect, useRef, useSyncExternalStore, type MouseEvent, type ReactNode } from "react";
 import { Fill } from "@/components/fx/Fill";
 import { InlineCopy } from "@/components/inline/InlineCopy";
 import { siteContent } from "@/lib/content";
@@ -12,6 +12,7 @@ import {
   stopSoundtrack,
   useSoundtrack,
 } from "@/lib/soundtrack";
+import { isPhone, subscribePhone } from "@/lib/waveform/layout";
 
 // The band's copy and controls, the one place the music is offered. The
 // heading is the question; the controls beside it and the note under it swap
@@ -28,6 +29,9 @@ import {
 export function BandInvite() {
   const music = useSoundtrack();
   const c = siteContent.listen;
+  // The note only shows after an answer, so the desktop copy is a safe server snapshot.
+  const phone = useSyncExternalStore(subscribePhone, isPhone, () => false);
+  const acceptedNote = phone ? c.acceptedNotePhone : c.acceptedNote;
   const moveFocus = useRef<"note" | "control" | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
 
@@ -83,7 +87,7 @@ export function BandInvite() {
           <p><InlineCopy source={c.body} /></p>
         </Layer>
         <Layer shown={music === "on"}>
-          <p><InlineCopy source={c.acceptedNote} /></p>
+          <p><InlineCopy source={acceptedNote} /></p>
         </Layer>
         <Layer shown={music === "paused"}>
           <p>{c.pausedNote}</p>

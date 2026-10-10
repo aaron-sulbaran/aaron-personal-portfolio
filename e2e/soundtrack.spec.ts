@@ -784,6 +784,18 @@ test("dock: a phone has no pill, and after \"Not now\" the band offers Play it a
   await expect.poll(() => bandLayerShown(page, "on"), { message: "Pause shown in the band" }).toBe(true);
 });
 
+test("dock: on a phone the band's accepted note drops the evolving isle sentence", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.goto(HOME);
+  await settled(page);
+  const band = page.locator("#listen");
+  await bandControl(page, "before").click();
+  await expect.poll(() => bandLayerShown(page, "on"), { message: "Pause shown in the band" }).toBe(true);
+  const note = band.locator("[data-band-note] > :not([inert])");
+  await expect(note).toHaveText(visibleText(L.acceptedNotePhone));
+  await expect(note).not.toContainText("evolving isle");
+});
+
 test("dock: a live reduced-motion toggle leaves the docked pill where it is", async ({ page }) => {
   await armDock(page);
   await page.goto(`${HOME}#about`);
