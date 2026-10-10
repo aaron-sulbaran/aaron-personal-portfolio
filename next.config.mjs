@@ -5,7 +5,7 @@ const nextConfig = {
   env: {
     SITE_BUILT_AT: new Date().toISOString(),
   },
-  // Next 16 only serves qualities listed here (default [75]); PhotoModal and
+  // Next 16 only serves qualities listed here (default [75]); the card modal and
   // the flight's sharp copy ask for 90, which would otherwise fall back
   // silently. 88 was the retired GlassTile's.
   images: {

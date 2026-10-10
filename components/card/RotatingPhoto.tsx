@@ -41,6 +41,7 @@ export function RotatingPhoto({ gallery, photos, boxes }: Props) {
   };
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+    if (e.altKey || e.metaKey || e.ctrlKey || e.shiftKey) return;
     e.preventDefault();
     go(index + (e.key === "ArrowRight" ? 1 : -1), (e.target as HTMLElement).hasAttribute("data-rotator-dot"));
   };
