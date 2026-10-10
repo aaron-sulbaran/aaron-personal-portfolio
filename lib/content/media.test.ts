@@ -85,6 +85,12 @@ describe("the modal photos", () => {
       "building-in-public": ["My top performing posts on LinkedIn.", "Me in Toronto, another one."],
     });
   });
+  it("leave no photo and no card picture without a caption line", () => {
+    for (const key of keys) {
+      for (const photo of cards[key].modal.photos) expect(photo.caption.trim(), `${key} ${photo.src}`).not.toBe("");
+      if (cards[key].visual.kind === "photo") expect(cards[key].modal.picture?.caption.trim(), `${key} picture`).toBeTruthy();
+    }
+  });
   it("give only Misuki's Hiroshima photo a short phone caption", () => {
     const short = keys.flatMap((key) => cards[key].modal.photos.filter((photo) => photo.captionShort).map((photo) => [key, photo.captionShort]));
     expect(short).toEqual([["misuki", "The real Mazda 787B that won Le Mans in 1991, at the Mazda Museum in Hiroshima."]]);

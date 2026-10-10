@@ -32,6 +32,12 @@ describe("the inline register", () => {
     expect(register.def.product.body.startsWith("A product (to me) is a tool that's genuinely useful")).toBe(true);
   });
 
+  it("gives every pop with a photo a caption line, so a popover never shows a bare picture", () => {
+    const awaitingCaption = ["sister-kyoto"];
+    const bare = Object.entries(register.pop).filter(([, entry]) => entry.file && !entry.caption?.trim()).map(([key]) => key);
+    expect(bare).toEqual(awaitingCaption);
+  });
+
   it("describes every pop without the third person, with its exported file, the approved captions and link", () => {
     for (const [key, entry] of Object.entries(register.pop)) {
       expect(entry.alt).not.toMatch(/\bAaron\b/);
@@ -40,6 +46,11 @@ describe("the inline register", () => {
     const captions = Object.fromEntries(Object.entries(register.pop).filter(([, entry]) => entry.caption).map(([key, entry]) => [key, entry.caption]));
     expect(captions).toEqual({
       "leadership-award": "Getting the Cockrell School undergraduate leadership award.",
+      sandboarding: "Sandboarding on dunes just outside of Dubai",
+      "downhill-skating": "A collection of boards, although only half of these are mine",
+      skydiving: "Me on my first jump, look at that smile!",
+      "rock-climbing": "Catch me on El Capitan next... right...",
+      "venezuela-flag": "Me repping my flag at SHPE 2025!",
       matcha: "7T+ is my favorite matcha place in the world, literally in the world. This one is in Kyoto.",
       "contrabass-clarinet": "Bass clarinet was my main instrument. In concert season I played contrabass.",
       rango: "yeah, this guy from that one kid's movie",
