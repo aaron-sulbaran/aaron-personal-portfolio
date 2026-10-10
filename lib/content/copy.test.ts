@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { siteContent } from "@/lib/content";
 import { parseInlineLinks, visibleText } from "@/lib/content/links";
 import { register, registerHas } from "@/lib/content/register";
+import { ALPHABET } from "@/lib/footer/face";
 import { walkStrings } from "@/lib/testing/walk";
 
 // The approved copy of the sections that render today, pinned word for word
@@ -188,9 +189,12 @@ describe("the system pages", () => {
 });
 
 describe("the footer", () => {
-  it("says only when it was last updated, and keeps the copyright", () => {
+  it("says only when it was last updated, keeps the copyright, and names the wordmark and its period", () => {
     expect(footer.tagline("September 2026")).toBe("Last updated September 2026");
     expect(footer.copyright).toBe("© 2026 Aaron Sulbaran");
+    expect(footer.wordmark).toBe("build.stuff");
+    expect(footer.dropPeriod).toBe("Drop the period");
+    for (const c of footer.wordmark) expect(ALPHABET, c).toContain(c);
   });
 });
 
