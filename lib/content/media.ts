@@ -78,13 +78,14 @@ export const modalPhotos = {
 
 // The official logo files, under public/work/logos/<card>/. An SVG's width and height are its
 // viewBox's (two decimals); a raster's are its pixels. srcDark is the file for the dark theme,
-// null where one file serves both.
+// null where one file serves both. The IEEE ground is the median of its JPEG's edge pixels (every
+// edge pixel is this one colour), so the card face can continue the square without a seam.
 export const logos = {
   "min-max": { src: "/work/logos/min-max/mark.svg", srcDark: "/work/logos/min-max/mark-on-dark.svg", width: 548, height: 497 },
   talos: { src: "/work/logos/talos/mark.svg", srcDark: null, width: 512, height: 512 },
   "capital-one": { src: "/work/logos/capital-one/capital-one-logo.svg", srcDark: "/work/logos/capital-one/capital-one-logo-white.svg", width: 418, height: 150 },
   anthropic: { src: "/work/logos/anthropic/anthropic-wordmark.svg", srcDark: "/work/logos/anthropic/anthropic-wordmark-white.svg", width: 578.9, height: 65 },
-  ieee: { src: "/work/logos/ieee/ieee-ut-logo.jpg", srcDark: null, width: 1382, height: 1383, opaque: true },
+  ieee: { src: "/work/logos/ieee/ieee-ut-logo.jpg", srcDark: null, width: 1382, height: 1383, opaque: true, ground: "#14183e" },
   fsdatalink: { src: "/work/logos/fsdatalink/fsdatalink-logo.avif", srcDark: "/work/logos/fsdatalink/fsdatalink-logo-light.png", width: 512, height: 129 },
   popeyes: { src: "/work/logos/jobs/popeyes-logo.svg", srcDark: null, width: 249.2, height: 42.6 },
   mod: { src: "/work/logos/jobs/mod-pizza-logo.svg", srcDark: null, width: 86.31, height: 83.21 },
