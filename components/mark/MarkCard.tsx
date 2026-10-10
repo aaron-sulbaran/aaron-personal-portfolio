@@ -100,9 +100,9 @@ function MarkDialog({ reduced, onClose }: { reduced: boolean; onClose: () => voi
           <div data-cel-flash="" aria-hidden="true" className="pointer-events-none fixed inset-0 bg-[var(--loader-name)] opacity-0" />
         </>
       )}
-      <motion.div variants={panel} className="relative my-auto w-full max-w-xl" onMouseDown={(e) => e.stopPropagation()}>
+      <motion.div variants={panel} className="relative my-auto w-full max-w-2xl" onMouseDown={(e) => e.stopPropagation()}>
         <div data-card="surface" className="absolute inset-0 rounded-2xl border border-border bg-background [box-shadow:var(--shadow-card)]" />
-        <div className="relative flex flex-col gap-6 p-6 sm:flex-row sm:items-center sm:gap-7 md:p-10">
+        <div className="relative flex flex-col gap-6 p-6 sm:flex-row sm:items-start sm:gap-8 md:p-10">
           <button
             type="button"
             data-card="text"
@@ -115,11 +115,13 @@ function MarkDialog({ reduced, onClose }: { reduced: boolean; onClose: () => voi
           <MarkStrike sizePx={MARK.cardMarkPx} reduced={reduced} />
           <div className="flex min-w-0 flex-col gap-3 sm:pr-6">
             <h2 data-card="text" className="font-display text-3xl leading-tight text-foreground">{COPY.title}</h2>
-            <p data-card="text" className="text-sm text-muted">{COPY.subtitle}</p>
-            {COPY.lines.map((line) => (
-              <p key={line} data-card="text" className="text-base leading-relaxed text-foreground"><InlineCopy source={line} /></p>
-            ))}
-            <span data-card="text" className="w-fit">
+            <p data-card="text" className="font-label text-label text-accent">{COPY.subtitle}</p>
+            <div className="flex flex-col gap-3 pt-1">
+              {COPY.lines.map((line) => (
+                <p key={line} data-card="text" className="text-base leading-relaxed text-foreground"><InlineCopy source={line} /></p>
+              ))}
+            </div>
+            <span data-card="text" className="mt-1 w-fit">
               <Fill {...FILL_PICK.cta} onClick={onClose} className={CTA_LABEL_CLASS} overClassName={CTA_LABEL_OVER_CLASS}>
                 {COPY.button}
               </Fill>
