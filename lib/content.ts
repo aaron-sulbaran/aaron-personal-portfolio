@@ -93,7 +93,7 @@ export const siteContent = {
     // touch screen gets the backdrop.
     closeHintKeyboard: "Press Esc to close",
     closeHintTouch: "Tap outside to close",
-    // The work modal's accessible name: "<title> preview".
+    // The accessible name suffix of a preview: "<title> preview".
     workPreviewSuffix: "preview",
     // The card modal's gallery (components/card): the pager on a phone and the photos
     // that take turns, the gallery lab's words (2026-10-09).

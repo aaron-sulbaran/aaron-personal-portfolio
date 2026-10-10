@@ -11,8 +11,9 @@ export type StrandFace =
   | { kind: "mark" }
   | { kind: "circles"; logos: readonly LogoRef[] };
 
-// kind is the flight's: a photo card lands in the gallery's card picture, every
-// other card in the modal header's tile.
+// kind is the flight's: beside the rows (1024px and up) a photo card lands in the
+// gallery's card picture and every other card in the modal header's tile; below
+// 1024px every card lands on the phone header's tile.
 export interface StrandCard { key: CardKey; kind: "photo" | "work"; face: StrandFace }
 
 // Null when the card's asset is missing (none at launch; cards.test.ts holds it).
