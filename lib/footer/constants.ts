@@ -19,8 +19,9 @@ export const FOOTER = {
   swell: { radius: 1.8, amount: 0.06, easeS: 0.14 }, // units, units of stem, seconds
   press: { depth: 0.32, stiffness: 380, damping: 0.42 }, // share of the height; a unit-mass spring; damping ratio
   // The rise out of the baseline: the word as one (no stagger), expo, the
-  // first time `seenShare` of the footer is in view. It starts `under` units
-  // plus `extraPx` below its place and is cut `floor` units under the baseline.
+  // first time `seenShare` of the footer is in view. It starts its full height
+  // plus `under` units, plus `extraPx`, below its place, and is cut `floor`
+  // units under the baseline.
   rise: { ms: 1000, seenShare: 0.3, under: 0.06, extraPx: 4, floor: 0.04 },
   letterTint: 0.2, // the accent laid over the field inside the letters
   field: {

@@ -23,7 +23,7 @@ export const FIELD_SHINE = 3;
 export const MAX_RIPPLES = 2;
 
 // lift: units the period's bottom sits above the baseline. angle: degrees,
-// counterclockwise on screen. sx, sy: its scale about its bottom center.
+// clockwise on screen (SVG's rotate, with y down). sx, sy: its scale about its bottom center.
 // shadow: the shadow's share of its full opacity; shadowScale: its width's.
 export type EggPose = { lift: number; angle: number; sx: number; sy: number; shadow: number; shadowScale: number };
 export const REST_POSE: EggPose = Object.freeze({ lift: 0, angle: 0, sx: 1, sy: 1, shadow: 0, shadowScale: 1 });
