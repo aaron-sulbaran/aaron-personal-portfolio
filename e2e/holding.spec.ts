@@ -3,7 +3,7 @@ import { watchScripts } from "./support/chunks";
 
 // The holding build (the default site mode, what production serves today):
 // the holding page at /, none of the full site's chrome, no scene chunk, and
-// case pages sent home.
+// old case page URLs sent home.
 
 test("holding: / is the holding page, with no bar, no pill and no scene chunk", async ({ page }) => {
   const scripts = watchScripts(page);
@@ -19,7 +19,7 @@ test("holding: / is the holding page, with no bar, no pill and no scene chunk", 
   expect(await scripts.sceneChunks(), "scene chunks fetched").toEqual([]);
 });
 
-test("holding: a case page redirects home", async ({ page }) => {
+test("holding: an old case page URL redirects home", async ({ page }) => {
   const response = await page.goto("/work/capital-one-pm");
   expect(new URL(page.url()).pathname).toBe("/");
   expect(response?.ok()).toBe(true);
