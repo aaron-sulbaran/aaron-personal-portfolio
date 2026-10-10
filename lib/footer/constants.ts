@@ -54,8 +54,10 @@ export const FOOTER = {
     rippleField: 0.22,
     rippleDecay: 1.2,
   },
+  // The period's shadow, the lab's: half axes and drop as shares of its side (ry floored in px); mid: the gradient's middle stop.
+  eggShadow: { rx: 0.75, ry: 0.16, minRyPx: 1.5, drop: 0.06, mid: 0.55 },
   poster: { width: 480, driftS: 22 }, // the stand-in's canvas width (px) and its CSS drift period
-  hitPx: { min: 44, pad: 12 }, // the period button: its side plus the pad, at least the minimum
+  hitPx: { min: 44, pad: 12, ring: 4 }, // the period button: its side plus the pad, at least the minimum; ring: its focus outline's reach (offset 2, width 2)
   bleedPx: 16, // the paper cover and its mask run past the stage's edges
 } as const;
 

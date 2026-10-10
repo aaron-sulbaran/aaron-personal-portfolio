@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { flushSync } from "react-dom";
 import { useReducedMotionLive } from "@/components/soundtrack/useReducedMotionLive";
 import { createEggState } from "@/lib/footer/egg";
 import { bandShare, footerGeometry, wordRest } from "@/lib/footer/geometry";
@@ -26,9 +27,11 @@ export function FooterStage({ text, eggLabel, children }: Props) {
   useEffect(() => {
     const el = stage.current;
     if (!el) return;
+    // Committed now, inside the observer's callback (after layout, before paint),
+    // so the wordmark's layout effect lands the new geometry in this frame.
     const ro = new ResizeObserver(() => {
       const next = { w: el.clientWidth, h: el.clientHeight, bandTop: band.current?.offsetTop ?? 0 };
-      setBox((prev) => (prev && prev.w === next.w && prev.h === next.h && prev.bandTop === next.bandTop ? prev : next));
+      flushSync(() => setBox((prev) => (prev && prev.w === next.w && prev.h === next.h && prev.bandTop === next.bandTop ? prev : next)));
     });
     ro.observe(el);
     return () => ro.disconnect();
