@@ -154,6 +154,18 @@ const values = {
   markPx: 32,
   lightPanelDim: 0.3,
 
+  // C3: the faces that are not photos (lib/coil/textures.ts, and the modal
+  // header's DOM copy in components/card/CardFace.tsx), in fractions of the
+  // card's width. Not tuned: Aaron looks at the fourteen first.
+  face: {
+    logoWidth: 0.4, // a mark's longer side
+    wordmarkWidth: 0.64, // a wordmark across the card
+    wordmarkFrom: 2, // width over height from which a logo is a wordmark
+    plateInset: 0.07, // the light plate's margin around a logo in the dark theme
+    markWidth: 0.36, // the AS mark on This site's card
+    circles: { from: 0.16, to: 0.32, gap: 0.025, logo: 0.62 }, // the jobs card: diameters oldest to newest, the gap, a logo's share of its disc
+  },
+
   lab: {
     // Lens distance: a longer lens than lab 1 so near cards stop ballooning.
     // The visible half height at z = 0 is 10 * tan(17deg) world units.

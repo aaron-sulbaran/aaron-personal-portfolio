@@ -1,6 +1,5 @@
-import { siteContent } from "@/lib/content";
 import { budgetFor, sameBudget } from "@/lib/coil/drivers";
-import { loadCardSource, type CardSource } from "@/lib/coil/textures";
+import { emptySource, loadStrandSource, type CardSource } from "@/lib/coil/textures";
 import { reportHomeLoad } from "@/lib/loader/progress";
 import type { Cards } from "./cards";
 import type { LoopLink, SceneCtx } from "./state";
@@ -26,7 +25,6 @@ export function boot(ctx: SceneCtx, cards: Cards, parts: BootParts, loop: LoopLi
   st.nameFamily = style.getPropertyValue("--font-display").trim() || "sans-serif";
   const withTimeout = <T,>(promise: Promise<T>, fallback: T) =>
     Promise.race([promise, new Promise<T>((resolve) => window.setTimeout(() => resolve(fallback), TEXTURE_TIMEOUT_MS))]);
-  const logoFor = (slug: string) => siteContent.workItems.find((item) => item.slug === slug)?.logo ?? null;
   // Slice 4: each card source (or its timeout) moves the loader's tally.
   let texturesSettled = 0;
   const countTexture = (source: CardSource) => {
@@ -42,10 +40,7 @@ export function boot(ctx: SceneCtx, cards: Cards, parts: BootParts, loop: LoopLi
     ),
     Promise.all(
       tiles.map((tile) =>
-        withTimeout<CardSource>(
-          loadCardSource(tile, logoFor, st.budget.textureSize),
-          tile.kind === "photo" ? { kind: "photo", key: tile.key, image: null } : { kind: "work", key: tile.key, logo: null },
-        ).then(countTexture), // slice 4: the loader's tally
+        withTimeout<CardSource>(loadStrandSource(tile, st.budget.textureSize), emptySource(tile)).then(countTexture), // slice 4: the loader's tally
       ),
     ),
   ])

@@ -20,7 +20,7 @@ export function watchHydration(page: Page) {
 // What the hero looks like when no scene can run: the hero still (the scene
 // at rest, decoded, the name baked behind its cards), the h1 visually hidden
 // once it has decoded (the whole heading still its accessible name), and a
-// book that still opens its photos.
+// book that still opens its cards.
 export async function expectStillHeroAndUsableBook(page: Page) {
   const hero = page.locator("section[data-scene]");
   await expect(hero).toHaveAttribute("data-scene", "still");
@@ -30,8 +30,8 @@ export async function expectStillHeroAndUsableBook(page: Page) {
   await expect(still).toHaveCount(1);
   await expect.poll(() => still.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
   await expectHeadingHidden(page);
-  // The book still opens a photo.
-  const row = page.locator("#work button.book-row", { hasText: "Drum major" });
+  // The book still opens a card.
+  const row = page.locator('#work button.book-row[data-card="band"]');
   await row.scrollIntoViewIfNeeded();
   await row.click();
   await expect(page.getByRole("dialog")).toBeVisible();

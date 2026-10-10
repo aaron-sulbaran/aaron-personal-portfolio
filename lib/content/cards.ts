@@ -11,8 +11,15 @@ export const cards: Cards = {
       "I wouldn't be where I am now without the mentors who have shaped me. People made time for me, so I make time back. I've coached first-year scholars, worked as a student mentor on campus, and been an official mentor to Hispanic Scholarship Fund (HSF) scholars at the annual STEM Summit.",
       "I take coffee chats in both directions. If I'm asking people for their time, I should be willing to give mine, and I lose track of time in them.",
     ] },
-    // Held empty on purpose: each mentor's name and link go in once that person agrees to be named.
-    mentors: { title: "the people who shaped me", people: [] },
+    // All six agreed to be named (2026-10-09). Each line is mine to write; until then a mentor shows a name and a link.
+    mentors: { title: "the people who shaped me", people: [
+      { name: "Andrew Chang", href: "https://www.linkedin.com/in/andrewlinchang/", line: null },
+      { name: "Diego Jimenez", href: "https://www.linkedin.com/in/djmora/", line: null },
+      { name: "Jared Alonzo", href: "https://www.linkedin.com/in/jared-alonzo/", line: null },
+      { name: "JJ Gonzales", href: "https://www.linkedin.com/in/jjgonzalesiv/", line: null },
+      { name: "Joaquin Escobar", href: "https://www.linkedin.com/in/jescobar25/", line: null },
+      { name: "Mike Ditson", href: "https://www.linkedin.com/in/mikeditson/", line: null },
+    ] },
   },
   "min-max": {
     group: "work", visual: { kind: "logo", logo: logos["min-max"], tile: "plain", subtitle: "minimize spend. Maximize rewards" },

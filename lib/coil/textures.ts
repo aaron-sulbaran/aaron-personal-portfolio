@@ -1,16 +1,19 @@
 import { getImageProps } from "next/image";
-import type { HomeTile } from "@/lib/content";
+import type { LogoRef, StrandCard } from "@/lib/content";
+import { BAR_D, BOLT_D, LEG_D } from "@/lib/mark/geometry";
 import { COIL } from "./constants";
-import { toBytes, toCanvasColor, type CoilTheme } from "./theme";
-import { cardDims, type CardDims, type TextureSize } from "./cardFace";
+import { toBytes, toCanvasColor, type CoilTheme, type Rgba } from "./theme";
+import { cardDims, circlesLayout, containBox, logoBox, MARK_INK_BOX, needsGround, type CardDims, type TextureSize } from "./cardFace";
 
 // Card faces, painted on 2D canvases from the theme tokens, ported from hero
 // lab 2 (391-516) at Aaron's picks: photo fronts in true color inside our
-// pane; work fronts on --card-work-pane with the logo from public/work/logos;
-// photo backs a duotone of the photo in the accent (--card-duo-dark to
-// --card-duo-light); work backs the plain pane, no logo (a mirrored mark reads
-// as backwards text). Every paint returns fresh canvases, so a repaint uploads
-// into a fresh texture and the old one is disposed, never rewritten in place.
+// pane; logo, mark and circle fronts on --card-work-pane (Talos on
+// --card-anvil) from the layouts lib/coil/cardFace.ts shares with the modal's
+// header tile; photo backs a duotone of the photo in the accent (--card-duo-dark
+// to --card-duo-light); every other back the plain pane (the anvil for Talos),
+// no logo (a mirrored mark reads as backwards text). Every paint returns fresh
+// canvases, so a repaint uploads into a fresh texture and the old one is
+// disposed, never rewritten in place.
 //
 // Every paint takes the texture size from the scene's render budget (see
 // lib/coil/drivers.ts): 384x512 on fine pointers, smaller on coarse ones.
@@ -23,11 +26,16 @@ const DESKTOP = dimsFor(COIL.lab.textureSize);
 
 export const CARD_TEXTURE_SIZE = { width: DESKTOP.w, height: DESKTOP.h } as const;
 
-// A card's decoded sources, loaded once per scene and kept for repaints.
-// A photo that failed to load is null and paints the plain pane.
+export type LogoImage = { image: HTMLImageElement | null; aspect: number };
+
+// A card's decoded sources, loaded once per scene and kept for repaints (a theme
+// change picks a logo's dark file at paint time). A file that failed to load is
+// null and paints the plain pane.
 export type CardSource =
   | { kind: "photo"; key: string; image: HTMLImageElement | null }
-  | { kind: "work"; key: string; logo: HTMLImageElement | null };
+  | { kind: "logo"; key: string; light: HTMLImageElement | null; dark: HTMLImageElement | null; logo: LogoRef; tile: "plain" | "anvil" }
+  | { kind: "mark"; key: string }
+  | { kind: "circles"; key: string; logos: LogoImage[] };
 
 export type CardFaces = { front: HTMLCanvasElement; back: HTMLCanvasElement };
 
@@ -82,15 +90,42 @@ export async function loadPhoto(src: string, size: TextureSize = COIL.lab.textur
   }
 }
 
-export async function loadCardSource(
-  tile: HomeTile,
-  logoFor: (slug: string) => string | null,
-  size: TextureSize = COIL.lab.textureSize,
-): Promise<CardSource> {
-  if (tile.kind === "photo") return { kind: "photo", key: tile.key, image: await loadPhoto(tile.src, size) };
-  const logoSrc = logoFor(tile.slug);
-  const logo = logoSrc ? await loadImage(logoSrc).catch(() => null) : null;
-  return { kind: "work", key: tile.key, logo };
+// A raster logo goes through the image optimizer at the texture's width (the
+// IEEE square is a 525KB JPEG); an SVG is served as it is.
+function loadLogo(src: string, size: TextureSize): Promise<HTMLImageElement | null> {
+  const url = src.endsWith(".svg") ? src : photoUrls(src, [size[0], size[0]]).base;
+  return loadImage(url).catch(() => null);
+}
+
+export async function loadStrandSource(card: StrandCard, size: TextureSize = COIL.lab.textureSize): Promise<CardSource> {
+  const { key, face } = card;
+  switch (face.kind) {
+    case "photo":
+      return { kind: "photo", key, image: await loadPhoto(face.src, size) };
+    case "logo": {
+      const [light, dark] = await Promise.all([loadLogo(face.logo.src, size), face.logo.srcDark ? loadLogo(face.logo.srcDark, size) : Promise.resolve(null)]);
+      return { kind: "logo", key, light, dark, logo: face.logo, tile: face.tile };
+    }
+    case "mark":
+      return { kind: "mark", key };
+    case "circles":
+      return { kind: "circles", key, logos: await Promise.all(face.logos.map(async (logo) => ({ image: await loadLogo(logo.src, size), aspect: logo.width / logo.height }))) };
+  }
+}
+
+// What a card paints when its files never arrive (the loader's give-up time).
+export function emptySource(card: StrandCard): CardSource {
+  const { key, face } = card;
+  switch (face.kind) {
+    case "photo":
+      return { kind: "photo", key, image: null };
+    case "logo":
+      return { kind: "logo", key, light: null, dark: null, logo: face.logo, tile: face.tile };
+    case "mark":
+      return { kind: "mark", key };
+    case "circles":
+      return { kind: "circles", key, logos: face.logos.map((logo) => ({ image: null, aspect: logo.width / logo.height })) };
+  }
 }
 
 // ---------------------------------------------------------------- painting
@@ -160,17 +195,73 @@ function paintPhotoFront(g: CanvasRenderingContext2D, d: Dims, img: HTMLImageEle
   finishCard(g, d, theme);
 }
 
-// Our pane with the logo centered. The logo files are drawn as they are;
-// real single-color marks (paper in dark) arrive with slice 8.
-function paintWorkFront(g: CanvasRenderingContext2D, d: Dims, logo: HTMLImageElement | null, theme: CoilTheme) {
-  shapeCard(g, d, toCanvasColor(theme.card.workPane));
-  if (logo) {
-    const size = d.w * 0.4;
-    const aspect = logo.naturalWidth && logo.naturalHeight ? logo.naturalWidth / logo.naturalHeight : 1;
-    const w = aspect >= 1 ? size : size * aspect;
-    const h = aspect >= 1 ? size / aspect : size;
-    g.drawImage(logo, (d.w - w) / 2, (d.h - h) / 2, w, h);
+// A logo on its pane (the anvil for Talos): the opaque IEEE square as the face, at
+// the photo inset's width; any other logo centred at its fit, on a light plate
+// where the dark theme needs one (cardFace.ts needsGround).
+function paintLogoFront(g: CanvasRenderingContext2D, d: Dims, source: Extract<CardSource, { kind: "logo" }>, theme: CoilTheme) {
+  shapeCard(g, d, toCanvasColor(source.tile === "anvil" ? theme.card.anvil : theme.card.workPane));
+  const image = theme.dark && source.dark ? source.dark : source.light;
+  const aspect = source.logo.width / source.logo.height;
+  if (image && source.logo.opaque) {
+    const box = containBox(aspect, d.w - d.inset * 2);
+    const x = (d.w - box.w) / 2;
+    const y = (d.h - box.h) / 2;
+    g.save();
+    g.beginPath();
+    g.roundRect(x, y, box.w, box.h, d.innerRadius);
+    g.clip();
+    g.drawImage(image, x, y, box.w, box.h);
+    g.restore();
+  } else if (image) {
+    const box = logoBox(aspect, d.w, COIL.face);
+    const x = (d.w - box.w) / 2;
+    const y = (d.h - box.h) / 2;
+    if (needsGround(source.logo, source.tile, theme.dark)) {
+      const pad = d.w * COIL.face.plateInset;
+      g.fillStyle = toCanvasColor(theme.card.logoGround);
+      g.beginPath();
+      g.roundRect(x - pad, y - pad, box.w + pad * 2, box.h + pad * 2, d.innerRadius);
+      g.fill();
+    }
+    g.drawImage(image, x, y, box.w, box.h);
   }
+  finishCard(g, d, theme);
+}
+
+// This site: the AS mark in the accent, centred.
+function paintMarkFront(g: CanvasRenderingContext2D, d: Dims, theme: CoilTheme) {
+  shapeCard(g, d, toCanvasColor(theme.card.workPane));
+  const width = d.w * COIL.face.markWidth;
+  const scale = width / MARK_INK_BOX.width;
+  g.save();
+  g.translate((d.w - width) / 2 - MARK_INK_BOX.x * scale, (d.h - MARK_INK_BOX.height * scale) / 2 - MARK_INK_BOX.y * scale);
+  g.scale(scale, scale);
+  g.fillStyle = toCanvasColor(theme.card.mark);
+  for (const path of [BOLT_D, LEG_D, BAR_D]) g.fill(new Path2D(path));
+  g.restore();
+  finishCard(g, d, theme);
+}
+
+// The jobs card: light discs growing up the diagonal, each with its employer's
+// logo (the light file in both themes: the disc is its ground).
+function paintCirclesFront(g: CanvasRenderingContext2D, d: Dims, logos: readonly LogoImage[], theme: CoilTheme) {
+  shapeCard(g, d, toCanvasColor(theme.card.workPane));
+  circlesLayout(logos.length, d.w / d.h, COIL.face.circles).forEach((circle, i) => {
+    const cx = circle.x * d.w;
+    const cy = circle.y * d.w;
+    const r = circle.r * d.w;
+    g.beginPath();
+    g.arc(cx, cy, r, 0, Math.PI * 2);
+    g.fillStyle = toCanvasColor(theme.card.logoGround);
+    g.fill();
+    g.lineWidth = 1.5;
+    g.strokeStyle = toCanvasColor(theme.card.hair);
+    g.stroke();
+    const { image, aspect } = logos[i];
+    if (!image) return;
+    const box = containBox(aspect, 2 * r * COIL.face.circles.logo);
+    g.drawImage(image, cx - box.w / 2, cy - box.h / 2, box.w, box.h);
+  });
   finishCard(g, d, theme);
 }
 
@@ -200,19 +291,31 @@ function paintPlainBack(g: CanvasRenderingContext2D, d: Dims, fill: string, them
   finishCard(g, d, theme);
 }
 
-// A rejected or timed-out photo (image null) paints the plain pane, front and back.
+// A file that failed or timed out (image null) paints the plain pane.
 export function paintCard(source: CardSource, theme: CoilTheme, size: TextureSize = COIL.lab.textureSize): CardFaces {
   const d = size === COIL.lab.textureSize ? DESKTOP : dimsFor(size);
   const front = document.createElement("canvas");
   const back = document.createElement("canvas");
   const f = context(front, d);
-  if (source.kind === "photo") {
-    paintPhotoFront(f, d, source.image, theme);
-    if (source.image) paintPhotoBack(context(back, d, true), d, source.image, theme);
-    else paintPlainBack(context(back, d), d, toCanvasColor(theme.card.pane), theme);
-  } else {
-    paintWorkFront(f, d, source.logo, theme);
-    paintPlainBack(context(back, d), d, toCanvasColor(theme.card.workBack), theme);
+  const plainBack = (fill: Rgba) => paintPlainBack(context(back, d), d, toCanvasColor(fill), theme);
+  switch (source.kind) {
+    case "photo":
+      paintPhotoFront(f, d, source.image, theme);
+      if (source.image) paintPhotoBack(context(back, d, true), d, source.image, theme);
+      else plainBack(theme.card.pane);
+      break;
+    case "logo":
+      paintLogoFront(f, d, source, theme);
+      plainBack(source.tile === "anvil" ? theme.card.anvil : theme.card.workBack);
+      break;
+    case "mark":
+      paintMarkFront(f, d, theme);
+      plainBack(theme.card.workBack);
+      break;
+    case "circles":
+      paintCirclesFront(f, d, source.logos, theme);
+      plainBack(theme.card.workBack);
+      break;
   }
   return { front, back };
 }

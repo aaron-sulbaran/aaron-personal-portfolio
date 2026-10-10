@@ -6,7 +6,7 @@ import { AnimatePresence, motion, useIsPresent, useReducedMotion } from "framer-
 import { Fill } from "@/components/fx/Fill";
 import { InlineCopy } from "@/components/inline/InlineCopy";
 import { MarkStrike } from "@/components/mark/MarkStrike";
-import { useCloseHint } from "@/components/PhotoModal";
+import { useCloseHint } from "@/components/modal/useCloseHint";
 import { Portal } from "@/components/Portal";
 import { siteContent } from "@/lib/content";
 import { CTA_LABEL_CLASS, CTA_LABEL_OVER_CLASS, FILL_PICK } from "@/lib/fx/fill";

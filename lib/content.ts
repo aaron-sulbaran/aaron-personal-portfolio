@@ -2,6 +2,7 @@ import { register } from "./content/register";
 import { bookPeopleOrder, bookWorkOrder, cards, strandOrder } from "./content/cards";
 import type { SoundtrackTrack, WhoIAmBlock } from "./content/types";
 import { liveTracks } from "./content/tracks";
+import { bookRow, type BookColumn } from "./content/strand";
 
 // One link on the holding page. `icon` picks the brand mark in
 // components/BrandIcons.tsx. `href: null` keeps the entry defined but hides it
@@ -92,8 +93,26 @@ export const siteContent = {
     // touch screen gets the backdrop.
     closeHintKeyboard: "Press Esc to close",
     closeHintTouch: "Tap outside to close",
-    // The work modal's accessible name: "<title> preview".
+    // The accessible name suffix of a preview: "<title> preview".
     workPreviewSuffix: "preview",
+    // The card modal's gallery (components/card): the pager on a phone and the photos
+    // that take turns, the gallery lab's words (2026-10-09).
+    gallery: {
+      pagerLabel: (count: number) => `Photos and their stories, ${count}`,
+      pageLabel: (page: number, count: number) => `${page} of ${count}`,
+      previousPage: "Previous page",
+      nextPage: "Next page",
+      pageNumber: (page: number, count: number) => `Page ${page} of ${count}`,
+      rotatorLabel: (count: number) => `Photos taking turns, ${count}`,
+      photoOf: (photo: number, count: number) => `Photo ${photo} of ${count}`,
+      announce: (photo: number, count: number, caption: string) => `Photo ${photo} of ${count}${caption ? `: ${caption}` : ""}`,
+      pausePhotos: "Pause the photos",
+      playPhotos: "Play the photos",
+      groupStep: (photo: number, count: number) => `Photo ${photo} of ${count}. Show the next photo`,
+      // aria-roledescription: a group of photos taking turns, and one page of the pager.
+      roleCarousel: "carousel",
+      roleSlide: "slide",
+    },
   },
   // The Coil hero. The heading is the server-rendered h1; greeting and name
   // are the two parts the scene draws, together, in the canvas.
@@ -139,13 +158,12 @@ export const siteContent = {
     name: "Aaron",
     progressLabel: "Loading the site",
   },
-  // The book under the Coil hero (#work): Work then Photos, text first. Keys
-  // match homeTiles keys where a card exists, so "seen" is shared with the
-  // cards. Work targets: "case" opens /work/[slug], "external" opens a live
-  // site in a new tab, "soon" renders the row without a link. Placeholder
-  // photos never get a row.
+  // The book under the Coil hero (#work): two columns of cards, Work then People
+  // (workOrder and peopleOrder through bookColumns), text first; a row's key is
+  // its card's, so "seen" is shared with the Coil. workRows and photoRows are the
+  // legacy rows, read by nothing on the page, left for the C5 sweep.
   book: {
-    ariaLabel: "Work and photos",
+    ariaLabel: "Work and people",
     workHeading: "Work",
     photosHeading: "Photos",
     // The cards' book (C3 renders it): two columns of card keys, every row a modal.
@@ -182,8 +200,9 @@ export const siteContent = {
   // never enter the coil; they return here as real photos arrive. Keys are
   // homeTiles keys; see strandTiles below.
   strand: {
-    // The fourteen cards in Coil order, lead card first. strandTiles still reads
-    // the legacy pattern and lists below until C3 swaps the scene.
+    // The fourteen cards in Coil order, lead card first. Nothing on the page
+    // reads strandTiles or the legacy pattern and lists below any more; they
+    // are left for the C5 sweep.
     order: strandOrder,
     pattern: "PWPPWPPWPWPPWP",
     photos: ["hsf-speaking", "drum-major", "yosemite-hiking", "capital-one", "uncs-grad", "claude-hackathon", "misuki", "traveling", "mt-fuji"],
@@ -826,6 +845,14 @@ export type {
   InlineRegister, InspiredBy, LogoRef, Mentor, MentorsList, ModalPhoto, PhotoCrop, PhotoRef, PopEntry, SoundtrackTrack, TimelineEntry,
   TipEntry, TrackLicenseKind, WhoIAmBlock,
 } from "./content/types";
+export { bookRow, strandCardByKey, strandCardOf, strandCards } from "./content/strand";
+export type { BookColumn, BookRowEntry, StrandCard, StrandFace } from "./content/strand";
+
+// The book's two columns of cards (components/book/Book.tsx and the unwound list).
+export const bookColumns: readonly BookColumn[] = [
+  { heading: siteContent.book.workHeading, rows: siteContent.book.workOrder.map(bookRow) },
+  { heading: siteContent.book.peopleHeading, rows: siteContent.book.peopleOrder.map(bookRow) },
+];
 export { tipText } from "./content/tracks";
 
 // O(1) lookups for the card and row resolvers (HomeController, BookRow),
