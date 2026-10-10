@@ -4,7 +4,7 @@ import { useId, useLayoutEffect, useMemo, useRef, type RefObject } from "react";
 import { FOOTER } from "@/lib/footer/constants";
 import { REST_POSE, askEgg, type EggPose, type EggState } from "@/lib/footer/egg";
 import { glyphOutline, glyphPose } from "@/lib/footer/face";
-import { eggTransform, letterTransform, periodBox } from "@/lib/footer/frame";
+import { eggTransform, letterTransform, periodBox, shadowEllipse } from "@/lib/footer/frame";
 import { reachInk, rippleReach, swelledXs, type FooterGeometry, type WordRest } from "@/lib/footer/geometry";
 import type { LetterFrame } from "@/lib/footer/word";
 import { useWordMotion, type MotionConfig } from "./useWordMotion";
@@ -45,13 +45,14 @@ export function Wordmark({ text, eggLabel, geo, rest, reduced, stage, egg }: Pro
   const config = useRef<MotionConfig>({ size: geo.size, centers: rest.centers, reduced, egg: null, apply: () => {} });
   const motion = useWordMotion(stage, config, chars.length);
 
-  // Before the loop's own layout effect on mount, and before every paint of
-  // a new geometry: the next frame is written at the new size at once.
+  // After the loop's own layout effect on mount (it runs first, with the placeholder
+  // config) and before every paint of a new geometry: the real config, and its frame at once.
   useLayoutEffect(() => {
     written.current = [];
     drawn.current = [];
     const landing = { x: restX, y: geo.baselineY };
     let shownPhase = "";
+    let shownShadow = "";
     config.current = {
       size: geo.size,
       centers: rest.centers,
@@ -78,15 +79,15 @@ export function Wordmark({ text, eggLabel, geo, rest, reduced, stage, egg }: Pro
           }
         });
         const ground = shadow.current;
-        if (ground && box) {
-          const alpha = FOOTER.egg.shadow * pose.shadow;
-          if (alpha <= 0.001) ground.setAttribute("display", "none");
+        const s = box && shadowEllipse(box, pose, xs[period] + rest.halfWidths[period], geo.baselineY);
+        const attrs = s && s.opacity > 0.001 ? { cx: s.cx.toFixed(2), cy: s.cy.toFixed(2), rx: s.rx.toFixed(2), ry: s.ry.toFixed(2), opacity: s.opacity.toFixed(3) } : null;
+        const shade = attrs ? Object.values(attrs).join(" ") : "none";
+        if (ground && shade !== shownShadow) {
+          shownShadow = shade;
+          if (!attrs) ground.setAttribute("display", "none");
           else {
             ground.removeAttribute("display");
-            ground.setAttribute("cx", (xs[period] + rest.halfWidths[period]).toFixed(2));
-            ground.setAttribute("rx", (0.75 * box.side * pose.shadowScale).toFixed(2));
-            ground.setAttribute("ry", Math.max(1.5, 0.16 * box.side * pose.shadowScale).toFixed(2));
-            ground.setAttribute("opacity", alpha.toFixed(3));
+            for (const [name, value] of Object.entries(attrs)) ground.setAttribute(name, value);
           }
         }
         if (phase !== shownPhase) {
@@ -103,6 +104,8 @@ export function Wordmark({ text, eggLabel, geo, rest, reduced, stage, egg }: Pro
   const B = FOOTER.bleedPx;
   const coverTop = geo.wordTop - FOOTER.field.bandLeadPx;
   const hit = box ? Math.max(box.side + FOOTER.hitPx.pad, FOOTER.hitPx.min) : 0;
+  // Centered on the period, lifted when it or its focus ring would pass the footer's bottom (the footer clips).
+  const hitTop = box ? Math.min(geo.baselineY + box.cy - hit / 2, geo.stageH - hit - FOOTER.hitPx.ring) : 0;
 
   return (
     <>
@@ -146,7 +149,7 @@ export function Wordmark({ text, eggLabel, geo, rest, reduced, stage, egg }: Pro
           </clipPath>
           <radialGradient id={`${id}-shadow`}>
             <stop offset={0} style={{ stopColor: "var(--color-accent)", stopOpacity: 1 }} />
-            <stop offset={0.55} style={{ stopColor: "var(--color-accent)", stopOpacity: 0.55 }} />
+            <stop offset={FOOTER.eggShadow.mid} style={{ stopColor: "var(--color-accent)", stopOpacity: FOOTER.eggShadow.mid }} />
             <stop offset={1} style={{ stopColor: "var(--color-accent)", stopOpacity: 0 }} />
           </radialGradient>
           <mask id={`${id}-holes`} maskUnits="userSpaceOnUse" x={-B} y={-B} width={W + 2 * B} height={H + 2 * B}>
@@ -168,10 +171,7 @@ export function Wordmark({ text, eggLabel, geo, rest, reduced, stage, egg }: Pro
         {box && (
           <ellipse
             ref={shadow}
-            cx={restX}
-            cy={geo.baselineY + 0.06 * box.side}
-            rx={0.75 * box.side}
-            ry={Math.max(1.5, 0.16 * box.side)}
+            {...shadowEllipse(box, REST_POSE, restX, geo.baselineY)}
             display="none"
             fill={`url(#${id}-shadow)`}
             mask={`url(#${id}-holes)`}
@@ -191,7 +191,7 @@ export function Wordmark({ text, eggLabel, geo, rest, reduced, stage, egg }: Pro
             motion.current.wake();
           }}
           className="absolute z-20 cursor-pointer rounded-sm outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-          style={{ left: restX - hit / 2, top: geo.baselineY + box.cy - hit / 2, width: hit, height: hit }}
+          style={{ left: restX - hit / 2, top: hitTop, width: hit, height: hit }}
         />
       )}
     </>

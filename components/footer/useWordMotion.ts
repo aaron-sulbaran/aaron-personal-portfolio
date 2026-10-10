@@ -12,7 +12,8 @@ import { createWordState, stepWord, type LetterFrame, type Pointer, type WordInp
 // directly (no React render per frame). It runs only while the footer is on
 // screen and something moves, and sleeps at rest until the pointer, the egg
 // or the view wakes it. `paint` draws the current frame now, without moving
-// time, so a new geometry lands before the browser paints.
+// time, so a new geometry lands before the browser paints, and wakes the loop
+// when that frame is still moving (a swell under a resting pointer, a rise).
 
 export type MotionConfig = Omit<WordInput, "pointer" | "riseStart"> & {
   apply: (frames: readonly LetterFrame[], pose: EggPose, phase: "waiting" | "moving" | "rest") => void;
@@ -54,7 +55,12 @@ export function useWordMotion(stage: RefObject<HTMLElement | null>, config: RefO
       last = performance.now();
       raf = requestAnimationFrame(tick);
     };
-    motion.current = { wake, paint: () => frame(performance.now(), 0) };
+    motion.current = {
+      wake,
+      paint: () => {
+        if (frame(performance.now(), 0)) wake();
+      },
+    };
 
     const fine = (e: PointerEvent) => e.pointerType !== "touch";
     const local = (e: PointerEvent) => {

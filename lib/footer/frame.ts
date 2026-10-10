@@ -38,3 +38,16 @@ export function eggTransform(pose: EggPose, box: PeriodBox, size: number, inkTop
   const corner = (box.side / 2) * (Math.abs(Math.cos(a)) + Math.abs(Math.sin(a)) - 1);
   return { liftPx: lift + corner, angle: pose.angle, sx: pose.sx, sy: pose.sy, cy: box.cy, bottomY: box.bottomY };
 }
+
+// The period's shadow on the ground under it (x, its center): the lab's
+// ellipse, shrinking as it rises and fading with the pose's shadow share.
+export function shadowEllipse(box: PeriodBox, pose: EggPose, x: number, baselineY: number) {
+  const s = FOOTER.eggShadow;
+  return {
+    cx: x,
+    cy: baselineY + s.drop * box.side,
+    rx: s.rx * box.side * pose.shadowScale,
+    ry: Math.max(s.minRyPx, s.ry * box.side * pose.shadowScale),
+    opacity: FOOTER.egg.shadow * pose.shadow,
+  };
+}
