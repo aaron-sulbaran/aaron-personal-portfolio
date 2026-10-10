@@ -101,6 +101,16 @@ describe("themeFromTokens", () => {
     const t = themeFromTokens((n) => light[n] ?? "", false);
     expect(t.card.pane).toEqual(t.paper);
   });
+
+  it("reads the anvil, the logo ground and the accent for the mark, per theme", () => {
+    const tokens: Record<string, string> = { "--color-background": "#FAFAF7", "--color-foreground": "#0A0A0A", "--color-accent": "#1B3A5C", "--card-anvil": "#12141F", "--card-logo-ground": "#F5F2EC" };
+    const theme = themeFromTokens((name) => tokens[name] ?? "", true);
+    expect(toCanvasColor(theme.card.anvil)).toBe("rgba(18, 20, 31, 1)");
+    expect(toCanvasColor(theme.card.logoGround)).toBe("rgba(245, 242, 236, 1)");
+    expect(toCanvasColor(theme.card.mark)).toBe("rgba(27, 58, 92, 1)");
+    const bare = themeFromTokens((name) => (name === "--color-foreground" ? "#0A0A0A" : ""), false);
+    expect(toCanvasColor(bare.card.mark)).toBe("rgba(10, 10, 10, 1)");
+  });
 });
 
 describe("createRepaintQueue", () => {
