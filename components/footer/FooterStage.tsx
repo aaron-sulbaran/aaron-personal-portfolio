@@ -5,11 +5,13 @@ import { flushSync } from "react-dom";
 import { useReducedMotionLive } from "@/components/soundtrack/useReducedMotionLive";
 import { createEggState } from "@/lib/footer/egg";
 import { bandShare, footerGeometry, wordRest } from "@/lib/footer/geometry";
+import { FooterField } from "./FooterField";
+import { useDocumentTheme } from "./useDocumentTheme";
 import { Wordmark } from "./Wordmark";
 
 // The footer's client part, around the server's small lines (children): the
-// wordmark over the whole footer, laid out from its measured width (the
-// field joins it in Task 9). The word's band is reserved on the server in cqw (the footer is an
+// field and the wordmark over the whole footer, laid out from its measured
+// width. The word's band is reserved on the server in cqw (the footer is an
 // inline-size container), at the height the client lays out, so nothing
 // below Connect shifts when the word mounts. The egg's state is shared by the
 // wordmark's loop (which runs it) and the field (which draws its rings).
@@ -23,6 +25,7 @@ export function FooterStage({ text, eggLabel, children }: Props) {
   const [box, setBox] = useState<Box | null>(null);
   const [egg] = useState(createEggState);
   const reduced = useReducedMotionLive();
+  const theme = useDocumentTheme();
 
   useEffect(() => {
     const el = stage.current;
@@ -42,6 +45,7 @@ export function FooterStage({ text, eggLabel, children }: Props) {
 
   return (
     <footer ref={stage} data-footer className="relative isolate w-full overflow-hidden bg-background [container-type:inline-size]">
+      {geo && <FooterField text={text} geo={geo} egg={egg} reduced={reduced} theme={theme} />}
       {geo && rest && <Wordmark text={text} eggLabel={eggLabel} geo={geo} rest={rest} reduced={reduced} stage={stage} egg={egg} />}
       {children}
       <div ref={band} aria-hidden="true" data-footer-band style={{ height: `${(bandShare(text) * 100).toFixed(4)}cqw` }} />
