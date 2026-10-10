@@ -82,7 +82,7 @@ export const modalPhotos = {
 export const logos = {
   "min-max": { src: "/work/logos/min-max/mark.svg", srcDark: "/work/logos/min-max/mark-on-dark.svg", width: 548, height: 497 },
   talos: { src: "/work/logos/talos/mark.svg", srcDark: null, width: 512, height: 512 },
-  "capital-one": { src: "/work/logos/capital-one/capital-one-logo.svg", srcDark: null, width: 418, height: 150 },
+  "capital-one": { src: "/work/logos/capital-one/capital-one-logo.svg", srcDark: "/work/logos/capital-one/capital-one-logo-white.svg", width: 418, height: 150 },
   anthropic: { src: "/work/logos/anthropic/anthropic-wordmark.svg", srcDark: "/work/logos/anthropic/anthropic-wordmark-white.svg", width: 578.9, height: 65 },
   ieee: { src: "/work/logos/ieee/ieee-ut-logo.jpg", srcDark: null, width: 1382, height: 1383, opaque: true },
   fsdatalink: { src: "/work/logos/fsdatalink/fsdatalink-logo.avif", srcDark: "/work/logos/fsdatalink/fsdatalink-logo-light.png", width: 512, height: 129 },
