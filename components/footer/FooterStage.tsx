@@ -14,7 +14,9 @@ import { Wordmark } from "./Wordmark";
 // width. The word's band is reserved on the server in cqw (the footer is an
 // inline-size container), at the height the client lays out, so nothing
 // below Connect shifts when the word mounts. The egg's state is shared by the
-// wordmark's loop (which runs it) and the field (which draws its rings).
+// wordmark's loop (which runs it) and the field (which draws its rings). The
+// small lines come first, so a reader hears them and the word before the
+// period's button; the band stays last, the flow element the stage measures.
 
 type Props = { text: string; eggLabel: string; children: ReactNode };
 type Box = { w: number; h: number; bandTop: number };
@@ -45,9 +47,9 @@ export function FooterStage({ text, eggLabel, children }: Props) {
 
   return (
     <footer ref={stage} data-footer className="relative isolate w-full overflow-hidden bg-background [container-type:inline-size]">
+      {children}
       {geo && <FooterField text={text} geo={geo} egg={egg} reduced={reduced} theme={theme} />}
       {geo && rest && <Wordmark text={text} eggLabel={eggLabel} geo={geo} rest={rest} reduced={reduced} stage={stage} egg={egg} />}
-      {children}
       <div ref={band} aria-hidden="true" data-footer-band style={{ height: `${(bandShare(text) * 100).toFixed(4)}cqw` }} />
     </footer>
   );
