@@ -1,6 +1,6 @@
 import { columnWeights, type Rect } from "@/lib/waveform/weights";
 import { dotReach, runColumns, type PathColumns } from "@/lib/wavepath/columns";
-import { ALPHAS, RUN_START, SPACING } from "@/lib/wavepath/constants";
+import { ALPHAS, SPACING } from "@/lib/wavepath/constants";
 import { buildPathDots, clearSink, createSink } from "@/lib/wavepath/paint";
 import { nearestColumn } from "@/lib/wavepath/pluck";
 import { pathProbe } from "@/lib/wavepath/probe";
@@ -30,7 +30,7 @@ export function createWaveView(canvas: HTMLCanvasElement, conductor: WaveConduct
   let cols: PathColumns = runColumns(0, 0, SPACING);
   let all = new Int32Array(0);
   let weights: Float32Array = new Float32Array(0);
-  let width = 0, height = 0, amp = 0, canvasTop = 0, viewport = 0, active = false, measureRaf = 0, measured = false;
+  let width = 0, height = 0, amp = 0, canvasTop = 0, viewport = 0, active = false, measureRaf = 0;
   let alphas = ALPHAS[themeNow()];
 
   const draw = (f: WaveFrame) => {
@@ -50,8 +50,6 @@ export function createWaveView(canvas: HTMLCanvasElement, conductor: WaveConduct
   const view: WaveViewHandle = {
     breathes: !still,
     prepare(f) {
-      // Until the path layer continues the line, the head waits at this run's end.
-      if (f.length <= f.runLen) f.state.target = f.runLen;
       if (f.pointer.moved && active) nearestColumn(cols, f.pointer.x, f.pointer.y + f.scrollY - canvasTop, f.head, f.tail, f.near);
     },
     paint(f, changed: Changed | null) {
@@ -65,6 +63,8 @@ export function createWaveView(canvas: HTMLCanvasElement, conductor: WaveConduct
     },
     setActive(next) {
       active = next;
+      // A band that was off screen when the page loaded has ink as it comes into view.
+      if (next) draw(conductor.frame);
       conductor.wake();
     },
     destroy() {
@@ -92,15 +92,8 @@ export function createWaveView(canvas: HTMLCanvasElement, conductor: WaveConduct
     });
     rects.push({ left: -1e6, right: 1e6, top: -1e6, bottom: 0 }, { left: -1e6, right: 1e6, top: height, bottom: 1e6 });
     weights = columnWeights({ columns: cols.count, startX: cols.x[0] ?? 0, spacing: SPACING, baseline: height / 2, reach: dotReach(amp), feather: FEATHER, edgeTaper: 0, rects });
-    // The run's arc length, until the path layer reports the whole line's.
-    const frame = conductor.frame;
-    if (frame.length <= frame.runLen) {
-      const runLen = width - RUN_START;
-      conductor.setPath({ runLen, length: runLen, train: null, runFlat: 0 }, !measured);
-    }
-    measured = true;
     if (probe) probe.layouts++;
-    draw(frame);
+    draw(conductor.frame);
   };
   const scheduleMeasure = () => {
     if (!measureRaf) measureRaf = requestAnimationFrame(measure);
