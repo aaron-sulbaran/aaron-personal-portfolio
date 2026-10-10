@@ -4,6 +4,7 @@ import { SEEN_STORAGE_KEY } from "@/lib/home/seen";
 import { test, expect } from "./support/fixtures";
 import { nextFrames, openHome } from "./support/coil";
 import { decodePng } from "./support/pixels";
+import { barScale, fillOf, rest } from "./support/inline";
 import { cardDialog, flyCard, openCardFromBook, panelAtRest } from "./support/cards";
 import type { HookWindow } from "./support/hooks";
 
@@ -248,3 +249,34 @@ for (const [kind, notch, notches] of [["photo", 25, 6], ["work", 15, 3]] as cons
     magenta.forEach((count, i) => expect(Math.abs(count - rest) / rest, `frame ${i}: ${count} outline px against ${rest} at rest`).toBeLessThan(0.03));
   });
 }
+
+test("card modal: a card's links are inline links, a line at rest that fills from the centre on hover and stays filled once followed", async ({ page }) => {
+  const { dialog } = await openCardFromBook(page, "ieee", { settled: true });
+  const link = dialog.getByRole("link", { name: /ieee\.ece\.utexas\.edu/ });
+  await expect(link).toHaveClass(/\binline-link\b/);
+  await expect(link).toHaveAttribute("data-inline", "external");
+  await expect(link).toHaveClass(/font-label/);
+  await expect(link).toHaveClass(/text-accent/);
+  await expect(link.locator(".sr-only")).toHaveText(`, ${siteContent.book.externalLabel}`);
+  await link.scrollIntoViewIfNeeded();
+  await rest(page);
+  expect(await fillOf(link)).toBe(0);
+  expect(await barScale(link)).toBe(0);
+  const line = await link.evaluate((el) => ({ height: getComputedStyle(el, "::before").height, token: getComputedStyle(document.documentElement).getPropertyValue("--inline-line-width").trim() }));
+  expect(line.height).toBe(line.token);
+  expect(["1.5px", "2px"]).toContain(line.token);
+  expect(await link.evaluate((el) => getComputedStyle(el).textDecorationLine)).toBe("none");
+  await link.hover();
+  await expect.poll(() => fillOf(link)).toBe(1);
+  expect(await barScale(link)).toBe(1);
+  await rest(page);
+  await expect.poll(() => fillOf(link)).toBe(0);
+
+  const popup = page.context().waitForEvent("page");
+  await link.click();
+  await (await popup).close();
+  expect(await page.evaluate(() => localStorage.getItem("aaron-inline-visited"))).toBe(JSON.stringify(["external:https://ieee.ece.utexas.edu/"]));
+  await rest(page);
+  await expect.poll(() => fillOf(link), { timeout: 1000 }).toBe(1);
+  expect(await barScale(link)).toBe(1);
+});
