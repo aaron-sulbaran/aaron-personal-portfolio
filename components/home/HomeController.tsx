@@ -74,7 +74,7 @@ export type HomeControllerValue = {
   flight: CoilFlight | null;
   // A book row: its card's modal, no flight.
   openCard: (key: CardKey, origin: HTMLElement) => void;
-  // A work row or card that navigates away still counts as seen.
+  // Kept for a future row that navigates away: such a row still counts as seen.
   markVisited: (key: string) => void;
   // A book row under the pointer or keyboard focus: its card glides to the
   // front of the visible helix and the coil holds still on it (null when it
@@ -332,8 +332,9 @@ export function HomeController({ hero, children }: Props) {
   }, [selection, flight]);
 
   const modalOpen = selection !== null;
-  // No flight means the modal draws its own image in the slot.
-  const renderMedia = flight === null;
+  // The modal draws its own image in the slot unless a flown card is parked
+  // over it (a flight going home no longer covers the slot).
+  const renderMedia = flight?.phase !== "out";
 
   const value = useMemo<HomeControllerValue>(
     () => ({
