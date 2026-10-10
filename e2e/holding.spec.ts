@@ -25,3 +25,13 @@ test("holding: a case page redirects home", async ({ page }) => {
   expect(response?.ok()).toBe(true);
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Pardon the dust");
 });
+
+test("holding: the share card is the name alone, with no still from the unfinished site", async ({ request }) => {
+  const response = await request.get("/opengraph-image");
+  expect(response.status()).toBe(200);
+  expect(response.headers()["content-type"]).toBe("image/png");
+  const body = await response.body();
+  expect(body.readUInt32BE(16), "width").toBe(1200);
+  expect(body.readUInt32BE(20), "height").toBe(630);
+  expect(body.length, "holding card bytes").toBeLessThan(80_000);
+});
