@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { siteContent } from "@/lib/content";
 import { HOLD } from "@/lib/mark/constants";
 import { FILL_BOTTOM, FILL_TOP } from "@/lib/mark/geometry";
@@ -283,3 +283,171 @@ for (const mode of ["scene", "no-webgl"] as const) {
     });
   });
 }
+
+// The card's words and the links inside it. Tips, definitions and pops open
+// from inside the dialog and float above it.
+const PLAYSTATION = "https://profile.playstation.com/VoltaageArc";
+const tipBubble = (page: Page) => page.locator("[data-inline-tip]");
+const word = (card: Locator, name: string) => card.getByRole("button", { name, exact: true });
+const bodyLocked = (page: Page) => page.evaluate(() => document.body.style.overflow);
+// Whether the point at the middle of the element lands on it, not on what is stacked above it. A label that
+// takes no pointer is hit-tested with the pointer switched on for the moment of the read.
+const topmostIn = (locator: Locator, root: string) =>
+  locator.evaluate((el, selector) => {
+    const scope = el.closest<HTMLElement>(selector);
+    const before = scope?.style.pointerEvents ?? "";
+    if (scope) scope.style.pointerEvents = "auto";
+    const box = el.getBoundingClientRect();
+    const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+    if (scope) scope.style.pointerEvents = before;
+    return !!hit && !!hit.closest(selector);
+  }, root);
+
+async function openCard(page: Page) {
+  await openHome(page);
+  await scrollToY(page, Y);
+  await holdMark(page, 700);
+  await expect(card(page)).toBeVisible();
+  await expect.poll(() => surfaceOpacity(page), { timeout: 4000 }).toBe("1");
+  await page.mouse.move(2, 2);
+  return card(page);
+}
+
+test.describe("the mark card's words and links", () => {
+  test("mark: the title, the subtitle in the card modals' meta face, and four paragraphs, each one animated in", async ({ page }) => {
+    const dialog = await openCard(page);
+    await expect(dialog.getByRole("heading", { name: siteContent.mark.title })).toBeVisible();
+    await expect(dialog.getByText(siteContent.mark.subtitle)).toHaveClass(/font-label text-label text-accent/);
+    const paragraphs = dialog.locator('p[data-card="text"]');
+    await expect(paragraphs).toHaveCount(5);
+    await expect(paragraphs.nth(2)).toContainText("My gamer tag growing up: VoltaageArc (Voltage + two A's + Arc)");
+    await expect(paragraphs.nth(4)).toContainText("My major: Electrical and Computer Engineering... this one is pretty self explanatory.");
+    await expect(dialog.getByText(siteContent.modals.closeHintKeyboard)).toBeVisible();
+    for (const handle of await paragraphs.elementHandles()) expect(await handle.evaluate((el) => getComputedStyle(el).opacity)).toBe("1");
+  });
+
+  test("mark: hovering the gamer tag opens a tip with a link; the pointer can reach it, it opens a new tab, and it lets go after leaving", async ({ page, offsite }) => {
+    const dialog = await openCard(page);
+    const target = word(dialog, "VoltaageArc");
+    await target.hover();
+    await expect(tipBubble(page)).toHaveAttribute("data-shown", "true");
+    await expect(tipBubble(page)).toContainText("I always thought Voltaage would be an awesome streamer name. I guess I took a different career path.");
+    const link = tipBubble(page).getByRole("link", { name: /VoltaageArc on most platforms/ });
+    await expect(link).toBeVisible();
+    await expect(link).toHaveAttribute("href", PLAYSTATION);
+    await expect(link).toHaveAttribute("target", "_blank");
+    await expect(link).toHaveAttribute("rel", "noopener noreferrer");
+    const wordBox = (await target.boundingBox())!;
+    const box = (await link.boundingBox())!;
+    await page.mouse.move(wordBox.x + wordBox.width / 2, wordBox.y + wordBox.height / 2);
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 12 });
+    await page.waitForTimeout(500);
+    await expect(tipBubble(page)).toHaveAttribute("data-shown", "true");
+    expect(await topmostIn(link, "[data-inline-tip]")).toBe(true);
+    const popup = page.waitForEvent("popup");
+    await link.click();
+    await (await popup).close();
+    await expect.poll(() => offsite).toContain(PLAYSTATION);
+    await expect(card(page)).toBeVisible();
+    await page.mouse.move(2, 2);
+    await expect(tipBubble(page)).toHaveAttribute("data-shown", "false");
+  });
+
+  test("mark: a keyboard reaches the tip's link with Tab, Escape closes only the tip and gives focus back to its word", async ({ page }) => {
+    const dialog = await openCard(page);
+    await dialog.getByRole("button", { name: CLOSE }).focus();
+    await page.keyboard.press("Tab");
+    const target = word(dialog, "VoltaageArc");
+    await expect(target).toBeFocused();
+    await expect(tipBubble(page)).toHaveAttribute("data-shown", "true");
+    const link = tipBubble(page).getByRole("link", { name: /VoltaageArc on most platforms/ });
+    await page.keyboard.press("Tab");
+    await expect(link).toBeFocused();
+    await expect(tipBubble(page)).toHaveAttribute("data-shown", "true");
+    await page.keyboard.press("Shift+Tab");
+    await expect(target).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(link).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(tipBubble(page)).toHaveAttribute("data-shown", "false");
+    await expect(card(page)).toBeVisible();
+    await expect(target).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(card(page)).toHaveCount(0);
+    await expect(mark(page)).toBeFocused();
+  });
+
+  test("mark: Tab from the tip's link carries on past its word", async ({ page }) => {
+    const dialog = await openCard(page);
+    await word(dialog, "VoltaageArc").focus();
+    await page.keyboard.press("Shift+Tab");
+    await page.keyboard.press("Tab");
+    await expect(word(dialog, "VoltaageArc")).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(tipBubble(page).getByRole("link")).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(word(dialog, "Voltage")).toBeFocused();
+  });
+
+  test("mark: a definition opens above the card, Escape closes only it, the scroll lock holds, and focus returns to its word", async ({ page }) => {
+    const dialog = await openCard(page);
+    const voltage = word(dialog, "Voltage");
+    await voltage.click();
+    const definition = page.getByRole("dialog", { name: "Voltage" });
+    await expect(definition).toBeVisible();
+    await expect(definition).toContainText("the difference in electric potential between two points");
+    await expect(dialog).toBeVisible();
+    await expect.poll(() => topmostIn(definition.locator("[data-definition-panel]"), "[data-definition-panel]")).toBe(true);
+    expect(await bodyLocked(page)).toBe("hidden");
+    await page.keyboard.press("Escape");
+    await expect(definition).toHaveCount(0);
+    await expect(dialog).toBeVisible();
+    expect(await bodyLocked(page)).toBe("hidden");
+    await expect(voltage).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(dialog).toHaveCount(0);
+    expect(await bodyLocked(page)).toBe("");
+  });
+
+  test("mark: the Arc definition and the A's tip open from the card too", async ({ page }) => {
+    const dialog = await openCard(page);
+    await word(dialog, "Arc").click();
+    await expect(page.getByRole("dialog", { name: "Arc" })).toContainText("continuous electrical discharge");
+    await page.keyboard.press("Escape");
+    await word(dialog, "two A's").hover();
+    await expect(tipBubble(page)).toContainText("as in A-Aron");
+    await expect(tipBubble(page).getByRole("link")).toHaveCount(0);
+  });
+
+  for (const [name, caption, file] of [
+    ["Catatumbo Lightning", "The lightning in question", "catatumbo-lightning"],
+    ["Lake Maracaibo", "The famous Puente General Rafael Urdaneta over Lake Maracaibo.", "lake-maracaibo"],
+    ["Electrical and Computer Engineering", "UT Austin Electrical and Computer Engineering", "ut-ece-logo"],
+  ] as const) {
+    test(`mark: the ${name} pop opens its photo and caption above the card, uncovered`, async ({ page }) => {
+      const dialog = await openCard(page);
+      await word(dialog, name).hover();
+      await expect(tipBubble(page)).toHaveAttribute("data-shown", "true");
+      const photo = tipBubble(page).locator("img");
+      await expect(photo).toBeVisible();
+      await expect.poll(() => photo.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
+      expect(decodeURIComponent((await photo.getAttribute("src")) ?? "")).toContain(file);
+      await expect(tipBubble(page).getByText(caption)).toBeVisible();
+      expect(await topmostIn(photo, "[data-inline-tip]")).toBe(true);
+      expect(await topmostIn(tipBubble(page).getByText(caption), "[data-inline-tip]")).toBe(true);
+    });
+  }
+
+  for (const [label, size] of [["desktop", { width: 1440, height: 900 }], ["phone", { width: 390, height: 844 }]] as const) {
+    test(`mark: all four paragraphs and the button sit inside the dialog's scroll on a ${label}`, async ({ page }) => {
+      await page.setViewportSize(size);
+      const dialog = await openCard(page);
+      const button = dialog.getByRole("button", { name: siteContent.mark.button });
+      await button.scrollIntoViewIfNeeded();
+      await expect(button).toBeVisible();
+      expect(await dialog.evaluate((el) => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(0);
+      for (const text of ["Here's my thought process", "My gamer tag growing up", "Catatumbo Lightning", "My major"]) await expect(dialog.getByText(text, { exact: false }).first()).toBeAttached();
+      await expect(dialog.getByRole("button", { name: CLOSE })).toBeVisible();
+    });
+  }
+});
