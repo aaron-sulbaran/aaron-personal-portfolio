@@ -62,7 +62,8 @@ interface ModalPhotoBase extends PhotoRef {
 // (today 1, 1, 3, 4: the two MOD photos, Apple, Aritzia), so its timeline needs room for a photo
 // under an entry. block indexes modal.blocks; timeline indexes cards.jobs.timeline; never both.
 export type ModalPhoto = ModalPhotoBase & ({ block: number; timeline?: never } | { timeline: number; block?: never });
-export interface LogoRef { src: string; srcDark: string | null; width: number; height: number }
+// opaque: the logo is its own ground (the IEEE square), drawn as the tile's face and never on a plate.
+export interface LogoRef { src: string; srcDark: string | null; width: number; height: number; opaque?: true }
 
 // What the Coil shows. A null ref is an asset not exported yet; every launch card has its asset.
 export type CardVisual =
@@ -100,7 +101,8 @@ export interface CardContent {
   modal: CardModal;
 }
 
-export interface Mentor { name: string; href: string }
+// line: one sentence on how they helped me, in my words; null until I write it, and nothing renders for it.
+export interface Mentor { name: string; href: string; line: string | null }
 export interface MentorsList { title: string; people: readonly Mentor[] }
 export interface TimelineEntry { employer: string; role: string | null; when: string; logo: LogoRef | null; tip: string }
 

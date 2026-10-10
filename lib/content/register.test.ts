@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { siteContent } from "@/lib/content";
 import { parseInlineLinks } from "@/lib/content/links";
-import { register, registerHas, resolveTip } from "@/lib/content/register";
+import { jobTipKey, register, registerHas, resolveTip } from "@/lib/content/register";
 
 const musicNoteWithoutAdapting =
   "I'm not playing my usual playlist (a lot of Tyler, the Creator, Childish Gambino and Steve Lacy) because I don't own it, and I picked music that's easy to read to. The credits are in the corner.";
@@ -9,8 +9,14 @@ const musicNoteWithoutAdapting =
 describe("the inline register", () => {
   it("holds the approved keys and only those", () => {
     expect(Object.keys(register.def)).toEqual(["product"]);
-    expect(Object.keys(register.tip)).toEqual(["voltage", "two-as", "voltaage", "killer-drones", "evolving-isle", "music-note", "ieee-ao", "this-site-playground", "misuki-suk"]);
+    expect(Object.keys(register.tip)).toEqual(["voltage", "two-as", "voltaage", "killer-drones", "evolving-isle", "music-note", "ieee-ao", "this-site-playground", "misuki-suk", "job-0", "job-1", "job-2", "job-3", "job-4"]);
     expect(Object.keys(register.pop)).toEqual(["leadership-award", "sandboarding", "downhill-skating", "skydiving", "rock-climbing", "venezuela-flag", "matcha", "sister-kyoto", "contrabass-clarinet", "rango"]);
+  });
+
+  it("carries each jobs timeline tip, word for word, under its entry's key", () => {
+    expect(siteContent.cards.jobs.timeline.map((entry, i) => register.tip[jobTipKey(i)]?.text)).toEqual(siteContent.cards.jobs.timeline.map((entry) => entry.tip));
+    expect(jobTipKey(4)).toBe("job-4");
+    expect(registerHas("tip", "job-2")).toBe(true);
   });
 
   it("is the register siteContent carries", () => {
