@@ -4,7 +4,7 @@ import type { Page } from "@playwright/test";
 import { siteContent, type CardKey } from "@/lib/content";
 import { galleryOf } from "@/lib/gallery/card";
 import { test, expect } from "./support/fixtures";
-import { openHome, waitForCoilSettled } from "./support/coil";
+import { openHome, waitForCoil, waitForCoilSettled } from "./support/coil";
 import { openCardFromBook } from "./support/cards";
 
 // Aaron's look at the fourteen, by hand and never in a normal run: the Coil
@@ -54,7 +54,10 @@ test("look: where each card's first row ends against the fold, and which book me
   const measures: Record<string, unknown> = {};
   for (const size of [{ width: 1440, height: 900 }, { width: 1024, height: 768 }]) {
     await page.setViewportSize(size);
-    await openHome(page);
+    await page.goto("/?coildebug=1");
+    // The page restores the scroll the last size ended on; the hero draws from the top.
+    await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
+    await waitForCoil(page);
     const bottoms: Record<string, number | null> = {};
     for (const key of keys) {
       if (!galleryOf(key).plan.slides.length) {
