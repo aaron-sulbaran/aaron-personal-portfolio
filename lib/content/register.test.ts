@@ -8,9 +8,9 @@ const musicNoteWithoutAdapting =
 
 describe("the inline register", () => {
   it("holds the approved keys and only those", () => {
-    expect(Object.keys(register.def)).toEqual(["product"]);
-    expect(Object.keys(register.tip)).toEqual(["voltage", "two-as", "voltaage", "killer-drones", "evolving-isle", "music-note", "ieee-ao", "this-site-playground", "misuki-suk", "job-0", "job-1", "job-2", "job-3", "job-4"]);
-    expect(Object.keys(register.pop)).toEqual(["leadership-award", "sandboarding", "downhill-skating", "skydiving", "rock-climbing", "venezuela-flag", "matcha", "sister-kyoto", "contrabass-clarinet", "rango"]);
+    expect(Object.keys(register.def)).toEqual(["product", "voltage", "arc"]);
+    expect(Object.keys(register.tip)).toEqual(["two-as", "voltaage", "killer-drones", "evolving-isle", "music-note", "ieee-ao", "this-site-playground", "misuki-suk", "job-0", "job-1", "job-2", "job-3", "job-4"]);
+    expect(Object.keys(register.pop)).toEqual(["leadership-award", "sandboarding", "downhill-skating", "skydiving", "rock-climbing", "venezuela-flag", "matcha", "sister-kyoto", "contrabass-clarinet", "rango", "catatumbo-lightning", "lake-maracaibo", "ut-ece-logo"]);
   });
 
   it("carries each jobs timeline tip, word for word, under its entry's key", () => {
@@ -23,8 +23,23 @@ describe("the inline register", () => {
     expect(siteContent.register).toBe(register);
   });
 
-  it("keeps one proposed tip, flagged", () => {
-    expect(Object.entries(register.tip).filter(([, entry]) => entry.proposed).map(([key]) => key)).toEqual(["voltaage"]);
+  it("holds no tip still marked proposed", () => {
+    expect(Object.entries(register.tip).filter(([, entry]) => entry.proposed).map(([key]) => key)).toEqual([]);
+  });
+
+  it("gives the gamer tag tip its one https link, and no other tip a link", () => {
+    expect(register.tip.voltaage.link).toEqual({ href: "https://profile.playstation.com/VoltaageArc", label: "VoltaageArc on most platforms" });
+    for (const [key, entry] of Object.entries(register.tip)) {
+      if (!entry.link) continue;
+      expect(entry.link.href, key).toMatch(/^https:\/\/\S+$/);
+      expect(entry.link.label.trim(), key).not.toBe("");
+    }
+    expect(Object.entries(register.tip).filter(([, entry]) => entry.link).map(([key]) => key)).toEqual(["voltaage"]);
+  });
+
+  it("defines the mark card's two electrical terms in my words", () => {
+    expect(register.def.voltage).toEqual({ title: "Voltage", body: "the difference in electric potential between two points" });
+    expect(register.def.arc).toEqual({ title: "Arc", body: "a continuous electrical discharge that occurs when electric current flows through an air gap between two electrodes" });
   });
 
   it("defines product in Aaron's words", () => {
@@ -54,6 +69,9 @@ describe("the inline register", () => {
       matcha: "7T+ is my favorite matcha place in the world, literally in the world. This one is in Kyoto.",
       "contrabass-clarinet": "Bass clarinet was my main instrument. In concert season I played contrabass.",
       rango: "yeah, this guy from that one kid's movie",
+      "catatumbo-lightning": "The lightning in question",
+      "lake-maracaibo": "The famous Puente General Rafael Urdaneta over Lake Maracaibo.",
+      "ut-ece-logo": "UT Austin Electrical and Computer Engineering",
     });
     expect(Object.values(register.pop).every((entry) => entry.crop === null)).toBe(true);
     expect(Object.entries(register.pop).filter(([, entry]) => entry.href).map(([key, entry]) => [key, entry.href])).toEqual([["matcha", "https://www.google.com/maps/search/?api=1&query=35.0025497%2C135.7652173"]]);

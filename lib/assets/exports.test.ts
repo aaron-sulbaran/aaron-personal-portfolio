@@ -22,7 +22,7 @@ const PHOTOS: Record<string, [number, number]> = {
 };
 const POPS: Record<string, [number, number]> = {
   "contrabass-clarinet": [600, 800], "downhill-skating": [600, 800], "leadership-award": [600, 800], matcha: [600, 800], "rock-climbing": [600, 800],
-  rango: [599, 800], sandboarding: [600, 800], "sister-kyoto": [800, 717], skydiving: [800, 600], "venezuela-flag": [600, 800],
+  rango: [599, 800], "catatumbo-lightning": [800, 577], "lake-maracaibo": [250, 342], "ut-ece-logo": [800, 243], sandboarding: [600, 800], "sister-kyoto": [800, 717], skydiving: [800, 600], "venezuela-flag": [600, 800],
 };
 const LOGOS: Record<string, string[]> = {
   anthropic: ["anthropic-mark-white.svg", "anthropic-mark.svg", "anthropic-wordmark-white.svg", "anthropic-wordmark.svg"],

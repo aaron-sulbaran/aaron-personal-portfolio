@@ -13,6 +13,8 @@ export interface TipEntry {
   proposed?: true;
   // A clause that is true only while an adapted track is in the player.
   adaptedClause?: string;
+  // A link inside the tip (https only, opens in a new tab); a linked tip's label takes the pointer.
+  link?: { href: string; label: string };
 }
 
 export interface PopEntry {
