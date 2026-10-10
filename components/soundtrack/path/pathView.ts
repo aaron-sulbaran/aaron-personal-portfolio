@@ -136,6 +136,8 @@ export function createPathView(layer: HTMLElement, root: HTMLElement, conductor:
     },
     paint(f: WaveFrame, changed: Changed | null) {
       if (changed && !dirty && !changed.head && !changed.music && !changed.breath && !changed.plucks) return;
+      // Before an answer (and near the top) the head sits at the run's end: the path has no ink, so a breath alone repaints nothing.
+      if (changed && !dirty && !changed.head && !changed.music && !changed.plucks && f.head <= f.runLen) return;
       dirty = false;
       sink.viewTop = f.scrollY - origin;
       sink.viewBottom = sink.viewTop + viewport;

@@ -13,10 +13,11 @@ import { attachProbe, pathProbe } from "@/lib/wavepath/probe";
 // views (the band's run, the path's tiles) only paint it. The loop runs while
 // the head moves, or while a view shows and the music, the run's breath or a
 // ripple moves; it caps at 60fps and sleeps at rest. Before the visitor
-// answers the band, the line is static: no breath, no pluck, so the loop
-// sleeps. After either answer it breathes and follows; peaks and the music
-// need "Play it". Freezing stops the clocks, the music and the plucks; the
-// head still follows the scroll. Reduced motion (`still`) never loops: views
+// answers the band, its level run breathes slowly (no peaks, no music, no
+// pluck) while the head waits at the run's end: the line does not follow until
+// an answer. After either answer the whole line breathes and follows; peaks
+// and the music need "Play it". Freezing stops the clocks, the music and the
+// plucks; the head still follows the scroll. Reduced motion (`still`) never loops: views
 // paint the whole line on layout, theme and probe calls. One conductor per
 // page, ref counted.
 
@@ -109,15 +110,12 @@ function createInstance(still: boolean): Instance {
         }
       } else frame.pointer.speed *= Math.exp(-dt / 0.07);
       frame.shimmer += dt * SHIMMER.rate;
-      // Static until the visitor answers; the clock starts at 0 then, so the breath eases in from 0.
-      if (frame.decided) {
-        breathClock += dt;
-        frame.breath = Math.sin(breathClock * BREATH.rate);
-      }
+      breathClock += dt;
+      frame.breath = Math.sin(breathClock * BREATH.rate);
       levelColumns(leveller, player.sample(t, SPECTRUM_BINS).means, dt, levelled);
       music = stepMusic(frame.music, dt, getSoundtrackState() === "on", levelled);
       plucks = stepPlucks(frame.plucks, dt);
-      breath = frame.decided && views.some((v) => v.breathes && v.active());
+      breath = views.some((v) => v.breathes && v.active());
     }
     frame.pointer.moved = false;
     frame.near.d2 = Infinity;
@@ -180,7 +178,7 @@ function createInstance(still: boolean): Instance {
       frame.length = geometry.length;
       frame.runFlat = geometry.runFlat;
       frame.train = still ? null : geometry.train;
-      // Undecided the target is always the run's end and the band is static: land there, never ease.
+      // Undecided the target is always the run's end: land there, never ease.
       if (first || !frame.decided) snap = true;
       wake();
     },

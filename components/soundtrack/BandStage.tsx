@@ -16,9 +16,9 @@ import { useReducedMotionLive } from "./useReducedMotionLive";
 // (useBandPassed) decides from the scroll position when the reader has passed
 // the band, and the pill fades in at its dock. Phones stack the wave under the
 // copy and have no pill. The freeze toggle stays here until music is chosen
-// (the player card carries it then on desktop); the band is still until the
-// visitor answers, and its line breathes after either answer, so a decliner
-// can always freeze it.
+// (the player card carries it then on desktop); the run breathes before an
+// answer and the whole line after either answer, so a decliner can always
+// freeze it.
 export function BandStage() {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const [inView, setInView] = useState(false);
