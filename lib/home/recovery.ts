@@ -1,6 +1,6 @@
 import { readScrollY, saveScrollY } from "@/lib/scroll";
 
-// Deep-reload recovery for the home document, ported from TileRing (the fast
+// Deep-reload recovery for the home document, ported from the retired tile ring (the fast
 // start threshold, the pre-paint determination, scroll persistence, and the
 // restore) as plain functions the HomeController calls in order:
 //

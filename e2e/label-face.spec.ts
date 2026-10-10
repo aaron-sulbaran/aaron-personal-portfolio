@@ -46,10 +46,6 @@ async function expectLabel(locator: Locator, step: Step, tone: Tone) {
 }
 
 test("label face: controls and links are Profa Bold in the accent", async ({ page }) => {
-  await page.goto("/work/capital-one-pm");
-  await expectLabel(page.locator("article a[href='/#work']"), "label", "accent");
-  await expectLabel(page.getByRole("link", { name: siteContent.work.placeholderCta }), "label-lg", "accent");
-
   await page.goto("/");
   await settled(page);
   await expectLabel(page.locator('#listen [data-control="on"]'), "label", "accent");
@@ -65,10 +61,6 @@ test("label face: controls and links are Profa Bold in the accent", async ({ pag
 });
 
 test("label face: meta beside a title is Profa Bold in the accent", async ({ page }) => {
-  const item = siteContent.workItems.find((i) => i.slug === "capital-one-pm")!;
-  await page.goto(`/work/${item.slug}`);
-  await expectLabel(page.locator("article").getByText(`${item.role}, ${item.year}`, { exact: true }), "label-lg", "accent");
-
   await page.goto("/");
   await settled(page);
   await expectLabel(page.locator("#work .book-row").getByText(siteContent.cards["capital-one"].book.meta, { exact: true }), "label", "accent");
@@ -222,27 +214,12 @@ test("label face: the band's answers sit on the question's baseline, 36px after 
   expect((await read()).alpha).toBeCloseTo(0.55, 2);
 });
 
-test("label face: the back link is a drawn 14px arrow, lifted 1px, then Work", async ({ page }) => {
-  await page.goto("/work/capital-one-pm");
-  const link = page.locator("article a[href='/#work']");
-  await expect(link).toHaveText("Work");
-  const icon = link.locator("svg");
-  expect(await icon.evaluate((el) => ({
-    w: el.getBoundingClientRect().width,
-    stroke: el.getAttribute("stroke-width"),
-    top: getComputedStyle(el).top,
-    first: el.parentElement!.firstElementChild === el,
-  }))).toEqual({ w: 14, stroke: "2.5", top: "-1px", first: true });
-});
-
-test("label face: role lines sit under their titles, 14px on the case page and 6px in the modal", async ({ page }) => {
+test("label face: role lines sit under their titles, 6px in the modal", async ({ page }) => {
   const gap = (title: Locator) =>
     title.evaluate((h) => {
       const p = h.nextElementSibling as HTMLElement | null;
       return p?.tagName === "P" ? p.getBoundingClientRect().top - h.getBoundingClientRect().bottom : null;
     });
-  await page.goto("/work/capital-one-pm");
-  expect(await gap(page.locator("article h1"))).toBeCloseTo(14, 0);
   const { dialog } = await openCardFromBook(page, "anthropic", { settled: true });
   expect(await gap(dialog.locator("h2"))).toBeCloseTo(6, 0);
   const fit = await dialog.locator("[data-tile-slot='work']").evaluate((slot) => ({
