@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { siteContent } from "@/lib/content";
 import { partId } from "@/lib/gallery/timing";
 
@@ -5,10 +6,11 @@ import { partId } from "@/lib/gallery/timing";
 // their LinkedIn, and the line I write for them once I have.
 export function MentorsList({ compact = false }: { compact?: boolean }) {
   const { title, people } = siteContent.cards.mentorship.mentors;
+  const headingId = useId();
   if (!people.length) return null;
   return (
-    <section data-mask={partId.mentors} data-mask-kind="text" aria-label={title} className="flex flex-col gap-3" data-mentors="">
-      <h3 className={`font-display leading-tight text-foreground ${compact ? "text-xl" : "text-2xl"}`}>{title}</h3>
+    <section data-mask={partId.mentors} data-mask-kind="text" aria-labelledby={headingId} className="flex flex-col gap-3" data-mentors="">
+      <h3 id={headingId} className={`font-display leading-tight text-foreground ${compact ? "text-xl" : "text-2xl"}`}>{title}</h3>
       <ul className="flex flex-col gap-2">
         {people.map((mentor) => (
           <li key={mentor.href} className="flex flex-col gap-0.5">
