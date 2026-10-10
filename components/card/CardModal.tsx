@@ -64,6 +64,7 @@ export function CardModal({ cardKey, onClose, renderMedia, flying }: Props) {
           <motion.div
             key={`card-tint-${opens}`}
             aria-hidden="true"
+            data-card-tint=""
             initial="hidden"
             animate="visible"
             exit="exit"
