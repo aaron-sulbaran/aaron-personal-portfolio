@@ -26,6 +26,7 @@ test("touch: a tap on the letters leaves the word still; a tap on the period dro
   const box = (await button.boundingBox())!;
   expect(box.width).toBeGreaterThanOrEqual(F.hitPx.min);
   expect(box.height).toBeGreaterThanOrEqual(F.hitPx.min);
+  expect(box.y + box.height + F.hitPx.ring, "the whole target inside the footer, which clips").toBeLessThanOrEqual(footer.y + footer.height);
   const hop = recordWord(page, eggTotalMs(F.egg) + 200);
   await button.tap();
   expect(Math.min(...(await hop).map((f) => parsePose(f[PERIOD]).y))).toBeLessThan(rest.baseline - 0.3 * rest.size);
