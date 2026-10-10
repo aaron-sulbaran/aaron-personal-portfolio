@@ -9,7 +9,7 @@ const ids = (steps: { id: string }[][]) => steps.map((step) => step.map((part) =
 const beside = (...words: (number | undefined)[]) => words.map((word) => (word === undefined ? {} : { beside: word }));
 
 describe("the mask table", () => {
-  it("starts at the landing, staggers steps 110ms and lines 45ms, each mask 480ms", () => {
+  it("starts at the given start, staggers steps 110ms and lines 45ms, each mask 480ms", () => {
     const table = maskTable([[{ id: "title" }], [{ id: "meta" }], [{ id: "words-0", lines: 3 }]], { startMs: 520, lengthMs: 480, staggerMs: 110, lineStaggerMs: 45 });
     expect(table.entries.map((e) => [e.id, e.startMs, e.endMs, e.lineStartsMs])).toEqual([["title", 520, 1000, [520]], ["meta", 630, 1110, [630]], ["words-0", 740, 1310, [740, 785, 830]]]);
     expect(table.endMs).toBe(1310);
@@ -55,6 +55,14 @@ describe("the pager", () => {
     expect(pagerReducer({ index: 0, count: 3 }, { type: "prev" })).toEqual({ index: 0, count: 3 });
     expect(pagerReducer({ index: 2, count: 3 }, { type: "next" })).toEqual({ index: 2, count: 3 });
     expect(pagerReducer({ index: 0, count: 3 }, { type: "goto", index: 9 })).toEqual({ index: 2, count: 3 });
+  });
+  it("returns the same state when the page does not change, so a reducer can bail out", () => {
+    const atStart = { index: 0, count: 3 };
+    const atEnd = { index: 2, count: 3 };
+    expect(pagerReducer(atStart, { type: "prev" })).toBe(atStart);
+    expect(pagerReducer(atEnd, { type: "next" })).toBe(atEnd);
+    expect(pagerReducer(atStart, { type: "goto", index: 0 })).toBe(atStart);
+    expect(pagerReducer(atStart, { type: "next" })).not.toBe(atStart);
   });
   it("picks a drag's axis once it moves past the slop", () => {
     expect(axisOf(3, 2)).toBeNull();

@@ -58,6 +58,7 @@ export function CardPager({ gallery, pages, renderMedia, onClose }: Props) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+      if (e.altKey || e.metaKey || e.ctrlKey || e.shiftKey) return;
       const dialog = rootRef.current?.closest('[role="dialog"]');
       const target = e.target as Node | null;
       if (!dialog || !(target === document.body || (target !== null && dialog.contains(target)))) return;

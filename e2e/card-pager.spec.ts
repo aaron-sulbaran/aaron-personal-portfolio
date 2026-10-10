@@ -39,6 +39,19 @@ test("pager: a phone opens one page a paragraph, the header above the pages and 
   await expect(dialog.locator("[data-pager]")).toHaveAttribute("data-page", "1");
 });
 
+test("pager: an arrow key with a modifier held is the browser's, not the pager's", async ({ page }) => {
+  const { dialog } = await openCardFromBook(page, "capital-one");
+  await expect(dialog.locator("[data-pager]")).toHaveAttribute("data-page", "0");
+  for (const modifier of ["Alt", "Control", "Meta", "Shift"]) {
+    await page.keyboard.down(modifier);
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.up(modifier);
+  }
+  await expect(dialog.locator("[data-pager]")).toHaveAttribute("data-page", "0");
+  await page.keyboard.press("ArrowRight");
+  await expect(dialog.locator("[data-pager]")).toHaveAttribute("data-page", "1");
+});
+
 test("pager: Mentorship's mentors and its link ride on its last page", async ({ page }) => {
   const { dialog } = await openCardFromBook(page, "mentorship");
   await expect(dialog.locator('[data-pager-page="1"] [data-mentors]')).toHaveCount(1);

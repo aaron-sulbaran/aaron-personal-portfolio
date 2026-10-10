@@ -11,7 +11,8 @@ const clampPage = (index: number, count: number) => (count <= 0 ? 0 : Math.min(c
 
 export function pagerReducer(state: PagerState, action: PagerAction): PagerState {
   const index = action.type === "goto" ? action.index : state.index + (action.type === "next" ? 1 : -1);
-  return { ...state, index: clampPage(index, state.count) };
+  const clamped = clampPage(index, state.count);
+  return clamped === state.index ? state : { ...state, index: clamped };
 }
 
 export type Axis = "x" | "y";
