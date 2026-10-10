@@ -1,10 +1,10 @@
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
-import type { Page } from "@playwright/test";
+import type { CDPSession, Page } from "@playwright/test";
 import { siteContent, type CardKey } from "@/lib/content";
 import { test, expect } from "./support/fixtures";
 import { nextFrames, openHome, scrollToY } from "./support/coil";
-import { openCardFromBook } from "./support/cards";
+import { cardDialog, flyCard, openCardFromBook, panelAtRest } from "./support/cards";
 import type { HookWindow } from "./support/hooks";
 
 // The final pass, by hand and never in a normal run (FINAL_PASS_LOOK=1): the
@@ -143,4 +143,55 @@ test("final pass: the mark card on a phone, dark", async ({ page }) => {
   await dialog.evaluate((el) => el.scrollTo(0, el.scrollHeight));
   await page.waitForTimeout(300);
   await page.screenshot({ path: join(DIR, "mark-modal-phone-bottom-dark.png") });
+});
+
+// The band's modal after a real flight from the Coil: landed, masks played, the
+// card stayed with its slot when the dialog scrolls.
+async function openBandFlown(page: Page, cdp: CDPSession, theme: "light" | "dark", size = DESKTOP) {
+  await page.setViewportSize(size);
+  await page.emulateMedia({ colorScheme: theme });
+  const key = await flyCard(page, cdp, "photo", { only: "band" });
+  await hideCursor(page);
+  const dialog = cardDialog(page, key);
+  await panelAtRest(page, key);
+  await expect(dialog.locator("[data-mask-armed]")).toHaveCount(0, { timeout: 8000 });
+  await page.mouse.move(8, 8);
+  await page.waitForTimeout(800);
+  return dialog;
+}
+
+for (const theme of ["dark", "light"] as const) {
+  test(`final pass: the band's modal after the flight, ${theme}`, async ({ page, cdp }) => {
+    test.setTimeout(120_000);
+    mkdirSync(DIR, { recursive: true });
+    const dialog = await openBandFlown(page, cdp, theme);
+    await page.screenshot({ path: join(DIR, `band-modal-${theme}.png`) });
+    if (theme === "dark") {
+      await page.mouse.move(720, 450);
+      await page.mouse.wheel(0, 300);
+      await page.waitForTimeout(700);
+      expect(await dialog.evaluate((el) => el.scrollTop)).toBeGreaterThan(200);
+      await page.screenshot({ path: join(DIR, "band-modal-scrolled-dark.png") });
+    }
+  });
+}
+
+test("final pass: the whole band modal in one tall pane, dark", async ({ page, cdp }) => {
+  test.setTimeout(120_000);
+  mkdirSync(DIR, { recursive: true });
+  await openBandFlown(page, cdp, "dark", { width: 1440, height: 1700 });
+  await page.screenshot({ path: join(DIR, "band-modal-tall-dark.png") });
+});
+
+test("final pass: a card modal's link row at the bottom, one link hovered, dark", async ({ page }) => {
+  test.setTimeout(120_000);
+  mkdirSync(DIR, { recursive: true });
+  await openThemed(page, "dark");
+  const { dialog } = await openCardFromBook(page, "ieee", { home: false, settled: true });
+  const link = dialog.getByRole("link", { name: /ieee\.ece\.utexas\.edu/ });
+  await dialog.evaluate((el) => el.scrollTo(0, el.scrollHeight));
+  await page.waitForTimeout(500);
+  await link.hover();
+  await page.waitForTimeout(600);
+  await page.screenshot({ path: join(DIR, "card-links-dark.png") });
 });
