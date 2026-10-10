@@ -43,17 +43,19 @@ export async function openCardFromBook(page: Page, key: CardKey, { home = true, 
 
 // A card of one flight kind clicked on the Coil, as a visitor does (hover until
 // the scene picks it, then a click), behind ?coildebug=flight. Resolves with its
-// key once the flown card is parked (parked: false resolves at the click).
-export async function flyCard(page: Page, cdp: CDPSession, kind: "photo" | "work", { parked = true } = {}): Promise<CardKey> {
+// key once the flown card is parked (parked: false resolves at the click); only
+// brings that card to the front first.
+export async function flyCard(page: Page, cdp: CDPSession, kind: "photo" | "work", { parked = true, only }: { parked?: boolean; only?: CardKey } = {}): Promise<CardKey> {
   await openHome(page, { debug: "flight" });
+  if (only) await page.evaluate((k) => (window as HookWindow).__coil!.api.focusCard(k), only);
   const find = () =>
-    page.evaluate((k) => {
+    page.evaluate(([k, wanted]) => {
       const w = window as HookWindow;
       const slot = w.__coilFlight!.scene.slots().find(
-        (s) => s.kind === k && s.depth > 0.3 && s.center.x > 80 && s.center.x < innerWidth - 80 && s.center.y > 80 && s.center.y < innerHeight * 0.75 && w.__coil!.api.cardAt(s.center.x, s.center.y)?.slot === s.slot,
+        (s) => s.kind === k && (!wanted || s.key === wanted) && s.depth > 0.3 && s.center.x > 80 && s.center.x < innerWidth - 80 && s.center.y > 80 && s.center.y < innerHeight * 0.75 && w.__coil!.api.cardAt(s.center.x, s.center.y)?.slot === s.slot,
       );
       return slot ? { slot: slot.slot, key: slot.key } : null;
-    }, kind);
+    }, [kind, only ?? ""] as const);
   await expect.poll(find, { timeout: 20_000, message: `a ${kind} card on screen` }).not.toBeNull();
   const { slot, key } = (await find())!;
   await page.evaluate((n) => (window as HookWindow).__coilFlight!.scene.follow(n), slot);
