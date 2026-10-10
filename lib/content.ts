@@ -120,7 +120,7 @@ export const siteContent = {
     name: "Aaron",
     coilControl: "Coil",
     // The Coil and Band toggle: the group's name and its two halves
-    // (placeholders; words and no glyphs per Aaron's pick).
+    // (approved copy; words and no glyphs per Aaron's pick).
     shapeToggle: { ariaLabel: "Hero layout", coil: "Coil", band: "Band" },
     // First visit only, decorative (aria-hidden): the cursor's pill over a
     // card until the first card opens, the one line after that first card
@@ -141,7 +141,7 @@ export const siteContent = {
       greeting: "Greeting",
     },
     // The still page's notice (no scene can run): why the page is still, by
-    // cause, and its dismiss. Placeholders; Aaron rewrites them.
+    // cause, and its dismiss. Approved copy.
     still: {
       noWebgl: "I can see your browser has graphics acceleration off, so you'll miss the best part of this page.",
       unavailable: "Your browser couldn't start the moving scene, so you'll miss the best part of this page.",
@@ -218,7 +218,7 @@ export const siteContent = {
   // slot renders nothing. title is the strip's big heading and groupLabel the
   // line under it, which also names the GitHub group; title is the wording
   // Aaron suggested on 2026-10-09 ("Proof of Work or something else"), lowercase
-  // to match "who I am" and "wanna chat?", and not yet his final pick.
+  // to match "who I am" and "wanna chat?"; approved.
   metrics: {
     title: "proof of work",
     groupLabel: "My GitHub contributions",

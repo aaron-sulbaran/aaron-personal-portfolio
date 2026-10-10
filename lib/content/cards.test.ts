@@ -59,7 +59,7 @@ describe("the fourteen cards", () => {
   });
 
   it("tie a modal photo to a paragraph or a timeline entry, never both", () => {
-    const base = { src: "/photos/hsf-speaking.jpeg", width: 1084, height: 724, alt: "", crop: null, caption: "" };
+    const base = { src: "/photos/cards/mentorship-picture.jpg", width: 1084, height: 724, alt: "", crop: null, caption: "" };
     // @ts-expect-error a photo sits beside one thing
     const both: ModalPhoto = { ...base, block: 0, timeline: 1 };
     expect("block" in both && "timeline" in both).toBe(true);
