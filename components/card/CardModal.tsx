@@ -14,7 +14,9 @@ import { useGalleryLayout } from "./useGalleryLayout";
 
 // One modal for every card: the house shell (Portal, the lib/modal.ts
 // primitives, the panel's rise, a fade alone under reduced motion) around the
-// card's body, the tint and the glass as color-mix (bg-background/NN emits
+// card's body (the tint is its own fixed layer under the dialog: inside the
+// scrolling dialog, which carries a backdrop filter, a fixed child scrolls away
+// with the content), the tint and the glass as color-mix (bg-background/NN emits
 // nothing with var() colors). renderMedia: no flown card lands here, so the
 // modal draws its own card picture or header face. flying: a flown card is
 // parked over its slot, so the layout holds what it opened with.
@@ -60,6 +62,18 @@ export function CardModal({ cardKey, onClose, renderMedia, flying }: Props) {
       <AnimatePresence>
         {gallery && (
           <motion.div
+            key={`card-tint-${opens}`}
+            aria-hidden="true"
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            variants={modalBackdropTintVariants(0, true)}
+            className="pointer-events-none fixed inset-0 z-50"
+            style={tint}
+          />
+        )}
+        {gallery && (
+          <motion.div
             key={`card-modal-${opens}`}
             role="dialog"
             aria-modal="true"
@@ -76,7 +90,6 @@ export function CardModal({ cardKey, onClose, renderMedia, flying }: Props) {
             }}
             className={`fixed inset-0 z-50 flex justify-center ${sheet ? "overflow-hidden" : "overflow-y-auto"} overscroll-contain ${rows ? "px-10 py-14" : "px-4 py-6"}`}
           >
-            <motion.div aria-hidden="true" variants={modalBackdropTintVariants(0, true)} className="pointer-events-none fixed inset-0" style={tint} />
             <motion.div
               variants={reduced ? PANEL.reduced : PANEL.full}
               data-gallery-panel=""
