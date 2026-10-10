@@ -202,6 +202,29 @@ test("wavepath: one section reflow lays the line out once and keeps it in view",
   expect(await visibleDots(page)).toBeGreaterThan(0);
 });
 
+test("wavepath: undecided, a width change snaps the head to the new run and runs no loop", async ({ page }) => {
+  await open(page);
+  const first = await frame(page);
+  expect(first.decided).toBe(false);
+  const laidBefore = await layouts(page);
+  await page.setViewportSize({ width: 1000, height: 900 });
+  await page.waitForFunction((n) => (window as unknown as W).__wavePath.layouts > n, laidBefore);
+  // Two frames after the re-layout: an eased head would still be walking.
+  const after = await page.evaluate(() => new Promise<{ head: number; runLen: number }>((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const f = (window as unknown as W).__wavePath.frame()!;
+      resolve({ head: f.head, runLen: f.runLen });
+    }));
+  }));
+  expect(after.runLen, "the run follows the new width").toBeLessThan(first.runLen);
+  expect(after.head, "the head sits on the new run's end").toBe(after.runLen);
+  // A late reflow (fonts, an observer's second pass) may add a step or two; a loop never stops.
+  await expect.poll(async () => { const a = await ticks(page); await page.waitForTimeout(300); return (await ticks(page)) === a; }, { message: "conductor frames stop advancing" }).toBe(true);
+  const settledTicks = await ticks(page);
+  await page.waitForTimeout(700);
+  expect(await ticks(page), "conductor frames while the static band rests").toBe(settledTicks);
+});
+
 test("wavepath: a theme switch at rest repaints once, then rests", async ({ page }) => {
   await open(page);
   await decline(page);
