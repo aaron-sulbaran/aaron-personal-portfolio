@@ -2,13 +2,16 @@
 import { useCallback, useEffect, useLayoutEffect, useReducer, useRef, type RefObject } from "react";
 import { markOpen } from "@/lib/inline/open";
 import { anchorPosition, followPosition, type Size } from "@/lib/inline/placement";
-import { sameTarget, TIP_IDLE, tipMode, tipReducer, type TipState, type TipTarget } from "@/lib/inline/tipState";
+import { sameTarget, TIP_GRACE_MS, TIP_IDLE, tipMode, tipReducer, type TipState, type TipTarget } from "@/lib/inline/tipState";
+import { holdsLink } from "@/lib/inline/view";
 import { isKeyboardFocus } from "@/lib/input/modality";
 import { useEscapeKey } from "@/lib/modal";
 const linkOf = (node: EventTarget | null) => (node instanceof Element ? node.closest<HTMLElement>('[data-inline="tip"], [data-inline="pop"]') : null);
 function targetOf({ dataset: { inline: kind, inlineKey: key } }: HTMLElement): TipTarget | null {
   return (kind === "tip" || kind === "pop") && key ? { kind, key } : null;
 }
+const holdsOf = (target: TipTarget | null) => !!target && holdsLink(target.kind, target.key);
+const BUBBLE_LINK = 'a[data-inline="external"]';
 // The shared label's driver: delegated document listeners (the links are
 // server markup), one reducer for who shows it, and the position written
 // straight to the label's transform in the pointer handler, as CustomCursor
@@ -24,7 +27,7 @@ export function useTipController(bubbleRef: RefObject<HTMLElement | null>): { st
   // A re-split (SplitText) can remove an anchored label's link; the label goes.
   const place = useCallback(() => {
     const bubble = bubbleRef.current;
-    const mode = tipMode(stateRef.current);
+    const mode = tipMode(stateRef.current, holdsOf(stateRef.current.target));
     if (!bubble || !mode) return;
     const link = linkRef.current;
     const anchor = mode === "anchor" && link?.isConnected ? link.getBoundingClientRect() : null;
@@ -58,24 +61,63 @@ export function useTipController(bubbleRef: RefObject<HTMLElement | null>): { st
       const inBubble = event.target instanceof Node && !!bubbleRef.current?.contains(event.target);
       if (!link && !inBubble && stateRef.current.via === "tap") dispatch({ type: "dismiss" });
     };
+    // A tip that holds a link keeps the pointer's way open: leaving the word or
+    // the label starts the grace, arriving on either takes it back.
+    const inBubble = (node: EventTarget | null) => node instanceof Node && !!bubbleRef.current?.contains(node);
     const onPointerOver = (event: PointerEvent) => {
-      const link = event.pointerType === "mouse" ? linkOf(event.target) : null;
+      if (event.pointerType !== "mouse") return;
+      if (inBubble(event.target)) {
+        const { target, via } = stateRef.current;
+        if (target && holdsOf(target) && (via === "hover" || via === "grace")) dispatch({ type: "hover", target });
+        return;
+      }
+      const link = linkOf(event.target);
       if (link) { pointerRef.current = { x: event.clientX, y: event.clientY }; show(link, "hover"); }
     };
     const onPointerOut = (event: PointerEvent) => {
-      const link = event.pointerType === "mouse" ? linkOf(event.target) : null;
-      if (link && !(event.relatedTarget instanceof Node && link.contains(event.relatedTarget))) dispatch({ type: "unhover" });
+      if (event.pointerType !== "mouse") return;
+      const to = event.relatedTarget;
+      if (inBubble(event.target)) {
+        if (!inBubble(to) && !(to instanceof Node && linkRef.current?.contains(to))) dispatch({ type: "leave" });
+        return;
+      }
+      const link = linkOf(event.target);
+      if (link && !(to instanceof Node && link.contains(to))) dispatch({ type: holdsOf(targetOf(link)) && !inBubble(to) ? "leave" : "unhover" });
     };
     // A re-split removes the hovered link without a pointerout; the next move
     // off any link lets the label go (one dispatch: the state is then idle).
     const onPointerMove = (event: PointerEvent) => {
       pointerRef.current = { x: event.clientX, y: event.clientY };
-      if (tipMode(stateRef.current) !== "follow") return;
+      if (tipMode(stateRef.current, holdsOf(stateRef.current.target)) !== "follow") return;
       if (linkOf(event.target)) place(); // a write, never a render
       else dispatch({ type: "unhover" });
     };
     const onFocusIn = (event: FocusEvent) => { const link = linkOf(event.target); if (link && isKeyboardFocus(link)) show(link, "focus"); };
-    const onFocusOut = (event: FocusEvent) => { if (linkOf(event.target)) dispatch({ type: "blur" }); };
+    // Focus moving between a linked tip's word and its label keeps the tip open.
+    const onFocusOut = (event: FocusEvent) => {
+      const to = event.relatedTarget;
+      if (linkOf(event.target)) {
+        if (!inBubble(to)) dispatch({ type: "blur" });
+      } else if (inBubble(event.target) && !(to instanceof Node && linkRef.current?.contains(to))) dispatch({ type: "blur" });
+    };
+    // Tab from a linked tip's word reaches its label's link; Shift+Tab from the
+    // link goes back to the word, and Tab from it carries on from the word.
+    // Handled before the dialog's own trap, which would pull the label's focus in.
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Tab") return;
+      const { target, via } = stateRef.current;
+      const labelLink = bubbleRef.current?.querySelector<HTMLElement>(BUBBLE_LINK);
+      const word = linkRef.current;
+      if (!target || !holdsOf(target) || !labelLink || !word) return;
+      if (!event.shiftKey && via === "focus" && document.activeElement === word) {
+        event.preventDefault();
+        event.stopPropagation();
+        labelLink.focus({ preventScroll: true });
+      } else if (document.activeElement === labelLink) {
+        if (event.shiftKey) { event.preventDefault(); event.stopPropagation(); }
+        word.focus({ preventScroll: true });
+      }
+    };
     // A tap (any pointer but a mouse, pressed on this same link) pins the
     // label, holding a pop's href; a second tap on a pinned pop anchor follows
     // the href natively. Enter on a button toggles the label. A mouse click,
@@ -101,6 +143,7 @@ export function useTipController(bubbleRef: RefObject<HTMLElement | null>): { st
       ["pointermove", onPointerMove as EventListener, { passive: true }],
       ["focusin", onFocusIn as EventListener, {}],
       ["focusout", onFocusOut as EventListener, {}],
+      ["keydown", onKeyDown as EventListener, { capture: true }],
       ["click", onClick as EventListener, {}],
     ];
     for (const [type, listener, options] of onDocument) document.addEventListener(type, listener, options);
@@ -112,9 +155,19 @@ export function useTipController(bubbleRef: RefObject<HTMLElement | null>): { st
       window.removeEventListener("resize", place);
     };
   }, [bubbleRef, place]);
+  useEffect(() => {
+    if (state.via !== "grace") return;
+    const timer = window.setTimeout(() => dispatch({ type: "expire" }), TIP_GRACE_MS);
+    return () => window.clearTimeout(timer);
+  }, [state]);
   // The link whose label is showing keeps its underline filled, hover or not.
   useEffect(() => (state.target ? markOpen(linkRef.current) : undefined), [state]);
   const dismiss = useCallback(() => dispatch({ type: "dismiss" }), []);
-  useEscapeKey(state.target !== null, dismiss);
+  // Escape with focus on a linked tip's label hands focus back to its word first.
+  const escape = useCallback(() => {
+    if (bubbleRef.current?.contains(document.activeElement)) linkRef.current?.focus({ preventScroll: true });
+    dispatch({ type: "dismiss" });
+  }, [bubbleRef]);
+  useEscapeKey(state.target !== null, escape);
   return { state, dismiss };
 }

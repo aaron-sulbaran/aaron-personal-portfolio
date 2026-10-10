@@ -11,7 +11,8 @@ import { InlineCopy } from "./InlineCopy";
 const RISE = { hidden: { opacity: 0, y: 16, scale: 0.97 }, visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.28, ease: "easeOut" as const } }, exit: { opacity: 0, y: 12, scale: 0.98, transition: { duration: 0.2, ease: "easeIn" as const } } };
 const FADE = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { duration: 0.18 } }, exit: { opacity: 0, transition: { duration: 0.12 } } };
 // The house text modal for a definition link (the card modal's shell: Portal, the
-// lib/modal hooks, the shared backdrop). No flight and no layoutId bloom:
+// lib/modal hooks, the shared backdrop). It stacks above the dialog it opens from
+// (the mark card, a card modal; both z-50), under the flight and the inline label. No flight and no layoutId bloom:
 // the word sits in a masked SplitText line. Reduced motion fades.
 export function DefinitionModal({ entry, onClose }: { entry: DefinitionEntry | null; onClose: () => void }) {
   const open = entry !== null;
@@ -29,7 +30,7 @@ export function DefinitionModal({ entry, onClose }: { entry: DefinitionEntry | n
           <motion.div key="definition-modal" ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={titleId}
             initial="hidden" animate="visible" exit="exit" variants={modalBackdropBlurVariants(0)}
             onMouseDown={(event) => event.target === event.currentTarget && onClose()}
-            className="fixed inset-0 z-50 flex justify-center overflow-y-auto overscroll-contain px-4 py-6 md:px-10 md:py-14">
+            className="fixed inset-0 z-[52] flex justify-center overflow-y-auto overscroll-contain px-4 py-6 md:px-10 md:py-14">
             <motion.div aria-hidden="true" variants={modalBackdropTintVariants(0)} className="pointer-events-none fixed inset-0 bg-glass" />
             <motion.div data-definition-panel variants={reduced ? FADE : RISE} onMouseDown={(event) => event.stopPropagation()}
               className="relative my-auto flex w-full max-w-lg flex-col gap-5 rounded-2xl border border-border bg-glass-strong p-6 shadow-[var(--shadow-card)] backdrop-blur-xl md:p-10">
