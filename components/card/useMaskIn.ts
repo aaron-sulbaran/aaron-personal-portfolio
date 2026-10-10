@@ -21,6 +21,25 @@ import { maskTable, type MaskStep } from "@/lib/gallery/timing";
 type Options = { reduced: boolean; runKey: string; startMs: number; stepsFor: (lines: (id: string) => number) => MaskStep[] };
 
 const WRITTEN = "clipPath,transform";
+const FOCUSABLE = 'a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"])';
+
+// Reverting a split restores the part's innerHTML, which drops keyboard focus
+// held by an inline tip or link inside it. This notes where focus sat (the
+// inline key when it has one, else its place among the part's focusable
+// elements) and returns the way back to it once the revert is done.
+function holdFocus(parts: Iterable<HTMLElement>): () => void {
+  const active = document.activeElement;
+  if (!(active instanceof HTMLElement)) return () => {};
+  const part = [...parts].find((el) => el.contains(active));
+  if (!part) return () => {};
+  const { inline, inlineKey } = active.dataset;
+  const position = [...part.querySelectorAll<HTMLElement>(FOCUSABLE)].indexOf(active);
+  return () => {
+    if (!part.isConnected) return;
+    const same = inlineKey ? [...part.querySelectorAll<HTMLElement>("[data-inline-key]")].find((el) => el.dataset.inline === inline && el.dataset.inlineKey === inlineKey) : undefined;
+    (same ?? part.querySelectorAll<HTMLElement>(FOCUSABLE)[position])?.focus({ preventScroll: true });
+  };
+}
 
 export function useMaskIn(rootRef: RefObject<HTMLElement | null>, { reduced, runKey, startMs, stepsFor }: Options) {
   useLayoutEffect(() => {
@@ -37,8 +56,10 @@ export function useMaskIn(rootRef: RefObject<HTMLElement | null>, { reduced, run
     const touched: Element[] = [];
     root.dataset.maskArmed = "";
     const finish = () => {
+      const restoreFocus = holdFocus([...splits.keys()].flatMap((id) => parts.get(id) ?? []));
       for (const split of splits.values()) split.revert();
       splits.clear();
+      restoreFocus();
       gsap.set(touched, { clearProps: WRITTEN });
       delete root.dataset.maskArmed;
     };
