@@ -130,8 +130,9 @@ test("band: in flow directly under the book; no canvas is fixed to the viewport"
   expect(layout.bandTop).toBeGreaterThan(layout.bookBottom - 100);
 });
 
-// The pill docks at the bottom left (z 45), so at the foot of the page the
-// footer's bottom padding keeps its last row clear of the capsule from md up.
+// The pill docks at the bottom left (z 45). At the foot of the page it covers
+// none of the footer's small lines from md up; the wordmark under it is a
+// graphic, and the period's button sits far right of it.
 for (const viewport of [
   { width: 1440, height: 900 },
   { width: 1024, height: 768 },
@@ -147,7 +148,7 @@ for (const viewport of [
     await dockLanded(page);
     const read = await page.evaluate(() => {
       const capsule = document.querySelector("[data-pill] .pill-hit")!.getBoundingClientRect();
-      const row = document.querySelector("footer > div")!;
+      const row = document.querySelector("[data-footer-lines]")!;
       const walker = document.createTreeWalker(row, NodeFilter.SHOW_TEXT);
       const boxes: { left: number; top: number; right: number; bottom: number }[] = [];
       for (let node = walker.nextNode(); node; node = walker.nextNode()) {
