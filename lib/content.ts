@@ -200,8 +200,9 @@ export const siteContent = {
   // never enter the coil; they return here as real photos arrive. Keys are
   // homeTiles keys; see strandTiles below.
   strand: {
-    // The fourteen cards in Coil order, lead card first. strandTiles still reads
-    // the legacy pattern and lists below until C3 swaps the scene.
+    // The fourteen cards in Coil order, lead card first. Nothing on the page
+    // reads strandTiles or the legacy pattern and lists below any more; they
+    // are left for the C5 sweep.
     order: strandOrder,
     pattern: "PWPPWPPWPWPPWP",
     photos: ["hsf-speaking", "drum-major", "yosemite-hiking", "capital-one", "uncs-grad", "claude-hackathon", "misuki", "traveling", "mt-fuji"],
