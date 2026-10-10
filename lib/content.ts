@@ -256,18 +256,19 @@ export const siteContent = {
   // Connect (docs/content/connect-footer-band.md, approved 2026-10-08): the
   // body carries the calendar link, the matcha pop and the killer-drones
   // footnote; "Book some time" is the one big link; handle is what a link shows
-  // beside its name.
+  // beside its name; icon is the brand mark the row draws in place of the name, which stays
+  // in the row for assistive tech.
   connect: {
     label: "Connect",
     heading: "wanna chat?",
     body: "I check everything (or Talos does) so take your pick. If you want to talk screen to screen, [grab a time on my calendar](https://cal.com/aaron-sulbaran). If you're in my city, let's grab a coffee ([or matcha](pop:matcha)). I take coffee chats with anyone, no matter what you're building[*](tip:killer-drones).",
     primary: { label: "Book some time", href: "https://cal.com/aaron-sulbaran" },
     links: [
-      { key: "linkedin", label: "LinkedIn", handle: "in/aaron-sulbaran", href: "https://www.linkedin.com/in/aaron-sulbaran/" },
-      { key: "github", label: "GitHub", handle: "aaron-sulbaran", href: "https://github.com/aaron-sulbaran" },
-      { key: "email", label: "Email", handle: "aarondsulbaran@gmail.com", href: "mailto:aarondsulbaran@gmail.com" },
-      { key: "instagram", label: "Instagram", handle: "aaron.sulbaran", href: "https://www.instagram.com/aaron.sulbaran/" },
-      { key: "x", label: "X", handle: "@imaaronsulbaran", href: "https://x.com/imaaronsulbaran" },
+      { key: "linkedin", icon: "linkedin" as const, label: "LinkedIn", handle: "in/aaron-sulbaran", href: "https://www.linkedin.com/in/aaron-sulbaran/" },
+      { key: "github", icon: "github" as const, label: "GitHub", handle: "aaron-sulbaran", href: "https://github.com/aaron-sulbaran" },
+      { key: "email", icon: "mail" as const, label: "Email", handle: "aarondsulbaran@gmail.com", href: "mailto:aarondsulbaran@gmail.com" },
+      { key: "instagram", icon: "instagram" as const, label: "Instagram", handle: "aaron.sulbaran", href: "https://www.instagram.com/aaron.sulbaran/" },
+      { key: "x", icon: "x" as const, label: "X", handle: "@imaaronsulbaran", href: "https://x.com/imaaronsulbaran" },
     ],
   },
   // Holding page (components/Holding.tsx), served at / while
