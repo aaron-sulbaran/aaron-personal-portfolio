@@ -157,11 +157,39 @@ test("wavepath: no anchor, word block or band line is sticky", async ({ page }) 
 });
 
 // Review Focus
+// "At once" is counted in frames, not time: a watcher installed before the page
+// runs reads the probe each rAF, and the head must sit on its target within
+// three frames of the line first having a length (the layout's own frame, the
+// conductor's snap, one to spare). An eased head would need seconds to cover a
+// deep target, so any small frame budget tells snapping from easing, and a
+// frame count does not flake with machine load the way a timer would.
 test("wavepath: a deep load at #connect with a stored no is drawn at once", async ({ page }) => {
-  await page.addInitScript(() => localStorage.setItem("aaron-soundtrack", "off"));
+  await page.addInitScript(() => {
+    localStorage.setItem("aaron-soundtrack", "off");
+    const seen = { frames: 0, atTarget: 0, ticks: -1, target: 0, runLen: 0, head: 0 };
+    Object.assign(window, { __firstDraw: seen });
+    const watch = () => {
+      const probe = (window as unknown as W).__wavePath;
+      const f = probe?.frame();
+      if (f && f.length > 0 && !seen.atTarget) {
+        seen.frames++;
+        Object.assign(seen, { target: f.target, runLen: f.runLen, head: f.head, ticks: probe.ticks });
+        // Before the conductor's first step both are still 0: that is not arrival.
+        if (f.target > 0 && f.head === f.target) seen.atTarget = seen.frames;
+      }
+      if (seen.atTarget || seen.frames > 10) return;
+      requestAnimationFrame(watch);
+    };
+    requestAnimationFrame(watch);
+  });
   await page.goto("/?wavedebug#connect");
   await settled(page);
   await headAtRest(page);
+  const seen = await page.evaluate(() => (window as unknown as { __firstDraw: { frames: number; atTarget: number; ticks: number; target: number; runLen: number } }).__firstDraw);
+  expect(seen.target, "a deep target, past the band run").toBeGreaterThan(seen.runLen);
+  expect(seen.atTarget, "frames from the first length to the head on its target (0: never)").toBeGreaterThan(0);
+  expect(seen.atTarget).toBeLessThanOrEqual(3);
+  expect(seen.ticks, "conductor frames by then").toBeLessThanOrEqual(3);
   expect((await frame(page)).decided).toBe(true);
   expect(await visibleDots(page)).toBeGreaterThan(0);
 });
@@ -223,6 +251,35 @@ test("wavepath: undecided, a width change snaps the head to the new run and runs
   const settledTicks = await ticks(page);
   await page.waitForTimeout(700);
   expect(await ticks(page), "conductor frames while the static band rests").toBe(settledTicks);
+});
+
+test("wavepath: reduced motion toggled live stills the line and back, with no orphan tiles", async ({ page }) => {
+  await open(page);
+  await decline(page);
+  await toBlock(page, "#about");
+  await page.mouse.move(4, 4);
+  await headAtRest(page);
+  const tiles = () => page.locator("[data-wave-path] canvas").count();
+  const tileCount = await tiles();
+  expect(tileCount).toBeGreaterThan(0);
+  const moving = await ticks(page);
+  await expect.poll(() => ticks(page), "the declined line breathes").toBeGreaterThan(moving);
+
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.waitForFunction(() => { const f = (window as unknown as W).__wavePath.frame(); return !!f && f.length > 0 && f.head === f.length; });
+  const stilled = await ticks(page);
+  await page.waitForTimeout(1000);
+  expect(await ticks(page), "conductor frames while still").toBe(stilled);
+  expect((await frame(page)).head).toBe((await frame(page)).length);
+  expect(await tiles(), "tiles after stilling").toBe(tileCount);
+
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.waitForFunction(() => { const f = (window as unknown as W).__wavePath.frame(); return !!f && f.length > 0; });
+  await toBlock(page, "#about");
+  await headAtRest(page);
+  const resumed = await ticks(page);
+  await expect.poll(() => ticks(page), "the loop runs again").toBeGreaterThan(resumed);
+  expect(await tiles(), "tiles after moving again").toBe(tileCount);
 });
 
 test("wavepath: a theme switch at rest repaints once, then rests", async ({ page }) => {
