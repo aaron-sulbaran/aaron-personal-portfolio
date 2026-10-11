@@ -24,7 +24,7 @@ async function landsOnSlot(page: import("@playwright/test").Page, slot: import("
     const shown = canvas.getBoundingClientRect();
     const dx = shown.left - parseFloat(canvas.style.left);
     const dy = shown.top - parseFloat(canvas.style.top);
-    return (flight.scene.flown()!.quad as { x: number; y: number }[]).map((p) => ({ x: p.x + dx, y: p.y + dy }));
+    return (flight.scene.flown()!.quad as unknown as { x: number; y: number }[]).map((p) => ({ x: p.x + dx, y: p.y + dy }));
   }, now);
   const box = (await slot.boundingBox())!;
   const xs = quad.map((p) => p.x);

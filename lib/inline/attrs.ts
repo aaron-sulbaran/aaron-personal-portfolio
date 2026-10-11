@@ -44,7 +44,7 @@ export function inlineLinkElement(run: InlineRun): InlineLinkElement | null {
   const base: InlineLinkProps = { className: "inline-link", "data-inline": run.kind, "data-inline-key": run.key, ...named };
   if (run.kind === "def") {
     const hint = Object.hasOwn(siteContent.register.def, run.key) ? siteContent.register.def[run.key].hint : undefined;
-    const described = hint ? { "aria-describedby": descriptionId("def", run.key), "data-inline-hint": "" } : {};
+    const described = hint ? { "aria-describedby": descriptionId("def", run.key), "data-inline-hint": "" as const } : {};
     return { tag: "button", props: { ...base, ...described, type: "button", "aria-haspopup": "dialog" } };
   }
   const described: InlineLinkProps = { ...base, "aria-describedby": descriptionId(run.kind, run.key) };

@@ -50,7 +50,7 @@ export const register: InlineRegister = {
     "venezuela-flag": { file: { src: "/photos/pops/venezuela-flag.jpg", width: 600, height: 800 }, alt: "Me holding a Venezuelan flag in a convention hall", caption: "Me repping my flag at SHPE 2025!", crop: null },
     family: { file: { src: "/photos/pops/family.jpg", width: 600, height: 800 }, alt: "My family in front of the UT Tower in 2023", caption: "My family posing in front of the UT tower. We call this alternating pose, \"la tipica\"", crop: null },
     friends: { file: { src: "/photos/pops/friends.jpg", width: 600, height: 800 }, alt: "My friends grad in 2025", caption: "Celebrating some of my best friends' graduation!", crop: null },
-    "misuki-suki": { file: { src: "/photos/pops/sukis-s2000.png", width: 600, height: 800 }, alt: "Suki's S2000 from F&F", caption: "Suki's S2000 from 2 Fast 2 Furious, what I consider to be a peak roadster", crop: null },
+    "misuki-suki": { file: { src: "/photos/pops/misuki-suki.jpg", width: 800, height: 603 }, alt: "Suki's S2000 from F&F", caption: "Suki's S2000 from 2 Fast 2 Furious, what I consider to be a peak roadster", crop: null },
     matcha: {
       file: { src: "/photos/pops/matcha.jpg", width: 600, height: 800 },
       alt: "A matcha from 7T+ in Kyoto",

@@ -9,8 +9,8 @@ const musicNoteWithoutAdapting =
 describe("the inline register", () => {
   it("holds the approved keys and only those", () => {
     expect(Object.keys(register.def)).toEqual(["product", "voltage", "arc"]);
-    expect(Object.keys(register.tip)).toEqual(["two-as", "voltaage", "killer-drones", "evolving-isle", "music-note", "ieee-ao", "this-site-playground", "misuki-suk", "job-0", "job-1", "job-2", "job-3", "job-4"]);
-    expect(Object.keys(register.pop)).toEqual(["leadership-award", "sandboarding", "downhill-skating", "skydiving", "rock-climbing", "venezuela-flag", "family", "friends", "matcha", "sister-kyoto", "contrabass-clarinet", "rango", "catatumbo-lightning", "lake-maracaibo", "ut-ece-logo"]);
+    expect(Object.keys(register.tip)).toEqual(["two-as", "voltaage", "killer-drones", "evolving-isle", "music-note", "ieee-ao", "this-site-playground", "job-0", "job-1", "job-2", "job-3", "job-4"]);
+    expect(Object.keys(register.pop)).toEqual(["leadership-award", "sandboarding", "downhill-skating", "skydiving", "rock-climbing", "venezuela-flag", "family", "friends", "misuki-suki", "matcha", "sister-kyoto", "contrabass-clarinet", "rango", "catatumbo-lightning", "lake-maracaibo", "ut-ece-logo"]);
   });
 
   it("carries each jobs timeline tip, word for word, under its entry's key", () => {
@@ -69,6 +69,7 @@ describe("the inline register", () => {
       "venezuela-flag": "Me repping my flag at SHPE 2025!",
       family: 'My family posing in front of the UT tower. We call this alternating pose, "la tipica"',
       friends: "Celebrating some of my best friends' graduation!",
+      "misuki-suki": "Suki's S2000 from 2 Fast 2 Furious, what I consider to be a peak roadster",
       matcha: "7T+ is my favorite matcha place in the world. Check it out in Kyoto! (click for directions)",
       "contrabass-clarinet": "Bass clarinet was my main instrument. In concert season I played contrabass.",
       rango: "yeah, this guy from that one kid's movie",
