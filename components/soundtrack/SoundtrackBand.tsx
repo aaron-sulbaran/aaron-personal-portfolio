@@ -10,7 +10,7 @@ import { BandStage } from "./BandStage";
 // under it. A Server Component; the copy and the stage are client leaves.
 export function SoundtrackBand() {
   return (
-    <section id="listen" aria-label={siteContent.listen.ariaLabel} className="relative w-full md:-mt-[5vh] md:h-[clamp(240px,30vh,340px)]">
+    <section id="listen" data-wave-anchor="band" aria-label={siteContent.listen.ariaLabel} className="relative w-full md:-mt-[5vh] md:h-[clamp(240px,30vh,340px)]">
       <div className="pointer-events-none relative z-10 px-[6vw] pt-6 md:absolute md:inset-x-0 md:top-0 md:pt-5">
         <div className="mx-auto max-w-[1240px]">
           <BandInvite />

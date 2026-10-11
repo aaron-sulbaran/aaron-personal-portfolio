@@ -154,6 +154,11 @@ describe("the music band", () => {
     expect(listen.declinedNote).toBe("No problem, it's here if you change your mind.");
   });
 
+  it("drops the evolving isle sentence on phones, which have no pill", () => {
+    expect(listen.acceptedNotePhone).toBe("Enjoy!");
+    expect(referenced(listen.acceptedNotePhone)).toEqual([]);
+  });
+
   it("leaves the paused note and the controls as they were", () => {
     expect(listen.pausedNote).toBe("Paused. Resume whenever you like.");
     expect([listen.pause, listen.resume, listen.freeze, listen.unfreeze]).toEqual(["Pause", "Resume", "Freeze the wave", "Let the wave move"]);

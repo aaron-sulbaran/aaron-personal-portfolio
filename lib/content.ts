@@ -48,6 +48,8 @@ export const siteContent = {
     accept: "Play it",
     decline: "Not now",
     acceptedNote: "Enjoy! Control it from the [evolving isle](tip:evolving-isle).",
+    // Phones have no pill, so there is no isle to point at.
+    acceptedNotePhone: "Enjoy!",
     declinedNote: "No problem, it's here if you change your mind.",
     pausedNote: "Paused. Resume whenever you like.",
     pause: "Pause",
