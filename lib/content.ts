@@ -162,9 +162,9 @@ export const siteContent = {
   // (workOrder and peopleOrder through bookColumns), text first; a row's key is
   // its card's, so "seen" is shared with the Coil.
   book: {
-    ariaLabel: "Work and people",
-    workHeading: "Work",
-    peopleHeading: "People",
+    ariaLabel: "Experience and Fun",
+    workHeading: "Experience",
+    peopleHeading: "Fun Stuff",
     workOrder: bookWorkOrder,
     peopleOrder: bookPeopleOrder,
     seenLabel: "opened",
@@ -188,8 +188,8 @@ export const siteContent = {
   // labeled blocks, the third with a sub-block. Parentheses and the lowercase
   // labels are how I typed them. Link markup is lib/content/links.ts.
   whoIAm: {
-    label: "Who I am",
-    heading: "who I am",
+    label: "about me",
+    heading: "about me",
     blocks: [
       {
         label: "what I do",
@@ -201,7 +201,7 @@ export const siteContent = {
       },
       {
         label: "what I love (outside of work)",
-        body: "I love people (family & friends) outside of work too. I strive to surround myself with people who lift each other up and help me grow every day. Most of my favorite experiences involve spending time with others!",
+        body: "I love people ([family](pop:family) & [friends](pop:friends)) outside of work too. I strive to surround myself with people who lift each other up and help me grow every day. Most of my favorite experiences involve spending time with others!",
         sub: {
           label: "(hobbies)",
           body: "I love to travel, tinker on personal projects, and getting active. I love credit card-maxxing since it allows me to fulfill my wanderlust, recently got into 3D printing because it lets me work on the engineering I don't get to do in class, and love [extreme sports](pop:sandboarding) like [downhill skating](pop:downhill-skating), [skydiving](pop:skydiving), and [rock climbing](pop:rock-climbing).",

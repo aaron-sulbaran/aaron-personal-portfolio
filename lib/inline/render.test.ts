@@ -11,10 +11,11 @@ describe("InlineCopy", () => {
   it("renders plain copy as its text and nothing else", () => {
     expect(html("I spent three summers at Capital One.")).toBe("I spent three summers at Capital One.");
   });
-  it("renders a definition as a dialog button inside the sentence", () => {
-    expect(html("I am a [product](def:product)-focused engineer.")).toMatch(
-      /^I am a <span class="inline-glue"><button [^>]*data-inline="def" data-inline-key="product"[^>]*aria-haspopup="dialog">product<\/button>-focused<\/span> engineer\.$/,
-    );
+  it("renders a definition as a dialog button inside the sentence, with its hover hint described", () => {
+    const out = html("I am a [product](def:product)-focused engineer.");
+    expect(out).toMatch(/^I am a <span class="inline-glue"><button [^>]*data-inline="def" data-inline-key="product"[^>]*aria-haspopup="dialog">product<\/button>-focused<\/span> engineer\.$/);
+    expect(out).toContain('data-inline-hint=""');
+    expect(out).toContain('aria-describedby="inline-desc-def-product"');
   });
   it("wraps emphasis around text and links", () => {
     const out = html("**Bold** and *a [drone](tip:killer-drones) knockoff*");

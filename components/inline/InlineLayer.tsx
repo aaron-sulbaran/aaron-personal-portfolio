@@ -13,6 +13,7 @@ const { register } = siteContent;
 const DESCRIBED: Array<readonly [TipKind, string]> = [
   ...Object.keys(register.tip).map((key) => ["tip", key] as const),
   ...Object.keys(register.pop).map((key) => ["pop", key] as const),
+  ...Object.entries(register.def).filter(([, entry]) => entry.hint).map(([key]) => ["def", key] as const),
 ];
 // The copy's inline links come alive here, once per page (app/layout.tsx):
 // definitions open the house text modal, tips and pops share one label, and

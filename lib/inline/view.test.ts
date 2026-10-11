@@ -13,6 +13,13 @@ describe("tipView", () => {
   it("returns null for a key the register lacks, prototype keys included", () => {
     expect(tipView("tip", "rango")).toBeNull();
     expect(tipView("pop", "constructor")).toBeNull();
+    expect(tipView("def", "toString")).toBeNull();
+  });
+  it("shows a definition's hint as the hover line, and nothing when it has none", () => {
+    const hint = "click to read how I define a product";
+    expect(tipView("def", "product")).toEqual({ text: hint, photo: null, caption: null, link: null, description: hint });
+    expect(tipView("def", "voltage")).toBeNull();
+    expect(holdsLink("def", "product")).toBe(false);
   });
   it("shows a landed pop as its photo and caption, described by both alt and caption", () => {
     const clarinet = pop["contrabass-clarinet"];

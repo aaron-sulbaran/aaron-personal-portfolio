@@ -21,6 +21,6 @@ describe("the card modal's own words", () => {
     expect([g.roleCarousel, g.roleSlide]).toEqual(["carousel", "slide"]);
   });
   it("labels the book for both of its columns", () => {
-    expect(siteContent.book.ariaLabel).toBe("Work and people");
+    expect(siteContent.book.ariaLabel).toBe("Experience and Fun");
   });
 });

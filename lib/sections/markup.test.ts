@@ -92,7 +92,7 @@ describe("Who I am", () => {
   it("renders the definition and the photo pops as marked inline links", () => {
     expect(html.match(/data-inline="def"/g)).toHaveLength(1);
     expect([...html.matchAll(/data-inline="pop" data-inline-key="([a-z-]+)"/g)].map((match) => match[1])).toEqual([
-      "leadership-award", "sandboarding", "downhill-skating", "skydiving", "rock-climbing", "venezuela-flag",
+      "leadership-award", "family", "friends", "sandboarding", "downhill-skating", "skydiving", "rock-climbing", "venezuela-flag",
     ]);
     expect(html).not.toContain("](");
   });

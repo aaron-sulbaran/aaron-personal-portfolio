@@ -16,7 +16,7 @@ describe("the fourteen cards", () => {
   });
 
   it("fill the book's two columns by group, in Aaron's doc order", () => {
-    expect([book.workHeading, book.peopleHeading]).toEqual(["Work", "People"]);
+    expect([book.workHeading, book.peopleHeading]).toEqual(["Experience", "Fun Work"]);
     expect(book.workOrder).toEqual(["min-max", "talos", "capital-one", "anthropic", "ieee", "hackathons", "this-site"]);
     expect(book.peopleOrder).toEqual(["mentorship", "band", "jobs", "fsdatalink", "misuki", "travel", "building-in-public"]);
     for (const key of book.workOrder) expect(cards[key].group).toBe("work");

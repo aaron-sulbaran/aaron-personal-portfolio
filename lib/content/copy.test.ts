@@ -29,8 +29,8 @@ describe("the page description", () => {
 
 describe("Who I am", () => {
   it("keeps the label for the landmark and the nav, the lowercase heading and the small print as typed", () => {
-    expect(whoIAm.label).toBe("Who I am");
-    expect(whoIAm.heading).toBe("who I am");
+    expect(whoIAm.label).toBe("about me");
+    expect(whoIAm.heading).toBe("about me");
     expect(whoIAm.smallPrint).toBe("Fourth-year Electrical and Computer Engineering student at UT Austin (and a business minor from McCombs)");
   });
 
@@ -39,7 +39,7 @@ describe("Who I am", () => {
     expect(whoIAm.blocks.map((block) => Boolean(block.sub))).toEqual([false, false, true, false]);
     expect(whoIAm.blocks[2].sub?.label).toBe("(hobbies)");
     expect(whoIAm.blocks[0].body).toContain("Electrical and Computer Engineering (ECE) at UT Austin");
-    expect(whoIAm.blocks[2].body).toContain("(family & friends)");
+    expect(whoIAm.blocks[2].body).toContain("([family](pop:family) & [friends](pop:friends))");
   });
 
   it("reads each block as a visitor sees it", () => {
@@ -54,10 +54,12 @@ describe("Who I am", () => {
     );
   });
 
-  it("links the definition and six pops, for leadership, the hobbies and the roots, and nothing else", () => {
+  it("links the definition and eight pops, for leadership, family and friends, the hobbies and the roots, and nothing else", () => {
     expect(whoIAm.blocks.flatMap((block) => [block.body, ...(block.sub ? [block.sub.body] : [])]).flatMap(referenced)).toEqual([
       "def:product",
       "pop:leadership-award",
+      "pop:family",
+      "pop:friends",
       "pop:sandboarding",
       "pop:downhill-skating",
       "pop:skydiving",
@@ -77,7 +79,7 @@ describe("where the links sit, pinned as raw markup", () => {
     expect(whoIAm.blocks.map((block) => block.body)).toEqual([
       "I'm a [product](def:product)-focused engineer. I study Electrical and Computer Engineering (ECE) at UT Austin, but I spend most of my time building and talking to the people I'm building for. I like products that bend for the person using them, not the other way around.",
       "I tend to gravitate towards [leadership positions](pop:leadership-award) because I love getting a group of people with very different skillsets working towards one goal. I learned it as a drum major in high school, continued doing it in my orgs on campus, and want to do the same in my full-time work.",
-      "I love people (family & friends) outside of work too. I strive to surround myself with people who lift each other up and help me grow every day. Most of my favorite experiences involve spending time with others!",
+      "I love people ([family](pop:family) & [friends](pop:friends)) outside of work too. I strive to surround myself with people who lift each other up and help me grow every day. Most of my favorite experiences involve spending time with others!",
       "I was born in Maracaibo, [Venezuela](pop:venezuela-flag), and moved to the U.S. when I was around 4. I grew up in Texas, mostly in Katy, watching my dad figure out a business as he went. I worked in it too, which is where I learned to wear a lot of hats.",
     ]);
     expect(whoIAm.blocks[2].sub?.body).toBe(

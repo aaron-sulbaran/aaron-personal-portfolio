@@ -10,7 +10,7 @@ describe("the inline register", () => {
   it("holds the approved keys and only those", () => {
     expect(Object.keys(register.def)).toEqual(["product", "voltage", "arc"]);
     expect(Object.keys(register.tip)).toEqual(["two-as", "voltaage", "killer-drones", "evolving-isle", "music-note", "ieee-ao", "this-site-playground", "misuki-suk", "job-0", "job-1", "job-2", "job-3", "job-4"]);
-    expect(Object.keys(register.pop)).toEqual(["leadership-award", "sandboarding", "downhill-skating", "skydiving", "rock-climbing", "venezuela-flag", "matcha", "sister-kyoto", "contrabass-clarinet", "rango", "catatumbo-lightning", "lake-maracaibo", "ut-ece-logo"]);
+    expect(Object.keys(register.pop)).toEqual(["leadership-award", "sandboarding", "downhill-skating", "skydiving", "rock-climbing", "venezuela-flag", "family", "friends", "matcha", "sister-kyoto", "contrabass-clarinet", "rango", "catatumbo-lightning", "lake-maracaibo", "ut-ece-logo"]);
   });
 
   it("carries each jobs timeline tip, word for word, under its entry's key", () => {
@@ -45,6 +45,7 @@ describe("the inline register", () => {
   it("defines product in Aaron's words", () => {
     expect(register.def.product.title).toBe("What a product is");
     expect(register.def.product.body.startsWith("A product (to me) is a tool that's genuinely useful")).toBe(true);
+    expect(register.def.product.hint).toBe("click to read how I define a product");
   });
 
   it("gives every pop with a photo a caption line, so a popover never shows a bare picture", () => {
@@ -66,7 +67,9 @@ describe("the inline register", () => {
       skydiving: "Me on my first jump, look at that smile!",
       "rock-climbing": "Catch me on El Capitan next... right...",
       "venezuela-flag": "Me repping my flag at SHPE 2025!",
-      matcha: "7T+ is my favorite matcha place in the world, literally in the world. This one is in Kyoto.",
+      family: 'My family posing in front of the UT tower. We call this alternating pose, "la tipica"',
+      friends: "Celebrating some of my best friends' graduation!",
+      matcha: "7T+ is my favorite matcha place in the world. Check it out in Kyoto! (click for directions)",
       "contrabass-clarinet": "Bass clarinet was my main instrument. In concert season I played contrabass.",
       rango: "yeah, this guy from that one kid's movie",
       "catatumbo-lightning": "The lightning in question",
@@ -74,7 +77,7 @@ describe("the inline register", () => {
       "ut-ece-logo": "UT Austin Electrical and Computer Engineering",
     });
     expect(Object.values(register.pop).every((entry) => entry.crop === null)).toBe(true);
-    expect(Object.entries(register.pop).filter(([, entry]) => entry.href).map(([key, entry]) => [key, entry.href])).toEqual([["matcha", "https://www.google.com/maps/search/?api=1&query=35.0025497%2C135.7652173"]]);
+    expect(Object.entries(register.pop).filter(([, entry]) => entry.href).map(([key, entry]) => [key, entry.href])).toEqual([["matcha", "https://maps.app.goo.gl/4KPkA9BV3CjAPwvg6"]]);
   });
 
   it("shows Rango as a photo pop with a film character's alt, and no longer as a tip", () => {

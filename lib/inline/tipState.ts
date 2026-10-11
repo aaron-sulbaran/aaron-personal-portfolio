@@ -1,4 +1,4 @@
-export interface TipTarget { kind: "tip" | "pop"; key: string }
+export interface TipTarget { kind: "tip" | "pop" | "def"; key: string }
 export type TipVia = "hover" | "focus" | "tap" | "grace";
 export interface TipState { target: TipTarget | null; via: TipVia | null }
 export type TipEvent =

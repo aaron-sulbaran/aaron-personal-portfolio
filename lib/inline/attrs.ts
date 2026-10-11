@@ -1,10 +1,10 @@
 import { siteContent } from "@/lib/content";
 import type { InlineRun } from "@/lib/content/links";
 
-export type TipKind = "tip" | "pop";
+export type TipKind = "tip" | "pop" | "def";
 
 // The hidden element (components/inline/InlineLayer) whose words describe a
-// tip or pop link through aria-describedby.
+// tip, a pop, or a definition's hover hint through aria-describedby.
 export const descriptionId = (kind: TipKind, key: string): string => `inline-desc-${kind}-${key}`;
 
 export interface InlineLinkProps {
@@ -17,6 +17,7 @@ export interface InlineLinkProps {
   rel?: "noopener noreferrer";
   "aria-haspopup"?: "dialog";
   "aria-describedby"?: string;
+  "data-inline-hint"?: "";
   "aria-label"?: string;
 }
 
@@ -41,7 +42,11 @@ export function inlineLinkElement(run: InlineRun): InlineLinkElement | null {
     };
   }
   const base: InlineLinkProps = { className: "inline-link", "data-inline": run.kind, "data-inline-key": run.key, ...named };
-  if (run.kind === "def") return { tag: "button", props: { ...base, type: "button", "aria-haspopup": "dialog" } };
+  if (run.kind === "def") {
+    const hint = Object.hasOwn(siteContent.register.def, run.key) ? siteContent.register.def[run.key].hint : undefined;
+    const described = hint ? { "aria-describedby": descriptionId("def", run.key), "data-inline-hint": "" } : {};
+    return { tag: "button", props: { ...base, ...described, type: "button", "aria-haspopup": "dialog" } };
+  }
   const described: InlineLinkProps = { ...base, "aria-describedby": descriptionId(run.kind, run.key) };
   const href = run.kind === "pop" ? siteContent.register.pop[run.key]?.href : undefined;
   if (href) return { tag: "a", props: { ...described, href, target: "_blank", rel: "noopener noreferrer" } };

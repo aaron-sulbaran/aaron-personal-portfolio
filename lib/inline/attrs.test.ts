@@ -7,7 +7,10 @@ import { walkStrings } from "@/lib/testing/walk";
 const linkRun = (source: string) => inlineRuns(source, registerHas).find((run) => run.kind !== "text") as InlineRun;
 const NEW_TAB = { target: "_blank", rel: "noopener noreferrer" };
 describe("inlineLinkElement", () => {
-  it("makes a definition a button that opens a dialog", () => { expect(inlineLinkElement(linkRun("[product](def:product)"))).toEqual({ tag: "button", props: { className: "inline-link", "data-inline": "def", "data-inline-key": "product", type: "button", "aria-haspopup": "dialog" } }); });
+  it("makes a definition a button that opens a dialog, and one with a hint a button the label can describe", () => {
+    expect(inlineLinkElement(linkRun("[product](def:product)"))).toEqual({ tag: "button", props: { className: "inline-link", "data-inline": "def", "data-inline-key": "product", "aria-describedby": "inline-desc-def-product", "data-inline-hint": "", type: "button", "aria-haspopup": "dialog" } });
+    expect(inlineLinkElement(linkRun("[Voltage](def:voltage)"))).toEqual({ tag: "button", props: { className: "inline-link", "data-inline": "def", "data-inline-key": "voltage", type: "button", "aria-haspopup": "dialog" } });
+  });
   it("makes a tip a button described by its hidden words", () => { expect(inlineLinkElement(linkRun("a [drone](tip:killer-drones) knockoff"))).toEqual({ tag: "button", props: { className: "inline-link", "data-inline": "tip", "data-inline-key": "killer-drones", "aria-describedby": "inline-desc-tip-killer-drones", type: "button" } }); });
   it("makes a pop with an href a new-tab anchor, and one without a button", () => {
     expect(inlineLinkElement(linkRun("([or matcha](pop:matcha))"))).toEqual({ tag: "a", props: { className: "inline-link", "data-inline": "pop", "data-inline-key": "matcha", "aria-describedby": "inline-desc-pop-matcha", href: siteContent.register.pop.matcha.href, ...NEW_TAB } });

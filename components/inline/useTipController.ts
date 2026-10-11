@@ -6,9 +6,10 @@ import { sameTarget, TIP_GRACE_MS, TIP_IDLE, tipMode, tipReducer, type TipState,
 import { holdsLink } from "@/lib/inline/view";
 import { isKeyboardFocus } from "@/lib/input/modality";
 import { useEscapeKey } from "@/lib/modal";
-const linkOf = (node: EventTarget | null) => (node instanceof Element ? node.closest<HTMLElement>('[data-inline="tip"], [data-inline="pop"]') : null);
+const linkOf = (node: EventTarget | null) =>
+  node instanceof Element ? node.closest<HTMLElement>('[data-inline="tip"], [data-inline="pop"], [data-inline="def"][data-inline-hint]') : null;
 function targetOf({ dataset: { inline: kind, inlineKey: key } }: HTMLElement): TipTarget | null {
-  return (kind === "tip" || kind === "pop") && key ? { kind, key } : null;
+  return (kind === "tip" || kind === "pop" || kind === "def") && key ? { kind, key } : null;
 }
 const holdsOf = (target: TipTarget | null) => !!target && holdsLink(target.kind, target.key);
 const BUBBLE_LINK = 'a[data-inline="external"]';
@@ -130,7 +131,8 @@ export function useTipController(bubbleRef: RefObject<HTMLElement | null>): { st
       const down = downRef.current;
       downRef.current = null;
       const link = linkOf(event.target);
-      if (!link) return;
+      // A hinted definition's click opens the modal. Hover and focus show the hint; the click does not pin it.
+      if (!link || link.dataset.inline === "def") return;
       if (event.detail !== 0 && down?.link === link && down.type !== "mouse") {
         const { target, via } = stateRef.current;
         if (via === "tap" && sameTarget(target, targetOf(link)) && link.tagName === "A") { dispatch({ type: "dismiss" }); return; }

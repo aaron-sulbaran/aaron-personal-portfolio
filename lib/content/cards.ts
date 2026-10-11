@@ -88,7 +88,7 @@ export const cards: Cards = {
     book: { title: "Misuki", meta: "2001 Mazda Miata, five-speed" },
     modal: { kind: "photo", title: "Misuki", picture: { caption: "Me and Misuki at a Longhorn Car Club photo shoot." }, links: [], photos: modalPhotos.misuki, blocks: [
       "I worked all through high school to set myself up for college. That included an ongoing hunt for a car. I ended up buying this car early Senior year in cash, because I didn't want a car loan. The day my dad went to buy her for me, I was conducting a game-day halftime show and got a bank alert on my watch for a huge withdrawal from my bank account. I was nervous the whole performance, and then found out later he was trying to surprise me.",
-      "Her engine blew in college, a family friend in Houston rebuilt it, and she's still my daily driver. I named her Misuki, from the M in Mazda and a nod to [Fast and Furious](tip:misuki-suk). I took her around Circuit of the Americas once, and it was one of the most fun days of my life.",
+      "Her engine blew in college, a family friend in Houston rebuilt it, and she's still my daily driver. I named her Misuki, from the M in Mazda and a nod to [Fast and Furious](pop:misuki-suki). I took her around Circuit of the Americas once, and it was one of the most fun days of my life.",
     ] },
   },
   ieee: {
@@ -133,7 +133,7 @@ export const cards: Cards = {
   fsdatalink: {
     group: "people", visual: { kind: "logo", logo: logos.fsdatalink, tile: "plain" },
     book: { title: "The family business", meta: "Assistant Manager & SWE, 2022 to 2024" },
-    modal: { kind: "logo", title: "My dad's business", links: [{ label: "fsdatalink.com", href: "https://www.fsdatalink.com/" }], photos: [], blocks: [
+    modal: { kind: "logo", title: "The family business", links: [{ label: "fsdatalink.com", href: "https://www.fsdatalink.com/" }], photos: [], blocks: [
       "My dad built a telecom business from nothing. I figured things out right next to him. I learned small-business taxes and tax breaks, and I was fascinated that people used laws that would never exist in Venezuela. I ended up doing the accounting, the finances and whatever else needed solving, sometimes unpaid because I wanted to help him.",
       "I even took up the role of a software engineer, building internal tools and workflows for my dad and the field engineers that we dispatched. It's where (unknowingly) my interest in money, financial literacy, and optimizing technology started.",
     ] },

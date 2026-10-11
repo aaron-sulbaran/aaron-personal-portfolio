@@ -14,6 +14,7 @@ export const register: InlineRegister = {
     product: {
       title: "What a product is",
       body: "A product (to me) is a tool that's genuinely useful to someone and easy for them to pick up. If it's for everyone, anyone should get it on their first try. If it's for niche hobbyists, the hobbyists in that community should get it immediately. About 99% of the time a product should be built for the user instead of forcing the user to get used to the product. The other 1% is how you get a moonshot product like the iPhone, which didn't just change the way people use a phone (the product), it changed the world.",
+      hint: "click to read how I define a product",
     },
     voltage: {
       title: "Voltage",
@@ -37,8 +38,7 @@ export const register: InlineRegister = {
       adaptedClause: ", and I adapted a couple of the tracks myself in Epidemic Sound's studio",
     },
     "ieee-ao": { text: "External Activities and Events Assistant Officer" },
-    "this-site-playground": { text: "this site is my design playground" },
-    "misuki-suk": { text: "shoutout suk and her S2000" },
+    "this-site-playground": { text: "I consider my portfolio my design playground!" },
     ...jobTips,
   },
   pop: {
@@ -48,12 +48,15 @@ export const register: InlineRegister = {
     skydiving: { file: { src: "/photos/pops/skydiving.jpg", width: 800, height: 600 }, alt: "Me in freefall on a tandem skydive", caption: "Me on my first jump, look at that smile!", crop: null },
     "rock-climbing": { file: { src: "/photos/pops/rock-climbing.jpg", width: 600, height: 800 }, alt: "Me climbing a wall at a bouldering gym", caption: "Catch me on El Capitan next... right...", crop: null },
     "venezuela-flag": { file: { src: "/photos/pops/venezuela-flag.jpg", width: 600, height: 800 }, alt: "Me holding a Venezuelan flag in a convention hall", caption: "Me repping my flag at SHPE 2025!", crop: null },
+    family: { file: { src: "/photos/pops/family.jpg", width: 600, height: 800 }, alt: "My family in front of the UT Tower in 2023", caption: "My family posing in front of the UT tower. We call this alternating pose, \"la tipica\"", crop: null },
+    friends: { file: { src: "/photos/pops/friends.jpg", width: 600, height: 800 }, alt: "My friends grad in 2025", caption: "Celebrating some of my best friends' graduation!", crop: null },
+    "misuki-suki": { file: { src: "/photos/pops/sukis-s2000.png", width: 600, height: 800 }, alt: "Suki's S2000 from F&F", caption: "Suki's S2000 from 2 Fast 2 Furious, what I consider to be a peak roadster", crop: null },
     matcha: {
       file: { src: "/photos/pops/matcha.jpg", width: 600, height: 800 },
       alt: "A matcha from 7T+ in Kyoto",
-      caption: "7T+ is my favorite matcha place in the world, literally in the world. This one is in Kyoto.",
+      caption: "7T+ is my favorite matcha place in the world. Check it out in Kyoto! (click for directions)",
       crop: null,
-      href: "https://www.google.com/maps/search/?api=1&query=35.0025497%2C135.7652173",
+      href: "https://maps.app.goo.gl/4KPkA9BV3CjAPwvg6",
       hrefLabel: "Open in Google Maps",
     },
     "sister-kyoto": { file: { src: "/photos/pops/sister-kyoto.jpg", width: 800, height: 717 }, alt: "Me and my sister in the Arashiyama bamboo grove in Kyoto", caption: null, crop: null },

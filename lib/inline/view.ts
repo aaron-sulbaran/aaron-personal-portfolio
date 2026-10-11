@@ -42,6 +42,10 @@ export function popView(entry: PopEntry): TipView {
 }
 
 export function tipView(kind: TipKind, key: string): TipView | null {
+  if (kind === "def") {
+    const hint = Object.hasOwn(siteContent.register.def, key) ? siteContent.register.def[key].hint : undefined;
+    return hint ? { text: hint, photo: null, caption: null, link: null, description: hint } : null;
+  }
   if (kind === "tip") {
     const text = tipText(key);
     const link = Object.hasOwn(siteContent.register.tip, key) ? (siteContent.register.tip[key].link ?? null) : null;

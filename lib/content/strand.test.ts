@@ -26,8 +26,8 @@ describe("the strand as cards", () => {
 });
 
 describe("the book as cards", () => {
-  it("is Work then People, in Aaron's doc order, every row a card", () => {
-    expect(bookColumns.map((column) => column.heading)).toEqual(["Work", "People"]);
+  it("is Experience then Fun Work, in Aaron's doc order, every row a card", () => {
+    expect(bookColumns.map((column) => column.heading)).toEqual(["Experience", "Fun Work"]);
     expect(bookColumns.map((column) => column.rows.map((row) => row.key))).toEqual([siteContent.book.workOrder, siteContent.book.peopleOrder]);
   });
   it("shows each meta as a visitor reads it, with no link inside a row", () => {
