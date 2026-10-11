@@ -1,7 +1,7 @@
 import { test, expect } from "./support/fixtures";
 import { watchScripts } from "./support/chunks";
 
-// The holding build (the default site mode, what production serves today):
+// The holding build (opt-in site mode, built with NEXT_PUBLIC_SITE_MODE=holding):
 // the holding page at /, none of the full site's chrome, no scene chunk, and
 // old case page URLs sent home.
 
@@ -24,4 +24,14 @@ test("holding: an old case page URL redirects home", async ({ page }) => {
   expect(new URL(page.url()).pathname).toBe("/");
   expect(response?.ok()).toBe(true);
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Pardon the dust");
+});
+
+test("holding: the share card is the name alone, with no still from the unfinished site", async ({ request }) => {
+  const response = await request.get("/opengraph-image");
+  expect(response.status()).toBe(200);
+  expect(response.headers()["content-type"]).toBe("image/png");
+  const body = await response.body();
+  expect(body.readUInt32BE(16), "width").toBe(1200);
+  expect(body.readUInt32BE(20), "height").toBe(630);
+  expect(body.length, "holding card bytes").toBeLessThan(80_000);
 });
