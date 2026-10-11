@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { TIP_IDLE, tipMode, tipReducer, type TipEvent, type TipState } from "@/lib/inline/tipState";
+import { TIP_GRACE_MS, TIP_IDLE, tipMode, tipReducer, type TipEvent, type TipState } from "@/lib/inline/tipState";
 const drones = { kind: "tip" as const, key: "killer-drones" };
+const voltaage = { kind: "tip" as const, key: "voltaage" };
 const matcha = { kind: "pop" as const, key: "matcha" };
 const run = (...events: TipEvent[]) => events.reduce<TipState>(tipReducer, TIP_IDLE);
 describe("tipReducer", () => {
@@ -27,5 +28,27 @@ describe("tipReducer", () => {
     expect(run({ type: "tap", target: matcha }, { type: "dismiss" })).toEqual(TIP_IDLE);
     expect(tipReducer(TIP_IDLE, { type: "dismiss" })).toBe(TIP_IDLE);
     expect(tipMode(TIP_IDLE)).toBeNull();
+  });
+  it("gives a linked tip's pointer a grace to reach the label: leaving starts it, arriving takes it back, expiry lets go", () => {
+    const grace = run({ type: "hover", target: voltaage }, { type: "leave" });
+    expect(grace).toEqual({ target: voltaage, via: "grace" });
+    expect(run({ type: "hover", target: voltaage }, { type: "leave" }, { type: "hover", target: voltaage })).toEqual({ target: voltaage, via: "hover" });
+    expect(tipReducer(grace, { type: "expire" })).toEqual(TIP_IDLE);
+    expect(TIP_GRACE_MS).toBeGreaterThan(100);
+    expect(TIP_GRACE_MS).toBeLessThan(500);
+  });
+  it("leaves graceless states alone: leave and expire only touch a hover and a grace", () => {
+    const focused = run({ type: "focus", target: voltaage });
+    const tapped = run({ type: "tap", target: voltaage });
+    expect(tipReducer(focused, { type: "leave" })).toBe(focused);
+    expect(tipReducer(tapped, { type: "leave" })).toBe(tapped);
+    expect(tipReducer(focused, { type: "expire" })).toBe(focused);
+    expect(tipReducer(TIP_IDLE, { type: "leave" })).toBe(TIP_IDLE);
+    expect(run({ type: "hover", target: voltaage }, { type: "leave" }, { type: "dismiss" })).toEqual(TIP_IDLE);
+  });
+  it("keeps a linked tip under its word, hover included, while a plain tip trails the pointer", () => {
+    expect(tipMode(run({ type: "hover", target: voltaage }), true)).toBe("anchor");
+    expect(tipMode(run({ type: "hover", target: voltaage }, { type: "leave" }), true)).toBe("anchor");
+    expect(tipMode(run({ type: "hover", target: drones }), false)).toBe("follow");
   });
 });

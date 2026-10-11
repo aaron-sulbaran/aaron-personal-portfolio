@@ -35,7 +35,7 @@ const allRefs: Ref[] = [
 
 describe("every picture, photo, pop and logo the content names", () => {
   it("is a file in public with the recorded width and height", () => {
-    expect(allRefs.length).toBe(62);
+    expect(allRefs.length).toBe(66);
     for (const ref of allRefs) {
       const [width, height] = imageSize(join(PUBLIC, ref.src));
       expect(ref.width, ref.where).toBeCloseTo(width, 1);
@@ -85,6 +85,12 @@ describe("the modal photos", () => {
       "building-in-public": ["My top performing posts on LinkedIn.", "Me in Toronto, another one."],
     });
   });
+  it("leave no photo and no card picture without a caption line", () => {
+    for (const key of keys) {
+      for (const photo of cards[key].modal.photos) expect(photo.caption.trim(), `${key} ${photo.src}`).not.toBe("");
+      if (cards[key].visual.kind === "photo") expect(cards[key].modal.picture?.caption.trim(), `${key} picture`).toBeTruthy();
+    }
+  });
   it("give only Misuki's Hiroshima photo a short phone caption", () => {
     const short = keys.flatMap((key) => cards[key].modal.photos.filter((photo) => photo.captionShort).map((photo) => [key, photo.captionShort]));
     expect(short).toEqual([["misuki", "The real Mazda 787B that won Le Mans in 1991, at the Mazda Museum in Hiroshima."]]);
@@ -106,7 +112,7 @@ describe("the logos", () => {
     expect(chosen).toEqual({
       "min-max": ["/work/logos/min-max/mark.svg", "/work/logos/min-max/mark-on-dark.svg"],
       talos: ["/work/logos/talos/mark.svg", null],
-      "capital-one": ["/work/logos/capital-one/capital-one-logo.svg", null],
+      "capital-one": ["/work/logos/capital-one/capital-one-logo.svg", "/work/logos/capital-one/capital-one-logo-white.svg"],
       anthropic: ["/work/logos/anthropic/anthropic-wordmark.svg", "/work/logos/anthropic/anthropic-wordmark-white.svg"],
       ieee: ["/work/logos/ieee/ieee-ut-logo.jpg", null],
       fsdatalink: ["/work/logos/fsdatalink/fsdatalink-logo.avif", "/work/logos/fsdatalink/fsdatalink-logo-light.png"],

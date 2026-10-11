@@ -1,4 +1,5 @@
 import { Fragment } from "react";
+import { BrandIcon } from "@/components/BrandIcons";
 import { Fill, FillArrow, FillSeed } from "@/components/fx/Fill";
 import { splitAfterAt } from "@/lib/connect";
 import { siteContent } from "@/lib/content";
@@ -76,7 +77,10 @@ export function Connect() {
               >
                 <span className="-my-[0.15em] flex min-w-0 flex-1 overflow-clip py-[0.15em]">
                   <span data-sections-rowinner className="flex min-w-0 flex-1 items-baseline gap-4">
-                    <span className="w-20 shrink-0 font-label text-label text-muted sm:w-28 md:w-32">{link.label}</span>
+                    <span className={`flex h-[1lh] w-20 shrink-0 items-center self-start text-muted sm:w-28 md:w-32 ${VALUE_SIZE}`}>
+                      <BrandIcon name={link.icon} className="h-6 w-6 md:h-7 md:w-7" />
+                      <span className="sr-only">{link.label}</span>
+                    </span>
                     <span data-connect-value className={`min-w-0 flex-1 break-words font-display ${VALUE_SIZE}`}>
                       {breakAfterAt(link.handle)}
                     </span>

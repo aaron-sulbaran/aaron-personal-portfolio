@@ -3,7 +3,7 @@ import type { LogoRef, StrandCard } from "@/lib/content";
 import { BAR_D, BOLT_D, LEG_D } from "@/lib/mark/geometry";
 import { COIL } from "./constants";
 import { toBytes, toCanvasColor, type CoilTheme, type Rgba } from "./theme";
-import { cardDims, circlesLayout, containBox, logoBox, MARK_INK_BOX, needsGround, type CardDims, type TextureSize } from "./cardFace";
+import { cardDims, circlesLayout, containBox, faceGround, logoBox, MARK_INK_BOX, needsGround, type CardDims, type TextureSize } from "./cardFace";
 
 // Card faces, painted on 2D canvases from the theme tokens, ported from hero
 // lab 2 (391-516) at Aaron's picks: photo fronts in true color inside our
@@ -196,10 +196,10 @@ function paintPhotoFront(g: CanvasRenderingContext2D, d: Dims, img: HTMLImageEle
 }
 
 // A logo on its pane (the anvil for Talos): the opaque IEEE square as the face, at
-// the photo inset's width; any other logo centred at its fit, on a light plate
+// the photo inset's width, on a pane of its own edge colour so it reads full bleed; any other logo centred at its fit, on a light plate
 // where the dark theme needs one (cardFace.ts needsGround).
 function paintLogoFront(g: CanvasRenderingContext2D, d: Dims, source: Extract<CardSource, { kind: "logo" }>, theme: CoilTheme) {
-  shapeCard(g, d, toCanvasColor(source.tile === "anvil" ? theme.card.anvil : theme.card.workPane));
+  shapeCard(g, d, faceGround(source.logo) ?? toCanvasColor(source.tile === "anvil" ? theme.card.anvil : theme.card.workPane));
   const image = theme.dark && source.dark ? source.dark : source.light;
   const aspect = source.logo.width / source.logo.height;
   if (image && source.logo.opaque) {

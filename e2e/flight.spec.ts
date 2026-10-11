@@ -75,7 +75,7 @@ async function setView(page: Page, slot: number, { mesh, flown }: { mesh: boolea
       if (!style) {
         style = document.createElement("style");
         style.id = "e2e-flight-view";
-        style.textContent = "[role=dialog]{visibility:hidden!important} .z-\\[100\\]{visibility:hidden!important}";
+        style.textContent = "[role=dialog],[data-card-tint]{visibility:hidden!important} .z-\\[100\\]{visibility:hidden!important}";
         document.head.appendChild(style);
       }
       const layer = document.querySelector<HTMLElement>("[data-flying-tile]");
