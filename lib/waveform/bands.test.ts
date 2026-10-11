@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bandEdgesFor, computeBandEdges, computeBands } from "@/lib/waveform/bands";
+import { bandEdgesFor, columnMeans, computeBandEdges, computeBands } from "@/lib/waveform/bands";
 
 const BINS = 1024; // fftSize 2048
 const RATE = 48000; // nyquist 24kHz, so one bin is 23.4375Hz
@@ -59,5 +59,12 @@ describe("computeBands", () => {
       if (holds) expect(out[i]).toBeGreaterThan(0);
       else expect(out[i]).toBe(0);
     }
+  });
+
+  it("columnMeans averages each column's bytes", () => {
+    const edges = { columns: 2, binCount: 4, sampleRate: 0, start: Int32Array.of(0, 2), end: Int32Array.of(2, 4) };
+    const out = new Float32Array(2);
+    columnMeans(Uint8Array.of(10, 30, 255, 255), edges, out);
+    expect(Array.from(out)).toEqual([20, 255]);
   });
 });

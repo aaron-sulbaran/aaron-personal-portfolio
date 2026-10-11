@@ -10,7 +10,7 @@ const WIRED: Array<[string, string]> = [
   ["components/WhoIAm.tsx", "block.sub.body"],
   ["components/Connect.tsx", "body"],
   ["components/soundtrack/BandInvite.tsx", "c.body"],
-  ["components/soundtrack/BandInvite.tsx", "c.acceptedNote"],
+  ["components/soundtrack/BandInvite.tsx", "acceptedNote"],
   ["components/mark/MarkCard.tsx", "line"],
 ];
 
