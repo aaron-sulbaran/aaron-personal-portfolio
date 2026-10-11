@@ -1,65 +1,59 @@
 import { getSoundtrackPlayer } from "@/lib/audio";
-import { getSoundtrackState, subscribeSoundtrack } from "@/lib/soundtrack";
-import { createConveyor, feedScroll, stepConveyor, type ConveyorState } from "@/lib/waveform/conveyor";
-import { FLOOR, createField, levelTargets, regimeOf, stepField, type Field } from "@/lib/waveform/field";
+import { getRestoredSoundtrack, getSoundtrackState, subscribeSoundtrack, type SoundtrackState } from "@/lib/soundtrack";
+import { createLeveller, levelColumns } from "@/lib/waveform/level";
+import { BREATH, PLUCK, RIPPLE, SHIMMER, SPECTRUM_BINS, TRAIN_FADE } from "@/lib/wavepath/constants";
+import { createHead, stepHead, tailStart, type HeadState } from "@/lib/wavepath/head";
+import { createMusic, stepMusic } from "@/lib/wavepath/music";
+import type { DotFrame } from "@/lib/wavepath/paint";
+import { createNear, createPlucks, createPointer, movePointer, notePointer, stepPlucks, type Near, type PointerTrack } from "@/lib/wavepath/pluck";
+import { attachProbe, pathProbe } from "@/lib/wavepath/probe";
+import { createRipple, startRipple, stepRipple } from "@/lib/wavepath/ripple";
 
-// The waveform's one engine: the field, the loop, the audio sample, the
-// regime, the clock and the scroll conveyor. Views (waveView.ts)
-// attach to it and paint the field it steps; they own their canvas, colors,
-// weights and cursor. The math lives in lib/waveform; this file only feeds it.
-//
-// One conductor per page, ref counted: the first acquire creates it, the last
-// release destroys it. A change of `still` while it is held destroys it and
-// starts a fresh one, since every caller remounts on `still` anyway; a stale
-// holder's release then only touches its own, already destroyed, instance.
-//
-// The loop runs only while a view is in view (or easing), the tab is visible
-// and the wave is not frozen. It eases by elapsed time, so a 120Hz display
-// neither burns twice the frames nor runs the transitions faster; it caps at
-// 60fps, and at 30fps while nothing moves fast (the calm regimes with the
-// conveyor at rest). Once the field settles (the still regime, "Maybe
-// later") with the conveyor at rest, the loop stops until
-// the music, the scroll, the cursor or a view wakes it. `still` (reduced
-// motion) never loops: the views draw one flat line.
+// The wave's one engine (the engine split): once per frame it steps the
+// clocks, the levelled music, the head and the plucks into one frame, and
+// views (the band's run, the path's tiles) only paint it. The loop runs while
+// the head moves, or while a view shows and the music, the run's breath or a
+// ripple moves; it caps at 60fps and sleeps at rest. Before the visitor
+// answers the band, its level run breathes slowly (no peaks, no music, no
+// pluck) while the head waits at the run's end: the line does not follow until
+// an answer. Pressing an answer sends one ripple along the line from the
+// buttons (a live press only; a restored choice sends none). After either
+// answer the whole line breathes and follows; peaks and the music need
+// "Play it". Freezing stops the clocks, the music, the plucks and the ripple;
+// the head still follows the scroll. Reduced motion (`still`) never loops:
+// views paint the whole line on layout, theme and probe calls. One conductor
+// per page, ref counted.
 
-const FAST_FRAME_MS = 1000 / 60 - 2;
-const SLOW_FRAME_MS = 1000 / 30 - 2;
+const FRAME_MS = 1000 / 60 - 2;
 const MAX_STEP_S = 0.1;
-const LEVEL_EPSILON = 1e-3;
-// The idle drift keeps the conveyor "moving" for good: its steady lag is
-// 0.4 / 11, about 0.036 columns. A lag under this counts as at rest for the
-// frame rate (not for stopping), so a calm wave past the band runs at 30fps.
-const DRIFT_LAG_COLUMNS = 0.05;
 
-export interface WaveView {
-  // Called once per conductor frame before the field steps: sync the cursor,
-  // blend the weights from the field's current levels, and raise
-  // `conductor.carve` to this view's carve targets (the field sees the max).
-  prepare(): void;
-  // Called once per conductor frame after the field steps; paint the field.
-  paint(time: number): void;
-  // True while this view should be painted: in view. Freezing is global, on the conductor.
-  active(): boolean;
-  // True if this view has anything still easing of its own; keeps the loop awake.
-  busy(): boolean;
+export interface WaveFrame extends DotFrame {
+  scrollY: number;
+  decided: boolean; // lib/soundtrack.ts: anything but "before"
+  length: number;
+  runFlat: number;
+  state: HeadState; // views write target and gateTarget in prepare()
+  pointer: PointerTrack; // client px
+  near: Near; // views offer their nearest drawn column in prepare()
 }
-
+export type Changed = { head: boolean; music: boolean; breath: boolean; plucks: boolean; ripple: boolean };
+export interface WaveView {
+  breathes: boolean;
+  prepare(f: WaveFrame): void;
+  paint(f: WaveFrame, changed: Changed | null): void; // null: paint what shows, now
+  active(): boolean;
+  countVisible(f: WaveFrame): number;
+  rippleOrigin?(): number; // the arc s an answer's ripple starts at, measured at layout
+}
+export interface PathGeometry { runLen: number; length: number; train: number | null; runFlat: number }
 export interface WaveConductor {
-  field: Field; // sized to the widest attached view
-  columns: number;
-  carve: Float32Array; // this frame's carve targets, the max over the views
-  conveyor: ConveyorState;
-  time: number; // seconds, last stepped
+  frame: WaveFrame;
   attach(view: WaveView): void;
   detach(view: WaveView): void;
-  // A view asks for at least this many columns; the field keeps the max over
-  // the views that asked (`from` keys the request, so a view that shrinks or
-  // detaches gives its columns back).
-  setColumns(columns: number, from?: WaveView): void;
+  setPath(geometry: PathGeometry, snap: boolean): void;
   setFrozen(frozen: boolean): void;
-  subscribe(listener: () => void): () => void; // fires after each step
   wake(): void;
-  release(): void; // ref counted; the last release destroys it
+  release(): void;
 }
 
 type Instance = { conductor: WaveConductor; still: boolean; refs: number; destroy: () => void };
@@ -77,123 +71,142 @@ export function acquireWaveConductor(still: boolean): WaveConductor {
 
 function createInstance(still: boolean): Instance {
   const player = getSoundtrackPlayer();
+  const leveller = createLeveller(SPECTRUM_BINS);
+  const levelled = new Float32Array(SPECTRUM_BINS);
   const views: WaveView[] = [];
-  const requests = new Map<WaveView | null, number>();
-  const listeners = new Set<() => void>();
-  let frozen = false;
-  let destroyed = false;
-  let raf = 0;
-  let last = 0;
-  let minFrameMs = FAST_FRAME_MS;
-
-  const resize = () => {
-    let columns = 0;
-    requests.forEach((n) => (columns = Math.max(columns, n)));
-    if (columns === conductor.columns) return;
-    const previous = conductor.field;
-    const field = createField(columns);
-    field.levels = previous.levels;
-    field.mag.set(previous.mag.subarray(0, Math.min(previous.mag.length, columns)));
-    if (still) field.mag.fill(FLOOR);
-    conductor.field = field;
-    conductor.columns = columns;
-    conductor.carve = new Float32Array(columns);
+  const probe = pathProbe();
+  let frozen = false, destroyed = false, snap = false, raf = 0, last = 0, breathClock = 0;
+  const frame: WaveFrame = {
+    head: 0, tail: -Infinity, train: null, runLen: 0, gate: 0, breath: 0, shimmer: 0,
+    music: createMusic(), plucks: createPlucks(), ripple: createRipple(), still, scrollY: window.scrollY,
+    decided: getSoundtrackState() !== "before", length: 0, runFlat: 0,
+    state: createHead(), pointer: createPointer(), near: createNear(),
   };
 
-  // One step of the field; returns true once everything has come to rest.
+  const sync = () => {
+    frame.head = frame.state.head;
+    frame.gate = frame.state.gate;
+    frame.tail = frame.train === null ? -Infinity : tailStart(frame.head, frame.train, frame.train * TRAIN_FADE, frame.runLen);
+  };
+
+  // Reduced motion and the probe: the head lands on its target, every view paints.
+  const paintAll = () => {
+    for (const v of views) v.prepare(frame);
+    stepHead(frame.state, 0, true);
+    sync();
+    for (const v of views) v.paint(frame, null);
+  };
+
   const step = (t: number, dt: number): boolean => {
-    const time = t / 1000; // the rAF clock is ms; every wave sine runs in seconds
-    conductor.time = time;
-    const regime = regimeOf(getSoundtrackState());
-    conductor.carve.fill(0);
-    for (const view of views) if (view.active()) view.prepare();
-    const frame = player.sample(t, conductor.columns);
-    const idle = regime === "idle" && !still;
-    const { moving } = stepConveyor(conductor.conveyor, dt, idle);
-    const { settled } = stepField(conductor.field, {
-      time,
-      dt,
-      regime,
-      bands: frame.bands,
-      audioLevel: frame.level,
-      carve: conductor.carve,
-      phase: conductor.conveyor.phase,
-    });
-    for (const view of views) if (view.active()) view.paint(time);
-    listeners.forEach((listener) => listener());
-    // 30fps only in a steady state: a regime change (pausing, "Maybe later")
-    // eases at 60fps as it always did, and drops once the levels arrive.
-    const goal = levelTargets(regime);
-    const levels = conductor.field.levels;
-    const arrived =
-      Math.abs(levels.idle - goal.idle) < LEVEL_EPSILON &&
-      Math.abs(levels.paused - goal.paused) < LEVEL_EPSILON &&
-      Math.abs(levels.reactive - goal.reactive) < LEVEL_EPSILON;
-    const drifting = moving && Math.abs(conductor.conveyor.target - conductor.conveyor.phase) >= DRIFT_LAG_COLUMNS;
-    const calm = regime !== "reactive" && arrived && !drifting;
-    minFrameMs = calm ? SLOW_FRAME_MS : FAST_FRAME_MS;
-    return settled && !moving && !views.some((view) => view.busy());
+    for (const v of views) v.prepare(frame);
+    if (snap) {
+      frame.state.head = frame.state.target;
+      snap = false;
+    }
+    const before = frame.state.head;
+    const moving = stepHead(frame.state, dt, false);
+    let music = false, breath = false, plucks = false, ripple = false;
+    if (!frozen) {
+      if (frame.pointer.moved) {
+        if (frame.decided) {
+          const near = frame.near;
+          notePointer(frame.plucks, near.d2 < PLUCK.radius ** 2 ? near.j : -1, near.side, near.s, frame.pointer.speed);
+        }
+      } else frame.pointer.speed *= Math.exp(-dt / 0.07);
+      frame.shimmer += dt * SHIMMER.rate;
+      breathClock += dt;
+      frame.breath = Math.sin(breathClock * BREATH.rate);
+      levelColumns(leveller, player.sample(t, SPECTRUM_BINS).means, dt, levelled);
+      music = stepMusic(frame.music, dt, getSoundtrackState() === "on", levelled);
+      plucks = stepPlucks(frame.plucks, dt);
+      // A crest that ends this frame still repaints once, to clear it.
+      ripple = frame.ripple.live;
+      stepRipple(frame.ripple, dt);
+      breath = views.some((v) => v.breathes && v.active());
+    }
+    frame.pointer.moved = false;
+    frame.near.d2 = Infinity;
+    sync();
+    const changed = { head: moving || frame.state.head !== before, music, breath, plucks, ripple };
+    for (const v of views) if (v.active()) v.paint(frame, changed);
+    if (probe) probe.ticks++;
+    return moving || (!frozen && frame.ripple.live) || (views.some((v) => v.active()) && (music || breath || plucks));
   };
-
-  const running = () =>
-    !destroyed && !still && !frozen && !document.hidden && views.some((view) => view.active() || view.busy());
 
   const tick = (t: number) => {
     raf = 0;
-    if (!running()) return;
-    raf = requestAnimationFrame(tick);
-    if (last && t - last < minFrameMs) return;
+    if (destroyed || document.hidden) return;
+    if (last && t - last < FRAME_MS) {
+      raf = requestAnimationFrame(tick);
+      return;
+    }
     const dt = last ? Math.min((t - last) / 1000, MAX_STEP_S) : 1 / 60;
     last = t;
-    if (step(t, dt)) {
-      cancelAnimationFrame(raf);
-      raf = 0;
-    }
+    if (step(t, dt)) raf = requestAnimationFrame(tick);
+    else last = 0;
   };
 
   const wake = () => {
-    if (raf || !running()) return;
-    last = 0;
-    raf = requestAnimationFrame(tick);
+    if (destroyed) return;
+    if (still) return paintAll();
+    if (!raf && !document.hidden) raf = requestAnimationFrame(tick);
   };
 
-  // Page scroll feeds the conveyor as a delta per event, read from scrollY
-  // (as the Coil's scene input does), so every source of scroll counts.
-  let lastScrollY = window.scrollY;
   const onScroll = () => {
-    const y = window.scrollY;
-    feedScroll(conductor.conveyor, y - lastScrollY);
-    lastScrollY = y;
+    frame.scrollY = window.scrollY;
+    if (!still) wake();
+  };
+  const onPointer = (event: PointerEvent) => {
+    if (event.pointerType === "touch") return;
+    movePointer(frame.pointer, event.clientX, event.clientY, event.timeStamp);
+    wake();
+  };
+  const onLeave = () => {
+    frame.pointer.on = false;
+    frame.plucks.nearJ = -1;
+  };
+  // A ripple answers a live press only: "before" to "on" or "off", and "off" to
+  // "on" (Play it chosen again). Never pause and resume, and never a restore:
+  // initSoundtrackFromStorage moves "before" to "paused" or "off" without a
+  // press, and getRestoredSoundtrack() is set before that change notifies, so a
+  // move out of "before" with a restored choice is the restore.
+  const isPress = (from: SoundtrackState, to: SoundtrackState) =>
+    (from === "before" && getRestoredSoundtrack() === null && (to === "on" || to === "off")) || (from === "off" && to === "on");
+  const rippleOrigin = () => {
+    for (const v of views) if (v.rippleOrigin) return v.rippleOrigin();
+    return frame.runLen / 2;
+  };
+  let lastState = getSoundtrackState();
+  const onSoundtrack = () => {
+    const next = getSoundtrackState();
+    frame.decided = next !== "before";
+    if (!still && !frozen && isPress(lastState, next)) startRipple(frame.ripple, rippleOrigin());
+    lastState = next;
     wake();
   };
 
   const conductor: WaveConductor = {
-    field: createField(0, regimeOf(getSoundtrackState())),
-    columns: 0,
-    carve: new Float32Array(0),
-    conveyor: createConveyor(),
-    time: 0,
+    frame,
     attach(view) {
       if (!views.includes(view)) views.push(view);
       wake();
     },
     detach(view) {
-      const index = views.indexOf(view);
-      if (index >= 0) views.splice(index, 1);
-      if (requests.delete(view)) resize();
+      const i = views.indexOf(view);
+      if (i >= 0) views.splice(i, 1);
     },
-    setColumns(columns, from) {
-      const key = from ?? null;
-      requests.set(key, from ? columns : Math.max(requests.get(key) ?? 0, columns));
-      resize();
+    setPath(geometry, first) {
+      frame.runLen = geometry.runLen;
+      frame.length = geometry.length;
+      frame.runFlat = geometry.runFlat;
+      frame.train = still ? null : geometry.train;
+      // Undecided the target is always the run's end: land there, never ease.
+      if (first || !frame.decided) snap = true;
+      wake();
     },
     setFrozen(next) {
       frozen = next;
       wake();
-    },
-    subscribe(listener) {
-      listeners.add(listener);
-      return () => listeners.delete(listener);
     },
     wake,
     release() {
@@ -203,23 +216,32 @@ function createInstance(still: boolean): Instance {
     },
   };
 
+  const fine = !still && window.matchMedia("(pointer: fine)").matches;
+  window.addEventListener("scroll", onScroll, { passive: true });
+  document.addEventListener("visibilitychange", wake);
+  if (fine) {
+    window.addEventListener("pointermove", onPointer, { passive: true });
+    document.documentElement.addEventListener("pointerleave", onLeave);
+  }
+  const unsubscribe = subscribeSoundtrack(onSoundtrack);
+  const detachProbe = attachProbe({
+    frame: () => ({ head: frame.head, target: frame.state.target, length: frame.length, runLen: frame.runLen, train: frame.train, decided: frame.decided, runFlat: frame.runFlat, ripple: frame.ripple.live ? RIPPLE.amp * Math.exp(-RIPPLE.decay * frame.ripple.age) : 0 }),
+    visibleDots: () => views.reduce((n, v) => n + v.countVisible(frame), 0),
+  });
+
   const destroy = () => {
     if (destroyed) return;
     destroyed = true;
     if (raf) cancelAnimationFrame(raf);
-    raf = 0;
     window.removeEventListener("scroll", onScroll);
     document.removeEventListener("visibilitychange", wake);
+    window.removeEventListener("pointermove", onPointer);
+    document.documentElement.removeEventListener("pointerleave", onLeave);
     unsubscribe();
+    detachProbe();
     views.length = 0;
-    listeners.clear();
     if (live === instance) live = null;
   };
-
-  window.addEventListener("scroll", onScroll, { passive: true });
-  document.addEventListener("visibilitychange", wake);
-  const unsubscribe = subscribeSoundtrack(wake);
-
   const instance: Instance = { conductor, still, refs: 0, destroy };
   return instance;
 }

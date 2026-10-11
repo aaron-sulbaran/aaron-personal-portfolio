@@ -15,7 +15,7 @@
 //                 renderer does not change.
 
 import { siteContent } from "./content";
-import { bandEdgesFor, computeBands } from "./waveform/bands";
+import { bandEdgesFor, columnMeans, computeBands } from "./waveform/bands";
 
 export interface AudioFrame {
   // 0..1 overall loudness at the current playhead. Carries the intro envelope,
@@ -25,6 +25,7 @@ export interface AudioFrame {
   // amplitude of its displacement (the waving). Length matches the live column
   // count; reused across frames, so read it within the frame, do not retain it.
   bands: Float32Array;
+  means: Float32Array; // per-column mean analyser byte, unshaped (the leveller's input)
   playing: boolean;
 }
 
@@ -50,6 +51,7 @@ export function createStubAudioSource(): AudioSource {
   let playing = false;
   let songStart = 0;
   let bands = new Float32Array(0);
+  let means = new Float32Array(0);
 
   return {
     get playing() {
@@ -60,7 +62,10 @@ export function createStubAudioSource(): AudioSource {
       playing = next;
     },
     sample(nowMs: number, columns: number): AudioFrame {
-      if (bands.length !== columns) bands = new Float32Array(columns);
+      if (bands.length !== columns) {
+        bands = new Float32Array(columns);
+        means = new Float32Array(columns);
+      }
       const t = nowMs / 1000;
       const intro = playing ? clamp01((t - songStart) / INTRO_SECONDS) : 0;
       const phase = (t / BEAT_SECONDS) % 1;
@@ -77,7 +82,8 @@ export function createStubAudioSource(): AudioSource {
             0.22 * Math.abs(Math.sin(t * 1.6 + i * 0.4)) * midW +
             0.14 * Math.abs(Math.sin(t * 5.0 + i)) * highW);
       }
-      return { level: intro, bands, playing };
+      for (let i = 0; i < columns; i++) means[i] = bands[i] * 255;
+      return { level: intro, bands, means, playing };
     },
   };
 }
@@ -120,6 +126,7 @@ export function getSoundtrackPlayer(): SoundtrackPlayer {
   let fade: GainNode | null = null;
   let freq = new Uint8Array(0);
   let bands = new Float32Array(0);
+  let means = new Float32Array(0);
   let trackIndex = 0;
   let playing = false;
   // Monotonic play token: a stale el.play() rejection (from a pause() or src
@@ -251,10 +258,14 @@ export function getSoundtrackPlayer(): SoundtrackPlayer {
       else pause();
     },
     sample(nowMs: number, columns: number): AudioFrame {
-      if (bands.length !== columns) bands = new Float32Array(columns);
+      if (bands.length !== columns) {
+        bands = new Float32Array(columns);
+        means = new Float32Array(columns);
+      }
       if (!analyser || !audioCtx || !playing) {
         bands.fill(0);
-        return { level: 0, bands, playing };
+        means.fill(0);
+        return { level: 0, bands, means, playing };
       }
       analyser.getByteFrequencyData(freq);
       // Visual counterpart of the stub's intro envelope: the wave springs up
@@ -262,7 +273,8 @@ export function getSoundtrackPlayer(): SoundtrackPlayer {
       const intro = clamp01((performance.now() / 1000 - playStartSec) / 1.3);
       const edges = bandEdgesFor(columns, freq.length, audioCtx.sampleRate);
       const level = computeBands(freq, edges, bands, intro);
-      return { level, bands, playing };
+      columnMeans(freq, edges, means);
+      return { level, bands, means, playing };
     },
   };
   return playerSingleton;

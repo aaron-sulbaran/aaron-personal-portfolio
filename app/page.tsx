@@ -2,6 +2,7 @@ import { WhoIAm } from "@/components/WhoIAm";
 import { Connect } from "@/components/Connect";
 import { Footer } from "@/components/Footer";
 import { SoundtrackBand } from "@/components/soundtrack/SoundtrackBand";
+import { PathLayer } from "@/components/soundtrack/path/PathLayer";
 import { Holding } from "@/components/Holding";
 import { HOLDING_MODE } from "@/lib/holding";
 import { HomeController } from "@/components/home/HomeController";
@@ -23,9 +24,10 @@ export const revalidate = 86400;
 // scrolls natively; overflow-x is clipped (clip, not hidden, so no scroll
 // container is created).
 //
-// The soundtrack band sits in flow directly under the book: the waveform runs
-// through it and nowhere else, so nothing ever moves behind body text. Its
-// playback pill self-Portals to document.body. Every overlay (SiteNav z-30,
+// The soundtrack band sits in flow directly under the book: its wave is the
+// first stretch of the scroll-drawn line, which continues behind the sections
+// in PathLayer's in-flow tiles. The band's playback pill self-Portals to
+// document.body. Every overlay (SiteNav z-30,
 // menu scrim z-[35], the Menu pill and panel z-40, the playback pill z-[45],
 // modals z-50, the flight z-[55], the inline label z-[58], the loader z-60, its root absolute at the
 // document top, its pane fixed) sits at body level.
@@ -37,6 +39,7 @@ export default function Home() {
   return (
     <>
       <div className="relative z-10">
+        <PathLayer />
         <main id="main" className="relative overflow-x-clip">
           <HeroSentinel />
           <HomeController hero={<HeroText />}>
@@ -74,11 +77,11 @@ function HeroSentinel() {
 function NumbersStrip() {
   const { title, groupLabel } = siteContent.metrics;
   return (
-    <section id="numbers" className="relative w-full scroll-mt-24 border-t border-border px-6 py-24 md:px-10 md:py-40">
+    <section id="numbers" data-wave-anchor="numbers" className="relative w-full scroll-mt-24 border-t border-border px-6 py-24 md:px-10 md:py-40">
       <div className="mx-auto flex max-w-6xl flex-col gap-10">
         <div className="flex flex-col gap-6">
-          <SectionHeading id={METRICS_TITLE_ID}>{title}</SectionHeading>
-          <SectionSubline id={METRICS_LABEL_ID}>{groupLabel}</SectionSubline>
+          <SectionHeading id={METRICS_TITLE_ID} words>{title}</SectionHeading>
+          <SectionSubline id={METRICS_LABEL_ID} words>{groupLabel}</SectionSubline>
         </div>
         <Metrics />
       </div>

@@ -6,19 +6,20 @@ import { Block } from "./Block";
 // and the numbers strip takes the line too, so the sizes, faces and colours
 // of the sections' titles cannot drift apart. The heading's words must be
 // static text (see Block). An id names the block for a group that is labelled
-// by it (aria-labelledby).
+// by it (aria-labelledby). `words` marks the block as words the wave path
+// keeps clear of (data-wave-words); a block held sticky never takes it.
 
-export function SectionHeading({ id, children }: { id?: string; children: ReactNode }) {
+export function SectionHeading({ id, words, children }: { id?: string; words?: true; children: ReactNode }) {
   return (
-    <Block kind="heading" as="h2" id={id} className="font-display text-section">
+    <Block kind="heading" as="h2" id={id} className="font-display text-section" data-wave-words={words}>
       {children}
     </Block>
   );
 }
 
-export function SectionSubline({ id, children }: { id?: string; children: ReactNode }) {
+export function SectionSubline({ id, words, children }: { id?: string; words?: true; children: ReactNode }) {
   return (
-    <Block kind="body" as="p" split="block" id={id} className="max-w-xs text-sm leading-relaxed text-muted">
+    <Block kind="body" as="p" split="block" id={id} className="max-w-xs text-sm leading-relaxed text-muted" data-wave-words={words}>
       <span data-sections-inner className="block">
         {children}
       </span>
