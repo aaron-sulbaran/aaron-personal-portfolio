@@ -4,7 +4,7 @@ import { profaBlack } from "@/lib/fonts";
 import { BrandIcon } from "./BrandIcons";
 import { HoldingDeck } from "./HoldingDeck";
 
-// The "under remodeling" home, served at / unless NEXT_PUBLIC_SITE_MODE=full
+// The "under remodeling" home, served at / only when NEXT_PUBLIC_SITE_MODE=holding
 // (lib/holding.ts). One viewport, no nav: the deck riffles up top, the serif
 // headline and body below, then the social links as icon pills.
 //
