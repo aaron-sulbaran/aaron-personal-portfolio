@@ -89,7 +89,7 @@ export function CardModal({ cardKey, onClose, renderMedia, flying }: Props) {
             onMouseDown={(e) => {
               if (e.target === e.currentTarget) onClose();
             }}
-            className={`fixed inset-0 z-50 flex justify-center ${sheet ? "overflow-hidden" : "overflow-y-auto"} overscroll-contain ${rows ? "px-10 py-14" : "px-4 py-6"}`}
+            className={`fixed inset-0 z-50 flex justify-center ${sheet ? "overflow-hidden" : "overflow-y-auto overflow-x-hidden"} overscroll-contain ${rows ? "px-10 py-14" : "px-4 py-6"}`}
           >
             <motion.div
               variants={reduced ? PANEL.reduced : PANEL.full}

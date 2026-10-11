@@ -1,21 +1,25 @@
-// A parked flown card rides its slot in a scrolling modal. The main thread can
-// only redraw it a frame after the compositor has moved the slot, so the card
-// lagged. Instead the compositor moves the card too: a scroll-driven animation
-// on the card's layer translates it by minus the modal's scroll offset, in the
-// same frame as the slot. The card is drawn where the slot was at the scroll
-// offset of the draw, so the layer carries that offset back: the card sits at
-// drawnScroll - scrollNow from where it was drawn, which is the slot's own move.
+import type { Quad } from "./geometry";
+import type { Rect } from "./flight";
 
-// The animation's whole scroll range, in px: a keyframe distance equal to it
-// makes the translation exactly the scroll offset, whatever the modal's height.
-export const FOLLOW_RANGE_PX = 100_000;
+// A parked flown card rides its slot in a scrolling modal. Its layer moves
+// into the dialog's scrolling content, so the browser carries the card with
+// the slot in the frame it scrolls, in every browser; nothing is redrawn to
+// keep up. The card is drawn in viewport coordinates at one scroll offset, so
+// the layer carries that offset back: drawn at the slot's viewport top with
+// the dialog scrolled by s, it sits s down the content, where the slot is.
 
 export const carryTransform = (drawnScroll: number) => `translateY(${drawnScroll}px)`;
 
-// How far the card sits from where it was drawn once the modal has scrolled on.
-export const followOffset = (drawnScroll: number, scrollNow: number) => drawnScroll - scrollNow;
+const round = (px: number) => Math.round(px * 100) / 100;
 
-// The follow runs only where scroll-driven animations do and the layer's
-// animation really took the modal's timeline; otherwise the card is redrawn on
-// the main thread alone, a frame behind.
-export const followable = (supported: boolean, attached: boolean) => supported && attached;
+// The slot's place in the dialog's content, which scrolling leaves alone: a
+// parked card is drawn again when it moves (a resize, a reflow) or the scene's
+// layout does. A card whose last draw ran off the viewport was cut by the
+// flown canvas (it covers the viewport alone), so it is drawn again on every
+// scroll until a draw shows it whole.
+export function parkKey(rect: Rect, scroll: number, stamp: string, clipped: boolean) {
+  const at = [round(rect.left), round(rect.top + scroll), round(rect.width), round(rect.height), stamp];
+  return (clipped ? [...at, round(scroll)] : at).join(",");
+}
+
+export const wholeIn = (quad: Quad, width: number, height: number) => quad.every((p) => p.x >= 0 && p.x <= width && p.y >= 0 && p.y <= height);

@@ -1,23 +1,33 @@
 import { describe, expect, it } from "vitest";
-import { carryTransform, followable, followOffset, FOLLOW_RANGE_PX } from "./scrollFollow";
+import type { Quad } from "./geometry";
+import { carryTransform, parkKey, wholeIn } from "./scrollFollow";
+
+const slot = (top: number) => ({ left: 120, top, width: 240, height: 320 });
 
 describe("the parked card's scroll follow", () => {
-  it("leaves the card where it was drawn when the modal has not scrolled on, and moves it with the slot when it has", () => {
-    expect(followOffset(0, 0)).toBe(0);
-    expect(followOffset(240, 240)).toBe(0);
-    expect(followOffset(0, 300)).toBe(-300);
-    expect(followOffset(120, 420)).toBe(-300);
-  });
-  it("carries the layer by the scroll offset of the draw, to cancel the animation's own minus offset", () => {
+  it("carries the layer by the scroll offset the card was drawn at", () => {
     expect(carryTransform(0)).toBe("translateY(0px)");
     expect(carryTransform(412.5)).toBe("translateY(412.5px)");
   });
-  it("covers a modal far taller than any card's", () => {
-    expect(FOLLOW_RANGE_PX).toBeGreaterThan(20_000);
+  it("keeps one key while the dialog scrolls the slot, and a new one when the slot moves in the content", () => {
+    expect(parkKey(slot(200), 0, "a", false)).toBe(parkKey(slot(-100), 300, "a", false));
+    expect(parkKey(slot(200.004), 0, "a", false)).toBe(parkKey(slot(200), 0, "a", false));
+    expect(parkKey(slot(180), 0, "a", false)).not.toBe(parkKey(slot(200), 0, "a", false));
+    expect(parkKey(slot(200), 0, "b", false)).not.toBe(parkKey(slot(200), 0, "a", false));
   });
-  it("runs only where the browser has scroll-driven animations and the layer attached to the modal's timeline", () => {
-    expect(followable(true, true)).toBe(true);
-    expect(followable(true, false)).toBe(false);
-    expect(followable(false, true)).toBe(false);
+  it("draws a clipped card again on every scroll", () => {
+    expect(parkKey(slot(200), 0, "a", true)).not.toBe(parkKey(slot(-100), 300, "a", true));
+  });
+  it("calls a card whole only with every corner in the viewport", () => {
+    const quad = (x: number, y: number): Quad => [
+      { x, y },
+      { x: x + 240, y },
+      { x: x + 240, y: y + 320 },
+      { x, y: y + 320 },
+    ];
+    expect(wholeIn(quad(100, 100), 1440, 900)).toBe(true);
+    expect(wholeIn(quad(100, -1), 1440, 900)).toBe(false);
+    expect(wholeIn(quad(100, 600), 1440, 900)).toBe(false);
+    expect(wholeIn(quad(1300, 100), 1440, 900)).toBe(false);
   });
 });

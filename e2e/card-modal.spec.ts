@@ -12,12 +12,19 @@ const keys = Object.keys(siteContent.cards) as CardKey[];
 const within = (actual: number, expected: number) => Math.abs(actual - expected) < 1;
 
 // The flown card's four corners against its slot's box: where it parked, or
-// with now, where the scene draws it this frame (parked, its pose is the slot's,
-// flat, so its corners are the parked card's).
+// with now, where it shows this frame (parked, its pose is the slot's, flat, so
+// its corners are the parked card's). The scene's quad is in the flown canvas's
+// own fixed coordinates; parked in a scrolled dialog the canvas sits off them
+// by however far its layer has been carried, so that is added back.
 async function landsOnSlot(page: import("@playwright/test").Page, slot: import("@playwright/test").Locator, { now = false } = {}) {
   const quad = await page.evaluate((current) => {
     const flight = (window as HookWindow).__coilFlight!;
-    return (current ? flight.scene.flown()!.quad : flight.log.findLast((m) => m.name === "clone-parked")!.data!.quad) as { x: number; y: number }[];
+    if (!current) return flight.log.findLast((m) => m.name === "clone-parked")!.data!.quad as { x: number; y: number }[];
+    const canvas = document.querySelector<HTMLCanvasElement>("[data-flying-tile] canvas")!;
+    const shown = canvas.getBoundingClientRect();
+    const dx = shown.left - parseFloat(canvas.style.left);
+    const dy = shown.top - parseFloat(canvas.style.top);
+    return (flight.scene.flown()!.quad as { x: number; y: number }[]).map((p) => ({ x: p.x + dx, y: p.y + dy }));
   }, now);
   const box = (await slot.boundingBox())!;
   const xs = quad.map((p) => p.x);

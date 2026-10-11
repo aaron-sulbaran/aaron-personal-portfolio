@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useReducedMotion } from "framer-motion";
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
+import { createPortal } from "react-dom";
 import type { Quad } from "@/lib/coil/geometry";
 import { homography, matrix3d, type Rect } from "@/lib/coil/flight";
 import { siteEase } from "@/lib/coil/motion";
@@ -10,7 +11,7 @@ import { COIL } from "@/lib/coil/constants";
 import { cardPhotoInset } from "@/lib/coil/cardFace";
 import { CARD_PICTURE_SIZES } from "@/lib/photoSizes";
 import { flightProbe } from "@/lib/coil/flightProbe";
-import { carryTransform, followable } from "@/lib/coil/scrollFollow";
+import { carryTransform, parkKey, wholeIn } from "@/lib/coil/scrollFollow";
 import type { CoilFlightHandle, CoilSceneApi } from "@/components/coil/CoilScene";
 
 export type FlightPhase = "out" | "closing";
@@ -27,12 +28,11 @@ export type FlightPhase = "out" | "closing";
 // tweens in) and while parked (a resize, the dialog scrolling); the seat is
 // read from the frozen scene on every frame, so a resize still lands.
 //
-// Parked in a dialog that scrolls, the card is drawn again where the slot has
-// gone, but only a frame after the compositor moved the slot. So the layer
-// also carries a scroll-driven animation (app/globals.css, lib/coil/scrollFollow.ts)
-// that moves it with the dialog in the same frame; the card is still the scene's
-// own render, only its layer moves. Where the browser has no scroll-driven
-// animations the redraw alone follows.
+// Parked, the layer moves into the dialog's scrolling content
+// (lib/coil/scrollFollow.ts), so the browser carries the card with its slot in
+// the frame the dialog scrolls; a redraw would land a frame behind. It goes
+// back to the body on the first frame home, since the dialog leaves before the
+// card does. The card is still the scene's own render, only its layer moves.
 //
 // Once parked, a photo lays a sharp copy of itself exactly over the painted
 // one (the texture is 384px wide; the modal slot is larger), and takes it away
@@ -59,30 +59,47 @@ const FLIGHT_MS = 520;
 const SHARP_IN_MS = 300;
 const SHARP_OUT_MS = 110;
 
-// The slot's box and the scroll offset of the dialog it sits in, read together.
-function slotRead(kind: "photo" | "work"): { rect: Rect | null; scroll: number } {
+// The slot's box, the dialog it sits in and that dialog's scroll offset, read together.
+function slotRead(kind: "photo" | "work"): { rect: Rect | null; dialog: HTMLElement | null; scroll: number } {
   const slot = document.querySelector<HTMLElement>(`[data-tile-slot="${kind}"]`);
-  if (!slot) return { rect: null, scroll: 0 };
+  if (!slot) return { rect: null, dialog: null, scroll: 0 };
   const r = slot.getBoundingClientRect();
-  const scroll = slot.closest<HTMLElement>("[data-card-modal]")?.scrollTop ?? 0;
-  if (r.width <= 0 || r.height <= 0) return { rect: null, scroll };
-  return { rect: { left: r.left, top: r.top, width: r.width, height: r.height }, scroll };
+  const dialog = slot.closest<HTMLElement>("[data-card-modal]");
+  const scroll = dialog?.scrollTop ?? 0;
+  if (r.width <= 0 || r.height <= 0) return { rect: null, dialog, scroll };
+  return { rect: { left: r.left, top: r.top, width: r.width, height: r.height }, dialog, scroll };
+}
+
+// The flight's own layer, so it can move between the body and a dialog under
+// React's portal. Absolute at the origin of whatever holds it, it takes no
+// room in the dialog's flex row; its canvas is fixed, to the viewport in the
+// body and to the carry's transform once parked.
+function createLayer() {
+  const layer = document.createElement("div");
+  Object.assign(layer.style, { position: "absolute", left: "0", top: "0", zIndex: "55", pointerEvents: "none" });
+  return layer;
 }
 
 export function FlyingTile(props: FlyingTileProps) {
   const prefersReducedMotion = useReducedMotion();
   const mountRef = useRef<HTMLDivElement>(null);
-  const followRef = useRef<HTMLDivElement>(null);
   const carryRef = useRef<HTMLDivElement>(null);
   const sharpRef = useRef<HTMLDivElement>(null);
+  const sharpFadeRef = useRef<HTMLDivElement>(null);
   const handleRef = useRef<CoilFlightHandle | null>(null);
   const progressRef = useRef(0);
   const liveRef = useRef(props);
+  const [layer] = useState(createLayer);
   const [sharpLoaded, setSharpLoaded] = useState(false);
 
   useLayoutEffect(() => {
     liveRef.current = props;
   });
+
+  useLayoutEffect(() => {
+    document.body.appendChild(layer);
+    return () => layer.remove();
+  }, [layer]);
 
   // Before paint on mount: the scene draws the card on its seat in the flown
   // canvas, then hides its mesh, in one frame.
@@ -112,7 +129,7 @@ export function FlyingTile(props: FlyingTileProps) {
     let elapsed = 0;
     let last = performance.now();
     let parkedAt = "";
-    let following = false;
+    let clipped = false;
     let first = true;
     const { kind, phase } = liveRef.current;
     // Home from wherever the card is: parked in the slot, or still on its
@@ -128,26 +145,30 @@ export function FlyingTile(props: FlyingTileProps) {
       sharp.style.visibility = m ? "visible" : "hidden";
       if (m) sharp.style.transform = matrix3d(m);
     };
-    // The layer rides the dialog's scroll on the compositor from here, and
-    // carries the offset the card was drawn at. A browser whose animation did
-    // not take the dialog's timeline keeps the redraw alone.
-    const stopFollowing = () => {
-      following = false;
-      const follow = followRef.current;
-      if (follow) delete follow.dataset.following;
-      if (carryRef.current) carryRef.current.style.transform = "";
+    // Parked: drawn on the slot as it is now, the layer carrying the scroll
+    // offset of the draw. Each move of the layer is paired with a draw in one
+    // task, so no frame shows the card drawn for the other place.
+    const drawParked = (rect: Rect, dialog: HTMLElement, scroll: number, dt: number) => {
+      if (layer.parentElement !== dialog) dialog.appendChild(layer);
+      const quad = handle.draw(1, rect, dt);
+      if (!quad) return false;
+      place(quad);
+      clipped = !wholeIn(quad, window.innerWidth, window.innerHeight);
+      parkedAt = parkKey(rect, scroll, handle.stamp(), clipped);
+      if (carryRef.current) carryRef.current.style.transform = carryTransform(scroll);
+      return true;
     };
-    const startFollowing = (scroll: number) => {
-      const follow = followRef.current;
-      const carry = carryRef.current;
-      if (!follow || !carry) return;
-      follow.dataset.following = "true";
-      const ScrollTimelineType = (window as unknown as { ScrollTimeline?: abstract new () => AnimationTimeline }).ScrollTimeline;
-      const supported = ScrollTimelineType !== undefined;
-      const attached = supported && follow.getAnimations().some((animation) => animation.timeline instanceof ScrollTimelineType);
-      if (!followable(supported, attached)) return stopFollowing();
-      following = true;
-      carry.style.transform = carryTransform(scroll);
+    // Back to the body, fixed to the viewport. Leaving the document cancels
+    // the sharp copy's running fade, so it runs again from where it was.
+    const unpark = () => {
+      if (layer.parentElement === document.body) return;
+      const fade = sharpFadeRef.current;
+      const style = fade ? getComputedStyle(fade) : null;
+      const opacity = style ? Number(style.opacity) : 0;
+      const easing = style?.transitionTimingFunction ?? "ease-out";
+      document.body.appendChild(layer);
+      if (carryRef.current) carryRef.current.style.transform = "";
+      if (fade && opacity > 0) fade.animate([{ opacity }, { opacity: 0 }], { duration: SHARP_OUT_MS, easing });
     };
     if (phase === "closing") handle.close();
     const lost = () => {
@@ -163,7 +184,7 @@ export function FlyingTile(props: FlyingTileProps) {
       const t = duration ? Math.min(1, elapsed / duration) : 1;
       const eased = siteEase(t);
       if (phase === "out") {
-        const { rect, scroll } = slotRead(kind);
+        const { rect, dialog, scroll } = slotRead(kind);
         if (!done) {
           const e = from + (1 - from) * eased;
           progressRef.current = e;
@@ -174,20 +195,12 @@ export function FlyingTile(props: FlyingTileProps) {
           if (t >= 1) {
             done = true;
             handle.arrive();
-            startFollowing(scroll);
+            if (rect && dialog && !drawParked(rect, dialog, scroll, 0)) return lost();
             probe?.mark("clone-parked", { quad });
             live.onFlyOutComplete();
           }
-        } else {
-          // Parked: the card follows its slot.
-          const at = rect ? [rect.left, rect.top, rect.width, rect.height, scroll, handle.stamp()].join(",") : "";
-          if (at !== parkedAt) {
-            parkedAt = at;
-            const quad = handle.draw(1, rect, dt);
-            if (!quad) return lost();
-            place(quad);
-            if (following && carryRef.current) carryRef.current.style.transform = carryTransform(scroll);
-          }
+        } else if (rect && dialog && (layer.parentElement !== dialog || parkKey(rect, scroll, handle.stamp(), clipped) !== parkedAt)) {
+          if (!drawParked(rect, dialog, scroll, dt)) return lost();
         }
       } else {
         const e = t >= 1 ? 0 : from * (1 - eased);
@@ -195,7 +208,7 @@ export function FlyingTile(props: FlyingTileProps) {
         // The slot end of the path holds where the card left it (the panel
         // is on its way out): the slot as it is on the first frame home, after
         // any scrolling.
-        if (first) stopFollowing();
+        if (first) unpark();
         const quad = handle.draw(e, first ? slotRead(kind).rect : null, dt);
         first = false;
         if (!quad) return lost();
@@ -214,50 +227,50 @@ export function FlyingTile(props: FlyingTileProps) {
     };
     raf = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf);
-  }, [props.phase, prefersReducedMotion]);
+  }, [props.phase, prefersReducedMotion, layer]);
 
   // The inset at the size the card was painted (the scene's render budget).
   const inset = cardPhotoInset(COIL.lab.textureSize);
   const showSharp = props.revealed && props.kind === "photo" && sharpLoaded;
 
-  return (
-    <div aria-hidden="true" data-flying-tile="" className="pointer-events-none fixed inset-0 z-[55]">
-      <div ref={followRef} data-flying-follow="" className="absolute inset-0">
-        <div ref={carryRef} className="absolute inset-0">
-          <div ref={mountRef} />
-          {props.kind === "photo" && props.photoSrc && (
+  return createPortal(
+    <div aria-hidden="true" data-flying-tile="">
+      <div ref={carryRef} className="absolute inset-0">
+        <div ref={mountRef} />
+        {props.kind === "photo" && props.photoSrc && (
+          <div
+            ref={sharpRef}
+            className="fixed left-0 top-0 origin-top-left will-change-transform"
+            style={{ width: BOX_W, height: BOX_H, visibility: "hidden" }}
+          >
             <div
-              ref={sharpRef}
-              className="fixed left-0 top-0 origin-top-left will-change-transform"
-              style={{ width: BOX_W, height: BOX_H, visibility: "hidden" }}
+              ref={sharpFadeRef}
+              className="absolute overflow-hidden transition-opacity [transition-timing-function:var(--ease-out)]"
+              style={{
+                left: `${inset.x * 100}%`,
+                top: `${inset.y * 100}%`,
+                right: `${inset.x * 100}%`,
+                bottom: `${inset.y * 100}%`,
+                borderRadius: inset.radius * BOX_W,
+                opacity: showSharp ? 1 : 0,
+                transitionDuration: `${showSharp ? SHARP_IN_MS : SHARP_OUT_MS}ms`,
+              }}
             >
-              <div
-                className="absolute overflow-hidden transition-opacity [transition-timing-function:var(--ease-out)]"
-                style={{
-                  left: `${inset.x * 100}%`,
-                  top: `${inset.y * 100}%`,
-                  right: `${inset.x * 100}%`,
-                  bottom: `${inset.y * 100}%`,
-                  borderRadius: inset.radius * BOX_W,
-                  opacity: showSharp ? 1 : 0,
-                  transitionDuration: `${showSharp ? SHARP_IN_MS : SHARP_OUT_MS}ms`,
-                }}
-              >
-                <Image
-                  src={props.photoSrc}
-                  alt=""
-                  fill
-                  quality={90}
-                  sizes={CARD_PICTURE_SIZES}
-                  className="object-cover"
-                  style={{ objectPosition: inset.objectPosition }}
-                  onLoad={() => setSharpLoaded(true)}
-                />
-              </div>
+              <Image
+                src={props.photoSrc}
+                alt=""
+                fill
+                quality={90}
+                sizes={CARD_PICTURE_SIZES}
+                className="object-cover"
+                style={{ objectPosition: inset.objectPosition }}
+                onLoad={() => setSharpLoaded(true)}
+              />
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
-    </div>
+    </div>,
+    layer,
   );
 }
