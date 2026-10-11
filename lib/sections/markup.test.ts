@@ -69,7 +69,7 @@ describe("Who I am", () => {
   const labels = blocks.flatMap((block) => [block.label, ...(block.sub ? [block.sub.label] : [])]);
 
   it("is the page's #about, the About screen and Right now sections gone", () => {
-    expect(html).toMatch(new RegExp(`^<section id="about" aria-label="${label}"`));
+    expect(html).toMatch(new RegExp(`^<section id="about" data-wave-anchor="who" aria-label="${label}"`));
     expect(html).not.toContain('id="up-to-now"');
     expect(html).not.toContain("data-up-to-now-slot");
     expect(html).not.toContain('data-sections-block="item"');
@@ -103,7 +103,7 @@ describe("Connect", () => {
   const { label, heading } = siteContent.connect;
 
   it("is the page's #connect, named by its label for assistive tech, with the big heading first and no kicker drawn", () => {
-    expect(html).toMatch(new RegExp(`^<section id="connect" aria-label="${label}"`));
+    expect(html).toMatch(new RegExp(`^<section id="connect" data-wave-anchor="connect" aria-label="${label}"`));
     expect(html).toContain(`<h2 class="font-display text-section" data-sections-block="heading" data-sections-split="lines">${heading}</h2>`);
     expect(html).not.toContain('data-sections-block="kicker"');
     expect(html).not.toContain("data-sections-label");

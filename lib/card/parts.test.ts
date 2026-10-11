@@ -18,12 +18,16 @@ const face = (key: CardKey) => {
   if (!f) throw new Error(`${key} is not on the strand`);
   return renderToStaticMarkup(createElement(CardFace, { face: f }));
 };
+// Every launch logo card now has a dark file or is its own ground, so the plate rule is read on a stand-in.
+const unplated = { kind: "logo", logo: { src: "/work/logos/stand-in.svg", srcDark: null, width: 418, height: 150 }, tile: "plain" } as const;
 const header = (cardKey: CardKey, compact: boolean) => renderToStaticMarkup(createElement(CardHeader, { cardKey, renderMedia: true, compact }));
 
 describe("the header tile's face", () => {
-  it("puts a logo with no dark file on a plate that shows only in the dark theme, never IEEE's square or Talos's anvil", () => {
-    expect(face("capital-one")).toContain('data-plate=""');
-    expect(face("capital-one")).toContain("dark:block");
+  it("puts a logo with no dark file on a plate that shows only in the dark theme, never a logo with a dark file, IEEE's square or Talos's anvil", () => {
+    const plated = renderToStaticMarkup(createElement(CardFace, { face: unplated }));
+    expect(plated).toContain('data-plate=""');
+    expect(plated).toContain("dark:block");
+    expect(face("capital-one")).not.toContain("data-plate");
     expect(face("ieee")).not.toContain("data-plate");
     expect(face("talos")).not.toContain("data-plate");
     expect(face("talos")).toContain("bg-[color:var(--card-anvil)]");
@@ -66,10 +70,8 @@ describe("the header tile's face matches the painter's geometry", () => {
     expect((num(down) / 100) * painted.h).toBeCloseTo(dims.innerRadius, 6);
   });
   it("rounds the dark theme's plate with the inset's corners", () => {
-    const [, width, height, across, down] = face("capital-one").match(/style="width:([\d.]+)%;height:([\d.]+)%;border-radius:([\d.]+)% \/ ([\d.]+)%" data-plate=""/) ?? [];
-    const capital = strandCardByKey.get("capital-one")?.face;
-    if (capital?.kind !== "logo") throw new Error("capital-one is not a logo face");
-    const painted = logoBox(capital.logo.width / capital.logo.height, textureW, COIL.face);
+    const [, width, height, across, down] = renderToStaticMarkup(createElement(CardFace, { face: unplated })).match(/style="width:([\d.]+)%;height:([\d.]+)%;border-radius:([\d.]+)% \/ ([\d.]+)%" data-plate=""/) ?? [];
+    const painted = logoBox(unplated.logo.width / unplated.logo.height, textureW, COIL.face);
     const pad = textureW * COIL.face.plateInset;
     const plateW = (num(width) / 100) * textureW;
     const plateH = (num(height) / 100) * textureH;
@@ -91,11 +93,12 @@ describe("the header tile's face matches the painter's geometry", () => {
       if (!f) throw new Error(`${key} is not on the strand`);
       return renderToStaticMarkup(createElement(Retuned, { face: f }));
     };
+    const retunedPlate = renderToStaticMarkup(createElement(Retuned, { face: unplated }));
     vi.doUnmock("@/lib/coil/constants");
     vi.resetModules();
     expect(retuned("this-site")).toContain("width:50%");
     expect(retuned("jobs")).toContain("max-width:40%;max-height:40%");
-    expect(face("capital-one")).not.toBe(retuned("capital-one"));
+    expect(renderToStaticMarkup(createElement(CardFace, { face: unplated }))).not.toBe(retunedPlate);
   });
 });
 

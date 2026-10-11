@@ -16,7 +16,7 @@ const SUB_BODY = "text-balance text-lg leading-[1.6] text-foreground md:text-xl 
 export function WhoIAm() {
   const { label, heading, blocks, smallPrint } = siteContent.whoIAm;
   return (
-    <section id="about" aria-label={label} className="relative w-full scroll-mt-24 px-6 py-24 md:px-10 md:py-40">
+    <section id="about" data-wave-anchor="who" aria-label={label} className="relative w-full scroll-mt-24 px-6 py-24 md:px-10 md:py-40">
       <div className="mx-auto grid max-w-6xl grid-cols-1 gap-10 md:grid-cols-12 md:gap-16">
         <StickyColumn className="md:col-span-4">
           <div className="flex flex-col gap-6">
@@ -28,13 +28,13 @@ export function WhoIAm() {
           {blocks.map((block) => (
             <div key={block.label} className="flex flex-col gap-5">
               <Kicker label={block.label} />
-              <Block kind="body" as="p" className={BODY}>
+              <Block kind="body" as="p" className={BODY} data-wave-words>
                 <InlineCopy source={block.body} />
               </Block>
               {block.sub && (
                 <div className="mt-2 flex flex-col gap-4">
                   <Kicker label={block.sub.label} />
-                  <Block kind="body" as="p" className={SUB_BODY}>
+                  <Block kind="body" as="p" className={SUB_BODY} data-wave-words>
                     <InlineCopy source={block.sub.body} />
                   </Block>
                 </div>

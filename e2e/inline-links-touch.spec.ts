@@ -64,3 +64,16 @@ test("inline links (touch): a tap opens the definition and its close button clos
   await dialog.getByRole("button", { name: siteContent.modals.closeAriaLabel }).tap();
   await expect(dialog).toBeHidden();
 });
+
+test("inline links (touch): a tap pins a tip that holds a link, shows the link, and the link opens a new tab", async ({ page, offsite }) => {
+  await openFixture(page, "My gamer tag growing up: [VoltaageArc](tip:voltaage).");
+  await page.getByRole("button", { name: "VoltaageArc" }).tap();
+  await expect(bubble(page)).toHaveAttribute("data-mode", "tap");
+  const link = bubble(page).getByRole("link", { name: /VoltaageArc on most platforms/ });
+  await expect(link).toBeVisible();
+  await page.waitForTimeout(300);
+  const popup = page.waitForEvent("popup");
+  await link.tap();
+  await (await popup).close();
+  await expect.poll(() => offsite).toContain(register.tip.voltaage.link!.href);
+});

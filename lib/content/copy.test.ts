@@ -91,11 +91,12 @@ describe("where the links sit, pinned as raw markup", () => {
     );
   });
 
-  it("keeps the mark card's two tips on their approved words, and Voltaage plain", () => {
+  it("keeps the mark card's four paragraphs on my words and their links", () => {
     expect(mark.lines).toEqual([
-      "It represents a few things: Catatumbo lightning, over Lake Maracaibo, where I was born. Most people have never heard of it, so I hope you learned something new.",
-      "The A is me. The bolt (which forms the S) is also where my gamer tag comes from, Voltaage: [voltage](tip:voltage), + two [A's](tip:two-as).",
-      "I always thought Voltaage would be an awesome streamer name. I took a different career path.",
+      "Here's my thought process behind the logo. The A is me. The bolt (which forms the S in my last name) is a nod to a few things:",
+      "My gamer tag growing up: [VoltaageArc](tip:voltaage) ([Voltage](def:voltage) + [two A's](tip:two-as) + [Arc](def:arc))",
+      "[Catatumbo Lightning](pop:catatumbo-lightning), also known as \"The Everlasting Storm\", is an atmospheric phenomenon that occurs over [Lake Maracaibo](pop:lake-maracaibo) (where I was born), causing persistent lightning storms year-round. Hope you learned something new.",
+      "My major: [Electrical and Computer Engineering](pop:ut-ece-logo)... this one is pretty self explanatory.",
     ]);
   });
 });
@@ -118,6 +119,10 @@ describe("Connect", () => {
     );
   });
 
+  it("draws each link row as its platform's mark, and keeps the platform name for assistive tech", () => {
+    expect(connect.links.map((link) => [link.label, link.icon])).toEqual([["LinkedIn", "linkedin"], ["GitHub", "github"], ["Email", "mail"], ["Instagram", "instagram"], ["X", "x"]]);
+  });
+
   it("links the calendar, the matcha pop and the killer-drones footnote", () => {
     expect(referenced(connect.body)).toEqual(["pop:matcha", "tip:killer-drones"]);
     expect(externals(connect.body)).toEqual(["https://cal.com/aaron-sulbaran"]);
@@ -129,11 +134,11 @@ describe("Connect", () => {
 
   it("lists the five links in order with the handle each shows, and drops the school address", () => {
     expect(connect.links).toEqual([
-      { key: "linkedin", label: "LinkedIn", handle: "in/aaron-sulbaran", href: "https://www.linkedin.com/in/aaron-sulbaran/" },
-      { key: "github", label: "GitHub", handle: "aaron-sulbaran", href: "https://github.com/aaron-sulbaran" },
-      { key: "email", label: "Email", handle: "aarondsulbaran@gmail.com", href: "mailto:aarondsulbaran@gmail.com" },
-      { key: "instagram", label: "Instagram", handle: "aaron.sulbaran", href: "https://www.instagram.com/aaron.sulbaran/" },
-      { key: "x", label: "X", handle: "@imaaronsulbaran", href: "https://x.com/imaaronsulbaran" },
+      { key: "linkedin", icon: "linkedin", label: "LinkedIn", handle: "in/aaron-sulbaran", href: "https://www.linkedin.com/in/aaron-sulbaran/" },
+      { key: "github", icon: "github", label: "GitHub", handle: "aaron-sulbaran", href: "https://github.com/aaron-sulbaran" },
+      { key: "email", icon: "mail", label: "Email", handle: "aarondsulbaran@gmail.com", href: "mailto:aarondsulbaran@gmail.com" },
+      { key: "instagram", icon: "instagram", label: "Instagram", handle: "aaron.sulbaran", href: "https://www.instagram.com/aaron.sulbaran/" },
+      { key: "x", icon: "x", label: "X", handle: "@imaaronsulbaran", href: "https://x.com/imaaronsulbaran" },
     ]);
     expect(JSON.stringify(connect)).not.toContain("utexas.edu");
   });
@@ -149,6 +154,11 @@ describe("the music band", () => {
     expect(listen.declinedNote).toBe("No problem, it's here if you change your mind.");
   });
 
+  it("drops the evolving isle sentence on phones, which have no pill", () => {
+    expect(listen.acceptedNotePhone).toBe("Enjoy!");
+    expect(referenced(listen.acceptedNotePhone)).toEqual([]);
+  });
+
   it("leaves the paused note and the controls as they were", () => {
     expect(listen.pausedNote).toBe("Paused. Resume whenever you like.");
     expect([listen.pause, listen.resume, listen.freeze, listen.unfreeze]).toEqual(["Pause", "Resume", "Freeze the wave", "Let the wave move"]);
@@ -162,18 +172,21 @@ describe("the music band", () => {
 
 describe("the mark card", () => {
   it("tells the story in my words, the subtitle lowercase as typed", () => {
-    expect(mark.title).toBe("I wanted a personal logo, so I made one");
+    expect(mark.title).toBe("I made myself a logo");
     expect(mark.subtitle).toBe("good job, you found my easter egg!");
     expect(mark.lines.map(visibleText)).toEqual([
-      "It represents a few things: Catatumbo lightning, over Lake Maracaibo, where I was born. Most people have never heard of it, so I hope you learned something new.",
-      "The A is me. The bolt (which forms the S) is also where my gamer tag comes from, Voltaage: voltage, + two A's.",
-      "I always thought Voltaage would be an awesome streamer name. I took a different career path.",
+      "Here's my thought process behind the logo. The A is me. The bolt (which forms the S in my last name) is a nod to a few things:",
+      "My gamer tag growing up: VoltaageArc (Voltage + two A's + Arc)",
+      "Catatumbo Lightning, also known as \"The Everlasting Storm\", is an atmospheric phenomenon that occurs over Lake Maracaibo (where I was born), causing persistent lightning storms year-round. Hope you learned something new.",
+      "My major: Electrical and Computer Engineering... this one is pretty self explanatory.",
     ]);
     expect(mark.button).toBe("Keep exploring!");
   });
 
-  it("links only the approved tips: voltage and two-as", () => {
-    expect(mark.lines.flatMap(referenced)).toEqual(["tip:voltage", "tip:two-as"]);
+  it("links the gamer tag tips and definitions, and the three photo pops", () => {
+    expect(mark.lines.flatMap(referenced)).toEqual([
+      "tip:voltaage", "def:voltage", "tip:two-as", "def:arc", "pop:catatumbo-lightning", "pop:lake-maracaibo", "pop:ut-ece-logo",
+    ]);
   });
 });
 
@@ -210,7 +223,7 @@ describe("what this copy never references", () => {
   it("uses no tip still marked proposed, and not the parentheses tip", () => {
     const proposed = Object.entries(register.tip).filter(([, entry]) => entry.proposed).map(([key]) => `tip:${key}`);
     const targets = leaves.flatMap((leaf) => referenced(leaf.text));
-    expect(proposed).toEqual(["tip:voltaage"]);
+    expect(proposed).toEqual([]);
     expect(targets.filter((target) => proposed.includes(target) || target === "tip:parentheses")).toEqual([]);
   });
 

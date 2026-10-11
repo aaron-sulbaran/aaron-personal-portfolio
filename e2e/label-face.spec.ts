@@ -84,7 +84,7 @@ test("label face: hints and the credit prose are Profa Bold, muted", async ({ pa
   await expectLabel(mentorship.getByText(siteContent.modals.closeHintKeyboard, { exact: true }), "label", "muted");
 });
 
-test("label face: Who I am's block kickers and the Connect labels are Profa Bold, muted, and no section draws a kicker over its heading", async ({ page }) => {
+test("label face: Who I am's block kickers and the Connect rows draw an icon with the platform name for assistive tech, and no section draws a kicker over its heading", async ({ page }) => {
   await page.goto("/");
   await settled(page);
   const { whoIAm } = siteContent;
@@ -97,7 +97,11 @@ test("label face: Who I am's block kickers and the Connect labels are Profa Bold
       await expectLabel(page.locator("#about").getByText(label, { exact: true }), "label", "muted");
     }
   }
-  await expectLabel(page.locator("#connect li a [data-sections-rowinner] > span").first(), "label", "muted");
+  for (const [index, link] of siteContent.connect.links.entries()) {
+    const row = page.locator("#connect li > a").nth(index);
+    await expect(row.locator("svg").first(), `${link.label} icon`).toBeVisible();
+    await expect(row.locator(".sr-only").first(), link.label).toHaveText(link.label);
+  }
 });
 
 test("label face: the nav bar, the Menu pill and the panel are Profa Bold in the accent", async ({ page }) => {

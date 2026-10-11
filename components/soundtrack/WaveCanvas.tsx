@@ -19,12 +19,7 @@ export function WaveCanvas({ active, frozen }: { active: boolean; frozen: boolea
     const canvas = canvasRef.current;
     if (!canvas) return;
     const conductor = acquireWaveConductor(still);
-    const view = createWaveView(canvas, conductor, {
-      kind: "band",
-      still,
-      avoidRoot: canvas.closest("section") ?? document,
-      alphas: { muted: 0.55, accent: 0.9 },
-    });
+    const view = createWaveView(canvas, conductor, still);
     if (view) conductor.attach(view);
     viewRef.current = view;
     conductorRef.current = conductor;

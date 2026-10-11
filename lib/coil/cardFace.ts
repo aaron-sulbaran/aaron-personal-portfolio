@@ -48,6 +48,12 @@ export function needsGround(logo: { srcDark: string | null; opaque?: boolean }, 
   return dark && tile === "plain" && logo.srcDark === null && !logo.opaque;
 }
 
+// The colour an opaque logo gives the whole card face, so its square runs full bleed
+// to the rim; null where the face keeps its pane colour.
+export function faceGround(logo: { opaque?: boolean; ground?: string }): string | null {
+  return logo.opaque && logo.ground ? logo.ground : null;
+}
+
 // The jobs card: count discs on the card's own diagonal, bottom left (the oldest)
 // to top right (the newest), diameters from `from` to `to` card widths, `gap`
 // apart, the group centred. In card widths from the card's top left; the card is

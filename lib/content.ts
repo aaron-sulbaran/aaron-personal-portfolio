@@ -48,6 +48,8 @@ export const siteContent = {
     accept: "Play it",
     decline: "Not now",
     acceptedNote: "Enjoy! Control it from the [evolving isle](tip:evolving-isle).",
+    // Phones have no pill, so there is no isle to point at.
+    acceptedNotePhone: "Enjoy!",
     declinedNote: "No problem, it's here if you change your mind.",
     pausedNote: "Paused. Resume whenever you like.",
     pause: "Pause",
@@ -256,18 +258,19 @@ export const siteContent = {
   // Connect (docs/content/connect-footer-band.md, approved 2026-10-08): the
   // body carries the calendar link, the matcha pop and the killer-drones
   // footnote; "Book some time" is the one big link; handle is what a link shows
-  // beside its name.
+  // beside its name; icon is the brand mark the row draws in place of the name, which stays
+  // in the row for assistive tech.
   connect: {
     label: "Connect",
     heading: "wanna chat?",
     body: "I check everything (or Talos does) so take your pick. If you want to talk screen to screen, [grab a time on my calendar](https://cal.com/aaron-sulbaran). If you're in my city, let's grab a coffee ([or matcha](pop:matcha)). I take coffee chats with anyone, no matter what you're building[*](tip:killer-drones).",
     primary: { label: "Book some time", href: "https://cal.com/aaron-sulbaran" },
     links: [
-      { key: "linkedin", label: "LinkedIn", handle: "in/aaron-sulbaran", href: "https://www.linkedin.com/in/aaron-sulbaran/" },
-      { key: "github", label: "GitHub", handle: "aaron-sulbaran", href: "https://github.com/aaron-sulbaran" },
-      { key: "email", label: "Email", handle: "aarondsulbaran@gmail.com", href: "mailto:aarondsulbaran@gmail.com" },
-      { key: "instagram", label: "Instagram", handle: "aaron.sulbaran", href: "https://www.instagram.com/aaron.sulbaran/" },
-      { key: "x", label: "X", handle: "@imaaronsulbaran", href: "https://x.com/imaaronsulbaran" },
+      { key: "linkedin", icon: "linkedin" as const, label: "LinkedIn", handle: "in/aaron-sulbaran", href: "https://www.linkedin.com/in/aaron-sulbaran/" },
+      { key: "github", icon: "github" as const, label: "GitHub", handle: "aaron-sulbaran", href: "https://github.com/aaron-sulbaran" },
+      { key: "email", icon: "mail" as const, label: "Email", handle: "aarondsulbaran@gmail.com", href: "mailto:aarondsulbaran@gmail.com" },
+      { key: "instagram", icon: "instagram" as const, label: "Instagram", handle: "aaron.sulbaran", href: "https://www.instagram.com/aaron.sulbaran/" },
+      { key: "x", icon: "x" as const, label: "X", handle: "@imaaronsulbaran", href: "https://x.com/imaaronsulbaran" },
     ],
   },
   // Holding page (components/Holding.tsx), served at / only when
@@ -570,17 +573,17 @@ export const siteContent = {
     { src: "/photos/uncs-grad.jpeg", width: 627, height: 836 },
   ],
   // The mark's card (components/mark/MarkCard.tsx), opened by holding the
-  // top-left mark (docs/content/mark-card.md, approved 2026-10-08). The subtitle
-  // is lowercase as I typed it. The last line links no tip on "Voltaage": that
-  // tip is still proposed in the register.
+  // top-left mark. The subtitle is lowercase as I typed it. The title and the
+  // four paragraphs are mine verbatim; the inline links are in the register.
   mark: {
     dialogLabel: "The mark",
-    title: "I wanted a personal logo, so I made one",
+    title: "I made myself a logo",
     subtitle: "good job, you found my easter egg!",
     lines: [
-      "It represents a few things: Catatumbo lightning, over Lake Maracaibo, where I was born. Most people have never heard of it, so I hope you learned something new.",
-      "The A is me. The bolt (which forms the S) is also where my gamer tag comes from, Voltaage: [voltage](tip:voltage), + two [A's](tip:two-as).",
-      "I always thought Voltaage would be an awesome streamer name. I took a different career path.",
+      "Here's my thought process behind the logo. The A is me. The bolt (which forms the S in my last name) is a nod to a few things:",
+      "My gamer tag growing up: [VoltaageArc](tip:voltaage) ([Voltage](def:voltage) + [two A's](tip:two-as) + [Arc](def:arc))",
+      "[Catatumbo Lightning](pop:catatumbo-lightning), also known as \"The Everlasting Storm\", is an atmospheric phenomenon that occurs over [Lake Maracaibo](pop:lake-maracaibo) (where I was born), causing persistent lightning storms year-round. Hope you learned something new.",
+      "My major: [Electrical and Computer Engineering](pop:ut-ece-logo)... this one is pretty self explanatory.",
     ],
     button: "Keep exploring!",
   },

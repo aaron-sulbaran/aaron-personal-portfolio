@@ -11,7 +11,7 @@ The site is one scrolling document at `/`; the old Work and About pages are now 
 - **The Coil.** The hero is a WebGL helix of photo and work cards riding a diagonal endless conveyor, over a slow shader field, with my name sitting behind it. On a laptop you hover and wheel to spin it; on a phone you drag. Vertical page scroll is never hijacked, and with reduced motion on you get a still picture of the scene instead.
 - **Card modals.** Click a card and it flies into a detail view. The card that lands is the exact card that was drawn in the scene, so the flight has no seam. Photos get a gallery, work cards get the story and the links.
 - **The book.** Under the hero is a two-column text table of the same cards. It is the plain, fast, searchable way to read what the Coil shows off.
-- **The soundtrack.** A band with a playback pill and a waveform that lives only inside it. The tracks right now are placeholders while I sort out music.
+- **The soundtrack.** A band with a playback pill and a dotted waveform that, once you answer it, follows you down the page: it moves with the music if you hit play and just breathes if you don't. The tracks right now are placeholders while I sort out music.
 - **Who I am.** A short section in my own words, with inline links that open definitions, tips and photo pops instead of sending you away.
 - **Proof of work.** A numbers strip with my GitHub contribution skyline, my commits drawn as a skyline.
 - **Connect.** The section where I ask whether you want to chat, and how to book some time.

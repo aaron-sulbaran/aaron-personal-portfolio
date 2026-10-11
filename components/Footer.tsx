@@ -13,7 +13,7 @@ export function Footer() {
   const { wordmark, dropPeriod, tagline, copyright } = siteContent.footer;
   return (
     <FooterStage text={wordmark} eggLabel={dropPeriod}>
-      <div data-footer-lines className="relative z-10 flex min-h-[224px] flex-col justify-end gap-1 px-6 pt-14 md:min-h-[180px] md:items-end md:px-10 md:pt-20">
+      <div data-footer-lines data-wave-words className="relative z-10 flex min-h-[224px] flex-col justify-end gap-1 px-6 pt-14 md:min-h-[180px] md:items-end md:px-10 md:pt-20">
         <p className="font-label text-label-sm text-foreground">{tagline(lastUpdatedMonth())}</p>
         <p className="font-label text-label-sm text-foreground">{copyright}</p>
       </div>

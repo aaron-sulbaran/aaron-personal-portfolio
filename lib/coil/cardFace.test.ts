@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cardDims, circlesLayout, containBox, logoBox, MARK_INK_BOX, needsGround } from "@/lib/coil/cardFace";
+import { cardDims, circlesLayout, containBox, faceGround, logoBox, MARK_INK_BOX, needsGround } from "@/lib/coil/cardFace";
 import { COIL } from "@/lib/coil/constants";
 import { strandCardByKey } from "@/lib/content";
 import { GALLERY } from "@/lib/gallery/constants";
@@ -24,6 +24,16 @@ describe("a logo on its tile", () => {
     expect(needsGround({ srcDark: "/x-on-dark.svg" }, "plain", true)).toBe(false);
     expect(needsGround({ srcDark: null, opaque: true }, "plain", true)).toBe(false);
     expect(needsGround({ srcDark: null }, "anvil", true)).toBe(false);
+  });
+  it("fills the whole face with an opaque logo's ground, and with nothing for any other logo", () => {
+    expect(faceGround({ opaque: true, ground: "#14183e" })).toBe("#14183e");
+    expect(faceGround({ opaque: true })).toBeNull();
+    expect(faceGround({ ground: "#14183e" })).toBeNull();
+    expect(faceGround({})).toBeNull();
+  });
+  it("gives the IEEE square its measured edge colour, in a hex the canvas and the tile both read", () => {
+    const face = strandCardByKey.get("ieee")?.face;
+    expect(face?.kind === "logo" ? faceGround(face.logo) : null).toMatch(/^#[0-9a-f]{6}$/);
   });
 });
 

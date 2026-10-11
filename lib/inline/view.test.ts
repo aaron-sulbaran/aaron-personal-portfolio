@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { siteContent } from "@/lib/content";
 import { tipText } from "@/lib/content/tracks";
 import { POP_PHOTO_SIZES } from "@/lib/photoSizes";
-import { popView, tipView } from "@/lib/inline/view";
+import { holdsLink, popView, shownLink, tipView } from "@/lib/inline/view";
 const { pop } = siteContent.register;
 describe("tipView", () => {
   it("shows a tip's words, and the music note as tipText gives it", () => {
@@ -23,7 +23,7 @@ describe("tipView", () => {
       link: null,
       description: `${clarinet.alt}. ${clarinet.caption}`,
     });
-    expect(tipView("pop", "sandboarding")).toMatchObject({ text: null, caption: null, description: pop.sandboarding.alt });
+    expect(tipView("pop", "sandboarding")).toMatchObject({ text: null, caption: pop.sandboarding.caption, description: `${pop.sandboarding.alt}. ${pop.sandboarding.caption}` });
   });
   it("shows Rango as a landed pop, described by its alt and caption", () => {
     expect(tipView("pop", "rango")).toEqual({
@@ -35,6 +35,26 @@ describe("tipView", () => {
     });
   });
   it("carries the matcha's Maps link and label", () => { expect(tipView("pop", "matcha")?.link).toEqual({ href: pop.matcha.href, label: "Open in Google Maps" }); });
+});
+describe("the gamer tag tip's link", () => {
+  it("carries its words and its https link, described by the words alone", () => {
+    expect(tipView("tip", "voltaage")).toEqual({
+      text: siteContent.register.tip.voltaage.text,
+      photo: null,
+      caption: null,
+      link: { href: "https://profile.playstation.com/VoltaageArc", label: "VoltaageArc on most platforms" },
+      description: siteContent.register.tip.voltaage.text,
+    });
+  });
+  it("holds a link only for a tip that has one, and shows a tip's link always but a pop's only once tapped", () => {
+    expect(holdsLink("tip", "voltaage")).toBe(true);
+    expect(holdsLink("tip", "killer-drones")).toBe(false);
+    expect(holdsLink("pop", "matcha")).toBe(false);
+    expect(shownLink("tip", "voltaage", "hover")?.label).toBe("VoltaageArc on most platforms");
+    expect(shownLink("tip", "killer-drones", "tap")).toBeNull();
+    expect(shownLink("pop", "matcha", "hover")).toBeNull();
+    expect(shownLink("pop", "matcha", "tap")?.label).toBe("Open in Google Maps");
+  });
 });
 describe("popView", () => {
   it("shows a pop's caption, or its alt, until its photo lands, and is described by both", () => {
