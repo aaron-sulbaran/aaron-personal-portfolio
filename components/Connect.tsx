@@ -1,4 +1,5 @@
 import { Fragment } from "react";
+import { BrandIcon } from "@/components/BrandIcons";
 import { Fill, FillArrow, FillSeed } from "@/components/fx/Fill";
 import { splitAfterAt } from "@/lib/connect";
 import { siteContent } from "@/lib/content";
@@ -38,14 +39,14 @@ function breakAfterAt(value: string) {
 export function Connect() {
   const { label, heading, body, primary, links } = siteContent.connect;
   return (
-    <section id="connect" aria-label={label} className="relative w-full scroll-mt-24 border-t border-border px-6 py-24 md:px-10 md:py-40">
+    <section id="connect" data-wave-anchor="connect" aria-label={label} className="relative w-full scroll-mt-24 border-t border-border px-6 py-24 md:px-10 md:py-40">
       <div className="mx-auto grid max-w-6xl grid-cols-1 gap-12 md:grid-cols-12 md:gap-16">
         <div className="md:col-span-5">
           <SectionHeading>{heading}</SectionHeading>
-          <Block kind="body" as="p" className="mt-5 max-w-md text-base leading-relaxed text-muted md:text-lg">
+          <Block kind="body" as="p" className="mt-5 max-w-md text-base leading-relaxed text-muted md:text-lg" data-wave-words>
             <InlineCopy source={body} />
           </Block>
-          <Block kind="links" as="div" className="mt-8">
+          <Block kind="links" as="div" className="mt-8" data-wave-words>
             <div data-sections-row>
               <span className="-my-[0.15em] block overflow-clip py-[0.15em]">
                 <span data-sections-rowinner className="block w-fit">
@@ -60,7 +61,7 @@ export function Connect() {
             </div>
           </Block>
         </div>
-        <Block kind="links" as="ul" className="md:col-span-7">
+        <Block kind="links" as="ul" className="md:col-span-7" data-wave-words>
           {links.map((link, i) => (
             <li key={link.key} data-sections-row className="relative">
               <Fill
@@ -76,7 +77,10 @@ export function Connect() {
               >
                 <span className="-my-[0.15em] flex min-w-0 flex-1 overflow-clip py-[0.15em]">
                   <span data-sections-rowinner className="flex min-w-0 flex-1 items-baseline gap-4">
-                    <span className="w-20 shrink-0 font-label text-label text-muted sm:w-28 md:w-32">{link.label}</span>
+                    <span className={`flex h-[1lh] w-20 shrink-0 items-center self-start text-muted sm:w-28 md:w-32 ${VALUE_SIZE}`}>
+                      <BrandIcon name={link.icon} className="h-6 w-6 md:h-7 md:w-7" />
+                      <span className="sr-only">{link.label}</span>
+                    </span>
                     <span data-connect-value className={`min-w-0 flex-1 break-words font-display ${VALUE_SIZE}`}>
                       {breakAfterAt(link.handle)}
                     </span>

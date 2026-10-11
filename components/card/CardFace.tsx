@@ -1,6 +1,6 @@
 import Image from "next/image";
 import type { LogoRef, StrandFace } from "@/lib/content";
-import { cardDims, cardPhotoInset, circlesLayout, containBox, logoBox, needsGround } from "@/lib/coil/cardFace";
+import { cardDims, cardPhotoInset, circlesLayout, containBox, faceGround, logoBox, needsGround } from "@/lib/coil/cardFace";
 import { COIL } from "@/lib/coil/constants";
 import { AsMark } from "@/components/menu/BrandMark";
 
@@ -51,8 +51,9 @@ function Logo({ logo, tile }: { logo: LogoRef; tile: "plain" | "anvil" }) {
   if (logo.opaque) {
     // The painter's opaque square: contained in the photo inset's width, with the inset's corners.
     const box = containBox(aspect, 1 - 2 * INSET.x);
+    const ground = faceGround(logo);
     return (
-      <div className={`${PANE} ${pane} flex items-center justify-center`} style={PANE_STYLE} data-face="logo">
+      <div className={`${PANE} ${pane} flex items-center justify-center`} style={ground ? { ...PANE_STYLE, background: ground } : PANE_STYLE} data-face="logo">
         <div
           className="relative overflow-hidden"
           style={{ width: pct(box.w), aspectRatio: `${logo.width} / ${logo.height}`, borderRadius: corners(INSET.radius, box.w, box.h) }}

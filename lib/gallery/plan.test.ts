@@ -90,22 +90,32 @@ describe("groupedPlan (the jobs timeline)", () => {
   });
 });
 
-describe("namedPlan (the band and Travel, as cards.md pairs them)", () => {
-  it("stands the card picture alone and puts every other photo beside the word it names, a shared word's photos taking turns", () => {
-    expect(rows(namedPlan(3, beside(undefined, 0, 1, 2), 0))).toEqual([{ photos: [0], words: [] }, { photos: [1], words: [0] }, { photos: [2], words: [1] }, { photos: [3], words: [2] }]);
-    const travel = namedPlan(2, beside(undefined, 0, 0, 0), 0);
-    expect(rows(travel)).toEqual([{ photos: [0], words: [] }, { photos: [1, 2, 3], words: [0] }]);
-    expect([travel.intro, travel.closing]).toEqual([[], [1]]);
+describe("namedPlan (the band and Travel, as cards.md pairs them, no row without words)", () => {
+  it("gives the card picture the first word and sends the photos that named it to the next row's rotation, behind that row's own", () => {
+    expect(rows(namedPlan(3, beside(undefined, 0, 1, 2), 0))).toEqual([{ photos: [0], words: [0] }, { photos: [2, 1], words: [1] }, { photos: [3], words: [2] }]);
   });
-  it("gives the card picture the opening words no photo names, and places every photo and word once", () => {
+  it("makes the photos that named the first word a row of their own on the next free word when no row follows (Travel)", () => {
+    const travel = namedPlan(2, beside(undefined, 0, 0, 0), 0);
+    expect(rows(travel)).toEqual([{ photos: [0], words: [0] }, { photos: [1, 2, 3], words: [1] }]);
+    expect([travel.intro, travel.closing]).toEqual([[], []]);
+  });
+  it("never turns the card picture, and splits the words no photo names between the rows around them", () => {
     expect(rows(namedPlan(3, beside(undefined, 2), 0))).toEqual([{ photos: [0], words: [0, 1] }, { photos: [1], words: [2] }]);
-    const cases: [number, (number | undefined)[]][] = [[3, [undefined, 0, 1, 2]], [2, [undefined, 0, 0, 0]], [3, [undefined, 2]], [2, [undefined]], [2, [undefined, 5]]];
+    expect(rows(namedPlan(4, beside(undefined, 3), 0))).toEqual([{ photos: [0], words: [0, 1] }, { photos: [1], words: [2, 3] }]);
+  });
+  it("places every photo and word once, in order, with a word in every row while a word is left", () => {
+    const cases: [number, (number | undefined)[]][] = [[3, [undefined, 0, 1, 2]], [2, [undefined, 0, 0, 0]], [3, [undefined, 2]], [2, [undefined]], [2, [undefined, 5]], [3, [undefined, 0, undefined]], [4, [undefined, 0, 0, 1, 3]]];
     for (const [words, named] of cases) {
       const plan = namedPlan(words, beside(...named), 0);
       expect(plan.slides[0].photos).toEqual([0]);
       expect(plan.slides.flatMap((slide) => slide.photos).sort((a, b) => a - b)).toEqual(named.map((_, i) => i));
-      expect([...plan.intro, ...plan.slides.flatMap(slideWords), ...plan.closing]).toEqual(Array.from({ length: words }, (_, i) => i));
+      expect([...plan.intro, ...plan.slides.flatMap(slideWords), ...plan.closing].sort((a, b) => a - b)).toEqual(Array.from({ length: words }, (_, i) => i));
+      expect(plan.slides.filter((slide) => slideWords(slide).length === 0).length, `${words} words, ${named}`).toBeLessThanOrEqual(Math.max(0, plan.slides.length - words));
     }
+  });
+  it("keeps a wordless row only when the card has one word beside several photos", () => {
+    expect(rows(namedPlan(1, beside(undefined, 0, 0), 0))).toEqual([{ photos: [0], words: [0] }, { photos: [1, 2], words: [] }]);
+    expect(rows(namedPlan(0, beside(undefined, undefined), 0))).toEqual([{ photos: [0], words: [] }, { photos: [1], words: [] }]);
   });
 });
 

@@ -14,7 +14,7 @@ export const METRICS_LABEL_ID = "metrics-label";
 export async function Metrics() {
   const series = await loadSeries("github", SKYLINE.window);
   return (
-    <div className="grid gap-10 md:grid-cols-12">
+    <div data-wave-words className="grid gap-10 md:grid-cols-12">
       <div role="group" aria-labelledby={`${METRICS_TITLE_ID} ${METRICS_LABEL_ID}`} className="grid gap-10 md:col-span-12 md:grid-cols-12">
         <div className="min-w-0 md:col-span-9">
           <MetricsChart series={series} />

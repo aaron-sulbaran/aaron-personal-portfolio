@@ -46,7 +46,7 @@ export function FooterStage({ text, eggLabel, children }: Props) {
   const rest = useMemo(() => (geo ? wordRest(text, geo) : null), [text, geo]);
 
   return (
-    <footer ref={stage} data-footer className="relative isolate w-full overflow-hidden bg-background [container-type:inline-size]">
+    <footer ref={stage} data-footer data-wave-anchor="footer" className="relative isolate w-full overflow-hidden bg-background [container-type:inline-size]">
       {children}
       {geo && <FooterField text={text} geo={geo} egg={egg} reduced={reduced} theme={theme} />}
       {geo && rest && <Wordmark text={text} eggLabel={eggLabel} geo={geo} rest={rest} reduced={reduced} stage={stage} egg={egg} />}

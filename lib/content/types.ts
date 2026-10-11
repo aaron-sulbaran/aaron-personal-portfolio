@@ -13,6 +13,8 @@ export interface TipEntry {
   proposed?: true;
   // A clause that is true only while an adapted track is in the player.
   adaptedClause?: string;
+  // A link inside the tip (https only, opens in a new tab); a linked tip's label takes the pointer.
+  link?: { href: string; label: string };
 }
 
 export interface PopEntry {
@@ -63,7 +65,9 @@ interface ModalPhotoBase extends PhotoRef {
 // under an entry. block indexes modal.blocks; timeline indexes cards.jobs.timeline; never both.
 export type ModalPhoto = ModalPhotoBase & ({ block: number; timeline?: never } | { timeline: number; block?: never });
 // opaque: the logo is its own ground (the IEEE square), drawn as the tile's face and never on a plate.
-export interface LogoRef { src: string; srcDark: string | null; width: number; height: number; opaque?: true }
+// ground: an opaque logo's edge colour, measured from the file; the card face is filled with it so the
+// logo runs full bleed to the rim, with no frame of pane colour around it.
+export interface LogoRef { src: string; srcDark: string | null; width: number; height: number; opaque?: true; ground?: string }
 
 // What the Coil shows. A null ref is an asset not exported yet; every launch card has its asset.
 export type CardVisual =

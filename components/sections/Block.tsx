@@ -12,6 +12,7 @@ type BlockProps = {
   split?: Split;
   id?: string;
   className?: string;
+  "data-wave-words"?: true;
   children: ReactNode;
 };
 
@@ -20,10 +21,11 @@ type BlockProps = {
 // motion is allowed or marks it still when it is not. Both conditions are
 // listed because matchMedia runs the function only while one of them matches;
 // a change of preference reverts and rebuilds, live, both directions. An id
-// names the block for a group that is labelled by it (aria-labelledby). A
+// names the block for a group that is labelled by it (aria-labelledby).
+// data-wave-words marks it as words the wave path keeps clear of. A
 // lines-split Block's children must be static text: SplitText's revert
 // restores innerHTML, so any marker or React child inside is recreated.
-export function Block({ kind, as = "div", index = 0, split = "lines", id, className, children }: BlockProps) {
+export function Block({ kind, as = "div", index = 0, split = "lines", id, className, "data-wave-words": waveWords, children }: BlockProps) {
   const ref = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -50,6 +52,7 @@ export function Block({ kind, as = "div", index = 0, split = "lines", id, classN
       ref,
       id,
       className,
+      "data-wave-words": waveWords,
       "data-sections-block": kind,
       "data-sections-split": kind === "heading" || kind === "body" ? split : undefined,
     },
