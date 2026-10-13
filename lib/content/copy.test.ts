@@ -106,7 +106,7 @@ describe("where the links sit, pinned as raw markup", () => {
 describe("the numbers strip", () => {
   it("heads the strip with its own lowercase title, labels the GitHub chart and holds my LinkedIn line as one figure", () => {
     expect(metrics.title).toBe("proof of work");
-    expect(metrics.groupLabel).toBe("My GitHub contributions");
+    expect(metrics.groupLabel).toBe("GitHub contributions, or tokens from Claude and Codex");
     expect(metrics.slots.linkedin).toEqual({ value: "450,000", label: "LinkedIn impressions in 3 months", sub: "2,500+ followers" });
     expect(metrics.slots.fun).toBeNull();
   });

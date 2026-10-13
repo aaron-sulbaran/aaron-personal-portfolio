@@ -1,5 +1,5 @@
 import { siteContent } from "@/lib/content";
-import type { GithubSeries } from "./series";
+import type { Series } from "./series";
 
 const monthDay = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 const number = new Intl.NumberFormat("en-US");
@@ -14,18 +14,19 @@ export type Stat = { key: string; value: string; unit?: string; label: string; s
 
 // The GitHub figures. The current streak leads (it is the figure that describes
 // now); the longest streak stays in the data and is never shown.
-export function seriesStats(s: GithubSeries): Stat[] {
+export function seriesStats(s: Series): Stat[] {
   const c = siteContent.metrics;
+  const words = s.kind === "usage" ? c.usage : c;
   const stats: Stat[] = [
     {
       key: "streak",
       value: formatCount(s.streak.days),
       unit: s.streak.days === 1 ? c.day : c.days,
-      label: c.streakLabel,
+      label: words.streakLabel,
       sub: s.streak.start ? `${c.since} ${shortDate(s.streak.start)}` : undefined,
     },
-    { key: "total", value: formatCount(s.total), label: c.totalLabel },
-    { key: "active", value: formatCount(s.activeDays), label: c.activeLabel },
+    { key: "total", value: formatCount(s.total), label: words.totalLabel },
+    { key: "active", value: formatCount(s.activeDays), label: words.activeLabel },
   ];
   return stats;
 }

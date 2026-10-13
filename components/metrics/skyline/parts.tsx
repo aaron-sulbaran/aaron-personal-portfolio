@@ -50,11 +50,13 @@ export function Legend({
   pinned,
   onPin,
   onPreview,
+  levels = copy.levels,
 }: {
   swatches: string[];
   pinned: number;
   onPin: (update: (l: number) => number) => void;
   onPreview: (level: number | null) => void;
+  levels?: readonly string[];
 }) {
   return (
     <div className="flex items-center gap-1.5 font-label text-label-sm text-muted" onMouseLeave={() => onPreview(null)}>
@@ -63,9 +65,9 @@ export function Legend({
         <button
           key={i}
           type="button"
-          aria-label={copy.highlight(copy.levels[i])}
+          aria-label={copy.highlight(levels[i] ?? copy.levels[i])}
           aria-pressed={pinned === i}
-          title={copy.levels[i]}
+          title={levels[i]}
           onMouseEnter={() => onPreview(i)}
           onFocus={() => onPreview(i)}
           onBlur={() => onPreview(null)}

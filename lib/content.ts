@@ -223,7 +223,7 @@ export const siteContent = {
   // to match "who I am" and "wanna chat?"; approved.
   metrics: {
     title: "proof of work",
-    groupLabel: "My GitHub contributions",
+    groupLabel: "GitHub contributions, or tokens from Claude and Codex",
     statsLabel: "Contribution figures",
     streakLabel: "Current streak of contributions",
     day: "day",
@@ -253,6 +253,24 @@ export const siteContent = {
       hintSkyline: "Drag to orbit, double-click to reset",
       label: (total: string, from: string, to: string, skyline: boolean) =>
         `${total} contributions from ${from} to ${to}, shown as a ${skyline ? "3D skyline" : "heat map"}. Use the arrow keys to read individual days.`,
+    },
+    // The second series on the same skyline. Cache reads are not in these
+    // numbers; Cursor is not on this toggle.
+    usage: {
+      github: "GitHub",
+      claude: "Claude and Codex",
+      groupLabel: "Claude and Codex, input and output tokens",
+      toggleLabel: "What the chart shows",
+      totalLabel: "tokens in the last 6 months",
+      activeLabel: "days I built with them",
+      streakLabel: "Current streak of days with tokens",
+      statsLabel: "Token figures",
+      unit: "token",
+      units: "tokens",
+      none: "No tokens",
+      levels: ["No tokens", "Light", "Moderate", "Heavy", "Heaviest"],
+      label: (total: string, from: string, to: string, skyline: boolean) =>
+        `${total} tokens from ${from} to ${to}, shown as a ${skyline ? "3D skyline" : "heat map"}. Use the arrow keys to read individual days.`,
     },
   },
   // Connect (docs/content/connect-footer-band.md, approved 2026-10-08): the

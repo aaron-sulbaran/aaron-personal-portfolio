@@ -1,6 +1,6 @@
 import { siteContent } from "@/lib/content";
 import { seriesStats, shortDate, slotStats, type Stat } from "@/lib/metrics/format";
-import type { GithubSeries } from "@/lib/metrics/series";
+import type { Series } from "@/lib/metrics/series";
 
 const LIST = "grid grid-cols-2 gap-x-6 gap-y-8 md:grid-cols-1";
 
@@ -20,11 +20,12 @@ function StatRows({ stats }: { stats: Stat[] }) {
 }
 
 // Server-rendered beside the chart: the figures are in the HTML before any script.
-export function MetricsStats({ series }: { series: GithubSeries }) {
+export function MetricsStats({ series }: { series: Series }) {
   const { metrics } = siteContent;
+  const statsLabel = series.kind === "usage" ? metrics.usage.statsLabel : metrics.statsLabel;
   return (
     <div>
-      <dl role="group" aria-label={metrics.statsLabel} className={LIST}>
+      <dl role="group" aria-label={statsLabel} className={LIST}>
         <StatRows stats={seriesStats(series)} />
       </dl>
       {series.stale && (
