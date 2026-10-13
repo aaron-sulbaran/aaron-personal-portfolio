@@ -220,10 +220,11 @@ export const siteContent = {
   // slot renders nothing. title is the strip's big heading and groupLabel the
   // line under it, which also names the GitHub group; title is the wording
   // Aaron suggested on 2026-10-09 ("Proof of Work or something else"), lowercase
-  // to match "who I am" and "wanna chat?"; approved.
+  // to match "who I am" and "wanna chat?"; approved. groupLabel reads for both
+  // views of the chart (Commits and Tokens); proposed 2026-10-13, awaiting Aaron.
   metrics: {
     title: "proof of work",
-    groupLabel: "GitHub contributions, or tokens from Claude and Codex",
+    groupLabel: "What I shipped on GitHub, and the Claude and Codex tokens behind it",
     statsLabel: "Contribution figures",
     streakLabel: "Current streak of contributions",
     day: "day",
@@ -240,6 +241,9 @@ export const siteContent = {
       viewGroup: "Chart view",
       flat: "Flat",
       skyline: "Skyline",
+      seriesGroup: "What the chart counts",
+      commits: "Commits",
+      tokens: "Tokens",
       unit: "contribution",
       units: "contributions",
       none: "No contributions",
@@ -254,23 +258,28 @@ export const siteContent = {
       label: (total: string, from: string, to: string, skyline: boolean) =>
         `${total} contributions from ${from} to ${to}, shown as a ${skyline ? "3D skyline" : "heat map"}. Use the arrow keys to read individual days.`,
     },
-    // The second series on the same skyline. Cache reads are not in these
-    // numbers; Cursor is not on this toggle.
-    usage: {
-      github: "GitHub",
-      claude: "Claude and Codex",
-      groupLabel: "Claude and Codex, input and output tokens",
-      toggleLabel: "What the chart shows",
-      totalLabel: "tokens in the last 6 months",
-      activeLabel: "days I built with them",
-      streakLabel: "Current streak of days with tokens",
+    // The Tokens view of the same chart: total tokens (cache reads and writes
+    // included, as Claude Code counts them) from Claude Code and Codex, stacked
+    // with Claude from the base. Cursor is not on this toggle.
+    tokens: {
       statsLabel: "Token figures",
+      totalLabel: "tokens in the last 6 months",
+      activeLabel: "days I built with Claude or Codex",
+      peakLabel: "my biggest day",
+      streakLabel: "Current streak of days with tokens",
       unit: "token",
       units: "tokens",
       none: "No tokens",
       levels: ["No tokens", "Light", "Moderate", "Heavy", "Heaviest"],
+      // The tooltip's names for each tool's share, and the legend's key.
+      claude: "Claude",
+      codex: "Codex",
+      keyLabel: "Tools",
+      keyClaude: "Claude Code",
+      keyCodex: "Codex",
+      tip: (total: string, day: string, parts: string) => `${total} tokens on ${day}${parts ? `: ${parts}` : ""}`,
       label: (total: string, from: string, to: string, skyline: boolean) =>
-        `${total} tokens from ${from} to ${to}, shown as a ${skyline ? "3D skyline" : "heat map"}. Use the arrow keys to read individual days.`,
+        `${total} tokens from ${from} to ${to}, Claude Code and Codex stacked, shown as a ${skyline ? "3D skyline" : "heat map"}. Use the arrow keys to read individual days.`,
     },
   },
   // Connect (docs/content/connect-footer-band.md, approved 2026-10-08): the

@@ -103,6 +103,6 @@ export async function loadSeries(kind: Series["kind"], window: SeriesWindow = "6
     case "github":
       return loadGithub(window, now);
     case "usage":
-      return loadUsage(now);
+      return loadUsage();
   }
 }

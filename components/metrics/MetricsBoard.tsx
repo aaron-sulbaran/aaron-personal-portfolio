@@ -11,7 +11,7 @@ import { MetricsStats } from "./MetricsStats";
 export function MetricsBoard({ github, usage }: { github: GithubSeries; usage: UsageSeries }) {
   const [source, setSource] = useState<"github" | "usage">("github");
   const series = source === "github" ? github : usage;
-  const words = siteContent.metrics.usage;
+  const words = { toggleLabel: siteContent.metrics.chart.seriesGroup, github: siteContent.metrics.chart.commits, claude: siteContent.metrics.chart.tokens };
   return (
     <div role="group" aria-labelledby="metrics-title metrics-label" className="grid gap-10 md:col-span-12 md:grid-cols-12">
       <div className="min-w-0 md:col-span-9">

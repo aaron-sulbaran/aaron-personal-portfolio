@@ -17,7 +17,7 @@ const PALETTE = accentRamp(SKYLINE.lightestShare);
 
 function wordsFor(series: Series) {
   if (series.kind === "usage") {
-    const u = siteContent.metrics.usage;
+    const u = siteContent.metrics.tokens;
     return { unit: u.unit, units: u.units, none: u.none, on: chart.on, label: u.label, levels: u.levels };
   }
   return { unit: chart.unit, units: chart.units, none: chart.none, on: chart.on, label: chart.label, levels: chart.levels };

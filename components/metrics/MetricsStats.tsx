@@ -22,7 +22,7 @@ function StatRows({ stats }: { stats: Stat[] }) {
 // Server-rendered beside the chart: the figures are in the HTML before any script.
 export function MetricsStats({ series }: { series: Series }) {
   const { metrics } = siteContent;
-  const statsLabel = series.kind === "usage" ? metrics.usage.statsLabel : metrics.statsLabel;
+  const statsLabel = series.kind === "usage" ? metrics.tokens.statsLabel : metrics.statsLabel;
   return (
     <div>
       <dl role="group" aria-label={statsLabel} className={LIST}>
