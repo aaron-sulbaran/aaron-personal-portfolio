@@ -1,11 +1,12 @@
-import type { CardKey } from "./types";
+import { cards } from "./cards";
+import type { CardKey, CardPicture, LogoRef } from "./types";
 
 // Draft for the quick page. Years are parsed out of the book rows; the lines
 // are first-person drafts for me to rewrite. end is null while it is still going.
 
 export type QuickGroup = "work" | "people";
 
-export interface QuickEntry {
+interface QuickDraft {
   id: CardKey;
   group: QuickGroup;
   role: string;
@@ -16,12 +17,20 @@ export interface QuickEntry {
   outcomes: readonly string[];
 }
 
+// photo and logo are the card's own (lib/content/cards.ts); a card shows one or neither.
+export interface QuickEntry extends QuickDraft {
+  photo: CardPicture | null;
+  logo: LogoRef | null;
+}
+
 export const quickCopy = {
   kicker: "The 30-second version",
   title: "Aaron Sulbaran",
   lede: "Fourth-year ECE at UT Austin, headed into product management.",
   back: "See the full site",
   filters: { all: "All", work: "Work", people: "Fun stuff" },
+  filterLabel: "Show",
+  listLabel: "What I've done, by date",
   now: "now",
   rushTitle: "In a rush?",
   rushBody: "The quick version of my work is one tap away.",
@@ -31,7 +40,7 @@ export const quickCopy = {
   menuChip: "Quick view",
 } as const;
 
-export const quickEntries: readonly QuickEntry[] = [
+const drafts: readonly QuickDraft[] = [
   {
     id: "jobs",
     group: "people",
@@ -173,6 +182,54 @@ export const quickEntries: readonly QuickEntry[] = [
     outcomes: ["Saves me hours every week.", "I plan to open source it."],
   },
 ];
+
+function visualOf(id: CardKey): Pick<QuickEntry, "photo" | "logo"> {
+  const { visual } = cards[id];
+  if (visual.kind === "photo") return { photo: visual.photo, logo: null };
+  if (visual.kind === "logo") return { photo: null, logo: visual.logo };
+  return { photo: null, logo: null };
+}
+
+export const quickEntries: readonly QuickEntry[] = drafts.map((draft) => ({ ...draft, ...visualOf(draft.id) }));
+
+// Dated life details that stand between the entries. Each one is copy already
+// on the site: evidence is the words it comes from, verbatim (the content test
+// finds every one in the cards' copy). Only the year is shown; where the copy
+// gives no month, the month in at only places the sign among the entries.
+// yearFrom names a year the copy implies but never states, for me to confirm.
+export interface QuickSign {
+  key: string;
+  group: QuickGroup;
+  at: string;
+  text: string;
+  evidence: readonly string[];
+  yearFrom?: string;
+}
+
+export const quickSigns: readonly QuickSign[] = [
+  { key: "mod-last-shift", group: "people", at: "2023-04", text: "My last clock-out at MOD Pizza", evidence: ["My last clock-out at MOD, April 15, 2023, 10 pm"] },
+  {
+    key: "started-ece", group: "work", at: "2023-08", text: "Started ECE at UT Austin",
+    evidence: ["From assistant officer my freshman year", "President, Corporate Director, and [AO](tip:ieee-ao), 2023 to 2026"],
+    yearFrom: "IEEE's 2023 to 2026 and assistant officer my freshman year",
+  },
+  { key: "first-shpe", group: "people", at: "2023-10", text: "My first SHPE national convention", evidence: ["Me at my first SHPE national convention, 2023."] },
+  { key: "first-pm", group: "work", at: "2024-06", text: "Met my first product manager", evidence: ["**2024, business analyst.** My first look at corporate America. I met my first product manager"] },
+  { key: "apple", group: "people", at: "2024-08", text: "Started at Apple as a specialist", evidence: ["Specialist, then technical specialist", "2024 to 2025"] },
+  { key: "aritzia", group: "people", at: "2025-08", text: "Joined Aritzia", evidence: ["Aritzia", "2025 to 2026"] },
+  { key: "hsf-scholar", group: "people", at: "2025-09", text: "My first HSF event, as a scholar", evidence: ["Hispanic Scholarship Fund event, September 2025", "Me at HSF my first year, as a scholar."] },
+  { key: "rising-stars", group: "work", at: "2026-01", text: "My last IEEE Rising Stars, as chapter president", evidence: ["IEEE Rising Stars conference in Las Vegas, January 2026", "Me at my last IEEE Rising Stars conference as president of the chapter."] },
+  { key: "hook-em", group: "work", at: "2026-03", text: "min/Max won the finance track at Hook 'Em Hacks", evidence: ["**Hook 'Em Hacks, spring 2026.** Won the finance track with the first build and MVP/Proof of Concept of min/Max."] },
+  { key: "hsf-mentor", group: "people", at: "2026-09", text: "Back at HSF, this time as a mentor", evidence: ["Hispanic Scholarship Fund STEM Summit photo booth, September 2026", "Me at my second HSF, this time as a mentor."] },
+];
+
+// The end of the road. links are siteContent.connect's keys, in order; primary is its booking link.
+export const quickClosing = {
+  label: "What's next",
+  // DRAFT: mine to rewrite. Built from "want to do the same in my full-time work" in Who I am.
+  line: "Next, I'm looking for a full-time product role where I get people with very different skills building towards one goal.",
+  links: ["linkedin", "email", "github"] as const,
+};
 
 export function quickRange(entry: QuickEntry): string {
   const year = (month: string) => month.slice(0, 4);
