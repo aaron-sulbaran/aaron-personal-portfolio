@@ -1,11 +1,95 @@
-import { barHeight, dayMs, type Cell } from "@/lib/metrics/skyline/maths";
+import { barHeight, camera, dayMs, type Cell, type RGB } from "@/lib/metrics/skyline/maths";
 import { newCssCache } from "@/lib/metrics/skyline/cssCache";
-import type { Scene } from "./draw";
+import { OUTLINE_LEN, SILHOUETTE_LEN } from "@/lib/metrics/skyline/prism";
+import { NO_DEPTH, type Scene } from "./draw";
 import type { Model } from "./engine";
-import { CELL_SLOTS } from "./paint";
+import { CELL_SLOTS, newAlphaCss } from "./paint";
 
-// A model into the scene's typed arrays, and the switch's starting point:
-// what each bar showed when the series changed, matched by date.
+// The scene at rest, a model into its typed arrays, and the switch's starting
+// point: what each bar showed when the series changed, matched by date.
+
+export const newScene = (
+  ctx: CanvasRenderingContext2D,
+  canvas: HTMLCanvasElement,
+  stage: HTMLDivElement,
+  tip: HTMLDivElement,
+  fallback: RGB,
+  font: string,
+): Scene => ({
+  ctx,
+  canvas,
+  stage,
+  tip,
+  t: 0,
+  yaw: 0,
+  elev: 0,
+  W: 0,
+  H2: 0,
+  H3: 0,
+  Hmax: 0,
+  lastH: -1,
+  dpr: 1,
+  gutter: 30,
+  labelW: 30,
+  font,
+  col: new Float32Array(18),
+  col2: new Float32Array(12),
+  fg: fallback,
+  bg: fallback,
+  bgCss: "",
+  muted: fallback,
+  n: 0,
+  weeks: 0,
+  wk: new Float32Array(0),
+  dy: new Float32Array(0),
+  lv: new Uint8Array(0),
+  skip: new Uint8Array(0),
+  hFrom: new Float32Array(0),
+  hTo: new Float32Array(0),
+  hgt: new Float32Array(0),
+  shFrom: new Float32Array(0),
+  shTo: new Float32Array(0),
+  shr: new Float32Array(0),
+  cFrom: new Float32Array(0),
+  low: new Float32Array(0),
+  up: new Float32Array(0),
+  sw: 1,
+  swStagger: 0,
+  gap: 0,
+  tone: new Float32Array(6),
+  zs: new Float32Array(0),
+  hover: new Float32Array(0),
+  dim: new Float32Array(0),
+  polys: new Float32Array(0),
+  faces: new Uint8Array(0),
+  outline: new Float32Array(OUTLINE_LEN * 2),
+  sil: new Float32Array(SILHOUETTE_LEN * 2),
+  order: [],
+  sortKey: new Float64Array(0),
+  sortCs: NaN,
+  sortSn: NaN,
+  months: [],
+  weekdayRows: [],
+  activeIdx: -1,
+  tipW: 0,
+  depth: NO_DEPTH,
+  hi: fallback,
+  hiA: 0,
+  shade: fallback,
+  cam: camera(0),
+  ox: 0,
+  oy: 0,
+  sc: 1,
+  ext: { minx: 0, maxx: 0, miny: 0, maxy: 0 },
+  monthW: new Float64Array(0),
+  shadeCss: "",
+  outlineCss: newAlphaCss(),
+  label2Css: newAlphaCss(),
+  label3Css: newAlphaCss(),
+  hiCss: newAlphaCss(),
+  cellCss: newCssCache(0),
+  tipAt: new Float64Array(3).fill(NaN),
+});
 
 const grow = (s: Scene, n: number) => {
   if (s.wk.length === n) return;

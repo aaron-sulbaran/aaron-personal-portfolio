@@ -1,5 +1,5 @@
 import type { DepthSpec, HeightCurve, LevelCurve } from "./skyline/maths";
-import type { TokenColorSet } from "./skyline/stack";
+import type { SegmentGap, TokenColorSet } from "./skyline/stack";
 
 // Aaron's pick (lab round 4, settings key v5): the Full skyline look inside Up
 // to now, six months, flat until seen, the bevel at height zero.
@@ -26,12 +26,14 @@ export type SeriesChoice = "commits" | "tokens";
 // The Tokens view and the switch between the two (the metrics lab tunes
 // these; /lab/metrics, dev only). The token days are far more skewed than the
 // commits (one 7.5B day over a 72M median), so the curve lifts the small days.
-// minShare 0 draws each tool's true share of a day.
+// minShare 0 draws each tool's true share of a day; segmentGap is the seam of
+// page colour between the two tools' segments, in CSS pixels.
 export type TokensSettings = {
   colorSet: TokenColorSet;
   heightCurve: HeightCurve;
   heightCap: number;
   minShare: number;
+  segmentGap: SegmentGap;
   switchMs: number;
   switchStagger: number;
   first: SeriesChoice;
@@ -42,6 +44,7 @@ export const TOKENS: TokensSettings = {
   heightCurve: "sqrt",
   heightCap: 1,
   minShare: 0,
+  segmentGap: 1,
   switchMs: 900,
   switchStagger: 0.42,
   first: "commits",

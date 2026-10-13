@@ -1,10 +1,8 @@
-import { camera, cameraInto, luminance, mixRGB, type Cell, type HeightCurve, type RGB } from "@/lib/metrics/skyline/maths";
-import { draw, extent, NO_DEPTH, type DepthSpec, type Scene } from "./draw";
-import { newCssCache } from "@/lib/metrics/skyline/cssCache";
-import { newAlphaCss, resolveColor, resolveRGBA, rgbString } from "./paint";
+import { cameraInto, luminance, mixRGB, type Cell, type HeightCurve, type RGB } from "@/lib/metrics/skyline/maths";
+import { draw, extent, type DepthSpec } from "./draw";
+import { resolveColor, resolveRGBA, rgbString } from "./paint";
 import { attachInput, type Ctl } from "./input";
-import { capture, loadModel, startFrom } from "./load";
-import { OUTLINE_LEN, SILHOUETTE_LEN } from "@/lib/metrics/skyline/prism";
+import { capture, loadModel, newScene, startFrom } from "./load";
 
 // The imperative half: one scene per mount, a rAF loop that only runs while
 // something moves, pointer and keyboard input. React hands it a config ref
@@ -34,6 +32,8 @@ export type EngineConfig = {
   palette2: string[] | null;
   switchMs: number;
   switchStagger: number;
+  // CSS pixels of page colour between a stacked bar's two segments, 0 for none.
+  segmentGap: number;
   legendLevel: number;
   target: 0 | 1;
   depth: DepthSpec;
@@ -69,79 +69,7 @@ export function createEngine(el: EngineElements, cfg: { current: EngineConfig })
   if (!ctx) return null;
   const { stage, canvas } = el;
 
-  const s: Scene = {
-    ctx,
-    canvas,
-    stage,
-    tip: el.tip,
-    t: 0,
-    yaw: 0,
-    elev: 0,
-    W: 0,
-    H2: 0,
-    H3: 0,
-    Hmax: 0,
-    lastH: -1,
-    dpr: 1,
-    gutter: 30,
-    labelW: 30,
-    font: "700 " + LABEL_PX + "px sans-serif",
-    col: new Float32Array(18),
-    col2: new Float32Array(12),
-    fg: FALLBACK,
-    bg: FALLBACK,
-    muted: FALLBACK,
-    n: 0,
-    weeks: 0,
-    wk: new Float32Array(0),
-    dy: new Float32Array(0),
-    lv: new Uint8Array(0),
-    skip: new Uint8Array(0),
-    hFrom: new Float32Array(0),
-    hTo: new Float32Array(0),
-    hgt: new Float32Array(0),
-    shFrom: new Float32Array(0),
-    shTo: new Float32Array(0),
-    shr: new Float32Array(0),
-    cFrom: new Float32Array(0),
-    low: new Float32Array(0),
-    up: new Float32Array(0),
-    sw: 1,
-    swStagger: 0,
-    tone: new Float32Array(6),
-    zs: new Float32Array(0),
-    hover: new Float32Array(0),
-    dim: new Float32Array(0),
-    polys: new Float32Array(0),
-    faces: new Uint8Array(0),
-    outline: new Float32Array(OUTLINE_LEN * 2),
-    sil: new Float32Array(SILHOUETTE_LEN * 2),
-    order: [],
-    sortKey: new Float64Array(0),
-    sortCs: NaN,
-    sortSn: NaN,
-    months: [],
-    weekdayRows: [],
-    activeIdx: -1,
-    tipW: 0,
-    depth: NO_DEPTH,
-    hi: FALLBACK,
-    hiA: 0,
-    shade: FALLBACK,
-    cam: camera(0),
-    ox: 0,
-    oy: 0,
-    sc: 1,
-    ext: { minx: 0, maxx: 0, miny: 0, maxy: 0 },
-    monthW: new Float64Array(0),
-    shadeCss: "",
-    outlineCss: newAlphaCss(),
-    label2Css: newAlphaCss(),
-    label3Css: newAlphaCss(),
-    hiCss: newAlphaCss(),
-    cellCss: newCssCache(0),
-    tipAt: new Float64Array(3).fill(NaN),
-  };
+  const s = newScene(ctx, canvas, stage, el.tip, FALLBACK, "700 " + LABEL_PX + "px sans-serif");
 
   const reduceMq = window.matchMedia("(prefers-reduced-motion: reduce)");
   let reduced = reduceMq.matches;
@@ -175,6 +103,7 @@ export function createEngine(el: EngineElements, cfg: { current: EngineConfig })
   const retheme = (snap = false) => {
     s.fg = resolveColor(el.probe, "var(--color-foreground)", FALLBACK);
     s.bg = resolveColor(el.probe, "var(--color-background)", FALLBACK);
+    s.bgCss = rgbString(s.bg[0], s.bg[1], s.bg[2]);
     s.muted = resolveColor(el.probe, "var(--color-muted)", FALLBACK);
     const isDark = luminance(s.bg) < 0.45;
     s.font = "700 " + LABEL_PX + "px " + (getComputedStyle(el.labelProbe).fontFamily || "sans-serif");
@@ -237,6 +166,7 @@ export function createEngine(el: EngineElements, cfg: { current: EngineConfig })
     canvas.style.height = s.Hmax + "px";
     s.lastH = -1;
     s.depth = cfg.current.depth;
+    s.gap = cfg.current.segmentGap;
     draw(s);
     markState();
   };
@@ -252,6 +182,7 @@ export function createEngine(el: EngineElements, cfg: { current: EngineConfig })
       moving = true;
     }
     s.swStagger = cfg.current.switchStagger;
+    s.gap = cfg.current.segmentGap;
     if (s.sw < 1) {
       s.sw = reduced ? 1 : Math.min(1, s.sw + (dt * 1000) / Math.max(1, cfg.current.switchMs));
       moving = true;

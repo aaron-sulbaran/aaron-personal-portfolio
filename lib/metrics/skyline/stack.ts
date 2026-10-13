@@ -31,8 +31,15 @@ export const splitAt = (y0: number, w: number, share: number): number => y0 + w 
 
 // The token colour sets the lab compares. Each is a pair of custom properties
 // in app/globals.css (light and dark), never a raw colour here.
-export type TokenColorSet = "brand" | "sea" | "ink";
-export const TOKEN_SETS: readonly TokenColorSet[] = ["brand", "sea", "ink"];
+export type TokenColorSet = "brand" | "official" | "sea" | "ink";
+export const TOKEN_SETS: readonly TokenColorSet[] = ["brand", "official", "sea", "ink"];
+
+// The seam between the two segments, in CSS pixels. The two brand sets put
+// two colours of close brightness side by side, so they part by a pixel of
+// page; the sea sets already differ in lightness.
+export type SegmentGap = 0 | 1 | 2;
+export const SEGMENT_GAPS: readonly SegmentGap[] = [0, 1, 2];
+export const defaultGap = (set: TokenColorSet): SegmentGap => (set === "brand" || set === "official" ? 1 : 0);
 
 export const tokenColors = (set: TokenColorSet) => ({
   claude: `var(--tokens-${set}-claude)`,

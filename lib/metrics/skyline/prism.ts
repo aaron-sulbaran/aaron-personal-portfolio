@@ -56,6 +56,26 @@ export function prismSilhouette(out: Float32Array, base: Float32Array, n: number
   return o / 2;
 }
 
+// The cut across a stacked bar where its segments meet, as the reader sees it
+// on the side faces: the base's bottom chain (rightmost point to leftmost,
+// the edge prismSilhouette closes with) raised `from` pixels. The rest of the
+// cut is hidden under the upper segment.
+export function frontChain(out: Float32Array, base: Float32Array, n: number, from: number): number {
+  let left = 0;
+  let right = 0;
+  for (let i = 1; i < n; i++) {
+    if (base[i * 2] < base[left * 2]) left = i;
+    if (base[i * 2] > base[right * 2]) right = i;
+  }
+  let o = 0;
+  for (let i = right; ; i = (i + 1) % n) {
+    out[o++] = base[i * 2];
+    out[o++] = base[i * 2 + 1] - from;
+    if (i === left) break;
+  }
+  return o / 2;
+}
+
 // The front vertical edge: the base point lowest on screen splits the two visible side faces.
 export function frontEdgeX(base: Float32Array, n: number): number {
   let f = 0;

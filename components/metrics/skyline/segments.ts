@@ -1,5 +1,5 @@
 import { FACE_X, FACE_Y, switchAt } from "@/lib/metrics/skyline/maths";
-import { frontEdgeX, OUTLINE_LEN, prismSilhouette } from "@/lib/metrics/skyline/prism";
+import { frontChain, frontEdgeX, OUTLINE_LEN, prismSilhouette } from "@/lib/metrics/skyline/prism";
 import { rgbCss } from "@/lib/metrics/skyline/cssCache";
 import type { Scene } from "./draw";
 import { polyPath, SLOT_FACE_X, SLOT_FACE_Y, SLOT_TOP, SLOT_UPPER } from "./paint";
@@ -88,6 +88,41 @@ export const segmentSides = (s: Scene, slot: number, rise: number, share: number
   const lower = share >= 0.9995 ? rise : rise * share;
   if (lower > 0.05) faces(s, slot, prismSilhouette(s.sil, s.outline, OUTLINE_LEN, lower), front, t[0], t[1], t[2]);
   if (rise - lower > 0.05) faces(s, slot + SLOT_UPPER, prismSilhouette(s.sil, s.outline, OUTLINE_LEN, rise - lower, lower), front, t[3], t[4], t[5]);
+  if (s.gap > 0 && lower > 0.05 && rise - lower > 0.05) {
+    const { ctx } = s;
+    const m = frontChain(s.sil, s.outline, OUTLINE_LEN, lower);
+    ctx.beginPath();
+    ctx.moveTo(s.sil[0], s.sil[1]);
+    for (let k = 1; k < m; k++) ctx.lineTo(s.sil[k * 2], s.sil[k * 2 + 1]);
+    seam(s);
+  }
+};
+
+// The current path stroked in the page colour, s.gap pixels wide.
+const seam = (s: Scene) => {
+  const { ctx } = s;
+  ctx.strokeStyle = s.bgCss;
+  ctx.lineWidth = s.gap;
+  ctx.lineCap = "butt";
+  ctx.stroke();
+};
+
+// The seam across the top face (and the flat cell) where the upper tool's
+// rows meet the lower's, kept inside the cell's own outline.
+export const topSeam = (s: Scene, x0: number, w: number, split: number, rise: number) => {
+  if (s.gap <= 0) return;
+  const { ctx } = s;
+  const xa = x0 - 0.5;
+  const xb = x0 + w + 0.5;
+  ctx.save();
+  ctx.beginPath();
+  polyPath(ctx, s.outline, OUTLINE_LEN, 0, -rise);
+  ctx.clip();
+  ctx.beginPath();
+  ctx.moveTo(px(s, xa, split), py(s, xa, split, 0) - rise);
+  ctx.lineTo(px(s, xb, split), py(s, xb, split, 0) - rise);
+  seam(s);
+  ctx.restore();
 };
 
 // Clips to the upper tool's part of the cell's top face: its rows above
