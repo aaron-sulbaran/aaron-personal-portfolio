@@ -268,6 +268,13 @@ export const siteContent = {
       totalLabel: "tokens in the last 6 months",
       activeLabel: "days I built with agents",
       peakLabel: "my biggest day",
+      // The fourth figure, one of three the lab picks between (TOKENS.fourth):
+      // the skills I wrote, or the whole setup with its split under it. The
+      // streak is the lab's old fourth, kept to compare.
+      skillsLabel: "custom skills I've written for my agents",
+      toolkitLabel: "tools in my agent setup",
+      toolkitSub: (custom: string, installed: string, plugins: string, servers: string) =>
+        `${custom} custom skills, ${installed} installed skills, ${plugins} plugins, ${servers} MCP servers`,
       streakLabel: "Current streak of days with tokens",
       unit: "token",
       units: "tokens",

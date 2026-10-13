@@ -13,8 +13,7 @@ const head = { generated: "t", tz: "UTC", tools: { claude: { unit: "tokens" }, c
 describe("usage snapshot", () => {
   it("parses a well-formed file, and rejects one without the toolkit's counts", () => {
     expect(usageSnapshotSchema.safeParse({ ...head, days: [day] }).success).toBe(true);
-    const { toolkit: _toolkit, ...noToolkit } = head;
-    expect(usageSnapshotSchema.safeParse({ ...noToolkit, days: [day] }).success).toBe(false);
+    expect(usageSnapshotSchema.safeParse({ ...head, toolkit: undefined, days: [day] }).success).toBe(false);
   });
 
   it("rejects a file that smuggles a string into a day", () => {

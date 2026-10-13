@@ -4,7 +4,8 @@ import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { countToolkit, THIRD_PARTY_SKILLS } from "../../scripts/toolkit-counts.mjs";
 import snapshot from "./data/usage-6mo.json";
-import { toolkitSchema, toolkitTotal } from "./usageSchema";
+import { toolkitTotal } from "./format";
+import { toolkitSchema } from "./usageSchema";
 
 // A home and a vault on disk, laid out as mine are, with every rule's edge.
 const root = mkdtempSync(join(tmpdir(), "toolkit-"));

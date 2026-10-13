@@ -1,5 +1,7 @@
 import { siteContent } from "@/lib/content";
-import type { DayValue, Series, UsageDay } from "./series";
+import type { DayValue, Series, UsageDay, UsageSeries } from "./series";
+import { TOKENS, type FourthFigure } from "./settings";
+import type { Toolkit } from "./usageSchema";
 
 const monthDay = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 const weekdayMonthDay = new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: "UTC" });
@@ -58,11 +60,34 @@ export function peakDay(days: readonly DayValue[]): DayValue | null {
 
 export type Stat = { key: string; value: string; unit?: string; label: string; sub?: string };
 
+// Everything in the agent setup: skills written and installed, plugins, MCP servers.
+export const toolkitTotal = (t: Toolkit): number => t.customSkills + t.installedSkills + t.plugins + t.mcpServers;
+
+// The token figures' last one (TOKENS.fourth): the skills I wrote, the whole
+// agent setup with its split under it, or the lab's old current streak.
+function fourthStat(s: UsageSeries, fourth: FourthFigure): Stat {
+  const c = siteContent.metrics;
+  const t = c.tokens;
+  const kit = s.toolkit;
+  if (fourth === "skills") return { key: "skills", value: formatCount(kit.customSkills), label: t.skillsLabel };
+  if (fourth === "toolkit") {
+    const sub = t.toolkitSub(formatCount(kit.customSkills), formatCount(kit.installedSkills), formatCount(kit.plugins), formatCount(kit.mcpServers));
+    return { key: "toolkit", value: formatCount(toolkitTotal(kit)), label: t.toolkitLabel, sub };
+  }
+  return {
+    key: "streak",
+    value: formatCount(s.streak.days),
+    unit: s.streak.days === 1 ? c.day : c.days,
+    label: t.streakLabel,
+    sub: s.streak.start ? `${c.since} ${shortDate(s.streak.start)}` : undefined,
+  };
+}
+
 // The GitHub figures. The current streak leads (it is the figure that describes
 // now); the longest streak stays in the data and is never shown. The token
 // figures lead with the total, then the active days, the biggest day and the
-// current streak.
-export function seriesStats(s: Series): Stat[] {
+// fourth.
+export function seriesStats(s: Series, fourth: FourthFigure = TOKENS.fourth): Stat[] {
   const c = siteContent.metrics;
   if (s.kind === "usage") {
     const t = c.tokens;
@@ -71,13 +96,7 @@ export function seriesStats(s: Series): Stat[] {
       { key: "total", value: formatCompact(s.total), label: t.totalLabel },
       { key: "active", value: formatCount(s.activeDays), label: t.activeLabel },
       { key: "peak", value: peak ? formatCompact(peak.count) : "0", label: t.peakLabel, sub: peak ? shortDate(peak.date) : undefined },
-      {
-        key: "streak",
-        value: formatCount(s.streak.days),
-        unit: s.streak.days === 1 ? c.day : c.days,
-        label: t.streakLabel,
-        sub: s.streak.start ? `${c.since} ${shortDate(s.streak.start)}` : undefined,
-      },
+      fourthStat(s, fourth),
     ];
   }
   return [

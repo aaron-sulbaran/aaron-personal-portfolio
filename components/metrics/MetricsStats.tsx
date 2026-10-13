@@ -2,6 +2,7 @@ import { Fragment } from "react";
 import { siteContent } from "@/lib/content";
 import { seriesStats, shortDate, slotStats, type Stat } from "@/lib/metrics/format";
 import type { Series } from "@/lib/metrics/series";
+import type { FourthFigure } from "@/lib/metrics/settings";
 
 const LIST = "grid grid-cols-2 gap-x-6 md:grid-cols-1";
 
@@ -37,13 +38,13 @@ function StatRows({ stats }: { stats: Stat[] }) {
 }
 
 // Server-rendered beside the chart: the figures are in the HTML before any script.
-export function MetricsStats({ series }: { series: Series }) {
+export function MetricsStats({ series, fourth }: { series: Series; fourth?: FourthFigure }) {
   const { metrics } = siteContent;
   const statsLabel = series.kind === "usage" ? metrics.tokens.statsLabel : metrics.statsLabel;
   return (
     <div>
       <dl role="group" aria-label={statsLabel} className={LIST}>
-        <StatRows stats={seriesStats(series)} />
+        <StatRows stats={seriesStats(series, fourth)} />
       </dl>
       {series.stale && (
         <p data-metrics-stale="" className="mt-6 font-label text-label-sm text-muted">
