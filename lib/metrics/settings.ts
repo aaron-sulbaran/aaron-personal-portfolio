@@ -39,13 +39,14 @@ export type TokensSettings = {
   first: SeriesChoice;
 };
 
+// Aaron's pick (metrics lab, 2026-10-13).
 export const TOKENS: TokensSettings = {
-  colorSet: "brand",
+  colorSet: "official",
   heightCurve: "sqrt",
   heightCap: 1,
-  minShare: 0,
-  segmentGap: 1,
-  switchMs: 900,
+  minShare: 0.02,
+  segmentGap: 0,
+  switchMs: 1500,
   switchStagger: 0.42,
   first: "commits",
 };
