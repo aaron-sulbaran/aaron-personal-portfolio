@@ -11,6 +11,7 @@ export const QUICK_MOTION = {
   wipeEase: GALLERY.ease.gsap,
   settle: GALLERY.mask.settle,
   direction: GALLERY.direction,
+  yearLine: 0.5, // the rail's big year shows the item crossing the middle of the viewport
   yearTickS: 0.12, // per year the rail's big year counts through
 } as const;
 
