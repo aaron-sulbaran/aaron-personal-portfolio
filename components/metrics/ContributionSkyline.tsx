@@ -66,7 +66,7 @@ export function ContributionSkyline({ series, view, onViewChange, toolbar }: Pro
   };
   const config: EngineConfig = {
     model, duration: SKYLINE.durationMs, heightScale: 1, orbit: true, palette: palettes.lower, palette2: palettes.upper,
-    switchMs: settings.switchMs, switchStagger: settings.switchStagger,
+    switchMs: settings.switchMs, switchStagger: settings.switchStagger, segmentGap: settings.segmentGap,
     legendLevel, target: view === "skyline" ? 1 : 0, depth: SKYLINE.depth, locale: "en-US", setActive, setTheme, setAnnounce, describe,
   };
   const cfg = useRef(config);
@@ -82,7 +82,7 @@ export function ContributionSkyline({ series, view, onViewChange, toolbar }: Pro
       engine.current = null;
     };
   }, []);
-  useEffect(() => engine.current?.kick(), [view, legendLevel]);
+  useEffect(() => engine.current?.kick(), [view, legendLevel, settings.segmentGap]);
   // The engine loads the first model itself; every later one is a switch.
   const loadedModel = useRef(model);
   useEffect(() => {

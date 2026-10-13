@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { lowerShare, segmentHeights, splitAt, tokenColors, tokenRamps, TOKEN_SETS } from "./stack";
+import { defaultGap, lowerShare, segmentHeights, splitAt, tokenColors, tokenRamps, TOKEN_SETS } from "./stack";
 
 describe("stacked shares", () => {
   it("gives the lower tool its share of the day, all of an empty or one-tool day", () => {
@@ -31,6 +31,12 @@ describe("the flat split square", () => {
     expect(splitAt(0.1, 0.8, 1)).toBeCloseTo(0.1, 9);
     expect(splitAt(0.1, 0.8, 0)).toBeCloseTo(0.9, 9);
     expect(splitAt(0, 1, -2)).toBe(1);
+  });
+});
+
+describe("the segment gap", () => {
+  it("parts the two brand sets by a pixel and leaves the sea sets touching", () => {
+    expect(TOKEN_SETS.map((set) => [set, defaultGap(set)])).toEqual([["brand", 1], ["official", 1], ["sea", 0], ["ink", 0]]);
   });
 });
 

@@ -5,7 +5,7 @@ import { splitAt } from "@/lib/metrics/skyline/stack";
 import { rgbaCss, type CssCache } from "@/lib/metrics/skyline/cssCache";
 import { alphaCss, CELL_SLOTS, polyPath, SLOT_HOVER, SLOT_UPPER, type AlphaCss } from "./paint";
 import { flatCell } from "./flat";
-import { blend, clipUpper, px, py, segmentSides, splitTop, tone } from "./segments";
+import { blend, clipUpper, px, py, segmentSides, splitTop, tone, topSeam } from "./segments";
 
 // The scene's mutable state and the one function that paints it. The engine
 // owns the state and calls draw() from its loop; nothing here schedules.
@@ -41,6 +41,7 @@ export type Scene = {
   col2: Float32Array;
   fg: RGB;
   bg: RGB;
+  bgCss: string; // the page colour as a canvas string, for the seam between segments
   muted: RGB;
   n: number;
   weeks: number;
@@ -62,6 +63,7 @@ export type Scene = {
   up: Float32Array;
   sw: number;
   swStagger: number;
+  gap: number; // the seam between a stacked bar's segments, CSS pixels
   tone: Float32Array;
   zs: Float32Array;
   hover: Float32Array;
@@ -268,6 +270,7 @@ export const draw = (s: Scene) => {
         ctx.restore();
       }
     } else splitTop(s, slot, x0, y0, w, split, rise);
+    if (split !== null && share > 0.0005) topSeam(s, x0, w, split, rise);
     if (outline > 0.004 || hv > 0.02) {
       ctx.beginPath();
       polyPath(ctx, s.outline, OUTLINE_LEN, 0, -rise);

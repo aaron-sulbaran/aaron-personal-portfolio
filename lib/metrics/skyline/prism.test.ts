@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { camera } from "./maths";
-import { frontEdgeX, OUTLINE_LEN, prismSilhouette, roundedCell, SILHOUETTE_LEN } from "./prism";
+import { frontChain, frontEdgeX, OUTLINE_LEN, prismSilhouette, roundedCell, SILHOUETTE_LEN } from "./prism";
 
 const pts = (a: Float32Array, n: number) => Array.from({ length: n }, (_, i) => [a[i * 2], a[i * 2 + 1]] as const);
 const same = (p: readonly number[], q: readonly number[]) => Math.abs(p[0] - q[0]) < 1e-4 && Math.abs(p[1] - q[1]) < 1e-4;
@@ -46,6 +46,20 @@ describe("the rounded prism", () => {
     expect(Math.max(...lowerYs)).toBeCloseTo(Math.max(...wholeYs), 4);
     expect(Math.max(...upperYs)).toBeCloseTo(Math.max(...lowerYs) - 10, 4);
     expect(nu).toBe(nl);
+  });
+
+  it("the seam's line is the front of the cut: the silhouette's closing chain, raised to where the segments meet", () => {
+    const chain = new Float32Array(SILHOUETTE_LEN * 2);
+    const m = frontChain(chain, base, OUTLINE_LEN, 10);
+    const n = prismSilhouette(sil, base, OUTLINE_LEN, 15, 10);
+    const closing = pts(sil, n).slice(n - m);
+    pts(chain, m).forEach((p, i) => expect(same(p, closing[i])).toBe(true));
+    const xs = pts(base, OUTLINE_LEN).map((p) => p[0]);
+    const ends = [chain[0], chain[(m - 1) * 2]];
+    expect(ends[0]).toBeCloseTo(Math.max(...xs), 4);
+    expect(ends[1]).toBeCloseTo(Math.min(...xs), 4);
+    const frontYs = pts(chain, m).map((p) => p[1] + 10);
+    expect(Math.max(...frontYs)).toBeCloseTo(Math.max(...pts(base, OUTLINE_LEN).map((p) => p[1])), 4);
   });
 
   it("with no radius, the corners are the square cell's", () => {

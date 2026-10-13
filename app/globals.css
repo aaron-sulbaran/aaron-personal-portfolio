@@ -21,6 +21,11 @@
      skyline reads them once per theme through its probe element. */
   --tokens-brand-claude: #C15F3C;
   --tokens-brand-codex: #744DFE;
+  /* Official kits: Anthropic's clay #D97757 darkened for the light page (the
+     clay is 2.99:1 on it), and the Codex CLI's light-background accent
+     (LIGHT_BG_ACCENT in codex-rs/tui/src/style.rs). */
+  --tokens-official-claude: #C4623F;
+  --tokens-official-codex: #1C64C8;
   --tokens-sea-claude: var(--color-accent);
   --tokens-sea-codex: color-mix(in srgb, var(--color-accent) 45%, var(--color-background));
   --tokens-ink-claude: var(--color-accent);
@@ -89,6 +94,9 @@
   --color-glass-strong: rgba(20, 25, 30, 0.72);
   --tokens-brand-claude: #DE7356;
   --tokens-brand-codex: #859FF4;
+  /* Anthropic's brand-guidelines clay; the Codex CLI accent, ChatGPT Blue 200. */
+  --tokens-official-claude: #D97757;
+  --tokens-official-codex: #63A8F8;
   --tokens-sea-claude: var(--color-accent);
   --tokens-sea-codex: color-mix(in srgb, var(--color-accent) 50%, var(--color-foreground));
   --tokens-ink-claude: var(--color-accent);
