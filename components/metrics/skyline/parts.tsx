@@ -1,41 +1,19 @@
 "use client";
 
-import { Fill } from "@/components/fx/Fill";
+import { PillToggle } from "@/components/fx/PillToggle";
 import { siteContent } from "@/lib/content";
 import type { SeriesChoice } from "@/lib/metrics/settings";
 
 const copy = siteContent.metrics.chart;
 export type View = "flat" | "skyline";
 
-// Quiet rise Fills on native buttons with aria-pressed, so Enter and Space
-// work. The chosen option reads in the accent, the other muted.
-function Pair<T extends "flat" | "skyline" | SeriesChoice>({ label, options, value, onChange }: { label: string; options: readonly [T, T]; value: T; onChange: (v: T) => void }) {
-  return (
-    <div role="group" aria-label={label} className="-mx-2 flex items-baseline gap-1">
-      {options.map((v) => (
-        <Fill
-          key={v}
-          variant="rise"
-          colorway="quiet"
-          shape="rect"
-          aria-pressed={value === v}
-          onClick={() => onChange(v)}
-          className={`px-2 py-1 font-label text-label ${value === v ? "text-accent" : "text-muted"}`}
-          overClassName="flex items-center px-2 py-1"
-        >
-          {copy[v]}
-        </Fill>
-      ))}
-    </div>
-  );
-}
-
+// The chart's control row: two pill toggles, drawn as the hero's Coil and Band one.
 export function ViewToggle({ view, onChange }: { view: View; onChange: (v: View) => void }) {
-  return <Pair label={copy.viewGroup} options={["flat", "skyline"] as const} value={view} onChange={onChange} />;
+  return <PillToggle label={copy.viewGroup} options={["flat", "skyline"] as const} value={view} onChange={onChange} names={copy} />;
 }
 
 export function SeriesToggle({ value, onChange }: { value: SeriesChoice; onChange: (v: SeriesChoice) => void }) {
-  return <Pair label={copy.seriesGroup} options={["commits", "tokens"] as const} value={value} onChange={onChange} />;
+  return <PillToggle label={copy.seriesGroup} options={["commits", "tokens"] as const} value={value} onChange={onChange} names={copy} />;
 }
 
 // The Tokens view's key: each tool's strongest step beside its name.
