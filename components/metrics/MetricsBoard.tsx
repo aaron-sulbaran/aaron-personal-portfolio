@@ -1,37 +1,36 @@
 "use client";
 
 import { useState } from "react";
-import { siteContent } from "@/lib/content";
 import type { GithubSeries, UsageSeries } from "@/lib/metrics/series";
+import type { SeriesChoice } from "@/lib/metrics/settings";
 import { MetricsChart } from "./MetricsChart";
 import { MetricsStats } from "./MetricsStats";
+import { SeriesToggle } from "./skyline/parts";
+import { useTokensSettings } from "./tokensSettings";
 
-// GitHub is the first paint. Claude and Codex is the same skyline with token
-// counts (input plus output only). The choice is a press, not a route.
+// Commits (GitHub) or Tokens (Claude Code and Codex): one chart, one canvas.
+// The choice is a press, not a route; the chart never remounts, so the bars
+// move to the new series in place and the seen rule and the morph carry on.
+// The figures swap with a fade once a choice has been made.
 export function MetricsBoard({ github, usage }: { github: GithubSeries; usage: UsageSeries }) {
-  const [source, setSource] = useState<"github" | "usage">("github");
-  const series = source === "github" ? github : usage;
-  const words = { toggleLabel: siteContent.metrics.chart.seriesGroup, github: siteContent.metrics.chart.commits, claude: siteContent.metrics.chart.tokens };
+  const { first } = useTokensSettings();
+  const [choice, setChoice] = useState<SeriesChoice>(first);
+  const [switched, setSwitched] = useState(false);
+  const series = choice === "commits" ? github : usage;
+  const choose = (next: SeriesChoice) => {
+    if (next === choice) return;
+    setChoice(next);
+    setSwitched(true);
+  };
   return (
     <div role="group" aria-labelledby="metrics-title metrics-label" className="grid gap-10 md:col-span-12 md:grid-cols-12">
       <div className="min-w-0 md:col-span-9">
-        <div role="group" aria-label={words.toggleLabel} className="mb-4 flex flex-wrap gap-2">
-          {(["github", "usage"] as const).map((key) => (
-            <button
-              key={key}
-              type="button"
-              aria-pressed={source === key}
-              onClick={() => setSource(key)}
-              className={`rounded-full border border-border px-3 py-1 font-label text-label ${source === key ? "text-accent" : "text-muted"}`}
-            >
-              {key === "github" ? words.github : words.claude}
-            </button>
-          ))}
-        </div>
-        <MetricsChart key={series.kind} series={series} />
+        <MetricsChart series={series} toolbar={<SeriesToggle value={choice} onChange={choose} />} />
       </div>
       <div className="md:col-span-3 md:pt-12">
-        <MetricsStats series={series} />
+        <div key={series.kind} data-metrics-figures={series.kind} className={switched ? "metrics-swap" : undefined}>
+          <MetricsStats series={series} />
+        </div>
       </div>
     </div>
   );
