@@ -221,10 +221,12 @@ export const siteContent = {
   // line under it, which also names the GitHub group; title is the wording
   // Aaron suggested on 2026-10-09 ("Proof of Work or something else"), lowercase
   // to match "who I am" and "wanna chat?"; approved. groupLabel reads for both
-  // views of the chart (Commits and Tokens); proposed 2026-10-13, awaiting Aaron.
+  // views of the chart (Commits and Tokens); Aaron's wording, 2026-10-13. Only
+  // the tool key and the tooltip's split name the tools; every other line says
+  // tokens, agents or agentic.
   metrics: {
     title: "proof of work",
-    groupLabel: "What I shipped on GitHub, and the Claude and Codex tokens behind it",
+    groupLabel: "What I shipped on GitHub, and the agentic tokens behind those commits",
     statsLabel: "Contribution figures",
     streakLabel: "Current streak of contributions",
     day: "day",
@@ -264,7 +266,7 @@ export const siteContent = {
     tokens: {
       statsLabel: "Token figures",
       totalLabel: "tokens in the last 6 months",
-      activeLabel: "days I built with Claude or Codex",
+      activeLabel: "days I built with agents",
       peakLabel: "my biggest day",
       streakLabel: "Current streak of days with tokens",
       unit: "token",
@@ -274,12 +276,12 @@ export const siteContent = {
       // The tooltip's names for each tool's share, and the legend's key.
       claude: "Claude",
       codex: "Codex",
-      keyLabel: "Tools",
+      keyLabel: "Agents",
       keyClaude: "Claude Code",
       keyCodex: "Codex",
       tip: (total: string, day: string, parts: string) => `${total} tokens on ${day}${parts ? `: ${parts}` : ""}`,
       label: (total: string, from: string, to: string, skyline: boolean) =>
-        `${total} tokens from ${from} to ${to}, Claude Code and Codex stacked, shown as a ${skyline ? "3D skyline" : "heat map"}. Use the arrow keys to read individual days.`,
+        `${total} agentic tokens from ${from} to ${to}, stacked by agent, shown as a ${skyline ? "3D skyline" : "heat map"}. Use the arrow keys to read individual days.`,
     },
   },
   // Connect (docs/content/connect-footer-band.md, approved 2026-10-08): the

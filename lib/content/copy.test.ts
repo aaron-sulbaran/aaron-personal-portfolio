@@ -107,9 +107,18 @@ describe("where the links sit, pinned as raw markup", () => {
 describe("the numbers strip", () => {
   it("heads the strip with its own lowercase title, labels the GitHub chart and holds my LinkedIn line as one figure", () => {
     expect(metrics.title).toBe("proof of work");
-    expect(metrics.groupLabel).toBe("What I shipped on GitHub, and the Claude and Codex tokens behind it");
+    expect(metrics.groupLabel).toBe("What I shipped on GitHub, and the agentic tokens behind those commits");
     expect([metrics.chart.commits, metrics.chart.tokens]).toEqual(["Commits", "Tokens"]);
     expect([metrics.tokens.keyClaude, metrics.tokens.keyCodex]).toEqual(["Claude Code", "Codex"]);
+    expect([metrics.tokens.totalLabel, metrics.tokens.activeLabel, metrics.tokens.peakLabel]).toEqual(["tokens in the last 6 months", "days I built with agents", "my biggest day"]);
+  });
+
+  it("names the tools only on the key and in the tooltip's split; every other line says tokens, agents or agentic", () => {
+    const { claude, codex, keyClaude, keyCodex, tip, label, ...rest } = metrics.tokens;
+    const strings = (o: object) => Object.values(o).flat().filter((v): v is string => typeof v === "string");
+    const lines = [metrics.groupLabel, metrics.statsLabel, ...strings(rest), ...strings(metrics.chart), label("1", "a", "b", true), label("1", "a", "b", false), tip("1", "a", "")];
+    for (const line of lines) expect(line, line).not.toMatch(/claude|codex|cursor/i);
+    expect([claude, codex, keyClaude, keyCodex]).toEqual(["Claude", "Codex", "Claude Code", "Codex"]);
     expect(metrics.slots.linkedin).toEqual({ value: "450,000", label: "LinkedIn impressions in 3 months", sub: "2,500+ followers" });
     expect(metrics.slots.fun).toBeNull();
   });

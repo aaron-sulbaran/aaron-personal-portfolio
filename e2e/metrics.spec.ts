@@ -117,6 +117,17 @@ test("metrics: the strip is headed by its own big title and the GitHub line, set
   );
 });
 
+// Aaron, 2026-10-13: the line under the strip's title runs on one line on a
+// desktop; Who I am's keeps its narrow measure.
+test("metrics: the line under the title is one line at 1440, while Who I am's stays narrow", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await openHome(page);
+  const lines = (selector: string) =>
+    page.locator(selector).first().evaluate((el) => Math.round(el.getBoundingClientRect().height / parseFloat(getComputedStyle(el).lineHeight)));
+  expect(await lines("#numbers p[data-sections-block='body']")).toBe(1);
+  expect(await page.locator("#about .sections-sticky-col p[data-sections-block='body']").first().evaluate((el) => getComputedStyle(el).maxWidth)).toBe("320px");
+});
+
 test("metrics: flat at 95 percent down the viewport, skyline after a slow scroll past the line", async ({ page }) => {
   await openHome(page);
   await scrollToY(page, await topAt(page, 0.95));
