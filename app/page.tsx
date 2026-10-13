@@ -12,6 +12,7 @@ import { Metrics, METRICS_LABEL_ID, METRICS_TITLE_ID } from "@/components/metric
 import { SectionHeading, SectionSubline } from "@/components/sections/SectionTitle";
 import { siteContent } from "@/lib/content";
 import { MarkCardSource } from "@/components/mark/MarkCardSource";
+import { RushInvite } from "@/components/quick/RushInvite";
 
 // The contribution figures refresh once a day (lib/metrics/github.ts); a
 // literal, because Next reads segment config statically.
@@ -53,6 +54,7 @@ export default function Home() {
         <Footer />
       </div>
       <MarkCardSource />
+      <RushInvite />
     </>
   );
 }
