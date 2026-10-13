@@ -53,10 +53,10 @@ const states = (page: Page) => page.evaluate(() => (window as unknown as { __sta
 test("metrics: the stats show the snapshot's figures, stamped, with no token", async ({ page }) => {
   await openHome(page);
   const active = snap.days.filter((d: { count: number }) => d.count > 0).length;
-  await expect(page.locator('[data-stat="streak"]')).toContainText(String(snap.streaks.current.days));
+  await expect(page.locator('[data-stat="streak"] + dd')).toContainText(String(snap.streaks.current.days));
   await expect(page.locator('[data-stat="streak"]')).toContainText(`${m.streakLabel}${m.since} ${shortDay(snap.streaks.current.start)}`);
-  await expect(page.locator('[data-stat="total"]')).toContainText(new Intl.NumberFormat("en-US").format(snap.total));
-  await expect(page.locator('[data-stat="active"]')).toContainText(String(active));
+  await expect(page.locator('[data-stat="total"] + dd')).toContainText(new Intl.NumberFormat("en-US").format(snap.total));
+  await expect(page.locator('[data-stat="active"] + dd')).toContainText(String(active));
   await expect(page.locator("[data-metrics-stale]")).toHaveText(`${m.asOf} ${shortDay(snap.range.to)}`);
 });
 
@@ -65,7 +65,7 @@ test("metrics: my LinkedIn line is a figure of its own, outside the GitHub group
   const slot = m.slots.linkedin!;
   const linkedin = page.locator('[data-stat="linkedin"]');
   await expect(linkedin).toHaveCount(1);
-  await expect(linkedin).toContainText(slot.value);
+  await expect(page.locator('[data-stat="linkedin"] + dd')).toContainText(slot.value);
   await expect(linkedin).toContainText(slot.label);
   await expect(linkedin).toContainText(slot.sub!);
   const group = page.getByRole("group", { name: `${m.title} ${m.groupLabel}`, exact: true });
