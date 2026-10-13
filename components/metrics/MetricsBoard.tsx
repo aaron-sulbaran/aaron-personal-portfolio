@@ -13,7 +13,7 @@ import { useTokensSettings } from "./tokensSettings";
 // move to the new series in place and the seen rule and the morph carry on.
 // The figures swap with a fade once a choice has been made.
 export function MetricsBoard({ github, usage }: { github: GithubSeries; usage: UsageSeries }) {
-  const { first } = useTokensSettings();
+  const { first, fourth } = useTokensSettings();
   const [choice, setChoice] = useState<SeriesChoice>(first);
   const [switched, setSwitched] = useState(false);
   const series = choice === "commits" ? github : usage;
@@ -29,7 +29,7 @@ export function MetricsBoard({ github, usage }: { github: GithubSeries; usage: U
       </div>
       <div className="md:col-span-3 md:pt-12">
         <div key={series.kind} data-metrics-figures={series.kind} className={switched ? "metrics-swap" : undefined}>
-          <MetricsStats series={series} />
+          <MetricsStats series={series} fourth={fourth} />
         </div>
       </div>
     </div>

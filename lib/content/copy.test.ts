@@ -115,7 +115,7 @@ describe("the numbers strip", () => {
   it("names the tools only on the key and in the tooltip's split; every other line says tokens, agents or agentic", () => {
     const { claude, codex, keyClaude, keyCodex, tip, label, ...rest } = metrics.tokens;
     const strings = (o: object) => Object.values(o).flat().filter((v): v is string => typeof v === "string");
-    const lines = [metrics.groupLabel, metrics.statsLabel, ...strings(rest), ...strings(metrics.chart), label("1", "a", "b", true), label("1", "a", "b", false), tip("1", "a", "")];
+    const lines = [metrics.groupLabel, metrics.statsLabel, ...strings(rest), ...strings(metrics.chart), label("1", "a", "b", true), label("1", "a", "b", false), tip("1", "a", ""), rest.toolkitSub("1", "2", "3", "4")];
     for (const line of lines) expect(line, line).not.toMatch(/claude|codex|cursor/i);
     expect([claude, codex, keyClaude, keyCodex]).toEqual(["Claude", "Codex", "Claude Code", "Codex"]);
     expect(metrics.slots.linkedin).toEqual({ value: "450,000", label: "LinkedIn impressions in 3 months", sub: "2,500+ followers" });

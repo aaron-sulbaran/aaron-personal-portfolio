@@ -34,8 +34,5 @@ export type UsageSnapshot = z.infer<typeof usageSnapshotSchema>;
 export type ToolCounts = z.infer<typeof counts>;
 export type Toolkit = z.infer<typeof toolkitSchema>;
 
-// Everything in the agent setup: skills written and installed, plugins, MCP servers.
-export const toolkitTotal = (t: Toolkit): number => t.customSkills + t.installedSkills + t.plugins + t.mcpServers;
-
 // A tool's total tokens for a day: input, output, cache reads and cache writes.
 export const toolTotal = (c: ToolCounts): number => c.in + c.out + c.cr + c.cw;

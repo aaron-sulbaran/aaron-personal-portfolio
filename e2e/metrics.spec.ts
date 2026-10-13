@@ -15,7 +15,7 @@ const snap = JSON.parse(readFileSync("lib/metrics/data/contributions-6mo.json", 
 
 type ToolCounts = { in: number; out: number; cr: number; cw: number };
 type UsageRow = { d: string; claude: ToolCounts; codex: ToolCounts };
-const usage = JSON.parse(readFileSync("lib/metrics/data/usage-6mo.json", "utf8")) as { days: UsageRow[] };
+const usage = JSON.parse(readFileSync("lib/metrics/data/usage-6mo.json", "utf8")) as { days: UsageRow[]; toolkit: { customSkills: number } };
 const toolTotal = (c: ToolCounts) => c.in + c.out + c.cr + c.cw;
 const usageTo = usage.days[usage.days.length - 1].d;
 const usageFrom = windowStart(usageTo, "6mo");
@@ -365,7 +365,9 @@ test("metrics: Tokens swaps the figures, the tooltip and the label in place; Com
   expect(await canvas.evaluate((el) => (el as unknown as { __mark?: number }).__mark), "the canvas is the same element").toBe(1);
   expect(await state(page), "the switch keeps the view").toBe("skyline");
 
-  expect(await figureKeys(page)).toEqual(["total", "active", "peak", "streak"]);
+  expect(await figureKeys(page)).toEqual(["total", "active", "peak", "skills"]);
+  await expect(page.locator('[data-stat="skills"]')).toContainText(String(usage.toolkit.customSkills));
+  await expect(page.locator('[data-stat="skills"]')).toContainText(m.tokens.skillsLabel);
   await expect(page.locator('[data-stat="total"]')).toContainText(formatCompact(usageTotal));
   await expect(page.locator('[data-stat="total"]')).toContainText(m.tokens.totalLabel);
   const peak = peakDay(usageDays)!;
