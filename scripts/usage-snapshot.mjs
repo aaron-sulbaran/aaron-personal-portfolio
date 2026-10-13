@@ -1,8 +1,18 @@
 // Reads local Claude and Codex logs and writes daily integer totals only.
 // Nothing else leaves the laptop: no prompts, paths, ids, or model names.
 // Run: node scripts/usage-snapshot.mjs --since 2026-04-01 --out lib/metrics/data/usage-6mo.json
+//
+// Claude counts the way Claude Code's desktop app counts its "Total tokens":
+// every assistant line in ~/.claude/projects, subagent transcripts included.
+// Claude Code writes one line per content block of a response (thinking, text,
+// each tool call), each repeating the response's usage, so this sums a response
+// once per block. Pass --claude responses to count each API response once
+// (by message id and request id), which is about 2.3 times smaller.
+// Codex: input_tokens already includes cached_input_tokens and output_tokens
+// already includes reasoning, so `in` is the uncached part and the four fields
+// sum to Codex's own total_tokens.
 
-import { createReadStream, readdirSync, statSync, writeFileSync } from "node:fs";
+import { createReadStream, readdirSync, writeFileSync } from "node:fs";
 import { createInterface } from "node:readline";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -14,6 +24,10 @@ const flag = (name, fallback) => {
 };
 const since = flag("--since", "2026-04-01");
 const outPath = flag("--out", "lib/metrics/data/usage-6mo.json");
+const claudeRule = flag("--claude", "app");
+if (claudeRule !== "app" && claudeRule !== "responses") {
+  throw new Error(`--claude must be "app" or "responses", got ${claudeRule}`);
+}
 
 function localDay(iso) {
   const date = new Date(iso);
@@ -57,25 +71,37 @@ async function readLines(path, onLine) {
   }
 }
 
-const claudeKeys = new Map();
+const claudeLines = [];
+const claudeResponses = new Map();
+
+function claudeCounts(usage) {
+  return {
+    in: usage.input_tokens ?? 0,
+    out: usage.output_tokens ?? 0,
+    cr: usage.cache_read_input_tokens ?? 0,
+    cw: usage.cache_creation_input_tokens ?? 0,
+  };
+}
 
 async function scanClaude(root) {
   const files = [];
   walk(root, files);
   for (const path of files) {
     await readLines(path, (row) => {
-      if (row.type !== "assistant" || !row.message?.usage || !row.message.id) return;
+      if (row.type !== "assistant" || !row.message?.usage) return;
       const day = localDay(row.timestamp);
       if (!day || day < since) return;
-      const usage = row.message.usage;
+      const counts = claudeCounts(row.message.usage);
+      claudeLines.push({ day, ...counts });
+      if (!row.message.id) return;
       const key = `${row.message.id}\0${row.requestId ?? ""}`;
-      const prev = claudeKeys.get(key) ?? { day, in: 0, out: 0, cr: 0, cw: 0 };
+      const prev = claudeResponses.get(key) ?? { day, in: 0, out: 0, cr: 0, cw: 0 };
       prev.day = day;
-      prev.in = Math.max(prev.in, usage.input_tokens ?? 0);
-      prev.out = Math.max(prev.out, usage.output_tokens ?? 0);
-      prev.cr = Math.max(prev.cr, usage.cache_read_input_tokens ?? 0);
-      prev.cw = Math.max(prev.cw, usage.cache_creation_input_tokens ?? 0);
-      claudeKeys.set(key, prev);
+      prev.in = Math.max(prev.in, counts.in);
+      prev.out = Math.max(prev.out, counts.out);
+      prev.cr = Math.max(prev.cr, counts.cr);
+      prev.cw = Math.max(prev.cw, counts.cw);
+      claudeResponses.set(key, prev);
     });
   }
   return files.length;
@@ -96,11 +122,13 @@ async function scanCodex(root) {
       total = next;
       if (!day || day < since) return;
       const last = payload.info?.last_token_usage ?? {};
+      const cached = last.cached_input_tokens ?? 0;
+      const written = last.cache_write_input_tokens ?? 0;
       const bucket = days.get(day) ?? blank();
-      bucket.in += last.input_tokens ?? 0;
-      bucket.out += (last.output_tokens ?? 0) + (last.reasoning_output_tokens ?? 0);
-      bucket.cr += last.cached_input_tokens ?? 0;
-      bucket.cw += last.cache_write_input_tokens ?? 0;
+      bucket.in += Math.max(0, (last.input_tokens ?? 0) - cached - written);
+      bucket.out += last.output_tokens ?? 0;
+      bucket.cr += cached;
+      bucket.cw += written;
       bucket.msgs += 1;
       days.set(day, bucket);
     });
@@ -119,9 +147,11 @@ const home = homedir();
 const claudeFiles = await scanClaude(join(home, ".claude", "projects"));
 const codex = await scanCodex(join(home, ".codex", "sessions"));
 const days = new Map();
-for (const turn of claudeKeys.values()) {
-  add(days, turn.day, "claude", { in: turn.in, out: turn.out, cr: turn.cr, cw: turn.cw, msgs: 1 });
+const claudeRows = claudeRule === "app" ? claudeLines : [...claudeResponses.values()];
+for (const turn of claudeRows) {
+  add(days, turn.day, "claude", { in: turn.in, out: turn.out, cr: turn.cr, cw: turn.cw, msgs: 0 });
 }
+for (const turn of claudeResponses.values()) add(days, turn.day, "claude", { msgs: 1 });
 for (const [day, bucket] of codex.days) add(days, day, "codex", bucket);
 
 const snapshot = {
@@ -135,6 +165,13 @@ const snapshot = {
   days: [...days.keys()].sort().map((d) => ({ d, ...days.get(d) })),
 };
 
+const sum = (tool) => snapshot.days.reduce((acc, day) => {
+  const c = day[tool];
+  return acc + c.in + c.out + c.cr + c.cw;
+}, 0);
+const billions = (n) => `${(n / 1e9).toFixed(2)}B`;
 writeFileSync(outPath, `${JSON.stringify(snapshot, null, 2)}\n`);
-console.error(`claude files ${claudeFiles}, turns ${claudeKeys.size}, codex files ${codex.files}, days ${snapshot.days.length}`);
+console.error(`claude files ${claudeFiles}, lines ${claudeLines.length}, responses ${claudeResponses.size}, rule ${claudeRule}`);
+console.error(`codex files ${codex.files}, days ${snapshot.days.length}`);
+console.error(`claude ${billions(sum("claude"))}, codex ${billions(sum("codex"))}`);
 console.error("cursor request log not found; req stays 0");
