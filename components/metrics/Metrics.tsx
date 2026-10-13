@@ -1,7 +1,7 @@
 import { loadSeries } from "@/lib/metrics/github";
 import { SKYLINE } from "@/lib/metrics/settings";
-import { MetricsChart } from "./MetricsChart";
-import { MetricsSlots, MetricsStats } from "./MetricsStats";
+import { MetricsBoard } from "./MetricsBoard";
+import { MetricsSlots } from "./MetricsStats";
 
 // The ids of the strip's big heading and of the line under it (both in
 // app/page.tsx), which together name the GitHub group.
@@ -12,17 +12,11 @@ export const METRICS_LABEL_ID = "metrics-label";
 // and the line under it. My own figures sit beside it, under the figures
 // column, outside the group.
 export async function Metrics() {
-  const series = await loadSeries("github", SKYLINE.window);
+  const [github, usage] = await Promise.all([loadSeries("github", SKYLINE.window), loadSeries("usage", SKYLINE.window)]);
+  if (github.kind !== "github" || usage.kind !== "usage") throw new Error("The metrics loaders returned the wrong series.");
   return (
     <div data-wave-words className="grid gap-10 md:grid-cols-12">
-      <div role="group" aria-labelledby={`${METRICS_TITLE_ID} ${METRICS_LABEL_ID}`} className="grid gap-10 md:col-span-12 md:grid-cols-12">
-        <div className="min-w-0 md:col-span-9">
-          <MetricsChart series={series} />
-        </div>
-        <div className="md:col-span-3 md:pt-12">
-          <MetricsStats series={series} />
-        </div>
-      </div>
+      <MetricsBoard github={github} usage={usage} />
       <div className="md:col-span-3 md:col-start-10">
         <MetricsSlots />
       </div>

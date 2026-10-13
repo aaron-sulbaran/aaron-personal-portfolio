@@ -2,6 +2,7 @@ import "server-only";
 import { z } from "zod";
 import type { GithubSeries, Series } from "./series";
 import { snapshotSeries } from "./snapshot";
+import { loadUsage } from "./usage";
 import { summarize, windowStart, type SeriesWindow } from "./window";
 
 // The contribution calendar through GitHub's GraphQL API, with a token that
@@ -97,9 +98,11 @@ async function loadGithub(window: SeriesWindow, now: Date): Promise<GithubSeries
   return lastGood && lastGood.window === window ? { ...lastGood, stale: true } : snapshotSeries();
 }
 
-export async function loadSeries(kind: "github", window: SeriesWindow = "6mo", now = new Date()): Promise<Series> {
+export async function loadSeries(kind: Series["kind"], window: SeriesWindow = "6mo", now = new Date()): Promise<Series> {
   switch (kind) {
     case "github":
       return loadGithub(window, now);
+    case "usage":
+      return loadUsage(now);
   }
 }

@@ -9,14 +9,23 @@ import { accentRamp, buildGrid, dayMs, monthLabels } from "@/lib/metrics/skyline
 import { createEngine, type Engine, type EngineConfig, type ThemeReadout } from "./skyline/engine";
 import { Legend, SkylineHint, ViewToggle, type View } from "./skyline/parts";
 
-const copy = siteContent.metrics.chart;
+const chart = siteContent.metrics.chart;
 const number = new Intl.NumberFormat("en-US");
 const longDay = new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
 const shortDay = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 const PALETTE = accentRamp(SKYLINE.lightestShare);
-const noun = (n: number) => (n === 1 ? copy.unit : copy.units);
+
+function wordsFor(series: Series) {
+  if (series.kind === "usage") {
+    const u = siteContent.metrics.usage;
+    return { unit: u.unit, units: u.units, none: u.none, on: chart.on, label: u.label, levels: u.levels };
+  }
+  return { unit: chart.unit, units: chart.units, none: chart.none, on: chart.on, label: chart.label, levels: chart.levels };
+}
 
 export function ContributionSkyline({ series, view, onViewChange }: { series: Series; view: View; onViewChange: (v: View) => void }) {
+  const copy = wordsFor(series);
+  const noun = (n: number) => (n === 1 ? copy.unit : copy.units);
   const model = useMemo(() => {
     const grid = buildGrid(dayValues(series), dayMs(series.range.to), 0, { from: dayMs(series.range.from) }, { levelCurve: SKYLINE.levelCurve, heightCap: SKYLINE.heightCap });
     return { ...grid, months: monthLabels(grid.cells, grid.weeks) };
@@ -75,7 +84,7 @@ export function ContributionSkyline({ series, view, onViewChange }: { series: Se
             ref={canvasRef}
             tabIndex={0}
             role="application"
-            aria-roledescription={copy.roleDescription}
+            aria-roledescription={chart.roleDescription}
             aria-label={copy.label(number.format(series.total), shortDay.format(dayMs(series.range.from)), shortDay.format(dayMs(series.range.to)), skyline)}
             className="absolute left-0 top-0 block outline-none"
             style={{ maxWidth: "none", touchAction: skyline ? "pan-y" : "auto" }}
@@ -88,7 +97,7 @@ export function ContributionSkyline({ series, view, onViewChange }: { series: Se
       </div>
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 pt-4 font-label text-label-sm text-muted">
         <SkylineHint view={view} />
-        {theme.swatches.length > 0 && <Legend swatches={theme.swatches} pinned={pinnedLevel} onPin={setPinnedLevel} onPreview={setPreviewLevel} />}
+        {theme.swatches.length > 0 && <Legend swatches={theme.swatches} pinned={pinnedLevel} onPin={setPinnedLevel} onPreview={setPreviewLevel} levels={copy.levels} />}
       </div>
       <p aria-live="polite" className="sr-only">{announce}</p>
     </div>
