@@ -1,20 +1,11 @@
-import {
-  cameraInto,
-  easeInOutCubic,
-  FACE_X,
-  FACE_Y,
-  lerp,
-  riseAt,
-  smoothstep,
-  type Cam,
-  type DepthSpec,
-  type RGB,
-} from "@/lib/metrics/skyline/maths";
+import { cameraInto, easeInOutCubic, lerp, riseAt, smoothstep, type Cam, type DepthSpec, type RGB } from "@/lib/metrics/skyline/maths";
 import { SKYLINE } from "@/lib/metrics/settings";
-import { frontEdgeX, OUTLINE_LEN, prismSilhouette, roundedCell } from "@/lib/metrics/skyline/prism";
-import { rgbCss, rgbaCss, type CssCache } from "@/lib/metrics/skyline/cssCache";
-import { alphaCss, CELL_SLOTS, polyPath, SLOT_FACE_X, SLOT_FACE_Y, SLOT_HOVER, SLOT_TOP, type AlphaCss } from "./paint";
+import { OUTLINE_LEN, roundedCell } from "@/lib/metrics/skyline/prism";
+import { splitAt } from "@/lib/metrics/skyline/stack";
+import { rgbaCss, type CssCache } from "@/lib/metrics/skyline/cssCache";
+import { alphaCss, CELL_SLOTS, polyPath, SLOT_HOVER, SLOT_UPPER, type AlphaCss } from "./paint";
 import { flatCell } from "./flat";
+import { blend, clipUpper, px, py, segmentSides, splitTop, tone } from "./segments";
 
 // The scene's mutable state and the one function that paints it. The engine
 // owns the state and calls draw() from its loop; nothing here schedules.
@@ -43,8 +34,11 @@ export type Scene = {
   gutter: number;
   labelW: number;
   font: string;
-  // [empty, l1, l2, l3, l4, future] x rgb, eased toward the goal
+  // [empty, l1, l2, l3, l4, future] x rgb, eased toward the goal: the lower
+  // (or only) tool's ramp. col2 is the upper tool's l1 to l4, a copy of col's
+  // when the series is not stacked.
   col: Float32Array;
+  col2: Float32Array;
   fg: RGB;
   bg: RGB;
   muted: RGB;
@@ -54,7 +48,21 @@ export type Scene = {
   dy: Float32Array;
   lv: Uint8Array; // 0 to 4 the level, 5 a future day
   skip: Uint8Array; // 1 for an "outside" pad day: kept in the geometry, never drawn or hit
+  // The switch between series: each bar's height (grid units), lower share
+  // and two colours (n x 6) where it began, its heights and shares in the
+  // current series, and what blend() shows this frame. sw runs 0 to 1.
+  hFrom: Float32Array;
+  hTo: Float32Array;
   hgt: Float32Array;
+  shFrom: Float32Array;
+  shTo: Float32Array;
+  shr: Float32Array;
+  cFrom: Float32Array;
+  low: Float32Array;
+  up: Float32Array;
+  sw: number;
+  swStagger: number;
+  tone: Float32Array;
   zs: Float32Array;
   hover: Float32Array;
   dim: Float32Array;
@@ -98,11 +106,6 @@ export type Scene = {
 
 export type Bounds = { minx: number; maxx: number; miny: number; maxy: number };
 
-// Scene point to canvas pixels under the frame's camera and transform.
-const px = (s: Scene, x: number, y: number) => s.ox + (x * s.cam.cs - y * s.cam.sn) * s.sc;
-const py = (s: Scene, x: number, y: number, z: number) =>
-  s.oy + ((x * s.cam.sn + y * s.cam.cs) * s.cam.se - z * s.cam.ce) * s.sc;
-
 // One point, projected to screen before scale and offset (no tuple), into the bounds.
 const grow = (b: Bounds, c: Cam, x: number, y: number, z: number) => {
   const sx = x * c.cs - y * c.sn;
@@ -114,8 +117,8 @@ const grow = (b: Bounds, c: Cam, x: number, y: number, z: number) => {
 };
 
 // Projected extent of the scene for camera e, with each bar at its full
-// height times e (`full`) or at its current rise. Written into s.ext, which
-// the next call overwrites.
+// height in the current series times e (`full`) or at its current rise.
+// Written into s.ext, which the next call overwrites.
 export const extent = (s: Scene, cam: Cam, e: number, full: boolean): Bounds => {
   const w = lerp(0.78, 0.9, e);
   const off = (1 - w) / 2;
@@ -127,7 +130,7 @@ export const extent = (s: Scene, cam: Cam, e: number, full: boolean): Bounds => 
   for (let i = 0; i < s.n; i++) {
     const x0 = s.wk[i] + off;
     const y0 = s.dy[i] + off;
-    const z = full ? s.hgt[i] * e : s.zs[i];
+    const z = full ? s.hTo[i] * e : s.zs[i];
     grow(b, cam, x0, y0, z);
     grow(b, cam, x0 + w, y0, z);
     grow(b, cam, x0, y0 + w, z);
@@ -172,6 +175,7 @@ export const draw = (s: Scene) => {
     s.stage.style.height = Hc.toFixed(1) + "px";
     s.lastH = Hc;
   }
+  blend(s);
   for (let i = 0; i < n; i++) s.zs[i] = riseAt(s.t, s.wk[i], s.weeks, s.dy[i]) * s.hgt[i];
   const b = extent(s, cam, e, false);
   const pad = lerp(2, 20, e);
@@ -190,7 +194,7 @@ export const draw = (s: Scene) => {
   ctx.setTransform(s.dpr, 0, 0, s.dpr, 0, 0);
   ctx.clearRect(0, 0, W, s.Hmax);
 
-  const { wk, dy, lv, zs, hover, dim, polys, faces, col, fg } = s;
+  const { wk, dy, lv, zs, hover, polys, faces, fg } = s;
   if (cs !== s.sortCs || sn !== s.sortSn) sortOrder(s);
 
   const w = lerp(0.78, 0.9, e);
@@ -245,46 +249,25 @@ export const draw = (s: Scene) => {
     if (tall > 0.35 && w * sn * sc > 0.35) f |= 2;
     faces[i] = f;
 
-    const L = lv[i] * 3;
-    let r = col[L];
-    let g = col[L + 1];
-    let bl = col[L + 2];
-    const d = dim[i];
-    if (d > 0.002) {
-      r += (col[0] - r) * 0.72 * d;
-      g += (col[1] - g) * 0.72 * d;
-      bl += (col[2] - bl) * 0.72 * d;
-    }
+    tone(s, i);
     const hv = hover[i];
-    if (hv > 0.002) {
-      const m = 0.16 * hv;
-      r += (fg[0] - r) * m;
-      g += (fg[1] - g) * m;
-      bl += (fg[2] - bl) * m;
-    }
+    const share = s.shr[i];
+    const split = share < 0.9995 ? splitAt(y0, w, share) : null;
     roundedCell(s.outline, cam, x0, y0, w, SKYLINE.prismRadius * w, 0, sc, s.ox, s.oy);
     const rise = z * ce * sc;
     const slot = i * CELL_SLOTS;
-    if (f) {
-      const m = prismSilhouette(s.sil, s.outline, OUTLINE_LEN, rise);
-      const front = frontEdgeX(s.outline, OUTLINE_LEN);
-      ctx.save();
-      ctx.beginPath();
-      polyPath(ctx, s.sil, m);
-      ctx.clip();
-      ctx.fillStyle = rgbCss(s.cellCss, slot + SLOT_FACE_Y, r * FACE_Y, g * FACE_Y, bl * FACE_Y);
-      ctx.fillRect(0, 0, front, s.Hmax);
-      ctx.fillStyle = rgbCss(s.cellCss, slot + SLOT_FACE_X, r * FACE_X, g * FACE_X, bl * FACE_X);
-      ctx.fillRect(front, 0, W - front, s.Hmax);
-      ctx.restore();
-    }
-    if (fd > 0.004) flatCell(s, slot, rise, r, g, bl, fd, lv[i] === 0 || lv[i] === 5);
-    else {
-      ctx.beginPath();
-      polyPath(ctx, s.outline, OUTLINE_LEN, 0, -rise);
-      ctx.fillStyle = rgbCss(s.cellCss, slot + SLOT_TOP, r, g, bl);
-      ctx.fill();
-    }
+    if (f) segmentSides(s, slot, rise, share);
+    if (fd > 0.004) {
+      const t = s.tone;
+      const empty = lv[i] === 0 || lv[i] === 5;
+      flatCell(s, slot, rise, t[0], t[1], t[2], fd, empty);
+      if (split !== null) {
+        ctx.save();
+        clipUpper(s, x0, y0, w, split, rise);
+        flatCell(s, slot + SLOT_UPPER, rise, t[3], t[4], t[5], fd, empty);
+        ctx.restore();
+      }
+    } else splitTop(s, slot, x0, y0, w, split, rise);
     if (outline > 0.004 || hv > 0.02) {
       ctx.beginPath();
       polyPath(ctx, s.outline, OUTLINE_LEN, 0, -rise);

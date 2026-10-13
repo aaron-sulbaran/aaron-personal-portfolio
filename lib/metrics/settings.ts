@@ -1,4 +1,5 @@
 import type { DepthSpec, HeightCurve, LevelCurve } from "./skyline/maths";
+import type { TokenColorSet } from "./skyline/stack";
 
 // Aaron's pick (lab round 4, settings key v5): the Full skyline look inside Up
 // to now, six months, flat until seen, the bevel at height zero.
@@ -18,3 +19,30 @@ export const SKYLINE = {
 // the viewport and 60 percent of the chart is in view with the scroll settled
 // (under 300px/s for 120ms), or slow enough to watch the whole morph.
 export const MORPH = { triggerPct: 60, inViewShare: 0.6, settledMs: 120, settleSpeed: 300, durationMs: 1300 } as const;
+
+// Which series the strip's chart shows: Commits (GitHub) or Tokens (Claude Code and Codex).
+export type SeriesChoice = "commits" | "tokens";
+
+// The Tokens view and the switch between the two (the metrics lab tunes
+// these; /lab/metrics, dev only). The token days are far more skewed than the
+// commits (one 7.5B day over a 72M median), so the curve lifts the small days.
+// minShare 0 draws each tool's true share of a day.
+export type TokensSettings = {
+  colorSet: TokenColorSet;
+  heightCurve: HeightCurve;
+  heightCap: number;
+  minShare: number;
+  switchMs: number;
+  switchStagger: number;
+  first: SeriesChoice;
+};
+
+export const TOKENS: TokensSettings = {
+  colorSet: "brand",
+  heightCurve: "sqrt",
+  heightCap: 1,
+  minShare: 0,
+  switchMs: 900,
+  switchStagger: 0.42,
+  first: "commits",
+};

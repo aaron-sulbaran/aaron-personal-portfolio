@@ -14,6 +14,17 @@
   --scrollbar-comp: 0px;
   /* Shared deceleration curve, mirrors EASE in lib/motion.ts. */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  /* Data encodings for the proof-of-work strip's Tokens view (components/metrics),
+     not UI accents: one pair per colour set the metrics lab compares, Claude Code
+     then Codex. The brand pair is Claude Code's own orange and Codex's violet
+     (sampled from its launch art); the other two stay in the site's palette. The
+     skyline reads them once per theme through its probe element. */
+  --tokens-brand-claude: #C15F3C;
+  --tokens-brand-codex: #744DFE;
+  --tokens-sea-claude: var(--color-accent);
+  --tokens-sea-codex: color-mix(in srgb, var(--color-accent) 45%, var(--color-background));
+  --tokens-ink-claude: var(--color-accent);
+  --tokens-ink-codex: var(--color-muted);
 
   /* Coil scene tokens (slices 3 and 4). A canvas or shader reads these through
      getComputedStyle, so every color is a hex value, never var() or
@@ -76,6 +87,12 @@
   --color-border: #1F2830;
   --color-glass: rgba(20, 25, 30, 0.5);
   --color-glass-strong: rgba(20, 25, 30, 0.72);
+  --tokens-brand-claude: #DE7356;
+  --tokens-brand-codex: #859FF4;
+  --tokens-sea-claude: var(--color-accent);
+  --tokens-sea-codex: color-mix(in srgb, var(--color-accent) 50%, var(--color-foreground));
+  --tokens-ink-claude: var(--color-accent);
+  --tokens-ink-codex: var(--color-muted);
 
   --shader-top: #0A0F13;
   --shader-bottom: #132436;
@@ -196,6 +213,17 @@ html[data-input="pointer"] .metrics-stage:has(canvas:focus-visible) {
   html.cursor-none * {
     cursor: none !important;
   }
+}
+
+/* The proof-of-work strip's figures after a Commits or Tokens press
+   (components/metrics/MetricsBoard.tsx). Reduced motion zeroes it below. */
+@keyframes metrics-swap {
+  from {
+    opacity: 0;
+  }
+}
+.metrics-swap {
+  animation: metrics-swap 0.5s var(--ease-out) both;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -1,36 +1,51 @@
 "use client";
 
 // Adapted from "Contribution Skyline" on 21st.dev (https://21st.dev/), reskinned to the site's tokens and type.
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { siteContent } from "@/lib/content";
-import { dayValues, type Series } from "@/lib/metrics/series";
+import { formatCompact, tokenTip } from "@/lib/metrics/format";
+import { dayValues, type Series, type UsageDay } from "@/lib/metrics/series";
 import { SKYLINE } from "@/lib/metrics/settings";
 import { accentRamp, buildGrid, dayMs, monthLabels } from "@/lib/metrics/skyline/maths";
-import { createEngine, type Engine, type EngineConfig, type ThemeReadout } from "./skyline/engine";
-import { Legend, SkylineHint, ViewToggle, type View } from "./skyline/parts";
+import { lowerShare, tokenRamps } from "@/lib/metrics/skyline/stack";
+import { createEngine, type Engine, type EngineConfig, type Model, type ThemeReadout } from "./skyline/engine";
+import { Legend, SkylineHint, ToolKey, ViewToggle, type View } from "./skyline/parts";
+import { useTokensSettings } from "./tokensSettings";
 
 const chart = siteContent.metrics.chart;
+const tokens = siteContent.metrics.tokens;
 const number = new Intl.NumberFormat("en-US");
 const longDay = new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
 const shortDay = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 const PALETTE = accentRamp(SKYLINE.lightestShare);
 
-function wordsFor(series: Series) {
-  if (series.kind === "usage") {
-    const u = siteContent.metrics.tokens;
-    return { unit: u.unit, units: u.units, none: u.none, on: chart.on, label: u.label, levels: u.levels };
-  }
-  return { unit: chart.unit, units: chart.units, none: chart.none, on: chart.on, label: chart.label, levels: chart.levels };
-}
+const wordsFor = (series: Series) =>
+  series.kind === "usage"
+    ? { total: formatCompact(series.total), label: tokens.label, levels: tokens.levels }
+    : { total: number.format(series.total), label: chart.label, levels: chart.levels };
 
-export function ContributionSkyline({ series, view, onViewChange }: { series: Series; view: View; onViewChange: (v: View) => void }) {
+type Props = { series: Series; view: View; onViewChange: (v: View) => void; toolbar?: ReactNode };
+
+export function ContributionSkyline({ series, view, onViewChange, toolbar }: Props) {
+  const settings = useTokensSettings();
+  const stacked = series.kind === "usage";
   const copy = wordsFor(series);
-  const noun = (n: number) => (n === 1 ? copy.unit : copy.units);
-  const model = useMemo(() => {
-    const grid = buildGrid(dayValues(series), dayMs(series.range.to), 0, { from: dayMs(series.range.from) }, { levelCurve: SKYLINE.levelCurve, heightCap: SKYLINE.heightCap });
-    return { ...grid, months: monthLabels(grid.cells, grid.weeks) };
-  }, [series]);
-  const [theme, setTheme] = useState<ThemeReadout>({ dark: false, swatches: [] });
+  const { minShare, heightCurve, heightCap, colorSet } = settings;
+  const { model, byDate } = useMemo(() => {
+    const curve = stacked ? heightCurve : SKYLINE.heightCurve;
+    const cap = stacked ? heightCap : SKYLINE.heightCap;
+    const grid = buildGrid(dayValues(series), dayMs(series.range.to), 0, { from: dayMs(series.range.from) }, { levelCurve: SKYLINE.levelCurve, heightCap: cap });
+    const byDate = new Map<string, UsageDay>(series.kind === "usage" ? series.days.map((d) => [d.date, d]) : []);
+    const stack = stacked ? grid.cells.map((c) => lowerShare(byDate.get(c.date)?.claude ?? 0, byDate.get(c.date)?.codex ?? 0, minShare)) : null;
+    const model: Model = { ...grid, months: monthLabels(grid.cells, grid.weeks), curve, stack };
+    return { model, byDate };
+  }, [series, stacked, minShare, heightCurve, heightCap]);
+  const palettes = useMemo(() => {
+    if (!stacked) return { lower: PALETTE, upper: null };
+    const ramps = tokenRamps(colorSet, SKYLINE.lightestShare);
+    return { lower: ramps.claude, upper: ramps.codex };
+  }, [stacked, colorSet]);
+  const [theme, setTheme] = useState<ThemeReadout>({ dark: false, swatches: [], key: [] });
   const [active, setActive] = useState(-1);
   const [pinnedLevel, setPinnedLevel] = useState(-1);
   const [previewLevel, setPreviewLevel] = useState<number | null>(null);
@@ -45,10 +60,13 @@ export function ContributionSkyline({ series, view, onViewChange }: { series: Se
 
   const describe = (i: number) => {
     const c = model.cells[i];
-    return c ? `${c.count ? `${number.format(c.count)} ${noun(c.count)}` : copy.none} ${copy.on} ${longDay.format(dayMs(c.date))}` : "";
+    if (!c) return "";
+    if (stacked) return tokenTip(byDate.get(c.date) ?? { date: c.date, count: 0, claude: 0, codex: 0 });
+    return `${c.count ? `${number.format(c.count)} ${c.count === 1 ? chart.unit : chart.units}` : chart.none} ${chart.on} ${longDay.format(dayMs(c.date))}`;
   };
   const config: EngineConfig = {
-    model, duration: SKYLINE.durationMs, heightScale: 1, heightCurve: SKYLINE.heightCurve, orbit: true, palette: PALETTE,
+    model, duration: SKYLINE.durationMs, heightScale: 1, orbit: true, palette: palettes.lower, palette2: palettes.upper,
+    switchMs: settings.switchMs, switchStagger: settings.switchStagger,
     legendLevel, target: view === "skyline" ? 1 : 0, depth: SKYLINE.depth, locale: "en-US", setActive, setTheme, setAnnounce, describe,
   };
   const cfg = useRef(config);
@@ -65,7 +83,19 @@ export function ContributionSkyline({ series, view, onViewChange }: { series: Se
     };
   }, []);
   useEffect(() => engine.current?.kick(), [view, legendLevel]);
-  useEffect(() => engine.current?.load(), [model]);
+  // The engine loads the first model itself; every later one is a switch.
+  const loadedModel = useRef(model);
+  useEffect(() => {
+    if (loadedModel.current === model) return;
+    loadedModel.current = model;
+    engine.current?.load();
+  }, [model]);
+  const loadedPalettes = useRef(palettes);
+  useEffect(() => {
+    if (loadedPalettes.current === palettes) return;
+    loadedPalettes.current = palettes;
+    engine.current?.retheme();
+  }, [palettes]);
   useLayoutEffect(() => {
     if (tipRef.current && active >= 0) engine.current?.tipWidth(tipRef.current.offsetWidth);
   }, [active, model]);
@@ -75,17 +105,18 @@ export function ContributionSkyline({ series, view, onViewChange }: { series: Se
     <div className="relative">
       <span ref={probeRef} aria-hidden="true" className="pointer-events-none absolute h-0 w-0 overflow-hidden" />
       <span ref={labelProbeRef} aria-hidden="true" className="pointer-events-none absolute h-0 w-0 overflow-hidden font-label text-label-sm" />
-      <div className="mb-4 flex justify-end">
+      <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+        {toolbar ?? <span />}
         <ViewToggle view={view} onChange={onViewChange} />
       </div>
       <div className="relative">
-        <div ref={stageRef} data-skyline-stage="" className="metrics-stage relative w-full overflow-hidden" style={{ height: 150 }}>
+        <div ref={stageRef} data-skyline-stage="" data-series={series.kind} className="metrics-stage relative w-full overflow-hidden" style={{ height: 150 }}>
           <canvas
             ref={canvasRef}
             tabIndex={0}
             role="application"
             aria-roledescription={chart.roleDescription}
-            aria-label={copy.label(number.format(series.total), shortDay.format(dayMs(series.range.from)), shortDay.format(dayMs(series.range.to)), skyline)}
+            aria-label={copy.label(copy.total, shortDay.format(dayMs(series.range.from)), shortDay.format(dayMs(series.range.to)), skyline)}
             className="absolute left-0 top-0 block outline-none"
             style={{ maxWidth: "none", touchAction: skyline ? "pan-y" : "auto" }}
           />
@@ -97,7 +128,10 @@ export function ContributionSkyline({ series, view, onViewChange }: { series: Se
       </div>
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 pt-4 font-label text-label-sm text-muted">
         <SkylineHint view={view} />
-        {theme.swatches.length > 0 && <Legend swatches={theme.swatches} pinned={pinnedLevel} onPin={setPinnedLevel} onPreview={setPreviewLevel} levels={copy.levels} />}
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+          {stacked && theme.key.length === 2 && <ToolKey colors={theme.key} />}
+          {theme.swatches.length > 0 && <Legend swatches={theme.swatches} pinned={pinnedLevel} onPin={setPinnedLevel} onPreview={setPreviewLevel} levels={copy.levels} />}
+        </div>
       </div>
       <p aria-live="polite" className="sr-only">{announce}</p>
     </div>

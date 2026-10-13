@@ -2,30 +2,54 @@
 
 import { Fill } from "@/components/fx/Fill";
 import { siteContent } from "@/lib/content";
+import type { SeriesChoice } from "@/lib/metrics/settings";
 
 const copy = siteContent.metrics.chart;
 export type View = "flat" | "skyline";
 
-// Flat and Skyline: quiet rise Fills on native buttons with aria-pressed, so
-// Enter and Space work. The shown view reads in the accent, the other muted.
-export function ViewToggle({ view, onChange }: { view: View; onChange: (v: View) => void }) {
+// Quiet rise Fills on native buttons with aria-pressed, so Enter and Space
+// work. The chosen option reads in the accent, the other muted.
+function Pair<T extends "flat" | "skyline" | SeriesChoice>({ label, options, value, onChange }: { label: string; options: readonly [T, T]; value: T; onChange: (v: T) => void }) {
   return (
-    <div role="group" aria-label={copy.viewGroup} className="-mx-2 flex items-baseline gap-1">
-      {(["flat", "skyline"] as const).map((v) => (
+    <div role="group" aria-label={label} className="-mx-2 flex items-baseline gap-1">
+      {options.map((v) => (
         <Fill
           key={v}
           variant="rise"
           colorway="quiet"
           shape="rect"
-          aria-pressed={view === v}
+          aria-pressed={value === v}
           onClick={() => onChange(v)}
-          className={`px-2 py-1 font-label text-label ${view === v ? "text-accent" : "text-muted"}`}
+          className={`px-2 py-1 font-label text-label ${value === v ? "text-accent" : "text-muted"}`}
           overClassName="flex items-center px-2 py-1"
         >
           {copy[v]}
         </Fill>
       ))}
     </div>
+  );
+}
+
+export function ViewToggle({ view, onChange }: { view: View; onChange: (v: View) => void }) {
+  return <Pair label={copy.viewGroup} options={["flat", "skyline"] as const} value={view} onChange={onChange} />;
+}
+
+export function SeriesToggle({ value, onChange }: { value: SeriesChoice; onChange: (v: SeriesChoice) => void }) {
+  return <Pair label={copy.seriesGroup} options={["commits", "tokens"] as const} value={value} onChange={onChange} />;
+}
+
+// The Tokens view's key: each tool's strongest step beside its name.
+export function ToolKey({ colors }: { colors: string[] }) {
+  const t = siteContent.metrics.tokens;
+  return (
+    <ul aria-label={t.keyLabel} className="flex items-center gap-3 font-label text-label-sm text-muted">
+      {[t.keyClaude, t.keyCodex].map((name, i) => (
+        <li key={name} className="flex items-center gap-1.5">
+          <span aria-hidden="true" className="h-[11px] w-[11px] rounded-[2px] transition-[background-color] duration-500 motion-reduce:transition-none" style={{ background: colors[i] }} />
+          {name}
+        </li>
+      ))}
+    </ul>
   );
 }
 
