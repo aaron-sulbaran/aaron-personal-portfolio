@@ -12,8 +12,32 @@ import {
   FACE_Y,
   heightShare,
   levelOf,
+  rampOf,
+  riseAt,
+  switchAt,
+  WAVE,
   type Cam,
 } from "./maths";
+
+describe("the series switch", () => {
+  it("starts every bar at 0 and ends every bar at 1, whatever the stagger", () => {
+    for (const stagger of [0, 0.2, WAVE, 0.7, 0.9]) {
+      for (const [week, day] of [[0, 0], [13, 3], [26, 6]]) {
+        expect(switchAt(0, week, 27, day, stagger)).toBe(0);
+        expect(switchAt(1, week, 27, day, stagger)).toBeCloseTo(1, 9);
+      }
+    }
+  });
+  it("sweeps oldest week first, like the rise, and matches the rise at the rise's stagger", () => {
+    const t = 0.4;
+    expect(switchAt(t, 0, 27, 0, WAVE)).toBeGreaterThan(switchAt(t, 13, 27, 0, WAVE));
+    expect(switchAt(t, 13, 27, 0, WAVE)).toBeGreaterThan(switchAt(t, 26, 27, 0, WAVE));
+    for (const [week, day] of [[0, 0], [10, 2], [26, 6]]) expect(switchAt(t, week, 27, day, WAVE)).toBeCloseTo(riseAt(t, week, 27, day), 9);
+  });
+  it("moves every bar together with no stagger", () => {
+    expect(switchAt(0.3, 0, 27, 0, 0)).toBeCloseTo(switchAt(0.3, 26, 27, 6, 0), 9);
+  });
+});
 
 describe("level steps (quarters of a busy day)", () => {
   it("maps counts to 0 to 4", () => {
@@ -47,6 +71,14 @@ describe("palette and depth", () => {
       "var(--color-accent)",
     ]);
     for (const step of ramp) expect(step).not.toMatch(/#[0-9a-f]{3,8}/i);
+  });
+  it("ramps any colour the same way toward the page", () => {
+    expect(rampOf("var(--tokens-brand-codex)", 30)).toEqual([
+      "color-mix(in srgb, var(--tokens-brand-codex) 30%, var(--color-background))",
+      "color-mix(in srgb, var(--tokens-brand-codex) 53%, var(--color-background))",
+      "color-mix(in srgb, var(--tokens-brand-codex) 77%, var(--color-background))",
+      "var(--tokens-brand-codex)",
+    ]);
   });
   it("shades the bevel's bottom and right edges as the skyline's faces", () => {
     expect([FACE_Y, FACE_X]).toEqual([0.84, 0.68]);

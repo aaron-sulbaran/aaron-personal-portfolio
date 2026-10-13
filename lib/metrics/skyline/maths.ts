@@ -145,6 +145,15 @@ export const riseAt = (t: number, week: number, weeks: number, day: number): num
   return easeOutCubic((t - d) / (1 - WAVE));
 };
 
+// 0 to 1 as a bar moves from the last series to the next. The same sweep as
+// riseAt, oldest week first, with `stagger` the share of the switch the
+// newest bar waits (riseAt's is WAVE). stagger 0 moves every bar together.
+export const switchAt = (t: number, week: number, weeks: number, day: number, stagger: number): number => {
+  const w = Math.max(0, Math.min(0.9, stagger));
+  const d = ((weeks > 1 ? week / (weeks - 1) : 0) * 0.36 + (day / 6) * 0.06) * (w / WAVE);
+  return easeOutCubic((t - d) / (1 - w));
+};
+
 export const YAW_3D = Math.PI / 4;
 export const ELEV_3D = (34 * Math.PI) / 180;
 export const YAW_RANGE: [number, number] = [(8 * Math.PI) / 180, (82 * Math.PI) / 180];
@@ -175,18 +184,18 @@ export const mixRGB = (a: RGB, b: RGB, t: number): RGB => [
 ];
 export const luminance = (c: RGB): number => (0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]) / 255;
 
-// Four steps of the accent mixed toward the page, lightest share first. The
+// Four steps of a colour mixed toward the page, lightest share first. The
 // strings are CSS, so the DOM legend uses them as they are and the canvas
 // resolves them through a probe element (a canvas cannot read var()).
-export const accentRamp = (lightestShare: number): string[] => {
+export const rampOf = (color: string, lightestShare: number): string[] => {
   const s = Math.max(0, Math.min(100, lightestShare));
   return [0, 1, 2, 3].map((k) => {
     const share = Math.round(s + ((100 - s) * k) / 3);
-    return share >= 100
-      ? "var(--color-accent)"
-      : `color-mix(in srgb, var(--color-accent) ${share}%, var(--color-background))`;
+    return share >= 100 ? color : `color-mix(in srgb, ${color} ${share}%, var(--color-background))`;
   });
 };
+
+export const accentRamp = (lightestShare: number): string[] => rampOf("var(--color-accent)", lightestShare);
 
 // How the flat view carries depth (round 4 ships "bevel").
 export type FlatDepth = "none" | "lift" | "bevel" | "inset";

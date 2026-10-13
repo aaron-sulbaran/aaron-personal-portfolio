@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { siteContent } from "@/lib/content";
 import { snapshotSeries } from "./snapshot";
-import { seriesStats, shortDate, slotStats } from "./format";
+import { compactScale, formatCompact, peakDay, seriesStats, shortDate, slotStats, tokenTip } from "./format";
+import type { UsageSeries } from "./series";
 
 const m = siteContent.metrics;
 
@@ -20,7 +21,74 @@ describe("the stats", () => {
     expect(shortDate("2026-08-08")).toBe("Aug 8");
     expect([m.streakLabel, m.totalLabel, m.activeLabel]).toEqual(["Current streak of contributions", "contributions in the last 6 months", "days I shipped something"]);
     expect(JSON.stringify(m)).not.toMatch(/[\u2013\u2014]/);
-    const built = m.chart.label("1", "a", "b", true) + m.chart.label("1", "a", "b", false) + m.chart.highlight("X");
+    const built =
+      m.chart.label("1", "a", "b", true) + m.chart.label("1", "a", "b", false) + m.chart.highlight("X") + m.tokens.label("1", "a", "b", true) + m.tokens.tip("1", "a", "b");
     expect(built).not.toMatch(/[\u2013\u2014]/);
+  });
+});
+
+describe("compact numbers", () => {
+  it("writes K, M and B with one decimal under a hundred, dropping a trailing zero", () => {
+    expect([0, 7, 950, 1_200, 75_000_000, 3_480_000_000, 7_000_000_000, 45_920_000_000, 120_400_000].map((n) => formatCompact(n))).toEqual([
+      "0",
+      "7",
+      "950",
+      "1.2K",
+      "75M",
+      "3.5B",
+      "7B",
+      "45.9B",
+      "120M",
+    ]);
+  });
+  it("rounds up into the next unit rather than writing 1000K", () => {
+    expect(formatCompact(999_600)).toBe("1M");
+    expect(formatCompact(999)).toBe("999");
+    expect(compactScale(999_999_000).suffix).toBe("B");
+  });
+  it("writes a number in a given unit", () => {
+    expect(formatCompact(120_000_000, compactScale(3_500_000_000))).toBe("0.1B");
+  });
+});
+
+describe("the token tooltip", () => {
+  const day = (date: string, claude: number, codex: number) => ({ date, claude, codex, count: claude + codex });
+  it("names the day, the total and each tool's share in the total's unit", () => {
+    expect(tokenTip(day("2026-09-28", 3_400_000_000, 120_000_000))).toBe("3.5B tokens on Monday, September 28: Claude 3.4B, Codex 0.1B");
+  });
+  it("writes a share too small for the total's unit in its own, and leaves out a tool with nothing", () => {
+    expect(tokenTip(day("2026-09-28", 7_391_000_000, 74_600_000))).toBe("7.5B tokens on Monday, September 28: Claude 7.4B, Codex 74.6M");
+    expect(tokenTip(day("2026-10-04", 821_000_000, 0))).toBe("821M tokens on Sunday, October 4: Claude 821M");
+    expect(tokenTip(day("2026-10-05", 0, 0))).toBe("No tokens on Monday, October 5");
+  });
+});
+
+describe("the token figures", () => {
+  const series: UsageSeries = {
+    kind: "usage",
+    window: "6mo",
+    range: { from: "2026-10-01", to: "2026-10-04" },
+    days: [
+      { date: "2026-10-01", claude: 0, codex: 0, count: 0 },
+      { date: "2026-10-02", claude: 2_000_000_000, codex: 100_000_000, count: 2_100_000_000 },
+      { date: "2026-10-03", claude: 900_000, codex: 0, count: 900_000 },
+      { date: "2026-10-04", claude: 2_100_000_000, codex: 0, count: 2_100_000_000 },
+    ],
+    total: 4_200_900_000,
+    activeDays: 3,
+    streak: { days: 3, start: "2026-10-02", end: "2026-10-04" },
+    stale: true,
+  };
+  it("leads with the total, then the active days, the biggest day and the current streak", () => {
+    expect(seriesStats(series).map((s) => [s.key, s.value, s.unit, s.label, s.sub])).toEqual([
+      ["total", "4.2B", undefined, m.tokens.totalLabel, undefined],
+      ["active", "3", undefined, m.tokens.activeLabel, undefined],
+      ["peak", "2.1B", undefined, m.tokens.peakLabel, "Oct 2"],
+      ["streak", "3", m.days, m.tokens.streakLabel, `${m.since} Oct 2`],
+    ]);
+  });
+  it("finds the busiest day, the earliest of a tie, and none when every day is empty", () => {
+    expect(peakDay(series.days)?.date).toBe("2026-10-02");
+    expect(peakDay([{ date: "2026-10-01", count: 0 }])).toBeNull();
   });
 });

@@ -25,21 +25,7 @@ export const usageSnapshotSchema = z.object({
 }).strict();
 
 export type UsageSnapshot = z.infer<typeof usageSnapshotSchema>;
+export type ToolCounts = z.infer<typeof counts>;
 
-export type UsageCount = "work" | "all" | "claude" | "codex" | "cursor";
-
-export function dayTotal(day: UsageSnapshot["days"][number], count: UsageCount): number {
-  if (count === "cursor") return day.cursor.req;
-  if (count === "claude") return day.claude.in + day.claude.out;
-  if (count === "codex") return day.codex.in + day.codex.out;
-  const work = day.claude.in + day.claude.out + day.codex.in + day.codex.out;
-  if (count === "work") return work;
-  return work + day.claude.cr + day.claude.cw + day.codex.cr + day.codex.cw;
-}
-
-export function dominantTool(day: UsageSnapshot["days"][number]): "claude" | "codex" | "none" {
-  const claude = day.claude.in + day.claude.out;
-  const codex = day.codex.in + day.codex.out;
-  if (claude === 0 && codex === 0) return "none";
-  return claude >= codex ? "claude" : "codex";
-}
+// A tool's total tokens for a day: input, output, cache reads and cache writes.
+export const toolTotal = (c: ToolCounts): number => c.in + c.out + c.cr + c.cw;

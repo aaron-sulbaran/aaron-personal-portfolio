@@ -107,7 +107,9 @@ describe("where the links sit, pinned as raw markup", () => {
 describe("the numbers strip", () => {
   it("heads the strip with its own lowercase title, labels the GitHub chart and holds my LinkedIn line as one figure", () => {
     expect(metrics.title).toBe("proof of work");
-    expect(metrics.groupLabel).toBe("GitHub contributions, or tokens from Claude and Codex");
+    expect(metrics.groupLabel).toBe("What I shipped on GitHub, and the Claude and Codex tokens behind it");
+    expect([metrics.chart.commits, metrics.chart.tokens]).toEqual(["Commits", "Tokens"]);
+    expect([metrics.tokens.keyClaude, metrics.tokens.keyCodex]).toEqual(["Claude Code", "Codex"]);
     expect(metrics.slots.linkedin).toEqual({ value: "450,000", label: "LinkedIn impressions in 3 months", sub: "2,500+ followers" });
     expect(metrics.slots.fun).toBeNull();
   });
