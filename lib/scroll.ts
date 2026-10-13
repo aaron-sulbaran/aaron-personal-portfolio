@@ -24,11 +24,11 @@ export function navigateToSection(href: string, prefersReducedMotion: boolean) {
 // lib/home/recovery.ts) so the entrance lock never strands a visitor who reloaded
 // deep in the document. To restore their place ourselves we persist the scroll
 // position to sessionStorage and read it back on the next load.
-const SCROLL_KEY = "aps:home-scroll-y";
+export const HOME_SCROLL_KEY = "aps:home-scroll-y";
 
 export function saveScrollY(y: number) {
   try {
-    sessionStorage.setItem(SCROLL_KEY, String(Math.round(y)));
+    sessionStorage.setItem(HOME_SCROLL_KEY, String(Math.round(y)));
   } catch {
     // Private mode / disabled storage: degrade to no persistence.
   }
@@ -36,7 +36,7 @@ export function saveScrollY(y: number) {
 
 export function readScrollY(): number | null {
   try {
-    const raw = sessionStorage.getItem(SCROLL_KEY);
+    const raw = sessionStorage.getItem(HOME_SCROLL_KEY);
     if (raw == null) return null;
     const n = Number(raw);
     return Number.isFinite(n) ? n : null;

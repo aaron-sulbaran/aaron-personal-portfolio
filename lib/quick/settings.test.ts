@@ -1,36 +1,42 @@
 import { describe, expect, it } from "vitest";
-import { timings } from "./motion";
-import { DEFAULT_SETTINGS, exportValues, parseSettings, sameSettings } from "./settings";
+import { DEFAULT_SETTINGS, exportValues, parseSettings, sameSettings, SETTINGS_KEY } from "./settings";
+import { DEFAULT_TEXTS, parseTexts, yearLines } from "./texts";
 
-describe("parseSettings", () => {
-  it("falls back to the defaults for nothing, junk or a wrong shape", () => {
+describe("quick lab settings", () => {
+  it("are versioned for round 3", () => {
+    expect(SETTINGS_KEY).toBe("lab-quick-v3");
+  });
+
+  it("fall back to the defaults for anything unreadable", () => {
     expect(parseSettings(null)).toEqual(DEFAULT_SETTINGS);
     expect(parseSettings("{not json")).toEqual(DEFAULT_SETTINGS);
-    expect(parseSettings("[1,2]")).toEqual(DEFAULT_SETTINGS);
-    expect(parseSettings(JSON.stringify({ variant: "glance", order: "sideways", speed: "fast", reduced: 1 }))).toEqual(DEFAULT_SETTINGS);
+    expect(parseSettings(JSON.stringify({ variant: "spine", speed: "fast", reduced: 1 }))).toEqual(DEFAULT_SETTINGS);
   });
 
-  it("keeps every valid field and clamps the speed", () => {
-    expect(parseSettings(JSON.stringify({ variant: "road", order: "oldest", speed: 9, reduced: true }))).toEqual({ variant: "road", order: "oldest", speed: 3, reduced: true });
-    expect(parseSettings(JSON.stringify({ speed: 0 })).speed).toBe(0.25);
+  it("keep what they can read and clamp the speed", () => {
+    const parsed = parseSettings(JSON.stringify({ variant: "trip", speed: 9, reduced: true }));
+    expect(parsed.variant).toBe("trip");
+    expect(parsed.speed).toBe(3);
+    expect(parsed.reduced).toBe(true);
+    expect(sameSettings(parsed, { ...parsed })).toBe(true);
+    expect(sameSettings(parsed, DEFAULT_SETTINGS)).toBe(false);
   });
 
-  it("round-trips", () => {
-    const settings = { variant: "rail" as const, order: "oldest" as const, speed: 1.5, reduced: false };
-    expect(sameSettings(parseSettings(JSON.stringify(settings)), settings)).toBe(true);
+  it("keep edited words, and the content's own for anything missing", () => {
+    const parsed = parseSettings(JSON.stringify({ texts: { title: "Fast lane", years: { "2023": "Edited.", "1999": "Never." }, closing: 4 } }));
+    expect(parsed.texts.title).toBe("Fast lane");
+    expect(parsed.texts.intro).toBe(DEFAULT_TEXTS.intro);
+    expect(parsed.texts.years["2023"]).toBe("Edited.");
+    expect(parsed.texts.years["2021"]).toBe(DEFAULT_TEXTS.years["2021"]);
+    expect(parsed.texts.years["1999"]).toBeUndefined();
+    expect(parsed.texts.closing).toBe(DEFAULT_TEXTS.closing);
+    expect(yearLines(parsed.texts).find((row) => row.year === "2023")!.line).toBe("Edited.");
+    expect(parseTexts(null)).toEqual(DEFAULT_TEXTS);
   });
 
-  it("exports the settings with the theme", () => {
-    expect(exportValues(DEFAULT_SETTINGS, "dark")).toEqual({ lab: "quick", round: 2, ...DEFAULT_SETTINGS, theme: "dark" });
-  });
-});
-
-describe("timings", () => {
-  it("scales every duration by the speed", () => {
-    const base = timings(1);
-    const fast = timings(2);
-    expect(fast.chaseS).toBeCloseTo(base.chaseS / 2);
-    expect(fast.wipeS).toBeCloseTo(base.wipeS / 2);
-    expect(timings(100).chaseS).toBeCloseTo(timings(3).chaseS);
+  it("export the words with the rest of the values", () => {
+    const values = exportValues(DEFAULT_SETTINGS, "dark", "line");
+    expect(values).toMatchObject({ lab: "quick", round: 3, variant: "rail", theme: "dark", invite: "line" });
+    expect(values.texts).toEqual(DEFAULT_TEXTS);
   });
 });

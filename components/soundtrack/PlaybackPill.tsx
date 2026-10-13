@@ -12,12 +12,12 @@ import { DOCK, capsuleName, capsuleText, dockLabel, dockMode, type DockLabel } f
 import { isPhone, subscribePhone } from "@/lib/waveform/layout";
 import { Cover, DockGlyph, EASE, PillSlot, glass } from "./PillParts";
 import { PillAnnouncer, PillLabel, labelLine, useLabelHold } from "./PillLabel";
+import { GREETED_KEY } from "@/lib/home/firstVisit";
 import { PlayerCard } from "./PlayerCard";
 import { usePillFade } from "./usePillFade";
 import { usePillHover } from "./usePillHover";
 import { useReducedMotionLive } from "./useReducedMotionLive";
 
-const GREETED_KEY = "aaron-soundtrack-greeted";
 
 function readGreeted(): boolean {
   try {

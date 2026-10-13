@@ -1,55 +1,46 @@
 import { describe, expect, it } from "vitest";
-import { lengthAtY, roadPath, roadPoints, roadSamples, ROAD_SWING } from "./road";
+import { LANE_BEND, lanePath, lanePoints, laneSamples, lengthAtY, maxLean } from "./road";
 
-const points = roadPoints([200, 500, 900], 100);
+const anchors = [120, 600, 980, 1500];
 
-describe("roadPoints", () => {
-  it("starts centred, swings side to side through each checkpoint, and ends centred on the last", () => {
-    expect(points).toEqual([
-      { x: 50, y: 0 },
-      { x: 100 * ROAD_SWING.left, y: 200 },
-      { x: 100 * ROAD_SWING.right, y: 500 },
-      { x: 50, y: 900 },
-    ]);
+describe("the lane", () => {
+  const points = lanePoints(anchors, 24);
+
+  it("starts at the top, passes every anchor on the line, and bends once between two", () => {
+    expect(points[0]).toEqual({ x: 24, y: 0 });
+    expect(points.length).toBe(1 + anchors.length + (anchors.length - 1));
+    for (const y of anchors) expect(points).toContainEqual({ x: 24, y });
+    const bends = points.filter((p) => p.x !== 24);
+    expect(bends.map((p) => p.x)).toEqual([24 + LANE_BEND, 24 - LANE_BEND, 24 + LANE_BEND]);
+    expect(bends.map((p) => p.y)).toEqual([360, 790, 1240]);
   });
 
-  it("never heads back up the page", () => {
-    const out = roadPoints([300, 200], 100);
-    expect(out[2].y).toBeGreaterThanOrEqual(out[1].y);
-  });
-});
-
-describe("roadPath", () => {
-  it("is one move and a cubic per stretch", () => {
-    const d = roadPath(points);
-    expect(d.startsWith("M50 0 C")).toBe(true);
-    expect(d.match(/C/g)?.length).toBe(3);
-    expect(d.endsWith("50 900")).toBe(true);
-    expect(roadPath([])).toBe("");
-  });
-});
-
-describe("lengthAtY", () => {
-  const samples = roadSamples(points);
-  it("samples a road that only heads down", () => {
-    for (let i = 1; i < samples.ys.length; i += 1) expect(samples.ys[i]).toBeGreaterThanOrEqual(samples.ys[i - 1]);
-    expect(samples.total).toBeGreaterThan(900);
+  it("only heads down the page, and only gently", () => {
+    for (let i = 1; i < points.length; i += 1) expect(points[i].y).toBeGreaterThanOrEqual(points[i - 1].y);
+    expect(maxLean(points)).toBeLessThan(6);
   });
 
-  it("runs from 0 at the top to 1 at the end, and rises in between", () => {
-    expect(lengthAtY(samples, -10)).toBe(0);
-    expect(lengthAtY(samples, 0)).toBe(0);
-    expect(lengthAtY(samples, 900)).toBe(1);
-    expect(lengthAtY(samples, 2000)).toBe(1);
+  it("never runs back up past an anchor out of order", () => {
+    const pts = lanePoints([300, 200], 10);
+    for (let i = 1; i < pts.length; i += 1) expect(pts[i].y).toBeGreaterThanOrEqual(pts[i - 1].y);
+  });
+
+  it("draws one cubic per stretch", () => {
+    const d = lanePath(points);
+    expect(d.startsWith("M24 0")).toBe(true);
+    expect(d.match(/C/g)).toHaveLength(points.length - 1);
+    expect(lanePath([])).toBe("");
+  });
+
+  it("maps a height to a share of its length that only rises", () => {
+    const samples = laneSamples(points);
+    expect(lengthAtY(samples, -5)).toBe(0);
+    expect(lengthAtY(samples, 1500)).toBe(1);
     let last = 0;
-    for (let y = 50; y < 900; y += 50) {
+    for (let y = 0; y <= 1500; y += 50) {
       const share = lengthAtY(samples, y);
-      expect(share).toBeGreaterThan(last);
+      expect(share).toBeGreaterThanOrEqual(last);
       last = share;
     }
-  });
-
-  it("is 0 on an empty road", () => {
-    expect(lengthAtY(roadSamples([]), 10)).toBe(0);
   });
 });
