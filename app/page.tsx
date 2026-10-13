@@ -10,6 +10,7 @@ import { HeroText } from "@/components/home/HeroText";
 import { Book } from "@/components/book/Book";
 import { NumbersStrip } from "@/components/metrics/NumbersStrip";
 import { MarkCardSource } from "@/components/mark/MarkCardSource";
+import { RushInvite } from "@/components/quick/RushInvite";
 
 // The contribution figures refresh once a day (lib/metrics/github.ts); a
 // literal, because Next reads segment config statically.
@@ -51,6 +52,7 @@ export default function Home() {
         <Footer />
       </div>
       <MarkCardSource />
+      <RushInvite />
     </>
   );
 }

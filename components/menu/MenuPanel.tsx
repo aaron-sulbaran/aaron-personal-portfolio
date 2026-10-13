@@ -2,10 +2,12 @@
 
 import { useState, type CSSProperties } from "react";
 import { motion, type Variants } from "framer-motion";
+import { usePathname } from "next/navigation";
 import { Moon, Sun } from "lucide-react";
 import { Fill } from "@/components/fx/Fill";
 import { NoteIcon } from "@/components/menu/NoteIcon";
 import { siteContent } from "@/lib/content";
+import { quickCopy } from "@/lib/content/quick";
 import { FILL_PICK } from "@/lib/fx/fill";
 import { EASE } from "@/lib/motion";
 import { noteState } from "@/lib/note";
@@ -76,6 +78,7 @@ export function MenuPanel({
     document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light",
   );
   const music = useSoundtrack();
+  const onQuick = usePathname() === "/quick";
 
   const toggleTheme = () => {
     const next: Theme = theme === "dark" ? "light" : "dark";
@@ -187,6 +190,12 @@ export function MenuPanel({
             </span>
             <span>{music === "on" ? menuToggleOn : music === "paused" ? menuTogglePaused : menuToggleOff}</span>
           </Fill>
+          <a
+            href={onQuick ? "/" : "/quick"}
+            className="inline-flex h-[34px] items-center rounded-[17px] px-3.5 font-label text-label text-accent shadow-[inset_0_0_0_1px_var(--color-border)]"
+          >
+            {onQuick ? quickCopy.back : quickCopy.menuChip}
+          </a>
         </div>
         <div
           className={`flex font-label text-label ${

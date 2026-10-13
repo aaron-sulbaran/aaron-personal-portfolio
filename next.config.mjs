@@ -24,6 +24,8 @@ const nextConfig = {
       { source: "/work", destination: "/#work", permanent: false },
       { source: "/work/:path((?!logos/).*)", destination: "/#work", permanent: false },
       { source: "/about", destination: "/#about", permanent: false },
+      { source: "/simple", destination: "/quick", permanent: false },
+      { source: "/recruiter", destination: "/quick", permanent: false },
     ];
   },
 };
