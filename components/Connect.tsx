@@ -12,8 +12,8 @@ import { SectionHeading } from "./sections/SectionTitle";
 // from 1280; below 1024 even 2xl's "name@" outgrows the cell, so it is xl and
 // wraps after the at sign. break-words only ever acts on a cell narrower than
 // any segment (a 360px phone). The arrow's box is one line of the value tall,
-// so it sits centered on the first line whether or not the value wraps. On a
-// phone the label column is narrow and the value a step smaller below 400px,
+// so it sits centered on the first line whether or not the value wraps. The
+// icon is only as wide as the mark, and the value a step smaller below 400px,
 // so "@imaaronsulbaran" (the longest handle) stays on one line from 360 up.
 const VALUE_SIZE = "text-lg min-[400px]:text-xl lg:text-2xl xl:text-3xl";
 
@@ -77,7 +77,7 @@ export function Connect() {
               >
                 <span className="-my-[0.15em] flex min-w-0 flex-1 overflow-clip py-[0.15em]">
                   <span data-sections-rowinner className="flex min-w-0 flex-1 items-baseline gap-4">
-                    <span className={`flex h-[1lh] w-20 shrink-0 items-center self-start text-muted sm:w-28 md:w-32 ${VALUE_SIZE}`}>
+                    <span className={`flex h-[1lh] w-6 shrink-0 items-center self-start text-muted md:w-7 ${VALUE_SIZE}`}>
                       <BrandIcon name={link.icon} className="h-6 w-6 md:h-7 md:w-7" />
                       <span className="sr-only">{link.label}</span>
                     </span>
