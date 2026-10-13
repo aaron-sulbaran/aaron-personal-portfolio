@@ -1,14 +1,30 @@
 import { readFileSync } from "node:fs";
 import type { Page } from "@playwright/test";
 import { siteContent } from "../lib/content";
+import { formatCompact, peakDay, shortDate, tokenTip } from "../lib/metrics/format";
+import { windowStart } from "../lib/metrics/window";
 import { test, expect } from "./support/fixtures";
 import { nextFrames, openHome, scrollToY } from "./support/coil";
 import { settled } from "./support/fallback";
 
 // The skyline in the numbers strip under Who I am: snapshot figures with no token, flat until
-// seen, a fling leaves it pending, the toggle plays the morph, reduced motion snaps.
+// seen, a fling leaves it pending, the toggle plays the morph, reduced motion snaps. Commits
+// and Tokens swap the series in place.
 const m = siteContent.metrics;
 const snap = JSON.parse(readFileSync("lib/metrics/data/contributions-6mo.json", "utf8"));
+
+type ToolCounts = { in: number; out: number; cr: number; cw: number };
+type UsageRow = { d: string; claude: ToolCounts; codex: ToolCounts };
+const usage = JSON.parse(readFileSync("lib/metrics/data/usage-6mo.json", "utf8")) as { days: UsageRow[] };
+const toolTotal = (c: ToolCounts) => c.in + c.out + c.cr + c.cw;
+const usageTo = usage.days[usage.days.length - 1].d;
+const usageFrom = windowStart(usageTo, "6mo");
+const usageDays = usage.days
+  .filter((d) => d.d >= usageFrom)
+  .map((d) => ({ date: d.d, claude: toolTotal(d.claude), codex: toolTotal(d.codex), count: toolTotal(d.claude) + toolTotal(d.codex) }));
+const usageTotal = usageDays.reduce((sum, d) => sum + d.count, 0);
+const usageLast = usageDays.find((d) => d.date === usageTo)!;
+const seriesButton = (page: Page, v: "commits" | "tokens") => block(page).getByRole("button", { name: m.chart[v], exact: true });
 const monthDay = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 const shortDay = (day: string) => {
   const [y, mo, d] = day.split("-").map(Number);
@@ -309,6 +325,75 @@ test("metrics: a legend swatch previews on focus and pins only on a press", asyn
   await expect(swatch).toHaveAttribute("aria-pressed", "false");
 });
 
+const switchState = (page: Page) => page.locator("[data-skyline-stage]").getAttribute("data-switch-state");
+async function recordSwitch(page: Page) {
+  await page.evaluate(() => {
+    const el = document.querySelector<HTMLElement>("[data-skyline-stage]")!;
+    const w = window as unknown as { __switches: string[] };
+    w.__switches = [];
+    new MutationObserver(() => w.__switches.push(el.dataset.switchState ?? "")).observe(el, { attributes: true, attributeFilter: ["data-switch-state"] });
+  });
+}
+const switches = (page: Page) => page.evaluate(() => (window as unknown as { __switches: string[] }).__switches);
+const figureKeys = (page: Page) => page.locator("[data-metrics-figures] [data-stat]").evaluateAll((els) => els.map((el) => (el as HTMLElement).dataset.stat));
+
+test("metrics: Tokens swaps the figures, the tooltip and the label in place; Commits comes back as it was", async ({ page }) => {
+  await openHome(page);
+  await scrollToY(page, await topAt(page, 0.2));
+  await expect.poll(() => state(page), { timeout: 5000 }).toBe("skyline");
+  const canvas = block(page).locator("[data-skyline-stage] canvas");
+  await canvas.evaluate((el) => ((el as unknown as { __mark: number }).__mark = 1));
+  await expect(seriesButton(page, "commits")).toHaveAttribute("aria-pressed", "true");
+  await recordSwitch(page);
+
+  await seriesButton(page, "tokens").click();
+  await expect(seriesButton(page, "tokens")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("[data-skyline-stage]")).toHaveAttribute("data-series", "usage");
+  await expect.poll(() => switchState(page), { timeout: 5000 }).toBe("done");
+  expect(await switches(page)).toEqual(["moving", "done"]);
+  expect(await canvas.evaluate((el) => (el as unknown as { __mark?: number }).__mark), "the canvas is the same element").toBe(1);
+  expect(await state(page), "the switch keeps the view").toBe("skyline");
+
+  expect(await figureKeys(page)).toEqual(["total", "active", "peak", "streak"]);
+  await expect(page.locator('[data-stat="total"]')).toContainText(formatCompact(usageTotal));
+  await expect(page.locator('[data-stat="total"]')).toContainText(m.tokens.totalLabel);
+  const peak = peakDay(usageDays)!;
+  await expect(page.locator('[data-stat="peak"]')).toContainText(formatCompact(peak.count));
+  await expect(page.locator('[data-stat="peak"]')).toContainText(shortDate(peak.date));
+  await expect(page.locator('[data-stat="active"]')).toContainText(String(usageDays.filter((d) => d.count > 0).length));
+  await expect(canvas).toHaveAttribute("aria-label", m.tokens.label(formatCompact(usageTotal), shortDay(usageFrom), shortDay(usageTo), true));
+  await expect(block(page).getByRole("list", { name: m.tokens.keyLabel })).toContainText(m.tokens.keyClaude);
+  await expect(block(page).getByRole("list", { name: m.tokens.keyLabel })).toContainText(m.tokens.keyCodex);
+
+  await canvas.focus();
+  await page.keyboard.press("Enter");
+  await expect(block(page).locator('[aria-live="polite"]')).toHaveText(tokenTip(usageLast));
+  await page.keyboard.press("Escape");
+
+  await seriesButton(page, "commits").click();
+  await expect(page.locator("[data-skyline-stage]")).toHaveAttribute("data-series", "github");
+  expect(await figureKeys(page)).toEqual(["streak", "total", "active"]);
+  await expect(page.locator('[data-stat="total"]')).toContainText(new Intl.NumberFormat("en-US").format(snap.total));
+  await expect(page.locator('[data-stat="streak"]')).toContainText(`${m.streakLabel}${m.since} ${shortDay(snap.streaks.current.start)}`);
+  await expect(canvas).toHaveAttribute("aria-label", m.chart.label(new Intl.NumberFormat("en-US").format(snap.total), shortDay(snap.range.from), shortDay(snap.range.to), true));
+  await expect(block(page).getByRole("list", { name: m.tokens.keyLabel })).toHaveCount(0);
+  await expect(block(page).locator("button[title]")).toHaveCount(5);
+});
+
+test("metrics: a Tokens press in flat stays flat and the morph still waits to be seen", async ({ page }) => {
+  await openHome(page);
+  await scrollToY(page, await topAt(page, 0.9));
+  await nextFrames(page, 30);
+  expect(await state(page)).toBe("flat");
+  await seriesButton(page, "tokens").click();
+  await expect.poll(() => switchState(page), { timeout: 5000 }).toBe("done");
+  expect(await state(page)).toBe("flat");
+  await expect(block(page)).toHaveAttribute("data-morph-plays", "0");
+  await scrollAt(page, 200, await topAt(page, 0.35));
+  await expect.poll(() => state(page), { timeout: 5000 }).toBe("skyline");
+  await expect(block(page)).toHaveAttribute("data-morph-plays", "1");
+});
+
 test.describe("reduced motion", () => {
   test.use({ contextOptions: { reducedMotion: "reduce" } });
   test("metrics: snaps between flat and skyline, never moving", async ({ page }) => {
@@ -322,6 +407,21 @@ test.describe("reduced motion", () => {
     await button(page, "flat").click();
     await expect.poll(() => state(page)).toBe("flat");
     expect(await states(page)).toEqual(["skyline", "flat"]);
+  });
+  test("metrics: Commits and Tokens swap at once, never moving", async ({ page }) => {
+    await page.goto("/");
+    await settled(page);
+    await scrollToY(page, await topAt(page, 0.3));
+    await expect.poll(() => state(page)).toBe("skyline");
+    await recordSwitch(page);
+    await seriesButton(page, "tokens").click();
+    await expect(page.locator("[data-skyline-stage]")).toHaveAttribute("data-series", "usage");
+    await nextFrames(page, 10);
+    await seriesButton(page, "commits").click();
+    await expect(page.locator("[data-skyline-stage]")).toHaveAttribute("data-series", "github");
+    await nextFrames(page, 10);
+    expect(await switches(page)).toEqual([]);
+    expect(await switchState(page)).toBe("done");
   });
 });
 
