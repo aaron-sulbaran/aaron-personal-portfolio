@@ -8,7 +8,7 @@ import { NoteIcon } from "@/components/menu/NoteIcon";
 import { siteContent } from "@/lib/content";
 import { FILL_PICK } from "@/lib/fx/fill";
 import { EASE } from "@/lib/motion";
-import { noteState } from "@/lib/note";
+import { menuChipStops, noteState } from "@/lib/note";
 import { THEME_STORAGE_KEY, syncThemeColorMeta, type Theme } from "@/lib/theme";
 import { startSoundtrack, stopSoundtrack, useSoundtrack } from "@/lib/soundtrack";
 
@@ -89,12 +89,12 @@ export function MenuPanel({
     }
   };
 
-  // The chip opts in or out (the Listen note beside the pill pauses and
-  // resumes). Its label says where the soundtrack stands (on, paused, off),
-  // so it always agrees with its note, which fills only while music is audible.
-  const optedIn = music === "on" || music === "paused";
+  // The chip resumes a pause and only stops while music is audible (the Listen
+  // note beside the pill pauses and resumes). Its label says where the
+  // soundtrack stands (on, paused, off).
+  const playing = menuChipStops(music);
   const toggleMusic = () => {
-    if (optedIn) stopSoundtrack();
+    if (playing) stopSoundtrack();
     else startSoundtrack();
   };
 
@@ -177,7 +177,7 @@ export function MenuPanel({
             {...FILL_PICK.menu}
             onClick={toggleMusic}
             aria-label={menuAriaLabel}
-            aria-pressed={optedIn}
+            aria-pressed={playing}
             data-cursor-hover
             className="inline-flex h-[34px] items-center gap-2 rounded-[17px] pl-2.5 pr-3.5 font-label text-label text-accent shadow-[inset_0_0_0_1px_var(--color-border)]"
             overClassName="flex items-center gap-2 pl-2.5 pr-3.5"
