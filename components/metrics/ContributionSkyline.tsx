@@ -105,7 +105,7 @@ export function ContributionSkyline({ series, view, onViewChange, toolbar }: Pro
     <div className="relative">
       <span ref={probeRef} aria-hidden="true" className="pointer-events-none absolute h-0 w-0 overflow-hidden" />
       <span ref={labelProbeRef} aria-hidden="true" className="pointer-events-none absolute h-0 w-0 overflow-hidden font-label text-label-sm" />
-      <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-x-3 gap-y-3">
         {toolbar ?? <span />}
         <ViewToggle view={view} onChange={onViewChange} />
       </div>

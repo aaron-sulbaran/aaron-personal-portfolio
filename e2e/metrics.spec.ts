@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { siteContent } from "../lib/content";
 import { formatCompact, peakDay, shortDate, tokenTip } from "../lib/metrics/format";
 import { windowStart } from "../lib/metrics/window";
@@ -400,6 +400,43 @@ test("metrics: Tokens swaps the figures, the tooltip and the label in place; Com
   await expect(block(page).locator("button[title]")).toHaveCount(5);
 });
 
+// Aaron, 2026-10-13: both toggles take the hero's Coil and Band design
+// (components/fx/PillToggle.tsx), with no backdrop blur since they sit on the page.
+const pillVar = (toggle: Locator, name: "--pt-a" | "--pt-b") =>
+  toggle.evaluate((el, n) => Number(getComputedStyle(el).getPropertyValue(n)), name);
+test("metrics: Commits and Tokens, and Flat and Skyline, are two-half capsules that lean toward a hover and lag on a switch", async ({ page }) => {
+  await openHome(page);
+  await scrollToY(page, await topAt(page, 0.2));
+  await expect.poll(() => state(page), { timeout: 5000 }).toBe("skyline");
+  const series = block(page).getByRole("group", { name: m.chart.seriesGroup, exact: true });
+  const view = block(page).getByRole("group", { name: m.chart.viewGroup, exact: true });
+  for (const toggle of [series, view]) {
+    await expect(toggle).toHaveClass(/\bpill-toggle\b/);
+    await expect(toggle.locator("button")).toHaveCount(2);
+    expect(await toggle.evaluate((el) => getComputedStyle(el).backdropFilter)).toBe("none");
+    expect(await toggle.evaluate((el) => getComputedStyle(el).borderRadius)).toBe("999px");
+  }
+  await expect(series).toHaveAttribute("data-state", "first");
+  await expect(view).toHaveAttribute("data-state", "second");
+
+  await seriesButton(page, "tokens").hover();
+  await expect.poll(() => pillVar(series, "--pt-b")).toBeCloseTo(0.57, 2);
+  expect(await pillVar(series, "--pt-a")).toBe(0);
+  await page.mouse.move(4, page.viewportSize()!.height / 2);
+  await expect.poll(() => pillVar(series, "--pt-b")).toBeCloseTo(0.5, 2);
+
+  await seriesButton(page, "tokens").click();
+  await expect(series).toHaveAttribute("data-state", "second");
+  await expect(series).toHaveAttribute("data-dir", "right");
+  await nextFrames(page, 3);
+  const leading = await pillVar(series, "--pt-b");
+  const trailing = await pillVar(series, "--pt-a");
+  expect(leading - 0.5, "the leading edge goes first").toBeGreaterThan(trailing);
+  await expect.poll(() => pillVar(series, "--pt-a")).toBeCloseTo(0.5, 2);
+  await expect.poll(() => pillVar(series, "--pt-b")).toBeCloseTo(1, 2);
+  await expect(seriesButton(page, "tokens")).toHaveAttribute("aria-pressed", "true");
+});
+
 test("metrics: a Tokens press in flat stays flat and the morph still waits to be seen", async ({ page }) => {
   await openHome(page);
   await scrollToY(page, await topAt(page, 0.9));
@@ -442,6 +479,8 @@ test.describe("reduced motion", () => {
     await nextFrames(page, 10);
     expect(await switches(page)).toEqual([]);
     expect(await switchState(page)).toBe("done");
+    const series = block(page).getByRole("group", { name: m.chart.seriesGroup, exact: true });
+    expect(await series.evaluate((el) => getComputedStyle(el).transitionDuration)).toMatch(/^0s(, 0s)*$/);
   });
 });
 

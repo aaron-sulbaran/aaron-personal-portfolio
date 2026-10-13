@@ -194,6 +194,7 @@ body {
    focused control. */
 html[data-input="pointer"] :focus-visible:not(input, textarea, select, [contenteditable="true"]),
 html[data-input="pointer"] .shape-toggle:has(:focus-visible),
+html[data-input="pointer"] .pill-toggle:has(:focus-visible),
 html[data-input="pointer"] .metrics-stage:has(canvas:focus-visible) {
   outline: none;
 }
@@ -520,8 +521,46 @@ html:not([data-input="pointer"]) .fx:focus-visible,
 @media (prefers-reduced-motion: reduce) { .shape-toggle { transition: none !important; } }
 /* End of the Coil and Band toggle. */
 
-/* Metrics (components/metrics): the skyline's keyboard ring. The Flat and
-   Skyline toggle is a quiet rise Fill (see "The fill" above). */
+/* The pill toggle (components/fx/PillToggle.tsx): the strip's Commits and
+   Tokens, and Flat and Skyline. The Coil and Band toggle's design on its own
+   properties, so the hero's control never moves with it: the fill's edges are
+   --pt-a and --pt-b, the trailing edge follows 22 percent of the fill's clock
+   later (the hero's 99ms of 450ms), and the other half leans toward a hover
+   or a focus. It sits on the page, not over the scene: no backdrop blur. */
+@property --pt-a { syntax: "<number>"; inherits: true; initial-value: 0; }
+@property --pt-b { syntax: "<number>"; inherits: true; initial-value: 0.5; }
+.pill-toggle {
+  --pt-a: 0; --pt-b: 0.5; --pt-da: 0ms; --pt-db: 0ms; --pt-pad: 3px; --pt-lag: calc(var(--fx-ms) * 0.22);
+  display: grid; border-radius: 999px; background: var(--menu-pill); box-shadow: inset 0 0 0 1px var(--color-border);
+  transition: --pt-a var(--fx-ms) var(--fx-ease) var(--pt-da), --pt-b var(--fx-ms) var(--fx-ease) var(--pt-db);
+}
+.pill-toggle[data-state="second"] { --pt-a: 0.5; --pt-b: 1; }
+.pill-toggle[data-dir="right"] { --pt-da: var(--pt-lag); }
+.pill-toggle[data-dir="left"] { --pt-db: var(--pt-lag); }
+@media (hover: hover) {
+  .pill-toggle[data-state="first"]:has([data-seg="second"]:hover) { --pt-b: 0.57; }
+  .pill-toggle[data-state="second"]:has([data-seg="first"]:hover) { --pt-a: 0.43; }
+}
+.pill-toggle[data-state="first"]:has([data-seg="second"]:focus-visible) { --pt-b: 0.57; }
+.pill-toggle[data-state="second"]:has([data-seg="first"]:focus-visible) { --pt-a: 0.43; }
+.pill-toggle:has(:focus-visible) { outline: 2px solid var(--color-accent); outline-offset: 3px; }
+.pill-toggle > .pill-toggle__base,
+.pill-toggle > .pill-toggle__over { grid-area: 1 / 1; }
+.pill-toggle > .pill-toggle__over {
+  pointer-events: none; border-radius: 999px; background: var(--color-accent); color: var(--color-background);
+  clip-path: inset(
+    var(--pt-pad) calc((1 - var(--pt-b)) * (100% - 2 * var(--pt-pad)) + var(--pt-pad)) var(--pt-pad)
+      calc(var(--pt-a) * (100% - 2 * var(--pt-pad)) + var(--pt-pad)) round 999px
+  );
+}
+.pill-toggle__seg { color: var(--color-muted); transition: color 200ms var(--ease-out); }
+.pill-toggle__seg:hover { color: var(--color-foreground); }
+.pill-toggle__seg:focus-visible { outline: none; }
+@media (prefers-reduced-motion: reduce) { .pill-toggle { transition: none !important; } }
+/* End of the pill toggle. */
+
+/* Metrics (components/metrics): the skyline's keyboard ring. The Commits and
+   Tokens and the Flat and Skyline toggles are pill toggles (above). */
 .metrics-stage:has(canvas:focus-visible) { outline: 2px solid var(--color-accent); outline-offset: 4px; }
 
 /* ---- mark-strike: the mark card's shadow, the house modals' value as a token, one value for both themes ---- */
