@@ -8,6 +8,11 @@ const counts = z.object({
   msgs: z.number().int().nonnegative(),
 }).strict();
 
+const count = z.number().int().nonnegative();
+
+// The agent setup (scripts/toolkit-counts.mjs): four counts, never a name.
+export const toolkitSchema = z.object({ customSkills: count, installedSkills: count, plugins: count, mcpServers: count }).strict();
+
 export const usageSnapshotSchema = z.object({
   generated: z.string(),
   tz: z.string(),
@@ -16,6 +21,7 @@ export const usageSnapshotSchema = z.object({
     codex: z.object({ unit: z.literal("tokens") }).strict(),
     cursor: z.object({ unit: z.literal("requests") }).strict(),
   }).strict(),
+  toolkit: toolkitSchema,
   days: z.array(z.object({
     d: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     claude: counts,
@@ -26,6 +32,10 @@ export const usageSnapshotSchema = z.object({
 
 export type UsageSnapshot = z.infer<typeof usageSnapshotSchema>;
 export type ToolCounts = z.infer<typeof counts>;
+export type Toolkit = z.infer<typeof toolkitSchema>;
+
+// Everything in the agent setup: skills written and installed, plugins, MCP servers.
+export const toolkitTotal = (t: Toolkit): number => t.customSkills + t.installedSkills + t.plugins + t.mcpServers;
 
 // A tool's total tokens for a day: input, output, cache reads and cache writes.
 export const toolTotal = (c: ToolCounts): number => c.in + c.out + c.cr + c.cw;

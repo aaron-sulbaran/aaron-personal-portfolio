@@ -23,5 +23,5 @@ export function loadUsage(): UsageSeries {
   const parsed = usageSnapshotSchema.parse(snapshot);
   const last = parsed.days.at(-1)?.d ?? parsed.generated.slice(0, 10);
   const from = windowStart(last, "6mo");
-  return { kind: "usage", window: "6mo", range: { from, to: last }, ...usageDays(parsed, from, last), stale: true };
+  return { kind: "usage", window: "6mo", range: { from, to: last }, ...usageDays(parsed, from, last), stale: true, toolkit: parsed.toolkit };
 }

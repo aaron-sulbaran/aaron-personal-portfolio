@@ -8,10 +8,17 @@ const day: UsageSnapshot["days"][number] = {
   codex: { in: 3, out: 1, cr: 0, cw: 0, msgs: 1 },
   cursor: { req: 4 },
 };
+const head = { generated: "t", tz: "UTC", tools: { claude: { unit: "tokens" }, codex: { unit: "tokens" }, cursor: { unit: "requests" } }, toolkit: { customSkills: 1, installedSkills: 2, plugins: 3, mcpServers: 4 } };
 
 describe("usage snapshot", () => {
+  it("parses a well-formed file, and rejects one without the toolkit's counts", () => {
+    expect(usageSnapshotSchema.safeParse({ ...head, days: [day] }).success).toBe(true);
+    const { toolkit: _toolkit, ...noToolkit } = head;
+    expect(usageSnapshotSchema.safeParse({ ...noToolkit, days: [day] }).success).toBe(false);
+  });
+
   it("rejects a file that smuggles a string into a day", () => {
-    const bad = { generated: "t", tz: "UTC", tools: { claude: { unit: "tokens" }, codex: { unit: "tokens" }, cursor: { unit: "requests" } }, days: [{ ...day, note: "secret" }] };
+    const bad = { ...head, days: [{ ...day, note: "secret" }] };
     expect(usageSnapshotSchema.safeParse(bad).success).toBe(false);
   });
 
@@ -19,7 +26,7 @@ describe("usage snapshot", () => {
     const frac = { ...day, claude: { ...day.claude, in: 1.5 } };
     const neg = { ...day, codex: { ...day.codex, out: -1 } };
     for (const d of [frac, neg]) {
-      expect(usageSnapshotSchema.safeParse({ generated: "t", tz: "UTC", tools: { claude: { unit: "tokens" }, codex: { unit: "tokens" }, cursor: { unit: "requests" } }, days: [d] }).success).toBe(false);
+      expect(usageSnapshotSchema.safeParse({ ...head, days: [d] }).success).toBe(false);
     }
   });
 

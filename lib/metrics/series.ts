@@ -1,3 +1,4 @@
+import type { Toolkit } from "./usageSchema";
 import type { SeriesWindow } from "./window";
 
 // One series the skyline can draw: GitHub contributions, or AI tokens per day
@@ -30,6 +31,8 @@ export type UsageSeries = {
   activeDays: number;
   streak: Streak;
   stale: boolean;
+  // The agent setup behind the tokens, for the fourth figure.
+  toolkit: Toolkit;
 };
 
 export type Series = GithubSeries | UsageSeries;
