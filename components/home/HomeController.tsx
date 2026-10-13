@@ -16,6 +16,7 @@ import { strandCardByKey, type CardKey } from "@/lib/content";
 import { useBodyScrollLock } from "@/lib/modal";
 import { claimHomeReadiness, publishHomeReadiness, useHomeReadiness, type HomeReadiness } from "@/lib/home/readiness";
 import { markSeen } from "@/lib/home/seen";
+import { isQuietArrival } from "@/lib/home/arrival";
 import {
   applyRestore,
   persistScrollPosition,
@@ -66,8 +67,10 @@ export type CoilFlight = {
 
 export type HomeControllerValue = {
   phase: HomeReadiness;
-  // This load skipped the entrance (a deep reload, a section hash, or reduced motion).
+  // This load skipped the entrance (a deep reload, a section hash, reduced motion, or a quiet arrival).
   fastStart: boolean;
+  // This load landed past the hero (a deep reload or a section hash).
+  deep: boolean;
   reducedMotion: boolean;
   drivers: Drivers;
   modalOpen: boolean;
@@ -162,6 +165,7 @@ export function HomeController({ hero, children }: Props) {
   const { drivers, reducedMotion } = useSyncExternalStore(subscribeCapabilities, readCapabilities, serverCapabilities);
 
   const [fastStart, setFastStart] = useState(false);
+  const [deep, setDeep] = useState(false);
   const [selection, setSelection] = useState<Selection | null>(null);
   const [flight, setFlight] = useState<CoilFlight | null>(null);
   const sceneApiRef = useRef<CoilSceneApi>(null);
@@ -190,7 +194,9 @@ export function HomeController({ hero, children }: Props) {
     const releaseRestoration = takeManualScrollRestoration();
     const recovery = readRecovery();
     const reduced = window.matchMedia(QUERIES.reduce).matches;
-    const fast = recovery.deep || reduced;
+    // Back from the Express lane: at rest under the transition's mask, no loader.
+    const quiet = isQuietArrival();
+    const fast = recovery.deep || reduced || quiet;
     if (recovery.deep) applyRestore(recovery.target);
     const stopReland = relandAfterFonts(recovery.target);
     const entering = !fast && entranceClaimsRef.current > 0;
@@ -201,7 +207,8 @@ export function HomeController({ hero, children }: Props) {
     // A layout-effect state write re-renders before paint, which is the point:
     // consumers of fastStart must see it on the first painted frame.
     setFastStart(fast);
-    setLoaderMode(recovery.deep ? { kind: "off" } : { kind: "on", reducedMotion: reduced });
+    setDeep(recovery.deep);
+    setLoaderMode(recovery.deep || quiet ? { kind: "off" } : { kind: "on", reducedMotion: reduced });
     if (!entering) setEntrance(AT_REST);
     return () => {
       endHomeLoad(tally);
@@ -340,6 +347,7 @@ export function HomeController({ hero, children }: Props) {
     () => ({
       phase,
       fastStart,
+      deep,
       reducedMotion,
       drivers,
       modalOpen,
@@ -354,6 +362,7 @@ export function HomeController({ hero, children }: Props) {
     [
       phase,
       fastStart,
+      deep,
       reducedMotion,
       drivers,
       modalOpen,

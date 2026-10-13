@@ -5,6 +5,7 @@ import { MenuPill } from "@/components/menu/MenuPill";
 import { CustomCursor } from "@/components/CustomCursor";
 import { InlineLayer } from "@/components/inline/InlineLayer";
 import { InputModality } from "@/components/InputModality";
+import { TransitionLayer } from "@/components/transition/TransitionLayer";
 import { siteContent } from "@/lib/content";
 import { profaBlack, profaBold } from "@/lib/fonts";
 import { HOLDING_MODE } from "@/lib/holding";
@@ -69,6 +70,7 @@ export default function RootLayout({
         <CustomCursor />
         {!HOLDING_MODE && <InlineLayer />}
         {children}
+        {!HOLDING_MODE && <TransitionLayer />}
       </body>
     </html>
   );

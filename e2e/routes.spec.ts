@@ -7,6 +7,7 @@ for (const [from, to] of [
   ["/work", "/#work"],
   ["/work/capital-one-pm", "/#work"],
   ["/about", "/#about"],
+  ["/express", "/quick"],
   ["/simple", "/quick"],
   ["/recruiter", "/quick"],
 ] as const) {
