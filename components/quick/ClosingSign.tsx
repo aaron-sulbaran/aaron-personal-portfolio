@@ -1,23 +1,24 @@
 import type { ReactNode } from "react";
 import { siteContent } from "@/lib/content";
 import { quickClosing } from "@/lib/content/quick";
+import { CLOSE_KEY } from "@/lib/quick/years";
 
-// The end of every variant: what I am looking for next, and the ways to reach me.
+// The end of the lane: what I am looking for next, and the ways to reach me.
 // It is the last checkpoint, so the line (or the road) ends here.
 
 const links = quickClosing.links.map((key) => siteContent.connect.links.find((link) => link.key === key)!);
 const external = (href: string) => (href.startsWith("http") ? { target: "_blank", rel: "noopener noreferrer" } : {});
 
-export function ClosingSign({ className = "", node, centered = false }: { className?: string; node?: ReactNode; centered?: boolean }) {
+export function ClosingSign({ line, className = "", node }: { line: string; className?: string; node?: ReactNode }) {
   const { primary } = siteContent.connect;
   return (
-    <section data-quick-key="close" aria-labelledby="quick-close" className={`group/item relative ${centered ? "md:text-center" : ""} ${className}`}>
+    <section id={CLOSE_KEY} data-quick-key={CLOSE_KEY} aria-labelledby="quick-close" className={`group/item relative ${className}`}>
       {node}
-      <h2 id="quick-close" className="font-label text-label text-accent">
+      <h2 id="quick-close" className="font-display text-[2.75rem] leading-none text-foreground md:text-[3.5rem]">
         {quickClosing.label}
       </h2>
-      <p className="mt-2 max-w-xl font-display text-[2rem] leading-[1.1] text-foreground md:text-[2.5rem]">{quickClosing.line}</p>
-      <ul className={`mt-6 flex flex-wrap gap-2 font-label text-label ${centered ? "md:justify-center" : ""}`}>
+      <p className="mt-4 max-w-2xl text-lg leading-relaxed text-foreground md:text-body-lg">{line}</p>
+      <ul className="mt-8 flex flex-wrap gap-2 font-label text-label">
         <li>
           <a href={primary.href} {...external(primary.href)} className="inline-flex rounded-full bg-accent px-4 py-2 text-background transition-colors hover:bg-accent-hover">
             {primary.label}

@@ -17,6 +17,9 @@ import type { TrackGeometry } from "./useTrackGeometry";
 // the reader has not reached yet, and everything on screen at that moment counts
 // as reached, so nothing visible ever blinks out. Reduced motion, real or
 // previewed, lights everything at once. runKey resets the one-way state.
+// marks: a second root whose data-quick-mark elements light too (the trip bar).
+// onDepth: the reader's depth as it is, both ways (a car that follows the
+// reader rather than the high water); 1 under reduced motion.
 
 export type Drive = (depth: number) => void;
 
@@ -26,13 +29,17 @@ type Options = {
   speed: number;
   forceReduced: boolean;
   build: (geometry: TrackGeometry) => Drive;
+  marks?: RefObject<HTMLElement | null>;
+  onDepth?: (depth: number, geometry: TrackGeometry) => void;
 };
 
-export function useCheckpointTrack(trackRef: RefObject<HTMLElement | null>, { geometry, runKey, speed, forceReduced, build }: Options) {
+export function useCheckpointTrack(trackRef: RefObject<HTMLElement | null>, { geometry, runKey, speed, forceReduced, build, marks, onDepth }: Options) {
   const stateRef = useRef<CheckpointState>(emptyCheckpoints());
   const buildRef = useRef(build);
+  const onDepthRef = useRef(onDepth);
   useEffect(() => {
     buildRef.current = build;
+    onDepthRef.current = onDepth;
   });
 
   useEffect(() => {
@@ -47,7 +54,11 @@ export function useCheckpointTrack(trackRef: RefObject<HTMLElement | null>, { ge
     mm.add({ motion: "(prefers-reduced-motion: no-preference)", reduce: "(prefers-reduced-motion: reduce)" }, (context) => {
       const reduce = forceReduced || Boolean(context.conditions?.reduce);
       const anchors = anchorsFrom(geometry.tops, geometry.height);
-      const marked = (key: string) => [...track.querySelectorAll<HTMLElement>(`[data-quick-key="${key}"], [data-quick-mark="${key}"]`)];
+      const markRoot = marks?.current ?? null;
+      const marked = (key: string) => [
+        ...track.querySelectorAll<HTMLElement>(`[data-quick-key="${key}"], [data-quick-mark="${key}"]`),
+        ...(markRoot && !track.contains(markRoot) ? markRoot.querySelectorAll<HTMLElement>(`[data-quick-mark="${key}"]`) : []),
+      ];
       const thumbs = (key: string) => [...track.querySelectorAll<HTMLElement>(`[data-quick-key="${key}"] [data-quick-thumb]`)];
       const wipe = photoWipeIn(QUICK_MOTION.direction);
       const paint = (key: string, lit: boolean, animate: boolean) => {
@@ -66,6 +77,7 @@ export function useCheckpointTrack(trackRef: RefObject<HTMLElement | null>, { ge
       const drive = buildRef.current(geometry);
       const clear = () => {
         for (const el of track.querySelectorAll<HTMLElement>("[data-lit]")) delete el.dataset.lit;
+        for (const el of markRoot?.querySelectorAll<HTMLElement>("[data-lit]") ?? []) delete el.dataset.lit;
         for (const el of track.querySelectorAll<HTMLElement>("[data-quick-thumb], [data-quick-media]")) {
           gsap.killTweensOf(el);
           el.style.removeProperty("clip-path");
@@ -78,6 +90,7 @@ export function useCheckpointTrack(trackRef: RefObject<HTMLElement | null>, { ge
         stateRef.current = lightAll(stateRef.current, anchors);
         for (const anchor of anchors) paint(anchor.key, true, false);
         drive(1);
+        onDepthRef.current?.(1, geometry);
         track.dataset.quickState = "still";
         return clear;
       }
@@ -98,8 +111,10 @@ export function useCheckpointTrack(trackRef: RefObject<HTMLElement | null>, { ge
       const follow = (self: ScrollTrigger) => {
         const rect = track.getBoundingClientRect();
         const atEnd = self.scroll() >= ScrollTrigger.maxScroll(window) - 2;
-        const line = measured ? QUICK_MOTION.readingLine : 1;
-        const raised = raiseMark(stateRef.current, readingDepth({ trackTop: rect.top, trackHeight: rect.height, viewportHeight: window.innerHeight, line, atEnd }));
+        const at = (line: number) => readingDepth({ trackTop: rect.top, trackHeight: rect.height, viewportHeight: window.innerHeight, line, atEnd });
+        const live = at(QUICK_MOTION.readingLine);
+        onDepthRef.current?.(live, geometry);
+        const raised = raiseMark(stateRef.current, measured ? live : at(1));
         if (!measured) {
           measured = true;
           stateRef.current = raised.state;
@@ -109,7 +124,7 @@ export function useCheckpointTrack(trackRef: RefObject<HTMLElement | null>, { ge
           stateRef.current = raised.state;
           chase.resetTo("depth", raised.state.mark, proxy.depth);
         }
-        if (stateRef.current.mark >= 1) queueMicrotask(() => self.kill());
+        if (stateRef.current.mark >= 1 && !onDepthRef.current) queueMicrotask(() => self.kill());
       };
       const trigger = ScrollTrigger.create({ trigger: track, start: "top bottom", end: "bottom top", onUpdate: follow, onRefresh: follow });
       follow(trigger);
@@ -120,5 +135,5 @@ export function useCheckpointTrack(trackRef: RefObject<HTMLElement | null>, { ge
       };
     });
     return () => mm.revert();
-  }, [trackRef, geometry, runKey, speed, forceReduced]);
+  }, [trackRef, geometry, runKey, speed, forceReduced, marks]);
 }
