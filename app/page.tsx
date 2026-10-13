@@ -8,9 +8,7 @@ import { HOLDING_MODE } from "@/lib/holding";
 import { HomeController } from "@/components/home/HomeController";
 import { HeroText } from "@/components/home/HeroText";
 import { Book } from "@/components/book/Book";
-import { Metrics, METRICS_LABEL_ID, METRICS_TITLE_ID } from "@/components/metrics/Metrics";
-import { SectionHeading, SectionSubline } from "@/components/sections/SectionTitle";
-import { siteContent } from "@/lib/content";
+import { NumbersStrip } from "@/components/metrics/NumbersStrip";
 import { MarkCardSource } from "@/components/mark/MarkCardSource";
 
 // The contribution figures refresh once a day (lib/metrics/github.ts); a
@@ -67,24 +65,5 @@ function HeroSentinel() {
       data-hero-sentinel
       className="pointer-events-none absolute inset-x-0 top-0 h-[90vh] supports-[height:100svh]:h-[90svh]"
     />
-  );
-}
-
-// The numbers strip under Who I am: the GitHub chart with its figures and my
-// LinkedIn line (docs/content/right-now-and-metrics.md). It has its own big
-// heading, set exactly as Who I am's is, and under it the line that names the
-// GitHub group, set exactly as the line under Who I am's heading is.
-function NumbersStrip() {
-  const { title, groupLabel } = siteContent.metrics;
-  return (
-    <section id="numbers" data-wave-anchor="numbers" className="relative w-full scroll-mt-24 border-t border-border px-6 py-24 md:px-10 md:py-40">
-      <div className="mx-auto flex max-w-6xl flex-col gap-10">
-        <div className="flex flex-col gap-6">
-          <SectionHeading id={METRICS_TITLE_ID} words>{title}</SectionHeading>
-          <SectionSubline id={METRICS_LABEL_ID} words>{groupLabel}</SectionSubline>
-        </div>
-        <Metrics />
-      </div>
-    </section>
   );
 }
