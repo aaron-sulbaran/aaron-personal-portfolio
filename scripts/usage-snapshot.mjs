@@ -11,11 +11,18 @@
 // Codex: input_tokens already includes cached_input_tokens and output_tokens
 // already includes reasoning, so `in` is the uncached part and the four fields
 // sum to Codex's own total_tokens.
+//
+// It also writes `toolkit`, the agent setup's four counts (scripts/toolkit-counts.mjs):
+// counts only, never a name. The vault's skills are read from --vault <dir>,
+// else VAULT_DEV_PATH (from the environment or .env.local); with neither the
+// vault is skipped, with a warning.
 
-import { createReadStream, readdirSync, writeFileSync } from "node:fs";
+import { createReadStream, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { createInterface } from "node:readline";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { parseEnv } from "node:util";
+import { countToolkit } from "./toolkit-counts.mjs";
 
 const args = process.argv.slice(2);
 const flag = (name, fallback) => {
@@ -28,6 +35,15 @@ const claudeRule = flag("--claude", "app");
 if (claudeRule !== "app" && claudeRule !== "responses") {
   throw new Error(`--claude must be "app" or "responses", got ${claudeRule}`);
 }
+
+function envLocal(name) {
+  try {
+    return parseEnv(readFileSync(".env.local", "utf8"))[name];
+  } catch {
+    return undefined;
+  }
+}
+const vault = flag("--vault", process.env.VAULT_DEV_PATH || envLocal("VAULT_DEV_PATH"));
 
 function localDay(iso) {
   const date = new Date(iso);
@@ -162,6 +178,7 @@ const snapshot = {
     codex: { unit: "tokens" },
     cursor: { unit: "requests" },
   },
+  toolkit: countToolkit({ home, vault }),
   days: [...days.keys()].sort().map((d) => ({ d, ...days.get(d) })),
 };
 
@@ -175,3 +192,6 @@ console.error(`claude files ${claudeFiles}, lines ${claudeLines.length}, respons
 console.error(`codex files ${codex.files}, days ${snapshot.days.length}`);
 console.error(`claude ${billions(sum("claude"))}, codex ${billions(sum("codex"))}`);
 console.error("cursor request log not found; req stays 0");
+const kit = snapshot.toolkit;
+console.error(`toolkit: ${kit.customSkills} custom skills, ${kit.installedSkills} installed skills, ${kit.plugins} plugins, ${kit.mcpServers} MCP servers`);
+if (!vault) console.error("warning: no --vault and VAULT_DEV_PATH is unset; the vault's skills are not counted");
