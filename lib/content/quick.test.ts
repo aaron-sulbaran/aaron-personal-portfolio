@@ -1,8 +1,10 @@
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { siteContent } from "@/lib/content";
 import { walkStrings } from "@/lib/testing/walk";
 import { cards } from "./cards";
-import { quickClosing, quickCopy, quickEntries, quickRange, quickSigns, quickSorted } from "./quick";
+import { quickClosing, quickCopy, quickEntries, quickRange, quickSigns, quickSorted, squareMarks } from "./quick";
 
 const EM_DASH = "\u2014";
 const siteCopy = [...walkStrings(cards), ...walkStrings(siteContent.whoIAm)].map((leaf) => leaf.text);
@@ -34,6 +36,18 @@ describe("quick entries", () => {
     }
     expect(quickEntries.filter((entry) => entry.photo).length).toBe(6);
     expect(quickEntries.filter((entry) => entry.logo).length).toBe(6);
+  });
+
+  it("gives every logo entry a node mark, its own logo unless a square mark stands in", () => {
+    for (const entry of quickEntries) {
+      expect(Boolean(entry.mark)).toBe(Boolean(entry.logo));
+      if (entry.logo) expect(entry.mark).toEqual(squareMarks[entry.id] ?? entry.logo);
+    }
+  });
+
+  it("points only at files that exist", () => {
+    const files = quickEntries.flatMap((entry) => [entry.photo?.src, entry.logo?.src, entry.logo?.srcDark, entry.mark?.src, entry.mark?.srcDark]);
+    for (const src of files) if (src) expect(existsSync(join(process.cwd(), "public", src)), src).toBe(true);
   });
 
   it("sorts newest first", () => {

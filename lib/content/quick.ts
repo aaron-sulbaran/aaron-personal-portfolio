@@ -18,9 +18,12 @@ interface QuickDraft {
 }
 
 // photo and logo are the card's own (lib/content/cards.ts); a card shows one or neither.
+// mark is the logo for a small round node: the logo itself, or the brand's square mark
+// where the card's logo is a wordmark too wide to read at that size.
 export interface QuickEntry extends QuickDraft {
   photo: CardPicture | null;
   logo: LogoRef | null;
+  mark: LogoRef | null;
 }
 
 export const quickCopy = {
@@ -183,11 +186,16 @@ const drafts: readonly QuickDraft[] = [
   },
 ];
 
-function visualOf(id: CardKey): Pick<QuickEntry, "photo" | "logo"> {
+export const squareMarks: Partial<Record<CardKey, LogoRef>> = {
+  anthropic: { src: "/work/logos/anthropic/anthropic-mark.svg", srcDark: "/work/logos/anthropic/anthropic-mark-white.svg", width: 92.2, height: 65 },
+  fsdatalink: { src: "/work/logos/fsdatalink/fsdatalink-mark.png", srcDark: null, width: 681, height: 681, opaque: true },
+};
+
+function visualOf(id: CardKey): Pick<QuickEntry, "photo" | "logo" | "mark"> {
   const { visual } = cards[id];
-  if (visual.kind === "photo") return { photo: visual.photo, logo: null };
-  if (visual.kind === "logo") return { photo: null, logo: visual.logo };
-  return { photo: null, logo: null };
+  if (visual.kind === "photo") return { photo: visual.photo, logo: null, mark: null };
+  if (visual.kind === "logo") return { photo: null, logo: visual.logo, mark: squareMarks[id] ?? visual.logo };
+  return { photo: null, logo: null, mark: null };
 }
 
 export const quickEntries: readonly QuickEntry[] = drafts.map((draft) => ({ ...draft, ...visualOf(draft.id) }));
