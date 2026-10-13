@@ -34,6 +34,20 @@ describe("the rounded prism", () => {
     expect(front).toBeLessThan(Math.max(...xs));
   });
 
+  it("a stacked bar's two segments meet: the upper starts where the lower ends and tops out at the bar", () => {
+    const whole = prismSilhouette(sil, base, OUTLINE_LEN, 25);
+    const wholeYs = pts(sil, whole).map((p) => p[1]);
+    const lower = new Float32Array(SILHOUETTE_LEN * 2);
+    const nl = prismSilhouette(lower, base, OUTLINE_LEN, 10);
+    const nu = prismSilhouette(sil, base, OUTLINE_LEN, 15, 10);
+    const lowerYs = pts(lower, nl).map((p) => p[1]);
+    const upperYs = pts(sil, nu).map((p) => p[1]);
+    expect(Math.min(...upperYs)).toBeCloseTo(Math.min(...wholeYs), 4);
+    expect(Math.max(...lowerYs)).toBeCloseTo(Math.max(...wholeYs), 4);
+    expect(Math.max(...upperYs)).toBeCloseTo(Math.max(...lowerYs) - 10, 4);
+    expect(nu).toBe(nl);
+  });
+
   it("with no radius, the corners are the square cell's", () => {
     const sq = new Float32Array(OUTLINE_LEN * 2);
     roundedCell(sq, camera(0), 0, 0, 1, 0, 0, 10, 0, 0);

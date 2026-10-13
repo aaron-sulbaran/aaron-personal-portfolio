@@ -1,40 +1,39 @@
-import {
-  barHeight,
-  camera,
-  cameraInto,
-  dayMs,
-  luminance,
-  mixRGB,
-  type Cell,
-  type HeightCurve,
-  type RGB,
-} from "@/lib/metrics/skyline/maths";
+import { camera, cameraInto, luminance, mixRGB, type Cell, type HeightCurve, type RGB } from "@/lib/metrics/skyline/maths";
 import { draw, extent, NO_DEPTH, type DepthSpec, type Scene } from "./draw";
 import { newCssCache } from "@/lib/metrics/skyline/cssCache";
-import { CELL_SLOTS, newAlphaCss, resolveColor, resolveRGBA, rgbString } from "./paint";
+import { newAlphaCss, resolveColor, resolveRGBA, rgbString } from "./paint";
 import { attachInput, type Ctl } from "./input";
+import { capture, loadModel, startFrom } from "./load";
 import { OUTLINE_LEN, SILHOUETTE_LEN } from "@/lib/metrics/skyline/prism";
 
 // The imperative half: one scene per mount, a rAF loop that only runs while
 // something moves, pointer and keyboard input. React hands it a config ref
 // it re-reads every frame, so the loop never closes over stale props.
 
+// `curve` maps a count to a bar's height; `stack`, when the series has two
+// tools, is each cell's lower share (lib/metrics/skyline/stack.ts).
 export type Model = {
   cells: Cell[];
   weeks: number;
   max: number;
   months: { week: number; label: string }[];
+  curve: HeightCurve;
+  stack: number[] | null;
 };
 
-export type ThemeReadout = { dark: boolean; swatches: string[] };
+// The legend's colours: the empty day and the lower tool's four steps, and
+// for a stacked series each tool's strongest step for the key.
+export type ThemeReadout = { dark: boolean; swatches: string[]; key: string[] };
 
 export type EngineConfig = {
   model: Model;
   duration: number;
   heightScale: number;
-  heightCurve: HeightCurve;
   orbit: boolean;
   palette: string[];
+  palette2: string[] | null;
+  switchMs: number;
+  switchStagger: number;
   legendLevel: number;
   target: 0 | 1;
   depth: DepthSpec;
@@ -47,6 +46,7 @@ export type EngineConfig = {
 
 export type Engine = {
   kick: () => void;
+  // The model changed: every bar moves from what it shows now to the new one.
   load: () => void;
   retheme: () => void;
   tipWidth: (w: number) => void;
@@ -87,6 +87,7 @@ export function createEngine(el: EngineElements, cfg: { current: EngineConfig })
     labelW: 30,
     font: "700 " + LABEL_PX + "px sans-serif",
     col: new Float32Array(18),
+    col2: new Float32Array(12),
     fg: FALLBACK,
     bg: FALLBACK,
     muted: FALLBACK,
@@ -96,7 +97,18 @@ export function createEngine(el: EngineElements, cfg: { current: EngineConfig })
     dy: new Float32Array(0),
     lv: new Uint8Array(0),
     skip: new Uint8Array(0),
+    hFrom: new Float32Array(0),
+    hTo: new Float32Array(0),
     hgt: new Float32Array(0),
+    shFrom: new Float32Array(0),
+    shTo: new Float32Array(0),
+    shr: new Float32Array(0),
+    cFrom: new Float32Array(0),
+    low: new Float32Array(0),
+    up: new Float32Array(0),
+    sw: 1,
+    swStagger: 0,
+    tone: new Float32Array(6),
     zs: new Float32Array(0),
     hover: new Float32Array(0),
     dim: new Float32Array(0),
@@ -134,55 +146,33 @@ export function createEngine(el: EngineElements, cfg: { current: EngineConfig })
   const reduceMq = window.matchMedia("(prefers-reduced-motion: reduce)");
   let reduced = reduceMq.matches;
   const colGoal = new Float32Array(18);
+  const col2Goal = new Float32Array(12);
   let colReady = false;
   const ctl: Ctl = { target: 0, yawGoal: 0, elevGoal: 0, hovered: -1, pinned: -1, firstDay: 0, lastDay: 0 };
   let raf = 0;
   let last = 0;
   let alive = true;
+  let loaded: Cell[] = [];
 
-  const load = () => {
+  // A new model: the first one lands as it is; after that, every bar starts
+  // from what it shows now and the switch clock runs (at once when reduced).
+  const load = (switching: boolean) => {
+    const shown = switching && s.n ? capture(s, loaded) : null;
     const m = cfg.current.model;
-    const n = m.cells.length;
-    s.n = n;
-    s.weeks = m.weeks;
-    if (s.wk.length !== n) {
-      s.wk = new Float32Array(n);
-      s.dy = new Float32Array(n);
-      s.lv = new Uint8Array(n);
-      s.skip = new Uint8Array(n);
-      s.hgt = new Float32Array(n);
-      s.zs = new Float32Array(n);
-      s.hover = new Float32Array(n);
-      s.dim = new Float32Array(n);
-      s.polys = new Float32Array(n * 24);
-      s.faces = new Uint8Array(n);
-      s.order = Array.from({ length: n }, (_, i) => i);
-      s.sortKey = new Float64Array(n);
-      s.cellCss = newCssCache(n * CELL_SLOTS);
-    }
-    s.sortCs = NaN;
-    for (let i = 0; i < n; i++) {
-      const c = m.cells[i];
-      s.wk[i] = c.week;
-      s.dy[i] = c.day;
-      s.lv[i] = c.kind === "future" ? 5 : c.level;
-      s.skip[i] = c.kind === "outside" ? 1 : 0;
-      s.hgt[i] = barHeight(c.count, m.max, cfg.current.heightScale, cfg.current.heightCurve);
-    }
-    s.months = m.months;
+    loadModel(s, m, cfg.current.heightScale, cfg.current.locale);
+    loaded = m.cells;
     ctl.firstDay = Math.max(0, m.cells.findIndex((c) => c.kind === "day"));
     ctl.lastDay = m.cells.reduce((at, c, i) => (c.kind === "day" ? i : at), 0);
-    const wf = new Intl.DateTimeFormat(cfg.current.locale, { weekday: "short", timeZone: "UTC" });
-    s.weekdayRows = [];
-    for (let d = 0; d < 7 && d < n; d++) {
-      const dow = new Date(dayMs(m.cells[d].date)).getUTCDay();
-      if (dow === 1 || dow === 3 || dow === 5) s.weekdayRows.push({ day: d, label: wf.format(dayMs(m.cells[d].date)) });
-    }
-    if (ctl.hovered >= n) ctl.hovered = -1;
-    if (ctl.pinned >= n) ctl.pinned = -1;
+    if (ctl.hovered >= s.n) ctl.hovered = -1;
+    if (ctl.pinned >= s.n) ctl.pinned = -1;
+    retheme(switching);
+    startFrom(s, m.cells, shown);
+    s.sw = shown && !reduced ? 0 : 1;
   };
 
-  const retheme = () => {
+  // `snap` lands the palettes at once: a series switch crossfades each bar
+  // itself, so the palettes must not ease on top of it.
+  const retheme = (snap = false) => {
     s.fg = resolveColor(el.probe, "var(--color-foreground)", FALLBACK);
     s.bg = resolveColor(el.probe, "var(--color-background)", FALLBACK);
     s.muted = resolveColor(el.probe, "var(--color-muted)", FALLBACK);
@@ -203,18 +193,27 @@ export function createEngine(el: EngineElements, cfg: { current: EngineConfig })
     s.shade = isDark ? [s.bg[0] * 0.5, s.bg[1] * 0.5, s.bg[2] * 0.5] : mixRGB(s.bg, s.fg, 0.1);
     s.shadeCss = rgbString(s.shade[0], s.shade[1], s.shade[2]);
     const future = mixRGB(empty, s.bg, 0.55);
-    const all: RGB[] = [empty, ...cfg.current.palette.slice(0, 4).map((c) => resolveColor(el.probe, c, FALLBACK)), future];
+    const resolve = (list: string[]) => list.slice(0, 4).map((c) => resolveColor(el.probe, c, FALLBACK));
+    const lower = resolve(cfg.current.palette);
+    const upper = cfg.current.palette2 ? resolve(cfg.current.palette2) : lower;
+    const all: RGB[] = [empty, ...lower, future];
     for (let k = 0; k < 6; k++) for (let ch = 0; ch < 3; ch++) colGoal[k * 3 + ch] = all[k][ch];
-    if (!colReady || reduced) {
+    for (let k = 0; k < 4; k++) for (let ch = 0; ch < 3; ch++) col2Goal[k * 3 + ch] = upper[k][ch];
+    if (!colReady || reduced || snap) {
       s.col.set(colGoal);
+      s.col2.set(col2Goal);
       colReady = true;
     }
     ctx.font = s.font;
     s.labelW = Math.ceil(Math.max(20, ...s.weekdayRows.map((r) => ctx.measureText(r.label).width))) + 8;
     if (s.monthW.length !== s.months.length) s.monthW = new Float64Array(s.months.length);
     for (let k = 0; k < s.months.length; k++) s.monthW[k] = ctx.measureText(s.months[k].label).width;
-    const sw = all.slice(0, 5).map((c) => rgbString(c[0], c[1], c[2]));
-    cfg.current.setTheme((prev) => (prev.dark === isDark && prev.swatches.join() === sw.join() ? prev : { dark: isDark, swatches: sw }));
+    const css = (c: RGB) => rgbString(c[0], c[1], c[2]);
+    const sw = all.slice(0, 5).map(css);
+    const key = cfg.current.palette2 ? [css(lower[3]), css(upper[3])] : [];
+    cfg.current.setTheme((prev) =>
+      prev.dark === isDark && prev.swatches.join() === sw.join() && prev.key.join() === key.join() ? prev : { dark: isDark, swatches: sw, key },
+    );
     kick();
   };
 
@@ -252,6 +251,11 @@ export function createEngine(el: EngineElements, cfg: { current: EngineConfig })
       s.t = ctl.target > s.t ? Math.min(ctl.target, s.t + step) : Math.max(ctl.target, s.t - step);
       moving = true;
     }
+    s.swStagger = cfg.current.switchStagger;
+    if (s.sw < 1) {
+      s.sw = reduced ? 1 : Math.min(1, s.sw + (dt * 1000) / Math.max(1, cfg.current.switchMs));
+      moving = true;
+    }
 
     const ko = reduced ? 1 : 1 - Math.exp(-dt * 12);
     s.yaw += (ctl.yawGoal - s.yaw) * ko;
@@ -263,12 +267,15 @@ export function createEngine(el: EngineElements, cfg: { current: EngineConfig })
     }
 
     const kc = reduced ? 1 : 1 - Math.exp(-dt * 7);
-    for (let k = 0; k < 18; k++) {
-      const d = colGoal[k] - s.col[k];
+    for (let k = 0; k < 30; k++) {
+      const into = k < 18 ? s.col : s.col2;
+      const at = k < 18 ? k : k - 18;
+      const goal = k < 18 ? colGoal[k] : col2Goal[at];
+      const d = goal - into[at];
       if (Math.abs(d) > 0.4) {
-        s.col[k] += d * kc;
+        into[at] += d * kc;
         moving = true;
-      } else s.col[k] = colGoal[k];
+      } else into[at] = goal;
     }
 
     const kh = reduced ? 1 : 1 - Math.exp(-dt * 16);
@@ -304,6 +311,8 @@ export function createEngine(el: EngineElements, cfg: { current: EngineConfig })
   function markState() {
     const state = s.t <= 0 ? "flat" : s.t >= 1 ? "skyline" : "moving";
     if (stage.dataset.viewState !== state) stage.dataset.viewState = state;
+    const switching = s.sw < 1 ? "moving" : "done";
+    if (stage.dataset.switchState !== switching) stage.dataset.switchState = switching;
   }
 
   const orbitable = () => cfg.current.orbit && ctl.target === 1;
@@ -329,8 +338,7 @@ export function createEngine(el: EngineElements, cfg: { current: EngineConfig })
     }
   };
 
-  load();
-  retheme();
+  load(false);
   relayout();
 
   // The morph starts flat and moves toward the first target on the one clock.
@@ -371,11 +379,10 @@ export function createEngine(el: EngineElements, cfg: { current: EngineConfig })
       kick();
     },
     load: () => {
-      load();
-      retheme();
+      load(true);
       relayout();
     },
-    retheme,
+    retheme: () => retheme(),
     tipWidth: (w: number) => {
       s.tipW = w;
       draw(s);

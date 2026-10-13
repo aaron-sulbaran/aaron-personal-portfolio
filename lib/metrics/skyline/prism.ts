@@ -33,7 +33,9 @@ export function roundedCell(out: Float32Array, cam: Cam, x0: number, y0: number,
 // The top chain (lifted) from the leftmost point to the rightmost, then the
 // base's bottom chain back. `base` is clockwise on screen, as roundedCell
 // writes it (the projection keeps orientation: its determinant is sin(elev)).
-export function prismSilhouette(out: Float32Array, base: Float32Array, n: number, lift: number): number {
+// `from` raises the whole prism first: a stacked bar's upper segment starts
+// where the lower one ends.
+export function prismSilhouette(out: Float32Array, base: Float32Array, n: number, lift: number, from = 0): number {
   let left = 0;
   let right = 0;
   for (let i = 1; i < n; i++) {
@@ -43,12 +45,12 @@ export function prismSilhouette(out: Float32Array, base: Float32Array, n: number
   let o = 0;
   for (let i = left; ; i = (i + 1) % n) {
     out[o++] = base[i * 2];
-    out[o++] = base[i * 2 + 1] - lift;
+    out[o++] = base[i * 2 + 1] - from - lift;
     if (i === right) break;
   }
   for (let i = right; ; i = (i + 1) % n) {
     out[o++] = base[i * 2];
-    out[o++] = base[i * 2 + 1];
+    out[o++] = base[i * 2 + 1] - from;
     if (i === left) break;
   }
   return o / 2;
