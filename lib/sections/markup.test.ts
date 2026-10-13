@@ -35,6 +35,12 @@ describe("the section title and the line under it", () => {
     );
   });
 
+  it("runs the line its full length from md up only when asked (the numbers strip's), narrow on phones", () => {
+    const wide = renderToStaticMarkup(createElement(SectionSubline, { wide: true } as ComponentProps<typeof SectionSubline>, "a line"));
+    expect(wide).toMatch(/^<p class="max-w-xs md:max-w-none text-sm leading-relaxed text-muted"/);
+    expect(renderToStaticMarkup(createElement(WhoIAm))).not.toContain("md:max-w-none");
+  });
+
   it("puts an id on its block, for a group named by it", () => {
     expect(renderToStaticMarkup(createElement(SectionHeading, { id: "metrics-title" } as ComponentProps<typeof SectionHeading>, "proof of work"))).toContain('id="metrics-title"');
     expect(renderToStaticMarkup(createElement(SectionSubline, { id: "metrics-label" } as ComponentProps<typeof SectionSubline>, "My GitHub contributions"))).toContain('id="metrics-label"');

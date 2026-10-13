@@ -8,6 +8,8 @@ import { Block } from "./Block";
 // static text (see Block). An id names the block for a group that is labelled
 // by it (aria-labelledby). `words` marks the block as words the wave path
 // keeps clear of (data-wave-words); a block held sticky never takes it.
+// `wide` lets the line run its full length from md up (the numbers strip's
+// one line); it keeps the narrow measure on phones.
 
 export function SectionHeading({ id, words, children }: { id?: string; words?: true; children: ReactNode }) {
   return (
@@ -17,9 +19,9 @@ export function SectionHeading({ id, words, children }: { id?: string; words?: t
   );
 }
 
-export function SectionSubline({ id, words, children }: { id?: string; words?: true; children: ReactNode }) {
+export function SectionSubline({ id, words, wide, children }: { id?: string; words?: true; wide?: true; children: ReactNode }) {
   return (
-    <Block kind="body" as="p" split="block" id={id} className="max-w-xs text-sm leading-relaxed text-muted" data-wave-words={words}>
+    <Block kind="body" as="p" split="block" id={id} className={`max-w-xs ${wide ? "md:max-w-none " : ""}text-sm leading-relaxed text-muted`} data-wave-words={words}>
       <span data-sections-inner className="block">
         {children}
       </span>
