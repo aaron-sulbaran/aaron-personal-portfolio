@@ -4,13 +4,13 @@ import { siteContent } from "@/lib/content";
 const { listen, soundtrack } = siteContent;
 
 describe("the soundtrack band's copy", () => {
-  it("credits every playable track and its artist under CC BY 4.0", () => {
+  it("credits every playable track and its artist under CC BY 3.0", () => {
     for (const track of soundtrack.tracks) {
       expect(soundtrack.creditLead).toContain(`“${track.title}”`);
       expect(soundtrack.creditArtist).toBe(track.artist);
     }
-    expect(soundtrack.creditLicense).toBe("CC BY 4.0");
-    expect(soundtrack.creditLicenseUrl).toBe("https://creativecommons.org/licenses/by/4.0/");
+    expect(soundtrack.creditLicense).toBe("CC BY 3.0");
+    expect(soundtrack.creditLicenseUrl).toBe("https://creativecommons.org/licenses/by/3.0/");
   });
 
   it("never promises a player the band does not show", () => {
