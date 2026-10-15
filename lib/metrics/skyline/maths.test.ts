@@ -37,6 +37,20 @@ describe("the series switch", () => {
   it("moves every bar together with no stagger", () => {
     expect(switchAt(0.3, 0, 27, 0, 0)).toBeCloseTo(switchAt(0.3, 26, 27, 6, 0), 9);
   });
+  it("reversed, sweeps newest week first and each week's days from the other end, ending where it began", () => {
+    const t = 0.4;
+    expect(switchAt(t, 26, 27, 6, WAVE, true)).toBeGreaterThan(switchAt(t, 13, 27, 3, WAVE, true));
+    expect(switchAt(t, 13, 27, 3, WAVE, true)).toBeGreaterThan(switchAt(t, 0, 27, 0, WAVE, true));
+    expect(switchAt(t, 26, 27, 6, WAVE, true)).toBeCloseTo(switchAt(t, 0, 27, 0, WAVE), 9);
+    expect(switchAt(t, 3, 27, 5, WAVE, true)).toBeCloseTo(switchAt(t, 23, 27, 1, WAVE), 9);
+    for (const stagger of [0, WAVE, 0.9]) for (const [week, day] of [[0, 0], [13, 3], [26, 6]]) {
+      expect(switchAt(0, week, 27, day, stagger, true)).toBe(0);
+      expect(switchAt(1, week, 27, day, stagger, true)).toBeCloseTo(1, 9);
+    }
+  });
+  it("reversed with no stagger still moves every bar together", () => {
+    expect(switchAt(0.3, 0, 27, 0, 0, true)).toBeCloseTo(switchAt(0.3, 26, 27, 6, 0, true), 9);
+  });
 });
 
 describe("level steps (quarters of a busy day)", () => {

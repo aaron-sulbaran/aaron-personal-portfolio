@@ -148,9 +148,13 @@ export const riseAt = (t: number, week: number, weeks: number, day: number): num
 // 0 to 1 as a bar moves from the last series to the next. The same sweep as
 // riseAt, oldest week first, with `stagger` the share of the switch the
 // newest bar waits (riseAt's is WAVE). stagger 0 moves every bar together.
-export const switchAt = (t: number, week: number, weeks: number, day: number, stagger: number): number => {
+// `reverse` mirrors the sweep, newest week first and each week's days from the
+// other end: the wave coming back from Tokens runs right to left.
+export const switchAt = (t: number, week: number, weeks: number, day: number, stagger: number, reverse = false): number => {
   const w = Math.max(0, Math.min(0.9, stagger));
-  const d = ((weeks > 1 ? week / (weeks - 1) : 0) * 0.36 + (day / 6) * 0.06) * (w / WAVE);
+  const wk = reverse ? weeks - 1 - week : week;
+  const dy = reverse ? 6 - day : day;
+  const d = ((weeks > 1 ? wk / (weeks - 1) : 0) * 0.36 + (dy / 6) * 0.06) * (w / WAVE);
   return easeOutCubic((t - d) / (1 - w));
 };
 

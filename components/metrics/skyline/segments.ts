@@ -21,7 +21,7 @@ export const blend = (s: Scene) => {
   const { n, col, col2, cFrom, low, up, hFrom, hTo, hgt, shFrom, shTo, shr, lv, wk, dy } = s;
   const done = s.sw >= 1;
   for (let i = 0; i < n; i++) {
-    const p = done ? 1 : switchAt(s.sw, wk[i], s.weeks, dy[i], s.swStagger);
+    const p = done ? 1 : switchAt(s.sw, wk[i], s.weeks, dy[i], s.swStagger, s.swReverse);
     const q = 1 - p;
     hgt[i] = hFrom[i] * q + hTo[i] * p;
     shr[i] = shFrom[i] * q + shTo[i] * p;

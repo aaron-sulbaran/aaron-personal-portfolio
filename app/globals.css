@@ -224,17 +224,6 @@ html[data-input="pointer"] .metrics-stage:has(canvas:focus-visible) {
   }
 }
 
-/* The proof-of-work strip's figures after a Commits or Tokens press
-   (components/metrics/MetricsBoard.tsx). Reduced motion zeroes it below. */
-@keyframes metrics-swap {
-  from {
-    opacity: 0;
-  }
-}
-.metrics-swap {
-  animation: metrics-swap 0.5s var(--ease-out) both;
-}
-
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;

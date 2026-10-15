@@ -24,9 +24,9 @@ const wordsFor = (series: Series) =>
     ? { total: formatCompact(series.total), label: tokens.label, levels: tokens.levels }
     : { total: number.format(series.total), label: chart.label, levels: chart.levels };
 
-type Props = { series: Series; view: View; onViewChange: (v: View) => void; toolbar?: ReactNode };
+type Props = { series: Series; switchReverse: boolean; view: View; onViewChange: (v: View) => void; toolbar?: ReactNode };
 
-export function ContributionSkyline({ series, view, onViewChange, toolbar }: Props) {
+export function ContributionSkyline({ series, switchReverse, view, onViewChange, toolbar }: Props) {
   const settings = useTokensSettings();
   const stacked = series.kind === "usage";
   const copy = wordsFor(series);
@@ -66,7 +66,7 @@ export function ContributionSkyline({ series, view, onViewChange, toolbar }: Pro
   };
   const config: EngineConfig = {
     model, duration: SKYLINE.durationMs, heightScale: 1, orbit: true, palette: palettes.lower, palette2: palettes.upper,
-    switchMs: settings.switchMs, switchStagger: settings.switchStagger, segmentGap: settings.segmentGap,
+    switchMs: settings.switchMs, switchStagger: settings.switchStagger, switchReverse, segmentGap: settings.segmentGap,
     legendLevel, target: view === "skyline" ? 1 : 0, depth: SKYLINE.depth, locale: "en-US", setActive, setTheme, setAnnounce, describe,
   };
   const cfg = useRef(config);
