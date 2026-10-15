@@ -12,17 +12,20 @@
 // already includes reasoning, so `in` is the uncached part and the four fields
 // sum to Codex's own total_tokens.
 //
-// It also writes `toolkit`, the agent setup's four counts (scripts/toolkit-counts.mjs):
-// counts only, never a name. The vault's skills are read from --vault <dir>,
-// else VAULT_DEV_PATH (from the environment or .env.local); with neither the
-// vault is skipped, with a warning.
+// It also writes `toolkit`: the agent setup's four counts (scripts/toolkit-counts.mjs)
+// and `named`, the call counts of the tools on the curated public list
+// (lib/metrics/toolkit-public.json, scripts/toolkit-calls.mjs). A tool that is
+// not on that list counts toward the totals and is never named. The vault's
+// skills are read from --vault <dir>, else VAULT_DEV_PATH (from the environment
+// or .env.local); with neither the vault is skipped, with a warning.
 
 import { createReadStream, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { createInterface } from "node:readline";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { parseEnv } from "node:util";
-import { countToolkit } from "./toolkit-counts.mjs";
+import { collectCalls, localDay, namedToolkit, newTally } from "./toolkit-calls.mjs";
+import { countToolkit, setupNames } from "./toolkit-counts.mjs";
 
 const args = process.argv.slice(2);
 const flag = (name, fallback) => {
@@ -44,15 +47,6 @@ function envLocal(name) {
   }
 }
 const vault = flag("--vault", process.env.VAULT_DEV_PATH || envLocal("VAULT_DEV_PATH"));
-
-function localDay(iso) {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return null;
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
 
 function blank() {
   return { in: 0, out: 0, cr: 0, cw: 0, msgs: 0 };
@@ -87,6 +81,8 @@ async function readLines(path, onLine) {
   }
 }
 
+const publicToolkit = JSON.parse(readFileSync(new URL("../lib/metrics/toolkit-public.json", import.meta.url), "utf8"));
+const callTally = newTally();
 const claudeLines = [];
 const claudeResponses = new Map();
 
@@ -104,6 +100,7 @@ async function scanClaude(root) {
   walk(root, files);
   for (const path of files) {
     await readLines(path, (row) => {
+      collectCalls(row, callTally, since);
       if (row.type !== "assistant" || !row.message?.usage) return;
       const day = localDay(row.timestamp);
       if (!day || day < since) return;
@@ -178,7 +175,7 @@ const snapshot = {
     codex: { unit: "tokens" },
     cursor: { unit: "requests" },
   },
-  toolkit: countToolkit({ home, vault }),
+  toolkit: { ...countToolkit({ home, vault }), named: namedToolkit(callTally, publicToolkit, setupNames({ home, vault })) },
   days: [...days.keys()].sort().map((d) => ({ d, ...days.get(d) })),
 };
 
@@ -193,5 +190,5 @@ console.error(`codex files ${codex.files}, days ${snapshot.days.length}`);
 console.error(`claude ${billions(sum("claude"))}, codex ${billions(sum("codex"))}`);
 console.error("cursor request log not found; req stays 0");
 const kit = snapshot.toolkit;
-console.error(`toolkit: ${kit.customSkills} custom skills, ${kit.installedSkills} installed skills, ${kit.plugins} plugins, ${kit.mcpServers} MCP servers`);
+console.error(`toolkit: ${kit.customSkills} custom skills, ${kit.installedSkills} installed skills, ${kit.plugins} plugins, ${kit.mcpServers} MCP servers, ${kit.named.length} named`);
 if (!vault) console.error("warning: no --vault and VAULT_DEV_PATH is unset; the vault's skills are not counted");

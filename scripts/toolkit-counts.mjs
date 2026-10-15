@@ -1,6 +1,8 @@
 // The pure half of the agent setup count in scripts/usage-snapshot.mjs: how
 // many skills I wrote, how many I installed, my plugins and my MCP servers.
-// It returns four counts and nothing else; no name, path or setting leaves it.
+// countToolkit returns four counts and nothing else; no name, path or setting
+// leaves it. setupNames lists what exists, for scripts/toolkit-calls.mjs to check
+// a public name against; it is never written to a file.
 // The repo is public, so no path here is personal: the home and vault
 // directories are passed in.
 import { lstatSync, readFileSync, readdirSync, realpathSync, statSync } from "node:fs";
@@ -80,25 +82,46 @@ function countSkills(home, vault) {
   return { customSkills: custom.size, installedSkills: installed.size };
 }
 
+const installedPlugins = (home) => readJson(join(home, ".claude", "plugins", "installed_plugins.json")).plugins ?? {};
+
 // Unique plugin names: one plugin installed from two marketplaces is one.
-function countPlugins(home) {
-  const file = readJson(join(home, ".claude", "plugins", "installed_plugins.json"));
-  const keys = Object.keys(file.plugins ?? {});
-  return new Set(keys.map((key) => key.split("@")[0])).size;
+function pluginNames(home) {
+  return new Set(Object.keys(installedPlugins(home)).map((key) => key.split("@")[0]));
 }
 
 // Unique server names across Claude Code (top level and every project) and Cursor.
-function countMcpServers(home) {
+function mcpServerNames(home) {
   const claude = readJson(join(home, ".claude.json"));
   const cursor = readJson(join(home, ".cursor", "mcp.json"));
-  const names = new Set([
+  return new Set([
     ...Object.keys(claude.mcpServers ?? {}),
     ...Object.values(claude.projects ?? {}).flatMap((project) => Object.keys(project?.mcpServers ?? {})),
     ...Object.keys(cursor.mcpServers ?? {}),
   ]);
-  return names.size;
 }
 
 export function countToolkit({ home, vault }) {
-  return { ...countSkills(home, vault), plugins: countPlugins(home), mcpServers: countMcpServers(home) };
+  return { ...countSkills(home, vault), plugins: pluginNames(home).size, mcpServers: mcpServerNames(home).size };
+}
+
+// Every skill, command, plugin and server name that exists in the setup. It
+// only answers "is this public name really installed here" for the calls
+// module; it is never written out, so unlisted names stay on this machine.
+export function setupNames({ home, vault }) {
+  const skills = new Set();
+  const addSkillDirs = (dir) => {
+    for (const entry of entries(dir)) if (isSkill(join(dir, entry.name))) skills.add(entry.name);
+  };
+  addSkillDirs(join(home, ".claude", "skills"));
+  addSkillDirs(join(home, ".agents", "skills"));
+  if (vault) addSkillDirs(join(vault, ".claude", "skills"));
+  for (const entry of entries(join(home, ".claude", "commands"))) {
+    if (entry.isFile() && entry.name.endsWith(".md")) skills.add(entry.name.slice(0, -3));
+  }
+  for (const installs of Object.values(installedPlugins(home))) {
+    for (const install of installs) {
+      if (typeof install?.installPath === "string") addSkillDirs(join(install.installPath, "skills"));
+    }
+  }
+  return { skills, plugins: pluginNames(home), mcp: mcpServerNames(home) };
 }
