@@ -2,28 +2,36 @@ import { cards } from "./cards";
 import { logos } from "./media";
 import type { CardKey, CardPicture, LogoRef } from "./types";
 
-// The lean portfolio (docs/superpowers/specs/2026-10-13-express-lane-design.md):
+// The MVP, my Minimum Viable Portfolio (docs/superpowers/specs/2026-10-13-express-lane-design.md):
 // one row per year, newest first, a sentence that sums the year up, and that
 // year's cards as tiles that open the card's own modal.
 
 export const quickCopy = {
-  title: "My Lean Portfolio",
+  title: "Minimum Viable Portfolio",
+  titleShort: "MVP",
+  // The title as it is drawn: each capital, then the rest of its word.
+  titleParts: [
+    { capital: "M", rest: "inimum" },
+    { capital: "V", rest: "iable" },
+    { capital: "P", rest: "ortfolio" },
+  ],
   intro: "Because I know my users, I built a lean version of my site for the busiest people (and recruiters) who still want to get to know me.",
   hint: "(Click each experience card to learn more)",
   back: "See the full site",
   listLabel: "My years, newest first",
   now: "now",
-  menuChip: "My Lean Portfolio",
+  menuChip: "MVP",
   tripLabel: "The trip so far",
   tripTo: (year: string) => `Go to ${year}`,
   invite: {
-    pill: "In a rush? My Lean Portfolio",
-    dismiss: "Dismiss the Lean Portfolio invite",
+    pill: "In a rush? The MVP version",
+    pillName: "The MVP version",
+    dismiss: "Dismiss the MVP invite",
     toastTitle: "In a rush?",
-    toastBody: "My Lean Portfolio has my years and my cards on one page.",
+    toastBody: "My Minimum Viable Portfolio has my years and my cards on one page.",
     yes: "Show me",
     no: "I'll explore",
-    line: "In a rush? Here's My Lean Portfolio",
+    line: "In a rush? Here's the MVP version",
   },
 } as const;
 

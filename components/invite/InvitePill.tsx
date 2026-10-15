@@ -11,12 +11,12 @@ import { useAppear } from "./useAppear";
 // Band toggle at its bottom left in the toggle's capsule (the Menu pill's
 // glass, the hairline, the 8px blur over the live canvas) and the Coil
 // control's fill and arrow. The link runs the transition; the x dismisses it
-// for good. Below sm it reads "Express lane" so it clears the toggle; the
+// for good. Below sm it reads "The MVP version" so it clears the toggle; the
 // whole line stays its accessible name. Reduced motion: a fade, no rise.
 
 const EXIT_MS = 220;
-const { pill, dismiss } = quickCopy.invite;
-const [lead, name] = [pill.slice(0, pill.indexOf(quickCopy.title)).trim(), quickCopy.title];
+const { pill, pillName, dismiss } = quickCopy.invite;
+const [lead, name] = [pill.slice(0, pill.indexOf(pillName)).trim(), pillName];
 
 export function InvitePill({ shown, onGo, onDismiss }: { shown: boolean; onGo: () => void; onDismiss: () => void }) {
   const [mounted, on] = useAppear(shown, EXIT_MS);

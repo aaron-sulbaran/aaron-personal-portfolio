@@ -101,10 +101,27 @@ describe("quick copy", () => {
       expect(text.includes(EM_DASH), text).toBe(false);
       expect(/\bAaron (is|was|has)\b/.test(text), text).toBe(false);
     }
-    expect(quickCopy.title).toBe("My Lean Portfolio");
+    expect(quickCopy.title).toBe("Minimum Viable Portfolio");
+    expect(quickCopy.menuChip).toBe("MVP");
     expect(quickCopy.hint).toBe("(Click each experience card to learn more)");
     expect(JSON.stringify(quickCopy)).not.toContain("30-second");
     expect(JSON.stringify(quickCopy)).not.toContain("Express lane");
+    expect(JSON.stringify(quickCopy)).not.toContain("Lean");
+  });
+
+  it("spells the title from three capitals and the rest of each word, parentheses left to the page", () => {
+    const parts = quickCopy.titleParts;
+    expect(parts.map((part) => part.capital).join("")).toBe(quickCopy.titleShort);
+    expect(parts.map((part) => part.capital + part.rest).join(" ")).toBe(quickCopy.title);
+    for (const { rest } of parts) expect(rest).toMatch(/^[a-z]+$/);
+  });
+
+  it("names the MVP in the invite's pill, toast and line, and the pill's name closes its sentence", () => {
+    const { invite } = quickCopy;
+    expect(invite.pill.endsWith(invite.pillName)).toBe(true);
+    expect(invite.toastBody).toBe("My Minimum Viable Portfolio has my years and my cards on one page.");
+    expect(invite.line).toContain("MVP");
+    expect(invite.dismiss).toContain("MVP");
   });
 
   it("closes on the two lines I wrote and links Connect already has", () => {
