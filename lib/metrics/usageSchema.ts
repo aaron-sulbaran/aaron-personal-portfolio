@@ -10,8 +10,26 @@ const counts = z.object({
 
 const count = z.number().int().nonnegative();
 
-// The agent setup (scripts/toolkit-counts.mjs): four counts, never a name.
-export const toolkitSchema = z.object({ customSkills: count, installedSkills: count, plugins: count, mcpServers: count }).strict();
+export const TOOL_GROUPS = ["written", "used", "plugin", "mcp"] as const;
+export type ToolGroup = (typeof TOOL_GROUPS)[number];
+
+// A tool from the curated public list (lib/metrics/toolkit-public.json) with
+// its call count in the window. Tools off the list are never named.
+export const namedToolSchema = z.object({
+  name: z.string().regex(/^[a-z0-9][a-z0-9-]*$/),
+  group: z.enum(TOOL_GROUPS),
+  calls: count,
+}).strict();
+
+// The agent setup: four counts over the whole setup (scripts/toolkit-counts.mjs)
+// and the named public tools (scripts/toolkit-calls.mjs).
+export const toolkitSchema = z.object({
+  customSkills: count,
+  installedSkills: count,
+  plugins: count,
+  mcpServers: count,
+  named: z.array(namedToolSchema),
+}).strict();
 
 export const usageSnapshotSchema = z.object({
   generated: z.string(),
@@ -33,6 +51,7 @@ export const usageSnapshotSchema = z.object({
 export type UsageSnapshot = z.infer<typeof usageSnapshotSchema>;
 export type ToolCounts = z.infer<typeof counts>;
 export type Toolkit = z.infer<typeof toolkitSchema>;
+export type NamedTool = z.infer<typeof namedToolSchema>;
 
 // A tool's total tokens for a day: input, output, cache reads and cache writes.
 export const toolTotal = (c: ToolCounts): number => c.in + c.out + c.cr + c.cw;

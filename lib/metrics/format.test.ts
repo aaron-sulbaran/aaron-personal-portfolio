@@ -78,7 +78,7 @@ describe("the token figures", () => {
     activeDays: 3,
     streak: { days: 3, start: "2026-10-02", end: "2026-10-04" },
     stale: true,
-    toolkit: { customSkills: 18, installedSkills: 16, plugins: 7, mcpServers: 9 },
+    toolkit: { customSkills: 18, installedSkills: 16, plugins: 7, mcpServers: 9, named: [] },
   };
   const rows = (fourth?: "skills" | "toolkit" | "streak") => seriesStats(series, fourth).map((s) => [s.key, s.value, s.unit, s.label, s.sub]);
   const lead = [
