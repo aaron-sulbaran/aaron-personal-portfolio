@@ -30,10 +30,21 @@ describe("quick entries", () => {
   });
 
   it("names a year's role in full, and appends the range only when the role does not", () => {
-    expect(quickSubtitle(quickEntries.find((entry) => entry.slot === "capital-one-2024")!)).toBe("Business Analyst Intern - 2024");
+    expect(quickSubtitle(quickEntries.find((entry) => entry.slot === "capital-one-2024")!)).toBe("Business Analyst Intern, 2024");
+    expect(quickSubtitle(quickEntries.find((entry) => entry.slot === "apple")!)).toBe("From Specialist to Genius Bar, 2024");
+    expect(quickSubtitle(quickEntries.find((entry) => entry.slot === "capital-one-2026")!)).toBe("Applied AI (PM) Intern, 2026");
     expect(quickSubtitle(quickEntries.find((entry) => entry.slot === "fsdatalink")!)).toBe("Assistant manager and software engineer, 2022 to now");
     expect(quickSubtitle(quickEntries.find((entry) => entry.slot === "hackathons")!)).toBe("Builder, 2025 to now");
     expect(quickSubtitle(quickEntries.find((entry) => entry.slot === "misuki")!)).toBe("2001 Mazda Miata, five-speed, 2022 to now");
+  });
+
+  it("joins a role and its year with a comma, never a hyphen", () => {
+    for (const entry of quickEntries) expect(quickSubtitle(entry), entry.slot).not.toMatch(/ - /);
+    for (const slot of ["popeyes", "mod", "apple", "ut-austin", "aritzia", "capital-one-2024", "capital-one-2025", "capital-one-2026"]) {
+      const entry = quickEntries.find((e) => e.slot === slot)!;
+      expect(quickSubtitle(entry), slot).toBe(entry.role);
+      expect(entry.role, slot).toMatch(/, 20(1\d|2\d)$/);
+    }
   });
 
   it("keeps its years visible", () => {
