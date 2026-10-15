@@ -347,14 +347,14 @@ export const siteContent = {
     ariaPause: "Pause",
     ariaNext: "Next track",
     ariaVolume: "Volume",
-    // Visible CC BY 4.0 attribution for the three tracks, on the band's lower
-    // right (facts from public/audio/LICENSES.md).
-    creditLead: "\u201cSmall Steps\u201d, \u201cWaves of Sleep\u201d and \u201cSlow Lights\u201d by",
-    creditArtist: "Lee Rosevere",
-    creditArtistUrl: "https://freemusicarchive.org/music/lee-rosevere/",
+    // Visible CC BY 3.0 attribution, on the band's lower right (facts from
+    // public/audio/LICENSES.md).
+    creditLead: "\u201cSunset Pier\u201d by",
+    creditArtist: "Philman (Philip Milman, PM Music)",
+    creditArtistUrl: "https://pmmusic.pro/downloads/",
     creditJoin: ", licensed",
-    creditLicense: "CC BY 4.0",
-    creditLicenseUrl: "https://creativecommons.org/licenses/by/4.0/",
+    creditLicense: "CC BY 3.0",
+    creditLicenseUrl: "https://creativecommons.org/licenses/by/3.0/",
     tracks: liveTracks,
   },
   // The holding page's deck (components/HoldingDeck.tsx) draws these five; nothing else reads them.

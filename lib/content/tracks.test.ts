@@ -20,15 +20,15 @@ const adapted = (credit: string): SoundtrackTrack => ({
 });
 
 describe("soundtrack credits", () => {
-  it("credit the three live tracks in full", () => {
+  it("credits the live track in full", () => {
     expect(live).toBe(liveTracks);
     expect(live.map((track) => track.credit)).toEqual([
-      "\"Small Steps\" by Lee Rosevere, from Music For Podcasts - Ambient. Licensed CC BY 4.0. Compressed for web.",
-      "\"Waves of Sleep\" by Lee Rosevere, from Music For Podcasts - Ambient. Licensed CC BY 4.0. Compressed for web.",
-      "\"Slow Lights\" by Lee Rosevere, from Music For Podcasts - Ambient. Licensed CC BY 4.0. Compressed for web.",
+      "\"Sunset Pier\" by Philman (Philip Milman, PM Music), Funded by Ludwig and Jschlatt, from Lud & Schlatt Crossing. Licensed CC BY 3.0. Compressed for web.",
     ]);
     for (const track of live) {
-      expect([track.licenseKind, track.why, track.inspiredBy]).toEqual(["cc-by-4.0", null, null]);
+      expect(track.licenseKind).toBe("cc-by-3.0");
+      expect(track.inspiredBy).toBeNull();
+      expect(track.why).toBeTruthy();
       expect(creditProblems(track)).toEqual([]);
     }
   });

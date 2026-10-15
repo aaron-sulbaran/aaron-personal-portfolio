@@ -1,23 +1,21 @@
 import { register, registerHas, resolveTip } from "./register";
 import type { SoundtrackTrack } from "./types";
 
-// The tracks the player ships today (public/audio/LICENSES.md): Lee Rosevere,
-// CC BY 4.0, re-encoded to 160 kbps for the web.
+// The track the player ships today (public/audio/LICENSES.md): Sunset Pier,
+// CC BY 3.0, re-encoded to 160 kbps for the web. The cover art is not licensed
+// with the song, so the player keeps its own tile.
 export const liveTracks: readonly SoundtrackTrack[] = [
   {
-    title: "Small Steps", artist: "Lee Rosevere", src: "/audio/track-01.mp3",
-    credit: "\"Small Steps\" by Lee Rosevere, from Music For Podcasts - Ambient. Licensed CC BY 4.0. Compressed for web.",
-    licenseKind: "cc-by-4.0", licenseUrl: "https://creativecommons.org/licenses/by/4.0/", why: null, inspiredBy: null, spotifyUrl: null, cover: null,
-  },
-  {
-    title: "Waves of Sleep", artist: "Lee Rosevere", src: "/audio/track-02.mp3",
-    credit: "\"Waves of Sleep\" by Lee Rosevere, from Music For Podcasts - Ambient. Licensed CC BY 4.0. Compressed for web.",
-    licenseKind: "cc-by-4.0", licenseUrl: "https://creativecommons.org/licenses/by/4.0/", why: null, inspiredBy: null, spotifyUrl: null, cover: null,
-  },
-  {
-    title: "Slow Lights", artist: "Lee Rosevere", src: "/audio/track-03.mp3",
-    credit: "\"Slow Lights\" by Lee Rosevere, from Music For Podcasts - Ambient. Licensed CC BY 4.0. Compressed for web.",
-    licenseKind: "cc-by-4.0", licenseUrl: "https://creativecommons.org/licenses/by/4.0/", why: null, inspiredBy: null, spotifyUrl: null, cover: null,
+    title: "Sunset Pier",
+    artist: "Philman (Philip Milman, PM Music)",
+    src: "/audio/track-01.mp3",
+    credit: "\"Sunset Pier\" by Philman (Philip Milman, PM Music), Funded by Ludwig and Jschlatt, from Lud & Schlatt Crossing. Licensed CC BY 3.0. Compressed for web.",
+    licenseKind: "cc-by-3.0",
+    licenseUrl: "https://creativecommons.org/licenses/by/3.0/",
+    why: "I like Ludwig as a creator. One of his initiatives gave creators 20 minutes of copyright-free music. I needed music I could use, and that was the first thing I thought of.",
+    inspiredBy: null,
+    spotifyUrl: null,
+    cover: null,
   },
 ];
 
