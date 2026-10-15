@@ -109,3 +109,43 @@ test("express lane: the Menu chip takes either page to the other", async ({ page
   await idle(page);
   await expect(page.locator("#express-lane-title")).toBeFocused();
 });
+
+// The tile pictures reveal on their own trigger, not the timeline's: a tile
+// wholly on screen is never an empty frame, whatever the reading line has reached.
+const clippedTilesInView = (page: Page) =>
+  page.evaluate(() =>
+    [...document.querySelectorAll<HTMLElement>("main button[data-quick-slot]")]
+      .filter((button) => {
+        const rect = button.getBoundingClientRect();
+        return rect.top >= 0 && rect.bottom <= window.innerHeight;
+      })
+      .filter((button) => getComputedStyle(button.querySelector("[data-quick-thumb]")!).clipPath !== "none")
+      .map((button) => button.dataset.quickSlot),
+  );
+
+for (const [name, viewport] of [["1280x900", { width: 1280, height: 900 }], ["390x844", { width: 390, height: 844 }]] as const) {
+  test.describe(`express lane tile pictures at ${name}`, () => {
+    test.use({ viewport });
+
+    test("a tile wholly in view is unclipped within a second, wherever the reader stops", async ({ page }) => {
+      await page.goto("/quick");
+      await page.waitForLoadState("networkidle");
+      const last = page.locator("main button[data-quick-slot]").last();
+      await expect.poll(() => last.locator("[data-quick-thumb]").evaluate((el) => getComputedStyle(el).clipPath), { timeout: 3_000 }).not.toBe("none");
+
+      const height = await page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight);
+      const stops = Math.ceil(height / 330);
+      for (let i = 1; i <= stops; i++) {
+        await page.evaluate((y) => window.scrollTo({ top: y, behavior: "instant" }), Math.min(height, i * 330));
+        await expect.poll(() => clippedTilesInView(page), { timeout: 1_500, message: `stop ${i} of ${stops}` }).toEqual([]);
+      }
+    });
+
+    test("under reduced motion every picture shows at once", async ({ page }) => {
+      await page.emulateMedia({ reducedMotion: "reduce" });
+      await page.goto("/quick");
+      await page.waitForLoadState("networkidle");
+      await expect.poll(() => page.evaluate(() => [...document.querySelectorAll<HTMLElement>("[data-quick-thumb]")].filter((el) => getComputedStyle(el).clipPath !== "none").length), { timeout: 1_500 }).toBe(0);
+    });
+  });
+}

@@ -5,6 +5,7 @@ import { GALLERY } from "@/lib/gallery/constants";
 // to catch the reader's high water, like the sections grammar's scrub.
 export const QUICK_MOTION = {
   readingLine: 0.7, // of the viewport's height, from its top: where the line's tip follows the reader
+  revealLine: 0.92, // of the viewport's height: a tile's picture wipes in once its top crosses this, apart from the timeline
   chaseS: 0.6,
   chaseEase: "expo",
   wipeS: GALLERY.mask.lengthMs / 1000,
