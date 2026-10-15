@@ -8,7 +8,9 @@ import type { Page } from "@playwright/test";
 // The Express lane (docs/superpowers/specs/2026-10-13-express-lane-design.md):
 // its tiles open the cards' own modals, the first-visit invite asks once, the
 // transition runs both ways and lands focus on the new page's heading, and the
-// lane never fetches the Coil's chunk.
+// lane never fetches the Coil's chunk. The invite is the subject here, so the
+// suite's default of a dismissed invite is switched off.
+test.use({ inviteDismissed: false });
 
 const tile = (page: Page, slot: string) => page.locator(`main button[data-quick-slot="${slot}"]`);
 const homeReady = (page: Page) => expect(page.locator("html")).toHaveAttribute("data-home", "ready", { timeout: 20_000 });

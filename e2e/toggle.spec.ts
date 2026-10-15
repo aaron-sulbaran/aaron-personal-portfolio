@@ -3,7 +3,6 @@ import { siteContent, strandCards } from "@/lib/content";
 import { COIL } from "@/lib/coil/constants";
 import { test, expect } from "./support/fixtures";
 import { coilPoints, nextFrames, openHome } from "./support/coil";
-import { INVITE_KEY } from "@/lib/quick/invite";
 import { settled } from "./support/fallback";
 import type { HookWindow } from "./support/hooks";
 import { decodePng, type Image } from "./support/pixels";
@@ -294,7 +293,6 @@ test("toggle: a round trip to the band leaves the hero's still frame as it was",
   // ?coildebug=still holds the field, the name surface's clock and the conveyor,
   // so the frame repeats; the keyboard drives the toggle so no pointer stirs
   // the name; the toggle and the cursor are masked.
-  await page.addInitScript((key) => localStorage.setItem(key, "dismissed"), INVITE_KEY);
   await openHome(page, { debug: "still" });
   const canvas = page.locator("section[data-scene] canvas");
   const mask = [page.locator("[data-shape-toggle]"), page.locator(".z-\\[100\\]")];
