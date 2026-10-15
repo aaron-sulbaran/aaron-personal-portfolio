@@ -15,7 +15,7 @@ export interface QuickLabSettings {
   texts: QuickTexts;
 }
 
-export const SETTINGS_KEY = "lab-quick-v3";
+export const SETTINGS_KEY = "lab-quick-v4";
 
 export const DEFAULT_SETTINGS: QuickLabSettings = { variant: "rail", speed: 1, reduced: false, texts: DEFAULT_TEXTS };
 

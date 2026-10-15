@@ -1,28 +1,39 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { siteContent } from "@/lib/content";
 import { walkStrings } from "@/lib/testing/walk";
 import { cards } from "./cards";
-import { quickClosing, quickCopy, quickEntries, quickRange, quickYears, squareMarks } from "./quick";
+import { quickClosing, quickCopy, quickEntries, quickRange, quickSubtitle, quickYears, squareMarks } from "./quick";
 
 const EM_DASH = "\u2014";
 
 describe("quick entries", () => {
-  it("covers every card once, with a month and a first-person line", () => {
+  it("covers every card, and repeats only Capital One and the jobs", () => {
     const ids = quickEntries.map((entry) => entry.id);
-    expect(new Set(ids).size).toBe(ids.length);
-    expect([...ids].sort()).toEqual(Object.keys(cards).sort());
+    expect(new Set(quickEntries.map((entry) => entry.slot)).size).toBe(ids.length);
+    expect([...new Set(ids)].sort()).toEqual(Object.keys(cards).sort());
+    expect(ids.filter((id) => id === "capital-one")).toHaveLength(3);
+    expect(ids.filter((id) => id === "jobs")).toHaveLength(5);
     for (const entry of quickEntries) {
       expect(entry.start).toMatch(/^\d{4}-\d{2}$/);
       if (entry.end) expect(entry.end >= entry.start).toBe(true);
       expect(entry.line.startsWith("Aaron")).toBe(false);
       expect(entry.role.length).toBeGreaterThan(0);
+      expect(entry.line.includes("…")).toBe(false);
     }
   });
 
-  it("titles each tile as the book does", () => {
-    for (const entry of quickEntries) expect(entry.title).toBe(cards[entry.id].book.title);
+  it("titles a repeated job by its employer and every other tile as the book does", () => {
+    expect(quickEntries.filter((entry) => entry.id === "jobs").map((entry) => entry.title).sort()).toEqual(["Apple", "Aritzia", "MOD Pizza", "Popeyes", "UT Austin"]);
+    for (const entry of quickEntries) if (entry.id !== "jobs") expect(entry.title).toBe(cards[entry.id].book.title);
+  });
+
+  it("names a year's role in full, and appends the range only when the role does not", () => {
+    expect(quickSubtitle(quickEntries.find((entry) => entry.slot === "capital-one-2024")!)).toBe("Business Analyst Intern - 2024");
+    expect(quickSubtitle(quickEntries.find((entry) => entry.slot === "fsdatalink")!)).toBe("Assistant manager and software engineer, 2022 to now");
+    expect(quickSubtitle(quickEntries.find((entry) => entry.slot === "hackathons")!)).toBe("Builder, 2025 to now");
+    expect(quickSubtitle(quickEntries.find((entry) => entry.slot === "misuki")!)).toBe("2001 Mazda Miata, five-speed, 2022 to now");
   });
 
   it("keeps its years visible", () => {
@@ -37,7 +48,11 @@ describe("quick entries", () => {
       expect(Boolean(entry.photo && entry.logo)).toBe(false);
     }
     expect(quickEntries.filter((entry) => entry.photo).length).toBe(6);
-    expect(quickEntries.filter((entry) => entry.logo).length).toBe(6);
+    expect(quickEntries.filter((entry) => entry.logo).map((entry) => entry.slot).sort()).toEqual([
+      "anthropic", "capital-one-2024", "capital-one-2025", "capital-one-2026", "fsdatalink", "ieee", "min-max", "talos",
+    ]);
+    expect(quickEntries.find((entry) => entry.slot === "anthropic")!.tileLogo).toEqual(squareMarks.anthropic);
+    expect(quickEntries.filter((entry) => entry.id === "jobs").every((entry) => entry.tileLogo && !entry.logo)).toBe(true);
   });
 
   it("gives every logo entry a square mark, its own logo unless a square mark stands in", () => {
@@ -48,25 +63,19 @@ describe("quick entries", () => {
   });
 
   it("points only at files that exist", () => {
-    const files = quickEntries.flatMap((entry) => [entry.photo?.src, entry.logo?.src, entry.logo?.srcDark, entry.mark?.src, entry.mark?.srcDark]);
+    const files = quickEntries.flatMap((entry) => [entry.photo?.src, entry.logo?.src, entry.logo?.srcDark, entry.mark?.src, entry.mark?.srcDark, entry.tileLogo?.src, entry.tileLogo?.srcDark]);
     for (const src of files) if (src) expect(existsSync(join(process.cwd(), "public", src)), src).toBe(true);
   });
 });
 
 describe("quick years", () => {
-  it("run 2021 to 2026, once each, one sentence each", () => {
+  it("run 2021 to 2026, once each, in my words", () => {
     expect(quickYears.map((row) => row.year)).toEqual(["2021", "2022", "2023", "2024", "2025", "2026"]);
     for (const { line } of quickYears) {
       expect(line.endsWith(".")).toBe(true);
-      expect(line.slice(0, -1).includes(". ")).toBe(false);
       expect(line.startsWith("I ")).toBe(true);
     }
-  });
-
-  it("are the spec's drafts, word for word", () => {
-    const spec = readFileSync(join(process.cwd(), "docs/superpowers/specs/2026-10-13-express-lane-design.md"), "utf8");
-    for (const { year, line } of quickYears) expect(spec, year).toContain(`- ${year}: ${line}`);
-    expect(spec).toContain(quickCopy.intro);
+    expect(quickYears.find((row) => row.year === "2025")!.line).toContain("started showing up to hackathons");
   });
 
   it("every year holds at least one card", () => {
@@ -81,12 +90,14 @@ describe("quick copy", () => {
       expect(text.includes(EM_DASH), text).toBe(false);
       expect(/\bAaron (is|was|has)\b/.test(text), text).toBe(false);
     }
-    expect(quickCopy.title).toBe("Express lane");
+    expect(quickCopy.title).toBe("My Lean Portfolio");
+    expect(quickCopy.hint).toBe("(Click each experience card to learn more)");
     expect(JSON.stringify(quickCopy)).not.toContain("30-second");
+    expect(JSON.stringify(quickCopy)).not.toContain("Express lane");
   });
 
-  it("closes on one line and links Connect already has", () => {
-    expect(quickClosing.line.split(". ").length).toBe(1);
+  it("closes on the two lines I wrote and links Connect already has", () => {
+    expect(quickClosing.line.split("\n\n")).toHaveLength(2);
     const keys = siteContent.connect.links.map((link) => link.key);
     for (const key of quickClosing.links) expect(keys).toContain(key);
   });

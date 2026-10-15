@@ -19,16 +19,16 @@ function memory() {
 }
 
 describe("the invite's mode", () => {
-  it("is A plus C in production, whatever the lab stored", () => {
-    expect(DEFAULT_INVITE_MODE).toBe("both");
-    expect(inviteModeFor({ development: false, override: "line" })).toBe("both");
+  it("is the toast in production, whatever the lab stored", () => {
+    expect(DEFAULT_INVITE_MODE).toBe("toast");
+    expect(inviteModeFor({ development: false, override: "line" })).toBe("toast");
   });
 
   it("follows the lab's pick in development, and ignores junk", () => {
     expect(inviteModeFor({ development: true, override: "line" })).toBe("line");
-    expect(inviteModeFor({ development: true, override: "toast" })).toBe("toast");
-    expect(inviteModeFor({ development: true, override: "nope" })).toBe("both");
-    expect(inviteModeFor({ development: true, override: null })).toBe("both");
+    expect(inviteModeFor({ development: true, override: "both" })).toBe("both");
+    expect(inviteModeFor({ development: true, override: "nope" })).toBe("toast");
+    expect(inviteModeFor({ development: true, override: null })).toBe("toast");
   });
 
   it("names its pieces", () => {

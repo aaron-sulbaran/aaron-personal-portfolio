@@ -66,7 +66,7 @@ export const cards: Cards = {
   },
   hackathons: {
     group: "work", visual: { kind: "photo", flipX: false, photo: pictures.hackathons },
-    book: { title: "Hackathons", meta: "Builder, 2026 to now" },
+    book: { title: "Hackathons", meta: "Builder, 2025 to now" },
     // UFCU first, so the card picture (the UFCU win, beside the title) sits next to its own paragraph (docs/content/cards.md).
     modal: { kind: "logo", title: "Hackathons", picture: { caption: "Me and my team winning UFCU Develop U, September 2026." }, links: [], photos: modalPhotos.hackathons, blocks: [
       "**UFCU Develop U, fall 2026.** Won with UFCU Front Desk, a digital front desk assistant that makes joining a credit union simple and still sounds like them.",
@@ -132,7 +132,7 @@ export const cards: Cards = {
   },
   fsdatalink: {
     group: "people", visual: { kind: "logo", logo: logos.fsdatalink, tile: "plain" },
-    book: { title: "The family business", meta: "Assistant Manager & SWE, 2022 to 2024" },
+    book: { title: "The family business", meta: "Assistant Manager & SWE, 2022 to now" },
     modal: { kind: "logo", title: "The family business", links: [{ label: "fsdatalink.com", href: "https://www.fsdatalink.com/" }], photos: [], blocks: [
       "My dad built a telecom business from nothing. I figured things out right next to him. I learned small-business taxes and tax breaks, and I was fascinated that people used laws that would never exist in Venezuela. I ended up doing the accounting, the finances and whatever else needed solving, sometimes unpaid because I wanted to help him.",
       "I even took up the role of a software engineer, building internal tools and workflows for my dad and the field engineers that we dispatched. It's where (unknowingly) my interest in money, financial literacy, and optimizing technology started.",

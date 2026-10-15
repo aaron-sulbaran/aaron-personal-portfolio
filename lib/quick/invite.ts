@@ -4,14 +4,14 @@
 //
 //   pill   A, the corner pill at the hero's bottom right
 //   toast  C, the toast at the bottom right
-//   both   A plus C (the production default until I pick)
+//   both   A plus C (the lab can still preview it; production plays the toast)
 //   line   B, the hero's own one-time line at the bottom centre
 
 export type InviteMode = "pill" | "toast" | "both" | "line";
 export type InviteAnswer = "used" | "dismissed";
 
 export const INVITE_MODES: readonly InviteMode[] = ["pill", "toast", "both", "line"];
-export const DEFAULT_INVITE_MODE: InviteMode = "both";
+export const DEFAULT_INVITE_MODE: InviteMode = "toast";
 
 // Once answered (used or dismissed), never again. Bump the version to ask everyone again.
 export const INVITE_KEY = "aaron-express-invite-v1";

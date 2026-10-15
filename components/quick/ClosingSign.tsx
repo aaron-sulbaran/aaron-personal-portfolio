@@ -17,7 +17,11 @@ export function ClosingSign({ line, className = "", node }: { line: string; clas
       <h2 id="quick-close" className="font-display text-[2.75rem] leading-none text-foreground md:text-[3.5rem]">
         {quickClosing.label}
       </h2>
-      <p className="mt-4 max-w-2xl text-lg leading-relaxed text-foreground md:text-body-lg">{line}</p>
+      {line.split(/\n{2,}/).map((paragraph) => (
+        <p key={paragraph} className="mt-4 max-w-2xl text-lg leading-relaxed text-foreground md:text-body-lg">
+          {paragraph}
+        </p>
+      ))}
       <ul className="mt-8 flex flex-wrap gap-2 font-label text-label">
         <li>
           <a href={primary.href} {...external(primary.href)} className="inline-flex rounded-full bg-accent px-4 py-2 text-background transition-colors hover:bg-accent-hover">

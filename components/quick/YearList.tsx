@@ -45,9 +45,9 @@ export function YearList({ rows, closing, onOpen, children }: { rows: readonly Y
         {rows.map((row) => (
           <li key={row.key} id={row.key} className="scroll-mt-40">
             <YearHead row={row} />
-            <ul className="mt-8 grid gap-3 pl-16 md:pl-20 lg:grid-cols-2">
+            <ul className="mt-8 grid items-stretch gap-3 pl-16 md:pl-20 lg:grid-cols-2">
               {row.entries.map((entry) => (
-                <CardTile key={entry.id} entry={entry} onOpen={onOpen} />
+                <CardTile key={entry.slot} entry={entry} onOpen={onOpen} />
               ))}
             </ul>
           </li>

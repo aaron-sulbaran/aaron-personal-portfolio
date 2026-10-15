@@ -22,6 +22,9 @@ export function LaneHeader({ title, intro }: { title: string; intro: string }) {
       <p data-lane-line="" className="mt-6 max-w-2xl text-lg leading-relaxed text-muted md:text-body-lg">
         {intro}
       </p>
+      <p data-lane-line="" data-quick-hint="" className="mt-3 text-sm leading-snug text-accent">
+        {quickCopy.hint}
+      </p>
       <ul data-lane-line="" className="mt-8 flex flex-wrap items-center gap-2 font-label text-label">
         {links.map((link) => (
           <li key={link.key}>

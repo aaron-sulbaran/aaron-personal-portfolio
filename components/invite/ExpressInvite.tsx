@@ -4,7 +4,7 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { useHomeController } from "@/components/home/HomeController";
 import { HOLDING_MODE } from "@/lib/holding";
-import { INVITE_MODE_KEY, INVITE_TIMING, inviteEligible, inviteMayShow, inviteModeFor, invitePieces, readAnswered, writeAnswer, type InviteAnswer, type InviteMode } from "@/lib/quick/invite";
+import { DEFAULT_INVITE_MODE, INVITE_MODE_KEY, INVITE_TIMING, inviteEligible, inviteMayShow, inviteModeFor, invitePieces, readAnswered, writeAnswer, type InviteAnswer, type InviteMode } from "@/lib/quick/invite";
 import { getInviteLine, setInviteLine, subscribeInviteLine } from "@/lib/quick/inviteLine";
 import { EXPRESS_PATH } from "@/lib/quick/transition";
 import { goTo, useTransitionState } from "@/lib/quick/transitionStore";
@@ -55,7 +55,7 @@ export function ExpressInvite() {
   const [heroInView, setHeroInView] = useState(true);
   const [due, setDue] = useState(false);
   const [lineFallback, setLineFallback] = useState(false);
-  const mode = page?.mode ?? "both";
+  const mode = page?.mode ?? DEFAULT_INVITE_MODE;
   const pieces = invitePieces(mode);
 
   useEffect(() => {

@@ -1,5 +1,5 @@
-import { siteContent, type CardKey } from "@/lib/content";
-import { quickCopy } from "@/lib/content/quick";
+import { siteContent } from "@/lib/content";
+import { quickCopy, quickEntries } from "@/lib/content/quick";
 import { INVITE_KEY } from "@/lib/quick/invite";
 import { test, expect } from "./support/fixtures";
 import { watchScripts } from "./support/chunks";
@@ -10,23 +10,24 @@ import type { Page } from "@playwright/test";
 // transition runs both ways and lands focus on the new page's heading, and the
 // lane never fetches the Coil's chunk.
 
-const keys = Object.keys(siteContent.cards) as CardKey[];
-const tile = (page: Page, key: CardKey) => page.locator(`main button[data-card="${key}"]`);
+const tile = (page: Page, slot: string) => page.locator(`main button[data-quick-slot="${slot}"]`);
 const homeReady = (page: Page) => expect(page.locator("html")).toHaveAttribute("data-home", "ready", { timeout: 20_000 });
 const idle = (page: Page) => expect(page.locator("[data-transition]")).toHaveAttribute("data-transition", "idle", { timeout: 10_000 });
 
 test("express lane: every tile opens its own card's modal, Escape closes it and focus returns to the tile", async ({ page }) => {
   await page.goto("/quick");
   await expect(page.locator("h1")).toHaveText(quickCopy.title);
-  for (const key of keys) {
-    await tile(page, key).click();
-    const dialog = page.locator(`[role="dialog"][data-card-modal="${key}"]`);
+  await expect(page.locator("[data-quick-hint]")).toHaveText(quickCopy.hint);
+  for (const entry of quickEntries) {
+    const button = tile(page, entry.slot);
+    await button.click();
+    const dialog = page.locator(`[role="dialog"][data-card-modal="${entry.id}"]`);
     await expect(dialog).toBeVisible();
-    await expect(dialog.locator("h2").first()).toHaveText(siteContent.cards[key].modal.title);
+    await expect(dialog.locator("h2").first()).toHaveText(siteContent.cards[entry.id].modal.title);
     await expect(page.locator("[data-flying-tile]")).toHaveCount(0);
     await page.keyboard.press("Escape");
     await expect(dialog).toHaveCount(0);
-    await expect(tile(page, key)).toBeFocused();
+    await expect(button).toBeFocused();
   }
 });
 
@@ -35,7 +36,8 @@ test("express lane: the page reads whole at first paint and never requests the s
   await page.goto("/quick");
   await page.waitForLoadState("networkidle");
   for (const year of ["2021", "2022", "2023", "2024", "2025", "2026"]) await expect(page.locator(`#year-${year} h2`)).toHaveText(year);
-  await expect(page.locator("main button[data-card]")).toHaveCount(keys.length);
+  await expect(page.locator("main h2").first()).toHaveText("2026");
+  await expect(page.locator("main button[data-card]")).toHaveCount(quickEntries.length);
   await page.mouse.wheel(0, 4000);
   await page.waitForTimeout(500);
   expect(await scripts.sceneChunks()).toEqual([]);
@@ -46,8 +48,8 @@ test("express lane: the first-visit invite shows once, and never again once dism
   await homeReady(page);
   const pill = page.locator('[data-express-invite="pill"]');
   const toast = page.locator('[data-express-invite="toast"]');
-  await expect(pill).toBeVisible({ timeout: 6_000 });
-  await expect(toast).toBeVisible();
+  await expect(toast).toBeVisible({ timeout: 6_000 });
+  await expect(pill).toHaveCount(0);
   await toast.getByRole("button", { name: quickCopy.invite.no }).click();
   await expect(pill).toHaveCount(0);
   await expect(toast).toHaveCount(0);
@@ -70,7 +72,7 @@ test("express lane: the invite never shows on a deep landing past the hero", asy
 test("express lane: the transition runs both ways and lands focus on each page's heading", async ({ page }) => {
   await page.goto("/");
   await homeReady(page);
-  await page.locator('[data-express-invite="pill"] a').click({ timeout: 8_000 });
+  await page.locator('[data-express-invite="toast"]').getByRole("button", { name: quickCopy.invite.yes }).click({ timeout: 8_000 });
   await expect(page).toHaveURL(/\/quick$/);
   await idle(page);
   await expect(page.locator("#express-lane-title")).toBeFocused();

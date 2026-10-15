@@ -4,7 +4,7 @@ import { DEFAULT_TEXTS, parseTexts, yearLines } from "./texts";
 
 describe("quick lab settings", () => {
   it("are versioned for round 3", () => {
-    expect(SETTINGS_KEY).toBe("lab-quick-v3");
+    expect(SETTINGS_KEY).toBe("lab-quick-v4");
   });
 
   it("fall back to the defaults for anything unreadable", () => {
