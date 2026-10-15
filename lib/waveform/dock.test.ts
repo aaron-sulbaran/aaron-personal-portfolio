@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { capsuleName, capsuleText, dockLabel, dockMode } from "./dock";
+import { capsuleName, capsuleText, dockLabel, dockMode, pillStartsMusic } from "./dock";
 
 const base = { music: "before" as const, reached: true, phone: false, labelShown: false, returning: false, failed: false };
 const STATES = ["before", "on", "paused", "off"] as const;
@@ -34,6 +34,13 @@ describe("dock", () => {
     expect(capsuleText("paused", "x")).toBe("Paused");
     expect(capsuleText("before", "x")).toBe("Music?");
     expect(capsuleText("off", "x")).toBe("Music");
+  });
+  it("a click plays from paused, and only a playing pill opens the card", () => {
+    expect(pillStartsMusic("before", false)).toBe(true);
+    expect(pillStartsMusic("off", false)).toBe(true);
+    expect(pillStartsMusic("paused", false)).toBe(true);
+    expect(pillStartsMusic("on", false)).toBe(false);
+    expect(pillStartsMusic("on", true)).toBe(true);
   });
   it("the capsule's name joins its text and action with one separator", () => {
     expect(capsuleName("Music?", "Play the soundtrack")).toBe("Music? Play the soundtrack");

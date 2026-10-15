@@ -419,6 +419,20 @@ test("dock: a returning visitor is welcomed back once per session, then gets the
   await page.waitForTimeout(1000);
   const texts = new Set((await stopDock(page)).map((s) => s.text));
   expect([...texts], "the pill's text through a second after landing").toEqual([S.capsulePaused]);
+  await expect(page.locator(CAPSULE)).toHaveAccessibleName(`${S.capsulePaused}. ${S.invite}`);
+});
+
+test("dock: a click on the restored Paused capsule resumes playback", async ({ page, browserName }) => {
+  test.skip(browserName === "webkit", "WebKit cannot be launched muted");
+  await page.addInitScript((key) => localStorage.setItem(key, "on"), SOUNDTRACK_KEY);
+  await instrument(page);
+  await armDock(page);
+  await openHome(page, { path: HOME });
+  await toAbout(page);
+  await expect.poll(() => dockText(page), { timeout: 4000, message: "the collapsed capsule" }).toBe(S.capsulePaused);
+
+  await page.locator(CAPSULE).click();
+  await expect.poll(async () => (await media(page)).some((el) => !el.paused), { message: "a playing media element" }).toBe(true);
 });
 
 test("dock: when the audio cannot start, the pill says so and the state is paused", async ({ page }) => {
@@ -462,7 +476,7 @@ test("dock: pausing in the band inside the start window is the visitor's pause, 
   await expect.poll(() => dockText(page), { timeout: 4000, message: "the collapsed capsule" }).toBe(S.capsulePaused);
   const texts = new Set((await stopDock(page)).map((s) => s.text));
   expect(texts.has(S.dockFailed), "the failure label at any point").toBe(false);
-  await expect(page.locator(CAPSULE)).toHaveAccessibleName(`${S.capsulePaused}. ${S.ariaOpen}`);
+  await expect(page.locator(CAPSULE)).toHaveAccessibleName(`${S.capsulePaused}. ${S.invite}`);
 });
 
 // The introduction: an opacity fade at the dock once the band's bottom edge is

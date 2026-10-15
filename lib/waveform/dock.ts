@@ -44,6 +44,12 @@ export function dockLabel(input: DockInput): DockLabel {
   return "accepted";
 }
 
+// A click plays instead of opening the card: before a yes, after a no, after a
+// failed start, and while paused. Only a playing pill opens the player.
+export function pillStartsMusic(music: SoundtrackState, failed: boolean): boolean {
+  return failed || music !== "on";
+}
+
 export function capsuleText(music: SoundtrackState, trackTitle: string): string {
   const c = siteContent.soundtrack;
   if (music === "on") return trackTitle;
@@ -53,7 +59,7 @@ export function capsuleText(music: SoundtrackState, trackTitle: string): string 
 }
 
 // The capsule's accessible name: its visible text, then its action, with one
-// separator ("Music? Play the soundtrack", "Paused. Open soundtrack player").
+// separator ("Music? Play the soundtrack", "Paused. Resume the soundtrack").
 export function capsuleName(text: string, action: string): string {
   return /[.?!]$/.test(text) ? `${text} ${action}` : `${text}. ${action}`;
 }
