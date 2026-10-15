@@ -1,3 +1,4 @@
+import { DEFAULT_LABELS, type MetricsLabels } from "./labels";
 import type { DepthSpec, HeightCurve, LevelCurve } from "./skyline/maths";
 import type { SegmentGap, TokenColorSet } from "./skyline/stack";
 
@@ -27,12 +28,10 @@ export type SeriesChoice = "commits" | "tokens";
 // these; /lab/metrics, dev only). The token days are far more skewed than the
 // commits (one 7.5B day over a 72M median), so the curve lifts the small days.
 // minShare 0 draws each tool's true share of a day; segmentGap is the seam of
-// page colour between the two tools' segments, in CSS pixels. `fourth` is the
-// Tokens view's last figure: the skills I wrote for my agents, the whole agent
-// setup with its split, or the old current streak (lab only).
-export type FourthFigure = "skills" | "toolkit" | "streak";
-export const FOURTH_FIGURES: readonly FourthFigure[] = ["skills", "toolkit", "streak"];
-
+// page colour between the two tools' segments, in CSS pixels. The wave is the
+// switch carried across the strip (lib/metrics/wave.ts): waveGapMs between
+// one figure's mask and the next, waveOffsetMs between the bars and the first
+// figure, maskMs for one mask (a figure's out and in are half each).
 export type TokensSettings = {
   colorSet: TokenColorSet;
   heightCurve: HeightCurve;
@@ -42,11 +41,13 @@ export type TokensSettings = {
   switchMs: number;
   switchStagger: number;
   first: SeriesChoice;
-  fourth: FourthFigure;
+  waveGapMs: number;
+  waveOffsetMs: number;
+  maskMs: number;
+  labels: MetricsLabels;
 };
 
-// Aaron's pick (metrics lab, 2026-10-13). `fourth` is not picked yet: custom
-// skills until he chooses between it and the toolkit in the lab.
+// Aaron's pick (metrics lab, 2026-10-13); the wave timings are his round 3 brief.
 export const TOKENS: TokensSettings = {
   colorSet: "official",
   heightCurve: "sqrt",
@@ -56,5 +57,8 @@ export const TOKENS: TokensSettings = {
   switchMs: 1500,
   switchStagger: 0.42,
   first: "commits",
-  fourth: "skills",
+  waveGapMs: 120,
+  waveOffsetMs: 150,
+  maskMs: 360,
+  labels: DEFAULT_LABELS,
 };

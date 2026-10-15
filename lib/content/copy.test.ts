@@ -105,7 +105,7 @@ describe("where the links sit, pinned as raw markup", () => {
 });
 
 describe("the numbers strip", () => {
-  it("heads the strip with its own lowercase title, labels the GitHub chart and holds my LinkedIn line as one figure", () => {
+  it("heads the strip with its own lowercase title, labels the GitHub chart and holds no figure of its own beside it", () => {
     expect(metrics.title).toBe("proof of work");
     expect(metrics.groupLabel).toBe("What I shipped on GitHub, and the agentic tokens behind those commits");
     expect([metrics.chart.commits, metrics.chart.tokens]).toEqual(["Commits", "Tokens"]);
@@ -116,11 +116,21 @@ describe("the numbers strip", () => {
   it("names the tools only on the key and in the tooltip's split; every other line says tokens, agents or agentic", () => {
     const { claude, codex, keyClaude, keyCodex, tip, label, ...rest } = metrics.tokens;
     const strings = (o: object) => Object.values(o).flat().filter((v): v is string => typeof v === "string");
-    const lines = [metrics.groupLabel, metrics.statsLabel, ...strings(rest), ...strings(metrics.chart), label("1", "a", "b", true), label("1", "a", "b", false), tip("1", "a", ""), rest.toolkitSub("1", "2", "3", "4")];
+    const lines = [metrics.groupLabel, metrics.statsLabel, ...strings(rest), ...strings(metrics.chart), label("1", "a", "b", true), label("1", "a", "b", false), tip("1", "a", ""), rest.toolkitMore(3), metrics.updated];
     for (const line of lines) expect(line, line).not.toMatch(/claude|codex|cursor/i);
     expect([claude, codex, keyClaude, keyCodex]).toEqual(["Claude", "Codex", "Claude Code", "Codex"]);
-    expect(metrics.slots.linkedin).toEqual({ value: "450,000", label: "LinkedIn impressions in 3 months", sub: "2,500+ followers" });
+    expect(metrics.slots.linkedin).toBeNull();
     expect(metrics.slots.fun).toBeNull();
+  });
+
+  it("words the toolkit band and the stale stamp in the approved lines, with no dashes", () => {
+    const { tokens } = metrics;
+    expect(tokens.toolkitLabel).toBe("tools in my agent setup");
+    expect(tokens.groups).toEqual({ written: "Skills I wrote", used: "Skills I use", plugin: "Plugins", mcp: "MCP servers" });
+    expect(tokens.toolkitMore(12)).toBe("+12 more");
+    expect(metrics.updated).toBe("Updated");
+    const lines = [tokens.toolkitLabel, tokens.toolkitGroupsLabel, ...Object.values(tokens.groups), tokens.toolkitMore(12), metrics.updated];
+    for (const line of lines) expect(line, line).not.toMatch(/[\u2013\u2014]|claude|codex|cursor/i);
   });
 });
 

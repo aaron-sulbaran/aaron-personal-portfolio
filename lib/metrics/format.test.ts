@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { siteContent } from "@/lib/content";
 import { snapshotSeries } from "./snapshot";
-import { compactScale, formatCompact, peakDay, seriesStats, shortDate, slotStats, tokenTip } from "./format";
+import { compactScale, formatCompact, peakDay, seriesStats, shortDate, slotStats, staleStamp, tokenTip, toolkitTotal } from "./format";
+import { DEFAULT_LABELS } from "./labels";
 import type { UsageSeries } from "./series";
 
 const m = siteContent.metrics;
@@ -14,15 +15,21 @@ describe("the stats", () => {
       ["active", "94", undefined, m.activeLabel, undefined],
     ]);
   });
-  it("keeps my LinkedIn line apart from them, as its own figure; the empty fun slot renders nothing", () => {
-    expect(slotStats()).toEqual([{ key: "linkedin", value: "450,000", label: "LinkedIn impressions in 3 months", sub: "2,500+ followers" }]);
+  it("has no slot figure beside them since the LinkedIn line came off; the mechanism stays for a later one", () => {
+    expect(slotStats()).toEqual([]);
+    expect(m.slots).toEqual({ linkedin: null, fun: null });
+  });
+  it("words each figure through the labels it is given, the site's copy by default", () => {
+    const renamed = { ...DEFAULT_LABELS, commitsStreak: "Streak now", commitsTotal: "Shipped", commitsActive: "Days" };
+    expect(seriesStats(snapshotSeries(), renamed).map((s) => s.label)).toEqual(["Streak now", "Shipped", "Days"]);
+    expect(seriesStats(snapshotSeries()).map((s) => s.label)).toEqual(seriesStats(snapshotSeries(), DEFAULT_LABELS).map((s) => s.label));
   });
   it("writes dates as Aug 8, the copy sentence case and first person, no dashes", () => {
     expect(shortDate("2026-08-08")).toBe("Aug 8");
     expect([m.streakLabel, m.totalLabel, m.activeLabel]).toEqual(["Current streak of contributions", "contributions in the last 6 months", "days I shipped something"]);
     expect(JSON.stringify(m)).not.toMatch(/[\u2013\u2014]/);
     const built =
-      m.chart.label("1", "a", "b", true) + m.chart.label("1", "a", "b", false) + m.chart.highlight("X") + m.tokens.label("1", "a", "b", true) + m.tokens.tip("1", "a", "b") + m.tokens.toolkitSub("1", "2", "3", "4");
+      m.chart.label("1", "a", "b", true) + m.chart.label("1", "a", "b", false) + m.chart.highlight("X") + m.tokens.label("1", "a", "b", true) + m.tokens.tip("1", "a", "b") + m.tokens.toolkitMore(3);
     expect(built).not.toMatch(/[\u2013\u2014]/);
   });
 });
@@ -80,24 +87,26 @@ describe("the token figures", () => {
     stale: true,
     toolkit: { customSkills: 18, installedSkills: 16, plugins: 7, mcpServers: 9, named: [] },
   };
-  const rows = (fourth?: "skills" | "toolkit" | "streak") => seriesStats(series, fourth).map((s) => [s.key, s.value, s.unit, s.label, s.sub]);
-  const lead = [
-    ["total", "4.2B", undefined, m.tokens.totalLabel, undefined],
-    ["active", "3", undefined, m.tokens.activeLabel, undefined],
-    ["peak", "2.1B", undefined, m.tokens.peakLabel, "Oct 2"],
-  ];
-  it("leads with the total, then the active days and the biggest day, then the custom skills by default", () => {
-    expect(rows()).toEqual([...lead, ["skills", "18", undefined, m.tokens.skillsLabel, undefined]]);
-    expect(rows("skills")).toEqual(rows());
+  const rows = () => seriesStats(series).map((s) => [s.key, s.value, s.unit, s.label, s.sub]);
+  it("shows three figures: the total, the active days and the biggest day with its date", () => {
+    expect(rows()).toEqual([
+      ["total", "4.2B", undefined, m.tokens.totalLabel, undefined],
+      ["active", "3", undefined, m.tokens.activeLabel, undefined],
+      ["peak", "2.1B", undefined, m.tokens.peakLabel, "Oct 2"],
+    ]);
   });
-  it("shows the whole agent setup with its split under it, from the snapshot's counts", () => {
-    expect(rows("toolkit")).toEqual([...lead, ["toolkit", "50", undefined, m.tokens.toolkitLabel, "18 custom skills, 16 installed skills, 7 plugins, 9 MCP servers"]]);
+  it("words the figures through the labels, the toolkit title and the groups in tokens and agents, never a tool's name", () => {
+    expect(seriesStats(series, { ...DEFAULT_LABELS, tokensPeak: "my best day" })[2].label).toBe("my best day");
+    expect(DEFAULT_LABELS.toolkitTitle).toBe("tools in my agent setup");
+    expect([m.tokens.groups.written, m.tokens.groups.used, m.tokens.groups.plugin, m.tokens.groups.mcp]).toEqual(["Skills I wrote", "Skills I use", "Plugins", "MCP servers"]);
   });
-  it("keeps the old current streak for the lab", () => {
-    expect(rows("streak")).toEqual([...lead, ["streak", "3", m.days, m.tokens.streakLabel, `${m.since} Oct 2`]]);
+  it("counts the whole agent setup from the snapshot's counts", () => {
+    expect(toolkitTotal(series.toolkit)).toBe(50);
   });
-  it("words the fourth figure in tokens and agents, never a tool's name", () => {
-    expect([m.tokens.skillsLabel, m.tokens.toolkitLabel]).toEqual(["custom skills I've written for my agents", "tools in my agent setup"]);
+  it("stamps a stale series 'Updated Oct 4' and a fresh one with nothing", () => {
+    expect(staleStamp(series)).toBe("Updated Oct 4");
+    expect(staleStamp({ ...series, stale: false })).toBeNull();
+    expect(staleStamp(series, { ...DEFAULT_LABELS, updated: "As of" })).toBe("As of Oct 4");
   });
   it("finds the busiest day, the earliest of a tie, and none when every day is empty", () => {
     expect(peakDay(series.days)?.date).toBe("2026-10-02");

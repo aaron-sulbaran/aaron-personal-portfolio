@@ -3,7 +3,7 @@ import { siteContent } from "@/lib/content";
 import { Metrics, METRICS_LABEL_ID, METRICS_TITLE_ID } from "./Metrics";
 
 // The numbers strip under Who I am: the chart (Commits or Tokens) with its
-// figures and my LinkedIn line (docs/content/right-now-and-metrics.md). It has
+// figures, with the toolkit band under the Tokens view. It has
 // its own big heading, set exactly as Who I am's is, and under it the line
 // that names the chart's group, set as the line under Who I am's heading is
 // but on one line from md up. The home page and the metrics lab both render this.

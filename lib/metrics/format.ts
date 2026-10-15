@@ -1,6 +1,6 @@
 import { siteContent } from "@/lib/content";
-import type { DayValue, Series, UsageDay, UsageSeries } from "./series";
-import { TOKENS, type FourthFigure } from "./settings";
+import type { DayValue, Series, UsageDay } from "./series";
+import { DEFAULT_LABELS, type MetricsLabels } from "./labels";
 import type { Toolkit } from "./usageSchema";
 
 const monthDay = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
@@ -63,40 +63,19 @@ export type Stat = { key: string; value: string; unit?: string; label: string; s
 // Everything in the agent setup: skills written and installed, plugins, MCP servers.
 export const toolkitTotal = (t: Toolkit): number => t.customSkills + t.installedSkills + t.plugins + t.mcpServers;
 
-// The token figures' last one (TOKENS.fourth): the skills I wrote, the whole
-// agent setup with its split under it, or the lab's old current streak.
-function fourthStat(s: UsageSeries, fourth: FourthFigure): Stat {
-  const c = siteContent.metrics;
-  const t = c.tokens;
-  const kit = s.toolkit;
-  if (fourth === "skills") return { key: "skills", value: formatCount(kit.customSkills), label: t.skillsLabel };
-  if (fourth === "toolkit") {
-    const sub = t.toolkitSub(formatCount(kit.customSkills), formatCount(kit.installedSkills), formatCount(kit.plugins), formatCount(kit.mcpServers));
-    return { key: "toolkit", value: formatCount(toolkitTotal(kit)), label: t.toolkitLabel, sub };
-  }
-  return {
-    key: "streak",
-    value: formatCount(s.streak.days),
-    unit: s.streak.days === 1 ? c.day : c.days,
-    label: t.streakLabel,
-    sub: s.streak.start ? `${c.since} ${shortDate(s.streak.start)}` : undefined,
-  };
-}
-
-// The GitHub figures. The current streak leads (it is the figure that describes
-// now); the longest streak stays in the data and is never shown. The token
-// figures lead with the total, then the active days, the biggest day and the
-// fourth.
-export function seriesStats(s: Series, fourth: FourthFigure = TOKENS.fourth): Stat[] {
+// The strip's figures, worded by `labels` (the lab edits them). The current
+// streak leads Commits (it is the figure that describes now); the longest
+// streak stays in the data and is never shown. Tokens lead with the total,
+// then the active days and the biggest day: three each. The agent setup lives
+// in the toolkit band, not here.
+export function seriesStats(s: Series, labels: MetricsLabels = DEFAULT_LABELS): Stat[] {
   const c = siteContent.metrics;
   if (s.kind === "usage") {
-    const t = c.tokens;
     const peak = peakDay(s.days);
     return [
-      { key: "total", value: formatCompact(s.total), label: t.totalLabel },
-      { key: "active", value: formatCount(s.activeDays), label: t.activeLabel },
-      { key: "peak", value: peak ? formatCompact(peak.count) : "0", label: t.peakLabel, sub: peak ? shortDate(peak.date) : undefined },
-      fourthStat(s, fourth),
+      { key: "total", value: formatCompact(s.total), label: labels.tokensTotal },
+      { key: "active", value: formatCount(s.activeDays), label: labels.tokensActive },
+      { key: "peak", value: peak ? formatCompact(peak.count) : "0", label: labels.tokensPeak, sub: peak ? shortDate(peak.date) : undefined },
     ];
   }
   return [
@@ -104,15 +83,18 @@ export function seriesStats(s: Series, fourth: FourthFigure = TOKENS.fourth): St
       key: "streak",
       value: formatCount(s.streak.days),
       unit: s.streak.days === 1 ? c.day : c.days,
-      label: c.streakLabel,
+      label: labels.commitsStreak,
       sub: s.streak.start ? `${c.since} ${shortDate(s.streak.start)}` : undefined,
     },
-    { key: "total", value: formatCount(s.total), label: c.totalLabel },
-    { key: "active", value: formatCount(s.activeDays), label: c.activeLabel },
+    { key: "total", value: formatCount(s.total), label: labels.commitsTotal },
+    { key: "active", value: formatCount(s.activeDays), label: labels.commitsActive },
   ];
 }
 
-// My own figures that are not GitHub's (the LinkedIn line): a null slot renders nothing.
+// "Updated Oct 13": over the first figure of a stale series.
+export const staleStamp = (s: Series, labels: MetricsLabels = DEFAULT_LABELS): string | null => (s.stale ? `${labels.updated} ${shortDate(s.range.to)}` : null);
+
+// My own figures that are not GitHub's (none today): a null slot renders nothing.
 export function slotStats(): Stat[] {
   return Object.entries(siteContent.metrics.slots).flatMap(([key, slot]) => (slot ? [{ key, ...slot }] : []));
 }

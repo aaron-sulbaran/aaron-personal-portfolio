@@ -8,6 +8,7 @@ import { StickyColumn } from "@/components/sections/StickyColumn";
 import { Connect } from "@/components/Connect";
 import { WhoIAm } from "@/components/WhoIAm";
 import { siteContent } from "@/lib/content";
+import { slotStats } from "@/lib/metrics/format";
 
 // The sections leaves as the server renders them: whole, readable, unarmed.
 
@@ -48,15 +49,19 @@ describe("the section title and the line under it", () => {
 });
 
 describe("the numbers strip's figures", () => {
-  it("keeps my LinkedIn line in a list of its own, not in a group, and renders nothing for the empty fun slot", () => {
-    const html = renderToStaticMarkup(createElement(MetricsSlots));
-    expect(html).toMatch(/^<dl class="[^"]*">/);
+  const withSlot = [{ key: "slot", value: "12", label: "a figure of my own", sub: "a note" }];
+
+  it("renders nothing for the slots today: the LinkedIn figure is off and the fun slot is empty", () => {
+    expect(renderToStaticMarkup(createElement(MetricsSlots, { stats: slotStats() }))).toBe("");
+    expect(renderToStaticMarkup(createElement(MetricsSlots, { stats: [] }))).toBe("");
+  });
+
+  it("keeps a figure of my own in a list of its own, not in a group, for when one is set", () => {
+    const html = renderToStaticMarkup(createElement(MetricsSlots, { stats: withSlot }));
     expect(html).not.toContain('role="group"');
     expect(html.match(/data-stat="/g)).toHaveLength(1);
-    expect(html).toContain('data-stat="linkedin"');
-    expect(html).toContain("450,000");
-    expect(html).toContain("LinkedIn impressions in 3 months");
-    expect(html).toContain("2,500+ followers");
+    expect(html).toContain('data-stat="slot"');
+    expect(html).toContain("a figure of my own");
   });
 });
 
