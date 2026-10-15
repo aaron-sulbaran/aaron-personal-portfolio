@@ -56,7 +56,7 @@ interface QuickDraft {
   tileLogo?: LogoRef;
 }
 
-export interface QuickEntry extends QuickDraft {
+export interface QuickEntry extends Omit<QuickDraft, "tileLogo"> {
   title: string;
   tileLogo: LogoRef | null;
   photo: CardPicture | null;
