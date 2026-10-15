@@ -16,7 +16,7 @@ export function ToolkitBand({ toolkit, labels, ref }: { toolkit: Toolkit; labels
   const groups = groupToolkit(toolkit);
   return (
     <section ref={ref} data-toolkit-band="" aria-labelledby={TITLE_ID} className="grid gap-8 border-t border-border pt-8 md:col-span-12 md:grid-cols-12 md:gap-x-6">
-      <h3 id={TITLE_ID} className="flex min-w-0 flex-col-reverse gap-1.5 md:col-span-3">
+      <h3 id={TITLE_ID} className="flex min-w-0 flex-col-reverse gap-1.5 self-start md:col-span-3">
         <span className="font-label text-label-sm text-muted">{labels.toolkitTitle}</span>
         <span data-toolkit-total="" className="font-display text-display-sm tabular-nums text-foreground">
           {toolkitTotal(toolkit)}

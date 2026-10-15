@@ -15,7 +15,9 @@ const snap = JSON.parse(readFileSync("lib/metrics/data/contributions-6mo.json", 
 
 type ToolCounts = { in: number; out: number; cr: number; cw: number };
 type UsageRow = { d: string; claude: ToolCounts; codex: ToolCounts };
-const usage = JSON.parse(readFileSync("lib/metrics/data/usage-6mo.json", "utf8")) as { days: UsageRow[]; toolkit: { customSkills: number } };
+type Toolkit = { customSkills: number; installedSkills: number; plugins: number; mcpServers: number };
+const usage = JSON.parse(readFileSync("lib/metrics/data/usage-6mo.json", "utf8")) as { days: UsageRow[]; toolkit: Toolkit };
+const toolkitTotal = usage.toolkit.customSkills + usage.toolkit.installedSkills + usage.toolkit.plugins + usage.toolkit.mcpServers;
 const toolTotal = (c: ToolCounts) => c.in + c.out + c.cr + c.cw;
 const usageTo = usage.days[usage.days.length - 1].d;
 const usageFrom = windowStart(usageTo, "6mo");
@@ -66,30 +68,28 @@ async function record(page: Page) {
 }
 const states = (page: Page) => page.evaluate(() => (window as unknown as { __states: string[] }).__states);
 
-test("metrics: the stats show the snapshot's figures, stamped, with no token", async ({ page }) => {
+test("metrics: the stats show the snapshot's figures, stamped Updated, with no token", async ({ page }) => {
   await openHome(page);
   const active = snap.days.filter((d: { count: number }) => d.count > 0).length;
   await expect(page.locator('[data-stat="streak"] + dd')).toContainText(String(snap.streaks.current.days));
   await expect(page.locator('[data-stat="streak"]')).toContainText(`${m.streakLabel}${m.since} ${shortDay(snap.streaks.current.start)}`);
   await expect(page.locator('[data-stat="total"] + dd')).toContainText(new Intl.NumberFormat("en-US").format(snap.total));
   await expect(page.locator('[data-stat="active"] + dd')).toContainText(String(active));
-  await expect(page.locator("[data-metrics-stale]")).toHaveText(`${m.asOf} ${shortDay(snap.range.to)}`);
+  await expect(page.locator("[data-metrics-stale]")).toHaveText(`${m.updated} ${shortDay(snap.range.to)}`);
 });
 
-test("metrics: my LinkedIn line is a figure of its own, outside the GitHub group the strip's label names", async ({ page }) => {
+// Aaron, 2026-10-13: "Erase the stray LinkedIn 450k number." The slot mechanism stays; nothing renders.
+test("metrics: the LinkedIn figure is gone and no column holds its place", async ({ page }) => {
   await openHome(page);
-  const slot = m.slots.linkedin!;
-  const linkedin = page.locator('[data-stat="linkedin"]');
-  await expect(linkedin).toHaveCount(1);
-  await expect(page.locator('[data-stat="linkedin"] + dd')).toContainText(slot.value);
-  await expect(linkedin).toContainText(slot.label);
-  await expect(linkedin).toContainText(slot.sub!);
+  await expect(page.locator('[data-stat="linkedin"]')).toHaveCount(0);
+  await expect(page.locator("#numbers")).not.toContainText("450,000");
+  await expect(page.locator("#numbers")).not.toContainText("LinkedIn");
   const group = page.getByRole("group", { name: `${m.title} ${m.groupLabel}`, exact: true });
   await expect(group).toHaveCount(1);
   await expect(page.locator("#numbers").getByText(m.groupLabel, { exact: true })).toBeVisible();
   await expect(group.locator('[data-stat="streak"]')).toHaveCount(1);
-  await expect(group.locator('[data-stat="linkedin"]')).toHaveCount(0);
-  await expect(page.locator('dl:has([data-stat="linkedin"]) [data-stat="streak"]')).toHaveCount(0);
+  // Nothing sits beside the board: the strip's grid has the board and no second column.
+  expect(await page.locator("#numbers div.grid[data-wave-words]").evaluate((el) => el.children.length)).toBe(1);
 });
 
 // Aaron, 2026-10-09: no little kicker over a section's title. The strip has its own big heading,
@@ -353,6 +353,10 @@ async function recordSwitch(page: Page) {
   });
 }
 const switches = (page: Page) => page.evaluate(() => (window as unknown as { __switches: string[] }).__switches);
+const waveBoard = (page: Page) => page.locator("[data-wave-state]");
+const waveIdle = (page: Page) => expect(waveBoard(page)).toHaveAttribute("data-wave-state", "idle", { timeout: 10000 });
+const waveOrder = (page: Page) => waveBoard(page).getAttribute("data-wave-order");
+const band = (page: Page) => page.locator("[data-toolkit-band]");
 const figureKeys = (page: Page) => page.locator("[data-metrics-figures] [data-stat]").evaluateAll((els) => els.map((el) => (el as HTMLElement).dataset.stat));
 
 test("metrics: Tokens swaps the figures, the tooltip and the label in place; Commits comes back as it was", async ({ page }) => {
@@ -372,15 +376,22 @@ test("metrics: Tokens swaps the figures, the tooltip and the label in place; Com
   expect(await canvas.evaluate((el) => (el as unknown as { __mark?: number }).__mark), "the canvas is the same element").toBe(1);
   expect(await state(page), "the switch keeps the view").toBe("skyline");
 
-  expect(await figureKeys(page)).toEqual(["total", "active", "peak", "skills"]);
-  await expect(page.locator('[data-stat="skills"]')).toContainText(String(usage.toolkit.customSkills));
-  await expect(page.locator('[data-stat="skills"]')).toContainText(m.tokens.skillsLabel);
-  await expect(page.locator('[data-stat="total"]')).toContainText(formatCompact(usageTotal));
+  await waveIdle(page);
+  expect(await figureKeys(page)).toEqual(["total", "active", "peak"]);
+  await expect(band(page)).toBeVisible();
+  await expect(band(page).locator("[data-toolkit-total]")).toHaveText(String(toolkitTotal));
+  await expect(band(page)).toContainText(m.tokens.toolkitLabel);
+  await expect(band(page).locator("[data-toolkit-group]")).toHaveCount(4);
+  for (const [key, name] of Object.entries(m.tokens.groups)) {
+    await expect(band(page).locator(`[data-toolkit-group="${key}"] h4`)).toContainText(name);
+  }
+  await expect(page.locator("[data-figure-slot]")).toHaveCount(3);
+  await expect(page.locator('[data-stat="total"] + dd')).toContainText(formatCompact(usageTotal));
   await expect(page.locator('[data-stat="total"]')).toContainText(m.tokens.totalLabel);
   const peak = peakDay(usageDays)!;
-  await expect(page.locator('[data-stat="peak"]')).toContainText(formatCompact(peak.count));
+  await expect(page.locator('[data-stat="peak"] + dd')).toContainText(formatCompact(peak.count));
   await expect(page.locator('[data-stat="peak"]')).toContainText(shortDate(peak.date));
-  await expect(page.locator('[data-stat="active"]')).toContainText(String(usageDays.filter((d) => d.count > 0).length));
+  await expect(page.locator('[data-stat="active"] + dd')).toContainText(String(usageDays.filter((d) => d.count > 0).length));
   await expect(canvas).toHaveAttribute("aria-label", m.tokens.label(formatCompact(usageTotal), shortDay(usageFrom), shortDay(usageTo), true));
   await expect(block(page).getByRole("list", { name: m.tokens.keyLabel })).toContainText(m.tokens.keyClaude);
   await expect(block(page).getByRole("list", { name: m.tokens.keyLabel })).toContainText(m.tokens.keyCodex);
@@ -392,12 +403,78 @@ test("metrics: Tokens swaps the figures, the tooltip and the label in place; Com
 
   await seriesButton(page, "commits").click();
   await expect(page.locator("[data-skyline-stage]")).toHaveAttribute("data-series", "github");
+  await waveIdle(page);
   expect(await figureKeys(page)).toEqual(["streak", "total", "active"]);
-  await expect(page.locator('[data-stat="total"]')).toContainText(new Intl.NumberFormat("en-US").format(snap.total));
+  await expect(band(page)).toHaveCount(0);
+  await expect(page.locator('[data-stat="total"] + dd')).toContainText(new Intl.NumberFormat("en-US").format(snap.total));
   await expect(page.locator('[data-stat="streak"]')).toContainText(`${m.streakLabel}${m.since} ${shortDay(snap.streaks.current.start)}`);
   await expect(canvas).toHaveAttribute("aria-label", m.chart.label(new Intl.NumberFormat("en-US").format(snap.total), shortDay(snap.range.from), shortDay(snap.range.to), true));
   await expect(block(page).getByRole("list", { name: m.tokens.keyLabel })).toHaveCount(0);
   await expect(block(page).locator("button[title]")).toHaveCount(5);
+});
+
+// "Move the as of stamp above the first number" (Aaron, 2026-10-13): a small label over the first
+// figure, in whichever view is stale, in the same column.
+test("metrics: the Updated stamp sits above the first figure, in the same column, in Commits and in Tokens", async ({ page }) => {
+  await openHome(page);
+  await scrollToY(page, await topAt(page, 0.2));
+  const above = async (day: string) => {
+    const stamp = page.locator("[data-metrics-stale]");
+    await expect(stamp).toHaveCount(1);
+    await expect(stamp).toHaveText(`${m.updated} ${shortDay(day)}`);
+    const stampBox = (await stamp.boundingBox())!;
+    const figureBox = (await page.locator('[data-figure-slot="0"] dd').boundingBox())!;
+    expect(stampBox.y + stampBox.height, "the stamp ends above the first figure").toBeLessThanOrEqual(figureBox.y + 1);
+    expect(Math.abs(stampBox.x - figureBox.x), "the same column").toBeLessThan(2);
+  };
+  await above(snap.range.to);
+  await seriesButton(page, "tokens").click();
+  await waveIdle(page);
+  await above(usageTo);
+});
+
+// The wave: Commits to Tokens runs left to right (bars, figures top down, the band in); Tokens to
+// Commits runs right to left (figures last first, the band out, the bars last).
+test("metrics: the wave goes left to right to Tokens and right to left back, and masks run in that direction", async ({ page }) => {
+  await openHome(page);
+  await scrollToY(page, await topAt(page, 0.2));
+  await expect.poll(() => state(page), { timeout: 5000 }).toBe("skyline");
+  await expect(waveBoard(page)).toHaveAttribute("data-wave-state", "idle");
+  await expect(band(page)).toHaveCount(0);
+
+  await seriesButton(page, "tokens").click();
+  await expect(seriesButton(page, "tokens")).toHaveAttribute("aria-pressed", "true");
+  await expect(waveBoard(page)).toHaveAttribute("data-wave-dir", "ltr");
+  await expect.poll(() => page.locator('[data-mask-dir="ltr"]').count(), { intervals: [20], timeout: 3000 }).toBeGreaterThan(0);
+  await waveIdle(page);
+  expect(await waveOrder(page)).toBe("bars,figure-0,figure-1,figure-2,band-in");
+  await expect(band(page)).toBeVisible();
+  expect(await page.locator("[data-figure-slot], [data-toolkit-band]").evaluateAll((els) => els.map((el) => (el as HTMLElement).style.clipPath))).toEqual(["", "", "", ""]);
+  await expect.poll(() => switchState(page), { timeout: 5000 }).toBe("done");
+
+  await seriesButton(page, "commits").click();
+  await expect(waveBoard(page)).toHaveAttribute("data-wave-dir", "rtl");
+  await expect.poll(() => page.locator('[data-mask-dir="rtl"]').count(), { intervals: [20], timeout: 3000 }).toBeGreaterThan(0);
+  await waveIdle(page);
+  expect(await waveOrder(page)).toBe("figure-2,figure-1,figure-0,band-out,bars");
+  await expect(band(page)).toHaveCount(0);
+  expect(await figureKeys(page)).toEqual(["streak", "total", "active"]);
+  await expect.poll(() => switchState(page), { timeout: 5000 }).toBe("done");
+});
+
+test("metrics: a press during the wave finishes it at once and starts the next from there", async ({ page }) => {
+  await openHome(page);
+  await scrollToY(page, await topAt(page, 0.2));
+  await expect.poll(() => state(page), { timeout: 5000 }).toBe("skyline");
+  await seriesButton(page, "tokens").click();
+  await expect(waveBoard(page)).toHaveAttribute("data-wave-state", "running");
+  await seriesButton(page, "commits").click();
+  await expect(seriesButton(page, "commits")).toHaveAttribute("aria-pressed", "true");
+  await waveIdle(page);
+  expect(await waveOrder(page)).toBe("figure-2,figure-1,figure-0,band-out,bars");
+  expect(await figureKeys(page)).toEqual(["streak", "total", "active"]);
+  await expect(band(page)).toHaveCount(0);
+  await expect(page.locator("[data-skyline-stage]")).toHaveAttribute("data-series", "github");
 });
 
 // Aaron, 2026-10-13: both toggles take the hero's Coil and Band design
@@ -482,28 +559,55 @@ test.describe("reduced motion", () => {
     const series = block(page).getByRole("group", { name: m.chart.seriesGroup, exact: true });
     expect(await series.evaluate((el) => getComputedStyle(el).transitionDuration)).toMatch(/^0s(, 0s)*$/);
   });
+  test("metrics: Tokens swaps the figures and the band at once, with no mask and no clip left behind", async ({ page }) => {
+    await page.goto("/");
+    await settled(page);
+    await scrollToY(page, await topAt(page, 0.3));
+    await expect.poll(() => state(page)).toBe("skyline");
+    await seriesButton(page, "tokens").click();
+    await expect(band(page)).toBeVisible();
+    expect(await figureKeys(page)).toEqual(["total", "active", "peak"]);
+    await expect(waveBoard(page)).toHaveAttribute("data-wave-state", "idle");
+    expect(await waveOrder(page)).toBe("instant");
+    await expect(page.locator("[data-mask-dir]")).toHaveCount(0);
+    expect(await page.locator("[data-figure-slot], [data-toolkit-band]").evaluateAll((els) => els.map((el) => (el as HTMLElement).style.clipPath))).toEqual(["", "", "", ""]);
+    await seriesButton(page, "commits").click();
+    await expect(band(page)).toHaveCount(0);
+    expect(await figureKeys(page)).toEqual(["streak", "total", "active"]);
+    expect(await waveOrder(page)).toBe("instant");
+  });
 });
 
-test("capture: the skyline at 1440 in both themes, and at 390 in light", async ({ page }) => {
+// The #numbers section as a visitor sees it, for Aaron's look: Commits and Tokens in both themes at
+// 1440, and Tokens in light at 390. METRICS_LOOK_DIR picks the folder (default test-results).
+test("capture: the numbers strip, Commits and Tokens, at 1440 in both themes and Tokens at 390", async ({ page }) => {
   test.skip(process.env.METRICS_CAPTURE !== "1", "manual capture");
+  const dir = process.env.METRICS_LOOK_DIR ?? "test-results";
+  await page.setViewportSize({ width: 1440, height: 900 });
   // One load: a second visit to a scrolled home is a deep reload with no entrance.
   await openHome(page);
-  const show = async (v: "flat" | "skyline") => {
-    if ((await state(page)) !== v) await button(page, v).click();
-    await expect.poll(() => state(page), { timeout: 5000 }).toBe(v);
-    // The pointer leaves the toggle, so neither its hover nor the cursor ring is in the shot.
+  const settleStrip = async () => {
+    await waveIdle(page);
+    await expect.poll(() => switchState(page), { timeout: 8000 }).toBe("done");
     await page.mouse.move(4, page.viewportSize()!.height / 2);
-    await nextFrames(page, 20);
+    await nextFrames(page, 30);
   };
-  const shoot = async (theme: "light" | "dark", suffix: string) => {
-    await page.evaluate((t) => document.documentElement.setAttribute("data-theme", t), theme);
+  const show = async (series: "commits" | "tokens") => {
+    if ((await seriesButton(page, series).getAttribute("aria-pressed")) !== "true") await seriesButton(page, series).click();
     await scrollToY(page, await topAt(page, 0.2));
-    await show("skyline");
-    await block(page).screenshot({ path: `test-results/metrics-skyline-${theme}${suffix}.png` });
-    await show("flat");
-    await block(page).screenshot({ path: `test-results/metrics-flat-${theme}${suffix}.png` });
+    await expect.poll(() => state(page), { timeout: 5000 }).toBe("skyline");
+    await settleStrip();
   };
-  for (const theme of ["light", "dark"] as const) await shoot(theme, "");
+  const shoot = async (series: "commits" | "tokens", theme: "light" | "dark", suffix: string) => {
+    await page.evaluate((t) => document.documentElement.setAttribute("data-theme", t), theme);
+    await show(series);
+    await page.locator("#numbers").screenshot({ path: `${dir}/metrics-${series}-${theme}${suffix}.png` });
+  };
+  for (const theme of ["light", "dark"] as const) {
+    await shoot("commits", theme, "");
+    await shoot("tokens", theme, "");
+    await show("commits");
+  }
   await page.setViewportSize({ width: 390, height: 844 });
-  await shoot("light", "-390");
+  await shoot("tokens", "light", "-390");
 });
