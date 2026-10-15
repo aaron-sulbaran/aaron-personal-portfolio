@@ -22,10 +22,13 @@ test("routes: the sitemap lists the home page alone", async ({ request }) => {
   expect(xml).not.toContain("/work/");
 });
 
+// Vercel Web Analytics serves /_vercel/insights/script.js only on Vercel, so a
+// local production server answers it 404 and the page carries on.
 test("routes: the home page requests nothing that is gone", async ({ page }) => {
   const missing: string[] = [];
   page.on("response", (response) => {
-    if (response.status() === 404) missing.push(response.url());
+    const isVercelInsights = new URL(response.url()).pathname.startsWith("/_vercel/insights/");
+    if (response.status() === 404 && !isVercelInsights) missing.push(response.url());
   });
   await page.goto("/");
   await page.waitForLoadState("networkidle");

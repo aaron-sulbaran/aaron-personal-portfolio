@@ -251,10 +251,9 @@ test("metrics: a Flat click past the line survives reduced motion switched on an
   await expect(button(page, "flat")).toHaveAttribute("aria-pressed", "true");
 });
 
-// The swatches draw at 11px; each one's press target is 24px tall and runs
-// to the middle of the gaps either side, so neighbours never overlap. The
-// probes stay a pixel or so inside each edge: hit testing snaps the
-// swatches' fractional positions by up to a pixel.
+// The swatches draw at 11px inside a 24px square button, so each press target
+// is 24px tall and neighbours never overlap. The probes stay a pixel inside
+// each edge: hit testing snaps the buttons' fractional positions.
 test("metrics: each legend swatch takes a press across a 24px tall target that meets its neighbours", async ({ page }) => {
   await openHome(page);
   await scrollToY(page, await topAt(page, 0.2));
@@ -265,13 +264,21 @@ test("metrics: each legend swatch takes a press across a 24px tall target that m
     const boxes = els.map((el) => el.getBoundingClientRect());
     els.forEach((el, k) => {
       const b = boxes[k];
-      const cx = b.left + b.width / 2;
-      const cy = b.top + b.height / 2;
-      const left = k > 0 ? (boxes[k - 1].right + b.left) / 2 + 1.5 : cx;
-      const right = k < els.length - 1 ? (b.right + boxes[k + 1].left) / 2 - 1.5 : cx;
-      const probes: [number, number][] = [[cx, cy - 11], [cx, cy + 11], [left, cy], [right, cy], [left, cy - 11], [right, cy + 11]];
-      for (const [x, y] of probes) if (document.elementFromPoint(x, y) !== el) out.push(`${k} at ${x.toFixed(1)},${y.toFixed(1)}`);
-      if (b.width > 12 || b.height > 12) out.push(`${k} draws at ${b.width}x${b.height}`);
+      const hits = (x: number, y: number) => {
+        const hit = document.elementFromPoint(x, y);
+        return hit === el || (hit !== null && el.contains(hit));
+      };
+      const probes: [number, number][] = [
+        [b.left + b.width / 2, b.top + 1],
+        [b.left + b.width / 2, b.bottom - 1],
+        [b.left + 1, b.top + b.height / 2],
+        [b.right - 1, b.top + b.height / 2],
+      ];
+      for (const [x, y] of probes) if (!hits(x, y)) out.push(`${k} at ${x.toFixed(1)},${y.toFixed(1)}`);
+      if (b.height < 24 || b.width < 24) out.push(`${k} target is ${b.width}x${b.height}`);
+      const drawn = el.firstElementChild?.getBoundingClientRect();
+      if (!drawn || drawn.width > 12 || drawn.height > 12) out.push(`${k} swatch draws at ${drawn?.width}x${drawn?.height}`);
+      if (k > 0 && b.left < boxes[k - 1].right - 0.5) out.push(`${k} overlaps ${k - 1}`);
     });
     return out;
   });
