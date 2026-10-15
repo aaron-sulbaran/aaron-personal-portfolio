@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import { SiteNav } from "@/components/SiteNav";
 import { MenuPill } from "@/components/menu/MenuPill";
 import { CustomCursor } from "@/components/CustomCursor";
@@ -69,6 +70,7 @@ export default function RootLayout({
         <CustomCursor />
         {!HOLDING_MODE && <InlineLayer />}
         {children}
+        <Analytics />
       </body>
     </html>
   );
