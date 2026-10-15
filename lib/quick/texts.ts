@@ -1,19 +1,17 @@
 import { quickClosing, quickCopy, quickYears } from "@/lib/content/quick";
 import type { YearLine } from "./years";
 
-// The words the lab lets me edit in place: the title, the intro, each year's
+// The words the lab lets me edit in place: the intro, each year's
 // sentence and the closing line. The page renders the content's own; the lab
 // passes its edits. Pure.
 
 export interface QuickTexts {
-  title: string;
   intro: string;
   years: Record<string, string>;
   closing: string;
 }
 
 export const DEFAULT_TEXTS: QuickTexts = {
-  title: quickCopy.title,
   intro: quickCopy.intro,
   years: Object.fromEntries(quickYears.map(({ year, line }) => [year, line])),
   closing: quickClosing.line,
@@ -26,7 +24,6 @@ export function parseTexts(stored: unknown): QuickTexts {
   const raw = stored as Partial<Record<keyof QuickTexts, unknown>>;
   const years = raw.years && typeof raw.years === "object" ? (raw.years as Record<string, unknown>) : {};
   return {
-    title: text(raw.title, DEFAULT_TEXTS.title),
     intro: text(raw.intro, DEFAULT_TEXTS.intro),
     years: Object.fromEntries(quickYears.map(({ year }) => [year, text(years[year], DEFAULT_TEXTS.years[year])])),
     closing: text(raw.closing, DEFAULT_TEXTS.closing),

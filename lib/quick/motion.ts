@@ -16,6 +16,10 @@ export const QUICK_MOTION = {
   yearTickS: 0.12, // per year the rail's big year counts through
 } as const;
 
+// The title's unfold (M, V and P spelling out): when it starts, the gap between
+// the three, and the lab's ranges for both.
+export const TITLE_UNFOLD = { delayMs: 600, staggerMs: 120, delayRange: { min: 0, max: 3000, step: 50 }, staggerRange: { min: 0, max: 400, step: 10 } } as const;
+
 export const SPEED_RANGE = { min: 0.25, max: 3, step: 0.05 } as const;
 
 // speed 1 is the values above; 2 runs everything twice as fast.

@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 };
 
-// The Express lane (docs/superpowers/specs/2026-10-13-express-lane-design.md):
+// The MVP page, once the Express lane (docs/superpowers/specs/2026-10-13-express-lane-design.md):
 // server-rendered whole, so every year, card and link reads at first paint; the
 // rail's motion only follows scroll. It never imports the Coil, so the scene's
 // chunk is never requested here.

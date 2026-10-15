@@ -16,7 +16,7 @@ const idle = (page: Page) => expect(page.locator("[data-transition]")).toHaveAtt
 
 test("express lane: every tile opens its own card's modal, Escape closes it and focus returns to the tile", async ({ page }) => {
   await page.goto("/quick");
-  await expect(page.locator("h1")).toHaveText(quickCopy.title);
+  await expect(page.locator("h1")).toHaveAccessibleName(quickCopy.title);
   await expect(page.locator("[data-quick-hint]")).toHaveText(quickCopy.hint);
   for (const entry of quickEntries) {
     const button = tile(page, entry.slot);
@@ -146,6 +146,66 @@ for (const [name, viewport] of [["1280x900", { width: 1280, height: 900 }], ["39
       await page.goto("/quick");
       await page.waitForLoadState("networkidle");
       await expect.poll(() => page.evaluate(() => [...document.querySelectorAll<HTMLElement>("[data-quick-thumb]")].filter((el) => getComputedStyle(el).clipPath !== "none").length), { timeout: 1_500 }).toBe(0);
+    });
+  });
+}
+
+// The title, M(inimum) V(iable) P(ortfolio): "MVP" alone at first paint, the rests
+// unfolding after the page settles, replayed by a hover, the full width reserved
+// so nothing below it moves, and the whole title at once under reduced motion.
+const SPELLED = "M(inimum) V(iable) P(ortfolio)";
+const restOpacities = (page: Page) => page.evaluate(() => [...document.querySelectorAll<HTMLElement>("[data-mvp-rest]")].map((el) => Number(getComputedStyle(el).opacity)));
+
+for (const [name, viewport] of [["1280x900", { width: 1280, height: 900 }], ["390x844", { width: 390, height: 844 }]] as const) {
+  test.describe(`express lane title at ${name}`, () => {
+    test.use({ viewport });
+
+    test("MVP reads alone at first paint, unfolds once, never moves what is below, and is one heading name", async ({ page }) => {
+      await page.addInitScript(() => {
+        document.addEventListener("DOMContentLoaded", () => {
+          const intro = document.querySelector<HTMLElement>("header p");
+          (window as unknown as Record<string, unknown>).__first = {
+            opacities: [...document.querySelectorAll<HTMLElement>("[data-mvp-rest]")].map((el) => Number(getComputedStyle(el).opacity)),
+            introTop: intro?.getBoundingClientRect().top,
+          };
+        });
+      });
+      await page.goto("/quick");
+      const first = await page.evaluate(() => (window as unknown as { __first: { opacities: number[]; introTop: number } }).__first);
+      expect(first.opacities).toEqual([0, 0, 0]);
+      const h1 = page.locator("h1");
+      await expect(h1).toHaveAccessibleName(quickCopy.title);
+      await expect(h1.locator("span").first()).toHaveAttribute("aria-hidden", "true");
+      await expect(h1).toHaveText(SPELLED);
+      await expect(h1).toHaveAttribute("data-state", "open", { timeout: 3_000 });
+      expect(await restOpacities(page)).toEqual([1, 1, 1]);
+      const introTop = await page.locator("header p").first().evaluate((el) => el.getBoundingClientRect().top);
+      expect(introTop).toBeCloseTo(first.introTop, 0);
+    });
+
+    test("hovering the title plays the unfold again", async ({ page }) => {
+      await page.goto("/quick");
+      await expect(page.locator("h1")).toHaveAttribute("data-state", "open", { timeout: 3_000 });
+      await page.evaluate(() => {
+        const w = window as unknown as { __min: number };
+        w.__min = 1;
+        const last = document.querySelectorAll<HTMLElement>("[data-mvp-rest]")[2];
+        const tick = () => {
+          w.__min = Math.min(w.__min, Number(getComputedStyle(last).opacity));
+          requestAnimationFrame(tick);
+        };
+        tick();
+      });
+      await page.locator("h1").hover();
+      await expect.poll(() => page.evaluate(() => (window as unknown as { __min: number }).__min), { timeout: 2_000 }).toBeLessThan(0.5);
+      await expect.poll(() => restOpacities(page), { timeout: 3_000 }).toEqual([1, 1, 1]);
+    });
+
+    test("under reduced motion the whole title shows at once", async ({ page }) => {
+      await page.emulateMedia({ reducedMotion: "reduce" });
+      await page.goto("/quick");
+      await expect(page.locator("h1")).toHaveText(SPELLED);
+      expect(await restOpacities(page)).toEqual([1, 1, 1]);
     });
   });
 }

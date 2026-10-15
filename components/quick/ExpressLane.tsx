@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import { quickEntries } from "@/lib/content/quick";
 import { writeAnswer } from "@/lib/quick/invite";
-import type { QuickVariant } from "@/lib/quick/settings";
+import type { QuickVariant, TitleMode } from "@/lib/quick/settings";
 import { DEFAULT_TEXTS, yearLines, type QuickTexts } from "@/lib/quick/texts";
 import { yearRows } from "@/lib/quick/years";
 import { LaneHeader } from "./LaneHeader";
@@ -19,6 +19,9 @@ import { useQuickModal } from "./useQuickModal";
 
 type Props = {
   variant?: QuickVariant;
+  titleMode?: TitleMode;
+  titleDelayMs?: number;
+  titleStaggerMs?: number;
   texts?: QuickTexts;
   speed?: number;
   forceReduced?: boolean;
@@ -26,7 +29,7 @@ type Props = {
   visit?: boolean;
 };
 
-export function ExpressLane({ variant = "rail", texts = DEFAULT_TEXTS, speed = 1, forceReduced = false, replay = 0, visit = false }: Props) {
+export function ExpressLane({ variant = "rail", titleMode, titleDelayMs, titleStaggerMs, texts = DEFAULT_TEXTS, speed = 1, forceReduced = false, replay = 0, visit = false }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
   const { open, modal } = useQuickModal();
   const rows = useMemo(() => yearRows(quickEntries, yearLines(texts)), [texts]);
@@ -45,7 +48,14 @@ export function ExpressLane({ variant = "rail", texts = DEFAULT_TEXTS, speed = 1
   const shared = { rows, closing: texts.closing, runKey, speed, forceReduced, onOpen: open };
   return (
     <div ref={rootRef}>
-      <LaneHeader title={texts.title} intro={texts.intro} />
+      <LaneHeader
+        key={`${titleMode}:${titleDelayMs}:${titleStaggerMs}:${forceReduced}:${replay}`}
+        intro={texts.intro}
+        titleMode={titleMode}
+        titleDelayMs={titleDelayMs}
+        titleStaggerMs={titleStaggerMs}
+        forceReduced={forceReduced}
+      />
       {variant === "road" ? <RoadVariant key={runKey} {...shared} /> : <RailVariant key={runKey} {...shared} trip={variant === "trip"} />}
       {modal}
     </div>

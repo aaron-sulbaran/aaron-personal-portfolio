@@ -3,22 +3,22 @@
 import { siteContent } from "@/lib/content";
 import { quickCopy } from "@/lib/content/quick";
 import { HOME_PATH } from "@/lib/quick/transition";
+import type { TitleMode } from "@/lib/quick/settings";
 import { goTo } from "@/lib/quick/transitionStore";
+import { MvpTitle } from "./MvpTitle";
 
-// The lane's head: the title, the intro, the three ways to reach me, and the
+// The lane's head: the MVP title, the intro, the three ways to reach me, and the
 // way back to the full site through the transition (a real link without it).
 
-export const LANE_HEADING_ID = "express-lane-title";
+export type TitleProps = { titleMode?: TitleMode; titleDelayMs?: number; titleStaggerMs?: number; forceReduced?: boolean };
 
 const links = (["linkedin", "email", "github"] as const).map((key) => siteContent.connect.links.find((link) => link.key === key)!);
 const external = (href: string) => (href.startsWith("http") ? { target: "_blank", rel: "noopener noreferrer" } : {});
 
-export function LaneHeader({ title, intro }: { title: string; intro: string }) {
+export function LaneHeader({ intro, titleMode, titleDelayMs, titleStaggerMs, forceReduced }: TitleProps & { intro: string }) {
   return (
     <header className="mb-20 max-w-3xl md:mb-28">
-      <h1 id={LANE_HEADING_ID} tabIndex={-1} data-lane-line="" className="font-display text-display text-foreground focus-visible:outline-none">
-        {title}
-      </h1>
+      <MvpTitle mode={titleMode} delayMs={titleDelayMs} staggerMs={titleStaggerMs} forceReduced={forceReduced} />
       <p data-lane-line="" className="mt-6 max-w-2xl text-lg leading-relaxed text-muted md:text-body-lg">
         {intro}
       </p>
