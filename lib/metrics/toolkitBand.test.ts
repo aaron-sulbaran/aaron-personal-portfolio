@@ -46,11 +46,13 @@ describe("the toolkit band", () => {
 
   it("names the top five of each group by default, as slash commands for the two skill groups", () => {
     expect(CAP).toBe(5);
-    for (const name of ["written", "used", "plugin", "mcp"] as const) expect(group(name).match(/data-toolkit-name="/g)).toHaveLength(5);
+    const namedCount = { written: 5, used: 5, plugin: 4, mcp: 5 };
+    for (const name of ["written", "used", "plugin", "mcp"] as const) expect(group(name).match(/data-toolkit-name="/g)).toHaveLength(namedCount[name]);
     expect(group("written")).toContain('data-toolkit-name="sync-granola" class="[overflow-wrap:anywhere]">/sync-granola');
     expect(group("used")).toContain(">/frontend-design");
     expect(group("used")).not.toContain("dataviz");
     expect(group("plugin")).not.toContain("chrome-devtools");
+    expect(group("plugin")).not.toContain("frontend-design");
     expect(group("plugin")).toContain(">superpowers");
     expect(group("mcp")).toContain(">chrome-devtools");
     expect(group("mcp")).not.toContain(">/");

@@ -90,6 +90,13 @@ describe("the committed toolkit", () => {
     expect(toolkitSchema.parse(snapshot.toolkit).plugins).toBeGreaterThan(named.filter((t) => t.group === "plugin").length);
   });
 
+  it("names frontend-design once, under Skills I use, while the plugin still counts toward the total", () => {
+    const named = toolkitSchema.parse(snapshot.toolkit).named;
+    expect(named.filter((tool) => tool.name === "frontend-design").map((tool) => tool.group)).toEqual(["used"]);
+    expect(publicList.filter((entry) => entry.name === "frontend-design").map((entry) => entry.group)).toEqual(["used"]);
+    expect(toolkitSchema.parse(snapshot.toolkit).plugins).toBe(7);
+  });
+
   it("keeps the public list well formed: unique per group, schema-safe names", () => {
     const keys = publicList.map((entry) => `${entry.group}:${entry.name}`);
     expect(new Set(keys).size).toBe(keys.length);
