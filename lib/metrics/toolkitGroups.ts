@@ -14,6 +14,11 @@ export const PUBLIC_LABELS: Record<string, string> = Object.fromEntries(
   (publicList as { name: string; label?: string }[]).filter((entry) => entry.label).map((entry) => [entry.name, entry.label as string]),
 );
 
+// Skills are invoked as slash commands, so that is how they read; plugins and
+// MCP servers keep their plain names. Display only: the data keeps the slugs.
+const SKILL_GROUPS: readonly ToolGroup[] = ["written", "used"];
+export const displayName = (group: ToolGroup, name: string): string => (SKILL_GROUPS.includes(group) ? `/${name}` : name);
+
 // "×41": the multiplication sign, U+00D7.
 export const toolkitCallLabel = (calls: number): string => `×${calls}`;
 
@@ -38,7 +43,7 @@ export function groupToolkit(toolkit: Toolkit, labels: Record<string, string> = 
       count: totalOf(toolkit, group),
       names: ordered.map((tool, index) => ({
         name: tool.name,
-        label: labels[tool.name] ?? tool.name,
+        label: labels[tool.name] ?? displayName(group, tool.name),
         calls: tool.calls,
         marked: index < MARKED_TOP && tool.calls >= MARKED_MIN_CALLS,
       })),

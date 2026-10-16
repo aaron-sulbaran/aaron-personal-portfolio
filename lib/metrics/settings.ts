@@ -32,6 +32,7 @@ export type SeriesChoice = "commits" | "tokens";
 // switch carried across the strip (lib/metrics/wave.ts): waveGapMs between
 // one figure's mask and the next, waveOffsetMs between the bars and the first
 // figure, maskMs for one mask (a figure's out and in are half each).
+// namesPerGroup is how many tools the toolkit band names per group before "+N more".
 export type TokensSettings = {
   colorSet: TokenColorSet;
   heightCurve: HeightCurve;
@@ -44,6 +45,7 @@ export type TokensSettings = {
   waveGapMs: number;
   waveOffsetMs: number;
   maskMs: number;
+  namesPerGroup: number;
   labels: MetricsLabels;
 };
 
@@ -60,5 +62,6 @@ export const TOKENS: TokensSettings = {
   waveGapMs: 120,
   waveOffsetMs: 150,
   maskMs: 360,
+  namesPerGroup: 5,
   labels: DEFAULT_LABELS,
 };

@@ -11,8 +11,9 @@ const TITLE_ID = "toolkit-title";
 // The Tokens view's band under the chart: the whole agent setup as one big
 // figure, then four groups, each with its count and the tools I may name, the
 // most used first. My most-called wear how often I call them. A group's count
-// is the whole setup's, so it can pass the names listed; the rest are "+N more".
-export function ToolkitBand({ toolkit, labels, ref }: { toolkit: Toolkit; labels: MetricsLabels; ref?: Ref<HTMLElement> }) {
+// is the whole setup's, so it can pass the names listed; a group shows at most
+// `namesPerGroup` names (TOKENS.namesPerGroup) and the rest are "+N more".
+export function ToolkitBand({ toolkit, labels, namesPerGroup, ref }: { toolkit: Toolkit; labels: MetricsLabels; namesPerGroup: number; ref?: Ref<HTMLElement> }) {
   const groups = groupToolkit(toolkit);
   return (
     <section ref={ref} data-toolkit-band="" aria-labelledby={TITLE_ID} className="grid gap-8 border-t border-border pt-8 md:col-span-12 md:grid-cols-12 md:gap-x-6">
@@ -23,7 +24,8 @@ export function ToolkitBand({ toolkit, labels, ref }: { toolkit: Toolkit; labels
         </span>
       </h3>
       <div className="grid grid-cols-2 gap-x-6 gap-y-8 md:col-span-9 md:grid-cols-4">
-        {groups.map(({ group, count, names }) => {
+        {groups.map(({ group, count, names: allNames }) => {
+          const names = allNames.slice(0, namesPerGroup);
           const more = count - names.length;
           const headingId = `toolkit-group-${group}`;
           return (

@@ -119,11 +119,6 @@
         "calls": 12
       },
       {
-        "name": "dataviz",
-        "group": "used",
-        "calls": 2
-      },
-      {
         "name": "hyperframes",
         "group": "used",
         "calls": 1
@@ -132,11 +127,6 @@
         "name": "gsap-scrolltrigger",
         "group": "used",
         "calls": 0
-      },
-      {
-        "name": "chrome-devtools-mcp",
-        "group": "plugin",
-        "calls": 1182
       },
       {
         "name": "superpowers",

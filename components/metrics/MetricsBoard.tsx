@@ -18,7 +18,7 @@ const { metrics } = siteContent;
 // The switch is one wave across the strip (useWave): the bars, each figure
 // masked out and in, and under Tokens the toolkit band masked in.
 export function MetricsBoard({ github, usage }: { github: GithubSeries; usage: UsageSeries }) {
-  const { first, labels, waveGapMs, waveOffsetMs, maskMs } = useTokensSettings();
+  const { first, labels, waveGapMs, waveOffsetMs, maskMs, namesPerGroup } = useTokensSettings();
   const { choice, view, choose, board, register, registerBand } = useWave(first, { gapMs: waveGapMs, offsetMs: waveOffsetMs, maskMs });
   const seriesOf = (kind: "commits" | "tokens") => (kind === "commits" ? github : usage);
   const slots: FigureSlot[] = Array.from({ length: FIGURE_COUNT }, (_, index) => {
@@ -40,7 +40,7 @@ export function MetricsBoard({ github, usage }: { github: GithubSeries; usage: U
       <div className="md:col-span-3 md:pt-6">
         <FigureColumn slots={slots} label={choice === "tokens" ? metrics.tokens.statsLabel : metrics.statsLabel} kind={seriesOf(choice).kind} register={register} />
       </div>
-      {view.band && <ToolkitBand ref={registerBand} toolkit={usage.toolkit} labels={labels} />}
+      {view.band && <ToolkitBand ref={registerBand} toolkit={usage.toolkit} labels={labels} namesPerGroup={namesPerGroup} />}
     </div>
   );
 }

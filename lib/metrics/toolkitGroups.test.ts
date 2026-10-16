@@ -41,9 +41,16 @@ describe("grouping the toolkit", () => {
     expect(groups[3].names.map((n) => n.marked)).toEqual([true]);
   });
 
-  it("uses a label when one is given, else the name", () => {
+  it("uses a label when one is given, else the display name", () => {
     const labelled = groupToolkit(toolkit, { b: "Bee" });
-    expect(labelled[0].names.map((n) => n.label)).toEqual(["Bee", "c", "d", "e", "a"]);
+    expect(labelled[0].names.map((n) => n.label)).toEqual(["Bee", "/c", "/d", "/e", "/a"]);
+  });
+
+  it("shows skills as the slash commands they are invoked as, and plugins and servers by plain name", () => {
+    expect(groups[0].names.map((n) => n.label)).toEqual(["/b", "/c", "/d", "/e", "/a"]);
+    expect(groups[1].names.map((n) => n.label)).toEqual(["/f", "/g"]);
+    expect(groups[3].names.map((n) => n.label)).toEqual(["h"]);
+    expect(groups[0].names.map((n) => n.name)).toEqual(["b", "c", "d", "e", "a"]);
   });
 
   it("writes a call count with the multiplication sign", () => {
@@ -71,6 +78,16 @@ describe("the committed toolkit", () => {
       expect(committed).not.toContain(`"${name}"`);
       expect(list).not.toContain(`"${name}"`);
     }
+  });
+
+  it("names chrome-devtools only under MCP servers, and leaves dataviz off the list", () => {
+    const entries = (name: string) => publicList.filter((entry) => entry.name.startsWith(name));
+    expect(entries("chrome-devtools").map((entry) => `${entry.group}:${entry.name}`)).toEqual(["mcp:chrome-devtools"]);
+    expect(JSON.stringify(publicList)).not.toContain("dataviz");
+    const named = toolkitSchema.parse(snapshot.toolkit).named;
+    expect(named.some((tool) => tool.name === "chrome-devtools-mcp")).toBe(false);
+    expect(named.some((tool) => tool.name === "dataviz")).toBe(false);
+    expect(toolkitSchema.parse(snapshot.toolkit).plugins).toBeGreaterThan(named.filter((t) => t.group === "plugin").length);
   });
 
   it("keeps the public list well formed: unique per group, schema-safe names", () => {

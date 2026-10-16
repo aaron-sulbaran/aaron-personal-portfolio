@@ -384,7 +384,16 @@ test("metrics: Tokens swaps the figures, the tooltip and the label in place; Com
   await expect(band(page).locator("[data-toolkit-group]")).toHaveCount(4);
   for (const [key, name] of Object.entries(m.tokens.groups)) {
     await expect(band(page).locator(`[data-toolkit-group="${key}"] h4`)).toContainText(name);
+    await expect(band(page).locator(`[data-toolkit-group="${key}"] [data-toolkit-name]`)).toHaveCount(5);
   }
+  for (const key of ["written", "used"]) {
+    const labels = await band(page).locator(`[data-toolkit-group="${key}"] [data-toolkit-name]`).allTextContents();
+    for (const label of labels) expect(label).toMatch(/^\/[a-z0-9-]+/);
+  }
+  await expect(band(page).locator('[data-toolkit-group="plugin"]')).not.toContainText("chrome-devtools");
+  await expect(band(page).locator('[data-toolkit-group="mcp"]')).toContainText("chrome-devtools");
+  await expect(band(page)).not.toContainText("dataviz");
+  await expect(band(page).locator('[data-toolkit-group="mcp"] [data-toolkit-name]').first()).not.toContainText("/");
   await expect(page.locator("[data-figure-slot]")).toHaveCount(3);
   await expect(page.locator('[data-stat="total"] + dd')).toContainText(formatCompact(usageTotal));
   await expect(page.locator('[data-stat="total"]')).toContainText(m.tokens.totalLabel);
