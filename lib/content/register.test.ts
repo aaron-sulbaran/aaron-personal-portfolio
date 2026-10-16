@@ -72,7 +72,7 @@ describe("the inline register", () => {
       rango: "yeah, this guy from that one kid's movie",
       "catatumbo-lightning": "The lightning in question",
       "lake-maracaibo": "The famous Puente General Rafael Urdaneta over Lake Maracaibo.",
-      "3d-printing": "My 3D printing corner, filament stash and all",
+      "3d-printing": "My at-home workbench. This is where I tinker with my personal hardware projects.",
       "ut-ece-logo": "UT Austin Electrical and Computer Engineering",
     });
     expect(Object.values(register.pop).every((entry) => entry.crop === null)).toBe(true);

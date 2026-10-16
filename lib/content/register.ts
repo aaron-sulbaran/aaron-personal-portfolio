@@ -32,7 +32,7 @@ export const register: InlineRegister = {
       link: { href: "https://profile.playstation.com/VoltaageArc", label: "VoltaageArc on most platforms" },
     },
     "killer-drones": { text: "unless it's killer drones, I don't do that" },
-    "evolving-isle": { text: "not dynamic island, a nod to Apple" },
+    "evolving-isle": { text: "Evolving isle. Legally distinct from any island Apple might call dynamic, so their trademark lawyers can rest easy." },
     "music-note": {
       text: "These are songs I like, played as instrumentals so they're easy to read to. Each is credited to its artist in the player, with a link to the original on Spotify.",
     },
@@ -65,7 +65,7 @@ export const register: InlineRegister = {
     // Not me in these three: the alts describe the picture, and the logo's file is flattened onto the light background token so it reads in both themes.
     "catatumbo-lightning": { file: { src: "/photos/pops/catatumbo-lightning.jpg", width: 800, height: 577 }, alt: "Lightning forking through a huge storm cloud over a dark sea with sailboats at anchor", caption: "The lightning in question", crop: null },
     "lake-maracaibo": { file: { src: "/photos/pops/lake-maracaibo.jpg", width: 250, height: 342 }, alt: "A vintage Venezuelan stamp showing the bridge over Lake Maracaibo and a tanker passing beneath it", caption: "The famous Puente General Rafael Urdaneta over Lake Maracaibo.", crop: null },
-    "3d-printing": { file: { src: "/photos/pops/3d-printing.jpg", width: 600, height: 800 }, alt: "My 3D printer on a shelf above my filament spools, lit by neon", caption: "My 3D printing corner, filament stash and all", crop: null },
+    "3d-printing": { file: { src: "/photos/pops/3d-printing.jpg", width: 600, height: 800 }, alt: "My 3D printer on a shelf above my filament spools, lit by neon", caption: "My at-home workbench. This is where I tinker with my personal hardware projects.", crop: null },
     "ut-ece-logo": { file: { src: "/photos/pops/ut-ece-logo.jpg", width: 800, height: 243 }, alt: "The UT Austin Chandra Department of Electrical and Computer Engineering logo", caption: "UT Austin Electrical and Computer Engineering", crop: null },
   },
 };

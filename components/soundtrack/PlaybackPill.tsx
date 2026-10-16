@@ -11,6 +11,7 @@ import { getPlayFailed, getRestoredSoundtrack, startSoundtrack, subscribeSoundtr
 import { DOCK, capsuleName, capsuleText, dockLabel, dockMode, pillStartsMusic, type DockLabel } from "@/lib/waveform/dock";
 import { isPhone, subscribePhone } from "@/lib/waveform/layout";
 import { Cover, DockGlyph, EASE, PillSlot, glass } from "./PillParts";
+import { MarqueeTitle } from "./MarqueeTitle";
 import { PillAnnouncer, PillLabel, labelLine, useLabelHold } from "./PillLabel";
 import { PlayerCard } from "./PlayerCard";
 import { usePillFade } from "./usePillFade";
@@ -210,6 +211,7 @@ function PillInner({ reached }: { reached: boolean }) {
             onMouseLeave={() => send("leave")}
             aria-label={capsuleName(capsuleText(music, track.title), startsMusic ? c.invite : c.ariaOpen)}
             data-cursor-hover
+            data-marquee-scope
             style={{ ...capsule, ["--pill-hit-inset" as string]: `${(DOCK.hitPx - DOCK.capsulePx) / 2}px` }}
             overClassName={`flex items-center ${preview ? "py-2 pl-2 pr-4" : "pl-[13px] pr-4"} ${reduce ? "" : "transition-[padding] duration-300 ease-[ease]"}`}
           >
@@ -217,7 +219,7 @@ function PillInner({ reached }: { reached: boolean }) {
               <Cover size={38} cover={track.cover} title={track.title} />
             </PillSlot>
             <PillSlot visible={preview} maxWidth={190} reduce={reduce} before={12} after={12} block>
-              <span className="block font-label text-label-sm text-foreground">{track.title}</span>
+              <MarqueeTitle text={track.title} maxWidth={190} active={preview} pauseOnHover={false} className="font-label text-label-sm text-foreground" />
               <span className="block font-label text-label-sm text-muted">{track.artist}</span>
             </PillSlot>
             <span className="relative -top-px flex">

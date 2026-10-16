@@ -6,6 +6,7 @@ import { siteContent } from "@/lib/content";
 import { getSoundtrackPlayer, type PlayerSnapshot } from "@/lib/audio";
 import { useEscapeKey } from "@/lib/modal";
 import { pauseSoundtrack, startSoundtrack, type SoundtrackState } from "@/lib/soundtrack";
+import { MarqueeTitle } from "./MarqueeTitle";
 import { Cover, EASE, FreezeRow, formatTime, glass, iconButton } from "./PillParts";
 
 type Props = {
@@ -83,25 +84,21 @@ export function PlayerCard({ music, expanded, reduce, focusOnOpen, onCardLeave, 
       onMouseLeave={onCardLeave}
       style={style}
       role="group"
+      data-marquee-scope
       aria-label={c.ariaOpen}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
         <Cover size={56} cover={track.cover} title={track.title} />
         <span style={{ flex: "1 1 auto", minWidth: 0 }}>
-          <span
+          <MarqueeTitle
+            text={track.title}
             style={{
-              display: "block",
               fontFamily: "var(--font-display)",
               fontSize: 19,
               lineHeight: 1.15,
               color: "var(--color-foreground)",
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
             }}
-          >
-            {track.title}
-          </span>
+          />
           <span className="mt-0.5 block font-label text-label-sm text-muted">{track.artist}</span>
         </span>
         <button type="button" onClick={onCollapse} aria-label={c.ariaCollapse} style={iconButton(28)}>
