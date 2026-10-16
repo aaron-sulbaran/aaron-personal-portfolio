@@ -74,14 +74,7 @@ export function BandStage() {
             {frozen ? c.unfreeze : c.freeze}
           </button>
           <p data-wave-avoid className="ml-auto">
-            {s.creditLead}{" "}
-            <a href={s.creditArtistUrl} target="_blank" rel="noopener noreferrer" className={LINK}>
-              {s.creditArtist}
-            </a>
-            {s.creditJoin}{" "}
-            <a href={s.creditLicenseUrl} target="_blank" rel="noopener noreferrer" className={LINK}>
-              {s.creditLicense}
-            </a>
+            {s.creditLine}
           </p>
         </div>
       </div>
@@ -89,6 +82,3 @@ export function BandStage() {
     </>
   );
 }
-
-const LINK =
-  "rounded-sm text-accent underline decoration-1 underline-offset-[3px] transition-colors duration-200 hover:text-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";

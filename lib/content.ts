@@ -347,14 +347,9 @@ export const siteContent = {
     ariaPause: "Pause",
     ariaNext: "Next track",
     ariaVolume: "Volume",
-    // Visible CC BY 3.0 attribution, on the band's lower right (facts from
-    // public/audio/LICENSES.md).
-    creditLead: "\u201cSunset Pier\u201d by",
-    creditArtist: "Philman (Philip Milman, PM Music)",
-    creditArtistUrl: "https://pmmusic.pro/downloads/",
-    creditJoin: ", licensed",
-    creditLicense: "CC BY 3.0",
-    creditLicenseUrl: "https://creativecommons.org/licenses/by/3.0/",
+    // The band's lower-right line (public/audio/CREDITS.md has each track's
+    // credit; the player card shows the title, artist and Spotify link).
+    creditLine: "Songs I like, as instrumentals, credited to their artists in the player.",
     tracks: liveTracks,
   },
   // The holding page's deck (components/HoldingDeck.tsx) draws these five; nothing else reads them.

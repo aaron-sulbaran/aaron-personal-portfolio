@@ -34,8 +34,7 @@ export const register: InlineRegister = {
     "killer-drones": { text: "unless it's killer drones, I don't do that" },
     "evolving-isle": { text: "not dynamic island, a nod to Apple" },
     "music-note": {
-      text: "I'm not playing my usual playlist (a lot of Tyler, the Creator, Childish Gambino and Steve Lacy) because I don't own it, and I picked music that's easy to read to, and I adapted a couple of the tracks myself in Epidemic Sound's studio. The credits are in the corner.",
-      adaptedClause: ", and I adapted a couple of the tracks myself in Epidemic Sound's studio",
+      text: "These are songs I like, played as instrumentals so they're easy to read to. Each is credited to its artist in the player, with a link to the original on Spotify.",
     },
     "ieee-ao": { text: "External Activities and Events Assistant Officer" },
     "this-site-playground": { text: "I consider my portfolio my design playground!" },
