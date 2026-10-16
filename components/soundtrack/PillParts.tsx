@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import type { CSSProperties, ReactNode } from "react";
 import { NoteIcon } from "@/components/menu/NoteIcon";
 import { siteContent } from "@/lib/content";
@@ -82,7 +83,8 @@ export function iconButton(size?: number): CSSProperties {
   };
 }
 
-export function Cover({ size, cover }: { size: number; cover: string | null }) {
+// The album art when the track has one, else the designed striped tile.
+export function Cover({ size, cover, title }: { size: number; cover: string | null; title: string }) {
   return (
     <span
       style={{
@@ -95,11 +97,19 @@ export function Cover({ size, cover }: { size: number; cover: string | null }) {
         flex: "0 0 auto",
         border: "1px solid var(--color-border)",
         background: "var(--color-glass)",
-        backgroundImage: cover ? `url(${cover})` : undefined,
-        backgroundSize: "cover",
       }}
     >
-      {!cover && (
+      {cover ? (
+        <Image
+          src={cover}
+          alt={`${siteContent.soundtrack.coverAlt} ${title}`}
+          width={size}
+          height={size}
+          sizes={`${size}px`}
+          loading="eager"
+          style={{ display: "block", width: "100%", height: "100%", objectFit: "cover" }}
+        />
+      ) : (
         <span
           style={{
             position: "absolute",

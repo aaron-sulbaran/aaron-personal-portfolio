@@ -86,7 +86,7 @@ export function PlayerCard({ music, expanded, reduce, focusOnOpen, onCardLeave, 
       aria-label={c.ariaOpen}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-        <Cover size={56} cover={track.cover} />
+        <Cover size={56} cover={track.cover} title={track.title} />
         <span style={{ flex: "1 1 auto", minWidth: 0 }}>
           <span
             style={{

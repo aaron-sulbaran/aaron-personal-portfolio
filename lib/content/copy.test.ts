@@ -54,12 +54,13 @@ describe("Who I am", () => {
     );
   });
 
-  it("links the definition and eight pops, for leadership, family and friends, the hobbies and the roots, and nothing else", () => {
+  it("links the definition and nine pops, for leadership, family and friends, the hobbies and the roots, and nothing else", () => {
     expect(whoIAm.blocks.flatMap((block) => [block.body, ...(block.sub ? [block.sub.body] : [])]).flatMap(referenced)).toEqual([
       "def:product",
       "pop:leadership-award",
       "pop:family",
       "pop:friends",
+      "pop:3d-printing",
       "pop:sandboarding",
       "pop:downhill-skating",
       "pop:skydiving",
@@ -68,9 +69,9 @@ describe("Who I am", () => {
     ]);
   });
 
-  it("leaves 3D printing as plain words until its photo exists", () => {
-    expect(whoIAm.blocks[2].sub?.body).toContain("recently got into 3D printing because");
-    expect(registerHas("pop", "3d-print")).toBe(false);
+  it("links 3D printing to its photo pop", () => {
+    expect(whoIAm.blocks[2].sub?.body).toContain("recently got into [3D printing](pop:3d-printing) because");
+    expect(registerHas("pop", "3d-printing")).toBe(true);
   });
 });
 
@@ -83,7 +84,7 @@ describe("where the links sit, pinned as raw markup", () => {
       "I was born in Maracaibo, [Venezuela](pop:venezuela-flag), and moved to the U.S. when I was around 4. I grew up in Texas, mostly in Katy, watching my dad figure out a business as he went. I worked in it too, which is where I learned to wear a lot of hats.",
     ]);
     expect(whoIAm.blocks[2].sub?.body).toBe(
-      "I love to travel, tinker on personal projects, and getting active. I love credit card-maxxing since it allows me to fulfill my wanderlust, recently got into 3D printing because it lets me work on the engineering I don't get to do in class, and love [extreme sports](pop:sandboarding) like [downhill skating](pop:downhill-skating), [skydiving](pop:skydiving), and [rock climbing](pop:rock-climbing).",
+      "I love to travel, tinker on personal projects, and getting active. I love credit card-maxxing since it allows me to fulfill my wanderlust, recently got into [3D printing](pop:3d-printing) because it lets me work on the engineering I don't get to do in class, and love [extreme sports](pop:sandboarding) like [downhill skating](pop:downhill-skating), [skydiving](pop:skydiving), and [rock climbing](pop:rock-climbing).",
     );
   });
 

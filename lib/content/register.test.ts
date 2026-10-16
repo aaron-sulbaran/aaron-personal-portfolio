@@ -7,7 +7,7 @@ describe("the inline register", () => {
   it("holds the approved keys and only those", () => {
     expect(Object.keys(register.def)).toEqual(["product", "voltage", "arc"]);
     expect(Object.keys(register.tip)).toEqual(["two-as", "voltaage", "killer-drones", "evolving-isle", "music-note", "ieee-ao", "this-site-playground", "job-0", "job-1", "job-2", "job-3", "job-4"]);
-    expect(Object.keys(register.pop)).toEqual(["leadership-award", "sandboarding", "downhill-skating", "skydiving", "rock-climbing", "venezuela-flag", "family", "friends", "misuki-suki", "matcha", "sister-kyoto", "contrabass-clarinet", "rango", "catatumbo-lightning", "lake-maracaibo", "ut-ece-logo"]);
+    expect(Object.keys(register.pop)).toEqual(["leadership-award", "sandboarding", "downhill-skating", "skydiving", "rock-climbing", "venezuela-flag", "family", "friends", "misuki-suki", "matcha", "sister-kyoto", "contrabass-clarinet", "rango", "catatumbo-lightning", "lake-maracaibo", "3d-printing", "ut-ece-logo"]);
   });
 
   it("carries each jobs timeline tip, word for word, under its entry's key", () => {
@@ -72,6 +72,7 @@ describe("the inline register", () => {
       rango: "yeah, this guy from that one kid's movie",
       "catatumbo-lightning": "The lightning in question",
       "lake-maracaibo": "The famous Puente General Rafael Urdaneta over Lake Maracaibo.",
+      "3d-printing": "My 3D printing corner, filament stash and all",
       "ut-ece-logo": "UT Austin Electrical and Computer Engineering",
     });
     expect(Object.values(register.pop).every((entry) => entry.crop === null)).toBe(true);

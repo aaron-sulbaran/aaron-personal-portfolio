@@ -1,6 +1,9 @@
+import { statSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { siteContent, tipText, type SoundtrackTrack } from "@/lib/content";
 import { creditProblems, hasAdaptedTrack, liveTracks } from "@/lib/content/tracks";
+import { imageSize } from "@/lib/testing/imageSize";
 
 const live: readonly SoundtrackTrack[] = siteContent.soundtrack.tracks;
 
@@ -20,6 +23,17 @@ const ccBy: SoundtrackTrack = {
 const adapted = (credit: string): SoundtrackTrack => ({
   title: "Night Drive", artist: "Example Artist", src: "/audio/night-drive.mp3", credit,
   licenseKind: "adapted", licenseUrl: null, why: null, inspiredBy: null, spotifyUrl: null, cover: null,
+});
+
+describe("soundtrack covers", () => {
+  it("gives each live track its square 600 px cover, under 300,000 bytes", () => {
+    expect(live.map((track) => track.cover)).toEqual([1, 2, 3, 4, 5, 6, 7].map((n) => `/audio/covers/track-0${n}.jpg`));
+    for (const track of live) {
+      const file = join(process.cwd(), "public", track.cover ?? "");
+      expect(imageSize(file), track.title).toEqual([600, 600]);
+      expect(statSync(file).size, track.title).toBeLessThan(300_000);
+    }
+  });
 });
 
 describe("soundtrack credits", () => {

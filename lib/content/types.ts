@@ -137,7 +137,8 @@ export interface SoundtrackTrack {
   why: string | null;
   inspiredBy: InspiredBy | null;
   spotifyUrl: string | null;
-  // A tile designed for the site; the music license never covers album art.
+  // Album art shown in the player (public/audio/covers), credited to the artists and labels;
+  // null falls back to the designed tile.
   cover: string | null;
 }
 

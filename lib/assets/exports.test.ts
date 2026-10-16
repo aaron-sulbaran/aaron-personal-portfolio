@@ -23,7 +23,7 @@ const PHOTOS: Record<string, [number, number]> = {
 const POPS: Record<string, [number, number]> = {
   "contrabass-clarinet": [600, 800], "downhill-skating": [600, 800], "leadership-award": [600, 800], matcha: [600, 800], "rock-climbing": [600, 800],
   rango: [599, 800], "catatumbo-lightning": [800, 577], "lake-maracaibo": [250, 342], "ut-ece-logo": [800, 243], sandboarding: [600, 800], "sister-kyoto": [800, 717], skydiving: [800, 600], "venezuela-flag": [600, 800],
-  family: [600, 800], friends: [600, 800], "misuki-suki": [800, 603],
+  family: [600, 800], friends: [600, 800], "misuki-suki": [800, 603], "3d-printing": [600, 800],
 };
 const LOGOS: Record<string, string[]> = {
   anthropic: ["anthropic-mark-white.svg", "anthropic-mark.svg", "anthropic-wordmark-white.svg", "anthropic-wordmark.svg"],
@@ -51,6 +51,9 @@ describe("the exported photos", () => {
       expect(statSync(join(PUBLIC, file)).size, file).toBeLessThanOrEqual(300_000);
       expect(jpegHasMetadata(join(PUBLIC, file)), file).toBe(false);
     }
+  });
+  it("carry no Exif or ICC segment in the soundtrack covers", () => {
+    for (const name of listed("audio/covers")) expect(jpegHasMetadata(join(PUBLIC, "audio/covers", name)), name).toBe(false);
   });
   it("make every card picture 3:4 within a pixel", () => {
     for (const [name, [width, height]] of Object.entries(PHOTOS)) if (name.endsWith("-picture")) expect(Math.abs(width - (height * 3) / 4), name).toBeLessThanOrEqual(1);

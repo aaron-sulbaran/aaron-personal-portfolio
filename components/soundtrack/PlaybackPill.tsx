@@ -214,7 +214,7 @@ function PillInner({ reached }: { reached: boolean }) {
             overClassName={`flex items-center ${preview ? "py-2 pl-2 pr-4" : "pl-[13px] pr-4"} ${reduce ? "" : "transition-[padding] duration-300 ease-[ease]"}`}
           >
             <PillSlot visible={preview} maxWidth={40} reduce={reduce}>
-              <Cover size={38} cover={track.cover} />
+              <Cover size={38} cover={track.cover} title={track.title} />
             </PillSlot>
             <PillSlot visible={preview} maxWidth={190} reduce={reduce} before={12} after={12} block>
               <span className="block font-label text-label-sm text-foreground">{track.title}</span>

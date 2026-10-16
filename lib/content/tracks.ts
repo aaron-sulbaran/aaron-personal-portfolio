@@ -3,7 +3,8 @@ import type { SoundtrackTrack } from "./types";
 
 // The tracks the player ships (public/audio/CREDITS.md): instrumental versions
 // of songs I like, credited to their artists. No license is claimed for any of
-// them. The player keeps its own cover tile.
+// them. Each track shows its album cover (public/audio/covers); a null cover falls
+// back to the designed tile.
 export const liveTracks: readonly SoundtrackTrack[] = [
   {
     title: "Mia & Sebastian's Theme",
@@ -15,7 +16,7 @@ export const liveTracks: readonly SoundtrackTrack[] = [
     why: null,
     inspiredBy: null,
     spotifyUrl: "https://open.spotify.com/track/1Vk4yRsz0iBzDiZEoFMQyv",
-    cover: null,
+    cover: "/audio/covers/track-01.jpg",
   },
   {
     title: "Loving Is Easy",
@@ -27,7 +28,7 @@ export const liveTracks: readonly SoundtrackTrack[] = [
     why: null,
     inspiredBy: null,
     spotifyUrl: "https://open.spotify.com/track/7ASFZh1D0DPZro7UXUKGmd",
-    cover: null,
+    cover: "/audio/covers/track-02.jpg",
   },
   {
     title: "Cherry Wine",
@@ -39,7 +40,7 @@ export const liveTracks: readonly SoundtrackTrack[] = [
     why: null,
     inspiredBy: null,
     spotifyUrl: "https://open.spotify.com/track/5o5WaO9pzPhXSGIrTIYVce",
-    cover: null,
+    cover: "/audio/covers/track-03.jpg",
   },
   {
     title: "2SEATER",
@@ -51,7 +52,7 @@ export const liveTracks: readonly SoundtrackTrack[] = [
     why: null,
     inspiredBy: null,
     spotifyUrl: "https://open.spotify.com/track/6Xw3iWrQKgArwlRhVuU9CK",
-    cover: null,
+    cover: "/audio/covers/track-04.jpg",
   },
   {
     title: "No soy de aquí ni soy de allá",
@@ -63,7 +64,7 @@ export const liveTracks: readonly SoundtrackTrack[] = [
     why: null,
     inspiredBy: null,
     spotifyUrl: "https://open.spotify.com/track/6ecQfWXmbhiBSCzL0h1YxN",
-    cover: null,
+    cover: "/audio/covers/track-05.jpg",
   },
   {
     title: "Chachachá",
@@ -75,7 +76,7 @@ export const liveTracks: readonly SoundtrackTrack[] = [
     why: null,
     inspiredBy: null,
     spotifyUrl: "https://open.spotify.com/track/6aommJFM8i3iT4inKuDSXh",
-    cover: null,
+    cover: "/audio/covers/track-06.jpg",
   },
   {
     title: "TURiSTA",
@@ -87,7 +88,7 @@ export const liveTracks: readonly SoundtrackTrack[] = [
     why: null,
     inspiredBy: null,
     spotifyUrl: "https://open.spotify.com/track/3zRr8fzBc3O3Y9JrjLdoIO",
-    cover: null,
+    cover: "/audio/covers/track-07.jpg",
   },
 ];
 
