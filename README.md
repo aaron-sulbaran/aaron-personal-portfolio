@@ -1,16 +1,14 @@
-# aaronsulbaran.com, in the open
+# aaronsulbaran.com, how I built it.
 
-[aaronsulbaran.com](https://aaronsulbaran.com) is my personal site: a hero made of cards you can spin, a few honest sections, and a lot of small details I couldn't leave alone. This repo is the behind-the-scenes companion. It shows how the site got built, what I changed my mind about, and why.
-
-**In thirty seconds:** read "Why I built this", skim the table under "Product decisions", then open one commit. The history is real. It keeps the original dates and messages, so you can watch the site change its mind.
+[aaronsulbaran.com](https://aaronsulbaran.com) is my personal site. It changes from time to time but right now it's a hero made of cards you can spin, a few honest sections about me, and a lot of small features and details I loved building. This repo is the how I built it, what I changed my mind about, and why.
 
 ## Why I built this
 
-I'm a fourth-year ECE student at UT Austin, headed into product management. Product work is mostly invisible: the options you weighed, the thing you cut, the version you threw away. A resume flattens all of that.
+I'm a fourth-year ECE student at UT Austin, headed into product management. Product work is mostly invisible from the outside: the options you weighed, the feature you cut, and the trade-off decisions all get flattened by a resume.
 
-So I made my own site the product. Its audience is someone who followed a link and has about a minute, and it has two jobs for them. First, feel something distinctive. Second, get the plain facts fast, without needing to play with anything. Almost every decision below is me trying to serve both without letting either win.
+So I made my own site with the vision of it becoming its own product. Its audience is someone who followed a link and has about a minute, and it has two jobs for them. First, feel something distinctive and anti-slop. Second, get what they need (facts about me) fast, without needing to play with anything. Almost every decision below is me trying to serve both, never letting the user leave my mind.
 
-I ship it in public and I keep changing it. Features arrive as small slices with a reason attached.
+The repo is public and I plan to keep changing it over time. Features arrive as small parts or PRs, oftentimes of a bigger vision, with a reason attached.
 
 ## Product decisions and iterations
 
@@ -28,10 +26,10 @@ Each row is a real change with the commits that made it. Links open the commit i
 
 ## The design calls
 
-- **One accent, plus one exception.** Sea blue, soft sea blue in dark mode. The only second hue is a burnt orange, about a fifth of the shader field, and it never touches the letters of my name. [Where I landed on it](../../commit/523bed8).
+- **One accent, plus one exception.** Sea blue, soft sea blue in dark mode. The only second hue is a burnt orange, about a fifth of the shader field, and  both have personal meanings while still complementing each other. [Where I landed on it](../../commit/523bed8).
 - **Cards recede by brightness and curvature, never blur.** The Coil's cards are opaque panes. Real blur is saved for modals over a frozen scene.
 - **Type has a job each.** Profa Black upright for display, Profa Bold for labels and controls, Inter for reading. Sentence case, no tracked caps. [Display face](../../commit/32554ad), [label face](../../commit/1570e1e), [spec](docs/label-face-spec.md).
-- **Slow, low amplitude motion, and a calm way out.** Reduced motion gets the still picture, live, in both directions.
+- **Slow, low amplitude motion, and a calm way out.** I though about accessibility and designed for reduced motion users who get still pictures, all the text, and the most important info persists.
 - **First person everywhere,** including image alt text. One sweep checks every string for broken links, missing files and third-person alts. [The sweep](../../commit/1aa13d1).
 - **No stock imagery.** Photos are mine, or things I chose.
 - **The loader tells the truth.** It is a weighted tally of real assets, it only appears when loading is actually slow, and it never flashes. [Loader](../../commit/8db6e2f).
@@ -55,9 +53,9 @@ The calls that shaped it:
 
 ## How I build it
 
-I build this with Claude agents, and I make my own changes by hand and review the code throughout. Most commits carry a Claude co-author trailer because that is the honest picture, and I read the diffs before they merge. The toolkit band on the site is the live count of that setup.
+I build this with Claude agents, and I make my own changes by hand and review the code throughout. Most commits carry a Claude co-author trailer because I have autonomous review agents anytime I write code (whether agentic or by hand) and I read the diffs before they merge. The toolkit band on the site is the live count of that setup.
 
-Three habits keep it from turning into generated mush:
+Three habits keep it from turning into AI-generated mush:
 
 - **Labs before specs.** For anything about motion or look, I build a throwaway lab page with sliders and tune it by hand until it feels right. The numbers I pick become the spec, then the code.
 - **One pull request per slice.** Small commits, never squashed, so the history reads as the work happened.
