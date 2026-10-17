@@ -92,7 +92,7 @@ export function seriesStats(s: Series, labels: MetricsLabels = DEFAULT_LABELS): 
 }
 
 // "Updated Oct 13": over the first figure of a stale series.
-export const staleStamp = (s: Series, labels: MetricsLabels = DEFAULT_LABELS): string | null => (s.stale ? `${labels.updated} ${shortDate(s.range.to)}` : null);
+export const staleStamp = (s: Series, labels: MetricsLabels = DEFAULT_LABELS): string | null => (s.stale ? `${labels.updated} ${shortDate((s.kind === "usage" && s.updatedAt) || s.range.to)}` : null);
 
 // My own figures that are not GitHub's (none today): a null slot renders nothing.
 export function slotStats(): Stat[] {

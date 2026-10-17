@@ -55,3 +55,23 @@ export type NamedTool = z.infer<typeof namedToolSchema>;
 
 // A tool's total tokens for a day: input, output, cache reads and cache writes.
 export const toolTotal = (c: ToolCounts): number => c.in + c.out + c.cr + c.cw;
+
+export const USAGE_EXPORT_VERSION = 1;
+
+// The daily feed (scripts/usage-export.mjs): only what the strip renders. Each
+// day is one total per agent, the toolkit is its four counts plus the named
+// public tools, and nothing else can ride along (strict at every level). It
+// lives in the private vault and is read back through lib/metrics/usageFeed.ts.
+export const usageExportSchema = z.object({
+  version: z.literal(USAGE_EXPORT_VERSION),
+  generatedAt: z.iso.datetime(),
+  tz: z.string().min(1).max(64),
+  days: z.array(z.object({
+    d: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    claude: count,
+    codex: count,
+  }).strict()),
+  toolkit: toolkitSchema,
+}).strict();
+
+export type UsageExport = z.infer<typeof usageExportSchema>;

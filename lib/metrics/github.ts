@@ -2,7 +2,7 @@ import "server-only";
 import { z } from "zod";
 import type { GithubSeries, Series } from "./series";
 import { snapshotSeries } from "./snapshot";
-import { loadUsage } from "./usage";
+import { loadUsageSeries } from "./usageFeed";
 import { summarize, windowStart, type SeriesWindow } from "./window";
 
 // The contribution calendar through GitHub's GraphQL API, with a token that
@@ -103,6 +103,6 @@ export async function loadSeries(kind: Series["kind"], window: SeriesWindow = "6
     case "github":
       return loadGithub(window, now);
     case "usage":
-      return loadUsage();
+      return loadUsageSeries(now);
   }
 }

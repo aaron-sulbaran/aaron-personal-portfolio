@@ -2,6 +2,12 @@
 // Nothing else leaves the laptop: no prompts, paths, ids, or model names.
 // Run: node scripts/usage-snapshot.mjs --since 2026-04-01 --out lib/metrics/data/usage-6mo.json
 //
+// --export <path> writes the public-safe daily feed instead (scripts/usage-export.mjs):
+// one JSON file with per-day totals per agent for the strip's six-month window,
+// the toolkit's four counts and the call counts of public-list tools only. It
+// is for the private vault, read back by lib/metrics/usageFeed.ts. With --export
+// the committed snapshot is not rewritten unless --out is also passed.
+//
 // Claude counts the way Claude Code's desktop app counts its "Total tokens":
 // every assistant line in ~/.claude/projects, subagent transcripts included.
 // Claude Code writes one line per content block of a response (thinking, text,
@@ -24,6 +30,8 @@ import { createInterface } from "node:readline";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { parseEnv } from "node:util";
+import { buildUsageExport } from "./usage-export.mjs";
+import { windowStart } from "../lib/metrics/window.ts";
 import { collectCalls, localDay, namedToolkit, newTally } from "./toolkit-calls.mjs";
 import { countToolkit, setupNames } from "./toolkit-counts.mjs";
 
@@ -32,8 +40,9 @@ const flag = (name, fallback) => {
   const i = args.indexOf(name);
   return i >= 0 && args[i + 1] ? args[i + 1] : fallback;
 };
-const since = flag("--since", "2026-04-01");
-const outPath = flag("--out", "lib/metrics/data/usage-6mo.json");
+const exportPath = flag("--export", undefined);
+const since = flag("--since", exportPath ? windowStart(localDay(new Date().toISOString()), "6mo") : "2026-04-01");
+const outPath = flag("--out", exportPath ? undefined : "lib/metrics/data/usage-6mo.json");
 const claudeRule = flag("--claude", "app");
 if (claudeRule !== "app" && claudeRule !== "responses") {
   throw new Error(`--claude must be "app" or "responses", got ${claudeRule}`);
@@ -184,7 +193,12 @@ const sum = (tool) => snapshot.days.reduce((acc, day) => {
   return acc + c.in + c.out + c.cr + c.cw;
 }, 0);
 const billions = (n) => `${(n / 1e9).toFixed(2)}B`;
-writeFileSync(outPath, `${JSON.stringify(snapshot, null, 2)}\n`);
+if (outPath) writeFileSync(outPath, `${JSON.stringify(snapshot, null, 2)}\n`);
+if (exportPath) {
+  const feed = buildUsageExport(snapshot, publicToolkit, { from: since });
+  writeFileSync(exportPath, `${JSON.stringify(feed, null, 2)}\n`);
+  console.error(`export: ${feed.days.length} days, ${feed.toolkit.named.length} named tools, written to ${exportPath}`);
+}
 console.error(`claude files ${claudeFiles}, lines ${claudeLines.length}, responses ${claudeResponses.size}, rule ${claudeRule}`);
 console.error(`codex files ${codex.files}, days ${snapshot.days.length}`);
 console.error(`claude ${billions(sum("claude"))}, codex ${billions(sum("codex"))}`);
