@@ -11,7 +11,7 @@ const STAMP_OFFSET = "max-md:mt-[1.625rem]";
 // the dt comes first in the markup and the dd takes the top grid row.
 export function StatRow({ stat }: { stat: Stat }) {
   return (
-    <dl data-stat-list={stat.key} className="grid min-w-0 gap-y-1.5">
+    <dl className="grid min-w-0 gap-y-1.5">
       <dt data-stat={stat.key} className="row-start-2 font-label text-label-sm text-muted">
         {stat.label}
         {stat.sub && <span className="block">{stat.sub}</span>}

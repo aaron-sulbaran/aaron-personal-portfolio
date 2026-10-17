@@ -53,7 +53,7 @@ export type TokensSettings = {
 // Aaron's pick (metrics lab, 2026-10-13); the wave timings are his round 3 brief.
 export const TOKENS: TokensSettings = {
   colorSet: "official",
-  codexColor: "stone",
+  codexColor: "slate",
   heightCurve: "sqrt",
   heightCap: 1,
   minShare: 0.02,
