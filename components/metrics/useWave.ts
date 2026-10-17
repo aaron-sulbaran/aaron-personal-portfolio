@@ -6,7 +6,7 @@ import { useReducedMotionLive } from "@/components/soundtrack/useReducedMotionLi
 import { clipIn, clipOut } from "@/lib/gallery/reveal";
 import { gsap, ScrollTrigger } from "@/lib/gsap";
 import type { SeriesChoice } from "@/lib/metrics/settings";
-import { waveSchedule, type WaveDirection } from "@/lib/metrics/wave";
+import { WAVE_EASE, waveSchedule, type WaveDirection } from "@/lib/metrics/wave";
 
 export const FIGURE_COUNT = 3;
 
@@ -84,7 +84,7 @@ export function useWave(first: SeriesChoice, timings: WaveTimings) {
   const maskThrough = useCallback((el: HTMLElement | null, direction: WaveDirection, mask: "in" | "out", seconds: number, at: gsap.core.Timeline, position: number) => {
     if (!el) return;
     const clip = mask === "in" ? clipIn(direction) : clipOut(direction);
-    at.fromTo(el, { clipPath: clip.from }, { clipPath: clip.to, duration: seconds, ease: "power2.inOut", immediateRender: false }, position);
+    at.fromTo(el, { clipPath: clip.from }, { clipPath: clip.to, duration: seconds, ease: WAVE_EASE, immediateRender: false }, position);
   }, []);
 
   const start = useCallback((target: SeriesChoice) => {
@@ -100,7 +100,7 @@ export function useWave(first: SeriesChoice, timings: WaveTimings) {
       return;
     }
     mark("waveState", "running");
-    const half = maskMs / 2000;
+    const half = maskMs / 1000;
     const timeline = gsap.timeline({ onComplete: settle });
     run.current = { timeline, target, direction };
     const at = (ms: number) => ms / 1000;
@@ -125,7 +125,7 @@ export function useWave(first: SeriesChoice, timings: WaveTimings) {
       if (!el) return;
       el.dataset.maskDir = direction;
       const clip = direction === "ltr" ? clipIn(direction) : clipOut(direction);
-      bandTween.current = gsap.fromTo(el, { clipPath: clip.from }, { clipPath: clip.to, duration: maskMs / 1000, ease: "power2.inOut" });
+      bandTween.current = gsap.fromTo(el, { clipPath: clip.from }, { clipPath: clip.to, duration: maskMs / 1000, ease: WAVE_EASE });
     }, [], at(wave.bandAtMs));
     timeline.set({}, {}, at(wave.endMs));
   }, [maskThrough, mark, note, refreshSoon, settle]);

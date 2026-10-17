@@ -1,9 +1,13 @@
 // The switch between Commits and Tokens as one wave across the strip
 // (docs/superpowers/specs/2026-10-13-metrics-wave-toolkit-design.md). Going to
 // Tokens the wave runs left to right: the bars, then each figure from the top,
-// then the toolkit band masks in. Going back it runs right to left: the
+// then the toolkit band masks in. Each mask takes the house reveal's length
+// and ease (lib/gallery/constants.ts, GALLERY.mask and GALLERY.ease), a figure
+// masking out and then in. Going back it runs right to left: the
 // figures from the last, the band masks out, then the bars. Pure; the
 // orchestration (components/metrics/useWave.ts) plays what this schedules.
+
+import { GALLERY } from "@/lib/gallery/constants";
 
 export type WaveDirection = "ltr" | "rtl";
 
@@ -15,7 +19,7 @@ export type WaveInput = {
   // Between the bars and the first figure (ltr), or the band and the bars (rtl).
   offsetMs: number;
   reduced: boolean;
-  // One mask's length; only the schedule's end needs it.
+  // One mask's length; a figure's out and in each take one. The schedule's end needs it.
   maskMs?: number;
 };
 
@@ -33,7 +37,10 @@ export type WaveSchedule = {
   instant: boolean;
 };
 
-export const WAVE_MASK_MS = 360;
+// The house reveal's mask length (GALLERY.mask.lengthMs), the same for every mask in the wave.
+export const WAVE_MASK_MS = GALLERY.mask.lengthMs;
+// The house reveal's ease, registered by lib/gsap.ts.
+export const WAVE_EASE = GALLERY.ease.gsap;
 
 export function waveSchedule({ direction, figures, gapMs, offsetMs, reduced, maskMs = WAVE_MASK_MS }: WaveInput): WaveSchedule {
   if (reduced) return { direction, barsAtMs: 0, figureAtMs: Array.from({ length: figures }, () => 0), bandAtMs: 0, endMs: 0, instant: true };
@@ -43,12 +50,14 @@ export function waveSchedule({ direction, figures, gapMs, offsetMs, reduced, mas
   if (direction === "ltr") {
     const figureAtMs = Array.from({ length: figures }, (_, i) => offset + i * gap);
     const bandAtMs = offset + figures * gap;
-    return { direction, barsAtMs: 0, figureAtMs, bandAtMs, endMs: bandAtMs + mask, instant: false };
+    const lastFigureEndMs = figures > 0 ? figureAtMs[figures - 1] + 2 * mask : 0;
+    return { direction, barsAtMs: 0, figureAtMs, bandAtMs, endMs: Math.max(bandAtMs + mask, lastFigureEndMs), instant: false };
   }
   const figureAtMs = Array.from({ length: figures }, (_, i) => (figures - 1 - i) * gap);
   const bandAtMs = figures * gap;
   const barsAtMs = bandAtMs + offset;
-  return { direction, barsAtMs, figureAtMs, bandAtMs, endMs: Math.max(bandAtMs + mask, barsAtMs), instant: false };
+  const lastFigureEndMs = figures > 0 ? figureAtMs[0] + 2 * mask : 0;
+  return { direction, barsAtMs, figureAtMs, bandAtMs, endMs: Math.max(bandAtMs + mask, lastFigureEndMs, barsAtMs), instant: false };
 }
 
 export type WaveEvent = { name: string; atMs: number };

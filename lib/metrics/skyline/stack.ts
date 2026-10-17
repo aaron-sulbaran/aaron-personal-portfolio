@@ -41,13 +41,19 @@ export type SegmentGap = 0 | 1 | 2;
 export const SEGMENT_GAPS: readonly SegmentGap[] = [0, 1, 2];
 export const defaultGap = (set: TokenColorSet): SegmentGap => (set === "brand" || set === "official" ? 1 : 0);
 
-export const tokenColors = (set: TokenColorSet) => ({
+// Codex's own colour, apart from the set. "blue" keeps the set's Codex colour
+// (the official kit's blue); the other three are warm or neutral greys that sit
+// beside Claude's orange, each a --tokens-codex-<name> in app/globals.css.
+export type CodexColor = "blue" | "stone" | "sand" | "slate";
+export const CODEX_COLORS: readonly CodexColor[] = ["blue", "stone", "sand", "slate"];
+
+export const tokenColors = (set: TokenColorSet, codexColor: CodexColor = "blue") => ({
   claude: `var(--tokens-${set}-claude)`,
-  codex: `var(--tokens-${set}-codex)`,
+  codex: codexColor === "blue" ? `var(--tokens-${set}-codex)` : `var(--tokens-codex-${codexColor})`,
 });
 
 // Each tool's four steps toward the page, the same rule as the accent's ramp.
-export const tokenRamps = (set: TokenColorSet, lightestShare: number) => {
-  const c = tokenColors(set);
+export const tokenRamps = (set: TokenColorSet, lightestShare: number, codexColor: CodexColor = "blue") => {
+  const c = tokenColors(set, codexColor);
   return { claude: rampOf(c.claude, lightestShare), codex: rampOf(c.codex, lightestShare) };
 };

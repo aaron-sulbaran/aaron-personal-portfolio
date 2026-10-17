@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defaultGap, lowerShare, segmentHeights, splitAt, tokenColors, tokenRamps, TOKEN_SETS } from "./stack";
+import { defaultGap, lowerShare, segmentHeights, splitAt, tokenColors, tokenRamps, CODEX_COLORS, TOKEN_SETS } from "./stack";
 
 describe("stacked shares", () => {
   it("gives the lower tool its share of the day, all of an empty or one-tool day", () => {
@@ -50,6 +50,20 @@ describe("token colours", () => {
       expect(ramps.claude[3]).toBe(`var(--tokens-${set}-claude)`);
       expect(ramps.codex[0]).toBe(`color-mix(in srgb, var(--tokens-${set}-codex) 30%, var(--color-background))`);
       for (const step of [...ramps.claude, ...ramps.codex]) expect(step).not.toMatch(/#[0-9a-f]{3,8}/i);
+    }
+  });
+});
+
+describe("the Codex colour", () => {
+  it("keeps the set's own Codex colour for blue and names a token for the other three", () => {
+    expect(CODEX_COLORS).toEqual(["blue", "stone", "sand", "slate"]);
+    expect(tokenColors("official", "blue").codex).toBe("var(--tokens-official-codex)");
+    for (const name of ["stone", "sand", "slate"] as const) {
+      expect(tokenColors("official", name)).toEqual({ claude: "var(--tokens-official-claude)", codex: `var(--tokens-codex-${name})` });
+      const ramps = tokenRamps("official", 30, name);
+      expect(ramps.codex[3]).toBe(`var(--tokens-codex-${name})`);
+      expect(ramps.codex[0]).toBe(`color-mix(in srgb, var(--tokens-codex-${name}) 30%, var(--color-background))`);
+      expect(ramps.claude[3]).toBe("var(--tokens-official-claude)");
     }
   });
 });

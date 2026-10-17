@@ -30,7 +30,7 @@ export function ContributionSkyline({ series, switchReverse, view, onViewChange,
   const settings = useTokensSettings();
   const stacked = series.kind === "usage";
   const copy = wordsFor(series);
-  const { minShare, heightCurve, heightCap, colorSet } = settings;
+  const { minShare, heightCurve, heightCap, colorSet, codexColor } = settings;
   const { model, byDate } = useMemo(() => {
     const curve = stacked ? heightCurve : SKYLINE.heightCurve;
     const cap = stacked ? heightCap : SKYLINE.heightCap;
@@ -42,9 +42,9 @@ export function ContributionSkyline({ series, switchReverse, view, onViewChange,
   }, [series, stacked, minShare, heightCurve, heightCap]);
   const palettes = useMemo(() => {
     if (!stacked) return { lower: PALETTE, upper: null };
-    const ramps = tokenRamps(colorSet, SKYLINE.lightestShare);
+    const ramps = tokenRamps(colorSet, SKYLINE.lightestShare, codexColor);
     return { lower: ramps.claude, upper: ramps.codex };
-  }, [stacked, colorSet]);
+  }, [stacked, colorSet, codexColor]);
   const [theme, setTheme] = useState<ThemeReadout>({ dark: false, swatches: [], key: [] });
   const [active, setActive] = useState(-1);
   const [pinnedLevel, setPinnedLevel] = useState(-1);
