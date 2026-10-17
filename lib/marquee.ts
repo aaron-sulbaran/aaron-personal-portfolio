@@ -43,3 +43,25 @@ export function marqueePlan(contentWidth: number, boxWidth: number): MarqueePlan
     translatesPx: [0, 0, -distancePx, -distancePx, 0],
   };
 }
+
+// Which edge of the clipped box is hiding text, by where the cycle is. At rest
+// only the right edge hides the rest of the title; once it moves away from its
+// start both edges hide text; at the far end only the left edge does.
+export type MarqueeEdge = "start" | "scrolling" | "end";
+
+export function marqueeEdgeAt(phaseMs: number, plan: MarqueePlan): MarqueeEdge {
+  const { startHoldMs, endHoldMs } = MARQUEE;
+  const phase = ((phaseMs % plan.cycleMs) + plan.cycleMs) % plan.cycleMs;
+  if (phase < startHoldMs) return "start";
+  if (phase < startHoldMs + plan.scrollMs) return "scrolling";
+  if (phase < startHoldMs + plan.scrollMs + endHoldMs) return "end";
+  return "scrolling";
+}
+
+export function marqueeMask(edge: MarqueeEdge, fadePx: number = MARQUEE.fadePx): string {
+  const left = `transparent, currentColor ${fadePx}px`;
+  const right = `currentColor calc(100% - ${fadePx}px), transparent`;
+  if (edge === "start") return `linear-gradient(to right, ${right})`;
+  if (edge === "end") return `linear-gradient(to right, ${left})`;
+  return `linear-gradient(to right, ${left}, ${right})`;
+}

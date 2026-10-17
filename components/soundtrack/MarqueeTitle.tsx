@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { MARQUEE, marqueePlan } from "@/lib/marquee";
+import { marqueeEdgeAt, marqueeMask, marqueePlan, type MarqueeEdge } from "@/lib/marquee";
 import { useReducedMotionLive } from "./useReducedMotionLive";
 
 type Props = {
@@ -25,12 +25,14 @@ export function MarqueeTitle({ text, style, className, active = true, maxWidth, 
   const track = useRef<HTMLSpanElement | null>(null);
   const [clipped, setClipped] = useState(false);
   const [state, setState] = useState<"off" | "running" | "paused">("off");
+  const [edge, setEdge] = useState<MarqueeEdge>("start");
 
   useEffect(() => {
     const box = viewport.current;
     const content = track.current;
     if (!box || !content) return;
     let animation: Animation | null = null;
+    let frame = 0;
     let hovered = false;
     let focused = false;
     const scope = box.closest(SCOPE) ?? box;
@@ -43,8 +45,10 @@ export function MarqueeTitle({ text, style, className, active = true, maxWidth, 
     };
 
     const measure = () => {
+      cancelAnimationFrame(frame);
       animation?.cancel();
       animation = null;
+      setEdge("start");
       const plan = marqueePlan(content.offsetWidth, box.clientWidth);
       setClipped(plan !== null);
       setState("off");
@@ -54,6 +58,12 @@ export function MarqueeTitle({ text, style, className, active = true, maxWidth, 
         { duration: plan.cycleMs, iterations: Infinity, easing: "linear" },
       );
       syncPause();
+      const follow = () => {
+        if (!animation) return;
+        setEdge(marqueeEdgeAt(Number(animation.currentTime ?? 0), plan));
+        frame = requestAnimationFrame(follow);
+      };
+      follow();
     };
 
     const enter = () => {
@@ -86,6 +96,7 @@ export function MarqueeTitle({ text, style, className, active = true, maxWidth, 
     scope.addEventListener("focusout", focusOut);
     return () => {
       observer.disconnect();
+      cancelAnimationFrame(frame);
       animation?.cancel();
       box.removeEventListener("pointerenter", enter);
       box.removeEventListener("pointerleave", leave);
@@ -94,12 +105,13 @@ export function MarqueeTitle({ text, style, className, active = true, maxWidth, 
     };
   }, [text, reduce, active, pauseOnHover]);
 
-  const mask = `linear-gradient(to right, currentColor calc(100% - ${MARQUEE.fadePx}px), transparent)`;
+  const mask = marqueeMask(edge);
   return (
     <span
       ref={viewport}
       className={className}
       data-marquee={state}
+      data-marquee-edge={clipped ? edge : undefined}
       style={{
         display: "block",
         overflow: "hidden",
