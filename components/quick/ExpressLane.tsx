@@ -14,7 +14,7 @@ import { useQuickModal } from "./useQuickModal";
 
 // The Express lane: its head, then the years in the chosen variant, and the
 // card modal its tiles open. A new variant, new words or a replay is a new run,
-// so the variant remounts and its one-way checkpoints start again. visit: this
+// so the variant remounts and its checkpoints start again. visit: this
 // is the real page, so arriving answers the first-visit invite for good.
 
 type Props = {
@@ -22,6 +22,7 @@ type Props = {
   titleMode?: TitleMode;
   titleDelayMs?: number;
   titleStaggerMs?: number;
+  titleDurationMs?: number;
   texts?: QuickTexts;
   speed?: number;
   forceReduced?: boolean;
@@ -29,7 +30,7 @@ type Props = {
   visit?: boolean;
 };
 
-export function ExpressLane({ variant = "rail", titleMode, titleDelayMs, titleStaggerMs, texts = DEFAULT_TEXTS, speed = 1, forceReduced = false, replay = 0, visit = false }: Props) {
+export function ExpressLane({ variant = "rail", titleMode, titleDelayMs, titleStaggerMs, titleDurationMs, texts = DEFAULT_TEXTS, speed = 1, forceReduced = false, replay = 0, visit = false }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
   const { open, modal } = useQuickModal();
   const rows = useMemo(() => yearRows(quickEntries, yearLines(texts)), [texts]);
@@ -49,11 +50,12 @@ export function ExpressLane({ variant = "rail", titleMode, titleDelayMs, titleSt
   return (
     <div ref={rootRef}>
       <LaneHeader
-        key={`${titleMode}:${titleDelayMs}:${titleStaggerMs}:${forceReduced}:${replay}`}
+        key={`${titleMode}:${titleDelayMs}:${titleStaggerMs}:${titleDurationMs}:${forceReduced}:${replay}`}
         intro={texts.intro}
         titleMode={titleMode}
         titleDelayMs={titleDelayMs}
         titleStaggerMs={titleStaggerMs}
+        titleDurationMs={titleDurationMs}
         forceReduced={forceReduced}
       />
       {variant === "road" ? <RoadVariant key={runKey} {...shared} /> : <RailVariant key={runKey} {...shared} trip={variant === "trip"} />}

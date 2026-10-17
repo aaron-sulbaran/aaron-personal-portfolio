@@ -152,62 +152,134 @@ for (const [name, viewport] of [["1280x900", { width: 1280, height: 900 }], ["39
   });
 }
 
-// The title, M(inimum) V(iable) P(ortfolio): "MVP" alone at first paint, the rests
-// unfolding after the page settles, replayed by a hover, the full width reserved
-// so nothing below it moves, and the whole title at once under reduced motion.
+// The rail follows the reader both ways: scrolling down lights the years the
+// reading line has passed, scrolling back up un-lights them again.
+test.describe("express lane rail at 1280x900", () => {
+  test.use({ viewport: { width: 1280, height: 900 } });
+
+  test("the active checkpoint moves back up when the reader scrolls back up", async ({ page }) => {
+    await page.goto("/quick");
+    await page.waitForLoadState("networkidle");
+    const litYears = () => page.evaluate(() => document.querySelectorAll('[data-quick-key^="year-"][data-lit="true"]').length);
+    const years = await page.locator('[data-quick-key^="year-"]').count();
+    expect(years).toBeGreaterThan(2);
+    await page.evaluate(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "instant" }));
+    await expect.poll(litYears, { timeout: 4_000 }).toBe(years);
+    const middle = await page.evaluate(() => {
+      const heads = [...document.querySelectorAll<HTMLElement>('[data-quick-key^="year-"]')];
+      const target = heads[Math.floor(heads.length / 2)];
+      window.scrollTo({ top: target.getBoundingClientRect().top + window.scrollY - window.innerHeight * 0.7 + 10, behavior: "instant" });
+      return Math.floor(heads.length / 2) + 1;
+    });
+    await expect.poll(litYears, { timeout: 4_000 }).toBe(middle);
+    await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
+    await expect.poll(litYears, { timeout: 4_000 }).toBeLessThan(middle);
+    await page.evaluate(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "instant" }));
+    await expect.poll(litYears, { timeout: 4_000 }).toBe(years);
+  });
+
+  test("a tile picture, once revealed, stays revealed when the reader scrolls back up", async ({ page }) => {
+    await page.goto("/quick");
+    await page.waitForLoadState("networkidle");
+    await page.evaluate(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "instant" }));
+    const last = page.locator("main button[data-quick-slot]").last();
+    await expect.poll(() => last.locator("[data-quick-thumb]").evaluate((el) => getComputedStyle(el).clipPath), { timeout: 3_000 }).toBe("none");
+    await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
+    await page.waitForTimeout(800);
+    expect(await last.locator("[data-quick-thumb]").evaluate((el) => getComputedStyle(el).clipPath)).toBe("none");
+  });
+});
+
+// The title, M(inimum) V(iable) P(ortfolio): a tight "MVP" at first paint with
+// every rest's slot at width 0, the slots opening once after the page settles and
+// the title is in view, replayed by a click or Enter (never by a hover), the room
+// of the finished title reserved so nothing below it moves, and the whole title
+// at once under reduced motion.
 const SPELLED = "M(inimum) V(iable) P(ortfolio)";
 const restOpacities = (page: Page) => page.evaluate(() => [...document.querySelectorAll<HTMLElement>("[data-mvp-rest]")].map((el) => Number(getComputedStyle(el).opacity)));
+const slotWidths = (page: Page) => page.evaluate(() => [...document.querySelectorAll<HTMLElement>("[data-mvp-slot]")].map((el) => el.getBoundingClientRect().width));
+const trackFirstSlot = (page: Page) =>
+  page.evaluate(() => {
+    const w = window as unknown as { __min: number };
+    w.__min = Infinity;
+    const slot = document.querySelector<HTMLElement>("[data-mvp-slot]")!;
+    const tick = () => {
+      w.__min = Math.min(w.__min, slot.getBoundingClientRect().width);
+      requestAnimationFrame(tick);
+    };
+    tick();
+  });
+const minFirstSlot = (page: Page) => page.evaluate(() => (window as unknown as { __min: number }).__min);
 
 for (const [name, viewport] of [["1280x900", { width: 1280, height: 900 }], ["390x844", { width: 390, height: 844 }]] as const) {
   test.describe(`express lane title at ${name}`, () => {
     test.use({ viewport });
 
-    test("MVP reads alone at first paint, unfolds once, never moves what is below, and is one heading name", async ({ page }) => {
+    test("MVP reads tight at first paint, unfolds once, never moves what is below, and is one heading name", async ({ page }) => {
       await page.addInitScript(() => {
         document.addEventListener("DOMContentLoaded", () => {
           const intro = document.querySelector<HTMLElement>("header p");
           (window as unknown as Record<string, unknown>).__first = {
             opacities: [...document.querySelectorAll<HTMLElement>("[data-mvp-rest]")].map((el) => Number(getComputedStyle(el).opacity)),
+            widths: [...document.querySelectorAll<HTMLElement>("[data-mvp-slot]")].map((el) => el.getBoundingClientRect().width),
             introTop: intro?.getBoundingClientRect().top,
           };
         });
       });
       await page.goto("/quick");
-      const first = await page.evaluate(() => (window as unknown as { __first: { opacities: number[]; introTop: number } }).__first);
+      const first = await page.evaluate(() => (window as unknown as { __first: { opacities: number[]; widths: number[]; introTop: number } }).__first);
       expect(first.opacities).toEqual([0, 0, 0]);
+      expect(first.widths).toEqual([0, 0, 0]);
       const h1 = page.locator("h1");
       await expect(h1).toHaveAccessibleName(quickCopy.title);
       await expect(h1.locator("span").first()).toHaveAttribute("aria-hidden", "true");
-      await expect(h1).toHaveText(SPELLED);
-      await expect(h1).toHaveAttribute("data-state", "open", { timeout: 3_000 });
+      await expect(h1.locator("[data-mvp-ghost]")).toHaveText(SPELLED);
+      await expect(h1).toHaveAttribute("data-state", "open", { timeout: 4_000 });
       expect(await restOpacities(page)).toEqual([1, 1, 1]);
+      for (const width of await slotWidths(page)) expect(width).toBeGreaterThan(40);
       const introTop = await page.locator("header p").first().evaluate((el) => el.getBoundingClientRect().top);
       expect(introTop).toBeCloseTo(first.introTop, 0);
     });
 
-    test("hovering the title plays the unfold again", async ({ page }) => {
+    test("a click or Enter plays the unfold again, a hover does not", async ({ page }) => {
       await page.goto("/quick");
-      await expect(page.locator("h1")).toHaveAttribute("data-state", "open", { timeout: 3_000 });
-      await page.evaluate(() => {
-        const w = window as unknown as { __min: number };
-        w.__min = 1;
-        const last = document.querySelectorAll<HTMLElement>("[data-mvp-rest]")[2];
-        const tick = () => {
-          w.__min = Math.min(w.__min, Number(getComputedStyle(last).opacity));
-          requestAnimationFrame(tick);
-        };
-        tick();
-      });
-      await page.locator("h1").hover();
-      await expect.poll(() => page.evaluate(() => (window as unknown as { __min: number }).__min), { timeout: 2_000 }).toBeLessThan(0.5);
-      await expect.poll(() => restOpacities(page), { timeout: 3_000 }).toEqual([1, 1, 1]);
+      const h1 = page.locator("h1");
+      await expect(h1).toHaveAttribute("data-state", "open", { timeout: 4_000 });
+      await trackFirstSlot(page);
+      await h1.hover();
+      await page.waitForTimeout(1_200);
+      expect(await minFirstSlot(page)).toBeGreaterThan(40);
+
+      await h1.click();
+      await expect.poll(() => minFirstSlot(page), { timeout: 2_000 }).toBeLessThan(5);
+      await expect.poll(() => slotWidths(page).then((w) => Math.min(...w)), { timeout: 4_000 }).toBeGreaterThan(40);
+
+      await page.evaluate(() => (window as unknown as { __min: number }).__min = Infinity);
+      await h1.focus();
+      await page.keyboard.press("Enter");
+      await expect.poll(() => minFirstSlot(page), { timeout: 2_000 }).toBeLessThan(5);
+      await expect.poll(() => slotWidths(page).then((w) => Math.min(...w)), { timeout: 4_000 }).toBeGreaterThan(40);
+    });
+
+    test("the room under the title is the finished title's, so the intro never moves through an unfold", async ({ page }) => {
+      await page.goto("/quick");
+      const intro = page.locator("header p").first();
+      const top = () => intro.evaluate((el) => el.getBoundingClientRect().top);
+      const before = await top();
+      const seen: number[] = [];
+      for (let i = 0; i < 12; i++) {
+        seen.push(await top());
+        await page.waitForTimeout(250);
+      }
+      for (const value of seen) expect(Math.abs(value - before)).toBeLessThan(0.5);
     });
 
     test("under reduced motion the whole title shows at once", async ({ page }) => {
       await page.emulateMedia({ reducedMotion: "reduce" });
       await page.goto("/quick");
-      await expect(page.locator("h1")).toHaveText(SPELLED);
+      await expect(page.locator("h1 [data-mvp-ghost]")).toHaveText(SPELLED);
       expect(await restOpacities(page)).toEqual([1, 1, 1]);
+      for (const width of await slotWidths(page)) expect(width).toBeGreaterThan(40);
     });
   });
 }

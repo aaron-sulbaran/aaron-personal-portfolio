@@ -10,15 +10,15 @@ import { MvpTitle } from "./MvpTitle";
 // The lane's head: the MVP title, the intro, the three ways to reach me, and the
 // way back to the full site through the transition (a real link without it).
 
-export type TitleProps = { titleMode?: TitleMode; titleDelayMs?: number; titleStaggerMs?: number; forceReduced?: boolean };
+export type TitleProps = { titleMode?: TitleMode; titleDelayMs?: number; titleStaggerMs?: number; titleDurationMs?: number; forceReduced?: boolean };
 
 const links = (["linkedin", "email", "github"] as const).map((key) => siteContent.connect.links.find((link) => link.key === key)!);
 const external = (href: string) => (href.startsWith("http") ? { target: "_blank", rel: "noopener noreferrer" } : {});
 
-export function LaneHeader({ intro, titleMode, titleDelayMs, titleStaggerMs, forceReduced }: TitleProps & { intro: string }) {
+export function LaneHeader({ intro, titleMode, titleDelayMs, titleStaggerMs, titleDurationMs, forceReduced }: TitleProps & { intro: string }) {
   return (
     <header className="mb-20 max-w-3xl md:mb-28">
-      <MvpTitle mode={titleMode} delayMs={titleDelayMs} staggerMs={titleStaggerMs} forceReduced={forceReduced} />
+      <MvpTitle mode={titleMode} delayMs={titleDelayMs} staggerMs={titleStaggerMs} durationMs={titleDurationMs} forceReduced={forceReduced} />
       <p data-lane-line="" className="mt-6 max-w-2xl text-lg leading-relaxed text-muted md:text-body-lg">
         {intro}
       </p>

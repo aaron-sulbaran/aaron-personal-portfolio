@@ -7,19 +7,21 @@ describe("quick lab settings", () => {
     expect(SETTINGS_KEY).toBe("lab-quick-v5");
   });
 
-  it("default to the unfold, 600ms after the page settles and 120ms between the three", () => {
-    expect(DEFAULT_SETTINGS).toMatchObject({ titleMode: "unfold", unfoldDelayMs: 600, unfoldStaggerMs: 120 });
+  it("default to the unfold, 600ms after the title is in view, 120ms between the three and 800ms each", () => {
+    expect(DEFAULT_SETTINGS).toMatchObject({ titleMode: "unfold", unfoldDelayMs: 600, unfoldStaggerMs: 120, unfoldDurationMs: 800 });
   });
 
   it("keep a readable title mode and clamp the unfold's timings to the sliders", () => {
     expect(parseSettings(JSON.stringify({ titleMode: "spelled" })).titleMode).toBe("spelled");
     expect(parseSettings(JSON.stringify({ titleMode: "marquee" })).titleMode).toBe("unfold");
-    const wild = parseSettings(JSON.stringify({ unfoldDelayMs: 99999, unfoldStaggerMs: -4 }));
+    const wild = parseSettings(JSON.stringify({ unfoldDelayMs: 99999, unfoldStaggerMs: -4, unfoldDurationMs: 5 }));
     expect(wild.unfoldDelayMs).toBe(3000);
     expect(wild.unfoldStaggerMs).toBe(0);
+    expect(wild.unfoldDurationMs).toBe(200);
     expect(parseSettings(JSON.stringify({ unfoldDelayMs: "slow" })).unfoldDelayMs).toBe(600);
     expect(sameSettings(DEFAULT_SETTINGS, { ...DEFAULT_SETTINGS, titleMode: "spelled" })).toBe(false);
     expect(sameSettings(DEFAULT_SETTINGS, { ...DEFAULT_SETTINGS, unfoldStaggerMs: 130 })).toBe(false);
+    expect(sameSettings(DEFAULT_SETTINGS, { ...DEFAULT_SETTINGS, unfoldDurationMs: 900 })).toBe(false);
   });
 
   it("fall back to the defaults for anything unreadable", () => {
