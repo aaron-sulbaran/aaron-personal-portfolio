@@ -74,9 +74,10 @@ export function Legend({
           onFocus={() => onPreview(i)}
           onBlur={() => onPreview(null)}
           onClick={() => onPin((l) => (l === i ? -1 : i))}
-          className="relative h-[11px] w-[11px] cursor-pointer rounded-[2px] before:absolute before:-inset-x-[3px] before:-inset-y-[6.5px] before:content-[''] border-0 p-0 shadow-[inset_0_0_0_1px_var(--color-border)] transition-[background-color,transform] duration-500 hover:scale-125 focus-visible:outline-2 focus-visible:outline-offset-1 motion-reduce:transition-none"
-          style={{ background: c }}
-        />
+          className="group relative flex h-6 w-6 cursor-pointer items-center justify-center border-0 bg-transparent p-0 focus-visible:outline-2 focus-visible:outline-offset-1"
+        >
+          <span aria-hidden="true" className="h-[11px] w-[11px] rounded-[2px] shadow-[inset_0_0_0_1px_var(--color-border)] transition-transform duration-500 group-hover:scale-125 motion-reduce:transition-none" style={{ background: c }} />
+        </button>
       ))}
       <span className="ml-0.5">{copy.more}</span>
     </div>

@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
-import { countToolkit, THIRD_PARTY_SKILLS } from "../../scripts/toolkit-counts.mjs";
+import { countToolkit, setupNames, THIRD_PARTY_SKILLS } from "../../scripts/toolkit-counts.mjs";
 import snapshot from "./data/usage-6mo.json";
 import { toolkitTotal } from "./format";
 import { toolkitSchema } from "./usageSchema";
@@ -63,9 +63,28 @@ describe("the agent setup count", () => {
     expect(THIRD_PARTY_SKILLS).toEqual({ names: ["hyperframes", "media-use", "website-to-hyperframes"], prefixes: ["hyperframes-"] });
   });
 
-  it("commits counts and nothing else", () => {
+  it("lists what exists in the setup, for the public-name check", () => {
+    const names = setupNames({ home, vault });
+    expect([...names.skills].sort()).toEqual(expect.arrayContaining(["ask", "mine-a", "gsap-core", "never-linked", "talos-feedback", "hyperframes-cli"]));
+    expect(names.skills.has("synced")).toBe(false);
+    expect([...names.plugins].sort()).toEqual(["market", "superpowers", "vercel"]);
+    expect([...names.mcp].sort()).toEqual(["context7", "granola", "mobbin", "supabase"]);
+  });
+
+  it("finds a command file and a plugin's own skills among what exists", () => {
+    mkdirSync(join(home, ".claude", "commands"), { recursive: true });
+    writeFileSync(join(home, ".claude", "commands", "sweeper.md"), "# command\n");
+    const installPath = join(root, "plugin-cache", "superpowers");
+    skill(join(installPath, "skills"), "brainstorming");
+    json(join(home, ".claude", "plugins", "installed_plugins.json"), { version: 2, plugins: { "superpowers@official": [{ installPath }] } });
+    const names = setupNames({ home, vault });
+    expect(names.skills.has("sweeper")).toBe(true);
+    expect(names.skills.has("brainstorming")).toBe(true);
+  });
+
+  it("commits the four counts and the named public tools, nothing else", () => {
     const toolkit = toolkitSchema.parse(snapshot.toolkit);
-    expect(Object.keys(toolkit).sort()).toEqual(["customSkills", "installedSkills", "mcpServers", "plugins"]);
+    expect(Object.keys(toolkit).sort()).toEqual(["customSkills", "installedSkills", "mcpServers", "named", "plugins"]);
     expect(toolkitTotal(toolkit)).toBe(toolkit.customSkills + toolkit.installedSkills + toolkit.plugins + toolkit.mcpServers);
     expect(toolkitSchema.safeParse({ ...toolkit, names: ["ask"] }).success).toBe(false);
   });

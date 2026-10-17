@@ -33,6 +33,25 @@ export function textOut(direction: MaskDirection) {
     : { from: { yPercent: 0 }, to: { yPercent: -110 } };
 }
 
+// The same masks in either direction, as plain clip-path strings, for a block
+// that reveals and hides sideways (the metrics strip's wave, lib/metrics/wave.ts).
+// ltr is textIn and textOut as they are: a clip's edge crosses the block left
+// to right. rtl is their exact mirror: it opens from the right edge leftwards
+// and closes toward the left. The same INK allowance, so ink is never cut.
+export type SweepDirection = "ltr" | "rtl";
+
+export function clipIn(direction: SweepDirection) {
+  return direction === "ltr"
+    ? { from: lineClip(100 + INK.side, -INK.side), to: lineClip(-INK.side, -INK.side) }
+    : { from: lineClip(-INK.side, 100 + INK.side), to: lineClip(-INK.side, -INK.side) };
+}
+
+export function clipOut(direction: SweepDirection) {
+  return direction === "ltr"
+    ? { from: lineClip(-INK.side, -INK.side), to: lineClip(-INK.side, 100 + INK.side) }
+    : { from: lineClip(-INK.side, -INK.side), to: lineClip(100 + INK.side, -INK.side) };
+}
+
 // A turning frame's left to right change in the frame's own coordinates: one
 // edge crosses the frame, the incoming photo left of it and the outgoing right
 // of it, so photos of two shapes hand over on one line. Lengths are px from each

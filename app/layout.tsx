@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import { SiteNav } from "@/components/SiteNav";
 import { MenuPill } from "@/components/menu/MenuPill";
 import { CustomCursor } from "@/components/CustomCursor";
+import { SiteAnalytics } from "@/components/SiteAnalytics";
 import { InlineLayer } from "@/components/inline/InlineLayer";
 import { InputModality } from "@/components/InputModality";
 import { TransitionLayer } from "@/components/transition/TransitionLayer";
@@ -70,6 +71,7 @@ export default function RootLayout({
         <CustomCursor />
         {!HOLDING_MODE && <InlineLayer />}
         {children}
+        <SiteAnalytics />
         {!HOLDING_MODE && <TransitionLayer />}
       </body>
     </html>

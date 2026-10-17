@@ -45,13 +45,12 @@ async function expectLabel(locator: Locator, step: Step, tone: Tone) {
   expect(read.color, `${read.text}: color`).toBe(read.tones[tone]);
 }
 
-test("label face: controls and links are Profa Bold in the accent", async ({ page }) => {
+test("label face: controls are Profa Bold in the accent", async ({ page }) => {
   await page.goto("/");
   await settled(page);
   await expectLabel(page.locator('#listen [data-control="on"]'), "label", "accent");
   await expectLabel(page.locator('#listen [data-control="paused"]'), "label", "accent");
   await expectLabel(page.locator("#listen button", { hasText: siteContent.listen.freeze }), "label-sm", "accent");
-  await expectLabel(page.locator("#listen a", { hasText: siteContent.soundtrack.creditArtist }), "label-sm", "accent");
 
   await page.goto("/label-face-missing");
   await expectLabel(page.getByRole("link", { name: siteContent.notFound.cta }), "label", "accent");
@@ -75,7 +74,7 @@ test("label face: hints and the credit prose are Profa Bold, muted", async ({ pa
   await dialog.getByRole("button", { name: siteContent.modals.closeAriaLabel }).click();
   await expect(dialog).toBeHidden();
 
-  await expectLabel(page.locator("#listen p", { hasText: siteContent.soundtrack.creditLead }), "label-sm", "muted");
+  await expectLabel(page.locator("#listen p", { hasText: siteContent.soundtrack.creditLine }), "label-sm", "muted");
   const row = cardRow(page, "mentorship");
   await row.scrollIntoViewIfNeeded();
   await row.focus();

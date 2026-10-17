@@ -30,6 +30,12 @@
   --tokens-sea-codex: color-mix(in srgb, var(--color-accent) 45%, var(--color-background));
   --tokens-ink-claude: var(--color-accent);
   --tokens-ink-codex: var(--color-muted);
+  /* Codex alternatives to the blue, each at least 15 L* from the official clay
+     (#C4623F, L* 53) in this theme: a warm grey, a pale tan and a desaturated
+     cool grey-blue. */
+  --tokens-codex-stone: #5C554D;
+  --tokens-codex-sand: #C9AB7C;
+  --tokens-codex-slate: #46586B;
 
   /* Coil scene tokens (slices 3 and 4). A canvas or shader reads these through
      getComputedStyle, so every color is a hex value, never var() or
@@ -101,6 +107,10 @@
   --tokens-sea-codex: color-mix(in srgb, var(--color-accent) 50%, var(--color-foreground));
   --tokens-ink-claude: var(--color-accent);
   --tokens-ink-codex: var(--color-muted);
+  /* The same three against the dark clay (#D97757, L* 61): at least 17 L* apart. */
+  --tokens-codex-stone: #6A645B;
+  --tokens-codex-sand: #E3CFA6;
+  --tokens-codex-slate: #B7C5D5;
 
   --shader-top: #0A0F13;
   --shader-bottom: #132436;
@@ -222,17 +232,6 @@ html[data-input="pointer"] .metrics-stage:has(canvas:focus-visible) {
   html.cursor-none * {
     cursor: none !important;
   }
-}
-
-/* The proof-of-work strip's figures after a Commits or Tokens press
-   (components/metrics/MetricsBoard.tsx). Reduced motion zeroes it below. */
-@keyframes metrics-swap {
-  from {
-    opacity: 0;
-  }
-}
-.metrics-swap {
-  animation: metrics-swap 0.5s var(--ease-out) both;
 }
 
 @media (prefers-reduced-motion: reduce) {

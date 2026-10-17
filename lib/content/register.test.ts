@@ -3,14 +3,11 @@ import { siteContent } from "@/lib/content";
 import { parseInlineLinks } from "@/lib/content/links";
 import { jobTipKey, register, registerHas, resolveTip } from "@/lib/content/register";
 
-const musicNoteWithoutAdapting =
-  "I'm not playing my usual playlist (a lot of Tyler, the Creator, Childish Gambino and Steve Lacy) because I don't own it, and I picked music that's easy to read to. The credits are in the corner.";
-
 describe("the inline register", () => {
   it("holds the approved keys and only those", () => {
     expect(Object.keys(register.def)).toEqual(["product", "voltage", "arc"]);
     expect(Object.keys(register.tip)).toEqual(["two-as", "voltaage", "killer-drones", "evolving-isle", "music-note", "ieee-ao", "this-site-playground", "job-0", "job-1", "job-2", "job-3", "job-4"]);
-    expect(Object.keys(register.pop)).toEqual(["leadership-award", "sandboarding", "downhill-skating", "skydiving", "rock-climbing", "venezuela-flag", "family", "friends", "misuki-suki", "matcha", "sister-kyoto", "contrabass-clarinet", "rango", "catatumbo-lightning", "lake-maracaibo", "ut-ece-logo"]);
+    expect(Object.keys(register.pop)).toEqual(["leadership-award", "sandboarding", "downhill-skating", "skydiving", "rock-climbing", "venezuela-flag", "family", "friends", "misuki-suki", "matcha", "sister-kyoto", "contrabass-clarinet", "rango", "catatumbo-lightning", "lake-maracaibo", "3d-printing", "ut-ece-logo"]);
   });
 
   it("carries each jobs timeline tip, word for word, under its entry's key", () => {
@@ -75,6 +72,7 @@ describe("the inline register", () => {
       rango: "yeah, this guy from that one kid's movie",
       "catatumbo-lightning": "The lightning in question",
       "lake-maracaibo": "The famous Puente General Rafael Urdaneta over Lake Maracaibo.",
+      "3d-printing": "My at-home workbench. This is where I tinker with my personal hardware projects.",
       "ut-ece-logo": "UT Austin Electrical and Computer Engineering",
     });
     expect(Object.values(register.pop).every((entry) => entry.crop === null)).toBe(true);
@@ -96,13 +94,12 @@ describe("the inline register", () => {
     expect(parseInlineLinks("[x](tip:constructor)", registerHas).unknown).toEqual([{ text: "x", target: "tip:constructor" }]);
   });
 
-  it("drops the music note's adapting clause while no adapted track plays", () => {
-    const note = register.tip["music-note"];
-    expect(Boolean(note.adaptedClause && note.text.includes(note.adaptedClause))).toBe(true);
-    for (const [key, entry] of Object.entries(register.tip)) if (entry.adaptedClause) expect(entry.text.includes(entry.adaptedClause), key).toBe(true);
-    expect(resolveTip(note, false)).toBe(musicNoteWithoutAdapting);
-    expect(resolveTip(note, true)).toBe(note.text);
+  it("drops a tip's adapting clause while no adapted track plays", () => {
+    const entry = { text: "Songs I like, and I adapted one myself.", adaptedClause: ", and I adapted one myself" };
+    expect(resolveTip(entry, false)).toBe("Songs I like.");
+    expect(resolveTip(entry, true)).toBe(entry.text);
     expect(resolveTip(register.tip["killer-drones"], false)).toBe("unless it's killer drones, I don't do that");
+    for (const [key, entry] of Object.entries(register.tip)) if (entry.adaptedClause) expect(entry.text.includes(entry.adaptedClause), key).toBe(true);
   });
   it("labels every pop link for the touch label", () => {
     for (const [key, entry] of Object.entries(register.pop)) if (entry.href) expect(entry.hrefLabel, key).toBeTruthy();

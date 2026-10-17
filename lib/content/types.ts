@@ -117,18 +117,19 @@ export type Cards = Record<Exclude<CardKey, "mentorship" | "jobs">, CardContent>
 };
 
 // The soundtrack (docs/content/music.md). An adapted track is credited as adapted, never as
-// licensed for this site.
-export type TrackLicenseKind = "cc-by-3.0" | "cc-by-4.0" | "licensed" | "adapted";
+// licensed for this site. "credited" is attribution only: the song is played as an instrumental,
+// credited to its artist, and no license is claimed.
+export type TrackLicenseKind = "cc-by-3.0" | "cc-by-4.0" | "licensed" | "adapted" | "credited";
 
 // Shown as a link, never played or embedded.
 export interface InspiredBy { title: string; artist: string; href: string }
 
 export interface SoundtrackTrack {
   title: string;
-  // Whom the license says to credit: the original's author, never me for a track I only adapted.
+  // The original's artist, never me.
   artist: string;
   src: string;
-  // Author, title, collection, named funders, license, and "Compressed for web." for a re-encode.
+  // Title, artist, album and "Instrumental." for a credited track; a licensed track adds its license.
   credit: string;
   licenseKind: TrackLicenseKind;
   licenseUrl: string | null;
@@ -136,7 +137,8 @@ export interface SoundtrackTrack {
   why: string | null;
   inspiredBy: InspiredBy | null;
   spotifyUrl: string | null;
-  // A tile designed for the site; the music license never covers album art.
+  // Album art shown in the player (public/audio/covers), credited to the artists and labels;
+  // null falls back to the designed tile.
   cover: string | null;
 }
 

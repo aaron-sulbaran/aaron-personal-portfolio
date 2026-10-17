@@ -1,16 +1,22 @@
+import { statSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { siteContent, tipText, type SoundtrackTrack } from "@/lib/content";
-import { creditProblems, hasAdaptedTrack, hasFullyLicensedTrack, liveTracks } from "@/lib/content/tracks";
+import { creditProblems, hasAdaptedTrack, liveTracks } from "@/lib/content/tracks";
+import { imageSize } from "@/lib/testing/imageSize";
 
 const live: readonly SoundtrackTrack[] = siteContent.soundtrack.tracks;
 
-// music.md's approved track 1; its record and file land together in C7.
-const sunsetPier: SoundtrackTrack = {
-  title: "Sunset Pier", artist: "Philman (Philip Milman)", src: "/audio/sunset-pier.mp3",
-  credit: "\"Sunset Pier\" by Philman (Philip Milman), from Lud and Schlatt Crossing, funded by Ludwig and Jschlatt. Licensed CC BY 3.0. Compressed for web.",
+const credited = (credit: string): SoundtrackTrack => ({
+  title: "Night Drive", artist: "Example Artist", src: "/audio/night-drive.mp3", credit,
+  licenseKind: "credited", licenseUrl: null, why: null, inspiredBy: null, spotifyUrl: null, cover: null,
+});
+
+const ccBy: SoundtrackTrack = {
+  title: "Night Drive", artist: "Example Artist", src: "/audio/night-drive.mp3",
+  credit: "\"Night Drive\" by Example Artist. Licensed CC BY 3.0. Compressed for web.",
   licenseKind: "cc-by-3.0", licenseUrl: "https://creativecommons.org/licenses/by/3.0/",
-  why: "Ludwig and Jschlatt funded 20 minutes of music any creator can use for free. I needed music I could use, and that was the first place I looked. I like Ludwig for this kind of thing.",
-  inspiredBy: null, spotifyUrl: null, cover: null,
+  why: null, inspiredBy: null, spotifyUrl: null, cover: null,
 };
 
 // A neutral fixture: an adapted track is credited to its original's author, never to Aaron.
@@ -19,27 +25,60 @@ const adapted = (credit: string): SoundtrackTrack => ({
   licenseKind: "adapted", licenseUrl: null, why: null, inspiredBy: null, spotifyUrl: null, cover: null,
 });
 
+describe("soundtrack covers", () => {
+  it("gives each live track its square 600 px cover, under 300,000 bytes", () => {
+    expect(live.map((track) => track.cover)).toEqual([1, 2, 3, 4, 5, 6, 7].map((n) => `/audio/covers/track-0${n}.jpg`));
+    for (const track of live) {
+      const file = join(process.cwd(), "public", track.cover ?? "");
+      expect(imageSize(file), track.title).toEqual([600, 600]);
+      expect(statSync(file).size, track.title).toBeLessThan(300_000);
+    }
+  });
+});
+
 describe("soundtrack credits", () => {
-  it("credit the three live tracks in full", () => {
+  it("credits the seven live tracks to their artists", () => {
     expect(live).toBe(liveTracks);
     expect(live.map((track) => track.credit)).toEqual([
-      "\"Small Steps\" by Lee Rosevere, from Music For Podcasts - Ambient. Licensed CC BY 4.0. Compressed for web.",
-      "\"Waves of Sleep\" by Lee Rosevere, from Music For Podcasts - Ambient. Licensed CC BY 4.0. Compressed for web.",
-      "\"Slow Lights\" by Lee Rosevere, from Music For Podcasts - Ambient. Licensed CC BY 4.0. Compressed for web.",
+      "\"Mia & Sebastian's Theme\" by Justin Hurwitz, from La La Land (Original Motion Picture Soundtrack). Instrumental.",
+      "\"Loving Is Easy\" by Rex Orange County feat. Benny Sings. Instrumental.",
+      "\"Cherry Wine\" by grentperez. Instrumental.",
+      "\"2SEATER\" by Tyler, The Creator, from Cherry Bomb. Instrumental.",
+      "\"No soy de aquí ni soy de allá\" by Facundo Cabral, from Epoca De Oro. Instrumental.",
+      "\"Chachachá\" by Jósean Log, from Háblate de Mí. Instrumental.",
+      "\"TURiSTA\" by Bad Bunny, from DeBÍ TiRAR MáS FOToS. Instrumental.",
     ]);
+    expect(live.map((track) => track.src)).toEqual([1, 2, 3, 4, 5, 6, 7].map((n) => `/audio/track-0${n}.mp3`));
     for (const track of live) {
-      expect([track.licenseKind, track.why, track.inspiredBy]).toEqual(["cc-by-4.0", null, null]);
+      expect(track.licenseKind).toBe("credited");
+      expect(track.licenseUrl).toBeNull();
       expect(creditProblems(track)).toEqual([]);
+      expect(track.spotifyUrl).toMatch(/^https:\/\/open\.spotify\.com\/track\/[A-Za-z0-9]{22}$/);
     }
   });
 
-  it("accept the approved Sunset Pier credit as written", () => {
-    expect(creditProblems(sunsetPier)).toEqual([]);
+  it("claims no license, adaptation or retired track anywhere in the data", () => {
+    const text = live.map((track) => [track.title, track.artist, track.credit, track.why ?? ""].join(" ")).join(" ");
+    expect(text).not.toMatch(/licen[sc]|\bCC\b|royalt|copyright|adapted/i);
   });
 
-  it("name the CC BY deed the credit claims", () => {
-    expect(creditProblems({ ...sunsetPier, licenseUrl: "https://creativecommons.org/licenses/by/4.0/" })).toContain("licenseUrl must be the CC BY deed");
-    expect(creditProblems({ ...sunsetPier, credit: "\"Sunset Pier\" by Philman (Philip Milman). Compressed for web." })).toContain("credit must say Licensed CC BY 3.0.");
+  it("require a credited track to quote the title and name the artist", () => {
+    expect(creditProblems(credited("\"Night Drive\" by Example Artist. Instrumental."))).toEqual([]);
+    expect(creditProblems(credited("Night Drive by Example Artist. Instrumental."))).toContain("credit must quote the title");
+    expect(creditProblems(credited("\"Night Drive\". Instrumental."))).toContain("credit must name the artist");
+  });
+
+  it("forbid license words and adapted framing in a credited track", () => {
+    for (const word of ["Licensed", "license", "CC BY", "royalty-free", "copyright-free"]) {
+      expect(creditProblems(credited(`"Night Drive" by Example Artist. ${word}.`)), word).toContain("a credited track claims no license");
+    }
+    expect(creditProblems(credited("\"Night Drive\" by Example Artist, adapted by me."))).toContain("a credited track is not credited as adapted");
+    expect(creditProblems({ ...credited("\"Night Drive\" by Example Artist."), licenseUrl: "https://example.com" })).toContain("a credited track has no licenseUrl");
+  });
+
+  it("still holds a CC BY credit to its deed", () => {
+    expect(creditProblems(ccBy)).toEqual([]);
+    expect(creditProblems({ ...ccBy, licenseUrl: "https://creativecommons.org/licenses/by/4.0/" })).toContain("licenseUrl must be the CC BY deed");
   });
 
   it("never credit an adapted track as licensed", () => {
@@ -48,14 +87,14 @@ describe("soundtrack credits", () => {
     expect(creditProblems(adapted("\"Night Drive\" by Example Artist, adapted by Aaron Sulbaran."))).toEqual([]);
   });
 
-  it("keep at least one fully licensed track in the set", () => {
-    expect(hasFullyLicensedTrack(live)).toBe(true);
-    expect(hasFullyLicensedTrack([adapted("\"Night Drive\" by Example Artist, adapted by Aaron Sulbaran.")])).toBe(false);
+  it("show no adapting clause while no adapted track plays", () => {
     expect(hasAdaptedTrack(live)).toBe(false);
+    expect(hasAdaptedTrack([adapted("\"Night Drive\" by Example Artist, adapted by Aaron Sulbaran.")])).toBe(true);
   });
 
-  it("tip the music note without the adapting clause while no adapted track plays", () => {
-    expect(tipText("music-note")).toBe("I'm not playing my usual playlist (a lot of Tyler, the Creator, Childish Gambino and Steve Lacy) because I don't own it, and I picked music that's easy to read to. The credits are in the corner.");
+  it("tip the music note as songs I like, credited to their artists", () => {
+    expect(tipText("music-note")).toBe("These are songs I like, played as instrumentals so they're easy to read to. Each is credited to its artist in the player, with a link to the original on Spotify.");
+    expect(tipText("music-note")).not.toMatch(/licen[sc]|royalt|copyright|adapted/i);
     expect(tipText("killer-drones")).toBe("unless it's killer drones, I don't do that");
     expect(tipText("constructor")).toBeNull();
   });

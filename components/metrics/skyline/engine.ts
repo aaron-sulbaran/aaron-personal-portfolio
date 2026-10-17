@@ -32,6 +32,8 @@ export type EngineConfig = {
   palette2: string[] | null;
   switchMs: number;
   switchStagger: number;
+  // The switch sweeps newest week first (the wave coming back from Tokens).
+  switchReverse: boolean;
   // CSS pixels of page colour between a stacked bar's two segments, 0 for none.
   segmentGap: number;
   legendLevel: number;
@@ -182,6 +184,7 @@ export function createEngine(el: EngineElements, cfg: { current: EngineConfig })
       moving = true;
     }
     s.swStagger = cfg.current.switchStagger;
+    s.swReverse = cfg.current.switchReverse;
     s.gap = cfg.current.segmentGap;
     if (s.sw < 1) {
       s.sw = reduced ? 1 : Math.min(1, s.sw + (dt * 1000) / Math.max(1, cfg.current.switchMs));

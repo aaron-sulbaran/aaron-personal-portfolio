@@ -55,6 +55,7 @@ export const newScene = (
   up: new Float32Array(0),
   sw: 1,
   swStagger: 0,
+  swReverse: false,
   gap: 0,
   tone: new Float32Array(6),
   zs: new Float32Array(0),

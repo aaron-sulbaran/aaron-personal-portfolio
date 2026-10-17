@@ -2,6 +2,12 @@
 // Nothing else leaves the laptop: no prompts, paths, ids, or model names.
 // Run: node scripts/usage-snapshot.mjs --since 2026-04-01 --out lib/metrics/data/usage-6mo.json
 //
+// --export <path> writes the public-safe daily feed instead (scripts/usage-export.mjs):
+// one JSON file with per-day totals per agent for the strip's six-month window,
+// the toolkit's four counts and the call counts of public-list tools only. It
+// is for the private vault, read back by lib/metrics/usageFeed.ts. With --export
+// the committed snapshot is not rewritten unless --out is also passed.
+//
 // Claude counts the way Claude Code's desktop app counts its "Total tokens":
 // every assistant line in ~/.claude/projects, subagent transcripts included.
 // Claude Code writes one line per content block of a response (thinking, text,
@@ -12,25 +18,31 @@
 // already includes reasoning, so `in` is the uncached part and the four fields
 // sum to Codex's own total_tokens.
 //
-// It also writes `toolkit`, the agent setup's four counts (scripts/toolkit-counts.mjs):
-// counts only, never a name. The vault's skills are read from --vault <dir>,
-// else VAULT_DEV_PATH (from the environment or .env.local); with neither the
-// vault is skipped, with a warning.
+// It also writes `toolkit`: the agent setup's four counts (scripts/toolkit-counts.mjs)
+// and `named`, the call counts of the tools on the curated public list
+// (lib/metrics/toolkit-public.json, scripts/toolkit-calls.mjs). A tool that is
+// not on that list counts toward the totals and is never named. The vault's
+// skills are read from --vault <dir>, else VAULT_DEV_PATH (from the environment
+// or .env.local); with neither the vault is skipped, with a warning.
 
 import { createReadStream, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { createInterface } from "node:readline";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { parseEnv } from "node:util";
-import { countToolkit } from "./toolkit-counts.mjs";
+import { buildUsageExport } from "./usage-export.mjs";
+import { windowStart } from "../lib/metrics/window.ts";
+import { collectCalls, localDay, namedToolkit, newTally } from "./toolkit-calls.mjs";
+import { countToolkit, setupNames } from "./toolkit-counts.mjs";
 
 const args = process.argv.slice(2);
 const flag = (name, fallback) => {
   const i = args.indexOf(name);
   return i >= 0 && args[i + 1] ? args[i + 1] : fallback;
 };
-const since = flag("--since", "2026-04-01");
-const outPath = flag("--out", "lib/metrics/data/usage-6mo.json");
+const exportPath = flag("--export", undefined);
+const since = flag("--since", exportPath ? windowStart(localDay(new Date().toISOString()), "6mo") : "2026-04-01");
+const outPath = flag("--out", exportPath ? undefined : "lib/metrics/data/usage-6mo.json");
 const claudeRule = flag("--claude", "app");
 if (claudeRule !== "app" && claudeRule !== "responses") {
   throw new Error(`--claude must be "app" or "responses", got ${claudeRule}`);
@@ -44,15 +56,6 @@ function envLocal(name) {
   }
 }
 const vault = flag("--vault", process.env.VAULT_DEV_PATH || envLocal("VAULT_DEV_PATH"));
-
-function localDay(iso) {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return null;
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
 
 function blank() {
   return { in: 0, out: 0, cr: 0, cw: 0, msgs: 0 };
@@ -87,6 +90,8 @@ async function readLines(path, onLine) {
   }
 }
 
+const publicToolkit = JSON.parse(readFileSync(new URL("../lib/metrics/toolkit-public.json", import.meta.url), "utf8"));
+const callTally = newTally();
 const claudeLines = [];
 const claudeResponses = new Map();
 
@@ -104,6 +109,7 @@ async function scanClaude(root) {
   walk(root, files);
   for (const path of files) {
     await readLines(path, (row) => {
+      collectCalls(row, callTally, since);
       if (row.type !== "assistant" || !row.message?.usage) return;
       const day = localDay(row.timestamp);
       if (!day || day < since) return;
@@ -178,7 +184,7 @@ const snapshot = {
     codex: { unit: "tokens" },
     cursor: { unit: "requests" },
   },
-  toolkit: countToolkit({ home, vault }),
+  toolkit: { ...countToolkit({ home, vault }), named: namedToolkit(callTally, publicToolkit, setupNames({ home, vault })) },
   days: [...days.keys()].sort().map((d) => ({ d, ...days.get(d) })),
 };
 
@@ -187,11 +193,16 @@ const sum = (tool) => snapshot.days.reduce((acc, day) => {
   return acc + c.in + c.out + c.cr + c.cw;
 }, 0);
 const billions = (n) => `${(n / 1e9).toFixed(2)}B`;
-writeFileSync(outPath, `${JSON.stringify(snapshot, null, 2)}\n`);
+if (outPath) writeFileSync(outPath, `${JSON.stringify(snapshot, null, 2)}\n`);
+if (exportPath) {
+  const feed = buildUsageExport(snapshot, publicToolkit, { from: since });
+  writeFileSync(exportPath, `${JSON.stringify(feed, null, 2)}\n`);
+  console.error(`export: ${feed.days.length} days, ${feed.toolkit.named.length} named tools, written to ${exportPath}`);
+}
 console.error(`claude files ${claudeFiles}, lines ${claudeLines.length}, responses ${claudeResponses.size}, rule ${claudeRule}`);
 console.error(`codex files ${codex.files}, days ${snapshot.days.length}`);
 console.error(`claude ${billions(sum("claude"))}, codex ${billions(sum("codex"))}`);
 console.error("cursor request log not found; req stays 0");
 const kit = snapshot.toolkit;
-console.error(`toolkit: ${kit.customSkills} custom skills, ${kit.installedSkills} installed skills, ${kit.plugins} plugins, ${kit.mcpServers} MCP servers`);
+console.error(`toolkit: ${kit.customSkills} custom skills, ${kit.installedSkills} installed skills, ${kit.plugins} plugins, ${kit.mcpServers} MCP servers, ${kit.named.length} named`);
 if (!vault) console.error("warning: no --vault and VAULT_DEV_PATH is unset; the vault's skills are not counted");

@@ -14,6 +14,11 @@ export const NOTE_INK: Record<NoteState, "text-accent" | "text-muted"> = {
   off: "text-muted",
 };
 
+// The menu chip stops only while music is audible. A restored pause resumes.
+export function menuChipStops(music: SoundtrackState): boolean {
+  return music === "on";
+}
+
 export function noteState(music: SoundtrackState): NoteState {
   if (music === "on") return "playing";
   if (music === "paused") return "paused";

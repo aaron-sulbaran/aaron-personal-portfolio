@@ -8,12 +8,23 @@ const day: UsageSnapshot["days"][number] = {
   codex: { in: 3, out: 1, cr: 0, cw: 0, msgs: 1 },
   cursor: { req: 4 },
 };
-const head = { generated: "t", tz: "UTC", tools: { claude: { unit: "tokens" }, codex: { unit: "tokens" }, cursor: { unit: "requests" } }, toolkit: { customSkills: 1, installedSkills: 2, plugins: 3, mcpServers: 4 } };
+const head = { generated: "t", tz: "UTC", tools: { claude: { unit: "tokens" }, codex: { unit: "tokens" }, cursor: { unit: "requests" } }, toolkit: { customSkills: 1, installedSkills: 2, plugins: 3, mcpServers: 4, named: [{ name: "living-docs", group: "written", calls: 4 }] } };
 
 describe("usage snapshot", () => {
   it("parses a well-formed file, and rejects one without the toolkit's counts", () => {
     expect(usageSnapshotSchema.safeParse({ ...head, days: [day] }).success).toBe(true);
     expect(usageSnapshotSchema.safeParse({ ...head, toolkit: undefined, days: [day] }).success).toBe(false);
+  });
+
+  it("rejects an unknown key or a bad name in the named tools", () => {
+    const named = (tool: unknown) => ({ ...head, toolkit: { ...head.toolkit, named: [tool] }, days: [day] });
+    expect(usageSnapshotSchema.safeParse(named({ name: "living-docs", group: "written", calls: 4 })).success).toBe(true);
+    expect(usageSnapshotSchema.safeParse(named({ name: "living-docs", group: "written", calls: 4, path: "/x" })).success).toBe(false);
+    expect(usageSnapshotSchema.safeParse(named({ name: "Living Docs", group: "written", calls: 4 })).success).toBe(false);
+    expect(usageSnapshotSchema.safeParse(named({ name: "plugin:skill", group: "written", calls: 4 })).success).toBe(false);
+    expect(usageSnapshotSchema.safeParse(named({ name: "living-docs", group: "other", calls: 4 })).success).toBe(false);
+    expect(usageSnapshotSchema.safeParse(named({ name: "living-docs", group: "written", calls: 1.5 })).success).toBe(false);
+    expect(usageSnapshotSchema.safeParse({ ...head, toolkit: { ...head.toolkit, named: undefined }, days: [day] }).success).toBe(false);
   });
 
   it("rejects a file that smuggles a string into a day", () => {

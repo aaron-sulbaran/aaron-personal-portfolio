@@ -34,8 +34,8 @@ describe("loadUsage", () => {
     expect(new Set(dates).size).toBe(dates.length);
   });
 
-  it("reads the token figures as total, active days, biggest day and the fourth, and carries the toolkit's counts", () => {
-    expect(seriesStats(series).map((s) => s.key)).toEqual(["total", "active", "peak", "skills"]);
+  it("reads the token figures as total, active days and biggest day, and carries the toolkit's counts", () => {
+    expect(seriesStats(series).map((s) => s.key)).toEqual(["total", "active", "peak"]);
     expect(series.toolkit).toEqual(parsed.toolkit);
     expect(seriesStats(series)[0].value).toMatch(/^\d+(\.\d)?[KMB]$/);
   });

@@ -204,7 +204,7 @@ export const siteContent = {
         body: "I love people ([family](pop:family) & [friends](pop:friends)) outside of work too. I strive to surround myself with people who lift each other up and help me grow every day. Most of my favorite experiences involve spending time with others!",
         sub: {
           label: "(hobbies)",
-          body: "I love to travel, tinker on personal projects, and getting active. I love credit card-maxxing since it allows me to fulfill my wanderlust, recently got into 3D printing because it lets me work on the engineering I don't get to do in class, and love [extreme sports](pop:sandboarding) like [downhill skating](pop:downhill-skating), [skydiving](pop:skydiving), and [rock climbing](pop:rock-climbing).",
+          body: "I love to travel, tinker on personal projects, and getting active. I love credit card-maxxing since it allows me to fulfill my wanderlust, recently got into [3D printing](pop:3d-printing) because it lets me work on the engineering I don't get to do in class, and love [extreme sports](pop:sandboarding) like [downhill skating](pop:downhill-skating), [skydiving](pop:skydiving), and [rock climbing](pop:rock-climbing).",
         },
       },
       {
@@ -215,9 +215,9 @@ export const siteContent = {
     smallPrint: "Fourth-year Electrical and Computer Engineering student at UT Austin (and a business minor from McCombs)",
   },
   // The numbers strip under Who I am (components/metrics): the GitHub chart
-  // and its figures, then my LinkedIn line (docs/content/right-now-and-metrics.md,
-  // approved 2026-10-08). The fun slot stays null until I supply one; a null
-  // slot renders nothing. title is the strip's big heading and groupLabel the
+  // and its figures. The slots are for a figure of my own beside the chart
+  // (docs/content/right-now-and-metrics.md); both are null since the LinkedIn
+  // figure came off on 2026-10-13, and a null slot renders nothing. title is the strip's big heading and groupLabel the
   // line under it, which also names the GitHub group; title is the wording
   // Aaron suggested on 2026-10-09 ("Proof of Work or something else"), lowercase
   // to match "who I am" and "wanna chat?"; approved. groupLabel reads for both
@@ -234,9 +234,10 @@ export const siteContent = {
     since: "since",
     totalLabel: "contributions in the last 6 months",
     activeLabel: "days I shipped something",
-    asOf: "As of",
+    // The stale stamp, over the first figure: "Updated Oct 13".
+    updated: "Updated",
     slots: {
-      linkedin: { value: "450,000", label: "LinkedIn impressions in 3 months", sub: "2,500+ followers" } as MetricsSlot | null,
+      linkedin: null as MetricsSlot | null,
       fun: null as MetricsSlot | null,
     },
     chart: {
@@ -268,14 +269,13 @@ export const siteContent = {
       totalLabel: "tokens in the last 6 months",
       activeLabel: "days I built with agents",
       peakLabel: "my biggest day",
-      // The fourth figure, one of three the lab picks between (TOKENS.fourth):
-      // the skills I wrote, or the whole setup with its split under it. The
-      // streak is the lab's old fourth, kept to compare.
-      skillsLabel: "custom skills I've written for my agents",
+      // The toolkit band under the Tokens chart: the whole agent setup as one
+      // figure, then four groups, each with its count and the tools I may name.
       toolkitLabel: "tools in my agent setup",
-      toolkitSub: (custom: string, installed: string, plugins: string, servers: string) =>
-        `${custom} custom skills, ${installed} installed skills, ${plugins} plugins, ${servers} MCP servers`,
-      streakLabel: "Current streak of days with tokens",
+      toolkitGroupsLabel: "Tools in my agent setup, by group",
+      groups: { written: "Skills I wrote", used: "Skills I use", plugin: "Plugins", mcp: "MCP servers" },
+      // Only some of a group's tools are named; the rest are counted.
+      toolkitMore: (n: number) => `+${n} more`,
       unit: "token",
       units: "tokens",
       none: "No tokens",
@@ -356,6 +356,7 @@ export const siteContent = {
   },
   soundtrack: {
     invite: "Play the soundtrack",
+    coverAlt: "Cover art for",
     prompt: "Click to open player",
     // The pill's label as it lands on the wave (one per state, once per page
     // load), then the collapsed capsule's text (components/soundtrack/PillLabel).
@@ -383,14 +384,9 @@ export const siteContent = {
     ariaPause: "Pause",
     ariaNext: "Next track",
     ariaVolume: "Volume",
-    // Visible CC BY 4.0 attribution for the three tracks, on the band's lower
-    // right (facts from public/audio/LICENSES.md).
-    creditLead: "\u201cSmall Steps\u201d, \u201cWaves of Sleep\u201d and \u201cSlow Lights\u201d by",
-    creditArtist: "Lee Rosevere",
-    creditArtistUrl: "https://freemusicarchive.org/music/lee-rosevere/",
-    creditJoin: ", licensed",
-    creditLicense: "CC BY 4.0",
-    creditLicenseUrl: "https://creativecommons.org/licenses/by/4.0/",
+    // The band's lower-right line (public/audio/CREDITS.md has each track's
+    // credit; the player card shows the title, artist and Spotify link).
+    creditLine: "Songs I like, as instrumentals, credited to their artists in the player.",
     tracks: liveTracks,
   },
   // The holding page's deck (components/HoldingDeck.tsx) draws these five; nothing else reads them.

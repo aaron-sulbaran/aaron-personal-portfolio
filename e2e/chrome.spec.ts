@@ -56,6 +56,20 @@ test("chrome: the panel's soundtrack switch keeps one name while its label says 
   await expect(chip).toHaveAttribute("aria-pressed", "false");
 });
 
+test("chrome: the panel's soundtrack switch resumes a restored pause", async ({ page, browserName }) => {
+  test.skip(browserName === "webkit", "WebKit cannot be launched muted");
+  await page.addInitScript(() => localStorage.setItem("aaron-soundtrack", "on"));
+  await openHome(page);
+  await page.getByRole("button", { name: "Open menu" }).click();
+  const chip = page.getByRole("dialog", { name: "Site menu" }).getByRole("button", { name: "Soundtrack", exact: true });
+  await expect(chip).toContainText("Soundtrack paused");
+  await expect(chip).toHaveAttribute("aria-pressed", "false");
+
+  await chip.click();
+  await expect(chip).toContainText("Soundtrack on");
+  await expect(chip).toHaveAttribute("aria-pressed", "true");
+});
+
 test("chrome: the header bar arrives past the hero and tucks away on the way down, back on the way up", async ({ page }) => {
   await openHome(page);
   const nav = page.getByRole("navigation", { name: "Sections" });

@@ -1,5 +1,5 @@
 {
-  "generated": "2026-10-13T19:38:30.653Z",
+  "generated": "2026-10-15T21:09:22.024Z",
   "tz": "America/Chicago",
   "tools": {
     "claude": {
@@ -16,7 +16,169 @@
     "customSkills": 18,
     "installedSkills": 23,
     "plugins": 7,
-    "mcpServers": 9
+    "mcpServers": 9,
+    "named": [
+      {
+        "name": "sync-granola",
+        "group": "written",
+        "calls": 29
+      },
+      {
+        "name": "vault-harvest",
+        "group": "written",
+        "calls": 16
+      },
+      {
+        "name": "talos-feedback",
+        "group": "written",
+        "calls": 13
+      },
+      {
+        "name": "search-wiki",
+        "group": "written",
+        "calls": 11
+      },
+      {
+        "name": "review-sweep",
+        "group": "written",
+        "calls": 6
+      },
+      {
+        "name": "living-docs",
+        "group": "written",
+        "calls": 2
+      },
+      {
+        "name": "new-project",
+        "group": "written",
+        "calls": 1
+      },
+      {
+        "name": "ingest-video",
+        "group": "written",
+        "calls": 0
+      },
+      {
+        "name": "lint-wiki",
+        "group": "written",
+        "calls": 0
+      },
+      {
+        "name": "sync-projects",
+        "group": "written",
+        "calls": 0
+      },
+      {
+        "name": "vault-doctor",
+        "group": "written",
+        "calls": 0
+      },
+      {
+        "name": "workflow-audit",
+        "group": "written",
+        "calls": 0
+      },
+      {
+        "name": "frontend-design",
+        "group": "used",
+        "calls": 37
+      },
+      {
+        "name": "test-driven-development",
+        "group": "used",
+        "calls": 29
+      },
+      {
+        "name": "design-review",
+        "group": "used",
+        "calls": 25
+      },
+      {
+        "name": "subagent-driven-development",
+        "group": "used",
+        "calls": 21
+      },
+      {
+        "name": "brainstorming",
+        "group": "used",
+        "calls": 20
+      },
+      {
+        "name": "impeccable",
+        "group": "used",
+        "calls": 20
+      },
+      {
+        "name": "writing-plans",
+        "group": "used",
+        "calls": 15
+      },
+      {
+        "name": "systematic-debugging",
+        "group": "used",
+        "calls": 12
+      },
+      {
+        "name": "hyperframes",
+        "group": "used",
+        "calls": 1
+      },
+      {
+        "name": "gsap-scrolltrigger",
+        "group": "used",
+        "calls": 0
+      },
+      {
+        "name": "superpowers",
+        "group": "plugin",
+        "calls": 125
+      },
+      {
+        "name": "vercel",
+        "group": "plugin",
+        "calls": 56
+      },
+      {
+        "name": "impeccable",
+        "group": "plugin",
+        "calls": 20
+      },
+      {
+        "name": "codex",
+        "group": "plugin",
+        "calls": 3
+      },
+      {
+        "name": "chrome-devtools",
+        "group": "mcp",
+        "calls": 1182
+      },
+      {
+        "name": "context7",
+        "group": "mcp",
+        "calls": 212
+      },
+      {
+        "name": "granola",
+        "group": "mcp",
+        "calls": 185
+      },
+      {
+        "name": "vercel",
+        "group": "mcp",
+        "calls": 51
+      },
+      {
+        "name": "plaid",
+        "group": "mcp",
+        "calls": 24
+      },
+      {
+        "name": "next-devtools",
+        "group": "mcp",
+        "calls": 0
+      }
+    ]
   },
   "days": [
     {
@@ -2242,10 +2404,10 @@
     {
       "d": "2026-10-09",
       "claude": {
-        "in": 14994,
-        "out": 5201634,
-        "cr": 1738086235,
-        "cw": 66394136,
+        "in": 15324,
+        "out": 5328928,
+        "cr": 1766868523,
+        "cw": 66856232,
         "msgs": 2685
       },
       "codex": {
@@ -2302,10 +2464,10 @@
     {
       "d": "2026-10-12",
       "claude": {
-        "in": 2828,
-        "out": 2391659,
-        "cr": 126709813,
-        "cw": 20323622,
+        "in": 3088,
+        "out": 2524699,
+        "cr": 146938309,
+        "cw": 20860162,
         "msgs": 518
       },
       "codex": {
@@ -2322,11 +2484,51 @@
     {
       "d": "2026-10-13",
       "claude": {
-        "in": 1678,
-        "out": 2394574,
-        "cr": 48612367,
-        "cw": 11932678,
-        "msgs": 269
+        "in": 5950,
+        "out": 3825325,
+        "cr": 452237835,
+        "cw": 37731930,
+        "msgs": 1278
+      },
+      "codex": {
+        "in": 0,
+        "out": 0,
+        "cr": 0,
+        "cw": 0,
+        "msgs": 0
+      },
+      "cursor": {
+        "req": 0
+      }
+    },
+    {
+      "d": "2026-10-14",
+      "claude": {
+        "in": 8650,
+        "out": 3624490,
+        "cr": 753042344,
+        "cw": 55534927,
+        "msgs": 2044
+      },
+      "codex": {
+        "in": 0,
+        "out": 0,
+        "cr": 0,
+        "cw": 0,
+        "msgs": 0
+      },
+      "cursor": {
+        "req": 0
+      }
+    },
+    {
+      "d": "2026-10-15",
+      "claude": {
+        "in": 3028,
+        "out": 1999374,
+        "cr": 90981087,
+        "cw": 17237907,
+        "msgs": 619
       },
       "codex": {
         "in": 0,

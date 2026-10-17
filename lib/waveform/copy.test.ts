@@ -4,13 +4,10 @@ import { siteContent } from "@/lib/content";
 const { listen, soundtrack } = siteContent;
 
 describe("the soundtrack band's copy", () => {
-  it("credits every playable track and its artist under CC BY 4.0", () => {
-    for (const track of soundtrack.tracks) {
-      expect(soundtrack.creditLead).toContain(`“${track.title}”`);
-      expect(soundtrack.creditArtist).toBe(track.artist);
-    }
-    expect(soundtrack.creditLicense).toBe("CC BY 4.0");
-    expect(soundtrack.creditLicenseUrl).toBe("https://creativecommons.org/licenses/by/4.0/");
+  it("credits the songs to their artists and claims no license", () => {
+    expect(soundtrack.creditLine).toBe("Songs I like, as instrumentals, credited to their artists in the player.");
+    expect(soundtrack.creditLine).not.toMatch(/licen[sc]|\bCC\b|royalt|copyright|adapted/i);
+    for (const track of soundtrack.tracks) expect(track.credit).toContain(`"${track.title}" by ${track.artist}`);
   });
 
   it("never promises a player the band does not show", () => {
@@ -20,7 +17,7 @@ describe("the soundtrack band's copy", () => {
   });
 
   it("uses sentence case and no em dash", () => {
-    const strings: string[] = [...Object.values(listen), soundtrack.creditLead, soundtrack.creditJoin];
+    const strings: string[] = [...Object.values(listen), soundtrack.creditLine];
     for (const text of strings) {
       expect(text).not.toMatch(/\u2014/);
       expect(text[0]).toBe(text[0].toUpperCase());

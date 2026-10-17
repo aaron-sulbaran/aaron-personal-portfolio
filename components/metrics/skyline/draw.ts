@@ -63,6 +63,7 @@ export type Scene = {
   up: Float32Array;
   sw: number;
   swStagger: number;
+  swReverse: boolean;
   gap: number; // the seam between a stacked bar's segments, CSS pixels
   tone: Float32Array;
   zs: Float32Array;

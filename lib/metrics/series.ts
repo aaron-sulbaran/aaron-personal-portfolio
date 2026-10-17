@@ -31,6 +31,10 @@ export type UsageSeries = {
   activeDays: number;
   streak: Streak;
   stale: boolean;
+  // The day (YYYY-MM-DD) the daily feed was made, when the series came from it.
+  // The stale stamp reads it; the committed snapshot has none, so the stamp
+  // falls back to the last day in range.
+  updatedAt?: string;
   // The agent setup behind the tokens, for the fourth figure.
   toolkit: Toolkit;
 };

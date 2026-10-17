@@ -1,8 +1,12 @@
 import { expect, it } from "vitest";
+import { DEFAULT_LABELS } from "./labels";
 import { MORPH, SKYLINE, TOKENS } from "./settings";
 
 it("pins Aaron's Tokens pick: the official kits, no seam, starting on Commits", () => {
-  expect(TOKENS).toEqual({ colorSet: "official", heightCurve: "sqrt", heightCap: 1, minShare: 0.02, segmentGap: 0, switchMs: 1500, switchStagger: 0.42, first: "commits", fourth: "skills" });
+  expect(TOKENS).toEqual({
+    colorSet: "official", codexColor: "slate", heightCurve: "sqrt", heightCap: 1, minShare: 0.02, segmentGap: 0, switchMs: 1500, switchStagger: 0.42, first: "commits",
+    waveGapMs: 160, waveOffsetMs: 200, maskMs: 480, namesPerGroup: 5, labels: DEFAULT_LABELS,
+  });
 });
 
 it("pins Aaron's round 4 pick", () => {

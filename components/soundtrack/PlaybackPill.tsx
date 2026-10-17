@@ -8,9 +8,10 @@ import { FILL_PICK, FILL_TRANSITION } from "@/lib/fx/fill";
 import { isKeyboardFocus } from "@/lib/input/modality";
 import { getSoundtrackPlayer } from "@/lib/audio";
 import { getPlayFailed, getRestoredSoundtrack, startSoundtrack, subscribeSoundtrack, useSoundtrack } from "@/lib/soundtrack";
-import { DOCK, capsuleName, capsuleText, dockLabel, dockMode, type DockLabel } from "@/lib/waveform/dock";
+import { DOCK, capsuleName, capsuleText, dockLabel, dockMode, pillStartsMusic, type DockLabel } from "@/lib/waveform/dock";
 import { isPhone, subscribePhone } from "@/lib/waveform/layout";
 import { Cover, DockGlyph, EASE, PillSlot, glass } from "./PillParts";
+import { MarqueeTitle } from "./MarqueeTitle";
 import { PillAnnouncer, PillLabel, labelLine, useLabelHold } from "./PillLabel";
 import { GREETED_KEY } from "@/lib/home/firstVisit";
 import { PlayerCard } from "./PlayerCard";
@@ -31,9 +32,10 @@ function readGreeted(): boolean {
 // (lib/waveform/dock). From the band down it is there in every music state:
 // it fades in at its dock once the band is above the dock line (usePillFade),
 // opens with one line for the state (PillLabel), then collapses to a
-// 36px capsule: the track title, "Paused", "Music?" or "Music". Before a yes
-// (or after a failed start) one click plays; otherwise hover grows the
-// now-playing preview and a click opens the player card. Every hidden layer
+// 36px capsule: the track title, "Paused", "Music?" or "Music". Before a yes,
+// after a no, after a failed start, and while paused, one click plays;
+// only a playing pill grows the now-playing preview and opens the player
+// card. Every hidden layer
 // is inert, so nothing invisible is focusable. Portaled to body so no
 // transformed ancestor captures it. Phones have no pill; there the band and
 // the Menu's note are the controls.
@@ -114,7 +116,7 @@ function PillInner({ reached }: { reached: boolean }) {
   if (phone) return null;
 
   const track = c.tracks[trackIndex];
-  const startsMusic = music === "before" || music === "off" || failed;
+  const startsMusic = pillStartsMusic(music, failed);
   const previewable = mode === "capsule" && !startsMusic;
   const preview = hover.mode === "preview" && previewable;
 
@@ -209,14 +211,15 @@ function PillInner({ reached }: { reached: boolean }) {
             onMouseLeave={() => send("leave")}
             aria-label={capsuleName(capsuleText(music, track.title), startsMusic ? c.invite : c.ariaOpen)}
             data-cursor-hover
+            data-marquee-scope
             style={{ ...capsule, ["--pill-hit-inset" as string]: `${(DOCK.hitPx - DOCK.capsulePx) / 2}px` }}
             overClassName={`flex items-center ${preview ? "py-2 pl-2 pr-4" : "pl-[13px] pr-4"} ${reduce ? "" : "transition-[padding] duration-300 ease-[ease]"}`}
           >
             <PillSlot visible={preview} maxWidth={40} reduce={reduce}>
-              <Cover size={38} cover={track.cover} />
+              <Cover size={38} cover={track.cover} title={track.title} />
             </PillSlot>
             <PillSlot visible={preview} maxWidth={190} reduce={reduce} before={12} after={12} block>
-              <span className="block font-label text-label-sm text-foreground">{track.title}</span>
+              <MarqueeTitle text={track.title} maxWidth={190} active={preview} pauseOnHover={false} className="font-label text-label-sm text-foreground" />
               <span className="block font-label text-label-sm text-muted">{track.artist}</span>
             </PillSlot>
             <span className="relative -top-px flex">
