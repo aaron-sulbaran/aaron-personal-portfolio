@@ -15,7 +15,7 @@ export const quickCopy = {
     { capital: "V", rest: "iable" },
     { capital: "P", rest: "ortfolio" },
   ],
-  intro: "Because I know my users, I built an MVP of my site for the busiest people (and recruiters) who still want to get to know me. Yes, the PM pun is intended.",
+  intro: "Because I know my users, I built an MVP of my site for the busiest people (and recruiters) who still want to get to know me.",
   hint: "(Click each experience card to learn more)",
   back: "See the full site",
   listLabel: "My years, newest first",
