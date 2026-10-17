@@ -12,7 +12,7 @@ import { RAIL_X, YearList } from "./YearList";
 
 // The rail as a road: the line becomes a narrow lane that runs straight
 // through every year's node and leans gently aside once between two years
-// (lib/quick/road). The accent trail is laid one way, as the rail's fill is;
+// (lib/quick/road). The accent trail follows the reader both ways, as the rail's fill does;
 // Misuki drives the lane with the reader, both ways, nose down the page, and
 // under reduced motion she is parked at the end. She is drawn over the
 // year nodes, in a second layer on the lane's own coordinates.

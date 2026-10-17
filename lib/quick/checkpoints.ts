@@ -1,8 +1,7 @@
-import { highWater } from "@/lib/sections/highWater";
-
-// The quick page's checkpoints, one-way per page load (the lib/sections/highWater
-// rule): the reading line's depth into the track only rises, and a checkpoint the
-// drawn line has reached stays lit when the reader scrolls back up. Depths and
+// The quick page's checkpoints follow the reader, both ways: the mark is where
+// the reading line sits in the track now, and a checkpoint is lit while the drawn
+// line is at or past it, so scrolling back up un-lights the ones below the line
+// again. (The tile pictures are the one-way part, lib/quick/reveal.) Depths and
 // anchors are fractions of the track's height, 0 at its top. Pure.
 
 export interface Anchor { key: string; at: number }
@@ -32,19 +31,23 @@ export function readingDepth({ trackTop, trackHeight, viewportHeight, line, atEn
   return clamp01((viewportHeight * line - trackTop) / trackHeight);
 }
 
-export function raiseMark(state: CheckpointState, incoming: number): { state: CheckpointState; moved: boolean } {
-  const mark = highWater(state.mark, incoming);
-  return { state: mark.moved ? { ...state, mark: mark.reached } : state, moved: mark.moved };
+// Moves the mark to where the reading line is now, up or down the track.
+export function moveMark(state: CheckpointState, incoming: number): { state: CheckpointState; moved: boolean } {
+  const mark = clamp01(incoming);
+  return mark === state.mark ? { state, moved: false } : { state: { ...state, mark }, moved: true };
 }
 
 // A small tolerance, so a chase that eases out just short of a node still reaches it.
 const REACH = 0.002;
 
-// The checkpoints the drawn line, now at position, reaches for the first time.
-export function lightUpTo(state: CheckpointState, anchors: readonly Anchor[], position: number): { state: CheckpointState; lit: string[] } {
-  const lit = anchors.filter((anchor) => anchor.at <= position + REACH && !state.lit.has(anchor.key)).map((anchor) => anchor.key);
-  if (!lit.length) return { state, lit };
-  return { state: { ...state, lit: new Set([...state.lit, ...lit]) }, lit };
+// The checkpoints that are lit with the drawn line at position: every anchor at or
+// above it. lit and unlit are what changed since the last call.
+export function syncLit(state: CheckpointState, anchors: readonly Anchor[], position: number): { state: CheckpointState; lit: string[]; unlit: string[] } {
+  const reached = new Set(anchors.filter((anchor) => anchor.at <= position + REACH).map((anchor) => anchor.key));
+  const lit = [...reached].filter((key) => !state.lit.has(key));
+  const unlit = [...state.lit].filter((key) => !reached.has(key));
+  if (!lit.length && !unlit.length) return { state, lit, unlit };
+  return { state: { ...state, lit: reached }, lit, unlit };
 }
 
 export function lightAll(state: CheckpointState, anchors: readonly Anchor[]): CheckpointState {

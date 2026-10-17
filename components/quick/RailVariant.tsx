@@ -9,7 +9,7 @@ import { useTrackGeometry, type TrackGeometry } from "./useTrackGeometry";
 import { RAIL_X, YearList } from "./YearList";
 
 // The rail: the line runs down the left past every year's node and every
-// tile, and fills with the accent as the reader passes (one way). With trip,
+// tile, and fills with the accent down to where the reader is (both ways). With trip,
 // the trip bar holds the whole trip at the top of the viewport and Misuki
 // drives it with the reader.
 

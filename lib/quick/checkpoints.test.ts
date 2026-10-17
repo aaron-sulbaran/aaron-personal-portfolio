@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { anchorsFrom, emptyCheckpoints, lightAll, lightUpTo, raiseMark, readingDepth } from "./checkpoints";
+import { anchorsFrom, emptyCheckpoints, lightAll, moveMark, readingDepth, syncLit } from "./checkpoints";
 
 const anchors = anchorsFrom(
   [
@@ -34,35 +34,58 @@ describe("readingDepth", () => {
   });
 });
 
-describe("the one-way mark", () => {
-  it("only rises", () => {
+describe("the mark", () => {
+  it("follows the reading line down and back up", () => {
     let state = emptyCheckpoints();
-    ({ state } = raiseMark(state, 0.4));
+    let moved: boolean;
+    ({ state, moved } = moveMark(state, 0.4));
     expect(state.mark).toBe(0.4);
-    const back = raiseMark(state, 0.1);
-    expect(back.moved).toBe(false);
-    expect(back.state.mark).toBe(0.4);
-    expect(raiseMark(state, Number.NaN).state.mark).toBe(0.4);
-    expect(raiseMark(state, 3).state.mark).toBe(1);
+    expect(moved).toBe(true);
+    ({ state, moved } = moveMark(state, 0.1));
+    expect(state.mark).toBe(0.1);
+    expect(moved).toBe(true);
+    ({ state, moved } = moveMark(state, 0.1));
+    expect(moved).toBe(false);
+  });
+
+  it("stays within the track, and ignores a depth that is not a number", () => {
+    const state = moveMark(emptyCheckpoints(), 0.4).state;
+    expect(moveMark(state, 3).state.mark).toBe(1);
+    expect(moveMark(state, -2).state.mark).toBe(0);
+    expect(moveMark(state, Number.NaN).state.mark).toBe(0);
   });
 });
 
 describe("lighting checkpoints", () => {
-  it("lights each checkpoint once, as the line reaches it", () => {
+  it("lights each checkpoint as the line reaches it, once", () => {
     let state = emptyCheckpoints();
     let lit: string[];
-    ({ state, lit } = lightUpTo(state, anchors, 0.3));
+    ({ state, lit } = syncLit(state, anchors, 0.3));
     expect(lit).toEqual(["a", "b"]);
-    ({ state, lit } = lightUpTo(state, anchors, 0.3));
+    ({ state, lit } = syncLit(state, anchors, 0.3));
     expect(lit).toEqual([]);
-    ({ state, lit } = lightUpTo(state, anchors, 0.499));
+    ({ state, lit } = syncLit(state, anchors, 0.499));
     expect(lit).toEqual(["c"]);
   });
 
-  it("never un-lights when the line is asked about a shallower point", () => {
-    let { state } = lightUpTo(emptyCheckpoints(), anchors, 0.6);
-    ({ state } = lightUpTo(state, anchors, 0));
+  it("un-lights the checkpoints below the line when the reader scrolls back up", () => {
+    let { state } = syncLit(emptyCheckpoints(), anchors, 0.6);
     expect([...state.lit]).toEqual(["a", "b", "c"]);
+    let unlit: string[];
+    ({ state, unlit } = syncLit(state, anchors, 0.3));
+    expect(unlit).toEqual(["c"]);
+    expect([...state.lit]).toEqual(["a", "b"]);
+    ({ state, unlit } = syncLit(state, anchors, 0));
+    expect(unlit).toEqual(["b"]);
+    expect([...state.lit]).toEqual(["a"]);
+  });
+
+  it("lights them again on the way back down", () => {
+    let { state } = syncLit(emptyCheckpoints(), anchors, 0.6);
+    ({ state } = syncLit(state, anchors, 0));
+    const down = syncLit(state, anchors, 0.5);
+    expect(down.lit).toEqual(["b", "c"]);
+    expect(down.unlit).toEqual([]);
   });
 
   it("lights everything at once under reduced motion", () => {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, type RefObject } from "react";
-import { anchorsFrom, emptyCheckpoints, lightAll, lightUpTo, raiseMark, readingDepth, type CheckpointState } from "@/lib/quick/checkpoints";
+import { anchorsFrom, emptyCheckpoints, lightAll, moveMark, readingDepth, syncLit, type CheckpointState } from "@/lib/quick/checkpoints";
 import { gsap, ScrollTrigger } from "@/lib/quick/gsap";
 import { QUICK_MOTION, timings } from "@/lib/quick/motion";
 import { photoWipeIn } from "@/lib/gallery/reveal";
@@ -9,21 +9,22 @@ import { dueTiles, worthAnimating, type TileBox } from "@/lib/quick/reveal";
 import type { TrackGeometry } from "./useTrackGeometry";
 
 // One ScrollTrigger for the whole track, under gsap.matchMedia. It drives no
-// animation: it reports how deep the reader's line sits in the track, the depth
-// only rises (lib/quick/checkpoints), and a paused proxy chases it. Each step of
-// the chase hands the depth to the variant's drive (the drawn line, the car) and
-// lights the checkpoints the line has reached: data-lit on the item and on any
-// data-quick-mark of the same key. A tile's picture (data-quick-thumb) is not a
-// checkpoint's: it masks in left to right once, when its tile's top crosses the
+// animation: it reports how deep the reader's line sits in the track, up or down
+// (lib/quick/checkpoints), and a paused proxy chases it. Each step of the chase
+// hands the depth to the variant's drive (the drawn line, the car) and sets the
+// checkpoints the line has reached: data-lit on the item and on any
+// data-quick-mark of the same key, lit while the line is at or past it and
+// un-lit when the reader scrolls back above it. A tile's picture (data-quick-thumb) is not a
+// checkpoint's: it masks in left to right once, and stays, when its tile's top crosses the
 // reveal line near the viewport's foot (lib/quick/reveal), so a tile wholly on
 // screen is never an empty frame. The server markup is the lit, finished page;
-// arming dims only what the reader has not reached yet, and everything on screen
-// at that moment counts as reached, so nothing visible ever blinks out. Reduced
-// motion, real or previewed, lights and reveals everything at once. runKey
-// resets the one-way state.
+// arming dims what the reading line has not reached, and a pass that finds the
+// reader already down the page starts the line there rather than chasing from the
+// top. Reduced motion, real or previewed, lights and reveals everything at once.
+// runKey resets the state.
 // marks: a second root whose data-quick-mark elements light too (the trip bar).
 // onDepth: the reader's depth as it is, both ways (a car that follows the
-// reader rather than the high water); 1 under reduced motion.
+// reader); 1 under reduced motion.
 
 export type Drive = (depth: number) => void;
 
@@ -132,9 +133,10 @@ export function useCheckpointTrack(trackRef: RefObject<HTMLElement | null>, { ge
       const proxy = { depth: stateRef.current.mark };
       const step = () => {
         drive(proxy.depth);
-        const next = lightUpTo(stateRef.current, anchors, proxy.depth);
+        const next = syncLit(stateRef.current, anchors, proxy.depth);
         stateRef.current = next.state;
         for (const key of next.lit) paint(key, true);
+        for (const key of next.unlit) paint(key, false);
       };
       for (const anchor of anchors) paint(anchor.key, stateRef.current.lit.has(anchor.key));
       for (const el of tiles) {
@@ -153,17 +155,16 @@ export function useCheckpointTrack(trackRef: RefObject<HTMLElement | null>, { ge
         const live = at(QUICK_MOTION.readingLine);
         reveal(atEnd || !measured ? 1 : QUICK_MOTION.revealLine, measured);
         onDepthRef.current?.(live, geometry);
-        const raised = raiseMark(stateRef.current, measured ? live : at(1));
+        const moved = moveMark(stateRef.current, live);
         if (!measured) {
           measured = true;
-          stateRef.current = raised.state;
-          proxy.depth = raised.state.mark;
+          stateRef.current = moved.state;
+          proxy.depth = moved.state.mark;
           step();
-        } else if (raised.moved) {
-          stateRef.current = raised.state;
-          chase.resetTo("depth", raised.state.mark, proxy.depth);
+        } else if (moved.moved) {
+          stateRef.current = moved.state;
+          chase.resetTo("depth", moved.state.mark, proxy.depth);
         }
-        if (stateRef.current.mark >= 1 && revealedRef.current.size >= tiles.length && !onDepthRef.current) queueMicrotask(() => self.kill());
       };
       const trigger = ScrollTrigger.create({ trigger: track, start: "top bottom", end: "bottom top", onUpdate: follow, onRefresh: follow });
       follow(trigger);
