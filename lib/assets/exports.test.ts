@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { readdirSync, statSync } from "node:fs";
+import { existsSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { imageSize, jpegHasMetadata } from "@/lib/testing/imageSize";
@@ -35,6 +35,9 @@ const LOGOS: Record<string, string[]> = {
   talos: ["lockup-dark.svg", "mark.svg", "wordmark-dark.svg"],
 };
 
+// The soundtrack audio is not in every checkout (the public repo leaves it out), so its checks skip when the folder is absent.
+const HAS_AUDIO = existsSync(join(PUBLIC, "audio/covers"));
+
 function listed(dir: string): string[] {
   return readdirSync(join(PUBLIC, dir)).filter((name) => !name.startsWith(".")).sort();
 }
@@ -52,7 +55,7 @@ describe("the exported photos", () => {
       expect(jpegHasMetadata(join(PUBLIC, file)), file).toBe(false);
     }
   });
-  it("carry no Exif or ICC segment in the soundtrack covers", () => {
+  it.skipIf(!HAS_AUDIO)("carry no Exif or ICC segment in the soundtrack covers", () => {
     for (const name of listed("audio/covers")) expect(jpegHasMetadata(join(PUBLIC, "audio/covers", name)), name).toBe(false);
   });
   it("make every card picture 3:4 within a pixel", () => {

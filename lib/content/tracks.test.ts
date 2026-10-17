@@ -1,4 +1,4 @@
-import { statSync } from "node:fs";
+import { existsSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { siteContent, tipText, type SoundtrackTrack } from "@/lib/content";
@@ -25,8 +25,11 @@ const adapted = (credit: string): SoundtrackTrack => ({
   licenseKind: "adapted", licenseUrl: null, why: null, inspiredBy: null, spotifyUrl: null, cover: null,
 });
 
+// The soundtrack audio is not in every checkout (the public repo leaves it out), so its file checks skip when the folder is absent.
+const HAS_AUDIO = existsSync(join(process.cwd(), "public/audio"));
+
 describe("soundtrack covers", () => {
-  it("gives each live track its square 600 px cover, under 300,000 bytes", () => {
+  it.skipIf(!HAS_AUDIO)("gives each live track its square 600 px cover, under 300,000 bytes", () => {
     expect(live.map((track) => track.cover)).toEqual([1, 2, 3, 4, 5, 6, 7].map((n) => `/audio/covers/track-0${n}.jpg`));
     for (const track of live) {
       const file = join(process.cwd(), "public", track.cover ?? "");

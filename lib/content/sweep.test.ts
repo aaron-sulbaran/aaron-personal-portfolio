@@ -23,7 +23,9 @@ describe("every string in siteContent", () => {
   });
 
   it("points every local file reference at a file in public", () => {
-    const files = leaves.filter((leaf) => /(?:^|\.)(?:src|srcDark|logo|cover)$/.test(leaf.path) && leaf.text.startsWith("/"));
+    // The soundtrack audio is not in every checkout (the public repo leaves it out), so its files are skipped when the folder is absent.
+    const hasAudio = existsSync(join(process.cwd(), "public/audio"));
+    const files = leaves.filter((leaf) => /(?:^|\.)(?:src|srcDark|logo|cover)$/.test(leaf.path) && leaf.text.startsWith("/") && (hasAudio || !leaf.text.startsWith("/audio/")));
     expect(files.length).toBeGreaterThan(0);
     expect(files.filter((leaf) => !existsSync(join(process.cwd(), "public", leaf.text))).map((leaf) => `${leaf.path}: ${leaf.text}`)).toEqual([]);
   });
