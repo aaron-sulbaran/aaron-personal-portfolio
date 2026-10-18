@@ -9,17 +9,19 @@ import { partId } from "@/lib/gallery/timing";
 // smoke disc is quiet on dark by design). 48px or larger so the figure reads;
 // two columns, an icon over its words on a phone and beside them from 640px.
 // The specialists' crop is a rounded square at a third of its size, as the kit's.
+// Paragraphs sit a paragraph apart; the two grids take a little more room before them.
 
 const ICON = 48;
+const LIST = "grid grid-cols-2 gap-x-5 gap-y-5";
 const CELL = "flex flex-col gap-2.5 sm:flex-row sm:items-start sm:gap-3";
 
 export function TalosTeam({ compact = false }: { compact?: boolean }) {
   const team = siteContent.cards.talos.team;
   const prose = `text-foreground ${compact ? "text-base leading-relaxed" : "text-lg leading-[1.55]"}`;
   return (
-    <section data-mask={partId.talos} data-mask-kind="text" data-talos-team="" className="flex flex-col gap-6" style={{ maxWidth: GALLERY.proseMaxWidth }}>
+    <section data-mask={partId.talos} data-mask-kind="text" data-talos-team="" className={`flex flex-col ${compact ? "gap-4" : "gap-5"}`} style={{ maxWidth: GALLERY.proseMaxWidth }}>
       <p className={prose}>{team.next}</p>
-      <ul aria-label={team.specialistsLabel} className="grid grid-cols-2 gap-x-5 gap-y-5" data-talos-specialists="">
+      <ul aria-label={team.specialistsLabel} className={`${LIST} ${compact ? "mt-2" : "mt-3"}`} data-talos-specialists="">
         {team.specialists.map((specialist) => (
           <li key={specialist.src} className={CELL}>
             <Image src={specialist.src} alt={specialist.alt} width={ICON} height={ICON} className="shrink-0" style={{ borderRadius: ICON / 3 }} />
@@ -31,7 +33,7 @@ export function TalosTeam({ compact = false }: { compact?: boolean }) {
         ))}
       </ul>
       <p className={prose}>{team.reactions}</p>
-      <ul aria-label={team.statesLabel} className="grid grid-cols-2 gap-x-5 gap-y-5" data-talos-states="">
+      <ul aria-label={team.statesLabel} className={`${LIST} ${compact ? "mt-2" : "mt-3"}`} data-talos-states="">
         {team.states.map((state) => (
           <li key={state.src} className={CELL}>
             <Image src={state.src} alt="" width={ICON} height={ICON} className="shrink-0" />

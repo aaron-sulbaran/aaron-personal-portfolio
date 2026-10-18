@@ -12,6 +12,7 @@ export const GALLERY = {
   textWidth: 460, // the words beside a photo
   proseMaxWidth: "62ch", // words with no photo beside them
   rowGap: 64,
+  proseGap: 20, // between the paragraphs of a card with no photos: a reading rhythm, not a row's
   columnGap: 56, // photo to words
   panelPadding: 40,
   panelBorder: 1,

@@ -23,7 +23,8 @@ import { Words } from "./Words";
 // its team after its words), the links and the close hint. A
 // vertical photo is drawn in one box and a horizontal one in another, and a
 // photo narrower than the card's photo column sits against the panel's edge,
-// so the words keep one place on each side. The card picture leads the first
+// so the words keep one place on each side. A card with no photos has no rows,
+// so its paragraphs sit a reading rhythm apart (GALLERY.proseGap), not a row's. The card picture leads the first
 // row and carries the flight's slot.
 
 type Props = { gallery: Gallery; renderMedia: boolean; flying: boolean };
@@ -70,7 +71,7 @@ export function CardRows({ gallery, renderMedia, flying }: Props) {
     <div className="flex flex-col gap-8">
       <CardHeader cardKey={gallery.key} renderMedia={renderMedia} compact={false} />
       {gallery.key === "talos" && <TalosSting startDelayMs={stingStartMs(flying)} />}
-      <div className="flex flex-col" style={{ rowGap: GALLERY.rowGap }}>
+      <div className="flex flex-col" style={{ rowGap: plan.slides.length === 0 ? GALLERY.proseGap : GALLERY.rowGap }}>
         {plan.intro.map(prose)}
         {plan.slides.map(row)}
         {plan.closing.map(prose)}
