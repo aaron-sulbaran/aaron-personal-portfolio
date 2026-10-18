@@ -1,24 +1,23 @@
 "use client";
 
-import { Flag } from "lucide-react";
 import { useImperativeHandle, useRef, type Ref, type RefObject } from "react";
 import { quickCopy } from "@/lib/content/quick";
 import { useHeaderHidden } from "@/lib/menu";
 import { gsap } from "@/lib/quick/gsap";
 import { barPosition, stopAt } from "@/lib/quick/trip";
-import { CLOSE_KEY, tripStops, type YearRow } from "@/lib/quick/years";
+import { NEXT_KEY, tripStops, type YearRow } from "@/lib/quick/years";
 import { Misuki } from "./Misuki";
 import type { TrackGeometry } from "./useTrackGeometry";
 
 // The trip bar: a slim road held at the top of the viewport, under the site's
-// bar (it follows the bar's headroom), with the whole trip on it from the
-// first year to what's next. Misuki drives it with the reader, both ways
+// bar (it follows the bar's headroom), with the whole trip on it, from what's
+// next to the first year. Misuki drives it with the reader, both ways
 // (lib/quick/trip maps the rail's depth onto the bar's even stops); each stop
 // lights as the rail reaches its year and stays lit (data-quick-mark, painted
 // by useCheckpointTrack). A stop is a button that scrolls to its year. It sits
 // in its own band above the rail, opaque, so the rail scrolls under it and
-// never shares a pixel with it. Below sm the last stop is a flag, so its
-// label never runs into the last year's.
+// never shares a pixel with it. "Next" is the first stop, its dot hollow as it
+// is on the rail.
 
 export type TripHandle = { drive: (depth: number, geometry: TrackGeometry) => void };
 
@@ -26,15 +25,15 @@ const CAR_PX = 64;
 const NAV_PX = 72;
 const REDUCE = "(prefers-reduced-motion: reduce)";
 
-type Props = { ref?: Ref<TripHandle>; rootRef: RefObject<HTMLDivElement | null>; rows: readonly YearRow[]; reduced: boolean };
+type Props = { ref?: Ref<TripHandle>; rootRef: RefObject<HTMLDivElement | null>; rows: readonly YearRow[]; withNext: boolean; reduced: boolean };
 
-export function TripBar({ ref, rootRef, rows, reduced }: Props) {
+export function TripBar({ ref, rootRef, rows, withNext, reduced }: Props) {
   const roadRef = useRef<HTMLDivElement>(null);
   const carRef = useRef<HTMLDivElement>(null);
   const fillRef = useRef<HTMLDivElement>(null);
   const shownRef = useRef({ p: 0 });
   const headerHidden = useHeaderHidden();
-  const stops = tripStops(rows);
+  const stops = tripStops(rows, withNext);
 
   useImperativeHandle(
     ref,
@@ -88,16 +87,12 @@ export function TripBar({ ref, rootRef, rows, reduced }: Props) {
                   aria-label={quickCopy.tripTo(stop.label)}
                   className="flex flex-col items-center rounded-md px-1 pt-[21px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                 >
-                  <span aria-hidden="true" className="block h-3 w-3 rounded-full bg-accent ring-[3px] ring-background transition-colors duration-300 motion-reduce:transition-none group-data-[lit=false]/mark:bg-border" />
+                  <span
+                    aria-hidden="true"
+                    className={`block h-3 w-3 rounded-full ring-[3px] ring-background transition-colors duration-300 motion-reduce:transition-none ${stop.key === NEXT_KEY ? "border-2 border-accent bg-background group-data-[lit=false]/mark:border-border" : "bg-accent group-data-[lit=false]/mark:bg-border"}`}
+                  />
                   <span aria-hidden="true" className="mt-1.5 flex h-4 items-center whitespace-nowrap font-label text-label-sm text-foreground transition-colors duration-300 group-data-[lit=false]/mark:text-muted">
-                    {stop.key === CLOSE_KEY ? (
-                      <>
-                        <Flag className="h-3.5 w-3.5 sm:hidden" strokeWidth={1.8} />
-                        <span className="max-sm:hidden">{stop.label}</span>
-                      </>
-                    ) : (
-                      stop.label
-                    )}
+                    {stop.label}
                   </span>
                 </button>
               </li>

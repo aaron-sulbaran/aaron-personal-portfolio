@@ -1,22 +1,48 @@
 "use client";
 
+import { useState } from "react";
 import { quickCopy } from "@/lib/content/quick";
 import { Portal } from "@/components/Portal";
+import { useFieldTip } from "@/components/quick/useFieldTip";
+import { parseSettings, SETTINGS_KEY } from "@/lib/quick/settings";
 import { useAppear } from "./useAppear";
 
 // Mode C: the toast at the bottom right, its title, one line, "Show me" and
 // "I'll explore". raised: the pill holds the corner, so the toast stands above
 // it. z-[34]: over the page's bar (30), under the Menu's scrim (35), so an
-// open Menu covers it. Reduced motion: a fade, no slide.
+// open Menu covers it, and under the tip (z-58, portalled to body). The dismiss
+// button carries a tip, on a mouse hover or keyboard focus, saying the MVP stays
+// in the menu; a touch screen has no hover, so the words sit as a small line in
+// the toast. In development the words are the lab's. Reduced motion: a fade, no slide.
 
 const EXIT_MS = 240;
 const { toastTitle, toastBody, yes, no } = quickCopy.invite;
+
+// The lab's edit of the tip, in development only; production ships the content's.
+function tipText(): string {
+  if (process.env.NODE_ENV !== "development") return quickCopy.tips.toast;
+  try {
+    return parseSettings(localStorage.getItem(SETTINGS_KEY)).texts.tipToast;
+  } catch {
+    return quickCopy.tips.toast;
+  }
+}
 
 export function InviteToast({ shown, raised, onGo, onDismiss }: { shown: boolean; raised: boolean; onGo: () => void; onDismiss: () => void }) {
   const [mounted, on] = useAppear(shown, EXIT_MS);
   if (!mounted) return null;
   return (
     <Portal>
+      <ToastCard on={on} raised={raised} onGo={onGo} onDismiss={onDismiss} />
+    </Portal>
+  );
+}
+
+function ToastCard({ on, raised, onGo, onDismiss }: { on: boolean; raised: boolean; onGo: () => void; onDismiss: () => void }) {
+  const [text] = useState(tipText);
+  const tip = useFieldTip(text, "accent");
+  return (
+    <>
       <div
         role="region"
         aria-label={toastTitle}
@@ -30,11 +56,17 @@ export function InviteToast({ shown, raised, onGo, onDismiss }: { shown: boolean
           <button type="button" onClick={onGo} data-cursor-hover className="rounded-full bg-accent px-3.5 py-1.5 text-background transition-colors hover:bg-accent-hover">
             {yes}
           </button>
-          <button type="button" onClick={onDismiss} data-cursor-hover className="rounded-full px-3.5 py-1.5 text-foreground transition-colors [box-shadow:inset_0_0_0_1px_var(--color-border)] hover:text-accent">
+          <button type="button" onClick={onDismiss} {...tip.bind} data-cursor-hover className="rounded-full px-3.5 py-1.5 text-foreground transition-colors [box-shadow:inset_0_0_0_1px_var(--color-border)] hover:text-accent">
             {no}
           </button>
         </p>
+        {text && (
+          <p data-express-invite-note="" className="mt-3 hidden text-xs leading-snug text-muted [@media(hover:none)]:block">
+            {text}
+          </p>
+        )}
       </div>
-    </Portal>
+      {tip.tip}
+    </>
   );
 }

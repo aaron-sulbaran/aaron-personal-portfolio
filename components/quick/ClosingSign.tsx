@@ -1,28 +1,20 @@
 import type { ReactNode } from "react";
 import { siteContent } from "@/lib/content";
-import { quickClosing } from "@/lib/content/quick";
+import { quickClosing, quickCopy } from "@/lib/content/quick";
 import { CLOSE_KEY } from "@/lib/quick/years";
 
-// The end of the lane: what I am looking for next, and the ways to reach me.
-// It is the last checkpoint, so the line (or the road) ends here.
+// The end of the lane, a short closing row: book some time, then the ways to
+// reach me. It is the last checkpoint, so the line (or the road) ends here.
 
 const links = quickClosing.links.map((key) => siteContent.connect.links.find((link) => link.key === key)!);
 const external = (href: string) => (href.startsWith("http") ? { target: "_blank", rel: "noopener noreferrer" } : {});
 
-export function ClosingSign({ line, className = "", node }: { line: string; className?: string; node?: ReactNode }) {
+export function ClosingSign({ className = "", node }: { className?: string; node?: ReactNode }) {
   const { primary } = siteContent.connect;
   return (
-    <section id={CLOSE_KEY} data-quick-key={CLOSE_KEY} aria-labelledby="quick-close" className={`group/item relative ${className}`}>
+    <section id={CLOSE_KEY} data-quick-key={CLOSE_KEY} aria-label={quickCopy.closingLabel} className={`group/item relative ${className}`}>
       {node}
-      <h2 id="quick-close" className="font-display text-[2.75rem] leading-none text-foreground md:text-[3.5rem]">
-        {quickClosing.label}
-      </h2>
-      {line.split(/\n{2,}/).map((paragraph) => (
-        <p key={paragraph} className="mt-4 max-w-2xl text-lg leading-relaxed text-foreground md:text-body-lg">
-          {paragraph}
-        </p>
-      ))}
-      <ul className="mt-8 flex flex-wrap gap-2 font-label text-label">
+      <ul className="flex flex-wrap gap-2 font-label text-label">
         <li>
           <a href={primary.href} {...external(primary.href)} className="inline-flex rounded-full bg-accent px-4 py-2 text-background transition-colors hover:bg-accent-hover">
             {primary.label}

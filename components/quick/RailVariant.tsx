@@ -13,7 +13,7 @@ import { RAIL_X, YearList } from "./YearList";
 // the trip bar holds the whole trip at the top of the viewport and Misuki
 // drives it with the reader.
 
-export function RailVariant({ rows, closing, runKey, speed, forceReduced, onOpen, trip = false }: VariantProps & { trip?: boolean }) {
+export function RailVariant({ rows, next, runKey, speed, forceReduced, onOpen, trip = false }: VariantProps & { trip?: boolean }) {
   const trackRef = useRef<HTMLDivElement>(null);
   const lineRef = useRef<SVGPathElement>(null);
   const barRef = useRef<HTMLDivElement>(null);
@@ -33,7 +33,7 @@ export function RailVariant({ rows, closing, runKey, speed, forceReduced, onOpen
 
   return (
     <div>
-      {trip && <TripBar ref={tripRef} rootRef={barRef} rows={rows} reduced={forceReduced} />}
+      {trip && <TripBar ref={tripRef} rootRef={barRef} rows={rows} withNext={next !== null} reduced={forceReduced} />}
       <div ref={trackRef} className="relative">
         {geometry && lineEnd > 0 ? (
           <svg aria-hidden="true" className="pointer-events-none absolute left-0 top-0 overflow-visible" width={RAIL_X * 2} height={lineEnd} viewBox={`0 0 ${RAIL_X * 2} ${lineEnd}`}>
@@ -43,7 +43,7 @@ export function RailVariant({ rows, closing, runKey, speed, forceReduced, onOpen
         ) : (
           <span aria-hidden="true" className="absolute inset-y-0 left-6 w-1 -translate-x-1/2 rounded-full bg-border" />
         )}
-        <YearList rows={rows} closing={closing} onOpen={onOpen} />
+        <YearList rows={rows} next={next} onOpen={onOpen} />
       </div>
     </div>
   );

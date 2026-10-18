@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import { quickEntries } from "@/lib/content/quick";
 import { writeAnswer } from "@/lib/quick/invite";
+import { nextLines, type NextChoice } from "@/lib/quick/next";
 import type { QuickVariant, TitleMode } from "@/lib/quick/settings";
 import { DEFAULT_TEXTS, yearLines, type QuickTexts } from "@/lib/quick/texts";
 import { yearRows } from "@/lib/quick/years";
@@ -24,17 +25,24 @@ type Props = {
   titleStaggerMs?: number;
   titleDurationMs?: number;
   texts?: QuickTexts;
+  // What's next: the variant, A (the Next checkpoint) and B (the line under the intro).
+  nextVariant?: NextChoice;
+  showNextA?: boolean;
+  showLookingB?: boolean;
   speed?: number;
   forceReduced?: boolean;
   replay?: number;
   visit?: boolean;
 };
 
-export function ExpressLane({ variant = "rail", titleMode, titleDelayMs, titleStaggerMs, titleDurationMs, texts = DEFAULT_TEXTS, speed = 1, forceReduced = false, replay = 0, visit = false }: Props) {
+export function ExpressLane({ variant = "rail", titleMode, titleDelayMs, titleStaggerMs, titleDurationMs, texts = DEFAULT_TEXTS, nextVariant = "two-tracks", showNextA = true, showLookingB = true, speed = 1, forceReduced = false, replay = 0, visit = false }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
   const { open, modal } = useQuickModal();
   const rows = useMemo(() => yearRows(quickEntries, yearLines(texts)), [texts]);
-  const runKey = `${variant}:${replay}:${rows.map((row) => row.line.length).join(".")}:${texts.closing.length}`;
+  const lines = nextLines(nextVariant, texts);
+  const next = showNextA && lines.full ? lines.full : null;
+  const looking = showLookingB && lines.short ? lines.short : null;
+  const runKey = `${variant}:${replay}:${rows.map((row) => row.line.length).join(".")}:${next?.length ?? "off"}`;
   useLaneMaskIn(rootRef);
 
   useEffect(() => {
@@ -46,12 +54,15 @@ export function ExpressLane({ variant = "rail", titleMode, titleDelayMs, titleSt
     }
   }, [visit]);
 
-  const shared = { rows, closing: texts.closing, runKey, speed, forceReduced, onOpen: open };
+  const shared = { rows, next, runKey, speed, forceReduced, onOpen: open };
   return (
     <div ref={rootRef}>
       <LaneHeader
         key={`${titleMode}:${titleDelayMs}:${titleStaggerMs}:${titleDurationMs}:${forceReduced}:${replay}`}
         intro={texts.intro}
+        looking={looking}
+        canJump={next !== null}
+        tipBack={texts.tipBack}
         titleMode={titleMode}
         titleDelayMs={titleDelayMs}
         titleStaggerMs={titleStaggerMs}
