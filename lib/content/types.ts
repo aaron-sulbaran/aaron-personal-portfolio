@@ -111,8 +111,25 @@ export interface Mentor { name: string; href: string; line: string | null }
 export interface MentorsList { title: string; people: readonly Mentor[] }
 export interface TimelineEntry { employer: string; role: string | null; when: string; logo: LogoRef | null; tip: string }
 
-export type Cards = Record<Exclude<CardKey, "mentorship" | "jobs">, CardContent> & {
+// The Talos modal's extras (lib/content/talos.ts): the lockup the sting ends on, the
+// specialists Talos is growing into and the eight reactions it answers with. Every
+// src is a brand kit file under public/work/logos/talos.
+export interface TalosLockup { alt: string; light: string; dark: string; width: number; height: number }
+export interface TalosSpecialist { name: string; job: string; src: string; alt: string }
+export interface TalosState { name: string; meaning: string; src: string }
+export interface TalosTeam {
+  lockup: TalosLockup;
+  next: string;
+  specialistsLabel: string;
+  specialists: readonly TalosSpecialist[];
+  reactions: string;
+  statesLabel: string;
+  states: readonly TalosState[];
+}
+
+export type Cards = Record<Exclude<CardKey, "mentorship" | "jobs" | "talos">, CardContent> & {
   mentorship: CardContent & { mentors: MentorsList };
+  talos: CardContent & { team: TalosTeam };
   jobs: CardContent & { timeline: readonly TimelineEntry[] };
 };
 

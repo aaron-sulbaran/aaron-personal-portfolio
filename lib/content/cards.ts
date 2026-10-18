@@ -1,4 +1,5 @@
 import { logos, modalPhotos, pictures } from "./media";
+import { talosTeam } from "./talos";
 import type { CardKey, Cards } from "./types";
 
 // The fourteen launch cards (docs/content/cards.md, approved 2026-10-08), in strand order.
@@ -40,10 +41,11 @@ export const cards: Cards = {
   talos: {
     group: "work", visual: { kind: "logo", logo: logos.talos, tile: "talos" },
     book: { title: "Talos", meta: "Builder, 2026" },
-    modal: { kind: "logo", title: "Talos", links: [], photos: [], blocks: [
+    modal: { kind: "logo", title: "Talos", links: [{ label: "See the Talos brand kit", href: "https://claude.ai/artifact/YX8BJc8uetSyL7WPD7aEhX" }], photos: [], blocks: [
       "Talos is my executive assistant. Every day it builds my itinerary, reads all my inboxes, my messages, and tells me what needs me first. I'm currently training it to take action autonomously, with lots of safeguards in place. Its limits are written in code, not in prompts.",
       "I built it because I wanted a use of AI in my life that did something real. It started at a one-day Vercel hackathon in New York and saves me hours every week. I plan to open source it.",
     ] },
+    team: talosTeam,
   },
   travel: {
     group: "people", visual: { kind: "photo", flipX: false, photo: pictures.travel },

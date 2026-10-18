@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { galleryOf } from "@/lib/gallery/card";
 import { GALLERY } from "@/lib/gallery/constants";
-import { cardSteps, maskStartMs } from "@/lib/gallery/steps";
+import { cardSteps, maskStartMs, stingStartMs } from "@/lib/gallery/steps";
 
 const ids = (steps: { id: string }[][]) => steps.map((step) => step.map((part) => part.id));
 
@@ -27,7 +27,16 @@ describe("a card's mask steps", () => {
   });
   it("counts a split part's lines", () => {
     const steps = cardSteps(galleryOf("talos"), "rows", false, (id) => (id === "words-0" ? 4 : 1));
-    expect(steps[2]).toEqual([{ id: "words-0", lines: 4 }]);
+    expect(steps[3]).toEqual([{ id: "words-0", lines: 4 }]);
+  });
+  it("masks Talos's sting right after its header and its team before its link", () => {
+    expect(ids(cardSteps(galleryOf("talos"), "rows", false))).toEqual([["title"], ["meta"], ["sting"], ["words-0"], ["words-1"], ["talos"], ["links"]]);
+    expect(ids(cardSteps(galleryOf("talos"), "pager", true)).slice(2, 3)).toEqual([["sting"]]);
+  });
+  it("starts the sting once its stage has masked in", () => {
+    const { staggerMs, lengthMs } = GALLERY.mask;
+    expect(stingStartMs(false)).toBe(2 * staggerMs + lengthMs);
+    expect(stingStartMs(true)).toBe(GALLERY.mask.landingMs + 2 * staggerMs + lengthMs);
   });
   it("starts at the landing after a flight, and at once when nothing lands", () => {
     expect([maskStartMs(true), maskStartMs(false)]).toEqual([GALLERY.mask.landingMs, 0]);

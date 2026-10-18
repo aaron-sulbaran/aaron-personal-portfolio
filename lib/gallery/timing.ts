@@ -29,6 +29,8 @@ export const partId = {
   title: "title",
   meta: "meta",
   mentors: "mentors",
+  sting: "sting",
+  talos: "talos",
   links: "links",
   pager: "pager",
   words: (unit: number) => `words-${unit}`,
@@ -41,7 +43,8 @@ export interface StepOptions {
   flown?: number; // the photo a parked flown card covers: it never masks (its caption does)
   hasCaption: (photo: number) => boolean;
   hasLinks: boolean;
-  trailing?: readonly string[]; // parts after the plan and before the links (the mentors)
+  leading?: readonly string[]; // parts after the meta line and before the plan (Talos's sting)
+  trailing?: readonly string[]; // parts after the plan and before the links (the mentors, Talos's team)
   lines?: (id: string) => number;
 }
 
@@ -60,11 +63,11 @@ function slideParts(slide: Slide, o: StepOptions): MaskPart[] {
 
 const ends = (o: StepOptions): MaskStep[] => [...(o.trailing ?? []).map((id) => [part(id, o)]), ...(o.hasLinks ? [[part(partId.links, o)]] : [])];
 
-// Desktop: the title, the meta line, the opening words one by one, each row's
+// Desktop: the title, the meta line, the leading parts, the opening words one by one, each row's
 // photo, caption and words together (a turning row adds its controls), the
 // closing words, the trailing parts, the links.
 export function planSteps(plan: Plan, o: StepOptions): MaskStep[] {
-  const steps: MaskStep[] = [[part(partId.title, o)], [part(partId.meta, o)]];
+  const steps: MaskStep[] = [[part(partId.title, o)], [part(partId.meta, o)], ...(o.leading ?? []).map((id) => [part(id, o)])];
   for (const unit of plan.intro) steps.push([part(partId.words(unit), o)]);
   for (const slide of plan.slides) steps.push([...slideParts(slide, o), ...(slide.photos.length > 1 ? [{ id: partId.rotator(slide.photo) }] : [])]);
   for (const unit of plan.closing) steps.push([part(partId.words(unit), o)]);
