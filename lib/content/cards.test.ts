@@ -32,7 +32,7 @@ describe("the fourteen cards", () => {
     expect(Object.fromEntries(keys.map((key) => [key, cards[key].modal.kind]))).toEqual({
       ...Object.fromEntries(STRAND.map((key) => [key, "logo"])), travel: "photo", misuki: "photo", jobs: "timeline",
     });
-    expect(cards.talos.visual).toEqual({ kind: "logo", logo: { src: "/work/logos/talos/mark.svg", srcDark: null, width: 512, height: 512 }, tile: "anvil" });
+    expect(cards.talos.visual).toEqual({ kind: "logo", logo: { src: "/work/logos/talos/mark.svg", srcDark: null, width: 512, height: 512 }, tile: "talos" });
   });
 
   it("lead with the HSF speaking picture, exported 3:4 from the original", () => {

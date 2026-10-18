@@ -72,7 +72,6 @@ export type CoilTheme = {
     readonly duoDark: Rgba;
     readonly duoLight: Rgba;
     readonly workBack: Rgba; // plain work backs: duo light in light, its own pane in dark
-    readonly anvil: Rgba;
     readonly logoGround: Rgba;
     readonly mark: Rgba; // the AS mark on This site's card: the accent
     readonly recede: number;
@@ -126,7 +125,6 @@ export function themeFromTokens(read: TokenReader, dark: boolean): CoilTheme {
       duoDark: color("--card-duo-dark"),
       duoLight,
       workBack: dark ? color("--card-work-back-dark", duoLight) : duoLight,
-      anvil: color("--card-anvil"),
       logoGround: color("--card-logo-ground"),
       mark: color("--color-accent", ink),
       recede: parseScalar(read("--card-recede"), 0.3),

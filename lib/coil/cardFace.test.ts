@@ -23,7 +23,7 @@ describe("a logo on its tile", () => {
     expect(needsGround({ srcDark: null }, "plain", false)).toBe(false);
     expect(needsGround({ srcDark: "/x-on-dark.svg" }, "plain", true)).toBe(false);
     expect(needsGround({ srcDark: null, opaque: true }, "plain", true)).toBe(false);
-    expect(needsGround({ srcDark: null }, "anvil", true)).toBe(false);
+    expect(needsGround({ srcDark: null }, "talos", true)).toBe(false);
   });
   it("fills the whole face with an opaque logo's ground, and with nothing for any other logo", () => {
     expect(faceGround({ opaque: true, ground: "#14183e" })).toBe("#14183e");

@@ -43,8 +43,9 @@ export function containBox(aspect: number, side: number): Fit {
 }
 
 // A light plate under a plain tile's logo in the dark theme when the logo has no
-// dark file and is not its own ground (the IEEE square).
-export function needsGround(logo: { srcDark: string | null; opaque?: boolean }, tile: "plain" | "anvil", dark: boolean): boolean {
+// dark file and is not its own ground (the IEEE square). Talos's tile never takes
+// one: its kit puts the coin only on white or a dark ground, never on a plate.
+export function needsGround(logo: { srcDark: string | null; opaque?: boolean }, tile: "plain" | "talos", dark: boolean): boolean {
   return dark && tile === "plain" && logo.srcDark === null && !logo.opaque;
 }
 

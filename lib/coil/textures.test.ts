@@ -12,7 +12,7 @@ describe("a card's empty source", () => {
   });
   it("keeps a logo's tile and file facts, and every job's disc with its logo's shape", () => {
     const talos = emptySource(strandCardByKey.get("talos")!);
-    expect(talos.kind === "logo" && [talos.tile, talos.light, talos.dark]).toEqual(["anvil", null, null]);
+    expect(talos.kind === "logo" && [talos.tile, talos.light, talos.dark]).toEqual(["talos", null, null]);
     const ieee = emptySource(strandCardByKey.get("ieee")!);
     expect(ieee.kind === "logo" && ieee.logo.opaque).toBe(true);
     const jobs = emptySource(strandCardByKey.get("jobs")!);

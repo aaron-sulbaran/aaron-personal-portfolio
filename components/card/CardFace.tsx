@@ -44,8 +44,8 @@ export function CardFace({ face }: { face: StrandFace }) {
   return <Logo logo={face.logo} tile={face.tile} />;
 }
 
-function Logo({ logo, tile }: { logo: LogoRef; tile: "plain" | "anvil" }) {
-  const pane = tile === "anvil" ? "bg-[color:var(--card-anvil)]" : WORK;
+// tile: Talos's coin takes the plain pane but never the dark theme's light plate (lib/coil/cardFace needsGround).
+function Logo({ logo, tile }: { logo: LogoRef; tile: "plain" | "talos" }) {
   const aspect = logo.width / logo.height;
   const size = { width: Math.round(logo.width), height: Math.round(logo.height) };
   if (logo.opaque) {
@@ -53,7 +53,7 @@ function Logo({ logo, tile }: { logo: LogoRef; tile: "plain" | "anvil" }) {
     const box = containBox(aspect, 1 - 2 * INSET.x);
     const ground = faceGround(logo);
     return (
-      <div className={`${PANE} ${pane} flex items-center justify-center`} style={ground ? { ...PANE_STYLE, background: ground } : PANE_STYLE} data-face="logo">
+      <div className={`${PANE} ${WORK} flex items-center justify-center`} style={ground ? { ...PANE_STYLE, background: ground } : PANE_STYLE} data-face="logo">
         <div
           className="relative overflow-hidden"
           style={{ width: pct(box.w), aspectRatio: `${logo.width} / ${logo.height}`, borderRadius: corners(INSET.radius, box.w, box.h) }}
@@ -67,7 +67,7 @@ function Logo({ logo, tile }: { logo: LogoRef; tile: "plain" | "anvil" }) {
   const pad = COIL.face.plateInset;
   const plate = { w: box.w + 2 * pad, h: box.h + 2 * pad };
   return (
-    <div className={`${PANE} ${pane}`} style={PANE_STYLE} data-face="logo">
+    <div className={`${PANE} ${WORK}`} style={PANE_STYLE} data-face="logo">
       {needsGround(logo, tile, true) && (
         <span
           aria-hidden="true"

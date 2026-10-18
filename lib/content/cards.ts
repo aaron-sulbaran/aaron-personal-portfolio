@@ -38,7 +38,7 @@ export const cards: Cards = {
     ] },
   },
   talos: {
-    group: "work", visual: { kind: "logo", logo: logos.talos, tile: "anvil" },
+    group: "work", visual: { kind: "logo", logo: logos.talos, tile: "talos" },
     book: { title: "Talos", meta: "Builder, 2026" },
     modal: { kind: "logo", title: "Talos", links: [], photos: [], blocks: [
       "Talos is my executive assistant. Every day it builds my itinerary, reads all my inboxes, my messages, and tells me what needs me first. I'm currently training it to take action autonomously, with lots of safeguards in place. Its limits are written in code, not in prompts.",

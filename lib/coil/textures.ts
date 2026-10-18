@@ -7,10 +7,10 @@ import { cardDims, circlesLayout, containBox, faceGround, logoBox, MARK_INK_BOX,
 
 // Card faces, painted on 2D canvases from the theme tokens, ported from hero
 // lab 2 (391-516) at Aaron's picks: photo fronts in true color inside our
-// pane; logo, mark and circle fronts on --card-work-pane (Talos on
-// --card-anvil) from the layouts lib/coil/cardFace.ts shares with the modal's
+// pane; logo, mark and circle fronts on --card-work-pane (Talos's coin
+// passes 3:1 on it in both themes) from the layouts lib/coil/cardFace.ts shares with the modal's
 // header tile; photo backs a duotone of the photo in the accent (--card-duo-dark
-// to --card-duo-light); every other back the plain pane (the anvil for Talos),
+// to --card-duo-light); every other back the plain pane,
 // no logo (a mirrored mark reads as backwards text). Every paint returns fresh
 // canvases, so a repaint uploads into a fresh texture and the old one is
 // disposed, never rewritten in place.
@@ -33,7 +33,7 @@ export type LogoImage = { image: HTMLImageElement | null; aspect: number };
 // null and paints the plain pane.
 export type CardSource =
   | { kind: "photo"; key: string; image: HTMLImageElement | null }
-  | { kind: "logo"; key: string; light: HTMLImageElement | null; dark: HTMLImageElement | null; logo: LogoRef; tile: "plain" | "anvil" }
+  | { kind: "logo"; key: string; light: HTMLImageElement | null; dark: HTMLImageElement | null; logo: LogoRef; tile: "plain" | "talos" }
   | { kind: "mark"; key: string }
   | { kind: "circles"; key: string; logos: LogoImage[] };
 
@@ -195,11 +195,11 @@ function paintPhotoFront(g: CanvasRenderingContext2D, d: Dims, img: HTMLImageEle
   finishCard(g, d, theme);
 }
 
-// A logo on its pane (the anvil for Talos): the opaque IEEE square as the face, at
+// A logo on its pane: the opaque IEEE square as the face, at
 // the photo inset's width, on a pane of its own edge colour so it reads full bleed; any other logo centred at its fit, on a light plate
 // where the dark theme needs one (cardFace.ts needsGround).
 function paintLogoFront(g: CanvasRenderingContext2D, d: Dims, source: Extract<CardSource, { kind: "logo" }>, theme: CoilTheme) {
-  shapeCard(g, d, faceGround(source.logo) ?? toCanvasColor(source.tile === "anvil" ? theme.card.anvil : theme.card.workPane));
+  shapeCard(g, d, faceGround(source.logo) ?? toCanvasColor(theme.card.workPane));
   const image = theme.dark && source.dark ? source.dark : source.light;
   const aspect = source.logo.width / source.logo.height;
   if (image && source.logo.opaque) {
@@ -306,7 +306,7 @@ export function paintCard(source: CardSource, theme: CoilTheme, size: TextureSiz
       break;
     case "logo":
       paintLogoFront(f, d, source, theme);
-      plainBack(source.tile === "anvil" ? theme.card.anvil : theme.card.workBack);
+      plainBack(theme.card.workBack);
       break;
     case "mark":
       paintMarkFront(f, d, theme);

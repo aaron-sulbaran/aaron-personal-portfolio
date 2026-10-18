@@ -7,7 +7,7 @@ import type { CardKey, LogoRef } from "./types";
 
 export type StrandFace =
   | { kind: "photo"; src: string }
-  | { kind: "logo"; logo: LogoRef; tile: "plain" | "anvil" }
+  | { kind: "logo"; logo: LogoRef; tile: "plain" | "talos" }
   | { kind: "mark" }
   | { kind: "circles"; logos: readonly LogoRef[] };
 

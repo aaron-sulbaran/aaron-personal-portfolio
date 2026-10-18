@@ -61,10 +61,8 @@
   /* Scalars: rear-card brightness drop and sheen strength. */
   --card-recede: 0.3;
   --card-sheen: 0.1;
-  /* C3: Talos's anvil tile (its kit's ground, the same in both themes), and the
-     light ground under a logo with no dark file in the dark theme and in the
-     jobs card's circles. */
-  --card-anvil: #12141F;
+  /* The light ground under a logo with no dark file in the dark theme and in
+     the jobs card's circles. */
   --card-logo-ground: #FAFAF7;
   /* "Aaron" behind the coil: a lit shadergradient surface seen through the
      letters at --name-ink (the scene mixes at ink * 2.2). The surface's stops:

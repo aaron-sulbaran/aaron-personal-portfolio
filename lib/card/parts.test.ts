@@ -23,14 +23,14 @@ const unplated = { kind: "logo", logo: { src: "/work/logos/stand-in.svg", srcDar
 const header = (cardKey: CardKey, compact: boolean) => renderToStaticMarkup(createElement(CardHeader, { cardKey, renderMedia: true, compact }));
 
 describe("the header tile's face", () => {
-  it("puts a logo with no dark file on a plate that shows only in the dark theme, never a logo with a dark file, IEEE's square or Talos's anvil", () => {
+  it("puts a logo with no dark file on a plate that shows only in the dark theme, never a logo with a dark file, IEEE's square or Talos's tile", () => {
     const plated = renderToStaticMarkup(createElement(CardFace, { face: unplated }));
     expect(plated).toContain('data-plate=""');
     expect(plated).toContain("dark:block");
     expect(face("capital-one")).not.toContain("data-plate");
     expect(face("ieee")).not.toContain("data-plate");
     expect(face("talos")).not.toContain("data-plate");
-    expect(face("talos")).toContain("bg-[color:var(--card-anvil)]");
+    expect(face("talos")).toContain("bg-[color:var(--card-work-pane)]");
   });
   it("swaps to a logo's dark file in the dark theme", () => {
     expect(face("min-max")).toContain('src="/work/logos/min-max/mark-on-dark.svg"');

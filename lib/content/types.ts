@@ -75,7 +75,7 @@ export type CardVisual =
   // flipX mirrors left to right when drawn. The export bakes the manifest's mirrors in, so every launch card is false.
   | { kind: "photo"; flipX: boolean; photo: CardPicture | null }
   // subtitle: the line the min/Max slide-out animation reveals (the animation comes later).
-  | { kind: "logo"; logo: LogoRef | null; tile: "plain" | "anvil"; subtitle?: string }
+  | { kind: "logo"; logo: LogoRef | null; tile: "plain" | "talos"; subtitle?: string }
   | { kind: "mark" }
   | { kind: "circles" };
 

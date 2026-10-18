@@ -44,16 +44,16 @@ async function paneLightness(page: import("@playwright/test").Page, key: string,
   return sum / (image.rgba.length / 4) / 255;
 }
 
-test("coil faces: Talos sits on its dark anvil in the light theme, Capital One on the light pane", async ({ page }) => {
+test("coil faces: Talos and Capital One sit on the light pane in the light theme", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light" });
   await openHome(page, { debug: "flight" });
-  expect(await paneLightness(page, "talos")).toBeLessThan(0.4);
+  expect(await paneLightness(page, "talos")).toBeGreaterThan(0.6);
   expect(await paneLightness(page, "capital-one")).toBeGreaterThan(0.6);
 });
 
 // Capital One has a white file for the dark theme, so it stays on the dark pane with no plate: the
 // point an eighth in at mid height, left of the logo's ink, is dark.
-test("coil faces: in the dark theme Capital One's white logo sits on the dark pane and Talos stays on its anvil", async ({ page }) => {
+test("coil faces: in the dark theme Capital One's white logo and Talos's coin sit on the dark pane", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "dark" });
   await openHome(page, { debug: "flight" });
   expect(await paneLightness(page, "capital-one")).toBeLessThan(0.4);

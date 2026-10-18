@@ -15,7 +15,7 @@ describe("the strand as cards", () => {
   it("draws each face from the approved files", () => {
     expect(strandCardByKey.get("mentorship")?.face).toEqual({ kind: "photo", src: "/photos/cards/mentorship-picture.jpg" });
     const talos = strandCardByKey.get("talos")?.face;
-    expect(talos?.kind === "logo" && talos.tile).toBe("anvil");
+    expect(talos?.kind === "logo" && talos.tile).toBe("talos");
     const jobs = strandCardByKey.get("jobs")?.face;
     expect(jobs?.kind === "circles" && jobs.logos.map((logo) => logo.src)).toEqual([
       "/work/logos/jobs/popeyes-logo.svg", "/work/logos/jobs/mod-pizza-logo.svg", "/work/logos/jobs/ut-austin-logo.svg", "/work/logos/jobs/apple-logo-black.svg", "/work/logos/jobs/aritzia-logo.svg",
