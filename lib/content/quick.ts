@@ -140,20 +140,20 @@ export const quickNextVariants = [
   {
     id: "two-tracks",
     name: "Two tracks",
-    short: "product roles, and applied AI engineering",
-    full: "Next, I want to build in one of two ways: as a product manager at a company that ships at scale, or as an engineer building applied AI at a startup or frontier lab.",
+    short: "product roles, and Applied AI engineering",
+    full: "I want to build in one of two ways: as a product manager at a company that ships at scale, or as an engineer building Applied AI at a startup or frontier lab.",
   },
   {
     id: "either-way",
     name: "Either way",
-    short: "product or applied AI engineering roles",
-    full: "Next is a product role, or a technical one building applied AI. Either way, I want to bring people together around one goal.",
+    short: "product or Applied AI engineering roles",
+    full: "A product role, or a technical one building Applied AI. Either way, I want to bring people together around one goal.",
   },
   {
     id: "builder",
     name: "Builder",
-    short: "builder roles in product and applied AI",
-    full: "I'm looking for a builder role: product management at scale, or product and applied AI engineering where the frontier is being built.",
+    short: "builder roles in product and Applied AI",
+    full: "I'm looking for a builder role: product management at scale, or product and Applied AI engineering where the frontier is being built.",
   },
   {
     id: "original",
