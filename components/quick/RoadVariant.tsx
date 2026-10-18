@@ -3,7 +3,6 @@
 import { useCallback, useRef } from "react";
 import { gsap } from "@/lib/quick/gsap";
 import { lanePath, lanePoints, laneSamples, lengthAtY, type LaneSamples } from "@/lib/quick/road";
-import { CLOSE_KEY, NEXT_KEY } from "@/lib/quick/years";
 import { MISUKI_BOX, MisukiShape } from "./Misuki";
 import type { VariantProps } from "./types";
 import { useCheckpointTrack } from "./useCheckpointTrack";
@@ -21,9 +20,9 @@ const LANE_PX = 10;
 const CAR_PX = 56;
 const REDUCE = "(prefers-reduced-motion: reduce)";
 
-const laneTops = (g: TrackGeometry) => g.tops.filter((top) => top.key === NEXT_KEY || top.key.startsWith("year-") || top.key === CLOSE_KEY).map((top) => top.y);
+const laneTops = (g: TrackGeometry) => [...g.tops.filter((top) => top.key.startsWith("year-")).map((top) => top.y), g.height];
 
-export function RoadVariant({ rows, next, runKey, speed, forceReduced, onOpen }: VariantProps) {
+export function RoadVariant({ rows, runKey, speed, forceReduced, onOpen }: VariantProps) {
   const trackRef = useRef<HTMLDivElement>(null);
   const trailRef = useRef<SVGPathElement>(null);
   const carRef = useRef<SVGGElement>(null);
@@ -81,7 +80,7 @@ export function RoadVariant({ rows, next, runKey, speed, forceReduced, onOpen }:
       ) : (
         <span aria-hidden="true" className="absolute inset-y-0 left-6 w-2.5 -translate-x-1/2 rounded-full bg-border" />
       )}
-      <YearList rows={rows} next={next} onOpen={onOpen} />
+      <YearList rows={rows} onOpen={onOpen} />
       {d && (
         <svg aria-hidden="true" className="pointer-events-none absolute left-0 top-0 overflow-visible" width={RAIL_X * 2} height={end} viewBox={`0 0 ${RAIL_X * 2} ${end}`}>
           <g ref={carRef} className="text-foreground">

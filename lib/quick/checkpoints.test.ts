@@ -95,35 +95,30 @@ describe("lighting checkpoints", () => {
   });
 });
 
-describe("Next as the first checkpoint", () => {
+describe("a rail of years only", () => {
   const rail = anchorsFrom(
     [
-      { key: "next", y: 22 },
-      { key: "year-2026", y: 300 },
-      { key: "year-2025", y: 700 },
+      { key: "year-2026", y: 22 },
+      { key: "year-2025", y: 500 },
       { key: "year-2021", y: 1200 },
     ],
     1400,
   );
 
-  it("sits above every year, so it is the first to light and the last to go", () => {
-    expect(rail[0].key).toBe("next");
+  it("starts at 2026, which is the first to light and the last to go", () => {
+    expect(rail[0].key).toBe("year-2026");
     expect(rail.every((anchor, i) => i === 0 || anchor.at > rail[0].at)).toBe(true);
     let { state } = syncLit(emptyCheckpoints(), rail, 0.05);
-    expect([...state.lit]).toEqual(["next"]);
+    expect([...state.lit]).toEqual(["year-2026"]);
     ({ state } = syncLit(state, rail, 0.9));
-    expect([...state.lit]).toEqual(["next", "year-2026", "year-2025", "year-2021"]);
+    expect([...state.lit]).toEqual(["year-2026", "year-2025", "year-2021"]);
     const back = syncLit(state, rail, 0.3);
     expect(back.unlit).toEqual(["year-2025", "year-2021"]);
-    expect([...back.state.lit]).toEqual(["next", "year-2026"]);
     const top = syncLit(back.state, rail, 0);
-    expect(top.unlit).toEqual(["next", "year-2026"]);
-    expect([...top.state.lit]).toEqual([]);
+    expect(top.unlit).toEqual(["year-2026"]);
   });
 
-  it("lights again on the way back down, and with everything under reduced motion", () => {
-    const { state } = syncLit(emptyCheckpoints(), rail, 0);
-    expect(syncLit(state, rail, 0.02).lit).toEqual(["next"]);
-    expect([...lightAll(emptyCheckpoints(), rail).lit]).toContain("next");
+  it("lights every year when the reader is past the end of the track", () => {
+    expect([...syncLit(emptyCheckpoints(), rail, 1).state.lit]).toEqual(["year-2026", "year-2025", "year-2021"]);
   });
 });

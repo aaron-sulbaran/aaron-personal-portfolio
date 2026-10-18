@@ -3,8 +3,8 @@ import { DEFAULT_SETTINGS, exportValues, parseSettings, sameSettings, SETTINGS_K
 import { DEFAULT_TEXTS, parseTexts, yearLines } from "./texts";
 
 describe("quick lab settings", () => {
-  it("are versioned for round 5, so an older draft never overrides the what's-next words", () => {
-    expect(SETTINGS_KEY).toBe("lab-quick-v6");
+  it("are versioned for round 6, so an older draft never overrides the what's-next placement", () => {
+    expect(SETTINGS_KEY).toBe("lab-quick-v7");
   });
 
   it("default to the unfold, 600ms after the title is in view, 120ms between the three and 800ms each", () => {
@@ -62,7 +62,7 @@ describe("quick lab settings", () => {
 
   it("export the words with the rest of the values", () => {
     const values = exportValues(DEFAULT_SETTINGS, "dark", "line");
-    expect(values).toMatchObject({ lab: "quick", round: 5, variant: "rail", theme: "dark", invite: "line" });
+    expect(values).toMatchObject({ lab: "quick", round: 6, variant: "rail", theme: "dark", invite: "line" });
     expect(values.texts).toEqual(DEFAULT_TEXTS);
     expect(values).toMatchObject({ nextVariant: "two-tracks", showNextA: true, showLookingB: true });
     expect(values.texts.tipToast).toBe("The MVP is always in the menu if you need it later.");
