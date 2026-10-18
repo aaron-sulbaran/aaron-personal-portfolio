@@ -38,11 +38,11 @@ function Looking({ line, canJump, forceReduced }: { line: string; canJump: boole
         <button
           type="button"
           onClick={() => jumpToNext(forceReduced)}
-          className="group/looking inline-flex items-baseline gap-1.5 rounded-sm text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
+          className="group/looking rounded-sm text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
         >
-          {label}
+          {label}{" "}
           <span className="text-foreground underline decoration-border decoration-1 underline-offset-4 transition-colors group-hover/looking:text-accent group-hover/looking:decoration-accent">{line}</span>
-          <ArrowDown aria-hidden="true" className="h-3.5 w-3.5 shrink-0 translate-y-0.5 text-accent" strokeWidth={2} />
+          <ArrowDown aria-hidden="true" className="ml-1 inline-block h-3.5 w-3.5 align-[-2px] text-accent" strokeWidth={2} />
           <span className="sr-only">{quickCopy.next.lookingForAction}</span>
         </button>
       ) : (

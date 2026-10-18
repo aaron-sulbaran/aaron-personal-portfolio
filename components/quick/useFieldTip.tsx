@@ -34,7 +34,10 @@ export interface FieldTip {
   tip: ReactElement;
 }
 
-export function useFieldTip(text: string, tone: TipTone): FieldTip {
+// anchorOf: the element the tip is placed against, when it is not the control
+// itself (the toast's tip stands off the whole toast, so it never covers the
+// toast's own words).
+export function useFieldTip(text: string, tone: TipTone, anchorOf: (control: HTMLElement) => HTMLElement = (control) => control): FieldTip {
   const id = useId();
   const [open, setOpen] = useState(false);
   const anchorRef = useRef<HTMLElement | null>(null);
@@ -72,11 +75,11 @@ export function useFieldTip(text: string, tone: TipTone): FieldTip {
   return {
     bind: {
       onPointerEnter: (event) => {
-        if (event.pointerType === "mouse" || event.pointerType === "pen") show(event.currentTarget);
+        if (event.pointerType === "mouse" || event.pointerType === "pen") show(anchorOf(event.currentTarget));
       },
       onPointerLeave: hide,
       onFocus: (event) => {
-        if (isKeyboardFocus(event.currentTarget)) show(event.currentTarget);
+        if (isKeyboardFocus(event.currentTarget)) show(anchorOf(event.currentTarget));
       },
       onBlur: hide,
       "aria-describedby": id,

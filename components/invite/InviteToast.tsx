@@ -40,7 +40,7 @@ export function InviteToast({ shown, raised, onGo, onDismiss }: { shown: boolean
 
 function ToastCard({ on, raised, onGo, onDismiss }: { on: boolean; raised: boolean; onGo: () => void; onDismiss: () => void }) {
   const [text] = useState(tipText);
-  const tip = useFieldTip(text, "accent");
+  const tip = useFieldTip(text, "accent", (control) => control.closest<HTMLElement>("[data-express-invite]") ?? control);
   return (
     <>
       <div
