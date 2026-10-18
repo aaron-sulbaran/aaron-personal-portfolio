@@ -18,7 +18,19 @@ export const quickCopy = {
   intro: "Because I know my users, I built an MVP of my site for the busiest people (and recruiters) who still want to get to know me.",
   hint: "(Click each experience card to learn more)",
   back: "See the full site",
+  // Where the visitor finds the MVP again (the toast's dismiss control, the page's
+  // back button); a pointer sees them as a tip, a touch screen as a small line.
+  tips: {
+    toast: "The MVP is always in the menu if you need it later.",
+    back: "You can always come back to this from the menu.",
+  },
+  next: {
+    label: "Next",
+    lookingFor: "Currently looking for:",
+    lookingForAction: "Go to what I am looking for next",
+  },
   listLabel: "My years, newest first",
+  closingLabel: "Ways to reach me",
   now: "now",
   menuChip: "MVP",
   tripLabel: "The trip so far",
@@ -42,7 +54,7 @@ export const quickYears = [
   { year: "2023", line: "I started ECE at UT Austin as a Ramshorn Scholar, joined IEEE as a freshman assistant officer, and became involved on campus." },
   { year: "2024", line: "I completed my first internship right out of freshman year at Capital One as an early business analyst intern, picked up a McCombs business minor, became IEEE's corporate director, and joined the Genius Bar at the Apple Store to pay for college." },
   { year: "2025", line: "I came back to Capital One as a product manager intern, was elected IEEE president, and started building min/Max. I also started showing up to hackathons and started winning." },
-  { year: "2026", line: "I started a Claude builder club as a campus ambassador, spent a third Capital One summer in New York on applied AI, won at Hook 'Em Hacks and UFCU, and built Talos." },
+  { year: "2026", line: "I started a Claude builder club as a campus ambassador, spent a third Capital One summer in New York on Applied AI, won at Hook 'Em Hacks and UFCU, and built Talos." },
 ] as const;
 
 export type QuickYear = (typeof quickYears)[number]["year"];
@@ -121,9 +133,42 @@ export const quickEntries: readonly QuickEntry[] = drafts.map((draft) => ({
   ...visualOf(draft.id),
 }));
 
+// What I am looking for next, as a short line (under the intro) and a full line
+// (the "Next" checkpoint at the top of the rail). The lab picks one; two-tracks
+// ships. "custom" is the lab's own two text fields (lib/quick/texts).
+export const quickNextVariants = [
+  {
+    id: "two-tracks",
+    name: "Two tracks",
+    short: "product roles, and applied AI engineering",
+    full: "Next, I want to build in one of two ways: as a product manager at a company that ships at scale, or as an engineer building applied AI at a startup or frontier lab.",
+  },
+  {
+    id: "either-way",
+    name: "Either way",
+    short: "product or applied AI engineering roles",
+    full: "Next is a product role, or a technical one building applied AI. Either way, I want to bring people together around one goal.",
+  },
+  {
+    id: "builder",
+    name: "Builder",
+    short: "builder roles in product and applied AI",
+    full: "I'm looking for a builder role: product management at scale, or product and applied AI engineering where the frontier is being built.",
+  },
+  {
+    id: "original",
+    name: "Original",
+    short: "product and builder roles",
+    full: "I'm looking for a product or builder role where I can bring people together and leverage different skillsets to build towards one goal.",
+  },
+] as const;
+
+export type QuickNextId = (typeof quickNextVariants)[number]["id"];
+
+export const DEFAULT_NEXT_ID: QuickNextId = "two-tracks";
+
+// The page ends on a short row: the booking link from Connect, then these.
 export const quickClosing = {
-  label: "What's next",
-  line: "Next, I'm looking for a product or builder role where I can bring people together and leverage different skillsets to build towards one goal.\n\n(Corporate America calls this \"cross-functional collaboration,\" but I call it a dream role)",
   links: ["linkedin", "email", "github"] as const,
 };
 

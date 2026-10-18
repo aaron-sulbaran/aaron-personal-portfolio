@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { siteContent } from "@/lib/content";
 import { walkStrings } from "@/lib/testing/walk";
 import { cards } from "./cards";
-import { quickClosing, quickCopy, quickEntries, quickRange, quickSubtitle, quickYears, squareMarks } from "./quick";
+import { quickClosing, quickCopy, quickEntries, quickNextVariants, quickRange, quickSubtitle, quickYears, squareMarks } from "./quick";
 
 const EM_DASH = "\u2014";
 
@@ -96,7 +96,7 @@ describe("quick years", () => {
 
 describe("quick copy", () => {
   it("has no em dashes, no third person, and no dated signs", () => {
-    const strings = walkStrings({ quickCopy, quickEntries, quickYears, quickClosing }).map((leaf) => leaf.text);
+    const strings = walkStrings({ quickCopy, quickEntries, quickYears, quickClosing, quickNextVariants }).map((leaf) => leaf.text);
     for (const text of strings) {
       expect(text.includes(EM_DASH), text).toBe(false);
       expect(/\bAaron (is|was|has)\b/.test(text), text).toBe(false);
@@ -124,9 +124,19 @@ describe("quick copy", () => {
     expect(invite.dismiss).toContain("MVP");
   });
 
-  it("closes on the two lines I wrote and links Connect already has", () => {
-    expect(quickClosing.line.split("\n\n")).toHaveLength(2);
+  it("closes on links Connect already has", () => {
     const keys = siteContent.connect.links.map((link) => link.key);
     for (const key of quickClosing.links) expect(keys).toContain(key);
+    expect(siteContent.connect.primary.label).toBe("Book some time");
+  });
+
+  it("tells the visitor where the MVP lives, in my voice and without a dash", () => {
+    expect(quickCopy.tips.toast).toBe("The MVP is always in the menu if you need it later.");
+    expect(quickCopy.tips.back).toBe("You can always come back to this from the menu.");
+  });
+
+  it("writes Applied AI as the role it names", () => {
+    expect(quickYears.find((row) => row.year === "2026")!.line).toContain("in New York on Applied AI,");
+    expect(JSON.stringify(siteContent.cards["capital-one"])).toContain("2026, Applied AI (product manager)");
   });
 });
