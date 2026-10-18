@@ -38,7 +38,8 @@ test("express lane: the page reads whole at first paint and never requests the s
   await page.goto("/quick");
   await page.waitForLoadState("networkidle");
   for (const year of ["2021", "2022", "2023", "2024", "2025", "2026"]) await expect(page.locator(`#year-${year} h2`)).toHaveText(year);
-  await expect(page.locator("main h2").first()).toHaveText(quickCopy.next.label);
+  await expect(page.locator("main h2").first()).toHaveText("2026");
+  await expect(page.locator("#whats-next h2")).toHaveText(quickCopy.next.label);
   await expect(page.locator("main button[data-card]")).toHaveCount(quickEntries.length);
   await page.mouse.wheel(0, 4000);
   await page.waitForTimeout(500);
@@ -172,7 +173,7 @@ test.describe("express lane rail at 1280x900", () => {
       return Math.floor(heads.length / 2) + 1;
     });
     await expect.poll(litYears, { timeout: 4_000 }).toBe(middle);
-    await expect(page.locator('[data-quick-key="next"]')).toHaveAttribute("data-lit", "true");
+    await expect(page.locator('[data-quick-key="year-2026"]')).toHaveAttribute("data-lit", "true");
     await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
     await expect.poll(litYears, { timeout: 4_000 }).toBeLessThan(middle);
     await page.evaluate(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "instant" }));
@@ -285,41 +286,47 @@ for (const [name, viewport] of [["1280x900", { width: 1280, height: 900 }], ["39
   });
 }
 
-// What's next, in two places (A, the Next checkpoint on the rail; B, the line
-// under the intro that scrolls to it) and nowhere else: no section after 2021.
+// What's next, in two places (A, its own section at the foot of the page, below
+// the rail's last year and above the closing row; B, the line under the intro
+// that scrolls to it) and not on the rail.
 const TWO_TRACKS = quickNextVariants.find((variant) => variant.id === "two-tracks")!;
 const topOf = (page: Page, selector: string) => page.locator(selector).first().evaluate((el) => el.getBoundingClientRect().top + window.scrollY);
+const bottomOf = (page: Page, selector: string) => page.locator(selector).first().evaluate((el) => el.getBoundingClientRect().bottom + window.scrollY);
 
 test.describe("express lane what's next at 1280x900", () => {
   test.use({ viewport: { width: 1280, height: 900 } });
 
-  test("A: a hollow Next checkpoint sits above 2026 with the full line, in the year rows' type", async ({ page }) => {
+  test("the rail starts at 2026 and holds years only", async ({ page }) => {
     await page.goto("/quick");
-    const next = page.locator("#next");
-    await expect(next.locator("h2")).toHaveText("Next");
-    await expect(next.locator("[data-quick-next-line]")).toHaveText(TWO_TRACKS.full);
-    expect(await topOf(page, "#next")).toBeLessThan(await topOf(page, "#year-2026"));
-    expect(await topOf(page, "header")).toBeLessThan(await topOf(page, "#next"));
-    const type = (selector: string) => page.locator(selector).evaluate((el) => { const css = getComputedStyle(el); return [css.fontFamily, css.fontSize, css.lineHeight, css.color].join("|"); });
-    expect(await type("#next h2")).toBe(await type("#year-2026 h2"));
-    expect(await type("#next [data-quick-next-line]")).toBe(await type("#year-2026 p"));
-    const dot = await next.locator("[data-quick-anchor]").evaluate((el) => { const css = getComputedStyle(el); return { border: css.borderTopWidth, fill: css.backgroundColor, page: getComputedStyle(document.body).backgroundColor }; });
-    expect(parseFloat(dot.border)).toBeGreaterThanOrEqual(2);
-    expect(dot.fill).toBe(dot.page);
-    const filled = await page.locator("[data-quick-key=\"year-2026\"] > [data-quick-anchor]").evaluate((el) => ({ border: getComputedStyle(el).borderTopWidth, fill: getComputedStyle(el).backgroundColor }));
-    expect(filled.border).toBe("0px");
-    expect(filled.fill).not.toBe(dot.fill);
+    await expect(page.locator("[data-quick-key=\"next\"], #next")).toHaveCount(0);
+    expect(await page.locator("ol[aria-label] > li").evaluateAll((els) => els.map((el) => el.id))).toEqual(["year-2026", "year-2025", "year-2024", "year-2023", "year-2022", "year-2021"]);
+    expect(await page.locator("[data-quick-key^=\"year-\"]").evaluateAll((els) => els.map((el) => (el as HTMLElement).dataset.quickKey))).toEqual(["year-2026", "year-2025", "year-2024", "year-2023", "year-2022", "year-2021"]);
+    expect(await topOf(page, "header")).toBeLessThan(await topOf(page, "#year-2026"));
   });
 
-  test("there is no What's next section after 2021; the page ends on a short row of booking and links", async ({ page }) => {
+  test("A: What's next is its own section below 2021, in the year headings' type, with no dot and no line", async ({ page }) => {
     await page.goto("/quick");
-    await expect(page.getByText("What's next", { exact: false })).toHaveCount(0);
-    expect(await topOf(page, "#year-2021")).toBeLessThan(await topOf(page, "#close"));
+    const next = page.locator("#whats-next");
+    await expect(next.locator("h2")).toHaveText("What's next");
+    await expect(next.locator("[data-quick-next-line]")).toHaveText(TWO_TRACKS.full);
+    expect(await bottomOf(page, "#year-2021")).toBeLessThan(await topOf(page, "#whats-next"));
+    expect(await bottomOf(page, "#whats-next")).toBeLessThan(await topOf(page, "#close"));
+    const type = (selector: string) => page.locator(selector).evaluate((el) => { const css = getComputedStyle(el); return [css.fontFamily, css.fontSize, css.lineHeight, css.color].join("|"); });
+    expect(await type("#whats-next h2")).toBe(await type("#year-2026 h2"));
+    expect(await type("#whats-next [data-quick-next-line]")).toBe(await type("#year-2026 p"));
+    await expect(next.locator("[data-quick-anchor], svg")).toHaveCount(0);
+    expect(await page.locator("#whats-next [data-quick-key]").count()).toBe(0);
+    const gap = (await topOf(page, "#whats-next")) - (await bottomOf(page, "#year-2021"));
+    expect(gap).toBeGreaterThanOrEqual(192);
+  });
+
+  test("the page ends on What's next, then a short row of booking and links", async ({ page }) => {
+    await page.goto("/quick");
     const close = page.locator("#close");
     await expect(close.locator("h2, p")).toHaveCount(0);
     await expect(close.getByRole("link")).toHaveText([siteContent.connect.primary.label, "LinkedIn", "Email", "GitHub"]);
     await expect(close.getByRole("link", { name: siteContent.connect.primary.label })).toHaveAttribute("href", siteContent.connect.primary.href);
-    expect(await page.locator("main h2").evaluateAll((els) => els.map((el) => el.textContent))).toEqual(["Next", "2026", "2025", "2024", "2023", "2022", "2021"]);
+    expect(await page.locator("main h2").evaluateAll((els) => els.map((el) => el.textContent))).toEqual(["2026", "2025", "2024", "2023", "2022", "2021", "What's next"]);
   });
 
   test("B: a quiet line under the intro, above the hint, that does not repeat A", async ({ page }) => {
@@ -332,15 +339,16 @@ test.describe("express lane what's next at 1280x900", () => {
     expect(line).toBeLessThan(hint);
   });
 
-  test("B scrolls to A and lands focus there", async ({ page }) => {
+  test("B scrolls to What's next and lands focus on its heading", async ({ page }) => {
     await page.goto("/quick");
     await page.waitForLoadState("networkidle");
+    const inView = () => page.locator("#whats-next-heading").evaluate((el) => { const box = el.getBoundingClientRect(); return box.top >= 0 && box.bottom <= window.innerHeight; });
+    const before = await page.evaluate(() => window.scrollY);
     await page.locator("[data-quick-looking] button").click();
-    await expect.poll(() => page.locator("#next").evaluate((el) => Math.round(el.getBoundingClientRect().top)), { timeout: 4_000 }).toBeLessThanOrEqual(170);
-    expect(await page.locator("#next").evaluate((el) => Math.round(el.getBoundingClientRect().top))).toBeGreaterThanOrEqual(150);
-    await expect(page.locator("#next")).toBeFocused();
+    await expect(page.locator("#whats-next-heading")).toBeFocused({ timeout: 4_000 });
+    expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(before);
+    expect(await inView()).toBe(true);
     await expect(page.locator("html")).not.toHaveCSS("scroll-behavior", "auto");
-    await expect(page.locator('[data-quick-key="next"]')).toHaveAttribute("data-lit", "true");
   });
 
   test("B jumps under reduced motion, decided when it is pressed", async ({ page }) => {
@@ -349,7 +357,7 @@ test.describe("express lane what's next at 1280x900", () => {
     await page.waitForLoadState("networkidle");
     const before = await page.evaluate(() => window.scrollY);
     await page.locator("[data-quick-looking] button").click();
-    await expect.poll(() => page.locator("#next").evaluate((el) => Math.round(el.getBoundingClientRect().top)), { timeout: 700 }).toBeLessThanOrEqual(170);
+    await expect(page.locator("#whats-next-heading")).toBeFocused({ timeout: 700 });
     expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(before);
   });
 });
