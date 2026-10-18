@@ -1,5 +1,5 @@
 import { siteContent } from "@/lib/content";
-import { quickCopy, quickEntries } from "@/lib/content/quick";
+import { quickCopy, quickEntries, quickNextVariants } from "@/lib/content/quick";
 import { INVITE_KEY } from "@/lib/quick/invite";
 import { test, expect } from "./support/fixtures";
 import { watchScripts } from "./support/chunks";
@@ -38,7 +38,7 @@ test("express lane: the page reads whole at first paint and never requests the s
   await page.goto("/quick");
   await page.waitForLoadState("networkidle");
   for (const year of ["2021", "2022", "2023", "2024", "2025", "2026"]) await expect(page.locator(`#year-${year} h2`)).toHaveText(year);
-  await expect(page.locator("main h2").first()).toHaveText("2026");
+  await expect(page.locator("main h2").first()).toHaveText(quickCopy.next.label);
   await expect(page.locator("main button[data-card]")).toHaveCount(quickEntries.length);
   await page.mouse.wheel(0, 4000);
   await page.waitForTimeout(500);
@@ -172,6 +172,7 @@ test.describe("express lane rail at 1280x900", () => {
       return Math.floor(heads.length / 2) + 1;
     });
     await expect.poll(litYears, { timeout: 4_000 }).toBe(middle);
+    await expect(page.locator('[data-quick-key="next"]')).toHaveAttribute("data-lit", "true");
     await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
     await expect.poll(litYears, { timeout: 4_000 }).toBeLessThan(middle);
     await page.evaluate(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "instant" }));
@@ -283,3 +284,166 @@ for (const [name, viewport] of [["1280x900", { width: 1280, height: 900 }], ["39
     });
   });
 }
+
+// What's next, in two places (A, the Next checkpoint on the rail; B, the line
+// under the intro that scrolls to it) and nowhere else: no section after 2021.
+const TWO_TRACKS = quickNextVariants.find((variant) => variant.id === "two-tracks")!;
+const topOf = (page: Page, selector: string) => page.locator(selector).first().evaluate((el) => el.getBoundingClientRect().top + window.scrollY);
+
+test.describe("express lane what's next at 1280x900", () => {
+  test.use({ viewport: { width: 1280, height: 900 } });
+
+  test("A: a hollow Next checkpoint sits above 2026 with the full line, in the year rows' type", async ({ page }) => {
+    await page.goto("/quick");
+    const next = page.locator("#next");
+    await expect(next.locator("h2")).toHaveText("Next");
+    await expect(next.locator("[data-quick-next-line]")).toHaveText(TWO_TRACKS.full);
+    expect(await topOf(page, "#next")).toBeLessThan(await topOf(page, "#year-2026"));
+    expect(await topOf(page, "header")).toBeLessThan(await topOf(page, "#next"));
+    const type = (selector: string) => page.locator(selector).evaluate((el) => { const css = getComputedStyle(el); return [css.fontFamily, css.fontSize, css.lineHeight, css.color].join("|"); });
+    expect(await type("#next h2")).toBe(await type("#year-2026 h2"));
+    expect(await type("#next [data-quick-next-line]")).toBe(await type("#year-2026 p"));
+    const dot = await next.locator("[data-quick-anchor]").evaluate((el) => { const css = getComputedStyle(el); return { border: css.borderTopWidth, fill: css.backgroundColor, page: getComputedStyle(document.body).backgroundColor }; });
+    expect(parseFloat(dot.border)).toBeGreaterThanOrEqual(2);
+    expect(dot.fill).toBe(dot.page);
+    const filled = await page.locator("[data-quick-key=\"year-2026\"] > [data-quick-anchor]").evaluate((el) => ({ border: getComputedStyle(el).borderTopWidth, fill: getComputedStyle(el).backgroundColor }));
+    expect(filled.border).toBe("0px");
+    expect(filled.fill).not.toBe(dot.fill);
+  });
+
+  test("there is no What's next section after 2021; the page ends on a short row of booking and links", async ({ page }) => {
+    await page.goto("/quick");
+    await expect(page.getByText("What's next", { exact: false })).toHaveCount(0);
+    expect(await topOf(page, "#year-2021")).toBeLessThan(await topOf(page, "#close"));
+    const close = page.locator("#close");
+    await expect(close.locator("h2, p")).toHaveCount(0);
+    await expect(close.getByRole("link")).toHaveText([siteContent.connect.primary.label, "LinkedIn", "Email", "GitHub"]);
+    await expect(close.getByRole("link", { name: siteContent.connect.primary.label })).toHaveAttribute("href", siteContent.connect.primary.href);
+    expect(await page.locator("main h2").evaluateAll((els) => els.map((el) => el.textContent))).toEqual(["Next", "2026", "2025", "2024", "2023", "2022", "2021"]);
+  });
+
+  test("B: a quiet line under the intro, above the hint, that does not repeat A", async ({ page }) => {
+    await page.goto("/quick");
+    const looking = page.locator("[data-quick-looking]");
+    await expect(looking).toContainText(`${quickCopy.next.lookingFor} ${TWO_TRACKS.short}`);
+    expect(await looking.textContent()).not.toContain(TWO_TRACKS.full);
+    const [intro, line, hint] = [await topOf(page, "header p"), await topOf(page, "[data-quick-looking]"), await topOf(page, "[data-quick-hint]")];
+    expect(intro).toBeLessThan(line);
+    expect(line).toBeLessThan(hint);
+  });
+
+  test("B scrolls to A and lands focus there", async ({ page }) => {
+    await page.goto("/quick");
+    await page.waitForLoadState("networkidle");
+    await page.locator("[data-quick-looking] button").click();
+    await expect.poll(() => page.locator("#next").evaluate((el) => Math.round(el.getBoundingClientRect().top)), { timeout: 4_000 }).toBeLessThanOrEqual(170);
+    expect(await page.locator("#next").evaluate((el) => Math.round(el.getBoundingClientRect().top))).toBeGreaterThanOrEqual(150);
+    await expect(page.locator("#next")).toBeFocused();
+    await expect(page.locator("html")).not.toHaveCSS("scroll-behavior", "auto");
+    await expect(page.locator('[data-quick-key="next"]')).toHaveAttribute("data-lit", "true");
+  });
+
+  test("B jumps under reduced motion, decided when it is pressed", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/quick");
+    await page.waitForLoadState("networkidle");
+    const before = await page.evaluate(() => window.scrollY);
+    await page.locator("[data-quick-looking] button").click();
+    await expect.poll(() => page.locator("#next").evaluate((el) => Math.round(el.getBoundingClientRect().top)), { timeout: 700 }).toBeLessThanOrEqual(170);
+    expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(before);
+  });
+});
+
+// The tips about finding the MVP again: on a mouse hover or keyboard focus, in
+// the site's tip look at z-58, never on a touch screen (a small line there).
+const tipOf = (page: Page) => page.locator("[data-field-tip]");
+
+test("tip: See the full site shows its tip on hover and on keyboard focus, and Escape closes it", async ({ page }) => {
+  await page.goto("/quick");
+  await page.waitForLoadState("networkidle");
+  const back = page.getByRole("link", { name: quickCopy.back });
+  await expect(tipOf(page)).toHaveAttribute("data-shown", "false");
+  await back.hover();
+  await expect(tipOf(page)).toHaveAttribute("data-shown", "true");
+  await expect(tipOf(page)).toHaveText(quickCopy.tips.back);
+  await page.mouse.move(700, 700);
+  await expect(tipOf(page)).toHaveAttribute("data-shown", "false");
+
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  for (let i = 0; i < 25 && !(await back.evaluate((el) => el === document.activeElement)); i++) await page.keyboard.press("Tab");
+  await expect(back).toBeFocused();
+  await expect(tipOf(page)).toHaveAttribute("data-shown", "true");
+  await expect(back).toHaveAttribute("aria-describedby", (await tipOf(page).getAttribute("id"))!);
+  await page.keyboard.press("Escape");
+  await expect(tipOf(page)).toHaveAttribute("data-shown", "false");
+});
+
+test("tip: the page's tip does not share the button's fill, in either theme", async ({ page }) => {
+  for (const theme of ["light", "dark"]) {
+    await page.goto("/quick");
+    await page.evaluate((t) => document.documentElement.setAttribute("data-theme", t), theme);
+    const back = page.getByRole("link", { name: quickCopy.back });
+    await back.hover();
+    await expect(tipOf(page)).toHaveAttribute("data-shown", "true");
+    const fills = await page.evaluate(() => ({
+      button: getComputedStyle([...document.querySelectorAll("header a")].find((el) => el.textContent?.includes("See the full site"))!).backgroundColor,
+      tip: getComputedStyle(document.querySelector("[data-field-tip] > span")!).backgroundColor,
+    }));
+    expect(fills.tip, theme).not.toBe(fills.button);
+  }
+});
+
+test("tip: the toast's dismiss shows its tip above the toast, on hover and on keyboard focus", async ({ page }) => {
+  await page.goto("/");
+  await homeReady(page);
+  const toast = page.locator('[data-express-invite="toast"]');
+  await expect(toast).toBeVisible({ timeout: 6_000 });
+  const dismiss = toast.getByRole("button", { name: quickCopy.invite.no });
+  await expect(tipOf(page)).toHaveAttribute("data-shown", "false");
+  await dismiss.hover();
+  await expect(tipOf(page)).toHaveAttribute("data-shown", "true");
+  await expect(tipOf(page)).toHaveText(quickCopy.tips.toast);
+  const z = await page.evaluate(() => ({ tip: Number(getComputedStyle(document.querySelector("[data-field-tip]")!).zIndex), toast: Number(getComputedStyle(document.querySelector('[data-express-invite="toast"]')!).zIndex) }));
+  expect(z.tip).toBe(58);
+  expect(z.toast).toBeLessThan(z.tip);
+  const [tipBox, toastBox] = [(await tipOf(page).boundingBox())!, (await toast.boundingBox())!];
+  expect(tipBox.y + tipBox.height).toBeLessThanOrEqual(toastBox.y);
+  const fills = await page.evaluate(() => ({ toast: getComputedStyle(document.querySelector('[data-express-invite="toast"]')!).backgroundColor, tip: getComputedStyle(document.querySelector("[data-field-tip] > span")!).backgroundColor }));
+  expect(fills.tip).not.toBe(fills.toast);
+  await page.mouse.move(100, 300);
+  await expect(tipOf(page)).toHaveAttribute("data-shown", "false");
+  await dismiss.focus();
+  await page.keyboard.press("Shift+Tab");
+  await page.keyboard.press("Tab");
+  await expect(dismiss).toBeFocused();
+  await expect(tipOf(page)).toHaveAttribute("data-shown", "true");
+});
+
+test.describe("tip on a touch screen at 390x844", () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+
+  test("the same words sit under See the full site as a small muted caption, and no tip is shown", async ({ page }) => {
+    await page.goto("/quick");
+    await page.waitForLoadState("networkidle");
+    const note = page.locator("[data-quick-back-note]");
+    await expect(note).toBeVisible();
+    await expect(note).toHaveText(quickCopy.tips.back);
+    const [back, caption] = [(await page.getByRole("link", { name: quickCopy.back }).boundingBox())!, (await note.boundingBox())!];
+    expect(caption.y).toBeGreaterThanOrEqual(back.y + back.height);
+    await page.getByRole("link", { name: quickCopy.back }).dispatchEvent("pointerenter", { pointerType: "touch" });
+    await expect(tipOf(page)).toHaveAttribute("data-shown", "false");
+    await expect(page.locator("[data-quick-looking]")).toBeVisible();
+  });
+
+  test("the toast carries the same kind of line for a tapper", async ({ page }) => {
+    await page.goto("/");
+    await homeReady(page);
+    await expect(page.locator('[data-express-invite="toast"]')).toBeVisible({ timeout: 8_000 });
+    await expect(page.locator("[data-express-invite-note]")).toHaveText(quickCopy.tips.toast);
+  });
+});
+
+test("tip: with a mouse the captions stay hidden", async ({ page }) => {
+  await page.goto("/quick");
+  await expect(page.locator("[data-quick-back-note]")).toBeHidden();
+});
