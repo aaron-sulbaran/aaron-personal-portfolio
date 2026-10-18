@@ -64,6 +64,13 @@
   /* The light ground under a logo with no dark file in the dark theme and in
      the jobs card's circles. */
   --card-logo-ground: #FAFAF7;
+  /* The Talos kit's colours for the sting (components/card/TalosSting): flat fills
+     only, never a link, hover, badge or error colour. Ink is the lockup's letters
+     and the die: anvil on light, ash on dark. */
+  --talos-bronze: #B9843B;
+  --talos-anvil: #12141F;
+  --talos-heat: #F8E4B4;
+  --talos-ink: #12141F;
   /* "Aaron" behind the coil: a lit shadergradient surface seen through the
      letters at --name-ink (the scene mixes at ink * 2.2). The surface's stops:
      1 to 2 across it, 3 its crests (pale, never the orange), the relief's
@@ -125,6 +132,7 @@
   --card-recede: 0.38;
   --card-sheen: 0.07;
   --card-logo-ground: #F5F2EC;
+  --talos-ink: #ECE8E1;
   --name-ink: 0.14;
   --name-grad-top: #6C93B6;
   --name-grad-bottom: #A6CCE6;
