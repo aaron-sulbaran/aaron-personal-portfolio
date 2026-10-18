@@ -140,7 +140,7 @@ export const quickNextVariants = [
   {
     id: "two-tracks",
     name: "Two tracks",
-    short: "product roles, and Applied AI engineering",
+    short: "product and Applied AI engineering roles",
     full: "I want to build in one of two ways: as a product manager at a company that ships at scale, or as an engineer building Applied AI at a startup or frontier lab.",
   },
   {

@@ -16,7 +16,9 @@ import { useTransitionState } from "@/lib/quick/transitionStore";
 // a click or tap, or Enter or Space while the title has focus, collapses it and
 // plays it again. There is no hover trigger. The room the finished title needs is
 // reserved by an invisible copy of it in the same grid cell, so nothing below
-// ever moves, even where the finished title wraps to a second line. Reduced
+// ever moves. Below 480px the title is sized from the viewport (the finished
+// title is about 7.63em wide, the page gutters 3rem) so it fits on one line and
+// the reserved room is no taller than the collapsed title. Reduced
 // motion, and the "spelled" mode, show the whole title at once. The heading is
 // named "Minimum Viable Portfolio" once; the drawn parts are hidden from
 // assistive tech.
@@ -159,7 +161,7 @@ export function MvpTitle({ mode = "unfold", delayMs = TITLE_UNFOLD.delayMs, stag
         event.preventDefault();
         replay();
       }}
-      className="group/mvp grid w-fit max-w-full cursor-default font-display text-display text-foreground focus-visible:outline-none"
+      className="group/mvp grid w-fit max-w-full cursor-default font-display text-display text-foreground focus-visible:outline-none max-[480px]:text-[length:calc((100vw_-_3rem)/7.9)]"
     >
       <span aria-hidden="true" data-mvp-ghost="" className="invisible col-start-1 row-start-1 select-none">
         <Spelled live={false} />

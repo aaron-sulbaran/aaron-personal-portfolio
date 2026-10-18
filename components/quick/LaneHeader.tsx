@@ -33,7 +33,7 @@ type HeaderProps = TitleProps & {
 function Looking({ line, canJump, forceReduced }: { line: string; canJump: boolean; forceReduced?: boolean }) {
   const label = <span className="text-muted">{quickCopy.next.lookingFor}</span>;
   return (
-    <p data-lane-line="" data-lane-whole="" data-quick-looking="" className="mt-4 font-label text-label-sm leading-snug">
+    <p data-lane-line="" data-lane-whole="" data-quick-looking="" className="mt-4 text-base leading-snug">
       {canJump ? (
         <button
           type="button"
@@ -42,7 +42,7 @@ function Looking({ line, canJump, forceReduced }: { line: string; canJump: boole
         >
           {label}{" "}
           <span className="text-foreground underline decoration-border decoration-1 underline-offset-4 transition-colors group-hover/looking:text-accent group-hover/looking:decoration-accent">{line}</span>
-          <ArrowDown aria-hidden="true" className="ml-1 inline-block h-3.5 w-3.5 align-[-2px] text-accent" strokeWidth={2} />
+          <ArrowDown aria-hidden="true" className="ml-1.5 inline-block h-4 w-4 align-[-2px] text-accent" strokeWidth={2} />
           <span className="sr-only">{quickCopy.next.lookingForAction}</span>
         </button>
       ) : (

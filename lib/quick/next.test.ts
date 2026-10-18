@@ -11,7 +11,7 @@ describe("what's next", () => {
 
   it("keeps the exact words of each variant", () => {
     expect(nextLines("two-tracks")).toEqual({
-      short: "product roles, and Applied AI engineering",
+      short: "product and Applied AI engineering roles",
       full: "I want to build in one of two ways: as a product manager at a company that ships at scale, or as an engineer building Applied AI at a startup or frontier lab.",
     });
     expect(nextLines("either-way")).toEqual({
