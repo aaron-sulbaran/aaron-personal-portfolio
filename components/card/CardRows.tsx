@@ -4,14 +4,13 @@ import { boxFor } from "@/lib/gallery/boxes";
 import type { Gallery } from "@/lib/gallery/card";
 import { BOXES, GALLERY } from "@/lib/gallery/constants";
 import { slideWords, type Slide } from "@/lib/gallery/plan";
-import { stingStartMs } from "@/lib/gallery/steps";
 import { CardHeader } from "./CardHeader";
 import { CardLinks } from "./CardLinks";
 import { CloseHint } from "./CloseHint";
 import { MentorsList } from "./MentorsList";
 import { RotatingPhoto } from "./RotatingPhoto";
 import { StillPhoto } from "./StillPhoto";
-import { TalosSting } from "./TalosSting";
+import { talosAfter } from "./talosParts";
 import { TalosTeam } from "./TalosTeam";
 import { Words } from "./Words";
 
@@ -19,8 +18,8 @@ import { Words } from "./Words";
 // (round six): the header at the top left; the opening words; then every
 // photo, or every group of photos taking turns, its own row with its words
 // beside it, vertically centred, the sides alternating from the left; then the
-// closing words, the mentors on Mentorship (Talos's sting under its header and
-// its team after its words), the links and the close hint. A
+// closing words, the mentors on Mentorship (Talos's sting and Discord channel among its
+// paragraphs, its team after them), the links and the close hint. A
 // vertical photo is drawn in one box and a horizontal one in another, and a
 // photo narrower than the card's photo column sits against the panel's edge,
 // so the words keep one place on each side. A card with no photos has no rows,
@@ -36,8 +35,9 @@ export function CardRows({ gallery, renderMedia, flying }: Props) {
   // The card picture is always the vertical box (3:4), so the flown card fits it exactly.
   const box = (photo: number) => (photo === lead ? BOXES.vertical : boxFor(aspects[photo], BOXES, GALLERY.wideFrom));
   const prose = (unit: number) => (
-    <div key={`words-${unit}`} style={{ maxWidth: GALLERY.proseMaxWidth }}>
+    <div key={`words-${unit}`} className={gallery.key === "talos" ? "flex flex-col" : undefined} style={{ maxWidth: GALLERY.proseMaxWidth, rowGap: GALLERY.proseGap }}>
       <Words gallery={gallery} unit={unit} />
+      {gallery.key === "talos" && talosAfter(unit, flying)}
     </div>
   );
   const row = (slide: Slide, i: number) => {
@@ -70,7 +70,6 @@ export function CardRows({ gallery, renderMedia, flying }: Props) {
   return (
     <div className="flex flex-col gap-8">
       <CardHeader cardKey={gallery.key} renderMedia={renderMedia} compact={false} />
-      {gallery.key === "talos" && <TalosSting startDelayMs={stingStartMs(flying)} />}
       <div className="flex flex-col" style={{ rowGap: plan.slides.length === 0 ? GALLERY.proseGap : GALLERY.rowGap }}>
         {plan.intro.map(prose)}
         {plan.slides.map(row)}

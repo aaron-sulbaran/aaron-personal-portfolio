@@ -1,16 +1,17 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useId, useState, type CSSProperties } from "react";
+import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
 import { siteContent } from "@/lib/content";
 import { partId } from "@/lib/gallery/timing";
 import { COIN, LETTER_PATHS, LETTERS_ORIGIN, LOCKUP_VIEWBOX, TEE_PATH } from "@/lib/talos/lockup";
 import { seek, STING, type StingFrame } from "@/lib/talos/sting";
 import { useReducedMotionLive } from "@/components/soundtrack/useReducedMotionLive";
 
-// The Talos sting at the top of the Talos modal: the brand kit's radar opening
-// (lib/talos/sting.ts) drawn as inline SVG, once, after the modal's masks have
-// opened; its last frame is the static lockup (lib/talos/lockup.test.ts) and the
+// The Talos sting between the first two paragraphs of the Talos modal: the brand
+// kit's radar opening (lib/talos/sting.ts) drawn as inline SVG, once, after the
+// modal's masks have opened and once its stage is in view (a phone may have it
+// below the fold, and then it starts as it scrolls up); its last frame is the static lockup (lib/talos/lockup.test.ts) and the
 // component swaps to that file when it ends. Reduced motion shows the file at
 // once, live in both directions. It never plays on hover or click, a hidden tab
 // holds the clock, and nothing else touches this SVG. Flat fills only, from the
@@ -32,12 +33,34 @@ export function TalosSting({ startDelayMs }: { startDelayMs: number }) {
   const reduced = useReducedMotionLive();
   const [timeMs, setTimeMs] = useState(0);
   const [phase, setPhase] = useState<Phase>("waiting");
+  const [inView, setInView] = useState(false);
+  const stageRef = useRef<HTMLDivElement | null>(null);
+  const openedAt = useRef(0);
 
   useEffect(() => {
-    if (reduced) return;
+    openedAt.current = performance.now();
+  }, []);
+
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (reduced || !stage || inView) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        setInView(true);
+        observer.disconnect();
+      },
+      { threshold: 0.6 },
+    );
+    observer.observe(stage);
+    return () => observer.disconnect();
+  }, [reduced, inView]);
+
+  useEffect(() => {
+    if (reduced || !inView) return;
     let raf = 0;
     let last = 0;
-    let clock = -startDelayMs;
+    let clock = -Math.max(0, startDelayMs - (performance.now() - openedAt.current));
     const frame = (now: number) => {
       clock += Math.min(now - last, 50);
       last = now;
@@ -66,11 +89,11 @@ export function TalosSting({ startDelayMs }: { startDelayMs: number }) {
       document.removeEventListener("visibilitychange", onVisibility);
       cancelAnimationFrame(raf);
     };
-  }, [reduced, startDelayMs]);
+  }, [reduced, inView, startDelayMs]);
 
   const still = reduced || phase === "done";
   return (
-    <div data-mask={partId.sting} data-mask-kind="photo" className="rounded-2xl border border-border bg-background px-[7%] py-[5%]">
+    <div ref={stageRef} data-mask={partId.sting} data-mask-kind="photo" className="rounded-2xl border border-border bg-background px-[7%] py-[5%]">
       <div role="img" aria-label={lockup.alt} data-sting={reduced ? "reduced" : phase} data-sting-stage="">
         {still ? (
           <>

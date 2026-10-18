@@ -5,7 +5,7 @@ import { openCardFromBook } from "./support/cards";
 
 const team = siteContent.cards.talos.team;
 
-test("talos sting: it plays once under the header, then rests on the lockup for the light theme", async ({ page }) => {
+test("talos sting: it plays once between the first two paragraphs, then rests on the lockup for the light theme", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light", reducedMotion: "no-preference" });
   const { dialog } = await openCardFromBook(page, "talos");
   const stage = dialog.locator("[data-sting-stage]");
@@ -17,9 +17,6 @@ test("talos sting: it plays once under the header, then rests on the lockup for 
   await expect(stage.locator("svg")).toHaveCount(0);
   await expect(stage.locator('img[src*="lockup-light.svg"]')).toBeVisible();
   await expect(stage.locator('img[src*="lockup-dark.svg"]')).toBeHidden();
-  const header = await dialog.locator("h2").boundingBox();
-  const box = await stage.boundingBox();
-  expect(box!.y).toBeGreaterThan(header!.y + header!.height - 1);
 });
 
 test("talos sting: it never replays on hover or click, and a theme switch swaps to the matching cut", async ({ page }) => {
@@ -63,53 +60,72 @@ test("talos sting: reduced motion shows the static lockup at once, live in both 
   await expect(stage.locator("svg")).toHaveCount(0);
 });
 
-test("talos modal: four specialists in 48px rounded squares and eight reactions, each with its words", async ({ page }) => {
+test("talos modal: the order is the title, the first paragraph, the sting, the second paragraph, the Discord channel, then the team's two paragraphs", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
   const { dialog } = await openCardFromBook(page, "talos", { home: false });
-  const specialists = dialog.locator("[data-talos-specialists] li");
-  await expect(specialists).toHaveCount(4);
-  for (const [i, specialist] of team.specialists.entries()) {
-    const item = specialists.nth(i);
-    await expect(item).toContainText(specialist.name);
-    await expect(item).toContainText(specialist.job);
-    const mark = item.locator("img");
-    await expect(mark).toHaveAttribute("alt", specialist.alt);
-    const size = await mark.boundingBox();
-    expect([Math.round(size!.width), Math.round(size!.height)]).toEqual([48, 48]);
-    await expect(mark).toHaveCSS("border-top-left-radius", "16px");
-    await expect(mark).toHaveCSS("box-shadow", "none");
-    await expect(mark).toHaveCSS("border-top-width", "0px");
-  }
-  const states = dialog.locator("[data-talos-states] li");
-  await expect(states).toHaveCount(8);
-  for (const [i, state] of team.states.entries()) {
-    await expect(states.nth(i)).toContainText(state.name);
-    await expect(states.nth(i)).toContainText(state.meaning);
-    const size = await states.nth(i).locator("img").boundingBox();
-    expect(size!.width).toBeGreaterThanOrEqual(48);
-  }
+  const top = async (locator: import("@playwright/test").Locator) => (await locator.boundingBox())!.y;
+  const [first, second] = siteContent.cards.talos.modal.blocks;
+  const order = [
+    await top(dialog.locator("h2")),
+    await top(dialog.getByText(first.slice(0, 40))),
+    await top(dialog.locator("[data-sting-stage]")),
+    await top(dialog.getByText(second.slice(0, 40))),
+    await top(dialog.locator("[data-talos-discord]")),
+    await top(dialog.getByText(team.next.slice(0, 40))),
+    await top(dialog.getByText(team.reactions.slice(0, 40))),
+  ];
+  expect(order).toEqual([...order].sort((a, b) => a - b));
+  expect(new Set(order).size).toBe(order.length);
+  await expect(dialog.locator("[data-talos-specialists], [data-talos-states]")).toHaveCount(0);
   await expect(dialog).toContainText("Only one is bronze: needs-you");
-  await expect(dialog).toContainText("Next, Talos becomes a team of specialists");
 });
 
-test("talos modal: the legend reads at 390px wide, two columns, nothing sideways", async ({ page }) => {
+for (const [theme, shown, hidden] of [["light", "discord-light", "discord-dark"], ["dark", "discord-dark", "discord-light"]] as const) {
+  test(`talos modal: the Discord channel shows its ${theme} file in the ${theme} theme, rounded, with no shadow, and a theme switch swaps it`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme: theme, reducedMotion: "reduce" });
+    await page.goto("/");
+    const { dialog } = await openCardFromBook(page, "talos", { home: false });
+    const figure = dialog.locator("[data-talos-discord]");
+    await figure.scrollIntoViewIfNeeded();
+    await expect(figure.locator("img").filter({ visible: true })).toHaveCount(1);
+    await expect(figure.locator("img:visible")).toHaveAttribute("src", new RegExp(shown));
+    await expect(figure.locator("img:visible")).toHaveAttribute("alt", team.discord.alt);
+    await expect(figure.locator(`img[src*="${hidden}"]`)).toBeHidden();
+    await expect(figure).toHaveCSS("border-top-left-radius", "12px");
+    await expect(figure).toHaveCSS("box-shadow", "none");
+    const loaded = await figure.locator("img:visible").evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0);
+    expect(loaded).toBe(true);
+    await page.evaluate((next) => document.documentElement.setAttribute("data-theme", next), theme === "light" ? "dark" : "light");
+    await expect(figure.locator("img:visible")).toHaveAttribute("src", new RegExp(hidden));
+  });
+}
+
+test("talos modal: at 390px wide the Discord channel just scales and nothing goes sideways", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
   const { dialog } = await openCardFromBook(page, "talos", { home: false });
-  const states = dialog.locator("[data-talos-states] li");
-  const first = await states.nth(0).boundingBox();
-  const second = await states.nth(1).boundingBox();
-  const third = await states.nth(2).boundingBox();
-  expect(second!.y).toBeCloseTo(first!.y, 0);
-  expect(second!.x).toBeGreaterThan(first!.x + 100);
-  expect(third!.y).toBeGreaterThan(first!.y + 40);
+  const figure = dialog.locator("[data-talos-discord]");
+  await figure.scrollIntoViewIfNeeded();
+  const box = await figure.boundingBox();
+  expect(box!.x).toBeGreaterThanOrEqual(0);
+  expect(box!.x + box!.width).toBeLessThanOrEqual(390);
+  expect(box!.width).toBeGreaterThan(280);
+  expect(Math.abs(box!.height / box!.width - team.discord.height / team.discord.width)).toBeLessThan(0.02);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  for (const li of await dialog.locator("[data-talos-team] li").all()) {
-    const box = await li.boundingBox();
-    expect(box!.x + box!.width).toBeLessThanOrEqual(390);
-  }
+});
+
+test("talos sting: a sting below the fold waits, and starts once it scrolls into view", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 360 });
+  await page.emulateMedia({ colorScheme: "light", reducedMotion: "no-preference" });
+  const { dialog } = await openCardFromBook(page, "talos");
+  const stage = dialog.locator("[data-sting-stage]");
+  await page.waitForTimeout(STING.durationMs);
+  await expect(stage).toHaveAttribute("data-sting", "waiting");
+  await stage.scrollIntoViewIfNeeded();
+  await expect(stage).toHaveAttribute("data-sting", "playing", { timeout: 3000 });
+  await expect(stage).toHaveAttribute("data-sting", "done", { timeout: STING.durationMs + 4000 });
 });
 
 test("talos modal: the brand kit link opens in a new tab with noopener noreferrer", async ({ page }) => {

@@ -32,7 +32,7 @@ const LOGOS: Record<string, string[]> = {
   ieee: ["ieee-ut-logo.jpg"],
   jobs: ["apple-logo-black.svg", "apple-logo-white.svg", "aritzia-logo-light.svg", "aritzia-logo-white.svg", "aritzia-logo.svg", "mod-pizza-logo.svg", "popeyes-logo.svg", "ut-austin-logo-white.svg", "ut-austin-logo.svg"],
   "min-max": ["mark-on-dark.svg", "mark.svg", "wordmark-on-dark.svg", "wordmark.svg"],
-  talos: ["lockup-dark.svg", "lockup-light.svg", "mark.svg", "specialists", "states", "wordmark-dark.svg"],
+  talos: ["discord-dark.webp", "discord-light.webp", "lockup-dark.svg", "lockup-light.svg", "mark.svg", "specialists", "states", "wordmark-dark.svg"],
 };
 
 // The soundtrack audio is not in every checkout (the public repo leaves it out), so its checks skip when the folder is absent.
@@ -67,7 +67,7 @@ describe("the exported logos", () => {
   it("are the official files logos.md names, one folder per card", () => {
     for (const [card, files] of Object.entries(LOGOS)) expect(listed(`work/logos/${card}`), card).toEqual(files);
   });
-  it("hold Talos's four specialists and eight reactions, the brand kit's files as they are", () => {
+  it("keep Talos's four specialists and eight reactions, the brand kit's files as they are", () => {
     expect(listed("work/logos/talos/specialists")).toEqual(["mail.svg", "school.svg", "war-room.svg", "writer.svg"]);
     expect(listed("work/logos/talos/states")).toEqual(["done.svg", "failed.svg", "held.svg", "needs-you.svg", "pointer.svg", "queued.svg", "seen.svg", "stopped.svg"]);
   });

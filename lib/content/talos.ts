@@ -1,9 +1,10 @@
 import type { TalosTeam } from "./types";
 
 // What the Talos modal adds to the card's two paragraphs: the lockup the sting
-// ends on, where Talos is headed (the specialists), and what its reactions mean.
-// The marks and emoji are the brand kit's files, shown as they are
-// (public/work/logos/talos). The paragraphs are drafts for Aaron to edit.
+// ends on, a screenshot of its Discord channel (the brand sheet's mock, rendered at
+// 2x), and where Talos is headed. The specialists and the reaction legend are kept
+// with their kit files (public/work/logos/talos) but the modal does not draw them
+// now. The paragraphs are drafts for Aaron to edit.
 export const talosTeam: TalosTeam = {
   lockup: {
     alt: "The Talos mark: a bronze coin with a T struck into it, and the word Talos",
@@ -11,6 +12,13 @@ export const talosTeam: TalosTeam = {
     dark: "/work/logos/talos/lockup-dark.svg",
     width: 1330,
     height: 432,
+  },
+  discord: {
+    alt: "My Talos HQ channel in Discord: Talos and its specialists posting their morning updates, with reactions showing each message's state.",
+    light: "/work/logos/talos/discord-light.webp",
+    dark: "/work/logos/talos/discord-dark.webp",
+    width: 1064,
+    height: 1974,
   },
   next: "Next, Talos becomes a team of specialists: mail, school, a war room for deadlines, and a writer. Each runs with only the tools its job needs, and each has its own mark, so I can see which one is talking. They report to Talos, and Talos reports to me.",
   specialistsLabel: "The Talos specialists",

@@ -111,14 +111,17 @@ export interface Mentor { name: string; href: string; line: string | null }
 export interface MentorsList { title: string; people: readonly Mentor[] }
 export interface TimelineEntry { employer: string; role: string | null; when: string; logo: LogoRef | null; tip: string }
 
-// The Talos modal's extras (lib/content/talos.ts): the lockup the sting ends on, the
-// specialists Talos is growing into and the eight reactions it answers with. Every
+// The Talos modal's extras (lib/content/talos.ts): the lockup the sting ends on, a
+// screenshot of its Discord channel, and where it is headed. The specialists and the eight
+// reactions are kept here with their assets, though the modal no longer draws them. Every
 // src is a brand kit file under public/work/logos/talos.
+// One picture in a light and a dark file, shown by theme: the lockup the sting ends on, and the Discord channel.
 export interface TalosLockup { alt: string; light: string; dark: string; width: number; height: number }
 export interface TalosSpecialist { name: string; job: string; src: string; alt: string }
 export interface TalosState { name: string; meaning: string; src: string }
 export interface TalosTeam {
   lockup: TalosLockup;
+  discord: TalosLockup;
   next: string;
   specialistsLabel: string;
   specialists: readonly TalosSpecialist[];
