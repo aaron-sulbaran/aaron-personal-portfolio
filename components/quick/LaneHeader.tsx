@@ -11,7 +11,7 @@ import { MvpTitle } from "./MvpTitle";
 import { useFieldTip } from "./useFieldTip";
 
 // The lane's head: the MVP title, the intro, "Currently looking for:" (B, a
-// teaser of the Next checkpoint that scrolls to it), the three ways to reach me,
+// teaser of the What's next section that scrolls to it), the three ways to reach me,
 // and the way back to the full site through the transition (a real link without
 // it). The back button tells a mouse or keyboard visitor, in a tip, that the MVP
 // stays in the menu; a touch screen has no hover, so the same words sit under it.
@@ -25,7 +25,7 @@ type HeaderProps = TitleProps & {
   intro: string;
   // B: the short what's-next line, or null while B is off.
   looking: string | null;
-  // A is on, so there is a Next checkpoint for B to scroll to.
+  // A is on, so there is a What's next section for B to scroll to.
   canJump: boolean;
   tipBack: string;
 };

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { quickCopy, quickEntries, quickYears } from "@/lib/content/quick";
-import { NEXT_KEY, tripStops, unfiled, yearKey, yearRows } from "./years";
+import { quickEntries, quickYears } from "@/lib/content/quick";
+import { tripStops, unfiled, yearKey, yearRows } from "./years";
 
 describe("year rows", () => {
   const rows = yearRows(quickEntries);
@@ -39,15 +39,10 @@ describe("year rows", () => {
 });
 
 describe("trip stops", () => {
-  it("are what's next, then every year, newest first", () => {
+  it("are every year, newest first, and nothing else", () => {
     const stops = tripStops(yearRows(quickEntries));
-    expect(stops.map((stop) => stop.label)).toEqual([quickCopy.next.label, ...[...quickYears].reverse().map((row) => row.year)]);
-    expect(stops[0].key).toBe(NEXT_KEY);
-    expect(new Set(stops.map((stop) => stop.key)).size).toBe(stops.length);
-  });
-
-  it("are only the years when what's next is off", () => {
-    const stops = tripStops(yearRows(quickEntries), false);
     expect(stops.map((stop) => stop.label)).toEqual([...quickYears].reverse().map((row) => row.year));
+    expect(stops.every((stop) => stop.key.startsWith("year-"))).toBe(true);
+    expect(new Set(stops.map((stop) => stop.key)).size).toBe(stops.length);
   });
 });

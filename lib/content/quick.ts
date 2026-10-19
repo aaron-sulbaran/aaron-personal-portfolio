@@ -25,7 +25,7 @@ export const quickCopy = {
     back: "You can always come back to this from the menu.",
   },
   next: {
-    label: "Next",
+    label: "What's Next?",
     lookingFor: "Currently looking for:",
     lookingForAction: "Go to what I am looking for next",
   },
@@ -134,7 +134,7 @@ export const quickEntries: readonly QuickEntry[] = drafts.map((draft) => ({
 }));
 
 // What I am looking for next, as a short line (under the intro) and a full line
-// (the "Next" checkpoint at the top of the rail). The lab picks one; two-tracks
+// (the What's next section at the foot of the page). The lab picks one; two-tracks
 // ships. "custom" is the lab's own two text fields (lib/quick/texts).
 export const quickNextVariants = [
   {

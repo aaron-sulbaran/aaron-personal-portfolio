@@ -21,14 +21,14 @@ export interface QuickLabSettings {
   unfoldDurationMs: number;
   speed: number;
   reduced: boolean;
-  // What's next: the variant, A (the Next checkpoint) and B (the line under the intro).
+  // What's next: the variant, A (the What's next section at the foot) and B (the line under the intro).
   nextVariant: NextChoice;
   showNextA: boolean;
   showLookingB: boolean;
   texts: QuickTexts;
 }
 
-export const SETTINGS_KEY = "lab-quick-v6";
+export const SETTINGS_KEY = "lab-quick-v7";
 
 export const DEFAULT_SETTINGS: QuickLabSettings = { variant: "rail", titleMode: "unfold", unfoldDelayMs: TITLE_UNFOLD.delayMs, unfoldStaggerMs: TITLE_UNFOLD.staggerMs, unfoldDurationMs: TITLE_UNFOLD.durationMs, speed: 1, reduced: false, nextVariant: "two-tracks", showNextA: true, showLookingB: true, texts: DEFAULT_TEXTS };
 
@@ -64,5 +64,5 @@ export function sameSettings(a: QuickLabSettings, b: QuickLabSettings): boolean 
 }
 
 export function exportValues(settings: QuickLabSettings, theme: "light" | "dark", invite: InviteMode) {
-  return { lab: "quick", round: 5, ...settings, invite, theme };
+  return { lab: "quick", round: 6, ...settings, invite, theme };
 }

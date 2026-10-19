@@ -2,8 +2,11 @@ import { DEFAULT_NEXT_ID, quickNextVariants, type QuickNextId } from "@/lib/cont
 
 // What I am looking for next, in two places that lead to the same thing without
 // repeating word for word: B, a short line under the intro, and A, the full line
-// beside the "Next" checkpoint at the top of the rail. The lab picks a named
-// variant or writes its own ("custom"). Pure.
+// in the What's next section at the foot of the page, below the rail and apart
+// from it. The lab picks a named variant or writes its own ("custom"). Pure.
+
+export const NEXT_SECTION_ID = "whats-next";
+export const NEXT_HEADING_ID = "whats-next-heading";
 
 export type NextChoice = QuickNextId | "custom";
 
@@ -12,7 +15,7 @@ export const NEXT_CHOICES: readonly NextChoice[] = [...quickNextVariants.map((va
 export interface NextLines {
   // B: finishes "Currently looking for:".
   short: string;
-  // A: the year-row sentence at the top of the rail.
+  // A: the What's next section's sentence.
   full: string;
 }
 
