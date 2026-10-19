@@ -38,9 +38,9 @@ export function LaneThumb({ face }: { face: StrandFace | undefined }) {
   );
 }
 
-function LogoThumb({ logo, tile }: { logo: LogoRef; tile: "plain" | "anvil" }) {
+function LogoThumb({ logo, tile }: { logo: LogoRef; tile: "plain" | "talos" }) {
   const ground = faceGround(logo);
-  const pane = tile === "anvil" ? "bg-[color:var(--card-anvil)]" : "bg-[color:var(--card-work-pane)]";
+  const pane = "bg-[color:var(--card-work-pane)]";
   const plate = needsGround(logo, tile, true) ? "dark:bg-[color:var(--card-logo-ground)]" : "";
   return (
     <span data-quick-thumb="" aria-hidden="true" className={`${PORTRAIT} ${ground ? "" : `${pane} ${plate}`}`} style={ground ? { background: ground } : undefined}>
