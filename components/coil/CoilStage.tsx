@@ -172,7 +172,7 @@ export function CoilStage({
   }, [onSceneChange]);
 
   return (
-    <div ref={stageRef} className="absolute inset-0 overflow-hidden">
+    <div ref={stageRef} data-coil-stage="" className="absolute inset-0 overflow-hidden">
       <Poster still={still} />
       {mounted && Scene ? (
         <CoilErrorBoundary key={generation} onError={handleError}>

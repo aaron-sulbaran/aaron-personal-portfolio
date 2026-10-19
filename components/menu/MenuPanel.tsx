@@ -2,10 +2,15 @@
 
 import { useState, type CSSProperties } from "react";
 import { motion, type Variants } from "framer-motion";
+import { usePathname } from "next/navigation";
 import { Moon, Sun } from "lucide-react";
 import { Fill } from "@/components/fx/Fill";
 import { NoteIcon } from "@/components/menu/NoteIcon";
 import { siteContent } from "@/lib/content";
+import { quickCopy } from "@/lib/content/quick";
+import { closeMenu } from "@/lib/menu";
+import { EXPRESS_PATH, HOME_PATH } from "@/lib/quick/transition";
+import { goTo } from "@/lib/quick/transitionStore";
 import { FILL_PICK } from "@/lib/fx/fill";
 import { EASE } from "@/lib/motion";
 import { menuChipStops, noteState } from "@/lib/note";
@@ -76,6 +81,7 @@ export function MenuPanel({
     document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light",
   );
   const music = useSoundtrack();
+  const onQuick = usePathname() === EXPRESS_PATH;
 
   const toggleTheme = () => {
     const next: Theme = theme === "dark" ? "light" : "dark";
@@ -187,6 +193,18 @@ export function MenuPanel({
             </span>
             <span>{music === "on" ? menuToggleOn : music === "paused" ? menuTogglePaused : menuToggleOff}</span>
           </Fill>
+          <a
+            href={onQuick ? HOME_PATH : EXPRESS_PATH}
+            onClick={(event) => {
+              if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
+              event.preventDefault();
+              closeMenu(() => goTo(onQuick ? HOME_PATH : EXPRESS_PATH));
+            }}
+            data-cursor-hover
+            className="inline-flex h-[34px] items-center rounded-[17px] px-3.5 font-label text-label text-accent shadow-[inset_0_0_0_1px_var(--color-border)]"
+          >
+            {onQuick ? quickCopy.back : quickCopy.menuChip}
+          </a>
         </div>
         <div
           className={`flex font-label text-label ${

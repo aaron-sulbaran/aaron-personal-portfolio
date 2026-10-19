@@ -4,9 +4,8 @@ import { useEffect, useImperativeHandle, useRef, useState, type RefObject, type 
 import { bookColumns, siteContent } from "@/lib/content";
 import { useEscapeKey } from "@/lib/modal";
 import { useSeen } from "@/lib/home/seen";
-import { useHomeController } from "@/components/home/HomeController";
-import { hintStore } from "@/lib/cursor/hover";
 import type { CoilEntrance, CoilSceneApi } from "./CoilScene";
+import { HintLine } from "./HintLine";
 import { NameReadout } from "./NameReadout";
 import { ShapeToggle } from "./ShapeToggle";
 import type { CoilShape } from "@/lib/coil/shape";
@@ -68,14 +67,6 @@ type Props = {
 // The nudge sits this far off the pointer, toward where the page scrolls.
 const NUDGE_OFFSET_PX = 42;
 
-// ---- fx-hero: the one-time lines ----
-const KEEP_EXPLORING_KEY = "aaron-hint-keep";
-const TAP_CARD_KEY = "aaron-hint-tap";
-const LINE_IN_MS = 420;
-const LINE_OUT_MS = 320;
-const KEEP_HOLD_MS = 2500;
-const TAP_HOLD_MS = 5000;
-// ---- end fx-hero ----
 
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
 const seg = (x: number, a: number, b: number) => clamp01((x - a) / (b - a));
@@ -309,94 +300,6 @@ export function HeroOverlay({ ref, api, onRowOpen, entrance = null, shape, onSha
   );
 }
 
-// ---- fx-hero: the first-visit lines ----
-// Once ever each, decorative (the cards stay reachable through the book).
-// Fine pointer: when the first card ever opened has flown home, "Keep
-// exploring" fades in at the hero's bottom center, holds, and goes (the
-// cursor's "Open me" pill retires with that first open, in CustomCursor).
-// Touch: "Tap a card" after the entrance, gone on the first tap or after 5s.
-// Written imperatively, like the rest of this layer: a plain opacity fade,
-// which is also the reduced-motion version.
-function HintLine({ rootRef, entrance }: { rootRef: RefObject<HTMLDivElement | null>; entrance: CoilEntrance | null }) {
-  const controller = useHomeController();
-  const lineRef = useRef<HTMLParagraphElement>(null);
-  const firstOpenRef = useRef(false);
-  const hideRef = useRef<() => void>(() => {});
-  const modalOpen = controller?.modalOpen ?? false;
-  const flying = (controller?.flight ?? null) !== null;
-  const input = controller?.drivers.input;
-  const ready = controller?.phase === "ready" && entrance !== null;
-
-  // Shows `text`, holds, fades out; hideRef dismisses it early.
-  const show = (text: string, holdMs: number) => {
-    const line = lineRef.current;
-    if (!line) return;
-    hideRef.current();
-    line.textContent = text;
-    line.style.transitionDuration = `${LINE_IN_MS}ms`;
-    line.style.opacity = "0";
-    let timer = 0;
-    const hide = () => {
-      window.clearTimeout(timer);
-      line.style.transitionDuration = `${LINE_OUT_MS}ms`;
-      line.style.opacity = "0";
-      hideRef.current = () => {};
-    };
-    const frame = requestAnimationFrame(() => {
-      line.style.opacity = "1";
-    });
-    timer = window.setTimeout(hide, LINE_IN_MS + holdMs);
-    hideRef.current = () => {
-      cancelAnimationFrame(frame);
-      hide();
-    };
-  };
-
-  // The first card ever opened: the cursor's pill retires for good.
-  useEffect(() => {
-    if (!modalOpen) return;
-    hideRef.current();
-    const store = hintStore();
-    if (store.opened()) return;
-    firstOpenRef.current = true;
-    store.markOpened();
-  }, [modalOpen]);
-
-  // That card has flown home: one line, if the hero is still in view. The
-  // controller drops its flight in the same task as the scene's handoff lands
-  // the card (FlyingTile calls land(), then onClosingComplete), so this runs
-  // on the landing itself, never on a timer; with no flight, at the close.
-  useEffect(() => {
-    if (modalOpen || flying || !firstOpenRef.current) return;
-    firstOpenRef.current = false;
-    if (input !== "fine") return;
-    const rect = rootRef.current?.getBoundingClientRect();
-    if (!rect || rect.bottom < window.innerHeight * 0.5 || rect.top > window.innerHeight * 0.5) return;
-    if (hintStore().takeOnce(KEEP_EXPLORING_KEY)) show(siteContent.hero.hints.keepExploring, KEEP_HOLD_MS);
-  });
-
-  // Touch: once, after the entrance, until the first tap or 5s.
-  useEffect(() => {
-    if (!ready || input !== "coarse") return;
-    const store = hintStore();
-    if (store.opened() || !store.takeOnce(TAP_CARD_KEY)) return;
-    show(siteContent.hero.hints.tapCard, TAP_HOLD_MS);
-    const onTap = () => hideRef.current();
-    window.addEventListener("pointerdown", onTap, { once: true });
-    return () => window.removeEventListener("pointerdown", onTap);
-  }, [ready, input]);
-
-  return (
-    <p
-      ref={lineRef}
-      data-hint-line
-      aria-hidden="true"
-      className="absolute bottom-[max(32px,7svh)] max-sm:bottom-[76px] left-1/2 -translate-x-1/2 whitespace-nowrap font-sans text-[14px] leading-none text-[color:var(--hero-greeting)] opacity-0 transition-opacity [transition-timing-function:var(--ease-out)]"
-    />
-  );
-}
-
-// ---- end fx-hero ----
 
 const CONTROL_CLASS =
   "pointer-events-auto flex min-h-10 items-center gap-2.5 whitespace-nowrap rounded-full bg-[var(--menu-pill)] pl-4 pr-1 font-label leading-none text-accent backdrop-blur-[8px] [box-shadow:inset_0_0_0_1px_var(--color-border)] focus-visible:rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-accent";

@@ -62,13 +62,13 @@ export const cards: Cards = {
       "I spent three summers at Capital One, and each one moved me closer to product.",
       "**2024, business analyst.** My first look at corporate America. I met my first product manager, who told me a PM is a manager \"that gets people to trust them and their decisions without having the power to change their salaries.\" That sentence changed my career trajectory.",
       "**2025, product manager.** The summer I started explaining the job to other people. Explaining it made me realize how much I enjoyed the work that comes with being a PM.",
-      "**2026, applied AI (product manager).** My first stab at building agentic workflows inside Capital One's internal machine learning tools to test how those models behaved.",
+      "**2026, Applied AI (product manager).** My first stab at building agentic workflows inside Capital One's internal machine learning tools to test how those models behaved.",
       "If you want to learn more, I'll say what I can in person.",
     ] },
   },
   hackathons: {
     group: "work", visual: { kind: "photo", flipX: false, photo: pictures.hackathons },
-    book: { title: "Hackathons", meta: "Builder, 2026 to now" },
+    book: { title: "Hackathons", meta: "Builder, 2025 to now" },
     // UFCU first, so the card picture (the UFCU win, beside the title) sits next to its own paragraph (docs/content/cards.md).
     modal: { kind: "logo", title: "Hackathons", picture: { caption: "Me and my team winning UFCU Develop U, September 2026." }, links: [], photos: modalPhotos.hackathons, blocks: [
       "**UFCU Develop U, fall 2026.** Won with UFCU Front Desk, a digital front desk assistant that makes joining a credit union simple and still sounds like them.",
@@ -134,7 +134,7 @@ export const cards: Cards = {
   },
   fsdatalink: {
     group: "people", visual: { kind: "logo", logo: logos.fsdatalink, tile: "plain" },
-    book: { title: "The family business", meta: "Assistant Manager & SWE, 2022 to 2024" },
+    book: { title: "The family business", meta: "Assistant Manager & SWE, 2022 to now" },
     modal: { kind: "logo", title: "The family business", links: [{ label: "fsdatalink.com", href: "https://www.fsdatalink.com/" }], photos: [], blocks: [
       "My dad built a telecom business from nothing. I figured things out right next to him. I learned small-business taxes and tax breaks, and I was fascinated that people used laws that would never exist in Venezuela. I ended up doing the accounting, the finances and whatever else needed solving, sometimes unpaid because I wanted to help him.",
       "I even took up the role of a software engineer, building internal tools and workflows for my dad and the field engineers that we dispatched. It's where (unknowingly) my interest in money, financial literacy, and optimizing technology started.",

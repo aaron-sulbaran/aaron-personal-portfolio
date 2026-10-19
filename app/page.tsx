@@ -10,6 +10,7 @@ import { HeroText } from "@/components/home/HeroText";
 import { Book } from "@/components/book/Book";
 import { NumbersStrip } from "@/components/metrics/NumbersStrip";
 import { MarkCardSource } from "@/components/mark/MarkCardSource";
+import { ExpressInvite } from "@/components/invite/ExpressInvite";
 
 // The contribution figures refresh once a day (lib/metrics/github.ts); a
 // literal, because Next reads segment config statically.
@@ -25,10 +26,11 @@ export const revalidate = 86400;
 // The soundtrack band sits in flow directly under the book: its wave is the
 // first stretch of the scroll-drawn line, which continues behind the sections
 // in PathLayer's in-flow tiles. The band's playback pill self-Portals to
-// document.body. Every overlay (SiteNav z-30,
-// menu scrim z-[35], the Menu pill and panel z-40, the playback pill z-[45],
-// modals z-50, the flight z-[55], the inline label z-[58], the loader z-60, its root absolute at the
-// document top, its pane fixed) sits at body level.
+// document.body. Every overlay (SiteNav z-30, the Express lane invite's toast
+// z-[34], menu scrim z-[35], the Menu pill and panel z-40, the playback pill
+// z-[45], modals z-50, the flight z-[55], the Express lane transition z-[57],
+// the inline label z-[58], the loader z-60, its root absolute at the document
+// top, its pane fixed) sits at body level. The invite's pill sits in the hero.
 export default function Home() {
   // Holding mode (opt-in with NEXT_PUBLIC_SITE_MODE=holding, see
   // lib/holding.ts): the "under remodeling" page replaces the scroll journey.
@@ -42,6 +44,7 @@ export default function Home() {
           <HeroSentinel />
           <HomeController hero={<HeroText />}>
             <Book />
+            <ExpressInvite />
           </HomeController>
           <SoundtrackBand />
           <WhoIAm />

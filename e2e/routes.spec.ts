@@ -1,9 +1,16 @@
 import { test, expect } from "./support/fixtures";
 
-// The site's public routes after the placeholder sweep: the home document, the
-// anchors the old pages fold into, and nothing else in the sitemap.
+// The site's public routes: the home document, the quick page, and the
+// anchors the old pages fold into.
 
-for (const [from, to] of [["/work", "/#work"], ["/work/capital-one-pm", "/#work"], ["/about", "/#about"]] as const) {
+for (const [from, to] of [
+  ["/work", "/#work"],
+  ["/work/capital-one-pm", "/#work"],
+  ["/about", "/#about"],
+  ["/express", "/quick"],
+  ["/simple", "/quick"],
+  ["/recruiter", "/quick"],
+] as const) {
   test(`routes: ${from} sends visitors to ${to}`, async ({ request }) => {
     const response = await request.get(from, { maxRedirects: 0 });
     expect(response.status()).toBe(307);
@@ -16,9 +23,10 @@ test("routes: the logo files under /work/logos are still served", async ({ reque
   expect(response.status()).toBe(200);
 });
 
-test("routes: the sitemap lists the home page alone", async ({ request }) => {
+test("routes: the sitemap lists the home page and the quick page", async ({ request }) => {
   const xml = await (await request.get("/sitemap.xml")).text();
-  expect(xml.match(/<loc>/g)).toHaveLength(1);
+  expect(xml.match(/<loc>/g)).toHaveLength(2);
+  expect(xml).toContain("/quick");
   expect(xml).not.toContain("/work/");
 });
 
