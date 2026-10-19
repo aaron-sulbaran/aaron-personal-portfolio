@@ -307,7 +307,7 @@ test.describe("express lane what's next at 1280x900", () => {
   test("A: What's next is its own section below 2021, in the year headings' type, with no dot and no line", async ({ page }) => {
     await page.goto("/quick");
     const next = page.locator("#whats-next");
-    await expect(next.locator("h2")).toHaveText("What's next");
+    await expect(next.locator("h2")).toHaveText("What's Next?");
     await expect(next.locator("[data-quick-next-line]")).toHaveText(TWO_TRACKS.full);
     expect(await bottomOf(page, "#year-2021")).toBeLessThan(await topOf(page, "#whats-next"));
     expect(await bottomOf(page, "#whats-next")).toBeLessThan(await topOf(page, "#close"));
@@ -326,7 +326,7 @@ test.describe("express lane what's next at 1280x900", () => {
     await expect(close.locator("h2, p")).toHaveCount(0);
     await expect(close.getByRole("link")).toHaveText([siteContent.connect.primary.label, "LinkedIn", "Email", "GitHub"]);
     await expect(close.getByRole("link", { name: siteContent.connect.primary.label })).toHaveAttribute("href", siteContent.connect.primary.href);
-    expect(await page.locator("main h2").evaluateAll((els) => els.map((el) => el.textContent))).toEqual(["2026", "2025", "2024", "2023", "2022", "2021", "What's next"]);
+    expect(await page.locator("main h2").evaluateAll((els) => els.map((el) => el.textContent))).toEqual(["2026", "2025", "2024", "2023", "2022", "2021", "What's Next?"]);
   });
 
   test("B: a quiet line under the intro, above the hint, that does not repeat A", async ({ page }) => {

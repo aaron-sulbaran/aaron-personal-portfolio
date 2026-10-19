@@ -25,7 +25,7 @@ export const quickCopy = {
     back: "You can always come back to this from the menu.",
   },
   next: {
-    label: "What's next",
+    label: "What's Next?",
     lookingFor: "Currently looking for:",
     lookingForAction: "Go to what I am looking for next",
   },
