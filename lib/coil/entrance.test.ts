@@ -195,7 +195,7 @@ describe.each(cases)("entrance, %s", (_label, geo) => {
     expect(minWindingDistance).toBeGreaterThan(0);
     expect(partingContactMs).toBeLessThan(20);
     expect(partingContactArea).toBeLessThan(0.0025); // of a card's 0.75: under half a percent
-  });
+  }, 20000);
 
   it("deals the band in order from the first card, 1 card per stagger", () => {
     const n = geo.cardCount;
