@@ -130,6 +130,16 @@ describe("quick copy", () => {
     expect(siteContent.connect.primary.label).toBe("Book some time");
   });
 
+  it("invites anyone who wants my resume to message me on LinkedIn, in one sentence without a dash", () => {
+    const { before, link, after, linkKey } = quickCopy.next.resume;
+    const sentence = `${before}${link}${after}`;
+    expect(sentence).toBe("If you'd like my resume, message me and I'll send it your way.");
+    expect(sentence.includes(EM_DASH)).toBe(false);
+    expect(before.endsWith(" ")).toBe(true);
+    expect(after.startsWith(" ")).toBe(true);
+    expect(siteContent.connect.links.find((entry) => entry.key === linkKey)!.href).toMatch(/^https:\/\/www\.linkedin\.com\/in\//);
+  });
+
   it("tells the visitor where the MVP lives, in my voice and without a dash", () => {
     expect(quickCopy.tips.toast).toBe("The MVP is always in the menu if you need it later.");
     expect(quickCopy.tips.back).toBe("You can always come back to this from the menu.");

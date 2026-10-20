@@ -28,6 +28,14 @@ export const quickCopy = {
     label: "What's Next?",
     lookingFor: "Currently looking for:",
     lookingForAction: "Go to what I am looking for next",
+    // One quiet sentence under the line, in three parts so the middle can be a
+    // link; linkKey names the Connect link it goes to.
+    resume: {
+      before: "If you'd like my resume, ",
+      link: "message me",
+      after: " and I'll send it your way.",
+      linkKey: "linkedin",
+    },
   },
   listLabel: "My years, newest first",
   closingLabel: "Ways to reach me",

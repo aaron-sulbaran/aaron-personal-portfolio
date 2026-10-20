@@ -320,6 +320,25 @@ test.describe("express lane what's next at 1280x900", () => {
     expect(gap).toBeGreaterThanOrEqual(192);
   });
 
+  test("a quiet sentence under the line invites a message for my resume, with a link to LinkedIn that opens a new tab", async ({ page }) => {
+    await page.goto("/quick");
+    const { before, link, after } = quickCopy.next.resume;
+    const resume = page.locator("#whats-next [data-quick-resume]");
+    await expect(resume).toContainText(`${before}${link}${after}`);
+    const linkedin = siteContent.connect.links.find((entry) => entry.key === quickCopy.next.resume.linkKey)!;
+    const anchor = resume.getByRole("link", { name: link });
+    await expect(anchor).toHaveCount(1);
+    await expect(anchor).toHaveAttribute("href", linkedin.href);
+    await expect(anchor).toHaveAttribute("target", "_blank");
+    await expect(anchor).toHaveAttribute("rel", /noopener/);
+    expect(await topOf(page, "#whats-next [data-quick-next-line]")).toBeLessThan(await topOf(page, "#whats-next [data-quick-resume]"));
+    expect(await bottomOf(page, "#whats-next [data-quick-resume]")).toBeLessThan(await topOf(page, "#close"));
+    const size = (selector: string) => page.locator(selector).evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+    expect(await size("#whats-next [data-quick-resume]")).toBeLessThan(await size("#whats-next [data-quick-next-line]"));
+    const color = (selector: string) => page.locator(selector).evaluate((el) => getComputedStyle(el).color);
+    expect(await color("#whats-next [data-quick-resume]")).not.toBe(await color("#whats-next [data-quick-next-line]"));
+  });
+
   test("the page ends on What's next, then a short row of booking and links", async ({ page }) => {
     await page.goto("/quick");
     const close = page.locator("#close");
