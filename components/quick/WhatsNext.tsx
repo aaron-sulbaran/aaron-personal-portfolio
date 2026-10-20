@@ -24,10 +24,7 @@ export function WhatsNext({ line }: { line: string }) {
       </p>
       <p data-quick-resume="" data-lane-line="" data-lane-whole="" className="mt-3 max-w-2xl text-base leading-relaxed text-muted">
         {resume.before}
-        <a {...message.props}>
-          {resume.link}
-          <span className="sr-only">, {siteContent.book.externalLabel}</span>
-        </a>
+        <a {...message.props}>{resume.link}</a>
         {resume.after}
       </p>
     </section>
