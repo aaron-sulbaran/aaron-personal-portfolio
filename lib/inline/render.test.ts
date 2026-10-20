@@ -53,7 +53,7 @@ describe("InlineCopy", () => {
 describe("the inline link tokens", () => {
   const css = readFileSync(join(process.cwd(), "app/globals.css"), "utf8");
   const block = css.slice(css.indexOf("/* ---- inline links"), css.indexOf("/* ---- end inline links ---- */"));
-  it("draws one look for every kind from tokens, with no hex: the accent at rest (a dotted line for a definition and a tip), a deeper accent filling from the centre by one number, a ring kept out of the mask, and no tween under reduced motion", () => {
+  it("draws one look for every kind from tokens, with no hex: the accent at rest (a dotted line of whole dots for a definition and a tip, lifted under the label face), a deeper accent filling from the centre by one number, a ring kept out of the mask, and no tween under reduced motion", () => {
     expect(block.length).toBeGreaterThan(0);
     expect(block).not.toMatch(/underline-external/);
     expect(block).not.toMatch(/#[0-9a-f]{3,8}\b/i);
@@ -63,6 +63,12 @@ describe("the inline link tokens", () => {
     expect(block).toContain("--inline-fill-ms: 350ms;");
     expect(block).toMatch(/\.inline-link::before \{ background: color-mix\(in srgb, var\(--color-accent\) var\(--inline-line-rest\), transparent\); \}/);
     expect(block).toMatch(/\.inline-link\[data-inline="def"\]::before, \.inline-link\[data-inline="tip"\]::before \{\s*background: repeating-linear-gradient\(90deg, color-mix\(in srgb, var\(--color-accent\) var\(--inline-dot-rest\)/);
+    expect(block).toMatch(/@supports \(width: round\(down, 100%, 1px\)\) \{[^@]*--inline-dot-w: calc\(round\(down, 100% - 2 \* var\(--inline-pad\) - var\(--inline-line-width\), var\(--inline-line-width\) \* var\(--inline-dot-period\)\) \+ 3 \* var\(--inline-line-width\)\);/);
+    expect(block).toContain("left: calc(50% - var(--inline-dot-w) / 2); right: auto; width: var(--inline-dot-w);");
+    expect(block).toContain("background-position: var(--inline-line-width) 0; background-repeat: no-repeat;");
+    expect(block).toContain("--inline-line-lift: 0px;");
+    expect(block).toContain("+ var(--inline-line-lift)); height: var(--inline-line-width);");
+    expect(block).toContain(".font-label .inline-link, .inline-link.font-label { --inline-line-lift: calc(0.273em - 2.3px); }");
     expect(block).toMatch(/\.inline-glyph \{[^}]*color: var\(--color-accent\);/);
     expect(block).toMatch(/forced-colors: active\), print \{[\s\S]*text-decoration-style: dotted;/);
     expect(block).toContain("transform: scaleX(var(--inline-p)); transform-origin: 50% 50%;");

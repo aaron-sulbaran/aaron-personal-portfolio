@@ -636,6 +636,7 @@ html:not([data-input="pointer"]) .fx:focus-visible,
   --inline-dot-period: 2.6;
   --inline-line-width: 1.5px;
   --inline-line-gap: 1.5px;
+  --inline-line-lift: 0px;
   --inline-pad: 0.1em;
   --inline-fill-ms: 350ms;
   --inline-fill-ease: cubic-bezier(0.65, 0, 0.35, 1);
@@ -657,12 +658,22 @@ html:not([data-input="pointer"]) .fx:focus-visible,
 }
 .inline-link::before, .inline-link::after {
   content: ""; position: absolute; left: var(--inline-pad); right: var(--inline-pad); pointer-events: none;
-  bottom: calc(var(--inline-pad) - var(--inline-line-gap) - var(--inline-line-width)); height: var(--inline-line-width);
+  bottom: calc(var(--inline-pad) - var(--inline-line-gap) - var(--inline-line-width) + var(--inline-line-lift)); height: var(--inline-line-width);
 }
 .inline-link::before { background: color-mix(in srgb, var(--color-accent) var(--inline-line-rest), transparent); }
 .inline-link[data-inline="def"]::before, .inline-link[data-inline="tip"]::before {
   background: repeating-linear-gradient(90deg, color-mix(in srgb, var(--color-accent) var(--inline-dot-rest), transparent) 0 var(--inline-line-width), transparent var(--inline-line-width) calc(var(--inline-line-width) * var(--inline-dot-period)));
 }
+/* Whole dots at both ends: the bar is cut to a whole number of periods plus one dot, centred, with a dot's width of slack either side so that pixel snapping of the box can never trim the last dot. A repeating gradient, not a tile, keeps the dots crisp. */
+@supports (width: round(down, 100%, 1px)) {
+  .inline-link[data-inline="def"]::before, .inline-link[data-inline="tip"]::before {
+    --inline-dot-w: calc(round(down, 100% - 2 * var(--inline-pad) - var(--inline-line-width), var(--inline-line-width) * var(--inline-dot-period)) + 3 * var(--inline-line-width));
+    left: calc(50% - var(--inline-dot-w) / 2); right: auto; width: var(--inline-dot-w);
+    background-position: var(--inline-line-width) 0; background-repeat: no-repeat;
+  }
+}
+/* In the label face (Profa Bold) the bar rides 0.441em under the baseline while the descenders reach 0.168em, so it hung about 4px clear of them against body copy's 2.3px; the lift sets it 2.3px under them at every label size. Measure again when the full cut lands. */
+.font-label .inline-link, .inline-link.font-label { --inline-line-lift: calc(0.273em - 2.3px); }
 .inline-glyph { display: inline-block; width: 0.8em; height: 0.8em; margin-left: 0.25em; vertical-align: -0.04em; color: var(--color-accent); pointer-events: none; }
 .inline-link::after { background: var(--color-accent); transform: scaleX(var(--inline-p)); transform-origin: 50% 50%; }
 .inline-link[data-inline-open], html:not([data-input="pointer"]) .inline-link:focus-visible { --inline-p: 1; }
