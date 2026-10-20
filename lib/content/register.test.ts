@@ -46,9 +46,8 @@ describe("the inline register", () => {
   });
 
   it("gives every pop with a photo a caption line, so a popover never shows a bare picture", () => {
-    const awaitingCaption = ["sister-kyoto"];
     const bare = Object.entries(register.pop).filter(([, entry]) => entry.file && !entry.caption?.trim()).map(([key]) => key);
-    expect(bare).toEqual(awaitingCaption);
+    expect(bare).toEqual([]);
   });
 
   it("describes every pop without the third person, with its exported file, the approved captions and link", () => {
@@ -68,6 +67,7 @@ describe("the inline register", () => {
       friends: "Celebrating some of my best friends' graduation!",
       "misuki-suki": "Suki's S2000 from 2 Fast 2 Furious, what I consider to be a peak roadster",
       matcha: "7T+ is my favorite matcha place in the world. Check it out in Kyoto! (click for directions)",
+      "sister-kyoto": "Me with my sister at Fushimi Inari in Kyoto, doing our signature head bop. This siblings' Japan trip is probably my favorite so far!",
       "contrabass-clarinet": "Bass clarinet was my main instrument. In concert season I played contrabass.",
       rango: "yeah, this guy from that one kid's movie",
       "catatumbo-lightning": "The lightning in question",
