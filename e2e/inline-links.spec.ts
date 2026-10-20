@@ -173,7 +173,7 @@ const LINE_CASES = [
 ] as const;
 
 for (const colorScheme of ["light", "dark"] as const) {
-  test(`inline links: every kind rests as its paragraph's ink with a quiet line and fills with the accent in ${colorScheme}`, async ({ page }) => {
+  test(`inline links: every kind rests in the accent with a visible line and fills from the accent in ${colorScheme}`, async ({ page }) => {
     await page.emulateMedia({ colorScheme });
     await openFixture(page, ...LINE_CASES.map(([, copy]) => copy));
     for (const [kind, , selector] of LINE_CASES) {
@@ -189,12 +189,11 @@ for (const colorScheme of ["light", "dark"] as const) {
         const own = getComputedStyle(el);
         const before = getComputedStyle(el, "::before");
         const after = getComputedStyle(el, "::after");
-        const paragraph = getComputedStyle(el.parentElement as HTMLElement);
         return {
-          ink: own.color,
-          paragraphInk: paragraph.color,
+          ink: own.backgroundImage,
+          lineImage: before.backgroundImage,
           line: before.backgroundColor,
-          restingLine: probe("background: color-mix(in srgb, currentColor var(--inline-line-rest), transparent)").background,
+          restingLine: probe("background: color-mix(in srgb, var(--color-accent) var(--inline-line-rest), transparent)").background,
           fill: after.backgroundColor,
           accent: probe("color: var(--color-accent)").color,
           decoration: own.textDecorationLine,
@@ -203,8 +202,9 @@ for (const colorScheme of ["light", "dark"] as const) {
           barBottom: before.bottom === after.bottom,
         };
       });
-      expect(read.ink, `${kind}: the word is its paragraph's ink at rest`).toBe(read.paragraphInk);
-      expect(read.line, `${kind}: a quiet line in that ink`).toBe(read.restingLine);
+      expect(read.ink, `${kind}: the word rests in the accent (its text is clipped from a gradient of it)`).toContain(read.accent);
+      if (kind === "definition" || kind === "tip") expect(read.lineImage, `${kind}: a dotted line`).toContain("repeating-linear-gradient");
+      else expect(read.line, `${kind}: a line in the accent`).toBe(read.restingLine);
       expect(read.fill, `${kind}: filled from the accent token`).toBe(read.accent);
       expect(read.decoration, `${kind}: a bar, not text-decoration`).toBe("none");
       expect([read.barHeight === read.fillHeight, read.barBottom], `${kind}: the fill is the line's size and place`).toEqual([true, true]);
