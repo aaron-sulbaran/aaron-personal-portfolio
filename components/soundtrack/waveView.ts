@@ -1,4 +1,3 @@
-import { getBridge } from "@/lib/player/bridge";
 import { columnWeights, type Rect } from "@/lib/waveform/weights";
 import { dotReach, runColumns, type PathColumns } from "@/lib/wavepath/columns";
 import { ALPHAS, RUN_START, SPACING } from "@/lib/wavepath/constants";
@@ -44,9 +43,9 @@ export function createWaveView(canvas: HTMLCanvasElement, conductor: WaveConduct
     sink.viewBottom = sink.viewTop + viewport;
     sink.width = width;
     sink.onScreen = 0;
-    // The music player lab can ask for the run whole, whatever the head has drawn past it.
+    // The lab's one-line wave: while the band is below the release line the head waits at the run's end and the run is drawn whole, however far the train had trailed on.
     const tail = f.tail;
-    if (getBridge().bandFull) f.tail = -Infinity;
+    if (f.gated) f.tail = -Infinity;
     buildPathDots(cols, all, 0, cols.count, f, amp, 0, -Infinity, f.runLen || Infinity, weights, sink, fit);
     f.tail = tail;
     painter.fill(sink.muted, painter.colors.muted, alphas.muted);

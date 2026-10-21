@@ -15,6 +15,7 @@ const draw = (f: DotFrame, from = -Infinity, to = Infinity) => {
   return sink;
 };
 const xs = (dots: number[]) => dots.filter((_, k) => k % 3 === 0);
+const ys = (dots: number[]) => dots.filter((_, k) => k % 3 === 1);
 
 describe("dots along the curve", () => {
   it("draws nothing past the head or before the tail", () => {
@@ -102,5 +103,61 @@ describe("the answer's ripple", () => {
   });
   it("still frames ignore it", () => {
     expect(draw(frame({ still: true, ripple: crest(600, 0.3) })).muted).toEqual(draw(frame({ still: true })).muted);
+  });
+});
+
+describe("the idle ripple", () => {
+  it("adds nothing without a gain, as in production", () => {
+    expect(draw(frame({ idleGain: 0, idleClock: 3 })).muted).toEqual(draw(frame()).muted);
+  });
+
+  it("reshapes the line when it has a gain, and moves as its clock runs", () => {
+    const rest = draw(frame()).muted;
+    const a = draw(frame({ idleGain: 1, idleClock: 0 })).muted;
+    const b = draw(frame({ idleGain: 1, idleClock: 1.5 })).muted;
+    expect(a).not.toEqual(rest);
+    expect(b).not.toEqual(a);
+  });
+
+  it("is stronger with more gain", () => {
+    const spread = (gain: number) => {
+      const dots = draw(frame({ idleGain: gain, idleClock: 0.7 })).muted;
+      const rest = draw(frame()).muted;
+      let sum = 0;
+      for (let k = 1; k < Math.min(dots.length, rest.length); k += 3) sum += Math.abs(dots[k] - rest[k]);
+      return sum;
+    };
+    expect(spread(2)).toBeGreaterThan(spread(1));
+  });
+
+  it("never reaches a line held still (reduced motion)", () => {
+    expect(draw(frame({ still: true, idleGain: 1, idleClock: 2 })).muted).toEqual(draw(frame({ still: true })).muted);
+  });
+});
+
+describe("the band's keep-out on the path", () => {
+  const near = (keep: { edge: number; fade: number } | null) => {
+    const sink = createSink();
+    buildPathDots(cols, all, 0, cols.count, frame(), AMPLITUDE, 0, -Infinity, Infinity, null, sink, null, keep);
+    return sink;
+  };
+
+  it("draws exactly as before with no keep-out", () => {
+    expect(near(null).muted).toEqual(draw(frame()).muted);
+  });
+
+  it("draws no dot at or above the edge", () => {
+    const sink = near({ edge: 100, fade: 56 });
+    expect(Math.min(...ys(sink.muted), ...ys(sink.accent))).toBeGreaterThan(100);
+  });
+
+  it("thins the dots over the fade, down to none at the edge and all of them beyond it", () => {
+    const edge = 60;
+    const full = draw(frame()).muted;
+    const keep = near({ edge, fade: 56 }).muted;
+    const band = (dots: number[], lo: number, hi: number) => ys(dots).filter((y) => y > lo && y <= hi).length;
+    expect(band(keep, edge, edge + 56)).toBeLessThan(band(full, edge, edge + 56));
+    expect(band(keep, edge, edge + 56)).toBeGreaterThan(0);
+    expect(band(keep, edge + 56, Infinity)).toBe(band(full, edge + 56, Infinity));
   });
 });

@@ -4,6 +4,7 @@ import { BREATH, HEAD_SWELL, MAX_THICK, MUSIC, SHAPE_GAIN, SHIMMER, SOFT_FEATHER
 import type { PathColumns } from "./columns";
 import { bandAt, type MusicState } from "./music";
 import { pluckAt, type PluckState } from "./pluck";
+import { idleDisplacement, idleLift } from "./idle";
 import { rippleAt, rippleSwell, type RippleState } from "./ripple";
 
 // The site's dotted wave laid along the line (the lab's paintTile, shipped
@@ -12,7 +13,11 @@ import { rippleAt, rippleSwell, type RippleState } from "./ripple";
 // muted inside words, the music owning each column by its share. Pure.
 // runLen is where the band's run ends; later views use it to split the band
 // from the path, and the breath ignores it.
-export interface DotFrame { head: number; tail: number; train: number | null; runLen: number; gate: number; breath: number; shimmer: number; music: MusicState; plucks: PluckState; ripple: RippleState; still: boolean }
+// idleGain and idleClock drive the lab's idle ripple (lib/wavepath/idle); absent or 0, nothing is added.
+export interface DotFrame { head: number; tail: number; train: number | null; runLen: number; gate: number; breath: number; shimmer: number; music: MusicState; plucks: PluckState; ripple: RippleState; still: boolean; idleGain?: number; idleClock?: number }
+// Where the path's dots must stay clear of the band, in the layer's px: none
+// at or above `edge`, thinning out over `fade` px below it. Null draws as always.
+export interface Keep { edge: number; fade: number }
 export interface DotSink { muted: number[]; accent: number[]; viewTop: number; viewBottom: number; width: number; onScreen: number }
 
 export const createSink = (): DotSink => ({ muted: [], accent: [], viewTop: -Infinity, viewBottom: Infinity, width: Infinity, onScreen: 0 });
@@ -32,6 +37,13 @@ const hash = (i: number, k: number) => {
   return h - Math.floor(h);
 };
 
+function clearOfBand(layerY: number, keep: Keep | null, j: number, q: number): boolean {
+  if (!keep) return true;
+  if (layerY <= keep.edge) return false;
+  const d = layerY - keep.edge;
+  return d >= keep.fade || hash(j, q + 7) < smooth(d / keep.fade);
+}
+
 function emit(sink: DotSink, out: number[], x: number, y: number, r: number, top: number) {
   if (x >= 0 && x <= sink.width && y + top >= sink.viewTop && y + top <= sink.viewBottom) sink.onScreen++;
   out.push(x, y, r);
@@ -41,11 +53,14 @@ export function buildPathDots(
   cols: PathColumns, list: ArrayLike<number>, first: number, count: number, f: DotFrame,
   amp: number, top: number, fromS: number, toS: number, weights: Float32Array | null, sink: DotSink,
   rippleFit: Float32Array | null = null,
+  keep: Keep | null = null,
 ): void {
   const music = f.still ? 0 : f.music.share * MUSIC.share;
   const train = f.train !== null && !f.still;
   const tailFade = (f.train ?? 0) * TRAIN_FADE;
   const rippling = !f.still && f.ripple.live;
+  const idleGain = f.still ? 0 : f.idleGain ?? 0;
+  const idleClock = f.idleClock ?? 0;
   for (let k = first; k < first + count; k++) {
     const j = list[k];
     const s = cols.s[j];
@@ -67,10 +82,12 @@ export function buildPathDots(
     const a = (TAU * s) / WAVELENGTH;
     let disp = SHAPE_GAIN * shape(a) + (f.still ? 0 : pluckAt(f.plucks, s));
     if (!f.still) disp *= 1 + BREATH.depth * f.breath * Math.sin(a * 0.5);
+    if (idleGain > 0) disp += idleDisplacement(s, idleClock, idleGain);
     // After the breath, so the crest keeps its own clean shape.
     if (rippling) disp += fit * rippleAt(f.ripple, s);
     let mag = FLOOR + (0.05 + 0.17 * (0.5 + 0.5 * Math.sin(a / 0.55 + 0.6)) ** 2) * (1 - music);
     if (music > 1e-3) mag += music * bandAt(f.music.bins, (s % SPECTRUM_PERIOD) / SPECTRUM_PERIOD);
+    if (idleGain > 0) mag += idleLift(s, idleClock, idleGain);
     const magnitude = FLOOR + (mag - FLOOR) * w;
     const nx = cols.nx[j];
     const ny = cols.ny[j];
@@ -84,7 +101,7 @@ export function buildPathDots(
       centre = smooth(rows);
       if (centre < 0.05) continue;
     }
-    emit(sink, !inWords && magnitude > ACCENT_LINE ? sink.accent : sink.muted, cx, cy, CENTER_RADIUS * r * centre, top);
+    if (clearOfBand(cy + top, keep, j, 0)) emit(sink, !inWords && magnitude > ACCENT_LINE ? sink.accent : sink.muted, cx, cy, CENTER_RADIUS * r * centre, top);
     for (let q = 1; q <= thick; q++) {
       const fade = 1 - q / (rows + 1.5);
       const blink = 0.5 + 0.5 * Math.sin(j * 1.3 + q * 2.1);
@@ -94,8 +111,8 @@ export function buildPathDots(
       const out = q >= thick && peak ? sink.accent : sink.muted;
       const o = q * DOT_GAP;
       const fuzz = FUZZ_RADIUS * r * breathe * kept;
-      emit(sink, out, cx + nx * o, cy + ny * o, fuzz, top);
-      emit(sink, out, cx - nx * o, cy - ny * o, fuzz, top);
+      if (clearOfBand(cy + ny * o + top, keep, j, q)) emit(sink, out, cx + nx * o, cy + ny * o, fuzz, top);
+      if (clearOfBand(cy - ny * o + top, keep, j, q + 9)) emit(sink, out, cx - nx * o, cy - ny * o, fuzz, top);
     }
   }
 }

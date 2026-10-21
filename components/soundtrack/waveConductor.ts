@@ -24,11 +24,17 @@ import { createRipple, startRipple, stepRipple } from "@/lib/wavepath/ripple";
 // "Play it". Freezing stops the clocks, the music, the plucks and the ripple;
 // the head still follows the scroll. Reduced motion (`still`) never loops:
 // views paint the whole line on layout, theme and probe calls. One conductor
-// per page, ref counted. The music player lab (dev only) can hold the wave
-// after a live answer until the band has scrolled away (lib/player/waveHold):
-// held, the wave stays as it was before the answer, and the release brings
-// the following, the music and the ripple. In production nothing sets the
-// hold, so an answer acts at once, as above.
+// per page, ref counted. The music player lab (dev only) changes three things
+// through lib/player/bridge, and in production nothing sets any of them:
+//   - the wave as one line (`gated`): the head follows the scroll only while the
+//     band's bottom edge is above the lab's release line, in both directions;
+//     below it, only the band's own run is drawn;
+//   - a hold after a live answer until the band has scrolled away
+//     (lib/player/waveHold): the wave keeps its look from before the answer,
+//     and the release brings the following, the music and the ripple;
+//   - an idle ripple (`idleGain`, lib/wavepath/idle) that travels through the
+//     line while no music shapes it, so a paused, declined or held line is
+//     never dead flat. Freeze and reduced motion still it.
 
 const FRAME_MS = 1000 / 60 - 2;
 const MAX_STEP_S = 0.1;
@@ -36,6 +42,9 @@ const MAX_STEP_S = 0.1;
 export interface WaveFrame extends DotFrame {
   scrollY: number;
   decided: boolean; // lib/soundtrack.ts: anything but "before"
+  gated: boolean; // the lab's one-line wave: the band is below the release line, so the head waits at the run's end
+  idleGain: number; // the lab's idle ripple: its strength now, 0 in production and while music shapes the line
+  idleClock: number; // seconds the idle ripple has run
   length: number;
   runFlat: number;
   state: HeadState; // views write target and gateTarget in prepare()
@@ -86,7 +95,7 @@ function createInstance(still: boolean): Instance {
   const frame: WaveFrame = {
     head: 0, tail: -Infinity, train: null, runLen: 0, gate: 0, breath: 0, shimmer: 0,
     music: createMusic(), plucks: createPlucks(), ripple: createRipple(), still, scrollY: window.scrollY,
-    decided: getSoundtrackState() !== "before", length: 0, runFlat: 0,
+    decided: getSoundtrackState() !== "before", gated: false, idleGain: 0, idleClock: 0, length: 0, runFlat: 0,
     state: createHead(), pointer: createPointer(), near: createNear(),
   };
 
@@ -105,6 +114,7 @@ function createInstance(still: boolean): Instance {
   };
 
   const step = (t: number, dt: number): boolean => {
+    refreshGate();
     for (const v of views) v.prepare(frame);
     if (snap) {
       frame.state.head = frame.state.target;
@@ -125,6 +135,7 @@ function createInstance(still: boolean): Instance {
       frame.breath = Math.sin(breathClock * BREATH.rate);
       levelColumns(leveller, player.sample(t, SPECTRUM_BINS).means, dt, levelled);
       music = stepMusic(frame.music, dt, getSoundtrackState() === "on" && !hold.on, levelled);
+      frame.idleClock += dt;
       plucks = stepPlucks(frame.plucks, dt);
       // A crest that ends this frame still repaints once, to clear it.
       ripple = frame.ripple.live;
@@ -133,6 +144,8 @@ function createInstance(still: boolean): Instance {
     }
     frame.pointer.moved = false;
     frame.near.d2 = Infinity;
+    // The idle ripple is what the music has not taken: it fades out as the music shapes the line and back in when it stops.
+    frame.idleGain = still ? 0 : getBridge().idle * (1 - frame.music.share);
     sync();
     const changed = { head: moving || frame.state.head !== before, music, breath, plucks, ripple };
     for (const v of views) if (v.active()) v.paint(frame, changed);
@@ -163,6 +176,14 @@ function createInstance(still: boolean): Instance {
     const band = document.getElementById("listen");
     return band ? bandAway(band.getBoundingClientRect(), window.innerHeight, line) : true;
   };
+  // The one-line wave: the head waits at the run's end while the band is below the release line. True when it changed.
+  const refreshGate = (): boolean => {
+    const wait = getBridge().waveWait;
+    const next = !still && wait !== null && !bandIsAway(wait);
+    if (next === frame.gated) return false;
+    frame.gated = next;
+    return true;
+  };
   // The hold ends: the answer takes effect (the line follows, the music shapes it) and the kept ripple goes out.
   const released = (result: { released: boolean; startRipple: boolean }) => {
     if (!result.released) return;
@@ -174,6 +195,7 @@ function createInstance(still: boolean): Instance {
     frame.scrollY = window.scrollY;
     const wait = getBridge().waveWait;
     if (hold.on && wait !== null) released(checkRelease(hold, bandIsAway(wait)));
+    refreshGate();
     if (!still) wake();
   };
   const onPointer = (event: PointerEvent) => {
@@ -248,13 +270,12 @@ function createInstance(still: boolean): Instance {
   const unsubscribe = subscribeSoundtrack(onSoundtrack);
   // The lab switching the wait off ends a hold without a ripple.
   const unsubscribeBridge = subscribeBridge(() => {
-    if (getBridge().waveWait === null && dropHold(hold)) {
-      frame.decided = getSoundtrackState() !== "before";
-      wake();
-    }
+    if (getBridge().waveWait === null && dropHold(hold)) frame.decided = getSoundtrackState() !== "before";
+    refreshGate();
+    wake();
   });
   const detachProbe = attachProbe({
-    frame: () => ({ head: frame.head, target: frame.state.target, length: frame.length, runLen: frame.runLen, train: frame.train, decided: frame.decided, runFlat: frame.runFlat, ripple: frame.ripple.live ? RIPPLE.amp * Math.exp(-RIPPLE.decay * frame.ripple.age) : 0 }),
+    frame: () => ({ head: frame.head, target: frame.state.target, length: frame.length, runLen: frame.runLen, train: frame.train, decided: frame.decided, gated: frame.gated, idle: frame.idleGain ?? 0, runFlat: frame.runFlat, ripple: frame.ripple.live ? RIPPLE.amp * Math.exp(-RIPPLE.decay * frame.ripple.age) : 0 }),
     visibleDots: () => views.reduce((n, v) => n + v.countVisible(frame), 0),
   });
 

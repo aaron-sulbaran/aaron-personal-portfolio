@@ -1,4 +1,5 @@
 import type { Point } from "./geometry";
+import { RUN_PAST } from "./constants";
 import { bandRunPoints, runExit } from "./head";
 
 // The line in page-relative terms (the lab's spines.ts and compose.ts, the
@@ -113,11 +114,20 @@ function spanOf(anchors: Anchors, point: SpinePoint): Span {
   return point.box ? anchors.box[key] : anchors.words[key];
 }
 
+// The curve through control points can bow a little above a flat run of them,
+// so with a clearance the points sit this much deeper than the clearance asks.
+const CURVE_SLACK = 36;
+
 // With a band run the line's own band stretch is replaced by the level run
 // across the band (head.ts); the line starts there.
 export interface ResolveOptions {
   bandRun: boolean;
   viewport: number;
+  // The wave as one line (the music player lab): px of clearance the line's
+  // return keeps below the band's box. The line then leaves the run past the
+  // right edge, drops off screen to that depth and only then turns back, so no
+  // stretch of it crosses the band. Absent or 0: the line as it always was.
+  clearBand?: number;
 }
 
 export function resolveSpine(def: { points: SpinePoint[] }, anchors: Anchors, opts?: ResolveOptions): Point[] {
@@ -130,12 +140,17 @@ export function resolveSpine(def: { points: SpinePoint[] }, anchors: Anchors, op
   // stretch; the run replaces them. Points a little lower are pushed down to
   // leave the turn off the run some room.
   const line = bandRunPoints(anchors, opts.viewport)[0].y;
+  const floor = opts.clearBand ? Math.max(line + 80, anchors.box.band.bottom + opts.clearBand + CURVE_SLACK) : line + 80;
   const rest = def.points
     .filter((p) => p.at !== "band")
     .map(resolve)
     .filter((q) => q.y > line + 24)
-    .map((q) => ({ x: q.x, y: Math.max(q.y, line + 80) }));
-  return [...bandRunPoints(anchors, opts.viewport), ...runExit(anchors, opts.viewport, rest[0]), ...rest];
+    .map((q) => ({ x: q.x, y: Math.max(q.y, floor) }));
+  const exit = runExit(anchors, opts.viewport, rest[0]);
+  // A quarter turn ends heading straight down past the right edge: carry on down, off screen, to the clearance before turning back.
+  const last = exit[exit.length - 1];
+  const drop = opts.clearBand && last && rest[0].x <= anchors.width + RUN_PAST && last.y < floor ? [{ x: last.x, y: floor }] : [];
+  return [...bandRunPoints(anchors, opts.viewport), ...exit, ...drop, ...rest];
 }
 
 // "Signature line, reviewed, always on" (lab round 6), as the sections ship it:

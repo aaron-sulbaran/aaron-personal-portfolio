@@ -8,6 +8,10 @@ import { nearestColumn } from "@/lib/wavepath/pluck";
 import { pathProbe } from "@/lib/wavepath/probe";
 import { SIGNATURE_ON, resolveSpine } from "@/lib/wavepath/spine";
 import { amplitudeFor, chooseTrain, visibleOptions } from "@/lib/wavepath/visible";
+import { getBridge, subscribeBridge } from "@/lib/player/bridge";
+import { dotReach } from "@/lib/wavepath/columns";
+import { BAND_CLEAR_EXTRA, BAND_KEEP_FADE } from "@/lib/wavepath/constants";
+import type { Keep } from "@/lib/wavepath/paint";
 import { createDotPainter, themeNow } from "../viewParts";
 import type { Changed, WaveConductor, WaveFrame, WaveView } from "../waveConductor";
 import type { Anchors } from "@/lib/wavepath/spine";
@@ -30,6 +34,9 @@ export function createPathView(layer: HTMLElement, root: HTMLElement, conductor:
   let measured: Anchors | null = null;
   let origin = 0, viewport = 0, maxScrollY = 0, entry = 0, amp = 0, width = 0, raf = 0, innerWidth = 0, runLen = 0, runFlat = 0;
   let dirty = true, laid = false, destroyed = false;
+  // The lab's one-line wave: the line's return keeps clear of the band and no dot of the path lands in it. Null in production.
+  let keep: Keep | null = null;
+  let oneLine = getBridge().waveWait !== null;
   let alphas = ALPHAS[themeNow()];
 
   const sizeTile = (tile: Tile) => {
@@ -96,7 +103,10 @@ export function createPathView(layer: HTMLElement, root: HTMLElement, conductor:
     viewport = window.innerHeight;
     maxScrollY = Math.max(0, document.documentElement.scrollHeight - viewport);
     amp = amplitudeFor(width);
-    samples = sampleSpine(resolveSpine({ points: SIGNATURE_ON }, anchors, { bandRun: true, viewport }), SAMPLE_STEP);
+    oneLine = getBridge().waveWait !== null;
+    const clearBand = oneLine ? dotReach(amp) + BAND_CLEAR_EXTRA : 0;
+    keep = oneLine ? { edge: anchors.box.band.bottom, fade: BAND_KEEP_FADE } : null;
+    samples = sampleSpine(resolveSpine({ points: SIGNATURE_ON }, anchors, { bandRun: true, viewport, clearBand }), SAMPLE_STEP);
     runLen = runLength(samples, width);
     runFlat = runFlatness(samples, runLen);
     entry = firstOnScreenY(samples, width);
@@ -132,9 +142,11 @@ export function createPathView(layer: HTMLElement, root: HTMLElement, conductor:
     prepare(f: WaveFrame) {
       if (!samples) return;
       const raw = headTarget(HEAD_PARAMS, { samples, viewport, scrollY: f.scrollY, maxScrollY, layerTop: origin, runLen: f.runLen, entryY: entry });
-      f.state.target = gatedTarget(raw, f.runLen, f.length, f.decided, f.still);
+      // Gated (the lab's one-line wave): the band is below the release line, so the head waits at the run's end, as it does before an answer.
+      const following = f.decided && !f.gated;
+      f.state.target = gatedTarget(raw, f.runLen, f.length, following, f.still);
       const j = Math.min(cols.count - 1, Math.max(0, Math.floor(f.state.head / SPACING)));
-      f.state.gateTarget = f.decided && cols.inWords[j] !== 1 ? 1 : 0;
+      f.state.gateTarget = following && cols.inWords[j] !== 1 ? 1 : 0;
       if (f.pointer.moved) nearestColumn(cols, f.pointer.x, f.pointer.y + f.scrollY - origin, f.head, f.tail, f.near);
     },
     paint(f: WaveFrame, changed: Changed | null) {
@@ -151,7 +163,7 @@ export function createPathView(layer: HTMLElement, root: HTMLElement, conductor:
         if (!tile.visible) continue;
         tile.ctx.clearRect(0, 0, width, tile.height);
         clearSink(sink);
-        buildPathDots(cols, map.list, map.first[t], map.count[t], f, amp, tile.top, f.runLen, Infinity, null, sink);
+        buildPathDots(cols, map.list, map.first[t], map.count[t], f, amp, tile.top, f.runLen, Infinity, null, sink, null, keep);
         tile.painter.fill(sink.muted, tile.painter.colors.muted, alphas.muted);
         tile.painter.fill(sink.accent, tile.painter.colors.accent, alphas.accent);
         tile.ctx.globalAlpha = 1;
@@ -171,12 +183,17 @@ export function createPathView(layer: HTMLElement, root: HTMLElement, conductor:
       resize.disconnect();
       theme.disconnect();
       io.disconnect();
+      unsubscribeBridge();
       window.removeEventListener("resize", onResize);
       tiles.forEach((t) => t.canvas.remove());
       tiles.length = 0;
     },
   };
 
+  // The lab turning the one-line wave on or off lays the line out again.
+  const unsubscribeBridge = subscribeBridge(() => {
+    if ((getBridge().waveWait !== null) !== oneLine) schedule();
+  });
   const resize = new ResizeObserver(schedule);
   resize.observe(root);
   root.querySelectorAll("[data-wave-anchor]").forEach((el) => resize.observe(el));
