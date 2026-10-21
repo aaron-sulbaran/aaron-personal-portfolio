@@ -56,7 +56,7 @@ export function PhoneIsland({ reduce, model, credit }: { reduce: boolean; model:
   }, [open]);
 
   const grow = reduce ? "opacity 200ms ease" : `width 380ms ${EASE}, border-radius 380ms ${EASE}, box-shadow 300ms ease, opacity 220ms ease`;
-  const rows = reduce ? "none" : `grid-template-rows 380ms ${EASE}, opacity 240ms ease`;
+  const rows = reduce ? "opacity 200ms ease" : `grid-template-rows 380ms ${EASE}, opacity 240ms ease`;
   return (
     <Portal>
       {open && <div data-lab-island-backdrop aria-hidden="true" onPointerDown={close} style={{ position: "fixed", inset: 0, zIndex: 44, touchAction: "pan-y" }} />}
