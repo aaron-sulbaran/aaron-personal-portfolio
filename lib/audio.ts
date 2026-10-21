@@ -104,6 +104,8 @@ export interface SoundtrackPlayer extends AudioSource {
   getPosition(): number;
   getSnapshot(): PlayerSnapshot;
   subscribe(listener: () => void): () => void;
+  // The music player lab's queue (shuffle and repeat) takes over what happens when a track ends: the handler returns true when it dealt with it. Nothing sets one in production, so a track that ends moves to the next, as always.
+  setEndedHandler(handler: (() => boolean) | null): void;
 }
 
 const FFT_SIZE = 2048;
@@ -135,6 +137,7 @@ export function getSoundtrackPlayer(): SoundtrackPlayer {
   let playGen = 0;
   let playStartSec = 0;
   let volume = 0.7;
+  let endedHandler: (() => boolean) | null = null;
   const listeners = new Set<() => void>();
 
   const emit = () => listeners.forEach((l) => l());
@@ -151,7 +154,10 @@ export function getSoundtrackPlayer(): SoundtrackPlayer {
     el = new Audio(tracks[trackIndex].src);
     el.preload = "auto";
     el.volume = volume;
-    el.addEventListener("ended", () => selectTrack(trackIndex + 1, true));
+    el.addEventListener("ended", () => {
+      if (endedHandler?.()) return;
+      selectTrack(trackIndex + 1, true);
+    });
     el.addEventListener("durationchange", emit);
     // Make the media element authoritative for `playing`. Native pause/play can
     // originate outside our code (OS media keys, lockscreen, headphone unplug,
@@ -232,6 +238,9 @@ export function getSoundtrackPlayer(): SoundtrackPlayer {
     selectTrack,
     seek(seconds: number) {
       if (el) el.currentTime = seconds;
+    },
+    setEndedHandler(handler: (() => boolean) | null) {
+      endedHandler = handler;
     },
     setVolume(v: number) {
       volume = v < 0 ? 0 : v > 1 ? 1 : v;
