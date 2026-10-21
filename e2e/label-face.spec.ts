@@ -1,10 +1,12 @@
 import type { Locator, Page } from "@playwright/test";
 import { siteContent } from "@/lib/content";
 import { SEEN_STORAGE_KEY } from "@/lib/home/seen";
+import { playerStrings } from "@/lib/content/player";
 import { capsuleText } from "@/lib/waveform/dock";
 import { test, expect } from "./support/fixtures";
 import { cardRow, openCardFromBook } from "./support/cards";
 import { settled } from "./support/fallback";
+import { BAND_CARD, playFromBand } from "./support/player";
 
 // The label face (docs/label-face-spec.md): every small non-body text is
 // Profa Bold at one of three steps, 0.01em, weight 700, in the accent when
@@ -50,7 +52,7 @@ test("label face: controls are Profa Bold in the accent", async ({ page }) => {
   await settled(page);
   await expectLabel(page.locator('#listen [data-control="on"]'), "label", "accent");
   await expectLabel(page.locator('#listen [data-control="paused"]'), "label", "accent");
-  await expectLabel(page.locator("#listen button", { hasText: siteContent.listen.freeze }), "label-sm", "accent");
+  await expectLabel(page.locator("#listen button[data-wave-avoid]", { hasText: siteContent.listen.freeze }), "label-sm", "accent");
 
   await page.goto("/label-face-missing");
   await expectLabel(page.getByRole("link", { name: siteContent.notFound.cta }), "label", "accent");
@@ -68,13 +70,12 @@ test("label face: meta beside a title is Profa Bold in the accent", async ({ pag
   await expectLabel(dialog.getByText("Claude Campus Ambassador, 2026", { exact: true }), "label", "accent");
 });
 
-test("label face: hints and the credit prose are Profa Bold, muted", async ({ page }) => {
+test("label face: hints are Profa Bold, muted", async ({ page }) => {
   const { dialog } = await openCardFromBook(page, "anthropic", { settled: true });
   await expectLabel(dialog.getByText(siteContent.modals.closeHintKeyboard, { exact: true }), "label", "muted");
   await dialog.getByRole("button", { name: siteContent.modals.closeAriaLabel }).click();
   await expect(dialog).toBeHidden();
 
-  await expectLabel(page.locator("#listen p", { hasText: siteContent.soundtrack.creditLine }), "label-sm", "muted");
   const row = cardRow(page, "mentorship");
   await row.scrollIntoViewIfNeeded();
   await row.focus();
@@ -124,34 +125,33 @@ test("label face: the footer's small lines are Profa Bold, in the foreground ink
   await expectLabel(footer.getByText(/^Last updated /), "label-sm", "foreground");
 });
 
-test("label face: the pill and the player card are Profa Bold at the small step", async ({ page }) => {
+test("label face: the capsule pill and the player are Profa Bold at the small step", async ({ page }) => {
   const S = siteContent.soundtrack;
   const track = S.tracks[0];
   await page.goto("/");
   await settled(page);
   const pill = page.locator("[data-pill]");
   await expect(pill).toBeAttached();
-  await expectLabel(pill.getByText(S.prompt, { exact: true }), "label-sm", "muted");
   const capsule = pill.locator(".pill-hit");
   await expectLabel(capsule.getByText(capsuleText("before", track.title), { exact: true }).first(), "label-sm", "muted");
-  await expectLabel(capsule.getByText(track.title, { exact: true }).first(), "label-sm", "foreground");
-  await expectLabel(capsule.getByText(track.artist, { exact: true }).first(), "label-sm", "muted");
-  const card = pill.locator('[role="group"]');
+  await playFromBand(page);
+  const card = page.locator(BAND_CARD);
   await expectLabel(card.getByText(track.artist, { exact: true }), "label-sm", "muted");
-  await expectLabel(card.getByText(S.statusReady, { exact: true }), "label-sm", "muted");
-  const time = card.getByText("0:00").first();
-  await expectLabel(time, "label-sm", "muted");
-  await expectLabel(card.locator("button", { hasText: siteContent.listen.freeze }), "label-sm", "accent");
+  await expectLabel(card.locator("[data-player-elapsed]"), "label-sm", "muted");
+  await expectLabel(card.locator("[data-player-remaining]"), "label-sm", "muted");
+  await expectLabel(card.getByText(playerStrings.tracks, { exact: true }), "label-sm", "accent");
+  await expectLabel(page.locator("#listen").getByRole("button", { name: siteContent.listen.freeze }), "label-sm", "accent");
 });
 
 // The trial Profa Bold has no tnum, so tabular-nums alone lets a ticking time
 // change width and wobble the seek bar between them. Each time sits in a box
 // sized for its widest string; the narrowest ("1:11") and widest ("0:00")
 // must render the same width, so the bar never moves.
-test("label face: the player card's times keep one width as their digits change", async ({ page }) => {
+test("label face: the player's times keep one width as their digits change", async ({ page }) => {
   await page.goto("/");
   await settled(page);
-  const seek = page.locator("[data-pill] [role='group']").getByLabel(siteContent.soundtrack.ariaSeek);
+  await playFromBand(page);
+  const seek = page.locator(BAND_CARD).getByLabel(siteContent.soundtrack.ariaSeek);
   await expect(seek).toBeAttached();
   const read = await seek.evaluate((input) => {
     const measure = (el: Element) => {

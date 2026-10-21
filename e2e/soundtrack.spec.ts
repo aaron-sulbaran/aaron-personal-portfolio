@@ -1,7 +1,8 @@
 import type { Page } from "@playwright/test";
 import { test, expect } from "./support/fixtures";
 import { siteContent } from "@/lib/content";
-import { visibleText } from "@/lib/content/links";
+import { playerStrings as P } from "@/lib/content/player";
+import { ISLE } from "@/lib/player/constants";
 import { DOCK } from "@/lib/waveform/dock";
 import { dotReach } from "@/lib/wavepath/columns";
 import { AMPLITUDE, SHAPE_GAIN } from "@/lib/wavepath/constants";
@@ -28,13 +29,16 @@ import {
   toAbout,
   type DockSample,
 } from "./support/dock";
+import { BAND_CARD, PLAYER_PILL } from "./support/player";
 import { bandBottomAt, parkBand } from "./support/wave";
 
 // The soundtrack band (#listen): in flow under the book, where the waveform
-// lives; "Play it" really plays, "Not now" leaves a still line in the band, and the
-// playback pill fades in at its dock on the wave's line at the bottom left
-// once the band's bottom edge passes the dock line (the dock tests below,
-// spec sections 2 and 5). A deep load into the page keeps its layout still.
+// lives; "Play it" really plays (and the player takes over from there, see
+// e2e/player.spec.ts), "Not now" leaves a still line in the band, and the stock
+// playback pill, the way back to the music, fades in at its dock on the wave's
+// line at the bottom left once the band's bottom edge passes the dock line (the
+// dock tests below, spec sections 2 and 5). A deep load into the page keeps its
+// layout still.
 
 const L = siteContent.listen;
 const S = siteContent.soundtrack;
@@ -198,8 +202,9 @@ async function bandInk(page: Page) {
 }
 
 // The band is the line's first stretch, the level run. Undecided it only
-// breathes, so its ink is pinned to the reduced-motion run's, measured in the
-// same test, and its height to what the constants allow.
+// breathes (and the idle ripple lifts it a little), so its ink is pinned near
+// the reduced-motion run's, measured in the same test, and its height to what
+// the constants allow.
 test("band: the undecided run paints the still run's ink, inside the reach the constants allow", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
@@ -214,7 +219,7 @@ test("band: the undecided run paints the still run's ink, inside the reach the c
   await page.waitForTimeout(1200);
   const moving = await bandInk(page);
   expect(moving.painted).toBeGreaterThan(still.painted * 0.85);
-  expect(moving.painted).toBeLessThan(still.painted * 1.15);
+  expect(moving.painted).toBeLessThan(still.painted * 1.3);
   expect(moving.bottom - moving.top).toBeLessThanOrEqual((2 * dotReach(AMPLITUDE) + 8) * moving.scale);
   expect(moving.bottom - moving.top).toBeGreaterThanOrEqual(SHAPE_GAIN * AMPLITUDE * moving.scale);
 });
@@ -260,13 +265,12 @@ test("band: the still line under reduced motion is pixel identical to the baseli
   });
 });
 
-test("band: the pill shows once the band is off screen with music on, and only then takes keyboard focus", async ({ page }) => {
+test("band: the pill shows once the band is off screen, and only then takes keyboard focus", async ({ page }) => {
   await openHome(page, { path: HOME });
   await scrollBandIntoView(page);
-  const pill = page.locator("[data-pill]");
-  const capsule = page.getByRole("button", { name: S.ariaOpen });
-  await page.locator("#listen").getByRole("button", { name: L.accept, exact: true }).click();
-  // Music on, band in view: the band holds the controls, the pill stays away.
+  const pill = page.locator(PILL);
+  const capsule = page.locator(CAPSULE);
+  // The band in view: the pill stays away.
   await expect(pill).toHaveAttribute("inert", "");
 
   await focusLastBeforePill(page);
@@ -319,13 +323,14 @@ test("band: a deep load at #about keeps its layout still (CLS under 0.05)", asyn
 
 const near = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.hypot(a.x - b.x, a.y - b.y);
 
-test("dock: the accept path plays, fades in at the dock, says where the music lives, then shows the track", async ({ page }) => {
+test("dock: the accept path plays, hands the music to the player in the band, then to the pill at its dock", async ({ page }) => {
   await instrument(page);
   await armDock(page);
   await openHome(page, { path: HOME });
   const pill = page.locator(PILL);
-  // Through the hero (and the book) the pill is away.
+  // Through the hero (and the book) the stock pill is away, and no music means no player pill.
   await expect(pill).toHaveAttribute("inert", "");
+  await expect(page.locator(PLAYER_PILL)).toHaveCount(0);
 
   await scrollBandIntoView(page);
   await expect(pill).toHaveAttribute("inert", "");
@@ -338,20 +343,19 @@ test("dock: the accept path plays, fades in at the dock, says where the music li
   await band.getByRole("button", { name: L.accept, exact: true }).click();
   // The playing check only; media time advancing is the separate environmental test above.
   await expect.poll(async () => (await media(page)).some((el) => el.paused === false), { message: "a playing media element" }).toBe(true);
-  // Answering moves focus to the note under the question, which now reads the accepted line.
-  await expect(band.locator("[data-band-note]")).toBeFocused();
-  await expect(band.locator("[data-band-note] > :not([inert])")).toHaveText(visibleText(L.acceptedNote));
+  // The band shows the player and no status of its own; focus moves to the player's own play button, which now reads Pause.
+  const card = page.locator(BAND_CARD);
+  await expect(card.getByRole("button", { name: S.ariaPause, exact: true })).toBeFocused();
+  await expect(band.locator("[data-band-note]")).toBeHidden();
 
   await toAbout(page);
-  await expect(pill).not.toHaveAttribute("inert", "", { timeout: 1000 });
-  await expect.poll(() => dockText(page), { timeout: 1000, message: "the label as it lands" }).toBe(S.dockAccepted);
-  await expect.poll(() => dockText(page), { timeout: 4000, message: "the collapsed capsule" }).toBe(S.tracks[0].title);
-
-  await dockLanded(page);
-  const at = await dockGeometry(page);
-  expect(at.height, "capsule height").toBeGreaterThanOrEqual(36);
-  expect(Math.abs(at.left - DOCK.insetPx), "capsule left edge from the dock's inset").toBeLessThanOrEqual(2);
-  expect(Math.abs(at.y - at.baseline), "capsule centre from the dock's line").toBeLessThanOrEqual(4);
+  // The player is the pill now: collapsed on the dock, the stock capsule stepping away.
+  await expect(page.locator(PLAYER_PILL)).toHaveAttribute("data-player-pill", "collapsed");
+  await expect(pill).toHaveAttribute("inert", "");
+  const at = (await page.locator(PLAYER_PILL).boundingBox())!;
+  expect(Math.abs(at.x - ISLE.insetPx), "pill left edge from the dock's inset").toBeLessThanOrEqual(2);
+  expect(Math.abs(at.y + at.height - (page.viewportSize()!.height - ISLE.bottomPx)), "pill bottom edge from the dock").toBeLessThanOrEqual(2);
+  await expect(page.locator(PLAYER_PILL).getByText(S.tracks[0].title).first()).toBeVisible();
 });
 
 test("dock: the decline path says it'll be here, settles as \"Music\", and a reload stays quiet", async ({ page }) => {
@@ -362,9 +366,9 @@ test("dock: the decline path says it'll be here, settles as \"Music\", and a rel
   const band = page.locator("#listen");
   await band.getByRole("button", { name: L.decline, exact: true }).click();
   await expect(band.locator("[data-band-note]")).toBeFocused();
-  await expect(band.locator("[data-band-note] > :not([inert])")).toHaveText(L.declinedNote, { useInnerText: true });
-  // Declined, the run still breathes, so its freeze toggle stays live.
-  await expect(band.getByRole("button", { name: L.freeze, exact: true })).toBeVisible();
+  await expect(band.locator("[data-band-note] > :not([inert])")).toContainText(L.declinedNote);
+  // Declined, the run still breathes, so its freeze toggle stays live, beside the No problem line.
+  await expect(band.locator("[data-band-note]").getByRole("button", { name: L.freeze, exact: true })).toBeVisible();
 
   await toAbout(page);
   await expect.poll(() => dockText(page), { timeout: 1000, message: "the label as it lands" }).toBe(S.dockDeclined);
@@ -466,17 +470,20 @@ test("dock: pausing in the band inside the start window is the visitor's pause, 
   await scrollBandIntoView(page);
   await bandControl(page, "before").click();
   const playedAt = Date.now();
-  await bandControl(page, "on").click();
+  const card = page.locator(BAND_CARD);
+  await card.getByRole("button", { name: S.ariaPause, exact: true }).click();
   expect(Date.now() - playedAt, "Pause pressed inside the 4s start window").toBeLessThan(4000);
-  await expect.poll(() => bandLayerShown(page, "paused"), { message: "Resume shown in the band" }).toBe(true);
+  await expect(card.getByRole("button", { name: S.ariaPlay, exact: true })).toBeVisible();
 
+  // The player keeps the paused music; the stock pill, the place the failure would speak, stays away.
   await startDock(page);
   await toAbout(page);
-  await expect.poll(() => dockText(page), { timeout: 1000, message: "the label as it lands" }).toBe(S.dockAccepted);
-  await expect.poll(() => dockText(page), { timeout: 4000, message: "the collapsed capsule" }).toBe(S.capsulePaused);
+  await expect(page.locator(PLAYER_PILL)).toHaveAttribute("data-player-pill", "collapsed");
+  await expect(page.locator(PLAYER_PILL).locator("svg[data-note]")).toHaveAttribute("data-note", "paused");
+  await page.waitForTimeout(800);
   const texts = new Set((await stopDock(page)).map((s) => s.text));
   expect(texts.has(S.dockFailed), "the failure label at any point").toBe(false);
-  await expect(page.locator(CAPSULE)).toHaveAccessibleName(`${S.capsulePaused}. ${S.invite}`);
+  await expect(page.locator(PILL)).toHaveAttribute("inert", "");
 });
 
 // The introduction: an opacity fade at the dock once the band's bottom edge is
@@ -500,7 +507,7 @@ test("dock: the pill fades in at its dock once the band's bottom edge passes the
   await armDock(page);
   await openHome(page, { path: HOME });
   await scrollBandIntoView(page);
-  await bandControl(page, "before").click();
+  await page.locator("#listen").getByRole("button", { name: L.decline, exact: true }).click();
   await bandBottomAt(page, DOCK.passedPx + 12);
   await page.waitForTimeout(DOCK.fadeMs + 100);
   await expect(page.locator(PILL), "band edge still in view").toHaveAttribute("inert", "");
@@ -628,24 +635,17 @@ test("dock: a phone width removes the pill and desktop fades it back in", async 
   expect(Math.abs((await dockGeometry(page)).left - DOCK.insetPx)).toBeLessThanOrEqual(2);
 });
 
-test("dock: the freeze toggle lives in the player card once music is on, and stops the band", async ({ page }) => {
+test("dock: the band's freeze link stays while the music plays, and stops the band", async ({ page }) => {
   await instrument(page);
-  await armDock(page);
   await openHome(page, { path: HOME });
   await scrollBandIntoView(page);
   const bandFreeze = page.locator("#listen").getByRole("button", { name: L.freeze, exact: true });
   await expect(bandFreeze).toBeVisible();
   await bandControl(page, "before").click();
-  await expect(bandFreeze).toBeHidden();
-  const card = page.getByRole("group", { name: S.ariaOpen });
-  const toggleInCard = async (name: string) => {
-    await toAbout(page);
-    await dockLanded(page);
-    if ((await card.getAttribute("inert")) !== null) await page.locator(CAPSULE).click();
-    await card.getByRole("button", { name, exact: true }).click();
-  };
-  await toggleInCard(L.freeze);
-  await scrollBandIntoView(page);
+  // The link stays: it is the one freeze there is while the music plays.
+  await expect(bandFreeze).toBeVisible();
+  await bandFreeze.click();
+  await expect(page.locator("#listen").getByRole("button", { name: L.unfreeze, exact: true })).toBeVisible();
   // Frozen, the head still follows the scroll; the band repaints while it eases back, so wait for it to rest.
   await page.waitForFunction(() => {
     const f = (window as unknown as { __wavePath: { frame: () => { head: number; target: number } | null } }).__wavePath.frame();
@@ -653,8 +653,7 @@ test("dock: the freeze toggle lives in the player card once music is on, and sto
   });
   await page.waitForTimeout(300);
   expect(await bandRepaints(page, 1000), "band repaints in a frozen second").toBe(0);
-  await toggleInCard(L.unfreeze);
-  await scrollBandIntoView(page);
+  await page.locator("#listen").getByRole("button", { name: L.unfreeze, exact: true }).click();
   await expect.poll(() => bandRepaints(page, 1000), { message: "band repaints once the wave moves" }).toBeGreaterThan(0);
 });
 
@@ -694,7 +693,7 @@ test("dock: each label shows once per page load; back up through the band and do
   expect([...texts], "the pill's text on the second trip").toEqual([S.capsuleOff]);
 });
 
-test("dock: the label holds about 2.6s, and a mouse click on the capsule does not pin the next one", async ({ page }) => {
+test("dock: the label holds about 2.6s, and a press on the capsule hands the dock to the player", async ({ page }) => {
   await armDock(page);
   await openHome(page, { path: HOME });
   await scrollBandIntoView(page);
@@ -719,15 +718,15 @@ test("dock: the label holds about 2.6s, and a mouse click on the capsule does no
   expect(hold, "the hold, ms").toBeGreaterThan(2450);
   expect(hold).toBeLessThan(2850);
 
-  // A press on the declined capsule plays; the accepted label opens with the
-  // pointer on it. The click focused the capsule, but a mouse focus is not
-  // keyboard focus: once the pointer leaves, the label collapses.
-  const capsule = page.locator(CAPSULE);
-  await capsule.click();
-  await expect.poll(() => dockText(page), { timeout: 1000 }).toBe(S.dockAccepted);
-  expect(await capsule.evaluate((el) => document.activeElement === el && !el.matches(":focus-visible")), "mouse focus on the capsule").toBe(true);
-  await page.mouse.move(4, 4);
-  await expect.poll(() => dockText(page), { timeout: 3500, message: "collapsed after the pointer left" }).toBe(S.tracks[0].title);
+  // A press on the declined capsule plays, and the player takes the dock: the
+  // stock capsule gives it up and the player opens at its dock for the click
+  // that asked for it, then folds once left alone.
+  await page.locator(CAPSULE).click();
+  const pill = page.locator(PLAYER_PILL);
+  await expect(pill).toHaveAttribute("data-player-pill", "pinned");
+  await page.mouse.move(700, 200);
+  await expect(pill).toHaveAttribute("data-player-pill", "collapsed", { timeout: 7000 });
+  await expect(page.locator(PILL)).toHaveAttribute("inert", "");
 });
 
 test("dock: hovering the pill holds its label; leaving lets it collapse", async ({ page }) => {
@@ -753,7 +752,7 @@ test("dock: under reduced motion the pill arrives by opacity alone", async ({ pa
   await page.goto(HOME);
   await settled(page);
   await scrollBandIntoView(page);
-  await bandControl(page, "before").click();
+  await page.locator("#listen").getByRole("button", { name: L.decline, exact: true }).click();
   await startDock(page);
   await toAbout(page);
   await dockLanded(page);
@@ -770,7 +769,7 @@ test("dock: under reduced motion the pill arrives by opacity alone", async ({ pa
   expect(windowed.at(-1)!.opacity).toBe(1);
 });
 
-test("dock: a phone has no pill, and after \"Not now\" the band offers Play it again", async ({ page }) => {
+test("dock: a phone has no stock pill, and after \"Not now\" the band offers Play it again, which opens the player in the band", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await page.goto(HOME);
   await settled(page);
@@ -783,20 +782,21 @@ test("dock: a phone has no pill, and after \"Not now\" the band offers Play it a
   await expect(again).toBeVisible();
   await toAbout(page);
   await expect(page.locator(PILL)).toHaveCount(0);
+  await expect(page.locator(PLAYER_PILL)).toHaveCount(0);
+  await again.scrollIntoViewIfNeeded();
   await again.click();
-  await expect.poll(() => bandLayerShown(page, "on"), { message: "Pause shown in the band" }).toBe(true);
+  await expect(page.locator(BAND_CARD).getByRole("group", { name: P.groupLabel })).toBeVisible();
 });
 
-test("dock: on a phone the band's accepted note drops the evolving isle sentence", async ({ page }) => {
+test("dock: on a phone the band shows the player after Play it, with no status line of its own", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await page.goto(HOME);
   await settled(page);
   const band = page.locator("#listen");
   await bandControl(page, "before").click();
-  await expect.poll(() => bandLayerShown(page, "on"), { message: "Pause shown in the band" }).toBe(true);
-  const note = band.locator("[data-band-note] > :not([inert])");
-  await expect(note).toHaveText(visibleText(L.acceptedNotePhone));
-  await expect(note).not.toContainText("evolving isle");
+  await expect(page.locator(BAND_CARD).getByRole("group", { name: P.groupLabel })).toBeVisible();
+  await expect(band.locator("[data-band-note]")).toBeHidden();
+  await expect(band.locator("[data-band-controls]")).toBeHidden();
 });
 
 test("dock: a live reduced-motion toggle leaves the docked pill where it is", async ({ page }) => {

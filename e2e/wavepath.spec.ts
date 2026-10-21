@@ -352,11 +352,15 @@ test("wavepath: a theme switch at rest repaints once, then rests", async ({ page
 
 // The ripple (revision): one Gaussian crest sent from the answer buttons along
 // the line, then the line settles into breathing. Muted browsers: Play it is safe.
-test("wavepath: Not now sends a ripple that settles into breathing", async ({ page }) => {
+test("wavepath: Not now sends a ripple, once the band has scrolled away, that settles into breathing", async ({ page }) => {
   await open(page);
   expect(await rippleNow(page), "no ripple before pressing").toBe(0);
   await decline(page);
-  await expect.poll(() => rippleNow(page), { timeout: 300, message: "a ripple within 300ms" }).toBeGreaterThan(0);
+  // The answer waits for the band to leave, and so does its ripple.
+  await page.waitForTimeout(500);
+  expect(await rippleNow(page), "no ripple while the band is in view").toBe(0);
+  await toBlock(page, "#about");
+  await expect.poll(() => rippleNow(page), { timeout: 300, message: "a ripple within 300ms of the release" }).toBeGreaterThan(0);
   await expect.poll(() => rippleNow(page), { timeout: 4000, message: "the ripple ends within 4s" }).toBe(0);
   await page.mouse.move(4, 4);
   const before = await paints(page);
@@ -367,7 +371,10 @@ test("wavepath: Not now sends a ripple that settles into breathing", async ({ pa
 test("wavepath: Play it sends a ripple too", async ({ page }) => {
   await open(page);
   await accept(page);
-  await expect.poll(() => rippleNow(page), { timeout: 300, message: "a ripple within 300ms" }).toBeGreaterThan(0);
+  await page.waitForTimeout(500);
+  expect(await rippleNow(page), "no ripple while the band is in view").toBe(0);
+  await toBlock(page, "#about");
+  await expect.poll(() => rippleNow(page), { timeout: 300, message: "a ripple within 300ms of the release" }).toBeGreaterThan(0);
   await expect.poll(() => rippleNow(page), { timeout: 4000, message: "the ripple ends within 4s" }).toBe(0);
 });
 

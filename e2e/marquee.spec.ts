@@ -2,25 +2,28 @@ import type { Page } from "@playwright/test";
 import { test, expect } from "./support/fixtures";
 import { siteContent } from "@/lib/content";
 import { openHome } from "./support/coil";
-import { CAPSULE, armDock, bandControl, dockLanded, toAbout } from "./support/dock";
-import { parkBand } from "./support/wave";
+import { BAND_CARD, playFromBand } from "./support/player";
 
-// The player card's title scrolls like Spotify's when it overflows its box:
-// still under reduced motion (live, both ways), the box never changes size.
+// The player's title scrolls like Spotify's when it overflows its box, and so
+// does the artist's: still under reduced motion (live, both ways), the box
+// never changes size. The band's card is the surface (at a phone's width, where
+// a long title no longer fits it); the pill and the island draw the same title
+// block.
 
 const S = siteContent.soundtrack;
-const TITLE = `[role="group"][aria-label="${S.ariaOpen}"] [data-marquee]`;
+const TITLE = `${BAND_CARD} [data-marquee]`;
+// The first track's title fits the card; this one is long enough to scroll.
+const LONG = S.tracks.findIndex((track) => track.title === "No soy de aquí ni soy de allá");
 
 async function openCard(page: Page) {
-  await armDock(page);
+  await page.setViewportSize({ width: 360, height: 800 });
   await openHome(page, { path: "/?wavedebug" });
-  await parkBand(page);
-  await bandControl(page, "before").click();
-  await toAbout(page);
-  await dockLanded(page);
-  const card = page.getByRole("group", { name: S.ariaOpen });
-  if ((await card.getAttribute("inert")) !== null) await page.locator(CAPSULE).click();
-  await expect(card).not.toHaveAttribute("inert", "");
+  await playFromBand(page);
+  const card = page.locator(BAND_CARD);
+  for (let i = 0; i < LONG; i++) await card.getByRole("button", { name: S.ariaNext, exact: true }).click();
+  await expect(card.locator("[data-marquee-track]").first()).toHaveText(S.tracks[LONG].title);
+  // The new title is measured on the frame after it lands; the first read waits for the cycle to start.
+  await expect(card.locator("[data-marquee]").first()).toHaveAttribute("data-marquee", "running");
 }
 
 const state = (page: Page) =>
@@ -43,7 +46,7 @@ const state = (page: Page) =>
 test("marquee: a long title scrolls, clipped with a fade, without changing the box", async ({ page }) => {
   await openCard(page);
   const rest = await state(page);
-  expect(rest.overflowing, "the first title overflows the card").toBe(true);
+  expect(rest.overflowing, "the long title overflows the card").toBe(true);
   expect(rest.masked, "soft fade, not an ellipsis").toBe(true);
   expect(rest.marquee).toBe("running");
   expect(rest.animations).toBe(1);
@@ -93,8 +96,7 @@ test("marquee: only the right edge fades at rest, both while scrolled away, only
 
 test("marquee: a hovered title holds still", async ({ page }) => {
   await openCard(page);
-  await page.waitForTimeout(500); // the card finishes scaling in, so the pointer is not left behind by it
-  await page.locator(TITLE).hover();
+  await page.locator(TITLE).first().hover();
   await expect.poll(async () => (await state(page)).marquee).toBe("paused");
   const held = (await state(page)).transform;
   await page.waitForTimeout(1500);
@@ -115,7 +117,7 @@ test("marquee: reduced motion keeps the title still, clipped with the fade, live
   expect(fades(still.mask), "at rest only the right edge fades").toEqual({ left: false, right: true });
   await page.waitForTimeout(2600);
   expect((await state(page)).transform).toBe(still.transform);
-  await expect(page.getByRole("group", { name: S.ariaOpen })).toContainText(S.tracks[0].title);
+  await expect(page.locator(BAND_CARD)).toContainText(S.tracks[LONG].title);
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await expect.poll(async () => (await state(page)).marquee).toBe("running");
 });

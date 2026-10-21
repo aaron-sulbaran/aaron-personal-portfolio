@@ -4,6 +4,7 @@ import { test, expect } from "./support/fixtures";
 import { settled } from "./support/fallback";
 import { CAPSULE, GREETED_KEY, PILL, SOUNDTRACK_KEY } from "./support/dock";
 import { openHome } from "./support/coil";
+import { PLAYER_PILL } from "./support/player";
 import { FILL_PICK, type ControlKey } from "@/lib/fx/fill";
 
 // The house fill and the bolt note (lab log, "Controls lab", Aaron's pick).
@@ -22,25 +23,24 @@ async function openWith(page: Page, stored: "on" | "off") {
   await page.goto(`/?e2eStored=${stored}#about`);
   await settled(page);
 }
-const listen = (page: Page) =>
-  page.locator("button[aria-pressed]").and(page.getByRole("button", { name: M.listenAriaLabel, exact: true }));
 const noteIn = (control: Locator) => control.locator("svg[data-note]").first();
 const slashIn = (control: Locator) => control.locator("[data-note-slash]").first();
 
 test("controls: the note's slash is painted only while paused or off", async ({ page, browserName }) => {
   test.skip(browserName === "webkit", "WebKit cannot be launched muted");
   await storeFromQuery(page);
+  const capsule = page.locator(CAPSULE);
   await openWith(page, "off");
-  await expect(noteIn(listen(page))).toHaveAttribute("data-note", "off");
-  await expect(slashIn(listen(page))).toBeVisible();
+  await expect(noteIn(capsule)).toHaveAttribute("data-note", "off");
+  await expect(slashIn(capsule)).toBeVisible();
 
   await openWith(page, "on");
-  await expect(noteIn(listen(page))).toHaveAttribute("data-note", "paused");
-  await expect(slashIn(listen(page))).toBeVisible();
+  await expect(noteIn(capsule)).toHaveAttribute("data-note", "paused");
+  await expect(slashIn(capsule)).toBeVisible();
 
-  await listen(page).click();
-  await expect(noteIn(listen(page))).toHaveAttribute("data-note", "playing");
-  await expect(slashIn(listen(page))).toBeHidden();
+  // A press plays, and the player's pill carries the note, plain.
+  await capsule.click();
+  await expect(noteIn(page.locator(PLAYER_PILL))).toHaveAttribute("data-note", "playing");
 });
 
 type FillRun = { ms: number; between: number };
@@ -92,7 +92,7 @@ test("controls: under reduced motion the fill has no transition and lands at onc
   await settled(page);
   const menu = menuButton(page);
   expect(await menu.evaluate((el) => getComputedStyle(el).transitionDuration)).toBe("0s");
-  expect(await slashIn(listen(page)).evaluate((el) => getComputedStyle(el).transitionDuration)).toBe("0s");
+  expect(await slashIn(page.locator(CAPSULE)).evaluate((el) => getComputedStyle(el).transitionDuration)).toBe("0s");
   await menu.hover();
   expect(await fxP(menu)).toBe(1);
 });
@@ -124,8 +124,10 @@ async function settledWidths(page: Page): Promise<Widths> {
 }
 
 // The capsule's words are state copy (siteContent.soundtrack); every other
-// width, and the whole Menu pill, holds through the three note states.
-test("controls: the playback pill and the Menu pill keep their width in all three note states", async ({ page, browserName }) => {
+// width, and the whole Menu pill, holds through the note states the capsule
+// shows (off, paused). The Menu pill carries no note any more, and playing
+// music changes nothing about it.
+test("controls: the capsule pill and the Menu pill keep their width in the capsule's note states", async ({ page, browserName }) => {
   test.skip(browserName === "webkit", "WebKit cannot be launched muted");
   await storeFromQuery(page);
   const capsule = page.locator(CAPSULE);
@@ -136,12 +138,10 @@ test("controls: the playback pill and the Menu pill keep their width in all thre
   await openWith(page, "on");
   const paused = await settledWidths(page);
   await expect(slashIn(capsule)).toBeVisible();
-  await listen(page).click();
-  await expect(noteIn(capsule)).toHaveAttribute("data-note", "playing");
-  const playing = await settledWidths(page);
-  await expect(slashIn(capsule)).toBeHidden();
   expect(paused).toEqual(off);
-  expect(playing).toEqual(off);
+  await capsule.click();
+  await expect(noteIn(page.locator(PLAYER_PILL))).toHaveAttribute("data-note", "playing");
+  expect((await widths(page)).menuPill, "the Menu pill with music playing").toBe(off.menuPill);
 });
 
 test("controls: the nav bar and the Connect links rise with the quiet tint", async ({ page }) => {

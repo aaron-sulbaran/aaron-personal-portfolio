@@ -1,9 +1,8 @@
 import { test, expect } from "./support/fixtures";
 import { nextFrames, openHome, scrollToY } from "./support/coil";
 
-// The page's chrome: the Menu pill that grows into its panel, the music
-// note beside it, and the header bar that arrives past the hero and tucks
-// away on the way down (headroom).
+// The page's chrome: the Menu pill that grows into its panel, and the header
+// bar that arrives past the hero and tucks away on the way down (headroom).
 
 test("chrome: the Menu pill opens into the panel and closes again", async ({ page }) => {
   await openHome(page);
@@ -22,52 +21,18 @@ test("chrome: the Menu pill opens into the panel and closes again", async ({ pag
   await expect(page.getByRole("button", { name: "Open menu" })).toHaveAttribute("aria-expanded", "false");
 });
 
-// A toggle keeps one name and says its state by aria-pressed alone; a name
-// that also flipped read "Pause, toggle button, pressed".
-test("chrome: the music note toggles the soundtrack under one name, its state in aria-pressed", async ({ page, browserName }) => {
-  // Pressing the note starts playback, and WebKit has no mute switch.
-  test.skip(browserName === "webkit", "WebKit cannot be launched muted");
+// The mute is not in the Menu: the pill is the label alone, and the panel keeps
+// the theme chip, the quick view link and the contact row. The player (see
+// e2e/player.spec.ts) is where the music is controlled.
+test("chrome: the Menu pill holds no music note and the panel no soundtrack chip", async ({ page }) => {
   await openHome(page);
-  // The note is the toggle (aria-pressed); the locator requires the attribute so only the note matches.
-  const note = page.locator("button[aria-pressed]").and(page.getByRole("button", { name: "Play my soundtrack", exact: true }));
-  await expect(note).toHaveAttribute("aria-pressed", "false");
-
-  await note.click();
-  await expect(note).toHaveAttribute("aria-pressed", "true");
-
-  await note.click();
-  await expect(note).toHaveAttribute("aria-pressed", "false");
-});
-
-test("chrome: the panel's soundtrack switch keeps one name while its label says on or off", async ({ page, browserName }) => {
-  test.skip(browserName === "webkit", "WebKit cannot be launched muted");
-  await openHome(page);
-  await page.getByRole("button", { name: "Open menu" }).click();
+  const pill = page.locator("[data-menu-pill]");
+  await expect(pill.locator("svg[data-note]")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Play my soundtrack" })).toHaveCount(0);
+  await pill.getByRole("button", { name: "Open menu" }).click();
   const panel = page.getByRole("dialog", { name: "Site menu" });
-  const chip = panel.getByRole("button", { name: "Soundtrack", exact: true });
-  await expect(chip).toHaveAttribute("aria-pressed", "false");
-  await expect(chip).toContainText("Soundtrack off");
-
-  await chip.click();
-  await expect(chip).toHaveAttribute("aria-pressed", "true");
-  await expect(chip).toContainText("Soundtrack on");
-
-  await chip.click();
-  await expect(chip).toHaveAttribute("aria-pressed", "false");
-});
-
-test("chrome: the panel's soundtrack switch resumes a restored pause", async ({ page, browserName }) => {
-  test.skip(browserName === "webkit", "WebKit cannot be launched muted");
-  await page.addInitScript(() => localStorage.setItem("aaron-soundtrack", "on"));
-  await openHome(page);
-  await page.getByRole("button", { name: "Open menu" }).click();
-  const chip = page.getByRole("dialog", { name: "Site menu" }).getByRole("button", { name: "Soundtrack", exact: true });
-  await expect(chip).toContainText("Soundtrack paused");
-  await expect(chip).toHaveAttribute("aria-pressed", "false");
-
-  await chip.click();
-  await expect(chip).toContainText("Soundtrack on");
-  await expect(chip).toHaveAttribute("aria-pressed", "true");
+  await expect(panel.getByRole("button", { name: "Soundtrack", exact: true })).toHaveCount(0);
+  await expect(panel.locator("button[aria-pressed]")).toHaveCount(0);
 });
 
 test("chrome: the header bar arrives past the hero and tucks away on the way down, back on the way up", async ({ page }) => {
