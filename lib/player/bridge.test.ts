@@ -1,11 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { pillReached, resetBridge, setBridge, TODAY, subscribeBridge } from "./bridge";
+import { getBridge, pillReached, resetBridge, setBridge, TODAY, subscribeBridge } from "./bridge";
 
-describe("what the lab can change in the real pill and band", () => {
+describe("what the lab can change in the real pill, band and wave", () => {
   afterEach(() => resetBridge());
 
   it("reads as today until something writes it", () => {
-    expect(TODAY).toEqual({ pill: "auto", credit: "band", creditBelow: false });
+    expect(TODAY).toEqual({ pill: "auto", credit: "band", creditBelow: false, status: "today", notNow: "today", waveWait: null, bandFull: false });
+    expect(getBridge()).toBe(TODAY);
   });
 
   it("leaves the pill's own rule alone on auto, and overrides it otherwise", () => {
@@ -22,8 +23,17 @@ describe("what the lab can change in the real pill and band", () => {
     setBridge({ pill: "hold" });
     setBridge({ credit: "hidden" });
     setBridge({ creditBelow: true });
+    setBridge({ waveWait: 0.4 });
+    setBridge({ waveWait: 0.4 });
+    setBridge({ status: "hidden", notNow: "buttons", bandFull: true });
     resetBridge();
     off();
-    expect(seen).toHaveBeenCalledTimes(4);
+    expect(seen).toHaveBeenCalledTimes(6);
+  });
+
+  it("goes back to production's values on a reset", () => {
+    setBridge({ status: "hidden", waveWait: 0.3 });
+    resetBridge();
+    expect(getBridge()).toEqual(TODAY);
   });
 });

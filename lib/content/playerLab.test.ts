@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { walkStrings } from "@/lib/testing/walk";
-import { BACK_UP, CREDIT, INTO_ISLE, ON_PLAY, PHONE } from "@/lib/player/settings";
+import { BACK_UP, CREDIT, FOOTER, INTO_ISLE, NOT_NOW, ON_PLAY, PHONE, PHONE_MODEL, STATUS_LINE, WAVE_AFTER_ANSWER } from "@/lib/player/settings";
 import { playerLab, playerStrings } from "./playerLab";
 
 const leaves = [...walkStrings(playerLab), ...walkStrings(playerStrings)];
@@ -20,5 +20,10 @@ describe("the music player lab's words", () => {
     for (const option of BACK_UP) expect(playerLab.backUp.names[option] && playerLab.backUp.notes[option]).toBeTruthy();
     for (const option of CREDIT) expect(playerLab.credit.names[option] && playerLab.credit.notes[option]).toBeTruthy();
     for (const option of PHONE) expect(playerLab.phone.names[option] && playerLab.phone.notes[option]).toBeTruthy();
+    for (const option of STATUS_LINE) expect(playerLab.statusLine.names[option] && playerLab.statusLine.notes[option]).toBeTruthy();
+    for (const option of NOT_NOW) expect(playerLab.notNow.names[option] && playerLab.notNow.notes[option]).toBeTruthy();
+    for (const option of WAVE_AFTER_ANSWER) expect(playerLab.wave.names[option] && playerLab.wave.notes[option]).toBeTruthy();
+    for (const option of FOOTER) expect(playerLab.footer.names[option] && playerLab.footer.notes[option]).toBeTruthy();
+    for (const option of PHONE_MODEL) expect(playerLab.phone.models[option]).toBeTruthy();
   });
 });
