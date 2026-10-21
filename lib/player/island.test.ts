@@ -60,8 +60,20 @@ describe("where the pill sits", () => {
 });
 
 describe("the pill's widths", () => {
-  it("widens the hardware island by a slot each side for the live-activity look", () => {
-    expect(compactWidth(islandSpec({ width: 393, height: 852 }, 3))).toBe(126 + COMPACT_SLOT * 2);
+  it("widens the hardware island by a slot each side for the live-activity look, on a screen with room", () => {
+    expect(compactWidth(islandSpec({ width: 393, height: 852 }, 3), 600)).toBe(126 + COMPACT_SLOT * 2);
+  });
+
+  it("stays clear of the header's Menu pill: no wider than 40 percent of the screen", () => {
+    const spec = islandSpec({ width: 393, height: 852 }, 3);
+    expect(compactWidth(spec, 393)).toBe(157);
+    expect(compactWidth(spec, 440)).toBe(176);
+    expect(compactWidth(GENERIC_ISLAND, 412)).toBe(164);
+    for (const width of [360, 375, 393, 412, 430, 440]) expect(width / 2 + compactWidth(spec, width) / 2).toBeLessThan(width - 106);
+  });
+
+  it("never narrows below the hardware island it stands for", () => {
+    expect(compactWidth(islandSpec({ width: 393, height: 852 }, 3), 200)).toBe(126);
   });
 
   it("expands to nearly the screen's width, capped on big phones", () => {
@@ -74,6 +86,6 @@ describe("the pill's widths", () => {
     const spec = islandSpec({ width: 393, height: 852 }, 3);
     const box = islandBox(393, spec, 6);
     expect(box.left + box.width / 2).toBeCloseTo(196.5);
-    expect(box).toMatchObject({ top: 6, height: 37.33, width: compactWidth(spec) });
+    expect(box).toMatchObject({ top: 6, height: 37.33, width: compactWidth(spec, 393) });
   });
 });

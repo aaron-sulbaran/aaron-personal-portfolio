@@ -79,17 +79,22 @@ export function islandTop(spec: IslandSpec, insetTop: number, gap: number = GAP_
   return spec.safeTop > 0 && insetTop >= spec.safeTop - 1 ? spec.top : insetTop + gap;
 }
 
-// The live-activity look widens the island by a slot each side of the hardware (Apple's compact leading and trailing areas).
+// The live-activity look widens the island by a slot each side of the hardware
+// (Apple's compact leading and trailing areas), but never past a share of the
+// screen's width: the site's header keeps the mark at the left and the Menu
+// pill at the right, and a wider pill would sit over the Menu.
 export const COMPACT_SLOT = 46;
-export const compactWidth = (spec: IslandSpec): number => spec.width + COMPACT_SLOT * 2;
+export const COMPACT_MAX_SHARE = 0.4;
+export const compactWidth = (spec: IslandSpec, viewportWidth: number): number =>
+  Math.max(spec.width, Math.min(spec.width + COMPACT_SLOT * 2, Math.floor(viewportWidth * COMPACT_MAX_SHARE)));
 
 // Expanded, the island is nearly the screen's width (Apple's is 371 of 393).
 export const EXPANDED_MARGIN = 11;
 export const EXPANDED_MAX = 420;
-export const expandedWidth = (viewportWidth: number): number => Math.min(EXPANDED_MAX, Math.max(compactWidth(GENERIC_ISLAND), viewportWidth - EXPANDED_MARGIN * 2));
+export const expandedWidth = (viewportWidth: number): number => Math.min(EXPANDED_MAX, Math.max(compactWidth(GENERIC_ISLAND, viewportWidth), viewportWidth - EXPANDED_MARGIN * 2));
 
 // The collapsed pill's box, for the morph's end.
 export function islandBox(viewportWidth: number, spec: IslandSpec, top: number): Box {
-  const width = compactWidth(spec);
+  const width = compactWidth(spec, viewportWidth);
   return { left: (viewportWidth - width) / 2, top, width, height: spec.height };
 }

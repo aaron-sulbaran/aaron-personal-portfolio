@@ -73,7 +73,7 @@ export function PhoneIsland({ reduce, model, credit }: { reduce: boolean; model:
           left: "50%",
           transform: "translateX(-50%)",
           zIndex: 45,
-          width: open ? expandedWidth(viewportWidth) : compactWidth(spec),
+          width: open ? expandedWidth(viewportWidth) : compactWidth(spec, viewportWidth),
           maxWidth: "calc(100vw - 16px)",
           borderRadius: open ? 28 : spec.height / 2,
           background: "var(--island-bg)",
