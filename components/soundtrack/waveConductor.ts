@@ -1,4 +1,6 @@
 import { getSoundtrackPlayer } from "@/lib/audio";
+import { getBridge, subscribeBridge } from "@/lib/player/bridge";
+import { bandAway, checkRelease, createWaveHold, dropHold, pressAnswer, type HoldResult } from "@/lib/player/waveHold";
 import { getRestoredSoundtrack, getSoundtrackState, subscribeSoundtrack, type SoundtrackState } from "@/lib/soundtrack";
 import { createLeveller, levelColumns } from "@/lib/waveform/level";
 import { BREATH, PLUCK, RIPPLE, SHIMMER, SPECTRUM_BINS, TRAIN_FADE } from "@/lib/wavepath/constants";
@@ -22,7 +24,11 @@ import { createRipple, startRipple, stepRipple } from "@/lib/wavepath/ripple";
 // "Play it". Freezing stops the clocks, the music, the plucks and the ripple;
 // the head still follows the scroll. Reduced motion (`still`) never loops:
 // views paint the whole line on layout, theme and probe calls. One conductor
-// per page, ref counted.
+// per page, ref counted. The music player lab (dev only) can hold the wave
+// after a live answer until the band has scrolled away (lib/player/waveHold):
+// held, the wave stays as it was before the answer, and the release brings
+// the following, the music and the ripple. In production nothing sets the
+// hold, so an answer acts at once, as above.
 
 const FRAME_MS = 1000 / 60 - 2;
 const MAX_STEP_S = 0.1;
@@ -75,6 +81,7 @@ function createInstance(still: boolean): Instance {
   const levelled = new Float32Array(SPECTRUM_BINS);
   const views: WaveView[] = [];
   const probe = pathProbe();
+  const hold = createWaveHold();
   let frozen = false, destroyed = false, snap = false, raf = 0, last = 0, breathClock = 0;
   const frame: WaveFrame = {
     head: 0, tail: -Infinity, train: null, runLen: 0, gate: 0, breath: 0, shimmer: 0,
@@ -117,7 +124,7 @@ function createInstance(still: boolean): Instance {
       breathClock += dt;
       frame.breath = Math.sin(breathClock * BREATH.rate);
       levelColumns(leveller, player.sample(t, SPECTRUM_BINS).means, dt, levelled);
-      music = stepMusic(frame.music, dt, getSoundtrackState() === "on", levelled);
+      music = stepMusic(frame.music, dt, getSoundtrackState() === "on" && !hold.on, levelled);
       plucks = stepPlucks(frame.plucks, dt);
       // A crest that ends this frame still repaints once, to clear it.
       ripple = frame.ripple.live;
@@ -152,8 +159,21 @@ function createInstance(still: boolean): Instance {
     if (!raf && !document.hidden) raf = requestAnimationFrame(tick);
   };
 
+  const bandIsAway = (line: number) => {
+    const band = document.getElementById("listen");
+    return band ? bandAway(band.getBoundingClientRect(), window.innerHeight, line) : true;
+  };
+  // The hold ends: the answer takes effect (the line follows, the music shapes it) and the kept ripple goes out.
+  const released = (result: { released: boolean; startRipple: boolean }) => {
+    if (!result.released) return;
+    frame.decided = getSoundtrackState() !== "before";
+    if (result.startRipple && !frozen) startRipple(frame.ripple, rippleOrigin());
+    wake();
+  };
   const onScroll = () => {
     frame.scrollY = window.scrollY;
+    const wait = getBridge().waveWait;
+    if (hold.on && wait !== null) released(checkRelease(hold, bandIsAway(wait)));
     if (!still) wake();
   };
   const onPointer = (event: PointerEvent) => {
@@ -179,8 +199,10 @@ function createInstance(still: boolean): Instance {
   let lastState = getSoundtrackState();
   const onSoundtrack = () => {
     const next = getSoundtrackState();
-    frame.decided = next !== "before";
-    if (!still && !frozen && isPress(lastState, next)) startRipple(frame.ripple, rippleOrigin());
+    const wait = getBridge().waveWait;
+    const answer: HoldResult | null = !still && isPress(lastState, next) ? pressAnswer(hold, wait, wait !== null && bandIsAway(wait)) : null;
+    frame.decided = next !== "before" && !hold.on;
+    if (answer?.startRipple && !frozen) startRipple(frame.ripple, rippleOrigin());
     lastState = next;
     wake();
   };
@@ -224,6 +246,13 @@ function createInstance(still: boolean): Instance {
     document.documentElement.addEventListener("pointerleave", onLeave);
   }
   const unsubscribe = subscribeSoundtrack(onSoundtrack);
+  // The lab switching the wait off ends a hold without a ripple.
+  const unsubscribeBridge = subscribeBridge(() => {
+    if (getBridge().waveWait === null && dropHold(hold)) {
+      frame.decided = getSoundtrackState() !== "before";
+      wake();
+    }
+  });
   const detachProbe = attachProbe({
     frame: () => ({ head: frame.head, target: frame.state.target, length: frame.length, runLen: frame.runLen, train: frame.train, decided: frame.decided, runFlat: frame.runFlat, ripple: frame.ripple.live ? RIPPLE.amp * Math.exp(-RIPPLE.decay * frame.ripple.age) : 0 }),
     visibleDots: () => views.reduce((n, v) => n + v.countVisible(frame), 0),
@@ -238,6 +267,7 @@ function createInstance(still: boolean): Instance {
     window.removeEventListener("pointermove", onPointer);
     document.documentElement.removeEventListener("pointerleave", onLeave);
     unsubscribe();
+    unsubscribeBridge();
     detachProbe();
     views.length = 0;
     if (live === instance) live = null;

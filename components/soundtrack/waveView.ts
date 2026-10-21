@@ -1,3 +1,4 @@
+import { getBridge } from "@/lib/player/bridge";
 import { columnWeights, type Rect } from "@/lib/waveform/weights";
 import { dotReach, runColumns, type PathColumns } from "@/lib/wavepath/columns";
 import { ALPHAS, RUN_START, SPACING } from "@/lib/wavepath/constants";
@@ -43,7 +44,11 @@ export function createWaveView(canvas: HTMLCanvasElement, conductor: WaveConduct
     sink.viewBottom = sink.viewTop + viewport;
     sink.width = width;
     sink.onScreen = 0;
+    // The music player lab can ask for the run whole, whatever the head has drawn past it.
+    const tail = f.tail;
+    if (getBridge().bandFull) f.tail = -Infinity;
     buildPathDots(cols, all, 0, cols.count, f, amp, 0, -Infinity, f.runLen || Infinity, weights, sink, fit);
+    f.tail = tail;
     painter.fill(sink.muted, painter.colors.muted, alphas.muted);
     painter.fill(sink.accent, painter.colors.accent, alphas.accent);
     ctx.globalAlpha = 1;
