@@ -168,6 +168,24 @@
   --pill-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
 }
 
+/* The phone island (components/player, the music player lab): a black pill
+   that stands for the hardware, so it stays near black in both themes; only
+   its edge and shadow follow the theme. Never pure #000. */
+:root {
+  --island-bg: #0A0A0A;
+  --island-fg: #F5F2EC;
+  --island-muted: #A3A39E;
+  --island-border: rgba(245, 242, 236, 0.14);
+  --island-accent: #7FA8C9;
+  --island-accent-hover: #9AC0DD;
+  --island-shadow: 0 10px 30px rgba(10, 10, 10, 0.28);
+}
+
+[data-theme="dark"] {
+  --island-border: rgba(245, 242, 236, 0.2);
+  --island-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+}
+
 html {
   background: var(--color-background);
   color: var(--color-foreground);

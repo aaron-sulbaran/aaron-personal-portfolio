@@ -3,7 +3,7 @@
 import { useEffect, useRef, type RefObject } from "react";
 import { gsap } from "@/lib/gsap";
 import type { PlayerView } from "@/lib/player/machine";
-import { barBox, cornerRadius, ghostOpacity, isleBox, lerpBox, toBox, type Box } from "@/lib/player/zone";
+import { cornerRadius, ghostOpacity, lerpBox, toBox, type Box } from "@/lib/player/zone";
 
 const SECONDS = 0.56;
 const FADE_SECONDS = 0.22;
@@ -11,27 +11,34 @@ const CARD_RADIUS = 22;
 
 type Args = {
   view: PlayerView;
-  phone: boolean;
+  target: () => Box; // where the isle is now: the pill, the phone's bar or the island
+  toIsland: boolean; // the sheet turns black on the way (the phone's island)
   card: RefObject<HTMLElement | null>;
   clone: RefObject<HTMLElement | null>;
   onArrived: () => void;
 };
 
-function place(clone: HTMLElement, box: Box, progress: number) {
+function place(clone: HTMLElement, box: Box, progress: number, toIsland: boolean) {
   gsap.set(clone, { x: box.left, y: box.top, width: box.width, height: box.height, borderRadius: cornerRadius(CARD_RADIUS, box) });
   const ghost = clone.querySelector("[data-lab-ghost]");
-  if (ghost) gsap.set(ghost, { opacity: ghostOpacity(progress) });
+  if (ghost) gsap.set(ghost, { opacity: toIsland ? 0 : ghostOpacity(progress) });
+  const tone = clone.querySelector("[data-lab-tone]");
+  if (tone) gsap.set(tone, { opacity: toIsland ? progress : 0 });
 }
 
 // The FLIP-style hand-off between the band's player and the isle. First and
 // last are measured, never assumed: the card's box is read every frame (the
 // band keeps scrolling while it plays, so the start follows the page), the
-// isle's from the viewport. Progress 0 is the card, 1 is the isle; one number
+// isle's from `target`. Progress 0 is the card, 1 is the isle; one number
 // is tweened and the clone's box is its blend, so a turn-around mid-flight
 // reverses from wherever it is. The move is a transform; the size is the
 // clone's own width and height, so the corners and the 1px border stay true.
-export function useMorph({ view, phone, card, clone, onArrived }: Args) {
+export function useMorph({ view, target, toIsland, card, clone, onArrived }: Args) {
   const progress = useRef({ value: 0 });
+  const latest = useRef({ target, toIsland });
+  useEffect(() => {
+    latest.current = { target, toIsland };
+  });
 
   useEffect(() => {
     if (view !== "to-pill" && view !== "to-band") return;
@@ -42,8 +49,10 @@ export function useMorph({ view, phone, card, clone, onArrived }: Args) {
       onArrived();
       return;
     }
-    const target = () => (phone ? barBox(window.innerWidth, window.innerHeight) : isleBox(window.innerHeight));
-    const frame = () => place(cloneEl, lerpBox(toBox(cardEl.getBoundingClientRect()), target(), progress.current.value), progress.current.value);
+    const frame = () => {
+      const { target: end, toIsland: black } = latest.current;
+      place(cloneEl, lerpBox(toBox(cardEl.getBoundingClientRect()), end(), progress.current.value), progress.current.value, black);
+    };
     const destination = view === "to-pill" ? 1 : 0;
 
     gsap.killTweensOf(cloneEl);
@@ -62,5 +71,5 @@ export function useMorph({ view, phone, card, clone, onArrived }: Args) {
     return () => {
       flight.kill();
     };
-  }, [view, phone, card, clone, onArrived]);
+  }, [view, card, clone, onArrived]);
 }
