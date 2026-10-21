@@ -20,8 +20,11 @@ function readInsetTop(): number {
   return inset;
 }
 
+// In the lab's preview frame the page's window.screen is the host's, not a phone's, so "this device" stands for an iPhone 15 there.
+const inLabFrame = () => window.self !== window.top && window.innerWidth < 768;
+
 function read(model: PhoneModel): IslandMetrics {
-  const preset = model === "auto" ? null : PHONE_PRESETS[model];
+  const preset = model !== "auto" ? PHONE_PRESETS[model] : inLabFrame() ? PHONE_PRESETS.iphone15 : null;
   const screenSize = preset ?? { width: window.screen.width, height: window.screen.height };
   return { spec: islandSpec(screenSize, preset?.dpr ?? window.devicePixelRatio), insetTop: readInsetTop(), viewportWidth: window.innerWidth };
 }

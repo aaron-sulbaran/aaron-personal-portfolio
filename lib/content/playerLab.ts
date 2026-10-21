@@ -123,7 +123,7 @@ export const playerLab = {
     } satisfies Record<PhoneMode, string>,
     model: "Phone in the preview",
     models: { auto: "This device", iphone15: "iPhone 15", iphone17pro: "iPhone 17 Pro", iphone17promax: "17 Pro Max", android: "Android" } satisfies Record<PhoneModel, string>,
-    modelNote: "Sizes the phone frame and tells the island which phone to match. Off a phone, This device reads the screen you are on and falls back to the generic pill.",
+    modelNote: "Sizes the phone frame and tells the island which phone to match. In this preview, This device is an iPhone 15; on a real phone it reads the phone itself and falls back to the generic pill when it does not know the model.",
   },
 
   frame: {

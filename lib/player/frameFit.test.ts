@@ -12,7 +12,7 @@ describe("the preview frame's fit", () => {
   });
 
   it("fits a phone by height", () => {
-    expect(fitScale({ width: 900, height: 600 }, "phone")).toBeCloseTo(600 / 844);
+    expect(fitScale({ width: 900, height: 600 }, "phone")).toBeCloseTo(600 / 852);
   });
 
   it("keeps a 1440px layout in a narrow room and fills the room's height after scaling", () => {
@@ -26,8 +26,14 @@ describe("the preview frame's fit", () => {
     expect(frameSize({ width: 1800, height: 900 }, "desktop")).toEqual({ width: 1800, height: 900, scale: 1 });
   });
 
-  it("holds a phone at 390 by 844", () => {
-    expect(frameSize({ width: 900, height: 1000 }, "phone")).toEqual({ width: 390, height: 844, scale: 1 });
+  it("holds a phone at the iPhone 15's 393 by 852 unless another is chosen", () => {
+    expect(frameSize({ width: 900, height: 1000 }, "phone")).toEqual({ width: 393, height: 852, scale: 1 });
+    expect(frameSize({ width: 900, height: 1000 }, "phone", "iphone17promax")).toEqual({ width: 440, height: 956, scale: 1 });
+    expect(frameSize({ width: 900, height: 1000 }, "phone", "android")).toEqual({ width: 412, height: 915, scale: 1 });
+  });
+
+  it("fits the chosen phone by its own height", () => {
+    expect(fitScale({ width: 900, height: 478 }, "phone", "iphone17promax")).toBeCloseTo(0.5);
   });
 
   it("falls back to life size before the room is measured", () => {
