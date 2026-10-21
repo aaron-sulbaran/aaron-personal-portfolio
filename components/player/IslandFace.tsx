@@ -3,7 +3,7 @@
 import { forwardRef } from "react";
 import { NoteIcon } from "@/components/menu/NoteIcon";
 import { Cover } from "@/components/soundtrack/PillParts";
-import { playerStrings } from "@/lib/content/playerLab";
+import { playerStrings } from "@/lib/content/player";
 import { noteState } from "@/lib/note";
 import { usePlayerControls } from "./usePlayerControls";
 
@@ -20,7 +20,7 @@ export const IslandFace = forwardRef<HTMLButtonElement, { height: number; onOpen
       ref={ref}
       type="button"
       data-cursor-hover
-      data-lab-island-face
+      data-player-island-face
       aria-label={`${playerStrings.islandOpen}: ${track.title}`}
       onClick={onOpen}
       className="flex w-full items-center justify-between focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-accent"
@@ -30,7 +30,7 @@ export const IslandFace = forwardRef<HTMLButtonElement, { height: number; onOpen
       {playing ? (
         <span aria-hidden="true" className="flex h-4 items-end gap-[3px]">
           {BARS.map((delay) => (
-            <span key={delay} className="lab-island-bar block w-[3px] rounded-full bg-accent" style={{ height: 14, animationDelay: `${delay}ms` }} />
+            <span key={delay} className="player-island-bar block w-[3px] rounded-full bg-accent" style={{ height: 14, animationDelay: `${delay}ms` }} />
           ))}
         </span>
       ) : (

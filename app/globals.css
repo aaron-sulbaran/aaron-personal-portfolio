@@ -168,7 +168,7 @@
   --pill-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
 }
 
-/* The phone island (components/player, the music player lab): a black pill
+/* The phone island (components/player/PhoneIsland): a black pill
    that stands for the hardware, so it stays near black in both themes; only
    its edge and shadow follow the theme. Never pure #000. */
 :root {
@@ -741,3 +741,129 @@ html:not([data-input="pointer"]) .fx:focus-visible,
   .footer-drift { animation: none; }
 }
 /* ---- end footer ---- */
+
+/* ---- player (components/player) ---- */
+/* The desktop isle at the footer: the player's lift hook writes --isle-lift (px)
+   on <html> as the footer scrolls in, and the stock capsule pill and the
+   player's pill ride up with it, so the isle's bottom edge stays a gap above
+   the footer's top edge and the period stays free. translate is its own
+   property, so it never touches the pill's own transforms. */
+[data-pill],
+[data-player-pill] {
+  translate: 0 calc(var(--isle-lift, 0px) * -1);
+}
+
+/* The island's live level: four bars that rise and fall out of step. */
+@keyframes player-island-level {
+  0%,
+  100% {
+    transform: scaleY(0.3);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+.player-island-bar {
+  transform-origin: 50% 100%;
+  animation: player-island-level 900ms ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .player-island-bar {
+    animation: none;
+    transform: scaleY(0.6);
+  }
+}
+
+/* The seek bar: a thin track filled to the playhead in the accent (--player-seek,
+   written by SeekBar), and a small thumb that shows on hover, on focus and while
+   it is dragged (always on a touch screen, where there is no hover). Colours are
+   the page's tokens, which the island re-points to its own. */
+.player-seek {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 22px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+  --player-seek: 0%;
+}
+
+.player-seek:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+.player-seek::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(to right, var(--color-accent) var(--player-seek), var(--color-border) var(--player-seek));
+}
+
+.player-seek::-moz-range-track {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--color-border);
+}
+
+.player-seek::-moz-range-progress {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--color-accent);
+}
+
+.player-seek::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  margin-top: -4px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--color-foreground);
+  transform: scale(0);
+  transition: transform 140ms ease;
+}
+
+.player-seek::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--color-foreground);
+  transform: scale(0);
+  transition: transform 140ms ease;
+}
+
+.player-seek:hover::-webkit-slider-thumb,
+.player-seek:focus-visible::-webkit-slider-thumb,
+.player-seek:active::-webkit-slider-thumb {
+  transform: scale(1);
+}
+
+.player-seek:hover::-moz-range-thumb,
+.player-seek:focus-visible::-moz-range-thumb,
+.player-seek:active::-moz-range-thumb {
+  transform: scale(1);
+}
+
+@media (pointer: coarse) {
+  .player-seek::-webkit-slider-thumb {
+    transform: scale(1);
+  }
+  .player-seek::-moz-range-thumb {
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .player-seek::-webkit-slider-thumb,
+  .player-seek::-moz-range-thumb {
+    transition: none;
+  }
+}
+
+/* ---- end player ---- */

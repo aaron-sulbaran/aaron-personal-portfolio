@@ -33,7 +33,7 @@ export function PlayButton({ controls, size = 42 }: { controls: PlayerControls; 
       type="button"
       data-cursor-hover
       onClick={controls.toggle}
-      data-lab-play
+      data-player-play
       aria-label={controls.playing ? c.ariaPause : c.ariaPlay}
       style={{ ...iconButton(size), border: "none", background: "var(--color-accent)", color: "var(--color-background)" }}
     >
@@ -50,7 +50,7 @@ export function StepButton({ controls, direction, size = 36 }: { controls: Playe
       type="button"
       data-cursor-hover
       onClick={() => controls.step(direction)}
-      data-lab-step={direction < 0 ? "previous" : "next"}
+      data-player-step={direction < 0 ? "previous" : "next"}
       aria-label={direction < 0 ? c.ariaPrevious : c.ariaNext}
       style={{ ...iconButton(), width: size, height: size, borderRadius: 999, color: "var(--color-foreground)" }}
     >

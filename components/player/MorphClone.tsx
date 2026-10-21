@@ -21,11 +21,11 @@ export const MorphClone = forwardRef<HTMLDivElement>(function MorphClone(_, ref)
       <div
         ref={ref}
         aria-hidden="true"
-        data-lab-clone
+        data-player-clone
         style={{ ...glass, position: "fixed", left: 0, top: 0, zIndex: 45, pointerEvents: "none", visibility: "hidden", opacity: 0, overflow: "hidden" }}
       >
-        <span data-lab-tone className="absolute inset-0" style={{ background: "var(--island-bg)", opacity: 0 }} />
-        <span data-lab-ghost className="absolute inset-y-0 left-[58px] flex items-center gap-2 whitespace-nowrap font-label text-label-sm text-foreground" style={{ opacity: 0 }}>
+        <span data-player-tone className="absolute inset-0" style={{ background: "var(--island-bg)", opacity: 0 }} />
+        <span data-player-ghost className="absolute inset-y-0 left-[58px] flex items-center gap-2 whitespace-nowrap font-label text-label-sm text-foreground" style={{ opacity: 0 }}>
           <NoteIcon state={noteState(music)} className="block h-4 w-[14px]" />
           {track.title}
         </span>

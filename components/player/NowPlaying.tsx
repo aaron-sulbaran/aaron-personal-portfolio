@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
-import { siteContent } from "@/lib/content";
-import { playerStrings } from "@/lib/content/playerLab";
+import { playerStrings } from "@/lib/content/player";
 import { TitleBlock } from "./PlayerBits";
 import { SeekBar } from "./SeekBar";
 import { TrackList } from "./TrackList";
@@ -11,7 +10,6 @@ import { Transport } from "./Transport";
 import { usePlayerControls } from "./usePlayerControls";
 
 type Props = {
-  credit: boolean; // the credit line rides in the player
   active: boolean; // on screen: the playhead is polled
   reduce: boolean;
 };
@@ -20,13 +18,13 @@ type Props = {
 // phone island: the cover, the title and artist (both scroll when long), the
 // seek bar with the time played and the time left, previous, play and next
 // with quiet shuffle and repeat, and the Tracks. It has no surface of its own
-// (the host gives it glass or the island's black), no close button and no
-// freeze control: where it opens and closes is the host's business.
-export function NowPlaying({ credit, active, reduce }: Props) {
+// (the host gives it glass or the island's black), no close button, no credit
+// line and no freeze control: where it opens and closes is the host's business.
+export function NowPlaying({ active, reduce }: Props) {
   const controls = usePlayerControls(active);
   const [open, setOpen] = useState(false);
   return (
-    <div role="group" aria-label={playerStrings.groupLabel} data-lab-player="player" data-marquee-scope className="flex w-full flex-col gap-3.5">
+    <div role="group" aria-label={playerStrings.groupLabel} data-player-player="player" data-marquee-scope className="flex w-full flex-col gap-3.5">
       <div className="flex items-center gap-3.5">
         <TitleBlock controls={controls} coverSize={52} titleSize={18} />
       </div>
@@ -49,7 +47,6 @@ export function NowPlaying({ credit, active, reduce }: Props) {
             <TrackList currentIndex={controls.snap.trackIndex} music={controls.music} onPlay={controls.playRow} />
           </div>
         )}
-        {credit && <p data-lab-credit className="mt-1 px-1 font-label text-label-sm leading-[1.4] text-muted">{siteContent.soundtrack.creditLine}</p>}
       </div>
     </div>
   );

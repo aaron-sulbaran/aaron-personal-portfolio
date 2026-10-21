@@ -1,7 +1,7 @@
 "use client";
 
 import { Repeat, Repeat1, Shuffle } from "lucide-react";
-import { playerStrings } from "@/lib/content/playerLab";
+import { playerStrings } from "@/lib/content/player";
 import { iconButton } from "@/components/soundtrack/PillParts";
 import { PlayButton, StepButton } from "./PlayerBits";
 import type { PlayerControls } from "./usePlayerControls";
@@ -18,7 +18,7 @@ function Toggle({ kind, mode, on, label, pressed, onClick, children }: { kind: "
       title={label}
       aria-pressed={pressed}
       onClick={onClick}
-      data-lab-toggle={kind}
+      data-player-toggle={kind}
       data-state={mode}
       className="relative"
       style={{ ...iconButton(), width: 32, height: 32, borderRadius: 999, color: on ? "var(--color-accent)" : "var(--color-muted)" }}
@@ -34,7 +34,7 @@ export function Transport({ controls }: { controls: PlayerControls }) {
   const { queue } = controls;
   const RepeatIcon = queue.repeat === "one" ? Repeat1 : Repeat;
   return (
-    <div className="flex items-center justify-between" data-lab-transport>
+    <div className="flex items-center justify-between" data-player-transport>
       <Toggle kind="shuffle" mode={queue.shuffle ? "on" : "off"} on={queue.shuffle} pressed={queue.shuffle} label={playerStrings.shuffle} onClick={controls.toggleShuffle}>
         <Shuffle aria-hidden="true" size={16} />
       </Toggle>

@@ -3,7 +3,7 @@
 import { ExternalLink } from "lucide-react";
 import { NoteIcon } from "@/components/menu/NoteIcon";
 import { siteContent } from "@/lib/content";
-import { playerStrings } from "@/lib/content/playerLab";
+import { playerStrings } from "@/lib/content/player";
 import { noteState } from "@/lib/note";
 import { trackRows } from "@/lib/player/tracks";
 import type { SoundtrackState } from "@/lib/soundtrack";
@@ -12,21 +12,20 @@ type Props = {
   currentIndex: number;
   music: SoundtrackState;
   onPlay: (index: number) => void;
-  dense?: boolean; // the band's wide card: 26px rows from 1360px up; otherwise 28px
 };
 
 // All seven tracks, the current one marked with the soundtrack's note. A row
 // plays its track (the current row pauses and resumes); the small link at its
 // end opens that track on Spotify in a new tab.
-export function TrackList({ currentIndex, music, onPlay, dense = false }: Props) {
+export function TrackList({ currentIndex, music, onPlay }: Props) {
   const rows = trackRows(siteContent.soundtrack.tracks, currentIndex);
   const playing = music === "on";
   return (
-    <ol aria-label={playerStrings.tracks} className="m-0 flex min-h-0 list-none flex-col overflow-y-auto p-0" style={{ touchAction: "pan-y" }} data-lab-tracks>
+    <ol aria-label={playerStrings.tracks} className="m-0 flex min-h-0 list-none flex-col overflow-y-auto p-0" style={{ touchAction: "pan-y" }} data-player-tracks>
       {rows.map((row) => (
         <li
           key={row.index}
-          className={`flex min-h-[28px] items-center gap-1 rounded-lg ${dense ? "min-[1360px]:min-h-[26px]" : ""} ${row.current ? "bg-[color-mix(in_srgb,var(--color-accent)_11%,transparent)]" : ""}`}
+          className={`flex min-h-[28px] items-center gap-1 rounded-lg ${row.current ? "bg-[color-mix(in_srgb,var(--color-accent)_11%,transparent)]" : ""}`}
         >
           <button
             type="button"
@@ -52,7 +51,7 @@ export function TrackList({ currentIndex, music, onPlay, dense = false }: Props)
               rel="noopener noreferrer"
               data-cursor-hover
               aria-label={`${playerStrings.spotifyFor} ${row.title}`}
-              className={`flex h-7 w-7 flex-none items-center justify-center rounded-full ${dense ? "min-[1360px]:h-6 min-[1360px]:w-6" : ""} text-muted transition-colors duration-200 hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent`}
+              className="flex h-7 w-7 flex-none items-center justify-center rounded-full text-muted transition-colors duration-200 hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
             >
               <ExternalLink aria-hidden="true" size={12} />
             </a>

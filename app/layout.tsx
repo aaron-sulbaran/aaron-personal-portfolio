@@ -6,6 +6,7 @@ import { CustomCursor } from "@/components/CustomCursor";
 import { SiteAnalytics } from "@/components/SiteAnalytics";
 import { InlineLayer } from "@/components/inline/InlineLayer";
 import { InputModality } from "@/components/InputModality";
+import { SoundtrackPlayer } from "@/components/player/SoundtrackPlayer";
 import { TransitionLayer } from "@/components/transition/TransitionLayer";
 import { siteContent } from "@/lib/content";
 import { profaBlack, profaBold } from "@/lib/fonts";
@@ -67,6 +68,7 @@ export default function RootLayout({
         {/* Holding mode has no sections to navigate; nav and menu stay out. */}
         {!HOLDING_MODE && <SiteNav />}
         {!HOLDING_MODE && <MenuPill />}
+        {!HOLDING_MODE && <SoundtrackPlayer />}
         <InputModality />
         <CustomCursor />
         {!HOLDING_MODE && <InlineLayer />}

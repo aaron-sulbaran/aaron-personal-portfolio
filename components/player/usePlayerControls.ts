@@ -3,13 +3,12 @@
 import { useEffect, useState } from "react";
 import { getSoundtrackPlayer, type PlayerSnapshot } from "@/lib/audio";
 import { siteContent } from "@/lib/content";
+import { PLAYHEAD_POLL_MS } from "@/lib/player/constants";
 import { rowAction } from "@/lib/player/tracks";
 import { cycleRepeatMode, skipNext, skipPrevious, toggleShuffle, useQueue } from "@/lib/player/queueStore";
 import { pauseSoundtrack, startSoundtrack, useSoundtrack } from "@/lib/soundtrack";
 
-const POLL_MS = 250;
-
-// The lab player's one source for transport: the soundtrack store for the
+// The player's one source for transport: the soundtrack store for the
 // music state, the audio player for the track, playhead and volume, and the
 // queue store for shuffle, repeat, next and previous. The playhead is polled
 // only while a surface shows it and the music plays. Every write runs inside
@@ -33,7 +32,7 @@ export function usePlayerControls(active: boolean) {
     if (!active) return;
     const sync = () => setPosition(player.getPosition());
     const first = requestAnimationFrame(sync);
-    const id = playing ? setInterval(sync, POLL_MS) : undefined;
+    const id = playing ? setInterval(sync, PLAYHEAD_POLL_MS) : undefined;
     return () => {
       cancelAnimationFrame(first);
       clearInterval(id);
@@ -69,7 +68,6 @@ export function usePlayerControls(active: boolean) {
       }
       startSoundtrack();
     },
-    setVolume: (volume: number) => player.setVolume(volume),
   };
 }
 

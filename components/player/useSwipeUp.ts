@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, type RefObject } from "react";
-
-const SWIPE_PX = 36;
+import { ISLAND } from "@/lib/player/constants";
 
 // A swipe up on the island closes it. Gestures that start on the track list
 // (which scrolls) or a slider are left alone.
@@ -12,11 +11,11 @@ export function useSwipeUp(target: RefObject<HTMLElement | null>, enabled: boole
     if (!el || !enabled) return;
     let startY: number | null = null;
     const down = (event: PointerEvent) => {
-      const own = event.target instanceof Element && event.target.closest("[data-lab-tracks], input[type=range]");
+      const own = event.target instanceof Element && event.target.closest("[data-player-tracks], input[type=range]");
       startY = own ? null : event.clientY;
     };
     const up = (event: PointerEvent) => {
-      if (startY !== null && startY - event.clientY > SWIPE_PX) onSwipe();
+      if (startY !== null && startY - event.clientY > ISLAND.swipeUpPx) onSwipe();
       startY = null;
     };
     const cancel = () => {

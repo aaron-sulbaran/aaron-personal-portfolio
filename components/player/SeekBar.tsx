@@ -2,7 +2,7 @@
 
 import { useState, type CSSProperties, type KeyboardEvent } from "react";
 import { siteContent } from "@/lib/content";
-import { playerStrings } from "@/lib/content/playerLab";
+import { playerStrings } from "@/lib/content/player";
 import { formatClock, formatRemaining, progressPercent, SEEK_PAGE_S, SEEK_STEP_S, seekBy } from "@/lib/player/time";
 import type { PlayerControls } from "./usePlayerControls";
 
@@ -31,27 +31,27 @@ export function SeekBar({ controls }: { controls: PlayerControls }) {
     event.preventDefault();
   };
   return (
-    <div className="flex items-center gap-2.5" data-lab-seek>
-      <span className={`${time} text-right`} data-lab-elapsed aria-hidden="true">
+    <div className="flex items-center gap-2.5" data-player-seek>
+      <span className={`${time} text-right`} data-player-elapsed aria-hidden="true">
         {formatClock(shown)}
       </span>
       <input
         type="range"
-        className="lab-seek"
+        className="player-seek"
         min={0}
         max={Math.max(1, Math.round(duration))}
         step={1}
         value={Math.min(Math.round(shown), Math.max(1, Math.round(duration)))}
         aria-label={siteContent.soundtrack.ariaSeek}
         aria-valuetext={`${formatClock(shown)} ${playerStrings.seekValueOf} ${formatClock(duration)}`}
-        style={{ "--lab-seek": `${progressPercent(duration, shown)}%` } as CSSProperties}
+        style={{ "--player-seek": `${progressPercent(duration, shown)}%` } as CSSProperties}
         onChange={(event) => move(Number(event.target.value))}
         onKeyDown={onKeyDown}
         onPointerUp={() => setScrub(null)}
         onKeyUp={() => setScrub(null)}
         onBlur={() => setScrub(null)}
       />
-      <span className={`${time} text-left`} data-lab-remaining aria-hidden="true">
+      <span className={`${time} text-left`} data-player-remaining aria-hidden="true">
         {formatRemaining(duration, shown)}
       </span>
     </div>
