@@ -1,0 +1,54 @@
+/* The music player lab's own rules. Imported by PlayerLab only, which loads in
+   development only, so none of this ever reaches a production build. */
+
+/* The isle at the footer: PlayerLab's footer hook writes --lab-isle-lift and
+   --lab-bar-lift on <html> as the footer scrolls in, and data-lab-isle is
+   "hidden" in hide mode while the footer reaches the isle. translate is its own
+   property, so it never touches the pill's, the sheet's or the bar's transforms. */
+html[data-lab-isle] [data-pill],
+html[data-lab-isle] [data-lab-docked] {
+  translate: 0 calc(var(--lab-isle-lift, 0px) * -1);
+}
+
+html[data-lab-isle] [data-lab-bar] {
+  translate: 0 calc(var(--lab-bar-lift, 0px) * -1);
+}
+
+html[data-lab-isle="hidden"] [data-pill],
+html[data-lab-isle="hidden"] [data-lab-docked],
+html[data-lab-isle="hidden"] [data-lab-bar] {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+html[data-lab-isle] [data-pill] {
+  transition: opacity 200ms ease, visibility 0s linear 0s;
+}
+
+html[data-lab-isle="hidden"] [data-pill] {
+  visibility: hidden;
+  transition: opacity 200ms ease, visibility 0s linear 200ms;
+}
+
+/* The island's live level: four bars that rise and fall out of step. */
+@keyframes lab-island-level {
+  0%,
+  100% {
+    transform: scaleY(0.3);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+.lab-island-bar {
+  transform-origin: 50% 100%;
+  animation: lab-island-level 900ms ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lab-island-bar {
+    animation: none;
+    transform: scaleY(0.6);
+  }
+}
