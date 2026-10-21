@@ -29,6 +29,8 @@ import { usePlayerSync } from "./usePlayerSync";
 // queue (lib/player/queueStore). With no music started it draws nothing.
 export function SoundtrackPlayer() {
   const pathname = usePathname();
+  // Only the home page has a hero, and the Coil and Band toggle in its corner.
+  const home = pathname === "/";
   const phone = useSyncExternalStore(subscribePhone, isPhone, () => false);
   const roomy = useSyncExternalStore(subscribeRoomy, isRoomy, () => true);
   const reduce = useReducedMotionLive();
@@ -52,7 +54,7 @@ export function SoundtrackPlayer() {
 
   return (
     <>
-      {isleShown(view) && !phone && <IslePill key={view} reduce={reduce} pinned={view === "docked"} lifted={zone === "ahead"} />}
+      {isleShown(view) && !phone && <IslePill key={view} reduce={reduce} pinned={view === "docked"} lifted={home && zone === "ahead"} />}
       {isleShown(view) && phone && <PhoneIsland reduce={reduce} />}
       {view !== "closed" && <MorphClone ref={clone} />}
     </>
