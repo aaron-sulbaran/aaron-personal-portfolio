@@ -1,6 +1,6 @@
 // The player's queue, pure: the order the tracks play in, shuffle and repeat,
 // and what next and previous mean under them. The audio player only knows
-// "this track index"; the lab asks the queue what comes after it.
+// "this track index"; the player asks the queue what comes after it.
 //
 //   off  the order is the list's order.
 //   on   the order is a shuffle that starts at the track now playing, so

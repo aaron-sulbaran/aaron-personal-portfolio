@@ -37,13 +37,23 @@ const accept = (page: Page) => page.locator("#listen").getByRole("button", { nam
 // A declined, unfrozen line breathes while in view; the rest tests freeze it first.
 const freeze = (page: Page) => page.locator("#listen").getByRole("button", { name: L.freeze, exact: true }).click();
 
+// The line is one line: it leaves the band's run to the right and dives off
+// screen to clear the band before it turns back, so it never crosses the band.
+// That dive is arc length the train has to cover, and just below the band, on a
+// wide window, the screen can hold no ink for a short stretch of scroll (about
+// 150px at 1440 wide: the dive's arc over the draw's 2.5px of arc per page px).
+// Everywhere else, and everywhere on a narrower window, some dot is in view.
+const DIVE_SCROLL_PX = 200;
+
 for (const size of [{ width: 1440, height: 900 }, { width: 1024, height: 768 }, { width: 390, height: 844 }]) {
-  test(`wavepath: some drawn dot is in view at every 50px of scroll at ${size.width}`, async ({ page }) => {
+  test(`wavepath: some drawn dot is in view at every 50px of scroll at ${size.width}, but for the dive under the band`, async ({ page }) => {
     test.setTimeout(180_000);
     await page.setViewportSize(size);
     await open(page);
     await decline(page);
-    const start = Math.max(0, Math.round((await documentTop(page, "#listen")) - size.height / 2));
+    const bandTop = Math.round(await documentTop(page, "#listen"));
+    const bandBottom = bandTop + Math.round(await page.locator("#listen").evaluate((el) => el.getBoundingClientRect().height));
+    const start = Math.max(0, Math.round(bandTop - size.height / 2));
     const end = await maxScroll(page);
     const empty: number[] = [];
     for (let y = start; ; y = Math.min(end, y + 50)) {
@@ -52,7 +62,9 @@ for (const size of [{ width: 1440, height: 900 }, { width: 1024, height: 768 }, 
       if ((await visibleDots(page)) === 0) empty.push(y);
       if (y >= end) break;
     }
-    expect(empty, "scroll positions with no drawn dot in view").toEqual([]);
+    const outside = empty.filter((y) => y < bandBottom || y > bandBottom + size.height);
+    expect(outside, "scroll positions with no drawn dot in view, away from the dive under the band").toEqual([]);
+    expect(empty.length * 50, `px of scroll with nothing drawn: ${empty.join(", ")}`).toBeLessThanOrEqual(DIVE_SCROLL_PX);
   });
 }
 

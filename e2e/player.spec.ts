@@ -6,7 +6,7 @@ import { HERO_LIFT_PX, ISLE, PILL_IDLE_MS } from "@/lib/player/constants";
 import { openHome, scrollToY } from "./support/coil";
 import { settled } from "./support/fallback";
 import { toFooter, waitForWord } from "./support/footer";
-import { BAND_CARD, CLONE, PLAYER_PILL, TOGGLE, bandPastLine, morphSamples, pillState, playFromBand, recordMorph, viewportHeight } from "./support/player";
+import { BAND_CARD, CLONE, ISLAND, PLAYER_PILL, TOGGLE, bandPastLine, morphSamples, pillState, playFromBand, recordMorph, viewportHeight } from "./support/player";
 import { bandInkPixels, documentTop, parkBand, pathInk } from "./support/wave";
 import type { PathProbe } from "@/lib/wavepath/probe";
 
@@ -292,6 +292,67 @@ test.describe("the pill", () => {
     expect((await pill.boundingBox())!.width).toBe(ISLE.openWidthPx);
     await page.mouse.up();
     await expect(pill).toHaveAttribute("data-player-pill", "collapsed", { timeout: PILL_IDLE_MS + 2500 });
+  });
+});
+
+test.describe("where the player lives", () => {
+  test("player: a window too narrow for the band's card docks the player at the pill's place instead", async ({ page }) => {
+    await page.setViewportSize({ width: 900, height: 700 });
+    await openHome(page, { path: HOME });
+    await parkBand(page);
+    await accept(page).click();
+    const pill = page.locator(PLAYER_PILL);
+    await expect(pill).toHaveAttribute("data-player-pill", "pinned");
+    await expect(page.locator(BAND_CARD)).toHaveCount(0);
+    // With no card in the band the band keeps its own status line and Pause.
+    await expect(band(page).locator("[data-band-note]")).toBeVisible();
+    await expect(band(page).locator('[data-control="on"]')).toBeVisible();
+    await expect(pill.getByRole("slider", { name: S.ariaSeek })).toBeVisible();
+  });
+
+  test("player: a restored pause resumes from the band's Resume with the player opening there", async ({ page, browserName }) => {
+    test.skip(browserName === "webkit", "WebKit cannot be launched muted");
+    await page.addInitScript(() => localStorage.setItem("aaron-soundtrack", "on"));
+    await openHome(page, { path: HOME });
+    await parkBand(page);
+    await expect(band(page).locator('[data-control="paused"]')).toBeVisible();
+    await expect(page.locator(BAND_CARD)).toHaveCount(0);
+    await band(page).locator('[data-control="paused"]').click();
+    await expect(page.locator(BAND_CARD).getByRole("button", { name: S.ariaPause, exact: true })).toBeVisible();
+    await expect(band(page).locator("[data-band-note]")).toBeHidden();
+  });
+
+  test("player: crossing to a phone width swaps the pill for the island, and back", async ({ page }) => {
+    await openHome(page, { path: HOME });
+    await collapsedPill(page);
+    // The page lays out again at each width, so the reader is put below the band again before looking.
+    const below = async () => scrollToY(page, Math.round(await documentTop(page, "#about")));
+    await page.setViewportSize({ width: 393, height: 852 });
+    await below();
+    await expect(page.locator(ISLAND)).toHaveAttribute("data-player-island", "closed");
+    await expect(page.locator(PLAYER_PILL)).toHaveCount(0);
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await below();
+    await expect(page.locator(PLAYER_PILL)).toHaveAttribute("data-player-pill", "collapsed");
+    await expect(page.locator(ISLAND)).toHaveCount(0);
+  });
+
+  test("player: the music keeps its control on the MVP page, and the player is where it was left", async ({ page }) => {
+    await openHome(page, { path: HOME });
+    await playFromBand(page);
+    await page.getByRole("button", { name: "Open menu" }).click();
+    await page.getByRole("dialog", { name: "Site menu" }).getByRole("link", { name: "MVP", exact: true }).click();
+    await page.waitForURL("**/quick", { timeout: 20_000 });
+    const pill = page.locator(PLAYER_PILL);
+    await expect(pill).toHaveAttribute("data-player-pill", "collapsed");
+    // No hero here, so no lift for the toggle that is not there.
+    await expect(pill).not.toHaveAttribute("data-player-lifted", "true");
+    await expect(pill.locator("svg[data-note]").first()).toHaveAttribute("data-note", "playing");
+    const box = (await pill.boundingBox())!;
+    await page.mouse.move(box.x + 60, box.y + box.height / 2);
+    await expect(pill).toHaveAttribute("data-player-pill", "open");
+    await pill.getByRole("button", { name: S.ariaPause, exact: true }).click();
+    await expect(pill.getByRole("button", { name: S.ariaPlay, exact: true })).toBeVisible();
   });
 });
 

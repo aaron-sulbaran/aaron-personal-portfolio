@@ -6,7 +6,7 @@ import { MarqueeTitle } from "@/components/soundtrack/MarqueeTitle";
 import { siteContent } from "@/lib/content";
 import type { PlayerControls } from "./usePlayerControls";
 
-// The lab player's shared pieces, drawn from the same controls object: the
+// The player's shared pieces, drawn from the same controls object: the
 // title block and the transport buttons. Title and artist are both
 // MarqueeTitle, so a long name (an artist "featuring" someone) fades at the
 // edges and scrolls in every player state.

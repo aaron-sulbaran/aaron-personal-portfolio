@@ -1,4 +1,4 @@
-// The one width the lab's band card needs: beside the band's copy from 1024px
+// The one width the band's player card needs: beside the band's copy from 1024px
 // up. Below it, on a desktop, the player docks at the isle instead (client
 // only; the functions read the window when called, and the server snapshot
 // says roomy).

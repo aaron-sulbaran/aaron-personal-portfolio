@@ -16,7 +16,7 @@ const SIZES = ["1440x900", "1024x768", "390x844"] as const;
 const clearOf = (anchors: Anchors) => dotReach(amplitudeFor(anchors.width)) + BAND_CLEAR_EXTRA;
 
 // The sections below the band closer to it by `by` px (a shorter page between them), the hardest case for a line that must keep its distance from the band.
-// The spine itself is measured from the band's own top, so where the band sits in the document (the book taken away) cannot change it; the e2e and the lab's checks cover the document side.
+// The spine itself is measured from the band's own top, so where the band sits in the document (the book taken away) cannot change it; the e2e (e2e/player.spec.ts) covers the document side.
 function closer(anchors: Anchors, by: number): Anchors {
   const shift = (span: { top: number; bottom: number }) => ({ top: span.top - by, bottom: span.bottom - by });
   const box = { ...anchors.box };

@@ -6,12 +6,11 @@ import { siteContent } from "@/lib/content";
 import { pauseSoundtrack, getSoundtrackState } from "@/lib/soundtrack";
 import { createQueue, cycleRepeat, nextIndex, previousIndex, setRepeat, setShuffle, type Move, type Queue } from "./queue";
 
-// The lab player's queue as a tiny store: shuffle and repeat live here (so the
+// The player's queue as a tiny store: shuffle and repeat live here (so the
 // band's player, the isle and the island show the same toggles), and next,
 // previous and a track's end go through the pure queue (./queue). The audio
-// player is told to hand a track's end to this store only while a lab player
-// is on screen (attachQueue), so with the lab off a track that ends moves to
-// the next, as it always has.
+// player is told to hand a track's end to this store while the player is
+// mounted (attachQueue, from the layout's host).
 
 let queue: Queue = createQueue(siteContent.soundtrack.tracks.length);
 const listeners = new Set<() => void>();
@@ -86,7 +85,7 @@ function ended(): boolean {
   return true;
 }
 
-// A lab player is on screen: the queue decides what follows a track. Counted, so two players can share it.
+// The player is mounted: the queue decides what follows a track. Counted, so two hosts can share it.
 export function attachQueue(): () => void {
   const player = getSoundtrackPlayer();
   attached++;
