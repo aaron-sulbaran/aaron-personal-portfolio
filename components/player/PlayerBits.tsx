@@ -1,10 +1,11 @@
 "use client";
 
 import type { CSSProperties } from "react";
-import { Pause, Play, SkipBack, SkipForward, Volume2 } from "lucide-react";
+import { Pause, Play, SkipBack, SkipForward, Snowflake, Volume2 } from "lucide-react";
 import { Cover, formatTime, iconButton } from "@/components/soundtrack/PillParts";
 import { MarqueeTitle } from "@/components/soundtrack/MarqueeTitle";
 import { siteContent } from "@/lib/content";
+import { setFrozen, useFrozen } from "@/lib/waveform/freeze";
 import type { PlayerControls } from "./usePlayerControls";
 
 // The lab player's shared pieces, drawn from the same controls object: the
@@ -53,6 +54,7 @@ export function PlayButton({ controls, size = 42 }: { controls: PlayerControls; 
       type="button"
       data-cursor-hover
       onClick={controls.toggle}
+      data-lab-play
       aria-label={controls.playing ? c.ariaPause : c.ariaPlay}
       style={{ ...iconButton(size), border: "none", background: "var(--color-accent)", color: "var(--color-background)" }}
     >
@@ -85,5 +87,28 @@ export function TransportRow({ controls }: { controls: PlayerControls }) {
         <input type="range" min={0} max={100} value={Math.round(controls.snap.volume * 100)} onChange={(event) => controls.setVolume(Number(event.target.value) / 100)} aria-label={c.ariaVolume} style={range} />
       </div>
     </div>
+  );
+}
+
+// Freeze the wave as a small icon button, for the sheet: reachable while the
+// music plays. Nothing moves under reduced motion, so it is not offered then.
+export function FreezeButton({ reduce }: { reduce: boolean }) {
+  const frozen = useFrozen();
+  const c = siteContent.listen;
+  if (reduce) return null;
+  const label = frozen ? c.unfreeze : c.freeze;
+  return (
+    <button
+      type="button"
+      data-cursor-hover
+      data-lab-freeze
+      aria-pressed={frozen}
+      aria-label={label}
+      title={label}
+      onClick={() => setFrozen(!frozen)}
+      style={{ ...iconButton(26), color: frozen ? "var(--color-accent)" : "var(--color-muted)", borderColor: frozen ? "var(--color-accent)" : "var(--color-border)" }}
+    >
+      <Snowflake aria-hidden="true" size={13} />
+    </button>
   );
 }

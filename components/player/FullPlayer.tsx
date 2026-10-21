@@ -14,7 +14,8 @@ export type SurfaceProps = {
   active: boolean; // on screen: the playhead is polled
   reduce: boolean;
   closeLabel: string;
-  onClose: () => void;
+  onClose?: () => void; // no close button without it: the sheet in the band is the band's home and stays
+  bare?: boolean; // no glass of its own: the island is the surface (the sheet only)
 };
 
 // The player card: the cover, the title and artist, seek, previous, play and
@@ -24,6 +25,12 @@ export type SurfaceProps = {
 // column below; at the dock it is always one column, bottom left, where the
 // pill's own card opens.
 export function FullPlayer({ layout, credit, active, reduce, closeLabel, onClose }: SurfaceProps) {
+  const closer = (size: number, icon: number) =>
+    onClose && (
+      <button type="button" data-cursor-hover onClick={onClose} aria-label={closeLabel} style={iconButton(size)}>
+        <X aria-hidden="true" size={icon} />
+      </button>
+    );
   const controls = usePlayerControls(active);
   const wide = layout === "wide";
   const { track } = controls;
@@ -39,11 +46,7 @@ export function FullPlayer({ layout, credit, active, reduce, closeLabel, onClose
       <div className={`flex min-w-0 flex-col gap-3 ${wide ? "min-[1360px]:w-[212px] min-[1360px]:flex-none" : ""}`}>
         <div className="flex items-center gap-3.5">
           <TitleBlock controls={controls} coverSize={56} titleSize={19} />
-          <span className={wide ? "min-[1360px]:hidden" : ""}>
-            <button type="button" data-cursor-hover onClick={onClose} aria-label={closeLabel} style={iconButton(28)}>
-              <X aria-hidden="true" size={14} />
-            </button>
-          </span>
+          <span className={wide ? "min-[1360px]:hidden" : ""}>{closer(28, 14)}</span>
         </div>
         <SeekRow controls={controls} />
         <TransportRow controls={controls} />
@@ -66,13 +69,7 @@ export function FullPlayer({ layout, credit, active, reduce, closeLabel, onClose
           <span className="font-label text-label-sm text-muted">{playerStrings.tracks}</span>
           <div className="flex items-center gap-3">
             <FreezeRow reduce={reduce} />
-            {wide && (
-              <span className="hidden min-[1360px]:block">
-                <button type="button" data-cursor-hover onClick={onClose} aria-label={closeLabel} style={iconButton(24)}>
-                  <X aria-hidden="true" size={12} />
-                </button>
-              </span>
-            )}
+            {wide && <span className="hidden min-[1360px]:block">{closer(24, 12)}</span>}
           </div>
         </div>
         <div className={`overflow-y-auto ${wide ? "max-h-[132px] min-[1360px]:max-h-[196px]" : "min-h-[112px] max-h-[calc(100vh-440px)]"}`}>

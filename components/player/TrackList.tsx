@@ -22,7 +22,7 @@ export function TrackList({ currentIndex, music, onPlay, dense = false }: Props)
   const rows = trackRows(siteContent.soundtrack.tracks, currentIndex);
   const playing = music === "on";
   return (
-    <ol aria-label={playerStrings.tracks} className="m-0 flex min-h-0 list-none flex-col overflow-y-auto p-0" data-lab-tracks>
+    <ol aria-label={playerStrings.tracks} className="m-0 flex min-h-0 list-none flex-col overflow-y-auto p-0" style={{ touchAction: "pan-y" }} data-lab-tracks>
       {rows.map((row) => (
         <li
           key={row.index}
