@@ -104,7 +104,7 @@ export interface SoundtrackPlayer extends AudioSource {
   getPosition(): number;
   getSnapshot(): PlayerSnapshot;
   subscribe(listener: () => void): () => void;
-  // The music player lab's queue (shuffle and repeat) takes over what happens when a track ends: the handler returns true when it dealt with it. Nothing sets one in production, so a track that ends moves to the next, as always.
+  // The queue (shuffle and repeat, lib/player/queueStore) takes over what happens when a track ends: the handler returns true when it dealt with it. With none set, a track that ends moves to the next.
   setEndedHandler(handler: (() => boolean) | null): void;
 }
 

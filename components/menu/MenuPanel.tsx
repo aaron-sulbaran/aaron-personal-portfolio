@@ -5,7 +5,6 @@ import { motion, type Variants } from "framer-motion";
 import { usePathname } from "next/navigation";
 import { Moon, Sun } from "lucide-react";
 import { Fill } from "@/components/fx/Fill";
-import { NoteIcon } from "@/components/menu/NoteIcon";
 import { siteContent } from "@/lib/content";
 import { quickCopy } from "@/lib/content/quick";
 import { closeMenu } from "@/lib/menu";
@@ -13,12 +12,10 @@ import { EXPRESS_PATH, HOME_PATH } from "@/lib/quick/transition";
 import { goTo } from "@/lib/quick/transitionStore";
 import { FILL_PICK } from "@/lib/fx/fill";
 import { EASE } from "@/lib/motion";
-import { menuChipStops, noteState } from "@/lib/note";
 import { THEME_STORAGE_KEY, syncThemeColorMeta, type Theme } from "@/lib/theme";
-import { startSoundtrack, stopSoundtrack, useSoundtrack } from "@/lib/soundtrack";
 
 // The menu's content: the four section links in the display face, a third of
-// the way down, then the theme and soundtrack chips and the contact row at the
+// the way down, then the theme and quick view chips and the contact row at the
 // bottom. MenuPill mounts it in one of two frames: inside the pill as it grows
 // into the right-hand panel (desktop), or in the bottom sheet (phone). It
 // animates only its own children; the frame's motion belongs to MenuPill.
@@ -74,13 +71,11 @@ export function MenuPanel({
 }) {
   const { items, themeToggleToDark, themeToggleToLight, themeAriaLabelToDark, themeAriaLabelToLight, email, socials } =
     siteContent.menu;
-  const { menuToggleOn, menuTogglePaused, menuToggleOff, menuAriaLabel } = siteContent.soundtrack;
   // The panel only ever mounts on the client (after a click), so it can read
   // the live theme straight off <html>.
   const [theme, setTheme] = useState<Theme>(() =>
     document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light",
   );
-  const music = useSoundtrack();
   const onQuick = usePathname() === EXPRESS_PATH;
 
   const toggleTheme = () => {
@@ -93,15 +88,6 @@ export function MenuPanel({
     } catch {
       /* storage unavailable */
     }
-  };
-
-  // The chip resumes a pause and only stops while music is audible (the Listen
-  // note beside the pill pauses and resumes). Its label says where the
-  // soundtrack stands (on, paused, off).
-  const playing = menuChipStops(music);
-  const toggleMusic = () => {
-    if (playing) stopSoundtrack();
-    else startSoundtrack();
   };
 
   const link = reducedMotion ? fadeVariants : linkVariants;
@@ -178,20 +164,6 @@ export function MenuPanel({
               )}
             </span>
             <span>{theme === "dark" ? themeToggleToLight : themeToggleToDark}</span>
-          </Fill>
-          <Fill
-            {...FILL_PICK.menu}
-            onClick={toggleMusic}
-            aria-label={menuAriaLabel}
-            aria-pressed={playing}
-            data-cursor-hover
-            className="inline-flex h-[34px] items-center gap-2 rounded-[17px] pl-2.5 pr-3.5 font-label text-label text-accent shadow-[inset_0_0_0_1px_var(--color-border)]"
-            overClassName="flex items-center gap-2 pl-2.5 pr-3.5"
-          >
-            <span aria-hidden="true" data-fill-icon className="relative -top-px flex h-4 w-4 items-center justify-center">
-              <NoteIcon state={noteState(music)} className="block h-4 w-[14px]" />
-            </span>
-            <span>{music === "on" ? menuToggleOn : music === "paused" ? menuTogglePaused : menuToggleOff}</span>
           </Fill>
           <a
             href={onQuick ? HOME_PATH : EXPRESS_PATH}

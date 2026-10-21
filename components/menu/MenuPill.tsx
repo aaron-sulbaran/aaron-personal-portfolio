@@ -6,7 +6,6 @@ import { animate, motion, useReducedMotion } from "framer-motion";
 import { Portal } from "@/components/Portal";
 import { Fill } from "@/components/fx/Fill";
 import { AsMark } from "@/components/menu/BrandMark";
-import { ListenDot } from "@/components/menu/ListenDot";
 import { MenuPanel } from "@/components/menu/MenuPanel";
 import { siteContent } from "@/lib/content";
 import { FILL_PICK } from "@/lib/fx/fill";
@@ -185,7 +184,7 @@ export function MenuPill() {
   }, [phase, frame, panelSize, reducedMotion, go]);
 
   // The pill returns to its natural width in the same commit that restores
-  // the Listen dot and the Menu label, so no frame shows a stale size.
+  // the Menu label, so no frame shows a stale size.
   useLayoutEffect(() => {
     if (phase === "closed") clearPillSize();
   }, [phase]);
@@ -264,7 +263,6 @@ export function MenuPill() {
         } ${tucked ? "-translate-y-[90px] focus-within:translate-y-0" : ""}`}
       >
         <div className="relative z-[2] flex h-10 items-center justify-end">
-          <ListenDot hidden={engaged} />
           <Fill
             {...FILL_PICK.menu}
             onClick={onPillClick}
@@ -273,9 +271,9 @@ export function MenuPill() {
             aria-controls={MENU_ID}
             data-cursor-hover
             className={`flex h-10 items-center rounded-full pr-[17px] font-label text-label focus-visible:rounded-full focus-visible:outline-offset-[-3px] ${
-              engaged ? "pl-[14px]" : "pl-1.5"
+              engaged ? "pl-[14px]" : "pl-[17px]"
             }`}
-            overClassName={`flex items-center pr-[17px] ${engaged ? "pl-[14px]" : "pl-1.5"}`}
+            overClassName={`flex items-center pr-[17px] ${engaged ? "pl-[14px]" : "pl-[17px]"}`}
           >
             <span aria-hidden="true" data-fill-icon className="relative grid h-[22px] overflow-hidden">
               <span

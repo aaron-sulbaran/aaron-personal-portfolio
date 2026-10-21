@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type FocusEvent, type MouseEvent } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type FocusEvent } from "react";
 import { Portal } from "@/components/Portal";
 import { Fill } from "@/components/fx/Fill";
 import { siteContent } from "@/lib/content";
@@ -8,17 +8,13 @@ import { FILL_PICK, FILL_TRANSITION } from "@/lib/fx/fill";
 import { isKeyboardFocus } from "@/lib/input/modality";
 import { getSoundtrackPlayer } from "@/lib/audio";
 import { getPlayFailed, getRestoredSoundtrack, startSoundtrack, subscribeSoundtrack, useSoundtrack } from "@/lib/soundtrack";
-import { DOCK, capsuleName, capsuleText, dockLabel, dockMode, pillStartsMusic, type DockLabel } from "@/lib/waveform/dock";
+import { DOCK, capsuleName, capsuleText, dockLabel, dockMode, type DockLabel } from "@/lib/waveform/dock";
 import { isPhone, subscribePhone } from "@/lib/waveform/layout";
-import { Cover, DockGlyph, EASE, PillSlot, glass } from "./PillParts";
-import { MarqueeTitle } from "./MarqueeTitle";
+import { DockGlyph, PillSlot, glass } from "./PillParts";
 import { PillAnnouncer, PillLabel, labelLine, useLabelHold } from "./PillLabel";
 import { GREETED_KEY } from "@/lib/home/firstVisit";
-import { PlayerCard } from "./PlayerCard";
 import { usePillFade } from "./usePillFade";
-import { usePillHover } from "./usePillHover";
 import { useReducedMotionLive } from "./useReducedMotionLive";
-
 
 function readGreeted(): boolean {
   try {
@@ -28,17 +24,17 @@ function readGreeted(): boolean {
   }
 }
 
-// The glass playback pill, docked at the bottom left on the wave's line
-// (lib/waveform/dock). From the band down it is there in every music state:
-// it fades in at its dock once the band is above the dock line (usePillFade),
-// opens with one line for the state (PillLabel), then collapses to a
-// 36px capsule: the track title, "Paused", "Music?" or "Music". Before a yes,
-// after a no, after a failed start, and while paused, one click plays;
-// only a playing pill grows the now-playing preview and opens the player
-// card. Every hidden layer
-// is inert, so nothing invisible is focusable. Portaled to body so no
-// transformed ancestor captures it. Phones have no pill; there the band and
-// the Menu's note are the controls.
+// The stock playback pill, docked at the bottom left on the wave's line
+// (lib/waveform/dock): the way back to the music when no music is playing.
+// From the band down it fades in at its dock once the band is above the dock
+// line (usePillFade), opens with one line for the state (PillLabel), then
+// collapses to a 36px capsule: "Music?" before an answer, "Music" after a no,
+// "Paused" for a restored yes, or the failure when the audio could not start.
+// One click plays, and the player (components/player) takes the isle: the pill
+// steps away for as long as the music is playing or paused in the player. Every
+// hidden layer is inert, so nothing invisible is focusable. Portaled to body so
+// no transformed ancestor captures it. Phones have no pill; there the band is
+// the control.
 export function PlaybackPill({ reached }: { reached: boolean }) {
   return (
     <Portal>
@@ -57,10 +53,7 @@ function PillInner({ reached }: { reached: boolean }) {
   const [labelsShown, setLabelsShown] = useState<ReadonlySet<DockLabel>>(() => new Set(["unanswered"]));
   const [wasFailed, setWasFailed] = useState(failed);
   const [held, setHeld] = useState({ pointer: false, focus: false });
-  const [keyboardOpen, setKeyboardOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
-  const capsuleRef = useRef<HTMLButtonElement | null>(null);
-  const restoreFocus = useRef(false);
   const c = siteContent.soundtrack;
 
   // A new failure speaks again, even if an earlier one already did.
@@ -87,8 +80,6 @@ function PillInner({ reached }: { reached: boolean }) {
   // its box holds still in place; once it is away the slots close, so each
   // fade in opens from closed.
   const face = shown ? mode : present ? lastFace : "hidden";
-  const [hover, send] = usePillHover(reduce, shown);
-  const expanded = hover.mode === "expanded";
 
   const markShown = (shownKind: DockLabel) => {
     setLabelsShown((labels) => (labels.has(shownKind) ? labels : new Set(labels).add(shownKind)));
@@ -99,40 +90,20 @@ function PillInner({ reached }: { reached: boolean }) {
       /* storage unavailable */
     }
   };
-  useLabelHold(kind, mode === "label" && landed, held.pointer || held.focus || expanded, markShown);
+  useLabelHold(kind, mode === "label" && landed, held.pointer || held.focus, markShown);
 
   const player = getSoundtrackPlayer();
   const [trackIndex, setTrackIndex] = useState(() => player.getSnapshot().trackIndex);
   useEffect(() => player.subscribe(() => setTrackIndex(player.getSnapshot().trackIndex)), [player]);
 
-  // Closing the card from inside it hands focus back to the capsule, once the
-  // commit has lifted the capsule's inert.
-  useEffect(() => {
-    if (hover.mode !== "collapsed" || !restoreFocus.current) return;
-    restoreFocus.current = false;
-    capsuleRef.current?.focus({ preventScroll: true });
-  }, [hover.mode]);
-
   if (phone) return null;
 
   const track = c.tracks[trackIndex];
-  const startsMusic = pillStartsMusic(music, failed);
-  const previewable = mode === "capsule" && !startsMusic;
-  const preview = hover.mode === "preview" && previewable;
 
   // Runs inside the click, which is what lets audio start under the browser's autoplay policy.
-  const press = (event: MouseEvent) => {
+  const press = () => {
     if (mode === "label") markShown(kind);
-    if (startsMusic) {
-      startSoundtrack();
-      return;
-    }
-    setKeyboardOpen(event.detail === 0);
-    send("open");
-  };
-  const collapse = () => {
-    restoreFocus.current = Boolean(document.activeElement?.closest("[data-pill]"));
-    send("collapse");
+    startSoundtrack();
   };
   // Only keyboard focus holds the label: a mouse click focuses the capsule too,
   // and that must not pin the label open.
@@ -149,27 +120,10 @@ function PillInner({ reached }: { reached: boolean }) {
     alignItems: "center",
     boxSizing: "border-box",
     minHeight: DOCK.capsulePx,
-    padding: preview ? "8px 16px 8px 8px" : "0 16px 0 13px",
+    padding: "0 16px 0 13px",
     borderRadius: 999,
     cursor: "pointer",
-    transition: reduce ? `opacity 280ms ease, ${FILL_TRANSITION}` : `opacity 280ms ease, transform 320ms ${EASE}, padding 300ms ease, ${FILL_TRANSITION}`,
-    opacity: expanded ? 0 : 1,
-    transform: reduce || !expanded ? "none" : "scale(0.92)",
-    pointerEvents: expanded ? "none" : "auto",
-  };
-
-  const tip: CSSProperties = {
-    ...glass,
-    position: "absolute",
-    left: 0,
-    bottom: "calc(100% + 10px)",
-    whiteSpace: "nowrap",
-    transform: hover.tip ? "translateY(0)" : "translateY(4px)",
-    opacity: hover.tip && preview ? 1 : 0,
-    transition: `opacity 220ms ease, transform 220ms ${EASE}`,
-    pointerEvents: "none",
-    padding: "6px 11px",
-    borderRadius: 999,
+    transition: `opacity 280ms ease, ${FILL_TRANSITION}`,
   };
 
   return (
@@ -198,48 +152,25 @@ function PillInner({ reached }: { reached: boolean }) {
           onBlur={blur}
           style={{ position: "relative", pointerEvents: shown ? "auto" : "none" }}
         >
-          <div aria-hidden="true" className="font-label text-label-sm text-muted" style={tip}>
-            {c.prompt}
-          </div>
           <Fill
-            ref={capsuleRef}
             {...FILL_PICK.capsule}
             className="pill-hit font-label text-label-sm text-foreground"
-            inert={expanded}
             onClick={press}
-            onMouseEnter={() => previewable && send("enter")}
-            onMouseLeave={() => send("leave")}
-            aria-label={capsuleName(capsuleText(music, track.title), startsMusic ? c.invite : c.ariaOpen)}
+            aria-label={capsuleName(capsuleText(music, track.title), c.invite)}
             data-cursor-hover
-            data-marquee-scope
             style={{ ...capsule, ["--pill-hit-inset" as string]: `${(DOCK.hitPx - DOCK.capsulePx) / 2}px` }}
-            overClassName={`flex items-center ${preview ? "py-2 pl-2 pr-4" : "pl-[13px] pr-4"} ${reduce ? "" : "transition-[padding] duration-300 ease-[ease]"}`}
+            overClassName="flex items-center pl-[13px] pr-4"
           >
-            <PillSlot visible={preview} maxWidth={40} reduce={reduce}>
-              <Cover size={38} cover={track.cover} title={track.title} />
-            </PillSlot>
-            <PillSlot visible={preview} maxWidth={190} reduce={reduce} before={12} after={12} block>
-              <MarqueeTitle text={track.title} maxWidth={190} active={preview} pauseOnHover={false} className="font-label text-label-sm text-foreground" />
-              <span className="block font-label text-label-sm text-muted">{track.artist}</span>
-            </PillSlot>
             <span className="relative -top-px flex">
               <DockGlyph music={music} />
             </span>
             <PillLabel line={line} open={face === "label"} reduce={reduce} />
-            <PillSlot visible={face === "capsule" && !preview} maxWidth={220} reduce={reduce} ms={DOCK.collapseMs} before={8}>
+            <PillSlot visible={face === "capsule"} maxWidth={220} reduce={reduce} ms={DOCK.collapseMs} before={8}>
               <span className={`font-label text-label-sm ${music === "on" ? "text-foreground" : "text-muted"}`}>
                 {capsuleText(music, track.title)}
               </span>
             </PillSlot>
           </Fill>
-          <PlayerCard
-            music={music}
-            expanded={expanded}
-            reduce={reduce}
-            focusOnOpen={keyboardOpen}
-            onCardLeave={() => send("cardLeave")}
-            onCollapse={collapse}
-          />
         </div>
       </div>
       <PillAnnouncer line={mode === "label" ? line : null} />

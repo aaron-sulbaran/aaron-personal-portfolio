@@ -4,9 +4,7 @@ import { siteContent } from "@/lib/content";
 const { listen, soundtrack } = siteContent;
 
 describe("the soundtrack band's copy", () => {
-  it("credits the songs to their artists and claims no license", () => {
-    expect(soundtrack.creditLine).toBe("Songs I like, as instrumentals, credited to their artists in the player.");
-    expect(soundtrack.creditLine).not.toMatch(/licen[sc]|\bCC\b|royalt|copyright|adapted/i);
+  it("credits each song to its artist", () => {
     for (const track of soundtrack.tracks) expect(track.credit).toContain(`"${track.title}" by ${track.artist}`);
   });
 
@@ -17,7 +15,7 @@ describe("the soundtrack band's copy", () => {
   });
 
   it("uses sentence case and no em dash", () => {
-    const strings: string[] = [...Object.values(listen), soundtrack.creditLine];
+    const strings: string[] = Object.values(listen);
     for (const text of strings) {
       expect(text).not.toMatch(/\u2014/);
       expect(text[0]).toBe(text[0].toUpperCase());

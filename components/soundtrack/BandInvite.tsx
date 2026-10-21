@@ -5,7 +5,8 @@ import { Fill } from "@/components/fx/Fill";
 import { InlineCopy } from "@/components/inline/InlineCopy";
 import { siteContent } from "@/lib/content";
 import { FILL_PICK } from "@/lib/fx/fill";
-import { usePlayerBridge } from "@/lib/player/bridge";
+import { bandPlayerMounted } from "@/lib/player/machine";
+import { usePlayerView } from "@/lib/player/viewStore";
 import {
   initSoundtrackFromStorage,
   pauseSoundtrack,
@@ -33,11 +34,10 @@ import { DeclinedNote } from "./DeclinedNote";
 export function BandInvite() {
   const music = useSoundtrack();
   const c = siteContent.listen;
-  // The music player lab (dev only): with its sheet in the band the sheet is the feedback, so the status sentence and the Pause or Resume go; in production the bridge always reads today's values.
-  const bridge = usePlayerBridge();
-  const sheetOwns = bridge.status === "hidden";
-  // Nothing of the band's own shows then (the sheet is the feedback), so its rows close up under the heading instead of holding their height: the sheet sits right under the heading on a phone, and the wave's keep-out shrinks to the heading on a desktop. The controls keep their width, where an answer's ripple starts.
-  const closedUp = sheetOwns && (music === "on" || music === "paused");
+  // With the player in the band the player is the feedback, so the status sentence and the Pause or Resume go.
+  const playerOwns = bandPlayerMounted(usePlayerView());
+  // Nothing of the band's own shows then, so its rows close up under the heading instead of holding their height: the player sits right under the heading on a phone, and the wave's keep-out shrinks to the heading on a desktop. The controls keep their width, where an answer's ripple starts.
+  const closedUp = playerOwns && (music === "on" || music === "paused");
   // Hydration renders the server snapshot, so the desktop copy matches the server HTML; the phone copy applies after hydration, while its layer is still hidden.
   const phone = useSyncExternalStore(subscribePhone, isPhone, () => false);
   const acceptedNote = phone ? c.acceptedNotePhone : c.acceptedNote;
@@ -79,12 +79,12 @@ export function BandInvite() {
               {c.decline}
             </Fill>
           </Layer>
-          <Layer shown={music === "on" && !sheetOwns}>
+          <Layer shown={music === "on" && !playerOwns}>
             <Fill {...FILL_PICK.band} shape="rect" type="button" data-control="on" onClick={act(pauseSoundtrack)} data-cursor-hover {...SMALL}>
               {c.pause}
             </Fill>
           </Layer>
-          <Layer shown={music === "paused" && !sheetOwns}>
+          <Layer shown={music === "paused" && !playerOwns}>
             <Fill {...FILL_PICK.band} shape="rect" type="button" data-control="paused" onClick={act(startSoundtrack)} data-cursor-hover {...SMALL}>
               {c.resume}
             </Fill>
@@ -95,23 +95,14 @@ export function BandInvite() {
         <Layer shown={music === "before"}>
           <p><InlineCopy source={c.body} /></p>
         </Layer>
-        <Layer shown={music === "on" && !sheetOwns}>
+        <Layer shown={music === "on" && !playerOwns}>
           <p><InlineCopy source={acceptedNote} /></p>
         </Layer>
-        <Layer shown={music === "paused" && !sheetOwns}>
+        <Layer shown={music === "paused" && !playerOwns}>
           <p>{c.pausedNote}</p>
         </Layer>
         <Layer shown={music === "off"}>
-          {bridge.notNow === "buttons" ? (
-            <DeclinedNote onPlay={act(startSoundtrack)} />
-          ) : (
-            <p>
-              {c.declinedNote}{" "}
-              <Fill {...FILL_PICK.band} shape="rect" type="button" onClick={act(startSoundtrack)} data-cursor-hover {...SMALL} className={`md:hidden ${SMALL.className}`}>
-                {c.accept}
-              </Fill>
-            </p>
-          )}
+          <DeclinedNote onPlay={act(startSoundtrack)} />
         </Layer>
       </div>
     </div>
@@ -122,6 +113,7 @@ function Layer({ shown, className = "", children }: { shown: boolean; className?
   return (
     <div
       inert={!shown}
+      aria-hidden={shown ? undefined : true}
       className={`col-start-1 row-start-1 transition-opacity duration-300 ${shown ? "opacity-100 delay-150" : "opacity-0"} ${className}`}
     >
       {children}

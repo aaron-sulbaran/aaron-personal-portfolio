@@ -33,10 +33,14 @@ describe("the label face tokens", () => {
   });
 });
 
-describe("the playback pill and player card", () => {
+describe("the playback pill and the player", () => {
   it("take the label face from classes, never inline font styles", () => {
-    for (const file of ["PlaybackPill", "PillParts", "PillLabel", "PlayerCard"]) {
-      const source = readFileSync(`components/soundtrack/${file}.tsx`, "utf8");
+    const files = [
+      ...["PlaybackPill", "PillParts", "PillLabel"].map((file) => `components/soundtrack/${file}.tsx`),
+      ...["BandPlayer", "IslandFace", "IslePill", "NowPlaying", "PhoneIsland", "PlayerBits", "SeekBar", "TrackList", "Transport"].map((file) => `components/player/${file}.tsx`),
+    ];
+    for (const file of files) {
+      const source = readFileSync(file, "utf8");
       expect(source, file).not.toContain("var(--font-sans)");
       expect(source, file).not.toMatch(/fontSize: 1[0-2]\b/);
       expect(source, file).not.toMatch(/fontWeight: 500/);

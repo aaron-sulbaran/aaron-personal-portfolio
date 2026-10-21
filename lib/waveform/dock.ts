@@ -1,11 +1,11 @@
 import { siteContent } from "@/lib/content";
 import type { SoundtrackState } from "@/lib/soundtrack";
 
-// The playback pill's dock rules, pure (spec section 5). The pill sits at the
-// bottom left on the dock's line from the band down, in every music
-// state, and is hidden through the hero and the book (the Menu's note covers
-// audible music there) and on phones. It lands open with one line of copy per
-// state, once per page load, then collapses to the capsule.
+// The stock playback pill's dock rules, pure (spec section 5). The pill sits at
+// the bottom left on the dock's line from the band down whenever the player
+// (components/player) is not the pill, and is hidden through the hero and the
+// book and on phones. It lands open with one line of copy per state, once per
+// page load, then collapses to the capsule.
 export type DockMode = "hidden" | "label" | "capsule";
 export type DockLabel = "accepted" | "declined" | "unanswered" | "returning" | "failed";
 
@@ -42,12 +42,6 @@ export function dockLabel(input: DockInput): DockLabel {
   if (input.music === "off") return "declined";
   if (input.music === "before") return "unanswered";
   return "accepted";
-}
-
-// A click plays instead of opening the card: before a yes, after a no, after a
-// failed start, and while paused. Only a playing pill opens the player.
-export function pillStartsMusic(music: SoundtrackState, failed: boolean): boolean {
-  return failed || music !== "on";
 }
 
 export function capsuleText(music: SoundtrackState, trackTitle: string): string {

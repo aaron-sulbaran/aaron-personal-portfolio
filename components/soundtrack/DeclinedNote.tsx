@@ -8,10 +8,10 @@ import { setFrozen, useFrozen } from "@/lib/waveform/freeze";
 import { PRIMARY, QUIET } from "./bandButtons";
 import { useReducedMotionLive } from "./useReducedMotionLive";
 
-// The line after Not now, in the music player lab's two-button form: the "No
-// problem" sentence with Play it and Freeze the wave beside it, in the same
-// two looks as the first visit's Play it and Not now (bandButtons). The freeze
-// toggle is not offered under reduced motion, since nothing moves then.
+// The line after Not now: the "No problem" sentence with Play it and Freeze the
+// wave beside it, in the same two looks as the first visit's Play it and Not
+// now (bandButtons). The freeze toggle is not offered under reduced motion,
+// since nothing moves then.
 export function DeclinedNote({ onPlay }: { onPlay: MouseEventHandler<HTMLButtonElement> }) {
   const c = siteContent.listen;
   const frozen = useFrozen();

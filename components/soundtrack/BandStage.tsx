@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { PlayerLabMount } from "@/components/player/PlayerLabMount";
+import { BandPlayer } from "@/components/player/BandPlayer";
 import { siteContent } from "@/lib/content";
-import { pillReached, usePlayerBridge } from "@/lib/player/bridge";
+import { playerOwnsPill } from "@/lib/player/machine";
+import { usePlayerView } from "@/lib/player/viewStore";
 import { useSoundtrack } from "@/lib/soundtrack";
 import { DOCK } from "@/lib/waveform/dock";
 import { setFrozen, useFrozen } from "@/lib/waveform/freeze";
@@ -12,15 +13,15 @@ import { useBandPassed } from "./useBandPassed";
 import { WaveCanvas } from "./WaveCanvas";
 import { useReducedMotionLive } from "./useReducedMotionLive";
 
-// The band's live half: the waveform, the credit and the pill. One
+// The band's live half: the player, the waveform and the stock pill. One
 // IntersectionObserver on the band (its top margin is the dock line,
 // DOCK.passedPx) runs the band's wave while it shows; one ScrollTrigger
 // (useBandPassed) decides from the scroll position when the reader has passed
-// the band, and the pill fades in at its dock. Phones stack the wave under the
-// copy and have no pill. The freeze toggle stays here until music is chosen
-// (the player card carries it then on desktop); the run breathes before an
-// answer and the whole line after either answer, so a decliner can always
-// freeze it.
+// the band, and the stock pill fades in at its dock, unless the player is the
+// pill (the music is playing or paused in it). Phones stack the wave under the
+// copy and have no stock pill. The "Freeze the wave" link stays here in every
+// state but a decline, where "Not now" brings it beside the question's answer;
+// it is the one freeze there is while the music plays.
 export function BandStage() {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const [inView, setInView] = useState(false);
@@ -28,10 +29,8 @@ export function BandStage() {
   const music = useSoundtrack();
   const reduce = useReducedMotionLive();
   const c = siteContent.listen;
-  const s = siteContent.soundtrack;
   const passed = useBandPassed();
-  // The music player lab (dev only) can hold the pill up or away and move the credit line; in production the bridge always reads today's values.
-  const bridge = usePlayerBridge();
+  const view = usePlayerView();
   const [focusHeld, setFocusHeld] = useState(false);
 
   useEffect(() => {
@@ -47,20 +46,15 @@ export function BandStage() {
   }, []);
 
   // Nothing moves under reduced motion, so the toggle has nothing to do then.
-  // The player card carries the toggle on desktop while music is on or paused;
-  // before a choice and after a decline the capsule's click plays instead, so
-  // the band keeps it there. Phones always keep it here. A toggle that just
-  // let the wave go keeps the keyboard's focus, so it stays live until focus
-  // leaves it.
+  // After "Not now" the freeze is a button beside the "No problem" line
+  // (DeclinedNote), so this link goes. A toggle that just let the wave go keeps
+  // the keyboard's focus, so it stays live until focus leaves it.
   const freezable = !reduce;
-  const inCard = music === "on" || music === "paused";
-  // The lab (dev only) puts the toggle beside the No problem line after Not now, and this link goes then. Its own pill replaces the pill's card, which carried the toggle while music plays, so the link stays in the band on a desktop too.
-  const moved = bridge.notNow === "buttons" && music === "off";
-  const live = (freezable || focusHeld) && !moved;
+  const live = (freezable || focusHeld) && music !== "off";
 
   return (
     <>
-      <PlayerLabMount />
+      <BandPlayer />
       <div ref={stageRef} data-wave-band-line className="relative h-[176px] md:absolute md:inset-0 md:h-auto">
         <WaveCanvas active={inView} frozen={frozen} />
       </div>
@@ -74,20 +68,15 @@ export function BandStage() {
             onFocus={() => setFocusHeld(true)}
             onBlur={() => setFocusHeld(false)}
             data-cursor-hover
-            className={`rounded-sm underline ${inCard && !bridge.labPill ? "md:hidden" : ""} decoration-1 underline-offset-[3px] text-accent transition-[color,opacity] duration-200 hover:text-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+            className={`rounded-sm underline decoration-1 underline-offset-[3px] text-accent transition-[color,opacity] duration-200 hover:text-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
               live ? "opacity-100" : "opacity-0"
             }`}
           >
             {frozen ? c.unfreeze : c.freeze}
           </button>
-          {bridge.credit === "band" && !bridge.creditBelow && (
-            <p data-wave-avoid className="ml-auto">
-              {s.creditLine}
-            </p>
-          )}
         </div>
       </div>
-      <PlaybackPill reached={pillReached(bridge.pill, passed)} />
+      <PlaybackPill reached={passed && !playerOwnsPill(view)} />
     </>
   );
 }

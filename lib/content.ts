@@ -64,13 +64,10 @@ export const siteContent = {
     themeToggleToLight: "Light mode",
     themeAriaLabelToDark: "Switch to dark mode",
     themeAriaLabelToLight: "Switch to light mode",
-    // The pill (components/menu): its label rolls to "Close" while the panel
-    // is open, and the Listen dot sits beside it as its own button.
+    // The pill (components/menu): its label rolls to "Close" while the panel is open.
     pillLabel: "Menu",
     closeLabel: "Close",
     dialogLabel: "Site menu",
-    // One name for the note; aria-pressed says whether it plays.
-    listenAriaLabel: "Play my soundtrack",
     // The header bar past the hero (components/SiteNav.tsx).
     navAriaLabel: "Sections",
     markAriaLabel: "Back to top",
@@ -357,7 +354,6 @@ export const siteContent = {
   soundtrack: {
     invite: "Play the soundtrack",
     coverAlt: "Cover art for",
-    prompt: "Click to open player",
     // The pill's label as it lands on the wave (one per state, once per page
     // load), then the collapsed capsule's text (components/soundtrack/PillLabel).
     dockAccepted: "Music and volume live here.",
@@ -367,26 +363,13 @@ export const siteContent = {
     capsulePaused: "Paused",
     capsuleUnanswered: "Music?",
     capsuleOff: "Music",
-    statusPlaying: "Now playing",
-    statusPaused: "Paused",
-    statusReady: "Soundtrack ready",
-    openInSpotify: "Open in Spotify",
-    menuToggleOn: "Soundtrack on",
-    menuTogglePaused: "Soundtrack paused",
-    menuToggleOff: "Soundtrack off",
-    // The panel chip's one name; aria-pressed says whether I'm opted in.
-    menuAriaLabel: "Soundtrack",
-    ariaOpen: "Open soundtrack player",
-    ariaCollapse: "Collapse player",
     ariaSeek: "Seek track position",
     ariaPrevious: "Previous track",
     ariaPlay: "Play",
     ariaPause: "Pause",
     ariaNext: "Next track",
-    ariaVolume: "Volume",
-    // The band's lower-right line (public/audio/CREDITS.md has each track's
-    // credit; the player card shows the title, artist and Spotify link).
-    creditLine: "Songs I like, as instrumentals, credited to their artists in the player.",
+    // public/audio/CREDITS.md has each track's credit; the player shows the
+    // title, artist and Spotify link.
     tracks: liveTracks,
   },
   // The holding page's deck (components/HoldingDeck.tsx) draws these five; nothing else reads them.
