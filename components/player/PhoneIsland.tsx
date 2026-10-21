@@ -8,7 +8,7 @@ import { compactWidth, expandedWidth, islandTop } from "@/lib/player/island";
 import type { PhoneModel } from "@/lib/player/settings";
 import { useEscapeKey } from "@/lib/modal";
 import { IslandFace } from "./IslandFace";
-import { SheetPlayer } from "./SheetPlayer";
+import { NowPlaying } from "./NowPlaying";
 import { useIslandSpec } from "./useIslandSpec";
 import { useSwipeUp } from "./useSwipeUp";
 
@@ -26,8 +26,9 @@ const SCOPE = {
 // The phone's island: a black pill at the top of the screen, just under the
 // status bar (a page cannot draw into it in Safari), sized to the phone's
 // Dynamic Island where the model is known. Collapsed it is a live activity;
-// a tap grows the compact sheet down from the top, and a tap outside, a swipe
-// up, Escape or its close button folds it back. Reduced motion fades instead
+// a tap grows the full player down from the top, and a tap outside, a swipe
+// up or Escape folds it back (a screen-reader-only button does the same, so
+// the player has no close button to see). Reduced motion fades instead
 // of growing. Portaled to body on the pill's z level, with a backdrop one
 // level under it.
 export function PhoneIsland({ reduce, model, credit }: { reduce: boolean; model: PhoneModel; credit: boolean }) {
@@ -93,8 +94,11 @@ export function PhoneIsland({ reduce, model, credit }: { reduce: boolean; model:
         </div>
         <div style={{ display: "grid", gridTemplateRows: open ? "1fr" : "0fr", opacity: open ? 1 : 0, transition: rows }} inert={!open}>
           <div style={{ minHeight: 0, overflow: "hidden" }}>
-            <div style={{ padding: 14 }}>
-              <SheetPlayer bare credit={credit} active={open} reduce={reduce} layout="stack" closeLabel={playerStrings.islandClose} onClose={close} />
+            <div style={{ padding: 16 }}>
+              <NowPlaying credit={credit} active={open} reduce={reduce} />
+              <button type="button" className="sr-only" onClick={close}>
+                {playerStrings.islandClose}
+              </button>
             </div>
           </div>
         </div>

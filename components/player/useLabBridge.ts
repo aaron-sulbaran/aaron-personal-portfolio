@@ -19,8 +19,10 @@ type Args = {
 //   creditBelow  the card is open over the line's corner, so it rides under it
 //   status       the sheet is in the band, so the band drops its status
 //   notNow       two buttons beside the No problem line
-//   waveWait     the wave waits for the band to scroll away
-//   bandFull     the band's run is drawn whole whenever the band shows
+//   waveWait     the wave is one line that follows the scroll only while the band
+//                is above the release line, and waits there after an answer
+//   idle         the idle ripple's strength (0 off)
+//   labPill      the lab's pill is the isle, so the band keeps its freeze link
 export function useLabBridge({ settings, active, phone, view }: Args) {
   const on = settings.enabled;
   useEffect(() => resetBridge, []);
@@ -35,11 +37,11 @@ export function useLabBridge({ settings, active, phone, view }: Args) {
     return () => setBridge({ creditBelow: false });
   }, [creditBelow]);
 
-  const sheetInBand = active && settings.onPlay === "sheet" && settings.statusLine === "hidden" && bandPlayerMounted(view);
+  const playerInBand = active && settings.statusLine === "hidden" && bandPlayerMounted(view);
   useEffect(() => {
-    setBridge({ status: sheetInBand ? "hidden" : "today" });
+    setBridge({ status: playerInBand ? "hidden" : "today" });
     return () => setBridge({ status: "today" });
-  }, [sheetInBand]);
+  }, [playerInBand]);
 
   const notNow = on ? settings.notNow : "today";
   useEffect(() => {
@@ -53,8 +55,14 @@ export function useLabBridge({ settings, active, phone, view }: Args) {
     return () => setBridge({ waveWait: null });
   }, [waveWait]);
 
+  const idle = on && settings.idleRipple === "ripple" ? settings.idleStrength : 0;
   useEffect(() => {
-    setBridge({ bandFull: on });
-    return () => setBridge({ bandFull: false });
-  }, [on]);
+    setBridge({ idle });
+    return () => setBridge({ idle: 0 });
+  }, [idle]);
+
+  useEffect(() => {
+    setBridge({ labPill: active });
+    return () => setBridge({ labPill: false });
+  }, [active]);
 }

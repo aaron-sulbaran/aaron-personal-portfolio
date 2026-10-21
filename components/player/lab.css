@@ -6,7 +6,7 @@
    "hidden" in hide mode while the footer reaches the isle. translate is its own
    property, so it never touches the pill's, the sheet's or the bar's transforms. */
 html[data-lab-isle] [data-pill],
-html[data-lab-isle] [data-lab-docked] {
+html[data-lab-isle] [data-lab-pill] {
   translate: 0 calc(var(--lab-isle-lift, 0px) * -1);
 }
 
@@ -15,7 +15,7 @@ html[data-lab-isle] [data-lab-bar] {
 }
 
 html[data-lab-isle="hidden"] [data-pill],
-html[data-lab-isle="hidden"] [data-lab-docked],
+html[data-lab-isle="hidden"] [data-lab-pill],
 html[data-lab-isle="hidden"] [data-lab-bar] {
   opacity: 0 !important;
   pointer-events: none !important;
@@ -50,5 +50,95 @@ html[data-lab-isle="hidden"] [data-pill] {
   .lab-island-bar {
     animation: none;
     transform: scaleY(0.6);
+  }
+}
+
+/* The seek bar: a thin track filled to the playhead in the accent (--lab-seek,
+   written by SeekBar), and a small thumb that shows on hover, on focus and while
+   it is dragged (always on a touch screen, where there is no hover). Colours are
+   the page's tokens, which the island re-points to its own. */
+.lab-seek {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 22px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+  --lab-seek: 0%;
+}
+
+.lab-seek:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+.lab-seek::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(to right, var(--color-accent) var(--lab-seek), var(--color-border) var(--lab-seek));
+}
+
+.lab-seek::-moz-range-track {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--color-border);
+}
+
+.lab-seek::-moz-range-progress {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--color-accent);
+}
+
+.lab-seek::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  margin-top: -4px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--color-foreground);
+  transform: scale(0);
+  transition: transform 140ms ease;
+}
+
+.lab-seek::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--color-foreground);
+  transform: scale(0);
+  transition: transform 140ms ease;
+}
+
+.lab-seek:hover::-webkit-slider-thumb,
+.lab-seek:focus-visible::-webkit-slider-thumb,
+.lab-seek:active::-webkit-slider-thumb {
+  transform: scale(1);
+}
+
+.lab-seek:hover::-moz-range-thumb,
+.lab-seek:focus-visible::-moz-range-thumb,
+.lab-seek:active::-moz-range-thumb {
+  transform: scale(1);
+}
+
+@media (pointer: coarse) {
+  .lab-seek::-webkit-slider-thumb {
+    transform: scale(1);
+  }
+  .lab-seek::-moz-range-thumb {
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lab-seek::-webkit-slider-thumb,
+  .lab-seek::-moz-range-thumb {
+    transition: none;
   }
 }

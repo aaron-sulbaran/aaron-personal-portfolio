@@ -20,8 +20,7 @@ function zoneNow(line: number): Zone {
 // The lab player's view, driven by the pure machine (lib/player/machine): the
 // music starting or stopping, the band crossing the hand-off line, and the
 // visitor's own close and open. It also tells the real pill where it stands
-// (the bridge): held up when the player has collapsed into it, away while the
-// player stands in its place.
+// (the bridge): away whenever the lab's own pill is the isle.
 export function usePlayerView(config: MachineConfig, active: boolean, line: number) {
   const [state, send] = useReducer((current: PlayerState, event: PlayerEvent) => step(current, event, config), CLOSED);
   const { past, ahead } = useBandLine(line, active);
@@ -37,9 +36,9 @@ export function usePlayerView(config: MachineConfig, active: boolean, line: numb
   });
 
   useEffect(() => {
-    setBridge({ pill: pillHold(state.view, ahead) });
+    setBridge({ pill: pillHold(state.view) });
     return () => setBridge({ pill: "auto" });
-  }, [state.view, ahead]);
+  }, [state.view]);
 
   const arrived = useCallback(() => send({ type: "arrived" }), []);
   const close = useCallback(() => send({ type: "close", pillReady: (bandRect()?.bottom ?? Infinity) <= DOCK.passedPx }), []);

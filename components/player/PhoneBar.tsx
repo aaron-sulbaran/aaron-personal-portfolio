@@ -55,7 +55,7 @@ export function PhoneBar({ reduce }: { reduce: boolean }) {
           className="min-w-0 flex-1 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           <MarqueeTitle text={track.title} className="font-label text-label-sm text-foreground" pauseOnHover={false} />
-          <span className="block truncate font-label text-label-sm text-muted">{track.artist}</span>
+          <MarqueeTitle text={track.artist} className="font-label text-label-sm text-muted" pauseOnHover={false} />
         </button>
         <PlayButton controls={controls} size={36} />
         <StepButton controls={controls} direction={1} />

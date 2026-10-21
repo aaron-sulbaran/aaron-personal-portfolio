@@ -54,8 +54,8 @@ export function BandStage() {
   // leaves it.
   const freezable = !reduce;
   const inCard = music === "on" || music === "paused";
-  // The lab (dev only) puts the toggle elsewhere: beside the No problem line after Not now, and in its sheet while music is on or paused. Where it does, this link goes.
-  const moved = (bridge.notNow === "buttons" && music === "off") || (bridge.status === "hidden" && inCard);
+  // The lab (dev only) puts the toggle beside the No problem line after Not now, and this link goes then. Its own pill replaces the pill's card, which carried the toggle while music plays, so the link stays in the band on a desktop too.
+  const moved = bridge.notNow === "buttons" && music === "off";
   const live = (freezable || focusHeld) && !moved;
 
   return (
@@ -74,7 +74,7 @@ export function BandStage() {
             onFocus={() => setFocusHeld(true)}
             onBlur={() => setFocusHeld(false)}
             data-cursor-hover
-            className={`rounded-sm underline ${inCard ? "md:hidden" : ""} decoration-1 underline-offset-[3px] text-accent transition-[color,opacity] duration-200 hover:text-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+            className={`rounded-sm underline ${inCard && !bridge.labPill ? "md:hidden" : ""} decoration-1 underline-offset-[3px] text-accent transition-[color,opacity] duration-200 hover:text-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
               live ? "opacity-100" : "opacity-0"
             }`}
           >
