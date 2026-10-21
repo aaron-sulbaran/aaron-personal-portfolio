@@ -33,6 +33,8 @@ export interface MachineConfig {
   backUp: BackUp;
   phone: boolean;
   phoneMode: PhoneMode;
+  // A desktop band wide enough (from 1024px) to hold the card beside the band's copy; narrower, the player docks instead.
+  roomy: boolean;
   reduce: boolean;
 }
 
@@ -63,7 +65,7 @@ export function step(state: PlayerState, event: PlayerEvent, config: MachineConf
     case "started": {
       if (config.onPlay === "today") return CLOSED;
       if (config.phone) return event.zone === "in" || config.phoneMode === "band" ? band : { view: "pill", home: "band" };
-      return event.zone === "in" ? band : { view: "docked", home: "dock" };
+      return event.zone === "in" && config.roomy ? band : { view: "docked", home: "dock" };
     }
     case "line": {
       const how = handoff(config);

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { bandPlayerMounted, CLOSED, handoff, pillHold, step, type MachineConfig, type PlayerEvent, type PlayerState } from "./machine";
 
-const desktop: MachineConfig = { onPlay: "card", intoIsle: "morph", backUp: "reopen", phone: false, phoneMode: "band", reduce: false };
+const desktop: MachineConfig = { onPlay: "card", intoIsle: "morph", backUp: "reopen", phone: false, phoneMode: "band", roomy: true, reduce: false };
 const phone: MachineConfig = { ...desktop, phone: true, phoneMode: "bar" };
 const run = (config: MachineConfig, events: PlayerEvent[], from: PlayerState = CLOSED) => events.reduce((state, event) => step(state, event, config), from);
 
@@ -18,6 +18,10 @@ describe("starting the music", () => {
     for (const zone of ["ahead", "past"] as const) {
       expect(step(CLOSED, { type: "started", zone }, desktop)).toEqual({ view: "docked", home: "dock" });
     }
+  });
+
+  it("docks even with the band on screen when the window is too narrow to hold the card beside the copy", () => {
+    expect(step(CLOSED, { type: "started", zone: "in" }, { ...desktop, roomy: false })).toEqual({ view: "docked", home: "dock" });
   });
 
   it("opens a phone's player in the band, or as the bar when the bar is chosen and the band is away", () => {

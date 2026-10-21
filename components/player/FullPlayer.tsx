@@ -34,7 +34,7 @@ export function FullPlayer({ layout, credit, active, reduce, closeLabel, onClose
       data-lab-player="card"
       data-marquee-scope
       style={{ ...glass, borderRadius: 22 }}
-      className={`flex w-full flex-col gap-3 p-4 ${wide ? "md:w-[360px] min-[1360px]:w-[600px] min-[1360px]:flex-row min-[1360px]:gap-5" : ""}`}
+      className={`flex w-full flex-col gap-3 p-4 ${wide ? "lg:w-[360px] min-[1360px]:w-[600px] min-[1360px]:flex-row min-[1360px]:gap-5" : ""}`}
     >
       <div className={`flex min-w-0 flex-col gap-3 ${wide ? "min-[1360px]:w-[212px] min-[1360px]:flex-none" : ""}`}>
         <div className="flex items-center gap-3.5">
@@ -75,7 +75,7 @@ export function FullPlayer({ layout, credit, active, reduce, closeLabel, onClose
             )}
           </div>
         </div>
-        <div className={`min-h-[112px] max-h-[calc(100vh-440px)] overflow-y-auto ${wide ? "min-[1360px]:max-h-[196px] min-[1360px]:min-h-0" : ""}`}>
+        <div className={`overflow-y-auto ${wide ? "max-h-[132px] min-[1360px]:max-h-[196px]" : "min-h-[112px] max-h-[calc(100vh-440px)]"}`}>
           <TrackList currentIndex={controls.snap.trackIndex} music={controls.music} onPlay={controls.playRow} dense={wide} />
         </div>
       </div>

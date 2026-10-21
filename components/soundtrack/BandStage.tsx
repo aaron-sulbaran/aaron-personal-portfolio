@@ -78,7 +78,7 @@ export function BandStage() {
           >
             {frozen ? c.unfreeze : c.freeze}
           </button>
-          {bridge.credit === "band" && (
+          {bridge.credit === "band" && !bridge.creditBelow && (
             <p data-wave-avoid className="ml-auto">
               {s.creditLine}
             </p>
