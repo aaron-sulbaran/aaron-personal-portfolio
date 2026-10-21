@@ -4,15 +4,20 @@ import { useEffect, useState } from "react";
 import { getSoundtrackPlayer, type PlayerSnapshot } from "@/lib/audio";
 import { siteContent } from "@/lib/content";
 import { rowAction } from "@/lib/player/tracks";
+import { cycleRepeatMode, skipNext, skipPrevious, toggleShuffle, useQueue } from "@/lib/player/queueStore";
 import { pauseSoundtrack, startSoundtrack, useSoundtrack } from "@/lib/soundtrack";
 
+const POLL_MS = 250;
+
 // The lab player's one source for transport: the soundtrack store for the
-// music state, the audio player for the track, playhead and volume. The
-// playhead is polled only while a surface shows it and the music plays. Every
-// write runs inside the click that asked for it, which is what lets audio
-// start under the browser's autoplay policy.
+// music state, the audio player for the track, playhead and volume, and the
+// queue store for shuffle, repeat, next and previous. The playhead is polled
+// only while a surface shows it and the music plays. Every write runs inside
+// the click that asked for it, which is what lets audio start under the
+// browser's autoplay policy.
 export function usePlayerControls(active: boolean) {
   const music = useSoundtrack();
+  const queue = useQueue();
   const playing = music === "on";
   const player = getSoundtrackPlayer();
   const [snap, setSnap] = useState<PlayerSnapshot>(() => player.getSnapshot());
@@ -28,7 +33,7 @@ export function usePlayerControls(active: boolean) {
     if (!active) return;
     const sync = () => setPosition(player.getPosition());
     const first = requestAnimationFrame(sync);
-    const id = playing ? setInterval(sync, 500) : undefined;
+    const id = playing ? setInterval(sync, POLL_MS) : undefined;
     return () => {
       cancelAnimationFrame(first);
       clearInterval(id);
@@ -40,16 +45,20 @@ export function usePlayerControls(active: boolean) {
     playing,
     snap,
     position,
+    queue,
     track: siteContent.soundtrack.tracks[snap.trackIndex],
     seek: (seconds: number) => {
       player.seek(seconds);
       setPosition(seconds);
     },
-    // From the player's live index, so two quick presses never land on the same track.
+    // Through the queue, so shuffle and repeat decide where it goes; the playhead restarts with the track.
     step: (direction: number) => {
-      player.selectTrack(player.getSnapshot().trackIndex + direction, playing);
+      if (direction < 0) skipPrevious();
+      else skipNext();
       setPosition(0);
     },
+    toggleShuffle,
+    cycleRepeat: cycleRepeatMode,
     toggle: () => (playing ? pauseSoundtrack() : startSoundtrack()),
     playRow: (index: number) => {
       const action = rowAction(index, player.getSnapshot().trackIndex, playing);
