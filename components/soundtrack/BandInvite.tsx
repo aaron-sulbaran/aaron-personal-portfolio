@@ -5,6 +5,7 @@ import { Fill } from "@/components/fx/Fill";
 import { InlineCopy } from "@/components/inline/InlineCopy";
 import { siteContent } from "@/lib/content";
 import { FILL_PICK } from "@/lib/fx/fill";
+import { usePlayerBridge } from "@/lib/player/bridge";
 import {
   initSoundtrackFromStorage,
   pauseSoundtrack,
@@ -13,6 +14,8 @@ import {
   useSoundtrack,
 } from "@/lib/soundtrack";
 import { isPhone, subscribePhone } from "@/lib/waveform/layout";
+import { PRIMARY, QUIET, SMALL } from "./bandButtons";
+import { DeclinedNote } from "./DeclinedNote";
 
 // The band's copy and controls, the one place the music is offered. The
 // heading is the question; the controls beside it and the note under it swap
@@ -30,6 +33,9 @@ import { isPhone, subscribePhone } from "@/lib/waveform/layout";
 export function BandInvite() {
   const music = useSoundtrack();
   const c = siteContent.listen;
+  // The music player lab (dev only): with its sheet in the band the sheet is the feedback, so the status sentence and the Pause or Resume go; in production the bridge always reads today's values.
+  const bridge = usePlayerBridge();
+  const sheetOwns = bridge.status === "hidden";
   // Hydration renders the server snapshot, so the desktop copy matches the server HTML; the phone copy applies after hydration, while its layer is still hidden.
   const phone = useSyncExternalStore(subscribePhone, isPhone, () => false);
   const acceptedNote = phone ? c.acceptedNotePhone : c.acceptedNote;
@@ -71,12 +77,12 @@ export function BandInvite() {
               {c.decline}
             </Fill>
           </Layer>
-          <Layer shown={music === "on"}>
+          <Layer shown={music === "on" && !sheetOwns}>
             <Fill {...FILL_PICK.band} shape="rect" type="button" data-control="on" onClick={act(pauseSoundtrack)} data-cursor-hover {...SMALL}>
               {c.pause}
             </Fill>
           </Layer>
-          <Layer shown={music === "paused"}>
+          <Layer shown={music === "paused" && !sheetOwns}>
             <Fill {...FILL_PICK.band} shape="rect" type="button" data-control="paused" onClick={act(startSoundtrack)} data-cursor-hover {...SMALL}>
               {c.resume}
             </Fill>
@@ -87,19 +93,23 @@ export function BandInvite() {
         <Layer shown={music === "before"}>
           <p><InlineCopy source={c.body} /></p>
         </Layer>
-        <Layer shown={music === "on"}>
+        <Layer shown={music === "on" && !sheetOwns}>
           <p><InlineCopy source={acceptedNote} /></p>
         </Layer>
-        <Layer shown={music === "paused"}>
+        <Layer shown={music === "paused" && !sheetOwns}>
           <p>{c.pausedNote}</p>
         </Layer>
         <Layer shown={music === "off"}>
-          <p>
-            {c.declinedNote}{" "}
-            <Fill {...FILL_PICK.band} shape="rect" type="button" onClick={act(startSoundtrack)} data-cursor-hover {...SMALL} className={`md:hidden ${SMALL.className}`}>
-              {c.accept}
-            </Fill>
-          </p>
+          {bridge.notNow === "buttons" ? (
+            <DeclinedNote onPlay={act(startSoundtrack)} />
+          ) : (
+            <p>
+              {c.declinedNote}{" "}
+              <Fill {...FILL_PICK.band} shape="rect" type="button" onClick={act(startSoundtrack)} data-cursor-hover {...SMALL} className={`md:hidden ${SMALL.className}`}>
+                {c.accept}
+              </Fill>
+            </p>
+          )}
         </Layer>
       </div>
     </div>
@@ -116,26 +126,3 @@ function Layer({ shown, className = "", children }: { shown: boolean; className?
     </div>
   );
 }
-
-const FOCUS = "rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
-
-// "Play it": the 1.5px rise line stands in for its underline, inset by its own padding.
-const PRIMARY = {
-  line: 1.5,
-  className: `-mx-2 inline-flex items-baseline px-2 pb-1 pt-0.5 font-display text-[clamp(1.125rem,1.5vw,1.375rem)] leading-[1.1] text-accent ${FOCUS}`,
-  overClassName: "flex items-baseline px-2 pb-1 pt-0.5",
-};
-
-// "Not now" keeps its muted underline; no rise line.
-const QUIET = {
-  line: 0,
-  className: `-mx-1.5 inline-flex items-baseline px-1.5 pb-[3px] pt-px font-label text-label text-muted underline decoration-1 underline-offset-[4px] decoration-[color:color-mix(in_srgb,var(--color-muted)_40%,transparent)] dark:decoration-[color:color-mix(in_srgb,var(--color-muted)_55%,transparent)] ${FOCUS}`,
-  overClassName: "flex items-baseline px-1.5 pb-[3px] pt-px",
-};
-
-// Pause, Resume and the phone's Play it: a 1px rise line.
-const SMALL = {
-  line: 1,
-  className: `-mx-1.5 inline-flex items-baseline px-1.5 pb-[2px] pt-px font-label text-label text-accent ${FOCUS}`,
-  overClassName: "flex items-baseline px-1.5 pb-[2px] pt-px",
-};

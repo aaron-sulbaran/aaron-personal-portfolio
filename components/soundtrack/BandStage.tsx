@@ -53,8 +53,10 @@ export function BandStage() {
   // let the wave go keeps the keyboard's focus, so it stays live until focus
   // leaves it.
   const freezable = !reduce;
-  const live = freezable || focusHeld;
   const inCard = music === "on" || music === "paused";
+  // The lab (dev only) puts the toggle elsewhere: beside the No problem line after Not now, and in its sheet while music is on or paused. Where it does, this link goes.
+  const moved = (bridge.notNow === "buttons" && music === "off") || (bridge.status === "hidden" && inCard);
+  const live = (freezable || focusHeld) && !moved;
 
   return (
     <>
