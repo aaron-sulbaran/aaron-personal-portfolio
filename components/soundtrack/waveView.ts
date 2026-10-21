@@ -43,9 +43,9 @@ export function createWaveView(canvas: HTMLCanvasElement, conductor: WaveConduct
     sink.viewBottom = sink.viewTop + viewport;
     sink.width = width;
     sink.onScreen = 0;
-    // The lab's one-line wave: while the band is below the release line the head waits at the run's end and the run is drawn whole, however far the train had trailed on.
+    // The band's run is drawn whole whenever the band shows, however far the head and its train have trailed on, so the band never sits empty after the release.
     const tail = f.tail;
-    if (f.gated) f.tail = -Infinity;
+    f.tail = -Infinity;
     buildPathDots(cols, all, 0, cols.count, f, amp, 0, -Infinity, f.runLen || Infinity, weights, sink, fit);
     f.tail = tail;
     painter.fill(sink.muted, painter.colors.muted, alphas.muted);

@@ -13,7 +13,7 @@ import { rippleAt, rippleSwell, type RippleState } from "./ripple";
 // muted inside words, the music owning each column by its share. Pure.
 // runLen is where the band's run ends; later views use it to split the band
 // from the path, and the breath ignores it.
-// idleGain and idleClock drive the lab's idle ripple (lib/wavepath/idle); absent or 0, nothing is added.
+// idleGain and idleClock drive the idle ripple (lib/wavepath/idle); absent or 0, nothing is added.
 export interface DotFrame { head: number; tail: number; train: number | null; runLen: number; gate: number; breath: number; shimmer: number; music: MusicState; plucks: PluckState; ripple: RippleState; still: boolean; idleGain?: number; idleClock?: number }
 // Where the path's dots must stay clear of the band, in the layer's px: none
 // at or above `edge`, thinning out over `fade` px below it. Null draws as always.

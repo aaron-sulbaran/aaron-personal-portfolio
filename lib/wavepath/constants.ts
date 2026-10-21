@@ -37,22 +37,29 @@ export const BREATH = { rate: 0.9, depth: 0.35 } as const;
 // speed: px of arc per second. width: the crest's 1/e half width, px. decay: per
 // second (the egg's 1.2). swell: extra dot weight at the crest. lifeS: the cap.
 // Aaron retunes it here.
-// The idle ripple (the music player lab; off in production): a gentle wave that
-// travels along the line while no music shapes it (paused, declined, or the
-// wave held), so the line is never dead flat. amp: the crest's height in
-// amplitudes (the resting shape is SHAPE_GAIN, 0.26); height: how far it lifts a
-// column's magnitude; wavelength and speed: px, and px of arc per second, of its
-// travel (slower than the answer's ripple, which runs at 650); envelope and
-// envelopeSpeed: the long, slower swell that keeps it from reading as one even
-// sine. Aaron retunes it here, or with the lab's strength slider.
+export const RIPPLE = { amp: 0.45, speed: 650, width: 70, decay: 1.2, swell: 0.4, lifeS: 3 } as const;
+
+// The idle ripple: a gentle wave that travels along the line while no music
+// shapes it (paused, declined, or the wave held after an answer), so the line
+// is never dead flat. Freeze and reduced motion still it. amp: the crest's
+// height in amplitudes (the resting shape is SHAPE_GAIN, 0.26); height: how far
+// it lifts a column's magnitude; wavelength and speed: px, and px of arc per
+// second, of its travel (slower than the answer's ripple, which runs at 650);
+// envelope and envelopeSpeed: the long, slower swell that keeps it from reading
+// as one even sine. Aaron retunes it here.
 export const IDLE = { amp: 0.12, height: 0.09, wavelength: 330, speed: 52, envelope: 1100, envelopeSpeed: 24 } as const;
 
-// How far below the band's box the line's return keeps (px beyond the dots' own reach), when the wave is one line.
+// One line, not two: the line follows the scroll only once the band's bottom
+// edge is above this share of the viewport's height, and after an answer it
+// waits for the same moment (lib/wavepath/hold). One fraction for every screen,
+// read against the viewport, never a page offset.
+export const RELEASE_LINE = 0.4;
+
+// How far below the band's box the line's return keeps (px beyond the dots' own reach), so the path never crosses the band.
 export const BAND_CLEAR_EXTRA = 14;
 // The soft edge, px, over which the path's dots thin out above that clearance, so no dot of the path lands in the band.
 export const BAND_KEEP_FADE = 56;
 
-export const RIPPLE = { amp: 0.45, speed: 650, width: 70, decay: 1.2, swell: 0.4, lifeS: 3 } as const;
 export const PLUCK = { radius: 49, strength: 0.3, recovery: 0.6, speed: 700, width: 70, wave: 60, max: 4 } as const;
 
 export const TILE_PX = 768;

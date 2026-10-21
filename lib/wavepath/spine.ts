@@ -123,7 +123,7 @@ const CURVE_SLACK = 36;
 export interface ResolveOptions {
   bandRun: boolean;
   viewport: number;
-  // The wave as one line (the music player lab): px of clearance the line's
+  // The wave as one line: px of clearance the line's
   // return keeps below the band's box. The line then leaves the run past the
   // right edge, drops off screen to that depth and only then turns back, so no
   // stretch of it crosses the band. Absent or 0: the line as it always was.

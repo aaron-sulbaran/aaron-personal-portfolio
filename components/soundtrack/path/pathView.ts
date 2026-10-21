@@ -1,6 +1,6 @@
 import { DPR_CAP } from "@/lib/waveform/layout";
-import { EMPTY_COLUMNS, layColumns, mapTiles, tileReach, type PathColumns, type TileMap } from "@/lib/wavepath/columns";
-import { ALPHAS, SAMPLE_STEP, SPACING, TILE_MARGIN_PX, TILE_PX } from "@/lib/wavepath/constants";
+import { EMPTY_COLUMNS, dotReach, layColumns, mapTiles, tileReach, type PathColumns, type TileMap } from "@/lib/wavepath/columns";
+import { ALPHAS, BAND_CLEAR_EXTRA, BAND_KEEP_FADE, SAMPLE_STEP, SPACING, TILE_MARGIN_PX, TILE_PX } from "@/lib/wavepath/constants";
 import { sampleSpine, type SpineSamples } from "@/lib/wavepath/geometry";
 import { HEAD_PARAMS, firstOnScreenY, gatedTarget, headTarget, runFlatness, runLength } from "@/lib/wavepath/head";
 import { buildPathDots, clearSink, createSink } from "@/lib/wavepath/paint";
@@ -8,9 +8,6 @@ import { nearestColumn } from "@/lib/wavepath/pluck";
 import { pathProbe } from "@/lib/wavepath/probe";
 import { SIGNATURE_ON, resolveSpine } from "@/lib/wavepath/spine";
 import { amplitudeFor, chooseTrain, visibleOptions } from "@/lib/wavepath/visible";
-import { getBridge, subscribeBridge } from "@/lib/player/bridge";
-import { dotReach } from "@/lib/wavepath/columns";
-import { BAND_CLEAR_EXTRA, BAND_KEEP_FADE } from "@/lib/wavepath/constants";
 import type { Keep } from "@/lib/wavepath/paint";
 import { createDotPainter, themeNow } from "../viewParts";
 import type { Changed, WaveConductor, WaveFrame, WaveView } from "../waveConductor";
@@ -34,9 +31,8 @@ export function createPathView(layer: HTMLElement, root: HTMLElement, conductor:
   let measured: Anchors | null = null;
   let origin = 0, viewport = 0, maxScrollY = 0, entry = 0, amp = 0, width = 0, raf = 0, innerWidth = 0, runLen = 0, runFlat = 0;
   let dirty = true, laid = false, destroyed = false;
-  // The lab's one-line wave: the line's return keeps clear of the band and no dot of the path lands in it. Null in production.
+  // The line is one line: its return keeps clear of the band and no dot of the path lands in it.
   let keep: Keep | null = null;
-  let oneLine = getBridge().waveWait !== null;
   let alphas = ALPHAS[themeNow()];
 
   const sizeTile = (tile: Tile) => {
@@ -103,9 +99,8 @@ export function createPathView(layer: HTMLElement, root: HTMLElement, conductor:
     viewport = window.innerHeight;
     maxScrollY = Math.max(0, document.documentElement.scrollHeight - viewport);
     amp = amplitudeFor(width);
-    oneLine = getBridge().waveWait !== null;
-    const clearBand = oneLine ? dotReach(amp) + BAND_CLEAR_EXTRA : 0;
-    keep = oneLine ? { edge: anchors.box.band.bottom, fade: BAND_KEEP_FADE } : null;
+    const clearBand = dotReach(amp) + BAND_CLEAR_EXTRA;
+    keep = { edge: anchors.box.band.bottom, fade: BAND_KEEP_FADE };
     samples = sampleSpine(resolveSpine({ points: SIGNATURE_ON }, anchors, { bandRun: true, viewport, clearBand }), SAMPLE_STEP);
     runLen = runLength(samples, width);
     runFlat = runFlatness(samples, runLen);
@@ -142,7 +137,7 @@ export function createPathView(layer: HTMLElement, root: HTMLElement, conductor:
     prepare(f: WaveFrame) {
       if (!samples) return;
       const raw = headTarget(HEAD_PARAMS, { samples, viewport, scrollY: f.scrollY, maxScrollY, layerTop: origin, runLen: f.runLen, entryY: entry });
-      // Gated (the lab's one-line wave): the band is below the release line, so the head waits at the run's end, as it does before an answer.
+      // Gated: the band is below the release line, so the head waits at the run's end, as it does before an answer.
       const following = f.decided && !f.gated;
       f.state.target = gatedTarget(raw, f.runLen, f.length, following, f.still);
       const j = Math.min(cols.count - 1, Math.max(0, Math.floor(f.state.head / SPACING)));
@@ -183,17 +178,12 @@ export function createPathView(layer: HTMLElement, root: HTMLElement, conductor:
       resize.disconnect();
       theme.disconnect();
       io.disconnect();
-      unsubscribeBridge();
       window.removeEventListener("resize", onResize);
       tiles.forEach((t) => t.canvas.remove());
       tiles.length = 0;
     },
   };
 
-  // The lab turning the one-line wave on or off lays the line out again.
-  const unsubscribeBridge = subscribeBridge(() => {
-    if ((getBridge().waveWait !== null) !== oneLine) schedule();
-  });
   const resize = new ResizeObserver(schedule);
   resize.observe(root);
   root.querySelectorAll("[data-wave-anchor]").forEach((el) => resize.observe(el));
