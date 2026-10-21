@@ -88,7 +88,7 @@ export function PhoneIsland({ reduce, model, credit }: { reduce: boolean; model:
       >
         <div style={{ display: "grid", gridTemplateRows: open ? "0fr" : "1fr", opacity: open ? 0 : 1, transition: rows }} inert={open}>
           <div style={{ minHeight: 0, overflow: "hidden" }}>
-            <IslandFace ref={face} height={spec.height} onOpen={() => setOpen(true)} />
+            <IslandFace ref={face} height={spec.height - 2} onOpen={() => setOpen(true)} />
           </div>
         </div>
         <div style={{ display: "grid", gridTemplateRows: open ? "1fr" : "0fr", opacity: open ? 1 : 0, transition: rows }} inert={!open}>

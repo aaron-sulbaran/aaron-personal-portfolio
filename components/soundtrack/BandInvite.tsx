@@ -36,6 +36,8 @@ export function BandInvite() {
   // The music player lab (dev only): with its sheet in the band the sheet is the feedback, so the status sentence and the Pause or Resume go; in production the bridge always reads today's values.
   const bridge = usePlayerBridge();
   const sheetOwns = bridge.status === "hidden";
+  // Nothing of the band's own shows then (the sheet is the feedback), so its rows close up under the heading instead of holding their height: the sheet sits right under the heading on a phone, and the wave's keep-out shrinks to the heading on a desktop. The controls keep their width, where an answer's ripple starts.
+  const closedUp = sheetOwns && (music === "on" || music === "paused");
   // Hydration renders the server snapshot, so the desktop copy matches the server HTML; the phone copy applies after hydration, while its layer is still hidden.
   const phone = useSyncExternalStore(subscribePhone, isPhone, () => false);
   const acceptedNote = phone ? c.acceptedNotePhone : c.acceptedNote;
@@ -68,7 +70,7 @@ export function BandInvite() {
     <div ref={rootRef} data-wave-avoid data-wave-words className="pointer-events-auto w-fit max-w-full">
       <div className="flex flex-wrap items-baseline gap-x-9 gap-y-3">
         <h2 className="font-display text-[clamp(1.375rem,2vw,1.75rem)] leading-[1.1] text-foreground">{c.line}</h2>
-        <div data-band-controls data-wave-ripple-origin className="grid items-baseline">
+        <div data-band-controls data-wave-ripple-origin className={`grid items-baseline ${closedUp ? "h-0 overflow-hidden" : ""}`}>
           <Layer shown={music === "before"} className="flex items-baseline gap-4">
             <Fill {...FILL_PICK.band} shape="rect" type="button" data-control="before" data-focus-to="note" onClick={act(startSoundtrack)} data-cursor-hover {...PRIMARY}>
               {c.accept}
@@ -89,7 +91,7 @@ export function BandInvite() {
           </Layer>
         </div>
       </div>
-      <div data-band-note tabIndex={-1} className="mt-2 grid max-w-[42rem] text-sm leading-[1.5] text-muted outline-none" aria-live="polite">
+      <div data-band-note tabIndex={-1} className={`mt-2 grid max-w-[42rem] text-sm leading-[1.5] text-muted outline-none ${closedUp ? "hidden" : ""}`} aria-live="polite">
         <Layer shown={music === "before"}>
           <p><InlineCopy source={c.body} /></p>
         </Layer>
