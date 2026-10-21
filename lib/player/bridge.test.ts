@@ -5,7 +5,7 @@ describe("what the lab can change in the real pill, band and wave", () => {
   afterEach(() => resetBridge());
 
   it("reads as today until something writes it", () => {
-    expect(TODAY).toEqual({ pill: "auto", credit: "band", creditBelow: false, status: "today", notNow: "today", waveWait: null, bandFull: false });
+    expect(TODAY).toEqual({ pill: "auto", credit: "band", creditBelow: false, status: "today", notNow: "today", waveWait: null, idle: 0, labPill: false });
     expect(getBridge()).toBe(TODAY);
   });
 
@@ -25,7 +25,7 @@ describe("what the lab can change in the real pill, band and wave", () => {
     setBridge({ creditBelow: true });
     setBridge({ waveWait: 0.4 });
     setBridge({ waveWait: 0.4 });
-    setBridge({ status: "hidden", notNow: "buttons", bandFull: true });
+    setBridge({ status: "hidden", notNow: "buttons", idle: 1, labPill: true });
     resetBridge();
     off();
     expect(seen).toHaveBeenCalledTimes(6);

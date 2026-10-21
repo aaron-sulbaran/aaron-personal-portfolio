@@ -1,10 +1,13 @@
 // The music player lab's settings, per browser. The master switch is off by
 // default and, off, nothing below is read: the band, the pill and the wave
 // behave exactly as they do today. The other defaults are the direction Aaron
-// chose after round 1 (the compact sheet, the home hub in the band, the island
-// on phones), so Reset settings puts the lab on that direction.
+// has chosen so far (the one full player, the home hub in the band, the
+// one-pill isle, the island on phones, one continuous wave), so Reset settings
+// puts the lab on that direction.
 
-export const ON_PLAY = ["today", "card", "sheet"] as const;
+// Round 3 has one player everywhere, so the card and the compact sheet of the
+// first two rounds are gone; their stored values read as the player.
+export const ON_PLAY = ["today", "player"] as const;
 export type OnPlay = (typeof ON_PLAY)[number];
 
 export const INTO_ISLE = ["today", "morph", "fade"] as const;
@@ -19,8 +22,8 @@ export type CreditMode = (typeof CREDIT)[number];
 export const PHONE = ["band", "bar", "island"] as const;
 export type PhoneMode = (typeof PHONE)[number];
 
-// With the sheet in the band, the band's own status sentence and its Pause or
-// Resume beside the heading are redundant: the sheet is the feedback.
+// With the player in the band, the band's own status sentence and its Pause or
+// Resume beside the heading are redundant: the player is the feedback.
 export const STATUS_LINE = ["today", "hidden"] as const;
 export type StatusLine = (typeof STATUS_LINE)[number];
 
@@ -29,10 +32,21 @@ export type StatusLine = (typeof STATUS_LINE)[number];
 export const NOT_NOW = ["today", "buttons"] as const;
 export type NotNow = (typeof NOT_NOW)[number];
 
-// After either answer: the wave reacts at once (today), or stays as it was
-// until the band has scrolled away.
+// The wave and the band: it reacts at once and follows the scroll wherever the
+// band is (today), or it is one line that follows the scroll only while the
+// band is above the release line, in both directions, and stays as the band's
+// own run, breathing, below it (and after an answer, until the band first
+// scrolls away).
 export const WAVE_AFTER_ANSWER = ["today", "waits"] as const;
 export type WaveAfterAnswer = (typeof WAVE_AFTER_ANSWER)[number];
+
+// While the music is paused or declined, and while the wave is held, the band's
+// line is never dead flat: a gentle ripple travels through it.
+export const IDLE_RIPPLE = ["today", "ripple"] as const;
+export type IdleRipple = (typeof IDLE_RIPPLE)[number];
+
+// How strong that ripple is, a multiple of its tuned height.
+export const IDLE_STRENGTH = { min: 0.25, max: 2.5, step: 0.05 } as const;
 
 // The desktop isle near the footer: ride up to stay above its top edge, or
 // fade out while the footer is in view.
@@ -44,7 +58,7 @@ export const PHONE_MODEL = ["auto", "iphone15", "iphone17pro", "iphone17promax",
 export type PhoneModel = (typeof PHONE_MODEL)[number];
 
 export const SETTINGS_KEY = "lab-player-v1";
-export const ROUND = 2;
+export const ROUND = 3;
 
 // Where the hand-off to the isle happens, as a fraction of the viewport's
 // height from its top: the band's bottom edge rising above this line starts
@@ -68,6 +82,8 @@ export interface PlayerLabSettings {
   notNow: NotNow;
   waveAfterAnswer: WaveAfterAnswer;
   waveLine: number;
+  idleRipple: IdleRipple;
+  idleStrength: number;
   footer: FooterMode;
   phoneModel: PhoneModel;
 }
@@ -75,7 +91,7 @@ export interface PlayerLabSettings {
 export const DEFAULT_SETTINGS: PlayerLabSettings = {
   round: ROUND,
   enabled: false,
-  onPlay: "sheet",
+  onPlay: "player",
   intoIsle: "morph",
   isleLine: 0.4,
   backUp: "reopen",
@@ -85,6 +101,8 @@ export const DEFAULT_SETTINGS: PlayerLabSettings = {
   notNow: "buttons",
   waveAfterAnswer: "waits",
   waveLine: 0.4,
+  idleRipple: "ripple",
+  idleStrength: 1,
   footer: "lift",
   phoneModel: "auto",
 };
@@ -106,13 +124,16 @@ export function parseSettings(raw: string | null): PlayerLabSettings {
   const d = DEFAULT_SETTINGS;
   // Round 1 stored no round. Its phone choice was between the band and a
   // bottom bar; the island (a pick Aaron named after it) replaces the bar the
-  // first time round 2 reads those values, and the bar stays one click away.
-  const fromRoundOne = stored.round !== ROUND;
+  // first time later rounds read those values, and the bar stays one click
+  // away. A bar chosen in round 2 or after is kept.
+  const fromRoundOne = stored.round === undefined;
   const phone = pick(PHONE, stored.phone, d.phone);
+  // The card and the compact sheet are one player now.
+  const onPlay = stored.onPlay === "card" || stored.onPlay === "sheet" ? "player" : pick(ON_PLAY, stored.onPlay, d.onPlay);
   return {
     round: ROUND,
     enabled: typeof stored.enabled === "boolean" ? stored.enabled : d.enabled,
-    onPlay: pick(ON_PLAY, stored.onPlay, d.onPlay),
+    onPlay,
     intoIsle: pick(INTO_ISLE, stored.intoIsle, d.intoIsle),
     isleLine: clamp(stored.isleLine, ISLE_LINE, d.isleLine),
     backUp: pick(BACK_UP, stored.backUp, d.backUp),
@@ -122,6 +143,8 @@ export function parseSettings(raw: string | null): PlayerLabSettings {
     notNow: pick(NOT_NOW, stored.notNow, d.notNow),
     waveAfterAnswer: pick(WAVE_AFTER_ANSWER, stored.waveAfterAnswer, d.waveAfterAnswer),
     waveLine: clamp(stored.waveLine, WAVE_LINE, d.waveLine),
+    idleRipple: pick(IDLE_RIPPLE, stored.idleRipple, d.idleRipple),
+    idleStrength: clamp(stored.idleStrength, IDLE_STRENGTH, d.idleStrength),
     footer: pick(FOOTER, stored.footer, d.footer),
     phoneModel: pick(PHONE_MODEL, stored.phoneModel, d.phoneModel),
   };

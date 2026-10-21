@@ -16,11 +16,16 @@ import type { CreditMode, NotNow, StatusLine } from "./settings";
 //                the heading.
 //   notNow       "buttons": after Not now, Play it and Freeze the wave sit
 //                beside the "No problem" line, and the lone freeze link goes.
-//   waveWait     null is today. A number holds the wave after an answer (flat,
-//                nothing follows) until the band's bottom edge is above this
-//                share of the viewport's height.
-//   bandFull     the band's own run is drawn whole whenever it shows, whatever
-//                the head has drawn past it.
+//   waveWait     null is today. A number makes the wave one line that follows
+//                the scroll only while the band's bottom edge is above this
+//                share of the viewport's height (in both directions; below it,
+//                only the band's own run is drawn and nothing of the path
+//                overlaps it), and holds it after an answer until the band
+//                first scrolls away.
+//   idle         0 is today. A positive number is the idle ripple's strength: a
+//                gentle wave travels through the line while no music shapes it.
+//   labPill      the lab's own pill stands in for the real pill's card, so the
+//                band keeps its freeze link while music plays.
 
 export type PillHold = "auto" | "hold" | "away";
 
@@ -31,10 +36,11 @@ export interface PlayerBridge {
   status: StatusLine;
   notNow: NotNow;
   waveWait: number | null;
-  bandFull: boolean;
+  idle: number;
+  labPill: boolean;
 }
 
-export const TODAY: PlayerBridge = { pill: "auto", credit: "band", creditBelow: false, status: "today", notNow: "today", waveWait: null, bandFull: false };
+export const TODAY: PlayerBridge = { pill: "auto", credit: "band", creditBelow: false, status: "today", notNow: "today", waveWait: null, idle: 0, labPill: false };
 
 let bridge: PlayerBridge = TODAY;
 const listeners = new Set<() => void>();
