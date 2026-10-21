@@ -3,29 +3,33 @@ import type { BackUp, IntoIsle, OnPlay, PhoneMode } from "./settings";
 import type { Zone } from "./zone";
 
 // Where the lab's player lives, as one small state machine (pure; the
-// components only dispatch into it).
+// components only dispatch into it). The band is the music's home hub: with
+// the band on screen the player is the sheet in the band, scrolling past it
+// hands the player to the isle, scrolling back reopens it in the band, and
+// scrolling further up (the book, the hero) leaves it parked in the band, with
+// no isle above the band.
 //
 //   closed   nothing of the lab's is showing (the site as it is today)
-//   band     the player is open in the band
-//   docked   the player is open at the isle's dock, because it was started
-//            away from the band (or opened from the pill)
+//   band     the player is open in the band (parked there when the band is off
+//            screen above the reader)
+//   docked   the player stands open at the isle's dock: the music was started
+//            below the band, or the pill was pressed there, or the window is
+//            too narrow to hold it beside the band's copy
 //   to-pill  the band's player is handing off to the pill (the morph runs)
 //   to-band  the pill is handing back to the band's player
-//   pill     the player has collapsed into the isle (the pill; on phones, the
-//            slim bottom bar)
-//
-// `home` is where the isle hands back to: scrolling back up reopens a player
-// that left the band, never one that was docked.
+//   pill     the player has collapsed into the isle (the pill on a desktop;
+//            the island or the slim bottom bar on a phone)
 
 export type PlayerView = "closed" | "band" | "docked" | "to-pill" | "to-band" | "pill";
-export type Home = "band" | "dock";
 
 export interface PlayerState {
   view: PlayerView;
-  home: Home;
 }
 
-export const CLOSED: PlayerState = { view: "closed", home: "band" };
+export const CLOSED: PlayerState = { view: "closed" };
+const BAND: PlayerState = { view: "band" };
+const PILL: PlayerState = { view: "pill" };
+const DOCKED: PlayerState = { view: "docked" };
 
 export interface MachineConfig {
   onPlay: OnPlay;
@@ -49,45 +53,50 @@ export type PlayerEvent =
 
 export type Handoff = "none" | "morph" | "fade";
 
-// How the band's player leaves for the isle. Phones have no pill: the slim bar
-// is the isle there, and it takes the fade unless the morph is chosen. Reduced
-// motion never morphs.
+// How the band's player leaves for the isle. Phones have no pill: the island
+// or the slim bar is the isle there, and it takes the fade unless the morph is
+// chosen. Reduced motion never morphs.
 export function handoff(config: MachineConfig): Handoff {
   const desktop: Handoff = config.intoIsle === "today" ? "none" : config.intoIsle;
-  const chosen: Handoff = config.phone ? (config.phoneMode === "bar" ? (config.intoIsle === "morph" ? "morph" : "fade") : "none") : desktop;
+  const chosen: Handoff = config.phone ? (config.phoneMode === "band" ? "none" : config.intoIsle === "morph" ? "morph" : "fade") : desktop;
   return chosen === "morph" && config.reduce ? "fade" : chosen;
 }
 
-const band: PlayerState = { view: "band", home: "band" };
+// Whether the band can hold the player: a phone always can (it sits under the
+// copy), a desktop from 1024px.
+const bandHolds = (config: MachineConfig) => config.phone || config.roomy;
 
 export function step(state: PlayerState, event: PlayerEvent, config: MachineConfig): PlayerState {
   switch (event.type) {
     case "started": {
       if (config.onPlay === "today") return CLOSED;
-      if (config.phone) return event.zone === "in" || config.phoneMode === "band" ? band : { view: "pill", home: "band" };
-      return event.zone === "in" && config.roomy ? band : { view: "docked", home: "dock" };
+      if (!bandHolds(config)) return DOCKED;
+      if (event.zone !== "past") return BAND;
+      if (config.phone) return config.phoneMode === "band" ? BAND : PILL;
+      return DOCKED;
     }
     case "line": {
       const how = handoff(config);
-      if (state.home !== "band" || how === "none") return state;
       if (event.past) {
-        if (state.view === "band") return { view: how === "morph" ? "to-pill" : "pill", home: "band" };
-        return state.view === "to-band" ? { view: "to-pill", home: "band" } : state;
+        if (how === "none") return state;
+        if (state.view === "band") return { view: how === "morph" ? "to-pill" : "pill" };
+        return state.view === "to-band" ? { view: "to-pill" } : state;
       }
       if (config.backUp !== "reopen") return state;
-      if (state.view === "pill") return { view: how === "morph" ? "to-band" : "band", home: "band" };
-      return state.view === "to-pill" ? { view: "to-band", home: "band" } : state;
+      if (state.view === "docked") return bandHolds(config) ? BAND : state;
+      if (state.view === "pill") return { view: how === "morph" ? "to-band" : "band" };
+      return state.view === "to-pill" ? { view: "to-band" } : state;
     }
     case "arrived":
-      if (state.view === "to-pill") return { ...state, view: "pill" };
-      return state.view === "to-band" ? { ...state, view: "band" } : state;
+      if (state.view === "to-pill") return PILL;
+      return state.view === "to-band" ? BAND : state;
     case "close":
-      if (state.view === "docked") return event.pillReady ? { view: "pill", home: "dock" } : CLOSED;
+      if (state.view === "docked") return event.pillReady ? PILL : CLOSED;
       return state.view === "band" ? CLOSED : state;
     case "open": {
       if (state.view !== "pill") return state;
-      if (state.home === "band" && event.zone === "in") return { view: handoff(config) === "morph" ? "to-band" : "band", home: "band" };
-      return { view: "docked", home: "dock" };
+      if (event.zone === "in" && bandHolds(config)) return { view: handoff(config) === "morph" ? "to-band" : "band" };
+      return DOCKED;
     }
     case "stopped":
     case "reset":
@@ -107,4 +116,4 @@ export function pillHold(view: PlayerView, ahead: boolean): PillHold {
 // Whether the band's own player element is on show (it stays mounted through a
 // hand-off so its box can be measured, and is only hidden).
 export const bandPlayerShown = (view: PlayerView): boolean => view === "band";
-export const bandPlayerMounted = (view: PlayerView, home: Home): boolean => home === "band" && view !== "closed" && view !== "docked";
+export const bandPlayerMounted = (view: PlayerView): boolean => view !== "closed" && view !== "docked";

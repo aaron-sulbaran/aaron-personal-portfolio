@@ -45,5 +45,5 @@ export function usePlayerView(config: MachineConfig, active: boolean, line: numb
   const close = useCallback(() => send({ type: "close", pillReady: (bandRect()?.bottom ?? Infinity) <= DOCK.passedPx }), []);
   const open = useCallback(() => send({ type: "open", zone: zoneNow(line) }), [line]);
 
-  return { view: state.view, home: state.home, ahead, arrived, close, open };
+  return { view: state.view, ahead, arrived, close, open };
 }
