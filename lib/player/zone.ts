@@ -51,3 +51,10 @@ export function barBox(viewportWidth: number, viewportHeight: number): Box {
 export function cornerRadius(from: number, box: Box): number {
   return Math.min(box.height / 2, from);
 }
+
+// The pill's note and title ghosting in over the last 40 percent of the way to
+// the isle, so the glass reads as the pill forming; on the way back it is gone
+// before the box has opened to 60 percent.
+export function ghostOpacity(progress: number): number {
+  return Math.min(1, Math.max(0, (progress - 0.6) / 0.4));
+}

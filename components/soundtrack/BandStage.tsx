@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { PlayerLabMount } from "@/components/player/PlayerLabMount";
 import { siteContent } from "@/lib/content";
+import { pillReached, usePlayerBridge } from "@/lib/player/bridge";
 import { useSoundtrack } from "@/lib/soundtrack";
 import { DOCK } from "@/lib/waveform/dock";
 import { setFrozen, useFrozen } from "@/lib/waveform/freeze";
@@ -28,6 +30,8 @@ export function BandStage() {
   const c = siteContent.listen;
   const s = siteContent.soundtrack;
   const passed = useBandPassed();
+  // The music player lab (dev only) can hold the pill up or away and move the credit line; in production the bridge always reads today's values.
+  const bridge = usePlayerBridge();
   const [focusHeld, setFocusHeld] = useState(false);
 
   useEffect(() => {
@@ -54,6 +58,7 @@ export function BandStage() {
 
   return (
     <>
+      <PlayerLabMount />
       <div ref={stageRef} data-wave-band-line className="relative h-[176px] md:absolute md:inset-0 md:h-auto">
         <WaveCanvas active={inView} frozen={frozen} />
       </div>
@@ -73,12 +78,14 @@ export function BandStage() {
           >
             {frozen ? c.unfreeze : c.freeze}
           </button>
-          <p data-wave-avoid className="ml-auto">
-            {s.creditLine}
-          </p>
+          {bridge.credit === "band" && (
+            <p data-wave-avoid className="ml-auto">
+              {s.creditLine}
+            </p>
+          )}
         </div>
       </div>
-      <PlaybackPill reached={passed} />
+      <PlaybackPill reached={pillReached(bridge.pill, passed)} />
     </>
   );
 }

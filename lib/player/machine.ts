@@ -93,9 +93,12 @@ export function step(state: PlayerState, event: PlayerEvent, config: MachineConf
   }
 }
 
-// What the real pill does while the lab's player is in a given view.
-export function pillHold(view: PlayerView): PillHold {
-  if (view === "pill") return "hold";
+// What the real pill does while the lab's player is in a given view. A pill
+// the player has collapsed into stays up wherever the reader is, except in the
+// hero and the book (the band still below the fold), where the pill is never
+// shown and the Menu's note covers the music.
+export function pillHold(view: PlayerView, ahead: boolean): PillHold {
+  if (view === "pill") return ahead ? "auto" : "hold";
   return view === "docked" || view === "to-pill" || view === "to-band" ? "away" : "auto";
 }
 

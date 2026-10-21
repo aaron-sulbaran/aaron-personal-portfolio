@@ -115,9 +115,13 @@ describe("the hand-off kind", () => {
 
 describe("what the real pill does around the lab's player", () => {
   it("holds the pill when the player has collapsed into it, and keeps it away while the player stands in its place", () => {
-    expect(pillHold("pill")).toBe("hold");
-    for (const view of ["docked", "to-pill", "to-band"] as const) expect(pillHold(view)).toBe("away");
-    for (const view of ["closed", "band"] as const) expect(pillHold(view)).toBe("auto");
+    expect(pillHold("pill", false)).toBe("hold");
+    for (const view of ["docked", "to-pill", "to-band"] as const) expect(pillHold(view, false)).toBe("away");
+    for (const view of ["closed", "band"] as const) expect(pillHold(view, false)).toBe("auto");
+  });
+
+  it("leaves the pill hidden through the hero and the book, where the band is still ahead", () => {
+    expect(pillHold("pill", true)).toBe("auto");
   });
 
   it("keeps the band's player in the page through a hand-off so its box can be measured", () => {

@@ -5,6 +5,7 @@ import { ChevronDown, ExternalLink, Pause, Play, SkipBack, SkipForward, Volume2 
 import { siteContent } from "@/lib/content";
 import { getSoundtrackPlayer, type PlayerSnapshot } from "@/lib/audio";
 import { useEscapeKey } from "@/lib/modal";
+import { usePlayerBridge } from "@/lib/player/bridge";
 import { pauseSoundtrack, startSoundtrack, type SoundtrackState } from "@/lib/soundtrack";
 import { MarqueeTitle } from "./MarqueeTitle";
 import { Cover, EASE, FreezeRow, formatTime, glass, iconButton } from "./PillParts";
@@ -29,6 +30,8 @@ export function PlayerCard({ music, expanded, reduce, focusOnOpen, onCardLeave, 
   const playRef = useRef<HTMLButtonElement | null>(null);
   const playing = music === "on";
   const track = c.tracks[snap.trackIndex];
+  // The music player lab (dev only) can move the band's credit line into the player; production always reads "band".
+  const creditHere = usePlayerBridge().credit === "player";
 
   useEffect(() => {
     const sync = () => setSnap(player.getSnapshot());
@@ -188,6 +191,7 @@ export function PlayerCard({ music, expanded, reduce, focusOnOpen, onCardLeave, 
           </a>
         )}
       </div>
+      {creditHere && <p data-lab-credit className="mt-3 font-label text-label-sm leading-[1.4] text-muted">{c.creditLine}</p>}
       <FreezeRow reduce={reduce} />
     </div>
   );

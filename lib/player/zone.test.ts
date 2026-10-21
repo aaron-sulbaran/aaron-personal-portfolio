@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AHEAD_TOP, barBox, BAR, cornerRadius, ISLE, isleBox, lerpBox, toBox, zoneOf } from "./zone";
+import { AHEAD_TOP, barBox, BAR, cornerRadius, ghostOpacity, ISLE, isleBox, lerpBox, toBox, zoneOf } from "./zone";
 
 const VH = 900;
 
@@ -55,5 +55,18 @@ describe("the boxes the hand-off travels between", () => {
   it("rounds the corners no further than a full pill of the box's height", () => {
     expect(cornerRadius(22, { left: 0, top: 0, width: 190, height: 36 })).toBe(18);
     expect(cornerRadius(22, { left: 0, top: 0, width: 560, height: 240 })).toBe(22);
+  });
+});
+
+describe("the pill's ghost inside the travelling glass", () => {
+  it("is absent while the glass is the card and fully in by the isle", () => {
+    expect(ghostOpacity(0)).toBe(0);
+    expect(ghostOpacity(0.6)).toBe(0);
+    expect(ghostOpacity(1)).toBe(1);
+  });
+
+  it("rises steadily between", () => {
+    expect(ghostOpacity(0.8)).toBeCloseTo(0.5);
+    expect(ghostOpacity(0.7)).toBeLessThan(ghostOpacity(0.9));
   });
 });
