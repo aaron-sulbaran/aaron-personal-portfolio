@@ -3,6 +3,8 @@ import { PILL_CLOSE_MS, PILL_IDLE_MS, PILL_OPEN_MS } from "./constants";
 import { idleLeft, PILL_REST, pillOpen, pillPinned, pillStep, pillTimer, type PillEvent, type PillState } from "./pill";
 
 const run = (events: PillEvent[], from: PillState = PILL_REST) => events.reduce(pillStep, from);
+// What the idle fold leaves: collapsed, with the pointer possibly still resting on it.
+const FOLDED: PillState = { ...PILL_REST, rearm: true };
 
 describe("the one pill", () => {
   it("rests collapsed, showing the cover, title and artist only", () => {
@@ -68,8 +70,8 @@ describe("the one pill", () => {
 
 describe("the idle fold", () => {
   it("folds a hover-opened pill after the idle wait, and a pinned one too", () => {
-    expect(run(["enter", "openElapsed", "idleElapsed"])).toEqual(PILL_REST);
-    expect(run(["click", "idleElapsed"])).toEqual(PILL_REST);
+    expect(run(["enter", "openElapsed", "idleElapsed"])).toEqual(FOLDED);
+    expect(run(["click", "idleElapsed"])).toEqual(FOLDED);
     expect(pillOpen(run(["click", "leave", "idleElapsed"]))).toBe(false);
   });
 
@@ -91,7 +93,7 @@ describe("the idle fold", () => {
   it("starts waiting again once the focus leaves", () => {
     const state = run(["click", "focusIn", "focusOut"]);
     expect(pillTimer(state)?.event).toBe("idleElapsed");
-    expect(run(["idleElapsed"], state)).toEqual(PILL_REST);
+    expect(run(["idleElapsed"], state)).toEqual(FOLDED);
   });
 
   it("never folds while a seek is being dragged, however long it takes", () => {
@@ -110,7 +112,7 @@ describe("the idle fold", () => {
   it("waits again from the end of a drag", () => {
     const state = run(["click", "dragStart", "dragEnd"]);
     expect(pillTimer(state)?.event).toBe("idleElapsed");
-    expect(run(["idleElapsed"], state)).toEqual(PILL_REST);
+    expect(run(["idleElapsed"], state)).toEqual(FOLDED);
   });
 
   it("does nothing to a collapsed or closing pill", () => {
@@ -122,6 +124,26 @@ describe("the idle fold", () => {
   it("lets Escape and an outside press close it whatever the focus or the drag", () => {
     expect(run(["click", "focusIn", "dragStart", "escape"])).toEqual(PILL_REST);
     expect(run(["click", "dragStart", "outside"])).toEqual(PILL_REST);
+  });
+
+  it("opens again on the next movement when the idle fold left the pointer resting on it", () => {
+    const folded = run(["enter", "openElapsed", "idleElapsed"]);
+    expect(folded.rearm).toBe(true);
+    const back = run(["move"], folded);
+    expect(back.phase).toBe("opening");
+    expect(run(["openElapsed"], back).phase).toBe("hover");
+    expect(run(["move"], run(["click", "idleElapsed"])).phase).toBe("opening");
+  });
+
+  it("does not reopen for movement after Escape, a press outside or the pointer leaving", () => {
+    for (const before of [["click", "escape"], ["click", "outside"], ["enter", "openElapsed", "idleElapsed", "leave"], ["enter", "openElapsed", "leave", "closeElapsed"]] as PillEvent[][]) {
+      expect(run(["move"], run(before)), before.join(",")).toEqual(run(before));
+      expect(run(["move"], run(before)).phase).toBe("collapsed");
+    }
+  });
+
+  it("ignores movement in any other phase", () => {
+    for (const before of [["enter"], ["enter", "openElapsed"], ["click"]] as PillEvent[][]) expect(run(["move"], run(before))).toEqual(run(before));
   });
 
   it("counts the idle wait from the last touch", () => {

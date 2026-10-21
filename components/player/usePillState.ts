@@ -72,7 +72,10 @@ export function usePillState(initialPinned: boolean) {
     onPointerLeave: (event: ReactPointerEvent) => {
       if (event.pointerType !== "touch") send("leave");
     },
-    onPointerMove: touch,
+    onPointerMove: (event: ReactPointerEvent) => {
+      touch();
+      if (state.rearm && event.pointerType !== "touch") send("move");
+    },
     onPointerDownCapture: (event: ReactPointerEvent) => {
       touch();
       if (!isSeek(event.target)) return;
