@@ -45,7 +45,7 @@ export const BREATH = { rate: 0.9, depth: 0.35 } as const;
 // travel (slower than the answer's ripple, which runs at 650); envelope and
 // envelopeSpeed: the long, slower swell that keeps it from reading as one even
 // sine. Aaron retunes it here, or with the lab's strength slider.
-export const IDLE = { amp: 0.1, height: 0.07, wavelength: 330, speed: 52, envelope: 1100, envelopeSpeed: 24 } as const;
+export const IDLE = { amp: 0.12, height: 0.09, wavelength: 330, speed: 52, envelope: 1100, envelopeSpeed: 24 } as const;
 
 // How far below the band's box the line's return keeps (px beyond the dots' own reach), when the wave is one line.
 export const BAND_CLEAR_EXTRA = 14;
