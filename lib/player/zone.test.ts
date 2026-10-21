@@ -1,31 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { AHEAD_TOP, ISLE, ISLE_LINE } from "./constants";
-import { cornerRadius, ghostOpacity, isleBox, lerpBox, toBox, zoneFrom, zoneOf } from "./zone";
+import { cornerRadius, ghostOpacity, isleBox, lerpBox, toBox, zoneFrom } from "./zone";
 
 const VH = 900;
-
-describe("the band's zone against the hand-off line", () => {
-  it("is past once the band's bottom edge has risen to the line", () => {
-    expect(zoneOf({ top: -300, bottom: 0.4 * VH }, VH, 0.4)).toBe("past");
-    expect(zoneOf({ top: -500, bottom: -200 }, VH, 0.4)).toBe("past");
-  });
-
-  it("is in while the band is on screen below the line", () => {
-    expect(zoneOf({ top: 100, bottom: 400 }, VH, 0.4)).toBe("in");
-    expect(zoneOf({ top: 300, bottom: 600 }, VH, 0.4)).toBe("in");
-  });
-
-  it("is ahead while the band is still below the fold", () => {
-    expect(zoneOf({ top: AHEAD_TOP * VH, bottom: AHEAD_TOP * VH + 300 }, VH, 0.4)).toBe("ahead");
-    expect(zoneOf({ top: 2000, bottom: 2300 }, VH, 0.4)).toBe("ahead");
-  });
-
-  it("moves the past boundary with the line", () => {
-    const rect = { top: -100, bottom: 200 };
-    expect(zoneOf(rect, VH, 0.1)).toBe("in");
-    expect(zoneOf(rect, VH, 0.3)).toBe("past");
-  });
-});
 
 describe("the zone from the two scroll reads", () => {
   it("is past first, then ahead, else in", () => {

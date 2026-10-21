@@ -20,9 +20,9 @@ let attached = 0;
 const emit = () => listeners.forEach((listener) => listener());
 const rng = () => Math.random();
 
-export const getQueue = (): Queue => queue;
+const getQueue = (): Queue => queue;
 
-export const subscribeQueue = (listener: () => void) => {
+const subscribeQueue = (listener: () => void) => {
   listeners.add(listener);
   return () => {
     listeners.delete(listener);

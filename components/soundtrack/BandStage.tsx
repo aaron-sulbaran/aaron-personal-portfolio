@@ -64,6 +64,7 @@ export function BandStage() {
             type="button"
             data-wave-avoid
             inert={!live}
+            aria-hidden={live ? undefined : true}
             onClick={() => setFrozen(!frozen)}
             onFocus={() => setFocusHeld(true)}
             onBlur={() => setFocusHeld(false)}

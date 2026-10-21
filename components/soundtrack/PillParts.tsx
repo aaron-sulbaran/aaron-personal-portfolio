@@ -6,11 +6,10 @@ import { NoteIcon } from "@/components/menu/NoteIcon";
 import { siteContent } from "@/lib/content";
 import { noteState } from "@/lib/note";
 import type { SoundtrackState } from "@/lib/soundtrack";
-import { setFrozen, useFrozen } from "@/lib/waveform/freeze";
 
-// Shared pieces of the playback pill: the glass surface (backdrop blur is
-// sanctioned on the pill), the growing slot, the cover tile, the glyph and the
-// card's freeze row.
+// Shared pieces of the stock playback pill and the player: the glass surface
+// (backdrop blur is sanctioned on the pill), the growing slot, the cover tile
+// and the glyph.
 
 export const EASE = "var(--ease-out)";
 
@@ -63,8 +62,6 @@ export function PillSlot({ visible, maxWidth, reduce, ms = 280, before = 0, afte
     </span>
   );
 }
-
-export const formatTime = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 
 export function iconButton(size?: number): CSSProperties {
   return {
@@ -129,24 +126,5 @@ export function DockGlyph({ music }: { music: SoundtrackState }) {
     <span data-fill-icon className="flex h-4 w-4 flex-none items-center justify-center">
       <NoteIcon state={noteState(music)} className="block h-4 w-[14px]" />
     </span>
-  );
-}
-
-// "Freeze the wave", in the player card since the wave is everywhere now.
-// Nothing moves under reduced motion, so the row is not offered then.
-export function FreezeRow({ reduce }: { reduce: boolean }) {
-  const frozen = useFrozen();
-  const c = siteContent.listen;
-  if (reduce) return null;
-  return (
-    <button
-      type="button"
-      onClick={() => setFrozen(!frozen)}
-      data-cursor-hover
-      className="font-label text-label-sm text-accent underline underline-offset-[3px] transition-colors duration-200 hover:text-accent-hover"
-      style={{ ...iconButton(), color: undefined, justifyContent: "flex-start", minHeight: 24, marginTop: 10 }}
-    >
-      {frozen ? c.unfreeze : c.freeze}
-    </button>
   );
 }

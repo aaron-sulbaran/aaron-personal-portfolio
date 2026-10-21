@@ -1,14 +1,8 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { NOTE_INK, NOTE_SLASH_MS, hasSlash, menuChipStops, noteState } from "./note";
+import { NOTE_INK, NOTE_SLASH_MS, hasSlash, noteState } from "./note";
 
 describe("the note's state", () => {
-  it("the menu chip stops only while music is audible", () => {
-    expect(menuChipStops("on")).toBe(true);
-    expect(menuChipStops("paused")).toBe(false);
-    expect(menuChipStops("off")).toBe(false);
-    expect(menuChipStops("before")).toBe(false);
-  });
   it("reads the soundtrack store", () => {
     expect(noteState("on")).toBe("playing");
     expect(noteState("paused")).toBe("paused");

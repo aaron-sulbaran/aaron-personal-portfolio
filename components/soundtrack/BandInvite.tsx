@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useSyncExternalStore, type MouseEvent, type ReactNode } from "react";
+import { useEffect, useRef, type MouseEvent, type ReactNode } from "react";
 import { Fill } from "@/components/fx/Fill";
 import { InlineCopy } from "@/components/inline/InlineCopy";
 import { siteContent } from "@/lib/content";
@@ -14,7 +14,6 @@ import {
   stopSoundtrack,
   useSoundtrack,
 } from "@/lib/soundtrack";
-import { isPhone, subscribePhone } from "@/lib/waveform/layout";
 import { PRIMARY, QUIET, SMALL } from "./bandButtons";
 import { DeclinedNote } from "./DeclinedNote";
 
@@ -24,9 +23,12 @@ import { DeclinedNote } from "./DeclinedNote";
 // height (no layout shift when a stored choice restores after mount). Hidden
 // layers are inert: not focusable, not clickable, not read. Answering moves
 // focus to the note under the question, and Pause and Resume to each other,
-// so keyboard users never land on the body. Once declined, re-entry is the
-// pill's quiet capsule on desktop and "Play it" beside the note on phones
-// (the Menu's note works everywhere).
+// so keyboard users never land on the body.
+//
+// With the player in the band the player is the feedback: the status sentence
+// and the Pause or Resume beside the heading go, and the rows close up under
+// the heading. After "Not now" the note carries Play it and Freeze the wave
+// beside it, and the stock pill's quiet capsule is the way back on desktop.
 //
 // The root carries data-wave-avoid: the waveform measures it and keeps its
 // moving dots out from under this text. The controls carry
@@ -34,13 +36,9 @@ import { DeclinedNote } from "./DeclinedNote";
 export function BandInvite() {
   const music = useSoundtrack();
   const c = siteContent.listen;
-  // With the player in the band the player is the feedback, so the status sentence and the Pause or Resume go.
   const playerOwns = bandPlayerMounted(usePlayerView());
   // Nothing of the band's own shows then, so its rows close up under the heading instead of holding their height: the player sits right under the heading on a phone, and the wave's keep-out shrinks to the heading on a desktop. The controls keep their width, where an answer's ripple starts.
   const closedUp = playerOwns && (music === "on" || music === "paused");
-  // Hydration renders the server snapshot, so the desktop copy matches the server HTML; the phone copy applies after hydration, while its layer is still hidden.
-  const phone = useSyncExternalStore(subscribePhone, isPhone, () => false);
-  const acceptedNote = phone ? c.acceptedNotePhone : c.acceptedNote;
   const moveFocus = useRef<"note" | "control" | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
 
@@ -96,7 +94,7 @@ export function BandInvite() {
           <p><InlineCopy source={c.body} /></p>
         </Layer>
         <Layer shown={music === "on" && !playerOwns}>
-          <p><InlineCopy source={acceptedNote} /></p>
+          <p><InlineCopy source={c.acceptedNote} /></p>
         </Layer>
         <Layer shown={music === "paused" && !playerOwns}>
           <p>{c.pausedNote}</p>

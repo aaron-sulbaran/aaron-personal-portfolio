@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { siteContent } from "@/lib/content";
 import { creditProblems } from "@/lib/content/tracks";
-import { rowAction, trackRows, wrapIndex } from "./tracks";
+import { rowAction, trackRows } from "./tracks";
 
 const tracks = siteContent.soundtrack.tracks;
 
@@ -29,13 +29,6 @@ describe("the track list", () => {
 
   it("leaves every credit as the content module checks it", () => {
     for (const track of tracks) expect(creditProblems(track), track.title).toEqual([]);
-  });
-
-  it("wraps previous and next around the ends", () => {
-    expect(wrapIndex(7, 7)).toBe(0);
-    expect(wrapIndex(-1, 7)).toBe(6);
-    expect(wrapIndex(3, 7)).toBe(3);
-    expect(wrapIndex(2, 0)).toBe(0);
   });
 
   it("toggles the current row and switches for any other", () => {

@@ -47,9 +47,8 @@ export const siteContent = {
     body: "Yeah, I put [music](tip:music-note) on my website. It moves with you.",
     accept: "Play it",
     decline: "Not now",
+    // Shown only where the band cannot hold the player (a desktop narrower than 1024px), which docks it at the isle instead.
     acceptedNote: "Enjoy! Control it from the [evolving isle](tip:evolving-isle).",
-    // Phones have no pill, so there is no isle to point at.
-    acceptedNotePhone: "Enjoy!",
     declinedNote: "No problem, it's here if you change your mind.",
     pausedNote: "Paused. Resume whenever you like.",
     pause: "Pause",

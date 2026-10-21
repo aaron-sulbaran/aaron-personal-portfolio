@@ -1,19 +1,14 @@
-import { AHEAD_TOP, ISLE } from "./constants";
+import { ISLE } from "./constants";
 
 // Where the reader is against the band, and the boxes the hand-off to the isle
-// travels between. Pure: the band's rect and the viewport in, a zone or a box
-// out.
+// travels between. Pure.
+//
+//   past   the band's bottom edge has risen to the hand-off line (ISLE_LINE)
+//   ahead  the band's top edge is still below the fold (AHEAD_TOP), so there is
+//          no band to open a player in
+//   in     the band is on screen between them
 
 export type Zone = "ahead" | "in" | "past";
-
-// "past": the band's bottom edge has risen to the hand-off line. "ahead": the
-// band's top edge is still below the fold, so a player opened then has no band
-// to open in. "in": the band is on screen between them.
-export function zoneOf(rect: { top: number; bottom: number }, viewportHeight: number, line: number): Zone {
-  if (rect.bottom <= line * viewportHeight) return "past";
-  if (rect.top >= viewportHeight * AHEAD_TOP) return "ahead";
-  return "in";
-}
 
 // The zone from the two ScrollTrigger reads the host keeps: past wins, then
 // ahead. A page with no band (a route other than the home page) is all ahead.

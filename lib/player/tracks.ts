@@ -26,10 +26,6 @@ export function trackRows(tracks: readonly SoundtrackTrack[], currentIndex: numb
   }));
 }
 
-export function wrapIndex(index: number, length: number): number {
-  return length === 0 ? 0 : ((index % length) + length) % length;
-}
-
 // What pressing a row does: its own row toggles playback, another row switches to it and plays.
 export type RowAction = "pause" | "resume" | "switch";
 
