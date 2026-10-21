@@ -1,153 +1,138 @@
 import { describe, expect, it } from "vitest";
-import { bandPlayerMounted, CLOSED, handoff, labPillShown, pillHold, step, type MachineConfig, type PlayerEvent, type PlayerState } from "./machine";
+import { bandPlayerMounted, bandPlayerShown, CLOSED, handoff, isleShown, playerOwnsPill, step, type MachineConfig, type PlayerEvent, type PlayerState } from "./machine";
 
-const desktop: MachineConfig = { onPlay: "player", intoIsle: "morph", backUp: "reopen", phone: false, phoneMode: "island", roomy: true, reduce: false };
+const desktop: MachineConfig = { phone: false, roomy: true, reduce: false };
 const phone: MachineConfig = { ...desktop, phone: true };
 const view = (name: PlayerState["view"]): PlayerState => ({ view: name });
 const run = (config: MachineConfig, events: PlayerEvent[], from: PlayerState = CLOSED) => events.reduce((state, event) => step(state, event, config), from);
 
 describe("starting the music", () => {
-  it("does nothing when On play is today", () => {
-    expect(step(CLOSED, { type: "started", zone: "in" }, { ...desktop, onPlay: "today" })).toEqual(CLOSED);
+  it("opens the player in the band when the band is on screen", () => {
+    expect(step(CLOSED, { type: "started", zone: "in" }, desktop)).toEqual(view("band"));
+    expect(step(CLOSED, { type: "started", zone: "in" }, phone)).toEqual(view("band"));
   });
 
-  it("opens in the band when the band is on screen, or parks there when the reader is above it", () => {
-    for (const zone of ["in", "ahead"] as const) expect(step(CLOSED, { type: "started", zone }, desktop)).toEqual(view("band"));
-  });
-
-  it("docks at the isle when started below the band", () => {
+  it("docks the player open at the isle when it is started below the band, on a desktop", () => {
     expect(step(CLOSED, { type: "started", zone: "past" }, desktop)).toEqual(view("docked"));
+  });
+
+  it("collapses into the isle when it is started above the band, where only the isle is on screen", () => {
+    expect(step(CLOSED, { type: "started", zone: "ahead" }, desktop)).toEqual(view("pill"));
+  });
+
+  it("puts a phone's player in the island whenever the band is off screen", () => {
+    expect(step(CLOSED, { type: "started", zone: "past" }, phone)).toEqual(view("pill"));
+    expect(step(CLOSED, { type: "started", zone: "ahead" }, phone)).toEqual(view("pill"));
   });
 
   it("docks even with the band on screen when the window is too narrow to hold the card beside the copy", () => {
     expect(step(CLOSED, { type: "started", zone: "in" }, { ...desktop, roomy: false })).toEqual(view("docked"));
-    expect(step(CLOSED, { type: "started", zone: "ahead" }, { ...desktop, roomy: false })).toEqual(view("docked"));
-  });
-
-  it("opens a phone's player in the band, or as the island or bar when that is chosen and the reader is below the band", () => {
-    expect(step(CLOSED, { type: "started", zone: "in" }, phone)).toEqual(view("band"));
-    expect(step(CLOSED, { type: "started", zone: "ahead" }, phone)).toEqual(view("band"));
-    expect(step(CLOSED, { type: "started", zone: "past" }, phone)).toEqual(view("pill"));
-    expect(step(CLOSED, { type: "started", zone: "past" }, { ...phone, phoneMode: "bar" })).toEqual(view("pill"));
-    expect(step(CLOSED, { type: "started", zone: "past" }, { ...phone, phoneMode: "band" })).toEqual(view("band"));
   });
 });
 
 describe("scrolling the band out and back", () => {
-  it("morphs to the pill when the line is crossed, then lands there", () => {
-    const left = step(view("band"), { type: "line", past: true }, desktop);
+  it("morphs to the pill when the reader scrolls past the band, then lands there", () => {
+    const left = step(view("band"), { type: "zone", zone: "past" }, desktop);
     expect(left.view).toBe("to-pill");
     expect(step(left, { type: "arrived" }, desktop).view).toBe("pill");
   });
 
-  it("swaps at once when the hand-off is a fade", () => {
-    expect(step(view("band"), { type: "line", past: true }, { ...desktop, intoIsle: "fade" }).view).toBe("pill");
+  it("does the same when the band leaves the other way, down the page, so the isle shows above it too", () => {
+    expect(step(view("band"), { type: "zone", zone: "ahead" }, desktop).view).toBe("to-pill");
   });
 
-  it("stays in the band, for the stock pill to arrive by itself, when Into the isle is today", () => {
-    expect(step(view("band"), { type: "line", past: true }, { ...desktop, intoIsle: "today" })).toEqual(view("band"));
+  it("swaps at once under reduced motion", () => {
+    const reduced = { ...desktop, reduce: true };
+    expect(step(view("band"), { type: "zone", zone: "past" }, reduced).view).toBe("pill");
+    expect(step(view("pill"), { type: "zone", zone: "in" }, reduced).view).toBe("band");
   });
 
-  it("reopens in the band on the way back when Back up reopens, and stays a pill otherwise", () => {
-    expect(step(view("pill"), { type: "line", past: false }, desktop).view).toBe("to-band");
-    expect(step(view("pill"), { type: "line", past: false }, { ...desktop, intoIsle: "fade" }).view).toBe("band");
-    expect(step(view("pill"), { type: "line", past: false }, { ...desktop, backUp: "pill" })).toEqual(view("pill"));
+  it("reopens in the band on the way back", () => {
+    expect(step(view("pill"), { type: "zone", zone: "in" }, desktop).view).toBe("to-band");
+    expect(step(view("to-band"), { type: "arrived" }, desktop).view).toBe("band");
   });
 
   it("turns around mid-flight in either direction", () => {
-    expect(step(view("to-pill"), { type: "line", past: false }, desktop).view).toBe("to-band");
-    expect(step(view("to-band"), { type: "line", past: true }, desktop).view).toBe("to-pill");
+    expect(step(view("to-pill"), { type: "zone", zone: "in" }, desktop).view).toBe("to-band");
+    expect(step(view("to-band"), { type: "zone", zone: "past" }, desktop).view).toBe("to-pill");
+  });
+
+  it("stays a pill as the reader moves on through the book and the hero", () => {
+    const end = run(desktop, [{ type: "started", zone: "in" }, { type: "zone", zone: "past" }, { type: "arrived" }, { type: "zone", zone: "ahead" }]);
+    expect(end).toEqual(view("pill"));
   });
 
   it("brings a docked player home to the band when the reader scrolls back up to it", () => {
-    expect(step(view("docked"), { type: "line", past: false }, desktop)).toEqual(view("band"));
-    expect(step(view("docked"), { type: "line", past: false }, { ...desktop, backUp: "pill" })).toEqual(view("docked"));
-    expect(step(view("docked"), { type: "line", past: false }, { ...desktop, roomy: false })).toEqual(view("docked"));
-    expect(step(view("docked"), { type: "line", past: true }, desktop)).toEqual(view("docked"));
+    expect(step(view("docked"), { type: "zone", zone: "in" }, desktop)).toEqual(view("band"));
+    expect(step(view("docked"), { type: "zone", zone: "past" }, desktop)).toEqual(view("docked"));
+    expect(step(view("docked"), { type: "zone", zone: "ahead" }, desktop)).toEqual(view("docked"));
   });
 
-  it("reopens in the band from a pill that began at the dock too", () => {
-    const end = run(desktop, [{ type: "started", zone: "past" }, { type: "close", pillReady: true }, { type: "line", past: false }, { type: "arrived" }]);
-    expect(end).toEqual(view("band"));
+  it("keeps a docked player at the dock when the window is too narrow for the band's card", () => {
+    const narrow = { ...desktop, roomy: false };
+    expect(step(view("docked"), { type: "zone", zone: "in" }, narrow)).toEqual(view("docked"));
+    expect(step(view("pill"), { type: "zone", zone: "in" }, narrow)).toEqual(view("pill"));
   });
 
-  it("leaves the player parked in the band, never an isle, as the reader scrolls on up to the book and the hero", () => {
-    const end = run(desktop, [{ type: "started", zone: "in" }, { type: "line", past: true }, { type: "arrived" }, { type: "line", past: false }, { type: "arrived" }, { type: "line", past: false }]);
-    expect(end).toEqual(view("band"));
+  it("docks a band player whose window narrows below what the card needs", () => {
+    const narrow = { ...desktop, roomy: false };
+    for (const name of ["band", "to-band", "to-pill"] as const) expect(step(view(name), { type: "zone", zone: "in" }, narrow)).toEqual(view("docked"));
   });
 
-  it("goes through the whole round trip", () => {
+  it("goes through the whole round trip, down and back", () => {
     const end = run(desktop, [
       { type: "started", zone: "in" },
-      { type: "line", past: true },
+      { type: "zone", zone: "past" },
       { type: "arrived" },
-      { type: "line", past: false },
+      { type: "zone", zone: "in" },
       { type: "arrived" },
     ]);
     expect(end).toEqual(view("band"));
   });
 
-  it("does the same on a phone with the island: sheet in the band, island below it, sheet again on the way back", () => {
-    const down = run(phone, [{ type: "started", zone: "in" }, { type: "line", past: true }, { type: "arrived" }]);
+  it("does the same on a phone: card in the band, island below it and above it, card again on the way back", () => {
+    const down = run(phone, [{ type: "started", zone: "in" }, { type: "zone", zone: "past" }, { type: "arrived" }]);
     expect(down).toEqual(view("pill"));
-    expect(run(phone, [{ type: "line", past: false }, { type: "arrived" }], down)).toEqual(view("band"));
+    expect(run(phone, [{ type: "zone", zone: "ahead" }], down)).toEqual(view("pill"));
+    expect(run(phone, [{ type: "zone", zone: "in" }, { type: "arrived" }], down)).toEqual(view("band"));
+  });
+
+  it("does nothing while no music is playing", () => {
+    for (const zone of ["in", "past", "ahead"] as const) expect(step(CLOSED, { type: "zone", zone }, desktop)).toEqual(CLOSED);
   });
 });
 
-describe("closing, opening and stopping", () => {
-  it("collapses a docked player to the pill, or closes it when the pill is not there yet", () => {
-    expect(step(view("docked"), { type: "close", pillReady: true }, desktop)).toEqual(view("pill"));
-    expect(step(view("docked"), { type: "close", pillReady: false }, desktop)).toEqual(CLOSED);
-  });
-
-  it("closes the band's player", () => {
-    expect(step(view("band"), { type: "close", pillReady: true }, desktop)).toEqual(CLOSED);
-  });
-
-  it("opens the pill into the band when the band is on screen, else at the dock", () => {
-    expect(step(view("pill"), { type: "open", zone: "in" }, { ...desktop, intoIsle: "fade" }).view).toBe("band");
-    expect(step(view("pill"), { type: "open", zone: "in" }, desktop).view).toBe("to-band");
-    expect(step(view("pill"), { type: "open", zone: "past" }, desktop)).toEqual(view("docked"));
-    expect(step(view("pill"), { type: "open", zone: "in" }, { ...desktop, roomy: false })).toEqual(view("docked"));
-  });
-
-  it("clears on a stop or a reset", () => {
-    expect(step(view("docked"), { type: "stopped" }, desktop)).toEqual(CLOSED);
-    expect(step(view("pill"), { type: "reset" }, desktop)).toEqual(CLOSED);
+describe("stopping", () => {
+  it("clears whatever the view was", () => {
+    for (const name of ["band", "docked", "to-pill", "to-band", "pill"] as const) expect(step(view(name), { type: "stopped" }, desktop)).toEqual(CLOSED);
   });
 });
 
 describe("the hand-off kind", () => {
-  it("is the chosen Into the isle on desktop, with reduced motion fading instead of morphing", () => {
+  it("is a morph, with reduced motion fading instead", () => {
     expect(handoff(desktop)).toBe("morph");
-    expect(handoff({ ...desktop, reduce: true })).toBe("fade");
-    expect(handoff({ ...desktop, intoIsle: "today" })).toBe("none");
-  });
-
-  it("is the phone's choice on a phone: none in the band, a fade to the island or bar unless morph is chosen", () => {
-    expect(handoff({ ...phone, phoneMode: "band" })).toBe("none");
-    expect(handoff({ ...phone, intoIsle: "today" })).toBe("fade");
     expect(handoff(phone)).toBe("morph");
-    expect(handoff({ ...phone, phoneMode: "bar" })).toBe("morph");
+    expect(handoff({ ...desktop, reduce: true })).toBe("fade");
   });
 });
 
-describe("what the real pill does around the lab's player", () => {
-  it("steps the real pill away whenever the lab's own pill is the isle, or is handing off to or from it", () => {
-    for (const name of ["pill", "docked", "to-pill", "to-band"] as const) expect(pillHold(name)).toBe("away");
-    for (const name of ["closed", "band"] as const) expect(pillHold(name)).toBe("auto");
+describe("what each view shows", () => {
+  it("steps the stock capsule pill away whenever the player is the pill, and only then", () => {
+    for (const name of ["band", "docked", "to-pill", "to-band", "pill"] as const) expect(playerOwnsPill(name)).toBe(true);
+    expect(playerOwnsPill("closed")).toBe(false);
   });
 
-  it("shows the lab's pill collapsed into the isle or at the dock, never while the reader is still above the band", () => {
-    expect(labPillShown("pill", false)).toBe(true);
-    expect(labPillShown("docked", false)).toBe(true);
-    expect(labPillShown("pill", true)).toBe(false);
-    for (const name of ["closed", "band", "to-pill", "to-band"] as const) expect(labPillShown(name, false)).toBe(false);
+  it("shows the isle collapsed or at its dock, never while a hand-off or the band's card has the player", () => {
+    expect(isleShown("pill")).toBe(true);
+    expect(isleShown("docked")).toBe(true);
+    for (const name of ["closed", "band", "to-pill", "to-band"] as const) expect(isleShown(name)).toBe(false);
   });
 
-  it("keeps the band's player in the page through a hand-off so its box can be measured", () => {
+  it("keeps the band's player in the page through a hand-off so its box can be measured, and on show only in the band", () => {
     for (const name of ["band", "to-pill", "pill", "to-band"] as const) expect(bandPlayerMounted(name)).toBe(true);
     expect(bandPlayerMounted("docked")).toBe(false);
     expect(bandPlayerMounted("closed")).toBe(false);
+    expect(bandPlayerShown("band")).toBe(true);
+    for (const name of ["closed", "docked", "to-pill", "to-band", "pill"] as const) expect(bandPlayerShown(name)).toBe(false);
   });
 });

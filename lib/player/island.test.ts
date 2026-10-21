@@ -1,91 +1,86 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { COMPACT_SLOT, compactWidth, expandedWidth, GENERIC_ISLAND, islandBox, islandSpec, islandTop, ISLAND_PT, PHONE_PRESETS } from "./island";
+import { HEADER_ROW, ISLAND } from "./constants";
+import { expandedFit, headerTop, islandBox, islandFit, markRight, menuLeftFallback } from "./island";
 
-describe("which phone's island to match", () => {
-  it("reads the 14 Pro class from its 393 by 852 screen at 3x, in either orientation", () => {
-    for (const screen of [{ width: 393, height: 852 }, { width: 852, height: 393 }]) {
-      expect(islandSpec(screen, 3)).toMatchObject({ width: 126, height: 37.33, top: 11, safeTop: 59 });
+// The Menu pill's real width with the Listen note gone: its label and padding.
+const MENU_WIDTH = 64;
+const menuLeftOf = (viewportWidth: number) => viewportWidth - (viewportWidth >= 640 ? 20 : 12) - MENU_WIDTH;
+
+describe("the island in the header row", () => {
+  it("stands on the Menu pill's top edge and height, at every phone width", () => {
+    for (const width of [360, 375, 393, 402, 430, 440, 639]) {
+      expect(headerTop(width)).toBe(12);
+      expect(islandBox(width, menuLeftOf(width)).top).toBe(12);
+    }
+    for (const width of [640, 700, 767]) expect(headerTop(width)).toBe(16);
+    expect(islandBox(393).height).toBe(HEADER_ROW.heightPx);
+    expect(HEADER_ROW.heightPx).toBe(40);
+  });
+
+  it("centers on the Menu pill's line: the same vertical center within a pixel", () => {
+    for (const width of [360, 393, 440, 700]) {
+      const box = islandBox(width, menuLeftOf(width));
+      expect(box.top + box.height / 2).toBeCloseTo(headerTop(width) + HEADER_ROW.heightPx / 2, 5);
     }
   });
 
-  it("knows every size class that has an island", () => {
-    const sizes = [[393, 852, 59], [430, 932, 59], [402, 874, 62], [440, 956, 62], [420, 912, 68]] as const;
-    for (const [width, height, safeTop] of sizes) {
-      const spec = islandSpec({ width, height }, 3);
-      expect(spec.model).not.toBeNull();
-      expect(spec.safeTop).toBe(safeTop);
-      expect(spec.width).toBe(ISLAND_PT.width);
+  it("stays clear of the mark and the Menu pill from 360 to 440 wide", () => {
+    for (let width = 360; width <= 440; width += 4) {
+      const menuLeft = menuLeftOf(width);
+      const { left, width: wide } = islandFit(width, menuLeft);
+      expect(left, `${width}: clear of the mark`).toBeGreaterThanOrEqual(markRight(width) + HEADER_ROW.clearPx);
+      expect(left + wide, `${width}: clear of the Menu pill`).toBeLessThanOrEqual(menuLeft - HEADER_ROW.clearPx);
     }
   });
 
-  it("keeps the gap under the island the same in every class", () => {
-    for (const [width, height] of [[393, 852], [402, 874], [420, 912]] as const) {
-      const spec = islandSpec({ width, height }, 3);
-      expect(spec.safeTop - (spec.top + spec.height)).toBeCloseTo(ISLAND_PT.gapBelow, 1);
-    }
+  it("is centered on the screen when that keeps it clear of both", () => {
+    const { left, width } = islandFit(393, menuLeftOf(393));
+    expect(left + width / 2).toBeCloseTo(393 / 2, 5);
   });
 
-  it("falls back to the generic pill for a notch iPhone, an Android phone and anything else", () => {
-    expect(islandSpec({ width: 390, height: 844 }, 3)).toBe(GENERIC_ISLAND);
-    expect(islandSpec({ width: 412, height: 915 }, 2.625)).toBe(GENERIC_ISLAND);
-    expect(islandSpec({ width: 393, height: 852 }, 2)).toBe(GENERIC_ISLAND);
-    expect(islandSpec({ width: 1440, height: 900 }, 2)).toBe(GENERIC_ISLAND);
+  it("slides toward the roomier side, never onto the Menu pill, when a wider Menu pill takes the room", () => {
+    const wide = islandFit(360, 360 - 12 - 150);
+    expect(wide.left).toBeGreaterThanOrEqual(markRight(360) + HEADER_ROW.clearPx);
+    expect(wide.left + wide.width).toBeLessThanOrEqual(360 - 12 - 150 - HEADER_ROW.clearPx);
   });
 
-  it("has a preset for each lab phone that resolves to the island it names", () => {
-    expect(islandSpec(PHONE_PRESETS.iphone15, PHONE_PRESETS.iphone15.dpr).model).toMatch(/15/);
-    expect(islandSpec(PHONE_PRESETS.iphone17pro, PHONE_PRESETS.iphone17pro.dpr).model).toMatch(/17 Pro/);
-    expect(islandSpec(PHONE_PRESETS.iphone17promax, PHONE_PRESETS.iphone17promax.dpr).model).toMatch(/17 Pro Max/);
-    expect(islandSpec(PHONE_PRESETS.android, PHONE_PRESETS.android.dpr)).toBe(GENERIC_ISLAND);
+  it("is a share of the screen between the live activity's bounds", () => {
+    expect(islandFit(393, menuLeftOf(393)).width).toBe(Math.floor(393 * ISLAND.compactShare));
+    expect(islandFit(767, menuLeftOf(767)).width).toBeLessThanOrEqual(ISLAND.compactMaxPx);
+    expect(islandFit(360, menuLeftOf(360)).width).toBeGreaterThanOrEqual(ISLAND.compactMinPx);
+  });
+
+  it("falls back to the Menu pill's usual place until it is measured", () => {
+    expect(menuLeftFallback(393)).toBe(393 - 12 - HEADER_ROW.menuWidthPx);
+    expect(menuLeftFallback(700)).toBe(700 - 20 - HEADER_ROW.menuWidthPx);
+  });
+
+  it("opens nearly the screen's width, centered, and no wider than the cap", () => {
+    expect(expandedFit(393)).toEqual({ left: 11, width: 371 });
+    expect(expandedFit(767).width).toBe(ISLAND.expandedMaxPx);
+    const fit = expandedFit(600);
+    expect(fit.left * 2 + fit.width).toBe(600);
   });
 });
 
-describe("where the pill sits", () => {
-  const spec = islandSpec({ width: 393, height: 852 }, 3);
+describe("the header row's real seats", () => {
+  const menu = readFileSync("components/menu/MenuPill.tsx", "utf8");
+  const nav = readFileSync("components/SiteNav.tsx", "utf8");
 
-  it("sits a small gap under the status bar when the page cannot draw there (the inset reads 0)", () => {
-    expect(islandTop(spec, 0)).toBe(6);
-    expect(islandTop(GENERIC_ISLAND, 0)).toBe(6);
+  it("matches the Menu pill's top edge and height", () => {
+    expect(menu).toContain(`top-${HEADER_ROW.topPx / 4}`);
+    expect(menu).toContain(`sm:top-${HEADER_ROW.topSmPx / 4}`);
+    expect(menu).toContain(`min-h-${HEADER_ROW.heightPx / 4}`);
+    expect(menu).toContain("right-[calc(12px+var(--scrollbar-comp))]");
+    expect(menu).toContain("sm:right-[calc(20px+var(--scrollbar-comp))]");
   });
 
-  it("sits over the hardware island when the page extends under the status bar", () => {
-    expect(islandTop(spec, 59)).toBe(11);
-    expect(islandTop(spec, 58.5)).toBe(11);
-  });
-
-  it("stays under the inset when it is some other number", () => {
-    expect(islandTop(spec, 20)).toBe(26);
-    expect(islandTop(GENERIC_ISLAND, 24)).toBe(30);
-  });
-});
-
-describe("the pill's widths", () => {
-  it("widens the hardware island by a slot each side for the live-activity look, on a screen with room", () => {
-    expect(compactWidth(islandSpec({ width: 393, height: 852 }, 3), 600)).toBe(126 + COMPACT_SLOT * 2);
-  });
-
-  it("stays clear of the header's Menu pill: no wider than 40 percent of the screen", () => {
-    const spec = islandSpec({ width: 393, height: 852 }, 3);
-    expect(compactWidth(spec, 393)).toBe(157);
-    expect(compactWidth(spec, 440)).toBe(176);
-    expect(compactWidth(GENERIC_ISLAND, 412)).toBe(164);
-    for (const width of [360, 375, 393, 412, 430, 440]) expect(width / 2 + compactWidth(spec, width) / 2).toBeLessThan(width - 106);
-  });
-
-  it("never narrows below the hardware island it stands for", () => {
-    expect(compactWidth(islandSpec({ width: 393, height: 852 }, 3), 200)).toBe(126);
-  });
-
-  it("expands to nearly the screen's width, capped on big phones", () => {
-    expect(expandedWidth(393)).toBe(371);
-    expect(expandedWidth(440)).toBe(418);
-    expect(expandedWidth(700)).toBe(420);
-  });
-
-  it("is centred for the morph's end", () => {
-    const spec = islandSpec({ width: 393, height: 852 }, 3);
-    const box = islandBox(393, spec, 6);
-    expect(box.left + box.width / 2).toBeCloseTo(196.5);
-    expect(box).toMatchObject({ top: 6, height: 37.33, width: compactWidth(spec, 393) });
+  it("matches the mark's place at its right edge", () => {
+    expect(nav).toContain("left-4 top-4");
+    expect(nav).toContain("h-8 w-8");
+    expect(nav).toContain("sm:left-6 sm:h-10 sm:w-10");
+    expect(HEADER_ROW.markRightPx).toBe(16 + 32);
+    expect(HEADER_ROW.markRightSmPx).toBe(24 + 40);
   });
 });

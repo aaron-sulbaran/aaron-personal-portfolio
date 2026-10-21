@@ -1,3 +1,5 @@
+import { PILL_CLOSE_MS, PILL_IDLE_MS, PILL_OPEN_MS } from "./constants";
+
 // The isle's one pill with two states, pure (the hook owns the timers).
 //
 //   collapsed  the cover, the title and the artist
@@ -6,23 +8,39 @@
 //   hover      open while the pointer is on it
 //   closing    the pointer left; it stays open through a short grace, so a
 //              wobble at its edge does not shut it
-//   pinned     a click anywhere on it holds it open: Tracks and the controls
-//              stay usable until a click outside or Escape
-// Keyboard focus inside it opens it too, like hover, and Escape closes it.
-
-export const PILL_OPEN_MS = 140;
-export const PILL_CLOSE_MS = 280;
+//   pinned     a click anywhere on it holds it open past the pointer leaving,
+//              so Tracks and the controls stay usable
+//
+// Open, by hover or by a pin, it also folds back on its own once nothing has
+// touched it for PILL_IDLE_MS (the pointer moving, a click, the wheel or a key
+// inside it), however it was opened. Two things hold it open past that:
+// keyboard focus inside it, since a keyboard visitor closes it with Escape and
+// is never timed out, and a seek being dragged. Escape and a press outside
+// close it at once.
 
 export type PillPhase = "collapsed" | "opening" | "hover" | "closing" | "pinned";
 
 export interface PillState {
   phase: PillPhase;
   focused: boolean;
+  dragging: boolean; // a seek is being dragged
 }
 
-export const PILL_REST: PillState = { phase: "collapsed", focused: false };
+export const PILL_REST: PillState = { phase: "collapsed", focused: false, dragging: false };
 
-export type PillEvent = "enter" | "leave" | "openElapsed" | "closeElapsed" | "click" | "outside" | "escape" | "focusIn" | "focusOut";
+export type PillEvent =
+  | "enter"
+  | "leave"
+  | "openElapsed"
+  | "closeElapsed"
+  | "idleElapsed"
+  | "click"
+  | "outside"
+  | "escape"
+  | "focusIn"
+  | "focusOut"
+  | "dragStart"
+  | "dragEnd";
 
 export function pillStep(state: PillState, event: PillEvent): PillState {
   const { phase } = state;
@@ -32,13 +50,16 @@ export function pillStep(state: PillState, event: PillEvent): PillState {
       return phase === "closing" ? { ...state, phase: "hover" } : state;
     case "leave":
       if (phase === "opening") return { ...state, phase: "collapsed" };
-      return phase === "hover" ? { ...state, phase: "closing" } : state;
+      // A seek dragged out of the pill is still the visitor's hand on it.
+      return phase === "hover" && !state.dragging ? { ...state, phase: "closing" } : state;
     case "openElapsed":
       return phase === "opening" ? { ...state, phase: "hover" } : state;
     case "closeElapsed":
       return phase === "closing" ? { ...state, phase: "collapsed" } : state;
+    case "idleElapsed":
+      return (phase === "hover" || phase === "pinned") && !state.focused && !state.dragging ? { ...state, phase: "collapsed" } : state;
     case "click":
-      // A click pins it, and a click on its controls once it is pinned keeps it so; only outside or Escape lets go.
+      // A click pins it, and a click on its controls once it is pinned keeps it so; only outside, Escape or the idle fold lets go.
       return { ...state, phase: "pinned" };
     case "outside":
     case "escape":
@@ -47,6 +68,10 @@ export function pillStep(state: PillState, event: PillEvent): PillState {
       return { ...state, focused: true };
     case "focusOut":
       return { ...state, focused: false };
+    case "dragStart":
+      return { ...state, dragging: true };
+    case "dragEnd":
+      return { ...state, dragging: false };
   }
 }
 
@@ -55,9 +80,16 @@ export const pillOpen = (state: PillState): boolean => state.phase === "hover" |
 
 export const pillPinned = (state: PillState): boolean => state.phase === "pinned";
 
-// The timer a phase is waiting on, if any, and how long.
-export function pillTimer(phase: PillPhase): { event: "openElapsed" | "closeElapsed"; ms: number } | null {
-  if (phase === "opening") return { event: "openElapsed", ms: PILL_OPEN_MS };
-  if (phase === "closing") return { event: "closeElapsed", ms: PILL_CLOSE_MS };
+export type PillTimerEvent = "openElapsed" | "closeElapsed" | "idleElapsed";
+
+// The timer a state is waiting on, if any, and how long. The idle one is the
+// longest the state may sit untouched; the hook re-arms it from the last touch.
+export function pillTimer(state: PillState): { event: PillTimerEvent; ms: number } | null {
+  if (state.phase === "opening") return { event: "openElapsed", ms: PILL_OPEN_MS };
+  if (state.phase === "closing") return { event: "closeElapsed", ms: PILL_CLOSE_MS };
+  if ((state.phase === "hover" || state.phase === "pinned") && !state.focused && !state.dragging) return { event: "idleElapsed", ms: PILL_IDLE_MS };
   return null;
 }
+
+// How much of the idle wait is left, from the clock now and the last touch.
+export const idleLeft = (now: number, lastTouch: number, ms: number = PILL_IDLE_MS): number => Math.max(0, lastTouch + ms - now);

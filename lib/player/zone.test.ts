@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { AHEAD_TOP, barBox, BAR, cornerRadius, ghostOpacity, ISLE, isleBox, lerpBox, toBox, zoneOf } from "./zone";
+import { AHEAD_TOP, ISLE, ISLE_LINE } from "./constants";
+import { cornerRadius, ghostOpacity, isleBox, lerpBox, toBox, zoneFrom, zoneOf } from "./zone";
 
 const VH = 900;
 
@@ -26,6 +27,20 @@ describe("the band's zone against the hand-off line", () => {
   });
 });
 
+describe("the zone from the two scroll reads", () => {
+  it("is past first, then ahead, else in", () => {
+    expect(zoneFrom(true, true)).toBe("past");
+    expect(zoneFrom(true, false)).toBe("past");
+    expect(zoneFrom(false, true)).toBe("ahead");
+    expect(zoneFrom(false, false)).toBe("in");
+  });
+
+  it("hands off at 0.4 of the viewport, with the band ahead until its top reaches three quarters", () => {
+    expect(ISLE_LINE).toBe(0.4);
+    expect(AHEAD_TOP).toBe(0.75);
+  });
+});
+
 describe("the boxes the hand-off travels between", () => {
   it("puts the isle on the pill's dock: 24px from the left and 54px up, the collapsed pill's size", () => {
     const box = isleBox(VH);
@@ -34,12 +49,6 @@ describe("the boxes the hand-off travels between", () => {
     expect(box.height).toBe(54);
     expect(box.width).toBe(252);
     expect(ISLE.openWidthPx).toBeGreaterThan(ISLE.widthPx);
-  });
-
-  it("spans the phone's width in the bar, 12px in from each side", () => {
-    const box = barBox(390, 844);
-    expect(box.width).toBe(390 - 2 * BAR.insetPx);
-    expect(box.top + box.height).toBe(844 - BAR.bottomPx);
   });
 
   it("interpolates a box and lands exactly on the ends", () => {

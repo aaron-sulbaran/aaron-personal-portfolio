@@ -1,18 +1,23 @@
+import { AHEAD_TOP, ISLE } from "./constants";
+
 // Where the reader is against the band, and the boxes the hand-off to the isle
 // travels between. Pure: the band's rect and the viewport in, a zone or a box
 // out.
 
 export type Zone = "ahead" | "in" | "past";
 
-// A band whose top edge is below this share of the viewport is not on screen
-// yet; a player opened then docks instead of opening out of sight.
-export const AHEAD_TOP = 0.75;
-
+// "past": the band's bottom edge has risen to the hand-off line. "ahead": the
+// band's top edge is still below the fold, so a player opened then has no band
+// to open in. "in": the band is on screen between them.
 export function zoneOf(rect: { top: number; bottom: number }, viewportHeight: number, line: number): Zone {
   if (rect.bottom <= line * viewportHeight) return "past";
   if (rect.top >= viewportHeight * AHEAD_TOP) return "ahead";
   return "in";
 }
+
+// The zone from the two ScrollTrigger reads the host keeps: past wins, then
+// ahead. A page with no band (a route other than the home page) is all ahead.
+export const zoneFrom = (past: boolean, ahead: boolean): Zone => (past ? "past" : ahead ? "ahead" : "in");
 
 export interface Box {
   left: number;
@@ -33,19 +38,9 @@ export function lerpBox(from: Box, to: Box, t: number): Box {
   return { left: mix(from.left, to.left), top: mix(from.top, to.top), width: mix(from.width, to.width), height: mix(from.height, to.height) };
 }
 
-// The one pill's dock (lib/waveform/dock DOCK): its left edge and the gap
-// under it, the same as the real pill's. Collapsed it is the cover, the title
-// and the artist: 54px tall and 252px wide. Open, it grows up from the same
-// corner to the full player's width.
-export const ISLE = { insetPx: 24, bottomPx: 54, heightPx: 54, widthPx: 252, openWidthPx: 360 } as const;
-export const BAR = { insetPx: 12, bottomPx: 12, heightPx: 56 } as const;
-
+// The collapsed pill's box on its dock, for the desktop hand-off's end.
 export function isleBox(viewportHeight: number): Box {
   return { left: ISLE.insetPx, top: viewportHeight - ISLE.bottomPx - ISLE.heightPx, width: ISLE.widthPx, height: ISLE.heightPx };
-}
-
-export function barBox(viewportWidth: number, viewportHeight: number): Box {
-  return { left: BAR.insetPx, top: viewportHeight - BAR.bottomPx - BAR.heightPx, width: viewportWidth - BAR.insetPx * 2, height: BAR.heightPx };
 }
 
 // Corners round from the card's radius to a full pill as the box shrinks to
