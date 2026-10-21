@@ -6,8 +6,8 @@
 //   hover      open while the pointer is on it
 //   closing    the pointer left; it stays open through a short grace, so a
 //              wobble at its edge does not shut it
-//   pinned     a click holds it open: Tracks and the controls stay usable until
-//              a click outside or Escape
+//   pinned     a click anywhere on it holds it open: Tracks and the controls
+//              stay usable until a click outside or Escape
 // Keyboard focus inside it opens it too, like hover, and Escape closes it.
 
 export const PILL_OPEN_MS = 140;
@@ -38,8 +38,8 @@ export function pillStep(state: PillState, event: PillEvent): PillState {
     case "closeElapsed":
       return phase === "closing" ? { ...state, phase: "collapsed" } : state;
     case "click":
-      // A click pins it; a click on it while pinned lets go (it then closes when the pointer leaves).
-      return { ...state, phase: phase === "pinned" ? "hover" : "pinned" };
+      // A click pins it, and a click on its controls once it is pinned keeps it so; only outside or Escape lets go.
+      return { ...state, phase: "pinned" };
     case "outside":
     case "escape":
       return PILL_REST;

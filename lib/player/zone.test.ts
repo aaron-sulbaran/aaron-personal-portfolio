@@ -27,11 +27,13 @@ describe("the band's zone against the hand-off line", () => {
 });
 
 describe("the boxes the hand-off travels between", () => {
-  it("puts the isle on the pill's dock: 24px from the left and 54px up", () => {
+  it("puts the isle on the pill's dock: 24px from the left and 54px up, the collapsed pill's size", () => {
     const box = isleBox(VH);
     expect(box.left).toBe(ISLE.insetPx);
     expect(box.top + box.height).toBe(VH - ISLE.bottomPx);
-    expect(box.height).toBe(36);
+    expect(box.height).toBe(54);
+    expect(box.width).toBe(252);
+    expect(ISLE.openWidthPx).toBeGreaterThan(ISLE.widthPx);
   });
 
   it("spans the phone's width in the bar, 12px in from each side", () => {
@@ -53,7 +55,8 @@ describe("the boxes the hand-off travels between", () => {
   });
 
   it("rounds the corners no further than a full pill of the box's height", () => {
-    expect(cornerRadius(22, { left: 0, top: 0, width: 190, height: 36 })).toBe(18);
+    expect(cornerRadius(22, { left: 0, top: 0, width: 252, height: 36 })).toBe(18);
+    expect(cornerRadius(27, { left: 0, top: 0, width: 252, height: 54 })).toBe(27);
     expect(cornerRadius(22, { left: 0, top: 0, width: 560, height: 240 })).toBe(22);
   });
 });

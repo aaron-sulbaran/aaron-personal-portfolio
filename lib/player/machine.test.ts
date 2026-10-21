@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { bandPlayerMounted, CLOSED, handoff, pillHold, step, type MachineConfig, type PlayerEvent, type PlayerState } from "./machine";
+import { bandPlayerMounted, CLOSED, handoff, labPillShown, pillHold, step, type MachineConfig, type PlayerEvent, type PlayerState } from "./machine";
 
-const desktop: MachineConfig = { onPlay: "sheet", intoIsle: "morph", backUp: "reopen", phone: false, phoneMode: "island", roomy: true, reduce: false };
+const desktop: MachineConfig = { onPlay: "player", intoIsle: "morph", backUp: "reopen", phone: false, phoneMode: "island", roomy: true, reduce: false };
 const phone: MachineConfig = { ...desktop, phone: true };
 const view = (name: PlayerState["view"]): PlayerState => ({ view: name });
 const run = (config: MachineConfig, events: PlayerEvent[], from: PlayerState = CLOSED) => events.reduce((state, event) => step(state, event, config), from);
@@ -133,14 +133,16 @@ describe("the hand-off kind", () => {
 });
 
 describe("what the real pill does around the lab's player", () => {
-  it("holds the pill when the player has collapsed into it, and keeps it away while the player stands in its place", () => {
-    expect(pillHold("pill", false)).toBe("hold");
-    for (const name of ["docked", "to-pill", "to-band"] as const) expect(pillHold(name, false)).toBe("away");
-    for (const name of ["closed", "band"] as const) expect(pillHold(name, false)).toBe("auto");
+  it("steps the real pill away whenever the lab's own pill is the isle, or is handing off to or from it", () => {
+    for (const name of ["pill", "docked", "to-pill", "to-band"] as const) expect(pillHold(name)).toBe("away");
+    for (const name of ["closed", "band"] as const) expect(pillHold(name)).toBe("auto");
   });
 
-  it("leaves the pill hidden through the hero and the book, where the band is still ahead", () => {
-    expect(pillHold("pill", true)).toBe("auto");
+  it("shows the lab's pill collapsed into the isle or at the dock, never while the reader is still above the band", () => {
+    expect(labPillShown("pill", false)).toBe(true);
+    expect(labPillShown("docked", false)).toBe(true);
+    expect(labPillShown("pill", true)).toBe(false);
+    for (const name of ["closed", "band", "to-pill", "to-band"] as const) expect(labPillShown(name, false)).toBe(false);
   });
 
   it("keeps the band's player in the page through a hand-off so its box can be measured", () => {

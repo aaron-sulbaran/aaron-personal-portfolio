@@ -42,11 +42,8 @@ describe("the one pill", () => {
     expect(pillOpen(run(["closeElapsed", "openElapsed"], pinned))).toBe(true);
   });
 
-  it("lets go on a second click, then closes when the pointer leaves", () => {
-    const released = run(["click", "click"]);
-    expect(pillPinned(released)).toBe(false);
-    expect(pillOpen(released)).toBe(true);
-    expect(pillOpen(run(["leave", "closeElapsed"], released))).toBe(false);
+  it("stays pinned through more clicks, so using the controls never lets it go", () => {
+    expect(pillPinned(run(["click", "click", "click"]))).toBe(true);
   });
 
   it("collapses on a click outside or Escape, pinned or not", () => {

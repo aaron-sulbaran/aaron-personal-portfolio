@@ -33,9 +33,11 @@ export function lerpBox(from: Box, to: Box, t: number): Box {
   return { left: mix(from.left, to.left), top: mix(from.top, to.top), width: mix(from.width, to.width), height: mix(from.height, to.height) };
 }
 
-// The pill's dock (lib/waveform/dock DOCK): the capsule's left edge and the gap
-// under it. The width is the capsule at rest with a title in it.
-export const ISLE = { insetPx: 24, bottomPx: 54, heightPx: 36, widthPx: 190 } as const;
+// The one pill's dock (lib/waveform/dock DOCK): its left edge and the gap
+// under it, the same as the real pill's. Collapsed it is the cover, the title
+// and the artist: 54px tall and 252px wide. Open, it grows up from the same
+// corner to the full player's width.
+export const ISLE = { insetPx: 24, bottomPx: 54, heightPx: 54, widthPx: 252, openWidthPx: 360 } as const;
 export const BAR = { insetPx: 12, bottomPx: 12, heightPx: 56 } as const;
 
 export function isleBox(viewportHeight: number): Box {

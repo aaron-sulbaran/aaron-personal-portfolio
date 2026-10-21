@@ -104,14 +104,19 @@ export function step(state: PlayerState, event: PlayerEvent, config: MachineConf
   }
 }
 
-// What the real pill does while the lab's player is in a given view. A pill
-// the player has collapsed into stays up wherever the reader is, except in the
-// hero and the book (the band still below the fold), where the pill is never
-// shown and the Menu's note covers the music.
-export function pillHold(view: PlayerView, ahead: boolean): PillHold {
-  if (view === "pill") return ahead ? "auto" : "hold";
-  return view === "docked" || view === "to-pill" || view === "to-band" ? "away" : "auto";
+// What the real pill does while the lab's player is in a given view. The lab's
+// own pill (the one pill with two states) is the isle whenever the player has
+// collapsed into it or stands at its dock, so the real pill steps away for
+// both, and for the hand-offs to and from it. In the hero and the book (the
+// band still below the fold) the pill is never shown and the Menu's note
+// covers the music.
+export function pillHold(view: PlayerView): PillHold {
+  return view === "pill" || view === "docked" || view === "to-pill" || view === "to-band" ? "away" : "auto";
 }
+
+// Whether the lab's own pill is on screen: the player has collapsed into the
+// isle or stands at its dock, and the reader is not still above the band.
+export const labPillShown = (view: PlayerView, ahead: boolean): boolean => (view === "pill" || view === "docked") && !(view === "pill" && ahead);
 
 // Whether the band's own player element is on show (it stays mounted through a
 // hand-off so its box can be measured, and is only hidden).
