@@ -145,8 +145,10 @@ const values = {
       pullMs: 756, // the old entrance's pull: 0.42 of 1800
       openStartMs: 1600,
     },
-    // The wheel (the teaser's start state): the 14-card band ring seen near
-    // frontal, turning slowly face up. It sits in the teaser's slot
+    // The wheel (the teaser's start state): the 14-card band ring seen from a
+    // little above, turning slowly face up (the spec guessed a lean of about 10
+    // degrees; that reads as a thin band, 18 and a ring 1.3 times the slot's
+    // width read as a wheel). It sits in the teaser's slot
     // ([data-coil-wheel]) and takes its size from it; scale and the offsets
     // (shares of the canvas) nudge it from there. Where the page has no slot
     // it sits at `anchor` (shares of the canvas) at diameterOfHeight of the
@@ -154,8 +156,8 @@ const values = {
     // canvas's width, the first time it is in view.
     wheel: {
       idleCardsPerSecond: 0.5,
-      leanDeg: -10,
-      scale: 1,
+      leanDeg: -18,
+      scale: 1.3,
       offsetX: 0,
       offsetY: 0,
       slideMs: 700,

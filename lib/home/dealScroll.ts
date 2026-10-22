@@ -45,7 +45,6 @@ function holdSmoothScrollOff(onEnd?: () => void) {
 }
 
 export type ScrollChild = {
-  tween: ReturnType<typeof Gsap.to>;
   // Stops it where it is (the master carries on) and puts the root back.
   kill: () => void;
 };
@@ -64,7 +63,6 @@ export function addDealScroll(master: ReturnType<typeof Gsap.timeline>, top: num
   // Made on the global timeline, moved into the master at its time.
   master.add(tween, startMs / 1000);
   return {
-    tween,
     kill() {
       tween.kill();
       hold.end();

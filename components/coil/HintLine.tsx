@@ -5,6 +5,7 @@ import { siteContent } from "@/lib/content";
 import { hintStore } from "@/lib/cursor/hover";
 import { KEEP_EXPLORING_KEY, TAP_CARD_KEY } from "@/lib/home/firstVisit";
 import { useHomeController } from "@/components/home/HomeController";
+import { useDealt } from "@/lib/home/deal";
 import type { CoilEntrance } from "./CoilScene";
 
 const LINE_IN_MS = 420;
@@ -30,7 +31,9 @@ export function HintLine({ rootRef, entrance }: { rootRef: RefObject<HTMLDivElem
   const modalOpen = controller?.modalOpen ?? false;
   const flying = (controller?.flight ?? null) !== null;
   const input = controller?.drivers.input;
-  const ready = controller?.phase === "ready" && entrance !== null;
+  // The lines wait for the deal to be over: the wheel and the band are not cards to tap yet.
+  const dealt = useDealt();
+  const ready = controller?.phase === "ready" && entrance !== null && dealt;
 
   // Shows `text`, holds, fades out; hideRef dismisses it early.
   const show = (text: string, holdMs: number) => {

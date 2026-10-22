@@ -102,6 +102,9 @@ export function createField(ctx: SceneCtx, gl: Gl, init: CompositeInit) {
 
   let fieldElapsed = 0;
   let lastWeatherTime = Number.NaN; // fx-hero
+  // The deal opens the field mid-flight, so both programs are compiled while
+  // it is closed: one transparent warm-up frame, the first closed frame.
+  let warmUp: "field" | "composite" | null = "field";
 
   // The theme's field colors and the composite's paper and name gradient.
   function applyTheme() {
@@ -150,7 +153,15 @@ export function createField(ctx: SceneCtx, gl: Gl, init: CompositeInit) {
     renderer.setRenderTarget(null);
     renderer.clear();
     // Closed (the deal has not opened the field): cards only, over the page.
-    if (st.open.radius <= 0) return;
+    if (st.open.radius <= 0) {
+      if (warmUp === "field") {
+        renderer.setRenderTarget(fieldTarget);
+        renderer.render(fieldScene, orthoCamera);
+        renderer.setRenderTarget(null);
+        warmUp = "composite";
+      }
+      return;
+    }
     if (clocks.orange !== st.lastFieldTime || clocks.weather !== lastWeatherTime) {
       renderer.setRenderTarget(fieldTarget);
       renderer.render(fieldScene, orthoCamera);
@@ -165,7 +176,16 @@ export function createField(ctx: SceneCtx, gl: Gl, init: CompositeInit) {
   // mask (premultiplied; skipped while the field is closed).
   function composite() {
     const { cx, cy, radius, feather } = st.open;
-    if (radius <= 0) return;
+    if (radius <= 0) {
+      // The warm-up frame: a mask of radius 0 and feather 1 is nothing at all.
+      if (warmUp === "composite") {
+        warmUp = null;
+        compMaterial.uniforms.uOpen.value.set(0, 0, 0, 1);
+        renderer.render(compScene, orthoCamera);
+      }
+      return;
+    }
+    warmUp = null;
     compMaterial.uniforms.uOpen.value.set(cx, cy, radius, feather);
     renderer.render(compScene, orthoCamera);
   }

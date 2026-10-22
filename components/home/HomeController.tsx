@@ -45,10 +45,12 @@ import { Portal } from "@/components/Portal";
 // the columns talk to it through useHomeController().
 //
 // The deal (lib/home/deal.ts, useDealDirector) is what this section waits for:
-// closed until the cards are dealt, the Coil's entrance playing when the reader
-// arrives (its start is handed to the scene as a new `entrance`), and nothing
-// opens (a card, the wheel, a hover) until it is over. The deal never locks the
-// scroll: it only reads it.
+// closed until the cards are dealt, the Coil's entrance playing on the click or
+// when the reader scrolls into the stage's range (its clock is handed to the
+// scene as a new `entrance`), and nothing opens (a card, the wheel, a hover)
+// until it is over. The Coil's canvas is a sticky stage that starts at page 1's
+// foot (the rail below). The deal never locks the scroll: on a click its own
+// scroll is one the reader's wheel, touch or key takes back.
 //
 // Nothing here renders per frame: the scene reads what it needs once per
 // change, and the per-frame state lives in the scene's own loop.
@@ -179,7 +181,7 @@ export function HomeController({ children }: Props) {
   // once none can run (the hero still).
   const [heroScene, setHeroScene] = useState<HeroScene>("off");
   const entranceClaimsRef = useRef(0);
-  // Null until the deal starts (the cards are hidden); at rest once dealt.
+  // Null until the deal starts (the wheel turns in the teaser, the field closed); the deal's own once it does; at rest once dealt.
   const [entrance, setEntrance] = useState<CoilEntrance | null>(null);
   const sectionRef = useRef<HTMLElement>(null);
   const deal = useDeal();

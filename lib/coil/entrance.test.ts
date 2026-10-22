@@ -182,7 +182,7 @@ describe.each(cases)("the wheel and the pull, %s", (_label, geo) => {
     const halfway = wheelHelix(band, geo, 0.5, 1);
     expect(halfway.leanRad).toBeCloseTo((band.leanRad + COIL.deal.wheel.leanDeg * DEG) / 2, 9);
     expect(halfway.axisRad).toBeCloseTo(band.axisRad / 2, 9);
-    expect(halfway.cardWorld).toBeCloseTo((band.cardWorld + geo.wheelCardWorld) / 2, 12);
+    expect(halfway.cardWorld).toBeCloseTo((band.cardWorld + geo.wheelCardWorld * COIL.deal.wheel.scale) / 2, 12);
   });
 
   it("has exactly the ring's cards, each once, at any offset of the turning strand", () => {
