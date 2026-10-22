@@ -156,6 +156,44 @@ const values = {
     settle: { startScale: 1.35, ms: 1100, delayMs: 120, marginPx: 8 },
   },
 
+  // Page 1 (hero rework, slice 3; docs/superpowers/specs/2026-10-21-hero-rework-design.md):
+  // the loader that becomes the name, the field behind it, the staggered
+  // paragraphs, the wave through the middle and the phone's two arrangements.
+  // Every number here is a lab knob's default (lib/home/introKnobs.ts clamps
+  // them; /lab/hero, in dev only, overrides them at runtime). Aaron tunes them
+  // by hand.
+  intro: {
+    // Where the loader's name lands: center (the stage's middle), top
+    // (centered across, under the logo row), topLeft (the content column's edge).
+    namePosition: "center" as "center" | "top" | "topLeft",
+    // The loader: fillMs is the fill's shortest run (the real tally can only
+    // slow it), holdMs the pause at full, numberAfterMs when the percent shows
+    // for a load still running, giveUpMs the honest cap after which a stalled
+    // asset counts as loaded. On a fast connection: fillMs + holdMs + shrink.ms.
+    loader: { on: true, fillMs: 650, holdMs: 100, numberAfterMs: 600, giveUpMs: 4000 },
+    // The name's shrink into the heading: duration, and the ease (the site's, or a GSAP one).
+    shrink: { ms: 700, ease: "site" as "site" | "power2.inOut" | "power3.inOut" | "expo.inOut" },
+    // The heading's name size, as one clamp: rem, share of the viewport width, rem.
+    heading: { minRem: 4.75, vw: 24, maxRem: 13 },
+    // The field behind the name: size scales both radii, the offsets move the
+    // middle (shares of the heading's width and height), strength is the
+    // mask's peak; shares are the mask's radii as shares of the heading's width
+    // and height; frameAt is where in the hero field's frame (0 the bottom,
+    // where the blue mass rises, 1 the top, where the orange lobe sits) the
+    // stage's bottom edge samples.
+    field: { size: 1, offsetX: 0, offsetY: 0, strength: 1, shares: { rxOfWidth: 0.95, ryOfHeight: 1.4 }, frameAt: 0.22 },
+    // The burnt orange lobe's strength as a share of the old one, in the name's
+    // field and the cards section's (a little of it stays).
+    orangeAmount: 0.4,
+    // The paragraph blocks: a right block leans across this share of the free
+    // width, and a desktop leaves gapRem between blocks.
+    stagger: { offset: 0.85, gapRem: 7 },
+    // The band after block 1, 2 or 3.
+    wavePlacement: 2 as 1 | 2 | 3,
+    // Phones only: every block stacked, or blocks 2 to 4 behind "More about me".
+    phoneLayout: "storyFirst" as "storyFirst" | "teaserPeeks",
+  },
+
   // Unwind egg and hover-jump.
   unwind: {
     perCardMs: 580,
