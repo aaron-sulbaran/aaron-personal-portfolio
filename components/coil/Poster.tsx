@@ -1,5 +1,5 @@
 import Image from "next/image";
-import type { StillTheme } from "@/lib/coil/heroStill";
+import { WHEEL_STILL_SPAN, wheelStillSrc, type StillTheme } from "@/lib/coil/heroStill";
 import { COIL } from "@/lib/coil/constants";
 import { stillPicture } from "@/lib/coil/stillPicture";
 import type { StillView } from "@/lib/home/stillReadiness";
@@ -35,6 +35,36 @@ export function Poster({ still }: { still: StillView }) {
         <StillPicture theme="dark" warm={still.warm} className="hidden dark:block" />
       </div>
     </div>
+  );
+}
+
+// The wheel at rest, in the teaser's slot (components/home/Teaser.tsx), where no
+// scene can draw it (reduced motion, no WebGL): a square centred on the slot,
+// WHEEL_STILL_SPAN times its width, with alpha, one per theme. The slot's own
+// outline gives way to it (app/globals.css), and it is not even fetched while a
+// scene is on its way or on (lazy, and display none until the hero is "still").
+export function WheelStill() {
+  const size = 544;
+  return (
+    <span
+      aria-hidden="true"
+      data-wheel-still=""
+      className="pointer-events-none absolute left-1/2 top-1/2 aspect-square -translate-x-1/2 -translate-y-1/2"
+      style={{ width: `${WHEEL_STILL_SPAN * 100}%` }}
+    >
+      {(["light", "dark"] as const).map((theme) => (
+        <Image
+          key={theme}
+          src={wheelStillSrc(theme)}
+          alt=""
+          width={size}
+          height={size}
+          unoptimized
+          loading="lazy"
+          className={theme === "light" ? "h-full w-full dark:hidden" : "hidden h-full w-full dark:block"}
+        />
+      ))}
+    </span>
   );
 }
 

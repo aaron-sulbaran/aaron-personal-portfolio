@@ -2,9 +2,9 @@ import { createRequire } from "node:module";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { HERO_STILL_DPR, HERO_STILL_SIZE, heroStillSrc } from "@/lib/coil/heroStill";
+import { HERO_STILL_DPR, HERO_STILL_SIZE, heroStillSrc, wheelStillSrc } from "@/lib/coil/heroStill";
 
-type Meta = { width?: number; height?: number; format?: string; compression?: string };
+type Meta = { width?: number; height?: number; format?: string; compression?: string; hasAlpha?: boolean };
 type Sharp = (input: string) => { metadata: () => Promise<Meta> };
 
 // The sharp next ships (it is not a direct dependency).
@@ -33,5 +33,15 @@ describe.skipIf(!sharp)("hero still files", () => {
         expect({ format: webp.format, width: webp.width, height: webp.height }).toEqual({ format: "webp", width, height });
       });
     }
+  }
+
+  for (const theme of ["light", "dark"] as const) {
+    it(`the ${theme} wheel is a square AVIF with alpha`, async () => {
+      const wheel = await sharp!(join(publicDir, wheelStillSrc(theme))).metadata();
+      expect(wheel.compression).toBe("av1");
+      expect(wheel.width).toBe(wheel.height);
+      expect(wheel.width).toBeGreaterThanOrEqual(900);
+      expect(wheel.hasAlpha).toBe(true);
+    });
   }
 });

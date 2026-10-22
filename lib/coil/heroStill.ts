@@ -1,5 +1,4 @@
 import { COIL } from "./constants";
-import { HERO_STILL_RECTS } from "./heroStill.rects";
 
 // The hero still: the scene at rest (?coildebug=still, scripts/render-posters.mjs),
 // shown when no scene can run. data-scene on the hero: "on" the scene draws,
@@ -26,39 +25,15 @@ export function stillCut(aspect: number): StillCut {
   return aspect < SQUARE_BELOW ? "square" : "wide";
 }
 
-// The lockup a still baked behind its cards: nameRect()'s geometry (the
-// name's ink left edge, baseline, ink width and size; the greeting's; the
-// gradient's span) in CSS px from the top left of the box it shows in.
-export type BakedLockup = {
-  readonly left: number;
-  readonly baseline: number;
-  readonly width: number;
-  readonly fontPx: number;
-  readonly greeting: { readonly left: number; readonly baseline: number; readonly fontPx: number };
-  readonly gradient: { readonly top: number; readonly height: number };
-};
+// The wheel still: the teaser's wheel at rest (scripts/render-posters.mjs,
+// ?coildebug=1,entrance=-1), one AVIF per theme with alpha, shown in the
+// teaser's slot (components/coil/Poster.tsx WheelStill) where no scene can
+// draw it. It is a square centred on the slot, WHEEL_STILL_SPAN times the slot's
+// width wide (the render script keeps a copy of the number).
+export const WHEEL_STILL_SPAN = 1.7;
 
-// Where a cut's baked lockup (heroStill.rects.ts, recorded by the render
-// script) lands in a box viewportW by viewportH showing the still with
-// object-fit cover, centred: scaled by the larger of the two ratios, the
-// overflow cropped equally from both sides. The box is the still's own
-// ([data-hero-still]), in its own px from its top left.
-export function bakedLockupRect(cut: StillCut, viewportW: number, viewportH: number): BakedLockup {
-  const size = HERO_STILL_SIZE[cut];
-  const s = Math.max(viewportW / size.width, viewportH / size.height);
-  const ox = (viewportW - size.width * s) / 2;
-  const oy = (viewportH - size.height * s) / 2;
-  const x = (v: number) => v * s + ox;
-  const y = (v: number) => v * s + oy;
-  const r = HERO_STILL_RECTS[cut];
-  return {
-    left: x(r.left),
-    baseline: y(r.baseline),
-    width: r.width * s,
-    fontPx: r.fontPx * s,
-    greeting: { left: x(r.greeting.left), baseline: y(r.greeting.baseline), fontPx: r.greeting.fontPx * s },
-    gradient: { top: y(r.gradient.top), height: r.gradient.height * s },
-  };
+export function wheelStillSrc(theme: StillTheme): string {
+  return `/coil/wheel-${theme}.avif`;
 }
 
 // "Aspect below r" in Level 3 syntax (Safari before 16.4 has no range

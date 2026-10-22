@@ -870,6 +870,17 @@ html[data-deal="pending"] [data-deal-title] {
 body:has(section[data-scene="on"]) [data-coil-wheel] {
   border-color: transparent;
 }
+/* With no scene to draw the wheel (reduced motion, no WebGL) its still sits in
+   the slot instead of the outline. */
+[data-wheel-still] {
+  display: none;
+}
+body:has(section[data-scene="still"]) [data-wheel-still] {
+  display: block;
+}
+body:has(section[data-scene="still"]) [data-coil-wheel] {
+  border-color: transparent;
+}
 /* Once a scene has dealt the cards the slot closes up (useSlotRelease), so page
    1's foot meets the cards with no blank circle between them. */
 [data-coil-wheel][data-gone] {

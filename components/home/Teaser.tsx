@@ -2,6 +2,7 @@
 
 import { useRef } from "react";
 import { useReducedMotionLive } from "@/components/soundtrack/useReducedMotionLive";
+import { WheelStill } from "@/components/coil/Poster";
 import { Fill } from "@/components/fx/Fill";
 import { siteContent } from "@/lib/content";
 import { CTA_LABEL_CLASS, CTA_LABEL_OVER_CLASS, FILL_PICK } from "@/lib/fx/fill";
@@ -60,7 +61,9 @@ export function Teaser() {
         data-dealt={after ? "" : undefined}
         aria-hidden="true"
         className="relative mx-auto mt-10 aspect-square w-[min(68vw,20rem)] rounded-full border border-dashed border-border md:mt-12"
-      />
+      >
+        <WheelStill />
+      </div>
     </div>
   );
 }
