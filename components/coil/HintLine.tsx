@@ -2,11 +2,8 @@
 
 import { useEffect, useRef, type RefObject } from "react";
 import { siteContent } from "@/lib/content";
-import { quickCopy } from "@/lib/content/quick";
 import { hintStore } from "@/lib/cursor/hover";
 import { KEEP_EXPLORING_KEY, TAP_CARD_KEY } from "@/lib/home/firstVisit";
-import { INVITE_TIMING } from "@/lib/quick/invite";
-import { holdsOtherLines, setInviteLine, useInviteLine } from "@/lib/quick/inviteLine";
 import { useHomeController } from "@/components/home/HomeController";
 import type { CoilEntrance } from "./CoilScene";
 
@@ -23,15 +20,11 @@ const LINE_CLASS =
 // exploring" fades in at the hero's bottom center, holds, and goes (the
 // cursor's "Open me" pill retires with that first open, in CustomCursor).
 // Touch: "Tap a card" after the entrance, gone on the first tap or after 5s.
-// The Express lane invite's mode B goes first when it plays: "In a rush?
-// Here's the Express lane", a link, for its hold (lib/quick/inviteLine), and
-// "Tap a card" waits for it to go. Written imperatively, like the rest of
-// this layer: a plain opacity fade, which is also the reduced-motion version.
+// Written imperatively, like the rest of this layer: a plain opacity fade,
+// which is also the reduced-motion version.
 export function HintLine({ rootRef, entrance }: { rootRef: RefObject<HTMLDivElement | null>; entrance: CoilEntrance | null }) {
   const controller = useHomeController();
   const lineRef = useRef<HTMLParagraphElement>(null);
-  const expressRef = useRef<HTMLAnchorElement>(null);
-  const inviteLine = useInviteLine();
   const firstOpenRef = useRef(false);
   const hideRef = useRef<() => void>(() => {});
   const modalOpen = controller?.modalOpen ?? false;
@@ -87,56 +80,18 @@ export function HintLine({ rootRef, entrance }: { rootRef: RefObject<HTMLDivElem
     if (hintStore().takeOnce(KEEP_EXPLORING_KEY)) show(siteContent.hero.hints.keepExploring, KEEP_HOLD_MS);
   });
 
-  // The invite's line: on for its hold, then the slot is the other lines' again.
-  useEffect(() => {
-    const link = expressRef.current;
-    if (inviteLine !== "showing" || !link) return;
-    hideRef.current();
-    link.inert = false;
-    link.style.transitionDuration = `${LINE_IN_MS}ms`;
-    const frame = requestAnimationFrame(() => {
-      link.style.opacity = "1";
-    });
-    const timer = window.setTimeout(() => setInviteLine("done"), LINE_IN_MS + INVITE_TIMING.lineHoldMs);
-    return () => {
-      cancelAnimationFrame(frame);
-      window.clearTimeout(timer);
-      link.inert = true;
-      link.style.transitionDuration = `${LINE_OUT_MS}ms`;
-      link.style.opacity = "0";
-    };
-  }, [inviteLine]);
-
   // Touch: once, after the entrance, until the first tap or 5s.
   useEffect(() => {
-    if (!ready || input !== "coarse" || holdsOtherLines(inviteLine)) return;
+    if (!ready || input !== "coarse") return;
     const store = hintStore();
     if (store.opened() || !store.takeOnce(TAP_CARD_KEY)) return;
     show(siteContent.hero.hints.tapCard, TAP_HOLD_MS);
     const onTap = () => hideRef.current();
     window.addEventListener("pointerdown", onTap, { once: true });
     return () => window.removeEventListener("pointerdown", onTap);
-  }, [ready, input, inviteLine]);
+  }, [ready, input]);
 
-  return (
-    <>
-      <p ref={lineRef} data-hint-line aria-hidden="true" className={LINE_CLASS} />
-      <a
-        ref={expressRef}
-        href="/quick"
-        inert
-        data-express-invite="line"
-        onClick={(event) => {
-          if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
-          event.preventDefault();
-          setInviteLine("chosen");
-        }}
-        className={`${LINE_CLASS} pointer-events-auto rounded-sm underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent`}
-      >
-        {quickCopy.invite.line}
-      </a>
-    </>
-  );
+  return <p ref={lineRef} data-hint-line aria-hidden="true" className={LINE_CLASS} />;
 }
 
 // ---- end fx-hero ----

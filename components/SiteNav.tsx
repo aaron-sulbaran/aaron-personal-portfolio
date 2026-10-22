@@ -14,7 +14,8 @@ import { navigateToSection } from "@/lib/scroll";
 // H1. During the hero only the AS mark (top-left) and the Menu pill
 // (top-right, components/menu) are on screen. Past the hero a 72px bar slides
 // in behind them with Work, About and Connect, scroll-spy on the section being
-// read. Headroom: after about 140px of scrolling down the bar tucks away, the
+// read (the one whose top is the last above the reading line, whatever the
+// order of the links). Headroom: after about 140px of scrolling down the bar tucks away, the
 // mark and the pill with it; any scroll up (past 6px of jitter) brings all
 // three back.
 //
@@ -73,9 +74,15 @@ export function SiteNav() {
       const y = window.scrollY;
       const line = y + window.innerHeight * 0.4;
       let here: string | null = null;
+      let hereTop = Number.NEGATIVE_INFINITY;
       for (const id of SPY_IDS) {
         const el = document.getElementById(id);
-        if (el && el.getBoundingClientRect().top + y <= line) here = `#${id}`;
+        if (!el) continue;
+        const top = el.getBoundingClientRect().top + y;
+        if (top <= line && top > hereTop) {
+          here = `#${id}`;
+          hereTop = top;
+        }
       }
       setActiveHref(here);
 

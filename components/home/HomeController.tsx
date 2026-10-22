@@ -12,7 +12,7 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from "react";
-import { strandCardByKey, type CardKey } from "@/lib/content";
+import { siteContent, strandCardByKey, type CardKey } from "@/lib/content";
 import { useBodyScrollLock } from "@/lib/modal";
 import { claimHomeReadiness, publishHomeReadiness, useHomeReadiness, type HomeReadiness } from "@/lib/home/readiness";
 import { markSeen } from "@/lib/home/seen";
@@ -24,23 +24,22 @@ import {
   relandAfterFonts,
   takeManualScrollRestoration,
 } from "@/lib/home/recovery";
+import { COIL } from "@/lib/coil/constants";
 import { sameDrivers, selectDrivers, type Drivers } from "@/lib/coil/drivers";
 import { CardModal } from "@/components/card/CardModal";
 import { CoilStage } from "@/components/coil/CoilStage";
 import type { CoilEntrance } from "@/components/coil/CoilScene";
 import type { HeroScene } from "@/lib/coil/heroStill";
-import { Loader, type LoaderMode } from "@/components/loader/Loader";
-import { FONT_ITEMS, SCENE_ITEMS, beginHomeLoad, coilDebugFlags, endHomeLoad } from "@/lib/loader/progress";
 import type { CoilCardRef, CoilSceneApi } from "@/components/coil/CoilScene";
 import { FlyingTile } from "@/components/FlyingTile";
 import { Portal } from "@/components/Portal";
-import { HERO_HEADING_ID } from "./HeroText";
 
-// The Coil's renderer-neutral home controller. It owns everything about the
-// home that is not drawing: readiness, the entrance scroll lock, which modal is
-// open, seen marking, focus restoration, deep-reload recovery, the flight's
-// state, driver selection, and live reduced motion. The scene and the book
-// talk to it through useHomeController().
+// The Coil's renderer-neutral home controller, and the cards section it
+// renders (#work): the Coil between two columns of titles. It owns everything
+// about the section that is not drawing: readiness, the entrance scroll lock,
+// which modal is open, seen marking, focus restoration, deep-reload recovery,
+// the flight's state, driver selection, and live reduced motion. The scene and
+// the columns talk to it through useHomeController().
 //
 // Nothing here renders per frame: the scene reads what it needs once per
 // change, and the per-frame state lives in the scene's own loop.
@@ -48,6 +47,9 @@ import { HERO_HEADING_ID } from "./HeroText";
 const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 type OpenOrigin = HTMLElement | null;
+
+// After the Coil's glide to a tapped title lands, a beat before the card flies.
+const TURN_SETTLE_MS = 60;
 
 type Selection = { key: CardKey; origin: OpenOrigin };
 
@@ -75,13 +77,12 @@ export type HomeControllerValue = {
   drivers: Drivers;
   modalOpen: boolean;
   flight: CoilFlight | null;
-  // A book row: its card's modal, no flight.
-  openCard: (key: CardKey, origin: HTMLElement) => void;
-  // Kept for a future row that navigates away: such a row still counts as seen.
-  markVisited: (key: string) => void;
-  // A book row under the pointer or keyboard focus: its card glides to the
+  // A title in a column: the Coil turns to its card (at once for a pointer,
+  // which hovered it there already), then the card flies open.
+  openTitle: (key: CardKey, origin: HTMLElement) => void;
+  // A title under the pointer or keyboard focus: its card glides to the
   // front of the visible helix and the coil holds still on it (null when it
-  // leaves). The pointer's row wins over the focused one. Nothing without a
+  // leaves). The pointer's title wins over the focused one. Nothing without a
   // scene.
   focusCard: (key: string | null, source?: RowSource) => void;
   // The scene claims the entrance before paint (its layout effect runs before
@@ -94,7 +95,7 @@ export type HomeControllerValue = {
   entrance: CoilEntrance | null;
 };
 
-// Which signal a book row sent: the pointer over it, or keyboard focus on it.
+// Which signal a title sent: the pointer over it, or keyboard focus on it.
 export type RowSource = "pointer" | "focus";
 
 // No entrance: the coil is at rest from its first frame.
@@ -154,13 +155,11 @@ const serverCapabilities = () => SERVER_CAPABILITIES;
 // ---------------------------------------------------------------- controller
 
 type Props = {
-  // The hero's server-rendered content (HeroText); the scene mounts beside it.
-  hero: ReactNode;
-  // What follows the hero and needs the controller (the book).
+  // The columns beside the Coil (the section's own layout).
   children?: ReactNode;
 };
 
-export function HomeController({ hero, children }: Props) {
+export function HomeController({ children }: Props) {
   const phase = useHomeReadiness();
   const { drivers, reducedMotion } = useSyncExternalStore(subscribeCapabilities, readCapabilities, serverCapabilities);
 
@@ -174,21 +173,17 @@ export function HomeController({ hero, children }: Props) {
   // once none can run (the hero still).
   const [heroScene, setHeroScene] = useState<HeroScene>("off");
   const entranceClaimsRef = useRef(0);
-  // The loader: armed by the server's HTML, resolved before paint.
-  const [loaderMode, setLoaderMode] = useState<LoaderMode>({ kind: "pending" });
   const [entrance, setEntrance] = useState<CoilEntrance | null>(null);
-  const entranceExpectedRef = useRef(false);
 
   // Before paint, once per load: own the readiness store, take manual scroll
   // restoration, decide whether this load lands deep, land it, and pick the
   // start phase. A deep load or reduced motion is a fast start: no entrance,
   // no lock. Without a scene claiming the entrance the hero is ready at once.
   //
-  // The loader and the lock: a deep load skips the loader entirely. Any other
-  // load keeps it (reduced motion gets its plain form, the tally then only
-  // waits for the fonts), and when the scene will play the entrance the
-  // phase is "entering" from here, so the scroll lock covers the loader and
-  // the entrance together and releases once, when the entrance completes.
+  // The lock: when a scene claims the entrance the phase is "entering" from
+  // here and the scroll lock covers it, releasing once when it completes.
+  // Nothing claims it today (the cards are dealt), so the section is ready at
+  // once.
   useIsoLayoutEffect(() => {
     const releaseReadiness = claimHomeReadiness();
     const releaseRestoration = takeManualScrollRestoration();
@@ -200,29 +195,17 @@ export function HomeController({ hero, children }: Props) {
     if (recovery.deep) applyRestore(recovery.target);
     const stopReland = relandAfterFonts(recovery.target);
     const entering = !fast && entranceClaimsRef.current > 0;
-    entranceExpectedRef.current = entering;
-    const slow = coilDebugFlags(window.location.search).has("slow");
-    const tally = beginHomeLoad(entering ? SCENE_ITEMS : FONT_ITEMS, performance.now(), slow);
     publishHomeReadiness(entering ? "entering" : "ready");
     // A layout-effect state write re-renders before paint, which is the point:
     // consumers of fastStart must see it on the first painted frame.
     setFastStart(fast);
     setDeep(recovery.deep);
-    setLoaderMode(recovery.deep || quiet ? { kind: "off" } : { kind: "on", reducedMotion: reduced });
     if (!entering) setEntrance(AT_REST);
     return () => {
-      endHomeLoad(tally);
       stopReland();
       releaseRestoration();
       releaseReadiness();
     };
-  }, []);
-
-  // The loader hands the pane over: the entrance starts (possibly a little
-  // in the future, overlapping the loader's exit).
-  const revealHero = useCallback((startMs: number, nameFromLoader: boolean) => {
-    if (!entranceExpectedRef.current) return;
-    setEntrance((current) => current ?? { startMs, nameFromLoader });
   }, []);
 
   useEffect(() => persistScrollPosition(), []);
@@ -257,14 +240,10 @@ export function HomeController({ hero, children }: Props) {
     publishHomeReadiness("ready");
   }, []);
 
-  const openCard = useCallback((key: CardKey, origin: OpenOrigin) => setSelection((current) => current ?? { key, origin }), []);
-
-  const markVisited = useCallback((key: string) => markSeen(key), []);
-
-  // ---- fx-input: the row hover signal ----
-  // The pointer's row and the focused row are tracked apart, and the scene
-  // hears only a change of the row that wins (a click that also focuses the
-  // hovered row starts no second glide).
+  // ---- fx-input: the title hover signal ----
+  // The pointer's title and the focused title are tracked apart, and the scene
+  // hears only a change of the title that wins (a click that also focuses the
+  // hovered title starts no second glide).
   const rowsRef = useRef<{ pointer: string | null; focus: string | null; sent: string | null }>({
     pointer: null,
     focus: null,
@@ -280,7 +259,7 @@ export function HomeController({ hero, children }: Props) {
   }, []);
   // ---- end fx-input ----
 
-  // A card in the scene (or its row in the unwound list): freeze the scene so
+  // A card in the scene (or its title or its row in the unwound list): freeze the scene so
   // the rendered pose is the flight pose, and open its modal with the card
   // flying in, at any window width (input by capability, Layer 1). A touch tap
   // (slot -1), reduced motion or a slot off screen opens it like a book row,
@@ -302,7 +281,7 @@ export function HomeController({ hero, children }: Props) {
   );
 
   // A tap on a touch screen opens the modal with no flight: the modal draws
-  // its own media (renderMedia), as from a book row.
+  // its own media (renderMedia).
   const handleCardClick = useCallback(
     (card: CoilCardRef) => openFromScene(card.key, card.tap ? -1 : card.slot, null),
     [openFromScene],
@@ -310,6 +289,24 @@ export function HomeController({ hero, children }: Props) {
   const handleRowOpen = useCallback(
     (key: string, origin: HTMLElement) => openFromScene(key, sceneApiRef.current?.slotOfKey(key) ?? -1, origin),
     [openFromScene],
+  );
+
+  // A title: a pointer hovered it there already, so its card is at the front
+  // and flies at once. A touch has no hover, so the Coil turns to the card
+  // first (one glide) and the card flies when it arrives.
+  const openTitle = useCallback(
+    (key: CardKey, origin: HTMLElement) => {
+      if (drivers.input !== "coarse" || !sceneApiRef.current) {
+        handleRowOpen(key, origin);
+        return;
+      }
+      focusCard(key, "pointer");
+      window.setTimeout(() => {
+        handleRowOpen(key, origin);
+        focusCard(null, "pointer");
+      }, COIL.hoverJumpMs + TURN_SETTLE_MS);
+    },
+    [drivers.input, focusCard, handleRowOpen],
   );
 
   const handleFlyOutComplete = useCallback(() => setFlight((f) => (f ? { ...f, revealed: true } : f)), []);
@@ -352,8 +349,7 @@ export function HomeController({ hero, children }: Props) {
       drivers,
       modalOpen,
       flight,
-      openCard,
-      markVisited,
+      openTitle,
       focusCard,
       claimEntrance,
       completeEntrance,
@@ -367,8 +363,7 @@ export function HomeController({ hero, children }: Props) {
       drivers,
       modalOpen,
       flight,
-      openCard,
-      markVisited,
+      openTitle,
       focusCard,
       claimEntrance,
       completeEntrance,
@@ -378,31 +373,33 @@ export function HomeController({ hero, children }: Props) {
 
   return (
     <HomeControllerContext.Provider value={value}>
-      <Loader mode={loaderMode} onReveal={revealHero} scene={heroScene} />
       <section
-        aria-labelledby={HERO_HEADING_ID}
+        id="work"
+        data-wave-anchor="cards"
+        data-coil-section=""
+        aria-label={siteContent.columns.ariaLabel}
         data-scene={heroScene}
         data-composition={drivers.composition}
         data-input={drivers.input}
-        // Slice 7: the browser keeps every vertical swipe (and pinch zoom);
-        // horizontal ones reach the scene's drag-to-spin.
-        className="group/hero relative flex min-h-[100svh] w-full items-center justify-center px-6 [touch-action:pan-y_pinch-zoom] md:px-10"
+        // The browser keeps every vertical swipe (and pinch zoom); horizontal
+        // ones reach the scene's drag-to-spin.
+        className="group/hero relative flex min-h-[100svh] w-full flex-col [touch-action:pan-y_pinch-zoom] md:block md:min-h-[92svh]"
       >
-        <CoilStage
-          reducedMotion={reducedMotion}
-          frozen={modalOpen || flight !== null}
-          interactive={phase === "ready"}
-          input={drivers.input}
-          scene={heroScene}
-          onSceneChange={setHeroScene}
-          api={sceneApiRef}
-          onCardClick={handleCardClick}
-          onRowOpen={handleRowOpen}
-        />
-        {/* The h1 places itself on the section's box, the loader root's box (HeroText). */}
-        {hero}
+        <div data-coil-frame="" className="relative min-h-[34svh] flex-1 md:absolute md:inset-0 md:min-h-0">
+          <CoilStage
+            reducedMotion={reducedMotion}
+            frozen={modalOpen || flight !== null}
+            interactive={phase === "ready"}
+            input={drivers.input}
+            scene={heroScene}
+            onSceneChange={setHeroScene}
+            api={sceneApiRef}
+            onCardClick={handleCardClick}
+            onRowOpen={handleRowOpen}
+          />
+        </div>
+        {children}
       </section>
-      {children}
       <CardModal cardKey={selection?.key ?? null} onClose={closeModal} renderMedia={renderMedia} flying={flight?.phase === "out"} />
       <Portal>
         {flight && (

@@ -6,16 +6,15 @@ import { siteContent } from "@/lib/content";
 import { FILL_PICK } from "@/lib/fx/fill";
 import type { StillCause } from "@/lib/coil/heroStill";
 import { stillNoticeStore } from "@/lib/home/stillNotice";
-import { HERO_HEADING_ID } from "@/components/home/HeroText";
+import { INTRO_HEADING_ID } from "@/lib/home/introId";
 
-// The still page's one quiet line at the foot of the hero: why the page is
-// still, and "Got it", which dismisses it for good and hands focus to the h1
-// (tabIndex -1), so the keyboard resumes from the top of the page. CoilStage
-// renders it only in data-scene="still" once the hero is ready, portalled into
-// the hero section after the h1, so it reads after the heading; the loader's
-// stylesheet keeps it hidden until the loader has gone. A status, never a
-// dialog: no focus trap, no autofocus, nothing blocked. Not in HeroOverlay,
-// whose root stays invisible without a scene.
+// The still page's one quiet line at the foot of the Coil's frame: why the
+// page is still, and "Got it", which dismisses it for good and hands focus to
+// the intro's h1 (tabIndex -1), so the keyboard resumes from the top of the
+// page. CoilStage renders it only in data-scene="still" once the section is
+// ready, portalled into the stage's frame. A status, never a dialog: no focus
+// trap, no autofocus, nothing blocked. Not in HeroOverlay, whose root stays
+// invisible without a scene.
 const subscribe = (listener: () => void) => stillNoticeStore().subscribe(listener);
 const dismissed = () => stillNoticeStore().dismissed();
 const dismissedOnServer = () => true;
@@ -36,7 +35,7 @@ export function StillNotice({ cause }: { cause: StillCause }) {
         shape="rect"
         onClick={() => {
           stillNoticeStore().dismiss();
-          document.getElementById(HERO_HEADING_ID)?.focus({ preventScroll: true });
+          document.getElementById(INTRO_HEADING_ID)?.focus({ preventScroll: true });
         }}
         data-cursor-hover
         className="-mx-2 inline-flex items-center px-2 py-1 font-label text-label-sm text-accent"
