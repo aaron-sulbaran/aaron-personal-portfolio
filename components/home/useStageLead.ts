@@ -3,6 +3,7 @@
 import { useEffect, useRef, type RefObject } from "react";
 import type { HeroScene } from "@/lib/coil/heroStill";
 import { getDeal, subscribeDeal } from "@/lib/home/deal";
+import { gsap } from "@/lib/gsap";
 
 // The sticky stage's reach up the page. The Coil's canvas is a stage as tall as
 // the cards section that sticks at the top of the screen; to sit in the
@@ -12,15 +13,21 @@ import { getDeal, subscribeDeal } from "@/lib/home/deal";
 // set here on the section; the rail and the stage read it in CSS). Once the
 // wheel has no more work there, the lead is let go and the stage is just the
 // section again: with no scene to draw it (reduced motion, no WebGL), at once;
-// after the deal, as soon as the reader has reached the section's top (so
-// nothing jumps under them), or at once if this load never dealt it (a return
-// to the home by client navigation). A replay brings the lead back.
+// the moment the deal is over, whatever the reader is looking at. A reader the
+// deal left inside the sticky range (a scroll that stopped short, an upward
+// interrupt) has the stage pinned over page 1's foot; the lead goes at once
+// and the stage glides down to the section's top (a transform, no layout per
+// frame), so it never covers page 1's text or its "Back to my cards". A
+// reader already at or past the section's top sees no change; neither does a
+// load that never dealt (a return to the home by client navigation). A replay
+// brings the lead back.
 
 // The room kept below the slot inside the stage, px.
 const SLOT_ROOM_PX = 24;
-// The reader has reached the cards section when its top is this close to the
-// top of the screen (a scroll lands on whole device pixels, so not exactly 0).
-const REACHED_PX = 4;
+// The stage's glide down to the section once the deal has let go of it.
+const GLIDE_S = 0.55;
+// A move shorter than this is no move (a scroll lands on whole device pixels).
+const REACHED_PX = 1;
 
 export function useStageLead(sectionRef: RefObject<HTMLElement | null>, scene: HeroScene, reducedMotion: boolean) {
   const released = useRef(false);
@@ -43,6 +50,7 @@ export function useStageLead(sectionRef: RefObject<HTMLElement | null>, scene: H
       }
       section.style.setProperty("--run-lead", `${Math.round(Math.max(0, lead))}px`);
     };
+    const stageEl = () => section.querySelector<HTMLElement>("[data-coil-sticky]");
     const update = () => {
       const state = getDeal();
       if (state.phase === "dealing") sawDealing.current = true;
@@ -51,11 +59,19 @@ export function useStageLead(sectionRef: RefObject<HTMLElement | null>, scene: H
       else if (state.phase === "idle") {
         next = false;
         sawDealing.current = false;
-      } else if (state.phase === "dealt" && (!sawDealing.current || section.getBoundingClientRect().top <= REACHED_PX)) next = true;
-      if (next !== released.current) {
-        released.current = next;
-        measure();
-      }
+      } else if (state.phase === "dealt") next = true;
+      if (next === released.current) return;
+      const stage = stageEl();
+      const glide = next && sawDealing.current && !reducedMotion && scene !== "still" && stage !== null;
+      const before = glide ? stage.getBoundingClientRect().top : 0;
+      released.current = next;
+      measure();
+      if (!stage) return;
+      gsap.killTweensOf(stage);
+      gsap.set(stage, { clearProps: "transform" });
+      if (!glide) return;
+      const moved = before - stage.getBoundingClientRect().top;
+      if (Math.abs(moved) > REACHED_PX) gsap.fromTo(stage, { y: moved }, { y: 0, duration: GLIDE_S, ease: "power2.out", clearProps: "transform" });
     };
     measure();
     update();
@@ -72,6 +88,8 @@ export function useStageLead(sectionRef: RefObject<HTMLElement | null>, scene: H
       window.removeEventListener("resize", measure);
       window.removeEventListener("scroll", update);
       unsubscribe();
+      const stage = stageEl();
+      if (stage) gsap.killTweensOf(stage);
     };
   }, [sectionRef, scene, reducedMotion]);
 }

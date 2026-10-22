@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import { useReducedMotionLive } from "@/components/soundtrack/useReducedMotionLive";
 import { Fill } from "@/components/fx/Fill";
 import { siteContent } from "@/lib/content";
@@ -8,22 +9,27 @@ import { isAfter, useDeal } from "@/lib/home/deal";
 import { startClickDeal } from "@/lib/home/dealFlow";
 import { EXPRESS_PATH } from "@/lib/quick/transition";
 import { goTo } from "@/lib/quick/transitionStore";
+import { useSlotRelease } from "./useSlotRelease";
 
 // The teaser at page 1's foot, one self-contained block: the question, "Deal me
 // in" (startClickDeal: the deal, whose own clock scrolls the page to the
 // cards), one small muted line under it to the 30-second version (no button,
 // no pill: it blends into the page), and the wheel's slot (data-coil-wheel),
 // which reserves the room the Coil's canvas turns the wheel in (the scene reads
-// the slot's place and size) and holds a quiet outline where there is no scene
-// to draw it. The text leaves when the deal starts (data-teaser-text) and comes
-// back after it; once the cards are dealt and the text is back the button reads
-// "Back to my cards" (it scrolls there, no replay), and never earlier, so the
-// label cannot flip under a line that is still fading. It carries its own width and padding and
-// assumes nothing of its parent. Nothing here takes the scroll from the reader.
+// the slot's place and size) and, where there is no scene to draw it, holds the
+// wheel's still (Poster.tsx's WheelStill). The text leaves when the deal starts
+// (data-teaser-text) and comes back after it; once the cards are dealt and the
+// text is back the button reads "Back to my cards" (it scrolls there, no
+// replay), and never earlier, so the label cannot flip under a line that is
+// still fading. A slot a scene has emptied closes up (useSlotRelease). It
+// carries its own width and padding and assumes nothing of its parent. Nothing
+// here takes the scroll from the reader.
 export function Teaser() {
   const { teaser } = siteContent.intro;
   const reducedMotion = useReducedMotionLive();
   const after = isAfter(useDeal());
+  const slotRef = useRef<HTMLDivElement>(null);
+  useSlotRelease(slotRef);
   return (
     <div data-teaser="" className="mx-auto w-full max-w-[1240px] px-[6vw] pb-6 pt-16 md:pb-12 md:pt-20">
       <div data-teaser-text="" className="flex flex-col items-start gap-5 md:gap-6">
@@ -49,10 +55,11 @@ export function Teaser() {
         </div>
       </div>
       <div
+        ref={slotRef}
         data-coil-wheel=""
         data-dealt={after ? "" : undefined}
         aria-hidden="true"
-        className="mx-auto mt-10 aspect-square w-[min(68vw,20rem)] rounded-full border border-dashed border-border md:mt-12"
+        className="relative mx-auto mt-10 aspect-square w-[min(68vw,20rem)] rounded-full border border-dashed border-border md:mt-12"
       />
     </div>
   );

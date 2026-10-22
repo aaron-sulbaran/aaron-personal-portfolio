@@ -870,6 +870,11 @@ html[data-deal="pending"] [data-deal-title] {
 body:has(section[data-scene="on"]) [data-coil-wheel] {
   border-color: transparent;
 }
+/* Once a scene has dealt the cards the slot closes up (useSlotRelease), so page
+   1's foot meets the cards with no blank circle between them. */
+[data-coil-wheel][data-gone] {
+  display: none;
+}
 /* ---- end the deal ---- */
 
 /* ---- page 1 (hero rework, slice 3) ---- */

@@ -12,7 +12,8 @@ import { clearOpen, openParts, prepareOpen, type OpenParts } from "@/lib/home/de
 import { stageGone, stickyProgress } from "@/lib/home/stickyRange";
 
 // The deal's director: it watches where the reader is on page 1's foot and the
-// cards section, starts the deal when the reader's scroll asks for it
+// cards section, opens the section at once when a load or a jump finds it in
+// view, starts the deal when the reader's scroll asks for it
 // (lib/home/deal.ts dealTrigger, pure and tested) or when "Deal me in" is
 // clicked (lib/home/dealFlow.ts calls the starter registered here), and
 // plays it as one master timeline (lib/home/dealMaster.ts): the Coil's own
@@ -104,6 +105,14 @@ export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance 
       }
       const section = sectionRef.current;
       if (!section || session.current) return false;
+      // The reader did not scroll the deal in: a load, an anchor jump or a way
+      // back up found the cards section in view. It opens at once, dealt, the
+      // field open, no deal and no wait for a scene still on its way (the poster
+      // carries the field until it draws), so no one reads a blank section.
+      if (source === "view") {
+        settle();
+        return true;
+      }
       const sceneState = live.current.scene;
       // The scene is on its way: the cards wait for its first frame, a few
       // seconds at most.
