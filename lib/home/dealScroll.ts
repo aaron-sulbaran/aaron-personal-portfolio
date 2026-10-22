@@ -60,8 +60,9 @@ export function addDealScroll(master: ReturnType<typeof Gsap.timeline>, top: num
     onComplete: hold.end,
     onInterrupt: hold.end,
   });
-  // Made on the global timeline, moved into the master at its time.
-  master.add(tween, startMs / 1000);
+  // Made on the global timeline, moved into the master at the label "scroll".
+  master.addLabel("scroll", startMs / 1000);
+  master.add(tween, "scroll");
   return {
     kill() {
       tween.kill();
