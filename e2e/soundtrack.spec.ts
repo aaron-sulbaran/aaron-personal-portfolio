@@ -579,7 +579,7 @@ test("band: pressing \"Let the wave move\" from the keyboard after a decline kee
   await openHome(page, { path: HOME });
   await scrollBandIntoView(page);
   const band = page.locator("#listen");
-  await band.getByRole("button", { name: L.freeze, exact: true }).click();
+  await band.getByRole("button", { name: L.subline.freeze, exact: true }).click();
   await band.getByRole("button", { name: L.decline, exact: true }).click();
   const toggle = band.getByRole("button", { name: L.unfreeze, exact: true });
   await toggle.focus();
@@ -635,11 +635,11 @@ test("dock: a phone width removes the pill and desktop fades it back in", async 
   expect(Math.abs((await dockGeometry(page)).left - DOCK.insetPx)).toBeLessThanOrEqual(2);
 });
 
-test("dock: the band's freeze link stays while the music plays, and stops the band", async ({ page }) => {
+test("dock: the freeze toggle in the band's line stays while the music plays, and stops the band", async ({ page }) => {
   await instrument(page);
   await openHome(page, { path: HOME });
   await scrollBandIntoView(page);
-  const bandFreeze = page.locator("#listen").getByRole("button", { name: L.freeze, exact: true });
+  const bandFreeze = page.locator("#listen").getByRole("button", { name: L.subline.freeze, exact: true });
   await expect(bandFreeze).toBeVisible();
   await bandControl(page, "before").click();
   // The link stays: it is the one freeze there is while the music plays.

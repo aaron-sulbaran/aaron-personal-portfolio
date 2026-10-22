@@ -92,10 +92,11 @@ export function BandInvite() {
           </Layer>
         </div>
       </div>
-      <div data-band-note tabIndex={-1} className={`mt-1.5 grid max-w-[42rem] text-sm leading-[1.5] text-muted outline-none ${closedUp ? "hidden" : ""}`} aria-live="polite">
-        <Layer shown={music === "before"}>
-          <PromptSubline />
-        </Layer>
+      {/* The line under the question stays through the answer (the freeze toggle is two words in it, the one freeze there is while the music plays); a decline brings the toggle beside Play it instead. */}
+      <div data-band-subline="" inert={music === "off"} aria-hidden={music === "off" ? true : undefined} className={`mt-1.5 max-w-[42rem] text-sm leading-[1.5] text-muted ${music === "off" ? "hidden" : ""}`}>
+        <PromptSubline />
+      </div>
+      <div data-band-note tabIndex={-1} className={`mt-1 grid max-w-[42rem] text-sm leading-[1.5] text-muted outline-none ${closedUp ? "hidden" : ""}`} aria-live="polite">
         <Layer shown={music === "on" && !playerOwns}>
           <p><InlineCopy source={c.acceptedNote} /></p>
         </Layer>

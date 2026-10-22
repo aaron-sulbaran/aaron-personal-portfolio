@@ -60,8 +60,8 @@ test.describe("the player in the band", () => {
     await expect(band(page).locator("[data-band-note]")).toBeHidden();
     await expect(band(page).locator("[data-band-controls]")).toBeHidden();
     await expect(page.getByText(/credited to their artists/)).toHaveCount(0);
-    // The one freeze there is while the music plays stays in the band.
-    await expect(band(page).getByRole("button", { name: L.freeze, exact: true })).toBeVisible();
+    // The one freeze there is while the music plays stays in the band: the two words in its line.
+    await expect(band(page).getByRole("button", { name: L.subline.freeze, exact: true })).toBeVisible();
   });
 
   test("player: the transport works from the band: pause and resume, next track, shuffle and repeat", async ({ page }) => {
