@@ -105,25 +105,19 @@ const values = {
   // The pull's shape (its window is deal.timeline).
   entrance: ENTRANCE,
 
-  // The deal (hero rework, slice 2; docs/superpowers/specs/2026-10-21-hero-rework-design.md):
-  // the deck at the intro's foot, the name's settle and glow, the riffle, the
-  // cards' flight into the Coil and the section opening around it. Every number
-  // here is a lab knob's default (lib/home/dealKnobs.ts clamps them); the lab
-  // panel, in dev only, overrides them at runtime. Aaron tunes them by hand.
+  // The deal (hero rework; docs/superpowers/specs/2026-10-21-hero-rework-design.md):
+  // the wheel in the teaser, its spin, flatten and lift into the Coil, and the
+  // section opening around it. Every number here is a lab knob's default
+  // (lib/home/dealKnobs.ts clamps them); the lab panel, in dev only, overrides
+  // them at runtime. Aaron tunes them by hand.
   deal: {
-    // When each step fires. The riffle (retired with the deck) once the cards
-    // section's top edge peeks to riffleAt of the viewport's height. The deal
-    // by hand: once the reader is enterAtProgress of the way through the sticky
-    // stage's range (the stage sticks when page 1's foot reaches the top of the
-    // screen and lets go when the cards section does), and until the section's
-    // bottom edge has left past `outAt` of the viewport's height.
-    trigger: { riffleAt: 1, enterAtProgress: 0.18, outAt: 0.35, waitSceneMs: 4000 },
-    // The deck: face-down cards fanned about their bottom center; the hover
-    // opens the fan a little and lifts the top card.
-    deck: { cards: 6, fanDeg: 5, openDeg: 1.8, liftPx: 5 },
-    // The riffle: split into two halves, interleave back in a quick cascade,
-    // square up. spreadShare: how far each half parts (of the deck's width).
-    riffle: { on: true, ms: 800, spreadShare: 0.6, splitDeg: 9, hopPx: 8 },
+    // When the deal starts by the reader's own scroll: once the reader is
+    // enterAtProgress of the way through the sticky stage's range (the stage
+    // sticks when page 1's foot reaches the top of the screen and lets go when
+    // the cards section does), and until the section's bottom edge has left
+    // past `outAt` of the viewport's height. waitSceneMs: how long the cards
+    // wait for a scene still on its way.
+    trigger: { enterAtProgress: 0.18, outAt: 0.35, waitSceneMs: 4000 },
     // The deal's one clock, in ms from the click (docs/superpowers/specs/2026-10-22-wheel-deal-motion.md
     // section 2). The wheel spins up (speed 0.5 to the peak, power2.out), the
     // page scrolls itself to the section, the wheel flattens into the band
@@ -172,15 +166,6 @@ const values = {
     open: { reach: 1, ms: 1500, fromPx: 36, featherPx: 28, fadeMs: 600 },
     // The two columns arrive last: group labels, then titles.
     columns: { delayMs: 1150, staggerMs: 36, labelStaggerMs: 70, fadeMs: 520, riseY: 14 },
-    // The glow behind the intro's heading: radii as shares of the heading's ink
-    // width and height (never reaching the paragraph), the center's offset in
-    // the same shares, the strength at the center, the fade-in, and where in
-    // the hero field's frame (from its top) the glow samples.
-    glow: { size: 1, offsetX: 0.06, offsetY: 0, strength: 0.9, fadeMs: 1000, depth: 1, rxOfText: 0.78, ryOfHeading: 1.15, fieldAt: 0.32 },
-    // The name's settle: it starts this much larger (transform only, origin
-    // top left; capped so it never overflows the viewport's width) and settles
-    // to 1x once.
-    settle: { startScale: 1.35, ms: 1100, delayMs: 120, marginPx: 8 },
   },
 
   // Page 1 (hero rework, slice 3; docs/superpowers/specs/2026-10-21-hero-rework-design.md):

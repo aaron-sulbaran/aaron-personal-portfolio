@@ -3,24 +3,22 @@
 import { useSyncExternalStore } from "react";
 import { COIL } from "@/lib/coil/constants";
 
-// The deal's state machine (hero rework, slice 2): the cards start face down in
-// the deck and are dealt into the Coil once per page load, never persisted.
+// The deal's state machine (hero rework): the cards are dealt into the Coil
+// once per page load, never persisted.
 //
 //   idle      nothing has happened; the cards section is closed
-//   riffling  the deck shuffles in place (a click, or the reader scrolling down
-//             past it); the section is still closed
-//   dealing   the cards fly from the deck into the Coil and the section opens
-//             around them; nothing can be opened yet
+//   dealing   the wheel spins up and becomes the Coil, the field opens and the
+//             columns arrive; nothing can be opened yet
 //   dealt     at rest; the cards are the reader's
 //
-// What triggers each step is pure (dealTrigger, tested): the click path
-// riffles, scrolls to the cards, then deals on arrival; the scroll path
-// riffles while the cards section peeks and deals when it is far enough up; a
-// load with the section already in view deals at once with no riffle. Reduced
-// motion starts dealt (no riffle, no flight, no opening) but not spent: the
-// fork keeps its invitation until the reader deals.
+// What triggers each step is pure (dealTrigger, tested): a click plays the
+// deal with its own scroll, the reader scrolling far enough into the sticky
+// stage's range plays it without one, and a load with the section already in
+// view deals at once. Reduced motion starts dealt (no spin, no flight, no
+// opening) but not spent: the teaser keeps its invitation until the reader
+// deals.
 
-export type DealPhase = "idle" | "riffling" | "dealing" | "dealt";
+export type DealPhase = "idle" | "dealing" | "dealt";
 export type DealSource = "click" | "scroll" | "view" | "skip" | "reduced";
 
 export type DealState = {
@@ -31,13 +29,11 @@ export type DealState = {
   // The click path is scrolling to the cards: the entrance waits for the arrival.
   hold: boolean;
   source: DealSource | null;
-  // How many times each step has run this page load (QA reads them).
-  riffles: number;
+  // How many times the deal has played this page load (QA reads it).
   entrances: number;
 };
 
 export type DealAction =
-  | { type: "riffle"; source: DealSource }
   | { type: "enter"; source: DealSource }
   | { type: "finish" }
   // Everything at once: a reduced-motion click, a title chosen before the deal
@@ -48,15 +44,13 @@ export type DealAction =
   | { type: "hold"; on: boolean }
   | { type: "reset" };
 
-export const DEAL_IDLE: DealState = { phase: "idle", spent: false, hold: false, source: null, riffles: 0, entrances: 0 };
+export const DEAL_IDLE: DealState = { phase: "idle", spent: false, hold: false, source: null, entrances: 0 };
 export const DEAL_REDUCED: DealState = { ...DEAL_IDLE, phase: "dealt" };
 
 export function dealReducer(state: DealState, action: DealAction): DealState {
   switch (action.type) {
-    case "riffle":
-      return state.phase === "idle" ? { ...state, phase: "riffling", spent: true, source: action.source, riffles: state.riffles + 1 } : state;
     case "enter":
-      if (state.phase === "idle" || state.phase === "riffling") {
+      if (state.phase === "idle") {
         return { ...state, phase: "dealing", spent: true, hold: false, source: state.source ?? action.source, entrances: state.entrances + 1 };
       }
       // Dealt without a deal (reduced motion): reaching the cards spends it.
@@ -70,7 +64,7 @@ export function dealReducer(state: DealState, action: DealAction): DealState {
     case "hold":
       return state.hold === action.on ? state : { ...state, hold: action.on };
     case "reset":
-      return { ...DEAL_IDLE, riffles: state.riffles, entrances: state.entrances };
+      return { ...DEAL_IDLE, entrances: state.entrances };
   }
 }
 
@@ -87,47 +81,42 @@ export type TriggerFrame = {
   scrollingDown: boolean;
 };
 
-export type DealTrigger = "riffle" | "enter" | null;
+export type DealTrigger = "enter" | null;
 
 // What the reader's place on the page asks for now. The entrance zone: far
 // enough through the sticky range (enterAtProgress) and the cards section's
 // bottom edge not yet above `outAt` of the viewport (so a load, an anchor jump
-// or a scroll up from below finds it too). The riffle (retired with the deck):
-// only on the first way down, between the section starting to peek and the
-// entrance zone, and only when the knob has it on. Play on threshold, never
-// scrub: the deal is a choreography on its own clock, not the scroll's.
-export function dealTrigger(frame: TriggerFrame, state: DealState, riffleOn: boolean, t = COIL.deal.trigger): DealTrigger {
+// or a scroll up from below finds it too). Play on threshold, never scrub: the
+// deal is a choreography on its own clock, not the scroll's.
+export function dealTrigger(frame: TriggerFrame, state: DealState, t = COIL.deal.trigger): DealTrigger {
   const height = Math.max(1, frame.viewportHeight);
-  const top = frame.sectionTop / height;
   const bottom = frame.sectionBottom / height;
   const inZone = frame.stickyProgress >= t.enterAtProgress && bottom >= t.outAt;
   if (state.phase === "dealing") return null;
   if (state.phase === "dealt") return !state.spent && inZone ? "enter" : null;
   if (state.hold) return null;
-  if (inZone) return "enter";
-  if (state.phase === "idle" && riffleOn && frame.scrollingDown && top <= t.riffleAt) return "riffle";
-  return null;
+  return inZone ? "enter" : null;
 }
 
-// What a click on the fork does.
-//   riffle  the deck riffles (then the flow scrolls to the cards)
-//   scroll  scroll to the cards, no deal step of its own (the riffle is off, or it ran)
+// What a click on the teaser does.
+//   scroll  the deal, whose own clock scrolls the page to the cards
 //   jump    the instant deal: reduced motion
 //   back    already dealt: only scroll to the cards, no replay
 //   none    the deal is under way
-export type ClickPlan = "riffle" | "scroll" | "jump" | "back" | "none";
+export type ClickPlan = "scroll" | "jump" | "back" | "none";
 
-export function clickPlan(state: DealState, reducedMotion: boolean, riffleOn: boolean): ClickPlan {
+export function clickPlan(state: DealState, reducedMotion: boolean): ClickPlan {
   if (state.phase === "dealt") return reducedMotion && !state.spent ? "jump" : "back";
   if (state.phase === "dealing") return "none";
-  if (reducedMotion) return "jump";
-  if (state.phase === "idle" && riffleOn) return "riffle";
-  return "scroll";
+  return reducedMotion ? "jump" : "scroll";
 }
 
-// The fork's after state: the deck is spent, the button leads back.
-export function isSpent(state: DealState): boolean {
-  return state.spent && (state.phase === "dealing" || state.phase === "dealt");
+// The teaser's after state: the cards are dealt, the text is back and the
+// button leads back to them. While the deal plays the teaser's text is leaving
+// and the button still reads "Deal me in", so the label never flips under a
+// line that is still fading.
+export function isAfter(state: DealState): boolean {
+  return state.spent && state.phase === "dealt";
 }
 
 // What <html data-deal> says: "closed" until the deal starts (the init script
@@ -159,7 +148,6 @@ function mirror() {
   root.setAttribute("data-deal", dealAttribute(state));
   if (debug) {
     root.setAttribute("data-deal-phase", state.phase);
-    root.setAttribute("data-deal-riffles", String(state.riffles));
     root.setAttribute("data-deal-entrances", String(state.entrances));
   }
 }

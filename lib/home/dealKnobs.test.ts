@@ -5,8 +5,6 @@ import { DEFAULT_KNOBS, KNOB_SPEC, clampKnobs, entranceTuningOf, getKnobs, reset
 
 describe("the deal's knobs", () => {
   it("default to the constants' deal block", () => {
-    expect(DEFAULT_KNOBS.riffleOn).toBe(COIL.deal.riffle.on);
-    expect(DEFAULT_KNOBS.riffleMs).toBe(COIL.deal.riffle.ms);
     expect(DEFAULT_KNOBS.peakCardsPerSecond).toBe(COIL.deal.timeline.peakCardsPerSecond);
     expect(DEFAULT_KNOBS.scrollStartMs).toBe(COIL.deal.timeline.scrollStartMs);
     expect(DEFAULT_KNOBS.flattenMs).toBe(COIL.deal.timeline.flattenMs);
@@ -14,11 +12,9 @@ describe("the deal's knobs", () => {
     expect(DEFAULT_KNOBS.openStartMs).toBe(COIL.deal.timeline.openStartMs);
     expect(DEFAULT_KNOBS.wheelLeanDeg).toBe(COIL.deal.wheel.leanDeg);
     expect(DEFAULT_KNOBS.wheelScale).toBe(COIL.deal.wheel.scale);
-    expect(DEFAULT_KNOBS.settleScale).toBe(COIL.deal.settle.startScale);
     expect(DEFAULT_KNOBS.openMs).toBe(COIL.deal.open.ms);
     expect(DEFAULT_KNOBS.openReach).toBe(COIL.deal.open.reach);
     expect(DEFAULT_KNOBS.columnsDelayMs).toBe(COIL.deal.columns.delayMs);
-    expect(DEFAULT_KNOBS.fanDeg).toBe(COIL.deal.deck.fanDeg);
   });
 
   it("keeps every default inside its own range", () => {
@@ -27,24 +23,23 @@ describe("the deal's knobs", () => {
       expect(DEFAULT_KNOBS[key], key).toBeGreaterThanOrEqual(min);
       expect(DEFAULT_KNOBS[key], key).toBeLessThanOrEqual(max);
     }
-    expect(DEFAULT_KNOBS.riffleMs).toBeLessThan(1000);
   });
 
   it("clamps a value to its range and ignores what is not a knob", () => {
-    const clamped = clampKnobs({ riffleMs: 99_999, scrollMs: -5, fanDeg: 7.5, notAKnob: 3 });
-    expect(clamped.riffleMs).toBe(KNOB_SPEC.riffleMs.max);
+    const clamped = clampKnobs({ openMs: 99_999, scrollMs: -5, flattenMs: 900, notAKnob: 3, riffleMs: 800, glowSize: 1, settleMs: 5 });
+    expect(clamped.openMs).toBe(KNOB_SPEC.openMs.max);
     expect(clamped.scrollMs).toBe(KNOB_SPEC.scrollMs.min);
-    expect(clamped.fanDeg).toBe(7.5);
-    expect("notAKnob" in clamped).toBe(false);
+    expect(clamped.flattenMs).toBe(900);
+    // Not knobs: unknown keys and the retired deck, riffle, glow and settle ones.
+    for (const gone of ["notAKnob", "riffleMs", "glowSize", "settleMs"]) expect(gone in clamped, gone).toBe(false);
   });
 
   it("falls back to the base for a non-finite number, a string or a wrong type", () => {
-    const clamped = clampKnobs({ riffleMs: Number.NaN, scrollMs: "900", glowSize: Number.POSITIVE_INFINITY, riffleOn: "yes" });
-    expect(clamped.riffleMs).toBe(DEFAULT_KNOBS.riffleMs);
+    const clamped = clampKnobs({ openMs: Number.NaN, scrollMs: "900", flattenMs: Number.POSITIVE_INFINITY, slowMs: null });
+    expect(clamped.openMs).toBe(DEFAULT_KNOBS.openMs);
     expect(clamped.scrollMs).toBe(DEFAULT_KNOBS.scrollMs);
-    expect(clamped.glowSize).toBe(DEFAULT_KNOBS.glowSize);
-    expect(clamped.riffleOn).toBe(DEFAULT_KNOBS.riffleOn);
-    expect(clampKnobs({ riffleOn: false }).riffleOn).toBe(false);
+    expect(clamped.flattenMs).toBe(DEFAULT_KNOBS.flattenMs);
+    expect(clamped.slowMs).toBe(DEFAULT_KNOBS.slowMs);
   });
 
   it("hands the entrance its timeline, its wheel and its field", () => {
@@ -65,9 +60,9 @@ describe("the knobs' store", () => {
   afterEach(() => resetKnobs());
 
   it("applies a patch through the clamp and resets to the defaults", () => {
-    setKnobs({ riffleMs: 5000, riffleOn: false });
-    expect(getKnobs().riffleMs).toBe(KNOB_SPEC.riffleMs.max);
-    expect(getKnobs().riffleOn).toBe(false);
+    setKnobs({ openMs: 99_999, scrollMs: 1500 });
+    expect(getKnobs().openMs).toBe(KNOB_SPEC.openMs.max);
+    expect(getKnobs().scrollMs).toBe(1500);
     resetKnobs();
     expect(getKnobs()).toBe(DEFAULT_KNOBS);
   });
@@ -77,7 +72,7 @@ describe("the knobs' store", () => {
     const before = env.NODE_ENV;
     env.NODE_ENV = "production";
     try {
-      setKnobs({ riffleMs: 400 });
+      setKnobs({ scrollMs: 1500 });
       expect(getKnobs()).toBe(DEFAULT_KNOBS);
     } finally {
       env.NODE_ENV = before;

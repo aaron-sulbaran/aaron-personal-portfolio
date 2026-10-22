@@ -46,9 +46,7 @@ export function setBeforeDealScroll(hook: BeforeDealScroll | null): () => void {
 
 // Resolves when the click's scroll has arrived (or was interrupted by the reader).
 export async function startClickDeal(reducedMotion: boolean): Promise<void> {
-  // The riffle is not part of this page (the deck is being replaced), so the
-  // plan is asked with it off: a click scrolls.
-  const plan = clickPlan(getDeal(), reducedMotion, false);
+  const plan = clickPlan(getDeal(), reducedMotion);
   switch (plan) {
     case "none":
       return;

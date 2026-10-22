@@ -1,14 +1,11 @@
 import { DEAL_LAB_KEY } from "@/lib/home/introLabKey";
 import { clampKnobs, getKnobs, setKnobs, type DealKnobs, type NumericKnob } from "@/lib/home/dealKnobs";
 
-// What the deal's lab saves and shares: the knobs this page still has (the
-// wheel and its spin, the scroll, the flatten, the lift, the field's opening,
-// the columns' arrival; the deck, the
-// riffle, the name's settle and the glow went with the redesign and their knobs
-// wait in lib/home/dealKnobs.ts for the slice that removes or reuses them), the
-// localStorage record they persist in, and how a page picks it up. Shared by
-// the Deal lab chip (components/home/DealLab.tsx) and the hero lab
-// (/lab/hero), whose frames read the same record.
+// What the deal's lab saves and shares: the knobs this page has (the wheel and
+// its spin, the scroll, the flatten, the lift, the field's opening, the
+// columns' arrival), the localStorage record they persist in, and how a page
+// picks it up. Shared by the Deal lab chip (components/home/DealLab.tsx) and
+// the hero lab (/lab/hero), whose frames read the same record.
 
 export const DEAL_LAB_KNOBS: readonly NumericKnob[] = [
   "peakCardsPerSecond",

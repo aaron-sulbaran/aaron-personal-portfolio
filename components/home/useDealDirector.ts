@@ -169,8 +169,6 @@ export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance 
     const trigger = dealTrigger(
       { stickyProgress: progress, sectionTop: box.top, sectionBottom: box.bottom, viewportHeight, scrollingDown: direction.current.down },
       getDeal(),
-      // The riffle is not part of this page (the deck is being replaced).
-      false,
     );
     if (trigger === "enter") beginRef.current(direction.current.down ? "scroll" : "view");
     // A deal under way whose stage has left the screen finishes now, so a
