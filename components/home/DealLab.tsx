@@ -2,60 +2,30 @@
 
 import { useEffect, useState } from "react";
 import { dispatchDeal } from "@/lib/home/deal";
-import { KNOB_SPEC, clampKnobs, getKnobs, resetKnobs, setKnobs, useKnobs, type DealKnobs, type NumericKnob } from "@/lib/home/dealKnobs";
+import { KNOB_SPEC, getKnobs, resetKnobs, setKnobs, useKnobs, type NumericKnob } from "@/lib/home/dealKnobs";
+import { DEAL_LAB_KNOBS, applyStoredDealKnobs, dealLabValues, writeStoredDealKnobs } from "@/lib/home/dealLab";
 
 // The deal's lab panel, dev only (DealLabMount never loads it in production, so
 // the build holds none of it): a collapsed chip at the bottom right that opens
 // the knobs Aaron tunes by hand, a "Replay the deal" button and a "Copy values"
 // one (the JSON the other labs copy). The values persist in localStorage here,
-// in this browser, and override the constants' defaults at runtime.
-
-const STORAGE_KEY = "deal-lab-v1";
-
-// The knobs this page still has: the cards' flight, the section's opening, the
-// columns' arrival. (The deck, the riffle, the name's settle and the glow went
-// with the redesign; their knobs stay in lib/home/dealKnobs.ts for the next
-// slice to remove or reuse.)
-const LAB_KNOBS: readonly NumericKnob[] = ["dealMs", "dealStagger", "startOffset", "openReach", "openMs", "columnsDelayMs", "columnsStaggerMs"];
-
-function readStored(): Partial<DealKnobs> | null {
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as Partial<DealKnobs>) : null;
-  } catch {
-    return null;
-  }
-}
-
-function writeStored(values: Partial<DealKnobs>) {
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(values));
-  } catch {
-    // Storage blocked: the panel still works for this visit.
-  }
-}
-
-function labValues(knobs: DealKnobs) {
-  return Object.fromEntries(LAB_KNOBS.map((key) => [key, knobs[key]]));
-}
+// in this browser, and override the constants' defaults at runtime
+// (lib/home/dealLab.ts, shared with the hero lab's frames).
 
 export default function DealLab() {
   const knobs = useKnobs();
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  useEffect(() => {
-    const stored = readStored();
-    if (stored) setKnobs(clampKnobs(stored, getKnobs()));
-  }, []);
+  useEffect(() => applyStoredDealKnobs(), []);
 
   const change = (key: NumericKnob, value: number) => {
     setKnobs({ [key]: value });
-    writeStored(labValues(getKnobs()));
+    writeStoredDealKnobs(dealLabValues(getKnobs()));
   };
 
   const copy = async () => {
-    const json = JSON.stringify({ lab: "deal", round: 1, ...labValues(getKnobs()) }, null, 2);
+    const json = JSON.stringify({ lab: "deal", round: 1, ...dealLabValues(getKnobs()) }, null, 2);
     try {
       await navigator.clipboard.writeText(json);
       setCopied(true);
@@ -74,7 +44,7 @@ export default function DealLab() {
     dispatchDeal({ type: "reset" });
   };
 
-  const groups = ["Deal", "Columns"].map((group) => ({ group, keys: LAB_KNOBS.filter((key) => KNOB_SPEC[key].group === group) }));
+  const groups = ["Deal", "Columns"].map((group) => ({ group, keys: DEAL_LAB_KNOBS.filter((key) => KNOB_SPEC[key].group === group) }));
   return (
     <div data-deal-lab="" className="fixed bottom-4 right-4 z-[90] font-label text-label-sm text-foreground">
       {open ? (
@@ -126,7 +96,7 @@ export default function DealLab() {
               type="button"
               onClick={() => {
                 resetKnobs();
-                writeStored(labValues(getKnobs()));
+                writeStoredDealKnobs(dealLabValues(getKnobs()));
               }}
               className="rounded-full px-3 py-1.5 text-muted hover:text-foreground"
             >
