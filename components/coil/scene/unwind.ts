@@ -3,7 +3,7 @@ import { siteContent } from "@/lib/content";
 import { COIL } from "@/lib/coil/constants";
 import { clamp01, helixRotation, isNarrow, smoothstep01, unprojectToPlane, type HelixFrame } from "@/lib/coil/geometry";
 import { settleUnwind, toggleUnwind, unwindDurationMs, unwindProgress } from "@/lib/coil/unwind";
-import type { Hover } from "./hover";
+import { canvasPoint, type Hover } from "./hover";
 import type { Name } from "./name";
 import type { LoopLink, SceneCtx, SceneFrame } from "./state";
 
@@ -45,8 +45,7 @@ export function createUnwindWiring(ctx: SceneCtx, comp: ShaderMaterial, name: Na
   // the top: the helix unwinds in place; again, it winds back.
   const onDoubleClick = (event: MouseEvent) => {
     if (!(event.target instanceof Node) || !host.contains(event.target)) return;
-    const x = event.clientX - (view.docLeft - window.scrollX);
-    const y = event.clientY - (view.docTop - window.scrollY);
+    const { x, y } = canvasPoint(host, event.clientX, event.clientY);
     if (hover.pickAt(x, y) >= 0) return;
     if (!unwind.on && !canUnwind()) return;
     toggle(!unwind.on);

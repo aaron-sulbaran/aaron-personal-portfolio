@@ -14,7 +14,7 @@ import {
 import type { Cards } from "./cards";
 import type { Entrance } from "./entrance";
 import type { Field } from "./field";
-import type { Hover } from "./hover";
+import { canvasPoint, type Hover } from "./hover";
 import type { Input } from "./input";
 import type { Name } from "./name";
 import type { NameDelta, NameProbe } from "./nameProbe";
@@ -257,8 +257,7 @@ export function installSceneHooks(ctx: SceneCtx, parts: HookParts) {
   });
   debug.drag = input.dragState;
   debug.captureAt = (clientX, clientY) => {
-    const x = clientX - (st.view.docLeft - window.scrollX);
-    const y = clientY - (st.view.docTop - window.scrollY);
+    const { x, y } = canvasPoint(host, clientX, clientY);
     const distances = st.geoCamera ? cardDistancesPx(st.poses, st.geoCamera, x, y) : null;
     return {
       onCard: hover.nearCardAt(x, y),

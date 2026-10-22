@@ -17,7 +17,7 @@ import type { CoilSceneProps } from "./types";
 // one module reads. A module's own state stays in its own closure. Which
 // module writes which field is listed in docs/coil-scene-modules.md.
 
-export type View = { width: number; height: number; dpr: number; docTop: number; docLeft: number };
+export type View = { width: number; height: number; dpr: number };
 
 export type Pointer = { clientX: number; clientY: number; x: number; y: number; inside: boolean; known: boolean };
 
@@ -107,7 +107,7 @@ export function createSceneState(theme: CoilTheme, budget: RenderBudget, conveyo
   return {
     theme,
     budget,
-    view: { width: 1, height: 1, dpr: 1, docTop: 0, docLeft: 0 },
+    view: { width: 1, height: 1, dpr: 1 },
     geo: null,
     geoCamera: null,
     nameFamily: "",

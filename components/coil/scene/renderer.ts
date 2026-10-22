@@ -87,8 +87,6 @@ export function createLayout(ctx: SceneCtx, gl: Gl, parts: LayoutParts, loop: Lo
     view.height = Math.max(1, height);
     view.dpr = Math.min(window.devicePixelRatio || 1, st.budget.dprCap);
     const rect = host.getBoundingClientRect();
-    view.docTop = rect.top + window.scrollY;
-    view.docLeft = rect.left + window.scrollX;
     renderer.setPixelRatio(view.dpr);
     renderer.setSize(view.width, view.height, false);
     const buffer = renderer.getDrawingBufferSize(new Vector2());

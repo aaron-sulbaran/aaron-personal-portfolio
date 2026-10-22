@@ -25,6 +25,14 @@ export function heroVisible(host: HTMLElement) {
   return heroVisibleFraction(rect.top, rect.height, window.innerHeight);
 }
 
+// A viewport point in the canvas's own pixels. The canvas sits on a sticky
+// stage, so its place in the viewport changes with the page's scroll in no
+// fixed way: the rect is read live, never cached from a document offset.
+export function canvasPoint(host: HTMLElement, clientX: number, clientY: number) {
+  const rect = host.getBoundingClientRect();
+  return { x: clientX - rect.left, y: clientY - rect.top };
+}
+
 export function createHover(ctx: SceneCtx, cards: Cards, loop: LoopLink) {
   const { st, host, live, tiles, tileCount } = ctx;
   const { pointer, view, poses, conveyor, unwind } = st;
@@ -46,8 +54,7 @@ export function createHover(ctx: SceneCtx, cards: Cards, loop: LoopLink) {
 
   // The card under a viewport point.
   function cardAt(clientX: number, clientY: number): CoilCardRef | null {
-    const x = clientX - (view.docLeft - window.scrollX);
-    const y = clientY - (view.docTop - window.scrollY);
+    const { x, y } = canvasPoint(host, clientX, clientY);
     const slot = pickAt(x, y);
     if (slot < 0) return null;
     return { key: tiles[slots[slot].tile].key, slot };

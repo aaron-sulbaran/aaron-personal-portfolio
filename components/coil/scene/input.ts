@@ -12,7 +12,7 @@ import { addWheel, rowHoldWeight, stepConveyor, stepEnvelope, wheelPixels } from
 import { Observer } from "@/lib/gsap";
 import type { Cards } from "./cards";
 import { pushStat } from "./debug";
-import { heroVisible, type Hover } from "./hover";
+import { canvasPoint, heroVisible, type Hover } from "./hover";
 import type { LoopLink, SceneCtx, SceneFrame } from "./state";
 
 // What moves the coil. A fine pointer's wheel spins it when the gesture
@@ -39,8 +39,9 @@ export function createInput(ctx: SceneCtx, cards: Cards, hover: Hover, loop: Loo
   const { slots } = cards;
 
   function updatePointerLocal() {
-    pointer.x = pointer.clientX - (view.docLeft - window.scrollX);
-    pointer.y = pointer.clientY - (view.docTop - window.scrollY);
+    const local = canvasPoint(host, pointer.clientX, pointer.clientY);
+    pointer.x = local.x;
+    pointer.y = local.y;
   }
 
   // Only the canvas itself counts: the overlay's control, the mark, the Menu
