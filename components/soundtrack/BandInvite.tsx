@@ -16,10 +16,13 @@ import {
 } from "@/lib/soundtrack";
 import { PRIMARY, QUIET, SMALL } from "./bandButtons";
 import { DeclinedNote } from "./DeclinedNote";
+import { PromptSubline } from "./PromptSubline";
 
-// The band's copy and controls, the one place the music is offered. The
-// heading is the question; the controls beside it and the note under it swap
-// per state, every layer stacked in one grid cell so the band never changes
+// The band's copy and controls, the one place the music is offered, one quiet
+// line: the question, its two answers beside it, and under it the line that
+// says the wave moves with the reader or can be frozen (the freeze toggle is two
+// words inside that line). The controls beside the question and the note under
+// it swap per state, every layer stacked in one grid cell so the band never changes
 // height (no layout shift when a stored choice restores after mount). Hidden
 // layers are inert: not focusable, not clickable, not read. Answering moves
 // focus to the note under the question, and Pause and Resume to each other,
@@ -65,9 +68,9 @@ export function BandInvite() {
   };
 
   return (
-    <div ref={rootRef} data-wave-avoid data-wave-words className="pointer-events-auto w-fit max-w-full">
-      <div className="flex flex-wrap items-baseline gap-x-9 gap-y-3">
-        <h2 className="font-display text-[clamp(1.375rem,2vw,1.75rem)] leading-[1.1] text-foreground">{c.line}</h2>
+    <div ref={rootRef} data-band-prompt="" data-wave-avoid data-wave-words className="pointer-events-auto w-fit max-w-full">
+      <div className="flex flex-wrap items-baseline gap-x-7 gap-y-2">
+        <h2 className="font-display text-[clamp(1.0625rem,1.45vw,1.25rem)] leading-[1.1] text-foreground">{c.line}</h2>
         <div data-band-controls data-wave-ripple-origin className={`grid items-baseline ${closedUp ? "h-0 overflow-hidden" : ""}`}>
           <Layer shown={music === "before"} className="flex items-baseline gap-4">
             <Fill {...FILL_PICK.band} shape="rect" type="button" data-control="before" data-focus-to="note" onClick={act(startSoundtrack)} data-cursor-hover {...PRIMARY}>
@@ -89,9 +92,9 @@ export function BandInvite() {
           </Layer>
         </div>
       </div>
-      <div data-band-note tabIndex={-1} className={`mt-2 grid max-w-[42rem] text-sm leading-[1.5] text-muted outline-none ${closedUp ? "hidden" : ""}`} aria-live="polite">
+      <div data-band-note tabIndex={-1} className={`mt-1.5 grid max-w-[42rem] text-sm leading-[1.5] text-muted outline-none ${closedUp ? "hidden" : ""}`} aria-live="polite">
         <Layer shown={music === "before"}>
-          <p><InlineCopy source={c.body} /></p>
+          <PromptSubline />
         </Layer>
         <Layer shown={music === "on" && !playerOwns}>
           <p><InlineCopy source={c.acceptedNote} /></p>

@@ -14,6 +14,9 @@ import type { Changed, WaveConductor, WaveFrame, WaveView } from "../waveConduct
 import type { Anchors } from "@/lib/wavepath/spine";
 import { docTop, measureAnchors } from "./measure";
 
+// A request to lay the line out again, for a move that resizes nothing the observers watch.
+export const RELAYOUT_EVENT = "wavepath:relayout";
+
 type Tile = { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D; painter: ReturnType<typeof createDotPainter>; top: number; height: number; visible: boolean };
 
 // The line below the band: canvas tiles at most TILE_PX tall in an in-flow
@@ -179,6 +182,7 @@ export function createPathView(layer: HTMLElement, root: HTMLElement, conductor:
       theme.disconnect();
       io.disconnect();
       window.removeEventListener("resize", onResize);
+      window.removeEventListener(RELAYOUT_EVENT, schedule);
       tiles.forEach((t) => t.canvas.remove());
       tiles.length = 0;
     },
@@ -195,6 +199,8 @@ export function createPathView(layer: HTMLElement, root: HTMLElement, conductor:
   });
   theme.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
   window.addEventListener("resize", onResize);
+  // The hero lab moves the band and the blocks without resizing anything (dev only; nothing dispatches it in production).
+  window.addEventListener(RELAYOUT_EVENT, schedule);
   document.fonts?.ready.then(schedule);
   layout();
   return view;

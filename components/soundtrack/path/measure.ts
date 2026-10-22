@@ -3,9 +3,12 @@ import { SECTION_KEYS, type Anchors, type Rect, type SectionKey, type Span } fro
 // The page the line is laid on, in layer px (origin: the band's document
 // top). Sections are [data-wave-anchor]; their words the union of their
 // [data-wave-words] blocks; gaps fall between one section's last words and the
-// next one's first. Tops come from the offset chain, so a reveal's transform
-// never moves them; a sticky block is never measured (its offset moves with
-// the scroll). Layout only, never in a paint.
+// next one's first. A word block outside every section (page 1's paragraphs
+// and teaser, which sit between the band and the cards) still keeps the line
+// clear: it joins the blocks the dots avoid, though it is no section's words.
+// Tops come from the offset chain, so a reveal's transform never moves them; a
+// sticky block is never measured (its offset moves with the scroll). Layout
+// only, never in a paint.
 export function docTop(el: HTMLElement): number {
   let y = 0;
   for (let node: HTMLElement | null = el; node; node = node.offsetParent as HTMLElement | null) y += node.offsetTop;
@@ -50,6 +53,7 @@ export function measureAnchors(root: HTMLElement, origin: number): Anchors | nul
   const box = {} as Record<SectionKey, Span>;
   const words = {} as Record<SectionKey, Span>;
   const blocks: Rect[] = [];
+  const measured = new Set<HTMLElement>();
   for (const key of SECTION_KEYS) {
     const el = root.querySelector<HTMLElement>(`[data-wave-anchor="${key}"]`);
     if (!el) return null;
@@ -59,6 +63,7 @@ export function measureAnchors(root: HTMLElement, origin: number): Anchors | nul
     let last = -Infinity;
     el.querySelectorAll<HTMLElement>("[data-wave-words]").forEach((w) => {
       if (stuck(w)) return;
+      measured.add(w);
       const t = docTop(w) - origin;
       first = Math.min(first, t);
       last = Math.max(last, t + w.offsetHeight);
@@ -66,6 +71,13 @@ export function measureAnchors(root: HTMLElement, origin: number): Anchors | nul
     });
     words[key] = Number.isFinite(first) ? { top: first, bottom: last } : box[key];
   }
+  root.querySelectorAll<HTMLElement>("[data-wave-words]").forEach((w) => {
+    if (measured.has(w) || stuck(w)) return;
+    const t = docTop(w) - origin;
+    // Above the band the line has no layer, so there is nothing to keep clear of.
+    if (t + w.offsetHeight < 0) return;
+    blocks.push({ ...inkX(w, originLeft), top: t, bottom: t + w.offsetHeight });
+  });
   const line = root.querySelector<HTMLElement>("[data-wave-band-line]");
   return { width: root.clientWidth, box, words, blocks, headings: [], links: [], hairlines: [], line: line ? docTop(line) - origin + line.offsetHeight / 2 : undefined };
 }

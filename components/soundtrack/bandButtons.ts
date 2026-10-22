@@ -6,7 +6,7 @@ export const FOCUS = "rounded-sm focus-visible:outline focus-visible:outline-2 f
 // "Play it": the 1.5px rise line stands in for its underline, inset by its own padding.
 export const PRIMARY = {
   line: 1.5,
-  className: `-mx-2 inline-flex items-baseline px-2 pb-1 pt-0.5 font-display text-[clamp(1.125rem,1.5vw,1.375rem)] leading-[1.1] text-accent ${FOCUS}`,
+  className: `-mx-2 inline-flex items-baseline px-2 pb-1 pt-0.5 font-display text-[clamp(1rem,1.3vw,1.125rem)] leading-[1.1] text-accent ${FOCUS}`,
   overClassName: "flex items-baseline px-2 pb-1 pt-0.5",
 };
 
