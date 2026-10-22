@@ -28,6 +28,10 @@ export type EntranceClock = {
   // How far the wheel has slid into the teaser (0: not yet seen, 1: seated).
   // The scene decides it from the page; it is 1 everywhere else.
   wheelIn: number;
+  // How far the wheel sits off its slot, in CSS px (down is positive): the
+  // knee that slows it into the stage's sticking (pinKnee). The scene reads it
+  // from the page; 0 everywhere else.
+  wheelDyPx: number;
   // How far the strand has turned since the pull began, in cards. The band's
   // cards keep their places in it while it opens, however far the strand turns
   // (0 until the pull begins).
@@ -38,8 +42,8 @@ export type EntranceClock = {
   c?: CoilConstants;
 };
 
-export function entranceClock(elapsedMs: number, c: CoilConstants = COIL, wheelIn = 1, drift = 0): EntranceClock {
-  const base = { elapsedS: elapsedMs / 1000, durationS: sceneMs(c) / 1000, wheelIn, drift };
+export function entranceClock(elapsedMs: number, c: CoilConstants = COIL, wheelIn = 1, drift = 0, wheelDyPx = 0): EntranceClock {
+  const base = { elapsedS: elapsedMs / 1000, durationS: sceneMs(c) / 1000, wheelIn, drift, wheelDyPx };
   return c === COIL ? base : { ...base, c };
 }
 
@@ -48,7 +52,7 @@ export function entranceClock(elapsedMs: number, c: CoilConstants = COIL, wheelI
 // tuning is COIL's own.
 export type EntranceTuning = {
   timeline?: Partial<Record<keyof CoilConstants["deal"]["timeline"], number>>;
-  wheel?: Partial<Record<"idleCardsPerSecond" | "leanDeg" | "scale" | "offsetX" | "offsetY", number>>;
+  wheel?: Partial<Record<"idleCardsPerSecond" | "leanDeg" | "scale" | "offsetX" | "offsetY" | "pinKneePx", number>>;
   open?: Partial<Record<"ms" | "reach", number>>;
 };
 
@@ -147,17 +151,31 @@ export function wheelPlacement(geo: CoilGeometry, c: CoilConstants = COIL) {
 // the wheel by (1 - flatten): 0 is the wheel, 1 returns the frame as is. While
 // the wheel slides in (wheelIn under 1) it sits to the right by the rest of
 // its way.
-export function wheelHelix(frame: HelixFrame, geo: CoilGeometry, flatten: number, wheelIn: number, c: CoilConstants = COIL): HelixFrame {
+export function wheelHelix(frame: HelixFrame, geo: CoilGeometry, flatten: number, wheelIn: number, c: CoilConstants = COIL, dyPx = 0): HelixFrame {
   if (flatten >= 1) return frame;
   const wheel = wheelPlacement(geo, c);
-  const slide = (1 - wheelIn) * c.deal.wheel.slideFrom * geo.canvas.width * geo.camera.worldPerPx;
+  const perPx = geo.camera.worldPerPx;
+  const slide = (1 - wheelIn) * c.deal.wheel.slideFrom * geo.canvas.width * perPx;
   return {
     ...frame,
     axisRad: lerp(wheel.axisRad, frame.axisRad, flatten),
     leanRad: lerp(wheel.leanRad, frame.leanRad, flatten),
-    center: lerp3([wheel.center[0] + slide, wheel.center[1], wheel.center[2]], frame.center, flatten),
+    center: lerp3([wheel.center[0] + slide, wheel.center[1] - dyPx * perPx, wheel.center[2]], frame.center, flatten),
     cardWorld: lerp(wheel.cardWorld, frame.cardWorld, flatten),
   };
+}
+
+// The wheel's slow-down into the stage's sticking. `railTopPx` is the rail's top
+// edge in the viewport: above 0 the stage still rides the page with the wheel,
+// at or below 0 it is stuck. Returns how far the wheel sits off the slot it is
+// riding in, in px (up is negative), so that its screen position follows
+// g(x) = 2x^2/K - x^3/K^2 over the last K px (x the rail's top): g(K) = K and
+// g'(K) = 1 join the free ride with no kink, g(0) = 0 and g'(0) = 0 bring the
+// wheel to rest as the stage sticks, with no step in its speed. 0 outside (0, K).
+export function pinKnee(railTopPx: number, kneePx: number): number {
+  if (!(kneePx > 0) || railTopPx <= 0 || railTopPx >= kneePx) return 0;
+  const x = railTopPx;
+  return (2 * x * x) / kneePx - (x * x * x) / (kneePx * kneePx) - x;
 }
 
 // How far the wheel has slid in, `sinceInViewMs` after it was first in view.
@@ -191,7 +209,7 @@ export function pullHelix(rest: HelixFrame, geo: CoilGeometry, pull: number, c: 
 export function entranceHelix(rest: HelixFrame, geo: CoilGeometry, clock: EntranceClock, c: CoilConstants = clock.c ?? COIL): HelixFrame {
   if (isRested(clock)) return rest;
   const band = pullHelix(rest, geo, pullProgress(clock, c), c);
-  return wheelHelix(band, geo, flattenProgress(clock, c), clock.wheelIn, c);
+  return wheelHelix(band, geo, flattenProgress(clock, c), clock.wheelIn, c, clock.wheelDyPx);
 }
 
 // The copies outside the one band wait hidden and fade in late in the pull.

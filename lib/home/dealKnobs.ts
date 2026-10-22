@@ -30,6 +30,7 @@ export type DealKnobs = {
   wheelScale: number; // times the size of the teaser's slot
   wheelOffsetX: number; // shares of the canvas
   wheelOffsetY: number;
+  wheelPinKneePx: number; // how far before the stage sticks the wheel starts to slow
   openReach: number; // how far the section's opening travels (1: to the farthest corner)
   openMs: number; // how long the section takes to open
   columnsDelayMs: number;
@@ -50,6 +51,7 @@ export const KNOB_SPEC: Record<NumericKnob, KnobSpec> = {
   wheelScale: { label: "Wheel size", group: "Wheel", min: 0.5, max: 1.6, step: 0.02 },
   wheelOffsetX: { label: "Wheel nudge X", group: "Wheel", min: -0.3, max: 0.3, step: 0.01 },
   wheelOffsetY: { label: "Wheel nudge Y", group: "Wheel", min: -0.3, max: 0.3, step: 0.01 },
+  wheelPinKneePx: { label: "Wheel slows into the stick", group: "Wheel", min: 0, max: 700, step: 10, unit: "px" },
   scrollStartMs: { label: "Scroll starts", group: "Scroll", min: 0, max: 1500, step: 10, unit: "ms" },
   scrollMs: { label: "Scroll duration", group: "Scroll", min: 600, max: 4000, step: 50, unit: "ms" },
   flattenStartMs: { label: "Flatten starts", group: "Flatten and slow", min: 0, max: 2500, step: 10, unit: "ms" },
@@ -84,6 +86,7 @@ export const DEFAULT_KNOBS: DealKnobs = {
   wheelScale: D.wheel.scale,
   wheelOffsetX: D.wheel.offsetX,
   wheelOffsetY: D.wheel.offsetY,
+  wheelPinKneePx: D.wheel.pinKneePx,
   openReach: D.open.reach,
   openMs: D.open.ms,
   columnsDelayMs: D.columns.delayMs,
@@ -131,6 +134,7 @@ export function entranceTuningOf(knobs: DealKnobs): EntranceTuning {
       scale: knobs.wheelScale,
       offsetX: knobs.wheelOffsetX,
       offsetY: knobs.wheelOffsetY,
+      pinKneePx: knobs.wheelPinKneePx,
     },
     open: { ms: knobs.openMs, reach: knobs.openReach },
   };

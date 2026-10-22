@@ -160,6 +160,13 @@ const values = {
       offsetY: 0,
       slideMs: 700,
       slideFrom: 0.3,
+      // The stage sticks at the top of the screen when the rail's top reaches
+      // it, and until then the wheel rides the page. Left alone it stops dead
+      // there, whatever the page's speed (1400 px/s measured on a click from far
+      // up). Over the last pinKneePx before it sticks the wheel slows on a cubic
+      // so its speed reaches zero as the stage sticks (entrance.ts pinKnee; it
+      // outruns the page by a third at most on the way); 0 turns it off.
+      pinKneePx: 400,
       anchor: [0.5, 0.5] as const,
       diameterOfHeight: 0.42,
     },

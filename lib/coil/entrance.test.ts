@@ -9,6 +9,7 @@ import {
   entranceNameAlpha,
   entrancePose,
   fieldMask,
+  pinKnee,
   flattenProgress,
   inRing,
   isBeforeEntrance,
@@ -487,5 +488,53 @@ describe("the pull as a value", () => {
     expect(curve(0)).toBeCloseTo(0, 9);
     expect(curve(1)).toBeCloseTo(1, 9);
     expect(curve(0.5)).toBeCloseTo(0.6856, 3);
+  });
+});
+
+describe("the wheel's slow-down into the stage's sticking", () => {
+  const K = COIL.deal.wheel.pinKneePx;
+  // The wheel's screen position over the last K px: the stage's top plus the knee (the slot's own offset is a constant).
+  const screen = (x: number) => Math.max(x, 0) + pinKnee(x, K);
+
+  it("is nothing before the knee, once the stage is stuck, and with the knee off", () => {
+    expect(pinKnee(K, K)).toBe(0);
+    expect(pinKnee(K * 3, K)).toBe(0);
+    expect(pinKnee(0, K)).toBe(0);
+    expect(pinKnee(-50, K)).toBe(0);
+    expect(pinKnee(100, 0)).toBe(0);
+  });
+
+  it("holds the wheel above where it rides, never below, and brings it to the stage's top exactly as it sticks", () => {
+    for (let x = 1; x < K; x += 5) expect(pinKnee(x, K), `x ${x}`).toBeLessThan(0);
+    expect(screen(1e-6)).toBeCloseTo(0, 6);
+    expect(screen(K - 1e-6)).toBeCloseTo(K, 3);
+  });
+
+  it("has no step in the wheel's speed: it joins the free ride at slope 1 and reaches the stage at slope 0", () => {
+    const slope = (x: number) => (screen(x + 1e-3) - screen(x - 1e-3)) / 2e-3;
+    expect(slope(K - 0.5)).toBeCloseTo(1, 2);
+    expect(slope(0.5)).toBeLessThan(0.01);
+    // The wheel covers the same distance as the page across the knee, so it has to
+    // outrun it a little before it slows (by a third at the most, at 2K/3); from there
+    // its speed falls steadily to zero.
+    let most = 0;
+    for (let x = K - 1; x > 1; x -= 4) most = Math.max(most, slope(x));
+    expect(most).toBeLessThanOrEqual(4 / 3 + 1e-3);
+    let last = Number.POSITIVE_INFINITY;
+    for (let x = (2 * K) / 3; x > 1; x -= 4) {
+      const v = slope(x);
+      expect(v).toBeLessThanOrEqual(last + 1e-9);
+      last = v;
+    }
+  });
+
+  it("moves the wheel's center up by the knee, weighted by how little it has flattened", () => {
+    const geo = { canvas: { width: 1280, height: 800 }, camera: { worldPerPx: 0.01 }, wheelAnchor: { x: 0.5, y: 0.5 }, wheelCardWorld: 1 } as never;
+    const frame = { axisRad: 0, leanRad: 0, center: [0, 0, 0], cardWorld: 1 } as never;
+    const flat = wheelHelix(frame, geo, 0.5, 1, COIL, -40);
+    const none = wheelHelix(frame, geo, 0.5, 1, COIL, 0);
+    // dy is up-negative in px; the world's y is up, so a negative dy lifts the center by dy * worldPerPx.
+    expect(flat.center[1] - none.center[1]).toBeCloseTo(0.5 * 40 * 0.01, 9);
+    expect(wheelHelix(frame, geo, 1, 1, COIL, -40)).toBe(frame);
   });
 });

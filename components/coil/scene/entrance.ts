@@ -1,5 +1,5 @@
 import { dealOffsetAt, dealOmega, dealSpeedOf, integrateDealSpeed, sceneMs } from "@/lib/coil/dealSpeed";
-import { entranceClock, entranceHelix, fieldMask, tunedConstants, wheelPlacement, wheelSlideProgress, type EntranceTuning } from "@/lib/coil/entrance";
+import { entranceClock, entranceHelix, fieldMask, pinKnee, tunedConstants, wheelPlacement, wheelSlideProgress, type EntranceTuning } from "@/lib/coil/entrance";
 import { clamp01, type HelixFrame } from "@/lib/coil/geometry";
 import { siteEase } from "@/lib/coil/motion";
 import { entranceTuningOf, getKnobs, type DealKnobs } from "@/lib/home/dealKnobs";
@@ -104,6 +104,18 @@ export function createEntrance(ctx: SceneCtx, name: Name) {
     return wheelInAt === null ? 0 : wheelSlideProgress(f.now - wheelInAt, c);
   }
 
+  // The wheel's slow-down into the stage's sticking (lib/coil/entrance.ts pinKnee):
+  // read from the rail's live place, only while the wheel is still the wheel and
+  // the page is not pinned to a frame (a forced frame is the same wherever the
+  // page is scrolled).
+  let rail: Element | null | undefined;
+  function wheelDy(ms: number, c: Tuned) {
+    if (forcedEntranceMs !== null || c.deal.wheel.pinKneePx <= 0) return 0;
+    if (ms >= c.deal.timeline.flattenStartMs + c.deal.timeline.flattenMs) return 0;
+    if (rail === undefined) rail = host.closest("[data-coil-rail]");
+    return rail ? pinKnee(rail.getBoundingClientRect().top, c.deal.wheel.pinKneePx) : 0;
+  }
+
   // The strand held where the deal puts it: the idle drift, the wheel, a
   // glide and a coast all wait for it.
   function hold(offset: number, velocity: number) {
@@ -165,7 +177,7 @@ export function createEntrance(ctx: SceneCtx, name: Name) {
     f.realElapsedMs = realElapsedMs;
     const rested = ms >= sceneMs(c);
     const drift = rested && forcedEntranceMs === null ? 0 : turn(f, ms, c);
-    const clock = entranceClock(ms, c, rested ? 1 : wheelIn(f, ms, c), drift);
+    const clock = entranceClock(ms, c, rested ? 1 : wheelIn(f, ms, c), drift, rested ? 0 : wheelDy(ms, c));
     f.clock = clock;
     st.open = fieldMask(clock, view, c);
     f.helix = entranceHelix(f.helix as HelixFrame, f.geo, clock);

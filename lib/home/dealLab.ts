@@ -17,6 +17,7 @@ export const DEAL_LAB_KNOBS: readonly NumericKnob[] = [
   "wheelScale",
   "wheelOffsetX",
   "wheelOffsetY",
+  "wheelPinKneePx",
   "scrollStartMs",
   "scrollMs",
   "flattenStartMs",
