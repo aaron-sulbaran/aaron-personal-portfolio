@@ -8,7 +8,7 @@ import { bandRunPoints, runExit } from "./head";
 // across the page, which may leave it. It starts as the level run across the band.
 // fixtures/pages.json is measureAnchors' output on the real page at 1440x900,
 // 1024x768 and 390x844.
-export const SECTION_KEYS = ["band", "who", "numbers", "connect", "footer"] as const;
+export const SECTION_KEYS = ["band", "cards", "numbers", "connect", "footer"] as const;
 export type SectionKey = (typeof SECTION_KEYS)[number];
 export type GapKey = "gap0" | "gap1" | "gap2" | "gap3"; // gapN lies between SECTION_KEYS[N] and SECTION_KEYS[N + 1]
 export interface SpinePoint {
@@ -40,7 +40,7 @@ export interface Anchors {
   line?: number; // the band's wave line, layer px
 }
 
-export const STRETCHES = ["band", "gap0", "who", "gap1", "numbers", "gap2", "connect", "gap3", "footer"] as const;
+export const STRETCHES = ["band", "gap0", "cards", "gap1", "numbers", "gap2", "connect", "gap3", "footer"] as const;
 export type StretchKey = (typeof STRETCHES)[number];
 export type Behaviour = "through" | "run" | "arc" | "gutter" | "pass";
 export type Side = "left" | "right";
@@ -59,7 +59,8 @@ export type Side = "left" | "right";
 //   gutter:  a pass down the side gutter, grazing the column. side is which.
 //   pass:    one waypoint, a plain crossing. reach is its offset from centre.
 // The band and the footer are measured by their whole box, the rest by
-// their words, so a gap's 0 to 1 is the clear air between texts.
+// their words (the cards section has none, so its box), so a gap's 0 to 1 is
+// the clear air between texts.
 export interface Move {
   at: StretchKey;
   kind: Behaviour;
@@ -153,15 +154,17 @@ export function resolveSpine(def: { points: SpinePoint[] }, anchors: Anchors, op
   return [...bandRunPoints(anchors, opts.viewport), ...exit, ...drop, ...rest];
 }
 
-// "Signature line, reviewed, always on" (lab round 6), as the sections ship it:
-// enters at the band's right end, crosses to the left margin in the gap before
-// Who I am, runs down the left margin beside Who I am, crosses the numbers
-// strip once steeply, runs down Connect's right gutter and leaves past the
-// right edge at the footer.
+// "Signature line, reviewed, always on" (lab round 6), as the hero rework ships
+// it: leaves the band at its right end and comes back down the right gutter
+// beside the fork, dives into the cards section (the shader is opaque, so the
+// line is hidden behind it for the whole section) and comes out of its bottom
+// edge heading left, crosses the numbers strip once steeply, runs down Connect's
+// right gutter and leaves past the right edge at the footer. The cards section
+// has no words: its box is its span.
 export const SIGNATURE_ON_MOVES: Move[] = [
   { at: "band", kind: "arc", side: "right", reach: 0.06, slope: 0.4, centre: 0.55 },
-  { at: "gap0", kind: "pass", side: "left", reach: 0.5, slope: 0.4, centre: 0.3 },
-  { at: "who", kind: "gutter", side: "left", reach: 0, slope: 0.8, centre: 0.45, mid: 0.015 },
+  { at: "gap0", kind: "gutter", side: "right", reach: 0, slope: 0.6, centre: 0.5, mid: 0.955 },
+  { at: "cards", kind: "through", side: "left", reach: 0.3, slope: 0.9, centre: 0.5, mid: 0.6 },
   { at: "numbers", kind: "through", side: "right", reach: 0.5, slope: 0.9, centre: 0.55, mid: 0.55 },
   { at: "connect", kind: "gutter", side: "right", reach: 0, slope: 0.6, centre: 0.5, mid: 0.955 },
   { at: "footer", kind: "arc", side: "right", reach: 0.12, slope: 0.4, centre: 0.6 },

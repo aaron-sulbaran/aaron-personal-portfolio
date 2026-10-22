@@ -32,7 +32,7 @@ describe("always visible, the shipped line", () => {
 });
 
 function page(width = 1200): Anchors {
-  const keys = ["band", "who", "numbers", "connect", "footer"] as const;
+  const keys = ["band", "cards", "numbers", "connect", "footer"] as const;
   const box = {} as Anchors["box"];
   const words = {} as Anchors["words"];
   keys.forEach((k, i) => {
@@ -45,7 +45,7 @@ function page(width = 1200): Anchors {
 describe("always visible, the check itself", () => {
   const opts = { ...visibleOptions(1200, 800), bandRun: false, head: { mode: "viewport" as const, headAt: 0.7, preDrawn: 0, fromBand: false } };
   const line = (xs: number[]): SpinePoint[] =>
-    (["who", "numbers", "connect"] as const).flatMap((at, i) => [{ at, y: 0.1, x: xs[i] }, { at, y: 0.9, x: xs[i] }]);
+    (["cards", "numbers", "connect"] as const).flatMap((at, i) => [{ at, y: 0.1, x: xs[i] }, { at, y: 0.9, x: xs[i] }]);
   it("passes a line that stays on screen", () => expect(checkLine(line([0.5, 0.5, 0.5]), page(), opts).visible.worstGapPx).toBe(0));
   it("passes an edge run hugging the margin", () => expect(checkLine(line([0.015, 0.5, 0.5]), page(), opts).visible.worstGapPx).toBe(0));
   it("fails a line that leaves for a section, and says where", () => {

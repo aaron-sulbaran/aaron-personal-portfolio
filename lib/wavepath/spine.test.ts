@@ -13,8 +13,8 @@ describe("the line", () => {
   it("is the always-on Signature line", () => {
     expect(SIGNATURE_ON).toEqual([
       { at: "band", y: 0.35, x: 1.06, box: true }, { at: "band", y: 0.75, x: 1.06, box: true },
-      { at: "gap0", y: 0.3, x: 0.25 },
-      { at: "who", y: 0.05, x: 0.015 }, { at: "who", y: 0.85, x: 0.015 },
+      { at: "gap0", y: 0.2, x: 0.955 }, { at: "gap0", y: 0.8, x: 0.955 },
+      { at: "cards", y: 0.05, x: 0.75 }, { at: "cards", y: 0.95, x: 0.45 },
       { at: "numbers", y: 0.1, x: 0.3 }, { at: "numbers", y: 1, x: 0.8 },
       { at: "connect", y: 0.2, x: 0.955 }, { at: "connect", y: 0.8, x: 0.955 },
       { at: "footer", y: 0.4, x: 1.12, box: true }, { at: "footer", y: 0.8, x: 1.12, box: true },

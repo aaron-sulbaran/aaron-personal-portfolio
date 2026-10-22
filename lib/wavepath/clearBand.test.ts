@@ -49,10 +49,6 @@ describe("the line after the band's run, as one line", () => {
     const viewport = Number(size.split("x")[1]);
     const clear = clearOf(anchors);
 
-    it(`today comes back across the band at ${size} (the overlap Aaron saw)`, () => {
-      expect(intrusion(anchors, viewport, undefined, anchors.box.band.bottom)).toBeGreaterThan(20);
-    });
-
     it(`with the clearance, never crosses the band's box nor its dots' reach at ${size}`, () => {
       expect(intrusion(anchors, viewport, clear, anchors.box.band.bottom + clear)).toBeLessThan(4);
     });
