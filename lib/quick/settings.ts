@@ -1,3 +1,4 @@
+import { DEFAULT_NEXT_ID } from "@/lib/content/quick";
 import type { InviteMode } from "./invite";
 import { parseNextChoice, type NextChoice } from "./next";
 import { SPEED_RANGE, TITLE_UNFOLD } from "./motion";
@@ -30,7 +31,7 @@ export interface QuickLabSettings {
 
 export const SETTINGS_KEY = "lab-quick-v7";
 
-export const DEFAULT_SETTINGS: QuickLabSettings = { variant: "rail", titleMode: "unfold", unfoldDelayMs: TITLE_UNFOLD.delayMs, unfoldStaggerMs: TITLE_UNFOLD.staggerMs, unfoldDurationMs: TITLE_UNFOLD.durationMs, speed: 1, reduced: false, nextVariant: "two-tracks", showNextA: true, showLookingB: true, texts: DEFAULT_TEXTS };
+export const DEFAULT_SETTINGS: QuickLabSettings = { variant: "rail", titleMode: "unfold", unfoldDelayMs: TITLE_UNFOLD.delayMs, unfoldStaggerMs: TITLE_UNFOLD.staggerMs, unfoldDurationMs: TITLE_UNFOLD.durationMs, speed: 1, reduced: false, nextVariant: DEFAULT_NEXT_ID, showNextA: true, showLookingB: true, texts: DEFAULT_TEXTS };
 
 const clamped = (value: unknown, range: { min: number; max: number }, fallback: number) =>
   typeof value === "number" && Number.isFinite(value) ? Math.min(range.max, Math.max(range.min, value)) : fallback;

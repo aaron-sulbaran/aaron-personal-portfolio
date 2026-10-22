@@ -51,11 +51,11 @@ describe("quick lab settings", () => {
     expect(parseTexts(null)).toEqual(DEFAULT_TEXTS);
   });
 
-  it("default to the two-tracks variant with both A and B on, and read them back", () => {
-    expect(DEFAULT_SETTINGS).toMatchObject({ nextVariant: "two-tracks", showNextA: true, showLookingB: true });
+  it("default to the interests variant with both A and B on, and read them back", () => {
+    expect(DEFAULT_SETTINGS).toMatchObject({ nextVariant: "interests", showNextA: true, showLookingB: true });
     const parsed = parseSettings(JSON.stringify({ nextVariant: "custom", showNextA: false, showLookingB: false }));
     expect(parsed).toMatchObject({ nextVariant: "custom", showNextA: false, showLookingB: false });
-    expect(parseSettings(JSON.stringify({ nextVariant: "nope", showNextA: "yes" }))).toMatchObject({ nextVariant: "two-tracks", showNextA: true });
+    expect(parseSettings(JSON.stringify({ nextVariant: "nope", showNextA: "yes" }))).toMatchObject({ nextVariant: "interests", showNextA: true });
     expect(sameSettings(DEFAULT_SETTINGS, { ...DEFAULT_SETTINGS, nextVariant: "builder" })).toBe(false);
     expect(sameSettings(DEFAULT_SETTINGS, { ...DEFAULT_SETTINGS, showLookingB: false })).toBe(false);
   });
@@ -64,7 +64,7 @@ describe("quick lab settings", () => {
     const values = exportValues(DEFAULT_SETTINGS, "dark", "line");
     expect(values).toMatchObject({ lab: "quick", round: 6, variant: "rail", theme: "dark", invite: "line" });
     expect(values.texts).toEqual(DEFAULT_TEXTS);
-    expect(values).toMatchObject({ nextVariant: "two-tracks", showNextA: true, showLookingB: true });
+    expect(values).toMatchObject({ nextVariant: "interests", showNextA: true, showLookingB: true });
     expect(values.texts.tipToast).toBe("The MVP is always in the menu if you need it later.");
     expect(values.texts.tipBack).toBe("You can always come back to this from the menu.");
     expect(values.texts.customFull.length).toBeGreaterThan(0);

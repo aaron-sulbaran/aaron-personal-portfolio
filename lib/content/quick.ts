@@ -26,7 +26,7 @@ export const quickCopy = {
   },
   next: {
     label: "What's Next?",
-    lookingFor: "Currently looking for:",
+    lookingFor: "Interested in:",
     lookingForAction: "Go to what I am looking for next",
     // One quiet sentence under the line, in three parts so the middle can be a
     // link; linkKey names the Connect link it goes to.
@@ -141,10 +141,16 @@ export const quickEntries: readonly QuickEntry[] = drafts.map((draft) => ({
   ...visualOf(draft.id),
 }));
 
-// What I am looking for next, as a short line (under the intro) and a full line
-// (the What's next section at the foot of the page). The lab picks one; two-tracks
+// What I am interested in next, as a short line (under the intro) and a full line
+// (the What's next section at the foot of the page). The lab picks one; interests
 // ships. "custom" is the lab's own two text fields (lib/quick/texts).
 export const quickNextVariants = [
+  {
+    id: "interests",
+    name: "Interests",
+    short: "product, Applied AI, and entrepreneurship",
+    full: "I'm most interested in building consumer products, whether that's as a PM at a company that ships at scale, as an engineer working on Applied AI at a startup or frontier lab, or by taking my own ideas like min/Max further on my own or with the right team. Wherever I land, I know I'll be bringing people with very different skillsets together to build something great.",
+  },
   {
     id: "two-tracks",
     name: "Two tracks",
@@ -173,7 +179,7 @@ export const quickNextVariants = [
 
 export type QuickNextId = (typeof quickNextVariants)[number]["id"];
 
-export const DEFAULT_NEXT_ID: QuickNextId = "two-tracks";
+export const DEFAULT_NEXT_ID: QuickNextId = "interests";
 
 // The page ends on a short row: the booking link from Connect, then these.
 export const quickClosing = {

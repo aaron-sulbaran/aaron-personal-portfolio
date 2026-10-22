@@ -10,7 +10,7 @@ import { jumpToNext } from "./jumpToNext";
 import { MvpTitle } from "./MvpTitle";
 import { useFieldTip } from "./useFieldTip";
 
-// The lane's head: the MVP title, the intro, "Currently looking for:" (B, a
+// The lane's head: the MVP title, the intro, "Interested in:" (B, a
 // teaser of the What's next section that scrolls to it), the three ways to reach me,
 // and the way back to the full site through the transition (a real link without
 // it). The back button tells a mouse or keyboard visitor, in a tip, that the MVP

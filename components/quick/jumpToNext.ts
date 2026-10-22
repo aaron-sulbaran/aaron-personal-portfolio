@@ -1,7 +1,7 @@
 import { gsap } from "@/lib/quick/gsap";
 import { NEXT_HEADING_ID, NEXT_SECTION_ID } from "@/lib/quick/next";
 
-// "Currently looking for:" scrolls to the What's next section at the foot of the
+// "Interested in:" scrolls to the What's next section at the foot of the
 // page with GSAP's scroll-to (GSAP owns the scroll), then lands focus on its
 // heading so a keyboard or screen reader visitor arrives where the page does.
 // The root's smooth scroll-behavior would smooth every frame of the tween, so it

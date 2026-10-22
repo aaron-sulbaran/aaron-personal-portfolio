@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef } from "react";
-import { quickEntries } from "@/lib/content/quick";
+import { DEFAULT_NEXT_ID, quickEntries } from "@/lib/content/quick";
 import { writeAnswer } from "@/lib/quick/invite";
 import { nextLines, type NextChoice } from "@/lib/quick/next";
 import type { QuickVariant, TitleMode } from "@/lib/quick/settings";
@@ -37,7 +37,7 @@ type Props = {
   visit?: boolean;
 };
 
-export function ExpressLane({ variant = "rail", titleMode, titleDelayMs, titleStaggerMs, titleDurationMs, texts = DEFAULT_TEXTS, nextVariant = "two-tracks", showNextA = true, showLookingB = true, speed = 1, forceReduced = false, replay = 0, visit = false }: Props) {
+export function ExpressLane({ variant = "rail", titleMode, titleDelayMs, titleStaggerMs, titleDurationMs, texts = DEFAULT_TEXTS, nextVariant = DEFAULT_NEXT_ID, showNextA = true, showLookingB = true, speed = 1, forceReduced = false, replay = 0, visit = false }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
   const { open, modal } = useQuickModal();
   const rows = useMemo(() => yearRows(quickEntries, yearLines(texts)), [texts]);

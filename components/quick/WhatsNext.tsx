@@ -3,10 +3,10 @@ import { quickCopy } from "@/lib/content/quick";
 import { inlineLinkElement } from "@/lib/inline/attrs";
 import { NEXT_HEADING_ID, NEXT_SECTION_ID } from "@/lib/quick/next";
 
-// What I am looking for next, at the foot of the page: its own section after the
+// What I am interested in next, at the foot of the page: its own section after the
 // rail ends, off the rail (no dot, no line). The top margin is the gap between
 // the end of the rail and this heading; it stays empty. The heading takes focus
-// when "Currently looking for:" scrolls here. Under the line sits one quieter
+// when "Interested in:" scrolls here. Under the line sits one quieter
 // sentence that sends anyone who wants my resume to LinkedIn to ask for it.
 
 const { resume } = quickCopy.next;

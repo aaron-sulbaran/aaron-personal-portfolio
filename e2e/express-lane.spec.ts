@@ -1,5 +1,5 @@
 import { siteContent } from "@/lib/content";
-import { quickCopy, quickEntries, quickNextVariants } from "@/lib/content/quick";
+import { DEFAULT_NEXT_ID, quickCopy, quickEntries, quickNextVariants } from "@/lib/content/quick";
 import { INVITE_KEY } from "@/lib/quick/invite";
 import { test, expect } from "./support/fixtures";
 import { watchScripts } from "./support/chunks";
@@ -289,7 +289,7 @@ for (const [name, viewport] of [["1280x900", { width: 1280, height: 900 }], ["39
 // What's next, in two places (A, its own section at the foot of the page, below
 // the rail's last year and above the closing row; B, the line under the intro
 // that scrolls to it) and not on the rail.
-const TWO_TRACKS = quickNextVariants.find((variant) => variant.id === "two-tracks")!;
+const SHIPPED_NEXT = quickNextVariants.find((variant) => variant.id === DEFAULT_NEXT_ID)!;
 const topOf = (page: Page, selector: string) => page.locator(selector).first().evaluate((el) => el.getBoundingClientRect().top + window.scrollY);
 const bottomOf = (page: Page, selector: string) => page.locator(selector).first().evaluate((el) => el.getBoundingClientRect().bottom + window.scrollY);
 
@@ -308,7 +308,7 @@ test.describe("express lane what's next at 1280x900", () => {
     await page.goto("/quick");
     const next = page.locator("#whats-next");
     await expect(next.locator("h2")).toHaveText("What's Next?");
-    await expect(next.locator("[data-quick-next-line]")).toHaveText(TWO_TRACKS.full);
+    await expect(next.locator("[data-quick-next-line]")).toHaveText(SHIPPED_NEXT.full);
     expect(await bottomOf(page, "#year-2021")).toBeLessThan(await topOf(page, "#whats-next"));
     expect(await bottomOf(page, "#whats-next")).toBeLessThan(await topOf(page, "#close"));
     const type = (selector: string) => page.locator(selector).evaluate((el) => { const css = getComputedStyle(el); return [css.fontFamily, css.fontSize, css.lineHeight, css.color].join("|"); });
@@ -351,8 +351,8 @@ test.describe("express lane what's next at 1280x900", () => {
   test("B: a quiet line under the intro, above the hint, that does not repeat A", async ({ page }) => {
     await page.goto("/quick");
     const looking = page.locator("[data-quick-looking]");
-    await expect(looking).toContainText(`${quickCopy.next.lookingFor} ${TWO_TRACKS.short}`);
-    expect(await looking.textContent()).not.toContain(TWO_TRACKS.full);
+    await expect(looking).toContainText(`${quickCopy.next.lookingFor} ${SHIPPED_NEXT.short}`);
+    expect(await looking.textContent()).not.toContain(SHIPPED_NEXT.full);
     const [intro, line, hint] = [await topOf(page, "header p"), await topOf(page, "[data-quick-looking]"), await topOf(page, "[data-quick-hint]")];
     expect(intro).toBeLessThan(line);
     expect(line).toBeLessThan(hint);
