@@ -29,7 +29,7 @@ describe("the cards section's columns", () => {
     for (const key of Object.keys(cards) as CardKey[]) {
       expect(cards[key].short.trim(), key).not.toBe("");
       expect(cards[key].short.split(" ").length, key).toBeLessThanOrEqual(3);
-      expect(cards[key].short, key).not.toMatch(/—/);
+      expect(cards[key].short, key).not.toMatch(/\u2014/);
     }
     expect(Object.fromEntries((Object.keys(cards) as CardKey[]).map((key) => [key, cards[key].short]))).toEqual({
       mentorship: "Mentorship", "min-max": "min/Max", band: "Band", talos: "Talos", travel: "Travel", "capital-one": "Capital One",
