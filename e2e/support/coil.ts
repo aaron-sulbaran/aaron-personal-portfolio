@@ -10,13 +10,19 @@ export type Point = { x: number; y: number };
 
 // `debug` is the ?coildebug value: "1" for the scene hooks, "flight" adds the
 // flight probe (and still exposes window.__coil). The Coil lives in the cards
-// section (#work), below the intro, so by default the page is scrolled to it,
-// where the hero used to be; `at: "top"` stays at the top of the intro.
+// section (#work), below the intro, and the cards are dealt into it once the
+// reader reaches it (lib/home/deal.ts). So by default the page is scrolled to
+// the section, which deals at once (in view, no wait), and resolves once the
+// deal is over; `at: "top"` stays at the top of the intro with the deal still
+// to come (the scene has drawn, off screen, and the section is closed).
 export async function openHome(page: Page, { debug = "1", path = "/", at = "cards" }: { debug?: string; path?: string; at?: "cards" | "top" } = {}) {
   const separator = path.includes("?") ? "&" : "?";
   await page.goto(`${path}${separator}coildebug=${debug}`);
-  await waitForCoil(page);
-  if (at === "cards") await scrollToCards(page);
+  await waitForScene(page);
+  if (at === "cards") {
+    await scrollToCards(page);
+    await waitForCoil(page);
+  }
 }
 
 // Scrolls to `offset` px below the top of the cards section (0: its top at the viewport's top).
@@ -25,8 +31,23 @@ export async function scrollToCards(page: Page, offset = 0) {
   await nextFrames(page, 2);
 }
 
-// The hero is interactive: readiness "ready", the entrance clock has ended,
-// the scene draws (data-scene="on") and the body scroll lock is gone.
+// The page is hydrated and the scene has drawn its first frame (off screen
+// while the section is below the fold): the deal has not necessarily played.
+export async function waitForScene(page: Page) {
+  await page.waitForFunction(
+    () => {
+      const w = window as HookWindow;
+      const hero = document.querySelector<HTMLElement>("section[data-scene]");
+      return !!w.__coil?.api && document.documentElement.dataset.home === "ready" && hero?.dataset.scene === "on";
+    },
+    null,
+    { timeout: 30_000 },
+  );
+}
+
+// The hero is interactive: readiness "ready", the deal is over (the entrance
+// clock has ended and the columns are in: <html data-deal="dealt">), the scene
+// draws (data-scene="on") and the body scroll lock is gone.
 export async function waitForCoil(page: Page) {
   await page.waitForFunction(
     () => {
@@ -35,6 +56,7 @@ export async function waitForCoil(page: Page) {
       return (
         !!w.__coil?.api &&
         document.documentElement.dataset.home === "ready" &&
+        document.documentElement.dataset.deal === "dealt" &&
         hero?.dataset.scene === "on" &&
         w.__coil.entrance().ended &&
         document.body.style.overflow !== "hidden"
