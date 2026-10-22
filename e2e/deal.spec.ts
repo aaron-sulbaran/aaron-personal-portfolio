@@ -154,13 +154,13 @@ test("deal: scrolling by hand deals, and the page never stops scrolling while it
   expect(await entrances(page)).toBe(1);
 });
 
-test("deal: a load with the cards section already in view deals at once", async ({ page }) => {
+test("deal: a load with the cards section already in view opens at once, with no deal played", async ({ page }) => {
   await logDeal(page);
   await page.goto("/?coildebug=1#work");
   await waitForScene(page);
-  await expect(html(page)).toHaveAttribute("data-deal", "dealt", { timeout: 20_000 });
-  expect(await entrances(page)).toBe(1);
-  expect(await dealLog(page)).toContain("dealing");
+  await expect(html(page)).toHaveAttribute("data-deal", "dealt");
+  expect(await entrances(page)).toBe(0);
+  expect(await dealLog(page)).not.toContain("dealing");
 });
 
 test("deal: nothing opens and no wheel is captured until the entrance completes", async ({ page }) => {

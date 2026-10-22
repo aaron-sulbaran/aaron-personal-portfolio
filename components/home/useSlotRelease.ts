@@ -10,7 +10,8 @@ import { getDeal, subscribeDeal } from "@/lib/home/deal";
 // and the page is held where it was: the cards section stays under the reader
 // whatever the page lost above it (the scroll is set once, in the same frame,
 // never while the reader is still scrolling, so a touch fling is not cut
-// short). A reader still looking at the slot keeps it until they scroll away.
+// short): at the moment the deal ends if they are not, else once they stop. A
+// reader still looking at the slot keeps it until they scroll away.
 // With no scene (reduced motion, no WebGL) the slot holds the wheel still and
 // never closes. A replay opens it again.
 
@@ -22,6 +23,7 @@ export function useSlotRelease(slotRef: RefObject<HTMLElement | null>) {
     const slot = slotRef.current;
     if (!slot) return;
     let timer = 0;
+    let lastScroll = Number.NEGATIVE_INFINITY;
     const holdSection = (toggle: () => void) => {
       const section = document.getElementById("work");
       const before = section?.getBoundingClientRect().top ?? 0;
@@ -41,13 +43,25 @@ export function useSlotRelease(slotRef: RefObject<HTMLElement | null>) {
       window.clearTimeout(timer);
       timer = window.setTimeout(evaluate, IDLE_MS);
     };
+    const onScroll = () => {
+      lastScroll = performance.now();
+      soon();
+    };
+    // The deal's own changes: at once for a reader who is not scrolling (the page
+    // never moves under a gesture that starts right after the deal), else when they stop.
+    const onDeal = () => {
+      if (performance.now() - lastScroll >= IDLE_MS) {
+        window.clearTimeout(timer);
+        evaluate();
+      } else soon();
+    };
     soon();
-    window.addEventListener("scroll", soon, { passive: true });
+    window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", soon);
-    const unsubscribe = subscribeDeal(soon);
+    const unsubscribe = subscribeDeal(onDeal);
     return () => {
       window.clearTimeout(timer);
-      window.removeEventListener("scroll", soon);
+      window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", soon);
       unsubscribe();
     };
