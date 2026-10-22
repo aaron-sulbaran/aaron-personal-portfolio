@@ -20,7 +20,7 @@ import type { Name } from "./name";
 import type { NameDelta, NameProbe } from "./nameProbe";
 import type { NameSurface } from "./nameSurface";
 import type { Gl } from "./renderer";
-import type { SceneCtx, SceneState } from "./state";
+import type { LoopLink, SceneCtx, SceneState } from "./state";
 import type { CoilSceneApi } from "./types";
 import type { UnwindWiring } from "./unwind";
 
@@ -106,6 +106,10 @@ export type DebugStats = {
   // ---- end the name debug ----
   // Slice 4: the entrance clock and the name.
   entrance?: () => object;
+  // Holds the drawn entrance at `ms` (null lets it run) and draws that frame
+  // now, synchronously: the same as ?coildebug=entrance=<ms>, but steppable at
+  // runtime, so a test can walk the whole deal one 16.7 ms frame at a time.
+  stepEntrance?: (ms: number | null) => void;
   // Slice 5: the unwind and the row focus.
   unwindAt?: number[];
   unwindState?: () => object;
@@ -189,6 +193,7 @@ type HookParts = {
   input: Input;
   unwinder: UnwindWiring;
   api: CoilSceneApi;
+  loop: LoopLink;
 };
 
 // The hooks read from the scene's parts, added to window.__coil in the order
@@ -198,7 +203,7 @@ type HookParts = {
 export function installSceneHooks(ctx: SceneCtx, parts: HookParts) {
   const { debug, st, host, live, tileCount } = ctx;
   if (!debug) return;
-  const { gl, cards, field, name, surface, probe, entrance, hover, input, unwinder, api } = parts;
+  const { gl, cards, field, name, surface, probe, entrance, hover, input, unwinder, api, loop } = parts;
   debug.budget = () => {
     const buffer = gl.renderer.getDrawingBufferSize(new Vector2());
     const sizes = cards.textureSizes();
@@ -248,7 +253,14 @@ export function installSceneHooks(ctx: SceneCtx, parts: HookParts) {
     nameLanded: name.landed(),
     nameA: field.compMaterial.uniforms.uNameA.value,
     offset: st.conveyor.offset,
+    // The rebuild fade is running (a rotation or a resize across a composition's line).
+    rebuilding: st.rebuildAt !== null,
   });
+  debug.stepEntrance = (ms) => {
+    ctx.flags.forcedEntranceMs = ms;
+    loop.update(0, performance.now());
+    loop.render(0);
+  };
   Object.assign(debug, {
     unwindAt: [] as number[],
     unwindState: unwinder.unwindState,

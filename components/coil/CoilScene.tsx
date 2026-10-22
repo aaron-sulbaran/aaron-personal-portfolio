@@ -186,7 +186,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   if (live.current.api) live.current.api.current = api;
   probe.install();
   const nameProbe = createNameProbe(ctx, gl, field.compMaterial, heroName);
-  installSceneHooks(ctx, { gl, cards, field, name: heroName, surface, probe: nameProbe, entrance, hover, input, unwinder, api });
+  installSceneHooks(ctx, { gl, cards, field, name: heroName, surface, probe: nameProbe, entrance, hover, input, unwinder, api, loop });
   probe.installFlight(flyer.current);
 
   boot(ctx, cards, { applyTheme, layout, warm: flyer.warm }, loop);

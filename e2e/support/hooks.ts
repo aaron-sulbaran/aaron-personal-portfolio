@@ -18,7 +18,8 @@ export type CoilHooks = {
   envelope: number[];
   budget: () => Record<string, unknown>;
   visibleQuads: () => Quad[];
-  entrance: () => { base: number | null; elapsedMs: number | null; ended: boolean; nameLanded: boolean; nameA: number; offset: number };
+  stepEntrance: (ms: number | null) => void;
+  entrance: () => { base: number | null; elapsedMs: number | null; ended: boolean; nameLanded: boolean; nameA: number; offset: number; rebuilding: boolean };
   drag: () => { dragging: boolean; coast: number | null; offset: number; target: number; velocity: number; cardsPerPx: number };
   unwindState: () => { on: boolean; latched: boolean; progress: number };
   focusKey: () => string | null;

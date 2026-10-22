@@ -34,7 +34,7 @@ type Tuned = ReturnType<typeof tunedConstants>;
 export function createEntrance(ctx: SceneCtx, name: Name) {
   const { st, live, flags, host } = ctx;
   const { conveyor, view } = st;
-  const { pinned, forcedEntranceMs } = flags;
+  const { pinned } = flags;
   // ---- slice 4 state: the entrance clock ----
   let entranceBase: number | null = null; // when this scene's entrance clock reads 0 (no shared clock)
   let entranceEnded = false;
@@ -91,7 +91,7 @@ export function createEntrance(ctx: SceneCtx, name: Name) {
   // view (its center on screen, above the fold), slides in once, and a deal
   // that begins before it was ever seen brings it in during the spin-up.
   function wheelIn(f: SceneFrame, ms: number, c: Tuned) {
-    if (forcedEntranceMs !== null) return 1;
+    if (flags.forcedEntranceMs !== null) return 1;
     if (wheelInAt === null) {
       if (ms >= 0) wheelInAt = f.now;
       else {
@@ -110,7 +110,7 @@ export function createEntrance(ctx: SceneCtx, name: Name) {
   // page is scrolled).
   let rail: Element | null | undefined;
   function wheelDy(ms: number, c: Tuned) {
-    if (forcedEntranceMs !== null || c.deal.wheel.pinKneePx <= 0) return 0;
+    if (flags.forcedEntranceMs !== null || c.deal.wheel.pinKneePx <= 0) return 0;
     if (ms >= c.deal.timeline.flattenStartMs + c.deal.timeline.flattenMs) return 0;
     if (rail === undefined) rail = host.closest("[data-coil-rail]");
     return rail ? pinKnee(rail.getBoundingClientRect().top, c.deal.wheel.pinKneePx) : 0;
@@ -143,7 +143,7 @@ export function createEntrance(ctx: SceneCtx, name: Name) {
     const wheelPace = c.deal.wheel.idleCardsPerSecond;
     const coarse = f.props.input === "coarse";
     const speed = dealSpeedOf(wheelPace, c, coarse);
-    if (forcedEntranceMs !== null) {
+    if (flags.forcedEntranceMs !== null) {
       // A pinned frame (?coildebug=entrance=): the same however it was reached,
       // counted from the strand's start, and held there even past the end.
       const start = flags.stillOffset ?? 0;
@@ -172,11 +172,11 @@ export function createEntrance(ctx: SceneCtx, name: Name) {
     const { now, props } = f;
     const c = tunedConstants(props.entrance?.tuning ?? labTuning());
     const realElapsedMs = pinned ? Number.POSITIVE_INFINITY : entranceElapsedMs(now);
-    const ms = forcedEntranceMs ?? realElapsedMs;
+    const ms = flags.forcedEntranceMs ?? realElapsedMs;
     lastElapsedMs = ms;
     f.realElapsedMs = realElapsedMs;
     const rested = ms >= sceneMs(c);
-    const drift = rested && forcedEntranceMs === null ? 0 : turn(f, ms, c);
+    const drift = rested && flags.forcedEntranceMs === null ? 0 : turn(f, ms, c);
     const clock = entranceClock(ms, c, rested ? 1 : wheelIn(f, ms, c), drift, rested ? 0 : wheelDy(ms, c));
     f.clock = clock;
     st.open = fieldMask(clock, view, c);
