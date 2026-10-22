@@ -479,13 +479,14 @@ const NAME_COMPOSITE_GLSL = /* glsl */ `
 // whole composite: the center (x, y in CSS px from the top left), the outer
 // radius and the feather's width; the output is premultiplied by it, so the
 // page shows through wherever it is not yet open (a radius of 1e5 or more is
-// open everywhere). While the radius is 0 the scene skips this pass.
+// open everywhere). uTopFade fades the canvas's top edge in over that many CSS
+// px. While the radius is 0 the scene skips this pass.
 export const COMPOSITE_FRAG = /* glsl */ `
   uniform sampler2D uField, uName;
   uniform vec4 uView, uNameRect, uOpen;
   uniform vec2 uFull, uNameSpan;
   uniform vec3 uPaper, uGradTop, uGradBottom;
-  uniform float uNameK, uNameA, uGreetA, uGreetSplit, uLod, uGrain, uDpr, uSeam;
+  uniform float uNameK, uNameA, uGreetA, uGreetSplit, uLod, uGrain, uDpr, uSeam, uTopFade;
   float h12(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
   ${NAME_COMPOSITE_GLSL}
 
@@ -513,7 +514,11 @@ export const COMPOSITE_FRAG = /* glsl */ `
     // The hero's bottom edge fades to paper, so the field never meets the page in a seam.
     col = mix(uPaper, col, smoothstep(0.0, uSeam, fuv.y));
     col += (h12(gl_FragCoord.xy) - 0.5) / 255.0;
-    float open = uOpen.z >= 1.0e5 ? 1.0 : 1.0 - smoothstep(uOpen.z - uOpen.w, uOpen.z, length(px - uOpen.xy));
+    // The deal's mask: a smootherstep falloff over the feather (no visible rim), and
+    // the stage's top edge fading in, so the open field meets the page with no line.
+    float edge = clamp((uOpen.z - length(px - uOpen.xy)) / max(uOpen.w, 1.0), 0.0, 1.0);
+    float open = uOpen.z >= 1.0e5 ? 1.0 : edge * edge * edge * (edge * (edge * 6.0 - 15.0) + 10.0);
+    open *= smoothstep(0.0, max(uTopFade, 1.0), px.y);
     gl_FragColor = vec4(col * open, open);
   }
 `;

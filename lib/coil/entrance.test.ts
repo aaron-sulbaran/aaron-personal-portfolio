@@ -366,7 +366,7 @@ describe("the ring's cards", () => {
 
 describe("the field's mask", () => {
   const canvas = { width: 1280, height: 736 };
-  const { featherPx } = COIL.deal.open;
+  const { featherPx, featherShare } = COIL.deal.open;
   const corner = Math.hypot(canvas.width / 2, canvas.height);
 
   it("is closed before the field starts to open, and open from the end of the clock", () => {
@@ -379,17 +379,30 @@ describe("the field's mask", () => {
 
   it("grows from the top center, never shrinks, and clears the farthest corner when it is full", () => {
     let last = 0;
+    let lastFeather = 0;
     for (let ms = TL.openStartMs; ms <= TL.openStartMs + COIL.deal.open.ms; ms += 20) {
       const mask = fieldMask(entranceClock(ms), canvas);
       expect(mask.cx).toBe(640);
       expect(mask.cy).toBe(0);
-      expect(mask.feather).toBe(featherPx);
+      expect(mask.feather).toBeGreaterThanOrEqual(featherPx);
+      expect(mask.feather).toBeLessThanOrEqual(featherShare * corner + 1e-9);
       expect(mask.radius).toBeGreaterThanOrEqual(last);
+      // The edge only widens as the circle opens.
+      expect(mask.feather).toBeGreaterThanOrEqual(lastFeather);
       last = mask.radius;
+      lastFeather = mask.feather;
     }
     // The last frame before it is fully open: the edge's solid part already reaches the corner.
     const almost = fieldMask(entranceClock(TL.openStartMs + COIL.deal.open.ms - 1), canvas);
     expect(almost.radius - almost.feather).toBeGreaterThan(corner * 0.98);
+  });
+
+  it("feathers a big open disc more than a small one, so its rim never reads as a halo", () => {
+    const early = fieldMask(entranceClock(TL.openStartMs + 150), canvas);
+    const late = fieldMask(entranceClock(TL.openStartMs + 900), canvas);
+    expect(early.feather).toBeLessThan(late.feather);
+    expect(late.feather).toBeGreaterThan(late.radius * 0.1);
+    expect(COIL.deal.open.topFadePx).toBeGreaterThan(0);
   });
 
   it("opens on the field's tuned start and duration", () => {

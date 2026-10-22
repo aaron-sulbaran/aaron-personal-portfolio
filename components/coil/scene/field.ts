@@ -1,4 +1,5 @@
 import { Color, Mesh, ShaderMaterial, Vector2, Vector4, type IUniform, type Texture } from "three";
+import { COIL } from "@/lib/coil/constants";
 import { heldFieldS, nameCompositeInk } from "@/lib/coil/debugFlags";
 import { DRIFT_PRESETS, fieldClocks, parseDriftPreset, type DriftPreset } from "@/lib/coil/drift";
 import { COMPOSITE_FRAG, COMPOSITE_VERT, FIELD, FIELD_FRAG, FULLSCREEN_VERT, NAME, nameComposite } from "@/lib/coil/field.glsl";
@@ -72,6 +73,8 @@ export function createField(ctx: SceneCtx, gl: Gl, init: CompositeInit) {
       uGrain: { value: FIELD.grain },
       uDpr: { value: 1 },
       uSeam: { value: FIELD.seamFade },
+      // A pinned frame (a still or poster being baked) has no page edge to fade into.
+      uTopFade: { value: ctx.flags.pinned ? 0 : COIL.deal.open.topFadePx },
       // ---- the greeting, the name's surface and its wake ----
       uNameSpan: { value: new Vector2(0, 1) },
       uGreetSplit: { value: 0 },

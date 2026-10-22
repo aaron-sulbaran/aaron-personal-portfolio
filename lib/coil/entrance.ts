@@ -247,12 +247,16 @@ export function openProgress(clock: EntranceClock, c: CoilConstants = clock.c ??
 }
 
 export function fieldMask(clock: EntranceClock, canvas: { width: number; height: number }, c: CoilConstants = clock.c ?? COIL): FieldMask {
-  const { reach, featherPx } = c.deal.open;
+  const { reach, featherPx, featherShare } = c.deal.open;
   const p = openProgress(clock, c);
-  const mask = { cx: canvas.width / 2, cy: 0, feather: featherPx };
-  if (p >= 1) return { ...mask, radius: OPEN_ALL };
-  if (p <= 0) return { ...mask, radius: 0 };
-  return { ...mask, radius: (Math.hypot(canvas.width / 2, canvas.height) * reach + featherPx) * p };
+  const cx = canvas.width / 2;
+  // The edge widens as the circle opens; at the end its inner edge has just
+  // cleared the farthest corner.
+  const farthest = Math.hypot(canvas.width / 2, canvas.height) * reach;
+  const widest = Math.max(featherPx, featherShare * farthest);
+  if (p >= 1) return { cx, cy: 0, feather: widest, radius: OPEN_ALL };
+  if (p <= 0) return { cx, cy: 0, feather: featherPx, radius: 0 };
+  return { cx, cy: 0, feather: featherPx + (widest - featherPx) * p, radius: (farthest + widest) * p };
 }
 
 // ---------------------------------------------------------------- the name

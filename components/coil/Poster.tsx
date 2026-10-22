@@ -1,5 +1,6 @@
 import Image from "next/image";
 import type { StillTheme } from "@/lib/coil/heroStill";
+import { COIL } from "@/lib/coil/constants";
 import { stillPicture } from "@/lib/coil/stillPicture";
 import type { StillView } from "@/lib/home/stillReadiness";
 
@@ -12,9 +13,16 @@ import type { StillView } from "@/lib/home/stillReadiness";
 // eagerly, so a theme toggle finds the other one in. data-still-ready marks the
 // current theme's still decoded (useHeroStill.ts): the still waits at opacity 0
 // until then.
+// The stage's top edge fades into the page, as the scene's composite does (its
+// topFadePx), so a poster or a still meets page 1's foot with no line.
+const TOP_FADE = {
+  maskImage: `linear-gradient(to bottom, transparent, black ${COIL.deal.open.topFadePx}px)`,
+  WebkitMaskImage: `linear-gradient(to bottom, transparent, black ${COIL.deal.open.topFadePx}px)`,
+};
+
 export function Poster({ still }: { still: StillView }) {
   return (
-    <div aria-hidden="true" data-coil-poster="" className="absolute inset-0 group-data-[scene=on]/hero:hidden">
+    <div aria-hidden="true" data-coil-poster="" style={TOP_FADE} className="absolute inset-0 group-data-[scene=on]/hero:hidden">
       <Image src="/coil/field-light.avif" alt="" fill unoptimized sizes="100vw" className="object-cover dark:hidden" />
       <Image src="/coil/field-dark.avif" alt="" fill unoptimized sizes="100vw" className="hidden object-cover dark:block" />
       <div
