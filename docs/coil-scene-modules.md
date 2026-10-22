@@ -27,16 +27,15 @@ Every module is a factory: `createX(ctx, ...parts it calls, loop)` returns the f
 | `scene/state.ts` | `SceneState` (shared state), `SceneCtx` (handles), `SceneFrame` (one frame's record), `LoopLink` (the loop's late-bound entry points) | none |
 | `scene/debug.ts` | Every `?coildebug` token (`ink=`, `name` included) and the `?drift` pick (`readDebugFlags`), `window.__coil` (create, hooks, remove), `pushStat` | types of the parts it reads |
 | `scene/debugProbe.ts` | `window.__coilFlight.scene` (follow, slot, slots, hide, seam, flown, flight) and the state every probe mark carries | cards, loop |
-| `scene/renderer.ts` | The scene canvas's `WebGLRenderer`, cameras, scenes, the field's and the name surface's targets, `uView`, the shared quad (`Gl`); the layout (host sized, DPR capped, rebuild trigger); the resize observer; the lost context | loop |
+| `scene/renderer.ts` | The scene canvas's `WebGLRenderer`, cameras, scenes, the field's and the name surface's targets, `uView`, the shared quad (`Gl`); the layout (host sized, DPR capped, rebuild trigger, the helix laid out for the cards section's `[data-coil-pane]` by `lib/coil/pane.ts` and centered on the canvas); the resize observer; the lost context | loop |
 | `scene/nameSurface.ts` | The name's lit surface pass (half the lockup's device resolution, drawn only when its clock, the wake, the layout or the theme moved), its clock and light orbit, the pointer's wake (`lib/coil/wake.ts`) stepped and uploaded, `nameBench()` | none |
 | `scene/field.ts` | The field pass (drift preset, its two clocks, only redrawn when a clock moved) and the composite pass (material, theme colors and the name's per-theme scalars, size uniforms) | none |
 | `scene/name.ts` | The lockup mask (greeting and name, one mask), its layout, the entrance, loader, rebuild and QA fades, the surface growing over the loader's name, the per-letter reduction pass (each letter's contrast, the lift), `nameRect` (which carries the greeting's ink too) and `landName`, which lands the whole lockup and returns false until an entrance waiting for the loader has reached a frame | nameSurface, loop |
 | `scene/nameProbe.ts` | QA only: the composite without the cards read back, the per-letter readout (`lib/coil/letterContrast.ts`) and lightness snapshots (`window.__coil.nameProbe`) | name |
-| `scene/cards.ts` | Slot meshes, shared card uniforms, painted faces and the repaint queue, seen levels, the helix frame, per slot poses (entrance, unwind, header band, rebuild, hidden, hover lift, seen ring), the silhouette, the card pass; `quadOf`, `flightQuadOf`, `facesOf`, `slotOfKey` | name (QA hide) |
-| `scene/hover.ts` | Picking (`pickAt`, `cardAt`), the per frame hover and the cursor bridge (`lib/cursor/hover.ts`), the flown card's lift target, the row hold and hover-jump (`focusCard`), `heroVisible` | cards, loop |
+| `scene/cards.ts` | Slot meshes, shared card uniforms, painted faces and the repaint queue, seen levels, the helix frame, per slot poses (entrance, unwind, header band, rebuild, hidden, hover lift, seen ring), the silhouette, the card pass (and `hull`, which also hides the name when the `nameShown` prop is false); `quadOf`, `flightQuadOf`, `facesOf`, `slotOfKey` | name (QA hide) |
+| `scene/hover.ts` | Picking (`pickAt`, `cardAt`), the per frame hover and the cursor bridge (`lib/cursor/hover.ts`, which also carries the hovered card's key for the titles), the flown card's lift target, the row hold and hover-jump (`focusCard`), `heroVisible` | cards, loop |
 | `scene/input.ts` | Pointer and wheel handlers over `lib/coil/capture.ts` (plus the window scroll listener that disarms capture), click and tap opening, the touch drag and its coast, the scroll, conveyor and nudge steps | cards, hover, loop |
 | `scene/entrance.ts` | The entrance clock on the scene's time (a rebuild starts at rest), the strand held until the band opens, the end reported once, the rebuild fade | name |
-| `scene/shape.ts` | The Coil and Band toggle (PR 39): the helix pulled toward the entrance's closed band by one value on the pull curve (`lib/coil/shape.ts`, 756ms on the entrance's own curve), the shape read from the `shape` prop at creation (a scene mounted in the band starts there), waiting for the entrance to rest, the strand held where the switch began while switching, `hover.rejump()` on the landing frame so a held book row aims again | hover |
 | `scene/unwind.ts` | The double-click toggle and `api.unwind`, the latch held in the frame, rows measured onto the z = 0 plane, the name's move into the list's lead | name, hover, loop |
 | `scene/flightOverlay.ts` | The flown card's own canvas and renderer on the scene canvas's pixel grid, its covers, its face copies, prewarm target, teardown | cards |
 | `scene/flight.ts` | The handoff (`beginFlight`: draw, arrive, close, land, abort), `freeze`, `hideSlot`, the still frame redraw, the landed frame, prewarm | cards, hover, flightOverlay, debugProbe, loop |
@@ -58,7 +57,7 @@ Every module is a factory: `createX(ctx, ...parts it calls, loop)` returns the f
 | `poses`, `rendered`, `sil` | cards.ts |
 | `hoveredSlot` | hover.ts |
 | `pointer`, `capture`, `dragging`, `coast`, `pressCaughtCoil` | input.ts (`coast` also cleared by entrance.ts while the strand is held) |
-| `conveyor` | input.ts (feeds), entrance.ts (held at 0), shape.ts (held mid-switch), unwind.ts (latched), hover.ts (glide) |
+| `conveyor` | input.ts (feeds), entrance.ts (held at 0), unwind.ts (latched), hover.ts (glide) |
 | `envelope` | input.ts |
 | `rowHold` | hover.ts |
 | `unwind` | unwind.ts (and loop.ts shifts its start after a stop) |
@@ -77,7 +76,6 @@ Every module is a factory: `createX(ctx, ...parts it calls, loop)` returns the f
 | conveyor | input | (moves `st.conveyor`, `st.envelope`) |
 | helix | cards | `helix` |
 | entrance | entrance (and name's fades) | `clock`, `realElapsedMs`, `helix` |
-| shape | shape | `shapePull`, `helix` |
 | rebuild | entrance (and name's fade) | `rebuilt` |
 | unwind | unwind | `listProgress` |
 | name | name (nameSurface: the surface's clock, the pointer's stroke, the wake's step and upload) | |
