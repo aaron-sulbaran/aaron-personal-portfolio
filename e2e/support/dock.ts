@@ -158,8 +158,9 @@ export async function dockGeometry(page: Page) {
   }, DOCK.baselineFromBottomPx);
 }
 
+// Below the band: the top of the cards section.
 export async function toAbout(page: Page) {
-  await scrollToY(page, Math.round(await documentTop(page, "#about")));
+  await scrollToY(page, Math.round(await documentTop(page, "#work")));
 }
 
 // The band's visible control layer for a music state: "before" is Play it,

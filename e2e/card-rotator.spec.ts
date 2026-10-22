@@ -123,7 +123,7 @@ test("rotator: the keyboard path through Mentorship and Misuki reaches the dots,
   const dialog = cardDialog(page, "mentorship");
   await expect(dialog.getByRole("button", { name: siteContent.modals.closeAriaLabel })).toBeFocused();
   await expect(dialog.locator("[data-mask-armed]")).toHaveCount(0, { timeout: 5000 });
-  const external = siteContent.book.externalLabel;
+  const external = siteContent.columns.externalLabel;
   const expected = [
     g.photoOf(1, 3), g.photoOf(2, 3), g.photoOf(3, 3), g.pausePhotos,
     ...siteContent.cards.mentorship.mentors.people.map((mentor) => `${mentor.name}, ${external}`),

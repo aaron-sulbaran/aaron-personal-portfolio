@@ -46,7 +46,7 @@ async function openAndClose(page: Page, cdp: CDPSession, card: Point) {
 
 test("hero: the greeting is drawn with the name, and no DOM control sits beside it", async ({ page }) => {
   await openHome(page);
-  await expect(page.getByRole("button", { name: siteContent.book.ariaLabel })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: siteContent.columns.ariaLabel })).toHaveCount(0);
   // The h1 stays for assistive tech but is visually hidden while the scene draws.
   const h1 = page.getByRole("heading", { level: 1, name: "Hi, I'm Aaron." });
   await expect(h1).toBeAttached();

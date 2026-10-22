@@ -11,7 +11,6 @@ export const BAND_CARD = "[data-player-band-card]";
 export const PLAYER_PILL = "[data-player-pill]";
 export const ISLAND = "[data-player-island]";
 export const CLONE = "[data-player-clone]";
-export const TOGGLE = "[data-shape-toggle]";
 
 const L = siteContent.listen;
 

@@ -2,11 +2,11 @@ import type { Page } from "@playwright/test";
 import { test, expect } from "./support/fixtures";
 import { siteContent } from "@/lib/content";
 import { playerStrings as P } from "@/lib/content/player";
-import { HERO_LIFT_PX, ISLE, PILL_IDLE_MS } from "@/lib/player/constants";
+import { ISLE, PILL_IDLE_MS } from "@/lib/player/constants";
 import { openHome, scrollToY } from "./support/coil";
 import { settled } from "./support/fallback";
 import { toFooter, waitForWord } from "./support/footer";
-import { BAND_CARD, CLONE, ISLAND, PLAYER_PILL, TOGGLE, bandPastLine, morphSamples, pillState, playFromBand, recordMorph, viewportHeight } from "./support/player";
+import { BAND_CARD, CLONE, ISLAND, PLAYER_PILL, bandPastLine, morphSamples, pillState, playFromBand, recordMorph, viewportHeight } from "./support/player";
 import { bandInkPixels, documentTop, parkBand, pathInk } from "./support/wave";
 import type { PathProbe } from "@/lib/wavepath/probe";
 
@@ -326,7 +326,7 @@ test.describe("where the player lives", () => {
     await openHome(page, { path: HOME });
     await collapsedPill(page);
     // The page lays out again at each width, so the reader is put below the band again before looking.
-    const below = async () => scrollToY(page, Math.round(await documentTop(page, "#about")));
+    const below = async () => scrollToY(page, Math.round(await documentTop(page, "#work")));
     await page.setViewportSize({ width: 393, height: 852 });
     await below();
     await expect(page.locator(ISLAND)).toHaveAttribute("data-player-island", "closed");
@@ -357,28 +357,6 @@ test.describe("where the player lives", () => {
 });
 
 test.describe("the pill above the band", () => {
-  test("player: with music playing and the reader back in the hero, the pill stands clear of the Coil and Band toggle", async ({ page }) => {
-    await openHome(page, { path: HOME });
-    await collapsedPill(page);
-    await scrollToY(page, 0);
-    const pill = page.locator(PLAYER_PILL);
-    await expect(pill).toBeVisible();
-    await expect(pill).toHaveAttribute("data-player-lifted", "true");
-    const toggle = page.locator(TOGGLE);
-    await expect(toggle).toBeVisible();
-    await expect.poll(async () => (await pill.boundingBox())!.y + ISLE.heightPx).toBeCloseTo(viewportHeight(page) - ISLE.bottomPx - HERO_LIFT_PX, 0);
-    const [a, b] = [(await pill.boundingBox())!, (await toggle.boundingBox())!];
-    const overlap = a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
-    expect(overlap, `pill ${JSON.stringify(a)} against toggle ${JSON.stringify(b)}`).toBe(false);
-    expect(b.y - (a.y + a.height), "the gap between them, px").toBeGreaterThanOrEqual(14);
-    // Hovering it there opens the full player, and the toggle still takes a click.
-    await hoverOpen(page);
-    await page.mouse.move(700, 120);
-    await expect(pill).toHaveAttribute("data-player-pill", "collapsed");
-    await toggle.getByRole("button", { name: siteContent.hero.shapeToggle.band }).click();
-    await expect(toggle).toHaveAttribute("data-state", "band");
-  });
-
   test("player: it stays through the book and comes back to the band's card as the band arrives", async ({ page }) => {
     await openHome(page, { path: HOME });
     await collapsedPill(page);
@@ -392,7 +370,7 @@ test.describe("the pill above the band", () => {
 
   test("player: music started below the band opens the player pinned at the dock, and it folds when left alone", async ({ page }) => {
     await openHome(page, { path: HOME });
-    await scrollToY(page, Math.round(await documentTop(page, "#about")));
+    await scrollToY(page, Math.round(await documentTop(page, "#work")));
     const capsule = page.locator("[data-pill] .pill-hit");
     await expect(capsule).toBeVisible();
     await capsule.click();

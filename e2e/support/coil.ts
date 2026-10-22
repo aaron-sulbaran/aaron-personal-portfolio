@@ -8,12 +8,21 @@ import { approach } from "./input";
 
 export type Point = { x: number; y: number };
 
-// `debug` is the ?coildebug value: "1" for the scene and loader hooks,
-// "flight" adds the flight probe (and still exposes window.__coil).
-export async function openHome(page: Page, { debug = "1", path = "/" }: { debug?: string; path?: string } = {}) {
+// `debug` is the ?coildebug value: "1" for the scene hooks, "flight" adds the
+// flight probe (and still exposes window.__coil). The Coil lives in the cards
+// section (#work), below the intro, so by default the page is scrolled to it,
+// where the hero used to be; `at: "top"` stays at the top of the intro.
+export async function openHome(page: Page, { debug = "1", path = "/", at = "cards" }: { debug?: string; path?: string; at?: "cards" | "top" } = {}) {
   const separator = path.includes("?") ? "&" : "?";
   await page.goto(`${path}${separator}coildebug=${debug}`);
   await waitForCoil(page);
+  if (at === "cards") await scrollToCards(page);
+}
+
+// Scrolls to `offset` px below the top of the cards section (0: its top at the viewport's top).
+export async function scrollToCards(page: Page, offset = 0) {
+  await page.evaluate((by) => window.scrollTo({ top: document.getElementById("work")!.getBoundingClientRect().top + window.scrollY + by, behavior: "instant" }), offset);
+  await nextFrames(page, 2);
 }
 
 // The hero is interactive: readiness "ready", the entrance clock has ended,
@@ -36,9 +45,10 @@ export async function waitForCoil(page: Page) {
   );
 }
 
+// A position the page cannot reach (above its top, past its end) lands on the nearest one it can.
 export async function scrollToY(page: Page, y: number) {
   await page.evaluate((top) => window.scrollTo({ top, behavior: "instant" }), y);
-  await page.waitForFunction((top) => Math.abs(window.scrollY - top) < 1, y);
+  await page.waitForFunction((top) => Math.abs(window.scrollY - Math.min(Math.max(0, top), document.documentElement.scrollHeight - window.innerHeight)) < 1, y);
   // Two frames, so the scene has drawn (and measured its silhouette) at the new position.
   await nextFrames(page, 2);
 }

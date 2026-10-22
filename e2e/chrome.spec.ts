@@ -36,7 +36,7 @@ test("chrome: the Menu pill holds no music note and the panel no soundtrack chip
 });
 
 test("chrome: the header bar arrives past the hero and tucks away on the way down, back on the way up", async ({ page }) => {
-  await openHome(page);
+  await openHome(page, { at: "top" });
   const nav = page.getByRole("navigation", { name: "Sections" });
   // During the hero the section links are inert (the bar has not arrived).
   await expect(nav).toHaveAttribute("inert", "");

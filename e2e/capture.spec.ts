@@ -7,7 +7,7 @@ import {
   firstWheel,
   heroVisible,
   openHome,
-  scrollToY,
+  scrollToCards,
   settleOn,
   silhouetteDistance,
   waitForCoilSettled,
@@ -89,7 +89,7 @@ test.describe("capture: a gesture over the coil spins it and holds the page stil
     test(scenario.name, async ({ page, cdp }) => {
       await openHome(page);
       if (scenario.scrollY) {
-        await scrollToY(page, scenario.scrollY);
+        await scrollToCards(page, scenario.scrollY);
         // Page scroll turns the coil: sample the points once it is back to its idle pace.
         await waitForCoilSettled(page);
       }
@@ -404,7 +404,7 @@ test.describe("capture: the page sliding the coil under a still pointer never ar
 
   test("a hero under half in view leaves the wheel to the page, even over the helix", async ({ page, cdp }) => {
     await openHome(page);
-    await scrollToY(page, 520);
+    await scrollToCards(page, 520);
     expect(await heroVisible(page)).toBeLessThan(0.5);
     const { card } = await coilPoints(page);
     await approach(cdp, card);

@@ -5,7 +5,7 @@ import { openHome } from "./coil";
 import type { HookWindow } from "./hooks";
 import { pointerTo } from "./input";
 
-export const cardRow = (page: Page, key: CardKey) => page.locator(`#work button.book-row[data-card="${key}"]`);
+export const cardRow = (page: Page, key: CardKey) => page.locator(`#work button[data-card="${key}"]`);
 export const cardDialog = (page: Page, key: CardKey) => page.locator(`[role="dialog"][data-card-modal="${key}"]`);
 
 // The panel rises in (opacity 0 to 1, 16px up and 0.97 to full scale over
@@ -26,11 +26,18 @@ export async function panelAtRest(page: Page, key: CardKey) {
   );
 }
 
-// A card opened the way a reader of the book opens it: a click on its row (no
-// flight). Returns once the panel rests, so every size read after it is final;
+// A card opened the way a reader of the columns opens it: a click on its title
+// (the Coil turns to it and the card flies, when a scene draws; with `flight:
+// false` the page is in reduced motion and the modal draws its own media). Returns once the panel rests, so every size read after it is final;
 // settled also waits for the mask-in to end (no armed body is left).
-export async function openCardFromBook(page: Page, key: CardKey, { home = true, settled = false } = {}): Promise<{ row: Locator; dialog: Locator }> {
-  if (home) await openHome(page);
+export async function openCardFromBook(page: Page, key: CardKey, { home = true, settled = false, flight = true } = {}): Promise<{ row: Locator; dialog: Locator }> {
+  // No flight: reduced motion takes the scene away, so the modal draws its own media.
+  if (!flight) await page.emulateMedia({ reducedMotion: "reduce" });
+  if (home && flight) await openHome(page);
+  else if (home) {
+    await page.goto("/");
+    await page.waitForFunction(() => document.documentElement.dataset.home === "ready");
+  }
   const row = cardRow(page, key);
   await row.scrollIntoViewIfNeeded();
   await row.click();

@@ -134,8 +134,11 @@ test("inline links: focus returns to the product link even when its line was reb
   await expect(dialog).toBeHidden();
   await expect(page.locator('[data-inline="def"][data-inline-key="product"]').first()).toBeFocused();
 });
+// The intro is not a lines-split block, so nothing there ever rebuilds its line:
+// the fixture's block is where a font landing late re-splits one.
 test("inline links: focus comes home when the line is rebuilt after the definition closes", async ({ page }) => {
-  const link = await productLink(page);
+  await openFixture(page, DEF);
+  const link = page.locator('[data-inline="def"][data-inline-key="product"]').first();
   await link.click();
   const dialog = page.getByRole("dialog", { name: register.def.product.title });
   await expect(dialog).toBeVisible();

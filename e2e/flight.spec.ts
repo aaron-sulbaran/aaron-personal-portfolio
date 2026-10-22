@@ -38,11 +38,13 @@ function signedArea(quad: readonly ProbePoint[]) {
 // The best on-screen slot for a target kind, or null; the card's center must
 // pick that card (nothing covers it there).
 async function pickTarget(page: Page, target: Target): Promise<SlotInfo | null> {
-  const { slots, seam, picks } = await page.evaluate(() => {
+  const { slots, seam, picks, stage } = await page.evaluate(() => {
     const w = window as HookWindow;
     const slots = w.__coilFlight!.scene.slots();
+    const box = document.querySelector("section[data-scene]")!.getBoundingClientRect();
     return {
       slots,
+      stage: { bottom: box.bottom, height: box.height },
       seam: w.__coilFlight!.scene.seam(),
       picks: slots.map((s) => w.__coil!.api.cardAt(s.center.x, s.center.y)?.slot ?? -1),
     };
@@ -51,15 +53,15 @@ async function pickTarget(page: Page, target: Target): Promise<SlotInfo | null> 
   let best: { score: number; slot: SlotInfo } | null = null;
   slots.forEach((slot, i) => {
     const { x, y } = slot.center;
-    if (!(x > 80 && x < width - 80 && y > 80 && y < height - 20) || picks[i] !== slot.slot) return;
+    if (!(x > 80 && x < width - 80 && y > 80 && y < Math.min(height, stage.bottom) - 20) || picks[i] !== slot.slot) return;
     const front = signedArea(slot.quad) > 0;
-    const inSeam = y > height * (1 - seam);
+    const inSeam = y > stage.bottom - stage.height * seam;
     const area = Math.abs(signedArea(slot.quad));
     let score: number | null = null;
     if (target === "front photo" && slot.kind === "photo" && front && !inSeam && slot.depth > 0.6) score = slot.depth + area / 1e6;
     if (target === "back-facing photo" && slot.kind === "photo" && !front && !inSeam) score = area;
     if (target === "work card" && slot.kind === "work" && front && !inSeam && slot.depth > 0.3) score = slot.depth + area / 1e6;
-    if (target === "card in the bottom fade" && front && y > height * (1 - seam * 0.8)) score = y;
+    if (target === "card in the bottom fade" && front && y > stage.bottom - stage.height * seam * 0.8) score = y;
     if (score !== null && (!best || score > best.score)) best = { score, slot };
   });
   return (best as { slot: SlotInfo } | null)?.slot ?? null;

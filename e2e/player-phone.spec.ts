@@ -106,22 +106,14 @@ test("player: a tap grows the full player down from the header, and a tap outsid
   await expect(island(page)).toHaveAttribute("data-player-island", "closed");
 });
 
-test("player: the island shows above the band too, in the hero, and a tap on it opens the player", async ({ page }) => {
-  await openHome(page, { path: HOME });
+test("player: at the top the band is on the first screen, so the player is in the band and the island steps away", async ({ page }) => {
+  await openHome(page, { path: HOME, at: "top" });
   await playOnPhone(page);
   await bandPastLine(page, 200);
   await expect(island(page)).toHaveAttribute("data-player-island", "closed");
   await scrollToY(page, 0);
-  await expect(island(page)).toBeVisible();
-  // The header was tucked away by the scroll down; it settles back as the hero returns.
-  await expect
-    .poll(async () => {
-      const [i, m] = [(await island(page).boundingBox())!, (await menuPill(page).boundingBox())!];
-      return Math.abs(i.y + i.height / 2 - (m.y + m.height / 2));
-    })
-    .toBeLessThanOrEqual(2);
-  await island(page).locator("[data-player-island-face]").tap();
-  await expect(island(page)).toHaveAttribute("data-player-island", "open");
+  await expect(page.locator(BAND_CARD)).toBeVisible();
+  await expect(island(page)).toHaveCount(0);
 });
 
 test("player: the player morphs up to the island as the band leaves and back down as it returns", async ({ page }) => {

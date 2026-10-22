@@ -53,12 +53,12 @@ test("card modal: every card opens from its row as its own modal, Escape closes 
   expect([...seen].sort()).toEqual([...keys].sort());
 });
 
-test("card modal: a book row opens with no flight and draws its own card", async ({ page }) => {
-  const { dialog } = await openCardFromBook(page, "talos");
+test("card modal: a title opens with no flight under reduced motion and draws its own card", async ({ page }) => {
+  const { dialog } = await openCardFromBook(page, "talos", { flight: false });
   await expect(page.locator("[data-flying-tile]")).toHaveCount(0);
   await expect(dialog.locator('[data-tile-slot="work"] [data-face="logo"]')).toBeVisible();
   await page.keyboard.press("Escape");
-  const misuki = await openCardFromBook(page, "misuki", { home: false });
+  const misuki = await openCardFromBook(page, "misuki", { home: false, flight: false });
   const picture = misuki.dialog.locator('[data-tile-slot="photo"] img');
   await expect(picture).toHaveCSS("opacity", "1");
   await expect(picture).toHaveAttribute("alt", "Me standing behind Misuki, my 2001 Miata, on a parking deck at golden hour");
@@ -67,24 +67,24 @@ test("card modal: a book row opens with no flight and draws its own card", async
 
 test("card modal: in the dark theme Capital One's header tile shows its white logo with no plate, and IEEE's face is its own navy", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "dark" });
-  const { dialog } = await openCardFromBook(page, "capital-one");
+  const { dialog } = await openCardFromBook(page, "capital-one", { flight: false });
   const tile = dialog.locator('[data-tile-slot="work"]');
   await expect(tile.locator("[data-plate]")).toHaveCount(0);
   await expect(tile.locator('img[src$="capital-one-logo-white.svg"]')).toBeVisible();
   await expect(tile.locator('img[src$="capital-one-logo.svg"]')).toBeHidden();
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
-  const ieee = await openCardFromBook(page, "ieee", { home: false });
+  const ieee = await openCardFromBook(page, "ieee", { home: false, flight: false });
   await expect(ieee.dialog.locator("[data-plate]")).toHaveCount(0);
   await expect(ieee.dialog.locator('[data-tile-slot="work"] [data-face="logo"]')).toHaveCSS("background-color", "rgb(20, 24, 62)");
   await page.keyboard.press("Escape");
   // The theme is chosen before paint from the preference, so a fresh load reads the new one.
   await page.emulateMedia({ colorScheme: "light" });
-  const light = await openCardFromBook(page, "capital-one");
+  const light = await openCardFromBook(page, "capital-one", { flight: false });
   await expect(light.dialog.locator('[data-tile-slot="work"] img[src$="capital-one-logo-white.svg"]')).toBeHidden();
   await expect(light.dialog.locator('[data-tile-slot="work"] img[src$="capital-one-logo.svg"]')).toBeVisible();
   await page.keyboard.press("Escape");
-  const ieeeLight = await openCardFromBook(page, "ieee", { home: false });
+  const ieeeLight = await openCardFromBook(page, "ieee", { home: false, flight: false });
   await expect(ieeeLight.dialog.locator('[data-tile-slot="work"] [data-face="logo"]')).toHaveCSS("background-color", "rgb(20, 24, 62)");
 });
 
@@ -149,7 +149,7 @@ test("card modal: the layout holds while a flown card is parked, the card stayin
   await expect(dialog).toHaveCount(0);
   await expect(page.locator("[data-flying-tile]")).toHaveCount(0);
   await page.setViewportSize({ width: 1440, height: 900 });
-  const { dialog: again } = await openCardFromBook(page, key, { home: false });
+  const { dialog: again } = await openCardFromBook(page, key, { home: false, flight: false });
   await expect(again).toHaveAttribute("data-gallery-layout", "rows");
   await page.setViewportSize({ width: 900, height: 900 });
   await expect(again).toHaveAttribute("data-gallery-layout", "pager");
@@ -265,7 +265,7 @@ test("card modal: a card's links are inline links, a line at rest that fills fro
   const item = link.locator("xpath=..");
   await expect(item).toHaveClass(/font-label/);
   await expect(item).toHaveClass(/text-accent/);
-  await expect(link.locator(".sr-only")).toHaveText(`, ${siteContent.book.externalLabel}`);
+  await expect(link.locator(".sr-only")).toHaveText(`, ${siteContent.columns.externalLabel}`);
   await link.scrollIntoViewIfNeeded();
   await rest(page);
   expect(await fillOf(link)).toBe(0);

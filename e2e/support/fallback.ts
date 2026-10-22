@@ -31,7 +31,7 @@ export async function expectStillHeroAndUsableBook(page: Page) {
   await expect.poll(() => still.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
   await expectHeadingHidden(page);
   // The book still opens a card.
-  const row = page.locator('#work button.book-row[data-card="band"]');
+  const row = page.locator('#work button[data-card="band"]');
   await row.scrollIntoViewIfNeeded();
   await row.click();
   await expect(page.getByRole("dialog")).toBeVisible();
