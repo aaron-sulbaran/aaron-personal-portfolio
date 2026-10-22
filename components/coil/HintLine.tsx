@@ -80,16 +80,29 @@ export function HintLine({ rootRef, entrance }: { rootRef: RefObject<HTMLDivElem
     if (hintStore().takeOnce(KEEP_EXPLORING_KEY)) show(siteContent.hero.hints.keepExploring, KEEP_HOLD_MS);
   });
 
-  // Touch: once, after the entrance, until the first tap or 5s.
+  // Touch: once, when the Coil is first half in view (it sits below the intro),
+  // until the first tap or 5s.
   useEffect(() => {
-    if (!ready || input !== "coarse") return;
+    const root = rootRef.current;
+    if (!ready || input !== "coarse" || !root) return;
     const store = hintStore();
-    if (store.opened() || !store.takeOnce(TAP_CARD_KEY)) return;
-    show(siteContent.hero.hints.tapCard, TAP_HOLD_MS);
+    if (store.opened()) return;
     const onTap = () => hideRef.current();
-    window.addEventListener("pointerdown", onTap, { once: true });
-    return () => window.removeEventListener("pointerdown", onTap);
-  }, [ready, input]);
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting || !store.takeOnce(TAP_CARD_KEY)) return;
+        observer.disconnect();
+        show(siteContent.hero.hints.tapCard, TAP_HOLD_MS);
+        window.addEventListener("pointerdown", onTap, { once: true });
+      },
+      { threshold: 0.5 },
+    );
+    observer.observe(root);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("pointerdown", onTap);
+    };
+  }, [ready, input, rootRef]);
 
   return <p ref={lineRef} data-hint-line aria-hidden="true" className={LINE_CLASS} />;
 }

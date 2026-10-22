@@ -146,13 +146,6 @@ export const siteContent = {
       dismiss: "Got it",
     },
   },
-  // The Coil's loader: the name it fills while the page loads (the same word
-  // the scene draws, so the exit hands one to the other) and the progress
-  // bar's accessible name. The number itself carries no status word.
-  loader: {
-    name: "Aaron",
-    progressLabel: "Loading the site",
-  },
   // The cards section (#work): the Coil between two columns of short titles
   // (lib/content/columns.ts), text first; a title's key is its card's, so
   // "seen" is shared with the Coil.

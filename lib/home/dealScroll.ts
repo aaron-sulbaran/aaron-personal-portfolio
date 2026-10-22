@@ -12,14 +12,25 @@ export function dealScrollSeconds(distancePx: number, reducedMotion: boolean): n
   return Math.min(MAX_S, Math.max(MIN_S, Math.abs(distancePx) / SPEED_PX_PER_S));
 }
 
+// The page's CSS smooths every scroll (scroll-behavior: smooth), which would
+// smooth each of the tween's own steps and stall it, so the root is set to
+// auto for the tween's life and put back however it ends.
 export function scrollToCards(reducedMotion: boolean) {
   const section = document.getElementById("work");
   if (!section) return;
   const top = section.getBoundingClientRect().top + window.scrollY;
+  const root = document.documentElement;
+  const before = root.style.scrollBehavior;
+  const restore = () => {
+    root.style.scrollBehavior = before;
+  };
+  root.style.scrollBehavior = "auto";
   gsap.to(window, {
-    scrollTo: { y: top, autoKill: true },
+    scrollTo: { y: top, autoKill: true, onAutoKill: restore },
     duration: dealScrollSeconds(top - window.scrollY, reducedMotion),
     ease: "site",
     overwrite: true,
+    onComplete: restore,
+    onInterrupt: restore,
   });
 }
