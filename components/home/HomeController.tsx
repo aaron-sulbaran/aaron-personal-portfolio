@@ -191,8 +191,9 @@ export function HomeController({ children }: Props) {
   //
   // The lock: when a scene claims the entrance the phase is "entering" from
   // here and the scroll lock covers it, releasing once when it completes.
-  // Nothing claims it today (the cards are dealt), so the section is ready at
-  // once.
+  // Nothing claims it: the deal gates the section with its own state (the
+  // Coil is not interactive and no title answers until it is dealt) because
+  // the deal must never lock the reader's scroll, so the page is ready at once.
   useIsoLayoutEffect(() => {
     const releaseReadiness = claimHomeReadiness();
     const releaseRestoration = takeManualScrollRestoration();

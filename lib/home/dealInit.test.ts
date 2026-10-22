@@ -26,6 +26,6 @@ describe("the deal's head script", () => {
   });
 
   it("holds no em dash", () => {
-    expect(dealInitScript()).not.toContain("—");
+    expect(dealInitScript()).not.toContain("\u2014");
   });
 });
