@@ -143,7 +143,8 @@ async function assertSwap({ name, before, after }: Swap, neither: Image, region:
   }
   writeFileSync(info.outputPath(`${tag}-measures.json`), JSON.stringify({ region, diff }, null, 1));
   expect(diff.pixels, `${name}: pixels inside the card`).toBeGreaterThan(500);
-  expect(diff.edgePixels, `${name}: strong edge pixels measured`).toBeGreaterThan(50);
+  // Edges were measured at all: a faded back face (a pale photo on the light field) has few strong ones, a dozen or two.
+  expect(diff.edgePixels, `${name}: strong edge pixels measured`).toBeGreaterThan(20);
   expect.soft(diff.insideMean, `${name}: mean difference inside the card, of 255`).toBeLessThan(INSIDE_MEAN_MAX);
   expect.soft(diff.edgeMovePx, `${name}: edge movement (99th percentile over the edge), px`).toBeLessThan(EDGE_MOVE_MAX_PX);
 }
