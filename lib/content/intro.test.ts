@@ -56,7 +56,7 @@ describe("page 1's blocks", () => {
   });
 
   it("use no em dash", () => {
-    for (const text of [...sentencesOf, intro.more, ...Object.values(intro.teaser)]) expect(text).not.toMatch(/—/);
+    for (const text of [...sentencesOf, intro.more, ...Object.values(intro.teaser)]) expect(text).not.toMatch(/\u2014/);
   });
 });
 

@@ -56,6 +56,6 @@ describe("the loader's head script", () => {
   });
 
   it("holds no em dash", () => {
-    expect(introLoaderInitScript(true)).not.toContain("—");
+    expect(introLoaderInitScript(true)).not.toContain("\u2014");
   });
 });

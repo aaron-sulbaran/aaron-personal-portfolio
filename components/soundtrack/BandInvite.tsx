@@ -69,7 +69,7 @@ export function BandInvite() {
 
   return (
     <div ref={rootRef} data-band-prompt="" data-wave-avoid data-wave-words className="pointer-events-auto w-fit max-w-full">
-      <div className="flex flex-wrap items-baseline gap-x-7 gap-y-2">
+      <div className="flex flex-wrap items-baseline gap-x-9 gap-y-2">
         <h2 className="font-display text-[clamp(1.0625rem,1.45vw,1.25rem)] leading-[1.1] text-foreground">{c.line}</h2>
         <div data-band-controls data-wave-ripple-origin className={`grid items-baseline ${closedUp ? "h-0 overflow-hidden" : ""}`}>
           <Layer shown={music === "before"} className="flex items-baseline gap-4">

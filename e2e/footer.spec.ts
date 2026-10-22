@@ -287,20 +287,22 @@ test("footer: the hero's field ends in the word: the letters are windows onto it
   await expect(page.locator("[data-footer-field]")).toHaveAttribute("aria-hidden", "true");
 });
 
-test("footer: the field's chunk loads only near the footer, once, without three", async ({ page }) => {
+test("footer: the field's chunk is asked for once, by page 1's name field at the top, and the footer reuses it, without three", async ({ page }) => {
   await page.addInitScript(countFooterContexts);
   const scripts = watchFieldChunks(page);
-  await openHome(page);
+  await openHome(page, { at: "top" });
   await page.waitForLoadState("networkidle");
-  expect(await scripts.fieldChunks(), "at the top of the page").toEqual([]);
+  // Page 1's name field is the footer's own field in its own chunk, drawn at the top.
+  expect(await scripts.fieldChunks(), "at the top of the page").toHaveLength(1);
+  expect(await footerContexts(page), "the footer's contexts at the top").toBe(0);
   await toFooter(page);
   await waitForField(page, "gl");
   await scrollToY(page, 0);
   await toFooter(page);
   await nextFrames(page, 10);
   const chunks = await scripts.fieldChunks();
-  expect(chunks).toHaveLength(1);
-  expect(chunks[0].three, "three in the footer's chunk").toBe(false);
+  expect(chunks, "no second request for the footer").toHaveLength(1);
+  expect(chunks[0].three, "three in the field's chunk").toBe(false);
   expect(await footerContexts(page)).toBe(1);
 });
 
