@@ -171,7 +171,7 @@ describe("Connect", () => {
 describe("the music band", () => {
   it("asks, offers and answers in my words", () => {
     expect(listen.line).toBe("Want some music while you scroll?");
-    expect(listen.body).toBe("Yeah, I put [music](tip:music-note) on my website. It moves with you.");
+    expect(listen.subline).toEqual({ moves: "It moves with you, or ", freeze: "freeze it", end: "." });
     expect(listen.accept).toBe("Play it");
     expect(listen.decline).toBe("Not now");
     expect(listen.acceptedNote).toBe("Enjoy! Control it from the [evolving isle](tip:evolving-isle).");
@@ -183,8 +183,8 @@ describe("the music band", () => {
     expect([listen.pause, listen.resume, listen.freeze, listen.unfreeze]).toEqual(["Pause", "Resume", "Freeze the wave", "Let the wave move"]);
   });
 
-  it("points its two tips at the register", () => {
-    expect(referenced(listen.body)).toEqual(["tip:music-note"]);
+  it("points its tip at the register (the prompt carries none, so the line stays quiet)", () => {
+    expect(referenced(listen.subline.moves)).toEqual([]);
     expect(referenced(listen.acceptedNote)).toEqual(["tip:evolving-isle"]);
   });
 });

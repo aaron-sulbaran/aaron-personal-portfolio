@@ -15,10 +15,14 @@ describe("the soundtrack band's copy", () => {
   });
 
   it("uses sentence case and no em dash", () => {
-    const strings: string[] = Object.values(listen);
+    // The prompt's line is three pieces around one button ("It moves with you, or ", "freeze it", "."): only the first starts a sentence.
+    const { subline, ...whole } = listen;
+    const strings: string[] = [...Object.values(whole), subline.moves];
     for (const text of strings) {
       expect(text).not.toMatch(/\u2014/);
       expect(text[0]).toBe(text[0].toUpperCase());
     }
+    for (const text of Object.values(subline)) expect(text).not.toMatch(/\u2014/);
+    expect(subline.moves + subline.freeze + subline.end).toBe("It moves with you, or freeze it.");
   });
 });

@@ -37,16 +37,18 @@ export const siteContent = {
   },
   // The fourteen launch cards (lib/content/cards.ts).
   cards,
-  // The home's first screen and its fork (lib/content/intro.ts).
+  // The home's first page and its teaser (lib/content/intro.ts).
   intro,
-  // The soundtrack band at the intro's foot (components/soundtrack): the one place
+  // The soundtrack band in the middle of the intro (components/soundtrack): the one place
   // the music is offered and controlled, with the waveform running through
   // it. Each note describes what is on screen when it shows (docs/content/
   // connect-footer-band.md, approved 2026-10-08).
   listen: {
     ariaLabel: "Soundtrack",
     line: "Want some music while you scroll?",
-    body: "Yeah, I put [music](tip:music-note) on my website. It moves with you.",
+    // The line under the question: the freeze toggle is the two words inside it
+    // ("freeze it", then "Let the wave move" while it is frozen).
+    subline: { moves: "It moves with you, or ", freeze: "freeze it", end: "." },
     accept: "Play it",
     decline: "Not now",
     // Shown only where the band cannot hold the player (a desktop narrower than 1024px), which docks it at the isle instead.
@@ -145,6 +147,12 @@ export const siteContent = {
       reducedMotion: "Your system asks for less motion, so you're seeing the still version of this page.",
       dismiss: "Got it",
     },
+  },
+  // The loader's accessible name: the progress bar over the page while the
+  // name fills (the name and the greeting are siteContent.hero's). The number
+  // itself carries no status word.
+  loader: {
+    progressLabel: "Loading the site",
   },
   // The cards section (#work): the Coil between two columns of short titles
   // (lib/content/columns.ts), text first; a title's key is its card's, so

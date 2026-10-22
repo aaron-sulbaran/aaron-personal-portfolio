@@ -21,8 +21,10 @@ describe("the legacy shapes are gone", () => {
       ...Object.values(siteContent.hero).flatMap((value) => (typeof value === "string" ? [value] : Object.values(value))),
       siteContent.columns.ariaLabel,
       ...siteContent.columns.order.flatMap((column) => [column.heading, ...column.groups.flatMap((group) => [group.heading ?? "", ...group.titles.map((title) => title.short)])]),
-      ...siteContent.intro.sentences,
-      ...Object.values(siteContent.intro.fork),
+      ...siteContent.intro.blocks.flatMap((block) => block.sentences),
+      siteContent.intro.more,
+      ...Object.values(siteContent.intro.teaser),
+      siteContent.loader.progressLabel,
     ];
     for (const text of strings) expect(text).not.toMatch(/\u2014/);
   });
