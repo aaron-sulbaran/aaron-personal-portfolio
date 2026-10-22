@@ -1,8 +1,8 @@
 // The footer field's WebGL 2 plumbing: compile, link, the context and the
 // fullscreen triangle every pass draws (position at attribute 0). Raw WebGL
 // 2, no three (three lives only in the CoilScene chunk). This folder is the
-// footer field's chunk: only components/footer/FooterField.tsx imports it,
-// and only through import().
+// footer field's chunk: components/footer/FooterField.tsx and the intro's
+// components/home/nameField/LiveNameField.tsx import it, and only through import().
 
 export type Program<U extends string> = {
   u: (name: U) => WebGLUniformLocation | null;

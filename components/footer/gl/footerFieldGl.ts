@@ -26,8 +26,9 @@ import { fullscreenTriangle, getContext, link } from "./program";
 // the composite to the canvas at the device resolution, the field behind the
 // footer at one depth and inside the letters' band at the letters' depth
 // with the name's surface over it, and the hero's dither. One context. An
-// optional radial alpha mask (and a canvas with alpha) serves the intro's glow:
-// the field alone, no letters, fading to nothing.
+// optional radial alpha mask (and a canvas with alpha) serves the intro's name
+// field: the field alone, no letters, fading to nothing (components/home/nameField,
+// which asks for this chunk with import() as the footer does).
 
 export type FieldFrame = {
   readonly orange: number; // the field's clocks (lib/coil/drift.ts fieldClocks)
@@ -48,6 +49,9 @@ export type FieldFrame = {
   // glow behind the intro's heading. Needs a canvas made with `alpha`; absent,
   // the output is opaque as the footer's.
   readonly mask?: FieldMask;
+  // The burnt orange lobe's strength as a share of the hero's (the intro's
+  // orangeAmount); absent, the hero's own, as the footer draws it.
+  readonly orangeScale?: number;
 };
 
 export type FieldMask = { readonly cx: number; readonly cy: number; readonly rx: number; readonly ry: number; readonly k: number };
@@ -119,7 +123,7 @@ export function createFooterFieldGl(canvas: HTMLCanvasElement, options: FieldOpt
     gl.uniform1f(p.u("uTw"), frame.weather);
     gl.uniform1f(p.u("uWarp"), frame.warp);
     gl.uniform1f(p.u("uAspect"), frame.aspect);
-    gl.uniform1f(p.u("uSec"), t.dark ? FIELD.second.dark : FIELD.second.light);
+    gl.uniform1f(p.u("uSec"), (t.dark ? FIELD.second.dark : FIELD.second.light) * (frame.orangeScale ?? 1));
     gl.uniform3f(p.u("uTop"), ...t.top);
     gl.uniform3f(p.u("uBottom"), ...t.bottom);
     gl.uniform3f(p.u("uGlow"), ...t.glow);

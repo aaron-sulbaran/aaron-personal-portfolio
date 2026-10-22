@@ -3,6 +3,7 @@ import { heldFieldS, nameCompositeInk } from "@/lib/coil/debugFlags";
 import { DRIFT_PRESETS, fieldClocks, parseDriftPreset, type DriftPreset } from "@/lib/coil/drift";
 import { COMPOSITE_FRAG, COMPOSITE_VERT, FIELD, FIELD_FRAG, FULLSCREEN_VERT, NAME, nameComposite } from "@/lib/coil/field.glsl";
 import { applyColor } from "@/lib/coil/theme";
+import { getIntroKnobs } from "@/lib/home/introKnobs";
 import type { Gl } from "./renderer";
 import type { SceneCtx } from "./state";
 
@@ -143,6 +144,8 @@ export function createField(ctx: SceneCtx, gl: Gl, init: CompositeInit) {
     const clocks = fieldClocks(heldFieldS(flags, fieldElapsed), false, driftPreset);
     fieldMaterial.uniforms.uT.value = clocks.orange;
     fieldMaterial.uniforms.uTw.value = clocks.weather;
+    // The burnt orange lobe leans bluer (hero rework, slice 3): the theme's strength times the lab's orangeAmount.
+    fieldMaterial.uniforms.uSec.value = st.theme.field.secondStrength * getIntroKnobs().orangeAmount;
     renderer.setRenderTarget(null);
     renderer.clear();
     if (clocks.orange !== st.lastFieldTime || clocks.weather !== lastWeatherTime) {
