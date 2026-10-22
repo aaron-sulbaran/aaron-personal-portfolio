@@ -9,7 +9,7 @@ import { siteContent } from "@/lib/content";
 // arrive last. <html data-deal> says where it is (closed, dealing, dealt) and,
 // behind ?coildebug, data-deal-entrances counts how many times it played.
 
-const { fork } = siteContent.intro;
+const { teaser } = siteContent.intro;
 const titles = siteContent.columns.order.flatMap((column) => column.groups.flatMap((group) => group.titles));
 const html = (page: Page) => page.locator("html");
 const deal = (page: Page) => page.evaluate(() => document.documentElement.dataset.deal);
@@ -44,14 +44,15 @@ test("deal: the cards section starts closed, and nothing in it answers a pointer
   expect(await page.evaluate(() => getComputedStyle(document.querySelector("#work [data-coil-stage]")!).clipPath)).toMatch(/circle\(0px/);
   expect(await opacityOf(page, '#work [data-deal-title]')).toBe(0);
   expect(await opacityOf(page, "#work [data-deal-label]")).toBe(0);
-  await expect(page.getByRole("button", { name: fork.deal })).toBeVisible();
-  await expect(page.getByText(fork.scroll)).toBeVisible();
+  await expect(page.getByRole("button", { name: teaser.deal })).toBeVisible();
+  await expect(page.getByText(teaser.line)).toBeVisible();
+  await expect(page.locator("[data-coil-wheel]")).toBeVisible();
 });
 
 test("deal: the button scrolls to the cards, the Coil's entrance plays once there, and the columns are in after", async ({ page }) => {
   await logDeal(page);
   await openHome(page, { at: "top" });
-  await page.getByRole("button", { name: fork.deal }).click();
+  await page.getByRole("button", { name: teaser.deal }).click();
   await page.waitForFunction(() => Math.abs(document.getElementById("work")!.getBoundingClientRect().top) < 2, null, { timeout: 8000 });
   await expect(html(page)).toHaveAttribute("data-deal", "dealt", { timeout: 20_000 });
   expect(await entrances(page)).toBe(1);
@@ -90,7 +91,7 @@ test("deal: a load with the cards section already in view deals at once", async 
 
 test("deal: nothing opens and no wheel is captured until the entrance completes", async ({ page }) => {
   await openHome(page, { at: "top" });
-  await page.getByRole("button", { name: fork.deal }).click();
+  await page.getByRole("button", { name: teaser.deal }).click();
   await expect(html(page)).toHaveAttribute("data-deal", "dealing", { timeout: 10_000 });
   // A pointer on a title, and on the Coil, while the cards are still being dealt.
   const title = page.locator('#work button[data-card="ieee"]');
@@ -110,10 +111,9 @@ test("deal: scrolling back up shows Back to my cards, and the cards stay dealt b
   await logDeal(page);
   await openHome(page);
   await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
-  const back = page.getByRole("button", { name: fork.back });
+  const back = page.getByRole("button", { name: teaser.back });
   await expect(back).toBeVisible();
-  await expect(page.getByRole("button", { name: fork.deal })).toHaveCount(0);
-  await expect(page.getByText(fork.scroll)).toBeHidden();
+  await expect(page.getByRole("button", { name: teaser.deal })).toHaveCount(0);
   // The button leads to the cards with no replay.
   await back.click();
   await page.waitForFunction(() => Math.abs(document.getElementById("work")!.getBoundingClientRect().top) < 2, null, { timeout: 8000 });
@@ -136,8 +136,8 @@ test("deal: a reload deals again", async ({ page }) => {
   // Back at the top of a fresh page load: closed, and the button invites again.
   await expect(html(page)).toHaveAttribute("data-deal", "closed");
   expect(await entrances(page)).toBe(0);
-  await expect(page.getByRole("button", { name: fork.deal })).toBeVisible();
-  await page.getByRole("button", { name: fork.deal }).click();
+  await expect(page.getByRole("button", { name: teaser.deal })).toBeVisible();
+  await page.getByRole("button", { name: teaser.deal }).click();
   await expect(html(page)).toHaveAttribute("data-deal", "dealt", { timeout: 20_000 });
   expect(await entrances(page)).toBe(1);
   expect(await dealLog(page)).toEqual(["pending", "closed", "dealing", "dealt"]);
@@ -153,13 +153,13 @@ test.describe("reduced motion", () => {
     expect(await opacityOf(page, "#work [data-deal-title]")).toBe(1);
     expect(await opacityOf(page, "#work [data-deal-label]")).toBeGreaterThan(0.7);
     expect(await page.evaluate(() => getComputedStyle(document.querySelector("#work [data-coil-stage]")!).clipPath)).toBe("none");
-    // Unspent: the fork still invites.
-    await page.getByRole("button", { name: fork.deal }).click();
+    // Unspent: the teaser still invites.
+    await page.getByRole("button", { name: teaser.deal }).click();
     await page.waitForFunction(() => Math.abs(document.getElementById("work")!.getBoundingClientRect().top) < 2, null, { timeout: 5000 });
     await expect(html(page)).toHaveAttribute("data-deal", "dealt");
     expect(await entrances(page)).toBe(0);
     await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
-    await expect(page.getByRole("button", { name: fork.back })).toBeVisible();
+    await expect(page.getByRole("button", { name: teaser.back })).toBeVisible();
   });
 });
 

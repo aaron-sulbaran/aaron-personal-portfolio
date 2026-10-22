@@ -3,7 +3,7 @@ import { siteContent } from "@/lib/content";
 import { expect } from "./fixtures";
 
 export async function settled(page: Page) {
-  await page.waitForFunction(() => document.documentElement.dataset.home === "ready" && document.body.style.overflow !== "hidden");
+  await page.waitForFunction(() => document.documentElement.dataset.home === "ready" && document.body.style.overflow !== "hidden" && !["on", "shrink"].includes(document.documentElement.dataset.introLoader ?? ""));
   // The scene chunk is requested one frame after first paint when it can run; give it the load to show up.
   await page.waitForLoadState("networkidle");
 }

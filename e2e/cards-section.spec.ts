@@ -25,10 +25,10 @@ test("cards section: the two columns hold the fourteen cards, Work on the left a
 test("cards section: the Deal me in button scrolls to the cards, and a visit starts at the top of the intro", async ({ page }) => {
   await openHome(page, { at: "top" });
   expect(await page.evaluate(() => window.scrollY)).toBe(0);
-  await page.getByRole("button", { name: intro.fork.deal }).click();
+  await page.getByRole("button", { name: intro.teaser.deal }).click();
   await page.waitForFunction(() => Math.abs(document.getElementById("work")!.getBoundingClientRect().top) < 2, null, { timeout: 5000 });
   await expect(page.getByRole("navigation", { name: "Sections" }).locator("[aria-current]")).toHaveCount(1);
-  await expect(page.getByRole("link", { name: intro.fork.quick })).toHaveAttribute("href", "/quick");
+  await expect(page.getByRole("link", { name: intro.teaser.quick })).toHaveAttribute("href", "/quick");
 });
 
 test("cards section: hovering a title brings its card to the front and holds the Coil there", async ({ page }) => {

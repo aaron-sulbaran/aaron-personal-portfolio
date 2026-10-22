@@ -19,6 +19,8 @@ const layouts = (page: Page) => page.evaluate(() => (window as unknown as W).__w
 const visibleDots = (page: Page) => page.evaluate(() => (window as unknown as W).__wavePath.visibleDots());
 const maxScroll = (page: Page) => page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight);
 const headAtRest = (page: Page) => page.waitForFunction(() => { const f = (window as unknown as W).__wavePath.frame(); return !!f && f.length > 0 && f.head === f.target; });
+// The first block below the band, where #about was before page 1 took the band into its middle (#about is now the whole first page, its top above the band).
+const BELOW_BAND = "[data-teaser]";
 const toBlock = async (page: Page, sel: string) => scrollToY(page, Math.round(await documentTop(page, sel)));
 
 async function open(page: Page) {
@@ -75,7 +77,7 @@ test("wavepath: before an answer the band run is level and the head waits at its
   expect(f.runLen).toBeGreaterThan(0);
   expect(f.head).toBe(f.runLen);
   expect(f.runFlat, "the run's largest step off its line, px").toBeLessThan(0.5);
-  await toBlock(page, "#about");
+  await toBlock(page, BELOW_BAND);
   await page.waitForTimeout(500);
   f = await frame(page);
   expect(f.head, "held at the run's end past the band").toBe(f.runLen);
@@ -109,7 +111,7 @@ test("wavepath: undecided, with the band out of view, the loop sleeps", async ({
 test("wavepath: after Not now the head leaves the band and reaches the end at max scroll, nothing playing", async ({ page }) => {
   await open(page);
   await decline(page);
-  await toBlock(page, "#about");
+  await toBlock(page, BELOW_BAND);
   await headAtRest(page);
   const f = await frame(page);
   expect(f.head).toBeGreaterThan(f.runLen);
@@ -125,7 +127,7 @@ test("wavepath: after Not now the head leaves the band and reaches the end at ma
 test("wavepath: a 1.5-screen flick arrives within 1.5s at the draw cap", async ({ page }) => {
   await open(page);
   await decline(page);
-  await toBlock(page, "#about");
+  await toBlock(page, BELOW_BAND);
   await headAtRest(page);
   const run = await page.evaluate(() => new Promise<{ arrived: number; rest: number; gap: number }>((resolve) => {
     const p = (window as unknown as W).__wavePath;
@@ -154,7 +156,7 @@ test("wavepath: reduced motion draws the whole line still and runs no loop", asy
   await page.waitForFunction(() => ((window as unknown as W).__wavePath.frame()?.length ?? 0) > 0);
   const f = await frame(page);
   expect(f.head).toBe(f.length);
-  for (const sel of ["#about", "#numbers", "#connect"]) {
+  for (const sel of [BELOW_BAND, "#numbers", "#connect"]) {
     await toBlock(page, sel);
     expect(await visibleDots(page), `drawn dots at ${sel}`).toBeGreaterThan(0);
   }
@@ -166,7 +168,7 @@ test("wavepath: nothing repaints at rest", async ({ page }) => {
   await open(page);
   await decline(page);
   await freeze(page);
-  await toBlock(page, "#about");
+  await toBlock(page, BELOW_BAND);
   await page.mouse.move(4, 4);
   await headAtRest(page);
   await page.waitForTimeout(500);
@@ -178,7 +180,7 @@ test("wavepath: nothing repaints at rest", async ({ page }) => {
 test("wavepath: after Not now the line breathes in view", async ({ page }) => {
   await open(page);
   await decline(page);
-  await toBlock(page, "#about");
+  await toBlock(page, BELOW_BAND);
   await page.mouse.move(4, 4);
   await headAtRest(page);
   const before = await paints(page);
@@ -236,11 +238,11 @@ test("wavepath: a deep load at #connect with a stored no is drawn at once", asyn
 test("wavepath: crossing to a phone width re-lays the line in view", async ({ page }) => {
   await open(page);
   await decline(page);
-  await toBlock(page, "#about");
+  await toBlock(page, BELOW_BAND);
   const wide = (await frame(page)).length;
   await page.setViewportSize({ width: 390, height: 844 });
   await page.waitForFunction((w) => (window as unknown as W).__wavePath.frame()!.length !== w, wide);
-  await toBlock(page, "#about");
+  await toBlock(page, BELOW_BAND);
   await headAtRest(page);
   expect(await visibleDots(page)).toBeGreaterThan(0);
 });
@@ -249,7 +251,7 @@ test("wavepath: frozen before answering, Not now still sends the head off the ba
   await open(page);
   await freeze(page);
   await decline(page);
-  await toBlock(page, "#about");
+  await toBlock(page, BELOW_BAND);
   await headAtRest(page);
   const f = await frame(page);
   expect(f.head).toBeGreaterThan(f.runLen);
@@ -264,7 +266,7 @@ test("wavepath: one section reflow lays the line out once and keeps it in view",
   await page.waitForTimeout(800);
   expect((await layouts(page)) - before.layouts, "layouts per reflow").toBe(1);
   expect((await frame(page)).length).toBeGreaterThan(before.length);
-  await toBlock(page, "#about");
+  await toBlock(page, BELOW_BAND);
   await headAtRest(page);
   expect(await visibleDots(page)).toBeGreaterThan(0);
 });
@@ -295,7 +297,7 @@ test("wavepath: undecided, a width change snaps the head to the new run and keep
 test("wavepath: reduced motion toggled live stills the line and back, with no orphan tiles", async ({ page }) => {
   await open(page);
   await decline(page);
-  await toBlock(page, "#about");
+  await toBlock(page, BELOW_BAND);
   await page.mouse.move(4, 4);
   await headAtRest(page);
   const tiles = () => page.locator("[data-wave-path] canvas").count();
@@ -314,7 +316,7 @@ test("wavepath: reduced motion toggled live stills the line and back, with no or
 
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.waitForFunction(() => { const f = (window as unknown as W).__wavePath.frame(); return !!f && f.length > 0; });
-  await toBlock(page, "#about");
+  await toBlock(page, BELOW_BAND);
   await headAtRest(page);
   const resumed = await ticks(page);
   await expect.poll(() => ticks(page), "the loop runs again").toBeGreaterThan(resumed);
@@ -350,7 +352,7 @@ test("wavepath: a theme switch at rest repaints once, then rests", async ({ page
   await open(page);
   await decline(page);
   await freeze(page);
-  await toBlock(page, "#about");
+  await toBlock(page, BELOW_BAND);
   await headAtRest(page);
   await page.waitForTimeout(500);
   const before = await paints(page);
@@ -371,7 +373,7 @@ test("wavepath: Not now sends a ripple, once the band has scrolled away, that se
   // The answer waits for the band to leave, and so does its ripple.
   await page.waitForTimeout(500);
   expect(await rippleNow(page), "no ripple while the band is in view").toBe(0);
-  await toBlock(page, "#about");
+  await toBlock(page, BELOW_BAND);
   await expect.poll(() => rippleNow(page), { timeout: 300, message: "a ripple within 300ms of the release" }).toBeGreaterThan(0);
   await expect.poll(() => rippleNow(page), { timeout: 4000, message: "the ripple ends within 4s" }).toBe(0);
   await page.mouse.move(4, 4);
@@ -385,7 +387,7 @@ test("wavepath: Play it sends a ripple too", async ({ page }) => {
   await accept(page);
   await page.waitForTimeout(500);
   expect(await rippleNow(page), "no ripple while the band is in view").toBe(0);
-  await toBlock(page, "#about");
+  await toBlock(page, BELOW_BAND);
   await expect.poll(() => rippleNow(page), { timeout: 300, message: "a ripple within 300ms of the release" }).toBeGreaterThan(0);
   await expect.poll(() => rippleNow(page), { timeout: 4000, message: "the ripple ends within 4s" }).toBe(0);
 });

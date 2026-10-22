@@ -3,7 +3,7 @@ import { test, expect } from "./support/fixtures";
 import { siteContent } from "@/lib/content";
 import { playerStrings as P } from "@/lib/content/player";
 import { HEADER_ROW, ISLAND } from "@/lib/player/constants";
-import { openHome, scrollToY } from "./support/coil";
+import { openHome } from "./support/coil";
 import { toFooter, waitForWord } from "./support/footer";
 import { BAND_CARD, CLONE, ISLAND as ISLAND_SELECTOR, bandPastLine, recordMorph, morphSamples } from "./support/player";
 import { parkBand } from "./support/wave";
@@ -106,12 +106,12 @@ test("player: a tap grows the full player down from the header, and a tap outsid
   await expect(island(page)).toHaveAttribute("data-player-island", "closed");
 });
 
-test("player: at the top the band is on the first screen, so the player is in the band and the island steps away", async ({ page }) => {
+test("player: with the band back on the screen, the player is in the band and the island steps away", async ({ page }) => {
   await openHome(page, { path: HOME, at: "top" });
   await playOnPhone(page);
   await bandPastLine(page, 200);
   await expect(island(page)).toHaveAttribute("data-player-island", "closed");
-  await scrollToY(page, 0);
+  await parkBand(page);
   await expect(page.locator(BAND_CARD)).toBeVisible();
   await expect(island(page)).toHaveCount(0);
 });

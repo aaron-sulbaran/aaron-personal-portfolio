@@ -31,16 +31,22 @@ export async function scrollToCards(page: Page, offset = 0) {
   await nextFrames(page, 2);
 }
 
-// The page is hydrated and the scene has drawn its first frame (off screen
-// while the section is below the fold): the deal has not necessarily played.
+// <html data-intro-loader> while page 1's loader covers the page: "on" while it
+// fills, "shrink" while the name lands on the heading, "done" after (never set
+// for reduced motion, a deep load or no JavaScript).
+export const INTRO_LOADING = ["on", "shrink"];
+
+// The page is hydrated, page 1's loader is gone and the scene has drawn its
+// first frame (off screen while the section is below the fold): the deal has
+// not necessarily played.
 export async function waitForScene(page: Page) {
   await page.waitForFunction(
-    () => {
+    (LOADING) => {
       const w = window as HookWindow;
       const hero = document.querySelector<HTMLElement>("section[data-scene]");
-      return !!w.__coil?.api && document.documentElement.dataset.home === "ready" && hero?.dataset.scene === "on";
+      return !!w.__coil?.api && document.documentElement.dataset.home === "ready" && hero?.dataset.scene === "on" && !LOADING.includes(document.documentElement.dataset.introLoader ?? "");
     },
-    null,
+    INTRO_LOADING,
     { timeout: 30_000 },
   );
 }
