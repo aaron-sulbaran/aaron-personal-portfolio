@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import pages from "./fixtures/pages.json";
 import { arcAtY, sampleSpine } from "./geometry";
 import { bandLineY, runLength } from "./head";
-import { RUN_START, SAMPLE_STEP } from "./constants";
+import { BAND_CLEAR_EXTRA, RUN_START, SAMPLE_STEP } from "./constants";
+import { dotReach } from "./columns";
+import { amplitudeFor } from "./visible";
 import { SIGNATURE_ON, resolveSpine, type Anchors } from "./spine";
 
 // The fixture is measured from the real page (measureAnchors at 1440x900,
@@ -40,5 +42,40 @@ describe("the line", () => {
       expect(s).toBeGreaterThanOrEqual(last);
       last = s;
     }
+  });
+});
+
+describe("the route through the new page", () => {
+  const sizes = Object.keys(pages) as (keyof typeof pages)[];
+  const samplesFor = (size: keyof typeof pages) => {
+    const { anchors, viewport } = pages[size] as { anchors: Anchors; viewport: number };
+    const clearBand = dotReach(amplitudeFor(anchors.width)) + BAND_CLEAR_EXTRA;
+    return { anchors, samples: sampleSpine(resolveSpine({ points: SIGNATURE_ON }, anchors, { bandRun: true, viewport, clearBand }), SAMPLE_STEP) };
+  };
+  const between = (samples: ReturnType<typeof samplesFor>["samples"], from: number, to: number) => {
+    const xs: number[] = [];
+    for (let i = 0; i < samples.count; i++) if (samples.y[i] > from && samples.y[i] < to) xs.push(samples.x[i]);
+    return xs;
+  };
+
+  it.each(sizes)("stays beside the fork, down the right side of the page, after the band at %s", (size) => {
+    const { anchors, samples } = samplesFor(size);
+    const xs = between(samples, anchors.box.band.bottom + 120, anchors.box.cards.top - 40);
+    expect(xs.length).toBeGreaterThan(0);
+    for (const x of xs) expect(x).toBeGreaterThan(anchors.width * 0.8);
+  });
+
+  it.each(sizes)("dives into the cards section on the right and comes out of its bottom edge heading left at %s", (size) => {
+    const { anchors, samples } = samplesFor(size);
+    const inside = between(samples, anchors.box.cards.top + 40, anchors.box.cards.bottom - 40);
+    expect(inside.length).toBeGreaterThan(0);
+    expect(inside[0]).toBeGreaterThan(anchors.width * 0.6);
+    expect(inside.at(-1)!).toBeLessThan(anchors.width * 0.6);
+    expect(inside.at(-1)!).toBeGreaterThan(anchors.width * 0.2);
+  });
+
+  it.each(sizes)("keeps the cards section free of words, so its box is its span at %s", (size) => {
+    const { anchors } = samplesFor(size);
+    expect(anchors.words.cards).toEqual(anchors.box.cards);
   });
 });
