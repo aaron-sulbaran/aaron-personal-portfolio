@@ -2,6 +2,7 @@ import type { RefObject } from "react";
 import type { Quad } from "@/lib/coil/geometry";
 import type { InputDriver } from "@/lib/coil/drivers";
 import type { Rect } from "@/lib/coil/flight";
+import type { EntranceTuning } from "@/lib/coil/entrance";
 import type { NameTarget } from "@/lib/coil/nameTarget";
 import type { HeroOverlayHandle } from "../HeroOverlay";
 
@@ -98,7 +99,9 @@ export type CoilSceneApi = CoilFlightApi &
 // means no entrance (a fast start), so the coil is at rest from its first
 // frame. nameFromLoader: the loader lands the name (the canvas name waits for
 // landName); otherwise it fades up behind the band as the band opens.
-export type CoilEntrance = { startMs: number; nameFromLoader: boolean };
+// tuning: the deal's lab values for this run (absent: COIL's own). A new
+// object restarts the scene's entrance clock, so the deal can play again.
+export type CoilEntrance = { startMs: number; nameFromLoader: boolean; tuning?: EntranceTuning };
 
 export type CoilSceneProps = {
   frozen: boolean; // a modal is open

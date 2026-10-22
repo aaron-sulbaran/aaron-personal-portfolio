@@ -16,6 +16,26 @@ function deepFreeze<T extends object>(value: T): DeepReadonly<T> {
   return Object.freeze(value) as DeepReadonly<T>;
 }
 
+// The entrance's own timing, as fractions of its duration. Named so the deal's
+// knobs (the `deal` block) start from these and nothing else.
+const ENTRANCE = {
+  durationMs: 1800,
+  stackIn: 0.05,
+  shutterStart: 0.06,
+  shutterStagger: 0.011,
+  fly: 0.22,
+  pullStart: 0.58,
+  // The winding waits for the seam to finish parting (the lab wound from 0.2,
+  // where the ends of a 14-card band graze for a frame): a fraction of the pull.
+  windStart: 0.38,
+  pullCurve: [0.55, 0, 0.25, 1] as const,
+  // The deal (hero rework, slice 2): the stack starts this share of the way
+  // from the helix's center to the cards section's top edge, on the center
+  // line, so the cards arrive from where the deck went. 0 is the old stack at
+  // the helix center; 1 puts the stack's center on the edge.
+  startOffset: 1,
+};
+
 const values = {
   // Geometry. Card height and gaps are in card units (height 1, width `aspect`).
   axisDeg: 33,
@@ -94,17 +114,46 @@ const values = {
   },
 
   // Entrance, as fractions of its duration.
-  entrance: {
-    durationMs: 1800,
-    stackIn: 0.05,
-    shutterStart: 0.06,
-    shutterStagger: 0.011,
-    fly: 0.22,
-    pullStart: 0.58,
-    // The winding waits for the seam to finish parting (the lab wound from 0.2,
-    // where the ends of a 14-card band graze for a frame): a fraction of the pull.
-    windStart: 0.38,
-    pullCurve: [0.55, 0, 0.25, 1] as const,
+  entrance: ENTRANCE,
+
+  // The deal (hero rework, slice 2; docs/superpowers/specs/2026-10-21-hero-rework-design.md):
+  // the deck at the intro's foot, the name's settle and glow, the riffle, the
+  // cards' flight into the Coil and the section opening around it. Every number
+  // here is a lab knob's default (lib/home/dealKnobs.ts clamps them); the lab
+  // panel, in dev only, overrides them at runtime. Aaron tunes them by hand.
+  deal: {
+    // Where the cards section's top edge sits in the viewport (as a share of
+    // its height) when each step fires: the riffle once the section starts to
+    // peek and the reader is scrolling down, the entrance once it is this far
+    // up (and until its bottom edge leaves past `outAt`).
+    trigger: { riffleAt: 1, enterAt: 0.65, outAt: 0.35, waitSceneMs: 4000 },
+    // The deck: face-down cards fanned about their bottom center; the hover
+    // opens the fan a little and lifts the top card.
+    deck: { cards: 6, fanDeg: 5, openDeg: 1.8, liftPx: 5 },
+    // The riffle: split into two halves, interleave back in a quick cascade,
+    // square up. spreadShare: how far each half parts (of the deck's width).
+    riffle: { on: true, ms: 800, spreadShare: 0.6, splitDeg: 9, hopPx: 8 },
+    // The cards' flight: the entrance's own timing, tunable.
+    entrance: {
+      durationMs: ENTRANCE.durationMs,
+      shutterStagger: ENTRANCE.shutterStagger,
+      startOffset: ENTRANCE.startOffset,
+    },
+    // The section opening around the Coil: a circle anchored top center grows
+    // from fromPx to reach (a share of the distance to the farthest corner)
+    // over `share` of the deal's duration. fadeMs: the still path's crossfade.
+    open: { reach: 1, share: 0.85, fromPx: 36, fadeMs: 600 },
+    // The two columns arrive last: group labels, then titles.
+    columns: { delayMs: 1150, staggerMs: 36, labelStaggerMs: 70, fadeMs: 520, riseY: 14 },
+    // The glow behind the intro's heading: radii as shares of the heading's ink
+    // width and height (never reaching the paragraph), the center's offset in
+    // the same shares, the strength at the center, the fade-in, and where in
+    // the hero field's frame (from its top) the glow samples.
+    glow: { size: 1, offsetX: 0.06, offsetY: 0, strength: 0.9, fadeMs: 1000, depth: 1, rxOfText: 0.78, ryOfHeading: 1.15, fieldAt: 0.32 },
+    // The name's settle: it starts this much larger (transform only, origin
+    // top left; capped so it never overflows the viewport's width) and settles
+    // to 1x once.
+    settle: { startScale: 1.35, ms: 1100, delayMs: 120, marginPx: 8 },
   },
 
   // Unwind egg and hover-jump.

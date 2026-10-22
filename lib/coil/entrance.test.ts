@@ -19,6 +19,7 @@ import {
   shutterProgress,
   shutterRank,
   slerpBasis,
+  tunedConstants,
   type EntranceClock,
 } from "@/lib/coil/entrance";
 import { coilPose, restHelix, solveGeometry, type Basis, type CoilGeometry, type HelixFrame } from "@/lib/coil/geometry";
@@ -131,16 +132,33 @@ describe.each(cases)("entrance, %s", (_label, geo) => {
     }
   });
 
-  it("starts from a stack at the helix center, square to the camera", () => {
+  it("starts from a stack on the center line, startOffset of the way up to the pane's top edge, square to the camera", () => {
     const ms = COIL.entrance.shutterStart * T - 1;
     const frame = entranceHelix(rest, geo, entranceClock(ms));
+    const stackY = geo.center[1] + COIL.entrance.startOffset * (COIL.lab.viewHalfHeight - geo.center[1]);
+    expect(COIL.entrance.startOffset).toBeGreaterThan(0);
     slotsOf(geo, frame, ms).forEach((pose, j) => {
       const s = coilPose(frame, j, 0).strandPosition;
       if (!inBand(s, geo.cardCount)) return;
-      expect(Math.hypot(pose.position[0] - geo.center[0], pose.position[1] - geo.center[1])).toBeLessThan(1e-9);
+      expect(pose.position[0]).toBeCloseTo(geo.center[0], 9);
+      expect(pose.position[1]).toBeCloseTo(stackY, 9);
       expect(pose.basis.z[2]).toBeCloseTo(1, 9);
       expect(pose.alpha).toBeGreaterThan(0.99);
     });
+  });
+
+  it("starts the stack at the helix center with a start offset of 0, and on the top edge with 1", () => {
+    const ms = COIL.entrance.shutterStart * T - 1;
+    const stackAt = (startOffset: number) => {
+      const tuning = { durationMs: COIL.entrance.durationMs, shutterStagger: COIL.entrance.shutterStagger, startOffset };
+      const clock = entranceClock(ms, tunedConstants(tuning));
+      const frame = entranceHelix(rest, geo, clock);
+      const slot = Array.from({ length: geo.slotCount }, (_, j) => coilPose(frame, j, 0)).find((p) => inBand(p.strandPosition, geo.cardCount))!;
+      return entrancePose(slot, { strandPosition: slot.strandPosition, cardCount: geo.cardCount }, geo, clock).position[1];
+    };
+    expect(stackAt(0)).toBeCloseTo(geo.center[1], 9);
+    expect(stackAt(1)).toBeCloseTo(COIL.lab.viewHalfHeight, 9);
+    expect(stackAt(0.5)).toBeCloseTo((geo.center[1] + COIL.lab.viewHalfHeight) / 2, 9);
   });
 
   // The band's ends may only sweep past each other while the parted seam
@@ -290,5 +308,37 @@ describe("the pull as a value", () => {
     expect(curve(0)).toBeCloseTo(0, 9);
     expect(curve(1)).toBeCloseTo(1, 9);
     expect(curve(0.5)).toBeCloseTo(0.6856, 3);
+  });
+});
+
+describe("tuned entrance constants (the deal's lab)", () => {
+  it("is COIL itself when nothing is tuned or the values are the defaults", () => {
+    const same = { durationMs: COIL.entrance.durationMs, shutterStagger: COIL.entrance.shutterStagger, startOffset: COIL.entrance.startOffset };
+    expect(tunedConstants(undefined)).toBe(COIL);
+    expect(tunedConstants(same)).toBe(COIL);
+    expect(entranceClock(0, tunedConstants(same)).c).toBeUndefined();
+  });
+
+  it("memoizes a tuned set and runs the whole entrance on its duration", () => {
+    const tuning = { durationMs: 900, shutterStagger: 0.02, startOffset: 0.4 };
+    const c = tunedConstants(tuning);
+    expect(tunedConstants({ ...tuning })).toBe(c);
+    expect(c.entrance.durationMs).toBe(900);
+    expect(c.entrance.pullStart).toBe(COIL.entrance.pullStart);
+    const clock = entranceClock(450, c);
+    expect(clock.durationS).toBeCloseTo(0.9, 9);
+    expect(clock.c).toBe(c);
+    expect(isRested(entranceClock(900, c))).toBe(true);
+    expect(isRested(entranceClock(899, c))).toBe(false);
+    // The functions read the clock's own constants by default.
+    expect(pullProgress(clock)).toBeCloseTo(pullProgress(clock, c), 12);
+    const late = entranceClock(700, c);
+    expect(pullProgress(late)).toBeGreaterThan(pullProgress(entranceClock(700)));
+  });
+
+  it("staggers the shutter on the tuned stagger", () => {
+    const c = tunedConstants({ durationMs: COIL.entrance.durationMs, shutterStagger: 0.04, startOffset: 0 });
+    const ms = COIL.entrance.shutterStart * T + 0.1 * T;
+    expect(shutterProgress(3, entranceClock(ms, c))).toBeLessThan(shutterProgress(3, entranceClock(ms)));
   });
 });

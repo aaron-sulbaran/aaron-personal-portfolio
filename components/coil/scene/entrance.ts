@@ -1,8 +1,9 @@
-import { entranceClock, entranceHelix, isRested } from "@/lib/coil/entrance";
+import { entranceClock, entranceHelix, isRested, tunedConstants } from "@/lib/coil/entrance";
 import { clamp01, type HelixFrame } from "@/lib/coil/geometry";
 import { siteEase } from "@/lib/coil/motion";
 import type { Name } from "./name";
 import type { SceneCtx, SceneFrame } from "./state";
+import type { CoilEntrance } from "./types";
 
 // The entrance's wiring (slice 4): its clock on the scene's own time, the
 // strand held at its start until the band opens, the band itself
@@ -21,6 +22,10 @@ export function createEntrance(ctx: SceneCtx, name: Name) {
   // ---- slice 4 state: the entrance clock ----
   let entranceBase: number | null = null; // when this scene's entrance clock reads 0
   let entranceEnded = false;
+  // The entrance object this clock follows. A new one (the deal plays on the
+  // reader's arrival, and the lab can replay it) restarts the clock; the same
+  // one keeps it running.
+  let followed: CoilEntrance | null | undefined;
 
   // Real milliseconds since the entrance started (-Infinity before it,
   // Infinity for a fast start). A start the scene first sees late (it was
@@ -31,6 +36,13 @@ export function createEntrance(ctx: SceneCtx, name: Name) {
   // once per load, never on a rebuild.
   function entranceElapsedMs(now: number) {
     const entrance = live.current.entrance;
+    if (entrance !== followed) {
+      followed = entrance;
+      if (entrance) {
+        entranceBase = null;
+        entranceEnded = false;
+      }
+    }
     if (!entrance) return Number.NEGATIVE_INFINITY;
     if (entranceBase === null) {
       const played = Number.isFinite(entrance.startMs);
@@ -47,7 +59,7 @@ export function createEntrance(ctx: SceneCtx, name: Name) {
   function entrance(f: SceneFrame) {
     const { now, props } = f;
     const realElapsedMs = pinned ? Number.POSITIVE_INFINITY : entranceElapsedMs(now);
-    const clock = entranceClock(forcedEntranceMs ?? realElapsedMs);
+    const clock = entranceClock(forcedEntranceMs ?? realElapsedMs, tunedConstants(props.entrance?.tuning));
     f.realElapsedMs = realElapsedMs;
     f.clock = clock;
     if (!isRested(clock)) {

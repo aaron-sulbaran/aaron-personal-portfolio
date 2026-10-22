@@ -22,10 +22,36 @@ const DEG = Math.PI / 180;
 export type EntranceClock = {
   elapsedS: number; // seconds since the entrance started; negative before it
   durationS: number;
+  // The constants this clock was made with, present only when they are not
+  // COIL itself (the deal's lab tunes the duration, the stagger and the start
+  // offset); every function below that takes `c` reads it from here by default.
+  c?: CoilConstants;
 };
 
 export function entranceClock(elapsedMs: number, c: CoilConstants = COIL): EntranceClock {
-  return { elapsedS: elapsedMs / 1000, durationS: c.entrance.durationMs / 1000 };
+  const base = { elapsedS: elapsedMs / 1000, durationS: c.entrance.durationMs / 1000 };
+  return c === COIL ? base : { ...base, c };
+}
+
+// The three entrance values the deal can tune: the whole duration, the
+// shutter's stagger and where the stack starts. An absent tuning is COIL's own.
+export type EntranceTuning = { durationMs: number; shutterStagger: number; startOffset: number };
+
+const tuned = new Map<string, CoilConstants>();
+export function tunedConstants(tuning: EntranceTuning | undefined): CoilConstants {
+  if (!tuning) return COIL;
+  const same =
+    tuning.durationMs === COIL.entrance.durationMs &&
+    tuning.shutterStagger === COIL.entrance.shutterStagger &&
+    tuning.startOffset === COIL.entrance.startOffset;
+  if (same) return COIL;
+  const key = `${tuning.durationMs}|${tuning.shutterStagger}|${tuning.startOffset}`;
+  let c = tuned.get(key);
+  if (!c) {
+    c = { ...COIL, entrance: { ...COIL.entrance, ...tuning } };
+    tuned.set(key, c);
+  }
+  return c;
 }
 
 export function isEntering(clock: EntranceClock) {
@@ -58,7 +84,7 @@ export function pullCurve(c: CoilConstants) {
 }
 
 // The pull's progress, 0 through the stack, shutter and hold, 1 at rest.
-export function pullProgress(clock: EntranceClock, c: CoilConstants = COIL) {
+export function pullProgress(clock: EntranceClock, c: CoilConstants = clock.c ?? COIL) {
   if (isRested(clock)) return 1;
   if (isBeforeEntrance(clock)) return 0;
   const T = clock.durationS;
@@ -90,7 +116,7 @@ export function pullHelix(rest: HelixFrame, geo: CoilGeometry, pull: number, c: 
     leanRad: lerp(c.camera.bandLeanDeg * DEG, rest.leanRad, pull),
   };
 }
-export function entranceHelix(rest: HelixFrame, geo: CoilGeometry, clock: EntranceClock, c: CoilConstants = COIL): HelixFrame {
+export function entranceHelix(rest: HelixFrame, geo: CoilGeometry, clock: EntranceClock, c: CoilConstants = clock.c ?? COIL): HelixFrame {
   if (isRested(clock)) return rest;
   return pullHelix(rest, geo, pullProgress(clock, c), c);
 }
@@ -117,7 +143,7 @@ export function shutterRank(strandPosition: number, cardCount: number) {
 }
 
 // How far a card has flown from the stack into the band (0 to 1).
-export function shutterProgress(rank: number, clock: EntranceClock, c: CoilConstants = COIL) {
+export function shutterProgress(rank: number, clock: EntranceClock, c: CoilConstants = clock.c ?? COIL) {
   const T = clock.durationS;
   const start = (c.entrance.shutterStart + rank * c.entrance.shutterStagger) * T;
   return siteEase(clamp01((clock.elapsedS - start) / (c.entrance.fly * T)));
@@ -130,7 +156,7 @@ export function entrancePose<P extends CardPose>(
   card: EntranceCard,
   geo: CoilGeometry,
   clock: EntranceClock,
-  c: CoilConstants = COIL,
+  c: CoilConstants = clock.c ?? COIL,
 ): P {
   if (isRested(clock)) return pose;
   if (isBeforeEntrance(clock)) return { ...pose, alpha: 0 };
@@ -141,9 +167,12 @@ export function entrancePose<P extends CardPose>(
   const rank = shutterRank(card.strandPosition, n);
   const flown = shutterProgress(rank, clock, c);
   if (flown >= 1) return pose;
-  // The stack: square to the camera at the helix center, the first card on top.
+  // The stack: square to the camera on the helix's center line, the first card
+  // on top; startOffset of the way up from the helix center to the pane's top
+  // edge (the deal: the cards arrive from where the deck went).
   const stackAlpha = smooth(clamp01(clock.elapsedS / (c.entrance.stackIn * clock.durationS)));
-  const stackPosition: Vec3 = [geo.center[0], geo.center[1], geo.center[2] + (n - rank) * 0.004 + 0.3];
+  const stackY = geo.center[1] + c.entrance.startOffset * (c.lab.viewHalfHeight - geo.center[1]);
+  const stackPosition: Vec3 = [geo.center[0], stackY, geo.center[2] + (n - rank) * 0.004 + 0.3];
   return {
     ...pose,
     position: lerp3(stackPosition, pose.position, flown),
@@ -162,7 +191,7 @@ export function entrancePose<P extends CardPose>(
 // How much of the canvas name shows. `handedOff` is null when no loader lands
 // the name (it then fades up behind the band as the band opens), false while
 // the loader still holds it, and true from the frame the loader hands it over.
-export function entranceNameAlpha(clock: EntranceClock, handedOff: boolean | null, c: CoilConstants = COIL) {
+export function entranceNameAlpha(clock: EntranceClock, handedOff: boolean | null, c: CoilConstants = clock.c ?? COIL) {
   if (handedOff !== null) return handedOff ? 1 : 0;
   if (isRested(clock)) return 1;
   if (isBeforeEntrance(clock)) return 0;
