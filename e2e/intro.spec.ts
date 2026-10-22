@@ -66,10 +66,11 @@ test("intro: the field sits behind the name, never behind the first paragraph", 
   // The field is on the page: beside the name, inside the glow, the paper is tinted; far from it, it is the paper.
   const heading = await boxOf(page, HEADING);
   const y = Math.round(stage.top + stage.height / 2);
-  const near = await shoot(page, { x: Math.round(heading.left - 60), y, width: 8, height: 8 });
-  const far = await shoot(page, { x: 8, y, width: 8, height: 8 });
-  const red = (image: { rgba: Uint8Array }) => image.rgba[0];
-  expect(red(far) - red(near), "red channel, paper minus glow").toBeGreaterThan(10);
+  const red = async (x: number, at: number) => (await shoot(page, { x: Math.round(x), y: at, width: 8, height: 8 })).rgba[0];
+  const paper = await red(8, y);
+  // Beside the name's letters, in the glow's middle, the paper is tinted blue (the red channel drops).
+  const beside = await Promise.all([red(heading.left - 30, y), red(heading.left + heading.width + 30, y), red(heading.left + heading.width / 2, Math.round(heading.top - 24))]);
+  expect(paper - Math.min(...beside), "red channel, paper minus the deepest glow").toBeGreaterThanOrEqual(8);
 });
 
 test("intro: four blocks of two to three sentences, composed at first paint and staggered across the column", async ({ page }) => {

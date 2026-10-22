@@ -20,10 +20,10 @@ export const revalidate = 86400;
 // field, four paragraph blocks with the soundtrack band between them, and the
 // teaser at its foot), the cards section (#work), the numbers strip, Connect,
 // Footer. The loader (the name that shrinks into the intro's heading) sits at
-// body level, outside the content layer, so its z 60 covers the header. The controller owns the cards section (the
-// Coil between its two columns of titles, the scene, the modals). Nothing
-// pins, so the page scrolls natively; overflow-x is clipped (clip, not hidden,
-// so no scroll container is created).
+// body level, outside the content layer, so its z 60 covers the header. The
+// controller owns the cards section (the Coil between its two columns of
+// titles, the scene, the modals). Nothing pins, so the page scrolls natively;
+// overflow-x is clipped (clip, not hidden, so no scroll container is created).
 //
 // The soundtrack band sits in the intro's middle: its wave is the first stretch
 // of the scroll-drawn line, which the cards section's shader hides and which

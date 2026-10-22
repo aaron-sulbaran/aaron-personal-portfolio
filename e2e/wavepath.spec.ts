@@ -37,7 +37,8 @@ async function open(page: Page) {
 const decline = (page: Page) => page.locator("#listen").getByRole("button", { name: L.decline, exact: true }).click();
 const accept = (page: Page) => page.locator("#listen").getByRole("button", { name: L.accept, exact: true }).click();
 // A declined, unfrozen line breathes while in view; the rest tests freeze it first.
-const freeze = (page: Page) => page.locator("#listen").getByRole("button", { name: L.freeze, exact: true }).click();
+// Before an answer the toggle is the two words in the prompt's line; after a decline it is the one beside Play it.
+const freeze = (page: Page) => page.locator("#listen").getByRole("button", { name: new RegExp(`^(${L.freeze}|${L.subline.freeze})$`) }).click();
 
 // The line is one line: it leaves the band's run to the right and dives off
 // screen to clear the band before it turns back, so it never crosses the band.

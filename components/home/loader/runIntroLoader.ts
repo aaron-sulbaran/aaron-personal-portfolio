@@ -131,8 +131,9 @@ export function runIntroLoader(parts: LoaderParts): () => void {
     timeline = gsap.timeline({ onComplete: finish });
     timeline.set(lockup, { transformOrigin: "0 0" });
     timeline.to(lockup, { x: flip.x, y: flip.y, scale: flip.scale, duration: seconds, ease: knobs.shrinkEase }, 0);
-    timeline.to(lockup, { color: getComputedStyle(ink).color, duration: seconds * 0.8, ease: "power1.inOut" }, 0);
-    timeline.to(ground, { opacity: 0, duration: seconds * 0.7, ease: "power1.inOut" }, seconds * 0.12);
+    // The ground clears first, so the name is never mid-ink over a mid-grey ground; the ink follows it to the heading's.
+    timeline.to(ground, { opacity: 0, duration: seconds * 0.5, ease: "power1.inOut" }, seconds * 0.08);
+    timeline.to(lockup, { color: getComputedStyle(ink).color, duration: seconds * 0.65, ease: "power1.inOut" }, seconds * 0.35);
   }
 
   function tick(now: number) {

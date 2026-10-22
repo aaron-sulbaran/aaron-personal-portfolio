@@ -977,6 +977,15 @@ html[data-deal="pending"] [data-deal-title] {
   [data-phone-layout="teaserPeeks"][data-name-position="center"] [data-intro-stage] {
     min-height: clamp(11rem, 27svh, 15rem);
   }
+  [data-phone-layout="teaserPeeks"] [data-story] {
+    row-gap: 1.75rem;
+  }
+  [data-phone-layout="teaserPeeks"] [data-wave-band-line] {
+    height: 120px;
+  }
+  [data-phone-layout="teaserPeeks"] [data-teaser] {
+    padding-top: 2.5rem;
+  }
 }
 
 /* The loader: always dark, over everything (z 60), armed by the head script
