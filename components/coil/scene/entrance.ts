@@ -115,29 +115,42 @@ export function createEntrance(ctx: SceneCtx, name: Name) {
     st.coast = null; // slice 7
   }
 
+  // The deal's speed curve for these constants, built once per deal: the wheel's own pace
+  // at its start, integrated to a table; `base` is the strand's offset at `firstMs`.
+  function curveFor(c: Tuned, base: number, firstMs: number) {
+    if (!curve) {
+      const table = integrateDealSpeed(dealSpeedOf(c.deal.wheel.idleCardsPerSecond, c), sceneMs(c));
+      curve = { table, firstMs, base, atPull: dealOffsetAt(table, c.deal.timeline.pullStartMs) };
+    }
+    return curve;
+  }
+
   // The strand's turn: the wheel's own pace before the click, the speed curve
   // from it. Returns how far the strand has turned since the pull began.
   function turn(f: SceneFrame, ms: number, c: Tuned) {
     const wheelPace = c.deal.wheel.idleCardsPerSecond;
+    const speed = dealSpeedOf(wheelPace, c);
+    if (forcedEntranceMs !== null) {
+      // A pinned frame (?coildebug=entrance=): the same however it was reached,
+      // counted from the strand's start, and held there even past the end.
+      const start = flags.stillOffset ?? 0;
+      if (ms < 0) {
+        hold(start, wheelPace);
+        return 0;
+      }
+      const forced = curveFor(c, start, 0);
+      hold(forced.base + dealOffsetAt(forced.table, ms), dealOmega(ms, speed));
+      return ms > c.deal.timeline.pullStartMs ? dealOffsetAt(forced.table, ms) - forced.atPull : 0;
+    }
     if (ms < 0) {
       turned = (turned ?? conveyor.offset) + wheelPace * f.dt;
       hold(turned, wheelPace);
       return 0;
     }
-    if (!curve) {
-      const table = integrateDealSpeed(dealSpeedOf(wheelPace, c), sceneMs(c));
-      // A pinned frame counts from the click, so it is the same however it was reached.
-      const forced = forcedEntranceMs !== null;
-      curve = {
-        table,
-        firstMs: forced ? 0 : ms,
-        base: forced ? conveyor.offset : (turned ?? conveyor.offset),
-        atPull: dealOffsetAt(table, c.deal.timeline.pullStartMs),
-      };
-    }
-    const here = dealOffsetAt(curve.table, ms);
-    hold(curve.base + here - dealOffsetAt(curve.table, curve.firstMs), dealOmega(ms, dealSpeedOf(wheelPace, c)));
-    return ms > c.deal.timeline.pullStartMs ? here - curve.atPull : 0;
+    const k = curveFor(c, turned ?? conveyor.offset, ms);
+    const here = dealOffsetAt(k.table, ms);
+    hold(k.base + here - dealOffsetAt(k.table, k.firstMs), dealOmega(ms, speed));
+    return ms > c.deal.timeline.pullStartMs ? here - k.atPull : 0;
   }
 
   // ---- slice 4 wiring block: the entrance ----
@@ -150,7 +163,7 @@ export function createEntrance(ctx: SceneCtx, name: Name) {
     lastElapsedMs = ms;
     f.realElapsedMs = realElapsedMs;
     const rested = ms >= sceneMs(c);
-    const drift = rested ? 0 : turn(f, ms, c);
+    const drift = rested && forcedEntranceMs === null ? 0 : turn(f, ms, c);
     const clock = entranceClock(ms, c, rested ? 1 : wheelIn(f, ms, c), drift);
     f.clock = clock;
     st.open = fieldMask(clock, view, c);
