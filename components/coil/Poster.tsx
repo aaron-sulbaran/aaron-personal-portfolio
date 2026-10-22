@@ -14,7 +14,7 @@ import type { StillView } from "@/lib/home/stillReadiness";
 // until then.
 export function Poster({ still }: { still: StillView }) {
   return (
-    <div aria-hidden="true" className="absolute inset-0">
+    <div aria-hidden="true" data-coil-poster="" className="absolute inset-0 group-data-[scene=on]/hero:hidden">
       <Image src="/coil/field-light.avif" alt="" fill unoptimized sizes="100vw" className="object-cover dark:hidden" />
       <Image src="/coil/field-dark.avif" alt="" fill unoptimized sizes="100vw" className="hidden object-cover dark:block" />
       <div

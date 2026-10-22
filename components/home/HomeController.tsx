@@ -27,6 +27,7 @@ import {
 import { COIL } from "@/lib/coil/constants";
 import { getDeal, useDeal } from "@/lib/home/deal";
 import { useDealDirector } from "./useDealDirector";
+import { useStageLead } from "./useStageLead";
 import { sameDrivers, selectDrivers, type Drivers } from "@/lib/coil/drivers";
 import { CardModal } from "@/components/card/CardModal";
 import { CoilStage } from "@/components/coil/CoilStage";
@@ -183,6 +184,7 @@ export function HomeController({ children }: Props) {
   const sectionRef = useRef<HTMLElement>(null);
   const deal = useDeal();
   const director = useDealDirector({ sectionRef, scene: heroScene, reducedMotion, setEntrance });
+  useStageLead(sectionRef, heroScene, reducedMotion);
 
   // Before paint, once per load: own the readiness store, take manual scroll
   // restoration, decide whether this load lands deep, land it, and pick the
@@ -410,17 +412,25 @@ export function HomeController({ children }: Props) {
         className="group/hero relative flex min-h-[100svh] w-full flex-col bg-background [touch-action:pan-y_pinch-zoom] md:block md:min-h-[92svh]"
       >
         <div data-coil-frame="" className="relative min-h-[34svh] flex-1 md:absolute md:inset-0 md:min-h-0">
-          <CoilStage
-            reducedMotion={reducedMotion}
-            frozen={modalOpen || flight !== null}
-            interactive={phase === "ready" && deal.phase === "dealt"}
-            input={drivers.input}
-            scene={heroScene}
-            onSceneChange={setHeroScene}
-            api={sceneApiRef}
-            onCardClick={handleCardClick}
-            onRowOpen={handleRowOpen}
-          />
+          {/* The rail the stage sticks in: the frame, reaching up over page 1's
+              foot by --run-lead (useStageLead). The stage is as tall as the
+              frame and sticks at the top of the screen, so the wheel, the band
+              and the Coil are one object on one canvas through the deal. */}
+          <div data-coil-rail="" className="pointer-events-none absolute inset-x-0 bottom-0" style={{ height: "calc(100% + var(--run-lead, 0px))" }}>
+            <div data-coil-sticky="" className="sticky top-0" style={{ height: "calc(100% - var(--run-lead, 0px))" }}>
+              <CoilStage
+                reducedMotion={reducedMotion}
+                frozen={modalOpen || flight !== null}
+                interactive={phase === "ready" && deal.phase === "dealt"}
+                input={drivers.input}
+                scene={heroScene}
+                onSceneChange={setHeroScene}
+                api={sceneApiRef}
+                onCardClick={handleCardClick}
+                onRowOpen={handleRowOpen}
+              />
+            </div>
+          </div>
         </div>
         {children}
       </section>

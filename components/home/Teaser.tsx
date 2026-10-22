@@ -10,24 +10,26 @@ import { EXPRESS_PATH } from "@/lib/quick/transition";
 import { goTo } from "@/lib/quick/transitionStore";
 
 // The teaser at page 1's foot, one self-contained block: the question, "Deal me
-// in" (startClickDeal: the deal, then the scroll to the cards), the quiet link
-// to the 30-second version, and the wheel's slot (data-coil-wheel), which
-// reserves the space the cards' wheel will turn in and holds a quiet outline
-// until then. Once the cards are dealt the button reads "Back to my cards" (it
-// scrolls there, no replay). It carries its own width and padding and assumes
-// nothing of its parent, so it can move into the cards section's stage as it
-// is. Nothing here takes the scroll from the reader.
+// in" (startClickDeal: the deal, whose own clock scrolls the page to the
+// cards), one small muted line under it to the 30-second version (no button,
+// no pill: it blends into the page), and the wheel's slot (data-coil-wheel),
+// which reserves the room the Coil's canvas turns the wheel in (the scene reads
+// the slot's place and size) and holds a quiet outline where there is no scene
+// to draw it. The text leaves when the deal starts (data-teaser-text) and comes
+// back after it; once the cards are dealt the button reads "Back to my cards"
+// (it scrolls there, no replay). It carries its own width and padding and
+// assumes nothing of its parent. Nothing here takes the scroll from the reader.
 export function Teaser() {
   const { teaser } = siteContent.intro;
   const reducedMotion = useReducedMotionLive();
   const spent = isSpent(useDeal());
   return (
     <div data-teaser="" className="mx-auto w-full max-w-[1240px] px-[6vw] pb-6 pt-16 md:pb-12 md:pt-20">
-      <div className="flex flex-col items-start gap-5 md:gap-6">
+      <div data-teaser-text="" className="flex flex-col items-start gap-5 md:gap-6">
         <p data-wave-words="" className="font-display text-[clamp(1.75rem,3.4vw,2.75rem)] leading-[1.08] text-foreground">
           {teaser.line}
         </p>
-        <div className="flex flex-wrap items-baseline gap-x-8 gap-y-3">
+        <div className="flex flex-col items-start gap-3">
           <Fill {...FILL_PICK.cta} onClick={() => void startClickDeal(reducedMotion)} className={CTA_LABEL_CLASS} overClassName={CTA_LABEL_OVER_CLASS} data-cursor-hover>
             {spent ? teaser.back : teaser.deal}
           </Fill>
@@ -39,7 +41,7 @@ export function Teaser() {
               goTo(EXPRESS_PATH);
             }}
             data-cursor-hover
-            className="rounded-sm font-label text-label-sm text-muted underline decoration-1 underline-offset-[4px] transition-colors duration-200 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            className="rounded-sm font-label text-label-sm text-muted decoration-1 underline-offset-[4px] transition-colors duration-200 hover:text-foreground hover:underline focus-visible:text-foreground focus-visible:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
             {teaser.quick}
           </a>
