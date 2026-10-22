@@ -93,6 +93,10 @@ export function createLayout(ctx: SceneCtx, gl: Gl, parts: LayoutParts, loop: Lo
   const { st, host, tileCount, debug } = ctx;
   const { renderer, camera, fieldTarget, uView } = gl;
   const { view } = st;
+  // The slot's last place: the page closes the slot up once the deal has gone
+  // past it (components/home/useSlotRelease.ts), and the wheel still in the
+  // scene keeps the place it had.
+  let lastWheelSlot: WheelSlot | null = null;
 
   return function layout(width: number, height: number) {
     view.width = Math.max(1, width);
@@ -119,7 +123,7 @@ export function createLayout(ctx: SceneCtx, gl: Gl, parts: LayoutParts, loop: Lo
     const pane = host.closest("[data-coil-section]")?.querySelector("[data-coil-pane]")?.getBoundingClientRect();
     st.geo = solveGeometry(paneViewport({ left: rect.left, right: rect.right, width: view.width, height: view.height }, pane ?? null), tileCount, COIL, {
       canvas: { width: view.width, height: view.height },
-      wheelSlot: measureWheelSlot(host),
+      wheelSlot: (lastWheelSlot = measureWheelSlot(host) ?? lastWheelSlot),
     });
     // Slice 7: a new composition or a rotation lays every card out afresh;
     // fade the new frame in rather than jump (only while the loop runs: a

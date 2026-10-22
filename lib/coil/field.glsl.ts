@@ -518,7 +518,8 @@ export const COMPOSITE_FRAG = /* glsl */ `
     // the stage's top edge fading in, so the open field meets the page with no line.
     float edge = clamp((uOpen.z - length(px - uOpen.xy)) / max(uOpen.w, 1.0), 0.0, 1.0);
     float open = uOpen.z >= 1.0e5 ? 1.0 : edge * edge * edge * (edge * (edge * 6.0 - 15.0) + 10.0);
-    open *= smoothstep(0.0, max(uTopFade, 1.0), px.y);
+    // The name's letters (when one is drawn) stay whole through it.
+    open *= mix(smoothstep(0.0, max(uTopFade, 1.0), px.y), 1.0, clamp(m * 4.0, 0.0, 1.0));
     gl_FragColor = vec4(col * open, open);
   }
 `;

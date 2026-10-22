@@ -216,6 +216,9 @@ test("name: the lit surface renders inside the letters, and the greeting sits in
 for (const colorScheme of ["light", "dark"] as const) {
   test(`name (${colorScheme}): no letter falls under two thirds of the strongest (spread 1.5 or less)`, async ({ page }) => {
     await page.emulateMedia({ colorScheme });
+    // Each load is a fresh visit: a saved scroll position would make the second one a deep load,
+    // which opens the cards section at once with no entrance, and the name only shows during one.
+    await page.addInitScript(() => sessionStorage.clear());
     for (const at of [4, 45]) {
       await openHome(page, { debug: `nocards,at=${at}` });
       const read = await contrast(page);
