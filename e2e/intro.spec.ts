@@ -159,6 +159,15 @@ test("intro: the teaser asks, deals, links to the quick version, and keeps the w
   await expect(teaser.getByText(intro.teaser.line)).toBeVisible();
   await expect(teaser.getByRole("button", { name: intro.teaser.deal })).toBeVisible();
   await expect(teaser.getByRole("link", { name: intro.teaser.quick })).toHaveAttribute("href", "/quick");
+  // The 30-second link is one small muted line under the button: no underline at rest, no button or pill look.
+  const dealBox = await boxOf(page, "[data-teaser] button");
+  const quickBox = await boxOf(page, '[data-teaser] a[href="/quick"]');
+  expect(quickBox.top).toBeGreaterThanOrEqual(dealBox.top + dealBox.height - 1);
+  const quick = await teaser.getByRole("link", { name: intro.teaser.quick }).evaluate((el) => {
+    const style = getComputedStyle(el);
+    return { decoration: style.textDecorationLine, background: style.backgroundColor, border: style.borderTopWidth, radius: style.borderTopLeftRadius };
+  });
+  expect(quick).toMatchObject({ decoration: "none", background: "rgba(0, 0, 0, 0)", border: "0px" });
   const slot = page.locator("[data-coil-wheel]");
   await expect(slot).toBeVisible();
   const box = await slot.boundingBox();

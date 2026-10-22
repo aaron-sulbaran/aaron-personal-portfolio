@@ -3,11 +3,13 @@ import { test, expect } from "./support/fixtures";
 import { openHome, waitForScene } from "./support/coil";
 import { siteContent } from "@/lib/content";
 
-// The deal (hero rework, slice 2): the cards section is closed until the
+// The deal (hero rework, slices 2 and 4a): the cards section is closed until the
 // reader deals, by the button or by scrolling to it, once per page load; then
-// the cards fly into the Coil, the section opens around them and the columns
-// arrive last. <html data-deal> says where it is (closed, dealing, dealt) and,
-// behind ?coildebug, data-deal-entrances counts how many times it played.
+// the wheel in the teaser spins up, the page scrolls itself to the cards (a
+// click only), the wheel flattens into the band and unfurls into the Coil, the
+// field opens around it and the columns arrive last, all on one clock.
+// <html data-deal> says where it is (closed, dealing, dealt) and, behind
+// ?coildebug, data-deal-entrances counts how many times it played.
 
 const { teaser } = siteContent.intro;
 const titles = siteContent.columns.order.flatMap((column) => column.groups.flatMap((group) => group.titles));
@@ -15,6 +17,8 @@ const html = (page: Page) => page.locator("html");
 const deal = (page: Page) => page.evaluate(() => document.documentElement.dataset.deal);
 const entrances = (page: Page) => page.evaluate(() => Number(document.documentElement.dataset.dealEntrances));
 const opacityOf = (page: Page, selector: string) => page.evaluate((s) => Number(getComputedStyle(document.querySelector(s)!).opacity), selector);
+const pointerEventsOf = (page: Page, selector: string) => page.evaluate((s) => getComputedStyle(document.querySelector(s)!).pointerEvents, selector);
+const rectOf = (page: Page, selector: string) => page.evaluate((s) => { const r = document.querySelector(s)!.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, height: r.height }; }, selector);
 
 // Every value the deal attribute takes, in order, from before the page's own scripts run.
 async function logDeal(page: Page) {
@@ -41,7 +45,9 @@ test("deal: the cards section starts closed, and nothing in it answers a pointer
   await openHome(page, { at: "top" });
   await expect(html(page)).toHaveAttribute("data-deal", "closed");
   expect(await entrances(page)).toBe(0);
-  expect(await page.evaluate(() => getComputedStyle(document.querySelector("#work [data-coil-stage]")!).clipPath)).toMatch(/circle\(0px/);
+  // The stage draws only the wheel: nothing in it takes a pointer, and the field's poster waits.
+  expect(await pointerEventsOf(page, "#work [data-coil-stage]")).toBe("none");
+  expect(await opacityOf(page, "#work [data-coil-poster]")).toBe(0);
   expect(await opacityOf(page, '#work [data-deal-title]')).toBe(0);
   expect(await opacityOf(page, "#work [data-deal-label]")).toBe(0);
   await expect(page.getByRole("button", { name: teaser.deal })).toBeVisible();
@@ -49,22 +55,90 @@ test("deal: the cards section starts closed, and nothing in it answers a pointer
   await expect(page.locator("[data-coil-wheel]")).toBeVisible();
 });
 
-test("deal: the button scrolls to the cards, the Coil's entrance plays once there, and the columns are in after", async ({ page }) => {
+test("deal: the button plays one clock, the page scrolls itself to the cards inside it, and the columns are in after", async ({ page }) => {
   await logDeal(page);
   await openHome(page, { at: "top" });
+  const slotTop = await page.evaluate(() => document.querySelector("[data-coil-wheel]")!.getBoundingClientRect().top + window.scrollY);
+  await page.evaluate((y) => window.scrollTo({ top: y, behavior: "instant" }), slotTop - 300);
   await page.getByRole("button", { name: teaser.deal }).click();
+  // The deal starts at the click, with the page still on page 1: the wheel spins first, the scroll joins at 250 ms.
+  await expect(html(page)).toHaveAttribute("data-deal", "dealing", { timeout: 5000 });
+  expect((await rectOf(page, "#work")).top).toBeGreaterThan(100);
   await page.waitForFunction(() => Math.abs(document.getElementById("work")!.getBoundingClientRect().top) < 2, null, { timeout: 8000 });
   await expect(html(page)).toHaveAttribute("data-deal", "dealt", { timeout: 20_000 });
   expect(await entrances(page)).toBe(1);
-  // The entrance played on the arrival (it never started before the scroll got there).
   expect(await dealLog(page)).toEqual(["pending", "closed", "dealing", "dealt"]);
   expect(await page.evaluate(() => (window as unknown as { __coil: { entrance: () => { ended: boolean } } }).__coil.entrance().ended)).toBe(true);
   for (const title of titles) await expect(page.locator(`#work button[data-card="${title.key}"]`)).toBeVisible();
   expect(await opacityOf(page, "#work [data-deal-title]")).toBe(1);
   // A label rests at its own 80 percent (opacity-80 in CardColumns), nothing the deal left behind.
   expect(await opacityOf(page, "#work [data-deal-label]")).toBeCloseTo(0.8, 5);
-  expect(await page.evaluate(() => getComputedStyle(document.querySelector("#work [data-coil-stage]")!).clipPath)).toBe("none");
+  // Dealt: the stage takes pointers, the teaser's text is back for the "Back to my cards" state, and the root's smooth scroll is put back.
+  expect(await pointerEventsOf(page, "#work [data-coil-stage]")).toBe("auto");
+  expect(await opacityOf(page, "[data-teaser-text]")).toBe(1);
+  expect(await page.evaluate(() => document.documentElement.style.scrollBehavior)).toBe("");
   await expect(page.locator("#work h2")).toHaveText(["Work", "Builds"]);
+});
+
+test("deal: the Coil's canvas is a sticky stage that starts at page 1's foot and lets go where the cards section begins", async ({ page }) => {
+  await openHome(page, { at: "top" });
+  const work = await rectOf(page, "#work");
+  const rail = await page.evaluate(() => {
+    const r = document.querySelector("[data-coil-rail]")!.getBoundingClientRect();
+    const t = document.querySelector("[data-teaser]")!.getBoundingClientRect();
+    return { top: r.top, height: r.height, teaserTop: t.top, stage: document.querySelector("[data-coil-sticky]")!.getBoundingClientRect().height };
+  });
+  // The rail starts where the teaser does and ends with the cards section; the stage is as tall as the section.
+  expect(Math.abs(rail.top - rail.teaserTop)).toBeLessThan(2);
+  expect(Math.abs(rail.top + rail.height - work.bottom)).toBeLessThan(2);
+  expect(Math.abs(rail.stage - work.height)).toBeLessThan(2);
+  const stageTop = () => page.evaluate(() => document.querySelector("[data-coil-sticky]")!.getBoundingClientRect().top);
+  const railDoc = await page.evaluate(() => document.querySelector("[data-coil-rail]")!.getBoundingClientRect().top + window.scrollY);
+  const sectionDoc = await page.evaluate(() => document.getElementById("work")!.getBoundingClientRect().top + window.scrollY);
+  // Before it sticks it travels with the page; inside the range it stays at the top of the screen; at the cards section it is the section.
+  await page.evaluate((y) => window.scrollTo({ top: y, behavior: "instant" }), railDoc - 200);
+  await page.waitForTimeout(200);
+  expect(Math.abs((await stageTop()) - 200)).toBeLessThan(2);
+  await page.evaluate((y) => window.scrollTo({ top: y, behavior: "instant" }), railDoc + (sectionDoc - railDoc) / 2);
+  await page.waitForTimeout(200);
+  expect(Math.abs(await stageTop())).toBeLessThan(2);
+  await page.evaluate((y) => window.scrollTo({ top: y, behavior: "instant" }), sectionDoc + 120);
+  await page.waitForTimeout(200);
+  expect(Math.abs((await stageTop()) + 120)).toBeLessThan(2);
+});
+
+test("deal: the reader's wheel during the scroll takes the page back and only the scroll, never the deal", async ({ page }) => {
+  await openHome(page, { at: "top" });
+  const slotTop = await page.evaluate(() => document.querySelector("[data-coil-wheel]")!.getBoundingClientRect().top + window.scrollY);
+  await page.evaluate((y) => window.scrollTo({ top: y, behavior: "instant" }), slotTop - 300);
+  await page.mouse.move(720, 450);
+  await page.getByRole("button", { name: teaser.deal }).click();
+  await expect.poll(() => page.evaluate(() => window.scrollY), { timeout: 5000 }).toBeGreaterThan(slotTop - 300 + 60);
+  expect(await page.evaluate(() => document.documentElement.style.scrollBehavior)).toBe("auto");
+  await page.mouse.wheel(0, -200);
+  await page.waitForTimeout(200);
+  const taken = await page.evaluate(() => window.scrollY);
+  await page.waitForTimeout(600);
+  // The tween let go: the page is where the reader left it, not still being carried to the cards.
+  expect(Math.abs((await page.evaluate(() => window.scrollY)) - taken)).toBeLessThan(2);
+  expect(await page.evaluate(() => document.documentElement.style.scrollBehavior)).toBe("");
+  // The deal carried on to its end on its own clock.
+  await expect(html(page)).toHaveAttribute("data-deal", "dealt", { timeout: 20_000 });
+  expect(await entrances(page)).toBe(1);
+});
+
+test("deal: a stage that leaves the screen mid-deal finishes the deal at once, never leaving the scene half dealt", async ({ page }) => {
+  await openHome(page, { at: "top" });
+  const slotTop = await page.evaluate(() => document.querySelector("[data-coil-wheel]")!.getBoundingClientRect().top + window.scrollY);
+  await page.evaluate((y) => window.scrollTo({ top: y, behavior: "instant" }), slotTop - 300);
+  await page.getByRole("button", { name: teaser.deal }).click();
+  await expect(html(page)).toHaveAttribute("data-deal", "dealing", { timeout: 5000 });
+  // The reader jumps back to the top of the page: the stage is gone from the screen long before the clock's 3.4 s.
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
+  await expect(html(page)).toHaveAttribute("data-deal", "dealt", { timeout: 2000 });
+  expect(await entrances(page)).toBe(1);
+  expect(await page.evaluate(() => document.documentElement.style.scrollBehavior)).toBe("");
+  expect(await opacityOf(page, "#work [data-deal-title]")).toBe(1);
 });
 
 test("deal: scrolling by hand deals, and the page never stops scrolling while it plays", async ({ page }) => {
@@ -152,7 +226,7 @@ test.describe("reduced motion", () => {
     expect(await entrances(page)).toBe(0);
     expect(await opacityOf(page, "#work [data-deal-title]")).toBe(1);
     expect(await opacityOf(page, "#work [data-deal-label]")).toBeGreaterThan(0.7);
-    expect(await page.evaluate(() => getComputedStyle(document.querySelector("#work [data-coil-stage]")!).clipPath)).toBe("none");
+    expect(await pointerEventsOf(page, "#work [data-coil-stage]")).toBe("auto");
     // Unspent: the teaser still invites.
     await page.getByRole("button", { name: teaser.deal }).click();
     await page.waitForFunction(() => Math.abs(document.getElementById("work")!.getBoundingClientRect().top) < 2, null, { timeout: 5000 });
@@ -184,7 +258,7 @@ test.describe("without JavaScript", () => {
     for (const title of titles) await expect(page.locator(`#work button[data-card="${title.key}"]`)).toBeVisible();
     expect(await opacityOf(page, "#work [data-deal-title]")).toBe(1);
     expect(await opacityOf(page, "#work [data-deal-label]")).toBeGreaterThan(0.7);
-    expect(await page.evaluate(() => getComputedStyle(document.querySelector("#work [data-coil-stage]")!).clipPath)).toBe("none");
+    expect(await pointerEventsOf(page, "#work [data-coil-stage]")).toBe("auto");
   });
 });
 
