@@ -3,8 +3,8 @@ import { FIELD } from "@/lib/coil/field.glsl";
 import { nearCard, pickCard, poseAt, projectPoint, rayThrough, restHelix, seamMarginPx } from "@/lib/coil/geometry";
 import { hoverJumpTarget, setRowHold, startGlide, type JumpBand } from "@/lib/coil/motion";
 import { heroVisibleFraction } from "@/lib/coil/capture";
-import { shapeJump } from "@/lib/coil/shape";
-import { setSceneHover } from "@/lib/cursor/hover";
+import { paneGutter } from "@/lib/coil/pane";
+import { setSceneHover, setSceneHoverKey } from "@/lib/cursor/hover";
 import type { Cards } from "./cards";
 import type { LoopLink, SceneCtx, SceneFrame } from "./state";
 import type { CoilCardRef } from "./types";
@@ -60,6 +60,7 @@ export function createHover(ctx: SceneCtx, cards: Cards, loop: LoopLink) {
     const nextHover = pickable ? pickAt(pointer.x, pointer.y) : -1;
     st.hoveredSlot = nextHover;
     setSceneHover(nextHover >= 0);
+    setSceneHoverKey(nextHover >= 0 ? tiles[slots[nextHover].tile].key : null);
   }
 
   // Where a flown card's lift is heading: the hover rule above, with the
@@ -96,16 +97,17 @@ export function createHover(ctx: SceneCtx, cards: Cards, loop: LoopLink) {
     if (unwind.latched || props.frozen || st.frozenByApi || !props.interactive) return;
     const rect = host.getBoundingClientRect();
     const inset = JUMP_INSET_CARDS * st.geo.cardPx;
+    const gutter = paneGutter(view.width, st.geo.viewport);
     const band: JumpBand = {
       top: Math.max(0, -rect.top, st.geo.clearTopPx) + inset,
       bottom: Math.min(view.height, window.innerHeight - rect.top, view.height * (1 - FIELD.seamFade)) - inset,
-      left: inset,
-      right: view.width - inset,
+      left: gutter + inset,
+      right: view.width - gutter - inset,
     };
-    const jump = shapeJump(st.geo, restHelix(st.geo, st.theme.card.recede), props.shape ?? "coil");
+    const frame = restHelix(st.geo, st.theme.card.recede);
     const camera = st.geoCamera;
-    const { to } = hoverJumpTarget(tile, conveyor.offset, tileCount, jump.cardsPerTurn, jump.maxU, (u) =>
-      projectPoint(camera, poseAt(jump.frame, u).position), band);
+    const { to } = hoverJumpTarget(tile, conveyor.offset, tileCount, st.geo.cardsPerTurn, st.geo.slotCount / 2 - COIL.lab.endFadeSlots, (u) =>
+      projectPoint(camera, poseAt(frame, u).position), band);
     startGlide(conveyor, to, performance.now());
     loop.wake();
   }

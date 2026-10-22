@@ -17,7 +17,7 @@ import { nameCompositeInk } from "@/lib/coil/debugFlags";
 import { clamp01, isNarrow } from "@/lib/coil/geometry";
 import { siteEase } from "@/lib/coil/motion";
 import { toBytes } from "@/lib/coil/theme";
-import type { NameTarget } from "@/lib/loader/handoff";
+import type { NameTarget } from "@/lib/coil/nameTarget";
 import type { NameSurface } from "./nameSurface";
 import type { Gl } from "./renderer";
 import type { LoopLink, SceneCtx } from "./state";

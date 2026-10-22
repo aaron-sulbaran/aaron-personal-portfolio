@@ -7,7 +7,7 @@ import type { SeriesChoice } from "@/lib/metrics/settings";
 const copy = siteContent.metrics.chart;
 export type View = "flat" | "skyline";
 
-// The chart's control row: two pill toggles, drawn as the hero's Coil and Band one.
+// The chart's control row: two pill toggles.
 export function ViewToggle({ view, onChange }: { view: View; onChange: (v: View) => void }) {
   return <PillToggle label={copy.viewGroup} options={["flat", "skyline"] as const} value={view} onChange={onChange} names={copy} />;
 }

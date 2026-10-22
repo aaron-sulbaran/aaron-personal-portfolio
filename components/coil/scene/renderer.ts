@@ -14,6 +14,7 @@ import {
 import { COIL } from "@/lib/coil/constants";
 import { FIELD } from "@/lib/coil/field.glsl";
 import { cameraFor, solveGeometry } from "@/lib/coil/geometry";
+import { paneViewport } from "@/lib/coil/pane";
 import { seenRingDpr } from "@/lib/coil/material";
 import { disableColorManagement } from "@/lib/coil/theme";
 import type { LoopLink, SceneCtx } from "./state";
@@ -105,7 +106,8 @@ export function createLayout(ctx: SceneCtx, gl: Gl, parts: LayoutParts, loop: Lo
     seenRingDpr.value = buffer.y / view.height; // fx-hero: the seen ring stays one CSS px wide
     st.lastFieldTime = Number.NaN;
     const before = st.geo;
-    st.geo = solveGeometry(view, tileCount);
+    const pane = host.closest("[data-coil-section]")?.querySelector("[data-coil-pane]")?.getBoundingClientRect();
+    st.geo = solveGeometry(paneViewport({ left: rect.left, right: rect.right, width: view.width, height: view.height }, pane ?? null), tileCount);
     // Slice 7: a new composition or a rotation lays every card out afresh;
     // fade the new frame in rather than jump (only while the loop runs: a
     // still frame behind a modal just re-lays out).
@@ -113,7 +115,7 @@ export function createLayout(ctx: SceneCtx, gl: Gl, parts: LayoutParts, loop: Lo
       before &&
       loop.shouldRun() &&
       (before.narrow !== st.geo.narrow ||
-        Math.abs(view.width - before.viewport.width) > REBUILD_WIDTH_CHANGE * before.viewport.width)
+        Math.abs(st.geo.viewport.width - before.viewport.width) > REBUILD_WIDTH_CHANGE * before.viewport.width)
     ) {
       st.rebuildAt = performance.now();
     }

@@ -257,7 +257,7 @@ function legacyEntranceHelix(rest: HelixFrame, geo: CoilGeometry, clock: Entranc
     cardWorld: legacyLerp(geo.bandCardWorld, rest.cardWorld, pull),
     leanRad: legacyLerp(COIL.camera.bandLeanDeg * (Math.PI / 180), rest.leanRad, pull) };
 }
-describe("the pull as a value (the Coil and Band toggle reuses it)", () => {
+describe("the pull as a value", () => {
   it("reproduces the entrance's frame exactly, swept", () => {
     for (const [, geo] of cases) for (const recede of [COIL.lab.recedeLight, COIL.lab.recedeDark]) {
       const rest = restHelix(geo, recede);

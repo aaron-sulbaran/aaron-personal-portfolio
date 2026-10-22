@@ -49,7 +49,6 @@ export function createLoop(
       clock: null,
       realElapsedMs: 0,
       rebuilt: 1,
-      shapePull: 1,
       listProgress: 0,
     });
   }

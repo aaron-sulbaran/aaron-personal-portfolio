@@ -1,14 +1,12 @@
 "use client";
 
 import { useEffect, useImperativeHandle, useRef, useState, type RefObject, type Ref } from "react";
-import { bookColumns, siteContent } from "@/lib/content";
+import { bookRow, cardColumns, siteContent } from "@/lib/content";
 import { useEscapeKey } from "@/lib/modal";
 import { useSeen } from "@/lib/home/seen";
 import type { CoilEntrance, CoilSceneApi } from "./CoilScene";
 import { HintLine } from "./HintLine";
 import { NameReadout } from "./NameReadout";
-import { ShapeToggle } from "./ShapeToggle";
-import type { CoilShape } from "@/lib/coil/shape";
 import { Fill, FillArrow, FillSeed } from "@/components/fx/Fill";
 import { FILL_PICK } from "@/lib/fx/fill";
 
@@ -40,9 +38,8 @@ export type HeroOverlayHandle = {
   layout: (layout: OverlayLayout | null) => void;
   nudge: (nudge: OverlayNudge | null) => void;
   // Per scene frame: list progress 0 (coiled) to 1 (unwound), whether the
-  // egg is on (it is on at progress 0 on the frame it starts), and whether the
-  // strand is still latched (until the wind-back's last card is home).
-  unwindFrame: (progress: number, on: boolean, latched: boolean) => void;
+  // egg is on (it is on at progress 0 on the frame it starts).
+  unwindFrame: (progress: number, on: boolean) => void;
   // Each row's card box in viewport px, by tile key.
   listTargets: () => ReadonlyMap<string, DOMRect>;
   // The lead's name slot in viewport px, and its font size.
@@ -57,11 +54,6 @@ type Props = {
   // The controller's entrance: null while the loader holds the pane. The
   // touch line waits for it.
   entrance?: CoilEntrance | null;
-  // The Coil and Band toggle: the shape in use and the visitor's pick.
-  shape: CoilShape;
-  onShapeChange: (shape: CoilShape) => void;
-  // The scene draws (data-scene="on"): without one the toggle is out of reach.
-  sceneOn: boolean;
 };
 
 // The nudge sits this far off the pointer, toward where the page scrolls.
@@ -75,23 +67,21 @@ const clamp = (x: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, x
 
 // The unwound list's rows: the strand's cards, grouped as the book groups them.
 type ListRow = { key: string; title: string; meta: string };
-const LIST_GROUPS: { heading: string; rows: readonly ListRow[] }[] = bookColumns.map((column) => ({ heading: column.heading, rows: column.rows }));
+const LIST_GROUPS: { heading: string; rows: readonly ListRow[] }[] = cardColumns.flatMap((column) =>
+  column.groups.map((group) => ({ heading: group.heading ?? column.heading, rows: group.titles.map((title) => bookRow(title.key)) })),
+);
 const LIST_ROW_COUNT = LIST_GROUPS.reduce((sum, group) => sum + group.rows.length, 0);
 
-export function HeroOverlay({ ref, api, onRowOpen, entrance = null, shape, onShapeChange, sceneOn }: Props) {
+export function HeroOverlay({ ref, api, onRowOpen, entrance = null }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
   const nudgeRef = useRef<HTMLDivElement>(null);
   const nudgeOnRef = useRef(false);
   const listRef = useRef<HTMLDivElement>(null);
   const nameSlotRef = useRef<HTMLSpanElement>(null);
   const coilControlRef = useRef<HTMLButtonElement>(null);
-  const seatRef = useRef<HTMLDivElement>(null);
   const boxesRef = useRef(new Map<string, HTMLSpanElement>());
   const frameRef = useRef({ progress: -1, on: false });
   const [listOn, setListOn] = useState(false);
-  // The seat stays the list's from the unwind's start until the latch lets go.
-  const [seatHeld, setSeatHeld] = useState(false);
-  const seatHeldRef = useRef(false);
   const seen = useSeen();
 
   useImperativeHandle(
@@ -116,14 +106,9 @@ export function HeroOverlay({ ref, api, onRowOpen, entrance = null, shape, onSha
         const y = nudge.y + Math.sin(nudge.angle) * NUDGE_OFFSET_PX;
         el.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) rotate(${nudge.angle.toFixed(3)}rad)`;
       },
-      unwindFrame(progress, on, latched) {
+      unwindFrame(progress, on) {
         const last = frameRef.current;
         if (on !== last.on) setListOn(on);
-        const held = on || latched;
-        if (held !== seatHeldRef.current) {
-          seatHeldRef.current = held;
-          setSeatHeld(held);
-        }
         if (Math.abs(progress - last.progress) < 1e-4 && on === last.on) return;
         frameRef.current = { progress, on };
         // The list's text and the Coil control come in once the cards have
@@ -140,12 +125,6 @@ export function HeroOverlay({ ref, api, onRowOpen, entrance = null, shape, onSha
         if (coil) {
           coil.style.opacity = shown.toFixed(3);
           coil.style.visibility = shown > 0.01 ? "visible" : "hidden";
-        }
-        // The toggle and the Coil control share one seat: one cross-fade on the unwind's clock.
-        const seat = seatRef.current;
-        if (seat) {
-          seat.style.opacity = (1 - shown).toFixed(3);
-          seat.style.visibility = shown > 0.99 ? "hidden" : "";
         }
       },
       listTargets() {
@@ -203,7 +182,7 @@ export function HeroOverlay({ ref, api, onRowOpen, entrance = null, shape, onSha
         ref={listRef}
         inert={!listOn}
         aria-hidden={!listOn}
-        aria-label={siteContent.book.ariaLabel}
+        aria-label={siteContent.columns.ariaLabel}
         role="region"
         className="group/list pointer-events-none absolute inset-0 grid grid-cols-[minmax(0,34fr)_minmax(0,66fr)] content-start items-start gap-x-[4vw] px-[6vw] pt-[var(--list-top,14vh)] data-[narrow=true]:grid-cols-1"
       >
@@ -260,7 +239,6 @@ export function HeroOverlay({ ref, api, onRowOpen, entrance = null, shape, onSha
         </div>
       </div>
 
-      <ShapeToggle ref={seatRef} shape={shape} onShapeChange={onShapeChange} entrance={entrance} sceneOn={sceneOn} held={seatHeld} />
       <Fill
         ref={coilControlRef}
         {...FILL_PICK.hero}

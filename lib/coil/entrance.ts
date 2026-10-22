@@ -75,8 +75,7 @@ export function pullPhases(pull: number, c: CoilConstants = COIL) {
 // Frame level: the band's winding, radius, rise, card size and lean pulled
 // toward the rested helix (`rest` may already carry the stretch envelope) by
 // the pull itself: 0 is the closed band; 1 returns the rest frame as is, so a
-// rested coil is exactly the rest frame. The Coil and Band toggle
-// (lib/coil/shape.ts) drives the same pull.
+// rested coil is exactly the rest frame.
 export function pullHelix(rest: HelixFrame, geo: CoilGeometry, pull: number, c: CoilConstants = COIL): HelixFrame {
   if (pull >= 1) return rest;
   const n = geo.cardCount;

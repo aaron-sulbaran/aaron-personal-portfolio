@@ -24,6 +24,29 @@ export function subscribeSceneHover(listener: () => void): () => void {
   };
 }
 
+// Which card is under the pointer, by key (null when none), for the titles
+// beside the Coil: the hovered card lights its title. Published by the scene
+// with the signal above, read through useHoveredCard.
+let hoveredKey: string | null = null;
+const keyListeners = new Set<() => void>();
+
+export function getSceneHoverKey(): string | null {
+  return hoveredKey;
+}
+
+export function setSceneHoverKey(next: string | null) {
+  if (hoveredKey === next) return;
+  hoveredKey = next;
+  keyListeners.forEach((listener) => listener());
+}
+
+export function subscribeSceneHoverKey(listener: () => void): () => void {
+  keyListeners.add(listener);
+  return () => {
+    keyListeners.delete(listener);
+  };
+}
+
 // ---- fx-hero: the first-visit hint ----
 // Until a visitor opens their first card, hovering a card swells the custom
 // cursor into an "Open me" pill (CustomCursor); after that it never appears

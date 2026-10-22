@@ -87,7 +87,6 @@ export type SceneFrame = {
   clock: EntranceClock | null;
   realElapsedMs: number;
   rebuilt: number;
-  shapePull: number; // the Coil and Band toggle: 1 the coil, 0 the band (scene/shape.ts)
   listProgress: number;
 };
 

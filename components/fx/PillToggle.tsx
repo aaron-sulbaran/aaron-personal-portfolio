@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 
-// A two-half capsule drawn as the hero's Coil and Band toggle is
-// (components/coil/ShapeToggle.tsx): the selection is a fill over a second,
+// A two-half capsule: the selection is a fill over a second,
 // aria-hidden and inert copy of both labels, its trailing edge a beat behind,
 // and the other half leans toward a hover or a focus (globals.css, "The pill
 // toggle"). It sits on the page, so it has no backdrop blur. Native buttons
