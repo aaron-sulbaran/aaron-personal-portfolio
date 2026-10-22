@@ -10,6 +10,9 @@ describe("the deal's knobs", () => {
     expect(DEFAULT_KNOBS.dealStagger).toBe(COIL.entrance.shutterStagger);
     expect(DEFAULT_KNOBS.startOffset).toBe(COIL.entrance.startOffset);
     expect(DEFAULT_KNOBS.settleScale).toBe(COIL.deal.settle.startScale);
+    expect(DEFAULT_KNOBS.openMs).toBe(COIL.deal.open.ms);
+    expect(DEFAULT_KNOBS.openReach).toBe(COIL.deal.open.reach);
+    expect(DEFAULT_KNOBS.columnsDelayMs).toBe(COIL.deal.columns.delayMs);
     expect(DEFAULT_KNOBS.fanDeg).toBe(COIL.deal.deck.fanDeg);
   });
 

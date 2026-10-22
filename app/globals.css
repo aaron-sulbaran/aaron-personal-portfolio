@@ -826,3 +826,37 @@ html:not([data-input="pointer"]) .fx:focus-visible,
 }
 
 /* ---- end player ---- */
+/* ---- the deal (hero rework, slice 2) ---- */
+/* The cards section is closed until the cards are dealt: its stage (the field,
+   the Coil, the overlay) is clipped to nothing and its columns wait, while it
+   keeps its box, so nothing below moves. The head script (lib/home/dealInit.ts)
+   writes data-deal="pending" before the first paint, the home's controller
+   takes it over as "closed", then "dealing" (GSAP opens the stage and brings
+   the columns in with inline styles) and "dealt" (all of it clear). Without JS
+   nothing here applies; reduced motion never sets "pending". If hydration
+   never happens, the failsafe animation opens everything after eight seconds. */
+@keyframes deal-failsafe {
+  to { opacity: 1; clip-path: none; }
+}
+html[data-deal="pending"] [data-coil-stage],
+html[data-deal="closed"] [data-coil-stage] {
+  clip-path: circle(0px at 50% 0);
+}
+html[data-deal="pending"] [data-deal-label],
+html[data-deal="pending"] [data-deal-title],
+html[data-deal="closed"] [data-deal-label],
+html[data-deal="closed"] [data-deal-title] {
+  opacity: 0;
+}
+html[data-deal="closed"] [data-deal-title]:focus-within {
+  opacity: 1;
+}
+html:is([data-deal="pending"], [data-deal="closed"], [data-deal="dealing"]) [data-deal-title] {
+  pointer-events: none;
+}
+html[data-deal="pending"] [data-coil-stage],
+html[data-deal="pending"] [data-deal-label],
+html[data-deal="pending"] [data-deal-title] {
+  animation: deal-failsafe 0.01s 8s forwards;
+}
+/* ---- end the deal ---- */

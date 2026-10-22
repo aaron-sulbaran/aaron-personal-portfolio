@@ -14,23 +14,32 @@ export function dealScrollSeconds(distancePx: number, reducedMotion: boolean): n
 
 // The page's CSS smooths every scroll (scroll-behavior: smooth), which would
 // smooth each of the tween's own steps and stall it, so the root is set to
-// auto for the tween's life and put back however it ends.
-export function scrollToCards(reducedMotion: boolean) {
+// auto for the tween's life and put back however it ends. onDone runs once,
+// however it ends: it arrived, the reader's own wheel, touch or key took the
+// scroll, or a newer scroll replaced it (the deal's entrance waits for it).
+export function scrollToCards(reducedMotion: boolean, onDone?: () => void) {
   const section = document.getElementById("work");
-  if (!section) return;
+  if (!section) {
+    onDone?.();
+    return;
+  }
   const top = section.getBoundingClientRect().top + window.scrollY;
   const root = document.documentElement;
   const before = root.style.scrollBehavior;
-  const restore = () => {
+  let done = false;
+  const finish = () => {
     root.style.scrollBehavior = before;
+    if (done) return;
+    done = true;
+    onDone?.();
   };
   root.style.scrollBehavior = "auto";
   gsap.to(window, {
-    scrollTo: { y: top, autoKill: true, onAutoKill: restore },
+    scrollTo: { y: top, autoKill: true, onAutoKill: finish },
     duration: dealScrollSeconds(top - window.scrollY, reducedMotion),
     ease: "site",
     overwrite: true,
-    onComplete: restore,
-    onInterrupt: restore,
+    onComplete: finish,
+    onInterrupt: finish,
   });
 }

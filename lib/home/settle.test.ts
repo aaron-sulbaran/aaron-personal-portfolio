@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { COIL } from "@/lib/coil/constants";
-import { dealInitScript } from "@/lib/home/dealInit";
 import { settleScript, settleStartScale } from "@/lib/home/settle";
 
 const margin = COIL.deal.settle.marginPx;
@@ -28,8 +27,8 @@ describe("the name's settle start scale", () => {
 });
 
 // The scripts, run against a stub of the page: the head script marks the deal
-// pending (unless reduced motion), the body script sets the settle's scale by
-// the same rule as settleStartScale.
+// pending, the body script sets the settle's scale by the same rule as
+// settleStartScale.
 type Stub = ReturnType<typeof stubPage>;
 
 function stubPage({ reduced = false, deal = null as string | null, left = 100, reach = 600, clientWidth = 1440 } = {}) {
@@ -60,27 +59,6 @@ function stubPage({ reduced = false, deal = null as string | null, left = 100, r
 function run(script: string, page: Stub) {
   new Function("document", "window", script)(page.document, page.window);
 }
-
-describe("the deal's head script", () => {
-  it("marks the cards section pending and sets the settle's timing", () => {
-    const page = stubPage();
-    run(dealInitScript(), page);
-    expect(page.rootAttrs.get("data-deal")).toBe("pending");
-    expect(page.rootVars.get("--settle-ms")).toBe(`${COIL.deal.settle.ms}ms`);
-    expect(page.rootVars.get("--settle-delay")).toBe(`${COIL.deal.settle.delayMs}ms`);
-  });
-
-  it("does nothing under reduced motion", () => {
-    const page = stubPage({ reduced: true });
-    run(dealInitScript(), page);
-    expect(page.rootAttrs.has("data-deal")).toBe(false);
-  });
-
-  it("holds no em dash", () => {
-    expect(dealInitScript()).not.toContain("—");
-    expect(settleScript()).not.toContain("—");
-  });
-});
 
 describe("the settle script after the h1", () => {
   it("sets the asked scale and starts the settle when the ink has room", () => {

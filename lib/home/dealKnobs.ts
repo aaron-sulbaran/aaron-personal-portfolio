@@ -19,6 +19,7 @@ export type DealKnobs = {
   glowOffsetY: number;
   glowStrength: number;
   openReach: number; // how far the section's opening travels (1: to the farthest corner)
+  openMs: number; // how long the section takes to open
   columnsDelayMs: number;
   columnsStaggerMs: number;
   fanDeg: number;
@@ -37,7 +38,8 @@ export const KNOB_SPEC: Record<NumericKnob, KnobSpec> = {
   dealMs: { label: "Deal duration", group: "Deal", min: 600, max: 4000, step: 50, unit: "ms" },
   dealStagger: { label: "Deal stagger", group: "Deal", min: 0, max: 0.04, step: 0.001 },
   startOffset: { label: "Entrance start offset", group: "Deal", min: 0, max: 1.2, step: 0.05 },
-  openReach: { label: "Opening reach", group: "Deal", min: 0.3, max: 1.4, step: 0.05 },
+  openReach: { label: "Opening size", group: "Deal", min: 0.3, max: 1.4, step: 0.05 },
+  openMs: { label: "Opening duration", group: "Deal", min: 300, max: 4000, step: 50, unit: "ms" },
   columnsDelayMs: { label: "Columns delay", group: "Columns", min: 0, max: 3000, step: 50, unit: "ms" },
   columnsStaggerMs: { label: "Columns stagger", group: "Columns", min: 0, max: 120, step: 2, unit: "ms" },
   glowSize: { label: "Glow size", group: "Glow", min: 0.3, max: 2, step: 0.05 },
@@ -60,6 +62,7 @@ export const DEFAULT_KNOBS: DealKnobs = {
   glowOffsetY: D.glow.offsetY,
   glowStrength: D.glow.strength,
   openReach: D.open.reach,
+  openMs: D.open.ms,
   columnsDelayMs: D.columns.delayMs,
   columnsStaggerMs: D.columns.staggerMs,
   fanDeg: D.deck.fanDeg,

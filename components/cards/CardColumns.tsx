@@ -7,6 +7,8 @@ import { CardTitle } from "./CardTitle";
 // each takes a gutter at its side of the section and the middle is the pane
 // the Coil is laid out in ([data-coil-pane], read by the scene's layout). The
 // wrapper takes no pointer, so the canvas keeps every gesture in the middle.
+// The labels and titles carry data-deal-label and data-deal-title: the deal
+// holds them back (app/globals.css) and brings them in last (lib/home/dealOpen.ts).
 // A Server Component: only the titles are client leaves.
 export function CardColumns() {
   const [work, builds] = siteContent.columns.order;
@@ -22,11 +24,11 @@ export function CardColumns() {
 function Column({ column, className }: { column: ColumnView; className: string }) {
   return (
     <div className={`pointer-events-auto ${className}`}>
-      <h2 className={HEADING_CLASS}>{column.heading}</h2>
+      <h2 data-deal-label="" className={HEADING_CLASS}>{column.heading}</h2>
       {column.groups.map((group) => (
         <Group key={group.heading ?? column.key} heading={group.heading}>
           {group.titles.map((title) => (
-            <li key={title.key}>
+            <li key={title.key} data-deal-title="">
               <CardTitle title={title} />
             </li>
           ))}
@@ -39,7 +41,7 @@ function Column({ column, className }: { column: ColumnView; className: string }
 function Group({ heading, children }: { heading: string | null; children: ReactNode }) {
   return (
     <>
-      {heading && <h3 className={`${HEADING_CLASS} mt-4`}>{heading}</h3>}
+      {heading && <h3 data-deal-label="" className={`${HEADING_CLASS} mt-4`}>{heading}</h3>}
       <ol aria-label={heading ?? undefined}>{children}</ol>
     </>
   );

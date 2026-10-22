@@ -141,8 +141,8 @@ const values = {
     },
     // The section opening around the Coil: a circle anchored top center grows
     // from fromPx to reach (a share of the distance to the farthest corner)
-    // over `share` of the deal's duration. fadeMs: the still path's crossfade.
-    open: { reach: 1, share: 0.85, fromPx: 36, fadeMs: 600 },
+    // over ms. fadeMs: the still path's crossfade.
+    open: { reach: 1, ms: 1500, fromPx: 36, fadeMs: 600 },
     // The two columns arrive last: group labels, then titles.
     columns: { delayMs: 1150, staggerMs: 36, labelStaggerMs: 70, fadeMs: 520, riseY: 14 },
     // The glow behind the intro's heading: radii as shares of the heading's ink

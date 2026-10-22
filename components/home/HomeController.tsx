@@ -25,6 +25,8 @@ import {
   takeManualScrollRestoration,
 } from "@/lib/home/recovery";
 import { COIL } from "@/lib/coil/constants";
+import { getDeal, useDeal } from "@/lib/home/deal";
+import { useDealDirector } from "./useDealDirector";
 import { sameDrivers, selectDrivers, type Drivers } from "@/lib/coil/drivers";
 import { CardModal } from "@/components/card/CardModal";
 import { CoilStage } from "@/components/coil/CoilStage";
@@ -40,6 +42,12 @@ import { Portal } from "@/components/Portal";
 // which modal is open, seen marking, focus restoration, deep-reload recovery,
 // the flight's state, driver selection, and live reduced motion. The scene and
 // the columns talk to it through useHomeController().
+//
+// The deal (lib/home/deal.ts, useDealDirector) is what this section waits for:
+// closed until the cards are dealt, the Coil's entrance playing when the reader
+// arrives (its start is handed to the scene as a new `entrance`), and nothing
+// opens (a card, the wheel, a hover) until it is over. The deal never locks the
+// scroll: it only reads it.
 //
 // Nothing here renders per frame: the scene reads what it needs once per
 // change, and the per-frame state lives in the scene's own loop.
@@ -97,9 +105,6 @@ export type HomeControllerValue = {
 
 // Which signal a title sent: the pointer over it, or keyboard focus on it.
 export type RowSource = "pointer" | "focus";
-
-// No entrance: the coil is at rest from its first frame.
-const AT_REST: CoilEntrance = { startMs: Number.NEGATIVE_INFINITY, nameFromLoader: false };
 
 const HomeControllerContext = createContext<HomeControllerValue | null>(null);
 
@@ -173,7 +178,11 @@ export function HomeController({ children }: Props) {
   // once none can run (the hero still).
   const [heroScene, setHeroScene] = useState<HeroScene>("off");
   const entranceClaimsRef = useRef(0);
+  // Null until the deal starts (the cards are hidden); at rest once dealt.
   const [entrance, setEntrance] = useState<CoilEntrance | null>(null);
+  const sectionRef = useRef<HTMLElement>(null);
+  const deal = useDeal();
+  const director = useDealDirector({ sectionRef, scene: heroScene, reducedMotion, setEntrance });
 
   // Before paint, once per load: own the readiness store, take manual scroll
   // restoration, decide whether this load lands deep, land it, and pick the
@@ -200,7 +209,6 @@ export function HomeController({ children }: Props) {
     // consumers of fastStart must see it on the first painted frame.
     setFastStart(fast);
     setDeep(recovery.deep);
-    if (!entering) setEntrance(AT_REST);
     return () => {
       stopReland();
       releaseRestoration();
@@ -236,9 +244,13 @@ export function HomeController({ children }: Props) {
     };
   }, []);
 
+  // The Coil's entrance clock ran out: the deal is over once the columns are
+  // in too (the director says), and the page is ready as it always was.
+  const { completeScene, settle } = director;
   const completeEntrance = useCallback(() => {
+    completeScene();
     publishHomeReadiness("ready");
-  }, []);
+  }, [completeScene]);
 
   // ---- fx-input: the title hover signal ----
   // The pointer's title and the focused title are tracked apart, and the scene
@@ -250,6 +262,8 @@ export function HomeController({ children }: Props) {
     sent: null,
   });
   const focusCard = useCallback((key: string | null, source: RowSource = "pointer") => {
+    // Nothing answers a hover before the cards are dealt.
+    if (key !== null && getDeal().phase !== "dealt") return;
     const rows = rowsRef.current;
     rows[source] = key;
     const next = rows.pointer ?? rows.focus;
@@ -296,6 +310,14 @@ export function HomeController({ children }: Props) {
   // first (one glide) and the card flies when it arrives.
   const openTitle = useCallback(
     (key: CardKey, origin: HTMLElement) => {
+      // A title chosen before the deal is over (a keyboard or a screen reader
+      // reached it): the deal is over now, and the card opens as a book row
+      // does, with no flight.
+      if (getDeal().phase !== "dealt") {
+        settle();
+        openFromScene(key, -1, origin);
+        return;
+      }
       if (drivers.input !== "coarse" || !sceneApiRef.current) {
         handleRowOpen(key, origin);
         return;
@@ -306,7 +328,7 @@ export function HomeController({ children }: Props) {
         focusCard(null, "pointer");
       }, COIL.hoverJumpMs + TURN_SETTLE_MS);
     },
-    [drivers.input, focusCard, handleRowOpen],
+    [drivers.input, focusCard, handleRowOpen, openFromScene, settle],
   );
 
   const handleFlyOutComplete = useCallback(() => setFlight((f) => (f ? { ...f, revealed: true } : f)), []);
@@ -374,6 +396,7 @@ export function HomeController({ children }: Props) {
   return (
     <HomeControllerContext.Provider value={value}>
       <section
+        ref={sectionRef}
         id="work"
         data-wave-anchor="cards"
         data-coil-section=""
@@ -383,13 +406,13 @@ export function HomeController({ children }: Props) {
         data-input={drivers.input}
         // The browser keeps every vertical swipe (and pinch zoom); horizontal
         // ones reach the scene's drag-to-spin.
-        className="group/hero relative flex min-h-[100svh] w-full flex-col [touch-action:pan-y_pinch-zoom] md:block md:min-h-[92svh]"
+        className="group/hero relative flex min-h-[100svh] w-full flex-col bg-background [touch-action:pan-y_pinch-zoom] md:block md:min-h-[92svh]"
       >
         <div data-coil-frame="" className="relative min-h-[34svh] flex-1 md:absolute md:inset-0 md:min-h-0">
           <CoilStage
             reducedMotion={reducedMotion}
             frozen={modalOpen || flight !== null}
-            interactive={phase === "ready"}
+            interactive={phase === "ready" && deal.phase === "dealt"}
             input={drivers.input}
             scene={heroScene}
             onSceneChange={setHeroScene}
