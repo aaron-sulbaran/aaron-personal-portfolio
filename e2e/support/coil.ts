@@ -101,7 +101,7 @@ export async function silhouetteDistance(page: Page, point: Point) {
   return page.evaluate(({ x, y }) => {
     const w = window as HookWindow;
     const sil = w.__coil!.silhouette()!;
-    const rect = document.querySelector("section[data-scene]")!.getBoundingClientRect();
+    const rect = document.querySelector("[data-coil-stage]")!.getBoundingClientRect();
     const lx = x - rect.left;
     const ly = y - rect.top;
     return Math.abs((lx - sil.ax) * -sil.dy + (ly - sil.ay) * sil.dx) - sil.half;
@@ -133,7 +133,7 @@ export async function coilPoints(page: Page): Promise<CoilPoints> {
     // Builds before the ownership rule had no hull: cards only, then.
     const sil = coil.silhouette?.() ?? null;
     const slotCount = Number(coil.budget().slots);
-    const rect = document.querySelector("section[data-scene]")!.getBoundingClientRect();
+    const rect = document.querySelector("[data-coil-stage]")!.getBoundingClientRect();
     const top = Math.max(rect.top, 0) + 80;
     const bottom = Math.min(rect.bottom, window.innerHeight) - 40;
     const distance = (x: number, y: number) =>

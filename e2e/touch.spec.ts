@@ -47,13 +47,14 @@ test("touch: a horizontal drag spins the coil, and the release coasts onto a car
   await openHome(page);
   const { card } = await coilPoints(page);
   const start = await page.evaluate(() => (window as HookWindow).__coil!.offset());
+  const pageY = await page.evaluate(() => window.scrollY);
 
   await swipe(cdp, card, { x: card.x - 180, y: card.y + 4 }, 10);
 
   const released = await page.evaluate(() => (window as HookWindow).__coil!.drag());
   expect(released.coast, "a coast target after the release").not.toBeNull();
   expect(Math.abs(released.target - start), "cards moved by the drag").toBeGreaterThan(0.5);
-  expect(await page.evaluate(() => window.scrollY), "page scroll").toBe(0);
+  expect(await page.evaluate(() => window.scrollY), "page scroll").toBe(pageY);
   // The coast settles exactly on a whole card.
   await page.waitForFunction(() => (window as HookWindow).__coil!.drag().coast === null, null, { timeout: 5000 });
   const rest = await page.evaluate(() => (window as HookWindow).__coil!.drag());
