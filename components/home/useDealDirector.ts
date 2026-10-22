@@ -4,18 +4,24 @@ import { useCallback, useEffect, useLayoutEffect, useRef, type RefObject } from 
 import type { CoilEntrance } from "@/components/coil/CoilScene";
 import { COIL } from "@/lib/coil/constants";
 import type { HeroScene } from "@/lib/coil/heroStill";
-import { claimDealMirror, dealTrigger, dispatchDeal, getDeal, subscribeDeal } from "@/lib/home/deal";
+import { claimDealMirror, dealTrigger, dispatchDeal, getDeal, subscribeDeal, type DealSource } from "@/lib/home/deal";
+import { setDealStarter } from "@/lib/home/dealFlow";
 import { entranceTuningOf, getKnobs } from "@/lib/home/dealKnobs";
-import { openParts, playOpen, prepareOpen, type OpenHandle } from "@/lib/home/dealOpen";
+import { createDealMaster, type DealMaster } from "@/lib/home/dealMaster";
+import { clearOpen, openParts, prepareOpen, type OpenParts } from "@/lib/home/dealOpen";
+import { stageGone, stickyProgress } from "@/lib/home/stickyRange";
 
-// The deal's director: it watches where the cards section is in the viewport,
-// starts the entrance when the reader's scroll asks for it
-// (lib/home/deal.ts dealTrigger, pure and tested), runs the DOM half of the
-// entrance (lib/home/dealOpen.ts) next to the Coil's own timeline, and says
-// when the deal is over. The click path (lib/home/dealFlow.ts) only holds the
-// entrance back until its scroll has arrived; this takes it from there.
+// The deal's director: it watches where the reader is on page 1's foot and the
+// cards section, starts the deal when the reader's scroll asks for it
+// (lib/home/deal.ts dealTrigger, pure and tested) or when "Deal me in" is
+// clicked (lib/home/dealFlow.ts calls the starter registered here), and
+// plays it as one master timeline (lib/home/dealMaster.ts): the Coil's own
+// clock, the teaser's text, the page's scroll (a click only) and the columns.
+// It says when the deal is over.
 //
-// Vertical scroll is never hijacked: the director only reads it.
+// The reader's own scroll is never taken: by hand it only reads it, and on a
+// click the page's scroll is a child of the master that the reader's wheel,
+// touch or key kills alone.
 
 const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
@@ -23,7 +29,8 @@ const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : use
 export const AT_REST: CoilEntrance = { startMs: Number.NEGATIVE_INFINITY, nameFromLoader: false };
 
 type Session = {
-  open: OpenHandle | null;
+  master: DealMaster | null;
+  parts: OpenParts;
   needsScene: boolean;
   sceneDone: boolean;
   domDone: boolean;
@@ -43,6 +50,7 @@ export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance 
   const direction = useRef({ y: 0, down: false });
   const sceneWait = useRef<{ timer: number; over: boolean } | null>(null);
   const evaluateRef = useRef<() => void>(() => {});
+  const beginRef = useRef<(source: DealSource) => boolean>(() => false);
 
   useEffect(() => {
     live.current = { scene, reducedMotion };
@@ -74,67 +82,101 @@ export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance 
   }, [endSession]);
 
   // Everything at once, whatever is running: a title chosen before the deal is
-  // over, reduced motion coming on, the safety net.
+  // over, the stage leaving the screen mid-deal, reduced motion coming on, the
+  // safety net. The master goes to its end (the scroll child stopped where it
+  // is) and the Coil to rest.
   const settle = useCallback(() => {
     const current = session.current;
     endSession();
-    current?.open?.finish();
+    current?.master?.finish();
     setEntrance(AT_REST);
     dispatchDeal({ type: "skip" });
   }, [endSession, setEntrance]);
 
-  const begin = useCallback(() => {
-    const state = getDeal();
-    if (state.phase === "dealt") {
-      dispatchDeal({ type: "enter", source: "view" });
-      return;
-    }
-    const section = sectionRef.current;
-    if (!section || session.current) return;
-    const sceneState = live.current.scene;
-    // The scene is on its way: the cards wait for its first frame, a few
-    // seconds at most (the section stays closed meanwhile).
-    if (sceneState === "off" && !sceneWait.current?.over) {
-      if (!sceneWait.current) {
-        const wait = { timer: 0, over: false };
-        wait.timer = window.setTimeout(() => {
-          wait.over = true;
-          evaluateRef.current();
-        }, COIL.deal.trigger.waitSceneMs);
-        sceneWait.current = wait;
+  // Starts the deal; false when it cannot yet (the scene is on its way, so the
+  // cards section stays closed meanwhile).
+  const begin = useCallback(
+    (source: DealSource): boolean => {
+      const state = getDeal();
+      if (state.phase === "dealt") {
+        dispatchDeal({ type: "enter", source: "view" });
+        return true;
       }
-      return;
-    }
-    const knobs = getKnobs();
-    // No scene will draw (the still path): the stage cross-fades. Otherwise it
-    // opens as a circle around the Coil, a scene still on its way included (it
-    // starts its entrance at its first frame).
-    const mode = sceneState === "still" ? "fade" : "radial";
-    const parts = openParts(section);
-    prepareOpen(parts, mode);
-    const next: Session = { open: null, needsScene: mode === "radial", sceneDone: false, domDone: false, safety: 0 };
-    session.current = next;
-    next.safety = window.setTimeout(settle, knobs.dealMs + knobs.columnsDelayMs + 4000);
-    if (mode === "radial") setEntrance({ startMs: performance.now(), nameFromLoader: false, tuning: entranceTuningOf(knobs) });
-    dispatchDeal({ type: "enter", source: "view" });
-    next.open = playOpen(parts, mode, knobs, () => {
-      next.domDone = true;
-      maybeFinish();
-    });
-  }, [maybeFinish, sectionRef, setEntrance, settle]);
+      const section = sectionRef.current;
+      if (!section || session.current) return false;
+      const sceneState = live.current.scene;
+      // The scene is on its way: the cards wait for its first frame, a few
+      // seconds at most.
+      if (sceneState === "off" && !sceneWait.current?.over) {
+        if (!sceneWait.current) {
+          const wait = { timer: 0, over: false };
+          wait.timer = window.setTimeout(() => {
+            wait.over = true;
+            evaluateRef.current();
+          }, COIL.deal.trigger.waitSceneMs);
+          sceneWait.current = wait;
+        }
+        return false;
+      }
+      const knobs = getKnobs();
+      // No scene will draw (the still path): the stage cross-fades. Otherwise
+      // the Coil's own clock runs the deal, a scene still on its way included
+      // (it starts at its first frame).
+      const mode = sceneState === "still" ? "fade" : "scene";
+      const parts = openParts(section);
+      prepareOpen(parts, mode);
+      const next: Session = { master: null, parts, needsScene: mode === "scene", sceneDone: false, domDone: false, safety: 0 };
+      session.current = next;
+      const master = createDealMaster({
+        parts,
+        mode,
+        knobs,
+        scroll: source === "click",
+        onDone: () => {
+          next.domDone = true;
+          maybeFinish();
+        },
+      });
+      next.master = master;
+      next.safety = window.setTimeout(settle, master.totalMs + 4000);
+      if (mode === "scene") setEntrance({ startMs: performance.now(), nameFromLoader: false, tuning: entranceTuningOf(knobs), clockMs: master.clockMs });
+      dispatchDeal({ type: "enter", source });
+      master.play();
+      return true;
+    },
+    [maybeFinish, sectionRef, setEntrance, settle],
+  );
+  useEffect(() => {
+    beginRef.current = begin;
+  }, [begin]);
+
+  // "Deal me in" plays the deal at once, scroll included, when it can.
+  useEffect(() => setDealStarter(() => beginRef.current("click")), []);
 
   const evaluate = useCallback(() => {
     const section = sectionRef.current;
     if (!section) return;
     const box = section.getBoundingClientRect();
+    const rail = section.querySelector<HTMLElement>("[data-coil-rail]")?.getBoundingClientRect();
+    const stage = section.querySelector<HTMLElement>("[data-coil-sticky]")?.getBoundingClientRect();
+    const viewportHeight = window.innerHeight;
+    const progress = stickyProgress({
+      railTop: rail?.top ?? box.top,
+      range: rail && stage ? rail.height - stage.height : 0,
+      sectionTop: box.top,
+      viewportHeight,
+    });
     const trigger = dealTrigger(
-      { sectionTop: box.top, sectionBottom: box.bottom, viewportHeight: window.innerHeight, scrollingDown: direction.current.down },
+      { stickyProgress: progress, sectionTop: box.top, sectionBottom: box.bottom, viewportHeight, scrollingDown: direction.current.down },
       getDeal(),
       // The riffle is not part of this page (the deck is being replaced).
       false,
     );
-    if (trigger === "enter") begin();
-  }, [begin, sectionRef]);
+    if (trigger === "enter") beginRef.current(direction.current.down ? "scroll" : "view");
+    // A deal under way whose stage has left the screen finishes now, so a
+    // scene that stopped drawing is never left mid-deal.
+    else if (session.current && stage && stageGone(stage.top, stage.bottom, viewportHeight)) settle();
+  }, [sectionRef, settle]);
   useEffect(() => {
     evaluateRef.current = evaluate;
   }, [evaluate]);
@@ -172,8 +214,8 @@ export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance 
     };
   }, []);
 
-  // The deal's own changes: a hold lifting (the click path arrived), a scene
-  // that is ready at last, a skip or a reset from outside.
+  // The deal's own changes: a scene that is ready at last, a skip or a reset
+  // from outside.
   useEffect(() => {
     return subscribeDeal(() => {
       const state = getDeal();
@@ -181,17 +223,17 @@ export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance 
         // Skipped from outside while dealing: put everything in its end state.
         const current = session.current;
         endSession();
-        current.open?.finish();
+        current.master?.finish();
         setEntrance(AT_REST);
       } else if (state.phase === "dealt" && state.entrances === 0) {
         setEntrance(AT_REST);
       } else if (state.phase === "idle") {
-        // The lab's replay: closed again, the Coil's clock waits for a new entrance.
+        // The lab's replay: closed again, the wheel turns, a new entrance waits.
         const current = session.current;
         endSession();
-        current?.open?.kill();
+        current?.master?.kill();
         const section = sectionRef.current;
-        if (section) prepareClosed(section);
+        if (section) clearOpen(openParts(section));
         setEntrance(null);
       }
       evaluateRef.current();
@@ -216,7 +258,7 @@ export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance 
     if (!reducedMotion) return;
     const current = session.current;
     endSession();
-    current?.open?.finish();
+    current?.master?.finish();
     setEntrance(AT_REST);
     dispatchDeal({ type: "reduced" });
   }, [reducedMotion, endSession, setEntrance]);
@@ -225,24 +267,11 @@ export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance 
     () => () => {
       const current = session.current;
       endSession();
-      current?.open?.kill();
+      current?.master?.kill();
       if (sceneWait.current) window.clearTimeout(sceneWait.current.timer);
     },
     [endSession],
   );
 
   return { completeScene, settle };
-}
-
-// A replay hides the section's parts the way the closed state does, by clearing
-// whatever inline style the last run left (the CSS of data-deal="closed" holds
-// them back from there).
-function prepareClosed(section: HTMLElement) {
-  const parts = openParts(section);
-  parts.stage?.style.removeProperty("clip-path");
-  parts.stage?.style.removeProperty("opacity");
-  [...parts.labels, ...parts.titles].forEach((el) => {
-    el.style.removeProperty("opacity");
-    el.style.removeProperty("transform");
-  });
 }

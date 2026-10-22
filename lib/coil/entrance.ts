@@ -1,54 +1,71 @@
 import { COIL, type CoilConstants } from "./constants";
+import { power2InOut, power2Out, sceneMs } from "./dealSpeed";
 import type { Basis, CardPose, CoilGeometry, HelixFrame, Vec3 } from "./geometry";
 import { cubicBezier, siteEase } from "./motion";
 
-// The band-first entrance, ported from hero lab 2 (1084-1086, 1156-1166,
-// 1219-1237). Over 1800ms: the cards stack in at the center, shutter out of
-// the stack one by one (the stagger) into a single closed band (every card on
-// one turn, the band's lean), hold there a beat, then two hands pull the band
-// open. The pull has two phases so the band's ends never pass through each
-// other: first the seam parts along the axis (a split ring, like a washer),
-// then the band winds into the rested coil on the pull curve.
+// The deal's act on the strand (docs/superpowers/specs/2026-10-22-wheel-deal-motion.md).
+// It starts as a wheel: the 14-card band ring seen near frontal, turning slowly
+// face up in the teaser's slot. On the click the wheel spins up, then flattens
+// into the closed band (the frame's lean, axis, size and center lerp to the
+// band's), the band slows, and two hands pull it open: first the seam parts
+// along the axis (a split ring, like a washer), then the band winds into the
+// rested coil on the pull curve. The field opens around it on a mask.
 //
-// Two modifiers, both pure: entranceHelix bends the frame (winding, radius,
-// rise, card size, lean) and entrancePose moves one card (the stack, the
-// shutter, and the fade of copies outside the band). Before the clock starts
-// every card is hidden; from the end of the clock on both are the identity,
-// so the final pose is the rest pose exactly.
+// Modifiers, all pure: wheelHelix and pullHelix bend the frame (winding,
+// radius, rise, card size, lean, axis, center) and entrancePose moves one card
+// (which of them wait hidden). From the end of the clock on they are the
+// identity, so the final pose is the rest pose exactly. The strand's offset is
+// not here: lib/coil/dealSpeed.ts decides it, and the same offset poses the
+// wheel, the band and the helix, so the angular speed is continuous across the
+// changes of layout by construction.
 
 const TAU = Math.PI * 2;
 const DEG = Math.PI / 180;
 
 export type EntranceClock = {
-  elapsedS: number; // seconds since the entrance started; negative before it
+  elapsedS: number; // seconds since the click; negative before it
   durationS: number;
+  // How far the wheel has slid into the teaser (0: not yet seen, 1: seated).
+  // The scene decides it from the page; it is 1 everywhere else.
+  wheelIn: number;
+  // How far the strand has turned since the pull began, in cards. The band's
+  // cards keep their places in it while it opens, however far the strand turns
+  // (0 until the pull begins).
+  drift: number;
   // The constants this clock was made with, present only when they are not
-  // COIL itself (the deal's lab tunes the duration, the stagger and the start
-  // offset); every function below that takes `c` reads it from here by default.
+  // COIL itself (the deal's lab tunes the timeline, the wheel and the field);
+  // every function below that takes `c` reads it from here by default.
   c?: CoilConstants;
 };
 
-export function entranceClock(elapsedMs: number, c: CoilConstants = COIL): EntranceClock {
-  const base = { elapsedS: elapsedMs / 1000, durationS: c.entrance.durationMs / 1000 };
+export function entranceClock(elapsedMs: number, c: CoilConstants = COIL, wheelIn = 1, drift = 0): EntranceClock {
+  const base = { elapsedS: elapsedMs / 1000, durationS: sceneMs(c) / 1000, wheelIn, drift };
   return c === COIL ? base : { ...base, c };
 }
 
-// The three entrance values the deal can tune: the whole duration, the
-// shutter's stagger and where the stack starts. An absent tuning is COIL's own.
-export type EntranceTuning = { durationMs: number; shutterStagger: number; startOffset: number };
+// The deal values the lab can tune, merged over COIL.deal: the timeline, the
+// wheel (its pace, lean, scale and nudges) and the field's opening. An absent
+// tuning is COIL's own.
+export type EntranceTuning = {
+  timeline?: Partial<Record<keyof CoilConstants["deal"]["timeline"], number>>;
+  wheel?: Partial<Record<"idleCardsPerSecond" | "leanDeg" | "scale" | "offsetX" | "offsetY", number>>;
+  open?: Partial<Record<"ms" | "reach", number>>;
+};
 
 const tuned = new Map<string, CoilConstants>();
+const TUNED_LIMIT = 48;
 export function tunedConstants(tuning: EntranceTuning | undefined): CoilConstants {
   if (!tuning) return COIL;
-  const same =
-    tuning.durationMs === COIL.entrance.durationMs &&
-    tuning.shutterStagger === COIL.entrance.shutterStagger &&
-    tuning.startOffset === COIL.entrance.startOffset;
-  if (same) return COIL;
-  const key = `${tuning.durationMs}|${tuning.shutterStagger}|${tuning.startOffset}`;
+  const d = COIL.deal;
+  const timeline = { ...d.timeline, ...tuning.timeline };
+  const wheel = { ...d.wheel, ...tuning.wheel };
+  const open = { ...d.open, ...tuning.open };
+  const key = JSON.stringify([timeline, wheel, open]);
+  if (key === JSON.stringify([d.timeline, d.wheel, d.open])) return COIL;
   let c = tuned.get(key);
   if (!c) {
-    c = { ...COIL, entrance: { ...COIL.entrance, ...tuning } };
+    if (tuned.size >= TUNED_LIMIT) tuned.clear();
+    c = { ...COIL, deal: { ...COIL.deal, timeline, wheel, open } };
     tuned.set(key, c);
   }
   return c;
@@ -58,7 +75,7 @@ export function isEntering(clock: EntranceClock) {
   return clock.elapsedS >= 0 && clock.elapsedS < clock.durationS + 0.02;
 }
 
-// Not started: the loader still holds the pane, and no card shows.
+// Not clicked yet: the wheel waits, turning slowly.
 export function isBeforeEntrance(clock: EntranceClock) {
   return clock.elapsedS < 0;
 }
@@ -83,12 +100,23 @@ export function pullCurve(c: CoilConstants) {
   return curve;
 }
 
-// The pull's progress, 0 through the stack, shutter and hold, 1 at rest.
+const elapsedMs = (clock: EntranceClock) => clock.elapsedS * 1000;
+
+// The pull's progress, 0 through the wheel, the spin and the band's slowing,
+// 1 at rest.
 export function pullProgress(clock: EntranceClock, c: CoilConstants = clock.c ?? COIL) {
   if (isRested(clock)) return 1;
   if (isBeforeEntrance(clock)) return 0;
-  const T = clock.durationS;
-  return pullCurve(c)(seg(clock.elapsedS, c.entrance.pullStart * T, T));
+  const { pullStartMs, pullMs } = c.deal.timeline;
+  return pullCurve(c)(seg(elapsedMs(clock), pullStartMs, pullStartMs + pullMs));
+}
+
+// The wheel's flattening into the band: 0 the wheel, 1 the band.
+export function flattenProgress(clock: EntranceClock, c: CoilConstants = clock.c ?? COIL) {
+  if (isRested(clock)) return 1;
+  if (isBeforeEntrance(clock)) return 0;
+  const { flattenStartMs, flattenMs } = c.deal.timeline;
+  return power2InOut(seg(elapsedMs(clock), flattenStartMs, flattenStartMs + flattenMs));
 }
 
 // The two hands: the seam parts along the axis over the first 0.38 of the
@@ -97,6 +125,47 @@ export function pullProgress(clock: EntranceClock, c: CoilConstants = clock.c ??
 export function pullPhases(pull: number, c: CoilConstants = COIL) {
   return { part: smooth(seg(pull, 0, 0.38)), wind: seg(pull, c.entrance.windStart, 1) };
 }
+
+// ---------------------------------------------------------------- the wheel
+
+// The wheel's place, from the geometry (the slot it sits in, as shares of the
+// canvas) and the lab's nudges: its center and card size in world units, its
+// axis and lean. The ring is the band's own (14 cards on one turn), seen from
+// the side at a lean of a few degrees, the axis upright.
+export function wheelPlacement(geo: CoilGeometry, c: CoilConstants = COIL) {
+  const w = c.deal.wheel;
+  const perPx = geo.camera.worldPerPx;
+  const center: Vec3 = [
+    (geo.wheelAnchor.x - 0.5 + w.offsetX) * geo.canvas.width * perPx,
+    (0.5 - geo.wheelAnchor.y - w.offsetY) * geo.canvas.height * perPx,
+    0,
+  ];
+  return { center, cardWorld: geo.wheelCardWorld * w.scale, axisRad: 0, leanRad: w.leanDeg * DEG };
+}
+
+// Frame level: the frame (the band or further along the pull) pulled toward
+// the wheel by (1 - flatten): 0 is the wheel, 1 returns the frame as is. While
+// the wheel slides in (wheelIn under 1) it sits to the right by the rest of
+// its way.
+export function wheelHelix(frame: HelixFrame, geo: CoilGeometry, flatten: number, wheelIn: number, c: CoilConstants = COIL): HelixFrame {
+  if (flatten >= 1) return frame;
+  const wheel = wheelPlacement(geo, c);
+  const slide = (1 - wheelIn) * c.deal.wheel.slideFrom * geo.canvas.width * geo.camera.worldPerPx;
+  return {
+    ...frame,
+    axisRad: lerp(wheel.axisRad, frame.axisRad, flatten),
+    leanRad: lerp(wheel.leanRad, frame.leanRad, flatten),
+    center: lerp3([wheel.center[0] + slide, wheel.center[1], wheel.center[2]], frame.center, flatten),
+    cardWorld: lerp(wheel.cardWorld, frame.cardWorld, flatten),
+  };
+}
+
+// How far the wheel has slid in, `sinceInViewMs` after it was first in view.
+export function wheelSlideProgress(sinceInViewMs: number, c: CoilConstants = COIL) {
+  return siteEase(seg(sinceInViewMs, 0, c.deal.wheel.slideMs));
+}
+
+// ---------------------------------------------------------------- the pull
 
 // Frame level: the band's winding, radius, rise, card size and lean pulled
 // toward the rested helix (`rest` may already carry the stretch envelope) by
@@ -116,74 +185,74 @@ export function pullHelix(rest: HelixFrame, geo: CoilGeometry, pull: number, c: 
     leanRad: lerp(c.camera.bandLeanDeg * DEG, rest.leanRad, pull),
   };
 }
+
+// The whole frame: the rest helix, pulled toward the closed band, which is
+// pulled toward the wheel while it has not flattened.
 export function entranceHelix(rest: HelixFrame, geo: CoilGeometry, clock: EntranceClock, c: CoilConstants = clock.c ?? COIL): HelixFrame {
   if (isRested(clock)) return rest;
-  return pullHelix(rest, geo, pullProgress(clock, c), c);
+  const band = pullHelix(rest, geo, pullProgress(clock, c), c);
+  return wheelHelix(band, geo, flattenProgress(clock, c), clock.wheelIn, c);
 }
+
 // The copies outside the one band wait hidden and fade in late in the pull.
 export function outOfBandAlpha(pull: number) {
   return smooth(seg(pull, 0.35, 0.9));
 }
 
 export type EntranceCard = {
-  strandPosition: number; // absolute position on the strand
   cardCount: number; // N
 };
 
-// The copies of each card outside the one band (strand positions outside
-// [-N/2, N/2)) wait hidden and fade in late in the pull.
-export function inBand(strandPosition: number, cardCount: number) {
-  return strandPosition >= -cardCount / 2 && strandPosition < cardCount / 2;
+// The cards of the one ring: the N consecutive strand positions that sit in
+// [-N/2, N/2) of the window. Before the pull the strand turns and the ring
+// with it: a card crossing the edge of the window is replaced, at the same
+// place in the ring (a ring has no seam), by its twin one turn away. From the
+// pull on, the cards that formed the ring keep their places in it (`drift` is
+// how far the strand has turned since), so the seam of the opening washer
+// stays between the same two cards.
+export function inRing(u: number, drift: number, cardCount: number) {
+  const v = u - drift;
+  return v >= -cardCount / 2 && v < cardCount / 2;
 }
 
-// The deal: the first card leaves the stack first and the sweep goes once
-// around the band.
-export function shutterRank(strandPosition: number, cardCount: number) {
-  return ((strandPosition % cardCount) + cardCount) % cardCount;
-}
-
-// How far a card has flown from the stack into the band (0 to 1).
-export function shutterProgress(rank: number, clock: EntranceClock, c: CoilConstants = clock.c ?? COIL) {
-  const T = clock.durationS;
-  const start = (c.entrance.shutterStart + rank * c.entrance.shutterStagger) * T;
-  return siteEase(clamp01((clock.elapsedS - start) / (c.entrance.fly * T)));
-}
-
-// Card level: the stack, the shutter into the band, and the late fade of the
-// copies outside it. `pose` is the card's pose on the entrance frame.
+// Card level: which cards show. The ring's cards always do; the copies
+// outside it wait hidden and fade in late in the pull; and the whole wheel
+// waits transparent until it has slid in. The pose is otherwise the
+// frame's, so the wheel, the band and the helix are one object.
 export function entrancePose<P extends CardPose>(
   pose: P,
   card: EntranceCard,
-  geo: CoilGeometry,
   clock: EntranceClock,
   c: CoilConstants = clock.c ?? COIL,
 ): P {
   if (isRested(clock)) return pose;
-  if (isBeforeEntrance(clock)) return { ...pose, alpha: 0 };
-  const n = card.cardCount;
-  if (!inBand(card.strandPosition, n)) {
-    return { ...pose, alpha: pose.alpha * outOfBandAlpha(pullProgress(clock, c)) };
-  }
-  const rank = shutterRank(card.strandPosition, n);
-  const flown = shutterProgress(rank, clock, c);
-  if (flown >= 1) return pose;
-  // The stack: square to the camera on the helix's center line, the first card
-  // on top; startOffset of the way up from the helix center to the pane's top
-  // edge (the deal: the cards arrive from where the deck went).
-  const stackAlpha = smooth(clamp01(clock.elapsedS / (c.entrance.stackIn * clock.durationS)));
-  const stackY = geo.center[1] + c.entrance.startOffset * (c.lab.viewHalfHeight - geo.center[1]);
-  const stackPosition: Vec3 = [geo.center[0], stackY, geo.center[2] + (n - rank) * 0.004 + 0.3];
-  return {
-    ...pose,
-    position: lerp3(stackPosition, pose.position, flown),
-    basis: slerpBasis(IDENTITY_BASIS, pose.basis, flown),
-    scale: lerp(geo.bandCardWorld * 0.94, pose.scale, flown),
-    bend: lerp(0, pose.bend, flown),
-    beta: lerp(0, pose.beta, flown),
-    depth: lerp(1, pose.depth, flown),
-    fade: lerp(0, pose.fade, flown),
-    alpha: flown > 0 ? 1 : stackAlpha,
-  };
+  const ring = inRing(pose.u, clock.drift, card.cardCount);
+  const shown = ring ? 1 : outOfBandAlpha(pullProgress(clock, c));
+  return { ...pose, alpha: pose.alpha * shown * clock.wheelIn };
+}
+
+// ---------------------------------------------------------------- the field
+
+// The mask the field opens on: a circle anchored top center of the canvas that
+// grows (power2.out) until its feathered edge has cleared the farthest corner.
+// Radius 0 is closed (the scene skips the field), OPEN_ALL is open.
+export const OPEN_ALL = 1e6;
+export type FieldMask = { cx: number; cy: number; radius: number; feather: number };
+
+export function openProgress(clock: EntranceClock, c: CoilConstants = clock.c ?? COIL) {
+  if (isRested(clock)) return 1;
+  if (isBeforeEntrance(clock)) return 0;
+  const { openStartMs } = c.deal.timeline;
+  return power2Out(seg(elapsedMs(clock), openStartMs, openStartMs + c.deal.open.ms));
+}
+
+export function fieldMask(clock: EntranceClock, canvas: { width: number; height: number }, c: CoilConstants = clock.c ?? COIL): FieldMask {
+  const { reach, featherPx } = c.deal.open;
+  const p = openProgress(clock, c);
+  const mask = { cx: canvas.width / 2, cy: 0, feather: featherPx };
+  if (p >= 1) return { ...mask, radius: OPEN_ALL };
+  if (p <= 0) return { ...mask, radius: 0 };
+  return { ...mask, radius: (Math.hypot(canvas.width / 2, canvas.height) * reach + featherPx) * p };
 }
 
 // ---------------------------------------------------------------- the name
@@ -195,12 +264,10 @@ export function entranceNameAlpha(clock: EntranceClock, handedOff: boolean | nul
   if (handedOff !== null) return handedOff ? 1 : 0;
   if (isRested(clock)) return 1;
   if (isBeforeEntrance(clock)) return 0;
-  return smooth(seg(clock.elapsedS, c.entrance.pullStart * clock.durationS, clock.durationS));
+  return smooth(seg(elapsedMs(clock), c.deal.timeline.pullStartMs, clock.durationS * 1000));
 }
 
 // ---------------------------------------------------------------- rotations
-
-const IDENTITY_BASIS: Basis = { x: [1, 0, 0], y: [0, 1, 0], z: [0, 0, 1] };
 
 function lerp3(a: Vec3, b: Vec3, t: number): Vec3 {
   return [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t)];

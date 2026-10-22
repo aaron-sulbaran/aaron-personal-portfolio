@@ -13,7 +13,7 @@ import {
 } from "three";
 import { COIL } from "@/lib/coil/constants";
 import { FIELD } from "@/lib/coil/field.glsl";
-import { cameraFor, solveGeometry } from "@/lib/coil/geometry";
+import { cameraFor, solveGeometry, type WheelSlot } from "@/lib/coil/geometry";
 import { paneViewport } from "@/lib/coil/pane";
 import { seenRingDpr } from "@/lib/coil/material";
 import { disableColorManagement } from "@/lib/coil/theme";
@@ -77,6 +77,18 @@ export type LayoutParts = {
   layoutName: () => void;
 };
 
+// The teaser's slot for the wheel (page 1's foot, [data-coil-wheel]) in canvas
+// px: measured against the rail the stage sticks in, not the stage, so it is
+// the same wherever the page is scrolled (the stage and the slot move together
+// until it sticks, and the wheel stays where the stage puts it after).
+function measureWheelSlot(host: HTMLElement): WheelSlot | null {
+  const slot = document.querySelector("[data-coil-wheel]")?.getBoundingClientRect();
+  const rail = host.closest("[data-coil-rail]")?.getBoundingClientRect();
+  if (!slot || !rail || slot.width < 1 || slot.height < 1) return null;
+  const stage = host.getBoundingClientRect();
+  return { cx: slot.left + slot.width / 2 - stage.left, cy: slot.top + slot.height / 2 - rail.top, diameter: Math.min(slot.width, slot.height) };
+}
+
 export function createLayout(ctx: SceneCtx, gl: Gl, parts: LayoutParts, loop: LoopLink) {
   const { st, host, tileCount, debug } = ctx;
   const { renderer, camera, fieldTarget, uView } = gl;
@@ -105,7 +117,10 @@ export function createLayout(ctx: SceneCtx, gl: Gl, parts: LayoutParts, loop: Lo
     st.lastFieldTime = Number.NaN;
     const before = st.geo;
     const pane = host.closest("[data-coil-section]")?.querySelector("[data-coil-pane]")?.getBoundingClientRect();
-    st.geo = solveGeometry(paneViewport({ left: rect.left, right: rect.right, width: view.width, height: view.height }, pane ?? null), tileCount);
+    st.geo = solveGeometry(paneViewport({ left: rect.left, right: rect.right, width: view.width, height: view.height }, pane ?? null), tileCount, COIL, {
+      canvas: { width: view.width, height: view.height },
+      wheelSlot: measureWheelSlot(host),
+    });
     // Slice 7: a new composition or a rotation lays every card out afresh;
     // fade the new frame in rather than jump (only while the loop runs: a
     // still frame behind a modal just re-lays out).
@@ -131,7 +146,10 @@ export function createLayout(ctx: SceneCtx, gl: Gl, parts: LayoutParts, loop: Lo
 export function observeResize(ctx: SceneCtx, layout: (width: number, height: number) => void, loop: LoopLink) {
   const { st, host } = ctx;
   const resizeObserver = new ResizeObserver((entries) => {
-    const box = entries[entries.length - 1]?.contentRect;
+    // The wheel's slot or its rail resizing (the teaser reflowing) moves the
+    // wheel without resizing the canvas: lay out again at the canvas's size.
+    const own = entries.filter((entry) => entry.target === host).pop()?.contentRect;
+    const box = own ?? st.pendingSize;
     if (!box) return;
     st.pendingSize = { width: box.width, height: box.height };
     if (!st.ready) return;
@@ -139,6 +157,10 @@ export function observeResize(ctx: SceneCtx, layout: (width: number, height: num
     if (!st.raf) loop.renderStill();
   });
   resizeObserver.observe(host);
+  const slot = document.querySelector("[data-coil-wheel]");
+  const rail = host.closest("[data-coil-rail]");
+  if (slot) resizeObserver.observe(slot);
+  if (rail) resizeObserver.observe(rail);
   return () => resizeObserver.disconnect();
 }
 

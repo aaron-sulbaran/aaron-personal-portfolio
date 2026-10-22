@@ -121,6 +121,12 @@ export type CoilGeometry = {
   readonly cardPx: number; // card height in CSS px
   readonly cardWorld: number; // world units per card unit
   readonly bandCardWorld: number; // the closed entrance band's card size
+  // The deal's wheel (lib/coil/entrance.ts wheelPlacement): the canvas it is
+  // placed on, its ring's center as shares of that canvas (x right, y down,
+  // independent of the page's scroll), and its card size at scale 1.
+  readonly canvas: Viewport;
+  readonly wheelAnchor: Vec2;
+  readonly wheelCardWorld: number;
   readonly axisDir: Vec2; // the axis on screen, toward the top left (y down)
   readonly axisPerp: Vec2;
   // Narrow panes keep a band at the top free of cards (the header and the
@@ -147,7 +153,22 @@ export function clearTopFor(viewport: Viewport, c: CoilConstants = COIL) {
   return isNarrow(viewport, c) ? c.narrow.headerClearPx + c.narrow.introBandPx : 0;
 }
 
-export function solveGeometry(viewport: Viewport, cardCount: number, c: CoilConstants = COIL): CoilGeometry {
+// The teaser's slot for the wheel, in canvas px: the ring's center and its
+// diameter (the ring's width, edge to edge).
+export type WheelSlot = { readonly cx: number; readonly cy: number; readonly diameter: number };
+
+// How far the ring reaches past the cards' centers, in card heights: a card's
+// half thickness on its side and the lean's tilt.
+const WHEEL_RING_PAD = 0.3;
+
+export type SolveOptions = {
+  // The canvas the pane sits in (wider than the pane when columns flank it);
+  // the wheel is placed on it. The pane itself when absent.
+  canvas?: Viewport;
+  wheelSlot?: WheelSlot | null;
+};
+
+export function solveGeometry(viewport: Viewport, cardCount: number, c: CoilConstants = COIL, options: SolveOptions = {}): CoilGeometry {
   const W = viewport.width;
   const H = viewport.height;
   const camera = cameraFor(viewport, c);
@@ -234,6 +255,14 @@ export function solveGeometry(viewport: Viewport, cardCount: number, c: CoilCons
   const bandRadius = (cardCount * step) / TAU;
   const bandPx = Math.min(cardPx, (0.84 * perpChord) / (2 * bandRadius + 0.6));
 
+  // The wheel: the same ring, sized to the teaser's slot (or to a share of the
+  // canvas's height where the page has none), centered there.
+  const canvas = options.canvas ?? viewport;
+  const slot = options.wheelSlot ?? null;
+  const wheelDiameter = slot ? slot.diameter : c.deal.wheel.diameterOfHeight * canvas.height;
+  const wheelAnchor = slot ? { x: slot.cx / canvas.width, y: slot.cy / canvas.height } : { x: c.deal.wheel.anchor[0], y: c.deal.wheel.anchor[1] };
+  const wheelPx = wheelDiameter / (2 * bandRadius + WHEEL_RING_PAD);
+
   return {
     viewport,
     camera,
@@ -255,6 +284,9 @@ export function solveGeometry(viewport: Viewport, cardCount: number, c: CoilCons
     cardPx,
     cardWorld: cardPx * camera.worldPerPx,
     bandCardWorld: bandPx * camera.worldPerPx,
+    canvas,
+    wheelAnchor,
+    wheelCardWorld: wheelPx * camera.worldPerPx,
     axisDir,
     axisPerp,
     clearTopPx,

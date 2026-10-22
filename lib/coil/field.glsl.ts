@@ -475,10 +475,14 @@ const NAME_COMPOSITE_GLSL = /* glsl */ `
 // px. uNameSpan is the name's own band in the mask (top, height, as fractions
 // of the mask's height): the handoff gradient spans it. The greeting (above
 // uGreetSplit) takes its own alpha (uGreetA). uSurfIn grows the surface over
-// the solid gradient the loader lands on.
+// the solid gradient the loader lands on. uOpen is the deal's mask on the
+// whole composite: the center (x, y in CSS px from the top left), the outer
+// radius and the feather's width; the output is premultiplied by it, so the
+// page shows through wherever it is not yet open (a radius of 1e5 or more is
+// open everywhere). While the radius is 0 the scene skips this pass.
 export const COMPOSITE_FRAG = /* glsl */ `
   uniform sampler2D uField, uName;
-  uniform vec4 uView, uNameRect;
+  uniform vec4 uView, uNameRect, uOpen;
   uniform vec2 uFull, uNameSpan;
   uniform vec3 uPaper, uGradTop, uGradBottom;
   uniform float uNameK, uNameA, uGreetA, uGreetSplit, uLod, uGrain, uDpr, uSeam;
@@ -509,6 +513,7 @@ export const COMPOSITE_FRAG = /* glsl */ `
     // The hero's bottom edge fades to paper, so the field never meets the page in a seam.
     col = mix(uPaper, col, smoothstep(0.0, uSeam, fuv.y));
     col += (h12(gl_FragCoord.xy) - 0.5) / 255.0;
-    gl_FragColor = vec4(col, 1.0);
+    float open = uOpen.z >= 1.0e5 ? 1.0 : 1.0 - smoothstep(uOpen.z - uOpen.w, uOpen.z, length(px - uOpen.xy));
+    gl_FragColor = vec4(col * open, open);
   }
 `;

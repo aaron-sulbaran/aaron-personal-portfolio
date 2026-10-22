@@ -101,7 +101,10 @@ export type CoilSceneApi = CoilFlightApi &
 // landName); otherwise it fades up behind the band as the band opens.
 // tuning: the deal's lab values for this run (absent: COIL's own). A new
 // object restarts the scene's entrance clock, so the deal can play again.
-export type CoilEntrance = { startMs: number; nameFromLoader: boolean; tuning?: EntranceTuning };
+// clockMs: the deal's one clock (a GSAP timeline's proxy, lib/home/dealClock.ts),
+// ms since the click; when present the scene reads it each frame instead of
+// counting from startMs, so the page's scroll, the DOM and the scene share it.
+export type CoilEntrance = { startMs: number; nameFromLoader: boolean; tuning?: EntranceTuning; clockMs?: () => number };
 
 export type CoilSceneProps = {
   frozen: boolean; // a modal is open
@@ -115,7 +118,7 @@ export type CoilSceneProps = {
   // Slice 5 flies the card into its modal; until then a click does nothing.
   onCardClick?: (card: CoilCardRef) => void;
   // ---- slice 4: the entrance ----
-  // Null: not started (cards hidden, the name held by the loader).
+  // Null: not started (the wheel turns in the teaser, the field closed).
   entrance?: CoilEntrance | null;
   // Once, when the entrance's clock has run out (at once for a fast start).
   onEntranceEnd?: () => void;

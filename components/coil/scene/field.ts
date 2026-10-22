@@ -60,6 +60,7 @@ export function createField(ctx: SceneCtx, gl: Gl, init: CompositeInit) {
       uField: { value: fieldTarget.texture },
       uName: { value: null },
       uView,
+      uOpen: { value: new Vector4(0, 0, 0, 1) },
       uNameRect: { value: new Vector4(0, 0, 1, 1) },
       uFull: { value: new Vector2(1, 1) },
       uPaper: { value: new Color() },
@@ -148,6 +149,8 @@ export function createField(ctx: SceneCtx, gl: Gl, init: CompositeInit) {
     fieldMaterial.uniforms.uSec.value = st.theme.field.secondStrength * getIntroKnobs().orangeAmount;
     renderer.setRenderTarget(null);
     renderer.clear();
+    // Closed (the deal has not opened the field): cards only, over the page.
+    if (st.open.radius <= 0) return;
     if (clocks.orange !== st.lastFieldTime || clocks.weather !== lastWeatherTime) {
       renderer.setRenderTarget(fieldTarget);
       renderer.render(fieldScene, orthoCamera);
@@ -158,8 +161,12 @@ export function createField(ctx: SceneCtx, gl: Gl, init: CompositeInit) {
     // ---- end fx-hero ----
   }
 
-  // Render step: the field and the name, to the canvas.
+  // Render step: the field and the name, to the canvas, through the deal's
+  // mask (premultiplied; skipped while the field is closed).
   function composite() {
+    const { cx, cy, radius, feather } = st.open;
+    if (radius <= 0) return;
+    compMaterial.uniforms.uOpen.value.set(cx, cy, radius, feather);
     renderer.render(compScene, orthoCamera);
   }
 

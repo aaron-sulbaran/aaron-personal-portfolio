@@ -3,7 +3,7 @@ import type { StrandCard } from "@/lib/content";
 import type { CaptureState } from "@/lib/coil/capture";
 import type { RenderBudget } from "@/lib/coil/drivers";
 import type { FlightProbe } from "@/lib/coil/flightProbe";
-import type { EntranceClock } from "@/lib/coil/entrance";
+import type { EntranceClock, FieldMask } from "@/lib/coil/entrance";
 import type { Camera, CardPose, CoilGeometry, HelixFrame, Silhouette } from "@/lib/coil/geometry";
 import { createEnvelope, createConveyor, createRowHold, type Conveyor, type Envelope, type RowHold } from "@/lib/coil/motion";
 import type { CoilTheme } from "@/lib/coil/theme";
@@ -47,6 +47,8 @@ export type SceneState = {
   coast: { rest: number } | null;
   pressCaughtCoil: boolean; // this touch stopped a coast: it is a catch, not a tap
   rebuildAt: number | null; // when the last rebuild began
+  // The field's mask (radius 0: closed, the field and composite passes skipped).
+  open: FieldMask;
   // ---- the loop ----
   lastFieldTime: number;
   lastTime: number;
@@ -126,6 +128,7 @@ export function createSceneState(theme: CoilTheme, budget: RenderBudget, conveyo
     coast: null,
     pressCaughtCoil: false,
     rebuildAt: null,
+    open: { cx: 0, cy: 0, radius: 0, feather: 0 },
     lastFieldTime: Number.NaN,
     lastTime: performance.now(),
     raf: 0,

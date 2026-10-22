@@ -77,6 +77,10 @@ export function dealReducer(state: DealState, action: DealAction): DealState {
 // ---- the triggers ----
 
 export type TriggerFrame = {
+  // How far through the sticky stage's range the reader is: 0 where the stage
+  // sticks (page 1's foot at the top of the screen), 1 where it lets go (the
+  // cards section's top there). Below 0 the stage has not stuck yet.
+  stickyProgress: number;
   sectionTop: number; // the cards section's box in the viewport, px
   sectionBottom: number;
   viewportHeight: number;
@@ -85,22 +89,23 @@ export type TriggerFrame = {
 
 export type DealTrigger = "riffle" | "enter" | null;
 
-// What the cards section's place in the viewport asks for now. The entrance
-// zone: its top edge at or above `enterAt` of the viewport and its bottom edge
-// not yet above `outAt` (so a load or a scroll up from below finds it too). The
-// riffle: only on the first way down (never on a load, never on a scroll up),
-// between the section starting to peek and the entrance zone, and only when the
-// knob has it on.
+// What the reader's place on the page asks for now. The entrance zone: far
+// enough through the sticky range (enterAtProgress) and the cards section's
+// bottom edge not yet above `outAt` of the viewport (so a load, an anchor jump
+// or a scroll up from below finds it too). The riffle (retired with the deck):
+// only on the first way down, between the section starting to peek and the
+// entrance zone, and only when the knob has it on. Play on threshold, never
+// scrub: the deal is a choreography on its own clock, not the scroll's.
 export function dealTrigger(frame: TriggerFrame, state: DealState, riffleOn: boolean, t = COIL.deal.trigger): DealTrigger {
   const height = Math.max(1, frame.viewportHeight);
   const top = frame.sectionTop / height;
   const bottom = frame.sectionBottom / height;
-  const inZone = top <= t.enterAt && bottom >= t.outAt;
+  const inZone = frame.stickyProgress >= t.enterAtProgress && bottom >= t.outAt;
   if (state.phase === "dealing") return null;
   if (state.phase === "dealt") return !state.spent && inZone ? "enter" : null;
   if (state.hold) return null;
   if (inZone) return "enter";
-  if (state.phase === "idle" && riffleOn && frame.scrollingDown && top <= t.riffleAt && top > t.enterAt) return "riffle";
+  if (state.phase === "idle" && riffleOn && frame.scrollingDown && top <= t.riffleAt) return "riffle";
   return null;
 }
 

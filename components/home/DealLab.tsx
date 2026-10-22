@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { dispatchDeal } from "@/lib/home/deal";
 import { KNOB_SPEC, getKnobs, resetKnobs, setKnobs, useKnobs, type NumericKnob } from "@/lib/home/dealKnobs";
-import { DEAL_LAB_KNOBS, applyStoredDealKnobs, dealLabValues, writeStoredDealKnobs } from "@/lib/home/dealLab";
+import { DEAL_LAB_GROUPS, DEAL_LAB_KNOBS, applyStoredDealKnobs, dealLabValues, writeStoredDealKnobs } from "@/lib/home/dealLab";
 
 // The deal's lab panel, dev only (DealLabMount never loads it in production, so
 // the build holds none of it): a collapsed chip at the bottom right that opens
@@ -44,7 +44,7 @@ export default function DealLab() {
     dispatchDeal({ type: "reset" });
   };
 
-  const groups = ["Deal", "Columns"].map((group) => ({ group, keys: DEAL_LAB_KNOBS.filter((key) => KNOB_SPEC[key].group === group) }));
+  const groups = DEAL_LAB_GROUPS.map((group) => ({ group, keys: DEAL_LAB_KNOBS.filter((key) => KNOB_SPEC[key].group === group) }));
   return (
     <div data-deal-lab="" className="fixed bottom-4 right-4 z-[90] font-label text-label-sm text-foreground">
       {open ? (

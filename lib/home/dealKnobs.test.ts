@@ -1,14 +1,19 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { COIL } from "@/lib/coil/constants";
+import { tunedConstants } from "@/lib/coil/entrance";
 import { DEFAULT_KNOBS, KNOB_SPEC, clampKnobs, entranceTuningOf, getKnobs, resetKnobs, setKnobs, type NumericKnob } from "@/lib/home/dealKnobs";
 
 describe("the deal's knobs", () => {
   it("default to the constants' deal block", () => {
     expect(DEFAULT_KNOBS.riffleOn).toBe(COIL.deal.riffle.on);
     expect(DEFAULT_KNOBS.riffleMs).toBe(COIL.deal.riffle.ms);
-    expect(DEFAULT_KNOBS.dealMs).toBe(COIL.entrance.durationMs);
-    expect(DEFAULT_KNOBS.dealStagger).toBe(COIL.entrance.shutterStagger);
-    expect(DEFAULT_KNOBS.startOffset).toBe(COIL.entrance.startOffset);
+    expect(DEFAULT_KNOBS.peakCardsPerSecond).toBe(COIL.deal.timeline.peakCardsPerSecond);
+    expect(DEFAULT_KNOBS.scrollStartMs).toBe(COIL.deal.timeline.scrollStartMs);
+    expect(DEFAULT_KNOBS.flattenMs).toBe(COIL.deal.timeline.flattenMs);
+    expect(DEFAULT_KNOBS.pullStartMs).toBe(COIL.deal.timeline.pullStartMs);
+    expect(DEFAULT_KNOBS.openStartMs).toBe(COIL.deal.timeline.openStartMs);
+    expect(DEFAULT_KNOBS.wheelLeanDeg).toBe(COIL.deal.wheel.leanDeg);
+    expect(DEFAULT_KNOBS.wheelScale).toBe(COIL.deal.wheel.scale);
     expect(DEFAULT_KNOBS.settleScale).toBe(COIL.deal.settle.startScale);
     expect(DEFAULT_KNOBS.openMs).toBe(COIL.deal.open.ms);
     expect(DEFAULT_KNOBS.openReach).toBe(COIL.deal.open.reach);
@@ -26,28 +31,33 @@ describe("the deal's knobs", () => {
   });
 
   it("clamps a value to its range and ignores what is not a knob", () => {
-    const clamped = clampKnobs({ riffleMs: 99_999, dealMs: -5, fanDeg: 7.5, notAKnob: 3 });
+    const clamped = clampKnobs({ riffleMs: 99_999, scrollMs: -5, fanDeg: 7.5, notAKnob: 3 });
     expect(clamped.riffleMs).toBe(KNOB_SPEC.riffleMs.max);
-    expect(clamped.dealMs).toBe(KNOB_SPEC.dealMs.min);
+    expect(clamped.scrollMs).toBe(KNOB_SPEC.scrollMs.min);
     expect(clamped.fanDeg).toBe(7.5);
     expect("notAKnob" in clamped).toBe(false);
   });
 
   it("falls back to the base for a non-finite number, a string or a wrong type", () => {
-    const clamped = clampKnobs({ riffleMs: Number.NaN, dealMs: "900", glowSize: Number.POSITIVE_INFINITY, riffleOn: "yes" });
+    const clamped = clampKnobs({ riffleMs: Number.NaN, scrollMs: "900", glowSize: Number.POSITIVE_INFINITY, riffleOn: "yes" });
     expect(clamped.riffleMs).toBe(DEFAULT_KNOBS.riffleMs);
-    expect(clamped.dealMs).toBe(DEFAULT_KNOBS.dealMs);
+    expect(clamped.scrollMs).toBe(DEFAULT_KNOBS.scrollMs);
     expect(clamped.glowSize).toBe(DEFAULT_KNOBS.glowSize);
     expect(clamped.riffleOn).toBe(DEFAULT_KNOBS.riffleOn);
     expect(clampKnobs({ riffleOn: false }).riffleOn).toBe(false);
   });
 
-  it("hands the entrance its three values", () => {
-    expect(entranceTuningOf({ ...DEFAULT_KNOBS, dealMs: 1200, dealStagger: 0.02, startOffset: 0.5 })).toEqual({
-      durationMs: 1200,
-      shutterStagger: 0.02,
-      startOffset: 0.5,
-    });
+  it("hands the entrance its timeline, its wheel and its field", () => {
+    const tuning = entranceTuningOf({ ...DEFAULT_KNOBS, peakCardsPerSecond: 9, scrollMs: 1500, wheelLeanDeg: -20, wheelScale: 1.2, openMs: 1200, openReach: 0.8 });
+    expect(tuning.timeline).toMatchObject({ peakCardsPerSecond: 9, scrollMs: 1500, pullStartMs: COIL.deal.timeline.pullStartMs });
+    expect(tuning.wheel).toMatchObject({ leanDeg: -20, scale: 1.2, offsetX: 0, offsetY: 0, idleCardsPerSecond: 0.5 });
+    expect(tuning.open).toEqual({ ms: 1200, reach: 0.8 });
+    // The defaults are COIL itself, so an untouched lab changes nothing.
+    expect(tunedConstants(entranceTuningOf(DEFAULT_KNOBS))).toBe(COIL);
+    const c = tunedConstants(tuning);
+    expect(c.deal.timeline.peakCardsPerSecond).toBe(9);
+    expect(c.deal.wheel.leanDeg).toBe(-20);
+    expect(c.deal.open.ms).toBe(1200);
   });
 });
 

@@ -209,7 +209,7 @@ export function createCards(ctx: SceneCtx, gl: Gl) {
       const strandPosition = Math.round(pose.u - conveyor.offset);
       const tile = mod(strandPosition, tileCount);
       bindTile(slot, tile);
-      pose = entrancePose(pose, { strandPosition, cardCount: tileCount }, geo, clock);
+      pose = entrancePose(pose, { cardCount: tileCount }, clock);
       if (listProgress > 0) pose = unwindPose(pose, tile, unwind, now, null);
       // ---- slice 7: the narrow pane's clear top band (header and greeting) ----
       if (geo.clearTopPx > 0 && listProgress < 1) {

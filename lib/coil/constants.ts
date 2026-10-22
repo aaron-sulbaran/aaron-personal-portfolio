@@ -21,15 +21,8 @@ function deepFreeze<T extends object>(value: T): DeepReadonly<T> {
 // winding waits for the seam to finish parting (the lab wound from 0.2, where
 // the ends of a 14-card band graze for a frame), as a fraction of the pull.
 const ENTRANCE = {
-  durationMs: 1800,
-  stackIn: 0.05,
-  shutterStart: 0.06,
-  shutterStagger: 0.011,
-  fly: 0.22,
-  pullStart: 0.58,
   windStart: 0.38,
   pullCurve: [0.55, 0, 0.25, 1] as const,
-  startOffset: 1,
 };
 
 const values = {
@@ -124,18 +117,13 @@ const values = {
     // stage's range (the stage sticks when page 1's foot reaches the top of the
     // screen and lets go when the cards section does), and until the section's
     // bottom edge has left past `outAt` of the viewport's height.
-    trigger: { riffleAt: 1, enterAt: 0.65, enterAtProgress: 0.18, outAt: 0.35, waitSceneMs: 4000 },
+    trigger: { riffleAt: 1, enterAtProgress: 0.18, outAt: 0.35, waitSceneMs: 4000 },
     // The deck: face-down cards fanned about their bottom center; the hover
     // opens the fan a little and lifts the top card.
     deck: { cards: 6, fanDeg: 5, openDeg: 1.8, liftPx: 5 },
     // The riffle: split into two halves, interleave back in a quick cascade,
     // square up. spreadShare: how far each half parts (of the deck's width).
     riffle: { on: true, ms: 800, spreadShare: 0.6, splitDeg: 9, hopPx: 8 },
-    entrance: {
-      durationMs: ENTRANCE.durationMs,
-      shutterStagger: ENTRANCE.shutterStagger,
-      startOffset: ENTRANCE.startOffset,
-    },
     // The deal's one clock, in ms from the click (docs/superpowers/specs/2026-10-22-wheel-deal-motion.md
     // section 2). The wheel spins up (speed 0.5 to the peak, power2.out), the
     // page scrolls itself to the section, the wheel flattens into the band

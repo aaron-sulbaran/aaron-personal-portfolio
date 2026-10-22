@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { COIL } from "@/lib/coil/constants";
 import {
   DEAL_IDLE,
   DEAL_REDUCED,
@@ -14,8 +15,11 @@ import {
 
 const run = (actions: DealAction[], from: DealState = DEAL_IDLE) => actions.reduce(dealReducer, from);
 
-// The cards section's box in a 900px viewport: top at `topFrac` of it, 830px tall.
-const frame = (topFrac: number, scrollingDown = true): TriggerFrame => ({
+// The reader's place: `progress` of the way through the sticky stage's range,
+// with the cards section's box in a 900px viewport: top at `topFrac` of it,
+// 830px tall.
+const frame = (progress: number, topFrac = 0, scrollingDown = true): TriggerFrame => ({
+  stickyProgress: progress,
   sectionTop: topFrac * 900,
   sectionBottom: topFrac * 900 + 830,
   viewportHeight: 900,
@@ -103,50 +107,53 @@ describe("the deal's state machine", () => {
   });
 });
 
-describe("what the cards section's place asks for", () => {
-  it("riffles on the first way down once the section peeks, and not before", () => {
-    expect(dealTrigger(frame(1.2), DEAL_IDLE, true)).toBeNull();
-    expect(dealTrigger(frame(1), DEAL_IDLE, true)).toBe("riffle");
-    expect(dealTrigger(frame(0.8), DEAL_IDLE, true)).toBe("riffle");
+describe("what the reader's place asks for", () => {
+  it("riffles (the retired deck, with its knob on) on the first way down once the section peeks, and not before", () => {
+    expect(dealTrigger(frame(-1, 1.2), DEAL_IDLE, true)).toBeNull();
+    expect(dealTrigger(frame(-0.5, 1), DEAL_IDLE, true)).toBe("riffle");
+    expect(dealTrigger(frame(0.1, 0.8), DEAL_IDLE, true)).toBe("riffle");
   });
 
   it("never riffles on a scroll up, with the knob off, or twice", () => {
-    expect(dealTrigger(frame(0.8, false), DEAL_IDLE, true)).toBeNull();
-    expect(dealTrigger(frame(0.8), DEAL_IDLE, false)).toBeNull();
-    expect(dealTrigger(frame(0.8), run([{ type: "riffle", source: "scroll" }]), true)).toBeNull();
+    expect(dealTrigger(frame(0.1, 0.8, false), DEAL_IDLE, true)).toBeNull();
+    expect(dealTrigger(frame(0.1, 0.8), DEAL_IDLE, false)).toBeNull();
+    expect(dealTrigger(frame(0.1, 0.8), run([{ type: "riffle", source: "scroll" }]), true)).toBeNull();
   });
 
-  it("deals once the section's top is at or above 65 percent, riffled or not", () => {
-    expect(dealTrigger(frame(0.66), DEAL_IDLE, true)).toBe("riffle");
-    expect(dealTrigger(frame(0.65), DEAL_IDLE, true)).toBe("enter");
-    expect(dealTrigger(frame(0), DEAL_IDLE, true)).toBe("enter");
-    expect(dealTrigger(frame(0.3), run([{ type: "riffle", source: "scroll" }]), true)).toBe("enter");
+  it("deals once the reader is 18 percent through the sticky range, never before, and never while the stage has not stuck", () => {
+    expect(COIL.deal.trigger.enterAtProgress).toBe(0.18);
+    expect(dealTrigger(frame(-0.4, 1.4), DEAL_IDLE, false)).toBeNull();
+    expect(dealTrigger(frame(0, 1), DEAL_IDLE, false)).toBeNull();
+    expect(dealTrigger(frame(0.17, 0.9), DEAL_IDLE, false)).toBeNull();
+    expect(dealTrigger(frame(0.18, 0.9), DEAL_IDLE, false)).toBe("enter");
+    expect(dealTrigger(frame(1, 0), DEAL_IDLE, false)).toBe("enter");
+    expect(dealTrigger(frame(0.3, 0.3), run([{ type: "riffle", source: "scroll" }]), true)).toBe("enter");
   });
 
-  it("deals on a load that already has the section in view, and on a scroll up from below it, but not once it has left", () => {
-    expect(dealTrigger(frame(0, false), DEAL_IDLE, true)).toBe("enter");
-    // Scrolled past: its bottom edge is above 35 percent of the viewport.
-    const past: TriggerFrame = { sectionTop: -800, sectionBottom: 30, viewportHeight: 900, scrollingDown: false };
+  it("deals on a load or an anchor jump that finds the stage stuck, and on a scroll up from below it, but not once it has left", () => {
+    expect(dealTrigger(frame(1, 0, false), DEAL_IDLE, true)).toBe("enter");
+    // Scrolled past: the section's bottom edge is above 35 percent of the viewport.
+    const past: TriggerFrame = { stickyProgress: 1, sectionTop: -800, sectionBottom: 30, viewportHeight: 900, scrollingDown: false };
     expect(dealTrigger(past, DEAL_IDLE, true)).toBeNull();
-    const below: TriggerFrame = { sectionTop: -300, sectionBottom: 530, viewportHeight: 900, scrollingDown: false };
+    const below: TriggerFrame = { stickyProgress: 1, sectionTop: -300, sectionBottom: 530, viewportHeight: 900, scrollingDown: false };
     expect(dealTrigger(below, DEAL_IDLE, true)).toBe("enter");
   });
 
-  it("holds the entrance while the click path scrolls, then deals on the arrival", () => {
+  it("holds the entrance while a hold is on, then deals", () => {
     const held = run([{ type: "riffle", source: "click" }, { type: "hold", on: true }]);
-    expect(dealTrigger(frame(0.3), held, true)).toBeNull();
-    expect(dealTrigger(frame(0), dealReducer(held, { type: "hold", on: false }), true)).toBe("enter");
+    expect(dealTrigger(frame(0.3, 0.3), held, true)).toBeNull();
+    expect(dealTrigger(frame(1, 0), dealReducer(held, { type: "hold", on: false }), true)).toBe("enter");
   });
 
   it("asks for nothing while dealing, and nothing once dealt and spent", () => {
     const dealing = run([{ type: "enter", source: "view" }]);
-    expect(dealTrigger(frame(0), dealing, true)).toBeNull();
-    expect(dealTrigger(frame(0), dealReducer(dealing, { type: "finish" }), true)).toBeNull();
+    expect(dealTrigger(frame(1, 0), dealing, true)).toBeNull();
+    expect(dealTrigger(frame(1, 0), dealReducer(dealing, { type: "finish" }), true)).toBeNull();
   });
 
   it("lets reduced motion's unspent dealt state be spent by reaching the cards", () => {
-    expect(dealTrigger(frame(0.9), DEAL_REDUCED, true)).toBeNull();
-    expect(dealTrigger(frame(0.4), DEAL_REDUCED, true)).toBe("enter");
+    expect(dealTrigger(frame(0.05, 0.9), DEAL_REDUCED, true)).toBeNull();
+    expect(dealTrigger(frame(0.4, 0.4), DEAL_REDUCED, true)).toBe("enter");
   });
 });
 
