@@ -3,6 +3,7 @@ import { Footer } from "@/components/Footer";
 import { PathLayer } from "@/components/soundtrack/path/PathLayer";
 import { Holding } from "@/components/Holding";
 import { HOLDING_MODE } from "@/lib/holding";
+import { DealLabMount } from "@/components/home/DealLabMount";
 import { HomeController } from "@/components/home/HomeController";
 import { Intro } from "@/components/home/Intro";
 import { CardColumns } from "@/components/cards/CardColumns";
@@ -49,6 +50,7 @@ export default function Home() {
         <Footer />
       </div>
       <MarkCardSource />
+      {process.env.NODE_ENV !== "production" && <DealLabMount />}
     </>
   );
 }
