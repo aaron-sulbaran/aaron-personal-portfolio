@@ -29,7 +29,7 @@ import { usePlayerSync } from "./usePlayerSync";
 // queue (lib/player/queueStore). With no music started it draws nothing.
 export function SoundtrackPlayer() {
   const pathname = usePathname();
-  // Only the home page has a hero, and the Coil and Band toggle in its corner.
+  // Only the home page has the cards section, and the unwound list's Coil control in its corner.
   const home = pathname === "/";
   const phone = useSyncExternalStore(subscribePhone, isPhone, () => false);
   const roomy = useSyncExternalStore(subscribeRoomy, isRoomy, () => true);

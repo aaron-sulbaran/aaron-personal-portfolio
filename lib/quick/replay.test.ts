@@ -1,5 +1,3 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { THEME_STORAGE_KEY } from "@/lib/theme";
 import { INVITE_KEY } from "./invite";
@@ -12,7 +10,7 @@ function memory(keys: readonly string[]) {
 }
 
 describe("replay first visit", () => {
-  it("forgets the invite, the seen store, the hints, and the loader's saved scroll", () => {
+  it("forgets the invite, the seen store, the hints, and the saved scroll", () => {
     expect(FIRST_VISIT_LOCAL).toContain(INVITE_KEY);
     expect(FIRST_VISIT_LOCAL).toEqual(expect.arrayContaining(["aaron-hint-opened", "aaron-hint-keep", "aaron-hint-tap", "aaron-still-notice"]));
     expect(FIRST_VISIT_SESSION).toEqual(expect.arrayContaining(["aaron-explored-tiles", "aps:home-scroll-y", "aaron-soundtrack-greeted"]));
@@ -30,11 +28,5 @@ describe("replay first visit", () => {
     expect(session.map.size).toBe(0);
     const blocked = { removeItem: () => { throw new Error("blocked"); } };
     expect(() => forgetFirstVisit(blocked, null)).not.toThrow();
-  });
-
-  it("matches the key the loader's skip script reads", () => {
-    const markup = readFileSync(join(process.cwd(), "components/loader/loaderMarkup.ts"), "utf8");
-    const read = markup.match(/sessionStorage\.getItem\("([^"]+)"\)/)?.[1];
-    expect(FIRST_VISIT_SESSION).toContain(read);
   });
 });

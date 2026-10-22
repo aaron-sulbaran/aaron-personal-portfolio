@@ -42,15 +42,15 @@ describe("the isle in the hero", () => {
     expect(heroLift(false)).toBe(0);
   });
 
-  it("then clears the Coil and Band toggle by at least a gap", () => {
-    const toggleTop = HERO_CONTROLS.bottomPx + HERO_CONTROLS.heightPx;
-    expect(ISLE.bottomPx + HERO_LIFT_PX).toBeGreaterThanOrEqual(toggleTop + FOOTER_GAP_PX);
+  it("then clears the Coil control by at least a gap", () => {
+    const controlTop = HERO_CONTROLS.bottomPx + HERO_CONTROLS.heightPx;
+    expect(ISLE.bottomPx + HERO_LIFT_PX).toBeGreaterThanOrEqual(controlTop + FOOTER_GAP_PX);
   });
 
-  it("uses the toggle's real seat", () => {
-    const toggle = readFileSync("components/coil/ShapeToggle.tsx", "utf8");
-    expect(toggle).toContain(`bottom-[${HERO_CONTROLS.bottomPx}px]`);
-    expect(toggle).toContain("h-10");
+  it("uses the Coil control's real seat", () => {
+    const overlay = readFileSync("components/coil/HeroOverlay.tsx", "utf8");
+    expect(overlay).toContain(`absolute bottom-[${HERO_CONTROLS.bottomPx}px]`);
+    expect(overlay).toContain("min-h-10");
     expect(HERO_CONTROLS.heightPx).toBe(40);
   });
 });

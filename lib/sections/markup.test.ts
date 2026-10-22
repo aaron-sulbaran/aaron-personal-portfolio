@@ -6,7 +6,6 @@ import { Kicker } from "@/components/sections/Kicker";
 import { SectionHeading, SectionSubline } from "@/components/sections/SectionTitle";
 import { StickyColumn } from "@/components/sections/StickyColumn";
 import { Connect } from "@/components/Connect";
-import { WhoIAm } from "@/components/WhoIAm";
 import { siteContent } from "@/lib/content";
 import { slotStats } from "@/lib/metrics/format";
 
@@ -39,7 +38,6 @@ describe("the section title and the line under it", () => {
   it("runs the line its full length from md up only when asked (the numbers strip's), narrow on phones", () => {
     const wide = renderToStaticMarkup(createElement(SectionSubline, { wide: true } as ComponentProps<typeof SectionSubline>, "a line"));
     expect(wide).toMatch(/^<p class="max-w-xs md:max-w-none text-sm leading-relaxed text-muted"/);
-    expect(renderToStaticMarkup(createElement(WhoIAm))).not.toContain("md:max-w-none");
   });
 
   it("puts an id on its block, for a group named by it", () => {
@@ -71,41 +69,6 @@ describe("the sticky column", () => {
     expect(html).toBe(
       '<div class="sections-sticky-col md:col-span-4" style="--sections-sticky-top:112px;--sections-sticky-stop:120px"><div data-sections-sticky="true"><p>held</p></div></div>',
     );
-  });
-});
-
-describe("Who I am", () => {
-  const html = renderToStaticMarkup(createElement(WhoIAm));
-  const { label, heading, blocks, smallPrint } = siteContent.whoIAm;
-  const labels = blocks.flatMap((block) => [block.label, ...(block.sub ? [block.sub.label] : [])]);
-
-  it("is the page's #about, the About screen and Right now sections gone", () => {
-    expect(html).toMatch(new RegExp(`^<section id="about" data-wave-anchor="who" aria-label="${label}"`));
-    expect(html).not.toContain('id="up-to-now"');
-    expect(html).not.toContain("data-up-to-now-slot");
-    expect(html).not.toContain('data-sections-block="item"');
-  });
-
-  it("holds the lowercase heading and the small print in the sticky column, ahead of the blocks, with no kicker above the heading", () => {
-    const held = html.slice(html.indexOf("sections-sticky-col"), html.indexOf(`data-sections-label="true">${blocks[0].label}`));
-    expect(held).toContain(`<h2 class="font-display text-section" data-sections-block="heading" data-sections-split="lines">${heading}</h2>`);
-    expect(held).toContain(smallPrint);
-    expect(held.indexOf(heading)).toBeLessThan(held.indexOf(smallPrint));
-    expect(html.indexOf('data-sections-block="kicker"'), "the first kicker is a block's, after the held column").toBeGreaterThan(html.indexOf(smallPrint));
-  });
-
-  it("draws a kicker for every block and sub-block, in order, each followed by its body, and none for the section", () => {
-    expect([...html.matchAll(/data-sections-label="true">([^<]*)</g)].map((match) => match[1].replaceAll("&#x27;", "'"))).toEqual(labels);
-    expect(html.match(/data-sections-block="kicker"/g)).toHaveLength(labels.length);
-    expect(html.match(/data-sections-block="body"/g)).toHaveLength(blocks.length + blocks.filter((block) => block.sub).length + 1);
-  });
-
-  it("renders the definition and the photo pops as marked inline links", () => {
-    expect(html.match(/data-inline="def"/g)).toHaveLength(1);
-    expect([...html.matchAll(/data-inline="pop" data-inline-key="([a-z-]+)"/g)].map((match) => match[1])).toEqual([
-      "leadership-award", "family", "friends", "sandboarding", "downhill-skating", "skydiving", "rock-climbing", "venezuela-flag",
-    ]);
-    expect(html).not.toContain("](");
   });
 });
 

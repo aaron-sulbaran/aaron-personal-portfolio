@@ -8,7 +8,7 @@ import { DOCK } from "@/lib/waveform/dock";
 // across it on the way up. One fraction for every screen.
 export const ISLE_LINE = 0.4;
 
-// The band is ahead of the reader (the hero, the book) while its top edge is at
+// The band is ahead of the reader (the first screen) while its top edge is at
 // or below this share of the viewport's height.
 export const AHEAD_TOP = 0.75;
 
@@ -41,10 +41,10 @@ export const PILL_IDLE_MS = 4000;
 
 // The isle rides up to stay clear of what it would cover. FOOTER_GAP_PX: its
 // bottom edge sits this far above the footer's top edge, so the period stays
-// free. In the hero the Coil and Band toggle (and the Coil control that stands
-// in its place) hold the dock's corner: HERO_CONTROLS is their seat in
-// components/coil/ShapeToggle (bottom-[24px], h-10), and the isle rises
-// HERO_LIFT_PX above its dock line while the band is still ahead of the reader.
+// free. The unwound list's Coil control holds the dock's corner: HERO_CONTROLS
+// is its seat in components/coil/HeroOverlay (bottom-[24px], min-h-10), and the
+// isle rises HERO_LIFT_PX above its dock line while the band is still ahead of
+// the reader.
 export const FOOTER_GAP_PX = 14;
 export const HERO_CONTROLS = { bottomPx: 24, heightPx: 40 } as const;
 export const HERO_LIFT_PX = 56;

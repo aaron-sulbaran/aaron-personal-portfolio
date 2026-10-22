@@ -19,8 +19,8 @@ import { usePlayerControls } from "./usePlayerControls";
 // or Escape folds it back, and so does a few seconds with nothing touching it
 // (lib/player/pill). No close button and no freeze control. Portaled to body so
 // no transformed ancestor captures it, on the pill's z level. While the band is
-// still ahead of the reader (`lifted`) it stands above the hero's Coil and Band
-// toggle; the footer's lift is a CSS variable (globals.css).
+// still ahead of the reader (`lifted`) it stands above the unwound list's Coil
+// control; the footer's lift is a CSS variable (globals.css).
 export function IslePill({ reduce, pinned: initialPinned = false, lifted = false }: { reduce: boolean; pinned?: boolean; lifted?: boolean }) {
   const { open, pinned, root, face, handlers } = usePillState(initialPinned);
   const controls = usePlayerControls(false);

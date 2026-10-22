@@ -6,8 +6,7 @@ import { describe, expect, it } from "vitest";
 // connect-footer-band.md, mark-card.md). These sites must keep rendering
 // through InlineCopy, or the markup shows as text.
 const WIRED: Array<[string, string]> = [
-  ["components/WhoIAm.tsx", "block.body"],
-  ["components/WhoIAm.tsx", "block.sub.body"],
+  ["components/home/Intro.tsx", "sentence"],
   ["components/Connect.tsx", "body"],
   ["components/soundtrack/BandInvite.tsx", "c.body"],
   ["components/soundtrack/BandInvite.tsx", "c.acceptedNote"],

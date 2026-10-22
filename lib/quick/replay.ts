@@ -21,8 +21,8 @@ export const FIRST_VISIT_LOCAL: readonly string[] = [
   "aaron-rush-asked",
 ];
 
-// The seen store, the saved scroll (the loader's skip and the deep-reload fast
-// start read it) and the soundtrack's one greeting.
+// The seen store, the saved scroll (the deep-reload recovery reads it) and the
+// soundtrack's one greeting.
 export const FIRST_VISIT_SESSION: readonly string[] = [SEEN_STORAGE_KEY, HOME_SCROLL_KEY, GREETED_KEY];
 
 type Remover = Pick<Storage, "removeItem">;
