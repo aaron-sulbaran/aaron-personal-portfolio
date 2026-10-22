@@ -18,6 +18,7 @@ import { pointerTo } from "./support/input";
 
 type Target = "front photo" | "back-facing photo" | "work card" | "card in the bottom fade";
 
+const HEADER_BAR_PX = 72;
 const INSIDE_MEAN_MAX = 2;
 const EDGE_MOVE_MAX_PX = 0.5;
 
@@ -54,6 +55,8 @@ async function pickTarget(page: Page, target: Target): Promise<SlotInfo | null> 
   slots.forEach((slot, i) => {
     const { x, y } = slot.center;
     if (!(x > 80 && x < width - 80 && y > 80 && y < Math.min(height, stage.bottom) - 20) || picks[i] !== slot.slot) return;
+    // The header bar (72px) covers the top of the page past the intro; a card under it swaps from below the bar to above it.
+    if (Math.min(...slot.quad.map((p) => p.y)) < HEADER_BAR_PX + 4) return;
     const front = signedArea(slot.quad) > 0;
     const inSeam = y > stage.bottom - stage.height * seam;
     const area = Math.abs(signedArea(slot.quad));
@@ -77,7 +80,8 @@ async function setView(page: Page, slot: number, { mesh, flown }: { mesh: boolea
       if (!style) {
         style = document.createElement("style");
         style.id = "e2e-flight-view";
-        style.textContent = "[role=dialog],[data-card-tint]{visibility:hidden!important} .z-\\[100\\]{visibility:hidden!important}";
+        // The columns' titles (a card under one is under its text, and the hovered card lights its title) are not part of the swap.
+        style.textContent = "[role=dialog],[data-card-tint],[data-coil-section] button[data-card]{visibility:hidden!important} .z-\\[100\\]{visibility:hidden!important}";
         document.head.appendChild(style);
       }
       const layer = document.querySelector<HTMLElement>("[data-flying-tile]");
