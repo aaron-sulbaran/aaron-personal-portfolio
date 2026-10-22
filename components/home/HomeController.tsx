@@ -9,7 +9,6 @@ import {
   useMemo,
   useRef,
   useState,
-  useSyncExternalStore,
   type ReactNode,
 } from "react";
 import { siteContent, strandCardByKey, type CardKey } from "@/lib/content";
@@ -27,10 +26,10 @@ import {
 import { COIL } from "@/lib/coil/constants";
 import { getDeal, useDeal } from "@/lib/home/deal";
 import { useDealDirector } from "./useDealDirector";
-import { useStageLead } from "./useStageLead";
-import { sameDrivers, selectDrivers, type Drivers } from "@/lib/coil/drivers";
+import { StageRail } from "./StageRail";
+import { QUERIES, useCapabilities } from "./useCapabilities";
+import type { Drivers } from "@/lib/coil/drivers";
 import { CardModal } from "@/components/card/CardModal";
-import { CoilStage } from "@/components/coil/CoilStage";
 import type { CoilEntrance } from "@/components/coil/CoilScene";
 import type { HeroScene } from "@/lib/coil/heroStill";
 import type { CoilCardRef, CoilSceneApi } from "@/components/coil/CoilScene";
@@ -115,51 +114,6 @@ export function useHomeController() {
   return useContext(HomeControllerContext);
 }
 
-// ---------------------------------------------------------------- capabilities
-
-type CapabilitySnapshot = { drivers: Drivers; reducedMotion: boolean };
-
-const SERVER_CAPABILITIES: CapabilitySnapshot = {
-  drivers: { composition: "wide", input: "fine", scene: true },
-  reducedMotion: false,
-};
-
-const QUERIES = {
-  reduce: "(prefers-reduced-motion: reduce)",
-  fine: "(pointer: fine)",
-  hover: "(hover: hover)",
-} as const;
-
-let cachedCapabilities: CapabilitySnapshot = SERVER_CAPABILITIES;
-
-function readCapabilities(): CapabilitySnapshot {
-  const reducedMotion = window.matchMedia(QUERIES.reduce).matches;
-  const drivers = selectDrivers({
-    viewport: { width: window.innerWidth, height: window.innerHeight },
-    finePointer: window.matchMedia(QUERIES.fine).matches,
-    canHover: window.matchMedia(QUERIES.hover).matches,
-    reducedMotion,
-  });
-  if (cachedCapabilities.reducedMotion !== reducedMotion || !sameDrivers(cachedCapabilities.drivers, drivers)) {
-    cachedCapabilities = { drivers, reducedMotion };
-  }
-  return cachedCapabilities;
-}
-
-function subscribeCapabilities(onChange: () => void) {
-  const lists = Object.values(QUERIES).map((query) => window.matchMedia(query));
-  lists.forEach((list) => list.addEventListener("change", onChange));
-  window.addEventListener("resize", onChange);
-  window.addEventListener("orientationchange", onChange);
-  return () => {
-    lists.forEach((list) => list.removeEventListener("change", onChange));
-    window.removeEventListener("resize", onChange);
-    window.removeEventListener("orientationchange", onChange);
-  };
-}
-
-const serverCapabilities = () => SERVER_CAPABILITIES;
-
 // ---------------------------------------------------------------- controller
 
 type Props = {
@@ -169,7 +123,7 @@ type Props = {
 
 export function HomeController({ children }: Props) {
   const phase = useHomeReadiness();
-  const { drivers, reducedMotion } = useSyncExternalStore(subscribeCapabilities, readCapabilities, serverCapabilities);
+  const { drivers, reducedMotion } = useCapabilities();
 
   const [fastStart, setFastStart] = useState(false);
   const [deep, setDeep] = useState(false);
@@ -186,7 +140,6 @@ export function HomeController({ children }: Props) {
   const sectionRef = useRef<HTMLElement>(null);
   const deal = useDeal();
   const director = useDealDirector({ sectionRef, scene: heroScene, reducedMotion, setEntrance });
-  useStageLead(sectionRef, heroScene, reducedMotion);
 
   // Before paint, once per load: own the readiness store, take manual scroll
   // restoration, decide whether this load lands deep, land it, and pick the
@@ -413,27 +366,18 @@ export function HomeController({ children }: Props) {
         // ones reach the scene's drag-to-spin.
         className="group/hero relative flex min-h-[100svh] w-full flex-col bg-background [touch-action:pan-y_pinch-zoom] md:block md:min-h-[92svh]"
       >
-        <div data-coil-frame="" className="relative min-h-[34svh] flex-1 md:absolute md:inset-0 md:min-h-0">
-          {/* The rail the stage sticks in: the frame, reaching up over page 1's
-              foot by --run-lead (useStageLead). The stage is as tall as the
-              frame and sticks at the top of the screen, so the wheel, the band
-              and the Coil are one object on one canvas through the deal. */}
-          <div data-coil-rail="" className="pointer-events-none absolute inset-x-0 bottom-0" style={{ height: "calc(100% + var(--run-lead, 0px))" }}>
-            <div data-coil-sticky="" className="sticky top-0" style={{ height: "calc(100% - var(--run-lead, 0px))" }}>
-              <CoilStage
-                reducedMotion={reducedMotion}
-                frozen={modalOpen || flight !== null}
-                interactive={phase === "ready" && deal.phase === "dealt"}
-                input={drivers.input}
-                scene={heroScene}
-                onSceneChange={setHeroScene}
-                api={sceneApiRef}
-                onCardClick={handleCardClick}
-                onRowOpen={handleRowOpen}
-              />
-            </div>
-          </div>
-        </div>
+        <StageRail
+          sectionRef={sectionRef}
+          reducedMotion={reducedMotion}
+          frozen={modalOpen || flight !== null}
+          interactive={phase === "ready" && deal.phase === "dealt"}
+          input={drivers.input}
+          scene={heroScene}
+          onSceneChange={setHeroScene}
+          api={sceneApiRef}
+          onCardClick={handleCardClick}
+          onRowOpen={handleRowOpen}
+        />
         {children}
       </section>
       <CardModal cardKey={selection?.key ?? null} onClose={closeModal} renderMedia={renderMedia} flying={flight?.phase === "out"} />
