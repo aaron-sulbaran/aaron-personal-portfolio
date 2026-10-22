@@ -9,34 +9,28 @@ import { startClickDeal } from "@/lib/home/dealFlow";
 import { EXPRESS_PATH } from "@/lib/quick/transition";
 import { goTo } from "@/lib/quick/transitionStore";
 
-// The fork at the intro's foot: the deck (a placeholder until the next page 1
-// replaces it), the one primary action that deals (startClickDeal: the deal,
-// then the scroll to the cards), the quiet line that says scrolling by hand
-// does the same, and the quiet link to the 30-second version. Once the cards
-// are dealt the button reads "Back to my cards" (it scrolls there, no replay)
-// and the line goes but keeps its space, so nothing below moves. Nothing here
-// takes the scroll from the reader.
-export function IntroFork() {
-  const { fork } = siteContent.intro;
+// The teaser at page 1's foot, one self-contained block: the question, "Deal me
+// in" (startClickDeal: the deal, then the scroll to the cards), the quiet link
+// to the 30-second version, and the wheel's slot (data-coil-wheel), which
+// reserves the space the cards' wheel will turn in and holds a quiet outline
+// until then. Once the cards are dealt the button reads "Back to my cards" (it
+// scrolls there, no replay). It carries its own width and padding and assumes
+// nothing of its parent, so it can move into the cards section's stage as it
+// is. Nothing here takes the scroll from the reader.
+export function Teaser() {
+  const { teaser } = siteContent.intro;
   const reducedMotion = useReducedMotionLive();
   const spent = isSpent(useDeal());
   return (
-    <div data-intro-fork="" className="px-[6vw] pb-20 pt-6 md:pb-28">
-      <div className="mx-auto flex max-w-[1240px] flex-col items-start gap-6 md:flex-row md:items-center md:gap-10">
-        <div
-          data-deck=""
-          data-dealt={spent ? "" : undefined}
-          role="img"
-          aria-label={fork.deckLabel}
-          className="aspect-[3/4] w-20 shrink-0 rounded-xl border border-border bg-glass md:w-24"
-        />
-        <div className="flex flex-col items-start gap-3">
+    <div data-teaser="" className="mx-auto w-full max-w-[1240px] px-[6vw] pb-6 pt-16 md:pb-12 md:pt-20">
+      <div className="flex flex-col items-start gap-5 md:gap-6">
+        <p data-wave-words="" className="font-display text-[clamp(1.75rem,3.4vw,2.75rem)] leading-[1.08] text-foreground">
+          {teaser.line}
+        </p>
+        <div className="flex flex-wrap items-baseline gap-x-8 gap-y-3">
           <Fill {...FILL_PICK.cta} onClick={() => void startClickDeal(reducedMotion)} className={CTA_LABEL_CLASS} overClassName={CTA_LABEL_OVER_CLASS} data-cursor-hover>
-            {spent ? fork.back : fork.deal}
+            {spent ? teaser.back : teaser.deal}
           </Fill>
-          <p aria-hidden={spent ? "true" : undefined} className={`font-label text-label-sm text-muted ${spent ? "invisible" : ""}`}>
-            {fork.scroll}
-          </p>
           <a
             href={EXPRESS_PATH}
             onClick={(event) => {
@@ -47,10 +41,16 @@ export function IntroFork() {
             data-cursor-hover
             className="rounded-sm font-label text-label-sm text-muted underline decoration-1 underline-offset-[4px] transition-colors duration-200 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
-            {fork.quick}
+            {teaser.quick}
           </a>
         </div>
       </div>
+      <div
+        data-coil-wheel=""
+        data-dealt={spent ? "" : undefined}
+        aria-hidden="true"
+        className="mx-auto mt-10 aspect-square w-[min(68vw,20rem)] rounded-full border border-dashed border-border md:mt-12"
+      />
     </div>
   );
 }

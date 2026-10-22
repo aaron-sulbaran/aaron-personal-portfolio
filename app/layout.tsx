@@ -12,6 +12,7 @@ import { siteContent } from "@/lib/content";
 import { profaBlack, profaBold } from "@/lib/fonts";
 import { HOLDING_MODE } from "@/lib/holding";
 import { dealInitScript } from "@/lib/home/dealInit";
+import { introLoaderInitScript } from "@/lib/home/introLoaderInit";
 import { visitedInitScript } from "@/lib/inline/visited";
 import { THEME_BG_DARK, THEME_BG_LIGHT, themeInitScript } from "@/lib/theme";
 import "./globals.css";
@@ -62,6 +63,7 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         {!HOLDING_MODE && <script dangerouslySetInnerHTML={{ __html: visitedInitScript }} />}
         {!HOLDING_MODE && <script dangerouslySetInnerHTML={{ __html: dealInitScript() }} />}
+        {!HOLDING_MODE && <script dangerouslySetInnerHTML={{ __html: introLoaderInitScript() }} />}
       </head>
       <body className="font-sans">
         <a href="#main" className="skip-link">

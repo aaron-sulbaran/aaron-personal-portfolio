@@ -860,3 +860,204 @@ html[data-deal="pending"] [data-deal-title] {
   animation: deal-failsafe 0.01s 8s forwards;
 }
 /* ---- end the deal ---- */
+
+/* ---- page 1 (hero rework, slice 3) ---- */
+/* The lockup, "Hi, I'm" over "Aaron": the h1's and the loader's one markup at
+   two sizes (--lk is the name's font size, set where it is used), so the
+   loader's shrink into the heading is a uniform scale. The proportions are
+   custom properties from lib/home/lockup.ts (COIL.lockup's picks), set on the
+   section and on the loader's root. */
+.name-lockup {
+  display: block;
+  width: max-content;
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-weight: 900;
+  font-synthesis: none;
+  font-kerning: normal;
+  letter-spacing: 0;
+  line-height: 1;
+  white-space: nowrap;
+  font-size: var(--lk);
+}
+.name-lockup__greet {
+  display: block;
+  font-size: calc(var(--lk) * var(--lk-greet));
+  margin-left: calc(var(--lk) * var(--lk-shift));
+  margin-bottom: calc(var(--lk) * var(--lk-pull));
+}
+.name-lockup__name {
+  display: block;
+  position: relative;
+  margin-bottom: calc(var(--lk) * var(--lk-bottom-trim) * -1);
+}
+
+/* The stage holds the heading (and the field behind it, full bleed). Where the
+   heading sits is the lab's namePosition: center (the stage's middle), top
+   (centered across, under the logo row), topLeft (on the content column's left
+   edge). The stage's own height is fixed in CSS, so the loader's shrink onto
+   the heading never moves anything. */
+[data-intro-stage] {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-inline: 6vw;
+  min-height: clamp(26rem, 62svh, 46rem);
+}
+[data-intro-stage] [data-intro-heading-wrap] {
+  position: relative;
+  display: flex;
+  width: 100%;
+  max-width: 1240px;
+  margin-inline: auto;
+  justify-content: center;
+}
+[data-name-position="top"] [data-intro-stage],
+[data-name-position="topLeft"] [data-intro-stage] {
+  align-items: flex-start;
+  min-height: 0;
+  padding-top: 7rem;
+  padding-bottom: 3.5rem;
+}
+[data-name-position="topLeft"] [data-intro-heading-wrap] {
+  justify-content: flex-start;
+}
+@media (max-width: 767px) {
+  [data-intro-stage] {
+    min-height: clamp(14rem, 33svh, 20rem);
+  }
+  [data-name-position="top"] [data-intro-stage],
+  [data-name-position="topLeft"] [data-intro-stage] {
+    padding-top: 5.5rem;
+    padding-bottom: 2rem;
+  }
+}
+
+/* The story: the paragraph blocks and the soundtrack band, in one column.
+   Each item's place is its CSS order (lib/home/storyLayout.ts: desktop, and
+   the phone's own), so the band's place and the phone's arrangement are knobs
+   and the server's first paint never waits on one. From 1024px a right block
+   leans across --shift of the free width beside a measure of about 60
+   characters; below that, one column. */
+[data-story] {
+  display: flex;
+  flex-direction: column;
+  row-gap: var(--story-gap-sm, 2.75rem);
+}
+[data-story-item] {
+  order: var(--o-d, 0);
+}
+@media (max-width: 767px) {
+  [data-story-item] {
+    order: var(--o-p, 0);
+  }
+}
+@media (min-width: 1024px) {
+  [data-story] {
+    row-gap: var(--story-gap, 7rem);
+  }
+  [data-block][data-side="right"] [data-block-text] {
+    margin-left: max(0px, calc((100% - 60ch) * var(--shift, 0)));
+  }
+}
+[data-block-text] {
+  max-width: 60ch;
+}
+[data-more] {
+  display: none;
+}
+@media (max-width: 767px) {
+  [data-phone-layout="teaserPeeks"] [data-more] {
+    display: block;
+  }
+  [data-phone-layout="teaserPeeks"]:not([data-more-open]) [data-story-item][data-collapsible="true"] {
+    display: none;
+  }
+}
+
+/* The loader: always dark, over everything (z 60), armed by the head script
+   (lib/home/introLoaderInit.ts, <html data-intro-loader="on">), then "shrink"
+   while the name lands on the heading, then "done". Unarmed (reduced motion,
+   a deep load, no JavaScript, any visit after the first) it is not there and
+   the heading shows. The heading waits under it, visibility only, so its
+   place is kept. Nine seconds of "on" means the page's own script never took
+   over: the loader lifts by itself. */
+.intro-loader {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  container-type: size;
+  pointer-events: none;
+}
+html:is([data-intro-loader="on"], [data-intro-loader="shrink"]) .intro-loader {
+  display: block;
+}
+html[data-intro-loader="on"] .intro-loader {
+  pointer-events: auto;
+  touch-action: none;
+  animation: intro-loader-bail 400ms linear 9s forwards;
+}
+html:is([data-intro-loader="on"], [data-intro-loader="shrink"]) #intro-heading {
+  visibility: hidden;
+}
+html[data-intro-loader="on"] #intro-heading {
+  animation: intro-heading-bail 0.01s linear 9.4s forwards;
+}
+@keyframes intro-loader-bail {
+  to { opacity: 0; visibility: hidden; }
+}
+@keyframes intro-heading-bail {
+  to { visibility: visible; }
+}
+.intro-loader__ground {
+  position: absolute;
+  inset: 0;
+  background: var(--loader-bg);
+}
+.intro-loader__lockup {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  height: max-content;
+  --lk: min(calc((100cqw - 32px) / 2.76636), calc(100cqh * 0.52));
+  color: var(--loader-name);
+  transform-origin: 0 0;
+}
+.intro-loader__base {
+  display: block;
+}
+/* The fill: a copy of the name in the accent, clipped from the baseline up to
+   the cap top as --p goes 0 to 1. */
+.intro-loader__fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: var(--loader-fill);
+  clip-path: inset(calc((var(--lk-cap-top) + (1 - var(--p, 0)) * var(--lk-cap)) * 1em) 0 0 0);
+}
+.intro-loader[data-full] .name-lockup__greet {
+  color: var(--loader-fill);
+}
+/* Shrinking: the whole lockup is one ink, which the script tweens to the heading's. */
+.intro-loader[data-shrink] .intro-loader__lockup {
+  color: var(--loader-fill);
+}
+.intro-loader[data-shrink] :is(.intro-loader__base, .intro-loader__fill, .name-lockup__greet) {
+  color: inherit;
+}
+.intro-loader__count {
+  position: absolute;
+  top: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  font: 500 12px/1 var(--font-sans), system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  color: var(--loader-muted);
+  white-space: nowrap;
+}
+.intro-loader__count[data-hidden] {
+  visibility: hidden;
+}
+/* ---- end page 1 ---- */

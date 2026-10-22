@@ -4,6 +4,8 @@ import { PathLayer } from "@/components/soundtrack/path/PathLayer";
 import { Holding } from "@/components/Holding";
 import { HOLDING_MODE } from "@/lib/holding";
 import { DealLabMount } from "@/components/home/DealLabMount";
+import { HeroLabMount } from "@/components/home/HeroLabMount";
+import { IntroLoader } from "@/components/home/loader/IntroLoader";
 import { HomeController } from "@/components/home/HomeController";
 import { Intro } from "@/components/home/Intro";
 import { CardColumns } from "@/components/cards/CardColumns";
@@ -14,14 +16,16 @@ import { MarkCardSource } from "@/components/mark/MarkCardSource";
 // literal, because Next reads segment config statically.
 export const revalidate = 86400;
 
-// The whole site is one scrolling document: the intro (#about) with the
-// soundtrack's choice and the fork at its foot, the cards section (#work), the
-// numbers strip, Connect, Footer. The controller owns the cards section (the
+// The whole site is one scrolling document: the intro (#about: the name on its
+// field, four paragraph blocks with the soundtrack band between them, and the
+// teaser at its foot), the cards section (#work), the numbers strip, Connect,
+// Footer. The loader (the name that shrinks into the intro's heading) sits at
+// body level, outside the content layer, so its z 60 covers the header. The controller owns the cards section (the
 // Coil between its two columns of titles, the scene, the modals). Nothing
 // pins, so the page scrolls natively; overflow-x is clipped (clip, not hidden,
 // so no scroll container is created).
 //
-// The soundtrack band sits at the intro's foot: its wave is the first stretch
+// The soundtrack band sits in the intro's middle: its wave is the first stretch
 // of the scroll-drawn line, which the cards section's shader hides and which
 // comes back out of its bottom edge into the numbers strip, behind the
 // sections in PathLayer's in-flow tiles. The band's playback pill
@@ -36,6 +40,7 @@ export default function Home() {
 
   return (
     <>
+      <IntroLoader />
       <div className="relative z-10">
         <PathLayer />
         <main id="main" className="relative overflow-x-clip">
@@ -51,6 +56,7 @@ export default function Home() {
       </div>
       <MarkCardSource />
       {process.env.NODE_ENV !== "production" && <DealLabMount />}
+      {process.env.NODE_ENV !== "production" && <HeroLabMount />}
     </>
   );
 }
