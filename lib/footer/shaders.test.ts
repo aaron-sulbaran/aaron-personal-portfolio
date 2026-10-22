@@ -56,6 +56,15 @@ describe("the field, ported", () => {
     expect(src).not.toContain("gl_FragColor");
   });
 
+  it("masks only when asked: a mask radius of 0 keeps the footer's opaque output", () => {
+    const src = compositeSource();
+    expect(src).toContain("if (uMask.z > 0.0 && uMask.w > 0.0)");
+    expect(src).toContain("fragColor = vec4(col * a, a);");
+    expect(src).toContain("fragColor = vec4(col, 1.0);");
+    expect(declared(src, "uMask")).toBe(true);
+    expect(declared(src, "uMaskK")).toBe(true);
+  });
+
   it("refuses a hero shader whose shape changed", () => {
     expect(() => adaptFieldFrag("void main() {}")).toThrow();
     expect(() => adaptSurfaceFrag("void main() {}")).toThrow();

@@ -25,7 +25,9 @@ import { fullscreenTriangle, getContext, link } from "./program";
 // the hero name's lit surface into a half resolution target over the word;
 // the composite to the canvas at the device resolution, the field behind the
 // footer at one depth and inside the letters' band at the letters' depth
-// with the name's surface over it, and the hero's dither. One context.
+// with the name's surface over it, and the hero's dither. One context. An
+// optional radial alpha mask (and a canvas with alpha) serves the intro's glow:
+// the field alone, no letters, fading to nothing.
 
 export type FieldFrame = {
   readonly orange: number; // the field's clocks (lib/coil/drift.ts fieldClocks)
@@ -42,6 +44,17 @@ export type FieldFrame = {
   readonly letters: { readonly band: number; readonly rect: Box; readonly intensity: number; readonly surface: boolean };
   readonly surfaceS: number; // the name surface's clock, s
   readonly viewportH: number;
+  // A radial alpha mask over the composite (stage px from the top left): the
+  // glow behind the intro's heading. Needs a canvas made with `alpha`; absent,
+  // the output is opaque as the footer's.
+  readonly mask?: FieldMask;
+};
+
+export type FieldMask = { readonly cx: number; readonly cy: number; readonly rx: number; readonly ry: number; readonly k: number };
+
+export type FieldOptions = {
+  // The canvas has an alpha channel and composites over the page.
+  readonly alpha?: boolean;
 };
 
 export type FooterFieldGl = {
@@ -74,8 +87,8 @@ function sizeTarget(gl: WebGL2RenderingContext, t: Target, w: number, h: number)
   gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t.tex, 0);
 }
 
-export function createFooterFieldGl(canvas: HTMLCanvasElement): FooterFieldGl | null {
-  const context = getContext(canvas);
+export function createFooterFieldGl(canvas: HTMLCanvasElement, options: FieldOptions = {}): FooterFieldGl | null {
+  const context = getContext(canvas, options.alpha === true);
   if (!context) return null;
   const gl: WebGL2RenderingContext = context;
   const buffer = fullscreenTriangle(gl);
@@ -196,6 +209,9 @@ export function createFooterFieldGl(canvas: HTMLCanvasElement): FooterFieldGl | 
     gl.uniform1f(p.u("uLetterK"), l.intensity);
     gl.uniform1f(p.u("uSurfOn"), l.surface ? 1 : 0);
     gl.uniform4f(p.u("uRect"), l.rect.x, l.rect.y, Math.max(1, l.rect.w), Math.max(1, l.rect.h));
+    const m = frame.mask;
+    gl.uniform4f(p.u("uMask"), m?.cx ?? 0, m?.cy ?? 0, m?.rx ?? 0, m?.ry ?? 0);
+    gl.uniform1f(p.u("uMaskK"), m?.k ?? 1);
     // The name as the hero composites it: its ink at the hero's gain, the
     // surface's mean and the theme's floor, detail, chroma and grain; no
     // wake, no greeting, no per-letter minimum (that weighs the hero's letters).

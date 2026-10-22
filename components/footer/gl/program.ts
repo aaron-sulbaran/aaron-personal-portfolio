@@ -52,9 +52,11 @@ export function link<U extends string>(gl: WebGL2RenderingContext, vert: string,
 }
 
 // One context, or null (no WebGL 2, a blocklisted GPU, a lost context).
-export function getContext(canvas: HTMLCanvasElement): WebGL2RenderingContext | null {
+// alpha: the canvas composites over the page (the intro's glow, drawn with a
+// radial alpha mask); the footer's canvas is opaque.
+export function getContext(canvas: HTMLCanvasElement, alpha = false): WebGL2RenderingContext | null {
   try {
-    const gl = canvas.getContext("webgl2", { alpha: false, antialias: false, depth: false, premultipliedAlpha: false });
+    const gl = canvas.getContext("webgl2", { alpha, antialias: false, depth: false, premultipliedAlpha: alpha });
     return gl && !gl.isContextLost() ? gl : null;
   } catch {
     return null;

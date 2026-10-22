@@ -91,11 +91,12 @@ export function adaptSurfaceFrag(source: string): string {
 // The footer's composite: the field upsampled, above the letters' band at
 // the depth behind the footer, inside it at the letters' depth with the
 // hero's name drawn from the surface over it (the band shows only through the
-// letters: the paper cover holds the rest), then the hero's dither.
+// letters: the paper cover holds the rest), then the hero's dither, then the
+// optional radial alpha mask.
 const FOOTER_MAIN = `
 uniform vec2 uStage;
-uniform float uBand, uBehind, uLetterK, uSurfOn;
-uniform vec4 uRect;
+uniform float uBand, uBehind, uLetterK, uSurfOn, uMaskK;
+uniform vec4 uRect, uMask;
 void main() {
   vec2 fuv = gl_FragCoord.xy * uView.zw;
   vec3 field = texture(uField, fuv).rgb;
@@ -108,7 +109,16 @@ void main() {
     col = clamp(uPaper + (field - uPaper) * uBehind, 0.0, 1.0);
   }
   col += (h12(gl_FragCoord.xy) - 0.5) / 255.0;
-  fragColor = vec4(col, 1.0);
+  // A radial alpha mask (the intro's glow draws this field, not the footer): its
+  // center and radii in stage px, 1 - smoothstep from the center to the rim,
+  // times uMaskK, premultiplied (the canvas has an alpha channel then). A
+  // radius of 0 is no mask: the footer's opaque output.
+  if (uMask.z > 0.0 && uMask.w > 0.0) {
+    float a = (1.0 - smoothstep(0.0, 1.0, length((px - uMask.xy) / uMask.zw))) * uMaskK;
+    fragColor = vec4(col * a, a);
+  } else {
+    fragColor = vec4(col, 1.0);
+  }
 }
 `;
 
@@ -134,7 +144,7 @@ export const UNIFORMS = {
   field: ["uAmt", "uSecAt", "uSecScale", "uT", "uTw", "uWarp", "uAspect", "uSec", "uTop", "uBottom", "uGlow", "uSecond", "uPaper", "uIntensity", "uFrame", "uStagePx", "uRip[0]", "uRipShine[0]", "uRipW"],
   surface: ["uWake", "uWakeOn", "uWakeSize", "uT", "uStrength", "uCrestBias", "uRelief", "uSheen", "uGloss", "uBright", "uDrag", "uMaxDrag", "uSwell", "uPress", "uChurn", "uShift", "uLift", "uExt", "uRot", "uLight", "uC1", "uC2", "uC3", "uShadow", "uSheenC"],
   composite: [
-    "uField", "uName", "uGlyph", "uWake", "uSurf", "uView", "uStage", "uPaper", "uBehind", "uBand", "uLetterK", "uSurfOn", "uRect",
+    "uField", "uName", "uGlyph", "uWake", "uSurf", "uView", "uStage", "uPaper", "uBehind", "uBand", "uLetterK", "uSurfOn", "uRect", "uMask", "uMaskK",
     "uNameK", "uSurfIn", "uSurfMean", "uDetail", "uChroma", "uFloor", "uFloorSign", "uReveal", "uGrainAmt", "uGlyphN", "uGlyphRel",
     "uGlyphAbs", "uGreetFloor", "uGreetCap", "uWakeOn",
   ],

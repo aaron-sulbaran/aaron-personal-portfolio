@@ -16,4 +16,13 @@ describe("the field's chunk", () => {
     const throwing = { getContext: () => { throw new Error("blocked"); } } as unknown as HTMLCanvasElement;
     expect(createFooterFieldGl(throwing)).toBeNull();
   });
+
+  it("asks for an opaque context by default and one with alpha for the intro's glow", () => {
+    const asked: unknown[] = [];
+    const canvas = { getContext: (_: string, attributes: unknown) => (asked.push(attributes), null) } as unknown as HTMLCanvasElement;
+    createFooterFieldGl(canvas);
+    createFooterFieldGl(canvas, { alpha: true });
+    expect(asked[0]).toMatchObject({ alpha: false, premultipliedAlpha: false });
+    expect(asked[1]).toMatchObject({ alpha: true, premultipliedAlpha: true });
+  });
 });
