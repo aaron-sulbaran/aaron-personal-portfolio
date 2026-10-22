@@ -14,6 +14,8 @@ export const intro = {
   fork: {
     deckLabel: "My cards, face down",
     deal: "Deal me in",
+    // The button once the cards are dealt: it leads back to them, no replay.
+    back: "Back to my cards",
     scroll: "or just scroll",
     quick: "In a rush? The 30-second version",
   },

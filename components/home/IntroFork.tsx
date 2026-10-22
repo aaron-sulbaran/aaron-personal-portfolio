@@ -4,34 +4,39 @@ import { useReducedMotionLive } from "@/components/soundtrack/useReducedMotionLi
 import { Fill } from "@/components/fx/Fill";
 import { siteContent } from "@/lib/content";
 import { CTA_LABEL_CLASS, CTA_LABEL_OVER_CLASS, FILL_PICK } from "@/lib/fx/fill";
-import { useDealt } from "@/lib/home/deal";
-import { scrollToCards } from "@/lib/home/dealScroll";
+import { isSpent, useDeal } from "@/lib/home/deal";
+import { startClickDeal } from "@/lib/home/dealFlow";
 import { EXPRESS_PATH } from "@/lib/quick/transition";
 import { goTo } from "@/lib/quick/transitionStore";
 
-// The fork at the intro's foot: the deck (a placeholder until the deal is
-// built), the one primary action that scrolls to the cards, the quiet line
-// that says scrolling by hand does the same, and the quiet link to the
-// 30-second version. Nothing here takes the scroll from the reader.
+// The fork at the intro's foot: the deck (a placeholder until the next page 1
+// replaces it), the one primary action that deals (startClickDeal: the deal,
+// then the scroll to the cards), the quiet line that says scrolling by hand
+// does the same, and the quiet link to the 30-second version. Once the cards
+// are dealt the button reads "Back to my cards" (it scrolls there, no replay)
+// and the line goes but keeps its space, so nothing below moves. Nothing here
+// takes the scroll from the reader.
 export function IntroFork() {
   const { fork } = siteContent.intro;
   const reducedMotion = useReducedMotionLive();
-  const dealt = useDealt();
+  const spent = isSpent(useDeal());
   return (
     <div data-intro-fork="" className="px-[6vw] pb-20 pt-6 md:pb-28">
       <div className="mx-auto flex max-w-[1240px] flex-col items-start gap-6 md:flex-row md:items-center md:gap-10">
         <div
           data-deck=""
-          data-dealt={dealt ? "" : undefined}
+          data-dealt={spent ? "" : undefined}
           role="img"
           aria-label={fork.deckLabel}
           className="aspect-[3/4] w-20 shrink-0 rounded-xl border border-border bg-glass md:w-24"
         />
         <div className="flex flex-col items-start gap-3">
-          <Fill {...FILL_PICK.cta} onClick={() => scrollToCards(reducedMotion)} className={CTA_LABEL_CLASS} overClassName={CTA_LABEL_OVER_CLASS} data-cursor-hover>
-            {fork.deal}
+          <Fill {...FILL_PICK.cta} onClick={() => void startClickDeal(reducedMotion)} className={CTA_LABEL_CLASS} overClassName={CTA_LABEL_OVER_CLASS} data-cursor-hover>
+            {spent ? fork.back : fork.deal}
           </Fill>
-          <p className="font-label text-label-sm text-muted">{fork.scroll}</p>
+          <p aria-hidden={spent ? "true" : undefined} className={`font-label text-label-sm text-muted ${spent ? "invisible" : ""}`}>
+            {fork.scroll}
+          </p>
           <a
             href={EXPRESS_PATH}
             onClick={(event) => {
