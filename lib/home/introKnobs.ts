@@ -1,5 +1,4 @@
 import { COIL } from "@/lib/coil/constants";
-import { HERO_LAB_KEY } from "@/lib/home/introLabKey";
 import { NAME_POSITIONS, type NamePosition } from "@/lib/home/nameFlip";
 import { PHONE_LAYOUTS, WAVE_PLACEMENTS, type PhoneLayout, type WavePlacement } from "@/lib/home/storyLayout";
 
@@ -102,8 +101,6 @@ function pick<T extends string | number>(list: readonly T[], value: unknown, fal
 export function introValues(knobs: IntroKnobs): IntroKnobs {
   return { ...knobs };
 }
-
-export { HERO_LAB_KEY };
 
 export function parseStoredIntroKnobs(raw: string | null): Partial<IntroKnobs> | null {
   if (!raw) return null;

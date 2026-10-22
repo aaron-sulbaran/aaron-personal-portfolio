@@ -973,6 +973,10 @@ html[data-deal="pending"] [data-deal-title] {
   [data-phone-layout="teaserPeeks"]:not([data-more-open]) [data-story-item][data-collapsible="true"] {
     display: none;
   }
+  /* The first screen holds the name, block 1, the music line and the top of the teaser: a shorter stage. */
+  [data-phone-layout="teaserPeeks"][data-name-position="center"] [data-intro-stage] {
+    min-height: clamp(11rem, 27svh, 15rem);
+  }
 }
 
 /* The loader: always dark, over everything (z 60), armed by the head script
