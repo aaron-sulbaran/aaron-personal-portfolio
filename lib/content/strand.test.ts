@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bookColumns, siteContent, strandCardByKey, strandCards } from "@/lib/content";
+import { bookRow, siteContent, strandCardByKey, strandCards } from "@/lib/content";
 
 describe("the strand as cards", () => {
   it("is the fourteen cards in strand order, the lead card first", () => {
@@ -25,13 +25,9 @@ describe("the strand as cards", () => {
   });
 });
 
-describe("the book as cards", () => {
-  it("is Experience then Fun Stuff, in Aaron's doc order, every row a card", () => {
-    expect(bookColumns.map((column) => column.heading)).toEqual(["Experience", "Fun Stuff"]);
-    expect(bookColumns.map((column) => column.rows.map((row) => row.key))).toEqual([siteContent.book.workOrder, siteContent.book.peopleOrder]);
-  });
-  it("shows each meta as a visitor reads it, with no link inside a row", () => {
-    const rows = Object.fromEntries(bookColumns.flatMap((column) => column.rows).map((row) => [row.key, [row.title, row.meta]]));
+describe("the unwound list's rows", () => {
+  it("show each meta as a visitor reads it, with no link inside a row", () => {
+    const rows = Object.fromEntries(siteContent.strand.order.map((key) => [key, [bookRow(key).title, bookRow(key).meta]]));
     expect(rows).toEqual({
       "min-max": ["min/Max", "Founder, 2025 to now"],
       talos: ["Talos", "Builder, 2026"],

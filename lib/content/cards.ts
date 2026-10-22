@@ -6,7 +6,7 @@ import type { CardKey, Cards } from "./types";
 // Pictures, modal photos and logos are the photo export's files (./media); every card opens a modal.
 export const cards: Cards = {
   mentorship: {
-    group: "people", visual: { kind: "photo", flipX: false, photo: pictures.mentorship },
+    short: "Mentorship", visual: { kind: "photo", flipX: false, photo: pictures.mentorship },
     book: { title: "Mentorship", meta: "Coach, tutor and speaker, ongoing" },
     modal: { kind: "logo", title: "Mentorship", picture: { caption: "Me speaking at my first HSF STEM Summit." }, links: [{ label: "Grab some time with me", href: "https://cal.com/aaron-sulbaran" }], photos: modalPhotos.mentorship, blocks: [
       "I wouldn't be where I am now without the mentors who have shaped me. People made time for me, so I make time back. I've coached first-year scholars, worked as a student mentor on campus, and been an official mentor to Hispanic Scholarship Fund (HSF) scholars at the annual STEM Summit.",
@@ -23,14 +23,14 @@ export const cards: Cards = {
     ] },
   },
   "min-max": {
-    group: "work", visual: { kind: "logo", logo: logos["min-max"], tile: "plain", subtitle: "minimize spend. Maximize rewards" },
+    short: "min/Max", visual: { kind: "logo", logo: logos["min-max"], tile: "plain", subtitle: "minimize spend. Maximize rewards" },
     book: { title: "min/Max", meta: "Founder, 2025 to now" },
     modal: { kind: "logo", title: "min/Max", links: [], photos: [], blocks: [
       "An agentic credit card co-pilot that automatically picks the best card in your wallet for every purchase, every time. I haven't launched yet, but when I do you'll be the first to know.",
     ] },
   },
   band: {
-    group: "people", visual: { kind: "photo", flipX: false, photo: pictures.band },
+    short: "Band", visual: { kind: "photo", flipX: false, photo: pictures.band },
     book: { title: "Jordan High School band", meta: "Section leader to drum major, 2021 to 2023" },
     modal: { kind: "logo", title: "The band", meta: "Drum major, 2021 to 2023", picture: { caption: "Me as drum major in my last year of high school." }, links: [{ label: "Check out my final performance ever", href: "https://www.youtube.com/watch?v=wra00zjxQcU&list=PLeolsE0k0lv8&index=7" }], photos: modalPhotos.band, blocks: [
       "I joined Jordan High School's band the year the school opened, as a section leader. I became woodwind captain junior year, then drum major in my last year. I played [bass clarinet](pop:contrabass-clarinet).",
@@ -39,7 +39,7 @@ export const cards: Cards = {
     ] },
   },
   talos: {
-    group: "work", visual: { kind: "logo", logo: logos.talos, tile: "talos" },
+    short: "Talos", visual: { kind: "logo", logo: logos.talos, tile: "talos" },
     book: { title: "Talos", meta: "Builder, 2026" },
     modal: { kind: "logo", title: "Talos", links: [{ label: "See the Talos brand kit", href: "https://claude.ai/artifact/YX8BJc8uetSyL7WPD7aEhX" }], photos: [], blocks: [
       "Talos is my executive assistant. Every day it builds my itinerary, reads all my inboxes, my messages, and tells me what needs me first. I'm currently training it to take action autonomously, with lots of safeguards in place. Its limits are written in code, not in prompts.",
@@ -48,7 +48,7 @@ export const cards: Cards = {
     team: talosTeam,
   },
   travel: {
-    group: "people", visual: { kind: "photo", flipX: false, photo: pictures.travel },
+    short: "Travel", visual: { kind: "photo", flipX: false, photo: pictures.travel },
     book: { title: "Travel", meta: "Yosemite, Mt. Fuji and more" },
     modal: { kind: "photo", title: "Travel", picture: { caption: "Me at Yosemite on a trip to San Francisco with my friends." }, links: [], photos: modalPhotos.travel, blocks: [
       "I love to travel, and I try to be intentional about it. Japan and Dubai are two of my favorite trips ever. I have lots of exciting travel planned soon and can't wait to go! If you have destination recs, feel free to let me know!",
@@ -56,7 +56,7 @@ export const cards: Cards = {
     ] },
   },
   "capital-one": {
-    group: "work", visual: { kind: "logo", logo: logos["capital-one"], tile: "plain" },
+    short: "Capital One", visual: { kind: "logo", logo: logos["capital-one"], tile: "plain" },
     book: { title: "Capital One", meta: "Intern, 2024 to 2026" },
     modal: { kind: "logo", title: "Capital One", links: [], photos: modalPhotos["capital-one"], blocks: [
       "I spent three summers at Capital One, and each one moved me closer to product.",
@@ -67,7 +67,7 @@ export const cards: Cards = {
     ] },
   },
   hackathons: {
-    group: "work", visual: { kind: "photo", flipX: false, photo: pictures.hackathons },
+    short: "Hackathons", visual: { kind: "photo", flipX: false, photo: pictures.hackathons },
     book: { title: "Hackathons", meta: "Builder, 2025 to now" },
     // UFCU first, so the card picture (the UFCU win, beside the title) sits next to its own paragraph (docs/content/cards.md).
     modal: { kind: "logo", title: "Hackathons", picture: { caption: "Me and my team winning UFCU Develop U, September 2026." }, links: [], photos: modalPhotos.hackathons, blocks: [
@@ -78,7 +78,7 @@ export const cards: Cards = {
     ] },
   },
   anthropic: {
-    group: "work", visual: { kind: "logo", logo: logos.anthropic, tile: "plain" },
+    short: "Anthropic", visual: { kind: "logo", logo: logos.anthropic, tile: "plain" },
     book: { title: "Anthropic", meta: "Claude Campus Ambassador, 2026" },
     modal: { kind: "logo", title: "Anthropic", links: [{ label: "txclaude.org", href: "https://txclaude.org" }], photos: modalPhotos.anthropic, blocks: [
       "In spring 2026 I was a Claude ambassador at UT Austin. We grew the club to over a thousand members, with meetings of 60 to 80 people on average and about 100 at our end of year hackathon.",
@@ -86,7 +86,7 @@ export const cards: Cards = {
     ] },
   },
   misuki: {
-    group: "people", visual: { kind: "photo", flipX: false, photo: pictures.misuki },
+    short: "Misuki", visual: { kind: "photo", flipX: false, photo: pictures.misuki },
     book: { title: "Misuki", meta: "2001 Mazda Miata, five-speed" },
     modal: { kind: "photo", title: "Misuki", picture: { caption: "Me and Misuki at a Longhorn Car Club photo shoot." }, links: [], photos: modalPhotos.misuki, blocks: [
       "I worked all through high school to set myself up for college. That included an ongoing hunt for a car. I ended up buying this car early Senior year in cash, because I didn't want a car loan. The day my dad went to buy her for me, I was conducting a game-day halftime show and got a bank alert on my watch for a huge withdrawal from my bank account. I was nervous the whole performance, and then found out later he was trying to surprise me.",
@@ -94,7 +94,7 @@ export const cards: Cards = {
     ] },
   },
   ieee: {
-    group: "work", visual: { kind: "logo", logo: logos.ieee, tile: "plain" },
+    short: "IEEE", visual: { kind: "logo", logo: logos.ieee, tile: "plain" },
     book: { title: "IEEE UT Austin", meta: "President, Corporate Director, and [AO](tip:ieee-ao), 2023 to 2026" },
     modal: { kind: "logo", title: "IEEE UT Austin", meta: "President, 2023 to 2026", links: [{ label: "ieee.ece.utexas.edu", href: "https://ieee.ece.utexas.edu/" }], photos: modalPhotos.ieee, blocks: [
       "IEEE UT was my home away from home at UT. I credit much of my leadership development to my experience here. From assistant officer my freshman year to president my junior year, I made some of my closest friends in this organization.",
@@ -105,7 +105,7 @@ export const cards: Cards = {
     ] },
   },
   jobs: {
-    group: "people", visual: { kind: "circles" },
+    short: "Jobs", visual: { kind: "circles" },
     book: { title: "\"unflattering\" jobs that paid for school", meta: "Popeyes to Aritzia, 2021 to 2026" },
     modal: { kind: "timeline", title: "The jobs that paid my way", links: [{ label: "The LinkedIn post", href: "https://lnkd.in/p/g3mXFGcY" }], photos: modalPhotos.jobs, blocks: [
       "I'm self-funded, so I've worked almost every year since high school. Those jobs paid for my car in cash, covered rent, and chipped away at tuition so I could graduate debt free.",
@@ -126,14 +126,14 @@ export const cards: Cards = {
     ],
   },
   "this-site": {
-    group: "work", visual: { kind: "mark" },
+    short: "This site", visual: { kind: "mark" },
     book: { title: "This site", meta: "Portfolio (design playground), 2026" },
     modal: { kind: "logo", title: "This site", meta: "Portfolio, 2026", links: [{ label: "The repo on GitHub", href: "https://github.com/aaron-sulbaran/aaron-personal-portfolio" }], photos: [], blocks: [
       "I'm building this site and continuing to update it as I grow. I [design](tip:this-site-playground) it, write the specs, and manage a team of AI agents that help me build it, which is a good test of how I'd run a product team. The repo is public.",
     ] },
   },
   fsdatalink: {
-    group: "people", visual: { kind: "logo", logo: logos.fsdatalink, tile: "plain" },
+    short: "Family business", visual: { kind: "logo", logo: logos.fsdatalink, tile: "plain" },
     book: { title: "The family business", meta: "Assistant Manager & SWE, 2022 to now" },
     modal: { kind: "logo", title: "The family business", links: [{ label: "fsdatalink.com", href: "https://www.fsdatalink.com/" }], photos: [], blocks: [
       "My dad built a telecom business from nothing. I figured things out right next to him. I learned small-business taxes and tax breaks, and I was fascinated that people used laws that would never exist in Venezuela. I ended up doing the accounting, the finances and whatever else needed solving, sometimes unpaid because I wanted to help him.",
@@ -141,7 +141,7 @@ export const cards: Cards = {
     ] },
   },
   "building-in-public": {
-    group: "people", visual: { kind: "photo", flipX: false, photo: pictures["building-in-public"] },
+    short: "Building in public", visual: { kind: "photo", flipX: false, photo: pictures["building-in-public"] },
     book: { title: "Building in public", meta: "LinkedIn and X, ongoing" },
     modal: { kind: "logo", title: "Building in public", picture: { caption: "Me at Vercel Ship in New York City, one door LinkedIn opened this summer." }, links: [{ label: "LinkedIn", href: "https://www.linkedin.com/in/aaron-sulbaran/" }, { label: "X (@imaaronsulbaran)", href: "https://x.com/imaaronsulbaran" }], photos: modalPhotos["building-in-public"], blocks: [
       "I'm trying to build in public (tbh, I fell off for a couple of months and I'm easing back in). So far: 2,500+ people follow me on LinkedIn, and my posts have had 450,000 impressions in three months. Being active on LinkedIn opened doors in Toronto and NYC this summer and got me a few brand deals. After talking to enough founders and investors, I know I have to get on X next.",
@@ -156,7 +156,3 @@ export const strandOrder: readonly CardKey[] = [
   "mentorship", "min-max", "band", "talos", "travel", "capital-one", "hackathons",
   "anthropic", "misuki", "ieee", "jobs", "this-site", "fsdatalink", "building-in-public",
 ];
-
-// The book's two columns, in Aaron's doc order (not the strand's).
-export const bookWorkOrder: readonly CardKey[] = ["min-max", "talos", "capital-one", "anthropic", "ieee", "hackathons", "this-site"];
-export const bookPeopleOrder: readonly CardKey[] = ["mentorship", "band", "jobs", "fsdatalink", "misuki", "travel", "building-in-public"];

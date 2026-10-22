@@ -41,9 +41,6 @@ export type CardKey =
   | "mentorship" | "min-max" | "band" | "talos" | "travel" | "capital-one" | "hackathons"
   | "anthropic" | "misuki" | "ieee" | "jobs" | "this-site" | "fsdatalink" | "building-in-public";
 
-// The book's two columns.
-export type CardGroup = "work" | "people";
-
 // width and height are the file at src.
 export interface ImageRef { src: string; width: number; height: number; alt: string }
 export interface PhotoRef extends ImageRef { crop: PhotoCrop | null }
@@ -100,7 +97,8 @@ export interface CardModal {
 }
 
 export interface CardContent {
-  group: CardGroup;
+  // One or two words: the card's title in the cards section's columns.
+  short: string;
   visual: CardVisual;
   book: { title: string; meta: string };
   modal: CardModal;

@@ -5,7 +5,7 @@ import { parseInlineLinks, plainText } from "@/lib/content/links";
 import { registerHas } from "@/lib/content/register";
 import { jpegSize } from "@/lib/testing/jpegSize";
 
-const { cards, strand, book } = siteContent;
+const { cards, strand } = siteContent;
 const keys = Object.keys(cards) as CardKey[];
 const STRAND = ["mentorship", "min-max", "band", "talos", "travel", "capital-one", "hackathons", "anthropic", "misuki", "ieee", "jobs", "this-site", "fsdatalink", "building-in-public"];
 
@@ -13,15 +13,6 @@ describe("the fourteen cards", () => {
   it("are the approved keys in the strand order, lead card first", () => {
     expect(strand.order).toEqual(STRAND);
     expect(keys).toEqual(STRAND);
-  });
-
-  it("fill the book's two columns by group, in Aaron's doc order", () => {
-    expect([book.workHeading, book.peopleHeading]).toEqual(["Experience", "Fun Stuff"]);
-    expect(book.workOrder).toEqual(["min-max", "talos", "capital-one", "anthropic", "ieee", "hackathons", "this-site"]);
-    expect(book.peopleOrder).toEqual(["mentorship", "band", "jobs", "fsdatalink", "misuki", "travel", "building-in-public"]);
-    for (const key of book.workOrder) expect(cards[key].group).toBe("work");
-    for (const key of book.peopleOrder) expect(cards[key].group).toBe("people");
-    expect([...book.workOrder, ...book.peopleOrder].sort()).toEqual([...STRAND].sort());
   });
 
   it("give each card its approved visual and modal kind", () => {

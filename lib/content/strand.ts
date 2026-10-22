@@ -2,7 +2,7 @@ import { cards, strandOrder } from "./cards";
 import { visibleText } from "./links";
 import type { CardKey, LogoRef } from "./types";
 
-// The fourteen cards as the Coil, the unwound list and the book use them,
+// The fourteen cards as the Coil and the unwound list use them,
 // derived from cards.ts, so no surface reads the legacy shapes.
 
 export type StrandFace =
@@ -41,7 +41,6 @@ export const strandCards: readonly StrandCard[] = strandOrder.flatMap((key) => {
 export const strandCardByKey: ReadonlyMap<string, StrandCard> = new Map(strandCards.map((card) => [card.key, card]));
 
 export interface BookRowEntry { key: CardKey; title: string; meta: string }
-export interface BookColumn { heading: string; rows: readonly BookRowEntry[] }
 
 // A row is a button, so no link may sit inside it (C2): the row shows the
 // visible words, and the IEEE row's AO tip stays in the register.

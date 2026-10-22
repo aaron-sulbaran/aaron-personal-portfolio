@@ -1,8 +1,9 @@
 import { register } from "./content/register";
-import { bookPeopleOrder, bookWorkOrder, cards, strandOrder } from "./content/cards";
+import { cards, strandOrder } from "./content/cards";
+import { cardColumns } from "./content/columns";
+import { intro } from "./content/intro";
 import type { SoundtrackTrack, WhoIAmBlock } from "./content/types";
 import { liveTracks } from "./content/tracks";
-import { bookRow, type BookColumn } from "./content/strand";
 
 // One link on the holding page. `icon` picks the brand mark in
 // components/BrandIcons.tsx. `href: null` keeps the entry defined but hides it
@@ -34,10 +35,11 @@ export const siteContent = {
     // The accessible name of a link whose words are only a symbol (Connect's footnote).
     symbolLabel: "Footnote",
   },
-  // The fourteen launch cards (lib/content/cards.ts). C3 moves the Coil and the
-  // book onto them; until then the legacy strand and rows below drive both.
+  // The fourteen launch cards (lib/content/cards.ts).
   cards,
-  // The soundtrack band under the book (components/soundtrack): the one place
+  // The home's first screen and its fork (lib/content/intro.ts).
+  intro,
+  // The soundtrack band at the intro's foot (components/soundtrack): the one place
   // the music is offered and controlled, with the waveform running through
   // it. Each note describes what is on screen when it shows (docs/content/
   // connect-footer-band.md, approved 2026-10-08).
@@ -117,9 +119,6 @@ export const siteContent = {
     greeting: "Hi, I'm",
     name: "Aaron",
     coilControl: "Coil",
-    // The Coil and Band toggle: the group's name and its two halves
-    // (approved copy; words and no glyphs per Aaron's pick).
-    shapeToggle: { ariaLabel: "Hero layout", coil: "Coil", band: "Band" },
     // First visit only, decorative (aria-hidden): the cursor's pill over a
     // card until the first card opens, the one line after that first card
     // flies home, and the touch screen's one line after the entrance.
@@ -154,17 +153,14 @@ export const siteContent = {
     name: "Aaron",
     progressLabel: "Loading the site",
   },
-  // The book under the Coil hero (#work): two columns of cards, Work then People
-  // (workOrder and peopleOrder through bookColumns), text first; a row's key is
-  // its card's, so "seen" is shared with the Coil.
-  book: {
-    ariaLabel: "Experience and Fun",
-    workHeading: "Experience",
-    peopleHeading: "Fun Stuff",
-    workOrder: bookWorkOrder,
-    peopleOrder: bookPeopleOrder,
+  // The cards section (#work): the Coil between two columns of short titles
+  // (lib/content/columns.ts), text first; a title's key is its card's, so
+  // "seen" is shared with the Coil.
+  columns: {
+    ariaLabel: "Work and builds",
     seenLabel: "opened",
     externalLabel: "opens in a new tab",
+    order: cardColumns,
   },
   // The fourteen cards in Coil order, lead card first.
   strand: {
@@ -399,16 +395,12 @@ export const siteContent = {
 export type MenuItem = (typeof siteContent.menu.items)[number];
 export type Track = SoundtrackTrack;
 export type {
-  CardContent, CardGroup, CardKey, CardLink, CardModal, CardModalKind, CardPicture, Cards, CardVisual, DefinitionEntry, ImageRef,
+  CardContent, CardKey, CardLink, CardModal, CardModalKind, CardPicture, Cards, CardVisual, DefinitionEntry, ImageRef,
   InlineRegister, InspiredBy, LogoRef, Mentor, MentorsList, ModalPhoto, PhotoCrop, PhotoRef, PopEntry, SoundtrackTrack, TimelineEntry,
   TipEntry, TrackLicenseKind, WhoIAmBlock,
 } from "./content/types";
 export { bookRow, strandCardByKey, strandCardOf, strandCards } from "./content/strand";
-export type { BookColumn, BookRowEntry, StrandCard, StrandFace } from "./content/strand";
-
-// The book's two columns of cards (components/book/Book.tsx and the unwound list).
-export const bookColumns: readonly BookColumn[] = [
-  { heading: siteContent.book.workHeading, rows: siteContent.book.workOrder.map(bookRow) },
-  { heading: siteContent.book.peopleHeading, rows: siteContent.book.peopleOrder.map(bookRow) },
-];
+export type { BookRowEntry, StrandCard, StrandFace } from "./content/strand";
+export { cardColumns } from "./content/columns";
+export type { ColumnGroupView, ColumnKey, ColumnTitle, ColumnView } from "./content/columns";
 export { tipText } from "./content/tracks";

@@ -5,7 +5,7 @@ describe("the legacy shapes are gone", () => {
   it("leaves no work item, home tile, case page copy, strand pattern or legacy book row behind", () => {
     for (const key of ["workItems", "homeTiles", "work"]) expect(Object.keys(siteContent)).not.toContain(key);
     expect(Object.keys(siteContent.strand)).toEqual(["order"]);
-    for (const key of ["workRows", "photoRows", "photosHeading"]) expect(Object.keys(siteContent.book)).not.toContain(key);
+    expect(Object.keys(siteContent)).not.toContain("book");
   });
   it("keeps the holding deck's five photos in order", () => {
     expect(siteContent.photos.map((photo) => photo.src)).toEqual([
@@ -16,12 +16,13 @@ describe("the legacy shapes are gone", () => {
       "/photos/uncs-grad.jpeg",
     ]);
   });
-  it("writes the hero and the book's headings without an em dash", () => {
+  it("writes the hero, the columns and the intro without an em dash", () => {
     const strings = [
       ...Object.values(siteContent.hero).flatMap((value) => (typeof value === "string" ? [value] : Object.values(value))),
-      siteContent.book.ariaLabel,
-      siteContent.book.workHeading,
-      siteContent.book.peopleHeading,
+      siteContent.columns.ariaLabel,
+      ...siteContent.columns.order.flatMap((column) => [column.heading, ...column.groups.flatMap((group) => [group.heading ?? "", ...group.titles.map((title) => title.short)])]),
+      ...siteContent.intro.sentences,
+      ...Object.values(siteContent.intro.fork),
     ];
     for (const text of strings) expect(text).not.toMatch(/\u2014/);
   });

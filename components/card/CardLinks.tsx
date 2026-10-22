@@ -17,7 +17,7 @@ export function CardLinks({ cardKey }: { cardKey: CardKey }) {
           <li key={link.href} className="font-label text-label-lg text-accent">
             <a {...element.props}>
               {link.label}
-              <span className="sr-only">, {siteContent.book.externalLabel}</span>
+              <span className="sr-only">, {siteContent.columns.externalLabel}</span>
             </a>
           </li>
         );

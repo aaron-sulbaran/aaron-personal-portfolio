@@ -20,7 +20,7 @@ describe("the card modal's own words", () => {
   it("describes the turning groups and the pager's pages to assistive tech", () => {
     expect([g.roleCarousel, g.roleSlide]).toEqual(["carousel", "slide"]);
   });
-  it("labels the book for both of its columns", () => {
-    expect(siteContent.book.ariaLabel).toBe("Experience and Fun");
+  it("labels the cards section for both of its columns", () => {
+    expect(siteContent.columns.ariaLabel).toBe("Work and builds");
   });
 });
