@@ -117,9 +117,9 @@ export function createEntrance(ctx: SceneCtx, name: Name) {
 
   // The deal's speed curve for these constants, built once per deal: the wheel's own pace
   // at its start, integrated to a table; `base` is the strand's offset at `firstMs`.
-  function curveFor(c: Tuned, base: number, firstMs: number) {
+  function curveFor(c: Tuned, base: number, firstMs: number, coarse: boolean) {
     if (!curve) {
-      const table = integrateDealSpeed(dealSpeedOf(c.deal.wheel.idleCardsPerSecond, c), sceneMs(c));
+      const table = integrateDealSpeed(dealSpeedOf(c.deal.wheel.idleCardsPerSecond, c, coarse), sceneMs(c));
       curve = { table, firstMs, base, atPull: dealOffsetAt(table, c.deal.timeline.pullStartMs) };
     }
     return curve;
@@ -129,7 +129,8 @@ export function createEntrance(ctx: SceneCtx, name: Name) {
   // from it. Returns how far the strand has turned since the pull began.
   function turn(f: SceneFrame, ms: number, c: Tuned) {
     const wheelPace = c.deal.wheel.idleCardsPerSecond;
-    const speed = dealSpeedOf(wheelPace, c);
+    const coarse = f.props.input === "coarse";
+    const speed = dealSpeedOf(wheelPace, c, coarse);
     if (forcedEntranceMs !== null) {
       // A pinned frame (?coildebug=entrance=): the same however it was reached,
       // counted from the strand's start, and held there even past the end.
@@ -138,7 +139,7 @@ export function createEntrance(ctx: SceneCtx, name: Name) {
         hold(start, wheelPace);
         return 0;
       }
-      const forced = curveFor(c, start, 0);
+      const forced = curveFor(c, start, 0, coarse);
       hold(forced.base + dealOffsetAt(forced.table, ms), dealOmega(ms, speed));
       return ms > c.deal.timeline.pullStartMs ? dealOffsetAt(forced.table, ms) - forced.atPull : 0;
     }
@@ -147,7 +148,7 @@ export function createEntrance(ctx: SceneCtx, name: Name) {
       hold(turned, wheelPace);
       return 0;
     }
-    const k = curveFor(c, turned ?? conveyor.offset, ms);
+    const k = curveFor(c, turned ?? conveyor.offset, ms, coarse);
     const here = dealOffsetAt(k.table, ms);
     hold(k.base + here - dealOffsetAt(k.table, k.firstMs), dealOmega(ms, speed));
     return ms > c.deal.timeline.pullStartMs ? here - k.atPull : 0;

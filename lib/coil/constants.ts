@@ -127,6 +127,10 @@ const values = {
     // first. Every number is a lab knob's default.
     timeline: {
       peakCardsPerSecond: 12.5, // COIL.spinCapCardsPerSecond
+      // A coarse pointer's top speed: a phone can drop to 30 Hz (Low Power
+      // Mode), where 9 cards a second is 0.3 card a frame, the most the eye
+      // reads as turning the right way (above it the wheel strobes backward).
+      coarsePeakCardsPerSecond: 9,
       upMs: 700,
       textOutMs: 350,
       scrollStartMs: 250,

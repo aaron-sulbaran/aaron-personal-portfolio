@@ -39,11 +39,18 @@ export type DealSpeed = {
   slowMs: number;
 };
 
-export function dealSpeedOf(startCardsPerSecond: number, c: CoilConstants = COIL): DealSpeed {
+// A coarse pointer (a phone, which can drop to 30 Hz) peaks lower: at most
+// coarsePeakCardsPerSecond, never above the fine peak.
+export function peakFor(c: CoilConstants, coarse: boolean): number {
+  const t = c.deal.timeline;
+  return coarse ? Math.min(t.peakCardsPerSecond, t.coarsePeakCardsPerSecond) : t.peakCardsPerSecond;
+}
+
+export function dealSpeedOf(startCardsPerSecond: number, c: CoilConstants = COIL, coarse = false): DealSpeed {
   const t = c.deal.timeline;
   return {
     startCardsPerSecond,
-    peakCardsPerSecond: t.peakCardsPerSecond,
+    peakCardsPerSecond: peakFor(c, coarse),
     idleCardsPerSecond: c.idleCardsPerSecond,
     upMs: t.upMs,
     slowStartMs: t.slowStartMs,

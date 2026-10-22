@@ -9,6 +9,7 @@ import { clampKnobs, getKnobs, setKnobs, type DealKnobs, type NumericKnob } from
 
 export const DEAL_LAB_KNOBS: readonly NumericKnob[] = [
   "peakCardsPerSecond",
+  "coarsePeakCardsPerSecond",
   "upMs",
   "textOutMs",
   "wheelIdleCardsPerSecond",

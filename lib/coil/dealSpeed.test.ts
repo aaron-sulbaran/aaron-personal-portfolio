@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { COIL } from "@/lib/coil/constants";
-import { dealOffsetAt, dealOmega, dealSpeedOf, integrateDealSpeed, power2InOut, power2Out, sceneMs, smoothstep, type DealSpeed } from "@/lib/coil/dealSpeed";
+import { dealOffsetAt, dealOmega, dealSpeedOf, integrateDealSpeed, peakFor, power2InOut, power2Out, sceneMs, smoothstep, type DealSpeed } from "@/lib/coil/dealSpeed";
 
 const T = COIL.deal.timeline;
 const TOTAL = sceneMs();
@@ -110,5 +110,40 @@ describe("the deal's speed", () => {
     expect(perFrame / 0.0167).toBeCloseTo(IDLE, 2);
     const next = dealOffsetAt(table, TOTAL + 16.7) - dealOffsetAt(table, TOTAL);
     expect(next / 0.0167).toBeCloseTo(IDLE, 2);
+  });
+});
+
+// The wagon wheel (the motion spec's risk 2): above about 0.3 card a frame the
+// eye reads the turning wheel as stepping or going backward. The most the strand
+// turns in one frame, over the whole deal, at any phase of the frame clock.
+function mostCardsPerFrame(coarse: boolean, hz: number) {
+  const table = integrateDealSpeed(dealSpeedOf(WHEEL, COIL, coarse), TOTAL);
+  const frameMs = 1000 / hz;
+  let most = 0;
+  for (let ms = 0; ms + frameMs <= TOTAL; ms += 1) most = Math.max(most, dealOffsetAt(table, ms + frameMs) - dealOffsetAt(table, ms));
+  return most;
+}
+
+describe("the wheel's turn per frame", () => {
+  it("never passes 0.3 card a frame at the fine pointer's peak on a 60 Hz screen", () => {
+    expect(mostCardsPerFrame(false, 60)).toBeLessThanOrEqual(0.3);
+  });
+
+  it("never passes 0.3 card a frame at the coarse peak on a phone that has dropped to 30 Hz", () => {
+    expect(mostCardsPerFrame(true, 30)).toBeLessThanOrEqual(0.3 + 1e-6);
+  });
+
+  it("peaks a touch screen lower than a fine pointer, never higher", () => {
+    expect(peakFor(COIL, true)).toBe(T.coarsePeakCardsPerSecond);
+    expect(peakFor(COIL, true)).toBeLessThan(peakFor(COIL, false));
+    expect(peakFor(COIL, false)).toBe(T.peakCardsPerSecond);
+    const lab = { ...COIL, deal: { ...COIL.deal, timeline: { ...T, peakCardsPerSecond: 6 } } };
+    expect(peakFor(lab, true)).toBe(6);
+  });
+
+  it("still ends at the idle pace on the coarse curve", () => {
+    const table = integrateDealSpeed(dealSpeedOf(WHEEL, COIL, true), TOTAL);
+    const perFrame = dealOffsetAt(table, TOTAL) - dealOffsetAt(table, TOTAL - 16.7);
+    expect(perFrame / 0.0167).toBeCloseTo(IDLE, 2);
   });
 });

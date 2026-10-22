@@ -12,6 +12,7 @@ const D = COIL.deal;
 export type DealKnobs = {
   // The deal's clock, in ms from the click (COIL.deal.timeline).
   peakCardsPerSecond: number; // the wheel's top speed
+  coarsePeakCardsPerSecond: number; // a touch screen's top speed (a phone can run at 30 Hz)
   upMs: number; // the spin-up, 0.5 cards/s to the peak
   textOutMs: number; // the teaser's text leaves
   scrollStartMs: number; // the page scrolls itself to the section
@@ -41,6 +42,7 @@ export type KnobSpec = { label: string; group: string; min: number; max: number;
 
 export const KNOB_SPEC: Record<NumericKnob, KnobSpec> = {
   peakCardsPerSecond: { label: "Peak speed", group: "Spin", min: 2, max: 20, step: 0.5, unit: " cards/s" },
+  coarsePeakCardsPerSecond: { label: "Peak speed, touch", group: "Spin", min: 2, max: 20, step: 0.5, unit: " cards/s" },
   upMs: { label: "Spin-up", group: "Spin", min: 200, max: 1500, step: 10, unit: "ms" },
   textOutMs: { label: "Teaser text out", group: "Spin", min: 0, max: 1000, step: 10, unit: "ms" },
   wheelIdleCardsPerSecond: { label: "Wheel pace", group: "Wheel", min: 0, max: 3, step: 0.05, unit: " cards/s" },
@@ -65,6 +67,7 @@ export const KNOB_SPEC: Record<NumericKnob, KnobSpec> = {
 
 export const DEFAULT_KNOBS: DealKnobs = {
   peakCardsPerSecond: D.timeline.peakCardsPerSecond,
+  coarsePeakCardsPerSecond: D.timeline.coarsePeakCardsPerSecond,
   upMs: D.timeline.upMs,
   textOutMs: D.timeline.textOutMs,
   scrollStartMs: D.timeline.scrollStartMs,
@@ -109,6 +112,7 @@ export function entranceTuningOf(knobs: DealKnobs): EntranceTuning {
   return {
     timeline: {
       peakCardsPerSecond: knobs.peakCardsPerSecond,
+      coarsePeakCardsPerSecond: knobs.coarsePeakCardsPerSecond,
       upMs: knobs.upMs,
       textOutMs: knobs.textOutMs,
       scrollStartMs: knobs.scrollStartMs,
