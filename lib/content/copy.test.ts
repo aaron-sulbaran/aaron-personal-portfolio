@@ -169,23 +169,21 @@ describe("Connect", () => {
 });
 
 describe("the music band", () => {
-  it("asks, offers and answers in my words", () => {
+  it("asks and offers in my words, and says nothing else: one line, then one button per state", () => {
     expect(listen.line).toBe("Want some music while you scroll?");
-    expect(listen.subline).toEqual({ moves: "It moves with you, or ", freeze: "freeze it", end: "." });
     expect(listen.accept).toBe("Play it");
     expect(listen.decline).toBe("Not now");
-    expect(listen.acceptedNote).toBe("Enjoy! Control it from the [evolving isle](tip:evolving-isle).");
-    expect(listen.declinedNote).toBe("No problem, it's here if you change your mind.");
+    expect([listen.pause, listen.resume]).toEqual(["Pause", "Resume"]);
+    // The sub-line and the three notes are gone from the band.
+    for (const gone of ["subline", "acceptedNote", "declinedNote", "pausedNote"]) expect(listen).not.toHaveProperty(gone);
   });
 
-  it("leaves the paused note and the controls as they were", () => {
-    expect(listen.pausedNote).toBe("Paused. Resume whenever you like.");
-    expect([listen.pause, listen.resume, listen.freeze, listen.unfreeze]).toEqual(["Pause", "Resume", "Freeze the wave", "Let the wave move"]);
+  it("keeps the wave's freeze words for the playback pill and the phone's isle", () => {
+    expect([listen.freeze, listen.unfreeze]).toEqual(["Freeze the wave", "Let the wave move"]);
   });
 
-  it("points its tip at the register (the prompt carries none, so the line stays quiet)", () => {
-    expect(referenced(listen.subline.moves)).toEqual([]);
-    expect(referenced(listen.acceptedNote)).toEqual(["tip:evolving-isle"]);
+  it("carries no link, so the line stays quiet", () => {
+    for (const text of [listen.line, listen.accept, listen.decline, listen.pause, listen.resume]) expect(referenced(text)).toEqual([]);
   });
 });
 

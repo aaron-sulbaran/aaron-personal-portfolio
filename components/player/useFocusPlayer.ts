@@ -17,7 +17,7 @@ export function useFocusPlayer(view: PlayerView, music: SoundtrackState) {
     if (!arrived || music !== "on") return;
     const frame = requestAnimationFrame(() => {
       const focused = document.activeElement;
-      const lost = !focused || focused === document.body || Boolean(focused.closest("[data-band-controls], [data-band-note]"));
+      const lost = !focused || focused === document.body || Boolean(focused.closest("[data-band-controls]"));
       if (lost) document.querySelector<HTMLElement>("[data-player-band-slot] [data-player-play]")?.focus({ preventScroll: true });
     });
     return () => cancelAnimationFrame(frame);

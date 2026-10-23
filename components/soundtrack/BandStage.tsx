@@ -19,9 +19,9 @@ import { WaveCanvas } from "./WaveCanvas";
 // the band, and the stock pill fades in at its dock, unless the player is the
 // pill (the music is playing or paused in it). Before an answer the pill is
 // "Music?", a second ask, and waits for the prompt itself to scroll away
-// unanswered (lib/waveform/pillGate.ts). Phones stack the wave under the copy
-// and have no stock pill. The freeze toggle is not here: it lives in the
-// prompt's line (and beside the answer after a decline, and in the player).
+// unanswered (lib/waveform/pillGate.ts). The wave sits under the copy at every
+// width, and phones have no stock pill. The freeze toggle is not here: it
+// lives in the playback pill and the phone's isle.
 export function BandStage() {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const [inView, setInView] = useState(false);
@@ -47,7 +47,7 @@ export function BandStage() {
   return (
     <>
       <BandPlayer />
-      <div ref={stageRef} data-wave-band-line className="relative h-[var(--band-p,176px)] md:absolute md:inset-0 md:h-auto">
+      <div ref={stageRef} data-wave-band-line className="relative h-[var(--band-p,104px)] md:h-[var(--band-d,140px)]">
         <WaveCanvas active={inView} frozen={frozen} />
       </div>
       <PlaybackPill reached={pillReached({ music, bandPassed: passed, promptPassed, promptOnScreen }) && !playerOwnsPill(view)} />

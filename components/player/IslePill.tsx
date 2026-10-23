@@ -17,7 +17,7 @@ import { usePlayerControls } from "./usePlayerControls";
 // the keyboard grows the full player up from the same corner; a click anywhere
 // on it pins it open, so Tracks and the controls stay usable; a press outside
 // or Escape folds it back, and so does a few seconds with nothing touching it
-// (lib/player/pill). No close button and no freeze control. Portaled to body so
+// (lib/player/pill). No close button; the freeze is in the open player's last row. Portaled to body so
 // no transformed ancestor captures it, on the pill's z level. While the band is
 // still ahead of the reader (`lifted`) it stands above the unwound list's Coil
 // control; the footer's lift is a CSS variable (globals.css).

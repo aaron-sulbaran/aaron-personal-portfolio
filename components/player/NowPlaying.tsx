@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
+import { FreezeToggle } from "@/components/soundtrack/FreezeControls";
 import { playerStrings } from "@/lib/content/player";
 import { TitleBlock } from "./PlayerBits";
 import { SeekBar } from "./SeekBar";
@@ -19,7 +20,9 @@ type Props = {
 // seek bar with the time played and the time left, previous, play and next
 // with quiet shuffle and repeat, and the Tracks. It has no surface of its own
 // (the host gives it glass or the island's black), no close button, no credit
-// line and no freeze control: where it opens and closes is the host's business.
+// line: where it opens and closes is the host's business. Its last row holds the
+// Tracks and, beside it, the wave's freeze (the one place the wave can be frozen
+// from, with the playback pill's).
 export function NowPlaying({ active, reduce }: Props) {
   const controls = usePlayerControls(active);
   const [open, setOpen] = useState(false);
@@ -31,17 +34,20 @@ export function NowPlaying({ active, reduce }: Props) {
       <SeekBar controls={controls} />
       <Transport controls={controls} />
       <div className="border-t border-border pt-1">
-        <button
-          type="button"
-          data-cursor-hover
-          aria-expanded={open}
-          aria-label={open ? playerStrings.hideTracks : playerStrings.showTracks}
-          onClick={() => setOpen((value) => !value)}
-          className="flex w-full items-center justify-between rounded-md px-1 py-1.5 font-label text-label-sm text-accent transition-colors duration-200 hover:text-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
-        >
-          <span>{playerStrings.tracks}</span>
-          <ChevronDown aria-hidden="true" size={14} className={reduce ? "" : "transition-transform duration-200"} style={{ transform: open ? "rotate(180deg)" : "none" }} />
-        </button>
+        <div className="flex items-center justify-between gap-3">
+          <button
+            type="button"
+            data-cursor-hover
+            aria-expanded={open}
+            aria-label={open ? playerStrings.hideTracks : playerStrings.showTracks}
+            onClick={() => setOpen((value) => !value)}
+            className="flex items-center gap-1.5 rounded-md px-1 py-1.5 font-label text-label-sm text-accent transition-colors duration-200 hover:text-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
+          >
+            <span>{playerStrings.tracks}</span>
+            <ChevronDown aria-hidden="true" size={14} className={reduce ? "" : "transition-transform duration-200"} style={{ transform: open ? "rotate(180deg)" : "none" }} />
+          </button>
+          <FreezeToggle />
+        </div>
         {open && (
           <div className="mt-1 max-h-[44vh] overflow-y-auto">
             <TrackList currentIndex={controls.snap.trackIndex} music={controls.music} onPlay={controls.playRow} />

@@ -39,24 +39,18 @@ export const siteContent = {
   cards,
   // The home's first page and its teaser (lib/content/intro.ts).
   intro,
-  // The soundtrack band in the middle of the intro (components/soundtrack): the one place
+  // The soundtrack band in the middle of page 1 (components/soundtrack): the one place
   // the music is offered and controlled, with the waveform running through
-  // it. Each note describes what is on screen when it shows (docs/content/
-  // connect-footer-band.md, approved 2026-10-08).
+  // it: the question with its two answers, then one button per state. No
+  // sub-line and no note (slice 4d).
   listen: {
     ariaLabel: "Soundtrack",
     line: "Want some music while you scroll?",
-    // The line under the question: the freeze toggle is the two words inside it
-    // ("freeze it", then "Let the wave move" while it is frozen).
-    subline: { moves: "It moves with you, or ", freeze: "freeze it", end: "." },
     accept: "Play it",
     decline: "Not now",
-    // Shown only where the band cannot hold the player (a desktop narrower than 1024px), which docks it at the isle instead.
-    acceptedNote: "Enjoy! Control it from the [evolving isle](tip:evolving-isle).",
-    declinedNote: "No problem, it's here if you change your mind.",
-    pausedNote: "Paused. Resume whenever you like.",
     pause: "Pause",
     resume: "Resume",
+    // The wave's freeze, in the playback pill and the phone's isle.
     freeze: "Freeze the wave",
     unfreeze: "Let the wave move",
   },

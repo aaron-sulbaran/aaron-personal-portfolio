@@ -244,8 +244,8 @@ const values = {
     // The name's size, its font size as a share of the viewport's width on a
     // desktop and on a phone, held between minRem and maxRem.
     name: { vwDesktop: 10, vwPhone: 14, minRem: 3, maxRem: 12 },
-    // The soundtrack band's height between the blocks (the wave and its one line), on a desktop and on a phone.
-    band: { desktopPx: 112, phonePx: 96 },
+    // The soundtrack band's wave stage between the blocks (the copy sits in a row above it), on a desktop and on a phone: at least twice the wave's reach, so the copy never damps it (a desktop's is tall enough for the player's card to end before the next block).
+    band: { desktopPx: 176, phonePx: 104 },
     // The burnt orange lobe's strength as a share of the old one, in the
     // name's field and the cards section's (a little of it stays).
     orangeAmount: 0.4,

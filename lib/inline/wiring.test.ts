@@ -8,7 +8,6 @@ import { describe, expect, it } from "vitest";
 const WIRED: Array<[string, string]> = [
   ["components/home/StoryBlock.tsx", "sentence"],
   ["components/Connect.tsx", "body"],
-  ["components/soundtrack/BandInvite.tsx", "c.acceptedNote"],
   ["components/mark/MarkCard.tsx", "line"],
 ];
 
