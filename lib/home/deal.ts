@@ -134,12 +134,15 @@ export function coilIsTheirs(state: DealState): boolean {
 }
 
 // What <html data-deal> says: "closed" until the deal starts (the init script
-// writes "pending" before hydration; the same look), then "dealing", "dealt".
-export type DealAttribute = "closed" | "dealing" | "dealt";
+// writes "pending" before hydration; the same look), then "dealing", then
+// "unfurled" (the Coil takes the pointer and the wheel, the columns still
+// arriving), then "dealt".
+export type DealAttribute = "closed" | "dealing" | "unfurled" | "dealt";
 
 export function dealAttribute(state: DealState): DealAttribute {
   if (state.phase === "dealt") return "dealt";
-  return state.phase === "dealing" ? "dealing" : "closed";
+  if (state.phase !== "dealing") return "closed";
+  return state.unfurled ? "unfurled" : "dealing";
 }
 
 // ---- the store ----

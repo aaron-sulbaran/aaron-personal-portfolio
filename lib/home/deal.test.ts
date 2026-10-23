@@ -7,6 +7,7 @@ import {
   dealAttribute,
   dealReducer,
   dealTrigger,
+  coilIsTheirs,
   isAfter,
   type DealAction,
   type DealState,
@@ -83,10 +84,26 @@ describe("the deal's state machine", () => {
     expect(dealReducer(dealt, { type: "reset" })).toEqual({ ...DEAL_IDLE, entrances: 1 });
   });
 
-  it("mirrors the phase to the three values the page's CSS knows", () => {
+  it("mirrors the phase to the four values the page's CSS knows", () => {
     expect(dealAttribute(DEAL_IDLE)).toBe("closed");
     expect(dealAttribute(run([{ type: "enter", source: "view" }]))).toBe("dealing");
+    expect(dealAttribute(run([{ type: "enter", source: "view" }, { type: "unfurl" }]))).toBe("unfurled");
     expect(dealAttribute(DEAL_REDUCED)).toBe("dealt");
+  });
+
+  it("unfurls only while dealing, once, and the Coil is the reader's from the unfurl, not from the columns", () => {
+    expect(dealReducer(DEAL_IDLE, { type: "unfurl" })).toBe(DEAL_IDLE);
+    const dealing = run([{ type: "enter", source: "click" }]);
+    expect(coilIsTheirs(dealing)).toBe(false);
+    const unfurled = dealReducer(dealing, { type: "unfurl" });
+    expect(unfurled).toMatchObject({ phase: "dealing", unfurled: true });
+    expect(dealReducer(unfurled, { type: "unfurl" })).toBe(unfurled);
+    expect(coilIsTheirs(unfurled)).toBe(true);
+    expect(coilIsTheirs(dealReducer(unfurled, { type: "finish" }))).toBe(true);
+    expect(coilIsTheirs(DEAL_IDLE)).toBe(false);
+    expect(coilIsTheirs(DEAL_REDUCED)).toBe(true);
+    // A new deal (the lab's replay) starts closed again.
+    expect(coilIsTheirs(dealReducer(dealReducer(unfurled, { type: "reset" }), { type: "enter", source: "click" }))).toBe(false);
   });
 
   it("shows the teaser's after state only once the deal is over, so the label never flips under text that is still leaving", () => {

@@ -65,6 +65,16 @@ export type WheelFacts = {
 // A real pointer move to (x, y), viewport px.
 export type PointerFacts = { nowMs: number; insideSilhouette: boolean; x: number; y: number };
 
+// The coil has just become the reader's (the deal's Coil is unfurled): it takes a
+// fresh wheel gesture that starts over it at once, with no pointer move needed,
+// since the page's own scroll to the cards (the deal's, which disarmed capture)
+// is over and the pointer has been wherever it was. A gesture already running
+// keeps its owner (a page scroll the reader began stays the page's); the next one
+// decides afresh by the usual rule.
+export function armCapture(state: CaptureState): CaptureState {
+  return state.armed ? state : { ...state, armed: true };
+}
+
 // The page scrolled with the pointer at (x, y), viewport px (NaN when unseen).
 export type ScrollFacts = { nowMs: number; x: number; y: number };
 

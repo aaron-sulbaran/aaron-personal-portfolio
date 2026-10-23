@@ -1,5 +1,6 @@
 import { COIL } from "@/lib/coil/constants";
 import {
+  armCapture,
   decideWheel,
   gestureOwner,
   nudgeShown,
@@ -285,9 +286,17 @@ export function createInput(ctx: SceneCtx, cards: Cards, hover: Hover, loop: Loo
   }
   // ---- end slice 7 ----
 
-  // Update step: the pointer's canvas position at the page's current scroll.
+  // Update step: the pointer's canvas position at the page's current scroll,
+  // and, the frame the Coil becomes the reader's (the deal's unfurl: the props'
+  // interactive turns true), capture armed: the deal's own scroll to the cards
+  // disarmed it, and the reader should not have to nudge the mouse to take the
+  // wheel. A gesture already running keeps its owner (lib/coil/capture.ts armCapture).
+  let wasInteractive = false;
   function scroll() {
     updatePointerLocal();
+    const interactive = live.current.interactive;
+    if (interactive && !wasInteractive) setCapture(armCapture(st.capture), performance.now());
+    wasInteractive = interactive;
   }
 
   // Update step: the conveyor's feeds, its one smoothing stage and spin cap, and the stretch envelope.

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { COIL } from "@/lib/coil/constants";
 import {
+  armCapture,
   createCapture,
   decideWheel,
   gestureOwner,
@@ -343,6 +344,57 @@ describe("continuation: things moving under a still pointer never change the nex
   it("the hero turning non-interactive mid-gesture holds nothing", () => {
     const { state } = replay(downFirstQuick, (index) => ({ ...onCoil, interactive: index < 10 }));
     expect(state.held).toBe(false);
+  });
+});
+
+describe("the Coil becomes the reader's (the deal's unfurl)", () => {
+  // The deal scrolled the page itself, which disarmed capture, and the pointer
+  // never moved: a reader who clicked Deal me in and left the mouse where it was.
+  const afterDealScroll = () => pageScrolled(pointerMoved(createCapture(), move(0, 400, 300)), { nowMs: 100, x: 400, y: 300 });
+
+  it("takes a fresh gesture that starts over a card at once, with no pointer move", () => {
+    const parked = afterDealScroll();
+    expect(parked.armed).toBe(false);
+    // Without arming it is the page's, as ever.
+    expect(decideWheel(parked, { ...onCoil, nowMs: 2000 }).owner).toBe("page");
+    // Armed at the unfurl, the same gesture is the coil's from its first event.
+    const armed = armCapture(parked);
+    expect(armed.armed).toBe(true);
+    const first = decideWheel(armed, { ...onCoil, nowMs: 2000 });
+    expect(first.owner).toBe("coil");
+    expect(gestureOwner(first, 2000 + 10)).toBe("coil");
+  });
+
+  it("takes it within 300 ms of the unfurl: nothing waits on a timer", () => {
+    const unfurledAt = 5000;
+    const armed = armCapture(afterDealScroll());
+    expect(decideWheel(armed, { ...onCoil, nowMs: unfurledAt + 300 }).owner).toBe("coil");
+    expect(decideWheel(armed, { ...onCoil, nowMs: unfurledAt + 1 }).owner).toBe("coil");
+  });
+
+  it("leaves a gesture that is already running as the page scroll it was", () => {
+    const parked = afterDealScroll();
+    // The reader was wheeling the page when the Coil unfurled under the pointer.
+    const running = replay(downFirstQuick.slice(0, 12), () => onCoil, { startMs: 1000, state: parked });
+    expect(running.owners.every((owner) => owner === "page")).toBe(true);
+    const armed = armCapture(running.state);
+    const events = downFirstQuick.slice(12, 30);
+    const next = replay(events, () => onCoil, { startMs: running.endMs + 5, state: armed });
+    expect(next.owners.every((owner) => owner === "page")).toBe(true);
+  });
+
+  it("is the page's after the gesture ends and the reader scrolls the page again: the next gesture waits for a pointer move", () => {
+    const armed = armCapture(afterDealScroll());
+    const scrolled = pageScrolled(armed, { nowMs: 3000, x: 400, y: 300 });
+    expect(scrolled.armed).toBe(false);
+    expect(decideWheel(scrolled, { ...onCoil, nowMs: 3500 }).owner).toBe("page");
+  });
+
+  it("changes nothing when capture is armed already, and never touches a held mark", () => {
+    const state = armedCapture();
+    expect(armCapture(state)).toBe(state);
+    const held = decideWheel(state, { ...onCoil, nowMs: 2000 });
+    expect(armCapture(held)).toBe(held);
   });
 });
 
