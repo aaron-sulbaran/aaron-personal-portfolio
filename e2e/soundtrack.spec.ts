@@ -7,7 +7,7 @@ import { DOCK } from "@/lib/waveform/dock";
 import { dotReach } from "@/lib/wavepath/columns";
 import { AMPLITUDE, SHAPE_GAIN } from "@/lib/wavepath/constants";
 import { THEME_STORAGE_KEY } from "@/lib/theme";
-import { nextFrames, openHome, scrollToY } from "./support/coil";
+import { openHome, scrollToY } from "./support/coil";
 import { settled } from "./support/fallback";
 import {
   CAPSULE,
