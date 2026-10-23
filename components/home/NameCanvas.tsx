@@ -51,7 +51,7 @@ export function NameCanvas() {
     // After first paint: the page's text is already on screen.
     const frame = requestAnimationFrame(() => {
       if (!canCreateWebGL2()) return giveUp();
-      import("@/components/coil/nameCanvas/start").then(
+      import("@/components/coil/sceneChunk").then(
         ({ startNameCanvas }) => {
           if (cancelled) return;
           try {

@@ -85,9 +85,9 @@ export function CoilStage({
         setFailure("noWebgl");
         return;
       }
-      import("./CoilScene").then(
+      import("./sceneChunk").then(
         (module) => {
-          if (!cancelled) setScene(() => module.default);
+          if (!cancelled) setScene(() => module.CoilScene);
         },
         () => {
           if (!cancelled) setFailure("unavailable");

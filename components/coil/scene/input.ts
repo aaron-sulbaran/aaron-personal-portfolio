@@ -291,11 +291,15 @@ export function createInput(ctx: SceneCtx, cards: Cards, hover: Hover, loop: Loo
   // interactive turns true), capture armed: the deal's own scroll to the cards
   // disarmed it, and the reader should not have to nudge the mouse to take the
   // wheel. A gesture already running keeps its owner (lib/coil/capture.ts armCapture).
+  // Only a deal that played (its clock exists) arms: a load straight into the
+  // cards, or a reduced-motion one, keeps the rule that a pointer must really
+  // move before the page can slide a card under it into the coil's hands.
   let wasInteractive = false;
   function scroll() {
     updatePointerLocal();
     const interactive = live.current.interactive;
-    if (interactive && !wasInteractive) setCapture(armCapture(st.capture), performance.now());
+    const dealPlayed = live.current.entrance?.clockMs !== undefined;
+    if (interactive && !wasInteractive && dealPlayed) setCapture(armCapture(st.capture), performance.now());
     wasInteractive = interactive;
   }
 
