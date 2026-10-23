@@ -159,7 +159,7 @@ export async function dockGeometry(page: Page) {
 }
 
 // Below the band: the top of the cards section.
-export async function toAbout(page: Page) {
+export async function toCards(page: Page) {
   await scrollToY(page, Math.round(await documentTop(page, "#work")));
 }
 
