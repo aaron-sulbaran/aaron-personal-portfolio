@@ -833,8 +833,9 @@ html:not([data-input="pointer"]) .fx:focus-visible,
    its box and nothing below moves. The head script (lib/home/dealInit.ts)
    writes data-deal="pending" before the first paint, the home's controller
    takes it over as "closed", then "dealing" (the deal's master timeline brings
-   the columns in with inline styles) and "dealt" (all of it clear, the stage
-   takes pointers). Without JS nothing here applies; reduced motion never sets
+   the columns in with inline styles), "unfurled" (the Coil is open: the stage
+   takes the pointer and the wheel while the columns are still arriving) and
+   "dealt" (all of it clear, the titles take pointers). Without JS nothing here applies; reduced motion never sets
    "pending". If hydration never happens, the failsafe animation opens
    everything after eight seconds. */
 @keyframes deal-failsafe {
@@ -856,7 +857,7 @@ html[data-deal="closed"] [data-deal-title] {
 html[data-deal="closed"] [data-deal-title]:focus-within {
   opacity: 1;
 }
-html:is([data-deal="pending"], [data-deal="closed"], [data-deal="dealing"]) [data-deal-title] {
+html:is([data-deal="pending"], [data-deal="closed"], [data-deal="dealing"], [data-deal="unfurled"]) [data-deal-title] {
   pointer-events: none;
 }
 html[data-deal="pending"] [data-coil-poster],
