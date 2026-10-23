@@ -93,8 +93,6 @@ async function openPage(browser, theme, viewport, tokens) {
   return { context, page };
 }
 
-const frames = (page) => page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
-
 // The hero still: the scene at rest, the stage filling the cut's viewport.
 async function heroStill(browser, theme, cut) {
   const viewport = CUTS[cut];
