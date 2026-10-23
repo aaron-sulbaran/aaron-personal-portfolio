@@ -93,7 +93,8 @@ test("reduced motion switched on mid-deal lands dealt with no orphan state, and 
   const left = await page.evaluate(() => ({
     scrollBehavior: document.documentElement.style.scrollBehavior,
     titleStyle: document.querySelector("#work [data-deal-title]")!.getAttribute("style"),
-    teaserStyle: document.querySelector("[data-intro-cta]")!.getAttribute("style"),
+    // The strip's button keeps its arrival step (a custom property, for good); nothing of the deal's own may be left on it.
+    teaserStyle: (({ style }: HTMLElement) => [style.opacity, style.transform, style.visibility, style.pointerEvents].join(""))(document.querySelector<HTMLElement>("[data-intro-cta]")!),
     lead: getComputedStyle(document.getElementById("work")!).getPropertyValue("--run-lead"),
     scene: document.querySelector("section[data-scene]")!.getAttribute("data-scene"),
   }));

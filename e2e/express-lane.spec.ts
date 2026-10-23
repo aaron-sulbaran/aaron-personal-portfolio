@@ -1,19 +1,22 @@
 import { siteContent } from "@/lib/content";
 import { quickCopy, quickEntries, quickNextVariants } from "@/lib/content/quick";
+import { INTRO_HEADING_ID } from "@/lib/home/introId";
 import { INVITE_KEY } from "@/lib/quick/invite";
 import { test, expect } from "./support/fixtures";
 import { watchScripts } from "./support/chunks";
 import type { Page } from "@playwright/test";
 
 // The Express lane (docs/superpowers/specs/2026-10-13-express-lane-design.md):
-// its tiles open the cards' own modals, the first-visit invite asks once, the
-// transition runs both ways and lands focus on the new page's heading, and the
-// lane never fetches the Coil's chunk. The invite is the subject here, so the
-// suite's default of a dismissed invite is switched off.
+// its tiles open the cards' own modals, the way in is page 1's 30-second link
+// (the first-visit invite toast is gone), the transition runs both ways and
+// lands focus on the new page's heading, and the lane never fetches the Coil's
+// chunk. A first visit is the subject here, so the suite's default of a
+// dismissed invite is switched off.
 test.use({ inviteDismissed: false });
 
 const tile = (page: Page, slot: string) => page.locator(`main button[data-quick-slot="${slot}"]`);
 const homeReady = (page: Page) => expect(page.locator("html")).toHaveAttribute("data-home", "ready", { timeout: 20_000 });
+const quickLink = (page: Page) => page.locator("[data-intro-cta]").getByRole("link", { name: siteContent.intro.teaser.quick });
 const idle = (page: Page) => expect(page.locator("[data-transition]")).toHaveAttribute("data-transition", "idle", { timeout: 10_000 });
 
 test("express lane: every tile opens its own card's modal, Escape closes it and focus returns to the tile", async ({ page }) => {
@@ -46,36 +49,23 @@ test("express lane: the page reads whole at first paint and never requests the s
   expect(await scripts.sceneChunks()).toEqual([]);
 });
 
-test("express lane: the first-visit invite shows once, and never again once dismissed", async ({ page }) => {
+test("express lane: a first visit shows no invite, on the top of the home or on a deep landing; the 30-second link is the way in", async ({ page }) => {
   await page.goto("/");
   await homeReady(page);
-  const pill = page.locator('[data-express-invite="pill"]');
-  const toast = page.locator('[data-express-invite="toast"]');
-  await expect(toast).toBeVisible({ timeout: 6_000 });
-  await expect(pill).toHaveCount(0);
-  await toast.getByRole("button", { name: quickCopy.invite.no }).click();
-  await expect(pill).toHaveCount(0);
-  await expect(toast).toHaveCount(0);
-  expect(await page.evaluate((key) => localStorage.getItem(key), INVITE_KEY)).toBe("dismissed");
-  await page.reload();
-  await homeReady(page);
   await page.waitForTimeout(3_000);
-  await expect(pill).toHaveCount(0);
-  await expect(toast).toHaveCount(0);
-});
-
-test("express lane: the invite never shows on a deep landing past the hero", async ({ page }) => {
-  await page.goto("/#about");
+  await expect(page.locator("[data-express-invite]")).toHaveCount(0);
+  await expect(quickLink(page)).toHaveAttribute("href", "/quick");
+  await page.goto("/#work");
   await homeReady(page);
-  await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
-  await page.waitForTimeout(3_000);
-  await expect(page.locator('[data-express-invite="pill"], [data-express-invite="toast"]')).toHaveCount(0);
+  await page.waitForTimeout(1_500);
+  await expect(page.locator("[data-express-invite]")).toHaveCount(0);
 });
 
 test("express lane: the transition runs both ways and lands focus on each page's heading", async ({ page }) => {
   await page.goto("/");
   await homeReady(page);
-  await page.locator('[data-express-invite="toast"]').getByRole("button", { name: quickCopy.invite.yes }).click({ timeout: 8_000 });
+  await quickLink(page).scrollIntoViewIfNeeded();
+  await quickLink(page).click({ timeout: 8_000 });
   await expect(page).toHaveURL(/\/quick$/);
   await idle(page);
   await expect(page.locator("#express-lane-title")).toBeFocused();
@@ -84,9 +74,9 @@ test("express lane: the transition runs both ways and lands focus on each page's
   await page.locator("main").getByRole("link", { name: quickCopy.back }).click();
   await expect(page).toHaveURL(/\/$/);
   await idle(page);
-  await expect(page.locator("#hero-heading")).toBeFocused();
+  await expect(page.locator(`#${INTRO_HEADING_ID}`)).toBeFocused();
   await expect(page.locator("html")).toHaveAttribute("data-home", "ready");
-  await expect(page.locator(".coil-loader")).toHaveAttribute("data-state", "gone");
+  await expect(page.locator(".intro-loader")).toBeHidden();
   await expect(page.locator("body")).not.toHaveCSS("overflow", "hidden");
 
   await page.goBack();
@@ -96,7 +86,7 @@ test("express lane: the transition runs both ways and lands focus on each page's
   await page.goForward();
   await expect(page).toHaveURL(/\/$/);
   await idle(page);
-  await expect(page.locator("#hero-heading")).toBeFocused();
+  await expect(page.locator(`#${INTRO_HEADING_ID}`)).toBeFocused();
 });
 
 test("express lane: the Menu chip takes either page to the other", async ({ page }) => {
@@ -105,7 +95,7 @@ test("express lane: the Menu chip takes either page to the other", async ({ page
   await page.getByRole("dialog", { name: "Site menu" }).getByRole("link", { name: quickCopy.back }).click();
   await expect(page).toHaveURL(/\/$/);
   await idle(page);
-  await expect(page.locator("#hero-heading")).toBeFocused();
+  await expect(page.locator(`#${INTRO_HEADING_ID}`)).toBeFocused();
   await page.getByRole("button", { name: "Open menu" }).click();
   await page.getByRole("dialog", { name: "Site menu" }).getByRole("link", { name: quickCopy.menuChip }).click();
   await expect(page).toHaveURL(/\/quick$/);
@@ -420,32 +410,6 @@ test("tip: the page's tip does not share the button's fill, in either theme", as
   }
 });
 
-test("tip: the toast's dismiss shows its tip above the toast, on hover and on keyboard focus", async ({ page }) => {
-  await page.goto("/");
-  await homeReady(page);
-  const toast = page.locator('[data-express-invite="toast"]');
-  await expect(toast).toBeVisible({ timeout: 6_000 });
-  const dismiss = toast.getByRole("button", { name: quickCopy.invite.no });
-  await expect(tipOf(page)).toHaveAttribute("data-shown", "false");
-  await dismiss.hover();
-  await expect(tipOf(page)).toHaveAttribute("data-shown", "true");
-  await expect(tipOf(page)).toHaveText(quickCopy.tips.toast);
-  const z = await page.evaluate(() => ({ tip: Number(getComputedStyle(document.querySelector("[data-field-tip]")!).zIndex), toast: Number(getComputedStyle(document.querySelector('[data-express-invite="toast"]')!).zIndex) }));
-  expect(z.tip).toBe(58);
-  expect(z.toast).toBeLessThan(z.tip);
-  const [tipBox, toastBox] = [(await tipOf(page).boundingBox())!, (await toast.boundingBox())!];
-  expect(tipBox.y + tipBox.height).toBeLessThanOrEqual(toastBox.y);
-  const fills = await page.evaluate(() => ({ toast: getComputedStyle(document.querySelector('[data-express-invite="toast"]')!).backgroundColor, tip: getComputedStyle(document.querySelector("[data-field-tip] > span")!).backgroundColor }));
-  expect(fills.tip).not.toBe(fills.toast);
-  await page.mouse.move(100, 300);
-  await expect(tipOf(page)).toHaveAttribute("data-shown", "false");
-  await dismiss.focus();
-  await page.keyboard.press("Shift+Tab");
-  await page.keyboard.press("Tab");
-  await expect(dismiss).toBeFocused();
-  await expect(tipOf(page)).toHaveAttribute("data-shown", "true");
-});
-
 test.describe("tip on a touch screen at 390x844", () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
 
@@ -460,13 +424,6 @@ test.describe("tip on a touch screen at 390x844", () => {
     await page.getByRole("link", { name: quickCopy.back }).dispatchEvent("pointerenter", { pointerType: "touch" });
     await expect(tipOf(page)).toHaveAttribute("data-shown", "false");
     await expect(page.locator("[data-quick-looking]")).toBeVisible();
-  });
-
-  test("the toast carries the same kind of line for a tapper", async ({ page }) => {
-    await page.goto("/");
-    await homeReady(page);
-    await expect(page.locator('[data-express-invite="toast"]')).toBeVisible({ timeout: 8_000 });
-    await expect(page.locator("[data-express-invite-note]")).toHaveText(quickCopy.tips.toast);
   });
 });
 

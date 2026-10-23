@@ -3,7 +3,7 @@ import { test, expect } from "./support/fixtures";
 import { INTRO_LOADING, nextFrames, openHome, scrollToY } from "./support/coil";
 import { CAPSULE, PILL, armDock, readDock } from "./support/dock";
 import { bubble } from "./support/inline";
-import { shoot } from "./support/pixels";
+import { decodePng, shoot } from "./support/pixels";
 import { documentTop } from "./support/wave";
 import { siteContent } from "@/lib/content";
 
@@ -34,6 +34,8 @@ const boxOf = (page: Page, selector: string): Promise<Box> =>
 const loaderState = (page: Page) => page.evaluate(() => document.documentElement.dataset.introLoader ?? null);
 const dealLink = (page: Page) => page.locator("[data-intro-cta] a").first();
 const nameStats = (page: Page) => page.evaluate(() => (window as unknown as { __nameCanvas: NameCanvasHook }).__nameCanvas.stats());
+// The seven items that arrive on load, in page order: the name's line, blocks 1 and 2, the band's question, blocks 3 and 4, the strip's button.
+const arrivalOpacities = (page: Page) => page.evaluate(() => [...document.querySelectorAll("[data-arrive]")].map((el) => Number(getComputedStyle(el).opacity)));
 const blockBox = (page: Page, key: string) => boxOf(page, `#story-${key} [data-block-text]`);
 
 // The name's canvas has drawn its first frame and the loader is gone.
@@ -341,6 +343,13 @@ test.describe("reduced motion", () => {
     expect(await page.evaluate(() => (window as unknown as { __nameCanvas?: unknown }).__nameCanvas ?? null)).toBeNull();
     await expect(page.locator("#work canvas")).toHaveCount(0);
   });
+
+  test("intro: no word waits to arrive: nothing is held, every item is whole from the first frame", async ({ page }) => {
+    await page.goto("/");
+    expect(await page.evaluate(() => document.documentElement.dataset.introWords ?? null)).toBeNull();
+    expect(await arrivalOpacities(page)).toEqual(new Array(7).fill(1));
+    expect(await page.evaluate(() => [...document.querySelectorAll("[data-arrive]")].map((el) => getComputedStyle(el).transform))).toEqual(new Array(7).fill("none"));
+  });
 });
 
 test.describe("without JavaScript", () => {
@@ -359,6 +368,8 @@ test.describe("without JavaScript", () => {
     await expect(page.locator("[data-block-text]")).toHaveCount(4);
     await expect(dealLink(page)).toBeVisible();
     await expect(dealLink(page)).toHaveAttribute("href", "#work");
+    // Nothing waits to arrive: the server's HTML is never blank, every item shows.
+    expect(await arrivalOpacities(page)).toEqual(new Array(7).fill(1));
   });
 });
 
@@ -400,4 +411,145 @@ test("intro: three stays out of the page's own entry scripts: the name canvas lo
   // Never the page's own entry chunks: Next names those main, main-app, webpack or polyfills.
   for (const url of withThree) expect(url, url).not.toMatch(/\/(main|main-app|webpack|polyfills)-[\w-]+\.js/);
   await nextFrames(page, 1);
+});
+
+type ArrivalSample = { t: number; o: number[]; y: number[] };
+
+test("intro: page 1's words arrive on load once the loader has handed the name over: in the order asked, a step apart, all in place within two seconds, and never again", async ({ page }) => {
+  await page.addInitScript(() => {
+    const seen: unknown[] = [];
+    (window as unknown as { __arrival: unknown[] }).__arrival = seen;
+    let t0: number | null = null;
+    const tick = () => {
+      const html = document.documentElement;
+      if (html && t0 === null && html.getAttribute("data-intro-words") === "play") t0 = performance.now();
+      if (t0 !== null && seen.length < 600) {
+        const items = [...document.querySelectorAll("[data-arrive]")];
+        seen.push({ t: performance.now() - t0, o: items.map((el) => Number(getComputedStyle(el).opacity)), y: items.map((el) => new DOMMatrix(getComputedStyle(el).transform).m42) });
+      }
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
+  await page.goto("/");
+  // Held before the first paint: while the loader runs everything but the name's line waits, transparent and a little low.
+  expect(await page.evaluate(() => document.documentElement.dataset.introWords)).toBe("wait");
+  const held = await arrivalOpacities(page);
+  expect(held.slice(1), "everything but the name's line is held").toEqual(new Array(6).fill(0));
+  await page.waitForFunction(() => !document.documentElement.dataset.introWords && ((window as unknown as { __arrival: unknown[] }).__arrival.length ?? 0) > 20, null, { timeout: 30_000 });
+  const samples = await page.evaluate(() => (window as unknown as { __arrival: ArrivalSample[] }).__arrival);
+  const firstAbove = (index: number, level: number) => samples.find((sample) => sample.o[index] > level)?.t ?? Number.POSITIVE_INFINITY;
+  // Items in page order carry steps 0, 1, 2, 3, 4, 4, 5: each starts after the one before it, a stagger apart, and the pair at step 4 together.
+  const starts = [0, 1, 2, 3, 4, 5, 6].map((i) => firstAbove(i, 0.04));
+  expect(starts[0], "the name's line is there at the handoff").toBe(samples[0].t);
+  for (const [a, b] of [[1, 2], [2, 3], [3, 4], [5, 6]]) expect(starts[b] - starts[a], `item ${b} starts after item ${a}`).toBeGreaterThan(80);
+  expect(Math.abs(starts[5] - starts[4]), "blocks 3 and 4 arrive together").toBeLessThan(60);
+  // Each rises into place on transform and opacity alone, and everything is whole within two seconds of the handoff.
+  const done = [1, 2, 3, 4, 5, 6].map((i) => firstAbove(i, 0.99));
+  expect(Math.max(...done), "every item whole, ms after the handoff").toBeLessThan(2000);
+  expect(samples[0].y.slice(1).every((y) => y >= 0), "items start low and rise").toBe(true);
+  expect(samples.at(-1)!.y, "and end in place").toEqual(new Array(7).fill(0));
+  // Once per page load: the attribute is gone and a scroll down and back replays nothing.
+  await scrollToY(page, 2400);
+  await scrollToY(page, 0);
+  expect(await page.evaluate(() => document.documentElement.dataset.introWords ?? null)).toBeNull();
+  expect(await arrivalOpacities(page)).toEqual(new Array(7).fill(1));
+});
+
+test("intro: if the page's own script never plays the arrival, the stylesheet shows every word by itself", async ({ page }) => {
+  // A load that arms the hold but never hydrates: the held items sit at opacity 0 until the failsafe animation runs
+  // (after the loader's own bail, about ten seconds: the loader covers the page until then, so an earlier show would be unseen).
+  await page.route("**/_next/static/chunks/**/*.js", (route) => route.abort());
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+  expect(await page.evaluate(() => document.documentElement.dataset.introWords ?? null)).toBe("wait");
+  // (The name's line is already in place under the loader; the other six wait.)
+  await expect.poll(async () => Math.min(...(await arrivalOpacities(page))), { timeout: 20_000 }).toBe(1);
+});
+
+// The name's ink (the stronger name is the default): both lines of "Hi, I'm Aaron" read at 3:1 or better against the page at rest with the cursor away, in both themes, while the field's gradient still shows inside the letters.
+const lin = (c: number) => ((c /= 255) <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+const luminance = (r: number, g: number, b: number) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+
+async function nameContrast(page: Page) {
+  const stage = await boxOf(page, "[data-name-stage]");
+  const clip = { x: Math.max(0, stage.left - 20), y: Math.max(0, stage.top - 20), width: stage.width + 40, height: stage.height + 40 };
+  const image = decodePng(await page.screenshot({ clip, scale: "css", caret: "initial" }));
+  const bg = await page.evaluate(() => (getComputedStyle(document.body).backgroundColor.match(/\d+/g) ?? []).slice(0, 3).map(Number));
+  const bgL = luminance(bg[0], bg[1], bg[2]);
+  const { width: W, height: H, rgba } = image;
+  const ratio = new Float32Array(W * H);
+  for (let i = 0; i < W * H; i++) {
+    const l = luminance(rgba[i * 4], rgba[i * 4 + 1], rgba[i * 4 + 2]);
+    ratio[i] = (Math.max(l, bgL) + 0.05) / (Math.min(l, bgL) + 0.05);
+  }
+  // The lines, split at the empty rows between them (the page's own "01" label sits above the greeting).
+  const rows: number[] = [];
+  for (let y = 0; y < H; y++) {
+    let ink = 0;
+    for (let x = 0; x < W; x++) if (ratio[y * W + x] >= 1.12) ink++;
+    rows.push(ink);
+  }
+  const bands: [number, number][] = [];
+  let start = -1;
+  let gap = 0;
+  rows.forEach((ink, y) => {
+    if (ink > 0) {
+      if (start < 0) start = y;
+      gap = 0;
+    } else if (start >= 0 && ++gap > 2) {
+      bands.push([start, y - gap]);
+      start = -1;
+      gap = 0;
+    }
+  });
+  if (start >= 0) bands.push([start, H - 1]);
+  const [greeting, name] = bands.slice(-2);
+  // The lightest pixels in each line's strokes: a pixel counts when it is within 12 percent of the strongest ratio around it (so antialiased edges do not).
+  const weakest = ([y0, y1]: [number, number]) => {
+    let min = Number.POSITIVE_INFINITY;
+    const median: number[] = [];
+    const R = 2;
+    for (let y = Math.max(R, y0); y <= Math.min(H - 1 - R, y1); y++) {
+      for (let x = R; x < W - R; x++) {
+        const c = ratio[y * W + x];
+        if (c < 1.12) continue;
+        let m = 0;
+        for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) m = Math.max(m, ratio[(y + dy) * W + x + dx]);
+        if (c >= 0.88 * m) {
+          min = Math.min(min, c);
+          median.push(c);
+        }
+      }
+    }
+    median.sort((a, b) => a - b);
+    return { min, median: median[Math.floor(median.length / 2)], spread: median.at(-1)! / median[0] };
+  };
+  return { greeting: weakest(greeting), name: weakest(name), bands: bands.length };
+}
+
+test.describe("the name's ink", () => {
+  test.use({ viewport: { width: 1280, height: 800 } });
+  for (const colorScheme of ["light", "dark"] as const) {
+    test(`intro: both lines of the name read at 3:1 or better against the page at rest, in ${colorScheme}, with the gradient still in the letters`, async ({ page }) => {
+      await page.emulateMedia({ colorScheme });
+      await openHome(page, { at: "top" });
+      await nameDrawn(page);
+      await page.mouse.move(1270, 790);
+      await page.waitForTimeout(1000);
+      const readings = [];
+      // The sheen drifts on its own: read it at three moments.
+      for (let i = 0; i < 3; i++) {
+        readings.push(await nameContrast(page));
+        await page.waitForTimeout(900);
+      }
+      for (const read of readings) {
+        expect(read.bands, "lines found in the name's box").toBeGreaterThanOrEqual(2);
+        expect(read.greeting.min, "the greeting's lightest stroke").toBeGreaterThanOrEqual(3);
+        expect(read.name.min, "the name's lightest stroke").toBeGreaterThanOrEqual(3);
+        // The gradient shows: the letters are not one flat ink.
+        expect(read.name.spread, "the strongest stroke over the weakest in the name").toBeGreaterThan(1.25);
+      }
+      test.info().annotations.push({ type: "contrast", description: readings.map((r) => `greeting ${r.greeting.min.toFixed(2)} (median ${r.greeting.median.toFixed(2)}), name ${r.name.min.toFixed(2)} (median ${r.name.median.toFixed(2)})`).join("; ") });
+    });
+  }
 });

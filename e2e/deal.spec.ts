@@ -74,13 +74,13 @@ test("deal: the button plays one clock, the page scrolls itself to the cards ins
   expect(await page.evaluate(() => (window as unknown as { __coil: { entrance: () => { ended: boolean } } }).__coil.entrance().ended)).toBe(true);
   for (const title of titles) await expect(page.locator(`#work button[data-card="${title.key}"]`)).toBeVisible();
   expect(await opacityOf(page, "#work [data-deal-title]")).toBe(1);
-  // A label rests at its own 80 percent (opacity-80 in CardColumns), nothing the deal left behind.
-  expect(await opacityOf(page, "#work [data-deal-label]")).toBeCloseTo(0.8, 5);
+  // A label rests at the stylesheet's full opacity: nothing the deal left behind.
+  expect(await opacityOf(page, "#work [data-deal-label]")).toBe(1);
   // Dealt: the stage takes pointers, the button is back for the "Back to my cards" state, and the root's smooth scroll is put back.
   expect(await pointerEventsOf(page, "#work [data-coil-stage]")).toBe("auto");
   expect(await opacityOf(page, "[data-intro-cta]")).toBe(1);
   expect(await page.evaluate(() => document.documentElement.style.scrollBehavior)).toBe("");
-  await expect(page.locator("#work h2")).toHaveText(["Work", "Builds"]);
+  await expect(page.locator("#work h3")).toHaveText(["Work", "Builds"]);
 });
 
 test("deal: the Coil's canvas is a sticky stage whose rail starts above the ribbon at page 1's foot and lets go where the cards section ends", async ({ page }) => {
@@ -120,7 +120,8 @@ test("deal: the reader's wheel during the scroll takes the page back and only th
   await page.mouse.move(720, 450);
   const startY = await page.evaluate(() => window.scrollY);
   await dealLink(page).click();
-  await expect.poll(() => page.evaluate(() => window.scrollY), { timeout: 5000 }).toBeGreaterThan(startY + 60);
+  // Polled every frame or so: the scroll joins after the rush and runs about a second, so a slow poll could land after it.
+  await expect.poll(() => page.evaluate(() => window.scrollY), { timeout: 5000, intervals: [30] }).toBeGreaterThan(startY + 60);
   expect(await page.evaluate(() => document.documentElement.style.scrollBehavior)).toBe("auto");
   await page.mouse.wheel(0, -200);
   await page.waitForTimeout(200);

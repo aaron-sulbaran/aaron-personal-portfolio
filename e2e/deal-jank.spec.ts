@@ -275,7 +275,8 @@ for (const size of [
 // channel (no bright halo, no dark fringe) and the same share on every channel that can
 // tell them apart (no tinted rim). The open frame's top edge rises from the page with no
 // step.
-const EDGE_FRAMES_MS = [0, 700, 1000, 1200, 1400, 1700, 2000, 2600];
+// The field opens from the end of the condense plus openStartMs, over open.ms: the frames from 1500 to 2100 have its edge on the canvas.
+const EDGE_FRAMES_MS = [0, 700, 1000, 1400, 1600, 1800, 2100, 2600];
 for (const colorScheme of ["light", "dark"] as const) {
   test.describe(`jank 4: the mask's edge, ${colorScheme}`, () => {
     test.use({ colorScheme });
@@ -305,6 +306,7 @@ for (const colorScheme of ["light", "dark"] as const) {
         const i = (y * image.width + x) * 4;
         return [image.rgba[i], image.rgba[i + 1], image.rgba[i + 2]];
       };
+      let edgeFrames = 0;
       for (const ms of EDGE_FRAMES_MS) {
         const shown = await frameAt(ms);
         const label = `${colorScheme} at ${ms} ms`;
@@ -333,8 +335,12 @@ for (const colorScheme of ["light", "dark"] as const) {
         }
         expect(checked, `${label}: pixels checked`).toBeGreaterThan(2000);
         // The frames with the edge on the canvas really had one to check.
-        if (ms === 1200 || ms === 1400) expect(edge, `${label}: pixels inside the feather`).toBeGreaterThan(40);
+        if (mask.radius > 150 && mask.radius < Math.hypot(rect.width, rect.height) / 2) {
+          edgeFrames++;
+          expect(edge, `${label}: pixels inside the feather`).toBeGreaterThan(40);
+        }
       }
+      expect(edgeFrames, "frames with the opening's edge on the canvas").toBeGreaterThanOrEqual(2);
       // The open field rises from the page down its top edge with no step.
       const fade = COIL.deal.open.topFadePx;
       for (let x = 20; x < open.image.width - 20; x += 60) {
