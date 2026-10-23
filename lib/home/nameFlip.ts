@@ -1,7 +1,7 @@
-// The loader's name becomes the first screen's name: a uniform scale and a shift
+// The loader's name becomes page 1's name: a uniform scale and a shift
 // (transform only, origin top left) that carry the loader's lockup onto the
-// heading it shrinks into, which is also where the scene draws the name (the
-// scene reads the heading's place, components/coil/scene/firstScreen.ts). The
+// heading it shrinks into, which is also where the name canvas draws the name
+// (it reads the heading's place, components/coil/nameCanvas/start.ts). The
 // DOM is the truth at run time (the loader measures both rects).
 
 export type Rect = { left: number; top: number; width: number; height: number };

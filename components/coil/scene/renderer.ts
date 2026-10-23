@@ -153,7 +153,7 @@ export function observeResize(ctx: SceneCtx, layout: (width: number, height: num
   });
   resizeObserver.observe(host);
   const rail = host.closest("[data-coil-rail]");
-  document.querySelectorAll("[data-coil-name], [data-coil-ribbon], [data-hush], [data-first-screen]").forEach((el) => resizeObserver.observe(el));
+  document.querySelectorAll("[data-coil-name], [data-coil-ribbon]").forEach((el) => resizeObserver.observe(el));
   if (rail) resizeObserver.observe(rail);
   return () => resizeObserver.disconnect();
 }

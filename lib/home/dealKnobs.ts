@@ -79,7 +79,7 @@ export const KNOB_SPEC: Record<NumericKnob, KnobSpec> = {
   peakCardsPerSecond: { label: "Peak speed", group: "Spin", min: 2, max: 20, step: 0.5, unit: " cards/s" },
   coarsePeakCardsPerSecond: { label: "Peak speed, touch", group: "Spin", min: 2, max: 20, step: 0.5, unit: " cards/s" },
   upMs: { label: "Spin-up", group: "Spin", min: 200, max: 1500, step: 10, unit: "ms" },
-  textOutMs: { label: "First-screen text out", group: "Spin", min: 0, max: 1000, step: 10, unit: "ms" },
+  textOutMs: { label: "Page 1 text out", group: "Spin", min: 0, max: 1000, step: 10, unit: "ms" },
   wheelLeanDeg: { label: "Wheel lean", group: "Wheel", min: -45, max: 15, step: 1, unit: "deg" },
   wheelScale: { label: "Wheel size", group: "Wheel", min: 0.5, max: 1.6, step: 0.02 },
   wheelOffsetX: { label: "Wheel nudge X", group: "Wheel", min: -0.3, max: 0.3, step: 0.01 },
