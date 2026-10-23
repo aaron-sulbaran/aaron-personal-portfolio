@@ -43,7 +43,7 @@ test("chrome: the header bar arrives past the hero and tucks away on the way dow
 
   await scrollToY(page, 1100);
   await expect(nav).not.toHaveAttribute("inert", "");
-  await expect(nav.getByRole("link", { name: "Work" })).toBeVisible();
+  await expect(nav.getByRole("link", { name: "Work", exact: true })).toBeVisible();
 
   await scrollToY(page, 1500);
   await expect(nav).toHaveAttribute("inert", "");

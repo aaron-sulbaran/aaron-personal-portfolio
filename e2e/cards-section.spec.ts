@@ -1,6 +1,6 @@
 import { test, expect } from "./support/fixtures";
 import { cardDialog } from "./support/cards";
-import { cardAt, coilPoints, openHome, scrollToCards } from "./support/coil";
+import { cardAt, coilPoints, openHome, scrollToCards, scrollToFoot } from "./support/coil";
 import { approach } from "./support/input";
 import type { HookWindow } from "./support/hooks";
 import { siteContent } from "@/lib/content";
@@ -22,17 +22,20 @@ test("cards section: the two columns hold the fourteen cards, Work on the left a
   for (const title of titles) await expect(page.locator(`#work button[data-card="${title.key}"]`)).toHaveText(title.short);
 });
 
-test("cards section: the Deal me in button scrolls to the cards, and a visit starts at the top of the intro", async ({ page }) => {
+test("cards section: Deal me in at page 1's foot takes the page to the cards, and a visit starts at the top of the intro", async ({ page }) => {
   await openHome(page, { at: "top" });
   expect(await page.evaluate(() => window.scrollY)).toBe(0);
-  await page.getByRole("button", { name: intro.teaser.deal }).click();
-  await page.waitForFunction(() => Math.abs(document.getElementById("work")!.getBoundingClientRect().top) < 2, null, { timeout: 5000 });
+  await scrollToFoot(page);
+  await page.getByRole("link", { name: intro.teaser.deal }).click();
+  await page.waitForFunction(() => Math.abs(document.getElementById("work")!.getBoundingClientRect().top) < 2, null, { timeout: 8000 });
   await expect(page.getByRole("navigation", { name: "Sections" }).locator("[aria-current]")).toHaveCount(1);
   await expect(page.getByRole("link", { name: intro.teaser.quick })).toHaveAttribute("href", "/quick");
 });
 
 test("cards section: hovering a title brings its card to the front and holds the Coil there", async ({ page }) => {
   await openHome(page);
+  // A real move first: hover focus waits for the pointer to move (lib/home/hoverArm.ts), not for a title to land under a parked one.
+  await page.mouse.move(720, 450);
   await page.locator('#work button[data-card="talos"]').hover();
   await expect.poll(() => page.evaluate(() => (window as HookWindow).__coil!.focusKey())).toBe("talos");
   await page.mouse.move(720, 4);

@@ -10,7 +10,9 @@ import {
   scrollToCards,
   settleOn,
   silhouetteDistance,
+  waitForCoil,
   waitForCoilSettled,
+  waitForScene,
   waitForEnvelopeRest,
   waitForGestureEnd,
   watchFirstWheel,
@@ -319,8 +321,12 @@ test.describe("capture: empty background belongs to the page", () => {
 });
 
 test.describe("capture: the page sliding the coil under a still pointer never arms it", () => {
-  test("a fresh load with no pointer move: a wheel over a card scrolls the page", async ({ page, cdp }) => {
-    await openHome(page);
+  // A load straight into the cards plays no deal, so nothing hands the Coil over: the pointer must really move first.
+  // (A deal that plays unfurls into the reader's hands at once: e2e/deal.spec.ts.)
+  test("a load into the cards with no pointer move: a wheel over a card scrolls the page", async ({ page, cdp }) => {
+    await page.goto("/?coildebug=1#work");
+    await waitForScene(page);
+    await waitForCoil(page);
     const { card } = await coilPoints(page);
     await watchFirstWheel(page);
 

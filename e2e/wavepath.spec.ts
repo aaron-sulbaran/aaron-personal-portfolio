@@ -301,11 +301,24 @@ test("wavepath: reduced motion toggled live stills the line and back, with no or
   await toBlock(page, BELOW_BAND);
   await page.mouse.move(4, 4);
   await headAtRest(page);
-  const tiles = () => page.locator("[data-wave-path] canvas").count();
-  const tileCount = await tiles();
-  expect(tileCount).toBeGreaterThan(0);
+  const tileBoxes = () =>
+    page.locator("[data-wave-path] canvas").evaluateAll((els) =>
+      els.map((el) => {
+        const box = el.getBoundingClientRect();
+        return { top: Math.round(box.top + window.scrollY), height: Math.round(box.height) };
+      }),
+    );
+  // One unbroken column of tiles, none twice and none left behind.
+  const expectOneColumn = async (label: string) => {
+    const column = (await tileBoxes()).sort((a, b) => a.top - b.top);
+    expect(column.length, `tiles ${label}`).toBeGreaterThan(0);
+    column.slice(1).forEach((tile, i) => expect(Math.abs(tile.top - (column[i].top + column[i].height)), `tile ${i + 1} starts where the one above ends, ${label}`).toBeLessThanOrEqual(1));
+  };
   const moving = await ticks(page);
   await expect.poll(() => ticks(page), "the declined line breathes").toBeGreaterThan(moving);
+  // The tiles under the line's reach are made over the first frames after the head settles; count them once they have.
+  await page.waitForTimeout(800);
+  await expectOneColumn("while moving");
 
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.waitForFunction(() => { const f = (window as unknown as W).__wavePath.frame(); return !!f && f.length > 0 && f.head === f.length; });
@@ -313,7 +326,9 @@ test("wavepath: reduced motion toggled live stills the line and back, with no or
   await page.waitForTimeout(1000);
   expect(await ticks(page), "conductor frames while still").toBe(stilled);
   expect((await frame(page)).head).toBe((await frame(page)).length);
-  expect(await tiles(), "tiles after stilling").toBe(tileCount);
+  // Reduced motion lays page 1 out without the stage's rail (the dealt page had closed its slot), so the page and the line change length:
+  // the count of tiles may differ from before, the column must not break.
+  await expectOneColumn("after stilling");
 
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.waitForFunction(() => { const f = (window as unknown as W).__wavePath.frame(); return !!f && f.length > 0; });
@@ -321,7 +336,7 @@ test("wavepath: reduced motion toggled live stills the line and back, with no or
   await headAtRest(page);
   const resumed = await ticks(page);
   await expect.poll(() => ticks(page), "the loop runs again").toBeGreaterThan(resumed);
-  expect(await tiles(), "tiles after moving again").toBe(tileCount);
+  await expectOneColumn("after moving again");
 });
 
 // A phone's toolbar collapsing while it scrolls changes innerHeight and fires

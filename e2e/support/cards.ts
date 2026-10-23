@@ -49,7 +49,7 @@ export async function openCardFromBook(page: Page, key: CardKey, { home = true, 
 }
 
 // A card of one flight kind clicked on the Coil, as a visitor does (hover until
-// the scene picks it, then a click), behind ?coildebug=flight. Resolves with its
+// the scene picks it, then a click; a card with a column title over it, as on a phone's page 2, is not one), behind ?coildebug=flight. Resolves with its
 // key once the flown card is parked (parked: false resolves at the click); only
 // brings that card to the front first.
 export async function flyCard(page: Page, cdp: CDPSession, kind: "photo" | "work", { parked = true, only }: { parked?: boolean; only?: CardKey } = {}): Promise<CardKey> {
@@ -59,7 +59,7 @@ export async function flyCard(page: Page, cdp: CDPSession, kind: "photo" | "work
     page.evaluate(([k, wanted]) => {
       const w = window as HookWindow;
       const slot = w.__coilFlight!.scene.slots().find(
-        (s) => s.kind === k && (!wanted || s.key === wanted) && s.depth > 0.3 && s.center.x > 80 && s.center.x < innerWidth - 80 && s.center.y > 80 && s.center.y < innerHeight * 0.75 && w.__coil!.api.cardAt(s.center.x, s.center.y)?.slot === s.slot,
+        (s) => s.kind === k && (!wanted || s.key === wanted) && s.depth > 0.3 && s.center.x > 80 && s.center.x < innerWidth - 80 && s.center.y > 80 && s.center.y < innerHeight * 0.75 && document.elementFromPoint(s.center.x, s.center.y)?.tagName === "CANVAS" && w.__coil!.api.cardAt(s.center.x, s.center.y)?.slot === s.slot,
       );
       return slot ? { slot: slot.slot, key: slot.key } : null;
     }, [kind, only ?? ""] as const);
