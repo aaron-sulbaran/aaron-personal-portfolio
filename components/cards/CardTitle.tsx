@@ -45,4 +45,4 @@ export function CardTitle({ title }: { title: ColumnTitle }) {
 }
 
 const TITLE_CLASS =
-  "group/title flex min-h-11 w-full items-center rounded-sm text-left font-display text-[1.0625rem] leading-[1.15] text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent md:min-h-9 md:text-[clamp(1rem,1.25vw,1.25rem)]";
+  "group/title flex min-h-11 w-full items-center rounded-sm text-left font-display text-[1.0625rem] leading-[1.15] text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent md:min-h-10 md:text-[clamp(1.1875rem,1.475vw,1.475rem)]";

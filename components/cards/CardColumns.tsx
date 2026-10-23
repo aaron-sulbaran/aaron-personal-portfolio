@@ -13,7 +13,7 @@ import { CardTitle } from "./CardTitle";
 export function CardColumns() {
   const [work, builds] = siteContent.columns.order;
   return (
-    <div className="pointer-events-none relative z-10 grid grid-cols-2 gap-x-4 px-5 pb-6 pt-1 md:absolute md:inset-0 md:grid-cols-[var(--coil-gutter)_minmax(0,1fr)_var(--coil-gutter)] md:content-center md:gap-x-0 md:px-0 md:py-0 [--coil-gutter:clamp(11.5rem,15vw,16rem)]">
+    <div className="pointer-events-none relative z-10 grid grid-cols-2 gap-x-4 px-5 pb-6 pt-1 md:absolute md:inset-0 md:grid-cols-[var(--coil-gutter)_minmax(0,1fr)_var(--coil-gutter)] md:content-center md:gap-x-0 md:px-0 md:py-0 [--coil-gutter:clamp(12.5rem,16.5vw,17.5rem)]">
       <Column column={work} className="md:col-start-1 md:pl-8 md:pr-2" />
       <div aria-hidden="true" data-coil-pane="" className="hidden md:col-start-2 md:block" />
       <Column column={builds} className="md:col-start-3 md:pl-8 md:pr-2" />
@@ -47,4 +47,8 @@ function Group({ heading, children }: { heading: string | null; children: ReactN
   );
 }
 
-const HEADING_CLASS = "mb-1 font-label text-label-sm text-foreground opacity-80";
+// The column headings: the accent (the token), the label face one step up from
+// the label it was (about 17 percent on a desktop), and a size and colour of
+// their own so they never read as one more title (the titles are the display
+// face in the foreground, larger).
+const HEADING_CLASS = "mb-1.5 font-label text-label-sm text-accent md:text-label";
