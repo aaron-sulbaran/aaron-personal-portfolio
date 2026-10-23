@@ -35,6 +35,10 @@ type Session = {
   needsScene: boolean;
   sceneDone: boolean;
   domDone: boolean;
+  // The stage has been on the screen since the deal began: a stage that is not
+  // there yet (the still path's, in the section below the first screen, which
+  // the deal's own scroll is bringing up) has not left it.
+  stageSeen: boolean;
   safety: number;
 };
 
@@ -134,7 +138,7 @@ export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance 
       const mode = sceneState === "still" ? "fade" : "scene";
       const parts = openParts(section);
       prepareOpen(parts, mode);
-      const next: Session = { master: null, parts, needsScene: mode === "scene", sceneDone: false, domDone: false, safety: 0 };
+      const next: Session = { master: null, parts, needsScene: mode === "scene", sceneDone: false, domDone: false, stageSeen: false, safety: 0 };
       session.current = next;
       const master = createDealMaster({
         parts,
@@ -151,6 +155,8 @@ export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance 
       if (mode === "scene") setEntrance({ startMs: performance.now(), nameFromLoader: false, tuning: entranceTuningOf(knobs), clockMs: master.clockMs });
       dispatchDeal({ type: "enter", source });
       master.play();
+      // Where the stage stands as the deal begins (the reader may jump away before a scroll event reads it).
+      evaluateRef.current();
       return true;
     },
     [maybeFinish, sectionRef, setEntrance, settle],
@@ -182,7 +188,10 @@ export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance 
     if (trigger === "enter") beginRef.current(direction.current.down ? "scroll" : "view");
     // A deal under way whose stage has left the screen finishes now, so a
     // scene that stopped drawing is never left mid-deal.
-    else if (session.current && stage && stageGone(stage.top, stage.bottom, viewportHeight)) settle();
+    else if (session.current && stage) {
+      if (!stageGone(stage.top, stage.bottom, viewportHeight)) session.current.stageSeen = true;
+      else if (session.current.stageSeen) settle();
+    }
   }, [sectionRef, settle]);
   useEffect(() => {
     evaluateRef.current = evaluate;

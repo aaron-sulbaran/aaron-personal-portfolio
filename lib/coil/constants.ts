@@ -134,14 +134,16 @@ const values = {
       // curling into the wheel) takes curlMs from the end of the condense, over
       // the spin-up's first moments.
       condenseMs: 600,
-      curlMs: 520,
+      curlMs: 600,
       // The name dissolves into the field (its letters give way) from
       // nameOutStartMs over nameOutMs, across the spin-up.
       nameOutStartMs: 0,
       nameOutMs: 700,
       // The pull's winding eases in over this long instead of starting at full
-      // rate (0 is the old kick at windStart); a time on the pull's own scale.
-      windRampMs: 0,
+      // rate (0 is the old kick at windStart, 34 px over two frames); a time on the
+      // pull's own scale. The smallest ramp that takes the kick down to the
+      // deal's ordinary acceleration at the sizes the deal runs at (e2e/deal-jank.spec.ts).
+      windRampMs: 400,
       peakCardsPerSecond: 12.5, // COIL.spinCapCardsPerSecond
       // A coarse pointer's top speed: a phone can drop to 30 Hz (Low Power
       // Mode), where 9 cards a second is 0.3 card a frame, the most the eye
@@ -169,7 +171,7 @@ const values = {
     // is a knob for a desktop and for a phone-wide canvas (below
     // phoneBelowPx), the gap between cards another.
     ribbon: {
-      cardHeightPx: 150,
+      cardHeightPx: 170,
       cardHeightPhonePx: 120,
       phoneBelowPx: 640,
       gapPx: 24,
@@ -227,7 +229,7 @@ const values = {
     // The name's size, its font size as a share of the viewport's width on a
     // desktop and on a phone, held between minRem and maxRem: how the stack
     // is made to fit one screen.
-    name: { vwDesktop: 10, vwPhone: 12, minRem: 3, maxRem: 12 },
+    name: { vwDesktop: 8, vwPhone: 12, minRem: 3, maxRem: 12 },
     // A desktop's top of the screen: the name beside the blocks (left, with the
     // two blocks staggered on its right) or above them.
     topLayout: "beside" as "beside" | "above",

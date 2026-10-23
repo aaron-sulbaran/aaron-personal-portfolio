@@ -8,8 +8,10 @@ import {
   entranceHelix,
   entranceNameAlpha,
   entrancePose,
+  RING_END_FADE_SLOTS,
   condenseProgress,
   curlProgress,
+  ringEndFade,
   fieldMask,
   flattenProgress,
   inRing,
@@ -599,7 +601,7 @@ describe("the ribbon (the first screen's row)", () => {
     expect(curled.alpha).toBe(1);
   });
 
-  it("condenses on power2.out over condenseMs and curls on power2.inOut over curlMs, from the clock's 0", () => {
+  it("condenses on power2.out over condenseMs and curls on a smoothstep over curlMs, from the clock's 0", () => {
     expect(condenseProgress(entranceClock(Number.NEGATIVE_INFINITY))).toBe(0);
     expect(condenseProgress(entranceClock(-TL.condenseMs))).toBe(0);
     expect(condenseProgress(entranceClock(-TL.condenseMs / 2))).toBeCloseTo(0.875, 9);
@@ -611,6 +613,27 @@ describe("the ribbon (the first screen's row)", () => {
     expect(curlProgress(entranceClock(TL.curlMs))).toBe(1);
     // The curl ends before the flatten starts, so the wheel is whole before it flattens.
     expect(TL.curlMs).toBeLessThanOrEqual(TL.flattenStartMs);
+  });
+
+  it("fades the cards at the window's two ends while the ring is open, so a swap of twins is not seen, and not at all once it has closed", () => {
+    const half = 7;
+    // Open ring: whole in the middle, gone at the ends, on a smooth edge a little over a slot wide.
+    expect(ringEndFade(0, 14, 0)).toBe(1);
+    expect(ringEndFade(half, 14, 0)).toBe(0);
+    expect(ringEndFade(-half, 14, 0)).toBe(0);
+    expect(ringEndFade(half - RING_END_FADE_SLOTS, 14, 0)).toBe(1);
+    expect(ringEndFade(half - RING_END_FADE_SLOTS / 2, 14, 0)).toBeCloseTo(0.5, 9);
+    // The gap holds the fade until the ring has all but closed, then lets it go, and it is nothing at the end.
+    expect(ringEndFade(half - 0.4, 14, 0.9)).toBeLessThan(0.3);
+    let last = -1;
+    for (let curl = 0; curl <= 1; curl += 0.01) {
+      const now = ringEndFade(half - 0.4, 14, curl);
+      expect(now).toBeGreaterThanOrEqual(last - 1e-12);
+      last = now;
+    }
+    expect(ringEndFade(half - 0.4, 14, 1)).toBe(1);
+    // A card and its twin: whichever sits at an end is gone, so neither shows at the swap.
+    expect(ringEndFade(half - 1e-9, 14, 0.9) * ringEndFade(-half, 14, 0.9)).toBeLessThan(0.2);
   });
 
   it("tunes through the lab: a longer condense and curl move the same marks", () => {

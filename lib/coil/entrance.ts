@@ -139,9 +139,10 @@ export function pullPhases(pull: number, c: CoilConstants = COIL) {
 // The winding's onset ramp as a share of the winding (0 to 1): windRampMs on
 // the pull's own scale, the share of the winding's span the pull takes in that
 // time. The winding starts at full rate without one (a kick the motion review
-// measured at 34 px over two frames); with one its rate eases in on a parabola
-// that meets the old line at the ramp's end (C1) and is scaled so the winding
-// still ends at 1.
+// measured at 34 px over two frames); with one its rate rises from 0 to the old
+// rate on a smoothstep (no step in the rate, and none in its slope at either
+// end: C2 where it joins the line) and the whole is scaled so the winding still
+// ends at 1.
 export function windRamp(c: CoilConstants = COIL) {
   const { pullMs, windRampMs } = c.deal.timeline;
   return clamp01(windRampMs / Math.max(1, (1 - c.entrance.windStart) * pullMs));
@@ -162,11 +163,13 @@ export function condenseProgress(clock: EntranceClock, c: CoilConstants = clock.
   return power2Out(seg(elapsedMs(clock) + condenseMs, 0, condenseMs));
 }
 
-// The row curling into the wheel: power2.inOut over curlMs from the clock's 0.
+// The row curling into the wheel: a smoothstep over curlMs from the clock's 0 (its
+// steepest is 1.5 times its average, where power2.inOut's was 3: the cards at the
+// row's far ends travel most of the screen, and none may step more than 40 px a frame).
 export function curlProgress(clock: EntranceClock, c: CoilConstants = clock.c ?? COIL) {
   const { curlMs } = c.deal.timeline;
   if (isRested(clock) || curlMs <= 0) return elapsedMs(clock) >= 0 ? 1 : 0;
-  return power2InOut(seg(elapsedMs(clock), 0, curlMs));
+  return smooth(seg(elapsedMs(clock), 0, curlMs));
 }
 
 // ---------------------------------------------------------------- the wheel
@@ -254,6 +257,20 @@ export function inRing(u: number, drift: number, cardCount: number) {
   return v >= -cardCount / 2 && v < cardCount / 2;
 }
 
+// While the row curls into the wheel it is an open ring: the cards at the two ends of
+// the window (the strand's turn swaps a card leaving one end for its twin entering the
+// other) are a gap apart, not yet at the same place, so they fade out toward the window's
+// end for as long as the gap is open, and the swap is not seen. It is nothing once the
+// ring has closed (curl 1), where a card and its twin are one place: the fade is let
+// go over the last RING_END_RELEASE of the curl, when the gap is a few px.
+export const RING_END_FADE_SLOTS = 1.2;
+const RING_END_RELEASE = 0.03;
+export function ringEndFade(v: number, cardCount: number, curl: number) {
+  if (curl >= 1) return 1;
+  const release = smooth(seg(curl, 1 - RING_END_RELEASE, 1));
+  return lerp(smooth(clamp01((cardCount / 2 - Math.abs(v)) / RING_END_FADE_SLOTS)), 1, release);
+}
+
 // Card level: which cards show. The ring's cards always do; the copies
 // outside it wait hidden and fade in late in the pull; and the ribbon's edges
 // fade out until the row has curled. The pose is otherwise the frame's, so the
@@ -267,9 +284,9 @@ export function entrancePose<P extends CardPose>(
   if (isRested(clock)) return pose;
   const ring = inRing(pose.u, clock.drift, card.cardCount);
   const shown = ring ? 1 : outOfBandAlpha(pullProgress(clock, c));
-  const curl = card.edge ? curlProgress(clock, c) : 1;
+  const curl = curlProgress(clock, c);
   const edge = curl >= 1 || !card.edge ? 1 : lerp(ribbonEdgeAlphaWorld(pose.position[0], card.edge), 1, curl);
-  return { ...pose, alpha: pose.alpha * shown * edge };
+  return { ...pose, alpha: pose.alpha * shown * edge * ringEndFade(pose.u - clock.drift, card.cardCount, curl) };
 }
 
 // ---------------------------------------------------------------- the field

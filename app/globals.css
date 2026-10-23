@@ -867,7 +867,7 @@ html[data-deal="pending"] [data-deal-title] {
 }
 /* The stage fades in once the scene has drawn its first frame (a visit with no
    loader would otherwise see the page's text, then the canvas pop in). */
-[data-coil-stage] {
+section[data-scene="on"] [data-coil-stage] {
   transition: opacity 400ms ease-out;
 }
 html[data-deal] section[data-scene="off"] [data-coil-stage] {
@@ -1003,11 +1003,16 @@ html[data-deal="pending"] [data-name-visual] {
 }
 @media (min-width: 1024px) {
   [data-block][data-side="right"] [data-block-text] {
-    margin-left: max(0px, calc((100% - 60ch) * var(--shift, 0)));
+    margin-left: max(0px, calc((100% - var(--measure, 60ch)) * var(--shift, 0)));
   }
 }
 [data-block-text] {
-  max-width: 60ch;
+  max-width: var(--measure, 60ch);
+}
+/* The first screen's blocks sit in a column beside the name, so their measure is a little
+   shorter and the right block has room to lean. */
+.first-blocks {
+  --measure: 54ch;
 }
 /* A phone's first screen holds block 1, and block 2 only by the lab's knob; the
    about section holds the other copy of block 2 (on a desktop only the first
