@@ -13,16 +13,18 @@ import { HOME_SCROLL_KEY } from "@/lib/scroll";
 // failed hydration) a CSS animation in globals.css lifts everything after nine
 // seconds. The scroll key is lib/scroll.ts's saved position.
 
+// The checks a fresh load of the home passes, as head-script source (inside the
+// script's try, returning out of it): the home page, motion allowed, no section
+// hash, and no saved position past half a viewport. The loader and page 1's
+// words (lib/home/introWordsInit.ts) both arm on exactly this, so they never
+// disagree about whether this load plays its intro.
+export const FRESH_LOAD_GUARD =
+  `if(location.pathname!=="/")return;` +
+  `if(window.matchMedia("(prefers-reduced-motion: reduce)").matches)return;` +
+  `var h=location.hash;if(h.length>1&&h!=="#main")return;` +
+  `var y=Number(sessionStorage.getItem(${JSON.stringify(HOME_SCROLL_KEY)}));if(y>window.innerHeight*${FAST_START_THRESHOLD_FRAC})return;`;
+
 export function introLoaderInitScript(dev: boolean = process.env.NODE_ENV !== "production"): string {
   const lab = dev ? `var l=JSON.parse(localStorage.getItem(${JSON.stringify(HERO_LAB_KEY)})||"{}");if(l.loaderOn===false)return;` : "";
-  return (
-    `(function(){try{` +
-    `if(location.pathname!=="/")return;` +
-    `if(window.matchMedia("(prefers-reduced-motion: reduce)").matches)return;` +
-    `var h=location.hash;if(h.length>1&&h!=="#main")return;` +
-    `var y=Number(sessionStorage.getItem(${JSON.stringify(HOME_SCROLL_KEY)}));if(y>window.innerHeight*${FAST_START_THRESHOLD_FRAC})return;` +
-    lab +
-    `document.documentElement.setAttribute("data-intro-loader","on");` +
-    `}catch(x){}})();`
-  );
+  return `(function(){try{` + FRESH_LOAD_GUARD + lab + `document.documentElement.setAttribute("data-intro-loader","on");` + `}catch(x){}})();`;
 }

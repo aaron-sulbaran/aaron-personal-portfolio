@@ -1,4 +1,5 @@
 import { COIL } from "@/lib/coil/constants";
+import { NAME_INK_MODES, type NameInkMode } from "@/lib/coil/nameInk";
 
 // Page 1's lab knobs: one flat record, its ranges, the clamp every value passes
 // through, and a tiny store the dev-only hero lab (/lab/hero) writes and the
@@ -16,12 +17,17 @@ export type IntroKnobs = {
   loaderMs: number; // the fill's shortest run
   shrinkMs: number; // the name's shrink onto its place
   shrinkEase: ShrinkEase;
+  nameInk: NameInkMode; // the name's ink: production's pale one, or the stronger (3:1 or better)
   nameVwDesktop: number; // the name's font size, share of the viewport's width, on a desktop
   nameVwPhone: number; // and on a phone
   bandDesktopPx: number; // the soundtrack band's height between the blocks
   bandPhonePx: number;
   orangeAmount: number; // the burnt orange lobe's strength, of its old share (the name's field and the cards field)
   staggerGapRem: number; // the room between blocks on a desktop
+  arrivalOn: boolean; // page 1's words arrive on load (off: they are simply there)
+  arrivalTotalMs: number; // from the loader's handoff to the last item done
+  arrivalStaggerMs: number; // between one item and the next
+  arrivalRisePx: number; // how far each item rises as it fades in
 };
 
 // The knobs that are a plain number on a slider.
@@ -40,10 +46,14 @@ export const INTRO_KNOB_SPEC: Record<NumericIntroKnob, NumericSpec> = {
   bandPhonePx: { label: "Wave height, phone", group: "Wave", min: 60, max: 260, step: 4, unit: "px" },
   orangeAmount: { label: "Orange amount", group: "Field", min: 0, max: 1, step: 0.02 },
   staggerGapRem: { label: "Gap between blocks", group: "Paragraphs", min: 0.5, max: 14, step: 0.5, unit: "rem" },
+  arrivalTotalMs: { label: "Arrival, total", group: "Arrival", min: 600, max: 3500, step: 50, unit: "ms" },
+  arrivalStaggerMs: { label: "Arrival, stagger", group: "Arrival", min: 0, max: 400, step: 10, unit: "ms" },
+  arrivalRisePx: { label: "Arrival, rise", group: "Arrival", min: 0, max: 48, step: 1, unit: "px" },
 };
 
 export const CHOICE_SPEC = {
   shrinkEase: { label: "Shrink ease", group: "Loader", options: SHRINK_EASES },
+  nameInk: { label: "Name ink", group: "Name", options: NAME_INK_MODES },
 } as const;
 
 export const DEFAULT_INTRO_KNOBS: IntroKnobs = {
@@ -51,12 +61,17 @@ export const DEFAULT_INTRO_KNOBS: IntroKnobs = {
   loaderMs: I.loader.fillMs,
   shrinkMs: I.shrink.ms,
   shrinkEase: I.shrink.ease,
+  nameInk: I.nameInk,
   nameVwDesktop: I.name.vwDesktop,
   nameVwPhone: I.name.vwPhone,
   bandDesktopPx: I.band.desktopPx,
   bandPhonePx: I.band.phonePx,
   orangeAmount: I.orangeAmount,
   staggerGapRem: I.stagger.gapRem,
+  arrivalOn: I.arrival.on,
+  arrivalTotalMs: I.arrival.totalMs,
+  arrivalStaggerMs: I.arrival.staggerMs,
+  arrivalRisePx: I.arrival.risePx,
 };
 
 const NUMERIC = Object.keys(INTRO_KNOB_SPEC) as NumericIntroKnob[];
@@ -72,7 +87,9 @@ export function clampIntroKnobs(input: Partial<Record<string, unknown>>, base: I
     out[key] = typeof value === "number" && Number.isFinite(value) ? Math.min(spec.max, Math.max(spec.min, value)) : base[key];
   }
   out.loaderOn = typeof input.loaderOn === "boolean" ? input.loaderOn : base.loaderOn;
+  out.arrivalOn = typeof input.arrivalOn === "boolean" ? input.arrivalOn : base.arrivalOn;
   out.shrinkEase = pick(SHRINK_EASES, input.shrinkEase, base.shrinkEase);
+  out.nameInk = pick(NAME_INK_MODES, input.nameInk, base.nameInk);
   return out;
 }
 

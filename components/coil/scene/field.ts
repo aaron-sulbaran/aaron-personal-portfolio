@@ -3,6 +3,7 @@ import { COIL } from "@/lib/coil/constants";
 import { heldFieldS, nameCompositeInk } from "@/lib/coil/debugFlags";
 import { DRIFT_PRESETS, fieldClocks, parseDriftPreset, type DriftPreset } from "@/lib/coil/drift";
 import { COMPOSITE_FRAG, COMPOSITE_VERT, FIELD, FIELD_FRAG, FULLSCREEN_VERT, NAME, nameComposite } from "@/lib/coil/field.glsl";
+import { nameInkGain, type NameInkMode } from "@/lib/coil/nameInk";
 import { applyColor } from "@/lib/coil/theme";
 import { getIntroKnobs } from "@/lib/home/introKnobs";
 import type { Gl } from "./renderer";
@@ -121,10 +122,20 @@ export function createField(ctx: SceneCtx, gl: Gl, init: CompositeInit, fragment
     applyColor(cu.uPaper.value, st.theme.paper);
     applyColor(cu.uGradTop.value, st.theme.name.top);
     applyColor(cu.uGradBottom.value, st.theme.name.bottom);
-    // The still's strong ink; QA (?coildebug=ink=100): the whole surface through the letters.
-    cu.uNameK.value = nameCompositeInk(flags, st.theme.name.ink);
     applyColor(cu.uSurfMean.value, st.theme.name.surface.mean);
-    const name = nameComposite(st.theme.dark);
+    applyNameInk();
+  }
+
+  // The name's ink: the lab's "Name ink" (production's pale one or the stronger),
+  // as the composite's gain and its floors. Written with the theme, and again
+  // the frame the lab changes it.
+  let inkMode: NameInkMode | null = null;
+  function applyNameInk() {
+    const cu = compMaterial.uniforms;
+    inkMode = getIntroKnobs().nameInk;
+    // The still's strong ink; QA (?coildebug=ink=100): the whole surface through the letters.
+    cu.uNameK.value = nameCompositeInk(flags, st.theme.name.ink, nameInkGain(inkMode));
+    const name = nameComposite(st.theme.dark, inkMode === "stronger");
     cu.uFloor.value = name.floor;
     cu.uFloorSign.value = name.floorSign;
     cu.uDetail.value = name.detail;
@@ -153,6 +164,7 @@ export function createField(ctx: SceneCtx, gl: Gl, init: CompositeInit, fragment
     fieldMaterial.uniforms.uTw.value = clocks.weather;
     // The burnt orange lobe leans bluer (hero rework, slice 3): the theme's strength times the lab's orangeAmount.
     fieldMaterial.uniforms.uSec.value = st.theme.field.secondStrength * getIntroKnobs().orangeAmount;
+    if (getIntroKnobs().nameInk !== inkMode) applyNameInk();
     renderer.setRenderTarget(null);
     renderer.clear();
     // Closed (the deal has not opened the field): cards only, over the page.

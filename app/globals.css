@@ -1041,6 +1041,7 @@ html[data-deal="pending"] .intro-name:not([data-name-canvas]) [data-name-visual]
   }
 }
 .intro-foot {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1067,6 +1068,63 @@ html[data-deal="pending"] .intro-name:not([data-name-canvas]) [data-name-visual]
 .intro-foot:has([data-coil-ribbon][data-gone]) .intro-foot__ribbon {
   display: none;
 }
+/* The click's ring and press (components/home/IntroCta.tsx, DealPulse.tsx): the
+   layer covers page 1's foot, the whole viewport wide and clipped to the strip,
+   above the stage's canvas (which paints the cards); the ring is centered on
+   the button and spreads from nothing to the strip's farthest corner while it
+   fades, a soft accent band (the token, never a color of its own). The button's
+   press is a keyframe of the press scale and a spring past it. Transform and
+   opacity only; reduced motion has neither. */
+.deal-pulse {
+  position: absolute;
+  inset: 0 -6vw;
+  z-index: 5;
+  overflow: hidden;
+  pointer-events: none;
+}
+.deal-pulse__ring {
+  position: absolute;
+  left: var(--pulse-x);
+  top: var(--pulse-y);
+  width: var(--pulse-size);
+  height: var(--pulse-size);
+  margin: calc(var(--pulse-size) / -2) 0 0 calc(var(--pulse-size) / -2);
+  border-radius: 9999px;
+  background: radial-gradient(
+    closest-side,
+    transparent 0%,
+    transparent 70%,
+    color-mix(in srgb, var(--color-accent) calc(var(--pulse-strength) * 45%), transparent) 86%,
+    color-mix(in srgb, var(--color-accent) calc(var(--pulse-strength) * 100%), transparent) 94%,
+    transparent 100%
+  );
+  opacity: 0;
+  transform: scale(0.03);
+  will-change: transform, opacity;
+  animation: deal-pulse var(--pulse-ms, 700ms) cubic-bezier(0.23, 1, 0.32, 1) forwards;
+}
+@keyframes deal-pulse {
+  0% { opacity: 0; transform: scale(0.03); }
+  14% { opacity: 1; }
+  100% { opacity: 0; transform: scale(1); }
+}
+[data-deal-press][data-pressed] {
+  animation: deal-press 520ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+@keyframes deal-press {
+  0% { transform: scale(1); }
+  22% { transform: scale(var(--press-scale, 0.97)); }
+  58% { transform: scale(1.045); }
+  100% { transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .deal-pulse {
+    display: none;
+  }
+  [data-deal-press][data-pressed] {
+    animation: none;
+  }
+}
 /* The ribbon where no scene draws it: a still row, its edges fading out. */
 .ribbon-still {
   display: none;
@@ -1089,6 +1147,53 @@ body:has(section[data-scene="still"]) .ribbon-still {
   display: flex;
 }
 /* ---- end page 1 ---- */
+
+/* Page 1's words arrive on load (components/home/IntroArrival.tsx, the head
+   script lib/home/introWordsInit.ts). The head script sets
+   <html data-intro-words="wait"> before the first paint on a fresh load, and only
+   then are the [data-arrive] items held at their start (transparent, a little
+   low); without it, or without JavaScript, everything is simply there. "play"
+   (the loader has handed the name over) transitions each item to its place at
+   its step's delay, then the attribute is cleared. Transform and opacity only,
+   on the site's strong ease out. The failsafe shows everything if the page's
+   own script never plays them: about 3 s where no loader is in the way, and
+   after the loader's own bail (9 s) where one is. The name's line is already
+   in place when the loader landed it. Reduced motion has none of it. */
+html[data-intro-words] [data-arrive] {
+  will-change: opacity, transform;
+}
+html[data-intro-words="wait"] [data-arrive] {
+  opacity: 0;
+  transform: translate3d(0, var(--arrive-rise, 14px), 0);
+}
+html[data-intro-words="wait"][data-intro-loader] [data-arrive="name"] {
+  opacity: 1;
+  transform: none;
+}
+html[data-intro-words="play"] [data-arrive] {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity var(--arrive-item, 650ms) cubic-bezier(0.23, 1, 0.32, 1) calc(var(--arrive-step, 0) * var(--arrive-stagger, 150ms)),
+    transform var(--arrive-item, 650ms) cubic-bezier(0.23, 1, 0.32, 1) calc(var(--arrive-step, 0) * var(--arrive-stagger, 150ms));
+}
+html[data-intro-words="wait"]:not([data-intro-loader]) [data-arrive] {
+  animation: intro-words-bail 0.01s linear 3s forwards;
+}
+html[data-intro-words="wait"][data-intro-loader] [data-arrive] {
+  animation: intro-words-bail 0.01s linear 9.6s forwards;
+}
+@keyframes intro-words-bail {
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-intro-words] [data-arrive] {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+    animation: none !important;
+  }
+}
 
 /* The loader: always dark, over everything (z 60), armed by the head script
    (lib/home/introLoaderInit.ts, <html data-intro-loader="on">), then "shrink"

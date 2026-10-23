@@ -62,8 +62,9 @@ export function heldFieldS(flags: Pick<DebugFlags, "pinned" | "heldAt">, elapsed
 // name.ts's reported inkAlpha): the theme's --name-ink times the composite's
 // gain live; in still mode the strong ink, COIL.lockup.stillInk, so the hero
 // still bakes the name behind its cards at the h1's ink; an ink= token wins
-// over both for QA.
-export function nameCompositeInk(flags: Pick<DebugFlags, "stillMode" | "inkOverride">, themeInk: number): number {
-  if (flags.inkOverride !== null) return Math.min(1, flags.inkOverride * COIL.lockup.inkGain);
-  return flags.stillMode ? COIL.lockup.stillInk : themeInk * COIL.lockup.inkGain;
+// over both for QA. `gain` is the composite's (COIL.lockup.inkGain, production's,
+// or the stronger name's, lib/coil/nameInk.ts).
+export function nameCompositeInk(flags: Pick<DebugFlags, "stillMode" | "inkOverride">, themeInk: number, gain: number = COIL.lockup.inkGain): number {
+  if (flags.inkOverride !== null) return Math.min(1, flags.inkOverride * gain);
+  return flags.stillMode ? COIL.lockup.stillInk : Math.min(1, themeInk * gain);
 }

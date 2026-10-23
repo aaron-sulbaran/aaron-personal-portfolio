@@ -192,8 +192,8 @@ export function nameDisturb(dark: boolean) {
 // (dark: the small line outshone the name). Measured against the field under
 // it, which reads a little stronger than the field around it, hence just
 // over 1: the greeting lands at or just under the name's mean.
-export function nameComposite(dark: boolean) {
-  return dark
+export function nameComposite(dark: boolean, strong = false) {
+  const base = dark
     ? {
         floor: 0.04,
         floorSign: -1,
@@ -207,6 +207,10 @@ export function nameComposite(dark: boolean) {
         greetCap: 1.05,
       }
     : { floor: 0.08, floorSign: 1, detail: 1, reveal: 1.8, chroma: 2.4, grain: 0.055, glyphRel: 0.72, glyphAbs: 0, greetFloor: 1.8, greetCap: 0 };
+  if (!strong) return base;
+  const stronger = COIL.lockup.stronger;
+  const theme = dark ? "dark" : "light";
+  return { ...base, floor: stronger.floor[theme], greetFloor: stronger.greetFloor[theme], greetCap: stronger.greetCap[theme] };
 }
 const GREET_SLOT = NAME.maxGlyphs - 1;
 export const NAME_GRAIN = { size: 1, chroma: 0.35 } as const; // device px, and its color share

@@ -1,4 +1,5 @@
 import { siteContent } from "@/lib/content";
+import { ARRIVAL_STEP, arrivalStyle } from "@/lib/home/introArrival";
 import { BandInvite } from "./BandInvite";
 import { BandStage } from "./BandStage";
 
@@ -10,12 +11,13 @@ import { BandStage } from "./BandStage";
 // own reach is damped there (lib/waveform/weights.ts), so a copy laid over the
 // wave left it a flat row under the words. The wave's stage is the page's knob
 // (--band-d from md up, --band-p on a phone, set by components/home/Intro.tsx),
-// fixed in the server render, so nothing shifts when the client mounts. A
+// fixed in the server render, so nothing shifts when the client mounts. The
+// copy row arrives on load at its step (lib/home/introArrival.ts). A
 // Server Component; the copy and the stage are client leaves.
 export function SoundtrackBand() {
   return (
     <section id="listen" data-wave-anchor="band" aria-label={siteContent.listen.ariaLabel} className="relative w-full">
-      <div className="pointer-events-none relative z-10 px-[6vw]">
+      <div data-arrive="band" style={arrivalStyle(ARRIVAL_STEP.band)} className="pointer-events-none relative z-10 px-[6vw]">
         <div className="mx-auto max-w-[1240px]">
           <BandInvite />
         </div>

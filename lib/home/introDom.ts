@@ -1,4 +1,5 @@
 import { COIL } from "@/lib/coil/constants";
+import { arrivalVars, type ArrivalKnobs } from "@/lib/home/introArrival";
 import { lockupVars } from "@/lib/home/lockup";
 
 // Page 1's layout knobs as DOM: the custom properties the page carries, from
@@ -10,7 +11,7 @@ import { lockupVars } from "@/lib/home/lockup";
 
 export type DomProps = { attrs: Record<string, string>; vars: Record<string, string> };
 
-export type DomKnobs = {
+export type DomKnobs = Partial<ArrivalKnobs> & {
   nameVwDesktop: number;
   nameVwPhone: number;
   bandDesktopPx: number;
@@ -47,6 +48,11 @@ export function introDomPlan(knobs: DomKnobs): IntroDomPlan {
         "--ribbon-d": `${knobs.ribbonDesktopPx ?? COIL.deal.ribbon.cardHeightPx}px`,
         "--ribbon-p": `${knobs.ribbonPhonePx ?? COIL.deal.ribbon.cardHeightPhonePx}px`,
         "--name-reach": String(COIL.intro.nameCanvas.reach),
+        ...arrivalVars({
+          arrivalTotalMs: knobs.arrivalTotalMs ?? COIL.intro.arrival.totalMs,
+          arrivalStaggerMs: knobs.arrivalStaggerMs ?? COIL.intro.arrival.staggerMs,
+          arrivalRisePx: knobs.arrivalRisePx ?? COIL.intro.arrival.risePx,
+        }),
       },
     },
   };

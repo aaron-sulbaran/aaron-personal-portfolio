@@ -15,6 +15,8 @@ import { FIELD, FULLSCREEN_VERT, GLYPH_FRAG, NAME } from "@/lib/coil/field.glsl"
 import { nameCompositeInk } from "@/lib/coil/debugFlags";
 import { clamp01, isNarrow } from "@/lib/coil/geometry";
 import { siteEase } from "@/lib/coil/motion";
+import { nameInkGain } from "@/lib/coil/nameInk";
+import { getIntroKnobs } from "@/lib/home/introKnobs";
 import { toBytes } from "@/lib/coil/theme";
 import type { NameTarget } from "@/lib/coil/nameTarget";
 import type { NameSurface } from "./nameSurface";
@@ -353,7 +355,7 @@ export function createName(
         from: toBytes(st.theme.name.top),
         to: toBytes(st.theme.name.bottom),
       },
-      inkAlpha: Math.min(1, Math.max(0, nameCompositeInk(flags, st.theme.name.ink))),
+      inkAlpha: Math.min(1, Math.max(0, nameCompositeInk(flags, st.theme.name.ink, nameInkGain(getIntroKnobs().nameInk)))),
     };
   }
 

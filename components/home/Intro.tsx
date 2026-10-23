@@ -1,10 +1,12 @@
 import type { CSSProperties } from "react";
 import { SoundtrackBand } from "@/components/soundtrack/SoundtrackBand";
 import { siteContent } from "@/lib/content";
+import { ARRIVAL_STEP, arrivalStyle } from "@/lib/home/introArrival";
 import { introDomPlan } from "@/lib/home/introDom";
 import { INTRO_HEADING_ID } from "@/lib/home/introId";
 import { DEFAULT_INTRO_KNOBS } from "@/lib/home/introKnobs";
 import { LATE_BLOCKS, TOP_BLOCKS, sideOf } from "@/lib/home/storyLayout";
+import { IntroArrival } from "./IntroArrival";
 import { IntroCta } from "./IntroCta";
 import { NameCanvas } from "./NameCanvas";
 import { RibbonSlotRelease } from "./RibbonSlotRelease";
@@ -31,12 +33,12 @@ export function Intro() {
   const { hero } = siteContent;
   const plan = introDomPlan(DEFAULT_INTRO_KNOBS);
   const block = (index: number) => (
-    <StoryBlock key={blocks[index].key} blockKey={blocks[index].key} domId={`story-${blocks[index].key}`} sentences={blocks[index].sentences} side={sideOf(index)} />
+    <StoryBlock key={blocks[index].key} blockKey={blocks[index].key} domId={`story-${blocks[index].key}`} sentences={blocks[index].sentences} side={sideOf(index)} arrivalStep={ARRIVAL_STEP.blocks[index]} />
   );
   return (
     <section id="about" data-intro="" aria-label={ariaLabel} style={plan.page.vars as CSSProperties} className="intro relative w-full">
       <div data-intro-top="" className="intro-grid intro-grid--top">
-        <div data-name-stage="" className="intro-name">
+        <div data-name-stage="" data-arrive="name" style={arrivalStyle(ARRIVAL_STEP.name)} className="intro-name">
           <h1 id={INTRO_HEADING_ID} tabIndex={-1} data-coil-name="" className="name-lockup intro-heading focus-visible:outline-none">
             <span className="sr-only">{hero.heading}</span>
             <span aria-hidden="true" data-name-visual="" className="name-lockup__greet">
@@ -65,6 +67,7 @@ export function Intro() {
         <IntroCta />
       </div>
       <RibbonSlotRelease />
+      <IntroArrival />
     </section>
   );
 }

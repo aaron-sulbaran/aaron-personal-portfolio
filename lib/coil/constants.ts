@@ -135,8 +135,8 @@ const values = {
       // from the end of it, the scene clock's zero. The curl (the row curling into
       // the wheel) takes curlMs from there, over the spin-up: long enough that no
       // card steps more than 40 px a frame while the far end of the row travels in.
-      condenseMs: 320,
-      condensePower: 4,
+      condenseMs: 640,
+      condensePower: 2.2,
       curlMs: 700,
       // The pull's winding eases in over this long instead of starting at full
       // rate (0 is the old kick at windStart, 34 px over two frames); a time on the
@@ -189,7 +189,15 @@ const values = {
       hoverSpeedFactor: 3.5,
       hoverTighten: 0.55,
       hoverEaseMs: 260,
+      // What the click gathers the row into: the pitch between cards of the tight
+      // pile (card heights; a card is 0.75 wide, so 0.14 overlaps each card with
+      // the next by four fifths of its width), lib/coil/ribbon.ts ribbonGatherPitch.
+      gatherPitch: 0.14,
     },
+    // The click's DOM (components/home/DealPulse.tsx): the button's press
+    // (scale), and the accent ring that spreads from it across the strip over
+    // ringMs, ringStrength its peak opacity (0 is none).
+    click: { pressScale: 0.97, ringMs: 700, ringStrength: 0.5 },
     // The wheel (the ribbon's end state, before the flatten): the 14-card band
     // ring seen from a little above, face up (the spec guessed a lean of about
     // 10 degrees; that reads as a thin band, 18 and a ring 1.3 times the
@@ -249,8 +257,19 @@ const values = {
     // The burnt orange lobe's strength as a share of the old one, in the
     // name's field and the cards section's (a little of it stays).
     orangeAmount: 0.4,
+    // Which name ink the page draws: "stronger" (COIL.lockup.stronger) or
+    // "production" (the live site's pale one).
+    nameInk: "stronger" as "production" | "stronger",
     // The room between blocks on a desktop.
     stagger: { gapRem: 3 },
+    // Page 1's words arrive on load (Aaron, 2026-10-23), once the loader has
+    // handed the name over: the name's line, block 1, block 2, the band's
+    // question, blocks 3 and 4 together, the strip's button, each a step
+    // staggerMs after the last. totalMs is from the handoff to the last item
+    // done, so an item takes totalMs less the five staggers (650 ms at these
+    // numbers; lib/home/introArrival.ts). Each rises risePx and fades in on a
+    // strong ease out (arrivalEase); transform and opacity only.
+    arrival: { on: true, totalMs: 1400, staggerMs: 150, risePx: 14 },
     // The name's own canvas: it reaches this far past the lockup (a share of
     // the name's font size) on every side, room for the sheen and the pointer's
     // wake, and draws the field only inside the letters.
@@ -288,6 +307,18 @@ const values = {
     pad: 0.04,
     inkGain: 2.2,
     stillInk: 1,
+    // The stronger name (Aaron, 2026-10-23: display type reads at 3:1 or better
+    // against the page, and production's 2.3:1 name read pale). Chosen by the
+    // lab's "Name ink" knob (lib/home/introKnobs.ts), default "stronger": the
+    // ink gain and the least each letter stands off the field (OKLab L, the
+    // greeting's a multiple of it), the shader's own levers
+    // (lib/coil/field.glsl.ts nameComposite). Production's name is the values above.
+    stronger: {
+      inkGain: 5,
+      floor: { light: 0.31, dark: 0.34 },
+      greetFloor: { light: 1, dark: 1 },
+      greetCap: { light: 0, dark: 0.35 },
+    },
   },
 
   // Header.
