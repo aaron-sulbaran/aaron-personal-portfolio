@@ -1083,6 +1083,9 @@ html[data-deal="pending"] .intro-name:not([data-name-canvas]) [data-name-visual]
   z-index: 5;
   overflow: hidden;
   pointer-events: none;
+  /* The layer's clip fades out at its top and foot, so the ring is never cut by a hard line. */
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 12%, #000 76%, transparent);
+  mask-image: linear-gradient(to bottom, transparent, #000 12%, #000 76%, transparent);
 }
 .deal-pulse__ring {
   position: absolute;
