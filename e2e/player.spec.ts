@@ -60,8 +60,8 @@ test.describe("the player in the band", () => {
     await expect(band(page).locator("[data-band-note]")).toBeHidden();
     await expect(band(page).locator("[data-band-controls]")).toBeHidden();
     await expect(page.getByText(/credited to their artists/)).toHaveCount(0);
-    // The one freeze there is while the music plays stays in the band: the two words in its line.
-    await expect(band(page).getByRole("button", { name: L.subline.freeze, exact: true })).toBeVisible();
+    // The wave's freeze is in the player's last row.
+    await expect(page.locator(BAND_CARD).locator("[data-wave-freeze]")).toBeVisible();
   });
 
   test("player: the transport works from the band: pause and resume, next track, shuffle and repeat", async ({ page }) => {
@@ -84,20 +84,17 @@ test.describe("the player in the band", () => {
     await expect(player.getByRole("list", { name: P.tracks }).getByRole("listitem")).toHaveCount(S.tracks.length);
   });
 
-  test("player: Not now shows Play it and Freeze the wave beside the No problem line, and no lone freeze link", async ({ page }) => {
+  test("player: Not now leaves one Play it in the band, with no note and no freeze, and Play it opens the player", async ({ page }) => {
     await openHome(page, { path: HOME });
     await parkBand(page);
     await decline(page).click();
-    const note = band(page).locator("[data-band-note] > :not([inert])");
-    await expect(note).toContainText(L.declinedNote);
-    await expect(note.getByRole("button", { name: L.accept, exact: true })).toBeVisible();
-    await expect(note.getByRole("button", { name: L.freeze, exact: true })).toBeVisible();
-    // The note's two buttons are the only freeze: the band's own link is out of the tree.
-    await expect(band(page).getByRole("button", { name: L.freeze, exact: true })).toHaveCount(1);
-    await note.getByRole("button", { name: L.freeze, exact: true }).click();
-    await expect(note.getByRole("button", { name: L.unfreeze, exact: true })).toBeVisible();
-    await note.getByRole("button", { name: L.accept, exact: true }).click();
+    await expect(band(page).locator('[data-control="off"]')).toBeFocused();
+    await expect(band(page).locator("[data-band-note]")).toHaveCount(0);
+    expect(await band(page).innerText()).not.toContain("No problem");
+    await expect(band(page).locator("[data-wave-freeze]")).toHaveCount(0);
+    await band(page).getByRole("button", { name: L.accept, exact: true }).click();
     await expect(page.locator(BAND_CARD)).toBeVisible();
+    await expect(page.locator(BAND_CARD).locator("[data-wave-freeze]")).toBeVisible();
   });
 });
 
@@ -304,8 +301,7 @@ test.describe("where the player lives", () => {
     const pill = page.locator(PLAYER_PILL);
     await expect(pill).toHaveAttribute("data-player-pill", "pinned");
     await expect(page.locator(BAND_CARD)).toHaveCount(0);
-    // With no card in the band the band keeps its own status line and Pause.
-    await expect(band(page).locator("[data-band-note]")).toBeVisible();
+    // With no card in the band the band keeps its own Pause.
     await expect(band(page).locator('[data-control="on"]')).toBeVisible();
     await expect(pill.getByRole("slider", { name: S.ariaSeek })).toBeVisible();
   });
@@ -470,13 +466,13 @@ test.describe("the wave as one line", () => {
     await page.waitForTimeout(1000);
     expect((await paints()) - moving, "repaints in a second of idle ripple").toBeGreaterThan(10);
     // Frozen, it stops: nothing repaints.
-    await band(page).locator("[data-band-note]").getByRole("button", { name: L.freeze, exact: true }).click();
+    await page.evaluate(() => (window as unknown as W).__wavePath.freeze(true));
     await page.waitForTimeout(400);
     const still = await paints();
     await page.waitForTimeout(1000);
     expect(await paints(), "repaints in a frozen second").toBe(still);
-    await band(page).locator("[data-band-note]").getByRole("button", { name: L.unfreeze, exact: true }).click();
-    await band(page).locator("[data-band-note]").getByRole("button", { name: L.accept, exact: true }).click();
+    await page.evaluate(() => (window as unknown as W).__wavePath.freeze(false));
+    await band(page).locator('[data-control="off"]').click();
     // Held until the band has scrolled away, the music does not take the line over yet.
     await page.waitForTimeout(800);
     expect((await frame(page)).idle).toBeGreaterThan(0.9);

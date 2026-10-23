@@ -52,7 +52,6 @@ test("label face: controls are Profa Bold in the accent", async ({ page }) => {
   await settled(page);
   await expectLabel(page.locator('#listen [data-control="on"]'), "label", "accent");
   await expectLabel(page.locator('#listen [data-control="paused"]'), "label", "accent");
-  await expectLabel(page.locator("#listen button[data-wave-avoid]", { hasText: siteContent.listen.subline.freeze }), "label-sm", "accent");
 
   await page.goto("/label-face-missing");
   await expectLabel(page.getByRole("link", { name: siteContent.notFound.cta }), "label", "accent");
@@ -140,7 +139,7 @@ test("label face: the capsule pill and the player are Profa Bold at the small st
   await expectLabel(card.locator("[data-player-elapsed]"), "label-sm", "muted");
   await expectLabel(card.locator("[data-player-remaining]"), "label-sm", "muted");
   await expectLabel(card.getByText(playerStrings.tracks, { exact: true }), "label-sm", "accent");
-  await expectLabel(page.locator("#listen").getByRole("button", { name: siteContent.listen.subline.freeze }), "label-sm", "accent");
+  await expectLabel(card.locator("[data-wave-freeze]"), "label-sm", "accent");
 });
 
 // The trial Profa Bold has no tnum, so tabular-nums alone lets a ticking time

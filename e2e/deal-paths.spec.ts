@@ -4,12 +4,12 @@ import { INTRO_LOADING, openHome, waitForScene } from "./support/coil";
 import { noWebgl2Api } from "./support/webgl";
 import { siteContent } from "@/lib/content";
 
-// The deal's other paths and its edges (hero rework, slices 4b and 4c): reduced
-// motion (no canvas; the ribbon's still row on the first screen; Deal me in
+// The deal's other paths and its edges (hero rework, slices 4b to 4d): reduced
+// motion (no canvas; the ribbon's still row at page 1's foot; Deal me in
 // jumps; the switch live both ways), no WebGL (the still stays; the deal fades
-// in under the eased scroll), the phone (no blank band between the first
-// screen's foot and the cards), a deal that ends with the reader inside the
-// sticky range, the button's label, and a load that finds the cards in view.
+// in under the eased scroll), the phone (no blank band between page 1's foot
+// and the cards), a deal that ends with the reader inside the sticky range, the
+// button's label, and a load that finds the cards in view.
 
 const { teaser } = siteContent.intro;
 const html = (page: Page) => page.locator("html");
@@ -21,7 +21,7 @@ const rectOf = (page: Page, selector: string) =>
     return { top: r.top, bottom: r.bottom, height: r.height, left: r.left, width: r.width };
   }, selector);
 // Deal me in (a real link to the cards that the page upgrades), and Back to my cards in its place.
-const teaserButton = (page: Page) => page.locator("[data-first-cta] a").first();
+const teaserButton = (page: Page) => page.locator("[data-intro-cta] a").first();
 
 async function waitForHero(page: Page, scene: "on" | "still") {
   await page.waitForFunction(
@@ -46,7 +46,7 @@ async function stillDecoded(page: Page) {
 test.describe("reduced motion", () => {
   test.use({ reducedMotion: "reduce" });
 
-  test("no canvas, the ribbon's still row on the first screen, and Deal me in jumps to the dealt cards", async ({ page }) => {
+  test("no canvas, the ribbon's still row at page 1's foot, and Deal me in jumps to the dealt cards", async ({ page }) => {
     await page.goto("/?coildebug=1");
     await waitForHero(page, "still");
     await expect(page.locator("#work canvas")).toHaveCount(0);
@@ -84,7 +84,7 @@ test.describe("reduced motion", () => {
 // Reduced motion switched on in the middle of the deal: dealt at once, both halves
 // of it (the scene's clock and the page's), nothing left half done.
 test("reduced motion switched on mid-deal lands dealt with no orphan state, and off again plays nothing", async ({ page }) => {
-  await openHome(page, { at: "top" });
+  await openHome(page, { at: "foot" });
   await teaserButton(page).click();
   await expect(html(page)).toHaveAttribute("data-deal", "dealing", { timeout: 5000 });
   await page.waitForTimeout(900);
@@ -93,7 +93,7 @@ test("reduced motion switched on mid-deal lands dealt with no orphan state, and 
   const left = await page.evaluate(() => ({
     scrollBehavior: document.documentElement.style.scrollBehavior,
     titleStyle: document.querySelector("#work [data-deal-title]")!.getAttribute("style"),
-    teaserStyle: document.querySelector("[data-first-blocks]")!.getAttribute("style"),
+    teaserStyle: document.querySelector("[data-intro-cta]")!.getAttribute("style"),
     lead: getComputedStyle(document.getElementById("work")!).getPropertyValue("--run-lead"),
     scene: document.querySelector("section[data-scene]")!.getAttribute("data-scene"),
   }));
@@ -139,20 +139,20 @@ test.describe("no WebGL", () => {
 // ---------------------------------------------------------------- the button's label
 
 test("the label stays Deal me in until the deal is over, then reads Back to my cards", async ({ page }) => {
-  await openHome(page, { at: "top" });
+  await openHome(page, { at: "foot" });
   const label = () => teaserButton(page).evaluate((el) => el.firstChild?.textContent ?? "");
   expect(await label()).toBe(teaser.deal);
   await teaserButton(page).click();
   await expect(html(page)).toHaveAttribute("data-deal", "dealing", { timeout: 5000 });
-  // While the text fades out and the deal plays, the button still reads Deal me in.
-  for (const wait of [0, 400, 800, 800]) {
+  // While the button fades out and the deal plays, it still reads Deal me in.
+  for (const wait of [0, 300, 500, 500]) {
     await page.waitForTimeout(wait);
     if ((await dealState(page)) !== "dealing") break;
     expect(await label()).toBe(teaser.deal);
   }
   await expect(html(page)).toHaveAttribute("data-deal", "dealt", { timeout: 15_000 });
   await expect.poll(label).toBe(teaser.back);
-  expect(await page.evaluate(() => Number(getComputedStyle(document.querySelector("[data-first-cta]")!).opacity))).toBe(1);
+  expect(await page.evaluate(() => Number(getComputedStyle(document.querySelector("[data-intro-cta]")!).opacity))).toBe(1);
 });
 
 // ---------------------------------------------------------------- a load that finds the cards in view
@@ -185,8 +185,8 @@ test("a load into #work opens the cards at once: dealt, the field and the column
 
 // ---------------------------------------------------------------- a deal that ends inside the sticky range
 
-test("a deal that ends with the reader inside the sticky range lets the stage go: it never covers the first screen", async ({ page }) => {
-  await openHome(page, { at: "top" });
+test("a deal that ends with the reader inside the sticky range lets the stage go: it never covers page 1", async ({ page }) => {
+  await openHome(page, { at: "foot" });
   // Scroll by hand to just past where the deal triggers (18 percent of the range), then stop.
   const range = await page.evaluate(() => {
     const rail = document.querySelector("[data-coil-rail]")!.getBoundingClientRect();
@@ -203,14 +203,14 @@ test("a deal that ends with the reader inside the sticky range lets the stage go
   expect(await page.evaluate(() => getComputedStyle(document.getElementById("work")!).getPropertyValue("--run-lead"))).toBe("0px");
   // The glide clears its transform when it lands.
   await page.waitForFunction(() => !(document.querySelector("[data-coil-sticky]")!.getAttribute("style") ?? "").includes("transform"), null, { timeout: 3000 });
-  // The first screen's text is not under the stage, and its button answers a click.
-  const button = await rectOf(page, "[data-first-cta] a");
+  // Page 1's button is not under the stage, and it answers a click.
+  const button = await rectOf(page, "[data-intro-cta] a");
   const stage = await rectOf(page, "[data-coil-sticky]");
   expect(button.bottom <= stage.top + 1 || button.top >= stage.bottom, "the button is clear of the stage").toBe(true);
   await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
   await page.waitForTimeout(300);
   const hit = await page.evaluate(() => {
-    const b = document.querySelector("[data-first-cta] a")!.getBoundingClientRect();
+    const b = document.querySelector("[data-intro-cta] a")!.getBoundingClientRect();
     return document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2)?.closest("a")?.textContent ?? null;
   });
   expect(hit).toContain(teaser.back);
@@ -221,8 +221,8 @@ test("a deal that ends with the reader inside the sticky range lets the stage go
 test.describe("phone", () => {
   test.use({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
 
-  test("the first screen's foot meets the dealt cards with no blank band, and the slot closes only once it is above the reader", async ({ page }) => {
-    await openHome(page, { at: "top" });
+  test("page 1's foot meets the dealt cards with no blank band, and the slot closes only once it is above the reader", async ({ page }) => {
+    await openHome(page, { at: "foot" });
     await expect(page.locator("section[data-scene]")).toHaveAttribute("data-input", "coarse");
     const slotBefore = await rectOf(page, "[data-coil-ribbon]");
     expect(slotBefore.height).toBeGreaterThan(100);
@@ -231,20 +231,20 @@ test.describe("phone", () => {
     // The slot is above the reader (the click scrolled to the section): it closes up and the page is held, the section still at the top.
     await page.waitForFunction(() => document.querySelector("[data-coil-ribbon]")!.hasAttribute("data-gone"), null, { timeout: 5000 });
     expect(Math.abs((await rectOf(page, "#work")).top)).toBeLessThan(2);
-    // Scrolled back up: the first screen ends where the cards begin, no empty screen between them.
+    // Scrolled back up: page 1 ends where the cards begin, no empty screen between them.
     await page.evaluate(() => window.scrollTo({ top: document.getElementById("work")!.getBoundingClientRect().top + window.scrollY - 500, behavior: "instant" }));
     await page.waitForTimeout(300);
-    const first = await rectOf(page, "[data-first-screen]");
+    const first = await rectOf(page, "#about");
     const work = await rectOf(page, "#work");
-    expect(work.top - first.bottom, "the gap between the first screen and the cards").toBeLessThan(2);
+    expect(work.top - first.bottom, "the gap between page 1 and the cards").toBeLessThan(2);
     expect(await rectOf(page, "[data-coil-ribbon]")).toMatchObject({ height: 0 });
-    // The first screen's last line is on the same screen as the first cards.
+    // Page 1's last line is on the same screen as the first cards.
     expect(work.top).toBeLessThan(844);
     expect(first.bottom).toBeGreaterThan(0);
   });
 
   test("the canvas keeps one size through the deal (the toolbar cannot resize it), and a drag does nothing before it is dealt", async ({ page }) => {
-    await openHome(page, { at: "top" });
+    await openHome(page, { at: "foot" });
     const size = () => page.evaluate(() => { const r = document.querySelector("#work canvas")!.getBoundingClientRect(); return `${Math.round(r.width)}x${Math.round(r.height)}`; });
     const before = await size();
     const offsetBefore = await page.evaluate(() => (window as unknown as { __coil: { offset: () => number } }).__coil.offset());

@@ -19,8 +19,8 @@ const layouts = (page: Page) => page.evaluate(() => (window as unknown as W).__w
 const visibleDots = (page: Page) => page.evaluate(() => (window as unknown as W).__wavePath.visibleDots());
 const maxScroll = (page: Page) => page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight);
 const headAtRest = (page: Page) => page.waitForFunction(() => { const f = (window as unknown as W).__wavePath.frame(); return !!f && f.length > 0 && f.head === f.target; });
-// The first block below the band, where #about was before page 1 took the band into its middle (#about is now the whole first page, its top above the band).
-const BELOW_BAND = "[data-teaser]";
+// The last block of page 1, whose foot is the first thing below the band's own stretch of the line.
+const BELOW_BAND = "#story-outside";
 const toBlock = async (page: Page, sel: string) => scrollToY(page, Math.round(await documentTop(page, sel)));
 
 async function open(page: Page) {
@@ -37,8 +37,8 @@ async function open(page: Page) {
 const decline = (page: Page) => page.locator("#listen").getByRole("button", { name: L.decline, exact: true }).click();
 const accept = (page: Page) => page.locator("#listen").getByRole("button", { name: L.accept, exact: true }).click();
 // A declined, unfrozen line breathes while in view; the rest tests freeze it first.
-// Before an answer the toggle is the two words in the prompt's line; after a decline it is the one beside Play it.
-const freeze = (page: Page) => page.locator("#listen").getByRole("button", { name: new RegExp(`^(${L.freeze}|${L.subline.freeze})$`) }).click();
+// The reader's freeze is in the playback pill and the player, which are out of reach while the band is parked in view, so the tests use the probe's own.
+const freeze = (page: Page) => page.evaluate(() => (window as unknown as W).__wavePath.freeze(true));
 
 // The line is one line: it leaves the band's run to the right and dives off
 // screen to clear the band before it turns back, so it never crosses the band.

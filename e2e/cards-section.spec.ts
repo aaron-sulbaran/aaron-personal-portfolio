@@ -61,12 +61,15 @@ test("cards section: clicking a title opens its card with the flight, and the ti
   await expect(title).toBeFocused();
 });
 
-test("cards section: the nav's scroll-spy reads Work in the cards and About in the intro", async ({ page }) => {
+test("cards section: the nav's scroll-spy reads Work in the cards and Proof of work below them, and nothing on page 1", async ({ page }) => {
   await openHome(page, { at: "top" });
   await scrollToCards(page, 200);
   await expect(page.getByRole("navigation", { name: "Sections" }).locator("[aria-current]").first()).toContainText("Work");
+  await page.evaluate(() => window.scrollTo({ top: document.getElementById("numbers")!.getBoundingClientRect().top + window.scrollY, behavior: "instant" }));
+  await expect(page.getByRole("navigation", { name: "Sections" }).locator("[aria-current]").first()).toContainText("Proof of work");
+  // Page 1 is the page the logo leads to, not a section of the bar.
   await page.evaluate(() => window.scrollTo({ top: 400, behavior: "instant" }));
-  await expect(page.getByRole("navigation", { name: "Sections" }).locator("[aria-current]").first()).toContainText("About");
+  await expect(page.getByRole("navigation", { name: "Sections" }).locator("[aria-current]")).toHaveCount(0);
 });
 
 test.describe("on a phone", () => {
@@ -81,4 +84,32 @@ test.describe("on a phone", () => {
     await page.locator('#work button[data-card="travel"]').tap();
     await expect(cardDialog(page, "travel")).toBeVisible({ timeout: 8000 });
   });
+
+  for (const colorScheme of ["light", "dark"] as const) {
+    test(`cards section: no title sits over the Coil's canvas on a phone, in ${colorScheme}`, async ({ page }) => {
+      await page.emulateMedia({ colorScheme });
+      await openHome(page);
+      const stage = await page.locator("#work [data-coil-stage]").evaluate((el) => {
+        const r = el.getBoundingClientRect();
+        return { top: r.top, bottom: r.bottom, left: r.left, right: r.right };
+      });
+      // The Coil fills the top part of the section and the columns sit under it: the stage has let go of page 1's foot, so it is the section's frame.
+      expect(await page.evaluate(() => getComputedStyle(document.getElementById("work")!).getPropertyValue("--run-lead"))).toBe("0px");
+      const section = await page.evaluate(() => document.getElementById("work")!.getBoundingClientRect().height);
+      expect(stage.bottom - stage.top, "the Coil's share of the section").toBeGreaterThan(section * 0.35);
+      expect(stage.bottom - stage.top, "the Coil's share of the section").toBeLessThan(section * 0.65);
+      for (const title of titles) {
+        const box = await page.locator(`#work button[data-card="${title.key}"]`).evaluate((el) => {
+          const r = el.getBoundingClientRect();
+          return { top: r.top, bottom: r.bottom, left: r.left, right: r.right };
+        });
+        const overlaps = box.top < stage.bottom - 1 && box.bottom > stage.top + 1 && box.left < stage.right && box.right > stage.left;
+        expect(overlaps, `${title.key} is clear of the Coil`).toBe(false);
+        await expect(page.locator(`#work button[data-card="${title.key}"]`)).toBeInViewport({ ratio: 1 });
+      }
+      // Two columns side by side under it.
+      const lefts = await Promise.all(["capital-one", "min-max"].map((key) => page.locator(`#work button[data-card="${key}"]`).evaluate((el) => el.getBoundingClientRect().left)));
+      expect(lefts[1]).toBeGreaterThan(lefts[0] + 100);
+    });
+  }
 });

@@ -13,16 +13,28 @@ export type Point = { x: number; y: number };
 // section (#work), below the intro, and the cards are dealt into it once the
 // reader reaches it (lib/home/deal.ts). So by default the page is scrolled to
 // the section, which deals at once (in view, no wait), and resolves once the
-// deal is over; `at: "top"` stays at the top of the intro with the deal still
-// to come (the scene has drawn, off screen, and the section is closed).
-export async function openHome(page: Page, { debug = "1", path = "/", at = "cards" }: { debug?: string; path?: string; at?: "cards" | "top" } = {}) {
+// deal is over; `at: "top"` stays at the top of page 1 with the deal still to
+// come (the scene has drawn, off screen, and the section is closed); `at:
+// "foot"` scrolls to page 1's foot, the ribbon and "Deal me in" in view and the
+// stage not yet stuck, the deal still to come.
+export async function openHome(page: Page, { debug = "1", path = "/", at = "cards" }: { debug?: string; path?: string; at?: "cards" | "top" | "foot" } = {}) {
   const separator = path.includes("?") ? "&" : "?";
   await page.goto(`${path}${separator}coildebug=${debug}`);
   await waitForScene(page);
   if (at === "cards") {
     await scrollToCards(page);
     await waitForCoil(page);
-  }
+  } else if (at === "foot") await scrollToFoot(page);
+}
+
+// Page 1's foot in view: "Deal me in" at `share` of the viewport's height (the
+// ribbon above it), the page not yet scrolled into the stage's sticky range.
+export async function scrollToFoot(page: Page, share = 0.66) {
+  await page.evaluate((s) => {
+    const button = document.querySelector("[data-deal-button]")!.getBoundingClientRect();
+    window.scrollTo({ top: button.top + button.height / 2 + window.scrollY - window.innerHeight * s, behavior: "instant" });
+  }, share);
+  await nextFrames(page, 3);
 }
 
 // Scrolls to `offset` px below the top of the cards section (0: its top at the viewport's top).

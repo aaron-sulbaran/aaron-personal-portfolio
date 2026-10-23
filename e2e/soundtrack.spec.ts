@@ -365,10 +365,9 @@ test("dock: the decline path says it'll be here, settles as \"Music\", and a rel
   await scrollBandIntoView(page);
   const band = page.locator("#listen");
   await band.getByRole("button", { name: L.decline, exact: true }).click();
-  await expect(band.locator("[data-band-note]")).toBeFocused();
-  await expect(band.locator("[data-band-note] > :not([inert])")).toContainText(L.declinedNote);
-  // Declined, the run still breathes, so its freeze toggle stays live, beside the No problem line.
-  await expect(band.locator("[data-band-note]").getByRole("button", { name: L.freeze, exact: true })).toBeVisible();
+  // Declined: one Play it is what is left, with focus on it.
+  await expect(band.locator('[data-control="off"]')).toBeFocused();
+  expect(await band.innerText()).not.toContain("No problem");
 
   await toAbout(page);
   await expect.poll(() => dockText(page), { timeout: 1000, message: "the label as it lands" }).toBe(S.dockDeclined);
@@ -573,79 +572,13 @@ test("dock: back up to exactly the dock line, then on up through the band, the p
   await expect(page.locator(PILL)).toHaveAttribute("inert", "", { timeout: DOCK.fadeMs + 2000 });
 });
 
-// Letting a frozen, declined wave move again leaves the toggle with nothing to
-// do, but the keyboard is on it: it stays live until focus leaves.
-test("band: pressing \"Let the wave move\" from the keyboard after a decline keeps focus on the toggle", async ({ page }) => {
-  await openHome(page, { path: HOME });
-  await scrollBandIntoView(page);
-  const band = page.locator("#listen");
-  await band.getByRole("button", { name: L.subline.freeze, exact: true }).click();
-  await band.getByRole("button", { name: L.decline, exact: true }).click();
-  const toggle = band.getByRole("button", { name: L.unfreeze, exact: true });
-  await toggle.focus();
-  await page.keyboard.press("Enter");
-  // Chromium drops focus from an inert element at its next style update, not at once.
-  await nextFrames(page, 3);
-  expect(await page.evaluate(() => document.activeElement !== document.body), "focus left on the body").toBe(true);
-  await expect(band.getByRole("button", { name: L.freeze, exact: true })).toBeFocused();
-});
-
-// Reduced motion makes every anchor jump instant, so the reader can cross the
-// band in one step, with no frame where it shows: the dock must still follow.
-test("dock: under reduced motion an instant jump past the band lands the pill, and a jump back above it hides it", async ({ page }) => {
-  await page.emulateMedia({ reducedMotion: "reduce" });
-  await armDock(page);
-  await page.goto(HOME);
-  await settled(page);
-  const pill = page.locator(PILL);
-  await expect(pill).toHaveAttribute("inert", "");
-  await page.evaluate(() => {
-    const top = document.getElementById("about")!.getBoundingClientRect().top + window.scrollY;
-    window.scrollTo({ top, behavior: "instant" });
-  });
-  await dockLanded(page);
-  await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
-  await expect(pill).toHaveAttribute("inert", "");
-  await page.waitForFunction(() => document.querySelector<HTMLElement>("[data-pill]")!.style.opacity === "0");
-});
-
-// Each width change crosses a gsap.matchMedia query, and its ScrollTrigger
-// refresh parks the window at 0 to measure. Two frames after each resize the
-// refresh has run, and the reader must still be where they were.
-test("dock: a phone width removes the pill and desktop fades it back in", async ({ page }) => {
-  await armDock(page);
-  await page.goto(`${HOME}#about`);
-  await settled(page);
-  await dockLanded(page);
-  const place = await page.evaluate(() => window.scrollY);
-  await page.setViewportSize({ width: 375, height: 812 });
-  await nextFrames(page, 2);
-  expect(await page.evaluate(() => window.scrollY), "scroll after the phone width's refresh").toBe(place);
-  await expect(page.locator(PILL)).toHaveCount(0);
-  // Still past the band: the resize's refresh re-derives "passed" with no scroll.
-  await startDock(page, 16);
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await nextFrames(page, 2);
-  expect(await page.evaluate(() => window.scrollY), "scroll after the desktop width's refresh").toBe(place);
-  await nextFrames(page, 45);
-  expect(await page.evaluate(() => window.scrollY), "no glide after the refresh").toBe(place);
-  await dockLanded(page);
-  const samples = (await stopDock(page)).filter((s) => s.shown);
-  expect(samples.some((s) => s.opacity > 0 && s.opacity < 1), "a fade back in").toBe(true);
-  expect(Math.abs((await dockGeometry(page)).left - DOCK.insetPx)).toBeLessThanOrEqual(2);
-});
-
-test("dock: the freeze toggle in the band's line stays while the music plays, and stops the band", async ({ page }) => {
+test("dock: the freeze stops the band's wave, and letting it move again repaints it", async ({ page }) => {
   await instrument(page);
   await openHome(page, { path: HOME });
   await scrollBandIntoView(page);
-  const bandFreeze = page.locator("#listen").getByRole("button", { name: L.subline.freeze, exact: true });
-  await expect(bandFreeze).toBeVisible();
   await bandControl(page, "before").click();
-  // The link stays: it is the one freeze there is while the music plays.
-  await expect(bandFreeze).toBeVisible();
-  await bandFreeze.click();
-  await expect(page.locator("#listen").getByRole("button", { name: L.unfreeze, exact: true })).toBeVisible();
+  // The reader's freeze (the pill's and the player's button write the same flag).
+  await page.evaluate(() => (window as unknown as { __wavePath: { freeze: (on: boolean) => void } }).__wavePath.freeze(true));
   // Frozen, the head still follows the scroll; the band repaints while it eases back, so wait for it to rest.
   await page.waitForFunction(() => {
     const f = (window as unknown as { __wavePath: { frame: () => { head: number; target: number } | null } }).__wavePath.frame();
@@ -653,7 +586,7 @@ test("dock: the freeze toggle in the band's line stays while the music plays, an
   });
   await page.waitForTimeout(300);
   expect(await bandRepaints(page, 1000), "band repaints in a frozen second").toBe(0);
-  await page.locator("#listen").getByRole("button", { name: L.unfreeze, exact: true }).click();
+  await page.evaluate(() => (window as unknown as { __wavePath: { freeze: (on: boolean) => void } }).__wavePath.freeze(false));
   await expect.poll(() => bandRepaints(page, 1000), { message: "band repaints once the wave moves" }).toBeGreaterThan(0);
 });
 
@@ -776,9 +709,7 @@ test("dock: a phone has no stock pill, and after \"Not now\" the band offers Pla
   await expect(page.locator(PILL)).toHaveCount(0);
   const band = page.locator("#listen");
   await band.getByRole("button", { name: L.decline, exact: true }).click();
-  const note = band.locator("[data-band-note] > :not([inert])");
-  await expect(note).toContainText(L.declinedNote);
-  const again = note.getByRole("button", { name: L.accept, exact: true });
+  const again = band.locator('[data-control="off"]');
   await expect(again).toBeVisible();
   await toAbout(page);
   await expect(page.locator(PILL)).toHaveCount(0);

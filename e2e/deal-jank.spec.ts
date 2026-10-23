@@ -33,9 +33,15 @@ type CoilWindow = Window &
     __coilFlight: { scene: { slots: () => { key: string; center: { x: number; y: number }; alpha: number }[] } };
   };
 
-// The stage covers the first screen from the page's first pixel: at the top it is in view.
+// The stage is stuck at the top of the screen, whole in view, a little way into its
+// sticky range (well short of where a scroll starts the deal): the ribbon is where
+// page 1's foot puts it, and the canvas is the viewport's.
 async function stageInView(page: Page) {
-  await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
+  await page.evaluate(() => {
+    const rail = document.querySelector("[data-coil-rail]")!.getBoundingClientRect();
+    const stage = document.querySelector("[data-coil-sticky]")!.getBoundingClientRect();
+    window.scrollTo({ top: rail.top + window.scrollY + (rail.height - stage.height) * 0.08, behavior: "instant" });
+  });
   await page.waitForTimeout(600);
 }
 
@@ -66,7 +72,7 @@ const windOnsetMs = (() => {
 
 for (const key of ["ieee", "talos", "anthropic"] as const) {
   test(`jank 1: ${key}'s projected center has a bounded second difference through the whole deal`, async ({ page }) => {
-    await openHome(page, { debug: "flight", at: "top" });
+    await openHome(page, { debug: "flight", at: "foot" });
     await stageInView(page);
     const track = await page.evaluate(
       ({ key, frame, total }) => {
@@ -141,7 +147,7 @@ for (const key of ["ieee", "talos", "anthropic"] as const) {
 // apart. A card steps a few px a frame in the drift and the condense, never over the
 // bound, and its second difference stays the deal's ordinary few px.
 test("jank 1: the ribbon's condense and curl move the cards around the middle smoothly, a frame at a time", async ({ page }) => {
-  await openHome(page, { debug: "flight", at: "top" });
+  await openHome(page, { debug: "flight", at: "foot" });
   await stageInView(page);
   const result = await page.evaluate(
     ({ curlEnd, frame }) => {
@@ -199,7 +205,7 @@ for (const size of [
     test.use({ viewport: size.viewport, hasTouch: size.touch, isMobile: size.touch, deviceScaleFactor: size.touch ? 2 : 1 });
 
     test("the canvas maps a point to the card under it at three places in the sticky range", async ({ page }) => {
-      await openHome(page, { debug: "flight", at: "top" });
+      await openHome(page, { debug: "flight", at: "foot" });
       const range = await page.evaluate(() => {
         const rail = document.querySelector("[data-coil-rail]")!.getBoundingClientRect();
         const stage = document.querySelector("[data-coil-sticky]")!.getBoundingClientRect();
@@ -228,11 +234,11 @@ for (const size of [
     });
 
     test("the canvas keeps its height through the deal and no rebuild fires", async ({ page }) => {
-      await openHome(page, { at: "top" });
+      await openHome(page, { at: "foot" });
       await page.waitForTimeout(400);
       const read = () => page.evaluate(() => { const w = window as CoilWindow; return { css: w.__coil.budget().css.join("x"), rebuilding: w.__coil.entrance().rebuilding }; });
       const before = await read();
-      await page.locator("[data-first-cta] a").first().click();
+      await page.locator("[data-intro-cta] a").first().click();
       const seen = new Set<string>([before.css]);
       let rebuilt = before.rebuilding;
       const until = Date.now() + 8000;
@@ -254,31 +260,25 @@ for (const size of [
 
 // No halo, no fringe, no line, read as numbers (no golden images). The field's
 // clock is held (?coildebug=at=), so a frame at a given ms and the same frame with
-// the field wide open (the deal's end) differ only by the faded patch behind the
-// paragraphs, which the opening circle lifts, and by the name's letters. Each stage is
-// drawn over the bare page, and every pixel clear of the cards and the name must be the
-// page's color mixed with the open field's by one share: between the two on every
+// the field wide open (the deal's end) differ only by the opening circle, which
+// grows from under the Coil. Each stage is drawn over the bare page, and every
+// pixel clear of the cards must be the page's color mixed with the open field's by one share: between the two on every
 // channel (no bright halo, no dark fringe) and the same share on every channel that can
 // tell them apart (no tinted rim). The open frame's top edge rises from the page with no
 // step.
-const EDGE_FRAMES_MS = [0, 600, 900, 1100, 1500, 2100, 3000, 4000];
+const EDGE_FRAMES_MS = [0, 700, 1000, 1200, 1400, 1700, 2000, 2600];
 for (const colorScheme of ["light", "dark"] as const) {
   test.describe(`jank 4: the mask's edge, ${colorScheme}`, () => {
     test.use({ colorScheme });
 
     test(`shows no halo or fringe at forced ${EDGE_FRAMES_MS.join(", ")} ms`, async ({ page }) => {
-      await openHome(page, { debug: "1,at=0.5", at: "top" });
+      await openHome(page, { debug: "1,at=0.5", at: "foot" });
       await stageInView(page);
       await page.addStyleTag({ content: HIDE_PAGE });
       const rect = await page.evaluate(() => { const r = document.querySelector("#work canvas")!.getBoundingClientRect(); return { x: r.left, y: r.top, width: r.width, height: r.height }; });
       const paper = await page.evaluate(() => getComputedStyle(document.body).backgroundColor.match(/\d+/g)!.slice(0, 3).map(Number));
-      // The name's lockup (the h1's box, the greeting included): its letters are not the field.
-      const name = await page.evaluate(() => {
-        const r = document.querySelector("[data-coil-name]")!.getBoundingClientRect();
-        const c = document.querySelector("#work canvas")!.getBoundingClientRect();
-        return { x0: r.left - c.left - 24, y0: r.top - c.top - 24, x1: r.right - c.left + 24, y1: r.bottom - c.top + 24 };
-      });
-      const origin = { x: (name.x0 + name.x1) / 2, y: (name.y0 + name.y1) / 2 };
+      // The field opens from under the Coil: the canvas's middle.
+      const origin = { x: rect.width / 2, y: rect.height / 2 };
       const frameAt = async (ms: number) => {
         await page.evaluate((m) => (window as CoilWindow).__coil.stepEntrance(m), ms);
         await page.waitForTimeout(80);
@@ -300,7 +300,7 @@ for (const colorScheme of ["light", "dark"] as const) {
         const shown = await frameAt(ms);
         const label = `${colorScheme} at ${ms} ms`;
         const covered = (x: number, y: number) =>
-          [...shown.boxes, ...open.boxes, name].some((b) => x >= (b as { x0: number }).x0 && x <= (b as { x1: number }).x1 && y >= (b as { y0: number }).y0 && y <= (b as { y1: number }).y1);
+          [...shown.boxes, ...open.boxes].some((b) => x >= b.x0 && x <= b.x1 && y >= b.y0 && y <= b.y1);
         const mask = fieldMask(entranceClock(ms - LEAD_MS), { width: rect.width, height: rect.height }, COIL, origin);
         let checked = 0;
         let edge = 0;
@@ -324,7 +324,7 @@ for (const colorScheme of ["light", "dark"] as const) {
         }
         expect(checked, `${label}: pixels checked`).toBeGreaterThan(2000);
         // The frames with the edge on the canvas really had one to check.
-        if (ms === 900 || ms === 1100) expect(edge, `${label}: pixels inside the feather`).toBeGreaterThan(40);
+        if (ms === 1200 || ms === 1400) expect(edge, `${label}: pixels inside the feather`).toBeGreaterThan(40);
       }
       // The open field rises from the page down its top edge with no step.
       const fade = COIL.deal.open.topFadePx;
@@ -344,7 +344,7 @@ for (const colorScheme of ["light", "dark"] as const) {
 // ---------------------------------------------------------------- risk 5: the clock and the end
 
 test("jank 5: under 6x CPU throttle the master's clock keeps pace with real time", async ({ page, cdp }) => {
-  await openHome(page, { at: "top" });
+  await openHome(page, { at: "foot" });
   await page.waitForTimeout(500);
   await cdp.send("Emulation.setCPUThrottlingRate", { rate: 6 });
   await page.evaluate(() => {
@@ -357,7 +357,7 @@ test("jank 5: under 6x CPU throttle the master's clock keeps pace with real time
     };
     requestAnimationFrame(tick);
   });
-  await page.locator("[data-first-cta] a").first().click();
+  await page.locator("[data-intro-cta] a").first().click();
   await page.waitForFunction(() => document.documentElement.dataset.deal === "dealt", null, { timeout: 30_000 });
   const samples = await page.evaluate(() => (window as CoilWindow & { __drift: { t: number; clock: number }[] }).__drift);
   await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
@@ -380,7 +380,7 @@ test("jank 5: under 6x CPU throttle the master's clock keeps pace with real time
 });
 
 test("jank 5: the last deal frame matches the first rested frame, and the strand carries on at the idle pace", async ({ page }) => {
-  await openHome(page, { debug: "1", at: "top" });
+  await openHome(page, { debug: "1", at: "foot" });
   await stageInView(page);
   await page.addStyleTag({ content: HIDE_PAGE });
   const rect = await page.evaluate(() => { const r = document.querySelector("#work canvas")!.getBoundingClientRect(); return { x: r.left, y: r.top, width: r.width, height: r.height }; });
@@ -430,7 +430,7 @@ test("jank 5: the last deal frame matches the first rested frame, and the strand
 });
 
 test("jank 5: after a real deal the conveyor keeps the idle pace with no hitch at the hand-off", async ({ page }) => {
-  await openHome(page, { at: "top" });
+  await openHome(page, { at: "foot" });
   await page.waitForTimeout(400);
   await page.evaluate(() => {
     const w = window as CoilWindow & { __rest: { t: number; offset: number }[] };
@@ -442,7 +442,7 @@ test("jank 5: after a real deal the conveyor keeps the idle pace with no hitch a
     };
     requestAnimationFrame(tick);
   });
-  await page.locator("[data-first-cta] a").first().click();
+  await page.locator("[data-intro-cta] a").first().click();
   await page.waitForFunction(() => (window as CoilWindow & { __rest: unknown[] }).__rest.length >= 120, null, { timeout: 20_000 });
   const rest = await page.evaluate(() => (window as CoilWindow & { __rest: { t: number; offset: number }[] }).__rest);
   const speed = ((rest.at(-1)!.offset - rest[0].offset) / (rest.at(-1)!.t - rest[0].t)) * 1000;

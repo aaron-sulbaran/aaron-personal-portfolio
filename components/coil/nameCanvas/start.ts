@@ -59,8 +59,8 @@ export type NameCanvasRuntime = {
   // Lays out again at the canvas's size now (the page reflowed).
   relayout: () => void;
   dispose: () => void;
-  // QA: frames drawn, and whether it is running.
-  stats: () => { frames: number; running: boolean; landed: boolean; size: [number, number] };
+  // QA: frames drawn, whether the loop is running, the surface's clock (s) and whether the pointer's wake is live.
+  stats: () => { frames: number; running: boolean; landed: boolean; size: [number, number]; clock: number; wakeActive: boolean };
 };
 
 export function startNameCanvas(canvas: HTMLCanvasElement, hooks: NameCanvasHooks): NameCanvasRuntime {
@@ -258,6 +258,6 @@ export function startNameCanvas(canvas: HTMLCanvasElement, hooks: NameCanvasHook
       gl.surfaceTarget.dispose();
       renderer.dispose();
     },
-    stats: () => ({ frames, running: raf !== 0, landed: name.landed(), size: [view.width, view.height] }),
+    stats: () => ({ frames, running: raf !== 0, landed: name.landed(), size: [view.width, view.height], clock: surface.state().clock, wakeActive: surface.state().wakeActive }),
   };
 }
