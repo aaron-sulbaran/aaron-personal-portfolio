@@ -119,6 +119,31 @@ describe("hover-jump glide", () => {
     expect(conveyor.glide).toBeNull();
   });
 
+  it("starts from the strand's own speed: no step, then a smooth ease to the target", () => {
+    // From a strand barely moving it eases in (the old site ease took six cards in 580 ms at 37 cards a second from the first frame).
+    const slow = createConveyor(0);
+    slow.velocity = COIL.idleCardsPerSecond;
+    startGlide(slow, 6, 0);
+    const first = [] as number[];
+    let previous = slow.offset;
+    for (let t = 1000 / 60; t <= COIL.hoverJumpMs; t += 1000 / 60) {
+      stepConveyor(slow, { ...rest, dt: 1 / 60, nowMs: t });
+      first.push((slow.offset - previous) * 60);
+      previous = slow.offset;
+    }
+    expect(first[0]).toBeLessThan(1);
+    // Its peak speed is the smoothstep's 1.5 times the distance over the duration, never more.
+    expect(Math.max(...first)).toBeLessThanOrEqual((1.5 * 6) / (COIL.hoverJumpMs / 1000) * 1.02 + COIL.idleCardsPerSecond);
+    expect(slow.offset).toBeCloseTo(6, 3);
+    // From a strand already moving the way it goes, the glide opens at that speed.
+    const moving = createConveyor(0);
+    moving.velocity = 4;
+    startGlide(moving, 6, 0);
+    stepConveyor(moving, { ...rest, dt: 1 / 60, nowMs: 1000 / 60 });
+    expect(moving.velocity).toBeGreaterThan(3.5);
+    expect(moving.velocity).toBeLessThan(5);
+  });
+
   it("is cancelled by captured wheel input", () => {
     const conveyor = createConveyor();
     startGlide(conveyor, 5, 0);
@@ -321,12 +346,12 @@ describe("row hover hold", () => {
     expect(conveyor.offset).toBe(4);
   });
 
-  it("glides between rows over the row glide time on the site ease, without overshoot", () => {
+  it("glides between rows over the row glide time, without overshoot", () => {
     expect(COIL.hoverJumpMs).toBe(700);
     const conveyor = createConveyor(4);
     startGlide(conveyor, -2.5, 0);
     let last = conveyor.offset;
-    for (let t = 1000 / 60; t < COIL.hoverJumpMs; t += 1000 / 60) {
+    for (let t = 1000 / 60; t < COIL.hoverJumpMs - 1; t += 1000 / 60) {
       stepConveyor(conveyor, { dt: 1 / 60, nowMs: t, idleWeight: 0 });
       expect(conveyor.offset).toBeLessThanOrEqual(last + 1e-12);
       expect(conveyor.offset).toBeGreaterThanOrEqual(-2.5 - 1e-9);

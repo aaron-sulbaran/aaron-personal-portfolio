@@ -12,14 +12,18 @@ import {
   reportIntroLoad,
   showNumber,
 } from "@/lib/home/introLoad";
+import { landingColors } from "@/lib/home/loaderLanding";
+import { landName, nameTarget } from "@/lib/home/nameHandoff";
 import { flipTransform, type Rect } from "@/lib/home/nameFlip";
 
 // The loader's imperative run, outside React: one rAF loop easing the fill
 // toward the real tally (never ahead of it, never faster than its shortest
 // run), the 600ms number rule, the hold at 100, then the shrink: the lockup is
 // carried onto the heading by a uniform scale and a shift (GSAP, transform
-// only) while the dark ground dissolves, and one frame hands the lockup to the
-// heading, which was server-rendered there all along. IntroLoader.tsx renders
+// only) while the dark ground dissolves, and one frame hands the lockup over:
+// to the canvas name the scene draws on that same place, wearing the colours the
+// canvas name starts in (lib/home/loaderLanding.ts), or, where no scene can take
+// it, to the heading, which was server-rendered there all along. IntroLoader.tsx renders
 // the markup and calls this once the page has armed the loader; the returned
 // function tears it all down.
 
@@ -32,6 +36,9 @@ export type LoaderParts = {
 };
 
 type Phase = "fill" | "hold" | "shrink" | "done";
+
+// How long the loader waits for the scene to take the landed name before it leaves anyway.
+const HANDOFF_GIVE_UP_MS = 1500;
 
 const rectOf = (el: Element): Rect => {
   const r = el.getBoundingClientRect();
@@ -128,12 +135,39 @@ export function runIntroLoader(parts: LoaderParts): () => void {
     const flip = flipTransform(rectOf(lockup), rectOf(heading));
     const ink = heading.querySelector("[data-lockup-name]") ?? heading;
     const seconds = knobs.shrinkMs / 1000;
-    timeline = gsap.timeline({ onComplete: finish });
+    timeline = gsap.timeline({ onComplete: handOff });
     timeline.set(lockup, { transformOrigin: "0 0" });
     timeline.to(lockup, { x: flip.x, y: flip.y, scale: flip.scale, duration: seconds, ease: knobs.shrinkEase }, 0);
-    // The ground clears first, so the name is never mid-ink over a mid-grey ground; the ink follows it to the heading's.
+    // The ground clears first, so the name is never mid-ink over a mid-grey ground; the ink follows it to the landing's.
     timeline.to(ground, { opacity: 0, duration: seconds * 0.5, ease: "power1.inOut" }, seconds * 0.08);
-    timeline.to(lockup, { color: getComputedStyle(ink).color, duration: seconds * 0.65, ease: "power1.inOut" }, seconds * 0.35);
+    // The scene can take the name (it has drawn): the ink goes to the canvas name's own, the greeting solid above it.
+    const target = nameTarget();
+    const nameEl = lockup.querySelector(".name-lockup__name");
+    const greetEl = lockup.querySelector(".name-lockup__greet");
+    if (target && nameEl && greetEl) {
+      const colors = landingColors(target);
+      timeline.to(lockup, { color: colors.name, duration: seconds * 0.65, ease: "power1.inOut" }, seconds * 0.35);
+      timeline.to(nameEl, { opacity: colors.nameOpacity, duration: seconds * 0.65, ease: "power1.inOut" }, seconds * 0.35);
+      timeline.to(greetEl, { color: colors.greeting, duration: seconds * 0.65, ease: "power1.inOut" }, seconds * 0.35);
+    } else {
+      timeline.to(lockup, { color: getComputedStyle(ink).color, duration: seconds * 0.65, ease: "power1.inOut" }, seconds * 0.35);
+    }
+  }
+
+  // The lockup has landed on the name's place: the canvas takes it and the
+  // loader goes in one task. Where the scene cannot take it yet it is given a
+  // moment; after that the page's heading shows it (the scene's name appears
+  // by itself once the loader is done).
+  function handOff() {
+    if (disposed || phase === "done") return;
+    const began = performance.now();
+    const attempt = () => {
+      raf = 0;
+      if (disposed || phase === "done") return;
+      if (landName() || performance.now() - began > HANDOFF_GIVE_UP_MS) return finish();
+      raf = requestAnimationFrame(attempt);
+    };
+    attempt();
   }
 
   function tick(now: number) {

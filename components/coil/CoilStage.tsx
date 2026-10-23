@@ -14,6 +14,7 @@ import { stillCause, type HeroScene, type StillFailure } from "@/lib/coil/heroSt
 import type { CoilCardRef, CoilSceneApi, CoilSceneProps } from "./CoilScene";
 import { useHomeController } from "@/components/home/HomeController";
 import { reportIntroLoad } from "@/lib/home/introLoad";
+import { provideNameHandoff } from "@/lib/home/nameHandoff";
 
 // The Coil's stage: a layer filling its frame in the cards section with the
 // posters (Poster.tsx), the WebGL scene over them, and the DOM overlay. The
@@ -102,6 +103,15 @@ export function CoilStage({
   }, [eligible, Scene]);
 
   const mounted = eligible && Scene !== null;
+
+  // The loader lands its lockup on the name this scene draws (lib/home/nameHandoff.ts).
+  useEffect(() => {
+    if (!mounted) return;
+    return provideNameHandoff({
+      target: () => apiRef.current?.nameRect() ?? null,
+      land: () => apiRef.current?.landName() ?? false,
+    });
+  }, [mounted, apiRef]);
 
   useEffect(() => {
     if (!mounted) onSceneChange(eligible ? "off" : "still");

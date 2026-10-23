@@ -130,6 +130,13 @@ type NameFrame = {
   realElapsedMs: number;
 };
 
+// The page's loader (components/home/loader) is on the screen: armed by the head
+// script, and not yet done.
+function loaderRuns() {
+  const state = document.documentElement.dataset.introLoader;
+  return state === "on" || state === "shrink";
+}
+
 export function createName(
   ctx: SceneCtx,
   gl: Gl,
@@ -191,6 +198,9 @@ export function createName(
   // the greeting are held at 0 and the surface has not begun, so a landing
   // draws exactly the solid gradient the loader holds.
   let awaitingLoader = false;
+  // The page's loader was running when the scene began: the name waits for it
+  // (the loader lands its lockup on it, landName) or for it to be done.
+  const underLoader = loaderRuns();
 
   function layoutName() {
     if (!st.geo) return;
@@ -272,21 +282,17 @@ export function createName(
     const { now, props, realElapsedMs } = f;
     const clock = f.clock as EntranceClock;
     const entrance = props.entrance;
-    // A loader that never lands the name still gives it up a second after the entrance.
-    const handedOff = entrance?.nameFromLoader
-      ? nameLanded || realElapsedMs > clock.durationS * 1000 + 1000
-      : null;
+    // A loader that is done without landing the name (the scene was not ready
+    // when it ended) gives it up: the name shows from then on.
+    const fromLoader = underLoader || !!entrance?.nameFromLoader;
+    const handedOff = fromLoader ? nameLanded || !loaderRuns() || realElapsedMs > clock.durationS * 1000 + 1000 : null;
     const nameAlpha = posterMode ? 0 : entranceNameAlpha(clock, handedOff);
     cu.uNameA.value = nameAlpha;
     cu.uGrain.value = FIELD.grain * nameAlpha;
     cu.uGreetA.value = nameAlpha;
-    awaitingLoader = !!entrance?.nameFromLoader && !handedOff;
-    if (entrance?.nameFromLoader && surfaceInFrom === null && handedOff) surfaceInFrom = now;
-    cu.uSurfIn.value = !entrance?.nameFromLoader
-      ? 1
-      : surfaceInFrom === null
-        ? 0
-        : siteEase(clamp01((now - surfaceInFrom) / NAME.surfaceInMs));
+    awaitingLoader = fromLoader && !handedOff;
+    if (fromLoader && surfaceInFrom === null && handedOff) surfaceInFrom = now;
+    cu.uSurfIn.value = !fromLoader ? 1 : surfaceInFrom === null ? 0 : siteEase(clamp01((now - surfaceInFrom) / NAME.surfaceInMs));
   }
 
   // The rebuild fade scales the name and the greeting.

@@ -24,7 +24,8 @@ import {
   takeManualScrollRestoration,
 } from "@/lib/home/recovery";
 import { COIL } from "@/lib/coil/constants";
-import { getDeal, useDeal } from "@/lib/home/deal";
+import { getDeal, subscribeDeal, useDeal } from "@/lib/home/deal";
+import { createHoverArm, disarmHover, moveHover } from "@/lib/home/hoverArm";
 import { useDealDirector } from "./useDealDirector";
 import { StageRail } from "./StageRail";
 import { QUERIES, useCapabilities } from "./useCapabilities";
@@ -213,15 +214,25 @@ export function HomeController({ children }: Props) {
   // ---- fx-input: the title hover signal ----
   // The pointer's title and the focused title are tracked apart, and the scene
   // hears only a change of the title that wins (a click that also focuses the
-  // hovered title starts no second glide).
+  // hovered title starts no second glide). A pointer's hover waits for a real
+  // pointer move after the deal ends (or the page loads): the columns arriving
+  // under a parked pointer is no hover, and must not turn the Coil
+  // (lib/home/hoverArm.ts, as wheel capture already waits). The title it is
+  // parked on is remembered and answers once the pointer has moved.
   const rowsRef = useRef<{ pointer: string | null; focus: string | null; sent: string | null }>({
     pointer: null,
     focus: null,
     sent: null,
   });
+  const hoverArmRef = useRef(createHoverArm());
+  const parkedRef = useRef<string | null>(null);
   const focusCard = useCallback((key: string | null, source: RowSource = "pointer") => {
     // Nothing answers a hover before the cards are dealt.
     if (key !== null && getDeal().phase !== "dealt") return;
+    if (source === "pointer") {
+      parkedRef.current = key;
+      if (key !== null && !hoverArmRef.current.armed) return;
+    }
     const rows = rowsRef.current;
     rows[source] = key;
     const next = rows.pointer ?? rows.focus;
@@ -229,6 +240,25 @@ export function HomeController({ children }: Props) {
     rows.sent = next;
     sceneApiRef.current?.focusCard(next);
   }, []);
+  useEffect(() => {
+    const arm = hoverArmRef.current;
+    const onMove = (event: PointerEvent) => {
+      if (event.pointerType === "touch") return;
+      if (moveHover(arm, event.clientX, event.clientY) && parkedRef.current !== null) focusCard(parkedRef.current, "pointer");
+    };
+    window.addEventListener("pointermove", onMove, { passive: true });
+    // The deal ending (the columns arrive) waits for a real move again.
+    let wasDealt = getDeal().phase === "dealt";
+    const unsubscribe = subscribeDeal(() => {
+      const dealt = getDeal().phase === "dealt";
+      if (dealt && !wasDealt) disarmHover(arm);
+      wasDealt = dealt;
+    });
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      unsubscribe();
+    };
+  }, [focusCard]);
   // ---- end fx-input ----
 
   // A card in the scene (or its title or its row in the unwound list): freeze the scene so

@@ -43,7 +43,9 @@ export const siteEase = cubicBezier(...COIL.siteEase);
 
 // ---------------------------------------------------------------- conveyor
 
-export type Glide = { from: number; to: number; startMs: number; durationMs: number };
+// v0 is the strand's speed when the glide began, in cards per second: the
+// glide starts from it (slope-matched, see glideProgress) rather than from rest.
+export type Glide = { from: number; to: number; startMs: number; durationMs: number; v0?: number };
 
 export type Conveyor = {
   offset: number; // X: the strand's position, in cards; grows forever both ways
@@ -101,8 +103,8 @@ export function stepConveyor(conveyor: Conveyor, input: ConveyorInput, c: CoilCo
 
   const glide = conveyor.glide;
   if (glide) {
-    const progress = siteEase(clamp((input.nowMs - glide.startMs) / glide.durationMs, 0, 1));
-    conveyor.offset = glide.from + (glide.to - glide.from) * progress;
+    const progress = glideProgress(glide, input.nowMs);
+    conveyor.offset = progress >= 1 ? glide.to : glide.from + (glide.to - glide.from) * progress;
     conveyor.target = conveyor.offset;
     if (progress >= 1) conveyor.glide = null;
   } else {
@@ -116,9 +118,24 @@ export function stepConveyor(conveyor: Conveyor, input: ConveyorInput, c: CoilCo
 
 // ---------------------------------------------------------------- hover-jump
 
-// Starts the 600ms site-ease glide that brings a card to the front.
+// A glide's progress at `nowMs`, 0 to 1: a cubic Hermite from 0 to 1 whose
+// slope at the start is the strand's own speed (v0 over the distance, per
+// glide) and whose slope at the end is 0. A glide that begins on a strand that
+// is barely moving therefore starts barely moving and eases in, where the site
+// ease it replaced began at a hundred times the idle pace in one frame (the
+// motion review measured 37 cards a second from a parked pointer). A start
+// speed against the glide's direction runs on a little before it turns; one
+// along it is held to what keeps the curve from overshooting.
+export function glideProgress(glide: Glide, nowMs: number): number {
+  const s = clamp((nowMs - glide.startMs) / glide.durationMs, 0, 1);
+  const distance = glide.to - glide.from;
+  const slope = Math.abs(distance) < 1e-9 ? 0 : clamp(((glide.v0 ?? 0) * (glide.durationMs / 1000)) / distance, -1.5, 2.9);
+  return (s * s * s - 2 * s * s + s) * slope + (3 * s * s - 2 * s * s * s);
+}
+
+// Starts the glide that brings a card to the front, from the strand's own speed.
 export function startGlide(conveyor: Conveyor, to: number, nowMs: number, durationMs: number = COIL.hoverJumpMs) {
-  conveyor.glide = { from: conveyor.offset, to, startMs: nowMs, durationMs };
+  conveyor.glide = { from: conveyor.offset, to, startMs: nowMs, durationMs, v0: conveyor.velocity };
   conveyor.target = conveyor.offset;
 }
 

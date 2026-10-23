@@ -964,22 +964,19 @@ html[data-deal] section[data-scene="off"] [data-coil-stage] {
 }
 /* Where the scene does not draw the name (no script, reduced motion, no WebGL 2,
    the after state once the cards are dealt) the h1 shows as text with the field
-   as its fill: the field's poster over the accent, multiplied in the light
-   theme and screened in the dark one, so the letters stay readable on the
-   page. */
+   as its fill: the field's poster under a veil of the accent, deepest at the
+   top, so the letters stay readable on the page in both themes (the dark
+   theme's accent is the light one). */
 @supports (background-clip: text) or (-webkit-background-clip: text) {
   .first-name [data-name-visual] {
     color: transparent;
-    background-color: var(--color-accent);
-    background-image: var(--field-poster);
-    background-size: cover;
-    background-position: 50% 85%;
-    background-blend-mode: multiply;
+    background-image:
+      linear-gradient(to bottom, color-mix(in srgb, var(--color-accent) 92%, transparent), color-mix(in srgb, var(--color-accent) 68%, transparent)),
+      var(--field-poster);
+    background-size: 100% 100%, cover;
+    background-position: 0 0, 50% 85%;
     -webkit-background-clip: text;
     background-clip: text;
-  }
-  :root[data-theme="dark"] .first-name [data-name-visual] {
-    background-blend-mode: screen;
   }
 }
 /* With a script and a scene on its way or drawing, the canvas has the name; the
