@@ -17,6 +17,9 @@ export const DEAL_LAB_KNOBS: readonly NumericKnob[] = [
   "ribbonHoverSpeedFactor",
   "ribbonHoverTighten",
   "ribbonHoverEaseMs",
+  "ribbonGatherPitch",
+  "clickRingMs",
+  "clickRingStrength",
   "condenseMs",
   "condensePower",
   "curlMs",
@@ -46,7 +49,7 @@ export const DEAL_LAB_KNOBS: readonly NumericKnob[] = [
 ];
 
 // The panels' groups, in order.
-export const DEAL_LAB_GROUPS = ["Ribbon", "Anticipation", "Condense and curl", "Spin", "Wheel", "Scroll", "Flatten and slow", "Lift", "Field", "Columns"] as const;
+export const DEAL_LAB_GROUPS = ["Ribbon", "Anticipation", "Click", "Condense and curl", "Spin", "Wheel", "Scroll", "Flatten and slow", "Lift", "Field", "Columns"] as const;
 
 export function dealLabValues(knobs: DealKnobs): Record<string, number> {
   return Object.fromEntries(DEAL_LAB_KNOBS.map((key) => [key, knobs[key]]));

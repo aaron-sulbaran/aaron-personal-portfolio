@@ -32,7 +32,7 @@ import {
   windOnset,
   windRamp,
 } from "@/lib/coil/entrance";
-import { ribbonAnchor, ribbonCardsPerSecond, ribbonCondensedPitch, ribbonEdge, ribbonEdgeAlpha, ribbonEdgeAlphaWorld, ribbonHelix, ribbonPitchUnits } from "@/lib/coil/ribbon";
+import { ribbonAnchor, ribbonCardsPerSecond, ribbonGatherPitch, ribbonHoverPitch, gatherShare, ribbonEdge, ribbonEdgeAlpha, ribbonEdgeAlphaWorld, ribbonHelix, ribbonPitchUnits } from "@/lib/coil/ribbon";
 import { coilPose, mod, poseAt, restHelix, solveGeometry, type Basis, type CoilGeometry, type HelixFrame } from "@/lib/coil/geometry";
 
 const TAU = Math.PI * 2;
@@ -72,8 +72,10 @@ describe("entrance clock", () => {
     expect(isBeforeEntrance(entranceClock(Number.NEGATIVE_INFINITY))).toBe(true);
   });
 
-  it("follows slice 4d's table: the Coil is unfurled by about 2.0 s after the click, the flatten overlaps the spin-up, the hold at the peak is 200 ms at most, and the field's opening and the slowing are over before the lift lands", () => {
-    expect(TL.condenseMs + TL.pullStartMs + TL.pullMs).toBeLessThanOrEqual(2050);
+  it("follows slice 4d's table, with slice 5's longer rush: the Coil is unfurled by about 2.3 s after the click (the rush before the curl is 500 to 700 ms), the flatten overlaps the spin-up, the hold at the peak is 200 ms at most, and the field's opening and the slowing are over before the lift lands", () => {
+    expect(TL.condenseMs).toBeGreaterThanOrEqual(500);
+    expect(TL.condenseMs).toBeLessThanOrEqual(700);
+    expect(TL.condenseMs + TL.pullStartMs + TL.pullMs).toBeLessThanOrEqual(2400);
     expect(TL.condenseMs + TL.pullStartMs + TL.pullMs).toBeGreaterThanOrEqual(1900);
     expect(TL.flattenStartMs).toBeLessThan(TL.upMs);
     expect(TL.flattenStartMs + TL.flattenMs).toBeGreaterThan(TL.upMs);
@@ -534,6 +536,8 @@ describe("the pull as a value", () => {
 });
 
 describe("the ribbon (page 1's foot)", () => {
+  const OPEN = { hover: 0, rush: 0 };
+  const PILE = { hover: 0, rush: 1 };
   const wideGeo = solveGeometry({ width: 1280, height: 800 }, 14, COIL, { canvas: { width: 1280, height: 800 }, ribbonCy: 620 });
   const phoneGeo = solveGeometry({ width: 390, height: 460 }, 14, COIL, { canvas: { width: 390, height: 460 }, ribbonCy: 150 });
   const rest = (geo: CoilGeometry) => restHelix(geo);
@@ -547,14 +551,14 @@ describe("the ribbon (page 1's foot)", () => {
     expect(bare.ribbon.anchorY).toBe(COIL.deal.ribbon.anchorY);
   });
 
-  it("keeps the row's wrap off the canvas: the gap grows where fourteen cards would not span it", () => {
+  it("keeps the row's wrap off the canvas: the gap (and the hover's tightening) grows where fourteen cards would not span it", () => {
     for (const w of [390, 1280, 1920, 2560, 3440]) {
       const geo = solveGeometry({ width: w, height: 800 }, 14, COIL, { canvas: { width: w, height: 800 } });
       const cardW = geo.ribbon.cardPx * COIL.cardAspect;
       const pitch = cardW + geo.ribbon.gapPx;
       expect(pitch * geo.cardCount, `at ${w}`).toBeGreaterThanOrEqual(w + 2 * cardW - 1e-6);
       expect(geo.ribbon.gapPx).toBeGreaterThanOrEqual(COIL.deal.ribbon.gapPx);
-      expect(ribbonCondensedPitch(geo) * geo.ribbon.cardPx * geo.cardCount, `condensed at ${w}`).toBeGreaterThanOrEqual(w + 2 * cardW - 1e-6);
+      expect(ribbonHoverPitch(geo) * geo.ribbon.cardPx * geo.cardCount, `the hover's pitch at ${w}`).toBeGreaterThanOrEqual(w + 2 * cardW - 1e-6);
     }
   });
 
@@ -568,7 +572,7 @@ describe("the ribbon (page 1's foot)", () => {
   });
 
   it("lies flat in one row at curl 0: cards a pitch apart on the anchor's line, face on, unbent", () => {
-    const frame = ribbonHelix(entranceHelix(rest(wideGeo), wideGeo, entranceClock(0)), wideGeo, 0, 0);
+    const frame = ribbonHelix(entranceHelix(rest(wideGeo), wideGeo, entranceClock(0)), wideGeo, OPEN, 0);
     const pitchWorld = ribbonPitchUnits(wideGeo) * frame.cardWorld;
     const anchor = ribbonAnchor(wideGeo);
     for (const u of [-6, -2.5, 0, 1, 4.25]) {
@@ -587,15 +591,15 @@ describe("the ribbon (page 1's foot)", () => {
     for (const geo of [wideGeo, phoneGeo]) {
       const r = rest(geo);
       const wheel = entranceHelix(r, geo, entranceClock(TL.curlMs));
-      expect(ribbonHelix(wheel, geo, 1, 1)).toBe(wheel);
-      const nearly = ribbonHelix(wheel, geo, 1, 1 - 1e-9);
+      expect(ribbonHelix(wheel, geo, PILE, 1)).toBe(wheel);
+      const nearly = ribbonHelix(wheel, geo, PILE, 1 - 1e-9);
       expect(nearly.angStep).toBeCloseTo(wheel.angStep, 6);
       expect(nearly.radius).toBeCloseTo(wheel.radius, 4);
       expect(nearly.cardWorld).toBeCloseTo(wheel.cardWorld, 6);
       expect(nearly.leanRad).toBeCloseTo(wheel.leanRad, 6);
       for (let k = 0; k < 3; k++) expect(nearly.center[k]).toBeCloseTo(wheel.center[k], 3);
-      const gathered = ribbonHelix(wheel, geo, 1, 0);
-      const open = ribbonHelix(wheel, geo, 0, 0);
+      const gathered = ribbonHelix(wheel, geo, PILE, 0);
+      const open = ribbonHelix(wheel, geo, OPEN, 0);
       expect(gathered.radius).toBeLessThan(open.radius);
       expect(gathered.cardWorld).toBe(open.cardWorld);
     }
@@ -606,7 +610,7 @@ describe("the ribbon (page 1's foot)", () => {
     let last: readonly number[] | null = null;
     let worst = 0;
     for (let k = 0; k <= 1.0001; k += 0.01) {
-      const frame = ribbonHelix(wheel, wideGeo, 1, Math.min(1, k));
+      const frame = ribbonHelix(wheel, wideGeo, PILE, Math.min(1, k));
       const front = coilPose(frame, 7, 0).position;
       if (last) worst = Math.max(worst, Math.hypot(front[0] - last[0], front[1] - last[1], front[2] - last[2]) / wideGeo.camera.worldPerPx);
       last = front;
@@ -638,8 +642,8 @@ describe("the ribbon (page 1's foot)", () => {
     expect(condenseProgress(entranceClock(Number.NEGATIVE_INFINITY))).toBe(0);
     expect(condenseProgress(entranceClock(-TL.condenseMs))).toBe(0);
     expect(condenseProgress(entranceClock(-TL.condenseMs / 2))).toBeCloseTo(1 - Math.pow(0.5, n), 9);
-    // The rush is faster than the old power2.out: over half the way in a third of the time.
-    expect(condenseProgress(entranceClock(-TL.condenseMs * (2 / 3)))).toBeGreaterThan(1 - Math.pow(1 - 1 / 3, 3));
+    // An ease out: front loaded, over half the way in the first third of the time.
+    expect(condenseProgress(entranceClock(-TL.condenseMs * (2 / 3)))).toBeGreaterThan(0.5);
     expect(condenseProgress(entranceClock(0))).toBe(1);
     expect(condenseProgress(entranceClock(T))).toBe(1);
     expect(curlProgress(entranceClock(-1))).toBe(0);
@@ -650,40 +654,78 @@ describe("the ribbon (page 1's foot)", () => {
     expect(TL.flattenStartMs).toBeGreaterThan(0);
   });
 
-  it("starts the condense from what the pointer's anticipation had already closed, with no step at the click, and holds it before", () => {
-    const g0 = 0.2;
-    const at = (ms: number) => condenseProgress(entranceClock(ms, COIL, { gather0: g0 }));
-    // Before the click the row is that share closed, and no more.
-    expect(at(Number.NEGATIVE_INFINITY)).toBeCloseTo(g0, 12);
-    expect(at(-TL.condenseMs)).toBeCloseTo(g0, 12);
+  it("is 0 until the click whatever the pointer's anticipation did: that is the hover's own share, which the rush starts from", () => {
+    const at = (ms: number) => condenseProgress(entranceClock(ms, COIL, { gather0: 0.2 }));
+    expect(at(Number.NEGATIVE_INFINITY)).toBe(0);
+    expect(at(-TL.condenseMs)).toBe(0);
     expect(at(0)).toBe(1);
-    // Monotone from there to a closed row.
-    let last = g0;
+    // The pile's pitch is reached from the hover's pitch with no step at the click, and never goes back.
+    const hover = { hover: 0.2, rush: 0 };
+    const wheel = restHelix(wideGeo);
+    const before = ribbonHelix(wheel, wideGeo, hover, 0);
+    const atClick = ribbonHelix(wheel, wideGeo, { hover: 0.2, rush: at(-TL.condenseMs) }, 0);
+    expect(atClick.radius).toBe(before.radius);
+    let last = Number.POSITIVE_INFINITY;
     for (let ms = -TL.condenseMs; ms <= 0; ms += 5) {
-      const now = at(ms);
-      expect(now).toBeGreaterThanOrEqual(last - 1e-12);
-      last = now;
+      const radius = ribbonHelix(wheel, wideGeo, { hover: 0.2, rush: at(ms) }, 0).radius;
+      expect(radius).toBeLessThanOrEqual(last + 1e-9);
+      last = radius;
     }
     // With none it is the plain rush.
     expect(condenseProgress(entranceClock(-TL.condenseMs / 2))).toBeCloseTo(1 - Math.pow(0.5, TL.condensePower), 9);
   });
 
+  it("gathers into a tight pile, far tighter than the hover's tightening and than the ring, that overlaps the cards", () => {
+    for (const geo of [wideGeo, phoneGeo]) {
+      const wheel = restHelix(geo);
+      const piled = ribbonHelix(wheel, geo, PILE, 0);
+      const pitch = ribbonGatherPitch(geo);
+      expect(pitch).toBeCloseTo(COIL.deal.ribbon.gatherPitch, 12);
+      expect(pitch).toBeLessThan(ribbonHoverPitch(geo) / 3);
+      expect(pitch).toBeLessThan(COIL.cardAspect / 3);
+      // Adjacent cards of the pile are `pitch` card heights apart across the row.
+      const a = poseAt(piled, 0).position;
+      const b = poseAt(piled, 1).position;
+      expect(Math.hypot(b[0] - a[0], b[1] - a[1]) / piled.cardWorld).toBeCloseTo(pitch, 3);
+      // A pile's row is far shorter than the canvas, the cluster of fourteen no wider than the canvas's third.
+      expect(geo.cardCount * pitch * geo.ribbon.cardPx).toBeLessThan(geo.canvas.width * 0.7);
+    }
+    expect(gatherShare({ hover: 0.5, rush: 0.5 })).toBeCloseTo(0.75, 12);
+    expect(gatherShare({ hover: 0, rush: 1 })).toBe(1);
+  });
+
+  it("stacks the pile in the strand's order by a hair of depth, in step with the rush, and nothing before the click or once curled", () => {
+    const frame = ribbonHelix(restHelix(wideGeo), wideGeo, PILE, 0);
+    const pose = (u: number) => coilPose(frame, u, 0);
+    const lone = (u: number, clock: ReturnType<typeof entranceClock>) => entrancePose(pose(u), { cardCount: 14 }, clock);
+    const clickClock = entranceClock(-TL.condenseMs / 4);
+    const front = lone(3, clickClock);
+    const back = lone(-3, clickClock);
+    expect(front.position[2]).toBeGreaterThan(back.position[2]);
+    expect(front.position[2] - back.position[2]).toBeLessThan(0.1 * front.scale);
+    const before = lone(3, entranceClock(Number.NEGATIVE_INFINITY));
+    expect(before.position[2]).toBe(pose(3).position[2]);
+    const curled = lone(3, entranceClock(TL.curlMs));
+    expect(curled.position[2]).toBe(pose(3).position[2]);
+  });
+
   it("gathers the row toward the button: its anchor shifts across with the gaps closing, and is the ordinary row with no offset", () => {
     const wheel = restHelix(wideGeo);
-    const plain = ribbonHelix(wheel, wideGeo, 0.5, 0.2);
-    const toward = ribbonHelix(wheel, wideGeo, 0.5, 0.2, { dxPx: 100, dyPx: 0 });
+    const half = { hover: 0, rush: 0.5 };
+    const plain = ribbonHelix(wheel, wideGeo, half, 0.2);
+    const toward = ribbonHelix(wheel, wideGeo, half, 0.2, { dxPx: 100, dyPx: 0 });
     const perPx = wideGeo.camera.worldPerPx;
     expect(toward.center[0] - plain.center[0]).toBeCloseTo(0.5 * 0.8 * 100 * perPx, 9);
-    expect(ribbonHelix(wheel, wideGeo, 0.5, 0.2, { dxPx: 0, dyPx: 0 })).toEqual(plain);
+    expect(ribbonHelix(wheel, wideGeo, half, 0.2, { dxPx: 0, dyPx: 0 })).toEqual(plain);
     // Nothing shifts with the gaps open, and the frame is the wheel's exactly at curl 1.
-    expect(ribbonHelix(wheel, wideGeo, 0, 0, { dxPx: 100, dyPx: 0 }).center[0]).toBeCloseTo(ribbonHelix(wheel, wideGeo, 0, 0).center[0], 9);
-    expect(ribbonHelix(wheel, wideGeo, 1, 1, { dxPx: 100, dyPx: 0 })).toBe(wheel);
+    expect(ribbonHelix(wheel, wideGeo, OPEN, 0, { dxPx: 100, dyPx: 0 }).center[0]).toBeCloseTo(ribbonHelix(wheel, wideGeo, OPEN, 0).center[0], 9);
+    expect(ribbonHelix(wheel, wideGeo, PILE, 1, { dxPx: 100, dyPx: 0 })).toBe(wheel);
   });
 
   it("holds the row off its slot by pinKnee's offset while the stage rides the page", () => {
     const wheel = restHelix(wideGeo);
-    const plain = ribbonHelix(wheel, wideGeo, 0, 0);
-    const lifted = ribbonHelix(wheel, wideGeo, 0, 0, { dxPx: 0, dyPx: -40 });
+    const plain = ribbonHelix(wheel, wideGeo, OPEN, 0);
+    const lifted = ribbonHelix(wheel, wideGeo, OPEN, 0, { dxPx: 0, dyPx: -40 });
     expect(lifted.center[1] - plain.center[1]).toBeCloseTo(40 * wideGeo.camera.worldPerPx, 9);
   });
 

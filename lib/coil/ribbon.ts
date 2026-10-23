@@ -25,11 +25,23 @@ export function ribbonPitchUnits(geo: CoilGeometry): number {
   return COIL.cardAspect + geo.ribbon.gapPx / geo.ribbon.cardPx;
 }
 
-// The closest the gaps condense to: the ring's own pitch, or wider where the
-// canvas is so wide that the row's wrap, cardCount cards on, would show.
-export function ribbonCondensedPitch(geo: CoilGeometry): number {
+// The closest the gaps tighten to under the hover's anticipation: the ring's own
+// pitch, or wider where the canvas is so wide that the row's wrap, cardCount
+// cards on, would show. (The click's gather goes tighter than this: below.)
+export function ribbonHoverPitch(geo: CoilGeometry): number {
   const wrap = (geo.canvas.width + 2 * geo.ribbon.cardPx * COIL.cardAspect) / (geo.cardCount * geo.ribbon.cardPx);
   return Math.max(geo.step, wrap);
+}
+
+// The pile the click gathers the row into, in card heights between one card and
+// the next: a fraction of a card's width, so each card lies mostly over the one
+// before it, like a deck being squared up (slice 5; Aaron: "bunch tightly around
+// its center, overlapping"). The row is then much shorter than the canvas; its
+// two ends fade out (ringEndFade) so the strand's wrap is never seen, and the
+// cards keep their order by a hair of depth (entrancePose's stack), so the
+// overlap never flickers. Never wider than the row was.
+export function ribbonGatherPitch(geo: CoilGeometry, c: CoilConstants = COIL): number {
+  return Math.min(ribbonPitchUnits(geo), Math.max(0.02, c.deal.ribbon.gatherPitch));
 }
 
 // The strand's speed while the ribbon drifts, in cards per second: negative, the
@@ -43,8 +55,9 @@ export function ribbonCardsPerSecond(geo: CoilGeometry, c: CoilConstants = COIL,
   return (-r.speedPxPerS * faster) / Math.max(1, pitchPx);
 }
 
-// How much of the condense the hover has already done: the gaps tighten a little
-// toward the button, hoverTighten of the way to the closed row at full anticipation.
+// How much of the way to the hover's pitch the hover has already taken the
+// row: the gaps tighten a little toward the button, hoverTighten of the way at
+// full anticipation (the click's gather then starts from there).
 export function ribbonAnticipatedGather(anticipation: number, c: CoilConstants = COIL): number {
   return clamp01(anticipation) * c.deal.ribbon.hoverTighten;
 }
@@ -70,16 +83,37 @@ export function ribbonAnchor(geo: CoilGeometry): Vec3 {
 // it off its slot (up is negative).
 export type RowOffset = { dxPx: number; dyPx: number };
 
-// The ribbon's frame at `gather` (0 the row as it drifts, 1 its gaps closed and
-// the row gathered to the button) and `curl` (0 flat, 1 the wheel): `wheel` is
-// the frame the ring has at curl 1 (the wheel, or what it has become), and the
-// frame is exactly that at curl 1. The cards keep their size through the
-// gathering, then shrink to the wheel's as the row curls.
-export function ribbonHelix(wheel: HelixFrame, geo: CoilGeometry, gather: number, curl: number, offset: RowOffset = { dxPx: 0, dyPx: 0 }): HelixFrame {
+// How far the row has gathered: `hover` is the anticipation's share of the way to
+// the hover's pitch (0 to 1, what the pointer over the button did), `rush` the
+// click's progress to the tight pile (0 until the click).
+export type Gather = { hover: number; rush: number };
+
+// The share of the way to the button the row has taken, for its sideways travel:
+// the hover's, then the rush's on top of it.
+export function gatherShare({ hover, rush }: Gather): number {
+  const h = clamp01(hover);
+  return h + (1 - h) * clamp01(rush);
+}
+
+// The ribbon's frame at `gather` (the row as it drifts, then the pointer's
+// tightening, then the click's rush into a tight pile gathered to the button)
+// and `curl` (0 flat, 1 the wheel): `wheel` is the frame the ring has at curl 1
+// (the wheel, or what it has become), and the frame is exactly that at curl 1.
+// The cards keep their size through the gathering, then shrink to the wheel's
+// as the row curls.
+export function ribbonHelix(
+  wheel: HelixFrame,
+  geo: CoilGeometry,
+  gather: Gather,
+  curl: number,
+  offset: RowOffset = { dxPx: 0, dyPx: 0 },
+  c: CoilConstants = COIL,
+): HelixFrame {
   if (curl >= 1) return wheel;
-  const g = clamp01(gather);
+  const g = gatherShare(gather);
   const k = clamp01(curl);
-  const pitch = lerp(lerp(ribbonPitchUnits(geo), ribbonCondensedPitch(geo), g), geo.step, k);
+  const hovered = lerp(ribbonPitchUnits(geo), ribbonHoverPitch(geo), clamp01(gather.hover));
+  const pitch = lerp(lerp(hovered, ribbonGatherPitch(geo, c), clamp01(gather.rush)), geo.step, k);
   const angStep = Math.max(1e-5, wheel.angStep * k);
   const radius = pitch / angStep;
   const leanRad = lerp(0, wheel.leanRad, k);

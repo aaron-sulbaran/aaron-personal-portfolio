@@ -8,6 +8,7 @@ import { claimDealMirror, dealTrigger, dispatchDeal, getDeal, subscribeDeal, typ
 import { setDealStarter } from "@/lib/home/dealFlow";
 import { entranceTuningOf, getKnobs } from "@/lib/home/dealKnobs";
 import { createDealMaster, type DealMaster } from "@/lib/home/dealMaster";
+import { finishIntroArrival } from "@/lib/home/introArrivalEnd";
 import { clearOpen, openParts, prepareOpen, type OpenParts } from "@/lib/home/dealOpen";
 import { stageGone, stickyProgress } from "@/lib/home/stickyRange";
 
@@ -132,6 +133,8 @@ export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance 
         return false;
       }
       const knobs = getKnobs();
+      // Page 1's words are all there before the page starts to move.
+      finishIntroArrival();
       // No scene will draw (the still path): the stage cross-fades. Otherwise
       // the Coil's own clock runs the deal, a scene still on its way included
       // (it starts at its first frame).

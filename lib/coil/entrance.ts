@@ -168,16 +168,15 @@ export function windOnset(x: number, ramp: number) {
   return eased / (1 - k / 2);
 }
 
-// The row's gaps closing and the row gathering toward the button: the rush, an
-// ease out of power condensePower (a power of 3 is GSAP's power2.out) over
-// condenseMs, which ends where the clock is 0. It starts from gather0, the share
-// the pointer's anticipation had already closed when the click came, so the click
-// is no step; before the click it is that share alone.
+// The click's rush: the row's gaps closing into a tight pile gathered toward the
+// button, an ease out of power condensePower over condenseMs, which ends where the
+// clock is 0. It is 0 before the click and 1 once the clock has run past it. (The
+// pointer's anticipation before the click is clock.gather0, a share of the way to
+// the hover's pitch the rush then starts from; lib/coil/ribbon.ts Gather.)
 export function condenseProgress(clock: EntranceClock, c: CoilConstants = clock.c ?? COIL) {
   const { condenseMs, condensePower } = c.deal.timeline;
   if (isRested(clock) || condenseMs <= 0) return 1;
-  const rush = 1 - Math.pow(1 - seg(elapsedMs(clock) + condenseMs, 0, condenseMs), Math.max(1, condensePower));
-  return clock.gather0 + (1 - clock.gather0) * rush;
+  return 1 - Math.pow(1 - seg(elapsedMs(clock) + condenseMs, 0, condenseMs), Math.max(1, condensePower));
 }
 
 // The row curling into the wheel: a smoothstep over curlMs from the clock's 0 (its
@@ -262,7 +261,7 @@ export function entranceHelix(rest: HelixFrame, geo: CoilGeometry, clock: Entran
   if (isRested(clock)) return rest;
   const band = pullHelix(rest, geo, pullProgress(clock, c), c);
   const wheel = wheelHelix(band, geo, flattenProgress(clock, c), c, clock.dyPx);
-  return ribbonHelix(wheel, geo, condenseProgress(clock, c), curlProgress(clock, c), { dxPx: clock.gatherDxPx, dyPx: clock.dyPx });
+  return ribbonHelix(wheel, geo, { hover: clock.gather0, rush: condenseProgress(clock, c) }, curlProgress(clock, c), { dxPx: clock.gatherDxPx, dyPx: clock.dyPx }, c);
 }
 
 // The copies outside the one band wait hidden and fade in late in the pull.
@@ -317,8 +316,19 @@ export function entrancePose<P extends CardPose>(
   const shown = ring ? 1 : outOfBandAlpha(pullProgress(clock, c));
   const curl = curlProgress(clock, c);
   const edge = curl >= 1 || !card.edge ? 1 : lerp(ribbonEdgeAlphaWorld(pose.position[0], card.edge), 1, curl);
-  return { ...pose, alpha: pose.alpha * shown * edge * ringEndFade(pose.u - clock.drift, card.cardCount, curl) };
+  const alpha = pose.alpha * shown * edge * ringEndFade(pose.u - clock.drift, card.cardCount, curl);
+  // The pile the click gathers: cards that overlap lie in the strand's order, one
+  // a hair nearer than the one before (a flat row's cards are coplanar, and
+  // coplanar overlap flickers), in step with the rush and gone as the row curls.
+  const stack = (1 - curl) * condenseProgress(clock, c) * STACK_STEP * pose.u * pose.scale;
+  if (stack === 0) return { ...pose, alpha };
+  return { ...pose, alpha, position: [pose.position[0], pose.position[1], pose.position[2] + stack] };
 }
+
+// A hair of depth between one card of the gathered pile and the next, in card
+// heights per strand position: at most a few tenths of a percent of the row's
+// perspective, and far more than the depth buffer's resolution.
+const STACK_STEP = 0.004;
 
 // ---------------------------------------------------------------- the field
 
