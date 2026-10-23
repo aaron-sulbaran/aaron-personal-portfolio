@@ -40,6 +40,7 @@ type NameLockup = {
   height: number;
   pad: number;
   nameInkWidth: number;
+  inkBearing: number; // how far the name's ink reaches left of its pen start (negative: right of it)
   ascent: number; // the name's
   descent: number;
   greetBlock: number; // the greeting's band above the name's own mask
@@ -97,6 +98,7 @@ function paintNameLockup(greeting: string, name: string, family: string, sizePx:
     height,
     pad,
     nameInkWidth,
+    inkBearing: nm.actualBoundingBoxLeft,
     ascent: nm.actualBoundingBoxAscent,
     descent: nm.actualBoundingBoxDescent,
     greetBlock,
@@ -194,11 +196,19 @@ export function createName(
     if (!st.geo) return;
     const { width: W, height: H } = view;
     const narrow = isNarrow(view);
-    const probe = document.createElement("canvas").getContext("2d");
-    if (!probe) return;
-    probe.font = `900 100px ${st.nameFamily}`;
-    const w100 = probe.measureText(siteContent.hero.name).width || 1;
-    const size = ((W * (narrow ? COIL.lockup.widthNarrow : COIL.lockup.widthWide)) / w100) * 100;
+    // The page's own lockup says where the name goes and how big (slice 4c,
+    // scene/firstScreen.ts): its pen start, baseline and font size; a page
+    // without one has it centered, as the hero's name always was.
+    const placed = st.first.name;
+    let size: number;
+    if (placed) size = placed.size;
+    else {
+      const probe = document.createElement("canvas").getContext("2d");
+      if (!probe) return;
+      probe.font = `900 100px ${st.nameFamily}`;
+      const w100 = probe.measureText(siteContent.hero.name).width || 1;
+      size = ((W * (narrow ? COIL.lockup.widthNarrow : COIL.lockup.widthWide)) / w100) * 100;
+    }
     // ---- fx-hero: "Hi, I'm" drawn with the name, one mask ----
     const scale = Math.min(2, window.devicePixelRatio || 1);
     const mask = paintNameLockup(siteContent.hero.greeting, siteContent.hero.name, st.nameFamily, size, scale);
@@ -210,8 +220,8 @@ export function createName(
     texture.anisotropy = 4;
     nameTexture = texture;
     const inkWidth = mask.nameInkWidth;
-    const capTop = H / 2 - mask.ascent / 2;
-    const left = (W - inkWidth) / 2;
+    const capTop = placed ? placed.baseline - mask.ascent : H / 2 - mask.ascent / 2;
+    const left = placed ? placed.left - mask.inkBearing : (W - inkWidth) / 2;
     const span = mask.ascent + mask.descent + 2 * mask.pad;
     cu.uName.value = texture;
     cu.uNameRect.value.set(left - mask.pad, capTop - mask.pad - mask.greetBlock, mask.width, mask.height);
@@ -248,6 +258,12 @@ export function createName(
     const greetingPx = narrow ? 16 : Math.min(21, Math.max(16, W * 0.0125));
     live.current.overlay.current?.layout(posterMode ? null : { controlPx: Math.round(greetingPx * 0.86) });
     // ---- end fx-hero ----
+  }
+
+  // The name's middle in the canvas (CSS px): where the field's opening grows
+  // from. Null before the first layout.
+  function origin() {
+    return nameBox ? { x: nameBox.left + nameBox.inkWidth / 2, y: nameBox.maskTop + nameBox.maskHeight / 2 } : null;
   }
 
   // Part of the entrance step: the name's and the greeting's fades, and the
@@ -377,6 +393,7 @@ export function createName(
     nameRect,
     landName,
     greetBlock: () => greetBlock,
+    origin,
     landed: () => nameLanded,
     // QA: the mask, its rect and its letters (the per-letter readout).
     lockup: () => lockup,

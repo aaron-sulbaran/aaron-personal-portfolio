@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { COIL } from "@/lib/coil/constants";
-import { dealOffsetAt, dealOmega, dealSpeedOf, integrateDealSpeed, peakFor, power2InOut, power2Out, sceneMs, smoothstep, type DealSpeed } from "@/lib/coil/dealSpeed";
+import { dealMs, dealOffsetAt, dealOmega, dealSpeedOf, integrateDealSpeed, peakFor, power2InOut, power2Out, sceneMs, smoothstep, type DealSpeed } from "@/lib/coil/dealSpeed";
 
 const T = COIL.deal.timeline;
 const TOTAL = sceneMs();
 const IDLE = COIL.idleCardsPerSecond;
-const WHEEL = COIL.deal.wheel.idleCardsPerSecond;
+// Any pace the strand has at the click (the curve's shape does not depend on it).
+const WHEEL = 0.5;
+// The ribbon's own pace: negative, the row drifts left.
+const RIBBON = -0.13;
 
 // The integral of the speed by hand: the closed form the table must match.
 function closedForm(ms: number, p: DealSpeed) {
@@ -34,10 +37,17 @@ describe("the deal's easings", () => {
   });
 });
 
+describe("the deal's clocks", () => {
+  it("runs the scene's clock until the pull has landed, the field is open and the name has dissolved, and the whole deal the condense longer", () => {
+    expect(TOTAL).toBe(Math.max(T.pullStartMs + T.pullMs, T.openStartMs + COIL.deal.open.ms, T.nameOutStartMs + T.nameOutMs));
+    expect(dealMs()).toBe(T.condenseMs + TOTAL);
+  });
+});
+
 describe("the deal's speed", () => {
   const p = dealSpeedOf(WHEEL);
 
-  it("starts at the wheel's pace, peaks, and ends at exactly the idle pace", () => {
+  it("starts at the strand's pace, peaks, and ends at exactly the idle pace", () => {
     expect(dealOmega(0, p)).toBeCloseTo(WHEEL, 12);
     expect(dealOmega(T.upMs, p)).toBeCloseTo(T.peakCardsPerSecond, 10);
     expect(dealOmega((T.upMs + T.slowStartMs) / 2, p)).toBeCloseTo(T.peakCardsPerSecond, 10);
@@ -45,8 +55,8 @@ describe("the deal's speed", () => {
     expect(dealOmega(TOTAL, p)).toBeCloseTo(IDLE, 10);
   });
 
-  it("starts from whatever pace the wheel has at the click, with no step", () => {
-    for (const start of [0.5, 3, 11]) {
+  it("starts from whatever pace the strand has at the click, with no step, the ribbon's leftward drift included", () => {
+    for (const start of [RIBBON, 0.5, 3, 11]) {
       const q = dealSpeedOf(start);
       expect(dealOmega(0, q)).toBeCloseTo(start, 12);
       expect(dealOmega(TOTAL, q)).toBeCloseTo(IDLE, 10);
@@ -73,6 +83,26 @@ describe("the deal's speed", () => {
       expect(Math.abs(after), `slope after ${join}`).toBeLessThan(0.1);
       expect(Math.abs(after - before)).toBeLessThan(0.1);
     }
+  });
+
+  it("reverses once, at once, from the ribbon's leftward drift: slow, then every millisecond forward", () => {
+    const q = dealSpeedOf(RIBBON);
+    const table = integrateDealSpeed(q, TOTAL);
+    expect(dealOmega(0, q)).toBeCloseTo(RIBBON, 12);
+    let turnedAt = -1;
+    for (let ms = 1; ms <= TOTAL; ms++) {
+      if (table[ms] > table[ms - 1]) {
+        turnedAt = ms;
+        break;
+      }
+    }
+    // The spin-up is steep at its start, so the strand has reversed within a few frames.
+    expect(turnedAt).toBeGreaterThan(0);
+    expect(turnedAt).toBeLessThan(80);
+    for (let ms = turnedAt; ms <= TOTAL; ms++) expect(table[ms]).toBeGreaterThan(table[ms - 1]);
+    // The most it ever goes back is a hair of a card.
+    expect(Math.min(...table)).toBeGreaterThan(-0.01);
+    expect(dealOmega(TOTAL, q)).toBeCloseTo(IDLE, 10);
   });
 
   it("never dwells at zero: the strand moves at least the idle pace over every 40 ms", () => {

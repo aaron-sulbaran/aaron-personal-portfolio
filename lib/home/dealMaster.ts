@@ -1,6 +1,6 @@
 "use client";
 
-import { sceneMs } from "@/lib/coil/dealSpeed";
+import { dealMs } from "@/lib/coil/dealSpeed";
 import { tunedConstants } from "@/lib/coil/entrance";
 import { entranceTuningOf, type DealKnobs } from "@/lib/home/dealKnobs";
 import { addOpen, clearOpen, type OpenMode, type OpenParts } from "@/lib/home/dealOpen";
@@ -14,7 +14,7 @@ import { gsap } from "@/lib/gsap";
 // pure functions of it: the same ms always draws the same frame, and the scene
 // and the DOM can never drift apart. Its other children, in the spec's table
 // (docs/superpowers/specs/2026-10-22-wheel-deal-motion.md section 2): the
-// teaser's text out, the page's own scroll to the cards section (a child at
+// first screen's text out, the page's own scroll to the cards section (a child at
 // the label "scroll", which the reader's wheel, touch or key kills alone,
 // never the deal), and the columns. The proxy runs the full length on purpose:
 // when autoKill removes the scroll child it would otherwise shorten the
@@ -55,9 +55,9 @@ export function createDealMaster({ parts, mode, knobs, scroll, onDone }: Args): 
   };
   addOpen(master, parts, mode, knobs);
   if (top !== null && Math.abs(top - window.scrollY) > 1) {
-    scrollChild = addDealScroll(master, top, knobs.scrollStartMs, knobs.scrollMs);
+    scrollChild = addDealScroll(master, top, knobs.condenseMs + knobs.scrollStartMs, knobs.scrollMs);
   }
-  const totalMs = Math.ceil(Math.max(master.duration() * 1000, sceneMs(tunedConstants(entranceTuningOf(knobs)))));
+  const totalMs = Math.ceil(Math.max(master.duration() * 1000, dealMs(tunedConstants(entranceTuningOf(knobs)))));
   const clock = { ms: 0 };
   master.to(clock, { ms: totalMs, duration: totalMs / 1000, ease: "none" }, 0);
   master.eventCallback("onComplete", end);

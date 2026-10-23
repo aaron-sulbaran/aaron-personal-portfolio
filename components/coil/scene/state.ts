@@ -2,6 +2,7 @@ import type { RefObject } from "react";
 import type { StrandCard } from "@/lib/content";
 import type { CaptureState } from "@/lib/coil/capture";
 import type { RenderBudget } from "@/lib/coil/drivers";
+import { FIELD } from "@/lib/coil/field.glsl";
 import type { FlightProbe } from "@/lib/coil/flightProbe";
 import type { EntranceClock, FieldMask } from "@/lib/coil/entrance";
 import type { Camera, CardPose, CoilGeometry, HelixFrame, Silhouette } from "@/lib/coil/geometry";
@@ -10,6 +11,7 @@ import type { CoilTheme } from "@/lib/coil/theme";
 import { createUnwind, type UnwindState } from "@/lib/coil/unwind";
 import { createCapture } from "@/lib/coil/capture";
 import type { DebugFlags, DebugStats } from "./debug";
+import { NO_FIRST_SCREEN, type FirstScreenBox } from "./firstScreen";
 import type { CoilSceneProps } from "./types";
 
 // What the scene's modules share. SceneCtx holds the handles that never
@@ -47,8 +49,16 @@ export type SceneState = {
   coast: { rest: number } | null;
   pressCaughtCoil: boolean; // this touch stopped a coast: it is a catch, not a tap
   rebuildAt: number | null; // when the last rebuild began
-  // The field's mask (radius 0: closed, the field and composite passes skipped).
+  // The field's opening (radius 0: the faded patch behind the paragraphs stays
+  // faded; the field itself is always drawn).
   open: FieldMask;
+  // Where the page's first screen put the name, the ribbon and the text
+  // blocks, as of the last layout (scene/firstScreen.ts).
+  first: FirstScreenBox;
+  // How tall the canvas's bottom seam is now, as a share of its height: the
+  // field and the cards fade into the page there (the entrance step writes it:
+  // none while the stage is stuck at the top of the screen, whole once it lets go).
+  seam: number;
   // ---- the loop ----
   lastFieldTime: number;
   lastTime: number;
@@ -129,6 +139,8 @@ export function createSceneState(theme: CoilTheme, budget: RenderBudget, conveyo
     pressCaughtCoil: false,
     rebuildAt: null,
     open: { cx: 0, cy: 0, radius: 0, feather: 0 },
+    first: NO_FIRST_SCREEN,
+    seam: FIELD.seamFade,
     lastFieldTime: Number.NaN,
     lastTime: performance.now(),
     raf: 0,

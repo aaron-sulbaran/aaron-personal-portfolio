@@ -1,6 +1,5 @@
 import { COIL } from "@/lib/coil/constants";
-import { NAME_POSITIONS, type NamePosition } from "@/lib/home/nameFlip";
-import { PHONE_LAYOUTS, WAVE_PLACEMENTS, type PhoneLayout, type WavePlacement } from "@/lib/home/storyLayout";
+import { FIELD_UNDER_TEXT, PHONE_BLOCK2, TOP_LAYOUTS, type FieldUnderText, type PhoneBlock2, type TopLayout } from "@/lib/home/storyLayout";
 
 // Page 1's lab knobs: one flat record, its ranges, the clamp every value passes
 // through, and a tiny store the dev-only hero lab (/lab/hero) writes and the
@@ -14,63 +13,63 @@ export const SHRINK_EASES = ["site", "power2.inOut", "power3.inOut", "expo.inOut
 export type ShrinkEase = (typeof SHRINK_EASES)[number];
 
 export type IntroKnobs = {
-  namePosition: NamePosition; // where the loader's name lands: center, top, topLeft
   loaderOn: boolean;
   loaderMs: number; // the fill's shortest run
-  shrinkMs: number; // the name's shrink into the heading
+  shrinkMs: number; // the name's shrink onto its place
   shrinkEase: ShrinkEase;
-  fieldSize: number; // the field behind the name, scaling both radii
-  fieldOffsetX: number; // shares of the heading's width
-  fieldOffsetY: number; // shares of the heading's height
-  orangeAmount: number; // the burnt orange lobe's strength, of its old share (name field and cards field)
+  nameVwDesktop: number; // the name's font size, share of the viewport's width, on a desktop
+  nameVwPhone: number; // and on a phone
+  topLayout: TopLayout; // a desktop's top of the screen: the name beside the blocks, or above them
+  phoneBlock2: PhoneBlock2; // a phone's first screen holds block 2, or it waits in the about section
+  bandDesktopPx: number; // the soundtrack band's height on the first screen
+  bandPhonePx: number;
+  fieldUnderText: FieldUnderText; // the field faded away behind the blocks, or left full
+  orangeAmount: number; // the burnt orange lobe's strength, of its old share (first screen and cards field)
   staggerOffset: number; // how far across a right block sits, of the free width
   staggerGapRem: number; // the room between blocks on a desktop
-  wavePlacement: WavePlacement; // the band after block 1, 2 or 3
-  phoneLayout: PhoneLayout;
 };
 
-// The knobs that are a plain number on a slider (the band's place is a choice of 1, 2 or 3).
-export type NumericIntroKnob = Exclude<
-  {
-    [K in keyof IntroKnobs]: IntroKnobs[K] extends number ? K : never;
-  }[keyof IntroKnobs],
-  "wavePlacement"
->;
+// The knobs that are a plain number on a slider.
+export type NumericIntroKnob = {
+  [K in keyof IntroKnobs]: IntroKnobs[K] extends number ? K : never;
+}[keyof IntroKnobs];
 
 export type NumericSpec = { label: string; group: string; min: number; max: number; step: number; unit?: string };
 
 export const INTRO_KNOB_SPEC: Record<NumericIntroKnob, NumericSpec> = {
   loaderMs: { label: "Loader fill, shortest run", group: "Loader", min: 200, max: 2500, step: 50, unit: "ms" },
   shrinkMs: { label: "Shrink duration", group: "Loader", min: 200, max: 2000, step: 50, unit: "ms" },
-  fieldSize: { label: "Field size", group: "Field", min: 0.3, max: 2, step: 0.05 },
-  fieldOffsetX: { label: "Field offset X", group: "Field", min: -0.6, max: 0.6, step: 0.02 },
-  fieldOffsetY: { label: "Field offset Y", group: "Field", min: -0.6, max: 0.6, step: 0.02 },
+  nameVwDesktop: { label: "Name size, desktop", group: "Name", min: 4, max: 24, step: 0.5, unit: "vw" },
+  nameVwPhone: { label: "Name size, phone", group: "Name", min: 8, max: 40, step: 0.5, unit: "vw" },
+  bandDesktopPx: { label: "Wave height, desktop", group: "Wave", min: 80, max: 340, step: 4, unit: "px" },
+  bandPhonePx: { label: "Wave height, phone", group: "Wave", min: 60, max: 260, step: 4, unit: "px" },
   orangeAmount: { label: "Orange amount", group: "Field", min: 0, max: 1, step: 0.02 },
   staggerOffset: { label: "Stagger offset", group: "Paragraphs", min: 0, max: 1, step: 0.02 },
-  staggerGapRem: { label: "Gap between blocks", group: "Paragraphs", min: 1, max: 14, step: 0.5, unit: "rem" },
+  staggerGapRem: { label: "Gap between blocks", group: "Paragraphs", min: 0.5, max: 14, step: 0.5, unit: "rem" },
 };
 
 export const CHOICE_SPEC = {
-  namePosition: { label: "Name position", group: "Loader", options: NAME_POSITIONS },
   shrinkEase: { label: "Shrink ease", group: "Loader", options: SHRINK_EASES },
-  wavePlacement: { label: "Wave after block", group: "Paragraphs", options: WAVE_PLACEMENTS },
-  phoneLayout: { label: "Phone layout", group: "Phone", options: PHONE_LAYOUTS },
+  topLayout: { label: "Top layout (desktop)", group: "Name", options: TOP_LAYOUTS },
+  phoneBlock2: { label: "Phone: block 2 on the first screen or in the about section", group: "Phone", options: PHONE_BLOCK2 },
+  fieldUnderText: { label: "Field under the paragraphs", group: "Field", options: FIELD_UNDER_TEXT },
 } as const;
 
 export const DEFAULT_INTRO_KNOBS: IntroKnobs = {
-  namePosition: I.namePosition,
   loaderOn: I.loader.on,
   loaderMs: I.loader.fillMs,
   shrinkMs: I.shrink.ms,
   shrinkEase: I.shrink.ease,
-  fieldSize: I.field.size,
-  fieldOffsetX: I.field.offsetX,
-  fieldOffsetY: I.field.offsetY,
+  nameVwDesktop: I.name.vwDesktop,
+  nameVwPhone: I.name.vwPhone,
+  topLayout: I.topLayout,
+  phoneBlock2: I.phoneBlock2,
+  bandDesktopPx: I.band.desktopPx,
+  bandPhonePx: I.band.phonePx,
+  fieldUnderText: I.fieldUnderText,
   orangeAmount: I.orangeAmount,
   staggerOffset: I.stagger.offset,
   staggerGapRem: I.stagger.gapRem,
-  wavePlacement: I.wavePlacement,
-  phoneLayout: I.phoneLayout,
 };
 
 const NUMERIC = Object.keys(INTRO_KNOB_SPEC) as NumericIntroKnob[];
@@ -86,10 +85,10 @@ export function clampIntroKnobs(input: Partial<Record<string, unknown>>, base: I
     out[key] = typeof value === "number" && Number.isFinite(value) ? Math.min(spec.max, Math.max(spec.min, value)) : base[key];
   }
   out.loaderOn = typeof input.loaderOn === "boolean" ? input.loaderOn : base.loaderOn;
-  out.namePosition = pick(NAME_POSITIONS, input.namePosition, base.namePosition);
   out.shrinkEase = pick(SHRINK_EASES, input.shrinkEase, base.shrinkEase);
-  out.wavePlacement = pick(WAVE_PLACEMENTS, input.wavePlacement, base.wavePlacement);
-  out.phoneLayout = pick(PHONE_LAYOUTS, input.phoneLayout, base.phoneLayout);
+  out.topLayout = pick(TOP_LAYOUTS, input.topLayout, base.topLayout);
+  out.phoneBlock2 = pick(PHONE_BLOCK2, input.phoneBlock2, base.phoneBlock2);
+  out.fieldUnderText = pick(FIELD_UNDER_TEXT, input.fieldUnderText, base.fieldUnderText);
   return out;
 }
 

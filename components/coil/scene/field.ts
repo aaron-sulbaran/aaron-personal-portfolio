@@ -62,6 +62,10 @@ export function createField(ctx: SceneCtx, gl: Gl, init: CompositeInit) {
       uName: { value: null },
       uView,
       uOpen: { value: new Vector4(0, 0, 0, 1) },
+      uHush0: { value: new Vector4(0, 0, 0, 0) },
+      uHush1: { value: new Vector4(0, 0, 0, 0) },
+      uHushAmt: { value: 0 },
+      uHushFeather: { value: COIL.deal.open.hushFeatherPx },
       uNameRect: { value: new Vector4(0, 0, 1, 1) },
       uFull: { value: new Vector2(1, 1) },
       uPaper: { value: new Color() },
@@ -105,9 +109,6 @@ export function createField(ctx: SceneCtx, gl: Gl, init: CompositeInit) {
 
   let fieldElapsed = 0;
   let lastWeatherTime = Number.NaN; // fx-hero
-  // The deal opens the field mid-flight, so both programs are compiled while
-  // it is closed: one transparent warm-up frame, the first closed frame.
-  let warmUp: "field" | "composite" | null = "field";
 
   // The theme's field colors and the composite's paper and name gradient.
   function applyTheme() {
@@ -155,16 +156,6 @@ export function createField(ctx: SceneCtx, gl: Gl, init: CompositeInit) {
     fieldMaterial.uniforms.uSec.value = st.theme.field.secondStrength * getIntroKnobs().orangeAmount;
     renderer.setRenderTarget(null);
     renderer.clear();
-    // Closed (the deal has not opened the field): cards only, over the page.
-    if (st.open.radius <= 0) {
-      if (warmUp === "field") {
-        renderer.setRenderTarget(fieldTarget);
-        renderer.render(fieldScene, orthoCamera);
-        renderer.setRenderTarget(null);
-        warmUp = "composite";
-      }
-      return;
-    }
     if (clocks.orange !== st.lastFieldTime || clocks.weather !== lastWeatherTime) {
       renderer.setRenderTarget(fieldTarget);
       renderer.render(fieldScene, orthoCamera);
@@ -175,21 +166,18 @@ export function createField(ctx: SceneCtx, gl: Gl, init: CompositeInit) {
     // ---- end fx-hero ----
   }
 
-  // Render step: the field and the name, to the canvas, through the deal's
-  // mask (premultiplied; skipped while the field is closed).
+  // Render step: the field and the name, to the canvas (premultiplied: the
+  // page shows through the faded patches behind the paragraphs until the
+  // deal's opening lifts them).
   function composite() {
     const { cx, cy, radius, feather } = st.open;
-    if (radius <= 0) {
-      // The warm-up frame: a mask of radius 0 and feather 1 is nothing at all.
-      if (warmUp === "composite") {
-        warmUp = null;
-        compMaterial.uniforms.uOpen.value.set(0, 0, 0, 1);
-        renderer.render(compScene, orthoCamera);
-      }
-      return;
-    }
-    warmUp = null;
-    compMaterial.uniforms.uOpen.value.set(cx, cy, radius, feather);
+    const u = compMaterial.uniforms;
+    u.uOpen.value.set(cx, cy, radius, feather);
+    u.uSeam.value = st.seam;
+    const [a, b] = st.first.hush;
+    (u.uHush0.value as Vector4).set(a?.x0 ?? 0, a?.y0 ?? 0, a?.x1 ?? 0, a?.y1 ?? 0);
+    (u.uHush1.value as Vector4).set(b?.x0 ?? 0, b?.y0 ?? 0, b?.x1 ?? 0, b?.y1 ?? 0);
+    u.uHushAmt.value = getIntroKnobs().fieldUnderText === "full" ? 0 : 1;
     renderer.render(compScene, orthoCamera);
   }
 

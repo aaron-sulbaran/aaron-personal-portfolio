@@ -1,23 +1,32 @@
 import { DEAL_LAB_KEY } from "@/lib/home/introLabKey";
 import { clampKnobs, getKnobs, setKnobs, type DealKnobs, type NumericKnob } from "@/lib/home/dealKnobs";
 
-// What the deal's lab saves and shares: the knobs this page has (the wheel and
-// its spin, the scroll, the flatten, the lift, the field's opening, the
+// What the deal's lab saves and shares: the knobs this page has (the ribbon, the
+// condense and curl, the wheel and its spin, the scroll, the flatten, the lift, the field's opening, the
 // columns' arrival), the localStorage record they persist in, and how a page
 // picks it up. Shared by the Deal lab chip (components/home/DealLab.tsx) and
 // the hero lab (/lab/hero), whose frames read the same record.
 
 export const DEAL_LAB_KNOBS: readonly NumericKnob[] = [
+  "ribbonCardHeightPx",
+  "ribbonCardHeightPhonePx",
+  "ribbonGapPx",
+  "ribbonSpeedPxPerS",
+  "ribbonFadeWidthPx",
+  "ribbonOffsetYPx",
+  "condenseMs",
+  "curlMs",
+  "nameOutStartMs",
+  "nameOutMs",
+  "windRampMs",
   "peakCardsPerSecond",
   "coarsePeakCardsPerSecond",
   "upMs",
   "textOutMs",
-  "wheelIdleCardsPerSecond",
   "wheelLeanDeg",
   "wheelScale",
   "wheelOffsetX",
   "wheelOffsetY",
-  "wheelPinKneePx",
   "scrollStartMs",
   "scrollMs",
   "flattenStartMs",
@@ -34,7 +43,7 @@ export const DEAL_LAB_KNOBS: readonly NumericKnob[] = [
 ];
 
 // The panels' groups, in order.
-export const DEAL_LAB_GROUPS = ["Spin", "Wheel", "Scroll", "Flatten and slow", "Lift", "Field", "Columns"] as const;
+export const DEAL_LAB_GROUPS = ["Ribbon", "Condense and curl", "Spin", "Wheel", "Scroll", "Flatten and slow", "Lift", "Field", "Columns"] as const;
 
 export function dealLabValues(knobs: DealKnobs): Record<string, number> {
   return Object.fromEntries(DEAL_LAB_KNOBS.map((key) => [key, knobs[key]]));

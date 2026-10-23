@@ -127,6 +127,11 @@ export type CoilGeometry = {
   readonly canvas: Viewport;
   readonly wheelAnchor: Vec2;
   readonly wheelCardWorld: number;
+  // The first screen's ribbon (lib/coil/ribbon.ts): the row's center as a
+  // share of the canvas's height, its card height and the gap between cards
+  // in CSS px (the gap grows on a very wide canvas so the row's wrap, 14
+  // cards on, stays off screen), and the card size in world units.
+  readonly ribbon: { readonly anchorY: number; readonly cardPx: number; readonly gapPx: number; readonly cardWorld: number };
   readonly axisDir: Vec2; // the axis on screen, toward the top left (y down)
   readonly axisPerp: Vec2;
   // Narrow panes keep a band at the top free of cards (the header and the
@@ -153,10 +158,6 @@ export function clearTopFor(viewport: Viewport, c: CoilConstants = COIL) {
   return isNarrow(viewport, c) ? c.narrow.headerClearPx + c.narrow.introBandPx : 0;
 }
 
-// The teaser's slot for the wheel, in canvas px: the ring's center and its
-// diameter (the ring's width, edge to edge).
-export type WheelSlot = { readonly cx: number; readonly cy: number; readonly diameter: number };
-
 // How far the ring reaches past the cards' centers, in card heights: a card's
 // half thickness on its side and the lean's tilt.
 const WHEEL_RING_PAD = 0.3;
@@ -165,18 +166,27 @@ export type SolveOptions = {
   // The canvas the pane sits in (wider than the pane when columns flank it);
   // the wheel is placed on it. The pane itself when absent.
   canvas?: Viewport;
-  wheelSlot?: WheelSlot | null;
+  // Where the Coil's own region ends in a canvas taller than it (a phone's
+  // sticky stage covers the whole first screen, the Coil lives in its top
+  // part): the region's height in CSS px from the canvas's top. The canvas's
+  // height when absent. The camera stays the canvas's, so one world unit is the
+  // same px wherever the stage rests.
+  regionHeight?: number;
+  // The ribbon's center, CSS px from the canvas's top (the page's slot for it).
+  ribbonCy?: number | null;
 };
 
 export function solveGeometry(viewport: Viewport, cardCount: number, c: CoilConstants = COIL, options: SolveOptions = {}): CoilGeometry {
   const W = viewport.width;
-  const H = viewport.height;
+  const canvasH = viewport.height;
+  const H = Math.min(canvasH, Math.max(1, options.regionHeight ?? canvasH));
   const camera = cameraFor(viewport, c);
-  const narrow = isNarrow(viewport, c);
+  const region = { width: W, height: H };
+  const narrow = isNarrow(region, c);
   // On a narrow pane the diagonal relaxes toward vertical with fewer cards per turn.
   const axisDeg = narrow ? c.axisDeg * c.narrow.axisFactor : c.axisDeg;
   const strandFit = narrow ? c.narrow.strandFit : c.strandFit;
-  const clearTopPx = clearTopFor(viewport, c);
+  const clearTopPx = clearTopFor(region, c);
   // The region the coil spans: the pane under the clear band.
   const regionCenterY = clearTopPx + (H - clearTopPx) / 2;
   const cardsPerTurn = narrow ? Math.min(c.cardsPerTurn, c.narrow.maxCardsPerTurn) : c.cardsPerTurn;
@@ -255,13 +265,21 @@ export function solveGeometry(viewport: Viewport, cardCount: number, c: CoilCons
   const bandRadius = (cardCount * step) / TAU;
   const bandPx = Math.min(cardPx, (0.84 * perpChord) / (2 * bandRadius + 0.6));
 
-  // The wheel: the same ring, sized to the teaser's slot (or to a share of the
-  // canvas's height where the page has none), centered there.
+  // The wheel: the same ring, sized to a share of the canvas's height and
+  // centered at the constants' anchor (shares of the canvas).
   const canvas = options.canvas ?? viewport;
-  const slot = options.wheelSlot ?? null;
-  const wheelDiameter = slot ? slot.diameter : c.deal.wheel.diameterOfHeight * canvas.height;
-  const wheelAnchor = slot ? { x: slot.cx / canvas.width, y: slot.cy / canvas.height } : { x: c.deal.wheel.anchor[0], y: c.deal.wheel.anchor[1] };
+  const wheelDiameter = c.deal.wheel.diameterOfHeight * canvas.height;
+  const wheelAnchor = { x: c.deal.wheel.anchor[0], y: c.deal.wheel.anchor[1] };
   const wheelPx = wheelDiameter / (2 * bandRadius + WHEEL_RING_PAD);
+
+  // The ribbon: its card, and the gap that keeps the row's wrap (cardCount
+  // cards on) outside the canvas plus a card on each side.
+  const rb = c.deal.ribbon;
+  const ribbonCardPx = canvas.width < rb.phoneBelowPx ? rb.cardHeightPhonePx : rb.cardHeightPx;
+  const ribbonCardWidth = ribbonCardPx * c.cardAspect;
+  const ribbonGapPx = Math.max(rb.gapPx, (canvas.width + 2 * ribbonCardWidth) / cardCount - ribbonCardWidth);
+  const ribbonCy = options.ribbonCy ?? null;
+  const ribbonAnchorY = ribbonCy !== null ? (ribbonCy + rb.offsetYPx) / canvas.height : rb.anchorY;
 
   return {
     viewport,
@@ -287,10 +305,11 @@ export function solveGeometry(viewport: Viewport, cardCount: number, c: CoilCons
     canvas,
     wheelAnchor,
     wheelCardWorld: wheelPx * camera.worldPerPx,
+    ribbon: { anchorY: ribbonAnchorY, cardPx: ribbonCardPx, gapPx: ribbonGapPx, cardWorld: ribbonCardPx * camera.worldPerPx },
     axisDir,
     axisPerp,
     clearTopPx,
-    center: [0, -(clearTopPx / 2) * camera.worldPerPx, 0],
+    center: [0, (canvasH / 2 - regionCenterY) * camera.worldPerPx, 0],
   };
 }
 

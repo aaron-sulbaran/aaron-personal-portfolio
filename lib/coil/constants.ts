@@ -126,6 +126,22 @@ const values = {
     // opens (below) and the columns arrive last. The teaser's text leaves
     // first. Every number is a lab knob's default.
     timeline: {
+      // Slice 4c: the deal begins with the ribbon's own act, the gaps between
+      // the cards closing and the row gathering toward the middle (ease out),
+      // and every other time below counts from the end of it: the spin-up, the
+      // scroll, the flatten, the lift and the field's opening are as 4a
+      // timed them, condenseMs later on the click's clock. The curl (the row
+      // curling into the wheel) takes curlMs from the end of the condense, over
+      // the spin-up's first moments.
+      condenseMs: 600,
+      curlMs: 520,
+      // The name dissolves into the field (its letters give way) from
+      // nameOutStartMs over nameOutMs, across the spin-up.
+      nameOutStartMs: 0,
+      nameOutMs: 700,
+      // The pull's winding eases in over this long instead of starting at full
+      // rate (0 is the old kick at windStart); a time on the pull's own scale.
+      windRampMs: 0,
       peakCardsPerSecond: 12.5, // COIL.spinCapCardsPerSecond
       // A coarse pointer's top speed: a phone can drop to 30 Hz (Low Power
       // Mode), where 9 cards a second is 0.3 card a frame, the most the eye
@@ -141,86 +157,94 @@ const values = {
       slowMs: 1400,
       pullStartMs: 2150,
       pullMs: 756, // the old entrance's pull: 0.42 of 1800
-      openStartMs: 1600,
+      openStartMs: 0,
     },
-    // The wheel (the teaser's start state): the 14-card band ring seen from a
-    // little above, turning slowly face up (the spec guessed a lean of about 10
-    // degrees; that reads as a thin band, 18 and a ring 1.3 times the slot's
-    // width read as a wheel). It sits in the teaser's slot
-    // ([data-coil-wheel]) and takes its size from it; scale and the offsets
-    // (shares of the canvas) nudge it from there. Where the page has no slot
-    // it sits at `anchor` (shares of the canvas) at diameterOfHeight of the
-    // canvas's height. It slides in from the right, by slideFrom of the
-    // canvas's width, the first time it is in view.
+    // The ribbon (slice 4c, the home's first screen): the 14 cards in one flat
+    // row, face up, drifting left at speedPxPerS (a card rate once the row's
+    // pitch is known, so the same strand offset drives the ring, the band and
+    // the helix with no step in speed), under the paragraphs, its edges fading
+    // out over fadeWidthPx. The row sits at the slot ([data-coil-ribbon]) the
+    // page leaves for it, nudged by offsetYPx; where the page has no slot it
+    // sits at `anchorY` (a share of the canvas's height). The card's height
+    // is a knob for a desktop and for a phone-wide canvas (below
+    // phoneBelowPx), the gap between cards another.
+    ribbon: {
+      cardHeightPx: 150,
+      cardHeightPhonePx: 120,
+      phoneBelowPx: 640,
+      gapPx: 24,
+      speedPxPerS: 20,
+      fadeWidthPx: 120,
+      offsetYPx: 0,
+      anchorY: 0.62,
+    },
+    // The wheel (the ribbon's end state, before the flatten): the 14-card band
+    // ring seen from a little above, face up (the spec guessed a lean of about
+    // 10 degrees; that reads as a thin band, 18 and a ring 1.3 times the
+    // diameter below read as a wheel). It sits at `anchor` (shares of the
+    // canvas) at diameterOfHeight of the canvas's height; scale and the offsets
+    // (shares of the canvas) nudge it from there.
     wheel: {
-      idleCardsPerSecond: 0.5,
       leanDeg: -18,
       scale: 1.3,
       offsetX: 0,
       offsetY: 0,
-      slideMs: 700,
-      slideFrom: 0.3,
-      // The stage sticks at the top of the screen when the rail's top reaches
-      // it, and until then the wheel rides the page. Left alone it stops dead
-      // there, whatever the page's speed (1400 px/s measured on a click from far
-      // up). Over the last pinKneePx before it sticks the wheel slows on a cubic
-      // so its speed reaches zero as the stage sticks (entrance.ts pinKnee; it
-      // outruns the page by a third at most on the way); 0 turns it off.
-      pinKneePx: 400,
       anchor: [0.5, 0.5] as const,
       diameterOfHeight: 0.42,
     },
-    // The field opening around the Coil: an alpha mask in the composite, a
-    // circle anchored top center that grows from fromPx to reach (a share of
-    // the distance to the farthest corner) over ms. Its edge is feathered
+    // The field's opening (slice 4c: it lifts the faded patch behind the
+    // paragraphs, as the name dissolves into it): a circle anchored on the
+    // name that grows from fromPx to reach (a share of the distance to the
+    // farthest corner) over ms. hushFeatherPx: how softly the faded patches' edges give way. Its edge is feathered
     // featherPx wide at first and featherShare of that distance wide once the
     // circle is open (a crisp rim on a big disc reads as a halo, so the edge
     // widens with it), and falls off on a smoother curve than smoothstep
     // (lib/coil/field.glsl.ts). topFadePx: the stage's top edge fades in over
     // this many px, so the open field meets page 1's foot with no line, in the
     // scene and in the posters. fadeMs: the still path's crossfade.
-    open: { reach: 1, ms: 1500, fromPx: 36, featherPx: 28, featherShare: 0.3, topFadePx: 72, fadeMs: 600 },
-    // The two columns arrive last: group labels, then titles.
-    columns: { delayMs: 1150, staggerMs: 36, labelStaggerMs: 70, fadeMs: 520, riseY: 14 },
+    open: { reach: 1, ms: 1500, fromPx: 36, featherPx: 28, featherShare: 0.3, topFadePx: 72, fadeMs: 600, hushFeatherPx: 96 },
+    // The two columns arrive last: group labels, then titles; delayMs counts
+    // from the end of the condense (the scene clock's zero).
+    columns: { delayMs: 2750, staggerMs: 36, labelStaggerMs: 70, fadeMs: 520, riseY: 14 },
   },
 
-  // Page 1 (hero rework, slice 3; docs/superpowers/specs/2026-10-21-hero-rework-design.md):
-  // the loader that becomes the name, the field behind it, the staggered
-  // paragraphs, the wave through the middle and the phone's two arrangements.
-  // Every number here is a lab knob's default (lib/home/introKnobs.ts clamps
-  // them; /lab/hero, in dev only, overrides them at runtime). Aaron tunes them
-  // by hand.
+  // Page 1, the first screen (hero rework, slices 3 and 4c;
+  // docs/superpowers/specs/2026-10-21-hero-rework-design.md): the loader that
+  // becomes the name, the name drawn by the scene with the field inside its
+  // letters, blocks 1 and 2 of the story, the thin wave, the ribbon and the
+  // button on one screen. Every number here is a lab knob's default
+  // (lib/home/introKnobs.ts clamps them; /lab/hero, in dev only, overrides
+  // them at runtime). Aaron tunes them by hand.
   intro: {
-    // Where the loader's name lands: center (the stage's middle), top
-    // (centered across, under the logo row), topLeft (the content column's edge).
-    namePosition: "center" as "center" | "top" | "topLeft",
     // The loader: fillMs is the fill's shortest run (the real tally can only
     // slow it), holdMs the pause at full, numberAfterMs when the percent shows
     // for a load still running, giveUpMs the honest cap after which a stalled
     // asset counts as loaded. On a fast connection the page is done about
     // 140ms (the page's own script) past fillMs + holdMs + shrink.ms: 1.42 s.
     loader: { on: true, fillMs: 550, holdMs: 80, numberAfterMs: 600, giveUpMs: 4000 },
-    // The name's shrink into the heading: duration, and the ease (the site's, or a GSAP one).
+    // The name's shrink onto its place: duration, and the ease (the site's, or a GSAP one).
     shrink: { ms: 650, ease: "site" as "site" | "power2.inOut" | "power3.inOut" | "expo.inOut" },
-    // The heading's name size, as one clamp: rem, share of the viewport width, rem.
-    heading: { minRem: 4.75, vw: 24, maxRem: 13 },
-    // The field behind the name: size scales both radii, the offsets move the
-    // middle (shares of the heading's width and height), strength is the
-    // mask's peak; shares are the mask's radii as shares of the heading's width
-    // and height; frameAt is where in the hero field's frame (0 the bottom,
-    // where the blue mass rises, 1 the top, where the orange lobe sits) the
-    // stage's bottom edge samples.
-    field: { size: 1, offsetX: 0, offsetY: 0, strength: 1, shares: { rxOfWidth: 0.95, ryOfHeight: 1.4 }, frameAt: 0.22 },
-    // The burnt orange lobe's strength as a share of the old one, in the name's
-    // field and the cards section's (a little of it stays).
+    // The name's size, its font size as a share of the viewport's width on a
+    // desktop and on a phone, held between minRem and maxRem: how the stack
+    // is made to fit one screen.
+    name: { vwDesktop: 10, vwPhone: 12, minRem: 3, maxRem: 12 },
+    // A desktop's top of the screen: the name beside the blocks (left, with the
+    // two blocks staggered on its right) or above them.
+    topLayout: "beside" as "beside" | "above",
+    // A phone's first screen holds block 1; block 2 is there too, or waits in the about section.
+    phoneBlock2: "about" as "about" | "first",
+    // The soundtrack band's height on the first screen (the wave and its quiet
+    // line), on a desktop and on a phone.
+    band: { desktopPx: 100, phonePx: 88 },
+    // The field behind the paragraphs: faded away behind them (a shader field
+    // never sits behind body text), or left full.
+    fieldUnderText: "faded" as "faded" | "full",
+    // The burnt orange lobe's strength as a share of the old one, in the
+    // first screen's field and the cards section's (a little of it stays).
     orangeAmount: 0.4,
     // The paragraph blocks: a right block leans across this share of the free
     // width, and a desktop leaves gapRem between blocks.
-    stagger: { offset: 0.85, gapRem: 7 },
-    // The band after block 1, 2 or 3.
-    wavePlacement: 2 as 1 | 2 | 3,
-    // Phones only: every block stacked, or blocks 2 to 4 behind "More about me".
-    phoneLayout: "storyFirst" as "storyFirst" | "teaserPeeks",
+    stagger: { offset: 0.85, gapRem: 2 },
   },
 
   // Unwind egg and hover-jump.

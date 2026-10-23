@@ -1,5 +1,6 @@
 import { CanvasTexture, Color, Matrix4, Mesh, ShaderMaterial, Vector2, Vector3, type Texture } from "three";
-import { entrancePose, type EntranceClock } from "@/lib/coil/entrance";
+import { COIL } from "@/lib/coil/constants";
+import { curlProgress, entrancePose, type EntranceClock } from "@/lib/coil/entrance";
 import { FIELD } from "@/lib/coil/field.glsl";
 import { isConvex } from "@/lib/coil/flight";
 import {
@@ -18,6 +19,7 @@ import {
 } from "@/lib/coil/geometry";
 import { createCardGeometry, createCardMaterial, type CardUniforms, type SharedCardUniforms } from "@/lib/coil/material";
 import { stretchedDy } from "@/lib/coil/motion";
+import { ribbonEdge } from "@/lib/coil/ribbon";
 import { paintCard, type CardSource } from "@/lib/coil/textures";
 import { applyColor, createRepaintQueue } from "@/lib/coil/theme";
 import { unwindPose } from "@/lib/coil/unwind";
@@ -203,13 +205,15 @@ export function createCards(ctx: SceneCtx, gl: Gl) {
     const helix = f.helix as HelixFrame;
     const clock = f.clock as EntranceClock;
     const hoverStep = 1 - Math.exp(-f.dt * HOVER_RATE);
+    // The ribbon's faded edges, until the row has curled (lib/coil/ribbon.ts).
+    const edge = curlProgress(clock) < 1 ? ribbonEdge(geo, clock.c ?? COIL) : undefined;
     for (let j = 0; j < geo.slotCount; j++) {
       const slot = slots[j];
       let pose: CardPose = coilPose(helix, j, conveyor.offset);
       const strandPosition = Math.round(pose.u - conveyor.offset);
       const tile = mod(strandPosition, tileCount);
       bindTile(slot, tile);
-      pose = entrancePose(pose, { cardCount: tileCount }, clock);
+      pose = entrancePose(pose, { cardCount: tileCount, edge }, clock);
       if (listProgress > 0) pose = unwindPose(pose, tile, unwind, now, null);
       // ---- slice 7: the narrow pane's clear top band (header and greeting) ----
       if (geo.clearTopPx > 0 && listProgress < 1) {
@@ -252,6 +256,7 @@ export function createCards(ctx: SceneCtx, gl: Gl) {
 
   // Render step: the cards over the composite, on a fresh depth buffer.
   function draw() {
+    shared.uSeam.value = st.seam;
     renderer.clearDepth();
     renderer.render(cardScene, camera);
   }

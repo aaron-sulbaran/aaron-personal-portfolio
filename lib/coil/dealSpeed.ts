@@ -9,6 +9,8 @@ import { COIL, type CoilConstants } from "./constants";
 //
 // The speed in cards per second, from the click:
 //   omega(t) = omega0 + (peak - omega0) * up(t) - (peak - idle) * down(t)
+// where t counts from the end of the condense (the ribbon drifts at omega0, a
+// negative speed, until then: the row moves left)
 //   up   = power2.out over [0, upMs]            the spin-up, responding on the first frame
 //   down = smoothstep over [slowStart, slowEnd] the band slowing to the idle pace
 // Both ends of both ramps have zero slope, so omega is C1 across every phase
@@ -65,10 +67,16 @@ export function dealOmega(ms: number, p: DealSpeed): number {
   return p.startCardsPerSecond + (p.peakCardsPerSecond - p.startCardsPerSecond) * up - (p.peakCardsPerSecond - p.idleCardsPerSecond) * down;
 }
 
-// The scene's clock runs this long: the pull has landed and the field is open.
+// The scene's clock runs this long from its zero (the end of the condense): the
+// pull has landed, the field is open and the name has dissolved.
 export function sceneMs(c: CoilConstants = COIL): number {
   const t = c.deal.timeline;
-  return Math.max(t.pullStartMs + t.pullMs, t.openStartMs + c.deal.open.ms);
+  return Math.max(t.pullStartMs + t.pullMs, t.openStartMs + c.deal.open.ms, t.nameOutStartMs + t.nameOutMs);
+}
+
+// The whole deal from the click: the condense, then the scene's clock.
+export function dealMs(c: CoilConstants = COIL): number {
+  return c.deal.timeline.condenseMs + sceneMs(c);
 }
 
 // s(ms) - s(0) in cards at every whole millisecond up to `untilMs`, Simpson

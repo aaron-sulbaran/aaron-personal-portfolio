@@ -1,50 +1,68 @@
 import { COIL } from "@/lib/coil/constants";
 import { lockupVars } from "@/lib/home/lockup";
-import { BAND_ID, MORE_ID, blockId, staggerPlan, storyItems, type PhoneLayout, type WavePlacement } from "@/lib/home/storyLayout";
-import type { NamePosition } from "@/lib/home/nameFlip";
+import { staggerPlan, type PhoneBlock2, type TopLayout } from "@/lib/home/storyLayout";
 
-// Page 1's layout knobs as DOM: the attributes and custom properties the
-// section and its story items carry, from one pure function. The server
-// renders it with the defaults (so the first paint never waits on a knob), and
-// the dev-only lab bridge (components/home/IntroLabBridge.tsx) writes it again
-// when a knob moves; app/globals.css does the rest.
+// Page 1's layout knobs as DOM: the attributes and custom properties the first
+// screen, the about section and their blocks carry, from one pure function. The
+// server renders it with the defaults (so the first paint never waits on a
+// knob), and the dev-only lab bridge (components/home/IntroLabBridge.tsx)
+// writes it again when a knob moves; app/globals.css does the rest.
 
 export type DomProps = { attrs: Record<string, string>; vars: Record<string, string> };
 
 export type DomKnobs = {
-  namePosition: NamePosition;
-  phoneLayout: PhoneLayout;
-  wavePlacement: WavePlacement | number;
+  topLayout: TopLayout;
+  phoneBlock2: PhoneBlock2;
+  nameVwDesktop: number;
+  nameVwPhone: number;
+  bandDesktopPx: number;
+  bandPhonePx: number;
   staggerOffset: number;
   staggerGapRem: number;
+  // The ribbon's card height (the deal lab's knobs; the constants' when absent):
+  // the room the page leaves for it.
+  ribbonDesktopPx?: number;
+  ribbonPhonePx?: number;
 };
 
-// The name's font size, one clamp (COIL.intro.heading): the lockup's --lk.
-export function headingSizeCss(): string {
-  const { minRem, vw, maxRem } = COIL.intro.heading;
+// The name's font size on a desktop and on a phone: a share of the viewport's
+// width, held between COIL.intro.name's rem bounds. The lockup's --lk.
+export function nameSizeCss(vw: number): string {
+  const { minRem, maxRem } = COIL.intro.name;
   return `clamp(${minRem}rem, ${vw}vw, ${maxRem}rem)`;
 }
 
-export function introDomPlan(knobs: DomKnobs, blocks: number): { section: DomProps; items: Record<string, DomProps> } {
-  const story = storyItems(blocks, { wavePlacement: knobs.wavePlacement, phoneLayout: knobs.phoneLayout });
-  const stagger = staggerPlan(blocks, knobs.staggerOffset);
-  const items: Record<string, DomProps> = {};
-  for (const item of story) {
-    const index = Number(item.id.replace("block-", ""));
-    const isBlock = item.id !== BAND_ID && item.id !== MORE_ID;
-    const step = isBlock ? stagger[index - 1] : undefined;
-    items[item.id] = {
-      attrs: { "data-collapsible": String(item.collapsible), ...(step ? { "data-side": step.side } : {}) },
-      vars: { "--o-d": String(item.order.desktop), "--o-p": String(item.order.phone), ...(step ? { "--shift": String(step.shift) } : {}) },
-    };
-  }
-  return {
-    section: {
-      attrs: { "data-name-position": knobs.namePosition, "data-phone-layout": knobs.phoneLayout, "data-wave-after": String(knobs.wavePlacement) },
-      vars: { ...lockupVars(), "--lk": headingSizeCss(), "--story-gap": `${knobs.staggerGapRem}rem` },
-    },
-    items,
-  };
+export type IntroDomPlan = {
+  firstScreen: DomProps;
+  about: DomProps;
+  // One entry per block of a section (by its position in the section), the stagger.
+  firstBlocks: DomProps[];
+  aboutBlocks: DomProps[];
+};
+
+function blockProps(side: "left" | "right", shift: number): DomProps {
+  return { attrs: { "data-side": side }, vars: { "--shift": String(shift) } };
 }
 
-export const blockIds = (blocks: number) => Array.from({ length: blocks }, (_, i) => blockId(i + 1));
+export function introDomPlan(knobs: DomKnobs): IntroDomPlan {
+  const stagger = staggerPlan(2, knobs.staggerOffset);
+  const shared = { "--story-gap": `${knobs.staggerGapRem}rem` };
+  return {
+    firstScreen: {
+      attrs: { "data-top-layout": knobs.topLayout, "data-phone-block2": knobs.phoneBlock2 },
+      vars: {
+        ...lockupVars(),
+        ...shared,
+        "--lk-d": nameSizeCss(knobs.nameVwDesktop),
+        "--lk-p": nameSizeCss(knobs.nameVwPhone),
+        "--band-d": `${knobs.bandDesktopPx}px`,
+        "--band-p": `${knobs.bandPhonePx}px`,
+        "--ribbon-d": `${knobs.ribbonDesktopPx ?? COIL.deal.ribbon.cardHeightPx}px`,
+        "--ribbon-p": `${knobs.ribbonPhonePx ?? COIL.deal.ribbon.cardHeightPhonePx}px`,
+      },
+    },
+    about: { attrs: { "data-phone-block2": knobs.phoneBlock2 }, vars: shared },
+    firstBlocks: stagger.map((step) => blockProps(step.side, step.shift)),
+    aboutBlocks: stagger.map((step) => blockProps(step.side, step.shift)),
+  };
+}

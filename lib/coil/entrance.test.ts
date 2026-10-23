@@ -8,8 +8,9 @@ import {
   entranceHelix,
   entranceNameAlpha,
   entrancePose,
+  condenseProgress,
+  curlProgress,
   fieldMask,
-  pinKnee,
   flattenProgress,
   inRing,
   isBeforeEntrance,
@@ -26,9 +27,11 @@ import {
   tunedConstants,
   wheelHelix,
   wheelPlacement,
-  wheelSlideProgress,
+  windOnset,
+  windRamp,
 } from "@/lib/coil/entrance";
-import { coilPose, mod, restHelix, solveGeometry, type Basis, type CoilGeometry, type HelixFrame } from "@/lib/coil/geometry";
+import { ribbonAnchor, ribbonCardsPerSecond, ribbonCondensedPitch, ribbonEdge, ribbonEdgeAlpha, ribbonEdgeAlphaWorld, ribbonHelix, ribbonPitchUnits } from "@/lib/coil/ribbon";
+import { coilPose, mod, poseAt, restHelix, solveGeometry, type Basis, type CoilGeometry, type HelixFrame } from "@/lib/coil/geometry";
 
 const TAU = Math.PI * 2;
 const DEG = Math.PI / 180;
@@ -46,8 +49,8 @@ const cases: [string, CoilGeometry][] = [
 ];
 
 // Every card of the entrance at a conveyor offset, as the scene poses them.
-function slotsOf(geo: CoilGeometry, frame: HelixFrame, ms: number, offset = 0, wheelIn = 1, drift = 0) {
-  const clock = entranceClock(ms, COIL, wheelIn, drift);
+function slotsOf(geo: CoilGeometry, frame: HelixFrame, ms: number, offset = 0, drift = 0) {
+  const clock = entranceClock(ms, COIL, drift);
   return Array.from({ length: geo.slotCount }, (_, j) => {
     const pose = coilPose(frame, j, offset);
     return { raw: pose, shown: entrancePose(pose, { cardCount: geo.cardCount }, clock), member: inRing(pose.u, drift, geo.cardCount) };
@@ -55,8 +58,8 @@ function slotsOf(geo: CoilGeometry, frame: HelixFrame, ms: number, offset = 0, w
 }
 
 describe("entrance clock", () => {
-  it("runs until the pull has landed and the field is open", () => {
-    expect(T).toBe(Math.max(TL.pullStartMs + TL.pullMs, TL.openStartMs + COIL.deal.open.ms));
+  it("runs until the pull has landed, the field is open and the name has dissolved", () => {
+    expect(T).toBe(Math.max(TL.pullStartMs + TL.pullMs, TL.openStartMs + COIL.deal.open.ms, TL.nameOutStartMs + TL.nameOutMs));
     expect(entranceClock(900).elapsedS).toBeCloseTo(0.9, 9);
     expect(entranceClock(900).durationS).toBeCloseTo(T / 1000, 9);
     expect(isBeforeEntrance(entranceClock(-1))).toBe(true);
@@ -67,9 +70,9 @@ describe("entrance clock", () => {
     expect(isBeforeEntrance(entranceClock(Number.NEGATIVE_INFINITY))).toBe(true);
   });
 
-  it("follows the spec's table: the flatten overlaps the lift by 150 ms, the lift lands before the field is fully open", () => {
+  it("follows the spec's table: the flatten overlaps the lift by 150 ms, the field's opening is over before the lift lands", () => {
     expect(TL.flattenStartMs + TL.flattenMs - TL.pullStartMs).toBe(150);
-    expect(TL.pullStartMs + TL.pullMs).toBeLessThan(TL.openStartMs + COIL.deal.open.ms);
+    expect(TL.openStartMs + COIL.deal.open.ms).toBeLessThanOrEqual(TL.pullStartMs + TL.pullMs);
     expect(TL.slowStartMs).toBeGreaterThan(TL.upMs);
     expect(TL.slowStartMs + TL.slowMs).toBeLessThanOrEqual(TL.pullStartMs + TL.pullMs);
   });
@@ -134,19 +137,20 @@ describe.each(cases)("the wheel and the pull, %s", (_label, geo) => {
   const rest = restHelix(geo);
   // The absolute strand positions of the ring's cards at a moment.
   const idsIn = (frame: HelixFrame, ms: number, offset: number, drift = 0) =>
-    slotsOf(geo, frame, ms, offset, 1, drift)
+    slotsOf(geo, frame, ms, offset, drift)
       .filter(({ member }) => member)
       .map(({ raw }) => Math.round(raw.u - offset));
 
-  it("starts as the wheel: the band's ring with an upright axis, a few degrees of lean and the slot's size", () => {
-    const frame = entranceHelix(rest, geo, entranceClock(-1));
+  it("is the wheel once the row has curled: the band's ring with an upright axis, a few degrees of lean and the wheel's size", () => {
+    const frame = entranceHelix(rest, geo, entranceClock(TL.curlMs));
     const wheel = wheelPlacement(geo);
     expect(frame.angStep).toBeCloseTo(TAU / geo.cardCount, 12);
     expect(frame.dy).toBe(0);
     expect(frame.axisRad).toBe(0);
     expect(frame.leanRad).toBeCloseTo(COIL.deal.wheel.leanDeg * DEG, 12);
     expect(frame.cardWorld).toBeCloseTo(geo.wheelCardWorld * COIL.deal.wheel.scale, 12);
-    expect(frame.center).toEqual(wheel.center);
+    expect(frame.center[0]).toBeCloseTo(wheel.center[0], 12);
+    expect(frame.center[1]).toBeCloseTo(wheel.center[1], 12);
   });
 
   it("lands exactly on the rest pose", () => {
@@ -179,8 +183,8 @@ describe.each(cases)("the wheel and the pull, %s", (_label, geo) => {
     expect(band.cardWorld).toBeCloseTo(geo.bandCardWorld, 9);
     expect(band.leanRad).toBeCloseTo(COIL.camera.bandLeanDeg * DEG, 9);
     // The wheel at flatten 1 is that band, untouched.
-    expect(wheelHelix(band, geo, 1, 1)).toBe(band);
-    const halfway = wheelHelix(band, geo, 0.5, 1);
+    expect(wheelHelix(band, geo, 1)).toBe(band);
+    const halfway = wheelHelix(band, geo, 0.5);
     expect(halfway.leanRad).toBeCloseTo((band.leanRad + COIL.deal.wheel.leanDeg * DEG) / 2, 9);
     expect(halfway.axisRad).toBeCloseTo(band.axisRad / 2, 9);
     expect(halfway.cardWorld).toBeCloseTo((band.cardWorld + geo.wheelCardWorld * COIL.deal.wheel.scale) / 2, 12);
@@ -200,7 +204,7 @@ describe.each(cases)("the wheel and the pull, %s", (_label, geo) => {
   });
 
   it("poses a card and its twin one turn away at the same place, so crossing the window's edge is not seen", () => {
-    const frame = entranceHelix(rest, geo, entranceClock(0));
+    const frame = entranceHelix(rest, geo, entranceClock(TL.curlMs));
     const poses = Array.from({ length: geo.slotCount }, (_, j) => coilPose(frame, j, 0.37));
     let pairs = 0;
     for (const a of poses) {
@@ -230,13 +234,6 @@ describe.each(cases)("the wheel and the pull, %s", (_label, geo) => {
       const later = idsIn(entranceHelix(rest, geo, entranceClock(ms)), ms, offset0 + drift, drift);
       expect([...later].sort((a, b) => a - b)).toEqual([...first].sort((a, b) => a - b));
     }
-  });
-
-  it("waits hidden until the wheel has slid in, then shows the ring", () => {
-    const hidden = slotsOf(geo, entranceHelix(rest, geo, entranceClock(0, COIL, 0)), 0, 0, 0);
-    hidden.forEach(({ shown }) => expect(shown.alpha).toBe(0));
-    const half = slotsOf(geo, entranceHelix(rest, geo, entranceClock(0, COIL, 0.5)), 0, 0, 0.5);
-    half.forEach(({ raw, shown, member }) => expect(shown.alpha).toBeCloseTo(member ? raw.alpha * 0.5 : 0, 9));
   });
 
   it("hides the copies outside the ring until late in the pull, and fades them in as the pull nears its end", () => {
@@ -303,54 +300,34 @@ describe.each(cases)("the wheel and the pull, %s", (_label, geo) => {
   }, 20000);});
 
 describe("the wheel's place", () => {
-  const slotted = solveGeometry({ width: 880, height: 736 }, 14, COIL, { canvas: { width: 1280, height: 736 }, wheelSlot: { cx: 640, cy: 380, diameter: 320 } });
-  const unslotted = solveGeometry({ width: 880, height: 736 }, 14, COIL, { canvas: { width: 1280, height: 736 } });
+  const geo = solveGeometry({ width: 880, height: 736 }, 14, COIL, { canvas: { width: 1280, height: 736 } });
 
-  it("takes the slot's center and size as shares of the canvas, independent of scroll", () => {
-    expect(slotted.canvas).toEqual({ width: 1280, height: 736 });
-    expect(slotted.wheelAnchor.x).toBeCloseTo(0.5, 12);
-    expect(slotted.wheelAnchor.y).toBeCloseTo(380 / 736, 12);
-    // The ring's width edge to edge, in px, is the slot's diameter.
-    const bandRadius = (14 * slotted.step) / TAU;
-    expect((2 * bandRadius + 0.3) * (slotted.wheelCardWorld / slotted.camera.worldPerPx)).toBeCloseTo(320, 9);
-  });
-
-  it("falls back to the constants' anchor and a share of the canvas's height where the page has no slot", () => {
-    expect(unslotted.wheelAnchor).toEqual({ x: COIL.deal.wheel.anchor[0], y: COIL.deal.wheel.anchor[1] });
-    const bandRadius = (14 * unslotted.step) / TAU;
-    expect((2 * bandRadius + 0.3) * (unslotted.wheelCardWorld / unslotted.camera.worldPerPx)).toBeCloseTo(COIL.deal.wheel.diameterOfHeight * 736, 9);
+  it("sits at the constants' anchor and a share of the canvas's height", () => {
+    expect(geo.canvas).toEqual({ width: 1280, height: 736 });
+    expect(geo.wheelAnchor).toEqual({ x: COIL.deal.wheel.anchor[0], y: COIL.deal.wheel.anchor[1] });
+    const bandRadius = (14 * geo.step) / TAU;
+    expect((2 * bandRadius + 0.3) * (geo.wheelCardWorld / geo.camera.worldPerPx)).toBeCloseTo(COIL.deal.wheel.diameterOfHeight * 736, 9);
   });
 
   it("projects to the anchor on the canvas, nudged by the lab's offsets", () => {
     const px = (frame: ReturnType<typeof wheelPlacement>) => ({
-      x: 640 + frame.center[0] / slotted.camera.worldPerPx,
-      y: 368 - frame.center[1] / slotted.camera.worldPerPx,
+      x: 640 + frame.center[0] / geo.camera.worldPerPx,
+      y: 368 - frame.center[1] / geo.camera.worldPerPx,
     });
-    const at = px(wheelPlacement(slotted));
+    const at = px(wheelPlacement(geo));
     expect(at.x).toBeCloseTo(640, 9);
-    expect(at.y).toBeCloseTo(380, 9);
+    expect(at.y).toBeCloseTo(368, 9);
     const nudged = tunedConstants({ wheel: { offsetX: 0.1, offsetY: 0.05, scale: 1.2 } });
-    const moved = px(wheelPlacement(slotted, nudged));
+    const moved = px(wheelPlacement(geo, nudged));
     expect(moved.x).toBeCloseTo(640 + 0.1 * 1280, 9);
-    expect(moved.y).toBeCloseTo(380 + 0.05 * 736, 9);
-    expect(wheelPlacement(slotted, nudged).cardWorld).toBeCloseTo(slotted.wheelCardWorld * 1.2, 12);
-  });
-
-  it("slides in from the right by slideFrom of the canvas, on the site's ease", () => {
-    const band = pullHelix(restHelix(slotted), slotted, 0);
-    const seated = wheelHelix(band, slotted, 0, 1);
-    const away = wheelHelix(band, slotted, 0, 0);
-    expect((away.center[0] - seated.center[0]) / slotted.camera.worldPerPx).toBeCloseTo(COIL.deal.wheel.slideFrom * 1280, 9);
-    expect(away.center[1]).toBe(seated.center[1]);
-    expect(wheelSlideProgress(0)).toBe(0);
-    expect(wheelSlideProgress(COIL.deal.wheel.slideMs)).toBe(1);
-    expect(wheelSlideProgress(COIL.deal.wheel.slideMs / 2)).toBeGreaterThan(0.5);
+    expect(moved.y).toBeCloseTo(368 + 0.05 * 736, 9);
+    expect(wheelPlacement(geo, nudged).cardWorld).toBeCloseTo(geo.wheelCardWorld * 1.2, 12);
   });
 
   it("flows through the tuning: a tuned lean is the wheel's lean", () => {
     const c = tunedConstants({ wheel: { leanDeg: -25 } });
-    expect(wheelPlacement(slotted, c).leanRad).toBeCloseTo(-25 * DEG, 12);
-    expect(entranceHelix(restHelix(slotted), slotted, entranceClock(-1, c)).leanRad).toBeCloseTo(-25 * DEG, 12);
+    expect(wheelPlacement(geo, c).leanRad).toBeCloseTo(-25 * DEG, 12);
+    expect(entranceHelix(restHelix(geo), geo, entranceClock(c.deal.timeline.curlMs, c)).leanRad).toBeCloseTo(-25 * DEG, 12);
   });
 });
 
@@ -370,7 +347,7 @@ describe("the field's mask", () => {
   const { featherPx, featherShare } = COIL.deal.open;
   const corner = Math.hypot(canvas.width / 2, canvas.height);
 
-  it("is closed before the field starts to open, and open from the end of the clock", () => {
+  it("leaves the faded patch faded before the field starts to open, and lifts it from the end of the clock", () => {
     expect(fieldMask(entranceClock(-1), canvas).radius).toBe(0);
     expect(fieldMask(entranceClock(0), canvas).radius).toBe(0);
     expect(fieldMask(entranceClock(TL.openStartMs), canvas).radius).toBe(0);
@@ -406,6 +383,17 @@ describe("the field's mask", () => {
     expect(COIL.deal.open.topFadePx).toBeGreaterThan(0);
   });
 
+  it("grows from the name's middle, when the page puts the origin there, and clears the farthest corner from it", () => {
+    const origin = { x: 300, y: 120 };
+    const far = Math.hypot(canvas.width - origin.x, canvas.height - origin.y);
+    const mask = fieldMask(entranceClock(TL.openStartMs + 400), canvas, COIL, origin);
+    expect(mask.cx).toBe(300);
+    expect(mask.cy).toBe(120);
+    const almost = fieldMask(entranceClock(TL.openStartMs + COIL.deal.open.ms - 1), canvas, COIL, origin);
+    expect(almost.radius - almost.feather).toBeGreaterThan(far * 0.98);
+    expect(fieldMask(entranceClock(T), canvas, COIL, origin).radius).toBe(OPEN_ALL);
+  });
+
   it("opens on the field's tuned start and duration", () => {
     const c = tunedConstants({ timeline: { openStartMs: 500 }, open: { ms: 1000 } });
     expect(fieldMask(entranceClock(500, c), canvas, c).radius).toBe(0);
@@ -415,13 +403,33 @@ describe("the field's mask", () => {
 });
 
 describe("the name", () => {
-  it("is held by the loader, lands at the handoff, or fades up with the pull", () => {
-    expect(entranceNameAlpha(entranceClock(-1), null)).toBe(0);
-    expect(entranceNameAlpha(entranceClock(TL.pullStartMs), null)).toBe(0);
-    expect(entranceNameAlpha(entranceClock((TL.pullStartMs + T) / 2), null)).toBeCloseTo(0.5, 6);
-    expect(entranceNameAlpha(entranceClock(T), null)).toBe(1);
-    expect(entranceNameAlpha(entranceClock(500), false)).toBe(0);
-    expect(entranceNameAlpha(entranceClock(500), true)).toBe(1);
+  it("shows until it dissolves into the field across the spin-up, and is gone from the end of the clock", () => {
+    const { nameOutStartMs: from, nameOutMs: ms } = TL;
+    expect(entranceNameAlpha(entranceClock(Number.NEGATIVE_INFINITY), null)).toBe(1);
+    expect(entranceNameAlpha(entranceClock(-300), null)).toBe(1);
+    expect(entranceNameAlpha(entranceClock(from), null)).toBe(1);
+    expect(entranceNameAlpha(entranceClock(from + ms / 2), null)).toBeCloseTo(0.5, 6);
+    expect(entranceNameAlpha(entranceClock(from + ms), null)).toBe(0);
+    expect(entranceNameAlpha(entranceClock(T), null)).toBe(0);
+    let last = 1;
+    for (let t = from; t <= from + ms; t += 10) {
+      const alpha = entranceNameAlpha(entranceClock(t), null);
+      expect(alpha).toBeLessThanOrEqual(last + 1e-12);
+      last = alpha;
+    }
+  });
+
+  it("is held back by the loader until it lands the name, then follows the same dissolve", () => {
+    expect(entranceNameAlpha(entranceClock(Number.NEGATIVE_INFINITY), false)).toBe(0);
+    expect(entranceNameAlpha(entranceClock(Number.NEGATIVE_INFINITY), true)).toBe(1);
+    expect(entranceNameAlpha(entranceClock(TL.nameOutStartMs + TL.nameOutMs / 2), true)).toBeCloseTo(0.5, 6);
+  });
+
+  it("dissolves on the lab's tuned start and duration", () => {
+    const c = tunedConstants({ timeline: { nameOutStartMs: 400, nameOutMs: 1000 } });
+    expect(entranceNameAlpha(entranceClock(400, c), null, c)).toBe(1);
+    expect(entranceNameAlpha(entranceClock(900, c), null, c)).toBeCloseTo(0.5, 6);
+    expect(entranceNameAlpha(entranceClock(1400, c), null, c)).toBe(0);
   });
 });
 
@@ -491,50 +499,155 @@ describe("the pull as a value", () => {
   });
 });
 
-describe("the wheel's slow-down into the stage's sticking", () => {
-  const K = COIL.deal.wheel.pinKneePx;
-  // The wheel's screen position over the last K px: the stage's top plus the knee (the slot's own offset is a constant).
-  const screen = (x: number) => Math.max(x, 0) + pinKnee(x, K);
+describe("the ribbon (the first screen's row)", () => {
+  const wideGeo = solveGeometry({ width: 1280, height: 800 }, 14, COIL, { canvas: { width: 1280, height: 800 }, ribbonCy: 620 });
+  const phoneGeo = solveGeometry({ width: 390, height: 844 }, 14, COIL, { canvas: { width: 390, height: 844 }, regionHeight: 460, ribbonCy: 700 });
+  const rest = (geo: CoilGeometry) => restHelix(geo);
 
-  it("is nothing before the knee, once the stage is stuck, and with the knee off", () => {
-    expect(pinKnee(K, K)).toBe(0);
-    expect(pinKnee(K * 3, K)).toBe(0);
-    expect(pinKnee(0, K)).toBe(0);
-    expect(pinKnee(-50, K)).toBe(0);
-    expect(pinKnee(100, 0)).toBe(0);
+  it("takes the card's height by the canvas's width and the slot's middle as its anchor", () => {
+    expect(wideGeo.ribbon.cardPx).toBe(COIL.deal.ribbon.cardHeightPx);
+    expect(phoneGeo.ribbon.cardPx).toBe(COIL.deal.ribbon.cardHeightPhonePx);
+    expect(wideGeo.ribbon.anchorY).toBeCloseTo(620 / 800, 12);
+    expect(ribbonAnchor(wideGeo)[1] / wideGeo.camera.worldPerPx).toBeCloseTo(400 - 620, 9);
+    const bare = solveGeometry({ width: 1280, height: 800 }, 14, COIL);
+    expect(bare.ribbon.anchorY).toBe(COIL.deal.ribbon.anchorY);
   });
 
-  it("holds the wheel above where it rides, never below, and brings it to the stage's top exactly as it sticks", () => {
-    for (let x = 1; x < K; x += 5) expect(pinKnee(x, K), `x ${x}`).toBeLessThan(0);
-    expect(screen(1e-6)).toBeCloseTo(0, 6);
-    expect(screen(K - 1e-6)).toBeCloseTo(K, 3);
-  });
-
-  it("has no step in the wheel's speed: it joins the free ride at slope 1 and reaches the stage at slope 0", () => {
-    const slope = (x: number) => (screen(x + 1e-3) - screen(x - 1e-3)) / 2e-3;
-    expect(slope(K - 0.5)).toBeCloseTo(1, 2);
-    expect(slope(0.5)).toBeLessThan(0.01);
-    // The wheel covers the same distance as the page across the knee, so it has to
-    // outrun it a little before it slows (by a third at the most, at 2K/3); from there
-    // its speed falls steadily to zero.
-    let most = 0;
-    for (let x = K - 1; x > 1; x -= 4) most = Math.max(most, slope(x));
-    expect(most).toBeLessThanOrEqual(4 / 3 + 1e-3);
-    let last = Number.POSITIVE_INFINITY;
-    for (let x = (2 * K) / 3; x > 1; x -= 4) {
-      const v = slope(x);
-      expect(v).toBeLessThanOrEqual(last + 1e-9);
-      last = v;
+  it("keeps the row's wrap off the canvas: the gap grows where fourteen cards would not span it", () => {
+    for (const w of [390, 1280, 1920, 2560, 3440]) {
+      const geo = solveGeometry({ width: w, height: 800 }, 14, COIL, { canvas: { width: w, height: 800 } });
+      const cardW = geo.ribbon.cardPx * COIL.cardAspect;
+      const pitch = cardW + geo.ribbon.gapPx;
+      expect(pitch * geo.cardCount, `at ${w}`).toBeGreaterThanOrEqual(w + 2 * cardW - 1e-6);
+      expect(geo.ribbon.gapPx).toBeGreaterThanOrEqual(COIL.deal.ribbon.gapPx);
+      expect(ribbonCondensedPitch(geo) * geo.ribbon.cardPx * geo.cardCount, `condensed at ${w}`).toBeGreaterThanOrEqual(w + 2 * cardW - 1e-6);
     }
   });
 
-  it("moves the wheel's center up by the knee, weighted by how little it has flattened", () => {
-    const geo = { canvas: { width: 1280, height: 800 }, camera: { worldPerPx: 0.01 }, wheelAnchor: { x: 0.5, y: 0.5 }, wheelCardWorld: 1 } as never;
-    const frame = { axisRad: 0, leanRad: 0, center: [0, 0, 0], cardWorld: 1 } as never;
-    const flat = wheelHelix(frame, geo, 0.5, 1, COIL, -40);
-    const none = wheelHelix(frame, geo, 0.5, 1, COIL, 0);
-    // dy is up-negative in px; the world's y is up, so a negative dy lifts the center by dy * worldPerPx.
-    expect(flat.center[1] - none.center[1]).toBeCloseTo(0.5 * 40 * 0.01, 9);
-    expect(wheelHelix(frame, geo, 1, 1, COIL, -40)).toBe(frame);
+  it("drifts left at the knob's px per second, as a card rate that is the same however the gaps then close", () => {
+    const rate = ribbonCardsPerSecond(wideGeo);
+    expect(rate).toBeLessThan(0);
+    const pitchPx = ribbonPitchUnits(wideGeo) * wideGeo.ribbon.cardPx;
+    expect(Math.abs(rate) * pitchPx).toBeCloseTo(COIL.deal.ribbon.speedPxPerS, 9);
+    const fast = tunedConstants({ ribbon: { speedPxPerS: 40 } });
+    expect(ribbonCardsPerSecond(wideGeo, fast)).toBeCloseTo(rate * 2, 12);
+  });
+
+  it("lies flat in one row at curl 0: cards a pitch apart on the anchor's line, face on, unbent", () => {
+    const frame = ribbonHelix(entranceHelix(rest(wideGeo), wideGeo, entranceClock(TL.curlMs)), wideGeo, 0, 0);
+    const pitchWorld = ribbonPitchUnits(wideGeo) * frame.cardWorld;
+    const anchor = ribbonAnchor(wideGeo);
+    for (const u of [-6, -2.5, 0, 1, 4.25]) {
+      const pose = poseAt(frame, u);
+      expect(pose.position[0]).toBeCloseTo(anchor[0] + u * pitchWorld, 2);
+      expect(pose.position[1]).toBeCloseTo(anchor[1], 6);
+      expect(Math.abs(pose.position[2])).toBeLessThan(1e-3);
+      expect(pose.bend).toBeLessThan(1e-4);
+      expect(pose.basis.z[2]).toBeGreaterThan(0.999999);
+    }
+    expect(frame.dy).toBe(0);
+    expect(frame.leanRad).toBe(0);
+  });
+
+  it("closes its gaps, then curls into exactly the wheel: the frame at curl 1 is the wheel's own", () => {
+    for (const geo of [wideGeo, phoneGeo]) {
+      const r = rest(geo);
+      const wheel = entranceHelix(r, geo, entranceClock(TL.curlMs));
+      expect(ribbonHelix(wheel, geo, 1, 1)).toBe(wheel);
+      const nearly = ribbonHelix(wheel, geo, 1, 1 - 1e-9);
+      expect(nearly.angStep).toBeCloseTo(wheel.angStep, 6);
+      expect(nearly.radius).toBeCloseTo(wheel.radius, 4);
+      expect(nearly.cardWorld).toBeCloseTo(wheel.cardWorld, 6);
+      expect(nearly.leanRad).toBeCloseTo(wheel.leanRad, 6);
+      for (let k = 0; k < 3; k++) expect(nearly.center[k]).toBeCloseTo(wheel.center[k], 3);
+      const gathered = ribbonHelix(wheel, geo, 1, 0);
+      const open = ribbonHelix(wheel, geo, 0, 0);
+      expect(gathered.radius).toBeLessThan(open.radius);
+      expect(gathered.cardWorld).toBe(open.cardWorld);
+    }
+  });
+
+  it("moves the card at the front smoothly from the row's anchor to the wheel's near side", () => {
+    const wheel = entranceHelix(rest(wideGeo), wideGeo, entranceClock(TL.curlMs));
+    let last: readonly number[] | null = null;
+    let worst = 0;
+    for (let k = 0; k <= 1.0001; k += 0.01) {
+      const frame = ribbonHelix(wheel, wideGeo, 1, Math.min(1, k));
+      const front = coilPose(frame, 7, 0).position;
+      if (last) worst = Math.max(worst, Math.hypot(front[0] - last[0], front[1] - last[1], front[2] - last[2]) / wideGeo.camera.worldPerPx);
+      last = front;
+    }
+    // Over a hundred steps the front card never jumps more than a few card heights of the whole way.
+    expect(worst).toBeLessThan(wideGeo.canvas.height * 0.05);
+  });
+
+  it("fades the row's edges out, whole a fade's width in, gone half a card past the edge, and whole once curled", () => {
+    expect(ribbonEdgeAlpha(640, 1280, 120, 40)).toBe(1);
+    expect(ribbonEdgeAlpha(120, 1280, 120, 40)).toBe(1);
+    expect(ribbonEdgeAlpha(-40, 1280, 120, 40)).toBe(0);
+    expect(ribbonEdgeAlpha(1320, 1280, 120, 40)).toBe(0);
+    expect(ribbonEdgeAlpha(0, 1280, 120, 40)).toBeCloseTo(0.15625, 9);
+    const edge = ribbonEdge(wideGeo);
+    expect(ribbonEdgeAlphaWorld(0, edge)).toBe(1);
+    expect(ribbonEdgeAlphaWorld(-edge.half, edge)).toBeLessThan(0.7);
+    expect(ribbonEdgeAlphaWorld(-edge.half - edge.halfCard, edge)).toBeCloseTo(0, 9);
+    const pose = coilPose(restHelix(wideGeo), 0, 0);
+    const out = { ...pose, position: [-edge.half, 0, 0] as const };
+    const early = entrancePose(out, { cardCount: 14, edge }, entranceClock(-300));
+    expect(early.alpha).toBeLessThan(1);
+    const curled = entrancePose(out, { cardCount: 14, edge }, entranceClock(TL.curlMs));
+    expect(curled.alpha).toBe(1);
+  });
+
+  it("condenses on power2.out over condenseMs and curls on power2.inOut over curlMs, from the clock's 0", () => {
+    expect(condenseProgress(entranceClock(Number.NEGATIVE_INFINITY))).toBe(0);
+    expect(condenseProgress(entranceClock(-TL.condenseMs))).toBe(0);
+    expect(condenseProgress(entranceClock(-TL.condenseMs / 2))).toBeCloseTo(0.875, 9);
+    expect(condenseProgress(entranceClock(0))).toBe(1);
+    expect(condenseProgress(entranceClock(T))).toBe(1);
+    expect(curlProgress(entranceClock(-1))).toBe(0);
+    expect(curlProgress(entranceClock(0))).toBe(0);
+    expect(curlProgress(entranceClock(TL.curlMs / 2))).toBeCloseTo(0.5, 9);
+    expect(curlProgress(entranceClock(TL.curlMs))).toBe(1);
+    // The curl ends before the flatten starts, so the wheel is whole before it flattens.
+    expect(TL.curlMs).toBeLessThanOrEqual(TL.flattenStartMs);
+  });
+
+  it("tunes through the lab: a longer condense and curl move the same marks", () => {
+    const c = tunedConstants({ timeline: { condenseMs: 1000, curlMs: 300 } });
+    expect(condenseProgress(entranceClock(-500, c), c)).toBeCloseTo(0.875, 9);
+    expect(curlProgress(entranceClock(150, c), c)).toBeCloseTo(0.5, 9);
+  });
+});
+
+describe("the winding's onset ramp", () => {
+  it("is today's kick at 0: the winding starts at full rate", () => {
+    expect(windRamp(COIL)).toBe(COIL.deal.timeline.windRampMs === 0 ? 0 : windRamp(COIL));
+    expect(windOnset(0.3, 0)).toBe(0.3);
+  });
+
+  it("eases the onset in on a parabola that meets the line, and still ends at 1", () => {
+    for (const r of [0.05, 0.2, 0.6, 1]) {
+      expect(windOnset(0, r)).toBe(0);
+      expect(windOnset(1, r)).toBeCloseTo(1, 12);
+      // Zero rate at the start.
+      expect((windOnset(1e-6, r) - windOnset(0, r)) / 1e-6).toBeCloseTo(0, 4);
+      // The rate rises to the line's and is steady from the ramp's end.
+      let last = 0;
+      for (let x = 0; x <= 1; x += 0.01) {
+        const rate = (windOnset(x + 1e-6, r) - windOnset(x, r)) / 1e-6;
+        expect(rate).toBeGreaterThanOrEqual(last - 1e-4);
+        last = rate;
+      }
+    }
+  });
+
+  it("takes its length from windRampMs on the pull's own scale, 0 to 1", () => {
+    const c = tunedConstants({ timeline: { windRampMs: 120 } });
+    const { pullMs } = c.deal.timeline;
+    expect(windRamp(c)).toBeCloseTo(120 / ((1 - c.entrance.windStart) * pullMs), 12);
+    expect(windRamp(tunedConstants({ timeline: { windRampMs: 9999 } }))).toBe(1);
+    expect(pullPhases(1, c).wind).toBeCloseTo(1, 12);
+    expect(pullPhases(c.entrance.windStart, c).wind).toBe(0);
   });
 });

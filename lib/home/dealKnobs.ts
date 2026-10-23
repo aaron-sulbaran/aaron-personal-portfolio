@@ -10,7 +10,20 @@ import type { EntranceTuning } from "@/lib/coil/entrance";
 const D = COIL.deal;
 
 export type DealKnobs = {
-  // The deal's clock, in ms from the click (COIL.deal.timeline).
+  // The ribbon (COIL.deal.ribbon): the first screen's drifting row.
+  ribbonCardHeightPx: number;
+  ribbonCardHeightPhonePx: number;
+  ribbonGapPx: number;
+  ribbonSpeedPxPerS: number;
+  ribbonFadeWidthPx: number;
+  ribbonOffsetYPx: number; // the row's vertical nudge from its slot
+  // The deal's clock, in ms from the click (COIL.deal.timeline); every time
+  // after the two below counts from the end of the condense.
+  condenseMs: number; // the ribbon's gaps close and the row gathers
+  curlMs: number; // the row curls into the wheel
+  nameOutStartMs: number; // the name dissolves into the field
+  nameOutMs: number;
+  windRampMs: number; // the pull's winding eases in (0: starts at full rate)
   peakCardsPerSecond: number; // the wheel's top speed
   coarsePeakCardsPerSecond: number; // a touch screen's top speed (a phone can run at 30 Hz)
   upMs: number; // the spin-up, 0.5 cards/s to the peak
@@ -23,14 +36,12 @@ export type DealKnobs = {
   slowMs: number;
   pullStartMs: number; // the band lifts into 3D and unfurls
   pullMs: number;
-  openStartMs: number; // the field opens
+  openStartMs: number; // the field opens (it lifts the faded patch behind the paragraphs)
   // The wheel (COIL.deal.wheel).
-  wheelIdleCardsPerSecond: number;
   wheelLeanDeg: number;
-  wheelScale: number; // times the size of the teaser's slot
+  wheelScale: number; // times its size at the anchor
   wheelOffsetX: number; // shares of the canvas
   wheelOffsetY: number;
-  wheelPinKneePx: number; // how far before the stage sticks the wheel starts to slow
   openReach: number; // how far the section's opening travels (1: to the farthest corner)
   openMs: number; // how long the section takes to open
   columnsDelayMs: number;
@@ -42,16 +53,25 @@ export type NumericKnob = keyof DealKnobs;
 export type KnobSpec = { label: string; group: string; min: number; max: number; step: number; unit?: string };
 
 export const KNOB_SPEC: Record<NumericKnob, KnobSpec> = {
+  ribbonCardHeightPx: { label: "Card height, desktop", group: "Ribbon", min: 80, max: 320, step: 5, unit: "px" },
+  ribbonCardHeightPhonePx: { label: "Card height, phone", group: "Ribbon", min: 60, max: 240, step: 5, unit: "px" },
+  ribbonGapPx: { label: "Gap between cards", group: "Ribbon", min: 0, max: 80, step: 2, unit: "px" },
+  ribbonSpeedPxPerS: { label: "Drift speed", group: "Ribbon", min: 0, max: 120, step: 1, unit: " px/s" },
+  ribbonFadeWidthPx: { label: "Edge fade width", group: "Ribbon", min: 0, max: 300, step: 4, unit: "px" },
+  ribbonOffsetYPx: { label: "Vertical nudge", group: "Ribbon", min: -200, max: 200, step: 4, unit: "px" },
+  condenseMs: { label: "Condense (gaps close)", group: "Condense and curl", min: 0, max: 2000, step: 10, unit: "ms" },
+  curlMs: { label: "Curl into the wheel", group: "Condense and curl", min: 0, max: 2000, step: 10, unit: "ms" },
+  nameOutStartMs: { label: "Name dissolves from", group: "Condense and curl", min: 0, max: 2000, step: 10, unit: "ms" },
+  nameOutMs: { label: "Name dissolve duration", group: "Condense and curl", min: 100, max: 3000, step: 10, unit: "ms" },
+  windRampMs: { label: "Winding onset ramp", group: "Lift", min: 0, max: 400, step: 5, unit: "ms" },
   peakCardsPerSecond: { label: "Peak speed", group: "Spin", min: 2, max: 20, step: 0.5, unit: " cards/s" },
   coarsePeakCardsPerSecond: { label: "Peak speed, touch", group: "Spin", min: 2, max: 20, step: 0.5, unit: " cards/s" },
   upMs: { label: "Spin-up", group: "Spin", min: 200, max: 1500, step: 10, unit: "ms" },
-  textOutMs: { label: "Teaser text out", group: "Spin", min: 0, max: 1000, step: 10, unit: "ms" },
-  wheelIdleCardsPerSecond: { label: "Wheel pace", group: "Wheel", min: 0, max: 3, step: 0.05, unit: " cards/s" },
+  textOutMs: { label: "First-screen text out", group: "Spin", min: 0, max: 1000, step: 10, unit: "ms" },
   wheelLeanDeg: { label: "Wheel lean", group: "Wheel", min: -45, max: 15, step: 1, unit: "deg" },
   wheelScale: { label: "Wheel size", group: "Wheel", min: 0.5, max: 1.6, step: 0.02 },
   wheelOffsetX: { label: "Wheel nudge X", group: "Wheel", min: -0.3, max: 0.3, step: 0.01 },
   wheelOffsetY: { label: "Wheel nudge Y", group: "Wheel", min: -0.3, max: 0.3, step: 0.01 },
-  wheelPinKneePx: { label: "Wheel slows into the stick", group: "Wheel", min: 0, max: 700, step: 10, unit: "px" },
   scrollStartMs: { label: "Scroll starts", group: "Scroll", min: 0, max: 1500, step: 10, unit: "ms" },
   scrollMs: { label: "Scroll duration", group: "Scroll", min: 600, max: 4000, step: 50, unit: "ms" },
   flattenStartMs: { label: "Flatten starts", group: "Flatten and slow", min: 0, max: 2500, step: 10, unit: "ms" },
@@ -68,6 +88,17 @@ export const KNOB_SPEC: Record<NumericKnob, KnobSpec> = {
 };
 
 export const DEFAULT_KNOBS: DealKnobs = {
+  ribbonCardHeightPx: D.ribbon.cardHeightPx,
+  ribbonCardHeightPhonePx: D.ribbon.cardHeightPhonePx,
+  ribbonGapPx: D.ribbon.gapPx,
+  ribbonSpeedPxPerS: D.ribbon.speedPxPerS,
+  ribbonFadeWidthPx: D.ribbon.fadeWidthPx,
+  ribbonOffsetYPx: D.ribbon.offsetYPx,
+  condenseMs: D.timeline.condenseMs,
+  curlMs: D.timeline.curlMs,
+  nameOutStartMs: D.timeline.nameOutStartMs,
+  nameOutMs: D.timeline.nameOutMs,
+  windRampMs: D.timeline.windRampMs,
   peakCardsPerSecond: D.timeline.peakCardsPerSecond,
   coarsePeakCardsPerSecond: D.timeline.coarsePeakCardsPerSecond,
   upMs: D.timeline.upMs,
@@ -81,12 +112,10 @@ export const DEFAULT_KNOBS: DealKnobs = {
   pullStartMs: D.timeline.pullStartMs,
   pullMs: D.timeline.pullMs,
   openStartMs: D.timeline.openStartMs,
-  wheelIdleCardsPerSecond: D.wheel.idleCardsPerSecond,
   wheelLeanDeg: D.wheel.leanDeg,
   wheelScale: D.wheel.scale,
   wheelOffsetX: D.wheel.offsetX,
   wheelOffsetY: D.wheel.offsetY,
-  wheelPinKneePx: D.wheel.pinKneePx,
   openReach: D.open.reach,
   openMs: D.open.ms,
   columnsDelayMs: D.columns.delayMs,
@@ -110,10 +139,23 @@ export function clampKnobs(input: Partial<Record<string, unknown>>, base: DealKn
 }
 
 // The tuning handed to the Coil's entrance (lib/coil/entrance.ts tunedConstants):
-// the timeline, the wheel and the field's opening.
+// the ribbon, the timeline, the wheel and the field's opening.
 export function entranceTuningOf(knobs: DealKnobs): EntranceTuning {
   return {
+    ribbon: {
+      cardHeightPx: knobs.ribbonCardHeightPx,
+      cardHeightPhonePx: knobs.ribbonCardHeightPhonePx,
+      gapPx: knobs.ribbonGapPx,
+      speedPxPerS: knobs.ribbonSpeedPxPerS,
+      fadeWidthPx: knobs.ribbonFadeWidthPx,
+      offsetYPx: knobs.ribbonOffsetYPx,
+    },
     timeline: {
+      condenseMs: knobs.condenseMs,
+      curlMs: knobs.curlMs,
+      nameOutStartMs: knobs.nameOutStartMs,
+      nameOutMs: knobs.nameOutMs,
+      windRampMs: knobs.windRampMs,
       peakCardsPerSecond: knobs.peakCardsPerSecond,
       coarsePeakCardsPerSecond: knobs.coarsePeakCardsPerSecond,
       upMs: knobs.upMs,
@@ -129,12 +171,10 @@ export function entranceTuningOf(knobs: DealKnobs): EntranceTuning {
       openStartMs: knobs.openStartMs,
     },
     wheel: {
-      idleCardsPerSecond: knobs.wheelIdleCardsPerSecond,
       leanDeg: knobs.wheelLeanDeg,
       scale: knobs.wheelScale,
       offsetX: knobs.wheelOffsetX,
       offsetY: knobs.wheelOffsetY,
-      pinKneePx: knobs.wheelPinKneePx,
     },
     open: { ms: knobs.openMs, reach: knobs.openReach },
   };

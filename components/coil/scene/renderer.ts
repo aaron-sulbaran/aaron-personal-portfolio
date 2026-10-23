@@ -13,10 +13,11 @@ import {
 } from "three";
 import { COIL } from "@/lib/coil/constants";
 import { FIELD } from "@/lib/coil/field.glsl";
-import { cameraFor, solveGeometry, type WheelSlot } from "@/lib/coil/geometry";
+import { cameraFor, solveGeometry } from "@/lib/coil/geometry";
 import { paneViewport } from "@/lib/coil/pane";
 import { seenRingDpr } from "@/lib/coil/material";
 import { disableColorManagement } from "@/lib/coil/theme";
+import { measureFirstScreen } from "./firstScreen";
 import type { LoopLink, SceneCtx } from "./state";
 
 // The renderer and what every pass draws with: the scene canvas's WebGL
@@ -77,26 +78,14 @@ export type LayoutParts = {
   layoutName: () => void;
 };
 
-// The teaser's slot for the wheel (page 1's foot, [data-coil-wheel]) in canvas
-// px: measured against the rail the stage sticks in, not the stage, so it is
-// the same wherever the page is scrolled (the stage and the slot move together
-// until it sticks, and the wheel stays where the stage puts it after).
-function measureWheelSlot(host: HTMLElement): WheelSlot | null {
-  const slot = document.querySelector("[data-coil-wheel]")?.getBoundingClientRect();
-  const rail = host.closest("[data-coil-rail]")?.getBoundingClientRect();
-  if (!slot || !rail || slot.width < 1 || slot.height < 1) return null;
-  const stage = host.getBoundingClientRect();
-  return { cx: slot.left + slot.width / 2 - stage.left, cy: slot.top + slot.height / 2 - rail.top, diameter: Math.min(slot.width, slot.height) };
-}
-
 export function createLayout(ctx: SceneCtx, gl: Gl, parts: LayoutParts, loop: LoopLink) {
   const { st, host, tileCount, debug } = ctx;
   const { renderer, camera, fieldTarget, uView } = gl;
   const { view } = st;
-  // The slot's last place: the page closes the slot up once the deal has gone
-  // past it (components/home/useSlotRelease.ts), and the wheel still in the
-  // scene keeps the place it had.
-  let lastWheelSlot: WheelSlot | null = null;
+  // The first screen's markers as last measured: the page closes the ribbon's
+  // slot up once the deal has gone past it (components/home/useSlotRelease.ts),
+  // and the scene keeps the place the ribbon had.
+  let lastRibbonCy: number | null = null;
 
   return function layout(width: number, height: number) {
     view.width = Math.max(1, width);
@@ -121,9 +110,11 @@ export function createLayout(ctx: SceneCtx, gl: Gl, parts: LayoutParts, loop: Lo
     st.lastFieldTime = Number.NaN;
     const before = st.geo;
     const pane = host.closest("[data-coil-section]")?.querySelector("[data-coil-pane]")?.getBoundingClientRect();
+    st.first = measureFirstScreen(host);
     st.geo = solveGeometry(paneViewport({ left: rect.left, right: rect.right, width: view.width, height: view.height }, pane ?? null), tileCount, COIL, {
       canvas: { width: view.width, height: view.height },
-      wheelSlot: (lastWheelSlot = measureWheelSlot(host) ?? lastWheelSlot),
+      regionHeight: st.first.regionHeight ?? undefined,
+      ribbonCy: (lastRibbonCy = st.first.ribbonCy ?? lastRibbonCy),
     });
     // Slice 7: a new composition or a rotation lays every card out afresh;
     // fade the new frame in rather than jump (only while the loop runs: a
@@ -150,8 +141,9 @@ export function createLayout(ctx: SceneCtx, gl: Gl, parts: LayoutParts, loop: Lo
 export function observeResize(ctx: SceneCtx, layout: (width: number, height: number) => void, loop: LoopLink) {
   const { st, host } = ctx;
   const resizeObserver = new ResizeObserver((entries) => {
-    // The wheel's slot or its rail resizing (the teaser reflowing) moves the
-    // wheel without resizing the canvas: lay out again at the canvas's size.
+    // The first screen's markers or the rail resizing (the page reflowing)
+    // moves what the scene draws without resizing the canvas: lay out again at
+    // the canvas's size.
     const own = entries.filter((entry) => entry.target === host).pop()?.contentRect;
     const box = own ?? st.pendingSize;
     if (!box) return;
@@ -161,9 +153,8 @@ export function observeResize(ctx: SceneCtx, layout: (width: number, height: num
     if (!st.raf) loop.renderStill();
   });
   resizeObserver.observe(host);
-  const slot = document.querySelector("[data-coil-wheel]");
   const rail = host.closest("[data-coil-rail]");
-  if (slot) resizeObserver.observe(slot);
+  document.querySelectorAll("[data-coil-name], [data-coil-ribbon], [data-hush], [data-first-screen]").forEach((el) => resizeObserver.observe(el));
   if (rail) resizeObserver.observe(rail);
   return () => resizeObserver.disconnect();
 }
