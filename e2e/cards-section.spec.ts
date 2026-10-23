@@ -44,6 +44,32 @@ test("cards section: the two columns hold the fourteen cards, Work on the left a
   expect(title.size, "titles are larger than the headings").toBeGreaterThan(heading.size);
 });
 
+// The lists are a size larger and the gutters a little wider for them: at 1280 and 1440 nothing of either column reaches into the pane the Coil is laid out in, or past the screen's edge.
+for (const size of [{ width: 1280, height: 800 }, { width: 1440, height: 900 }]) {
+  test(`cards section: both columns stay in their gutters, clear of the Coil's pane, at ${size.width}`, async ({ page }) => {
+    await page.setViewportSize(size);
+    await openHome(page);
+    const read = await page.evaluate(() => {
+      const pane = document.querySelector("[data-coil-pane]")!.getBoundingClientRect();
+      const boxes = (selector: string) => [...document.querySelectorAll<HTMLElement>(selector)].filter((el) => el.getClientRects().length).map((el) => el.getBoundingClientRect());
+      const left = boxes('#work [data-deal-title] button, #work [data-card-progress], #work [data-page-title], #work h3:first-of-type').filter((r) => r.left < pane.left);
+      const right = boxes("#work [data-deal-title] button, #work h3, #work h4").filter((r) => r.left >= pane.right - 1);
+      return {
+        pane: { left: pane.left, right: pane.right },
+        leftmostRight: Math.min(...right.map((r) => r.left)),
+        leftEdge: Math.max(...left.map((r) => r.right)),
+        rightEdge: Math.max(...right.map((r) => r.right)),
+        counts: [left.length, right.length],
+      };
+    });
+    expect(read.counts[0], "left column boxes").toBeGreaterThan(6);
+    expect(read.counts[1], "right column boxes").toBeGreaterThan(6);
+    expect(read.leftEdge, "the Work column's right edge against the pane").toBeLessThanOrEqual(read.pane.left);
+    expect(read.leftmostRight, "the Builds column's left edge against the pane").toBeGreaterThanOrEqual(read.pane.right - 1);
+    expect(read.rightEdge, "the Builds column inside the screen").toBeLessThanOrEqual(size.width - 8);
+  });
+}
+
 test("cards section: the page's number and title lead the Work column and answer page 1's question", async ({ page }) => {
   await openHome(page);
   const heading = page.locator("#work [data-page-title]:visible");
