@@ -11,7 +11,6 @@ import {
 } from "three";
 import { siteContent } from "@/lib/content";
 import { COIL } from "@/lib/coil/constants";
-import { entranceNameAlpha, type EntranceClock } from "@/lib/coil/entrance";
 import { FIELD, FULLSCREEN_VERT, GLYPH_FRAG, NAME } from "@/lib/coil/field.glsl";
 import { nameCompositeInk } from "@/lib/coil/debugFlags";
 import { clamp01, isNarrow } from "@/lib/coil/geometry";
@@ -21,7 +20,6 @@ import type { NameTarget } from "@/lib/coil/nameTarget";
 import type { NameSurface } from "./nameSurface";
 import type { Gl } from "./renderer";
 import type { LoopLink, SceneCtx } from "./state";
-import type { CoilSceneProps } from "./types";
 
 // The canvas name: "Hi, I'm" and "Aaron" in one mask the composite pass
 // fills with the lit surface (nameSurface.ts), its layout, its fades (the
@@ -122,13 +120,17 @@ export function createGlyphTargets(): [WebGLRenderTarget, WebGLRenderTarget] {
   return [make(), make()];
 }
 
-// A frame's name inputs: the props as the frame began and the entrance clock.
-type NameFrame = {
+// A frame's name inputs: the time, and whether the loader is to land the name
+// (a loader that was running when the name was made lands it regardless).
+export type NameFrame = {
   now: number;
-  props: CoilSceneProps;
-  clock: EntranceClock | null;
-  realElapsedMs: number;
+  nameFromLoader: boolean;
 };
+
+// Where the page's own lockup is, in the name's canvas (CSS px): its pen start,
+// its baseline and its font size. A name with none is centered, as the hero's
+// name always was.
+export type NamePlacement = { left: number; baseline: number; size: number };
 
 // The page's loader (components/home/loader) is on the screen: armed by the head
 // script, and not yet done.
@@ -202,14 +204,10 @@ export function createName(
   // (the loader lands its lockup on it, landName) or for it to be done.
   const underLoader = loaderRuns();
 
-  function layoutName() {
-    if (!st.geo) return;
+  function layoutName(placed: NamePlacement | null = null) {
+    if (!st.geo && !placed) return;
     const { width: W, height: H } = view;
     const narrow = isNarrow(view);
-    // The page's own lockup says where the name goes and how big (slice 4c,
-    // scene/firstScreen.ts): its pen start, baseline and font size; a page
-    // without one has it centered, as the hero's name always was.
-    const placed = st.first.name;
     let size: number;
     if (placed) size = placed.size;
     else {
@@ -276,17 +274,17 @@ export function createName(
     return nameBox ? { x: nameBox.left + nameBox.inkWidth / 2, y: nameBox.maskTop + nameBox.maskHeight / 2 } : null;
   }
 
-  // Part of the entrance step: the name's and the greeting's fades, and the
-  // surface growing over the loader's solid name once it lands.
+  // The name's and the greeting's fade, and the surface growing over the
+  // loader's solid name once it lands. A name the loader is to land waits
+  // (held at 0, the surface not begun) until it does, so a landing draws exactly
+  // the solid gradient the loader holds; a loader that is done without landing
+  // the name (the scene was not ready when it ended) gives it up, and the name
+  // shows from then on.
   function entranceFade(f: NameFrame) {
-    const { now, props, realElapsedMs } = f;
-    const clock = f.clock as EntranceClock;
-    const entrance = props.entrance;
-    // A loader that is done without landing the name (the scene was not ready
-    // when it ended) gives it up: the name shows from then on.
-    const fromLoader = underLoader || !!entrance?.nameFromLoader;
-    const handedOff = fromLoader ? nameLanded || !loaderRuns() || realElapsedMs > clock.durationS * 1000 + 1000 : null;
-    const nameAlpha = posterMode ? 0 : entranceNameAlpha(clock, handedOff);
+    const { now } = f;
+    const fromLoader = underLoader || f.nameFromLoader;
+    const handedOff = fromLoader ? nameLanded || !loaderRuns() : null;
+    const nameAlpha = posterMode || handedOff === false ? 0 : 1;
     cu.uNameA.value = nameAlpha;
     cu.uGrain.value = FIELD.grain * nameAlpha;
     cu.uGreetA.value = nameAlpha;

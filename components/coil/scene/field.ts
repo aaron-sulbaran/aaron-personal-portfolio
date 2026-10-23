@@ -8,7 +8,7 @@ import { getIntroKnobs } from "@/lib/home/introKnobs";
 import type { Gl } from "./renderer";
 import type { SceneCtx } from "./state";
 
-// The two fullscreen passes. The field (the shader weather behind the coil)
+// The two fullscreen passes (the page's name canvas, components/coil/nameCanvas, makes them with its own composite fragment). The field (the shader weather behind the coil)
 // renders into its own low-resolution target, and only when one of its two
 // clocks moved; the composite draws that target to the canvas with the name
 // masked over it (the name's uniforms are written by name.ts; its surface is
@@ -19,7 +19,7 @@ import type { SceneCtx } from "./state";
 // And the per-letter reduction's target (name.ts renders it).
 export type CompositeInit = { surface: Texture; wake: Record<string, IUniform>; glyph: Texture };
 
-export function createField(ctx: SceneCtx, gl: Gl, init: CompositeInit) {
+export function createField(ctx: SceneCtx, gl: Gl, init: CompositeInit, fragmentShader: string = COMPOSITE_FRAG) {
   const { st, flags } = ctx;
   const { view } = st;
   const { pinned } = flags;
@@ -56,7 +56,7 @@ export function createField(ctx: SceneCtx, gl: Gl, init: CompositeInit) {
     depthTest: false,
     depthWrite: false,
     vertexShader: COMPOSITE_VERT,
-    fragmentShader: COMPOSITE_FRAG,
+    fragmentShader,
     uniforms: {
       uField: { value: fieldTarget.texture },
       uName: { value: null },
@@ -190,6 +190,7 @@ export function createField(ctx: SceneCtx, gl: Gl, init: CompositeInit) {
     }
     warmUp = null;
     compMaterial.uniforms.uOpen.value.set(cx, cy, radius, feather);
+    compMaterial.uniforms.uSeam.value = st.seam;
     renderer.render(compScene, orthoCamera);
   }
 

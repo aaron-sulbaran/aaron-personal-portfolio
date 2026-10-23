@@ -405,7 +405,7 @@ export const GLYPH_FRAG = /* glsl */ `
 `;
 
 // The composite's name block: the letters from the field, the surface and the wake.
-const NAME_COMPOSITE_GLSL = /* glsl */ `
+export const NAME_COMPOSITE_GLSL = /* glsl */ `
   uniform sampler2D uSurf;
   uniform vec3 uSurfMean;
   uniform float uSurfIn, uDetail, uChroma, uFloor, uFloorSign, uReveal, uGrainAmt;
