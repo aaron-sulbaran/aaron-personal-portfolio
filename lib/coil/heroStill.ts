@@ -25,17 +25,6 @@ export function stillCut(aspect: number): StillCut {
   return aspect < SQUARE_BELOW ? "square" : "wide";
 }
 
-// The wheel still: the teaser's wheel at rest (scripts/render-posters.mjs,
-// ?coildebug=1,entrance=-1), one AVIF per theme with alpha, shown in the
-// teaser's slot (components/coil/Poster.tsx WheelStill) where no scene can
-// draw it. It is a square centred on the slot, WHEEL_STILL_SPAN times the slot's
-// width wide (the render script keeps a copy of the number).
-export const WHEEL_STILL_SPAN = 1.7;
-
-export function wheelStillSrc(theme: StillTheme): string {
-  return `/coil/wheel-${theme}.avif`;
-}
-
 // "Aspect below r" in Level 3 syntax (Safari before 16.4 has no range
 // syntax): not all and (min-aspect-ratio: r) is exactly a strict less-than.
 const below = (ratio: number) => `not all and (min-aspect-ratio: ${Math.round(ratio * 1000)}/1000)`;

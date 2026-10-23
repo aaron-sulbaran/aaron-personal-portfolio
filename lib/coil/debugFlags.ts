@@ -10,8 +10,8 @@ export type DebugFlags = {
   // ?coildebug=still or still=<offset>: the scene at rest for the hero stills
   // (scripts/render-posters.mjs): cards and name drawn, nothing moving.
   stillMode: boolean;
-  // The still's conveyor offset in cards (the phase the render measured,
-  // scripts/hero-still-phases.json): 0 for plain still, null outside still mode.
+  // The still's conveyor offset in cards: 0 for plain still, null outside still
+  // mode.
   stillOffset: number | null;
   // The poster and the still hold one moment: the field clock at 0 (the
   // posters' fieldClocks(0), lib/coil/drift.ts), the entrance finished, the

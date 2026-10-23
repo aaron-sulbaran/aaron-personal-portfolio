@@ -1,16 +1,12 @@
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
   STILL_MEDIA,
-  WHEEL_STILL_SPAN,
   heroStillSrc,
   mediaStillCut,
   stillCause,
   stillCut,
   stillFallback,
   stillSources,
-  wheelStillSrc,
 } from "@/lib/coil/heroStill";
 
 describe("hero still", () => {
@@ -57,14 +53,5 @@ describe("still cause", () => {
     expect(stillCause({ reducedMotion: false, hasApi: false, failure: null })).toBe("noWebgl");
     expect(stillCause({ reducedMotion: false, hasApi: true, failure: "noWebgl" })).toBe("noWebgl");
     expect(stillCause({ reducedMotion: false, hasApi: true, failure: "unavailable" })).toBe("unavailable");
-  });
-});
-
-describe("the wheel still", () => {
-  it("names a file per theme and keeps the render script's span in step with the component's", () => {
-    expect(wheelStillSrc("light")).toBe("/coil/wheel-light.avif");
-    expect(wheelStillSrc("dark")).toBe("/coil/wheel-dark.avif");
-    const script = readFileSync(fileURLToPath(new URL("../../scripts/render-posters.mjs", import.meta.url)), "utf8");
-    expect(script).toContain(`const WHEEL_SPAN = ${WHEEL_STILL_SPAN};`);
   });
 });

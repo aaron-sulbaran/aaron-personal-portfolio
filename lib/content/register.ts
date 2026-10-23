@@ -32,7 +32,6 @@ export const register: InlineRegister = {
       link: { href: "https://profile.playstation.com/VoltaageArc", label: "VoltaageArc on most platforms" },
     },
     "killer-drones": { text: "unless it's killer drones, I don't do that" },
-    "evolving-isle": { text: "Evolving isle. Legally distinct from any island Apple might call dynamic, so their trademark lawyers can rest easy." },
     "music-note": {
       text: "These are songs I like, played as instrumentals so they're easy to read to. Each is credited to its artist in the player, with a link to the original on Spotify.",
     },
