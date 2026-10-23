@@ -16,14 +16,11 @@ import {
 describe("page 1's knobs", () => {
   it("default to the constants' intro block", () => {
     const I = COIL.intro;
-    expect(DEFAULT_INTRO_KNOBS.topLayout).toBe(I.topLayout);
-    expect(DEFAULT_INTRO_KNOBS.topLayout).toBe("beside");
     expect(DEFAULT_INTRO_KNOBS.loaderOn).toBe(true);
     expect(DEFAULT_INTRO_KNOBS.loaderMs).toBe(I.loader.fillMs);
     expect(DEFAULT_INTRO_KNOBS.shrinkMs).toBe(I.shrink.ms);
     expect(DEFAULT_INTRO_KNOBS.orangeAmount).toBe(I.orangeAmount);
-    expect(DEFAULT_INTRO_KNOBS.phoneBlock2).toBe("about");
-    expect(DEFAULT_INTRO_KNOBS.fieldUnderText).toBe("faded");
+    expect(DEFAULT_INTRO_KNOBS.staggerGapRem).toBe(I.stagger.gapRem);
     expect(DEFAULT_INTRO_KNOBS.bandDesktopPx).toBe(I.band.desktopPx);
   });
 
@@ -61,18 +58,13 @@ describe("page 1's knobs", () => {
   });
 
   it("takes only the listed choices", () => {
-    expect(clampIntroKnobs({ topLayout: "above" }).topLayout).toBe("above");
-    expect(clampIntroKnobs({ topLayout: "bottom" }).topLayout).toBe("beside");
-    expect(clampIntroKnobs({ phoneBlock2: "first" }).phoneBlock2).toBe("first");
-    expect(clampIntroKnobs({ phoneBlock2: "wide" }).phoneBlock2).toBe("about");
-    expect(clampIntroKnobs({ fieldUnderText: "full" }).fieldUnderText).toBe("full");
-    expect(clampIntroKnobs({ fieldUnderText: "half" }).fieldUnderText).toBe("faded");
+    expect(clampIntroKnobs({ topLayout: "above" }).hasOwnProperty("topLayout")).toBe(false);
     expect(clampIntroKnobs({ shrinkEase: "expo.inOut" }).shrinkEase).toBe("expo.inOut");
     expect(clampIntroKnobs({ shrinkEase: "linear" }).shrinkEase).toBe(SHRINK_EASES[0]);
   });
 
   it("reads a saved record, and shrugs at a broken one", () => {
-    expect(parseStoredIntroKnobs('{"topLayout":"above"}')).toEqual({ topLayout: "above" });
+    expect(parseStoredIntroKnobs('{"shrinkMs":900}')).toEqual({ shrinkMs: 900 });
     expect(parseStoredIntroKnobs("{not json")).toBeNull();
     expect(parseStoredIntroKnobs(null)).toBeNull();
     expect(parseStoredIntroKnobs("3")).toBeNull();
@@ -83,8 +75,8 @@ describe("the store", () => {
   afterEach(() => resetIntroKnobs());
 
   it("applies a patch through the clamp and resets to the defaults", () => {
-    setIntroKnobs({ topLayout: "above", shrinkMs: 99_999 });
-    expect(getIntroKnobs().topLayout).toBe("above");
+    setIntroKnobs({ staggerGapRem: 5, shrinkMs: 99_999 });
+    expect(getIntroKnobs().staggerGapRem).toBe(5);
     expect(getIntroKnobs().shrinkMs).toBe(INTRO_KNOB_SPEC.shrinkMs.max);
     resetIntroKnobs();
     expect(getIntroKnobs()).toEqual(DEFAULT_INTRO_KNOBS);

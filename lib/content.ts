@@ -85,7 +85,7 @@ export const siteContent = {
     items: [
       { key: "home", label: "Home", href: "#main", kind: "anchor" as const },
       { key: "work", label: "Work", href: "#work", kind: "anchor" as const },
-      { key: "about", label: "About", href: "#about", kind: "anchor" as const },
+      { key: "numbers", label: "Proof of work", href: "#numbers", kind: "anchor" as const },
       { key: "connect", label: "Connect", href: "#connect", kind: "anchor" as const },
     ],
   },

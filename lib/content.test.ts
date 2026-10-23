@@ -22,7 +22,6 @@ describe("the legacy shapes are gone", () => {
       siteContent.columns.ariaLabel,
       ...siteContent.columns.order.flatMap((column) => [column.heading, ...column.groups.flatMap((group) => [group.heading ?? "", ...group.titles.map((title) => title.short)])]),
       ...siteContent.intro.blocks.flatMap((block) => block.sentences),
-      siteContent.intro.more,
       ...Object.values(siteContent.intro.teaser),
       siteContent.loader.progressLabel,
     ];
@@ -31,8 +30,9 @@ describe("the legacy shapes are gone", () => {
 });
 
 describe("menu", () => {
-  it("includes Connect", () => {
-    expect(siteContent.menu.items.map((item) => item.key)).toEqual(["home", "work", "about", "connect"]);
+  it("lists the four pages, in the page's order", () => {
+    expect(siteContent.menu.items.map((item) => item.key)).toEqual(["home", "work", "numbers", "connect"]);
+    expect(siteContent.menu.items.map((item) => item.href)).toEqual(["#main", "#work", "#numbers", "#connect"]);
   });
 });
 

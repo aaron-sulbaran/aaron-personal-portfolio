@@ -27,19 +27,10 @@ function writeDom(el: Element, { attrs, vars }: DomProps) {
 }
 
 function applyDom() {
-  const first = document.querySelector("[data-first-screen]");
-  const about = document.querySelector("[data-about]");
+  const page = document.querySelector("[data-intro]");
   const deal = getKnobs();
   const plan = introDomPlan({ ...getIntroKnobs(), ribbonDesktopPx: deal.ribbonCardHeightPx, ribbonPhonePx: deal.ribbonCardHeightPhonePx });
-  if (first) {
-    writeDom(first, plan.firstScreen);
-    first.querySelectorAll("[data-first-blocks] > [data-block]").forEach((block, i) => plan.firstBlocks[i] && writeDom(block, plan.firstBlocks[i]));
-  }
-  if (about) {
-    writeDom(about, plan.about);
-    // The phone's copy of block 2 comes first and has no stagger of its own.
-    about.querySelectorAll("[data-about-blocks] > [data-block]:not(:first-child)").forEach((block, i) => plan.aboutBlocks[i] && writeDom(block, plan.aboutBlocks[i]));
-  }
+  if (page) writeDom(page, plan.page);
   requestAnimationFrame(() => window.dispatchEvent(new Event(RELAYOUT_EVENT)));
 }
 

@@ -1,5 +1,4 @@
 import { COIL } from "@/lib/coil/constants";
-import { FIELD_UNDER_TEXT, PHONE_BLOCK2, TOP_LAYOUTS, type FieldUnderText, type PhoneBlock2, type TopLayout } from "@/lib/home/storyLayout";
 
 // Page 1's lab knobs: one flat record, its ranges, the clamp every value passes
 // through, and a tiny store the dev-only hero lab (/lab/hero) writes and the
@@ -19,13 +18,9 @@ export type IntroKnobs = {
   shrinkEase: ShrinkEase;
   nameVwDesktop: number; // the name's font size, share of the viewport's width, on a desktop
   nameVwPhone: number; // and on a phone
-  topLayout: TopLayout; // a desktop's top of the screen: the name beside the blocks, or above them
-  phoneBlock2: PhoneBlock2; // a phone's first screen holds block 2, or it waits in the about section
-  bandDesktopPx: number; // the soundtrack band's height on the first screen
+  bandDesktopPx: number; // the soundtrack band's height between the blocks
   bandPhonePx: number;
-  fieldUnderText: FieldUnderText; // the field faded away behind the blocks, or left full
-  orangeAmount: number; // the burnt orange lobe's strength, of its old share (first screen and cards field)
-  staggerOffset: number; // how far across a right block sits, of the free width
+  orangeAmount: number; // the burnt orange lobe's strength, of its old share (the name's field and the cards field)
   staggerGapRem: number; // the room between blocks on a desktop
 };
 
@@ -44,15 +39,11 @@ export const INTRO_KNOB_SPEC: Record<NumericIntroKnob, NumericSpec> = {
   bandDesktopPx: { label: "Wave height, desktop", group: "Wave", min: 80, max: 340, step: 4, unit: "px" },
   bandPhonePx: { label: "Wave height, phone", group: "Wave", min: 60, max: 260, step: 4, unit: "px" },
   orangeAmount: { label: "Orange amount", group: "Field", min: 0, max: 1, step: 0.02 },
-  staggerOffset: { label: "Stagger offset", group: "Paragraphs", min: 0, max: 1, step: 0.02 },
   staggerGapRem: { label: "Gap between blocks", group: "Paragraphs", min: 0.5, max: 14, step: 0.5, unit: "rem" },
 };
 
 export const CHOICE_SPEC = {
   shrinkEase: { label: "Shrink ease", group: "Loader", options: SHRINK_EASES },
-  topLayout: { label: "Top layout (desktop)", group: "Name", options: TOP_LAYOUTS },
-  phoneBlock2: { label: "Phone: block 2 on the first screen or in the about section", group: "Phone", options: PHONE_BLOCK2 },
-  fieldUnderText: { label: "Field under the paragraphs", group: "Field", options: FIELD_UNDER_TEXT },
 } as const;
 
 export const DEFAULT_INTRO_KNOBS: IntroKnobs = {
@@ -62,13 +53,9 @@ export const DEFAULT_INTRO_KNOBS: IntroKnobs = {
   shrinkEase: I.shrink.ease,
   nameVwDesktop: I.name.vwDesktop,
   nameVwPhone: I.name.vwPhone,
-  topLayout: I.topLayout,
-  phoneBlock2: I.phoneBlock2,
   bandDesktopPx: I.band.desktopPx,
   bandPhonePx: I.band.phonePx,
-  fieldUnderText: I.fieldUnderText,
   orangeAmount: I.orangeAmount,
-  staggerOffset: I.stagger.offset,
   staggerGapRem: I.stagger.gapRem,
 };
 
@@ -86,9 +73,6 @@ export function clampIntroKnobs(input: Partial<Record<string, unknown>>, base: I
   }
   out.loaderOn = typeof input.loaderOn === "boolean" ? input.loaderOn : base.loaderOn;
   out.shrinkEase = pick(SHRINK_EASES, input.shrinkEase, base.shrinkEase);
-  out.topLayout = pick(TOP_LAYOUTS, input.topLayout, base.topLayout);
-  out.phoneBlock2 = pick(PHONE_BLOCK2, input.phoneBlock2, base.phoneBlock2);
-  out.fieldUnderText = pick(FIELD_UNDER_TEXT, input.fieldUnderText, base.fieldUnderText);
   return out;
 }
 

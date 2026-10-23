@@ -45,7 +45,7 @@ function currentSectionHref(pathname: string): string | null {
   if (pathname !== "/") return null;
   const line = window.scrollY + window.innerHeight * 0.35;
   let here = "#main";
-  for (const id of ["work", "about", "connect"]) {
+  for (const id of ["work", "numbers", "connect"]) {
     const el = document.getElementById(id);
     if (el && el.getBoundingClientRect().top + window.scrollY <= line) here = `#${id}`;
   }

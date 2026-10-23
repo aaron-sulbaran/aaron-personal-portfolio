@@ -469,36 +469,26 @@ const NAME_COMPOSITE_GLSL = /* glsl */ `
   }
 `;
 
-// uHush0 and uHush1 are the patches of body text the field fades away behind
-// (x0 y0 x1 y1, CSS px from the canvas's top left; an empty one is none), uHushAmt
-// how far (0 leaves the field full, 1 clears it), uHushFeather the softness of
-// their edges, px; the deal's opening circle lifts them (below).
-//
 // uView maps gl_FragCoord to canvas uv (1 / drawing buffer size). uFull is
 // the canvas in CSS px; uNameRect is the name mask's rect in CSS px (x, y
 // from the top left, w, h; the greeting included); uDpr is device px per CSS
 // px. uNameSpan is the name's own band in the mask (top, height, as fractions
 // of the mask's height): the handoff gradient spans it. The greeting (above
 // uGreetSplit) takes its own alpha (uGreetA). uSurfIn grows the surface over
-// the solid gradient the loader lands on. uOpen is the deal's opening circle:
-// the center (x, y in CSS px from the top left), the outer radius and the
-// feather's width; it lifts the hush patches (a radius of 1e5 or more lifts
-// them everywhere). The output is premultiplied by what is left of the field,
-// so the page shows through the patches. uTopFade fades the canvas's top edge
-// in over that many CSS px.
+// the solid gradient the loader lands on. uOpen is the deal's mask on the
+// whole composite: the center (x, y in CSS px from the top left), the outer
+// radius and the feather's width; the output is premultiplied by it, so the
+// page shows through wherever it is not yet open (a radius of 1e5 or more is
+// open everywhere). uTopFade fades the canvas's top edge in over that many CSS
+// px. While the radius is 0 the scene skips this pass.
 export const COMPOSITE_FRAG = /* glsl */ `
   uniform sampler2D uField, uName;
-  uniform vec4 uView, uNameRect, uOpen, uHush0, uHush1;
+  uniform vec4 uView, uNameRect, uOpen;
   uniform vec2 uFull, uNameSpan;
   uniform vec3 uPaper, uGradTop, uGradBottom;
-  uniform float uNameK, uNameA, uGreetA, uGreetSplit, uLod, uGrain, uDpr, uSeam, uTopFade, uHushAmt, uHushFeather;
+  uniform float uNameK, uNameA, uGreetA, uGreetSplit, uLod, uGrain, uDpr, uSeam, uTopFade;
   float h12(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
   ${NAME_COMPOSITE_GLSL}
-  float hushBox(vec2 p, vec4 r) {
-    if (r.z <= r.x || r.w <= r.y) return 0.0;
-    vec2 d = abs(p - (r.xy + r.zw) * 0.5) - (r.zw - r.xy) * 0.5;
-    return 1.0 - smoothstep(0.0, max(uHushFeather, 1.0), max(d.x, d.y));
-  }
 
   void main() {
     vec2 fuv = gl_FragCoord.xy * uView.zw + uView.xy;
@@ -524,15 +514,11 @@ export const COMPOSITE_FRAG = /* glsl */ `
     // The hero's bottom edge fades to paper, so the field never meets the page in a seam.
     col = mix(uPaper, col, smoothstep(0.0, uSeam, fuv.y));
     col += (h12(gl_FragCoord.xy) - 0.5) / 255.0;
-    // The deal's opening circle: a smootherstep falloff over the feather (no
-    // visible rim). It lifts the hush patches (the field faded away behind the
-    // paragraphs) as it grows; outside them it changes nothing.
+    // The deal's mask: a smootherstep falloff over the feather (no visible rim), and
+    // the stage's top edge fading in, so the open field meets the page with no line.
     float edge = clamp((uOpen.z - length(px - uOpen.xy)) / max(uOpen.w, 1.0), 0.0, 1.0);
-    float lift = uOpen.z >= 1.0e5 ? 1.0 : edge * edge * edge * (edge * (edge * 6.0 - 15.0) + 10.0);
-    float hush = max(hushBox(px, uHush0), hushBox(px, uHush1)) * uHushAmt;
-    float open = 1.0 - hush * (1.0 - lift);
-    // The stage's top edge fades in, so the field meets the page with no line;
-    // the name's letters (when one is drawn) stay whole through it.
+    float open = uOpen.z >= 1.0e5 ? 1.0 : edge * edge * edge * (edge * (edge * 6.0 - 15.0) + 10.0);
+    // The name's letters (when one is drawn) stay whole through it.
     open *= mix(smoothstep(0.0, max(uTopFade, 1.0), px.y), 1.0, clamp(m * 4.0, 0.0, 1.0));
     gl_FragColor = vec4(col * open, open);
   }

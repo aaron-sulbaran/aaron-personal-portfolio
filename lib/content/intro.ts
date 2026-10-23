@@ -5,8 +5,8 @@
 // link markup (lib/content/links.ts) so the defs, tips and pops come with it.
 // The blocks are data: dropping a tip to plain words on this page is an edit
 // to these strings. Aaron rewrites them later.
-// Then the teaser at the foot: the line, the button that deals, the way to the
-// 30-second version.
+// Page 1 tells all four, whole, in this order; the teaser at its foot is the
+// button that deals and the way to the 30-second version.
 export const intro = {
   ariaLabel: "About me",
   blocks: [
@@ -42,8 +42,6 @@ export const intro = {
       ],
     },
   ],
-  // The phone's disclosure in the "teaser peeks" arrangement (lab only).
-  more: "More about me",
   teaser: {
     line: "Want to see what I've been up to?",
     deal: "Deal me in",

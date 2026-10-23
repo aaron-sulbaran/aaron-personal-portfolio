@@ -1,38 +1,23 @@
 import { describe, expect, it } from "vitest";
-import { ABOUT_BLOCKS, FIRST_SCREEN_BLOCKS, PHONE_MOVABLE_BLOCK, phoneBlock2Shows, staggerPlan } from "@/lib/home/storyLayout";
+import { LATE_BLOCKS, STORY_SIDES, TOP_BLOCKS, sideOf } from "@/lib/home/storyLayout";
 import { siteContent } from "@/lib/content";
 
-describe("the paragraph blocks' stagger", () => {
-  it("alternates left and right, starting on the left", () => {
-    expect(staggerPlan(4, 0.6).map((step) => step.side)).toEqual(["left", "right", "left", "right"]);
-    expect(staggerPlan(3, 0.6).map((step) => step.side)).toEqual(["left", "right", "left"]);
-  });
-
-  it("pushes only the right blocks, by the offset", () => {
-    expect(staggerPlan(4, 0.6).map((step) => step.shift)).toEqual([0, 0.6, 0, 0.6]);
-  });
-
-  it("holds the offset to 0 through 1 and treats a bad number as 0", () => {
-    expect(staggerPlan(2, 3)[1].shift).toBe(1);
-    expect(staggerPlan(2, -1)[1].shift).toBe(0);
-    expect(staggerPlan(2, Number.NaN)[1].shift).toBe(0);
-  });
-
-  it("plans nothing for no blocks", () => {
-    expect(staggerPlan(0, 0.5)).toEqual([]);
-    expect(staggerPlan(-2, 0.5)).toEqual([]);
-  });
-});
-
-describe("where the story's blocks are told", () => {
-  it("tells blocks 1 and 2 on the first screen and 3 and 4 in the about section, each block once", () => {
-    expect([...FIRST_SCREEN_BLOCKS, ...ABOUT_BLOCKS]).toEqual([0, 1, 2, 3]);
+describe("page 1's stagger", () => {
+  it("tells all four blocks on page 1, each once, in order: two around the name, two after the wave", () => {
+    expect([...TOP_BLOCKS, ...LATE_BLOCKS]).toEqual([0, 1, 2, 3]);
     expect(siteContent.intro.blocks).toHaveLength(4);
   });
 
-  it("lets a phone's first screen take block 2 or leave it to the about section, never both", () => {
-    expect(PHONE_MOVABLE_BLOCK).toBe(1);
-    expect(phoneBlock2Shows("about")).toEqual({ firstScreen: false, about: true });
-    expect(phoneBlock2Shows("first")).toEqual({ firstScreen: true, about: false });
+  it("puts block 1 right of the name, block 2 under it on the left, then block 3 on the right and block 4 on the left", () => {
+    expect(STORY_SIDES).toEqual(["right", "left", "right", "left"]);
+    expect([0, 1, 2, 3].map(sideOf)).toEqual(["right", "left", "right", "left"]);
+  });
+
+  it("alternates sides after the name's own row, so no two blocks stack in one column", () => {
+    for (let i = 1; i < STORY_SIDES.length; i++) expect(STORY_SIDES[i]).not.toBe(STORY_SIDES[i - 1]);
+  });
+
+  it("leans an unknown block left", () => {
+    expect(sideOf(9)).toBe("left");
   });
 });

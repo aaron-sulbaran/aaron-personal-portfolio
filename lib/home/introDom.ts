@@ -1,23 +1,20 @@
 import { COIL } from "@/lib/coil/constants";
 import { lockupVars } from "@/lib/home/lockup";
-import { staggerPlan, type PhoneBlock2, type TopLayout } from "@/lib/home/storyLayout";
 
-// Page 1's layout knobs as DOM: the attributes and custom properties the first
-// screen, the about section and their blocks carry, from one pure function. The
-// server renders it with the defaults (so the first paint never waits on a
-// knob), and the dev-only lab bridge (components/home/IntroLabBridge.tsx)
-// writes it again when a knob moves; app/globals.css does the rest.
+// Page 1's layout knobs as DOM: the custom properties the page carries, from
+// one pure function. The server renders it with the defaults (so the first
+// paint never waits on a knob), and the dev-only lab bridge
+// (components/home/IntroLabBridge.tsx) writes it again when a knob moves;
+// app/globals.css does the rest. Where each block sits is the story's fixed
+// stagger (lib/home/storyLayout.ts), not a knob.
 
 export type DomProps = { attrs: Record<string, string>; vars: Record<string, string> };
 
 export type DomKnobs = {
-  topLayout: TopLayout;
-  phoneBlock2: PhoneBlock2;
   nameVwDesktop: number;
   nameVwPhone: number;
   bandDesktopPx: number;
   bandPhonePx: number;
-  staggerOffset: number;
   staggerGapRem: number;
   // The ribbon's card height (the deal lab's knobs; the constants' when absent):
   // the room the page leaves for it.
@@ -33,36 +30,24 @@ export function nameSizeCss(vw: number): string {
 }
 
 export type IntroDomPlan = {
-  firstScreen: DomProps;
-  about: DomProps;
-  // One entry per block of a section (by its position in the section), the stagger.
-  firstBlocks: DomProps[];
-  aboutBlocks: DomProps[];
+  page: DomProps;
 };
 
-function blockProps(side: "left" | "right", shift: number): DomProps {
-  return { attrs: { "data-side": side }, vars: { "--shift": String(shift) } };
-}
-
 export function introDomPlan(knobs: DomKnobs): IntroDomPlan {
-  const stagger = staggerPlan(2, knobs.staggerOffset);
-  const shared = { "--story-gap": `${knobs.staggerGapRem}rem` };
   return {
-    firstScreen: {
-      attrs: { "data-top-layout": knobs.topLayout, "data-phone-block2": knobs.phoneBlock2 },
+    page: {
+      attrs: {},
       vars: {
         ...lockupVars(),
-        ...shared,
+        "--story-gap": `${knobs.staggerGapRem}rem`,
         "--lk-d": nameSizeCss(knobs.nameVwDesktop),
         "--lk-p": nameSizeCss(knobs.nameVwPhone),
         "--band-d": `${knobs.bandDesktopPx}px`,
         "--band-p": `${knobs.bandPhonePx}px`,
         "--ribbon-d": `${knobs.ribbonDesktopPx ?? COIL.deal.ribbon.cardHeightPx}px`,
         "--ribbon-p": `${knobs.ribbonPhonePx ?? COIL.deal.ribbon.cardHeightPhonePx}px`,
+        "--name-reach": String(COIL.intro.nameCanvas.reach),
       },
     },
-    about: { attrs: { "data-phone-block2": knobs.phoneBlock2 }, vars: shared },
-    firstBlocks: stagger.map((step) => blockProps(step.side, step.shift)),
-    aboutBlocks: stagger.map((step) => blockProps(step.side, step.shift)),
   };
 }
