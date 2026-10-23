@@ -21,6 +21,10 @@ export interface MetricsSlot {
   sub?: string;
 }
 
+// The four pages of the one scroll, numbered: in each page's heading and in the
+// Menu's list (page 1's is a small label with the name).
+export const PAGE_NUMBERS = { home: "01", work: "02", numbers: "03", connect: "04" } as const;
+
 export const siteContent = {
   meta: {
     title: "Aaron Sulbaran",
@@ -65,9 +69,13 @@ export const siteContent = {
     pillLabel: "Menu",
     closeLabel: "Close",
     dialogLabel: "Site menu",
-    // The header bar past the hero (components/SiteNav.tsx).
+    // The panel's list of the four pages (each with its number in the display face's own row).
     navAriaLabel: "Sections",
+    // The logo, top left: a click goes back to the top.
     markAriaLabel: "Back to top",
+    // The wave's freeze, in the panel so a phone with no music playing can stop it too.
+    freeze: "Freeze the wave",
+    unfreeze: "Let it move",
     // The panel's bottom row: email first, then the socials as text links.
     email: { label: "aarondsulbaran@gmail.com", href: "mailto:aarondsulbaran@gmail.com" },
     socials: [
@@ -77,10 +85,10 @@ export const siteContent = {
       { key: "instagram", label: "Instagram", href: "https://www.instagram.com/aaron.sulbaran/" },
     ],
     items: [
-      { key: "home", label: "Home", href: "#main", kind: "anchor" as const },
-      { key: "work", label: "Work", href: "#work", kind: "anchor" as const },
-      { key: "numbers", label: "Proof of work", href: "#numbers", kind: "anchor" as const },
-      { key: "connect", label: "Connect", href: "#connect", kind: "anchor" as const },
+      { key: "home", label: "Home", number: PAGE_NUMBERS.home, href: "#main", kind: "anchor" as const },
+      { key: "work", label: "Work", number: PAGE_NUMBERS.work, href: "#work", kind: "anchor" as const },
+      { key: "numbers", label: "Proof of work", number: PAGE_NUMBERS.numbers, href: "#numbers", kind: "anchor" as const },
+      { key: "connect", label: "Connect", number: PAGE_NUMBERS.connect, href: "#connect", kind: "anchor" as const },
     ],
   },
   modals: {
@@ -153,7 +161,11 @@ export const siteContent = {
   // "seen" is shared with the Coil.
   columns: {
     ariaLabel: "Work and builds",
+    // The section's title, above the cards: it answers page 1's question (a draft, for Aaron to rewrite).
+    title: "Here's what I've been up to.",
     seenLabel: "opened",
+    // The count under the Work column (a line under the columns on a phone), shown from the first card opened.
+    progress: (opened: number, total: number) => `${opened} of ${total} opened`,
     externalLabel: "opens in a new tab",
     order: cardColumns,
   },
@@ -370,11 +382,11 @@ export const siteContent = {
     { src: "/photos/cards/travel-picture.jpg", width: 1200, height: 1600 },
     { src: "/photos/uncs-grad.jpeg", width: 627, height: 836 },
   ],
-  // The mark's card (components/mark/MarkCard.tsx), opened by holding the
-  // top-left mark. The subtitle is lowercase as I typed it. The title and the
+  // The logo's card (components/mark/MarkCard.tsx), opened by holding the
+  // top-left logo. The subtitle is lowercase as I typed it. The title and the
   // four paragraphs are mine verbatim; the inline links are in the register.
   mark: {
-    dialogLabel: "The mark",
+    dialogLabel: "The logo",
     title: "I made myself a logo",
     subtitle: "good job, you found my easter egg!",
     lines: [

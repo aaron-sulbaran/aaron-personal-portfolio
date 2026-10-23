@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
-import { siteContent, type ColumnView } from "@/lib/content";
+import { PAGE_NUMBERS, siteContent, type ColumnView } from "@/lib/content";
+import { SectionNumber } from "@/components/sections/SectionNumber";
+import { CardProgress } from "./CardProgress";
 import { CardTitle } from "./CardTitle";
 
 // The two columns of titles beside the Coil, over the shader field. Below md
@@ -7,24 +9,45 @@ import { CardTitle } from "./CardTitle";
 // each takes a gutter at its side of the section and the middle is the pane
 // the Coil is laid out in ([data-coil-pane], read by the scene's layout). The
 // wrapper takes no pointer, so the canvas keeps every gesture in the middle.
-// The labels and titles carry data-deal-label and data-deal-title: the deal
-// holds them back (app/globals.css) and brings them in last (lib/home/dealOpen.ts).
-// A Server Component: only the titles are client leaves.
+// The page's number and title ("Here's what I've been up to.", which answers
+// page 1's question) lead the Work column on a desktop, and span the top of
+// the columns on a phone; the progress line ("N of 14 opened") closes the Work
+// column, and on a phone the two columns. The labels and titles carry
+// data-deal-label and data-deal-title: the deal holds them back
+// (app/globals.css) and brings them in last (lib/home/dealOpen.ts). A Server
+// Component: only the titles and the progress line are client leaves.
 export function CardColumns() {
   const [work, builds] = siteContent.columns.order;
   return (
     <div className="pointer-events-none relative z-10 grid grid-cols-2 gap-x-4 px-5 pb-6 pt-1 md:absolute md:inset-0 md:grid-cols-[var(--coil-gutter)_minmax(0,1fr)_var(--coil-gutter)] md:content-center md:gap-x-0 md:px-0 md:py-0 [--coil-gutter:clamp(12.5rem,16.5vw,17.5rem)]">
-      <Column column={work} className="md:col-start-1 md:pl-8 md:pr-2" />
+      <PageTitle className="col-span-2 mb-4 md:hidden" />
+      <div className="pointer-events-auto md:col-start-1 md:pl-8 md:pr-2">
+        <PageTitle className="mb-6 hidden md:block" />
+        <Column column={work} />
+        <CardProgress className="mt-4 hidden md:block" />
+      </div>
       <div aria-hidden="true" data-coil-pane="" className="hidden md:col-start-2 md:block" />
-      <Column column={builds} className="md:col-start-3 md:pl-8 md:pr-2" />
+      <Column column={builds} className="pointer-events-auto md:col-start-3 md:pl-8 md:pr-2" />
+      <CardProgress className="col-span-2 mt-5 md:hidden" />
     </div>
   );
 }
 
-function Column({ column, className }: { column: ColumnView; className: string }) {
+function PageTitle({ className }: { className: string }) {
   return (
-    <div className={`pointer-events-auto ${className}`}>
-      <h2 data-deal-label="" className={HEADING_CLASS}>{column.heading}</h2>
+    <div data-deal-label="" className={className}>
+      <SectionNumber value={PAGE_NUMBERS.work} className="mb-1.5" />
+      <h2 data-page-title="" className="font-display text-[1.3125rem] leading-[1.12] text-foreground md:text-[clamp(1.25rem,1.7vw,1.75rem)]">
+        {siteContent.columns.title}
+      </h2>
+    </div>
+  );
+}
+
+function Column({ column, className = "" }: { column: ColumnView; className?: string }) {
+  return (
+    <div className={className}>
+      <h3 data-deal-label="" className={HEADING_CLASS}>{column.heading}</h3>
       {column.groups.map((group) => (
         <Group key={group.heading ?? column.key} heading={group.heading}>
           {group.titles.map((title) => (
@@ -41,7 +64,7 @@ function Column({ column, className }: { column: ColumnView; className: string }
 function Group({ heading, children }: { heading: string | null; children: ReactNode }) {
   return (
     <>
-      {heading && <h3 data-deal-label="" className={`${HEADING_CLASS} mt-4`}>{heading}</h3>}
+      {heading && <h4 data-deal-label="" className={`${HEADING_CLASS} mt-4`}>{heading}</h4>}
       <ol aria-label={heading ?? undefined}>{children}</ol>
     </>
   );

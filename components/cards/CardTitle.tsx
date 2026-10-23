@@ -16,6 +16,13 @@ export function CardTitle({ title }: { title: ColumnTitle }) {
   const controller = useHomeController();
   const seen = useIsSeen(title.key);
   const lit = useHoveredCard() === title.key;
+  // The seen dot follows the title's last word on the same line, glued to it, and sits on the
+  // middle of the line's x-height (vertical-align: middle; Profa's line box and x-height share a
+  // centre to within a seventh of a pixel at these sizes), so it is centered on the text
+  // line however the title wraps. The underline is the words' only: it never reaches the dot.
+  const words = title.short.split(" ");
+  const last = words.pop() ?? "";
+  const head = words.join(" ");
   return (
     <button
       type="button"
@@ -35,11 +42,17 @@ export function CardTitle({ title }: { title: ColumnTitle }) {
       onClick={(event) => controller?.openTitle(title.key, event.currentTarget)}
       data-cursor-hover
     >
-      <span className="underline decoration-transparent decoration-1 underline-offset-[5px] transition-[text-decoration-color] duration-200 group-hover/title:decoration-accent group-data-[lit]/title:decoration-accent group-focus-visible/title:decoration-accent">
-        {title.short}
+      <span className="block">
+        <span className="underline decoration-transparent decoration-1 underline-offset-[5px] transition-[text-decoration-color] duration-200 group-hover/title:decoration-accent group-data-[lit]/title:decoration-accent group-focus-visible/title:decoration-accent">
+          {head}
+          {head ? " " : ""}
+          <span className="whitespace-nowrap">
+            {last}
+            {seen && <span data-seen-dot="" aria-hidden="true" className="ml-2.5 inline-block h-2 w-2 shrink-0 rounded-full border border-current align-middle opacity-70" />}
+          </span>
+        </span>
+        {seen && <span className="sr-only">, {siteContent.columns.seenLabel}</span>}
       </span>
-      {seen && <span aria-hidden="true" className="ml-2.5 inline-block h-2 w-2 shrink-0 rounded-full border border-current opacity-70" />}
-      {seen && <span className="sr-only">, {siteContent.columns.seenLabel}</span>}
     </button>
   );
 }
