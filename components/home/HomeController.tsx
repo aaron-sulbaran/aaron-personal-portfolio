@@ -364,7 +364,7 @@ export function HomeController({ children }: Props) {
         data-input={drivers.input}
         // The browser keeps every vertical swipe (and pinch zoom); horizontal
         // ones reach the scene's drag-to-spin.
-        className="group/hero relative flex min-h-[100svh] w-full flex-col bg-background [touch-action:pan-y_pinch-zoom] md:block md:min-h-[92svh]"
+        className="group/hero relative flex min-h-[100svh] w-full flex-col bg-background [touch-action:pan-y_pinch-zoom] md:block md:min-h-[100svh]"
       >
         <StageRail
           sectionRef={sectionRef}

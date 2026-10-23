@@ -47,7 +47,7 @@ export function BandStage() {
   return (
     <>
       <BandPlayer />
-      <div ref={stageRef} data-wave-band-line className="relative h-[176px] md:absolute md:inset-0 md:h-auto">
+      <div ref={stageRef} data-wave-band-line className="relative h-[var(--band-p,176px)] md:absolute md:inset-0 md:h-auto">
         <WaveCanvas active={inView} frozen={frozen} />
       </div>
       <PlaybackPill reached={pillReached({ music, bandPassed: passed, promptPassed, promptOnScreen }) && !playerOwnsPill(view)} />

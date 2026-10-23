@@ -2,8 +2,8 @@
 
 import { useEffect } from "react";
 import { RELAYOUT_EVENT } from "@/components/soundtrack/path/pathView";
-import { siteContent } from "@/lib/content";
 import { dispatchDeal } from "@/lib/home/deal";
+import { getKnobs, subscribeKnobs } from "@/lib/home/dealKnobs";
 import { applyStoredDealKnobs } from "@/lib/home/dealLab";
 import { introDomPlan, type DomProps } from "@/lib/home/introDom";
 import { DEAL_LAB_KEY, HERO_LAB_KEY, HERO_REPLAY_KEY } from "@/lib/home/introLabKey";
@@ -27,13 +27,18 @@ function writeDom(el: Element, { attrs, vars }: DomProps) {
 }
 
 function applyDom() {
-  const section = document.querySelector("[data-intro]");
-  if (!section) return;
-  const plan = introDomPlan(getIntroKnobs(), siteContent.intro.blocks.length);
-  writeDom(section, plan.section);
-  for (const [id, dom] of Object.entries(plan.items)) {
-    const item = section.querySelector(`[data-story-item="${id}"]`);
-    if (item) writeDom(item, dom);
+  const first = document.querySelector("[data-first-screen]");
+  const about = document.querySelector("[data-about]");
+  const deal = getKnobs();
+  const plan = introDomPlan({ ...getIntroKnobs(), ribbonDesktopPx: deal.ribbonCardHeightPx, ribbonPhonePx: deal.ribbonCardHeightPhonePx });
+  if (first) {
+    writeDom(first, plan.firstScreen);
+    first.querySelectorAll("[data-first-blocks] > [data-block]").forEach((block, i) => plan.firstBlocks[i] && writeDom(block, plan.firstBlocks[i]));
+  }
+  if (about) {
+    writeDom(about, plan.about);
+    // The phone's copy of block 2 comes first and has no stagger of its own.
+    about.querySelectorAll("[data-about-blocks] > [data-block]:not(:first-child)").forEach((block, i) => plan.aboutBlocks[i] && writeDom(block, plan.aboutBlocks[i]));
   }
   requestAnimationFrame(() => window.dispatchEvent(new Event(RELAYOUT_EVENT)));
 }
@@ -64,6 +69,7 @@ export default function IntroLabBridge() {
     applyDom();
     let seen = readReplays();
     const unsubscribe = subscribeIntroKnobs(applyDom);
+    const unsubscribeDeal = subscribeKnobs(applyDom);
     const onStorage = (event: StorageEvent) => {
       if (event.key === HERO_LAB_KEY) applyStoredIntroKnobs();
       else if (event.key === DEAL_LAB_KEY) applyStoredDealKnobs();
@@ -80,6 +86,7 @@ export default function IntroLabBridge() {
     window.addEventListener("storage", onStorage);
     return () => {
       unsubscribe();
+      unsubscribeDeal();
       window.removeEventListener("storage", onStorage);
     };
   }, []);

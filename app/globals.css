@@ -827,10 +827,10 @@ html:not([data-input="pointer"]) .fx:focus-visible,
 
 /* ---- end player ---- */
 /* ---- the deal (hero rework, slices 2 and 4a) ---- */
-/* The cards section is closed until the cards are dealt: the stage draws
-   nothing but the wheel (the scene skips the field while it is closed, and the
-   poster under it waits) and nothing in it takes a pointer, so Deal me in and
-   the links under it stay clickable; its columns wait, while the section keeps
+/* The cards section is closed until the cards are dealt: the stage is the first
+   screen's (the name, the ribbon and the field behind them, drawn by the scene)
+   and nothing in it takes a pointer, so Deal me in, the wave's buttons and the
+   links stay clickable; its columns wait, while the section keeps
    its box and nothing below moves. The head script (lib/home/dealInit.ts)
    writes data-deal="pending" before the first paint, the home's controller
    takes it over as "closed", then "dealing" (the deal's master timeline brings
@@ -865,26 +865,13 @@ html[data-deal="pending"] [data-deal-label],
 html[data-deal="pending"] [data-deal-title] {
   animation: deal-failsafe 0.01s 8s forwards;
 }
-/* The wheel's slot keeps the teaser's room; its outline is for a page with no
-   scene to draw the wheel (the still path), and goes once the scene does. */
-body:has(section[data-scene="on"]) [data-coil-wheel] {
-  border-color: transparent;
+/* The stage fades in once the scene has drawn its first frame (a visit with no
+   loader would otherwise see the page's text, then the canvas pop in). */
+[data-coil-stage] {
+  transition: opacity 400ms ease-out;
 }
-/* With no scene to draw the wheel (reduced motion, no WebGL) its still sits in
-   the slot instead of the outline. */
-[data-wheel-still] {
-  display: none;
-}
-body:has(section[data-scene="still"]) [data-wheel-still] {
-  display: block;
-}
-body:has(section[data-scene="still"]) [data-coil-wheel] {
-  border-color: transparent;
-}
-/* Once a scene has dealt the cards the slot closes up (useSlotRelease), so page
-   1's foot meets the cards with no blank circle between them. */
-[data-coil-wheel][data-gone] {
-  display: none;
+html[data-deal] section[data-scene="off"] [data-coil-stage] {
+  opacity: 0;
 }
 /* ---- end the deal ---- */
 
@@ -918,71 +905,106 @@ body:has(section[data-scene="still"]) [data-coil-wheel] {
   margin-bottom: calc(var(--lk) * var(--lk-bottom-trim) * -1);
 }
 
-/* The stage holds the heading (and the field behind it, full bleed). Where the
-   heading sits is the lab's namePosition: center (the stage's middle), top
-   (centered across, under the logo row), topLeft (on the content column's left
-   edge). The stage's own height is fixed in CSS, so the loader's shrink onto
-   the heading never moves anything. */
-[data-intro-stage] {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding-inline: 6vw;
-  min-height: clamp(26rem, 62svh, 46rem);
+/* ---- the first screen (slice 4c) ---- */
+/* One screen of everything a visitor needs: the name (drawn by the scene, with
+   this h1's lockup as its place and size), blocks 1 and 2, the thin wave, the
+   ribbon's slot and the button. --lk is the name's font size (--lk-d on a
+   desktop, --lk-p on a phone, from the lab's knobs); the section's height is one
+   svh unless its content is taller (the room is the ribbon slot's, which
+   flexes). The stage's canvas sticks behind all of it, from the page's first
+   pixel. */
+:root {
+  --field-poster: url("/coil/field-light.avif");
 }
-[data-intro-stage] [data-intro-heading-wrap] {
-  position: relative;
+:root[data-theme="dark"] {
+  --field-poster: url("/coil/field-dark.avif");
+}
+.first-screen {
+  --lk: var(--lk-d);
+  --ribbon-h: var(--ribbon-d);
   display: flex;
+  flex-direction: column;
+  min-height: 100svh;
+  padding: 4.5rem 6vw 0.5rem;
+  row-gap: 0.75rem;
+}
+@media (max-width: 767px) {
+  .first-screen {
+    --lk: var(--lk-p);
+    --ribbon-h: var(--ribbon-p);
+    padding-top: 4.5rem;
+    row-gap: 0.75rem;
+  }
+}
+.first-top {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
   width: 100%;
   max-width: 1240px;
   margin-inline: auto;
-  justify-content: center;
 }
-[data-name-position="top"] [data-intro-stage],
-[data-name-position="topLeft"] [data-intro-stage] {
-  align-items: flex-start;
-  min-height: 0;
-  padding-top: 7rem;
-  padding-bottom: 3.5rem;
-}
-[data-name-position="topLeft"] [data-intro-heading-wrap] {
-  justify-content: flex-start;
-}
-@media (max-width: 767px) {
-  [data-intro-stage] {
-    min-height: clamp(14rem, 33svh, 20rem);
+@media (min-width: 1024px) {
+  .first-screen[data-top-layout="beside"] .first-top {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 3.5rem;
   }
-  [data-name-position="top"] [data-intro-stage],
-  [data-name-position="topLeft"] [data-intro-stage] {
-    padding-top: 5.5rem;
-    padding-bottom: 2rem;
+  .first-screen[data-top-layout="beside"] .first-name {
+    flex: none;
+  }
+  .first-screen[data-top-layout="beside"] .first-blocks {
+    flex: 1 1 0;
+    min-width: 0;
   }
 }
-
-/* The story: the paragraph blocks and the soundtrack band, in one column.
-   Each item's place is its CSS order (lib/home/storyLayout.ts: desktop, and
-   the phone's own), so the band's place and the phone's arrangement are knobs
-   and the server's first paint never waits on one. From 1024px a right block
-   leans across --shift of the free width beside a measure of about 60
-   characters; below that, one column. */
-[data-story] {
+.first-name {
+  position: relative;
+  color: var(--color-accent);
+}
+/* Where the scene does not draw the name (no script, reduced motion, no WebGL 2,
+   the after state once the cards are dealt) the h1 shows as text with the field
+   as its fill: the field's poster over the accent, multiplied in the light
+   theme and screened in the dark one, so the letters stay readable on the
+   page. */
+@supports (background-clip: text) or (-webkit-background-clip: text) {
+  .first-name [data-name-visual] {
+    color: transparent;
+    background-color: var(--color-accent);
+    background-image: var(--field-poster);
+    background-size: cover;
+    background-position: 50% 85%;
+    background-blend-mode: multiply;
+    -webkit-background-clip: text;
+    background-clip: text;
+  }
+  :root[data-theme="dark"] .first-name [data-name-visual] {
+    background-blend-mode: screen;
+  }
+}
+/* With a script and a scene on its way or drawing, the canvas has the name; the
+   spans (not the h1, whose sr-only text is the heading) wait. The cards dealt
+   (the page's after state) or no scene to come: they show. */
+html[data-deal]:not([data-deal="dealt"]) body:not(:has(section[data-scene="still"])) [data-name-visual] {
+  visibility: hidden;
+}
+html[data-deal="pending"] [data-name-visual] {
+  animation: name-failsafe 0.01s 8s forwards;
+}
+@keyframes name-failsafe {
+  to { visibility: visible; }
+}
+.first-blocks {
   display: flex;
   flex-direction: column;
-  row-gap: var(--story-gap-sm, 2.75rem);
-}
-[data-story-item] {
-  order: var(--o-d, 0);
+  row-gap: var(--story-gap, 2rem);
 }
 @media (max-width: 767px) {
-  [data-story-item] {
-    order: var(--o-p, 0);
+  .first-blocks {
+    row-gap: 1rem;
   }
 }
 @media (min-width: 1024px) {
-  [data-story] {
-    row-gap: var(--story-gap, 7rem);
-  }
   [data-block][data-side="right"] [data-block-text] {
     margin-left: max(0px, calc((100% - 60ch) * var(--shift, 0)));
   }
@@ -990,30 +1012,98 @@ body:has(section[data-scene="still"]) [data-coil-wheel] {
 [data-block-text] {
   max-width: 60ch;
 }
-[data-more] {
-  display: none;
-}
+/* A phone's first screen holds block 1, and block 2 only by the lab's knob; the
+   about section holds the other copy of block 2 (on a desktop only the first
+   screen's shows). display none takes the hidden copy out of the reading order. */
 @media (max-width: 767px) {
-  [data-phone-layout="teaserPeeks"] [data-more] {
-    display: block;
-  }
-  [data-phone-layout="teaserPeeks"]:not([data-more-open]) [data-story-item][data-collapsible="true"] {
+  [data-first-screen]:not([data-phone-block2="first"]) [data-story-block="work"],
+  [data-about][data-phone-block2="first"] [data-story-block="work"] {
     display: none;
   }
-  /* The first screen holds the name, block 1, the music line and the top of the teaser: a shorter stage. */
-  [data-phone-layout="teaserPeeks"][data-name-position="center"] [data-intro-stage] {
-    min-height: clamp(11rem, 27svh, 15rem);
-  }
-  [data-phone-layout="teaserPeeks"] [data-story] {
-    row-gap: 1.75rem;
-  }
-  [data-phone-layout="teaserPeeks"] [data-wave-band-line] {
-    height: 120px;
-  }
-  [data-phone-layout="teaserPeeks"] [data-teaser] {
-    padding-top: 2.5rem;
+}
+@media (min-width: 768px) {
+  [data-about] [data-story-block="work"] {
+    display: none;
   }
 }
+.about-blocks {
+  display: flex;
+  flex-direction: column;
+  row-gap: 2rem;
+}
+@media (min-width: 1024px) {
+  .about-blocks {
+    row-gap: calc(var(--story-gap, 2rem) * 2.5);
+  }
+}
+.first-band {
+  margin-inline: -6vw;
+}
+.first-ribbon {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  min-height: calc(var(--ribbon-h) + 1rem);
+}
+.first-ribbon__slot {
+  position: relative;
+  width: 100%;
+  height: var(--ribbon-h);
+}
+/* The ribbon's room closes once the cards are dealt and the reader has scrolled
+   past it (components/home/useSlotRelease.ts); the screen is then as tall as its
+   content. */
+.first-ribbon:has([data-coil-ribbon][data-gone]) {
+  display: none;
+}
+.first-screen:has([data-coil-ribbon][data-gone]) {
+  min-height: 0;
+}
+/* The ribbon where no scene draws it: a still row, its edges fading out. */
+.ribbon-still {
+  display: none;
+  position: absolute;
+  inset: 0 -6vw;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 120px, #000 calc(100% - 120px), transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 120px, #000 calc(100% - 120px), transparent);
+}
+.ribbon-still__card {
+  position: relative;
+  flex: none;
+  height: 100%;
+  aspect-ratio: 3 / 4;
+}
+html:not([data-deal]) .ribbon-still,
+body:has(section[data-scene="still"]) .ribbon-still {
+  display: flex;
+}
+/* The field behind the first screen where no scene draws it: the field's poster
+   under a soft mask around the name and around the ribbon, faded away behind
+   the text (a shader field is never behind body text). */
+.first-field {
+  display: none;
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: var(--field-poster);
+  background-size: cover;
+  background-position: 50% 50%;
+  -webkit-mask-image: radial-gradient(ellipse 34% 28% at 20% 22%, #000, transparent), radial-gradient(ellipse 62% 24% at 50% 80%, #000, transparent);
+  mask-image: radial-gradient(ellipse 34% 28% at 20% 22%, #000, transparent), radial-gradient(ellipse 62% 24% at 50% 80%, #000, transparent);
+}
+.first-screen[data-top-layout="above"] .first-field {
+  -webkit-mask-image: radial-gradient(ellipse 50% 22% at 50% 12%, #000, transparent), radial-gradient(ellipse 62% 24% at 50% 80%, #000, transparent);
+  mask-image: radial-gradient(ellipse 50% 22% at 50% 12%, #000, transparent), radial-gradient(ellipse 62% 24% at 50% 80%, #000, transparent);
+}
+html:not([data-deal]) .first-field,
+body:has(section[data-scene="still"]) .first-field {
+  display: block;
+}
+/* ---- end the first screen ---- */
 
 /* The loader: always dark, over everything (z 60), armed by the head script
    (lib/home/introLoaderInit.ts, <html data-intro-loader="on">), then "shrink"

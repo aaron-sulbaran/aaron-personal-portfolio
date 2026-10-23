@@ -2,16 +2,17 @@ import { siteContent } from "@/lib/content";
 import { BandInvite } from "./BandInvite";
 import { BandStage } from "./BandStage";
 
-// The soundtrack band (#listen): a full-bleed strip at the intro's foot where
-// the music is introduced, with the waveform running the page's full width
-// through it. Its height is fixed in the server render (from md up), so
-// nothing shifts when the client mounts. The copy sits in the upper part,
+// The soundtrack band (#listen): a full-bleed strip on the home's first screen
+// where the music is introduced, with the waveform running the page's full
+// width through it. Its height is the first screen's knob (--band-d from md up,
+// --band-p on a phone, set by components/home/FirstScreen.tsx), fixed in the
+// server render, so nothing shifts when the client mounts. The copy sits in the upper part,
 // aligned to the intro's grid; the waveform keeps its moving dots out from
 // under it. A Server Component; the copy and the stage are client leaves.
 export function SoundtrackBand() {
   return (
-    <section id="listen" data-wave-anchor="band" aria-label={siteContent.listen.ariaLabel} className="relative w-full md:h-[clamp(240px,30vh,340px)]">
-      <div className="pointer-events-none relative z-10 px-[6vw] pt-6 md:absolute md:inset-x-0 md:top-0 md:pt-5">
+    <section id="listen" data-wave-anchor="band" aria-label={siteContent.listen.ariaLabel} className="relative w-full md:h-[var(--band-d,clamp(240px,30vh,340px))]">
+      <div className="pointer-events-none relative z-10 px-[6vw] pt-4 md:absolute md:inset-x-0 md:top-0 md:pt-4">
         <div className="mx-auto max-w-[1240px]">
           <BandInvite />
         </div>

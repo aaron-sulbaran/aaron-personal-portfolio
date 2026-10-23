@@ -1,16 +1,12 @@
-// The loader's name becomes page 1's heading: a uniform scale and a shift
+// The loader's name becomes the first screen's name: a uniform scale and a shift
 // (transform only, origin top left) that carry the loader's lockup onto the
-// heading it shrinks into, plus the pure model of where each namePosition
-// puts that heading. The DOM is the truth at run time (the loader measures
-// both rects); this model is what the tests hold the CSS to, and what says how
-// far each position makes the lockup travel.
+// heading it shrinks into, which is also where the scene draws the name (the
+// scene reads the heading's place, components/coil/scene/firstScreen.ts). The
+// DOM is the truth at run time (the loader measures both rects).
 
 export type Rect = { left: number; top: number; width: number; height: number };
 export type Flip = { x: number; y: number; scale: number };
 export type Viewport = { width: number; height: number };
-
-export const NAME_POSITIONS = ["center", "top", "topLeft"] as const;
-export type NamePosition = (typeof NAME_POSITIONS)[number];
 
 // Profa Black's "Aaron", per em: the advance (the lockup's width) and the ink
 // width the loader fits to the screen. Measured on the running face; the
@@ -58,28 +54,4 @@ export function loaderLockupRect(viewport: Viewport, lockupEm: { width: number; 
   const width = lockupEm.width * size;
   const height = lockupEm.height * size;
   return { left: (viewport.width - width) / 2, top: (viewport.height - height) / 2, width, height };
-}
-
-// Where each position puts the heading, in the stage's own box (x from its
-// left edge, y from its top). The stage is the section's top block: `grid`
-// is the content column (its left edge and width, the same one the
-// paragraphs use) and `topInsetPx` the room the logo and the Menu pill take
-// above a heading placed at the top.
-export type HeadingLayout = {
-  stage: { width: number; height: number };
-  heading: { width: number; height: number };
-  grid: { left: number; width: number };
-  topInsetPx: number;
-};
-
-export function headingRect(position: NamePosition, { stage, heading, grid, topInsetPx }: HeadingLayout): Rect {
-  const centeredLeft = (stage.width - heading.width) / 2;
-  switch (position) {
-    case "center":
-      return { left: centeredLeft, top: (stage.height - heading.height) / 2, width: heading.width, height: heading.height };
-    case "top":
-      return { left: centeredLeft, top: topInsetPx, width: heading.width, height: heading.height };
-    case "topLeft":
-      return { left: grid.left, top: topInsetPx, width: heading.width, height: heading.height };
-  }
 }

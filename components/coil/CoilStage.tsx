@@ -13,6 +13,7 @@ import { StillNotice } from "./StillNotice";
 import { stillCause, type HeroScene, type StillFailure } from "@/lib/coil/heroStill";
 import type { CoilCardRef, CoilSceneApi, CoilSceneProps } from "./CoilScene";
 import { useHomeController } from "@/components/home/HomeController";
+import { reportIntroLoad } from "@/lib/home/introLoad";
 
 // The Coil's stage: a layer filling its frame in the cards section with the
 // posters (Poster.tsx), the WebGL scene over them, and the DOM overlay. The
@@ -108,7 +109,15 @@ export function CoilStage({
 
   const handleFirstFrame = useCallback(() => {
     onSceneChange("on");
+    // The loader's tally: the field (and the name over it) has drawn.
+    reportIntroLoad("field");
   }, [onSceneChange]);
+
+  // Where no scene can draw it, the first screen's CSS fallback is what there
+  // is to wait for, and it is already there.
+  useEffect(() => {
+    if (heroScene === "still") reportIntroLoad("field");
+  }, [heroScene]);
 
   const handleError = useCallback(
     (error: unknown) => {
@@ -142,7 +151,6 @@ export function CoilStage({
             onError={handleError}
             entrance={entrance}
             onEntranceEnd={completeEntrance}
-            nameShown={false}
             onCardClick={onCardClick}
           />
         </CoilErrorBoundary>

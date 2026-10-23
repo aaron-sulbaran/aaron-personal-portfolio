@@ -7,7 +7,8 @@ import { DealLabMount } from "@/components/home/DealLabMount";
 import { HeroLabMount } from "@/components/home/HeroLabMount";
 import { IntroLoader } from "@/components/home/loader/IntroLoader";
 import { HomeController } from "@/components/home/HomeController";
-import { Intro } from "@/components/home/Intro";
+import { FirstScreen } from "@/components/home/FirstScreen";
+import { AboutSection } from "@/components/home/AboutSection";
 import { CardColumns } from "@/components/cards/CardColumns";
 import { NumbersStrip } from "@/components/metrics/NumbersStrip";
 import { MarkCardSource } from "@/components/mark/MarkCardSource";
@@ -16,19 +17,23 @@ import { MarkCardSource } from "@/components/mark/MarkCardSource";
 // literal, because Next reads segment config statically.
 export const revalidate = 86400;
 
-// The whole site is one scrolling document: the intro (#about: the name on its
-// field, four paragraph blocks with the soundtrack band between them, and the
-// teaser at its foot), the cards section (#work), the numbers strip, Connect,
-// Footer. The loader (the name that shrinks into the intro's heading) sits at
-// body level, outside the content layer, so its z 60 covers the header. The
-// controller owns the cards section (the Coil between its two columns of
-// titles, the scene, the modals). Nothing pins, so the page scrolls natively;
-// overflow-x is clipped (clip, not hidden, so no scroll container is created).
+// The whole site is one scrolling document: the first screen (the name drawn by
+// the Coil scene on its field, blocks 1 and 2 of the story, the soundtrack
+// band's thin wave, the ribbon of cards and "Deal me in"), the cards section
+// (#work), "More about me" (#about: blocks 3 and 4), the numbers strip,
+// Connect, Footer. The loader (the name that shrinks onto its place on the first
+// screen) sits at body level, outside the content layer, so its z 60 covers the
+// header. The controller owns the cards section (the Coil between its two
+// columns of titles, the scene, the modals); the scene's canvas is a sticky
+// stage that starts at the page's first pixel and covers the first screen, so
+// the ribbon and the name are drawn by the same canvas the Coil is. Nothing
+// pins but that stage, so the page scrolls natively; overflow-x is clipped (clip,
+// not hidden, so no scroll container is created and the stage's sticking holds).
 //
-// The soundtrack band sits in the intro's middle: its wave is the first stretch
+// The soundtrack band sits on the first screen: its wave is the first stretch
 // of the scroll-drawn line, which the cards section's shader hides and which
-// comes back out of its bottom edge into the numbers strip, behind the
-// sections in PathLayer's in-flow tiles. The band's playback pill
+// comes back out of its bottom edge past "More about me" into the numbers strip,
+// behind the sections in PathLayer's in-flow tiles. The band's playback pill
 // self-Portals to document.body. Every overlay (SiteNav z-30, menu scrim
 // z-[35], the Menu pill and panel z-40, the playback pill z-[45], modals
 // z-50, the flight z-[55], the Express lane transition z-[57], the inline
@@ -45,10 +50,11 @@ export default function Home() {
         <PathLayer />
         <main id="main" className="relative overflow-x-clip">
           <HeroSentinel />
-          <Intro />
+          <FirstScreen />
           <HomeController>
             <CardColumns />
           </HomeController>
+          <AboutSection />
           <NumbersStrip />
           <Connect />
         </main>
@@ -62,7 +68,7 @@ export default function Home() {
 }
 
 // The header's hero sentinel: an invisible box over the first 90svh of #main
-// (the intro). SiteNav keeps the bar away while any of it is in view, so the
+// (the first screen). SiteNav keeps the bar away while any of it is in view, so the
 // bar slides in once the reader is past the first screen.
 function HeroSentinel() {
   return (
