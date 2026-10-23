@@ -5,15 +5,16 @@ import { cubicBezier } from "./motion";
 import { ribbonEdgeAlphaWorld, ribbonHelix, type RibbonEdge } from "./ribbon";
 
 // The deal's act on the strand (docs/superpowers/specs/2026-10-22-wheel-deal-motion.md,
-// and slice 4c). It starts as the ribbon: the 14 cards in one flat row on the
-// first screen, drifting left. On the click the gaps between the cards close and
-// the row gathers toward the middle (the condense), then the row curls into the
-// wheel, the 14-card band ring seen near frontal, which spins up and flattens
-// into the closed band (the frame's lean, axis, size and center lerp to the
-// band's); the band slows, and two hands pull it open: first the seam parts along
-// the axis (a split ring, like a washer), then the band winds into the rested
-// coil on the pull curve. The name dissolves into the field meanwhile, and the
-// field's opening lifts the faded patch behind the paragraphs.
+// slices 4c and 4d). It starts as the ribbon: the 14 cards in one flat row at
+// page 1's foot, drifting left (faster, and its gaps a little tighter toward the
+// button, while the pointer is over "Deal me in"). On the click the gaps between
+// the cards close and the row rushes in toward the button (the condense), then
+// the row curls into the wheel, the 14-card band ring seen near frontal, which
+// spins up and flattens into the closed band (the frame's lean, axis, size and
+// center lerp to the band's) while the page scrolls on to page 2; the band
+// slows, and two hands pull it open: first the seam parts along the axis (a
+// split ring, like a washer), then the band winds into the rested coil on the
+// pull curve. The field opens from under the Coil meanwhile.
 //
 // Modifiers, all pure: ribbonHelix (lib/coil/ribbon.ts), wheelHelix and
 // pullHelix bend the frame (winding, radius, rise, card size, lean, axis,
@@ -40,14 +41,26 @@ export type EntranceClock = {
   // cards keep their places in it while it opens, however far the strand turns
   // (0 until the pull begins).
   drift: number;
+  // How far the ribbon and the wheel sit off the slot they ride in while the
+  // stage has not yet stuck, px (up is negative): pinKnee, which brings them to
+  // rest as the stage sticks (0 once the wheel has flattened).
+  dyPx: number;
+  // The row's gaps already closed when the click came (the pointer's
+  // anticipation, 0 to 1), and how far the button sits from the canvas's middle
+  // across, px: the row gathers toward it.
+  gather0: number;
+  gatherDxPx: number;
   // The constants this clock was made with, present only when they are not
   // COIL itself (the deal's lab tunes the timeline, the ribbon, the wheel and
   // the field); every function below that takes `c` reads it from here by default.
   c?: CoilConstants;
 };
 
-export function entranceClock(elapsedMs: number, c: CoilConstants = COIL, drift = 0): EntranceClock {
-  const base = { elapsedS: elapsedMs / 1000, durationS: sceneMs(c) / 1000, drift };
+export type ClockExtras = { drift?: number; dyPx?: number; gather0?: number; gatherDxPx?: number };
+
+export function entranceClock(elapsedMs: number, c: CoilConstants = COIL, extras: ClockExtras | number = {}): EntranceClock {
+  const { drift = 0, dyPx = 0, gather0 = 0, gatherDxPx = 0 } = typeof extras === "number" ? { drift: extras } : extras;
+  const base = { elapsedS: elapsedMs / 1000, durationS: sceneMs(c) / 1000, drift, dyPx, gather0, gatherDxPx };
   return c === COIL ? base : { ...base, c };
 }
 
@@ -57,7 +70,7 @@ export function entranceClock(elapsedMs: number, c: CoilConstants = COIL, drift 
 export type EntranceTuning = {
   timeline?: Partial<Record<keyof CoilConstants["deal"]["timeline"], number>>;
   ribbon?: Partial<Record<keyof CoilConstants["deal"]["ribbon"], number>>;
-  wheel?: Partial<Record<"leanDeg" | "scale" | "offsetX" | "offsetY", number>>;
+  wheel?: Partial<Record<"leanDeg" | "scale" | "offsetX" | "offsetY" | "pinKneePx", number>>;
   open?: Partial<Record<"ms" | "reach", number>>;
 };
 
@@ -155,12 +168,16 @@ export function windOnset(x: number, ramp: number) {
   return eased / (1 - k / 2);
 }
 
-// The row's gaps closing and gathering to the middle: ease out (power2.out) over
-// condenseMs, which ends where the clock is 0.
+// The row's gaps closing and the row gathering toward the button: the rush, an
+// ease out of power condensePower (a power of 3 is GSAP's power2.out) over
+// condenseMs, which ends where the clock is 0. It starts from gather0, the share
+// the pointer's anticipation had already closed when the click came, so the click
+// is no step; before the click it is that share alone.
 export function condenseProgress(clock: EntranceClock, c: CoilConstants = clock.c ?? COIL) {
-  const { condenseMs } = c.deal.timeline;
+  const { condenseMs, condensePower } = c.deal.timeline;
   if (isRested(clock) || condenseMs <= 0) return 1;
-  return power2Out(seg(elapsedMs(clock) + condenseMs, 0, condenseMs));
+  const rush = 1 - Math.pow(1 - seg(elapsedMs(clock) + condenseMs, 0, condenseMs), Math.max(1, condensePower));
+  return clock.gather0 + (1 - clock.gather0) * rush;
 }
 
 // The row curling into the wheel: a smoothstep over curlMs from the clock's 0 (its
@@ -191,16 +208,30 @@ export function wheelPlacement(geo: CoilGeometry, c: CoilConstants = COIL) {
 
 // Frame level: the frame (the band or further along the pull) pulled toward
 // the wheel by (1 - flatten): 0 is the wheel, 1 returns the frame as is.
-export function wheelHelix(frame: HelixFrame, geo: CoilGeometry, flatten: number, c: CoilConstants = COIL): HelixFrame {
+export function wheelHelix(frame: HelixFrame, geo: CoilGeometry, flatten: number, c: CoilConstants = COIL, dyPx = 0): HelixFrame {
   if (flatten >= 1) return frame;
   const wheel = wheelPlacement(geo, c);
+  const dy = dyPx * geo.camera.worldPerPx;
   return {
     ...frame,
     axisRad: lerp(wheel.axisRad, frame.axisRad, flatten),
     leanRad: lerp(wheel.leanRad, frame.leanRad, flatten),
-    center: lerp3(wheel.center, frame.center, flatten),
+    center: lerp3([wheel.center[0], wheel.center[1] - dy, wheel.center[2]], frame.center, flatten),
     cardWorld: lerp(wheel.cardWorld, frame.cardWorld, flatten),
   };
+}
+
+// The wheel's (and the ribbon's) slow-down into the stage's sticking.
+// `railTopPx` is the rail's top edge in the viewport: above 0 the stage still
+// rides the page with them, at or below 0 it is stuck. Returns how far they sit
+// off the slot they are riding in, in px (up is negative), so that their screen
+// position follows g(x) = 2x^2/K - x^3/K^2 over the last K px (x the rail's top):
+// g(K) = K and g'(K) = 1 join the free ride with no kink, g(0) = 0 and g'(0) = 0
+// bring them to rest as the stage sticks, with no step in their speed. 0 outside (0, K).
+export function pinKnee(railTopPx: number, kneePx: number): number {
+  if (!(kneePx > 0) || railTopPx <= 0 || railTopPx >= kneePx) return 0;
+  const x = railTopPx;
+  return (2 * x * x) / kneePx - (x * x * x) / (kneePx * kneePx) - x;
 }
 
 // ---------------------------------------------------------------- the pull
@@ -230,8 +261,8 @@ export function pullHelix(rest: HelixFrame, geo: CoilGeometry, pull: number, c: 
 export function entranceHelix(rest: HelixFrame, geo: CoilGeometry, clock: EntranceClock, c: CoilConstants = clock.c ?? COIL): HelixFrame {
   if (isRested(clock)) return rest;
   const band = pullHelix(rest, geo, pullProgress(clock, c), c);
-  const wheel = wheelHelix(band, geo, flattenProgress(clock, c), c);
-  return ribbonHelix(wheel, geo, condenseProgress(clock, c), curlProgress(clock, c));
+  const wheel = wheelHelix(band, geo, flattenProgress(clock, c), c, clock.dyPx);
+  return ribbonHelix(wheel, geo, condenseProgress(clock, c), curlProgress(clock, c), { dxPx: clock.gatherDxPx, dyPx: clock.dyPx });
 }
 
 // The copies outside the one band wait hidden and fade in late in the pull.
@@ -291,12 +322,10 @@ export function entrancePose<P extends CardPose>(
 
 // ---------------------------------------------------------------- the field
 
-// The mask the field opens on: a circle (anchored on the name, by default the
-// canvas's top center) that grows (power2.out) until its feathered edge has
-// cleared the farthest corner. The field is always drawn (it is the first
-// screen's background); the circle lifts the faded patch behind the
-// paragraphs (the composite's hush), so radius 0 leaves the patch faded and
-// OPEN_ALL lifts it altogether.
+// The mask the field opens on: a circle (anchored on the Coil's middle, by
+// default the canvas's middle) that grows (power2.out) until its feathered edge
+// has cleared the farthest corner. Radius 0 is closed (the scene skips the
+// field, and page 1's foot shows through), OPEN_ALL is open.
 export const OPEN_ALL = 1e6;
 export type FieldMask = { cx: number; cy: number; radius: number; feather: number };
 
@@ -313,7 +342,7 @@ export function fieldMask(
   clock: EntranceClock,
   canvas: { width: number; height: number },
   c: CoilConstants = clock.c ?? COIL,
-  origin: FieldOrigin = { x: canvas.width / 2, y: 0 },
+  origin: FieldOrigin = { x: canvas.width / 2, y: canvas.height / 2 },
 ): FieldMask {
   const { reach, featherPx, featherShare } = c.deal.open;
   const p = openProgress(clock, c);
@@ -325,21 +354,6 @@ export function fieldMask(
   if (p >= 1) return { cx, cy, feather: widest, radius: OPEN_ALL };
   if (p <= 0) return { cx, cy, feather: featherPx, radius: 0 };
   return { cx, cy, feather: featherPx + (widest - featherPx) * p, radius: (farthest + widest) * p };
-}
-
-// ---------------------------------------------------------------- the name
-
-// How much of the canvas name shows. `handedOff` is null when no loader lands
-// the name (it shows from the first frame), false while the loader still holds
-// it, and true from the frame the loader hands it over. The name dissolves into
-// the field across the spin-up (nameOutStartMs, nameOutMs after the clock's
-// 0) and is gone from then on: the page's own heading shows it again once the
-// cards are dealt.
-export function entranceNameAlpha(clock: EntranceClock, handedOff: boolean | null, c: CoilConstants = clock.c ?? COIL) {
-  if (isRested(clock)) return 0;
-  if (handedOff === false) return 0;
-  const { nameOutStartMs, nameOutMs } = c.deal.timeline;
-  return 1 - smooth(seg(elapsedMs(clock), nameOutStartMs, nameOutStartMs + Math.max(1, nameOutMs)));
 }
 
 // ---------------------------------------------------------------- rotations

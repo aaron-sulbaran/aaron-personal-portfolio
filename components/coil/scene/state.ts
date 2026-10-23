@@ -11,7 +11,7 @@ import type { CoilTheme } from "@/lib/coil/theme";
 import { createUnwind, type UnwindState } from "@/lib/coil/unwind";
 import { createCapture } from "@/lib/coil/capture";
 import type { DebugFlags, DebugStats } from "./debug";
-import { NO_FIRST_SCREEN, type FirstScreenBox } from "./firstScreen";
+import { NO_RIBBON, type RibbonBox } from "./ribbonSlot";
 import type { CoilSceneProps } from "./types";
 
 // What the scene's modules share. SceneCtx holds the handles that never
@@ -52,9 +52,8 @@ export type SceneState = {
   // The field's opening (radius 0: the faded patch behind the paragraphs stays
   // faded; the field itself is always drawn).
   open: FieldMask;
-  // Where the page's first screen put the name, the ribbon and the text
-  // blocks, as of the last layout (scene/firstScreen.ts).
-  first: FirstScreenBox;
+  // Where page 1's foot put the ribbon's slot, as of the last layout (scene/ribbonSlot.ts).
+  ribbon: RibbonBox;
   // How tall the canvas's bottom seam is now, as a share of its height: the
   // field and the cards fade into the page there (the entrance step writes it:
   // none while the stage is stuck at the top of the screen, whole once it lets go).
@@ -139,7 +138,7 @@ export function createSceneState(theme: CoilTheme, budget: RenderBudget, conveyo
     pressCaughtCoil: false,
     rebuildAt: null,
     open: { cx: 0, cy: 0, radius: 0, feather: 0 },
-    first: NO_FIRST_SCREEN,
+    ribbon: NO_RIBBON,
     seam: FIELD.seamFade,
     lastFieldTime: Number.NaN,
     lastTime: performance.now(),

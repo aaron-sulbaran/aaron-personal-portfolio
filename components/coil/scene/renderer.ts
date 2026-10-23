@@ -17,7 +17,7 @@ import { cameraFor, solveGeometry } from "@/lib/coil/geometry";
 import { paneViewport } from "@/lib/coil/pane";
 import { seenRingDpr } from "@/lib/coil/material";
 import { disableColorManagement } from "@/lib/coil/theme";
-import { measureFirstScreen } from "./firstScreen";
+import { measureRibbon } from "./ribbonSlot";
 import type { LoopLink, SceneCtx } from "./state";
 
 // The renderer and what every pass draws with: the scene canvas's WebGL
@@ -110,11 +110,10 @@ export function createLayout(ctx: SceneCtx, gl: Gl, parts: LayoutParts, loop: Lo
     st.lastFieldTime = Number.NaN;
     const before = st.geo;
     const pane = host.closest("[data-coil-section]")?.querySelector("[data-coil-pane]")?.getBoundingClientRect();
-    st.first = measureFirstScreen(host);
+    st.ribbon = measureRibbon(host);
     st.geo = solveGeometry(paneViewport({ left: rect.left, right: rect.right, width: view.width, height: view.height }, pane ?? null), tileCount, COIL, {
       canvas: { width: view.width, height: view.height },
-      regionHeight: st.first.regionHeight ?? undefined,
-      ribbonCy: (lastRibbonCy = st.first.ribbonCy ?? lastRibbonCy),
+      ribbonCy: (lastRibbonCy = st.ribbon.cy ?? lastRibbonCy),
     });
     // Slice 7: a new composition or a rotation lays every card out afresh;
     // fade the new frame in rather than jump (only while the loop runs: a

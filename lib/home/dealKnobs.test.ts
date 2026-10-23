@@ -45,9 +45,9 @@ describe("the deal's knobs", () => {
   it("hands the entrance its timeline, its ribbon, its wheel and its field", () => {
     const tuning = entranceTuningOf({ ...DEFAULT_KNOBS, peakCardsPerSecond: 9, scrollMs: 1500, wheelLeanDeg: -20, wheelScale: 1.2, openMs: 1200, openReach: 0.8 });
     expect(tuning.timeline).toMatchObject({ peakCardsPerSecond: 9, scrollMs: 1500, pullStartMs: COIL.deal.timeline.pullStartMs });
-    expect(tuning.wheel).toMatchObject({ leanDeg: -20, scale: 1.2, offsetX: 0, offsetY: 0 });
-    expect(tuning.ribbon).toEqual({ cardHeightPx: COIL.deal.ribbon.cardHeightPx, cardHeightPhonePx: COIL.deal.ribbon.cardHeightPhonePx, gapPx: COIL.deal.ribbon.gapPx, speedPxPerS: COIL.deal.ribbon.speedPxPerS, fadeWidthPx: COIL.deal.ribbon.fadeWidthPx, offsetYPx: COIL.deal.ribbon.offsetYPx });
-    expect(tuning.timeline).toMatchObject({ condenseMs: COIL.deal.timeline.condenseMs, curlMs: COIL.deal.timeline.curlMs, nameOutStartMs: COIL.deal.timeline.nameOutStartMs, nameOutMs: COIL.deal.timeline.nameOutMs, windRampMs: COIL.deal.timeline.windRampMs });
+    expect(tuning.wheel).toMatchObject({ leanDeg: -20, scale: 1.2, offsetX: 0, offsetY: 0, pinKneePx: COIL.deal.wheel.pinKneePx });
+    expect(tuning.ribbon).toEqual({ cardHeightPx: COIL.deal.ribbon.cardHeightPx, cardHeightPhonePx: COIL.deal.ribbon.cardHeightPhonePx, gapPx: COIL.deal.ribbon.gapPx, speedPxPerS: COIL.deal.ribbon.speedPxPerS, fadeWidthPx: COIL.deal.ribbon.fadeWidthPx, offsetYPx: COIL.deal.ribbon.offsetYPx, hoverSpeedFactor: COIL.deal.ribbon.hoverSpeedFactor, hoverTighten: COIL.deal.ribbon.hoverTighten, hoverEaseMs: COIL.deal.ribbon.hoverEaseMs });
+    expect(tuning.timeline).toMatchObject({ condenseMs: COIL.deal.timeline.condenseMs, curlMs: COIL.deal.timeline.curlMs, condensePower: COIL.deal.timeline.condensePower, windRampMs: COIL.deal.timeline.windRampMs });
     expect(tuning.open).toEqual({ ms: 1200, reach: 0.8 });
     // The defaults are COIL itself, so an untouched lab changes nothing.
     expect(tunedConstants(entranceTuningOf(DEFAULT_KNOBS))).toBe(COIL);

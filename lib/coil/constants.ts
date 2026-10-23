@@ -119,52 +119,56 @@ const values = {
     // wait for a scene still on its way.
     trigger: { enterAtProgress: 0.18, outAt: 0.35, waitSceneMs: 4000 },
     // The deal's one clock, in ms from the click (docs/superpowers/specs/2026-10-22-wheel-deal-motion.md
-    // section 2). The wheel spins up (speed 0.5 to the peak, power2.out), the
-    // page scrolls itself to the section, the wheel flattens into the band
-    // (power2.inOut), the band slows to the idle pace (smoothstep), then lifts
-    // into 3D and unfurls (the pull, on its cubic-bezier), while the field
-    // opens (below) and the columns arrive last. The teaser's text leaves
-    // first. Every number is a lab knob's default.
+    // section 2, retimed in slice 4d to be fast: the Coil is unfurled about 2.0 s
+    // after the click and the columns are in about 2.6 s). The ribbon rushes in
+    // toward the button, curls into the wheel, which spins up (speed from the
+    // ribbon's own pace to the peak, power2.out) and flattens into the band while
+    // the spin is still rising; the page scrolls itself to page 2; the band holds
+    // its peak for a moment, slows to the idle pace (smoothstep), then lifts into
+    // 3D and unfurls (the pull, on its cubic-bezier) while the field opens from
+    // under it (below) and the columns arrive last. Every number is a lab knob's
+    // default.
     timeline: {
-      // Slice 4c: the deal begins with the ribbon's own act, the gaps between
-      // the cards closing and the row gathering toward the middle (ease out),
-      // and every other time below counts from the end of it: the spin-up, the
-      // scroll, the flatten, the lift and the field's opening are as 4a
-      // timed them, condenseMs later on the click's clock. The curl (the row
-      // curling into the wheel) takes curlMs from the end of the condense, over
-      // the spin-up's first moments.
-      condenseMs: 600,
-      curlMs: 600,
-      // The name dissolves into the field (its letters give way) from
-      // nameOutStartMs over nameOutMs, across the spin-up.
-      nameOutStartMs: 0,
-      nameOutMs: 700,
+      // The deal begins with the ribbon's own act, the gaps between the cards
+      // closing and the row rushing in toward the button (an ease out of power
+      // condensePower; 3 is GSAP's power2.out), and every other time below counts
+      // from the end of it, the scene clock's zero. The curl (the row curling into
+      // the wheel) takes curlMs from there, over the spin-up: long enough that no
+      // card steps more than 40 px a frame while the far end of the row travels in.
+      condenseMs: 320,
+      condensePower: 4,
+      curlMs: 700,
       // The pull's winding eases in over this long instead of starting at full
       // rate (0 is the old kick at windStart, 34 px over two frames); a time on the
-      // pull's own scale. The smallest ramp that takes the kick down to the
-      // deal's ordinary acceleration at the sizes the deal runs at (e2e/deal-jank.spec.ts).
-      windRampMs: 400,
+      // pull's own scale. At this pull length 480 is where the ramp covers the whole
+      // winding: it takes the kick down to the deal's ordinary acceleration at the
+      // sizes the deal runs at, and a longer ramp takes it no lower
+      // (lib/coil/windOnset.test.ts sweeps it; e2e/deal-jank.spec.ts holds the drawn frames to it).
+      windRampMs: 480,
       peakCardsPerSecond: 12.5, // COIL.spinCapCardsPerSecond
       // A coarse pointer's top speed: a phone can drop to 30 Hz (Low Power
       // Mode), where 9 cards a second is 0.3 card a frame, the most the eye
       // reads as turning the right way (above it the wheel strobes backward).
       coarsePeakCardsPerSecond: 9,
-      upMs: 700,
-      textOutMs: 350,
-      scrollStartMs: 250,
-      scrollMs: 2000,
-      flattenStartMs: 1100,
-      flattenMs: 1200,
-      slowStartMs: 1500,
-      slowMs: 1400,
-      pullStartMs: 2150,
-      pullMs: 756, // the old entrance's pull: 0.42 of 1800
-      openStartMs: 0,
+      // The spin reaches its peak at upMs and holds it until slowStartMs: 200 ms
+      // of hold, no more.
+      upMs: 450,
+      textOutMs: 250,
+      scrollStartMs: 0,
+      scrollMs: 1000,
+      // The flatten starts while the spin is still rising.
+      flattenStartMs: 220,
+      flattenMs: 730,
+      slowStartMs: 650,
+      slowMs: 700,
+      pullStartMs: 850,
+      pullMs: 800,
+      openStartMs: 600,
     },
-    // The ribbon (slice 4c, the home's first screen): the 14 cards in one flat
+    // The ribbon (slices 4c and 4d, page 1's foot): the 14 cards in one flat
     // row, face up, drifting left at speedPxPerS (a card rate once the row's
     // pitch is known, so the same strand offset drives the ring, the band and
-    // the helix with no step in speed), under the paragraphs, its edges fading
+    // the helix with no step in speed), above "Deal me in", its edges fading
     // out over fadeWidthPx. The row sits at the slot ([data-coil-ribbon]) the
     // page leaves for it, nudged by offsetYPx; where the page has no slot it
     // sits at `anchorY` (a share of the canvas's height). The card's height
@@ -179,6 +183,12 @@ const values = {
       fadeWidthPx: 120,
       offsetYPx: 0,
       anchorY: 0.62,
+      // The ribbon's anticipation while a fine pointer is over "Deal me in": it
+      // eases hoverSpeedFactor times faster and its gaps tighten toward the
+      // button by hoverTighten of the way to a closed row, over hoverEaseMs.
+      hoverSpeedFactor: 3.5,
+      hoverTighten: 0.22,
+      hoverEaseMs: 260,
     },
     // The wheel (the ribbon's end state, before the flatten): the 14-card band
     // ring seen from a little above, face up (the spec guessed a lean of about
@@ -193,30 +203,35 @@ const values = {
       offsetY: 0,
       anchor: [0.5, 0.5] as const,
       diameterOfHeight: 0.42,
+      // The ribbon and the wheel ride the page until the stage sticks. Over the
+      // last pinKneePx before it sticks they slow on a cubic so their speed
+      // reaches zero as it does (lib/coil/entrance.ts pinKnee; it is what keeps
+      // the stick from being a stop within one frame). 0 is the old catch.
+      pinKneePx: 400,
     },
-    // The field's opening (slice 4c: it lifts the faded patch behind the
-    // paragraphs, as the name dissolves into it): a circle anchored on the
-    // name that grows from fromPx to reach (a share of the distance to the
-    // farthest corner) over ms. hushFeatherPx: how softly the faded patches' edges give way. Its edge is feathered
+    // The field's opening: a circle anchored on the Coil's middle that grows
+    // from fromPx to reach (a share of the distance to the farthest corner) over
+    // ms, so the field blooms from under the Coil. Its edge is feathered
     // featherPx wide at first and featherShare of that distance wide once the
     // circle is open (a crisp rim on a big disc reads as a halo, so the edge
     // widens with it), and falls off on a smoother curve than smoothstep
     // (lib/coil/field.glsl.ts). topFadePx: the stage's top edge fades in over
     // this many px, so the open field meets page 1's foot with no line, in the
     // scene and in the posters. fadeMs: the still path's crossfade.
-    open: { reach: 1, ms: 1500, fromPx: 36, featherPx: 28, featherShare: 0.3, topFadePx: 72, fadeMs: 600, hushFeatherPx: 96 },
+    open: { reach: 1, ms: 1050, fromPx: 36, featherPx: 28, featherShare: 0.3, topFadePx: 72, fadeMs: 600 },
     // The two columns arrive last: group labels, then titles; delayMs counts
     // from the end of the condense (the scene clock's zero).
-    columns: { delayMs: 2750, staggerMs: 36, labelStaggerMs: 70, fadeMs: 520, riseY: 14 },
+    columns: { delayMs: 1250, staggerMs: 22, labelStaggerMs: 50, fadeMs: 420, riseY: 14 },
   },
 
-  // Page 1, the first screen (hero rework, slices 3 and 4c;
+  // Page 1, who I am (hero rework, slices 3 and 4d;
   // docs/superpowers/specs/2026-10-21-hero-rework-design.md): the loader that
-  // becomes the name, the name drawn by the scene with the field inside its
-  // letters, blocks 1 and 2 of the story, the thin wave, the ribbon and the
-  // button on one screen. Every number here is a lab knob's default
-  // (lib/home/introKnobs.ts clamps them; /lab/hero, in dev only, overrides
-  // them at runtime). Aaron tunes them by hand.
+  // becomes the name, the name drawn in its own small canvas with the field
+  // inside its letters, the four blocks of the story staggered across the page
+  // with the thin wave between them, then the ribbon and the button at its
+  // foot. Every number here is a lab knob's default (lib/home/introKnobs.ts
+  // clamps them; /lab/hero, in dev only, overrides them at runtime). Aaron
+  // tunes them by hand.
   intro: {
     // The loader: fillMs is the fill's shortest run (the real tally can only
     // slow it), holdMs the pause at full, numberAfterMs when the percent shows
@@ -227,26 +242,19 @@ const values = {
     // The name's shrink onto its place: duration, and the ease (the site's, or a GSAP one).
     shrink: { ms: 650, ease: "site" as "site" | "power2.inOut" | "power3.inOut" | "expo.inOut" },
     // The name's size, its font size as a share of the viewport's width on a
-    // desktop and on a phone, held between minRem and maxRem: how the stack
-    // is made to fit one screen.
-    name: { vwDesktop: 8, vwPhone: 12, minRem: 3, maxRem: 12 },
-    // A desktop's top of the screen: the name beside the blocks (left, with the
-    // two blocks staggered on its right) or above them.
-    topLayout: "beside" as "beside" | "above",
-    // A phone's first screen holds block 1; block 2 is there too, or waits in the about section.
-    phoneBlock2: "about" as "about" | "first",
-    // The soundtrack band's height on the first screen (the wave and its quiet
-    // line), on a desktop and on a phone.
-    band: { desktopPx: 100, phonePx: 88 },
-    // The field behind the paragraphs: faded away behind them (a shader field
-    // never sits behind body text), or left full.
-    fieldUnderText: "faded" as "faded" | "full",
+    // desktop and on a phone, held between minRem and maxRem.
+    name: { vwDesktop: 10, vwPhone: 14, minRem: 3, maxRem: 12 },
+    // The soundtrack band's height between the blocks (the wave and its one line), on a desktop and on a phone.
+    band: { desktopPx: 112, phonePx: 96 },
     // The burnt orange lobe's strength as a share of the old one, in the
-    // first screen's field and the cards section's (a little of it stays).
+    // name's field and the cards section's (a little of it stays).
     orangeAmount: 0.4,
-    // The paragraph blocks: a right block leans across this share of the free
-    // width, and a desktop leaves gapRem between blocks.
-    stagger: { offset: 0.85, gapRem: 2 },
+    // The room between blocks on a desktop.
+    stagger: { gapRem: 3 },
+    // The name's own canvas: it reaches this far past the lockup (a share of
+    // the name's font size) on every side, room for the sheen and the pointer's
+    // wake, and draws the field only inside the letters.
+    nameCanvas: { reach: 0.3 },
   },
 
   // Unwind egg and hover-jump.

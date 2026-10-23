@@ -1,8 +1,8 @@
 import { COIL, type CoilConstants } from "./constants";
 import { helixRotation, type CoilGeometry, type HelixFrame, type Vec3 } from "./geometry";
 
-// The first screen's ribbon (slice 4c): the 14 cards in one flat row, face up,
-// drifting under the paragraphs, and what becomes of it at the click. It is
+// The ribbon at page 1's foot (slices 4c and 4d): the 14 cards in one flat row,
+// face up, drifting left above "Deal me in", and what becomes of it at the click. It is
 // the same strand as the wheel, the band and the helix, so one scalar, the
 // strand's offset s in cards, moves all of them; the row is just the ring with
 // its curvature taken away. A ring of angStep a and radius r = pitch / a
@@ -33,10 +33,28 @@ export function ribbonCondensedPitch(geo: CoilGeometry): number {
 }
 
 // The strand's speed while the ribbon drifts, in cards per second: negative, the
-// row moves left (the strand's offset falls).
-export function ribbonCardsPerSecond(geo: CoilGeometry, c: CoilConstants = COIL): number {
+// row moves left (the strand's offset falls). `anticipation` (0 to 1) is how far
+// the pointer's hover over "Deal me in" has taken hold: the row eases faster by
+// up to hoverSpeedFactor times.
+export function ribbonCardsPerSecond(geo: CoilGeometry, c: CoilConstants = COIL, anticipation = 0): number {
   const pitchPx = ribbonPitchUnits(geo) * geo.ribbon.cardPx;
-  return -c.deal.ribbon.speedPxPerS / Math.max(1, pitchPx);
+  const r = c.deal.ribbon;
+  const faster = 1 + (r.hoverSpeedFactor - 1) * clamp01(anticipation);
+  return (-r.speedPxPerS * faster) / Math.max(1, pitchPx);
+}
+
+// How much of the condense the hover has already done: the gaps tighten a little
+// toward the button, hoverTighten of the way to the closed row at full anticipation.
+export function ribbonAnticipatedGather(anticipation: number, c: CoilConstants = COIL): number {
+  return clamp01(anticipation) * c.deal.ribbon.hoverTighten;
+}
+
+// How far the hover has taken hold after `dtS` more seconds toward `target`
+// (1 over the button, 0 off it): an exponential approach on hoverEaseMs, the
+// same rate each way, whatever the frame rate.
+export function easeAnticipation(level: number, target: number, dtS: number, c: CoilConstants = COIL): number {
+  const tau = Math.max(1, c.deal.ribbon.hoverEaseMs) / 1000;
+  return level + (target - level) * (1 - Math.exp(-Math.max(0, dtS) / tau));
 }
 
 // The row's center in world units: the middle of the canvas across, the
@@ -46,12 +64,18 @@ export function ribbonAnchor(geo: CoilGeometry): Vec3 {
   return [0, (0.5 - geo.ribbon.anchorY) * geo.canvas.height * perPx, 0];
 }
 
+// Where the row sits while the stage rides the page and the click gathers it:
+// `dxPx` is how far the button sits from the canvas's middle across (the row
+// gathers toward it, in step with the gaps closing), `dyPx` how far pinKnee has
+// it off its slot (up is negative).
+export type RowOffset = { dxPx: number; dyPx: number };
+
 // The ribbon's frame at `gather` (0 the row as it drifts, 1 its gaps closed and
-// the row gathered to the middle) and `curl` (0 flat, 1 the wheel): `wheel` is
+// the row gathered to the button) and `curl` (0 flat, 1 the wheel): `wheel` is
 // the frame the ring has at curl 1 (the wheel, or what it has become), and the
 // frame is exactly that at curl 1. The cards keep their size through the
 // gathering, then shrink to the wheel's as the row curls.
-export function ribbonHelix(wheel: HelixFrame, geo: CoilGeometry, gather: number, curl: number): HelixFrame {
+export function ribbonHelix(wheel: HelixFrame, geo: CoilGeometry, gather: number, curl: number, offset: RowOffset = { dxPx: 0, dyPx: 0 }): HelixFrame {
   if (curl >= 1) return wheel;
   const g = clamp01(gather);
   const k = clamp01(curl);
@@ -63,7 +87,9 @@ export function ribbonHelix(wheel: HelixFrame, geo: CoilGeometry, gather: number
   // The card at u = 0 sits at the row's anchor, and glides to the wheel's near
   // side as the ring forms; the ring's center is behind it by the radius.
   const wheelFront = add(wheel.center, scale(helixRotation(wheel).z, wheel.radius * wheel.cardWorld));
-  const front = mix3(ribbonAnchor(geo), wheelFront, k);
+  const perPx = geo.camera.worldPerPx;
+  const row = add(ribbonAnchor(geo), [offset.dxPx * g * perPx, -offset.dyPx * perPx, 0]);
+  const front = mix3(row, wheelFront, k);
   const back = scale(helixRotation({ ...wheel, leanRad }).z, radius * cardWorld);
   return {
     ...wheel,

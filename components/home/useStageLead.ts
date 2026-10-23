@@ -4,28 +4,24 @@ import { useEffect, useRef, type RefObject } from "react";
 import type { HeroScene } from "@/lib/coil/heroStill";
 import { getDeal, subscribeDeal } from "@/lib/home/deal";
 import { gsap } from "@/lib/gsap";
+import { stageLeadPx } from "@/lib/home/stageLead";
 
-// The sticky stage's reach up the page. The Coil's canvas is a stage (at least a
-// screen tall, and as tall as the cards section's frame) that sticks at the top
-// of the screen; to cover the home's first screen before the click it must
-// start at the page's first pixel, so the rail it sticks in reaches up over the
-// first screen by the first screen's own height (--run-lead, set here on the
-// section; the rail and the stage read it in CSS). The stage then sticks through
-// the deal's one-screen scroll and lets go where the cards section's frame ends
-// (components/home/StageRail.tsx). Once the canvas has no more work on the first
-// screen the lead is let go and the stage is just the section again: with no
+// The sticky stage's reach up the page. The Coil's canvas is a stage as tall as
+// the cards section's frame that sticks at the top of the screen; to hold the
+// ribbon at page 1's foot before the click it must start above the ribbon, so the
+// rail it sticks in reaches up over page 1's foot by the stage's lead
+// (--run-lead, set here on the section; the rail and the stage read it in CSS;
+// lib/home/stageLead.ts works it out: the distance from the ribbon's middle less
+// room for the wheel, to the section's top). Once the canvas has no more work
+// there, the lead is let go and the stage is just the section again: with no
 // scene to draw it (reduced motion, no WebGL), at once; the moment the deal is
 // over, whatever the reader is looking at. A reader the deal left inside the
 // sticky range (a scroll that stopped short, an upward interrupt) has the stage
-// pinned over the first screen; the lead goes at once and the stage glides down
-// to the section's top (a transform, no layout per frame), so it never covers
-// the first screen's text or its "Back to my cards". A reader already at or past
-// the section's top sees no change; neither does a load that never dealt (a
-// return to the home by client navigation). A replay brings the lead back.
-//
-// On a phone the frame (the Coil's own region) is shorter than the stage, which
-// is a screen tall: --stage-overhang is how far the released stage reaches below
-// the frame, over the columns, which the dealt Coil is masked off (CSS).
+// pinned over page 1's foot; the lead goes at once and the stage glides down to
+// the section's top (a transform, no layout per frame), so it never covers page
+// 1's text or its "Back to my cards". A reader already at or past the section's
+// top sees no change; neither does a load that never dealt (a return to the home
+// by client navigation). A replay brings the lead back.
 
 // The stage's glide down to the section once the deal has let go of it.
 const GLIDE_S = 0.55;
@@ -40,14 +36,13 @@ export function useStageLead(sectionRef: RefObject<HTMLElement | null>, scene: H
     const section = sectionRef.current;
     if (!section) return;
     const measure = () => {
-      const first = document.querySelector<HTMLElement>("[data-first-screen]");
-      let lead = 0;
-      if (first && !released.current) lead = section.getBoundingClientRect().top - first.getBoundingClientRect().top;
-      section.style.setProperty("--run-lead", `${Math.round(Math.max(0, lead))}px`);
+      const slot = document.querySelector("[data-coil-ribbon]")?.getBoundingClientRect();
       const frame = section.querySelector("[data-coil-frame]")?.getBoundingClientRect();
-      const overhang = frame ? Math.max(0, Math.round(Math.max(window.innerHeight, frame.height) - frame.height)) : 0;
-      section.style.setProperty("--stage-overhang", `${overhang}px`);
-      section.toggleAttribute("data-overhang", overhang > 1);
+      let lead = 0;
+      if (slot && frame && !released.current) {
+        lead = stageLeadPx({ sectionTop: section.getBoundingClientRect().top, slotCenter: slot.top + slot.height / 2, frameHeight: frame.height, canvasWidth: frame.width });
+      }
+      section.style.setProperty("--run-lead", `${Math.round(Math.max(0, lead))}px`);
     };
     const stageEl = () => section.querySelector<HTMLElement>("[data-coil-sticky]");
     const update = () => {
@@ -76,8 +71,8 @@ export function useStageLead(sectionRef: RefObject<HTMLElement | null>, scene: H
     update();
     const observer = new ResizeObserver(measure);
     observer.observe(section);
-    const first = document.querySelector("[data-first-screen]");
-    if (first) observer.observe(first);
+    const foot = document.querySelector("[data-intro-foot]");
+    if (foot) observer.observe(foot);
     window.addEventListener("resize", measure);
     window.addEventListener("scroll", update, { passive: true });
     const unsubscribe = subscribeDeal(update);

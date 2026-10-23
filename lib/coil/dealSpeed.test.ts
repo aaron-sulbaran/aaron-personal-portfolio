@@ -39,7 +39,7 @@ describe("the deal's easings", () => {
 
 describe("the deal's clocks", () => {
   it("runs the scene's clock until the pull has landed, the field is open and the name has dissolved, and the whole deal the condense longer", () => {
-    expect(TOTAL).toBe(Math.max(T.pullStartMs + T.pullMs, T.openStartMs + COIL.deal.open.ms, T.nameOutStartMs + T.nameOutMs));
+    expect(TOTAL).toBe(Math.max(T.pullStartMs + T.pullMs, T.openStartMs + COIL.deal.open.ms));
     expect(dealMs()).toBe(T.condenseMs + TOTAL);
   });
 });
@@ -79,9 +79,10 @@ describe("the deal's speed", () => {
     for (const join of [T.upMs, T.slowStartMs, T.slowStartMs + T.slowMs]) {
       const before = ((dealOmega(join, p) - dealOmega(join - 2, p)) / 2) * 1000;
       const after = ((dealOmega(join + 2, p) - dealOmega(join, p)) / 2) * 1000;
-      expect(Math.abs(before), `slope before ${join}`).toBeLessThan(0.1);
-      expect(Math.abs(after), `slope after ${join}`).toBeLessThan(0.1);
-      expect(Math.abs(after - before)).toBeLessThan(0.1);
+      // Near zero against the steepest the curve gets (a share of it, so it holds whatever the ramps' lengths).
+      expect(Math.abs(before), `slope before ${join}`).toBeLessThan(0.01 * bound);
+      expect(Math.abs(after), `slope after ${join}`).toBeLessThan(0.01 * bound);
+      expect(Math.abs(after - before)).toBeLessThan(0.01 * bound);
     }
   });
 

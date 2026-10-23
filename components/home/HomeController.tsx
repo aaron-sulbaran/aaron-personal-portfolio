@@ -24,7 +24,7 @@ import {
   takeManualScrollRestoration,
 } from "@/lib/home/recovery";
 import { COIL } from "@/lib/coil/constants";
-import { getDeal, subscribeDeal, useDeal } from "@/lib/home/deal";
+import { coilIsTheirs, dispatchDeal, getDeal, subscribeDeal, useDeal } from "@/lib/home/deal";
 import { createHoverArm, disarmHover, moveHover } from "@/lib/home/hoverArm";
 import { useDealDirector } from "./useDealDirector";
 import { StageRail } from "./StageRail";
@@ -48,8 +48,9 @@ import { Portal } from "@/components/Portal";
 // closed until the cards are dealt, the Coil's entrance playing on the click or
 // when the reader scrolls into the stage's range (its clock is handed to the
 // scene as a new `entrance`), and nothing opens (a card, the wheel, a hover)
-// until it is over. The Coil's canvas is a sticky stage that starts at page 1's
-// foot (the rail below). The deal never locks the scroll: on a click its own
+// until it is over, apart from the Coil itself, which takes the wheel and the
+// pointer the moment it is unfurled. The Coil's canvas is a sticky stage that
+// starts at page 1's foot (the rail below). The deal never locks the scroll: on a click its own
 // scroll is one the reader's wheel, touch or key takes back.
 //
 // Nothing here renders per frame: the scene reads what it needs once per
@@ -203,10 +204,13 @@ export function HomeController({ children }: Props) {
     };
   }, []);
 
-  // The Coil's entrance clock ran out: the deal is over once the columns are
-  // in too (the director says), and the page is ready as it always was.
+  // The Coil's entrance clock ran out: it is unfurled, and the Coil is the
+  // reader's from this moment (the wheel and the pointer; no waiting for the
+  // columns). The deal is over once the columns are in too (the director says),
+  // and the page is ready as it always was.
   const { completeScene, settle } = director;
   const completeEntrance = useCallback(() => {
+    dispatchDeal({ type: "unfurl" });
     completeScene();
     publishHomeReadiness("ready");
   }, [completeScene]);
@@ -400,7 +404,7 @@ export function HomeController({ children }: Props) {
           sectionRef={sectionRef}
           reducedMotion={reducedMotion}
           frozen={modalOpen || flight !== null}
-          interactive={phase === "ready" && deal.phase === "dealt"}
+          interactive={phase === "ready" && coilIsTheirs(deal)}
           input={drivers.input}
           scene={heroScene}
           onSceneChange={setHeroScene}

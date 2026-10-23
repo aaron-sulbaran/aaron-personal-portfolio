@@ -128,7 +128,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   const field = createField(ctx, gl, { surface: surface.texture, wake: surface.wakeUniforms, glyph: glyphTargets[0].texture });
   const heroName = createName(ctx, gl, field.compMaterial, surface, glyphTargets, loop);
   const cards = createCards(ctx, gl);
-  const entrance = createEntrance(ctx, heroName);
+  const entrance = createEntrance(ctx);
   const parts = { resizePasses: field.resizePasses, ensureSlots: cards.ensureSlots, layoutName: heroName.layoutName };
   const layout = createLayout(ctx, gl, parts, loop);
   const hover = createHover(ctx, cards, loop);
@@ -182,7 +182,7 @@ function startCoil(host: HTMLElement, canvas: HTMLCanvasElement, live: RefObject
   const unlistenDrag = input.listenDrag(); // slice 7
 
   // ---- the api for slices 4 and 5, and the QA hooks behind ?coildebug
-  const api = createApi({ cards, hover, unwinder, flyer, name: heroName });
+  const api = createApi({ cards, hover, unwinder, flyer });
   if (live.current.api) live.current.api.current = api;
   probe.install();
   const nameProbe = createNameProbe(ctx, gl, field.compMaterial, heroName);

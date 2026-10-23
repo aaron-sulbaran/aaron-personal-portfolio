@@ -17,12 +17,14 @@ export type DealKnobs = {
   ribbonSpeedPxPerS: number;
   ribbonFadeWidthPx: number;
   ribbonOffsetYPx: number; // the row's vertical nudge from its slot
+  ribbonHoverSpeedFactor: number; // how many times faster the row eases while the pointer is over the button
+  ribbonHoverTighten: number; // how far its gaps tighten toward the button then, of the way to a closed row
+  ribbonHoverEaseMs: number; // how long the anticipation takes to take hold (and let go)
   // The deal's clock, in ms from the click (COIL.deal.timeline); every time
   // after the two below counts from the end of the condense.
-  condenseMs: number; // the ribbon's gaps close and the row gathers
+  condenseMs: number; // the ribbon's gaps close and the row rushes in toward the button
+  condensePower: number; // how hard it rushes (3 is power2.out)
   curlMs: number; // the row curls into the wheel
-  nameOutStartMs: number; // the name dissolves into the field
-  nameOutMs: number;
   windRampMs: number; // the pull's winding eases in (0: starts at full rate)
   peakCardsPerSecond: number; // the wheel's top speed
   coarsePeakCardsPerSecond: number; // a touch screen's top speed (a phone can run at 30 Hz)
@@ -42,6 +44,7 @@ export type DealKnobs = {
   wheelScale: number; // times its size at the anchor
   wheelOffsetX: number; // shares of the canvas
   wheelOffsetY: number;
+  wheelPinKneePx: number; // the ribbon and the wheel slow into the stage's sticking over this many px (0: the old catch)
   openReach: number; // how far the section's opening travels (1: to the farthest corner)
   openMs: number; // how long the section takes to open
   columnsDelayMs: number;
@@ -59,11 +62,13 @@ export const KNOB_SPEC: Record<NumericKnob, KnobSpec> = {
   ribbonSpeedPxPerS: { label: "Drift speed", group: "Ribbon", min: 0, max: 120, step: 1, unit: " px/s" },
   ribbonFadeWidthPx: { label: "Edge fade width", group: "Ribbon", min: 0, max: 300, step: 4, unit: "px" },
   ribbonOffsetYPx: { label: "Vertical nudge", group: "Ribbon", min: -200, max: 200, step: 4, unit: "px" },
-  condenseMs: { label: "Condense (gaps close)", group: "Condense and curl", min: 0, max: 2000, step: 10, unit: "ms" },
+  ribbonHoverSpeedFactor: { label: "Hover: speed-up", group: "Anticipation", min: 1, max: 8, step: 0.1, unit: "x" },
+  ribbonHoverTighten: { label: "Hover: gaps tighten", group: "Anticipation", min: 0, max: 0.6, step: 0.01 },
+  ribbonHoverEaseMs: { label: "Hover: ease", group: "Anticipation", min: 60, max: 800, step: 10, unit: "ms" },
+  condenseMs: { label: "Rush in (gaps close)", group: "Condense and curl", min: 0, max: 2000, step: 10, unit: "ms" },
+  condensePower: { label: "Rush: how hard", group: "Condense and curl", min: 1, max: 7, step: 0.1 },
   curlMs: { label: "Curl into the wheel", group: "Condense and curl", min: 0, max: 2000, step: 10, unit: "ms" },
-  nameOutStartMs: { label: "Name dissolves from", group: "Condense and curl", min: 0, max: 2000, step: 10, unit: "ms" },
-  nameOutMs: { label: "Name dissolve duration", group: "Condense and curl", min: 100, max: 3000, step: 10, unit: "ms" },
-  windRampMs: { label: "Winding onset ramp", group: "Lift", min: 0, max: 400, step: 5, unit: "ms" },
+  windRampMs: { label: "Winding onset ramp", group: "Lift", min: 0, max: 700, step: 5, unit: "ms" },
   peakCardsPerSecond: { label: "Peak speed", group: "Spin", min: 2, max: 20, step: 0.5, unit: " cards/s" },
   coarsePeakCardsPerSecond: { label: "Peak speed, touch", group: "Spin", min: 2, max: 20, step: 0.5, unit: " cards/s" },
   upMs: { label: "Spin-up", group: "Spin", min: 200, max: 1500, step: 10, unit: "ms" },
@@ -72,6 +77,7 @@ export const KNOB_SPEC: Record<NumericKnob, KnobSpec> = {
   wheelScale: { label: "Wheel size", group: "Wheel", min: 0.5, max: 1.6, step: 0.02 },
   wheelOffsetX: { label: "Wheel nudge X", group: "Wheel", min: -0.3, max: 0.3, step: 0.01 },
   wheelOffsetY: { label: "Wheel nudge Y", group: "Wheel", min: -0.3, max: 0.3, step: 0.01 },
+  wheelPinKneePx: { label: "Slow into the stick", group: "Wheel", min: 0, max: 900, step: 10, unit: "px" },
   scrollStartMs: { label: "Scroll starts", group: "Scroll", min: 0, max: 1500, step: 10, unit: "ms" },
   scrollMs: { label: "Scroll duration", group: "Scroll", min: 600, max: 4000, step: 50, unit: "ms" },
   flattenStartMs: { label: "Flatten starts", group: "Flatten and slow", min: 0, max: 2500, step: 10, unit: "ms" },
@@ -94,10 +100,12 @@ export const DEFAULT_KNOBS: DealKnobs = {
   ribbonSpeedPxPerS: D.ribbon.speedPxPerS,
   ribbonFadeWidthPx: D.ribbon.fadeWidthPx,
   ribbonOffsetYPx: D.ribbon.offsetYPx,
+  ribbonHoverSpeedFactor: D.ribbon.hoverSpeedFactor,
+  ribbonHoverTighten: D.ribbon.hoverTighten,
+  ribbonHoverEaseMs: D.ribbon.hoverEaseMs,
   condenseMs: D.timeline.condenseMs,
+  condensePower: D.timeline.condensePower,
   curlMs: D.timeline.curlMs,
-  nameOutStartMs: D.timeline.nameOutStartMs,
-  nameOutMs: D.timeline.nameOutMs,
   windRampMs: D.timeline.windRampMs,
   peakCardsPerSecond: D.timeline.peakCardsPerSecond,
   coarsePeakCardsPerSecond: D.timeline.coarsePeakCardsPerSecond,
@@ -116,6 +124,7 @@ export const DEFAULT_KNOBS: DealKnobs = {
   wheelScale: D.wheel.scale,
   wheelOffsetX: D.wheel.offsetX,
   wheelOffsetY: D.wheel.offsetY,
+  wheelPinKneePx: D.wheel.pinKneePx,
   openReach: D.open.reach,
   openMs: D.open.ms,
   columnsDelayMs: D.columns.delayMs,
@@ -149,12 +158,14 @@ export function entranceTuningOf(knobs: DealKnobs): EntranceTuning {
       speedPxPerS: knobs.ribbonSpeedPxPerS,
       fadeWidthPx: knobs.ribbonFadeWidthPx,
       offsetYPx: knobs.ribbonOffsetYPx,
+      hoverSpeedFactor: knobs.ribbonHoverSpeedFactor,
+      hoverTighten: knobs.ribbonHoverTighten,
+      hoverEaseMs: knobs.ribbonHoverEaseMs,
     },
     timeline: {
       condenseMs: knobs.condenseMs,
+      condensePower: knobs.condensePower,
       curlMs: knobs.curlMs,
-      nameOutStartMs: knobs.nameOutStartMs,
-      nameOutMs: knobs.nameOutMs,
       windRampMs: knobs.windRampMs,
       peakCardsPerSecond: knobs.peakCardsPerSecond,
       coarsePeakCardsPerSecond: knobs.coarsePeakCardsPerSecond,
@@ -175,6 +186,7 @@ export function entranceTuningOf(knobs: DealKnobs): EntranceTuning {
       scale: knobs.wheelScale,
       offsetX: knobs.wheelOffsetX,
       offsetY: knobs.wheelOffsetY,
+      pinKneePx: knobs.wheelPinKneePx,
     },
     open: { ms: knobs.openMs, reach: knobs.openReach },
   };

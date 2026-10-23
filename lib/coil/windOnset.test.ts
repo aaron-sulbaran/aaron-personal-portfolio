@@ -5,12 +5,13 @@ import { entranceClock, entranceHelix, pullPhases, pullProgress, tunedConstants 
 import { poseAt, projectPoint, restHelix, solveGeometry, type CoilGeometry } from "@/lib/coil/geometry";
 import { ribbonCardsPerSecond } from "@/lib/coil/ribbon";
 import { strandCards } from "@/lib/content";
+import { stageReachAbove } from "@/lib/home/stageLead";
 
 // The winding's onset (the motion review's P2): a card's projected center, a frame
 // apart, through the deal. The second difference is its acceleration; the pull's
 // winding starting at full rate kicked it to about 34 px over two frames, against
 // at most 9 px elsewhere. windRampMs eases the onset, and its default is the
-// smallest ramp that keeps the onset's second difference under ONSET_BOUND_PX at
+// ramp that keeps the onset's second difference under ONSET_BOUND_PX at
 // every size the deal runs at (e2e/deal-jank.spec.ts holds the same number to the
 // drawn frames). Pure: the same functions the scene poses with.
 
@@ -62,10 +63,12 @@ function secondDifferences(geo: CoilGeometry, windRampMs: number, only?: readonl
   return { onsetMs, worstOnset, worstElsewhere };
 }
 
+// The stage as the page makes it: its frame's size, the ribbon's slot as far down as the wheel needs room above it.
+const stage = (width: number, height: number) => solveGeometry({ width, height }, 14, COIL, { canvas: { width, height }, ribbonCy: stageReachAbove(height, width) });
 const geos = [
-  ["1440x900", solveGeometry({ width: 1440, height: 900 }, 14, COIL, { canvas: { width: 1440, height: 900 }, ribbonCy: 700 })],
-  ["1280x800", solveGeometry({ width: 1280, height: 800 }, 14, COIL, { canvas: { width: 1280, height: 800 }, ribbonCy: 620 })],
-  ["390x844", solveGeometry({ width: 390, height: 844 }, 14, COIL, { canvas: { width: 390, height: 844 }, regionHeight: 460, ribbonCy: 700 })],
+  ["1440x900", stage(1440, 900)],
+  ["1280x800", stage(1280, 800)],
+  ["390x460", stage(390, 460)],
 ] as const;
 
 // The three cards the drawn-frame test follows (e2e/deal-jank.spec.ts), by their place in the ring at the start.
@@ -90,7 +93,7 @@ describe("the winding's onset ramp, measured on the poses", () => {
   it("is no kick at any longer ramp either: the onset only falls as the ramp grows, to the floor of the deal's own acceleration", () => {
     const [, geo] = geos[1];
     let last = Number.POSITIVE_INFINITY;
-    for (const ramp of [200, 300, 400]) {
+    for (const ramp of [200, 300, 400, 480]) {
       const now = secondDifferences(geo, ramp, followed).worstOnset;
       expect(now).toBeLessThanOrEqual(last);
       last = now;

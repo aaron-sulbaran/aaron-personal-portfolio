@@ -6,7 +6,6 @@ import {
   basisToQuat,
   entranceClock,
   entranceHelix,
-  entranceNameAlpha,
   entrancePose,
   RING_END_FADE_SLOTS,
   condenseProgress,
@@ -23,6 +22,7 @@ import {
   pullCurve,
   pullHelix,
   pullPhases,
+  pinKnee,
   pullProgress,
   quatToBasis,
   slerpBasis,
@@ -60,8 +60,8 @@ function slotsOf(geo: CoilGeometry, frame: HelixFrame, ms: number, offset = 0, d
 }
 
 describe("entrance clock", () => {
-  it("runs until the pull has landed, the field is open and the name has dissolved", () => {
-    expect(T).toBe(Math.max(TL.pullStartMs + TL.pullMs, TL.openStartMs + COIL.deal.open.ms, TL.nameOutStartMs + TL.nameOutMs));
+  it("runs until the pull has landed and the field is open", () => {
+    expect(T).toBe(Math.max(TL.pullStartMs + TL.pullMs, TL.openStartMs + COIL.deal.open.ms));
     expect(entranceClock(900).elapsedS).toBeCloseTo(0.9, 9);
     expect(entranceClock(900).durationS).toBeCloseTo(T / 1000, 9);
     expect(isBeforeEntrance(entranceClock(-1))).toBe(true);
@@ -72,11 +72,18 @@ describe("entrance clock", () => {
     expect(isBeforeEntrance(entranceClock(Number.NEGATIVE_INFINITY))).toBe(true);
   });
 
-  it("follows the spec's table: the flatten overlaps the lift by 150 ms, the field's opening is over before the lift lands", () => {
-    expect(TL.flattenStartMs + TL.flattenMs - TL.pullStartMs).toBe(150);
+  it("follows slice 4d's table: the Coil is unfurled by about 2.0 s after the click, the flatten overlaps the spin-up, the hold at the peak is 200 ms at most, and the field's opening and the slowing are over before the lift lands", () => {
+    expect(TL.condenseMs + TL.pullStartMs + TL.pullMs).toBeLessThanOrEqual(2050);
+    expect(TL.condenseMs + TL.pullStartMs + TL.pullMs).toBeGreaterThanOrEqual(1900);
+    expect(TL.flattenStartMs).toBeLessThan(TL.upMs);
+    expect(TL.flattenStartMs + TL.flattenMs).toBeGreaterThan(TL.upMs);
+    expect(TL.slowStartMs - TL.upMs).toBeLessThanOrEqual(200);
+    expect(TL.slowStartMs).toBeGreaterThanOrEqual(TL.upMs);
     expect(TL.openStartMs + COIL.deal.open.ms).toBeLessThanOrEqual(TL.pullStartMs + TL.pullMs);
-    expect(TL.slowStartMs).toBeGreaterThan(TL.upMs);
     expect(TL.slowStartMs + TL.slowMs).toBeLessThanOrEqual(TL.pullStartMs + TL.pullMs);
+    // The wheel is all but flat when the lift starts: they overlap by 150 ms at most.
+    expect(TL.flattenStartMs + TL.flattenMs - TL.pullStartMs).toBeLessThanOrEqual(150);
+    expect(TL.flattenStartMs + TL.flattenMs).toBeGreaterThanOrEqual(TL.pullStartMs);
   });
 
   it("pulls on the pull curve, with the axial parting leading the winding", () => {
@@ -100,7 +107,7 @@ describe("entrance clock", () => {
     expect(flattenProgress(entranceClock(TL.flattenStartMs))).toBe(0);
     expect(flattenProgress(entranceClock(TL.flattenStartMs + TL.flattenMs / 2))).toBeCloseTo(0.5, 9);
     expect(flattenProgress(entranceClock(TL.flattenStartMs + TL.flattenMs))).toBe(1);
-    expect(flattenProgress(entranceClock(TL.pullStartMs))).toBeGreaterThan(0.99);
+    expect(flattenProgress(entranceClock(TL.pullStartMs))).toBeGreaterThan(0.97);
     // No dwell: the flatten ends with zero slope while the lift has begun, so
     // the two never both stand still.
     const slope = (ms: number) => flattenProgress(entranceClock(ms + 1)) - flattenProgress(entranceClock(ms));
@@ -118,20 +125,20 @@ describe("tuned constants (the deal's lab)", () => {
   });
 
   it("memoizes a tuned set and runs the whole deal on its timeline", () => {
-    const tuning = { timeline: { pullStartMs: 1800, openStartMs: 2000 }, open: { ms: 2000 } };
+    const tuning = { timeline: { pullStartMs: 500, openStartMs: 700 }, open: { ms: 1500 } };
     const c = tunedConstants(tuning);
     expect(tunedConstants({ ...tuning })).toBe(c);
-    expect(c.deal.timeline.pullStartMs).toBe(1800);
+    expect(c.deal.timeline.pullStartMs).toBe(500);
     expect(c.deal.timeline.pullMs).toBe(TL.pullMs);
     expect(c.deal.wheel).toEqual(COIL.deal.wheel);
-    const clock = entranceClock(1900, c);
-    expect(clock.durationS).toBeCloseTo(4, 9);
+    const clock = entranceClock(900, c);
+    expect(clock.durationS).toBeCloseTo(2.2, 9);
     expect(clock.c).toBe(c);
-    expect(isRested(entranceClock(4000, c))).toBe(true);
-    expect(isRested(entranceClock(3999, c))).toBe(false);
+    expect(isRested(entranceClock(2200, c))).toBe(true);
+    expect(isRested(entranceClock(2199, c))).toBe(false);
     // The functions read the clock's own constants by default.
     expect(pullProgress(clock)).toBeCloseTo(pullProgress(clock, c), 12);
-    expect(pullProgress(entranceClock(2300, c))).toBeGreaterThan(pullProgress(entranceClock(2300)));
+    expect(pullProgress(entranceClock(800, c))).toBeGreaterThan(pullProgress(entranceClock(800)));
   });
 });
 
@@ -144,8 +151,10 @@ describe.each(cases)("the wheel and the pull, %s", (_label, geo) => {
       .map(({ raw }) => Math.round(raw.u - offset));
 
   it("is the wheel once the row has curled: the band's ring with an upright axis, a few degrees of lean and the wheel's size", () => {
-    const frame = entranceHelix(rest, geo, entranceClock(TL.curlMs));
-    const wheel = wheelPlacement(geo);
+    // The flatten starts over the curl; held back, the wheel is whole at the curl's end.
+    const c = tunedConstants({ timeline: { flattenStartMs: TL.curlMs } });
+    const frame = entranceHelix(rest, geo, entranceClock(TL.curlMs, c), c);
+    const wheel = wheelPlacement(geo, c);
     expect(frame.angStep).toBeCloseTo(TAU / geo.cardCount, 12);
     expect(frame.dy).toBe(0);
     expect(frame.axisRad).toBe(0);
@@ -329,7 +338,8 @@ describe("the wheel's place", () => {
   it("flows through the tuning: a tuned lean is the wheel's lean", () => {
     const c = tunedConstants({ wheel: { leanDeg: -25 } });
     expect(wheelPlacement(geo, c).leanRad).toBeCloseTo(-25 * DEG, 12);
-    expect(entranceHelix(restHelix(geo), geo, entranceClock(c.deal.timeline.curlMs, c)).leanRad).toBeCloseTo(-25 * DEG, 12);
+    const held = tunedConstants({ wheel: { leanDeg: -25 }, timeline: { flattenStartMs: c.deal.timeline.curlMs } });
+    expect(entranceHelix(restHelix(geo), geo, entranceClock(held.deal.timeline.curlMs, held), held).leanRad).toBeCloseTo(-25 * DEG, 12);
   });
 });
 
@@ -347,9 +357,9 @@ describe("the ring's cards", () => {
 describe("the field's mask", () => {
   const canvas = { width: 1280, height: 736 };
   const { featherPx, featherShare } = COIL.deal.open;
-  const corner = Math.hypot(canvas.width / 2, canvas.height);
+  const corner = Math.hypot(canvas.width / 2, canvas.height / 2);
 
-  it("leaves the faded patch faded before the field starts to open, and lifts it from the end of the clock", () => {
+  it("stays closed before the field starts to open, and is open from the end of the clock", () => {
     expect(fieldMask(entranceClock(-1), canvas).radius).toBe(0);
     expect(fieldMask(entranceClock(0), canvas).radius).toBe(0);
     expect(fieldMask(entranceClock(TL.openStartMs), canvas).radius).toBe(0);
@@ -357,13 +367,13 @@ describe("the field's mask", () => {
     expect(openProgress(entranceClock(TL.openStartMs + COIL.deal.open.ms))).toBe(1);
   });
 
-  it("grows from the top center, never shrinks, and clears the farthest corner when it is full", () => {
+  it("grows from the canvas's middle (under the Coil), never shrinks, and clears the farthest corner when it is full", () => {
     let last = 0;
     let lastFeather = 0;
     for (let ms = TL.openStartMs; ms <= TL.openStartMs + COIL.deal.open.ms; ms += 20) {
       const mask = fieldMask(entranceClock(ms), canvas);
       expect(mask.cx).toBe(640);
-      expect(mask.cy).toBe(0);
+      expect(mask.cy).toBe(368);
       expect(mask.feather).toBeGreaterThanOrEqual(featherPx);
       expect(mask.feather).toBeLessThanOrEqual(featherShare * corner + 1e-9);
       expect(mask.radius).toBeGreaterThanOrEqual(last);
@@ -385,7 +395,7 @@ describe("the field's mask", () => {
     expect(COIL.deal.open.topFadePx).toBeGreaterThan(0);
   });
 
-  it("grows from the name's middle, when the page puts the origin there, and clears the farthest corner from it", () => {
+  it("grows from another origin when it is given one, and clears the farthest corner from it", () => {
     const origin = { x: 300, y: 120 };
     const far = Math.hypot(canvas.width - origin.x, canvas.height - origin.y);
     const mask = fieldMask(entranceClock(TL.openStartMs + 400), canvas, COIL, origin);
@@ -404,34 +414,56 @@ describe("the field's mask", () => {
   });
 });
 
-describe("the name", () => {
-  it("shows until it dissolves into the field across the spin-up, and is gone from the end of the clock", () => {
-    const { nameOutStartMs: from, nameOutMs: ms } = TL;
-    expect(entranceNameAlpha(entranceClock(Number.NEGATIVE_INFINITY), null)).toBe(1);
-    expect(entranceNameAlpha(entranceClock(-300), null)).toBe(1);
-    expect(entranceNameAlpha(entranceClock(from), null)).toBe(1);
-    expect(entranceNameAlpha(entranceClock(from + ms / 2), null)).toBeCloseTo(0.5, 6);
-    expect(entranceNameAlpha(entranceClock(from + ms), null)).toBe(0);
-    expect(entranceNameAlpha(entranceClock(T), null)).toBe(0);
-    let last = 1;
-    for (let t = from; t <= from + ms; t += 10) {
-      const alpha = entranceNameAlpha(entranceClock(t), null);
-      expect(alpha).toBeLessThanOrEqual(last + 1e-12);
-      last = alpha;
+describe("the wheel's slow-down into the stage's sticking", () => {
+  const K = COIL.deal.wheel.pinKneePx;
+  // The wheel's screen position over the last K px: the stage's top plus the knee (the slot's own offset is a constant).
+  const screen = (x: number) => Math.max(x, 0) + pinKnee(x, K);
+
+  it("is nothing before the knee, once the stage is stuck, and with the knee off", () => {
+    expect(pinKnee(K, K)).toBe(0);
+    expect(pinKnee(K * 3, K)).toBe(0);
+    expect(pinKnee(0, K)).toBe(0);
+    expect(pinKnee(-50, K)).toBe(0);
+    expect(pinKnee(100, 0)).toBe(0);
+  });
+
+  it("holds the wheel above where it rides, never below, and brings it to the stage's top exactly as it sticks", () => {
+    for (let x = 1; x < K; x += 5) expect(pinKnee(x, K), `x ${x}`).toBeLessThan(0);
+    expect(screen(1e-6)).toBeCloseTo(0, 6);
+    expect(screen(K - 1e-6)).toBeCloseTo(K, 3);
+  });
+
+  it("has no step in the wheel's speed: it joins the free ride at slope 1 and reaches the stage at slope 0", () => {
+    const slope = (x: number) => (screen(x + 1e-3) - screen(x - 1e-3)) / 2e-3;
+    expect(slope(K - 0.5)).toBeCloseTo(1, 2);
+    expect(slope(0.5)).toBeLessThan(0.01);
+    // The wheel covers the same distance as the page across the knee, so it has to
+    // outrun it a little before it slows (by a third at the most, at 2K/3); from there
+    // its speed falls steadily to zero.
+    let most = 0;
+    for (let x = K - 1; x > 1; x -= 4) most = Math.max(most, slope(x));
+    expect(most).toBeLessThanOrEqual(4 / 3 + 1e-3);
+    let last = Number.POSITIVE_INFINITY;
+    for (let x = (2 * K) / 3; x > 1; x -= 4) {
+      const v = slope(x);
+      expect(v).toBeLessThanOrEqual(last + 1e-9);
+      last = v;
     }
   });
 
-  it("is held back by the loader until it lands the name, then follows the same dissolve", () => {
-    expect(entranceNameAlpha(entranceClock(Number.NEGATIVE_INFINITY), false)).toBe(0);
-    expect(entranceNameAlpha(entranceClock(Number.NEGATIVE_INFINITY), true)).toBe(1);
-    expect(entranceNameAlpha(entranceClock(TL.nameOutStartMs + TL.nameOutMs / 2), true)).toBeCloseTo(0.5, 6);
+  it("moves the wheel's center up by the knee, weighted by how little it has flattened", () => {
+    const geo = { canvas: { width: 1280, height: 800 }, camera: { worldPerPx: 0.01 }, wheelAnchor: { x: 0.5, y: 0.5 }, wheelCardWorld: 1 } as never;
+    const frame = { axisRad: 0, leanRad: 0, center: [0, 0, 0], cardWorld: 1 } as never;
+    const flat = wheelHelix(frame, geo, 0.5, COIL, -40);
+    const none = wheelHelix(frame, geo, 0.5, COIL, 0);
+    // dy is up-negative in px; the world's y is up, so a negative dy lifts the center by dy * worldPerPx.
+    expect(flat.center[1] - none.center[1]).toBeCloseTo(0.5 * 40 * 0.01, 9);
+    expect(wheelHelix(frame, geo, 1, COIL, -40)).toBe(frame);
   });
 
-  it("dissolves on the lab's tuned start and duration", () => {
-    const c = tunedConstants({ timeline: { nameOutStartMs: 400, nameOutMs: 1000 } });
-    expect(entranceNameAlpha(entranceClock(400, c), null, c)).toBe(1);
-    expect(entranceNameAlpha(entranceClock(900, c), null, c)).toBeCloseTo(0.5, 6);
-    expect(entranceNameAlpha(entranceClock(1400, c), null, c)).toBe(0);
+  it("is carried on the clock, and is 0 where the clock has none", () => {
+    expect(entranceClock(0).dyPx).toBe(0);
+    expect(entranceClock(0, COIL, { dyPx: -30 }).dyPx).toBe(-30);
   });
 });
 
@@ -501,9 +533,9 @@ describe("the pull as a value", () => {
   });
 });
 
-describe("the ribbon (the first screen's row)", () => {
+describe("the ribbon (page 1's foot)", () => {
   const wideGeo = solveGeometry({ width: 1280, height: 800 }, 14, COIL, { canvas: { width: 1280, height: 800 }, ribbonCy: 620 });
-  const phoneGeo = solveGeometry({ width: 390, height: 844 }, 14, COIL, { canvas: { width: 390, height: 844 }, regionHeight: 460, ribbonCy: 700 });
+  const phoneGeo = solveGeometry({ width: 390, height: 460 }, 14, COIL, { canvas: { width: 390, height: 460 }, ribbonCy: 150 });
   const rest = (geo: CoilGeometry) => restHelix(geo);
 
   it("takes the card's height by the canvas's width and the slot's middle as its anchor", () => {
@@ -536,7 +568,7 @@ describe("the ribbon (the first screen's row)", () => {
   });
 
   it("lies flat in one row at curl 0: cards a pitch apart on the anchor's line, face on, unbent", () => {
-    const frame = ribbonHelix(entranceHelix(rest(wideGeo), wideGeo, entranceClock(TL.curlMs)), wideGeo, 0, 0);
+    const frame = ribbonHelix(entranceHelix(rest(wideGeo), wideGeo, entranceClock(0)), wideGeo, 0, 0);
     const pitchWorld = ribbonPitchUnits(wideGeo) * frame.cardWorld;
     const anchor = ribbonAnchor(wideGeo);
     for (const u of [-6, -2.5, 0, 1, 4.25]) {
@@ -601,18 +633,58 @@ describe("the ribbon (the first screen's row)", () => {
     expect(curled.alpha).toBe(1);
   });
 
-  it("condenses on power2.out over condenseMs and curls on a smoothstep over curlMs, from the clock's 0", () => {
+  it("rushes in on an ease out of power condensePower over condenseMs and curls on a smoothstep over curlMs, from the clock's 0", () => {
+    const n = TL.condensePower;
     expect(condenseProgress(entranceClock(Number.NEGATIVE_INFINITY))).toBe(0);
     expect(condenseProgress(entranceClock(-TL.condenseMs))).toBe(0);
-    expect(condenseProgress(entranceClock(-TL.condenseMs / 2))).toBeCloseTo(0.875, 9);
+    expect(condenseProgress(entranceClock(-TL.condenseMs / 2))).toBeCloseTo(1 - Math.pow(0.5, n), 9);
+    // The rush is faster than the old power2.out: over half the way in a third of the time.
+    expect(condenseProgress(entranceClock(-TL.condenseMs * (2 / 3)))).toBeGreaterThan(1 - Math.pow(1 - 1 / 3, 3));
     expect(condenseProgress(entranceClock(0))).toBe(1);
     expect(condenseProgress(entranceClock(T))).toBe(1);
     expect(curlProgress(entranceClock(-1))).toBe(0);
     expect(curlProgress(entranceClock(0))).toBe(0);
     expect(curlProgress(entranceClock(TL.curlMs / 2))).toBeCloseTo(0.5, 9);
     expect(curlProgress(entranceClock(TL.curlMs))).toBe(1);
-    // The curl ends before the flatten starts, so the wheel is whole before it flattens.
-    expect(TL.curlMs).toBeLessThanOrEqual(TL.flattenStartMs);
+    // The flatten starts once the curl has begun, and over the spin-up.
+    expect(TL.flattenStartMs).toBeGreaterThan(0);
+  });
+
+  it("starts the condense from what the pointer's anticipation had already closed, with no step at the click, and holds it before", () => {
+    const g0 = 0.2;
+    const at = (ms: number) => condenseProgress(entranceClock(ms, COIL, { gather0: g0 }));
+    // Before the click the row is that share closed, and no more.
+    expect(at(Number.NEGATIVE_INFINITY)).toBeCloseTo(g0, 12);
+    expect(at(-TL.condenseMs)).toBeCloseTo(g0, 12);
+    expect(at(0)).toBe(1);
+    // Monotone from there to a closed row.
+    let last = g0;
+    for (let ms = -TL.condenseMs; ms <= 0; ms += 5) {
+      const now = at(ms);
+      expect(now).toBeGreaterThanOrEqual(last - 1e-12);
+      last = now;
+    }
+    // With none it is the plain rush.
+    expect(condenseProgress(entranceClock(-TL.condenseMs / 2))).toBeCloseTo(1 - Math.pow(0.5, TL.condensePower), 9);
+  });
+
+  it("gathers the row toward the button: its anchor shifts across with the gaps closing, and is the ordinary row with no offset", () => {
+    const wheel = restHelix(wideGeo);
+    const plain = ribbonHelix(wheel, wideGeo, 0.5, 0.2);
+    const toward = ribbonHelix(wheel, wideGeo, 0.5, 0.2, { dxPx: 100, dyPx: 0 });
+    const perPx = wideGeo.camera.worldPerPx;
+    expect(toward.center[0] - plain.center[0]).toBeCloseTo(0.5 * 0.8 * 100 * perPx, 9);
+    expect(ribbonHelix(wheel, wideGeo, 0.5, 0.2, { dxPx: 0, dyPx: 0 })).toEqual(plain);
+    // Nothing shifts with the gaps open, and the frame is the wheel's exactly at curl 1.
+    expect(ribbonHelix(wheel, wideGeo, 0, 0, { dxPx: 100, dyPx: 0 }).center[0]).toBeCloseTo(ribbonHelix(wheel, wideGeo, 0, 0).center[0], 9);
+    expect(ribbonHelix(wheel, wideGeo, 1, 1, { dxPx: 100, dyPx: 0 })).toBe(wheel);
+  });
+
+  it("holds the row off its slot by pinKnee's offset while the stage rides the page", () => {
+    const wheel = restHelix(wideGeo);
+    const plain = ribbonHelix(wheel, wideGeo, 0, 0);
+    const lifted = ribbonHelix(wheel, wideGeo, 0, 0, { dxPx: 0, dyPx: -40 });
+    expect(lifted.center[1] - plain.center[1]).toBeCloseTo(40 * wideGeo.camera.worldPerPx, 9);
   });
 
   it("fades the cards at the window's two ends while the ring is open, so a swap of twins is not seen, and not at all once it has closed", () => {
@@ -638,7 +710,7 @@ describe("the ribbon (the first screen's row)", () => {
 
   it("tunes through the lab: a longer condense and curl move the same marks", () => {
     const c = tunedConstants({ timeline: { condenseMs: 1000, curlMs: 300 } });
-    expect(condenseProgress(entranceClock(-500, c), c)).toBeCloseTo(0.875, 9);
+    expect(condenseProgress(entranceClock(-500, c), c)).toBeCloseTo(1 - Math.pow(0.5, c.deal.timeline.condensePower), 9);
     expect(curlProgress(entranceClock(150, c), c)).toBeCloseTo(0.5, 9);
   });
 });

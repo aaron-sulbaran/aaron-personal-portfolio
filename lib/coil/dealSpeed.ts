@@ -68,10 +68,10 @@ export function dealOmega(ms: number, p: DealSpeed): number {
 }
 
 // The scene's clock runs this long from its zero (the end of the condense): the
-// pull has landed, the field is open and the name has dissolved.
+// pull has landed (the Coil is unfurled) and the field is open.
 export function sceneMs(c: CoilConstants = COIL): number {
   const t = c.deal.timeline;
-  return Math.max(t.pullStartMs + t.pullMs, t.openStartMs + c.deal.open.ms, t.nameOutStartMs + t.nameOutMs);
+  return Math.max(t.pullStartMs + t.pullMs, t.openStartMs + c.deal.open.ms);
 }
 
 // The whole deal from the click: the condense, then the scene's clock.

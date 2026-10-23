@@ -3,7 +3,6 @@ import type { Quad } from "@/lib/coil/geometry";
 import type { InputDriver } from "@/lib/coil/drivers";
 import type { Rect } from "@/lib/coil/flight";
 import type { EntranceTuning } from "@/lib/coil/entrance";
-import type { NameTarget } from "@/lib/coil/nameTarget";
 import type { HeroOverlayHandle } from "../HeroOverlay";
 
 // The Coil scene's public types: the props CoilStage passes, the api the
@@ -81,17 +80,6 @@ export type CoilSceneApi = CoilFlightApi &
   quadOf: (slot: number) => Quad | null;
   // Hides one slot's mesh (the flown card) or none.
   hideSlot: (slot: number | null) => void;
-  // ---- slice 4: the loader's continuity exit ----
-  // The canvas lockup in viewport px (the name's ink box, baseline and
-  // gradient, the greeting's ink), for the loader to land its DOM lockup on;
-  // null until the scene has laid out.
-  nameRect: () => NameTarget | null;
-  // Shows the canvas lockup now, rendering this frame synchronously, so the
-  // loader can drop its DOM lockup in the same task with no frame between.
-  // False (nothing drawn) until the entrance that waits for the loader has
-  // reached a frame.
-  landName: () => boolean;
-  // ---- end slice 4 ----
 };
 
 // Slice 4: when the entrance plays. startMs is on the performance.now()
@@ -123,7 +111,7 @@ export type CoilSceneProps = {
   // Once, when the entrance's clock has run out (at once for a fast start).
   onEntranceEnd?: () => void;
   // ---- end slice 4 ----
-  // The canvas draws the name behind the cards unless this is false.
+  // The scene's own name (the page's name is drawn by its own canvas, components/coil/nameCanvas): kept dormant, never shown, when this is false.
   nameShown?: boolean;
 };
 

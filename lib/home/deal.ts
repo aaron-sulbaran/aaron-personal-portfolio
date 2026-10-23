@@ -7,8 +7,9 @@ import { COIL } from "@/lib/coil/constants";
 // once per page load, never persisted.
 //
 //   idle      nothing has happened; the cards section is closed
-//   dealing   the wheel spins up and becomes the Coil, the field opens and the
-//             columns arrive; nothing can be opened yet
+//   dealing   the ribbon becomes the wheel and the wheel the Coil, the field
+//             opens and the columns arrive; nothing can be opened yet, except
+//             that the Coil takes the wheel the moment it is unfurled (below)
 //   dealt     at rest; the cards are the reader's
 //
 // What triggers each step is pure (dealTrigger, tested): a click plays the
@@ -26,6 +27,10 @@ export type DealState = {
   // The reader has dealt (the deck, or by reaching the cards): the fork shows
   // its after state once the deal is under way.
   spent: boolean;
+  // The Coil is unfurled (the scene's clock has run out) while the columns are
+  // still arriving: it takes the wheel and the pointer from here on, not from
+  // when the columns are in.
+  unfurled: boolean;
   // The click path is scrolling to the cards: the entrance waits for the arrival.
   hold: boolean;
   source: DealSource | null;
@@ -35,6 +40,7 @@ export type DealState = {
 
 export type DealAction =
   | { type: "enter"; source: DealSource }
+  | { type: "unfurl" }
   | { type: "finish" }
   // Everything at once: a reduced-motion click, a title chosen before the deal
   // is over, the lab's skip.
@@ -44,17 +50,19 @@ export type DealAction =
   | { type: "hold"; on: boolean }
   | { type: "reset" };
 
-export const DEAL_IDLE: DealState = { phase: "idle", spent: false, hold: false, source: null, entrances: 0 };
+export const DEAL_IDLE: DealState = { phase: "idle", spent: false, unfurled: false, hold: false, source: null, entrances: 0 };
 export const DEAL_REDUCED: DealState = { ...DEAL_IDLE, phase: "dealt" };
 
 export function dealReducer(state: DealState, action: DealAction): DealState {
   switch (action.type) {
     case "enter":
       if (state.phase === "idle") {
-        return { ...state, phase: "dealing", spent: true, hold: false, source: state.source ?? action.source, entrances: state.entrances + 1 };
+        return { ...state, phase: "dealing", spent: true, unfurled: false, hold: false, source: state.source ?? action.source, entrances: state.entrances + 1 };
       }
       // Dealt without a deal (reduced motion): reaching the cards spends it.
       return state.phase === "dealt" && !state.spent ? { ...state, spent: true } : state;
+    case "unfurl":
+      return state.phase === "dealing" && !state.unfurled ? { ...state, unfurled: true } : state;
     case "finish":
       return state.phase === "dealing" ? { ...state, phase: "dealt" } : state;
     case "skip":
@@ -117,6 +125,12 @@ export function clickPlan(state: DealState, reducedMotion: boolean): ClickPlan {
 // line that is still fading.
 export function isAfter(state: DealState): boolean {
   return state.spent && state.phase === "dealt";
+}
+
+// The Coil may take the wheel, the pointer and the drag: the cards are dealt, or
+// the Coil is unfurled and only the columns are still arriving.
+export function coilIsTheirs(state: DealState): boolean {
+  return state.phase === "dealt" || (state.phase === "dealing" && state.unfurled);
 }
 
 // What <html data-deal> says: "closed" until the deal starts (the init script

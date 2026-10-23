@@ -1,27 +1,28 @@
 import { dealOffsetAt, dealOmega, dealSpeedOf, integrateDealSpeed, sceneMs } from "@/lib/coil/dealSpeed";
-import { entranceClock, entranceHelix, fieldMask, tunedConstants, type EntranceTuning } from "@/lib/coil/entrance";
+import { entranceClock, entranceHelix, fieldMask, pinKnee, tunedConstants, type EntranceTuning } from "@/lib/coil/entrance";
 import { FIELD } from "@/lib/coil/field.glsl";
 import { clamp01, type HelixFrame } from "@/lib/coil/geometry";
 import { siteEase } from "@/lib/coil/motion";
-import { ribbonCardsPerSecond } from "@/lib/coil/ribbon";
+import { easeAnticipation, ribbonAnticipatedGather, ribbonCardsPerSecond } from "@/lib/coil/ribbon";
+import { isDealHover } from "@/lib/home/dealCue";
 import { entranceTuningOf, getKnobs, type DealKnobs } from "@/lib/home/dealKnobs";
-import type { Name } from "./name";
 import type { SceneCtx, SceneFrame } from "./state";
 import type { CoilEntrance } from "./types";
 
-// The deal's wiring (hero rework, slices 4a and 4c): the ribbon drifting on the
-// first screen until the click, the deal's one clock (the director's timeline,
-// read each frame), the strand's offset from the integrated speed curve, the
-// frame (lib/coil/entrance.ts, pure), the field's mask, the name's fades, and
-// the end reported once. Also the rebuild fade (slice 7): after a rotation or a
-// remount the cards and the name fade back in rather than pop.
+// The deal's wiring (hero rework, slices 4a to 4d): the ribbon drifting at page
+// 1's foot until the click (faster, and its gaps a little tighter toward the
+// button, while the pointer is over it), the deal's one clock (the director's
+// timeline, read each frame), the strand's offset from the integrated speed
+// curve, the frame (lib/coil/entrance.ts, pure), the field's mask, and the end
+// reported once. Also the rebuild fade (slice 7): after a rotation or a remount
+// the cards fade back in rather than pop.
 //
 // This step is the one owner of the conveyor's offset while the deal has not
 // ended: the ribbon's slow drift before the click and through the condense (a
 // card rate, negative: the row moves left), then s(ms) from the speed curve,
-// built once per deal from the ribbon's own pace so the click has no step. From
-// the first rested frame the conveyor carries on at the idle pace the curve
-// ended at.
+// built once per deal from the ribbon's own pace so the click has no step (the
+// pace the hover had taken it to, if the pointer was on the button). From the
+// first rested frame the conveyor carries on at the idle pace the curve ended at.
 //
 // Two clocks meet here: the director's is milliseconds since the click, and the
 // scene's own (lib/coil/entrance.ts) zero is the end of the condense, condenseMs
@@ -34,7 +35,7 @@ const REBUILD_FADE_MS = 450;
 type Curve = { table: Float32Array; firstMs: number; base: number; atPull: number };
 type Tuned = ReturnType<typeof tunedConstants>;
 
-export function createEntrance(ctx: SceneCtx, name: Name) {
+export function createEntrance(ctx: SceneCtx) {
   const { st, live, flags } = ctx;
   const { conveyor, view } = st;
   const { pinned } = flags;
@@ -48,6 +49,10 @@ export function createEntrance(ctx: SceneCtx, name: Name) {
   // ---- the ribbon before the ring begins, and the deal's curve ----
   let turned: number | null = null; // where the ribbon's drift has the strand, in cards
   let curve: Curve | null = null;
+  // How far the pointer's hover over "Deal me in" has taken hold (0 to 1): eased
+  // each frame until the click, then held, so the click starts from the pace and
+  // the gaps the reader saw.
+  let anticipation = 0;
 
   // The lab's knobs as the entrance's tuning, remade only when they change.
   let knobsSeen: DealKnobs | null = null;
@@ -115,10 +120,11 @@ export function createEntrance(ctx: SceneCtx, name: Name) {
   // click's condense included), the speed curve from it. Returns how far the
   // strand has turned since the pull began.
   function turn(f: SceneFrame, ms: number, c: Tuned) {
-    const rate = ribbonCardsPerSecond(f.geo, c);
+    const forced = flags.forcedEntranceMs !== null;
+    const rate = ribbonCardsPerSecond(f.geo, c, forced ? 0 : anticipation);
     const coarse = f.props.input === "coarse";
     const speed = dealSpeedOf(rate, c, coarse);
-    if (flags.forcedEntranceMs !== null) {
+    if (forced) {
       // A pinned frame (?coildebug=entrance=): the same however it was reached,
       // counted from the strand's start, and held there even past the end.
       const start = flags.stillOffset ?? 0;
@@ -126,9 +132,9 @@ export function createEntrance(ctx: SceneCtx, name: Name) {
         hold(Number.isFinite(ms) ? start + (rate * ms) / 1000 : start, rate);
         return 0;
       }
-      const forced = curveFor(c, rate, start, 0, coarse);
-      hold(forced.base + dealOffsetAt(forced.table, ms), dealOmega(ms, speed));
-      return ms > c.deal.timeline.pullStartMs ? dealOffsetAt(forced.table, ms) - forced.atPull : 0;
+      const frozen = curveFor(c, rate, start, 0, coarse);
+      hold(frozen.base + dealOffsetAt(frozen.table, ms), dealOmega(ms, speed));
+      return ms > c.deal.timeline.pullStartMs ? dealOffsetAt(frozen.table, ms) - frozen.atPull : 0;
     }
     if (ms < 0) {
       turned = (turned ?? conveyor.offset) + rate * f.dt;
@@ -143,7 +149,7 @@ export function createEntrance(ctx: SceneCtx, name: Name) {
 
   // The bottom seam's height: the canvas's bottom edge only meets the page once
   // the stage lets go of its rail (it is stuck at the top of the screen before,
-  // and the ribbon sits right down there), so the seam grows over the last
+  // and its bottom is below the screen), so the seam grows over the last
   // seamFade of the canvas's height before that, and is whole from it on.
   let rail: Element | null | undefined;
   function seam(): number {
@@ -152,6 +158,24 @@ export function createEntrance(ctx: SceneCtx, name: Name) {
     const left = rail.getBoundingClientRect().bottom - ctx.host.getBoundingClientRect().bottom;
     const full = FIELD.seamFade * view.height;
     return (FIELD.seamFade * clamp01((full - left) / Math.max(1, full)));
+  }
+
+  // How far the ribbon (and then the wheel) sits off its slot as the stage
+  // sticks (lib/coil/entrance.ts pinKnee): read from the rail's live place, only
+  // while it is still the wheel (a forced frame is the same wherever the page is
+  // scrolled).
+  function slotDy(ms: number, c: Tuned) {
+    if (flags.forcedEntranceMs !== null || c.deal.wheel.pinKneePx <= 0) return 0;
+    if (ms >= c.deal.timeline.flattenStartMs + c.deal.timeline.flattenMs) return 0;
+    if (rail === undefined) rail = ctx.host.closest("[data-coil-rail]");
+    return rail ? pinKnee(rail.getBoundingClientRect().top, c.deal.wheel.pinKneePx) : 0;
+  }
+
+  // The hover's hold on the ribbon, eased each frame until the click and held
+  // from it; a fine pointer over the button only (the button writes the cue).
+  function anticipate(ms: number, dt: number, c: Tuned) {
+    if (Number.isFinite(ms) || flags.forcedEntranceMs !== null) return;
+    anticipation = easeAnticipation(anticipation, isDealHover() ? 1 : 0, dt, c);
   }
 
   // ---- slice 4 wiring block: the entrance ----
@@ -165,14 +189,19 @@ export function createEntrance(ctx: SceneCtx, name: Name) {
     const ms = flags.forcedEntranceMs !== null ? flags.forcedEntranceMs - lead : realElapsedMs;
     lastElapsedMs = ms;
     f.realElapsedMs = realElapsedMs;
+    anticipate(ms, f.dt, c);
     const rested = ms >= sceneMs(c);
     const drift = rested && flags.forcedEntranceMs === null ? 0 : turn(f, ms, c);
-    const clock = entranceClock(ms, c, drift);
+    const clock = entranceClock(ms, c, {
+      drift,
+      dyPx: rested ? 0 : slotDy(ms, c),
+      gather0: flags.forcedEntranceMs !== null ? 0 : ribbonAnticipatedGather(anticipation, c),
+      gatherDxPx: st.ribbon.buttonDx,
+    });
     f.clock = clock;
     st.seam = seam();
-    st.open = fieldMask(clock, view, c, name.origin() ?? undefined);
+    st.open = fieldMask(clock, view, c);
     f.helix = entranceHelix(f.helix as HelixFrame, f.geo, clock);
-    name.entranceFade(f);
     const entrance = props.entrance;
     if (entrance && !entranceEnded && realElapsedMs >= clock.durationS * 1000) {
       entranceEnded = true;
@@ -187,7 +216,6 @@ export function createEntrance(ctx: SceneCtx, name: Name) {
     const rebuilt = siteEase(clamp01((f.now - st.rebuildAt) / REBUILD_FADE_MS));
     f.rebuilt = rebuilt;
     if (rebuilt >= 1) st.rebuildAt = null;
-    name.fade(rebuilt);
   }
 
   // QA: the entrance clock (the scene's own: zero at the end of the condense).
