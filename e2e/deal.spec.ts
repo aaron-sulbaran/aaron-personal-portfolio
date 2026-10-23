@@ -209,6 +209,50 @@ test("deal: the Coil takes the wheel while the columns are still arriving: the s
   expect(await dealLog(page)).toEqual(DEAL_VALUES);
 });
 
+test("deal: Deal me in moves with the cards: a hover eases the ribbon faster and tightens its gaps, leaving restores it, and a press scales the button", async ({ page }) => {
+  await openHome(page, { debug: "flight", at: "foot" });
+  await page.waitForTimeout(800);
+  type Coil = { offset: () => number };
+  const sample = (ms: number) =>
+    page.evaluate(
+      (wait) =>
+        new Promise<{ rate: number; pitch: number }>((resolve) => {
+          const w = window as unknown as { __coil: Coil; __coilFlight: { scene: { slots: () => { center: { x: number; y: number } }[] } } };
+          const start = w.__coil.offset();
+          const t0 = performance.now();
+          setTimeout(() => {
+            // The row's pitch: the mean spacing of the cards around the middle of the screen.
+            const middle = w.__coilFlight.scene.slots().filter((s) => Math.abs(s.center.x - innerWidth / 2) < 300).sort((a, b) => a.center.x - b.center.x);
+            const pitch = middle.length > 1 ? (middle[middle.length - 1].center.x - middle[0].center.x) / (middle.length - 1) : Number.NaN;
+            resolve({ rate: (w.__coil.offset() - start) / ((performance.now() - t0) / 1000), pitch });
+          }, wait);
+        }),
+      ms,
+    );
+  const rest = await sample(900);
+  expect(rest.rate, "the ribbon drifts left").toBeLessThan(0);
+  const box = (await dealLink(page).boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.waitForTimeout(700);
+  const hover = await sample(900);
+  expect(hover.rate / rest.rate, "the ribbon eases faster under the pointer").toBeGreaterThan(2.5);
+  expect(hover.pitch, "its gaps tighten toward the button").toBeLessThan(rest.pitch - 4);
+  // A press scales the button to the standard 0.97, and lets go.
+  const wrapper = () => dealLink(page).evaluate((el) => getComputedStyle(el.parentElement!).transform);
+  expect(await wrapper()).toBe("none");
+  await page.mouse.down();
+  await page.waitForTimeout(250);
+  expect(await wrapper()).toBe("matrix(0.97, 0, 0, 0.97, 0, 0)");
+  // Let go off the button: no click, no deal.
+  await page.mouse.move(8, 8);
+  await page.mouse.up();
+  await page.waitForTimeout(500);
+  expect(await deal(page)).toBe("closed");
+  const off = await sample(900);
+  expect(off.rate / rest.rate, "back to the ribbon's own pace").toBeCloseTo(1, 0);
+  expect(Math.abs(off.pitch - rest.pitch), "and its own gaps").toBeLessThan(2);
+});
+
 test("deal: the Coil is unfurled by about 2 s after the click and the columns are in by about 2.6 s", async ({ page }) => {
   await logDeal(page);
   await openHome(page, { at: "foot" });

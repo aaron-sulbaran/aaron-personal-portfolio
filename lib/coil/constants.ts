@@ -187,7 +187,7 @@ const values = {
       // eases hoverSpeedFactor times faster and its gaps tighten toward the
       // button by hoverTighten of the way to a closed row, over hoverEaseMs.
       hoverSpeedFactor: 3.5,
-      hoverTighten: 0.22,
+      hoverTighten: 0.55,
       hoverEaseMs: 260,
     },
     // The wheel (the ribbon's end state, before the flatten): the 14-card band
@@ -243,7 +243,7 @@ const values = {
     shrink: { ms: 650, ease: "site" as "site" | "power2.inOut" | "power3.inOut" | "expo.inOut" },
     // The name's size, its font size as a share of the viewport's width on a
     // desktop and on a phone, held between minRem and maxRem.
-    name: { vwDesktop: 10, vwPhone: 14, minRem: 3, maxRem: 12 },
+    name: { vwDesktop: 10, vwPhone: 20, minRem: 3, maxRem: 12 },
     // The soundtrack band's wave stage between the blocks (the copy sits in a row above it), on a desktop and on a phone: at least twice the wave's reach, so the copy never damps it (a desktop's is tall enough for the player's card to end before the next block).
     band: { desktopPx: 176, phonePx: 104 },
     // The burnt orange lobe's strength as a share of the old one, in the

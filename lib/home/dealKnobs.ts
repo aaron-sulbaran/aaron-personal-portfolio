@@ -63,7 +63,7 @@ export const KNOB_SPEC: Record<NumericKnob, KnobSpec> = {
   ribbonFadeWidthPx: { label: "Edge fade width", group: "Ribbon", min: 0, max: 300, step: 4, unit: "px" },
   ribbonOffsetYPx: { label: "Vertical nudge", group: "Ribbon", min: -200, max: 200, step: 4, unit: "px" },
   ribbonHoverSpeedFactor: { label: "Hover: speed-up", group: "Anticipation", min: 1, max: 8, step: 0.1, unit: "x" },
-  ribbonHoverTighten: { label: "Hover: gaps tighten", group: "Anticipation", min: 0, max: 0.6, step: 0.01 },
+  ribbonHoverTighten: { label: "Hover: gaps tighten", group: "Anticipation", min: 0, max: 1, step: 0.01 },
   ribbonHoverEaseMs: { label: "Hover: ease", group: "Anticipation", min: 60, max: 800, step: 10, unit: "ms" },
   condenseMs: { label: "Rush in (gaps close)", group: "Condense and curl", min: 0, max: 2000, step: 10, unit: "ms" },
   condensePower: { label: "Rush: how hard", group: "Condense and curl", min: 1, max: 7, step: 0.1 },
