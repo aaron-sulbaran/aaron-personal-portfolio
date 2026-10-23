@@ -7,14 +7,18 @@ import { shoot } from "./support/pixels";
 import { documentTop } from "./support/wave";
 import { siteContent } from "@/lib/content";
 
-// Page 1, "who I am" (hero rework, slice 3): the loader that becomes the name,
-// the field behind it, the staggered paragraphs with the six pops, the quiet
-// music line, and the lab page that stays out of production.
+// The home's first screen (hero rework, slices 3 and 4c): the loader that becomes
+// the name, the name drawn by the scene with the field behind it (faded away
+// behind the text), blocks 1 and 2, the thin wave, the ribbon's slot, Deal me in;
+// then, after the cards, More about me with blocks 3 and 4; and the lab page that
+// stays out of production.
 
 const L = siteContent.listen;
 const { intro, hero } = siteContent;
 const HEADING = "#intro-heading";
 const SIX_POPS = ["sandboarding", "downhill-skating", "skydiving", "rock-climbing", "venezuela-flag", "3d-printing"];
+// Everything of the page hidden but the canvas, so a pixel read is the scene's own.
+const HIDE_PAGE = "html,body{transition:none!important}body *{visibility:hidden!important}section[data-scene] canvas{visibility:visible!important}";
 
 type Box = { left: number; top: number; width: number; height: number };
 const boxOf = (page: Page, selector: string): Promise<Box> =>
@@ -23,8 +27,24 @@ const boxOf = (page: Page, selector: string): Promise<Box> =>
     return { left: r.left, top: r.top, width: r.width, height: r.height };
   }, selector);
 const loaderState = (page: Page) => page.evaluate(() => document.documentElement.dataset.introLoader ?? null);
+const dealLink = (page: Page) => page.locator("[data-first-cta] a").first();
 
-test("intro: the loader covers the page from first paint, then the name lands on the heading, which never moved", async ({ page }) => {
+// The vertical room left on the first screen: the viewport less the content's own
+// height (the ribbon slot at its least, the screen's min-height off).
+async function leftoverPx(page: Page) {
+  return page.evaluate(() => {
+    const first = document.querySelector<HTMLElement>("[data-first-screen]")!;
+    const ribbon = document.querySelector<HTMLElement>(".first-ribbon")!;
+    const before = [first.style.minHeight, ribbon.style.flex];
+    first.style.minHeight = "0";
+    ribbon.style.flex = "none";
+    const natural = first.getBoundingClientRect().height;
+    [first.style.minHeight, ribbon.style.flex] = before;
+    return { natural, leftover: window.innerHeight - natural };
+  });
+}
+
+test("intro: the loader covers the page from first paint, then the name lands on its place, which never moved", async ({ page }) => {
   await page.addInitScript(() => {
     // The page's own clock when the loader says it is done.
     new MutationObserver(() => {
@@ -42,11 +62,18 @@ test("intro: the loader covers the page from first paint, then the name lands on
   // No layout shift: the server's heading is where the loader lands.
   for (const key of ["left", "top", "width", "height"] as const) expect(Math.abs(after[key] - before[key]), key).toBeLessThan(0.5);
   await expect(page.locator(HEADING)).toBeVisible();
-  await expect(page.locator(HEADING)).toHaveCSS("visibility", "visible");
   await expect(page.locator(".intro-loader")).toBeHidden();
   // The lockup's last frame is the heading's rect: no visible double name, no jump at the hand-off.
   const landed = await page.evaluate(() => (window as unknown as { __introLoader: { landed: Box } }).__introLoader.landed);
   for (const key of ["left", "top", "width", "height"] as const) expect(Math.abs(landed[key] - after[key]), `landed ${key}`).toBeLessThan(1.5);
+  // The scene drew the name on that same place, at the heading's own size, and the loader handed over to it.
+  const target = await page.evaluate(() => (window as unknown as { __coil: { api: { nameRect: () => { left: number; baseline: number; fontPx: number } | null } } }).__coil.api.nameRect());
+  const fontPx = await page.evaluate((selector) => parseFloat(getComputedStyle(document.querySelector(selector)!).fontSize), HEADING);
+  expect(target, "the scene's name").not.toBeNull();
+  expect(Math.abs(target!.fontPx - fontPx), "the canvas name's size against the heading's").toBeLessThan(0.5);
+  expect(Math.abs(target!.left - after.left), "the canvas name's ink against the heading's box").toBeLessThan(14);
+  expect(target!.baseline).toBeGreaterThan(after.top);
+  expect(target!.baseline).toBeLessThan(after.top + after.height);
   // The heading's name is the page's one h1, read as "Hi, I'm Aaron."
   await expect(page.getByRole("heading", { level: 1, name: hero.heading })).toHaveCount(1);
   // It is quick on a local build: well inside the budget (about 1.6 s on a fast connection) with room for a busy machine.
@@ -54,44 +81,55 @@ test("intro: the loader covers the page from first paint, then the name lands on
   expect(doneAt, "ms from navigation to the loader's end").toBeLessThan(2000);
 });
 
-test("intro: the field sits behind the name, never behind the first paragraph", async ({ page }) => {
+test("intro: the field is behind the name and the ribbon, faded away behind the text", async ({ page }) => {
   await openHome(page, { at: "top" });
-  const field = page.locator("[data-name-field]");
-  await expect(field).toHaveAttribute("data-name-field", "live");
-  const stage = await boxOf(page, "[data-intro-stage]");
-  const first = await boxOf(page, '[data-block-text]');
-  expect(stage.top + stage.height).toBeLessThanOrEqual(first.top + 0.5);
-  const canvas = await boxOf(page, "[data-name-canvas]");
-  expect(canvas.top + canvas.height).toBeLessThanOrEqual(first.top + 0.5);
-  // The field is on the page: beside the name, inside the glow, the paper is tinted; far from it, it is the paper.
-  const heading = await boxOf(page, HEADING);
-  const y = Math.round(stage.top + stage.height / 2);
-  const red = async (x: number, at: number) => (await shoot(page, { x: Math.round(x), y: at, width: 8, height: 8 })).rgba[0];
-  const paper = await red(8, y);
-  // Beside the name's letters, in the glow's middle, the paper is tinted blue (the red channel drops).
-  const beside = await Promise.all([red(heading.left - 30, y), red(heading.left + heading.width + 30, y), red(heading.left + heading.width / 2, Math.round(heading.top - 24))]);
-  expect(paper - Math.min(...beside), "red channel, paper minus the deepest glow").toBeGreaterThanOrEqual(8);
+  await page.addStyleTag({ content: HIDE_PAGE });
+  await page.waitForTimeout(300);
+  const name = await boxOf(page, HEADING);
+  const blocks = await boxOf(page, "[data-first-blocks]");
+  const red = async (x: number, y: number) => (await shoot(page, { x: Math.round(x), y: Math.round(y), width: 8, height: 8 })).rgba[0];
+  // The page is paper far from everything; beside the name the field tints it (the red channel drops).
+  const paperRed = await page.evaluate(() => Number(getComputedStyle(document.body).backgroundColor.match(/\d+/g)![0]));
+  const paper = paperRed;
+  const besideName = Math.min(await red(name.left + name.width / 2, name.top + name.height + 40), await red(name.left - 40, name.top + name.height / 2));
+  expect(paper - besideName, "red channel, paper minus the field beside the name").toBeGreaterThanOrEqual(8);
+  // Behind the middle of the blocks the field is faded away: the paper.
+  const behindText = await red(blocks.left + blocks.width / 2, blocks.top + blocks.height / 2);
+  expect(Math.abs(paper - behindText), "red channel, paper minus behind the blocks").toBeLessThanOrEqual(3);
 });
 
-test("intro: four blocks of two to three sentences, composed at first paint and staggered across the column", async ({ page }) => {
+test("intro: blocks 1 and 2 are on the first screen, staggered, and blocks 3 and 4 follow the cards, staggered", async ({ page }) => {
   await openHome(page, { at: "top" });
-  const blocks = page.locator("[data-block]");
-  await expect(blocks).toHaveCount(4);
-  const text = page.locator("[data-block-text]");
-  for (let i = 0; i < 4; i++) {
-    await expect(text.nth(i)).toBeVisible();
+  const first = page.locator("[data-first-blocks] [data-block-text]");
+  const about = page.locator("#about [data-block-text]:visible");
+  await expect(first).toHaveCount(2);
+  await expect(about).toHaveCount(2);
+  for (const text of [first.nth(0), first.nth(1), about.nth(0), about.nth(1)]) {
+    await expect(text).toBeVisible();
     // No staging: nothing is hidden, shifted or fading in.
-    expect(await text.nth(i).evaluate((el) => getComputedStyle(el).opacity)).toBe("1");
-    expect(await text.nth(i).evaluate((el) => getComputedStyle(el).transform)).toBe("none");
+    expect(await text.evaluate((el) => getComputedStyle(el).opacity)).toBe("1");
+    expect(await text.evaluate((el) => getComputedStyle(el).transform)).toBe("none");
   }
-  const xs = await Promise.all([0, 1, 2, 3].map((i) => text.nth(i).evaluate((el) => el.getBoundingClientRect().left)));
-  expect(xs[1], "block 2 leans right of block 1").toBeGreaterThan(xs[0] + 100);
-  expect(xs[3], "block 4 leans right of block 3").toBeGreaterThan(xs[2] + 100);
-  expect(Math.abs(xs[0] - xs[2])).toBeLessThan(1);
-  expect(Math.abs(xs[1] - xs[3])).toBeLessThan(1);
-  const widths = await Promise.all([0, 1].map((i) => text.nth(i).evaluate((el) => el.getBoundingClientRect().width / parseFloat(getComputedStyle(el).fontSize))));
+  const left = (locator: ReturnType<Page["locator"]>) => locator.evaluate((el) => el.getBoundingClientRect().left);
+  expect(await left(first.nth(1)), "block 2 leans right of block 1").toBeGreaterThan((await left(first.nth(0))) + 60);
+  expect(await left(about.nth(1)), "block 4 leans right of block 3").toBeGreaterThan((await left(about.nth(0))) + 100);
+  // The text of blocks 1 and 2 is the story's, whole: both blocks' sentences, with their def and pop links.
+  for (const block of [intro.blocks[0], intro.blocks[1]]) {
+    expect(await page.locator(`#story-${block.key}`).count(), block.key).toBe(1);
+  }
+  await expect(page.locator('[data-first-blocks] [data-inline="def"][data-inline-key="product"]')).toHaveCount(1);
+  await expect(page.locator('[data-first-blocks] [data-inline="pop"][data-inline-key="leadership-award"]')).toHaveCount(1);
+  const widths = await Promise.all([0, 1].map((i) => first.nth(i).evaluate((el) => el.getBoundingClientRect().width / parseFloat(getComputedStyle(el).fontSize))));
   // About 60 characters: 60ch is a little over 30 em in this face.
   for (const width of widths) expect(width).toBeLessThan(45);
+});
+
+test("intro: the page runs first screen, cards, more about me, proof of work, Connect", async ({ page }) => {
+  await openHome(page, { at: "top" });
+  const tops = await page.evaluate(() => ["[data-first-screen]", "#work", "#about", "#numbers", "#connect"].map((s) => document.querySelector(s)!.getBoundingClientRect().top + window.scrollY));
+  expect([...tops].sort((a, b) => a - b)).toEqual(tops);
+  expect(new Set(tops).size).toBe(5);
+  await expect(page.locator("#about")).toHaveAccessibleName(intro.more);
 });
 
 test("intro: the six pops that slice 1 cut are on the page and open on hover", async ({ page }) => {
@@ -107,12 +145,16 @@ test("intro: the six pops that slice 1 cut are on the page and open on hover", a
   }
 });
 
-test("intro: the music is one quiet line, and freeze it is the toggle inside it", async ({ page }) => {
+test("intro: the music is one quiet line on the first screen, and freeze it is the toggle inside it", async ({ page }) => {
   await openHome(page, { at: "top" });
   const band = page.locator("#listen");
   await expect(band.getByRole("heading", { name: L.line })).toBeVisible();
   await expect(band.getByRole("button", { name: L.accept, exact: true })).toBeVisible();
   await expect(band.getByRole("button", { name: L.decline, exact: true })).toBeVisible();
+  // The band is on the first screen, between the blocks and the ribbon.
+  const [blocks, bandBox, ribbon] = await Promise.all([boxOf(page, "[data-first-blocks]"), boxOf(page, "#listen"), boxOf(page, "[data-coil-ribbon]")]);
+  expect(bandBox.top).toBeGreaterThanOrEqual(blocks.top + blocks.height - 1);
+  expect(ribbon.top).toBeGreaterThanOrEqual(bandBox.top + bandBox.height - 1);
   // The standalone link is gone: the toggle is two words in the line under the question.
   await expect(band.getByRole("button", { name: L.freeze, exact: true })).toHaveCount(0);
   const line = band.locator("[data-band-subline] p");
@@ -135,91 +177,116 @@ test("intro: the Music? pill stays hidden while the prompt is on screen, and sho
   const hidden = async () => (await readDock(page))?.inert === true;
   const promptTop = await documentTop(page, "[data-band-prompt]");
   const promptBottom = promptTop + (await boxOf(page, "[data-band-prompt]")).height;
-  const height = page.viewportSize()!.height;
-  // Before the reader reaches it, and while any of it shows: no pill.
+  // On the first screen the prompt is in view from the start: no pill.
   expect(await hidden()).toBe(true);
-  for (const y of [promptTop - height + 80, promptTop - height / 2, promptTop - 40, promptBottom - 60]) {
-    await scrollToY(page, Math.max(0, Math.round(y)));
-    await nextFrames(page, 4);
-    expect(await hidden(), `prompt in view at scroll ${Math.round(y)}`).toBe(true);
-  }
   // Scrolled away above the top of the screen, unanswered: the pill arrives as "Music?".
   await scrollToY(page, Math.round(promptBottom + 80));
   await expect.poll(async () => (await readDock(page))?.inert, { message: "the pill after the prompt has gone" }).toBe(false);
   await expect(page.locator(CAPSULE)).toHaveAttribute("aria-label", /^Music\?/);
   // Back up to the prompt: it steps away again.
-  await scrollToY(page, Math.max(0, Math.round(promptTop - height / 2)));
+  await scrollToY(page, 0);
   await expect.poll(async () => (await readDock(page))?.inert, { message: "the pill with the prompt back on screen" }).toBe(true);
   await expect(page.locator(PILL)).toHaveCount(1);
 });
 
-test("intro: the teaser asks, deals, links to the quick version, and keeps the wheel's slot, with no empty band after it", async ({ page }) => {
+test("intro: Deal me in is a link to the cards, the 30-second line is one muted line under it, and the ribbon has its room", async ({ page }) => {
   await openHome(page, { at: "top" });
-  const teaser = page.locator("[data-teaser]");
-  await expect(teaser.getByText(intro.teaser.line)).toBeVisible();
-  await expect(teaser.getByRole("button", { name: intro.teaser.deal })).toBeVisible();
-  await expect(teaser.getByRole("link", { name: intro.teaser.quick })).toHaveAttribute("href", "/quick");
+  const first = page.locator("[data-first-cta]");
+  await expect(dealLink(page)).toHaveText(new RegExp(intro.teaser.deal));
+  await expect(dealLink(page)).toHaveAttribute("href", "#work");
+  await expect(first.getByRole("link", { name: intro.teaser.quick })).toHaveAttribute("href", "/quick");
   // The 30-second link is one small muted line under the button: no underline at rest, no button or pill look.
-  const dealBox = await boxOf(page, "[data-teaser] button");
-  const quickBox = await boxOf(page, '[data-teaser] a[href="/quick"]');
+  const dealBox = await boxOf(page, "[data-first-cta] a");
+  const quickBox = await boxOf(page, '[data-first-cta] a[href="/quick"]');
   expect(quickBox.top).toBeGreaterThanOrEqual(dealBox.top + dealBox.height - 1);
-  const quick = await teaser.getByRole("link", { name: intro.teaser.quick }).evaluate((el) => {
+  const quick = await first.getByRole("link", { name: intro.teaser.quick }).evaluate((el) => {
     const style = getComputedStyle(el);
     return { decoration: style.textDecorationLine, background: style.backgroundColor, border: style.borderTopWidth, radius: style.borderTopLeftRadius };
   });
   expect(quick).toMatchObject({ decoration: "none", background: "rgba(0, 0, 0, 0)", border: "0px" });
-  const slot = page.locator("[data-coil-wheel]");
-  await expect(slot).toBeVisible();
-  const box = await slot.boundingBox();
-  expect(box!.width).toBeGreaterThan(200);
-  expect(Math.abs(box!.width - box!.height)).toBeLessThan(2);
-  expect(await teaser.evaluate((el) => el.contains(document.querySelector("[data-coil-wheel]")))).toBe(true);
+  // Both are centered under the ribbon, and the ribbon's slot is as tall as its cards.
+  const ribbon = await boxOf(page, "[data-coil-ribbon]");
+  const viewport = page.viewportSize()!;
+  expect(Math.abs(dealBox.left + dealBox.width / 2 - viewport.width / 2)).toBeLessThan(2);
+  expect(dealBox.top).toBeGreaterThanOrEqual(ribbon.top + ribbon.height - 1);
+  expect(ribbon.height).toBeGreaterThan(100);
 });
+
+// The first screen is one screen, with no scroll at the defaults.
+for (const size of [
+  { name: "1280x800", viewport: { width: 1280, height: 800 } },
+  { name: "390x844", viewport: { width: 390, height: 844 }, phone: true },
+]) {
+  test.describe(`the first screen at ${size.name}`, () => {
+    test.use({ viewport: size.viewport, hasTouch: !!size.phone, isMobile: !!size.phone });
+
+    test("intro: the name, the text, the wave, the ribbon and Deal me in fit one screen with no scroll", async ({ page }) => {
+      await openHome(page, { at: "top" });
+      const { natural, leftover } = await leftoverPx(page);
+      test.info().annotations.push({ type: "leftover vertical space", description: `${leftover.toFixed(0)} px (content ${natural.toFixed(0)} of ${size.viewport.height})` });
+      const first = await boxOf(page, "[data-first-screen]");
+      expect(first.height, "the first screen is one screen tall").toBeLessThanOrEqual(size.viewport.height + 0.5);
+      expect(leftover, "the content fits").toBeGreaterThanOrEqual(0);
+      const cta = await boxOf(page, "[data-first-cta]");
+      expect(cta.top + cta.height).toBeLessThanOrEqual(size.viewport.height);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(size.viewport.width);
+      // The blocks on show are block 1 (and block 2 on a desktop); the phone leaves block 2 to the about section.
+      await expect(page.locator("[data-first-blocks] [data-block-text]:visible")).toHaveCount(size.phone ? 1 : 2);
+    });
+  });
+}
 
 test.describe("on a phone", () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
 
-  test("intro: one column, every block stacked, the teaser right after, and nothing wider than the screen", async ({ page }) => {
+  test("intro: one column, block 2 waits in the about section, and nothing is wider than the screen", async ({ page }) => {
     await openHome(page, { at: "top" });
-    const text = page.locator("[data-block-text]");
+    const text = page.locator("[data-block-text]:visible");
+    await expect(text).toHaveCount(4);
     const lefts = await Promise.all([0, 1, 2, 3].map((i) => text.nth(i).evaluate((el) => Math.round(el.getBoundingClientRect().left))));
     expect(new Set(lefts).size).toBe(1);
-    for (let i = 0; i < 4; i++) await expect(text.nth(i)).toBeAttached();
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
-    await expect(page.locator("[data-more]")).toBeHidden();
-    // The wheel's slot ends the teaser, and the teaser ends where the cards section begins.
-    const slot = await boxOf(page, "[data-coil-wheel]");
-    const work = await boxOf(page, "#work");
-    expect(work.top - (slot.top + slot.height)).toBeLessThan(96);
+    // Block 2 is read once, in the about section, before blocks 3 and 4; the first screen's copy is out of the reading order.
+    await expect(page.locator('[data-first-blocks] [data-story-block="work"]')).toBeHidden();
+    await expect(page.locator('#about [data-story-block="work"]')).toBeVisible();
+    expect(await page.locator('[data-story-block="work"]:visible').count()).toBe(1);
+    expect(await page.evaluate(() => document.querySelector("[data-more]"))).toBeNull();
   });
 });
 
 test.describe("reduced motion", () => {
   test.use({ reducedMotion: "reduce" });
 
-  test("intro: no loader runs, the name is simply in place, and the field is its poster", async ({ page }) => {
+  test("intro: no loader runs, the first screen is simply in place: the name with the field as its fill, the ribbon as a still row", async ({ page }) => {
     await page.goto("/?coildebug=1");
     await expect(page.locator(HEADING)).toBeVisible();
     expect(await loaderState(page)).toBeNull();
     await expect(page.locator(".intro-loader")).toBeHidden();
     const first = await boxOf(page, HEADING);
     await page.waitForTimeout(1200);
-    const later = await boxOf(page, HEADING);
-    expect(later).toEqual(first);
-    await expect(page.locator("[data-name-field]")).toHaveAttribute("data-name-field", "poster");
-    await expect(page.locator("[data-name-canvas]")).toHaveCount(0);
+    expect(await boxOf(page, HEADING)).toEqual(first);
+    await expect(page.locator("[data-name-visual]").first()).toBeVisible();
+    await expect(page.locator("[data-ribbon-still]")).toBeVisible();
+    await expect(page.locator("[data-first-field]")).toBeVisible();
+    await expect(page.locator("#work canvas")).toHaveCount(0);
   });
 });
 
 test.describe("without JavaScript", () => {
   test.use({ javaScriptEnabled: false });
 
-  test("intro: the heading is visible, and no loader hides it", async ({ page }) => {
+  test("intro: the first screen reads whole: the heading as text with the field as its fill, the ribbon as a still row, Deal me in a link to the cards", async ({ page }) => {
     await page.goto("/");
     await expect(page.locator(HEADING)).toBeVisible();
     await expect(page.locator(HEADING)).toHaveCSS("visibility", "visible");
     await expect(page.locator(".intro-loader")).toBeHidden();
     await expect(page.getByRole("heading", { level: 1, name: hero.heading })).toBeVisible();
+    await expect(page.locator("[data-name-visual]").first()).toBeVisible();
+    await expect(page.locator("[data-name-visual]").nth(1)).toHaveCSS("background-clip", /text/);
+    await expect(page.locator("[data-ribbon-still]")).toBeVisible();
+    expect(await page.locator("[data-ribbon-still] > *").count()).toBe(14);
+    await expect(dealLink(page)).toBeVisible();
+    await expect(dealLink(page)).toHaveAttribute("href", "#work");
   });
 });
 

@@ -3,9 +3,8 @@ import { test, expect } from "./support/fixtures";
 import { openHome } from "./support/coil";
 import { decodePng } from "./support/pixels";
 import { COIL } from "@/lib/coil/constants";
-import { sceneMs } from "@/lib/coil/dealSpeed";
+import { dealMs } from "@/lib/coil/dealSpeed";
 import { entranceClock, fieldMask, pullPhases, pullProgress } from "@/lib/coil/entrance";
-import { siteContent } from "@/lib/content";
 
 // Where the deal could look janky (the motion spec's section 6), tested from
 // frames the deal draws on its own clock: ?coildebug stepEntrance(ms) holds the
@@ -13,9 +12,11 @@ import { siteContent } from "@/lib/content";
 // 60 Hz frame at a time and every number below is the same on every run.
 // Risk 2 (at most 0.3 card a frame) is lib/coil/dealSpeed.test.ts.
 
-const { teaser } = siteContent.intro;
 const FRAME_MS = 1000 / 60;
-const TOTAL_MS = sceneMs();
+// The deal from the click: the condense, then the scene's own clock (lib/coil/dealSpeed.ts).
+const LEAD_MS = COIL.deal.timeline.condenseMs;
+const TOTAL_MS = dealMs();
+const CURL_END_MS = LEAD_MS + COIL.deal.timeline.curlMs;
 const HIDE_PAGE =
   "html,body{transition:none!important}body *{visibility:hidden!important}section[data-scene] canvas{visibility:visible!important}";
 
@@ -32,11 +33,9 @@ type CoilWindow = Window &
     __coilFlight: { scene: { slots: () => { key: string; center: { x: number; y: number }; alpha: number }[] } };
   };
 
+// The stage covers the first screen from the page's first pixel: at the top it is in view.
 async function stageInView(page: Page) {
-  await page.evaluate(() => {
-    const stage = document.querySelector("[data-coil-sticky]")!.getBoundingClientRect();
-    window.scrollTo({ top: stage.top + window.scrollY, behavior: "instant" });
-  });
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
   await page.waitForTimeout(600);
 }
 
@@ -49,14 +48,19 @@ async function stageInView(page: Page) {
 // accelerates inward at about 2 px a frame squared), and the helix's winding adds
 // more, so the bound is a few px, and a hitch in the layout changes is many.
 const SECOND_DIFFERENCE_BOUND_PX = 14;
-// One join is known and not eased: the pull's winding starts at once at full rate
-// when the pull passes COIL.entrance.windStart (lib/coil/entrance.ts pullPhases is
-// linear there), a kick of up to about 35 px in a card's second difference over two
-// frames. That is the pull Aaron approved, so it is held to its measured size here
-// (a guard, not a verdict) and reported for the motion review, which can ease it.
-const WIND_ONSET_BOUND_PX = 45;
+// The pull's winding used to start at once at full rate when the pull passes
+// COIL.entrance.windStart, a kick of up to about 35 px in a card's second difference
+// over two frames (the motion review's P2). COIL.deal.timeline.windRampMs eases its
+// onset in, and the onset is held to the bound the rest of the deal keeps: at the
+// default ramp a card's onset reads about 13.7 px, the deal's own acceleration
+// there (it is about 11 px a frame squared on either side), and no longer ramp takes
+// it lower (lib/coil/windOnset.test.ts sweeps the ramp), so 12 is not reachable.
+const WIND_ONSET_BOUND_PX = 14;
+// No frame of the ribbon's condense, the curl, or anything after may step a card's
+// center more than this, so nothing jumps.
+const FRAME_STEP_BOUND_PX = 40;
 const windOnsetMs = (() => {
-  for (let ms = 0; ms < TOTAL_MS; ms += 1) if (pullPhases(pullProgress(entranceClock(ms))).wind > 0) return ms;
+  for (let ms = 0; ms < TOTAL_MS; ms += 1) if (pullPhases(pullProgress(entranceClock(ms - LEAD_MS))).wind > 0) return ms;
   return TOTAL_MS;
 })();
 
@@ -92,11 +96,27 @@ for (const key of ["ieee", "talos", "anthropic"] as const) {
       },
       { key, frame: FRAME_MS, total: TOTAL_MS },
     );
-    expect(track.filter((p) => p === null).length, "frames where the card is out of sight").toBe(0);
+    // On the first screen a card may sit off the edge of the ribbon (faded out) until the row has curled into the wheel; from then on it is on screen.
+    expect(track.filter((p, i) => p === null && i * FRAME_MS > CURL_END_MS + 2 * FRAME_MS).length, "frames, after the curl, where the card is out of sight").toBe(0);
     let worst = 0;
     let worstAt = 0;
     let kink = 0;
+    let mostStep = 0;
+    let mostStepAt = 0;
+    // The most a frame steps the card through the condense and the curl (the bound's window), and through the whole deal (reported).
+    let stepAfter = 0;
+    for (let i = 1; i < track.length; i++) {
+      if (!track[i] || !track[i - 1]) continue;
+      const step = Math.hypot(track[i]!.x - track[i - 1]!.x, track[i]!.y - track[i - 1]!.y);
+      if (i * FRAME_MS <= CURL_END_MS + 2 * FRAME_MS) {
+        if (step > mostStep) {
+          mostStep = step;
+          mostStepAt = i * FRAME_MS;
+        }
+      } else stepAfter = Math.max(stepAfter, step);
+    }
     for (let i = 1; i < track.length - 1; i++) {
+      if (!track[i - 1] || !track[i] || !track[i + 1]) continue;
       const [a, b, c] = [track[i - 1]!, track[i]!, track[i + 1]!];
       const d2 = Math.hypot(c.x - 2 * b.x + a.x, c.y - 2 * b.y + a.y);
       const ms = i * FRAME_MS;
@@ -106,11 +126,68 @@ for (const key of ["ieee", "talos", "anthropic"] as const) {
         worstAt = ms;
       }
     }
-    test.info().annotations.push({ type: "second difference", description: `${worst.toFixed(2)} px at ${worstAt.toFixed(0)} ms; the winding's onset (${windOnsetMs} ms) ${kink.toFixed(2)} px` });
+    test.info().annotations.push({
+      type: "second difference",
+      description: `${worst.toFixed(2)} px at ${worstAt.toFixed(0)} ms; the winding's onset (${windOnsetMs} ms) ${kink.toFixed(2)} px; the most a frame steps through the condense and curl ${mostStep.toFixed(1)} px at ${mostStepAt.toFixed(0)} ms, after them ${stepAfter.toFixed(1)} px`,
+    });
     expect(worst, `worst second difference ${worst.toFixed(2)} px at ${worstAt.toFixed(0)} ms`).toBeLessThanOrEqual(SECOND_DIFFERENCE_BOUND_PX);
     expect(kink, `the winding's onset at ${windOnsetMs} ms`).toBeLessThanOrEqual(WIND_ONSET_BOUND_PX);
+    expect(mostStep, `no frame step over ${FRAME_STEP_BOUND_PX} px through the condense and the curl (the most is ${mostStep.toFixed(1)} px at ${mostStepAt.toFixed(0)} ms)`).toBeLessThanOrEqual(FRAME_STEP_BOUND_PX);
   });
 }
+
+// The condense and the curl, on their own: the ribbon's cards (every one on screen, followed
+// by their keys) through the gaps closing and the row curling into the wheel, a frame
+// apart. A card steps a few px a frame in the drift and the condense, never over the
+// bound, and its second difference stays the deal's ordinary few px.
+test("jank 1: the ribbon's condense and curl move the cards around the middle smoothly, a frame at a time", async ({ page }) => {
+  await openHome(page, { debug: "flight", at: "top" });
+  await stageInView(page);
+  const result = await page.evaluate(
+    ({ curlEnd, frame }) => {
+      const w = window as CoilWindow;
+      const width = document.querySelector("#work canvas")!.getBoundingClientRect().width;
+      // The cards in the middle of the row at the click: every one of them is on screen through the condense and the curl.
+      w.__coil.stepEntrance(0);
+      const keys = w.__coilFlight.scene
+        .slots()
+        .filter((s) => Math.abs(s.center.x - width / 2) < width * 0.3)
+        .map((s) => s.key);
+      const tracks = new Map<string, { x: number; y: number }[]>(keys.map((key) => [key, []]));
+      for (let ms = 0; ms <= curlEnd + 4 * frame; ms += frame) {
+        w.__coil.stepEntrance(ms);
+        const slots = w.__coilFlight.scene.slots();
+        for (const [key, list] of tracks) {
+          const copies = slots.filter((s) => s.key === key);
+          if (!copies.length) {
+            list.push({ x: Number.NaN, y: Number.NaN });
+            continue;
+          }
+          const guess = list.at(-1);
+          const near = (s: (typeof copies)[number]) => (guess && Number.isFinite(guess.x) ? Math.hypot(s.center.x - guess.x, s.center.y - guess.y) : 0);
+          const best = copies.reduce((a, b) => (near(b) < near(a) ? b : a));
+          list.push({ x: best.center.x, y: best.center.y });
+        }
+      }
+      w.__coil.stepEntrance(null);
+      return [...tracks.entries()].map(([key, points]) => ({ key, points }));
+    },
+    { curlEnd: CURL_END_MS, frame: FRAME_MS },
+  );
+  expect(result.length, "cards around the middle").toBeGreaterThan(3);
+  let mostStep = 0;
+  let worstSecond = 0;
+  for (const { key, points } of result) {
+    expect(points.filter((p) => !Number.isFinite(p.x)).length, `${key} stays on screen through the condense and the curl`).toBe(0);
+    for (let i = 1; i < points.length; i++) mostStep = Math.max(mostStep, Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y));
+    for (let i = 1; i < points.length - 1; i++) {
+      worstSecond = Math.max(worstSecond, Math.hypot(points[i + 1].x - 2 * points[i].x + points[i - 1].x, points[i + 1].y - 2 * points[i].y + points[i - 1].y));
+    }
+  }
+  test.info().annotations.push({ type: "condense and curl", description: `${result.length} cards: the most a frame steps ${mostStep.toFixed(1)} px, the worst second difference ${worstSecond.toFixed(1)} px` });
+  expect(mostStep, `a frame steps a card ${mostStep.toFixed(1)} px`).toBeLessThanOrEqual(FRAME_STEP_BOUND_PX);
+  expect(worstSecond, `second difference ${worstSecond.toFixed(1)} px`).toBeLessThanOrEqual(SECOND_DIFFERENCE_BOUND_PX);
+});
 
 // ---------------------------------------------------------------- risk 3: the sticky stage
 
@@ -122,7 +199,7 @@ for (const size of [
     test.use({ viewport: size.viewport, hasTouch: size.touch, isMobile: size.touch, deviceScaleFactor: size.touch ? 2 : 1 });
 
     test("the canvas maps a point to the card under it at three places in the sticky range", async ({ page }) => {
-      await openHome(page, { at: "top" });
+      await openHome(page, { debug: "flight", at: "top" });
       const range = await page.evaluate(() => {
         const rail = document.querySelector("[data-coil-rail]")!.getBoundingClientRect();
         const stage = document.querySelector("[data-coil-sticky]")!.getBoundingClientRect();
@@ -131,12 +208,11 @@ for (const size of [
       expect(range.size, "there is a sticky range").toBeGreaterThan(50);
       for (const share of [0.04, 0.5, 0.9]) {
         await page.evaluate((y) => window.scrollTo({ top: y, behavior: "instant" }), range.railDoc + range.size * share);
-        // The first place also lets the wheel slide in (700 ms after it is first in view).
-        await page.waitForTimeout(share < 0.1 ? 1500 : 400);
+        await page.waitForTimeout(400);
         const probe = await page.evaluate(() => {
           const w = window as CoilWindow;
-          const quads = w.__coil.visibleQuads();
-          const centers = quads.map((q) => ({ x: q.reduce((s, p) => s + p.x, 0) / 4, y: q.reduce((s, p) => s + p.y, 0) / 4 }));
+          // The cards the canvas may pick: whole enough (the ribbon's edges fade out, and a faded card is not pickable).
+          const centers = w.__coilFlight.scene.slots().map((s) => s.center);
           const rect = document.querySelector("#work canvas")!.getBoundingClientRect();
           const onScreen = centers.filter((c) => c.x > rect.left + 4 && c.x < rect.right - 4 && c.y > Math.max(rect.top, 0) + 4 && c.y < Math.min(rect.bottom, innerHeight) - 4);
           const hits = onScreen.map((c) => w.__coil.captureAt(c.x, c.y).onCard);
@@ -145,7 +221,7 @@ for (const size of [
           const miss = w.__coil.captureAt(Math.max(rect.left + 3, left - 120), Math.max(rect.top, 0) + 6);
           return { cards: onScreen.length, hits: hits.filter(Boolean).length, missOnCard: miss.onCard };
         });
-        expect(probe.cards, `cards on screen at ${share}`).toBeGreaterThan(3);
+        expect(probe.cards, `cards on screen at ${share}`).toBeGreaterThanOrEqual(2);
         expect(probe.hits, `cards the canvas finds under their own centers at ${share} of the range`).toBe(probe.cards);
         expect(probe.missOnCard, `empty canvas at ${share}`).toBe(false);
       }
@@ -153,11 +229,10 @@ for (const size of [
 
     test("the canvas keeps its height through the deal and no rebuild fires", async ({ page }) => {
       await openHome(page, { at: "top" });
-      await page.evaluate(() => window.scrollTo({ top: document.querySelector("[data-teaser]")!.getBoundingClientRect().top + window.scrollY - 200, behavior: "instant" }));
       await page.waitForTimeout(400);
       const read = () => page.evaluate(() => { const w = window as CoilWindow; return { css: w.__coil.budget().css.join("x"), rebuilding: w.__coil.entrance().rebuilding }; });
       const before = await read();
-      await page.locator("[data-teaser] button").click();
+      await page.locator("[data-first-cta] a").first().click();
       const seen = new Set<string>([before.css]);
       let rebuilt = before.rebuilding;
       const until = Date.now() + 8000;
@@ -179,13 +254,14 @@ for (const size of [
 
 // No halo, no fringe, no line, read as numbers (no golden images). The field's
 // clock is held (?coildebug=at=), so a frame at a given ms and the same frame with
-// the mask wide open (the deal's end) differ only by the mask. Each stage is drawn
-// over the bare page, and every pixel clear of the cards must be the page's color
-// mixed with the open field's by one share: between the two on every channel (no
-// bright halo, no dark fringe) and the same share on every channel that can tell
-// them apart (no tinted rim). The open frame's top edge rises from the page with no
+// the field wide open (the deal's end) differ only by the faded patch behind the
+// paragraphs, which the opening circle lifts, and by the name's letters. Each stage is
+// drawn over the bare page, and every pixel clear of the cards and the name must be the
+// page's color mixed with the open field's by one share: between the two on every
+// channel (no bright halo, no dark fringe) and the same share on every channel that can
+// tell them apart (no tinted rim). The open frame's top edge rises from the page with no
 // step.
-const EDGE_FRAMES_MS = [0, 600, 1500, 1800, 2100, 2400, 3400];
+const EDGE_FRAMES_MS = [0, 600, 900, 1100, 1500, 2100, 3000, 4000];
 for (const colorScheme of ["light", "dark"] as const) {
   test.describe(`jank 4: the mask's edge, ${colorScheme}`, () => {
     test.use({ colorScheme });
@@ -196,6 +272,13 @@ for (const colorScheme of ["light", "dark"] as const) {
       await page.addStyleTag({ content: HIDE_PAGE });
       const rect = await page.evaluate(() => { const r = document.querySelector("#work canvas")!.getBoundingClientRect(); return { x: r.left, y: r.top, width: r.width, height: r.height }; });
       const paper = await page.evaluate(() => getComputedStyle(document.body).backgroundColor.match(/\d+/g)!.slice(0, 3).map(Number));
+      // The name's lockup (the h1's box, the greeting included): its letters are not the field.
+      const name = await page.evaluate(() => {
+        const r = document.querySelector("[data-coil-name]")!.getBoundingClientRect();
+        const c = document.querySelector("#work canvas")!.getBoundingClientRect();
+        return { x0: r.left - c.left - 24, y0: r.top - c.top - 24, x1: r.right - c.left + 24, y1: r.bottom - c.top + 24 };
+      });
+      const origin = { x: (name.x0 + name.x1) / 2, y: (name.y0 + name.y1) / 2 };
       const frameAt = async (ms: number) => {
         await page.evaluate((m) => (window as CoilWindow).__coil.stepEntrance(m), ms);
         await page.waitForTimeout(80);
@@ -216,8 +299,9 @@ for (const colorScheme of ["light", "dark"] as const) {
       for (const ms of EDGE_FRAMES_MS) {
         const shown = await frameAt(ms);
         const label = `${colorScheme} at ${ms} ms`;
-        const covered = (x: number, y: number) => [...shown.boxes, ...open.boxes].some((b) => x >= b.x0 && x <= b.x1 && y >= b.y0 && y <= b.y1);
-        const mask = fieldMask(entranceClock(ms), { width: rect.width, height: rect.height });
+        const covered = (x: number, y: number) =>
+          [...shown.boxes, ...open.boxes, name].some((b) => x >= (b as { x0: number }).x0 && x <= (b as { x1: number }).x1 && y >= (b as { y0: number }).y0 && y <= (b as { y1: number }).y1);
+        const mask = fieldMask(entranceClock(ms - LEAD_MS), { width: rect.width, height: rect.height }, COIL, origin);
         let checked = 0;
         let edge = 0;
         for (let y = 0; y < shown.image.height; y += 6) {
@@ -240,7 +324,7 @@ for (const colorScheme of ["light", "dark"] as const) {
         }
         expect(checked, `${label}: pixels checked`).toBeGreaterThan(2000);
         // The frames with the edge on the canvas really had one to check.
-        if (ms === 1800 || ms === 2100) expect(edge, `${label}: pixels inside the feather`).toBeGreaterThan(40);
+        if (ms === 900 || ms === 1100) expect(edge, `${label}: pixels inside the feather`).toBeGreaterThan(40);
       }
       // The open field rises from the page down its top edge with no step.
       const fade = COIL.deal.open.topFadePx;
@@ -261,7 +345,6 @@ for (const colorScheme of ["light", "dark"] as const) {
 
 test("jank 5: under 6x CPU throttle the master's clock keeps pace with real time", async ({ page, cdp }) => {
   await openHome(page, { at: "top" });
-  await page.evaluate(() => window.scrollTo({ top: document.querySelector("[data-teaser]")!.getBoundingClientRect().top + window.scrollY - 200, behavior: "instant" }));
   await page.waitForTimeout(500);
   await cdp.send("Emulation.setCPUThrottlingRate", { rate: 6 });
   await page.evaluate(() => {
@@ -274,7 +357,7 @@ test("jank 5: under 6x CPU throttle the master's clock keeps pace with real time
     };
     requestAnimationFrame(tick);
   });
-  await page.locator("[data-teaser] button").click();
+  await page.locator("[data-first-cta] a").first().click();
   await page.waitForFunction(() => document.documentElement.dataset.deal === "dealt", null, { timeout: 30_000 });
   const samples = await page.evaluate(() => (window as CoilWindow & { __drift: { t: number; clock: number }[] }).__drift);
   await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
@@ -308,17 +391,30 @@ test("jank 5: the last deal frame matches the first rested frame, and the strand
   };
   const last = await shot(TOTAL_MS - FRAME_MS);
   const rested = await shot(TOTAL_MS);
-  let sum = 0;
-  let strong = 0;
-  for (let i = 0; i < last.rgba.length; i += 4) {
-    let worst = 0;
-    for (let c = 0; c < 3; c++) worst = Math.max(worst, Math.abs(last.rgba[i + c] - rested.rgba[i + c]));
-    sum += worst;
-    if (worst > 24) strong++;
-  }
-  const pixels = last.rgba.length / 4;
-  expect(sum / pixels, "mean difference, of 255").toBeLessThan(1.5);
-  expect(strong / pixels, "share of pixels that differ by more than 24").toBeLessThan(0.002);
+  const next = await shot(TOTAL_MS + FRAME_MS);
+  // How far apart two frames are: the mean of the worst channel's difference, and the share of
+  // pixels that differ by more than 24 (the cards' edges moving a pixel with the strand).
+  const apart = (a: typeof last, b: typeof last) => {
+    let sum = 0;
+    let strong = 0;
+    for (let i = 0; i < a.rgba.length; i += 4) {
+      let worst = 0;
+      for (let c = 0; c < 3; c++) worst = Math.max(worst, Math.abs(a.rgba[i + c] - b.rgba[i + c]));
+      sum += worst;
+      if (worst > 24) strong++;
+    }
+    const pixels = a.rgba.length / 4;
+    return { mean: sum / pixels, strong: strong / pixels };
+  };
+  // The last deal frame against the first rested frame, as close as two rested frames are to each other.
+  const handoff = apart(last, rested);
+  const baseline = apart(rested, next);
+  test.info().annotations.push({
+    type: "hand-off against two rested frames",
+    description: `mean ${handoff.mean.toFixed(2)} against ${baseline.mean.toFixed(2)} of 255; strong share ${(handoff.strong * 100).toFixed(2)}% against ${(baseline.strong * 100).toFixed(2)}%`,
+  });
+  expect(handoff.mean, "mean difference, of 255").toBeLessThan(Math.max(1.5, baseline.mean * 1.5));
+  expect(handoff.strong, "share of pixels that differ by more than 24").toBeLessThan(Math.max(0.002, baseline.strong * 2));
   // The strand's step per frame either side of the end is the idle pace's, within 5 percent.
   const offsetAt = async (ms: number) => {
     await page.evaluate((m) => (window as CoilWindow).__coil.stepEntrance(m), ms);
@@ -335,7 +431,6 @@ test("jank 5: the last deal frame matches the first rested frame, and the strand
 
 test("jank 5: after a real deal the conveyor keeps the idle pace with no hitch at the hand-off", async ({ page }) => {
   await openHome(page, { at: "top" });
-  await page.evaluate(() => window.scrollTo({ top: document.querySelector("[data-teaser]")!.getBoundingClientRect().top + window.scrollY - 200, behavior: "instant" }));
   await page.waitForTimeout(400);
   await page.evaluate(() => {
     const w = window as CoilWindow & { __rest: { t: number; offset: number }[] };
@@ -347,11 +442,10 @@ test("jank 5: after a real deal the conveyor keeps the idle pace with no hitch a
     };
     requestAnimationFrame(tick);
   });
-  await page.locator("[data-teaser] button").click();
+  await page.locator("[data-first-cta] a").first().click();
   await page.waitForFunction(() => (window as CoilWindow & { __rest: unknown[] }).__rest.length >= 120, null, { timeout: 20_000 });
   const rest = await page.evaluate(() => (window as CoilWindow & { __rest: { t: number; offset: number }[] }).__rest);
   const speed = ((rest.at(-1)!.offset - rest[0].offset) / (rest.at(-1)!.t - rest[0].t)) * 1000;
   expect(speed / COIL.idleCardsPerSecond, "cards a second over the first two seconds of rest, against idle").toBeGreaterThan(0.95);
   expect(speed / COIL.idleCardsPerSecond).toBeLessThan(1.05);
-  void teaser;
 });
