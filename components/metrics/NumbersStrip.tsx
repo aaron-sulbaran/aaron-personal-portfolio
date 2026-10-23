@@ -1,5 +1,6 @@
+import { SectionNumber } from "@/components/sections/SectionNumber";
 import { SectionHeading, SectionSubline } from "@/components/sections/SectionTitle";
-import { siteContent } from "@/lib/content";
+import { PAGE_NUMBERS, siteContent } from "@/lib/content";
 import { Metrics, METRICS_LABEL_ID, METRICS_TITLE_ID } from "./Metrics";
 
 // The numbers strip under Who I am: the chart (Commits or Tokens) with its
@@ -13,6 +14,7 @@ export function NumbersStrip() {
     <section id="numbers" data-wave-anchor="numbers" className="relative w-full scroll-mt-24 border-t border-border px-6 py-24 md:px-10 md:py-40">
       <div className="mx-auto flex max-w-6xl flex-col gap-10">
         <div className="flex flex-col gap-6">
+          <SectionNumber value={PAGE_NUMBERS.numbers} className="-mb-3" />
           <SectionHeading id={METRICS_TITLE_ID} words>{title}</SectionHeading>
           <SectionSubline id={METRICS_LABEL_ID} words wide>{groupLabel}</SectionSubline>
         </div>

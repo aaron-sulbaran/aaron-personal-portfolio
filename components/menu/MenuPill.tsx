@@ -9,7 +9,7 @@ import { AsMark } from "@/components/menu/BrandMark";
 import { MenuPanel } from "@/components/menu/MenuPanel";
 import { siteContent } from "@/lib/content";
 import { FILL_PICK } from "@/lib/fx/fill";
-import { closeMenu, getMenuOpen, openMenu, takeAfterClose, useHeaderHidden, useMenuOpen } from "@/lib/menu";
+import { closeMenu, getMenuOpen, openMenu, takeAfterClose, useMenuOpen } from "@/lib/menu";
 import { useBodyScrollLock, useEscapeKey, useFocusTrap } from "@/lib/modal";
 import { EASE } from "@/lib/motion";
 import { navigateToSection } from "@/lib/scroll";
@@ -54,7 +54,6 @@ function currentSectionHref(pathname: string): string | null {
 
 export function MenuPill() {
   const open = useMenuOpen();
-  const headerHidden = useHeaderHidden();
   const pathname = usePathname();
   const reducedMotion = !!useReducedMotion();
   const { pillLabel, closeLabel, ariaLabelOpen, ariaLabelClose, dialogLabel } = siteContent.menu;
@@ -241,7 +240,6 @@ export function MenuPill() {
     closeMenu(() => navigateToSection(href, reducedMotion));
   };
 
-  const tucked = headerHidden && !engaged;
   const asPanel = engaged && frame === "panel";
   const surface = !engaged
     ? "bg-[var(--menu-pill)] backdrop-blur-[8px] [box-shadow:inset_0_0_0_1px_var(--color-border)]"
@@ -258,9 +256,9 @@ export function MenuPill() {
         role={engaged ? "dialog" : undefined}
         aria-modal={engaged ? true : undefined}
         aria-label={engaged ? dialogLabel : undefined}
-        className={`fixed right-[calc(12px+var(--scrollbar-comp))] top-3 z-40 min-h-10 rounded-[20px] text-foreground transition-transform duration-[450ms] ease-[cubic-bezier(0.22,1,0.36,1)] sm:right-[calc(20px+var(--scrollbar-comp))] sm:top-4 ${surface} ${
+        className={`fixed right-[calc(12px+var(--scrollbar-comp))] top-3 z-40 min-h-10 rounded-[20px] text-foreground sm:right-[calc(20px+var(--scrollbar-comp))] sm:top-4 ${surface} ${
           engaged ? "overflow-hidden" : ""
-        } ${tucked ? "-translate-y-[90px] focus-within:translate-y-0" : ""}`}
+        }`}
       >
         <div className="relative z-[2] flex h-10 items-center justify-end">
           <Fill

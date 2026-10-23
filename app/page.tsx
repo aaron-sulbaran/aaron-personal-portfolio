@@ -35,7 +35,7 @@ export const revalidate = 86400;
 // scroll-drawn line, which the cards section's shader hides and which comes
 // back out of its bottom edge into the numbers strip, behind the sections in
 // PathLayer's in-flow tiles. The band's playback pill self-Portals to
-// document.body. Every overlay (SiteNav z-30, menu scrim
+// document.body. Every overlay (menu scrim
 // z-[35], the Menu pill and panel z-40, the playback pill z-[45], modals
 // z-50, the flight z-[55], the Express lane transition z-[57], the inline
 // label z-[58]) sits at body level.
@@ -50,7 +50,6 @@ export default function Home() {
       <div className="relative z-10">
         <PathLayer />
         <main id="main" className="relative overflow-x-clip">
-          <HeroSentinel />
           <Intro />
           <HomeController>
             <CardColumns />
@@ -64,18 +63,5 @@ export default function Home() {
       {process.env.NODE_ENV !== "production" && <DealLabMount />}
       {process.env.NODE_ENV !== "production" && <HeroLabMount />}
     </>
-  );
-}
-
-// The header's hero sentinel: an invisible box over the first 90svh of #main
-// (the top of page 1). SiteNav keeps the bar away while any of it is in view, so
-// the bar slides in once the reader is past the first screen.
-function HeroSentinel() {
-  return (
-    <div
-      aria-hidden="true"
-      data-hero-sentinel
-      className="pointer-events-none absolute inset-x-0 top-0 h-[90vh] supports-[height:100svh]:h-[90svh]"
-    />
   );
 }

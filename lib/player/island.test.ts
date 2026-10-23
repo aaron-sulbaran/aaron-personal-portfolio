@@ -66,7 +66,7 @@ describe("the island in the header row", () => {
 
 describe("the header row's real seats", () => {
   const menu = readFileSync("components/menu/MenuPill.tsx", "utf8");
-  const nav = readFileSync("components/SiteNav.tsx", "utf8");
+  const nav = readFileSync("components/SiteLogo.tsx", "utf8");
 
   it("matches the Menu pill's top edge and height", () => {
     expect(menu).toContain(`top-${HEADER_ROW.topPx / 4}`);

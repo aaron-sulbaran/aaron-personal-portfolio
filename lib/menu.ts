@@ -2,14 +2,8 @@
 
 import { useSyncExternalStore } from "react";
 
-// Shared header state between the two layout-mounted pieces of chrome: the
-// Menu pill (components/menu) and the header bar with the mark
-// (components/SiteNav.tsx). A tiny module store, like lib/soundtrack.ts:
-//
-//   menuOpen      the pill is (or is becoming) the panel. SiteNav reads it to
-//                 bring the mark back while headroom has it tucked away.
-//   headerHidden  headroom has tucked the bar away on a scroll down. The pill
-//                 reads it to tuck itself away with the bar.
+// Shared state of the Menu (components/menu): whether the pill is (or is
+// becoming) the panel. A tiny module store, like lib/soundtrack.ts.
 //
 // Closing goes through closeMenu(after): the pill plays its close, releases
 // the scroll lock, then runs `after` (a section jump, say), so nothing scrolls
@@ -18,7 +12,6 @@ import { useSyncExternalStore } from "react";
 type Listener = () => void;
 
 let menuOpen = false;
-let headerHidden = false;
 let afterClose: (() => void) | null = null;
 const listeners = new Set<Listener>();
 
@@ -61,19 +54,9 @@ export function takeAfterClose(): (() => void) | null {
   return next;
 }
 
-export function setHeaderHidden(next: boolean): void {
-  if (headerHidden === next) return;
-  headerHidden = next;
-  emit();
-}
-
-const getHeaderHidden = () => headerHidden;
 const serverFalse = () => false;
 
 export function useMenuOpen(): boolean {
   return useSyncExternalStore(subscribe, getMenuOpen, serverFalse);
 }
 
-export function useHeaderHidden(): boolean {
-  return useSyncExternalStore(subscribe, getHeaderHidden, serverFalse);
-}

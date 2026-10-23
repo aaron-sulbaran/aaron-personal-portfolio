@@ -3,7 +3,7 @@
 import { useState, type CSSProperties } from "react";
 import { motion, type Variants } from "framer-motion";
 import { usePathname } from "next/navigation";
-import { Moon, Sun } from "lucide-react";
+import { Moon, Snowflake, Sun } from "lucide-react";
 import { Fill } from "@/components/fx/Fill";
 import { siteContent } from "@/lib/content";
 import { quickCopy } from "@/lib/content/quick";
@@ -13,10 +13,12 @@ import { goTo } from "@/lib/quick/transitionStore";
 import { FILL_PICK } from "@/lib/fx/fill";
 import { EASE } from "@/lib/motion";
 import { THEME_STORAGE_KEY, syncThemeColorMeta, type Theme } from "@/lib/theme";
+import { setFrozen, useFrozen } from "@/lib/waveform/freeze";
 
-// The menu's content: the four section links in the display face, a third of
-// the way down, then the theme and quick view chips and the contact row at the
-// bottom. MenuPill mounts it in one of two frames: inside the pill as it grows
+// The menu's content: the four pages in the display face, each with its number
+// (01 to 04), a third of the way down, then the theme, quick view and wave
+// freeze chips and the contact row at the bottom. (The freeze is here so a phone
+// with no music playing, which has no pill, can stop the wave too.) MenuPill mounts it in one of two frames: inside the pill as it grows
 // into the right-hand panel (desktop), or in the bottom sheet (phone). It
 // animates only its own children; the frame's motion belongs to MenuPill.
 //
@@ -69,8 +71,9 @@ export function MenuPanel({
   reducedMotion: boolean;
   onNavigate: (href: string) => void;
 }) {
-  const { items, themeToggleToDark, themeToggleToLight, themeAriaLabelToDark, themeAriaLabelToLight, email, socials } =
+  const { items, themeToggleToDark, themeToggleToLight, themeAriaLabelToDark, themeAriaLabelToLight, email, socials, freeze, unfreeze } =
     siteContent.menu;
+  const frozen = useFrozen();
   // The panel only ever mounts on the client (after a click), so it can read
   // the live theme straight off <html>.
   const [theme, setTheme] = useState<Theme>(() =>
@@ -121,10 +124,13 @@ export function MenuPanel({
                   }}
                   aria-current={here ? "location" : undefined}
                   data-cursor-hover
-                  className={`group/link flex w-max items-baseline font-display leading-[1.02] tracking-[-0.01em] text-foreground transition-colors duration-[250ms] hover:text-accent focus-visible:text-accent ${
+                  className={`group/link relative flex w-max items-baseline font-display leading-[1.02] tracking-[-0.01em] text-foreground transition-colors duration-[250ms] hover:text-accent focus-visible:text-accent ${
                     sheet ? "text-[52px]" : "text-[52px] sm:text-[60px]"
                   }`}
                 >
+                  <span aria-hidden="true" data-menu-number="" className="absolute right-full top-[0.52em] mr-1.5 font-label text-label-sm tabular-nums text-muted">
+                    {item.number}
+                  </span>
                   <span
                     className={`inline-block transition-transform duration-[450ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/link:translate-x-1.5 ${
                       here
@@ -165,6 +171,22 @@ export function MenuPanel({
             </span>
             <span>{theme === "dark" ? themeToggleToLight : themeToggleToDark}</span>
           </Fill>
+          {!reducedMotion && (
+            <Fill
+              {...FILL_PICK.menu}
+              onClick={() => setFrozen(!frozen)}
+              aria-pressed={frozen}
+              data-cursor-hover
+              data-menu-freeze=""
+              className="inline-flex h-[34px] items-center gap-2 rounded-[17px] pl-2.5 pr-3.5 font-label text-label text-accent shadow-[inset_0_0_0_1px_var(--color-border)]"
+              overClassName="flex items-center gap-2 pl-2.5 pr-3.5"
+            >
+              <span data-fill-icon className="relative -top-px flex h-4 w-4 items-center justify-center">
+                <Snowflake aria-hidden="true" className="h-4 w-4" strokeWidth={1.6} />
+              </span>
+              <span>{frozen ? unfreeze : freeze}</span>
+            </Fill>
+          )}
           <a
             href={onQuick ? HOME_PATH : EXPRESS_PATH}
             onClick={(event) => {

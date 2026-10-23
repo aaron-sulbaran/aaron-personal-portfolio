@@ -2,15 +2,14 @@
 
 import { useImperativeHandle, useRef, type Ref, type RefObject } from "react";
 import { quickCopy } from "@/lib/content/quick";
-import { useHeaderHidden } from "@/lib/menu";
 import { gsap } from "@/lib/quick/gsap";
 import { barPosition, stopAt } from "@/lib/quick/trip";
 import { tripStops, type YearRow } from "@/lib/quick/years";
 import { Misuki } from "./Misuki";
 import type { TrackGeometry } from "./useTrackGeometry";
 
-// The trip bar: a slim road held at the top of the viewport, under the site's
-// bar (it follows the bar's headroom), with the whole trip on it, from the
+// The trip bar: a slim road held at the top of the viewport, clear of the logo and
+// the Menu pill (the site has no top bar of its own), with the whole trip on it, from the
 // newest year to the oldest. Misuki drives it with the reader, both ways
 // (lib/quick/trip maps the rail's depth onto the bar's even stops); each stop
 // lights as the rail reaches its year and stays lit (data-quick-mark, painted
@@ -31,7 +30,6 @@ export function TripBar({ ref, rootRef, rows, reduced }: Props) {
   const carRef = useRef<HTMLDivElement>(null);
   const fillRef = useRef<HTMLDivElement>(null);
   const shownRef = useRef({ p: 0 });
-  const headerHidden = useHeaderHidden();
   const stops = tripStops(rows);
 
   useImperativeHandle(
@@ -70,8 +68,8 @@ export function TripBar({ ref, rootRef, rows, reduced }: Props) {
     <div
       ref={rootRef}
       data-trip-bar=""
-      className="sticky z-20 -mx-6 mb-12 border-b border-border bg-background px-6 pb-3 pt-2 transition-[top] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
-      style={{ top: headerHidden ? 0 : NAV_PX }}
+      className="sticky z-20 -mx-6 mb-12 border-b border-border bg-background px-6 pb-3 pt-2"
+      style={{ top: NAV_PX }}
     >
       <nav aria-label={quickCopy.tripLabel} className="relative mx-auto h-[60px]" style={{ paddingInline: CAR_PX / 2 }}>
         <div ref={roadRef} className="relative h-full">

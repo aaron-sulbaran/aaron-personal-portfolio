@@ -2,10 +2,11 @@ import { Fragment } from "react";
 import { BrandIcon } from "@/components/BrandIcons";
 import { Fill, FillArrow, FillSeed } from "@/components/fx/Fill";
 import { splitAfterAt } from "@/lib/connect";
-import { siteContent } from "@/lib/content";
+import { PAGE_NUMBERS, siteContent } from "@/lib/content";
 import { CTA_CLASS, CTA_OVER_CLASS, FILL_PICK } from "@/lib/fx/fill";
 import { InlineCopy } from "./inline/InlineCopy";
 import { Block } from "./sections/Block";
+import { SectionNumber } from "./sections/SectionNumber";
 import { SectionHeading } from "./sections/SectionTitle";
 
 // Measured, not guessed: an address fits one line at 2xl from 1024 and at 3xl
@@ -42,6 +43,7 @@ export function Connect() {
     <section id="connect" data-wave-anchor="connect" aria-label={label} className="relative w-full scroll-mt-24 border-t border-border px-6 py-24 md:px-10 md:py-40">
       <div className="mx-auto grid max-w-6xl grid-cols-1 gap-12 md:grid-cols-12 md:gap-16">
         <div className="md:col-span-5">
+          <SectionNumber value={PAGE_NUMBERS.connect} className="mb-3" />
           <SectionHeading>{heading}</SectionHeading>
           <Block kind="body" as="p" className="mt-5 max-w-md text-base leading-relaxed text-muted md:text-lg" data-wave-words>
             <InlineCopy source={body} />

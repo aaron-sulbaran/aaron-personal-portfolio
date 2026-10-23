@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import { SoundtrackBand } from "@/components/soundtrack/SoundtrackBand";
-import { siteContent } from "@/lib/content";
+import { SectionNumber } from "@/components/sections/SectionNumber";
+import { PAGE_NUMBERS, siteContent } from "@/lib/content";
 import { ARRIVAL_STEP, arrivalStyle } from "@/lib/home/introArrival";
 import { introDomPlan } from "@/lib/home/introDom";
 import { INTRO_HEADING_ID } from "@/lib/home/introId";
@@ -39,6 +40,7 @@ export function Intro() {
     <section id="about" data-intro="" aria-label={ariaLabel} style={plan.page.vars as CSSProperties} className="intro relative w-full">
       <div data-intro-top="" className="intro-grid intro-grid--top">
         <div data-name-stage="" data-arrive="name" style={arrivalStyle(ARRIVAL_STEP.name)} className="intro-name">
+          <SectionNumber value={PAGE_NUMBERS.home} className="absolute -top-7 left-0" />
           <h1 id={INTRO_HEADING_ID} tabIndex={-1} data-coil-name="" className="name-lockup intro-heading focus-visible:outline-none">
             <span className="sr-only">{hero.heading}</span>
             <span aria-hidden="true" data-name-visual="" className="name-lockup__greet">

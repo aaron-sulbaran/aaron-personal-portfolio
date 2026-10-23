@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
-import { SiteNav } from "@/components/SiteNav";
+import { SiteLogo } from "@/components/SiteLogo";
 import { MenuPill } from "@/components/menu/MenuPill";
 import { CustomCursor } from "@/components/CustomCursor";
 import { SiteAnalytics } from "@/components/SiteAnalytics";
@@ -72,7 +72,7 @@ export default function RootLayout({
           Skip to content
         </a>
         {/* Holding mode has no sections to navigate; nav and menu stay out. */}
-        {!HOLDING_MODE && <SiteNav />}
+        {!HOLDING_MODE && <SiteLogo />}
         {!HOLDING_MODE && <MenuPill />}
         {!HOLDING_MODE && <SoundtrackPlayer />}
         <InputModality />
