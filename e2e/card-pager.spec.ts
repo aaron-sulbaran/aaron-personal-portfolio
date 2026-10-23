@@ -106,8 +106,9 @@ test("pager: the phone header keeps a card's shorter meta, so IEEE's reads Presi
   await expect(dialog.locator('[data-inline-key="ieee-ao"]')).toHaveCount(0);
 });
 
+// With no scene (reduced motion) a title's open has no flight, so the modal draws the header tile's face itself, as markup.
 test("pager: Talos's mark in the phone header's tile is never under its kit's 20px", async ({ page }) => {
-  const { dialog } = await openCardFromBook(page, "talos");
+  const { dialog } = await openCardFromBook(page, "talos", { flight: false });
   const tile = (await dialog.locator('[data-tile-slot="work"]').boundingBox())!;
   expect([Math.round(tile.width), Math.round(tile.height)]).toEqual([GALLERY.talosTileCompact.width, GALLERY.talosTileCompact.height]);
   const mark = (await dialog.locator('[data-tile-slot="work"] [data-face="logo"] img').first().boundingBox())!;

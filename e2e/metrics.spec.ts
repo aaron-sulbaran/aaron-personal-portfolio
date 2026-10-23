@@ -93,8 +93,8 @@ test("metrics: the LinkedIn figure is gone and no column holds its place", async
 });
 
 // Aaron, 2026-10-09: no little kicker over a section's title. The strip has its own big heading,
-// set exactly as Who I am's is, and the GitHub line under it, set exactly as the line under Who I am's.
-test("metrics: the strip is headed by its own big title and the GitHub line, set as Who I am's heading and line are", async ({ page }) => {
+// set exactly as Connect's is, and the GitHub line under it.
+test("metrics: the strip is headed by its own big title and the GitHub line, set as Connect's heading is", async ({ page }) => {
   await openHome(page);
   const heading = page.locator("#numbers h2");
   await expect(heading).toHaveCount(1);
@@ -111,21 +111,16 @@ test("metrics: the strip is headed by its own big title and the GitHub line, set
       const style = getComputedStyle(el);
       return { tag: el.tagName, family: style.fontFamily, size: style.fontSize, weight: style.fontWeight, lineHeight: style.lineHeight, color: style.color, letterSpacing: style.letterSpacing };
     });
-  expect(await look("#numbers h2"), "the title looks like Who I am's").toEqual(await look("#about h2"));
-  expect(await look("#numbers p[data-sections-block='body']"), "the line looks like the one under Who I am's").toEqual(
-    await look("#about .sections-sticky-col p[data-sections-block='body']"),
-  );
+  expect(await look("#numbers h2"), "the title looks like Connect's").toEqual(await look("#connect h2"));
 });
 
-// Aaron, 2026-10-13: the line under the strip's title runs on one line on a
-// desktop; Who I am's keeps its narrow measure.
-test("metrics: the line under the title is one line at 1440, while Who I am's stays narrow", async ({ page }) => {
+// Aaron, 2026-10-13: the line under the strip's title runs on one line on a desktop.
+test("metrics: the line under the title is one line at 1440", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await openHome(page);
   const lines = (selector: string) =>
     page.locator(selector).first().evaluate((el) => Math.round(el.getBoundingClientRect().height / parseFloat(getComputedStyle(el).lineHeight)));
   expect(await lines("#numbers p[data-sections-block='body']")).toBe(1);
-  expect(await page.locator("#about .sections-sticky-col p[data-sections-block='body']").first().evaluate((el) => getComputedStyle(el).maxWidth)).toBe("320px");
 });
 
 test("metrics: flat at 95 percent down the viewport, skyline after a slow scroll past the line", async ({ page }) => {

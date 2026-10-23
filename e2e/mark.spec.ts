@@ -157,23 +157,26 @@ for (const mode of ["scene", "no-webgl"] as const) {
       expect(openedAt - during[markFull].t).toBeGreaterThanOrEqual(HOLD.dischargeMs - 20);
     });
 
-    test(`mark: a scroll under a parked pointer tucks the mark and the ring goes with it @ring (${mode})`, async ({ page }) => {
+    // The logo stays where it is as the page scrolls (there is no top bar to tuck it away with): a
+    // scroll under a parked pointer leaves it under the pointer, and the ring with it.
+    test(`mark: a scroll under a parked pointer leaves the logo where it is and the ring on it @ring (${mode})`, async ({ page }) => {
       await open(page);
       await scrollToY(page, Y);
       await pointAtMark(page);
       await expect(page.locator("[data-mark-ring]")).toHaveCount(1);
+      const before = await markBox(page);
       await page.evaluate(() => {
         const rec = { moves: 0 };
         Object.assign(window, { __moves: rec });
         window.addEventListener("mousemove", () => rec.moves++);
       });
-      // Headroom tucks after a long enough scroll down; wheel until it starts.
-      for (let i = 0; i < 4 && (await markBox(page)).y > 0; i++) {
+      for (let i = 0; i < 4; i++) {
         await page.mouse.wheel(0, 400);
         await sleep(250);
       }
-      await expect.poll(async () => (await mark(page).boundingBox())?.y ?? 0).toBeLessThan(-40);
-      await expect(page.locator("[data-mark-ring]")).toHaveCount(0);
+      expect(await scrollY(page), "the page moved").toBeGreaterThan(Y);
+      expect(await markBox(page)).toEqual(before);
+      await expect(page.locator("[data-mark-ring]")).toHaveCount(1);
       expect(await page.evaluate(() => (window as unknown as { __moves: { moves: number } }).__moves.moves)).toBe(0);
     });
 

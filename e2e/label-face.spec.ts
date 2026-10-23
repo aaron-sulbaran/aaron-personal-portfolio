@@ -1,6 +1,5 @@
-import type { Locator, Page } from "@playwright/test";
+import type { Locator } from "@playwright/test";
 import { siteContent } from "@/lib/content";
-import { SEEN_STORAGE_KEY } from "@/lib/home/seen";
 import { playerStrings } from "@/lib/content/player";
 import { capsuleText } from "@/lib/waveform/dock";
 import { test, expect } from "./support/fixtures";
@@ -60,13 +59,14 @@ test("label face: controls are Profa Bold in the accent", async ({ page }) => {
   await expectLabel(dialog.getByRole("link", { name: /txclaude\.org/ }), "label-lg", "accent");
 });
 
-test("label face: meta beside a title is Profa Bold in the accent", async ({ page }) => {
-  await page.goto("/");
-  await settled(page);
-  await expectLabel(page.locator("#work .book-row").getByText(siteContent.cards["capital-one"].book.meta, { exact: true }), "label", "accent");
-
+test("label face: meta beside a title is Profa Bold in the accent, and so are the cards' column headings and their progress line", async ({ page }) => {
   const { dialog } = await openCardFromBook(page, "anthropic", { settled: true });
   await expectLabel(dialog.getByText("Claude Campus Ambassador, 2026", { exact: true }), "label", "accent");
+  await dialog.getByRole("button", { name: siteContent.modals.closeAriaLabel }).click();
+  await expect(dialog).toBeHidden();
+  // Page 2's column headings (a step up from the small label on a desktop) and its "N of 14 opened" are the accent in the label face.
+  for (const heading of await page.locator("#work h3, #work h4").all()) await expectLabel(heading, "label", "accent");
+  await expectLabel(page.locator("#work [data-card-progress]:visible p"), "label-sm", "accent");
 });
 
 test("label face: hints are Profa Bold, muted", async ({ page }) => {
@@ -83,19 +83,14 @@ test("label face: hints are Profa Bold, muted", async ({ page }) => {
   await expectLabel(mentorship.getByText(siteContent.modals.closeHintKeyboard, { exact: true }), "label", "muted");
 });
 
-test("label face: Who I am's block kickers and the Connect rows draw an icon with the platform name for assistive tech, and no section draws a kicker over its heading", async ({ page }) => {
+test("label face: the Connect rows draw an icon with the platform name for assistive tech, no section draws a kicker over its heading, and each page's number is a small muted label", async ({ page }) => {
   await page.goto("/");
   await settled(page);
-  const { whoIAm } = siteContent;
-  for (const id of ["#about", "#numbers", "#connect"]) {
+  for (const id of ["#numbers", "#connect"]) {
     const first = await page.locator(`${id} [data-sections-block]`).first().evaluate((el) => `${el.tagName.toLowerCase()} ${el.getAttribute("data-sections-block")}`);
     expect(first, `${id}: the first block in the section is its big heading, no kicker over it`).toBe("h2 heading");
   }
-  for (const block of whoIAm.blocks) {
-    for (const label of [block.label, ...(block.sub ? [block.sub.label] : [])]) {
-      await expectLabel(page.locator("#about").getByText(label, { exact: true }), "label", "muted");
-    }
-  }
+  for (const number of await page.locator("[data-section-number]:visible").all()) await expectLabel(number, "label-sm", "muted");
   for (const [index, link] of siteContent.connect.links.entries()) {
     const row = page.locator("#connect li > a").nth(index);
     await expect(row.locator("svg").first(), `${link.label} icon`).toBeVisible();
@@ -103,15 +98,17 @@ test("label face: Who I am's block kickers and the Connect rows draw an icon wit
   }
 });
 
-test("label face: the nav bar, the Menu pill and the panel are Profa Bold in the accent", async ({ page }) => {
+test("label face: the Menu pill and the panel are Profa Bold in the accent, the pages' numbers small and muted", async ({ page }) => {
   const m = siteContent.menu;
   await page.goto("/");
   await settled(page);
-  await expectLabel(page.locator("header nav a").first(), "label", "accent");
   const pill = page.locator(`button[aria-controls]`, { hasText: m.pillLabel });
   await expectLabel(pill.getByText(m.pillLabel, { exact: true }).first(), "label", "accent");
   await pill.click();
+  await expect(page.locator("[data-menu-number]").first()).toBeVisible();
+  for (const number of await page.locator("[data-menu-number]").all()) await expectLabel(number, "label-sm", "muted");
   await expectLabel(page.getByRole("button", { name: m.themeAriaLabelToDark }), "label", "accent");
+  await expectLabel(page.locator("[data-menu-freeze]"), "label", "accent");
   await expectLabel(page.getByRole("link", { name: m.email.label, exact: true }), "label", "accent");
   await expectLabel(page.getByRole("link", { name: m.socials[0].label, exact: true }).last(), "label", "accent");
 });
@@ -229,38 +226,4 @@ test("label face: role lines sit under their titles, 6px in the modal", async ({
     slot: slot.getBoundingClientRect().height,
   }));
   expect(fit.block, "title block within the logo slot's height").toBeLessThanOrEqual(fit.slot);
-});
-
-const rowLayout = (page: Page) =>
-  page.locator("#work .book-row").evaluateAll((rows) =>
-    rows.map((row) => {
-      const [title, meta] = [row.children[0], row.children[1]].map((el) => el.getBoundingClientRect());
-      const box = row.getBoundingClientRect();
-      const s = getComputedStyle(row);
-      const inner = box.width - parseFloat(s.paddingLeft) - parseFloat(s.paddingRight);
-      return {
-        text: row.textContent,
-        wrap: s.flexWrap,
-        wrapped: meta.top >= title.bottom - 1,
-        fits: title.width + 14 + meta.width <= inner + 0.5,
-      };
-    }),
-  );
-
-test("label face: a row's meta wraps under its title only when the two do not fit, and a seen row dims it to 0.75", async ({ page }) => {
-  await page.addInitScript((key) => sessionStorage.setItem(key, JSON.stringify(["capital-one"])), SEEN_STORAGE_KEY);
-  for (const viewport of [{ width: 1024, height: 768 }, { width: 390, height: 844 }]) {
-    await page.setViewportSize(viewport);
-    await page.goto("/");
-    await settled(page);
-    for (const row of await rowLayout(page)) {
-      expect(row.wrap).toBe("wrap");
-      expect(row.wrapped, `${viewport.width}: ${row.text}`).toBe(!row.fits);
-    }
-  }
-  const meta = page.locator("#work .book-row").getByText(siteContent.cards["capital-one"].book.meta, { exact: true });
-  await page.mouse.move(1, 1);
-  await expect.poll(() => meta.evaluate((el) => Number(getComputedStyle(el).opacity))).toBeCloseTo(0.75, 2);
-  await meta.hover();
-  await expect.poll(() => meta.evaluate((el) => Number(getComputedStyle(el).opacity))).toBe(1);
 });

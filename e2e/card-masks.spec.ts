@@ -28,14 +28,6 @@ test("masks: a card's modal masks in on a timer and leaves nothing behind", asyn
   expect(await leftovers(page)).toEqual(CLEAN);
 });
 
-// A book open has no flight to wait for: by the time the panel rests (280ms),
-// the title's first line (step one, 480ms long) is already opening.
-test("masks: a book open starts its masks at once, with nothing landing to wait for", async ({ page }) => {
-  const { dialog } = await openCardFromBook(page, "capital-one");
-  const right = await dialog.locator('[data-mask="title"] .card-line').first().evaluate((el) => parseFloat((el as HTMLElement).style.clipPath.match(/inset\(([^)]*)\)/)?.[1].split(/\s+/)[1] ?? "102"));
-  expect(right).toBeLessThan(100);
-});
-
 test("masks: a photo's clip edge travels left to right, and each line's clip opens left to right in place", async ({ page }) => {
   await openCardFromBook(page, "capital-one");
   const photo = await page.waitForFunction(() => {

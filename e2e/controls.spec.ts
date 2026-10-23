@@ -20,7 +20,8 @@ async function storeFromQuery(page: Page) {
   }, { key: SOUNDTRACK_KEY, greeted: GREETED_KEY });
 }
 async function openWith(page: Page, stored: "on" | "off") {
-  await page.goto(`/?e2eStored=${stored}#about`);
+  // Deep in the cards section: page 1's band is behind the reader, so the pill has arrived.
+  await page.goto(`/?e2eStored=${stored}#work`);
   await settled(page);
 }
 const noteIn = (control: Locator) => control.locator("svg[data-note]").first();
@@ -144,15 +145,14 @@ test("controls: the capsule pill and the Menu pill keep their width in the capsu
   expect((await widths(page)).menuPill, "the Menu pill with music playing").toBe(off.menuPill);
 });
 
-test("controls: the nav bar and the Connect links rise with the quiet tint", async ({ page }) => {
+test("controls: the Connect links rise with the quiet tint", async ({ page }) => {
   await openHome(page);
-  await expectFill(page.locator("header nav a"), "nav");
   await expectFill(page.locator("#connect li > a"), "connect");
 });
 
 test("controls: the band's controls rise with glass to accent", async ({ page }) => {
   await openHome(page);
-  // The note's own tips (the music and the evolving isle) are inline links, not controls.
+  // The note's own tip (the music) is an inline link, not a control.
   await expectFill(page.locator("#listen [data-band-controls] button, #listen [data-band-note] button:not([data-inline])"), "band");
 });
 

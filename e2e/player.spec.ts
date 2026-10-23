@@ -403,8 +403,10 @@ test.describe("the Menu", () => {
       await expect(panel).toBeVisible();
       await expect(panel.locator("svg[data-note]")).toHaveCount(0);
       await expect(panel.getByRole("button", { name: /soundtrack|music|play|pause/i })).toHaveCount(0);
-      await expect(panel.locator("button[aria-pressed]")).toHaveCount(0);
-      // What is there is the theme chip, the quick view link and the contact row.
+      // The only chip with a pressed state is the wave's freeze, which is not a music control.
+      await expect(panel.locator("button[aria-pressed]")).toHaveCount(1);
+      await expect(panel.locator("button[aria-pressed]")).toHaveAccessibleName(/freeze the wave/i);
+      // What is there is the theme chip, the wave's freeze, the quick view link and the contact row.
       await expect(panel.getByRole("button", { name: /mode/i })).toBeVisible();
     });
   }

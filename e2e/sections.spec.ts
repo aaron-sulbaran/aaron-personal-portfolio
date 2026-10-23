@@ -7,23 +7,18 @@ import { visibleText } from "@/lib/content/links";
 import { GRAMMAR } from "@/lib/sections/grammar";
 
 // The sections grammar on the home (lib/sections, components/sections): what
-// a reader sees with and without reduced motion, what assistive tech reads
-// once SplitText has run, and the sticky holds. Each section lists the prose
-// it must keep, word for word.
+// a reader sees with and without reduced motion and what assistive tech reads
+// once SplitText has run, in the sections that use it (proof of work and
+// Connect: page 1 and the cards have their own motion). Each section lists
+// the prose it must keep, word for word.
 
-const { whoIAm, connect, metrics } = siteContent;
+const { connect, metrics } = siteContent;
 const PROSE: Record<string, string[]> = Object.fromEntries(
   Object.entries({
-    "#about": [
-      whoIAm.heading,
-      whoIAm.smallPrint,
-      ...whoIAm.blocks.flatMap((block) => [block.label, block.body, ...(block.sub ? [block.sub.label, block.sub.body] : [])]),
-    ],
     "#numbers": [metrics.title, metrics.groupLabel],
     "#connect": [connect.heading, connect.body, connect.primary.label, ...connect.links.map((link) => link.handle)],
   }).map(([id, prose]) => [id, prose.map(visibleText)]),
 );
-const STICKY = ["#about"];
 // Decoration with transforms of its own: icons and controls' Fill copy and arrows.
 const SKIP = "svg, svg *, .fx-over, .fx-over *, .fx-arrow, .fx-arrow *";
 const squash = (text: string) => text.replace(/\s+/g, " ").trim();
@@ -90,48 +85,6 @@ test("sections: after SplitText the page still reads every heading and paragraph
   }
 });
 
-async function holdGeometry(page: Page, id: string) {
-  return page.evaluate((id) => {
-    const column = document.querySelector<HTMLElement>(`${id} .sections-sticky-col`)!;
-    const held = column.querySelector<HTMLElement>("[data-sections-sticky]")!.getBoundingClientRect();
-    const flow = (column.nextElementSibling as HTMLElement).getBoundingClientRect();
-    const box = column.getBoundingClientRect();
-    return {
-      columnTop: box.top + window.scrollY,
-      columnBottom: box.bottom,
-      columnHeight: box.height,
-      heldTop: held.top,
-      heldBottom: held.bottom,
-      heldHeight: held.height,
-      flowTop: flow.top,
-      flowBottom: flow.bottom,
-    };
-  }, id);
-}
-
-for (const id of STICKY) {
-  test(`sections: ${id} holds at the sticky top while its other column scrolls, and lets go early`, async ({ page }) => {
-    await openHome(page);
-    const { stickyTop, stopOffset } = GRAMMAR;
-    const rest = await holdGeometry(page, id);
-    expect(Math.round(rest.flowBottom - rest.columnBottom), "the column ends early by the stop offset").toBe(stopOffset);
-    const travel = rest.columnHeight - rest.heldHeight;
-    expect(travel, "room for the hold to show").toBeGreaterThan(80);
-    const flowTops: number[] = [];
-    for (const into of [20, travel - 20]) {
-      await scrollToY(page, Math.round(rest.columnTop - stickyTop + into));
-      const now = await holdGeometry(page, id);
-      expect(Math.abs(now.heldTop - stickyTop), `held ${into}px into the hold`).toBeLessThan(1);
-      flowTops.push(now.flowTop);
-    }
-    expect(flowTops[0] - flowTops[1], "the other column scrolled past the held one").toBeGreaterThan(travel - 41);
-    await scrollToY(page, Math.round(rest.columnTop - stickyTop + travel + 60));
-    const past = await holdGeometry(page, id);
-    expect(Math.abs(past.heldBottom - past.columnBottom), "let go at the column's early end").toBeLessThan(1);
-    expect(past.heldTop).toBeLessThan(stickyTop - 50);
-  });
-}
-
 // How far up a lines-split block has risen, as its lines' mean drop below their masks in px: a
 // block part way in sits between its masked and its whole value, however many lines it wraps to.
 async function meanLift(page: Page, block: string) {
@@ -143,10 +96,10 @@ async function meanLift(page: Page, block: string) {
     return Math.round((drops.reduce((sum, drop) => sum + drop, 0) / drops.length) * 10) / 10;
   });
 }
-const LAST_BODY = '#about [data-sections-block="body"][data-sections-split="lines"] >> nth=-1';
+const LAST_BODY = '#connect [data-sections-block="body"][data-sections-split="lines"] >> nth=-1';
 
-test("sections: a Who I am block below the fold is masked before its band and risen once scrolled past it", async ({ page }) => {
-  await openHome(page);
+test("sections: a Connect block below the fold is masked before its band and risen once scrolled past it", async ({ page }) => {
+  await openHome(page, { at: "top" });
   await blocksIn(page, "armed");
   expect(await page.evaluate(() => window.scrollY)).toBe(0);
   expect(await meanLift(page, LAST_BODY), "below its mask before its band").toBeGreaterThan(10);
@@ -323,10 +276,10 @@ async function steady<T>(page: Page, read: () => Promise<T>): Promise<T> {
   return JSON.parse(last) as T;
 }
 
-test("sections: once risen, Who I am stays whole when the reader scrolls back up", async ({ page }) => {
+test("sections: once risen, Connect stays whole when the reader scrolls back up", async ({ page }) => {
   await openHome(page);
   await blocksIn(page, "armed");
-  const risen = ["#about"];
+  const risen = ["#connect"];
   await scrollToY(page, await page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight));
   await expect.poll(() => partsOff(page, risen), { message: "whole at the footer", timeout: 8000 }).toEqual([]);
   await scrollToY(page, 0);
@@ -334,7 +287,7 @@ test("sections: once risen, Who I am stays whole when the reader scrolls back up
 });
 
 test("sections: a block scrolled back above its band half revealed stays as it was", async ({ page }) => {
-  await openHome(page);
+  await openHome(page, { at: "top" });
   await blocksIn(page, "armed");
   const masked = await meanLift(page, LAST_BODY);
   expect(masked, "masked before its band").toBeGreaterThan(10);
@@ -348,16 +301,16 @@ test("sections: a block scrolled back above its band half revealed stays as it w
   expect(Math.abs((await steady(page, () => meanLift(page, LAST_BODY))) - halfway), "held where it got to").toBeLessThan(0.5);
 });
 
-// autoSplit re-splits Who I am on a width change and builds a new timeline
+// autoSplit re-splits Connect on a width change and builds a new timeline
 // for the same block; it starts where the old one was shown, not masked.
-test("sections: a re-split after Who I am has risen keeps it whole", async ({ page }) => {
+test("sections: a re-split after Connect has risen keeps it whole", async ({ page }) => {
   await openHome(page);
   await blocksIn(page, "armed");
   await scrollToY(page, await page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight));
-  await expect.poll(() => partsOff(page, ["#about"]), { timeout: 8000 }).toEqual([]);
+  await expect.poll(() => partsOff(page, ["#connect"]), { timeout: 8000 }).toEqual([]);
   await scrollToY(page, 0);
-  await resplit(page, "#about");
-  expect(await steady(page, () => partsOff(page, ["#about"])), "whole after the re-split").toEqual([]);
+  await resplit(page, "#connect");
+  expect(await steady(page, () => partsOff(page, ["#connect"])), "whole after the re-split").toEqual([]);
 });
 
 // Narrows the page to 1000px and waits for SplitText to replace the block's
@@ -386,10 +339,10 @@ async function lineDrops(page: Page, block: string) {
 // A re-split mid-reveal carries on from the share the old timeline showed.
 // Narrower means more lines on a longer stagger, so at the same share every
 // line by index is as far up as it was, or further.
-test("sections: a re-split while Who I am is part way in drops no line", async ({ page }) => {
+test("sections: a re-split while Connect is part way in drops no line", async ({ page }) => {
   await openHome(page);
   await blocksIn(page, "armed");
-  const body = '#about [data-sections-block="body"][data-sections-split="lines"] >> nth=0';
+  const body = '#connect [data-sections-block="body"][data-sections-split="lines"] >> nth=0';
   const top = await page.locator(body).evaluate((el) => el.getBoundingClientRect().top + window.scrollY);
   // Its top at 69 percent of the viewport: half way through its band (84 to 54).
   await scrollToY(page, Math.round(top - page.viewportSize()!.height * 0.69));
@@ -397,7 +350,7 @@ test("sections: a re-split while Who I am is part way in drops no line", async (
   expect(before.some((drop) => drop < 1), "some lines risen").toBe(true);
   expect(before.some((drop) => drop > 50), "some lines still mostly masked").toBe(true);
   await scrollToY(page, 0);
-  await resplit(page, "#about");
+  await resplit(page, "#connect");
   // From the first frame of the new lines through the chase's tail: a
   // timeline that started over masked would chase back up to the same mark,
   // so only the frames in between can tell.
