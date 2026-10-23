@@ -2,20 +2,23 @@ import { readFileSync } from "node:fs";
 import type { Page } from "@playwright/test";
 import { siteContent } from "../lib/content";
 import { test, expect } from "./support/fixtures";
+import { INTRO_HEADING_ID } from "@/lib/home/introId";
 import { SEEN_STORAGE_KEY } from "@/lib/home/seen";
-import { coilPoints, openHome, scrollToY } from "./support/coil";
+import { coilPoints, openHome, scrollToCards, scrollToY } from "./support/coil";
 import { settled } from "./support/fallback";
 import { noWebgl2Api } from "./support/webgl";
 
 // An accessibility smoke with no new dependency: the keyboard reaches the
-// mark, the Menu pill and the book in that order; nothing focusable hides
-// inside aria-hidden; every control the keyboard can reach has a name.
+// logo, the Menu pill and the cards' titles in that order; nothing focusable
+// hides inside aria-hidden; every control the keyboard can reach has a name.
 
 type Stop = { tag: string; name: string; inBook: boolean };
 
+// Page 1 holds a good many stops (its inline links, the band's buttons, the
+// strip's two links) before the cards section's first title.
 async function tabStops(page: Page): Promise<Stop[]> {
   const stops: Stop[] = [];
-  for (let i = 0; i < 40; i++) {
+  for (let i = 0; i < 80; i++) {
     await page.keyboard.press("Tab");
     const stop = await page.evaluate(() => {
       const el = document.activeElement as HTMLElement | null;
@@ -23,7 +26,7 @@ async function tabStops(page: Page): Promise<Stop[]> {
       return {
         tag: el.tagName.toLowerCase(),
         name: (el.getAttribute("aria-label") ?? el.textContent ?? "").trim().replace(/\s+/g, " "),
-        inBook: !!el.closest("#work"),
+        inBook: !!el.closest("#work") && el.hasAttribute("data-card"),
       };
     });
     if (stop) stops.push(stop);
@@ -32,7 +35,7 @@ async function tabStops(page: Page): Promise<Stop[]> {
   return stops;
 }
 
-test("a11y: Tab reaches the mark, then the Menu pill, then the book's rows", async ({ page }) => {
+test("a11y: Tab reaches the logo, then the Menu pill, then the cards' titles", async ({ page }) => {
   await openHome(page);
   const stops = await tabStops(page);
   const mark = stops.findIndex((stop) => stop.name === "Back to top");
@@ -80,22 +83,22 @@ test("a11y: nothing focusable sits inside aria-hidden, and every reachable contr
   expect(report.unnamed, "focusable elements with no accessible name").toEqual([]);
 });
 
-test("a11y (no WebGL 2): the notice's Got it follows the h1 and is a named tab stop between the Menu pill and the book, nothing focusable hides", async ({ page }) => {
+test("a11y (no WebGL 2): the notice's Got it follows the h1 and is a named tab stop between the Menu pill and the titles, nothing focusable hides", async ({ page }) => {
   await page.addInitScript(noWebgl2Api);
   await page.goto("/");
   await settled(page);
   await expect(page.locator("[data-still-notice]")).toBeVisible();
-  const order = await page.evaluate(() => {
-    const h1 = document.getElementById("hero-heading")!;
+  const order = await page.evaluate((id) => {
+    const h1 = document.getElementById(id)!;
     const gotIt = document.querySelector("[data-still-notice] button")!;
-    const book = document.getElementById("work")!;
+    const firstTitle = document.querySelector("#work button[data-card]")!;
     return {
       afterH1: !!(h1.compareDocumentPosition(gotIt) & Node.DOCUMENT_POSITION_FOLLOWING),
-      beforeBook: !!(gotIt.compareDocumentPosition(book) & Node.DOCUMENT_POSITION_FOLLOWING),
+      beforeTitles: !!(gotIt.compareDocumentPosition(firstTitle) & Node.DOCUMENT_POSITION_FOLLOWING),
     };
-  });
+  }, INTRO_HEADING_ID);
   expect(order.afterH1, "Got it after the h1 in the DOM").toBe(true);
-  expect(order.beforeBook, "and before the book").toBe(true);
+  expect(order.beforeTitles, "and before the titles").toBe(true);
   const stops = await tabStops(page);
   const pill = stops.findIndex((stop) => stop.name === "Open menu");
   const gotIt = stops.findIndex((stop) => stop.name.startsWith(siteContent.hero.still.dismiss));
@@ -193,13 +196,13 @@ async function focusedRing(page: Page) {
     };
     return {
       name: (el.getAttribute("aria-label") ?? el.textContent ?? "").trim().slice(0, 30),
-      inBook: !!el.closest("#work"),
+      inBook: !!el.closest("#work") && el.hasAttribute("data-card"),
       painted: ringed(el) || ringed(el.closest<HTMLElement>("[data-shape-toggle]") ?? el),
     };
   });
 }
 
-test("focus rings: the mouse leaves none behind on the mark, a hold, the Menu pill or a card's modal", async ({ page }) => {
+test("focus rings: the mouse leaves none behind on the logo, a hold, the Menu pill or a card's modal", async ({ page }) => {
   await openHome(page);
   const mark = page.locator("[data-mark-trigger]");
   const markCard = page.getByRole("dialog", { name: siteContent.mark.dialogLabel });
@@ -239,7 +242,9 @@ test("focus rings: the mouse leaves none behind on the mark, a hold, the Menu pi
   await none("after the Menu closed by mouse and focus came back to the pill");
 
   // A card in the canvas has no element to take the click, so Chrome never
-  // saw a mouse focus before the modal's own script focus.
+  // saw a mouse focus before the modal's own script focus. (The logo's click
+  // took the page to its top: back to the cards, where the Coil is.)
+  await scrollToCards(page);
   const { card } = await coilPoints(page);
   await page.mouse.move(card.x - 20, card.y + 10);
   await page.mouse.move(card.x, card.y);
@@ -254,12 +259,12 @@ test("focus rings: the mouse leaves none behind on the mark, a hold, the Menu pi
   await none("after the card's modal closed by mouse");
 });
 
-test("focus rings: Tab draws one on the mark, the Menu pill and a book row; a click clears it; Tab brings it back", async ({ page }) => {
+test("focus rings: Tab draws one on the logo, the Menu pill and a title; a click clears it; Tab brings it back", async ({ page }) => {
   await openHome(page);
   await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
 
   const stops: Awaited<ReturnType<typeof focusedRing>>[] = [];
-  for (let i = 0; i < 12; i++) {
+  for (let i = 0; i < 80; i++) {
     await page.keyboard.press("Tab");
     const stop = await focusedRing(page);
     stops.push(stop);

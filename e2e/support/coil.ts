@@ -45,7 +45,10 @@ export async function scrollToCards(page: Page, offset = 0) {
 
 // <html data-intro-loader> while page 1's loader covers the page: "on" while it
 // fills, "shrink" while the name lands on the heading, "done" after (never set
-// for reduced motion, a deep load or no JavaScript).
+// for reduced motion, a deep load or no JavaScript). <html data-intro-words> is
+// "wait" then "play" while page 1's words arrive on a fresh load (each item
+// rising 14px as it fades in) and is gone once the last one is in place; a
+// measurement of page 1's boxes waits for it.
 export const INTRO_LOADING = ["on", "shrink"];
 
 // The page is hydrated, page 1's loader is gone and the scene has drawn its
@@ -56,7 +59,13 @@ export async function waitForScene(page: Page) {
     (LOADING) => {
       const w = window as HookWindow;
       const hero = document.querySelector<HTMLElement>("section[data-scene]");
-      return !!w.__coil?.api && document.documentElement.dataset.home === "ready" && hero?.dataset.scene === "on" && !LOADING.includes(document.documentElement.dataset.introLoader ?? "");
+      return (
+        !!w.__coil?.api &&
+        document.documentElement.dataset.home === "ready" &&
+        hero?.dataset.scene === "on" &&
+        !LOADING.includes(document.documentElement.dataset.introLoader ?? "") &&
+        !document.documentElement.dataset.introWords
+      );
     },
     INTRO_LOADING,
     { timeout: 30_000 },
@@ -174,8 +183,13 @@ export async function coilPoints(page: Page): Promise<CoilPoints> {
     const sil = coil.silhouette?.() ?? null;
     const slotCount = Number(coil.budget().slots);
     const rect = document.querySelector("[data-coil-stage]")!.getBoundingClientRect();
-    const top = Math.max(rect.top, 0) + 80;
-    const bottom = Math.min(rect.bottom, window.innerHeight) - 40;
+    // The margins are a share of a small stage (a phone's is a third of the screen): 80px and 40px on a tall one.
+    const visible = Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, 0);
+    const top = Math.max(rect.top, 0) + Math.min(80, visible * 0.18);
+    const bottom = Math.min(rect.bottom, window.innerHeight) - Math.min(40, visible * 0.12);
+    const side = Math.min(100, window.innerWidth * 0.12);
+    // How far inside the strand's hull a card point must sit: 120px, or less where the hull is narrow (a phone's is about 216px across).
+    const depth = sil ? Math.min(120, sil.half * 0.4) : 120;
     const distance = (x: number, y: number) =>
       sil ? Math.abs((x - rect.left - sil.ax) * -sil.dy + (y - rect.top - sil.ay) * sil.dx) - sil.half : Number.NaN;
     const middle = { x: rect.left + rect.width / 2, y: (top + bottom) / 2 };
@@ -184,11 +198,11 @@ export async function coilPoints(page: Page): Promise<CoilPoints> {
     const gaps: { x: number; y: number }[] = [];
     const outside: { x: number; y: number }[] = [];
     for (let y = top; y < bottom; y += 10) {
-      for (let x = 100; x < window.innerWidth - 100; x += 10) {
+      for (let x = side; x < window.innerWidth - side; x += 10) {
         const d = distance(x, y);
         const hit = coil.api.cardAt(x, y);
         // A card point with cards all around it (it stays a card for a while).
-        if (hit && !(d >= -120) && [[-24, 0], [24, 0], [0, -24], [0, 24]].every(([dx, dy]) => coil.api.cardAt(x + dx, y + dy)?.slot === hit.slot))
+        if (hit && !(d >= -depth) && [[-24, 0], [24, 0], [0, -24], [0, 24]].every(([dx, dy]) => coil.api.cardAt(x + dx, y + dy)?.slot === hit.slot))
           cards.push({ x, y });
         else if (!hit && d < -40) gaps.push({ x, y });
         else if (!hit && d > 80) outside.push({ x, y });

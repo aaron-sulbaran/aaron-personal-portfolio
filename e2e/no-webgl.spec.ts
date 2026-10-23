@@ -6,9 +6,9 @@ import { noWebgl2Api, noWebglContext } from "./support/webgl";
 
 // No WebGL: a browser launched without the GPU, and WebGL taken away in the
 // page, the two ways a visitor's browser can lack it. The hero still (the
-// name baked behind its cards, the h1 visually hidden once it has decoded)
-// and the book carry the page, and the scene's chunk is never fetched. A
-// still that never decodes leaves the h1 lockup as the hero's name.
+// scene at rest, decoded) fills the cards section's stage, page 1's name is
+// live text, the titles carry the section, and the scene's chunk is never
+// fetched.
 
 test.use({ launchOptions: { args: [...MUTED_ARGS, "--disable-gpu"] } });
 
@@ -40,10 +40,10 @@ test("a deep reload with no WebGL 2 shows the still at full opacity", async ({ p
   await page.addInitScript(noWebgl2Api);
   // lib/scroll.ts's saved position, past half a viewport: the fast start.
   await page.addInitScript(() => sessionStorage.setItem("aps:home-scroll-y", String(window.innerHeight * 2)));
-  // The still's opacity one frame after it is marked decoded, the h1's box in
-  // that frame, whether its visible picture has its pixels then, and whether
-  // the loader was skipped: off the loader's hand-off the still never fades,
-  // and no frame paints neither name.
+  // The still's opacity one frame after it is marked decoded, whether its
+  // visible picture has its pixels then, and whether the loader was skipped:
+  // the still never fades in half decoded, and page 1's name (live text) is
+  // laid out the whole time.
   await page.addInitScript(() => {
     const host = window as unknown as { __stillReadyFrame?: { opacity: string; pixels: boolean; loaderSkipped: boolean; h1: { width: number; height: number } } };
     new MutationObserver((records, observer) => {
@@ -53,13 +53,13 @@ test("a deep reload with no WebGL 2 shows the still at full opacity", async ({ p
       if (!still) return;
       observer.disconnect();
       requestAnimationFrame(() => {
-        const h1 = document.getElementById("hero-heading")!.getBoundingClientRect();
+        const h1 = document.getElementById("intro-heading")!.getBoundingClientRect();
         const img = [...still.querySelectorAll("img")].find((el) => el.getClientRects().length > 0);
         host.__stillReadyFrame = {
           opacity: getComputedStyle(still).opacity,
           pixels: !!img && img.complete && img.naturalWidth > 0,
           h1: { width: h1.width, height: h1.height },
-          loaderSkipped: document.documentElement.dataset.coilLoader === "skip" || !document.querySelector(".coil-loader"),
+          loaderSkipped: !document.documentElement.dataset.introLoader,
         };
       });
     }).observe(document, { subtree: true, attributes: true, attributeFilter: ["data-still-ready"] });
@@ -74,8 +74,8 @@ test("a deep reload with no WebGL 2 shows the still at full opacity", async ({ p
   expect(loaderSkipped, "the loader was skipped (the deep path)").toBe(true);
   expect(opacity, "the still's opacity one frame after data-still-ready").toBe("1");
   expect(pixels, "the visible picture complete with a natural width in that frame").toBe(true);
-  expect(h1.width, "the h1 visually hidden (sr-only) in that same frame: width").toBeLessThanOrEqual(1);
-  expect(h1.height, "the h1 visually hidden in that same frame: height").toBeLessThanOrEqual(1);
+  expect(h1.width, "page 1's name laid out in that same frame: width").toBeGreaterThan(100);
+  expect(h1.height, "page 1's name laid out in that same frame: height").toBeGreaterThan(20);
 });
 
 for (const [width, height, cut] of [[390, 844, "narrow"], [800, 1000, "square"], [1000, 1000, "square"], [1440, 900, "wide"]] as const) {

@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test";
 import { siteContent } from "@/lib/content";
+import { INTRO_HEADING_ID } from "@/lib/home/introId";
 import { STILL_NOTICE_KEY } from "@/lib/home/stillNotice";
 import { test, expect } from "./support/fixtures";
 import { openHome } from "./support/coil";
@@ -7,8 +8,9 @@ import { settled, watchHydration } from "./support/fallback";
 import { shoot } from "./support/pixels";
 import { noWebgl2Api, noWebglContext } from "./support/webgl";
 
-// The still page's notice: one quiet line at the foot of the hero saying why
-// the page is still, a status (never a dialog), dismissed for good by "Got it".
+// The still page's notice: one quiet line at the foot of the cards section's
+// frame saying why the page is still, a status (never a dialog), dismissed for
+// good by "Got it", which hands focus to page 1's h1.
 
 const copy = siteContent.hero.still;
 const notice = (page: Page) => page.locator("[data-still-notice]");
@@ -42,13 +44,19 @@ test("a context that cannot be created: the same notice, after the h1, dismissed
   await page.goto("/");
   await settled(page);
   await expectNotice(page, copy.noWebgl);
-  const order = await page.evaluate(() => {
-    const h1 = document.getElementById("hero-heading")!;
+  const order = await page.evaluate((id) => {
+    const h1 = document.getElementById(id)!;
     const status = document.querySelector("[data-still-notice]")!;
-    return { after: !!(h1.compareDocumentPosition(status) & Node.DOCUMENT_POSITION_FOLLOWING), inHero: status.parentElement === h1.closest("section") };
-  });
+    const firstTitle = document.querySelector("#work button[data-card]")!;
+    return {
+      after: !!(h1.compareDocumentPosition(status) & Node.DOCUMENT_POSITION_FOLLOWING),
+      inCards: !!status.closest("#work"),
+      beforeTitles: !!(status.compareDocumentPosition(firstTitle) & Node.DOCUMENT_POSITION_FOLLOWING),
+    };
+  }, INTRO_HEADING_ID);
   expect(order.after, "the notice follows the h1 in the DOM").toBe(true);
-  expect(order.inHero, "the notice sits in the hero section itself").toBe(true);
+  expect(order.inCards, "the notice sits in the cards section's frame").toBe(true);
+  expect(order.beforeTitles, "and comes before the titles").toBe(true);
   await dismiss(page).focus();
   await page.keyboard.press("Enter");
   await expect(notice(page)).toHaveCount(0);
@@ -57,9 +65,9 @@ test("a context that cannot be created: the same notice, after the h1, dismissed
     const alpha = Number(style.outlineColor.match(/rgba?\(([^)]+)\)/)?.[1].split(",")[3] ?? 1);
     return { id: document.activeElement?.id ?? "", ring: style.outlineStyle !== "none" && parseFloat(style.outlineWidth) > 0 && alpha > 0 };
   });
-  expect(focused.id, "focus lands on the h1").toBe("hero-heading");
-  expect(focused.ring, "with no ring drawn around the whole hero").toBe(false);
-  await expect(page.locator("#hero-heading")).toHaveAttribute("tabindex", "-1");
+  expect(focused.id, "focus lands on the h1").toBe(INTRO_HEADING_ID);
+  expect(focused.ring, "with no ring drawn around the whole heading").toBe(false);
+  await expect(page.locator(`#${INTRO_HEADING_ID}`)).toHaveAttribute("tabindex", "-1");
 });
 
 test("a scene that throws: the notice says it could not start", async ({ page }) => {
@@ -101,8 +109,11 @@ for (const { viewport, colorScheme } of cases) {
     const still = page.locator("[data-hero-still]");
     await expect(still).toHaveAttribute("data-still-ready", "");
     await expect.poll(() => still.evaluate((el) => getComputedStyle(el).opacity)).toBe("1");
+    // The notice is at the foot of the cards section's frame: bring the frame into the screen.
+    await page.evaluate(() => document.getElementById("work")!.scrollIntoView({ block: "start", behavior: "instant" }));
     const text = notice(page).locator("p");
     await expect(text).toBeVisible();
+    await expect(text).toBeInViewport({ ratio: 1 });
     const { box, color } = await text.evaluate((el) => {
       const r = el.getBoundingClientRect();
       return { box: { x: Math.floor(r.left), y: Math.floor(r.top), width: Math.ceil(r.width), height: Math.ceil(r.height) }, color: getComputedStyle(el).color };
