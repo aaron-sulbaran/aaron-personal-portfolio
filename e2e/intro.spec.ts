@@ -71,7 +71,7 @@ test("intro: the loader covers the page from first paint, then the name lands on
   expect(Math.abs(target!.fontPx - fontPx), "the canvas name's size against the heading's").toBeLessThan(0.5);
   expect(Math.abs(target!.left - after.left), "the canvas name's ink against the heading's box").toBeLessThan(14);
   expect(target!.baseline).toBeGreaterThan(after.top);
-  expect(target!.baseline).toBeLessThan(after.top + after.height);
+  expect(target!.baseline).toBeLessThanOrEqual(after.top + after.height + 0.5);
   expect((await nameStats(page)).landed, "the loader landed the name on the canvas").toBe(true);
   // The heading's name is the page's one h1, read as "Hi, I'm Aaron."
   await expect(page.getByRole("heading", { level: 1, name: hero.heading })).toHaveCount(1);

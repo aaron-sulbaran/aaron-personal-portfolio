@@ -123,7 +123,7 @@ test.describe("no WebGL", () => {
     await expect(html(page)).toHaveAttribute("data-deal", "dealing", { timeout: 5000 });
     // The stage cross-fades in (it starts clear), and the page scrolls itself on an ease: it is still short of the section partway.
     expect(await page.evaluate(() => Number(getComputedStyle(document.querySelector("#work [data-coil-stage]")!).opacity))).toBeLessThan(1);
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(900);
     const mid = await page.evaluate(() => ({ y: window.scrollY, top: document.getElementById("work")!.getBoundingClientRect().top, behavior: document.documentElement.style.scrollBehavior }));
     expect(mid.y).toBeGreaterThan(startY);
     expect(mid.top).toBeGreaterThan(5);
@@ -207,7 +207,7 @@ test("a deal that ends with the reader inside the sticky range lets the stage go
   const button = await rectOf(page, "[data-intro-cta] a");
   const stage = await rectOf(page, "[data-coil-sticky]");
   expect(button.bottom <= stage.top + 1 || button.top >= stage.bottom, "the button is clear of the stage").toBe(true);
-  await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
+  await page.evaluate(() => document.querySelector("[data-intro-cta]")!.scrollIntoView({ block: "center", behavior: "instant" }));
   await page.waitForTimeout(300);
   const hit = await page.evaluate(() => {
     const b = document.querySelector("[data-intro-cta] a")!.getBoundingClientRect();

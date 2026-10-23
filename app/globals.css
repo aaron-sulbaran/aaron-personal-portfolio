@@ -984,7 +984,11 @@ html[data-deal] section[data-scene="off"] [data-coil-stage] {
   width: max-content;
   max-width: 100%;
 }
+/* flow-root: the lockup trims its last line's room with a negative margin, which
+   only shrinks the heading's box when the heading contains it (the loader lands
+   on this box, so it must be the letters' own). */
 .intro-heading {
+  display: flow-root;
   position: relative;
   color: var(--color-accent);
 }

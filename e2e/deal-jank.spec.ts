@@ -183,14 +183,23 @@ test("jank 1: the ribbon's condense and curl move the cards around the middle sm
   expect(result.length, "cards around the middle").toBeGreaterThan(3);
   let mostStep = 0;
   let worstSecond = 0;
+  let gaps = 0;
+  const finite = (p: { x: number; y: number } | undefined) => !!p && Number.isFinite(p.x);
   for (const { key, points } of result) {
-    expect(points.filter((p) => !Number.isFinite(p.x)).length, `${key} stays on screen through the condense and the curl`).toBe(0);
-    for (let i = 1; i < points.length; i++) mostStep = Math.max(mostStep, Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y));
+    // The spin carries a card to the window's end while the ring is still open, where it fades out
+    // and its twin fades in at the other end (the swap that is never seen), so the probe (cards over
+    // half drawn) loses it for the few frames of the two fades, 8 at the most (about 130 ms, at 12.5
+    // cards a second across a 1.2-slot fade each way): never a step or an acceleration read across it.
+    const missing = points.filter((p) => !finite(p)).length;
+    gaps += missing;
+    expect(missing, `${key} out of sight at most the frames of one ring-end swap through the condense and the curl`).toBeLessThanOrEqual(8);
+    for (let i = 1; i < points.length; i++) if (finite(points[i]) && finite(points[i - 1])) mostStep = Math.max(mostStep, Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y));
     for (let i = 1; i < points.length - 1; i++) {
+      if (!finite(points[i - 1]) || !finite(points[i]) || !finite(points[i + 1])) continue;
       worstSecond = Math.max(worstSecond, Math.hypot(points[i + 1].x - 2 * points[i].x + points[i - 1].x, points[i + 1].y - 2 * points[i].y + points[i - 1].y));
     }
   }
-  test.info().annotations.push({ type: "condense and curl", description: `${result.length} cards: the most a frame steps ${mostStep.toFixed(1)} px, the worst second difference ${worstSecond.toFixed(1)} px` });
+  test.info().annotations.push({ type: "condense and curl", description: `${result.length} cards: the most a frame steps ${mostStep.toFixed(1)} px, the worst second difference ${worstSecond.toFixed(1)} px, ${gaps} frames out of sight across a ring-end swap` });
   expect(mostStep, `a frame steps a card ${mostStep.toFixed(1)} px`).toBeLessThanOrEqual(FRAME_STEP_BOUND_PX);
   expect(worstSecond, `second difference ${worstSecond.toFixed(1)} px`).toBeLessThanOrEqual(SECOND_DIFFERENCE_BOUND_PX);
 });

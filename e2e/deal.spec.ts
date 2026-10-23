@@ -89,7 +89,7 @@ test("deal: the Coil's canvas is a sticky stage whose rail starts above the ribb
   const rail = await page.evaluate(() => {
     const r = document.querySelector("[data-coil-rail]")!.getBoundingClientRect();
     const slot = document.querySelector("[data-coil-ribbon]")!.getBoundingClientRect();
-    return { top: r.top, height: r.height, slotMiddle: slot.top + slot.height / 2, stage: document.querySelector("[data-coil-sticky]")!.getBoundingClientRect().height, frame: document.querySelector("[data-coil-frame]")!.getBoundingClientRect().height };
+    return { top: r.top, height: r.height, slotMiddle: slot.top + slot.height / 2, stage: document.querySelector("[data-coil-sticky]")!.getBoundingClientRect().height, frame: document.querySelector("[data-coil-frame]")!.getBoundingClientRect().height, railDoc: r.top + window.scrollY };
   });
   // The rail starts above the ribbon's middle (room for the wheel above it) and ends with the cards section; the stage is the section's frame tall.
   expect(rail.top).toBeLessThan(rail.slotMiddle - 100);
@@ -99,11 +99,17 @@ test("deal: the Coil's canvas is a sticky stage whose rail starts above the ribb
   const stageTop = () => page.evaluate(() => document.querySelector("[data-coil-sticky]")!.getBoundingClientRect().top);
   // Before it sticks it rides the page with the ribbon.
   expect(Math.abs((await stageTop()) - rail.top)).toBeLessThan(2);
-  const sectionDoc = await page.evaluate(() => document.getElementById("work")!.getBoundingClientRect().top + window.scrollY);
-  // Inside the range it stays at the top of the screen; at the cards section it is the section.
-  await page.evaluate((y) => window.scrollTo({ top: y, behavior: "instant" }), sectionDoc - 40);
+  // A little way into the range (short of where a scroll starts the deal) it stays at the top of the screen.
+  const range = rail.height - rail.stage;
+  await page.evaluate((y) => window.scrollTo({ top: y, behavior: "instant" }), rail.railDoc + range * 0.08);
   await page.waitForTimeout(200);
+  expect(await deal(page)).toBe("closed");
   expect(Math.abs(await stageTop())).toBeLessThan(2);
+  // Dealt, the stage has let go: it is the section, and scrolls away with it.
+  await dealLink(page).click();
+  await expect(html(page)).toHaveAttribute("data-deal", "dealt", { timeout: 20_000 });
+  await page.waitForTimeout(700);
+  const sectionDoc = await page.evaluate(() => document.getElementById("work")!.getBoundingClientRect().top + window.scrollY);
   await page.evaluate((y) => window.scrollTo({ top: y, behavior: "instant" }), sectionDoc + 120);
   await page.waitForTimeout(200);
   expect(Math.abs((await stageTop()) + 120)).toBeLessThan(2);
@@ -112,8 +118,9 @@ test("deal: the Coil's canvas is a sticky stage whose rail starts above the ribb
 test("deal: the reader's wheel during the scroll takes the page back and only the scroll, never the deal", async ({ page }) => {
   await openHome(page, { at: "foot" });
   await page.mouse.move(720, 450);
+  const startY = await page.evaluate(() => window.scrollY);
   await dealLink(page).click();
-  await expect.poll(() => page.evaluate(() => window.scrollY), { timeout: 5000 }).toBeGreaterThan(60);
+  await expect.poll(() => page.evaluate(() => window.scrollY), { timeout: 5000 }).toBeGreaterThan(startY + 60);
   expect(await page.evaluate(() => document.documentElement.style.scrollBehavior)).toBe("auto");
   await page.mouse.wheel(0, -200);
   await page.waitForTimeout(200);
