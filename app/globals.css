@@ -1066,7 +1066,10 @@ html[data-deal="pending"] .intro-name:not([data-name-canvas]) [data-name-visual]
   height: var(--ribbon-h);
 }
 /* The ribbon's room closes once the cards are dealt and the reader has scrolled
-   past it (components/home/useSlotRelease.ts). */
+   past it (components/home/useSlotRelease.ts). A load that lands below page 1
+   has it closed from the first paint (the head script lib/home/slotInit.ts sets
+   html[data-slot="closed"]; the hook swaps it for data-gone on mount). */
+html[data-slot="closed"] .intro-foot__ribbon,
 .intro-foot:has([data-coil-ribbon][data-gone]) .intro-foot__ribbon {
   display: none;
 }

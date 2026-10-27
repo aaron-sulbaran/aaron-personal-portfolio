@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 import { test, expect } from "./support/fixtures";
 import { INTRO_LOADING, openHome, waitForScene } from "./support/coil";
-import { noWebgl2Api } from "./support/webgl";
+import { noWebgl2Api, noWebglContext } from "./support/webgl";
 import { siteContent } from "@/lib/content";
 
 // The deal's other paths and its edges (hero rework, slices 4b to 4d): reduced
@@ -182,6 +182,90 @@ test("a load into #work opens the cards at once: dealt, the field and the column
   expect(await page.evaluate(() => (window as unknown as { __dealLog: string[] }).__dealLog)).toEqual(["pending", "dealt"]);
   await waitForScene(page);
   expect(await entrances(page)).toBe(0);
+});
+
+// ---------------------------------------------------------------- a deep load decides the ribbon's room before the first paint
+
+// Layout shifts from the first frame, and what <html data-slot> said when the document had been parsed (before any script of the page's own).
+async function recordShifts(page: Page) {
+  await page.addInitScript(() => {
+    const w = window as unknown as { __shifts: number[]; __slotAtParse: string | null };
+    w.__shifts = [];
+    new PerformanceObserver((list) => {
+      for (const entry of list.getEntries() as unknown as { value: number; hadRecentInput: boolean }[]) if (!entry.hadRecentInput) w.__shifts.push(entry.value);
+    }).observe({ type: "layout-shift", buffered: true });
+    document.addEventListener("DOMContentLoaded", () => {
+      w.__slotAtParse = document.documentElement.dataset.slot ?? null;
+    });
+  });
+}
+const shifted = (page: Page) => page.evaluate(() => (window as unknown as { __shifts: number[] }).__shifts.reduce((sum, value) => sum + value, 0));
+const slotAtParse = (page: Page) => page.evaluate(() => (window as unknown as { __slotAtParse: string | null }).__slotAtParse);
+
+// The slot is room for the ribbon above the cards, and it closes once the deal has taken the ribbon and the reader is below it. A link
+// into the cards (/work redirects to #work, which is where LinkedIn links land) opens the section at once, and used to paint the slot
+// open and close it at about 360 ms, shifting the cards once (0.135). Now the head script has it closed from the first paint there.
+test("a load into #work has the ribbon's room closed from the first paint, so nothing shifts when the scene comes up", async ({ page }) => {
+  await recordShifts(page);
+  await page.goto("/#work");
+  expect(await slotAtParse(page), "closed before the page's own scripts ran").toBe("closed");
+  await waitForScene(page);
+  await page.waitForTimeout(1500);
+  await expect(page.locator("[data-coil-ribbon]")).toHaveAttribute("data-gone", "");
+  expect(await page.evaluate(() => document.documentElement.dataset.slot ?? null), "the hook has taken it over").toBeNull();
+  expect(await rectOf(page, "[data-coil-ribbon]")).toMatchObject({ height: 0 });
+  expect(await shifted(page), "cumulative layout shift").toBeLessThan(0.02);
+  expect(Math.abs((await rectOf(page, "#work")).top)).toBeLessThan(2);
+});
+
+// Below the cards the deal does not play on a load, so the room stays open there as it always did: nothing is predicted, nothing shifts.
+for (const hash of ["#numbers", "#connect"]) {
+  test(`a load into ${hash} leaves the ribbon's room as it was: open, with nothing predicted`, async ({ page }) => {
+    await recordShifts(page);
+    await page.goto(`/${hash}`);
+    expect(await slotAtParse(page)).toBeNull();
+    await waitForScene(page);
+    await page.waitForTimeout(1500);
+    await expect(page.locator("[data-coil-ribbon]")).not.toHaveAttribute("data-gone", "");
+  });
+}
+
+test("a reload deep in the page keeps the room closed: the saved position and the slot's state are read before paint", async ({ page }) => {
+  await recordShifts(page);
+  await page.goto("/#work");
+  await waitForScene(page);
+  await expect.poll(() => page.evaluate(() => sessionStorage.getItem("aps:home-slot"))).toBe("gone");
+  await page.evaluate(() => {
+    window.scrollTo({ top: window.scrollY + 40, behavior: "instant" });
+    history.replaceState(null, "", "/");
+  });
+  await expect.poll(() => page.evaluate(() => Number(sessionStorage.getItem("aps:home-scroll-y")))).toBeGreaterThan(1000);
+  await page.reload();
+  expect(await slotAtParse(page), "closed before the page's own scripts ran").toBe("closed");
+  await waitForScene(page);
+  await page.waitForTimeout(1500);
+  expect(await shifted(page), "cumulative layout shift").toBeLessThan(0.02);
+  await expect(page.locator("[data-coil-ribbon]")).toHaveAttribute("data-gone", "");
+});
+
+test("a load into #work where the scene cannot come: the API missing leaves the room open from the start, a context that fails opens it again with the section held", async ({ page }) => {
+  await page.addInitScript(noWebgl2Api);
+  await recordShifts(page);
+  await page.goto("/#work");
+  expect(await slotAtParse(page), "no WebGL 2 API, no prediction").toBeNull();
+  await waitForHero(page, "still");
+  expect(await rectOf(page, "[data-coil-ribbon]")).toMatchObject({ height: expect.not.closeTo(0, 0) });
+  expect(await shifted(page), "nothing moved").toBeLessThan(0.02);
+
+  const second = await page.context().newPage();
+  await second.addInitScript(noWebglContext);
+  await recordShifts(second);
+  await second.goto("/#work");
+  expect(await slotAtParse(second), "the API is there, so the room is predicted closed").toBe("closed");
+  await waitForHero(second, "still");
+  await expect(second.locator("[data-coil-ribbon]")).not.toHaveAttribute("data-gone", "");
+  expect(await rectOf(second, "[data-coil-ribbon]")).toMatchObject({ height: expect.not.closeTo(0, 0) });
+  expect(Math.abs((await rectOf(second, "#work")).top), "the section held where it was").toBeLessThan(2);
 });
 
 // ---------------------------------------------------------------- a deal that ends inside the sticky range
