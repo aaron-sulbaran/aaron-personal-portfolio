@@ -51,6 +51,7 @@ export const modalPhotos = {
     photo("ieee-3-rising-stars", 1200, 1600, { block: 4 }, "Me at the IEEE Rising Stars conference in Las Vegas, January 2026", "Me at my last IEEE Rising Stars conference as president of the chapter."),
   ],
   hackathons: [
+    photo("hackathons-3-aws", 1600, 1200, { block: 1 }, "Me and my three teammates throwing the horns in front of the Amazon logo on a wooden wall at Amazon's Austin office", "My team and me at Amazon's Austin office, the day we placed second at the AWS Agentic AI Hackathon, October 2026."),
     photo("hackathons-1-hookem", 1600, 1135, { block: 3 }, "Me and my team holding keyboard prizes under the winner is min/Max slide at Hook 'Em Hacks", "Me at Hook 'Em Hacks, winning."),
     photo("hackathons-2-vercel", 1200, 1600, { block: 4 }, "Me with the Built in NYC poster at the Vercel one-day hackathon in New York", "Me at a one-day Vercel hackathon in New York City."),
   ],

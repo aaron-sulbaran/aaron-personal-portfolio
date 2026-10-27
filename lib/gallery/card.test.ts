@@ -32,7 +32,7 @@ describe("each card's gallery", () => {
       talos: [],
       travel: [{ photos: [0], words: [0] }, { photos: [1, 2, 3], words: [1] }],
       "capital-one": [{ photos: [0], words: [1] }, { photos: [1], words: [2] }, { photos: [2], words: [3] }],
-      hackathons: [{ photos: [0], words: [0, 1] }, { photos: [1], words: [2, 3] }, { photos: [2], words: [4] }],
+      hackathons: [{ photos: [0], words: [0] }, { photos: [1], words: [1, 2] }, { photos: [2], words: [3] }, { photos: [3], words: [4] }],
       anthropic: [{ photos: [0], words: [0] }, { photos: [1, 2], words: [1] }],
       misuki: [{ photos: [0], words: [0] }, { photos: [1, 2, 3], words: [1] }],
       ieee: [{ photos: [0], words: [0, 1] }, { photos: [1], words: [2, 3] }, { photos: [2], words: [4] }],

@@ -13,7 +13,7 @@ const PHOTOS: Record<string, [number, number]> = {
   "band-1-section": [1600, 1067], "band-2-practice": [1200, 1600], "band-3-competition": [1200, 1600], "band-picture": [1200, 1600],
   "building-1-analytics": [532, 517], "building-2-toronto": [1200, 1600], "building-in-public-picture": [1200, 1600],
   "capital-one-1-2024": [1200, 1600], "capital-one-2-2025": [1200, 1600], "capital-one-3-2026": [1200, 1600],
-  "hackathons-1-hookem": [1600, 1135], "hackathons-2-vercel": [1200, 1600], "hackathons-picture": [1200, 1600],
+  "hackathons-1-hookem": [1600, 1135], "hackathons-2-vercel": [1200, 1600], "hackathons-3-aws": [1600, 1200], "hackathons-picture": [1200, 1600],
   "ieee-1-social": [1600, 1061], "ieee-2-award": [1600, 858], "ieee-3-rising-stars": [1200, 1600],
   "jobs-1-mod-selfie": [1200, 1600], "jobs-2-mod-sign": [1200, 1600], "jobs-3-apple": [1200, 1600], "jobs-4-aritzia-poster": [998, 1600],
   "mentorship-1-booth": [1125, 978], "mentorship-2-scholar": [1600, 1200], "mentorship-3-shpe": [1600, 1200], "mentorship-picture": [1200, 1600],
