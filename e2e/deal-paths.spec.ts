@@ -207,7 +207,7 @@ const slotAtParse = (page: Page) => page.evaluate(() => (window as unknown as { 
 // open and close it at about 360 ms, shifting the cards once (0.135). Now the head script has it closed from the first paint there.
 test("a load into #work has the ribbon's room closed from the first paint, so nothing shifts when the scene comes up", async ({ page }) => {
   await recordShifts(page);
-  await page.goto("/#work");
+  await page.goto("/?coildebug=1#work");
   expect(await slotAtParse(page), "closed before the page's own scripts ran").toBe("closed");
   await waitForScene(page);
   await page.waitForTimeout(1500);
@@ -222,7 +222,7 @@ test("a load into #work has the ribbon's room closed from the first paint, so no
 for (const hash of ["#numbers", "#connect"]) {
   test(`a load into ${hash} leaves the ribbon's room as it was: open, with nothing predicted`, async ({ page }) => {
     await recordShifts(page);
-    await page.goto(`/${hash}`);
+    await page.goto(`/?coildebug=1${hash}`);
     expect(await slotAtParse(page)).toBeNull();
     await waitForScene(page);
     await page.waitForTimeout(1500);
@@ -232,12 +232,12 @@ for (const hash of ["#numbers", "#connect"]) {
 
 test("a reload deep in the page keeps the room closed: the saved position and the slot's state are read before paint", async ({ page }) => {
   await recordShifts(page);
-  await page.goto("/#work");
+  await page.goto("/?coildebug=1#work");
   await waitForScene(page);
   await expect.poll(() => page.evaluate(() => sessionStorage.getItem("aps:home-slot"))).toBe("gone");
   await page.evaluate(() => {
     window.scrollTo({ top: window.scrollY + 40, behavior: "instant" });
-    history.replaceState(null, "", "/");
+    history.replaceState(null, "", "/?coildebug=1");
   });
   await expect.poll(() => page.evaluate(() => Number(sessionStorage.getItem("aps:home-scroll-y")))).toBeGreaterThan(1000);
   await page.reload();
@@ -251,7 +251,7 @@ test("a reload deep in the page keeps the room closed: the saved position and th
 test("a load into #work where the scene cannot come: the API missing leaves the room open from the start, a context that fails opens it again with the section held", async ({ page }) => {
   await page.addInitScript(noWebgl2Api);
   await recordShifts(page);
-  await page.goto("/#work");
+  await page.goto("/?coildebug=1#work");
   expect(await slotAtParse(page), "no WebGL 2 API, no prediction").toBeNull();
   await waitForHero(page, "still");
   expect(await rectOf(page, "[data-coil-ribbon]")).toMatchObject({ height: expect.not.closeTo(0, 0) });
@@ -260,7 +260,7 @@ test("a load into #work where the scene cannot come: the API missing leaves the 
   const second = await page.context().newPage();
   await second.addInitScript(noWebglContext);
   await recordShifts(second);
-  await second.goto("/#work");
+  await second.goto("/?coildebug=1#work");
   expect(await slotAtParse(second), "the API is there, so the room is predicted closed").toBe("closed");
   await waitForHero(second, "still");
   await expect(second.locator("[data-coil-ribbon]")).not.toHaveAttribute("data-gone", "");
