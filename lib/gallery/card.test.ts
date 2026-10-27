@@ -32,7 +32,7 @@ describe("each card's gallery", () => {
       talos: [],
       travel: [{ photos: [0], words: [0] }, { photos: [1, 2, 3], words: [1] }],
       "capital-one": [{ photos: [0], words: [1] }, { photos: [1], words: [2] }, { photos: [2], words: [3] }],
-      hackathons: [{ photos: [0], words: [0] }, { photos: [1], words: [1] }, { photos: [2], words: [2] }],
+      hackathons: [{ photos: [0], words: [0, 1] }, { photos: [1], words: [2] }, { photos: [2], words: [3] }],
       anthropic: [{ photos: [0], words: [0] }, { photos: [1, 2], words: [1] }],
       misuki: [{ photos: [0], words: [0] }, { photos: [1, 2, 3], words: [1] }],
       ieee: [{ photos: [0], words: [0, 1] }, { photos: [1], words: [2, 3] }, { photos: [2], words: [4] }],
@@ -42,7 +42,7 @@ describe("each card's gallery", () => {
       "building-in-public": [{ photos: [0], words: [0] }, { photos: [1], words: [1] }, { photos: [2], words: [2] }],
     });
     expect(Object.fromEntries(keys.map((key) => [key, [galleryOf(key).plan.intro, galleryOf(key).plan.closing]]))).toMatchObject({
-      "capital-one": [[0], [4]], hackathons: [[], [3]], jobs: [[0, 1, 2, 3], []], "min-max": [[0], []], talos: [[0, 1], []], "this-site": [[0], []], fsdatalink: [[0, 1], []], band: [[], []], travel: [[], []],
+      "capital-one": [[0], [4]], hackathons: [[], []], jobs: [[0, 1, 2, 3], []], "min-max": [[0], []], talos: [[0, 1], []], "this-site": [[0], []], fsdatalink: [[0, 1], []], band: [[], []], travel: [[], []],
     });
   });
 

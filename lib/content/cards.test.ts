@@ -90,8 +90,12 @@ describe("the fourteen cards", () => {
     expect(cards.jobs.book).toEqual({ title: "\"unflattering\" jobs that paid for school", meta: "Popeyes to Aritzia, 2021 to 2026" });
     expect(cards.band.modal.blocks[1]).toContain("an invitational I *know* it had been chasing");
     expect(cards["capital-one"].modal.blocks[1].startsWith("**2024, business analyst.** My first look")).toBe(true);
-    expect(cards.hackathons.modal.blocks.at(-1)).toBe("HackTX & others, coming soon.");
-    expect(cards.hackathons.modal.blocks.slice(0, 3).map((block) => block.slice(0, block.indexOf(".**") + 3))).toEqual(["**UFCU Develop U, fall 2026.**", "**Hook 'Em Hacks, spring 2026.**", "**Vercel one-day hackathon, New York.**"]);
+    expect(cards.hackathons.modal.blocks.map((block) => block.slice(0, block.indexOf(".**") + 3))).toEqual(["**UFCU Develop U, fall 2026.**", "**HackTX, fall 2026.**", "**Hook 'Em Hacks, spring 2026.**", "**Vercel one-day hackathon, New York.**"]);
+    expect(cards.hackathons.modal.blocks.join(" ")).not.toContain("coming soon");
+    expect(cards.hackathons.modal.links).toEqual([
+      { label: "musefriends.tech", href: "https://musefriends.tech" },
+      { label: "Muse Friends on GitHub", href: "https://github.com/aaron-sulbaran/muse-friends" },
+    ]);
     expect(cards.jobs.timeline.at(-1)?.tip.endsWith("basically unisex products...")).toBe(true);
     expect(cards.jobs.timeline.at(-1)?.tip).toBe("My most random job. For the interview they asked me to dress in my best clothing, which I thought was funny. If you work here, all the women in your life will want a discount. With that said, the effortless pants and sweatfleece line are basically unisex products...");
     expect(Object.fromEntries(keys.map((key) => [key, cards[key].modal.blocks.length]))).toEqual({

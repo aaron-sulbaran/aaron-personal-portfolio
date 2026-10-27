@@ -51,8 +51,8 @@ export const modalPhotos = {
     photo("ieee-3-rising-stars", 1200, 1600, { block: 4 }, "Me at the IEEE Rising Stars conference in Las Vegas, January 2026", "Me at my last IEEE Rising Stars conference as president of the chapter."),
   ],
   hackathons: [
-    photo("hackathons-1-hookem", 1600, 1135, { block: 1 }, "Me and my team holding keyboard prizes under the winner is min/Max slide at Hook 'Em Hacks", "Me at Hook 'Em Hacks, winning."),
-    photo("hackathons-2-vercel", 1200, 1600, { block: 2 }, "Me with the Built in NYC poster at the Vercel one-day hackathon in New York", "Me at a one-day Vercel hackathon in New York City."),
+    photo("hackathons-1-hookem", 1600, 1135, { block: 2 }, "Me and my team holding keyboard prizes under the winner is min/Max slide at Hook 'Em Hacks", "Me at Hook 'Em Hacks, winning."),
+    photo("hackathons-2-vercel", 1200, 1600, { block: 3 }, "Me with the Built in NYC poster at the Vercel one-day hackathon in New York", "Me at a one-day Vercel hackathon in New York City."),
   ],
   jobs: [
     photo("jobs-1-mod-selfie", 1200, 1600, { timeline: 1 }, "A mirror selfie of me in a Keep MOD Weird shirt, cap and flannel", "Me at my MOD store, in a Keep MOD Weird tee."),

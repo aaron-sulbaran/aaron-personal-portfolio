@@ -70,11 +70,14 @@ export const cards: Cards = {
     short: "Hackathons", visual: { kind: "photo", flipX: false, photo: pictures.hackathons },
     book: { title: "Hackathons", meta: "Builder, 2025 to now" },
     // UFCU first, so the card picture (the UFCU win, beside the title) sits next to its own paragraph (docs/content/cards.md).
-    modal: { kind: "logo", title: "Hackathons", picture: { caption: "Me and my team winning UFCU Develop U, September 2026." }, links: [], photos: modalPhotos.hackathons, blocks: [
+    modal: { kind: "logo", title: "Hackathons", picture: { caption: "Me and my team winning UFCU Develop U, September 2026." }, links: [
+      { label: "musefriends.tech", href: "https://musefriends.tech" },
+      { label: "Muse Friends on GitHub", href: "https://github.com/aaron-sulbaran/muse-friends" },
+    ], photos: modalPhotos.hackathons, blocks: [
       "**UFCU Develop U, fall 2026.** Won with UFCU Front Desk, a digital front desk assistant that makes joining a credit union simple and still sounds like them.",
+      "**HackTX, fall 2026.** Built Muse Friends, a feature proposal for Meta's Muse where your Muse and your friend's Muse turn an abandoned Reel into an actual plan, and you both just say yes. It challenged me to think deeply about agent-to-agent communication and planning where hallucinations aren't an option.",
       "**Hook 'Em Hacks, spring 2026.** Won the finance track with the first build and MVP/Proof of Concept of min/Max.",
       "**Vercel one-day hackathon, New York.** Where I started Talos.",
-      "HackTX & others, coming soon.",
     ] },
   },
   anthropic: {
