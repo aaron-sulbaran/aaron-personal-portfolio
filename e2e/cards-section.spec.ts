@@ -2,9 +2,11 @@ import { test, expect } from "./support/fixtures";
 import { cardDialog } from "./support/cards";
 import { cardAt, coilPoints, openHome, scrollToCards, scrollToFoot } from "./support/coil";
 import { approach } from "./support/input";
+import { decodePng } from "./support/pixels";
 import type { HookWindow } from "./support/hooks";
 import { siteContent } from "@/lib/content";
 import { SEEN_STORAGE_KEY } from "@/lib/home/seen";
+import { PROFA_CAP_HEIGHT_EM, PROFA_X_HEIGHT_EM } from "@/lib/home/seenDot";
 
 // The cards section (#work): the Coil between two columns of short titles,
 // and the fork at the intro's foot that scrolls to it.
@@ -171,24 +173,84 @@ test("cards section: the progress line is hidden at none opened, then reads N of
   expect((await progress.locator('[role="presentation"]').boundingBox())!.height).toBeLessThanOrEqual(4);
 });
 
-test("cards section: the seen dot sits on the middle of its title's last line, on a desktop and a phone", async ({ page }) => {
+test("cards section: the seen dot is centered on its title's last word, to half a pixel: the x-height middle, and the capitals' middle for IEEE", async ({ page }) => {
   await seed(page, titles.map((title) => title.key));
   for (const viewport of [{ width: 1280, height: 800 }, { width: 1440, height: 900 }, { width: 390, height: 844 }]) {
     await page.setViewportSize(viewport);
     await openHome(page);
     await expect(page.locator("#work [data-seen-dot]")).toHaveCount(14);
-    const offsets = await page.evaluate(() =>
-      [...document.querySelectorAll<HTMLElement>("#work button[data-card]")].map((button) => {
-        const dot = button.querySelector("[data-seen-dot]")!.getBoundingClientRect();
-        const last = button.querySelector<HTMLElement>("[data-seen-dot]")!.parentElement!;
-        const word = document.createRange();
-        word.selectNodeContents(last.firstChild!);
-        const text = word.getBoundingClientRect();
-        return { key: button.dataset.card!, offset: dot.top + dot.height / 2 - (text.top + text.height / 2) };
-      }),
+    const offsets = await page.evaluate(
+      ([cap, xHeight]) =>
+        [...document.querySelectorAll<HTMLElement>("#work button[data-card]")].map((button) => {
+          const dot = button.querySelector<HTMLElement>("[data-seen-dot]")!;
+          const box = dot.getBoundingClientRect();
+          // The baseline of the line: the bottom of an empty inline box set on it, just before the dot.
+          const probe = document.createElement("span");
+          probe.style.cssText = "display:inline-block;width:0;height:0;vertical-align:baseline";
+          dot.parentElement!.insertBefore(probe, dot);
+          const baseline = probe.getBoundingClientRect().bottom;
+          probe.remove();
+          const size = parseFloat(getComputedStyle(dot).fontSize);
+          const caps = !/\p{Ll}/u.test(dot.parentElement!.textContent ?? "");
+          const middle = baseline - ((caps ? cap : xHeight) * size) / 2;
+          return { key: button.dataset.card!, caps, offset: box.top + box.height / 2 - middle };
+        }),
+      [PROFA_CAP_HEIGHT_EM, PROFA_X_HEIGHT_EM],
     );
-    for (const { key, offset } of offsets) expect(Math.abs(offset), `${key} at ${viewport.width}`).toBeLessThanOrEqual(1);
+    expect(offsets.filter((entry) => entry.caps).map((entry) => entry.key)).toEqual(["ieee"]);
+    for (const { key, offset } of offsets) expect(Math.abs(offset), `${key} at ${viewport.width}`).toBeLessThanOrEqual(0.5);
   }
+});
+
+// What Aaron checks by pixel: the painted dot against the painted capitals of IEEE (the "I" stem's flat top and foot give the cap
+// height to a fraction of a pixel; the dot's ring gives the dot), at two pixels to the CSS pixel, on a desktop and a phone.
+test.describe("seen dot, painted", () => {
+  test.use({ deviceScaleFactor: 2 });
+
+  test("cards section: the seen dot on IEEE is centered on its capitals within half a pixel, as painted", async ({ page }) => {
+    await seed(page, titles.map((title) => title.key));
+    for (const viewport of [{ width: 1280, height: 800 }, { width: 1440, height: 900 }, { width: 390, height: 844 }]) {
+      await page.setViewportSize(viewport);
+      await openHome(page);
+      const geo = await page.evaluate(() => {
+        const dot = document.querySelector<HTMLElement>('#work button[data-card="ieee"] [data-seen-dot]')!;
+        const word = dot.parentElement!.firstChild as Text;
+        const letter = document.createRange();
+        letter.setStart(word, 0);
+        letter.setEnd(word, 1);
+        const stem = letter.getBoundingClientRect();
+        const ring = dot.getBoundingClientRect();
+        return { stemX: stem.left + stem.width / 2, dotX: ring.left + ring.width / 2, top: Math.floor(ring.top) - 14, left: Math.floor(stem.left) - 2, right: Math.ceil(ring.right) + 2 };
+      });
+      const clip = { x: geo.left, y: geo.top, width: geo.right - geo.left, height: 36 };
+      const image = decodePng(await page.screenshot({ clip, scale: "device" }));
+      const scale = 2;
+      const column = (x: number) => {
+        const px = Math.round((x - clip.x) * scale);
+        const bg = [image.rgba[0], image.rgba[1], image.rgba[2]];
+        const signal: number[] = [];
+        for (let y = 0; y < image.height; y++) {
+          const i = (y * image.width + px) * 4;
+          signal.push(Math.abs(image.rgba[i] - bg[0]) + Math.abs(image.rgba[i + 1] - bg[1]) + Math.abs(image.rgba[i + 2] - bg[2]));
+        }
+        return signal;
+      };
+      // The edges of a vertical profile, by coverage: the first and last rows with signal, each counted by how full it is.
+      const edges = (signal: number[]) => {
+        const peak = Math.max(...signal);
+        const rows = signal.flatMap((value, row) => (value > peak * 0.04 ? [row] : []));
+        const first = rows[0];
+        const last = rows[rows.length - 1];
+        return { top: (first + (1 - Math.min(1, signal[first] / peak))) / scale, bottom: (last + Math.min(1, signal[last] / peak)) / scale };
+      };
+      const stem = edges(column(geo.stemX));
+      const ring = edges(column(geo.dotX));
+      const offset = (ring.top + ring.bottom) / 2 - (stem.top + stem.bottom) / 2;
+      expect(stem.bottom - stem.top, `the capitals' height at ${viewport.width}`).toBeGreaterThan(9);
+      expect(ring.bottom - ring.top, `the dot's height at ${viewport.width}`).toBeCloseTo(8, 0);
+      expect(Math.abs(offset), `the dot against the capitals at ${viewport.width}`).toBeLessThanOrEqual(0.5);
+    }
+  });
 });
 
 test.describe("on a phone", () => {

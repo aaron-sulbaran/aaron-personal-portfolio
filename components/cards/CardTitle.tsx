@@ -4,6 +4,7 @@ import type { FocusEvent, PointerEvent } from "react";
 import { siteContent, type ColumnTitle } from "@/lib/content";
 import { useHoveredCard } from "@/lib/cursor/useHoveredCard";
 import { useIsSeen } from "@/lib/home/seen";
+import { seenDotClass } from "@/lib/home/seenDot";
 import { isKeyboardFocus } from "@/lib/input/modality";
 import { useHomeController } from "@/components/home/HomeController";
 
@@ -17,9 +18,9 @@ export function CardTitle({ title }: { title: ColumnTitle }) {
   const seen = useIsSeen(title.key);
   const lit = useHoveredCard() === title.key;
   // The seen dot follows the title's last word on the same line, glued to it, and sits on the
-  // middle of the line's x-height (vertical-align: middle; Profa's line box and x-height share a
-  // centre to within a seventh of a pixel at these sizes), so it is centered on the text
-  // line however the title wraps. The underline is the words' only: it never reaches the dot.
+  // middle of the line's x-height, or on the middle of the capitals when that word has no
+  // lowercase (lib/home/seenDot.ts), so it is centered on the text line however the title
+  // wraps. The underline is the words' only: it never reaches the dot.
   const words = title.short.split(" ");
   const last = words.pop() ?? "";
   const head = words.join(" ");
@@ -48,7 +49,7 @@ export function CardTitle({ title }: { title: ColumnTitle }) {
           {head ? " " : ""}
           <span className="whitespace-nowrap">
             {last}
-            {seen && <span data-seen-dot="" aria-hidden="true" className="ml-2.5 inline-block h-2 w-2 shrink-0 rounded-full border border-current align-middle opacity-70" />}
+            {seen && <span data-seen-dot="" aria-hidden="true" className={`${seenDotClass(last)} ml-2.5 inline-block h-2 w-2 shrink-0 rounded-full border border-current opacity-70`} />}
           </span>
         </span>
         {seen && <span className="sr-only">, {siteContent.columns.seenLabel}</span>}

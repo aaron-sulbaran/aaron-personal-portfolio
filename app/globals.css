@@ -1286,4 +1286,23 @@ html[data-intro-loader="on"] #intro-heading {
 .intro-loader__count[data-hidden] {
   visibility: hidden;
 }
+/* The seen dot's place on its title's last line (components/cards/CardTitle.tsx,
+   lib/home/seenDot.ts): the middle of the x-height, or of the capitals after a
+   word with no lowercase, a whole pixel above the baseline (round()) so the
+   painted dot sits on the painted ink however the line's fraction falls; the
+   dot's half height is 0.25rem. The unrounded values are the fallback. */
+.seen-dot {
+  vertical-align: middle;
+}
+.seen-dot--caps {
+  vertical-align: calc(0.3182em - 0.25rem);
+}
+@supports (width: round(1.4px, 1px)) {
+  .seen-dot {
+    vertical-align: calc(round(0.5ex, 1px) - 0.25rem);
+  }
+  .seen-dot--caps {
+    vertical-align: calc(round(0.3182em, 1px) - 0.25rem);
+  }
+}
 /* ---- end page 1 ---- */
