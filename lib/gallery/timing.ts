@@ -32,6 +32,7 @@ export const partId = {
   sting: "sting",
   discord: "discord",
   talos: "talos",
+  video: "video",
   links: "links",
   pager: "pager",
   words: (unit: number) => `words-${unit}`,
@@ -44,7 +45,7 @@ export interface StepOptions {
   flown?: number; // the photo a parked flown card covers: it never masks (its caption does)
   hasCaption: (photo: number) => boolean;
   hasLinks: boolean;
-  after?: Readonly<Record<number, readonly string[]>>; // parts that follow an opening word unit (Talos's sting and its Discord channel)
+  after?: Readonly<Record<number, readonly string[]>>; // parts that follow a word unit (Talos's sting and its Discord channel, a card's video)
   trailing?: readonly string[]; // parts after the plan and before the links (the mentors, Talos's team)
   lines?: (id: string) => number;
 }
@@ -58,8 +59,9 @@ function photoParts(photo: number, o: StepOptions): MaskPart[] {
 }
 
 function slideParts(slide: Slide, o: StepOptions): MaskPart[] {
-  const words = (unit: number) => part(partId.words(unit), o);
-  return [...photoParts(slide.photo, o), ...slide.before.map(words), ...(slide.own === undefined ? [] : [words(slide.own)]), ...slide.after.map(words)];
+  // A unit's words, then whatever follows them (a card's video), in the row's one step.
+  const words = (unit: number) => [part(partId.words(unit), o), ...(o.after?.[unit] ?? []).map((id) => part(id, o))];
+  return [...photoParts(slide.photo, o), ...slide.before.flatMap(words), ...(slide.own === undefined ? [] : words(slide.own)), ...slide.after.flatMap(words)];
 }
 
 const ends = (o: StepOptions): MaskStep[] => [...(o.trailing ?? []).map((id) => [part(id, o)]), ...(o.hasLinks ? [[part(partId.links, o)]] : [])];

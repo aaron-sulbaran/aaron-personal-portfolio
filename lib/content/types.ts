@@ -81,6 +81,11 @@ export type CardModalKind = "logo" | "timeline" | "mentors" | "photo";
 // External, opened in a new tab.
 export interface CardLink { label: string; href: string }
 
+// A demo video in a card's modal (components/card/CardVideo), drawn right after the paragraph it
+// sits beside (beside indexes modal.blocks). src and poster are files in public; width and height
+// are the video's pixels; label is its accessible name, in my words.
+export interface CardVideoRef { src: string; poster: string; width: number; height: number; label: string; beside: number }
+
 // Blocks carry **bold**, *italic* and the inline link markup (lib/content/links.ts).
 export interface CardModal {
   kind: CardModalKind;
@@ -94,6 +99,7 @@ export interface CardModal {
   links: readonly CardLink[];
   photos: readonly ModalPhoto[];
   blocks: readonly string[];
+  video?: CardVideoRef;
 }
 
 export interface CardContent {

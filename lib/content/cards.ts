@@ -79,7 +79,14 @@ export const cards: Cards = {
       "**HackTX, fall 2026.** Built Muse Friends, a feature proposal for Meta's Muse where your Muse and your friend's Muse turn an abandoned Reel into an actual plan, and you both just say yes. It challenged me to think deeply about agent-to-agent communication and planning where hallucinations aren't an option.",
       "**Hook 'Em Hacks, spring 2026.** Won the finance track with the first build and MVP/Proof of Concept of min/Max.",
       "**Vercel one-day hackathon, New York.** Where I started Talos.",
-    ] },
+    ], video: {
+      src: "/media/hackathons/muse-friends-demo.mp4",
+      poster: "/media/hackathons/muse-friends-demo-poster.jpg",
+      width: 1280,
+      height: 720,
+      label: "A 38-second demo of Muse Friends, the feature I built at HackTX.",
+      beside: 2,
+    } },
   },
   anthropic: {
     short: "Anthropic", visual: { kind: "logo", logo: logos.anthropic, tile: "plain" },

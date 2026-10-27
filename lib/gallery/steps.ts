@@ -17,7 +17,7 @@ export function cardSteps(gallery: Gallery, layout: "rows" | "pager", flying: bo
     flown: flying && layout === "rows" ? gallery.lead : undefined,
     hasCaption: (photo) => gallery.photos[photo]?.caption != null,
     hasLinks: siteContent.cards[gallery.key].modal.links.length > 0,
-    after: gallery.key === "talos" ? TALOS_AFTER : undefined,
+    after: gallery.key === "talos" ? TALOS_AFTER : videoAfter(gallery),
     trailing: gallery.key === "mentorship" && siteContent.cards.mentorship.mentors.people.length > 0 ? [partId.mentors] : gallery.key === "talos" ? [partId.talos] : [],
     lines,
   };
@@ -29,6 +29,14 @@ export function cardSteps(gallery: Gallery, layout: "rows" | "pager", flying: bo
 // once when nothing does (a book row, a touch tap), so the panel never sits
 // empty waiting for a flight that is not coming.
 export const maskStartMs = (flying: boolean) => (flying ? GALLERY.mask.landingMs : 0);
+
+// A card's demo video masks in right after the paragraph it sits beside, with it.
+export function videoAfter(gallery: Gallery): Readonly<Record<number, readonly string[]>> | undefined {
+  const video = siteContent.cards[gallery.key].modal.video;
+  if (!video) return undefined;
+  const unit = gallery.words.findIndex((word) => word.kind === "block" && word.index === video.beside);
+  return unit < 0 ? undefined : { [unit]: [partId.video] };
+}
 
 // What follows each of Talos's opening paragraphs: the sting after the first,
 // the Discord channel after the second (components/card/talosParts).

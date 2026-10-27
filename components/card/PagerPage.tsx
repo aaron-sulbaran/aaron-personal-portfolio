@@ -8,6 +8,7 @@ import { GALLERY } from "@/lib/gallery/constants";
 import { slideWords, type Page, type StageKind } from "@/lib/gallery/plan";
 import { partId } from "@/lib/gallery/timing";
 import { PAGER_PHOTO_SIZES } from "@/lib/photoSizes";
+import { afterWords } from "./afterWords";
 import { CardLinks } from "./CardLinks";
 import { MentorsList } from "./MentorsList";
 import { PhoneRotator } from "./PhoneRotator";
@@ -70,9 +71,7 @@ export function PagerPage({ gallery, page, index, count, kind, stage, current, p
           data-scrolls={scrolls ? "" : undefined}
         >
           <div className="flex flex-col gap-4 pb-6">
-            {slideWords(page).map((unit) => (
-              <Words key={unit} gallery={gallery} unit={unit} compact />
-            ))}
+            {slideWords(page).map((unit) => [<Words key={unit} gallery={gallery} unit={unit} compact />, afterWords(gallery, unit, false)])}
             {page.links && gallery.key === "mentorship" && <MentorsList compact />}
             {page.links && <CardLinks cardKey={gallery.key} />}
           </div>

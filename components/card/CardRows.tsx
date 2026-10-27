@@ -10,7 +10,7 @@ import { CloseHint } from "./CloseHint";
 import { MentorsList } from "./MentorsList";
 import { RotatingPhoto } from "./RotatingPhoto";
 import { StillPhoto } from "./StillPhoto";
-import { talosAfter } from "./talosParts";
+import { afterWords } from "./afterWords";
 import { TalosTeam } from "./TalosTeam";
 import { Words } from "./Words";
 
@@ -19,7 +19,7 @@ import { Words } from "./Words";
 // photo, or every group of photos taking turns, its own row with its words
 // beside it, vertically centred, the sides alternating from the left; then the
 // closing words, the mentors on Mentorship (Talos's sting and Discord channel among its
-// paragraphs, its team after them), the links and the close hint. A
+// paragraphs, its team after them; a card's video after its paragraph), the links and the close hint. A
 // vertical photo is drawn in one box and a horizontal one in another, and a
 // photo narrower than the card's photo column sits against the panel's edge,
 // so the words keep one place on each side. A card with no photos has no rows,
@@ -37,7 +37,7 @@ export function CardRows({ gallery, renderMedia, flying }: Props) {
   const prose = (unit: number) => (
     <div key={`words-${unit}`} className={gallery.key === "talos" ? "flex flex-col" : undefined} style={{ maxWidth: GALLERY.proseMaxWidth, rowGap: GALLERY.proseGap }}>
       <Words gallery={gallery} unit={unit} />
-      {gallery.key === "talos" && talosAfter(unit, flying)}
+      {afterWords(gallery, unit, flying)}
     </div>
   );
   const row = (slide: Slide, i: number) => {
@@ -60,9 +60,7 @@ export function CardRows({ gallery, renderMedia, flying }: Props) {
           )}
         </div>
         <div className="flex min-w-0 flex-1 flex-col gap-4" style={{ maxWidth: GALLERY.textWidth }} data-text-column="">
-          {slideWords(slide).map((unit) => (
-            <Words key={unit} gallery={gallery} unit={unit} />
-          ))}
+          {slideWords(slide).map((unit) => [<Words key={unit} gallery={gallery} unit={unit} />, afterWords(gallery, unit, flying)])}
         </div>
       </div>
     );

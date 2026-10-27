@@ -2,7 +2,7 @@ import type { Gallery } from "@/lib/gallery/card";
 import { CardHeader } from "./CardHeader";
 import { CardLinks } from "./CardLinks";
 import { CloseHint } from "./CloseHint";
-import { talosAfter } from "./talosParts";
+import { afterWords } from "./afterWords";
 import { TalosTeam } from "./TalosTeam";
 import { Words } from "./Words";
 
@@ -17,7 +17,7 @@ export function CardWords({ gallery, renderMedia, flying }: { gallery: Gallery; 
       <div className="flex flex-col gap-4">
         {gallery.words.map((_, unit) => [
           <Words key={unit} gallery={gallery} unit={unit} compact />,
-          gallery.key === "talos" ? talosAfter(unit, flying) : null,
+          afterWords(gallery, unit, flying),
         ])}
         {gallery.key === "talos" && <TalosTeam compact />}
       </div>
