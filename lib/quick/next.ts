@@ -1,6 +1,6 @@
 import { DEFAULT_NEXT_ID, quickNextVariants, type QuickNextId } from "@/lib/content/quick";
 
-// What I am looking for next, in two places that lead to the same thing without
+// What I am interested in next, in two places that lead to the same thing without
 // repeating word for word: B, a short line under the intro, and A, the full line
 // in the What's next section at the foot of the page, below the rail and apart
 // from it. The lab picks a named variant or writes its own ("custom"). Pure.
@@ -13,7 +13,7 @@ export type NextChoice = QuickNextId | "custom";
 export const NEXT_CHOICES: readonly NextChoice[] = [...quickNextVariants.map((variant) => variant.id), "custom"];
 
 export interface NextLines {
-  // B: finishes "Currently looking for:".
+  // B: finishes "Interested in:".
   short: string;
   // A: the What's next section's sentence.
   full: string;

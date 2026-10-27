@@ -78,7 +78,7 @@ test("talos modal: the order is the title, the first paragraph, the sting, the s
   expect(order).toEqual([...order].sort((a, b) => a - b));
   expect(new Set(order).size).toBe(order.length);
   await expect(dialog.locator("[data-talos-specialists], [data-talos-states]")).toHaveCount(0);
-  await expect(dialog).toContainText("Only one is bronze: needs-you");
+  await expect(dialog).toContainText("Only one is a different color");
 });
 
 for (const [theme, shown, hidden] of [["light", "discord-light", "discord-dark"], ["dark", "discord-dark", "discord-light"]] as const) {

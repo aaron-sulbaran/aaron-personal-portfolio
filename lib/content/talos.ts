@@ -4,7 +4,7 @@ import type { TalosTeam } from "./types";
 // ends on, a screenshot of its Discord channel (the brand sheet's mock, rendered at
 // 2x), and where Talos is headed. The specialists and the reaction legend are kept
 // with their kit files (public/work/logos/talos) but the modal does not draw them
-// now. The paragraphs are drafts for Aaron to edit.
+// now. The two paragraphs are my own words.
 export const talosTeam: TalosTeam = {
   lockup: {
     alt: "The Talos mark: a bronze coin with a T struck into it, and the word Talos",
@@ -20,7 +20,7 @@ export const talosTeam: TalosTeam = {
     width: 1064,
     height: 1974,
   },
-  next: "Next, Talos becomes a team of specialists: mail, school, a war room for deadlines, and a writer. Each runs with only the tools its job needs, and each has its own mark, so I can see which one is talking. They report to Talos, and Talos reports to me.",
+  next: "The next step for Talos is that it becomes a team of specialists for different tasks in my life including mail, school, project manager, and a writing editor. Each one specially tuned to a specific set of tools for its job needs. Each also has its own design, so I can easily see which one needs me and in which channel. This is the next step to making Talos a truly multi-agent system.",
   specialistsLabel: "The Talos specialists",
   specialists: [
     { name: "Talos mail", job: "Reads my inboxes and drafts replies for me to approve.", src: "/work/logos/talos/specialists/mail.svg", alt: "Talos mail's mark" },
@@ -28,7 +28,7 @@ export const talosTeam: TalosTeam = {
     { name: "Talos war room", job: "Keeps track of what's due and what's open this week.", src: "/work/logos/talos/specialists/war-room.svg", alt: "Talos war room's mark" },
     { name: "Talos writer", job: "Drafts the first version of anything I need to write.", src: "/work/logos/talos/specialists/writer.svg", alt: "Talos writer's mark" },
   ],
-  reactions: "Every message gets a reaction, carried by the shape of the figure, never by color, so it reads at any size and for anyone who doesn't see color. Only one is bronze: needs-you, the moment something is waiting on me.",
+  reactions: "Every message gets a custom reaction depending on its status. I designed them to have custom, intentional icons so they're easy to remember, regardless of the size or color for those that can't see it. Only one is a different color to signify the \"needs you\" warning when something needs my okay to move forward.",
   statesLabel: "What each Talos reaction means",
   states: [
     { name: "seen", meaning: "Talos heard you and will answer", src: "/work/logos/talos/states/seen.svg" },

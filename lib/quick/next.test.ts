@@ -3,13 +3,17 @@ import { quickNextVariants } from "@/lib/content/quick";
 import { DEFAULT_CUSTOM_NEXT, NEXT_CHOICES, nextLines, parseNextChoice } from "./next";
 
 describe("what's next", () => {
-  it("ships the two-tracks variant, and offers the four named ones then custom", () => {
-    expect(parseNextChoice(undefined)).toBe("two-tracks");
-    expect(parseNextChoice("nonsense")).toBe("two-tracks");
-    expect(NEXT_CHOICES).toEqual(["two-tracks", "either-way", "builder", "original", "custom"]);
+  it("ships the interests variant, and offers the five named ones then custom", () => {
+    expect(parseNextChoice(undefined)).toBe("interests");
+    expect(parseNextChoice("nonsense")).toBe("interests");
+    expect(NEXT_CHOICES).toEqual(["interests", "two-tracks", "either-way", "builder", "original", "custom"]);
   });
 
   it("keeps the exact words of each variant", () => {
+    expect(nextLines("interests")).toEqual({
+      short: "product, Applied AI, and entrepreneurship",
+      full: "I'm most interested in building consumer products, whether that's as a PM at a company that ships at scale, as an engineer working on Applied AI at a startup or frontier lab, or by taking my own ideas like min/Max further on my own or with the right team. Wherever I land, I know I'll be bringing people with very different skillsets together to build something great.",
+    });
     expect(nextLines("two-tracks")).toEqual({
       short: "product and Applied AI engineering roles",
       full: "I want to build in one of two ways: as a product manager at a company that ships at scale, or as an engineer building Applied AI at a startup or frontier lab.",
@@ -30,7 +34,7 @@ describe("what's next", () => {
 
   it("takes the custom fields, trimmed, and starts them on the shipped variant", () => {
     expect(nextLines("custom", { customShort: "  a short one ", customFull: "A long one.\n" })).toEqual({ short: "a short one", full: "A long one." });
-    expect(DEFAULT_CUSTOM_NEXT).toEqual({ customShort: nextLines("two-tracks").short, customFull: nextLines("two-tracks").full });
+    expect(DEFAULT_CUSTOM_NEXT).toEqual({ customShort: nextLines("interests").short, customFull: nextLines("interests").full });
   });
 
   it("never starts A with Next, which the heading above it already says, and always writes Applied AI in capitals", () => {
