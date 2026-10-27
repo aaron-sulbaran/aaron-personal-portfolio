@@ -197,7 +197,7 @@ const values = {
     // The click's DOM (components/home/DealPulse.tsx): the button's press
     // (scale), and the accent ring that spreads from it across the strip over
     // ringMs, ringStrength its peak opacity (0 is none).
-    click: { pressScale: 0.97, ringMs: 700, ringStrength: 0.5 },
+    click: { pressScale: 0.97, ringMs: 700, ringStrength: 0.8 },
     // The wheel (the ribbon's end state, before the flatten): the 14-card band
     // ring seen from a little above, face up (the spec guessed a lean of about
     // 10 degrees; that reads as a thin band, 18 and a ring 1.3 times the

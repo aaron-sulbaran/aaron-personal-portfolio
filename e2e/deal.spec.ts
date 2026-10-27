@@ -254,6 +254,54 @@ test("deal: Deal me in moves with the cards: a hover eases the ribbon faster and
   expect(Math.abs(off.pitch - rest.pitch), "and its own gaps").toBeLessThan(2);
 });
 
+// The click's ring (components/home/DealPulse.tsx): one soft ring of the accent token that grows from the button,
+// whole at every size: nothing clips it, and it is never taller than the strip above the button.
+for (const viewport of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) {
+  test(`deal: the click sends out one whole ring of the accent from the button, never cut by the layer, at ${viewport.width}`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await openHome(page, { at: "foot" });
+    await page.waitForTimeout(500);
+    const layer = await page.locator("[data-deal-pulse]").evaluate((el) => { const css = getComputedStyle(el); return { overflow: css.overflow, mask: css.maskImage }; });
+    expect(layer.overflow, "the layer clips nothing").toBe("visible");
+    expect(layer.mask, "and masks nothing").toBe("none");
+    // Every frame from the click, with the layer's top and the button's middle of the same frame (the page scrolls itself on a click).
+    await page.evaluate(() => {
+      type Frame = { t: number; width: number; height: number; opacity: number; aboveStrip: number; offCenter: number };
+      const w = window as unknown as { __ring: Frame[] };
+      w.__ring = [];
+      const t0 = performance.now();
+      let first = 0;
+      const tick = () => {
+        const ring = document.querySelector("[data-deal-ring]");
+        if (ring) {
+          first ||= performance.now();
+          const r = ring.getBoundingClientRect();
+          const layerBox = document.querySelector("[data-deal-pulse]")!.getBoundingClientRect();
+          const buttonBox = document.querySelector("[data-deal-button]")!.getBoundingClientRect();
+          w.__ring.push({ t: performance.now() - first, width: r.width, height: r.height, opacity: Number(getComputedStyle(ring).opacity), aboveStrip: layerBox.top - r.top, offCenter: Math.abs(r.top + r.height / 2 - (buttonBox.top + buttonBox.height / 2)) });
+        }
+        if (performance.now() - t0 < 3000) requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    });
+    await dealLink(page).click();
+    await page.waitForTimeout(1500);
+    const ring = await page.evaluate(() => (window as unknown as { __ring: { t: number; width: number; height: number; opacity: number; aboveStrip: number; offCenter: number }[] }).__ring);
+    expect(ring.length, "frames with a ring").toBeGreaterThan(10);
+    // Centered on the button's middle all the way, never above the strip's top (nothing of it is cut), wider than tall.
+    for (const frame of ring.filter((f) => f.width > 30)) {
+      expect(frame.offCenter, "centered on the button, down").toBeLessThan(2.5);
+      expect(frame.aboveStrip, "never above the strip").toBeLessThanOrEqual(2);
+      expect(frame.height / frame.width, "an ellipse, never rounder than 0.9").toBeLessThanOrEqual(0.9 + 0.01);
+    }
+    // It is visible while it spreads: opaque enough, and wide, by about 200 ms; gone at the end.
+    const early = ring.filter((f) => f.t > 120 && f.t < 300);
+    expect(Math.max(...early.map((f) => f.opacity)), "visible by 200 ms").toBeGreaterThan(0.6);
+    expect(Math.max(...early.map((f) => f.width)), "and already wide by 300 ms").toBeGreaterThan(viewport.width * 0.3);
+    expect(ring.at(-1)!.opacity, "gone at the end").toBeLessThan(0.05);
+  });
+}
+
 test("deal: the Coil is unfurled by about 2 s after the click and the columns are in by about 2.6 s", async ({ page }) => {
   await logDeal(page);
   await openHome(page, { at: "foot" });

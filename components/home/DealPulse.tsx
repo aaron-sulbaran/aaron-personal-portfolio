@@ -1,9 +1,10 @@
 import type { CSSProperties, Ref } from "react";
 import type { PulseGeometry } from "@/lib/home/dealPulse";
 
-// The click's ring: a soft accent ring that spreads from "Deal me in" across
-// the strip at page 1's foot (the layer is clipped to it) while the cards rush
-// in. Transform and opacity only, the accent token only, no pointer, hidden
+// The click's ring: one soft accent ring that spreads from "Deal me in" across
+// the strip at page 1's foot while the cards rush in, whole at every size (the
+// layer clips nothing; lib/home/dealPulse.ts keeps it inside the strip's
+// height). Transform and opacity only, the accent token only, no pointer, hidden
 // from assistive tech. The layer is always there (the button measures against
 // it); a ring is added per click and keyed so each click starts a fresh one.
 // Reduced motion shows none (app/globals.css). It renders from IntroCta's state.
@@ -23,6 +24,7 @@ export function DealPulse({ pulse, layerRef, onDone }: { pulse: Pulse | null; la
               "--pulse-x": `${pulse.x}px`,
               "--pulse-y": `${pulse.y}px`,
               "--pulse-size": `${pulse.size}px`,
+              "--pulse-height": `${pulse.height}px`,
               "--pulse-ms": `${pulse.ms}ms`,
               "--pulse-strength": pulse.strength,
             } as CSSProperties
