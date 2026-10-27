@@ -75,6 +75,7 @@ export const cards: Cards = {
       { label: "Muse Friends on GitHub", href: "https://github.com/aaron-sulbaran/muse-friends" },
     ], photos: modalPhotos.hackathons, blocks: [
       "**UFCU Develop U, fall 2026.** Won with UFCU Front Desk, a digital front desk assistant that makes joining a credit union simple and still sounds like them.",
+      "**AWS Agentic AI Hackathon (Austin), fall 2026.** Placed second with a hedge fund management workspace where each fund gets its own AI agent orchestrator, which spawns as many agents as necessary to research, hand work to each other, and share files, all while keeping provenance. It's built on and powered by Amazon Bedrock.",
       "**HackTX, fall 2026.** Built Muse Friends, a feature proposal for Meta's Muse where your Muse and your friend's Muse turn an abandoned Reel into an actual plan, and you both just say yes. It challenged me to think deeply about agent-to-agent communication and planning where hallucinations aren't an option.",
       "**Hook 'Em Hacks, spring 2026.** Won the finance track with the first build and MVP/Proof of Concept of min/Max.",
       "**Vercel one-day hackathon, New York.** Where I started Talos.",

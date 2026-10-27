@@ -62,7 +62,7 @@ describe("the modal photos", () => {
       band: ["block 0", "block 1", "block 2"],
       travel: ["block 0", "block 0", "block 0"],
       "capital-one": ["block 1", "block 2", "block 3"],
-      hackathons: ["block 2", "block 3"],
+      hackathons: ["block 3", "block 4"],
       anthropic: ["block 0", "block 1", "block 1"],
       misuki: ["block 0", "block 1", "block 1"],
       ieee: ["block 0", "block 3", "block 4"],
