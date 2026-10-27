@@ -15,6 +15,7 @@ import { HOLDING_MODE } from "@/lib/holding";
 import { dealInitScript } from "@/lib/home/dealInit";
 import { introLoaderInitScript } from "@/lib/home/introLoaderInit";
 import { introWordsInitScript } from "@/lib/home/introWordsInit";
+import { landingInitScript } from "@/lib/home/landingInit";
 import { slotInitScript } from "@/lib/home/slotInit";
 import { visitedInitScript } from "@/lib/inline/visited";
 import { THEME_BG_DARK, THEME_BG_LIGHT, themeInitScript } from "@/lib/theme";
@@ -69,6 +70,7 @@ export default function RootLayout({
         {!HOLDING_MODE && <script dangerouslySetInnerHTML={{ __html: introLoaderInitScript() }} />}
         {!HOLDING_MODE && <script dangerouslySetInnerHTML={{ __html: introWordsInitScript() }} />}
         {!HOLDING_MODE && <script dangerouslySetInnerHTML={{ __html: slotInitScript() }} />}
+        {!HOLDING_MODE && <script dangerouslySetInnerHTML={{ __html: landingInitScript() }} />}
       </head>
       <body className="font-sans">
         <a href="#main" className="skip-link">

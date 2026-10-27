@@ -21,6 +21,7 @@ import {
   persistScrollPosition,
   readRecovery,
   relandAfterFonts,
+  releaseInstantLanding,
   takeManualScrollRestoration,
 } from "@/lib/home/recovery";
 import { COIL } from "@/lib/coil/constants";
@@ -163,6 +164,7 @@ export function HomeController({ children }: Props) {
     const fast = recovery.deep || reduced || quiet;
     if (recovery.deep) applyRestore(recovery.target);
     const stopReland = relandAfterFonts(recovery.target);
+    const stopLanding = releaseInstantLanding();
     const entering = !fast && entranceClaimsRef.current > 0;
     publishHomeReadiness(entering ? "entering" : "ready");
     // A layout-effect state write re-renders before paint, which is the point:
@@ -171,6 +173,7 @@ export function HomeController({ children }: Props) {
     setDeep(recovery.deep);
     return () => {
       stopReland();
+      stopLanding();
       releaseRestoration();
       releaseReadiness();
     };

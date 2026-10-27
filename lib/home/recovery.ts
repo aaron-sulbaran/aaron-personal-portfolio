@@ -97,6 +97,31 @@ export function applyRestore(target: RestoreTarget | null) {
   else if (target.y != null) window.scrollTo({ top: target.y, behavior: "instant" });
 }
 
+// Takes the instant landing's mark off (lib/home/landingInit.ts) once the page has
+// loaded and its fonts have settled, two frames after the last re-landing, so the
+// stylesheet's smooth scroll is back for everything after. Returns the cleanup.
+export function releaseInstantLanding(): () => void {
+  const root = document.documentElement;
+  if (!root.hasAttribute("data-landing")) return () => {};
+  let disposed = false;
+  let frame = 0;
+  const loaded =
+    document.readyState === "complete" ? Promise.resolve() : new Promise<void>((resolve) => window.addEventListener("load", () => resolve(), { once: true }));
+  Promise.all([loaded, document.fonts?.ready ?? Promise.resolve()])
+    .then(() => {
+      if (disposed) return;
+      frame = requestAnimationFrame(() => {
+        frame = requestAnimationFrame(() => root.removeAttribute("data-landing"));
+      });
+    })
+    .catch(() => root.removeAttribute("data-landing"));
+  return () => {
+    disposed = true;
+    cancelAnimationFrame(frame);
+    root.removeAttribute("data-landing");
+  };
+}
+
 // Font swaps reflow the page under a pixel position, so the restore re-lands
 // once document.fonts settles, but never after the visitor has moved (a small
 // reflow shift beats yanking them back). Returns the cleanup.

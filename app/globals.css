@@ -193,6 +193,11 @@ html {
      weight on top of it. */
   font-synthesis: none;
 }
+/* A link into a section lands instantly, until the page has loaded and the
+   restore's landing has held (lib/home/landingInit.ts). */
+html[data-landing="instant"] {
+  scroll-behavior: auto;
+}
 
 html[data-theme="dark"] {
   color-scheme: dark;
