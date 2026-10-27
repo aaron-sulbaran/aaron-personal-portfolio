@@ -1305,4 +1305,40 @@ html[data-intro-loader="on"] #intro-heading {
     vertical-align: calc(round(0.3182em, 1px) - 0.25rem);
   }
 }
+/* The top fade (components/TopFade.tsx): on narrow screens only, the page's
+   background token fading to nothing over 72px behind the logo and the Menu
+   pill, so scrolling text does not run under them. Under both (z 30; they sit at
+   40, the menu's scrim at 35), no blur, no pointer. It steps aside while the
+   Coil's stage is in the band (data-over-coil: the stage's field would show the
+   cut). The sm breakpoint (640px) is where the logo and the pill grow. */
+.top-fade {
+  display: none;
+}
+@media (max-width: 639.98px) {
+  .top-fade {
+    display: block;
+    position: fixed;
+    inset: 0 0 auto 0;
+    height: 72px;
+    z-index: 30;
+    pointer-events: none;
+    background: linear-gradient(
+      to bottom,
+      var(--color-background) 0%,
+      var(--color-background) 36%,
+      color-mix(in srgb, var(--color-background) 85%, transparent) 54%,
+      color-mix(in srgb, var(--color-background) 50%, transparent) 74%,
+      color-mix(in srgb, var(--color-background) 18%, transparent) 90%,
+      transparent 100%
+    );
+  }
+  .top-fade[data-over-coil] {
+    opacity: 0;
+  }
+}
+@media (max-width: 639.98px) and (prefers-reduced-motion: no-preference) {
+  .top-fade {
+    transition: opacity 180ms linear;
+  }
+}
 /* ---- end page 1 ---- */

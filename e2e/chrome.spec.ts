@@ -115,3 +115,35 @@ test("chrome: after a refresh the stylesheet owns the root's scroll behaviour ag
   await page.emulateMedia({ reducedMotion: "reduce" });
   expect(await behaviour()).toEqual({ inline: "", computed: "auto" });
 });
+
+// A phone's chrome sits over scrolling text with no bar behind it: a soft fade of the page's background
+// token, 72px tall, sits under the logo and the pill (z 30 against their 40, under the menu's scrim at
+// 35), with no blur and no pointer. It steps aside while the Coil's stage is in that band, and it is
+// not there at all from 640px up.
+for (const colorScheme of ["light", "dark"] as const) {
+  test(`chrome: on a phone a ${colorScheme} fade of the page background sits behind the logo and the Menu, steps aside over the Coil, and is gone on a desktop`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openHome(page, { at: "top" });
+    const facts = () =>
+      page.locator("[data-top-fade]").evaluate((el) => {
+        const css = getComputedStyle(el);
+        const box = el.getBoundingClientRect();
+        return { display: css.display, position: css.position, z: css.zIndex, top: box.top, width: box.width, height: box.height, pointer: css.pointerEvents, backdrop: css.backdropFilter, image: css.backgroundImage, opacity: Number(css.opacity), page: getComputedStyle(document.body).backgroundColor };
+      });
+    const phone = await facts();
+    expect(phone).toMatchObject({ display: "block", position: "fixed", z: "30", top: 0, width: 390, height: 72, pointer: "none", backdrop: "none" });
+    expect(phone.image, "a gradient of the page's own background").toContain(phone.page);
+    const mark = await page.locator("[data-mark-trigger]").evaluate((el) => getComputedStyle(el).zIndex);
+    expect(Number(phone.z), "under the logo").toBeLessThan(Number(mark));
+    expect(Number(phone.z), "under the menu's scrim").toBeLessThan(35);
+    expect(phone.opacity, "over page 1's text").toBe(1);
+    // Over the Coil's field it steps aside; past it, it comes back.
+    await scrollToY(page, await page.evaluate(() => document.getElementById("work")!.getBoundingClientRect().top + window.scrollY + 20));
+    await expect.poll(async () => (await facts()).opacity).toBe(0);
+    await scrollToY(page, await page.evaluate(() => document.getElementById("numbers")!.getBoundingClientRect().top + window.scrollY + 40));
+    await expect.poll(async () => (await facts()).opacity).toBe(1);
+    await page.setViewportSize({ width: 1280, height: 800 });
+    expect((await facts()).display, "none from 640px up").toBe("none");
+  });
+}
