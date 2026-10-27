@@ -55,6 +55,6 @@ describe("the ribbon slot's head script", () => {
   });
 
   it("holds no em dash", () => {
-    expect(slotInitScript()).not.toContain("—");
+    expect(slotInitScript()).not.toContain("\u2014");
   });
 });
