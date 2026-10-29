@@ -212,10 +212,14 @@ const values = {
       offsetY: 0,
       anchor: [0.5, 0.5] as const,
       diameterOfHeight: 0.42,
-      // The ribbon and the wheel ride the page until the stage sticks. Over the
-      // last pinKneePx before it sticks they slow on a cubic so their speed
-      // reaches zero as it does (lib/coil/entrance.ts pinKnee; it is what keeps
-      // the stick from being a stop within one frame). 0 is the old catch.
+      // The ribbon and the wheel ride the page until the stage sticks. On the
+      // click, whose own scroll is fast, over the last pinKneePx before it
+      // sticks they slow on a cubic so their speed reaches zero as it does
+      // (lib/coil/entrance.ts pinKnee, as kneeLead brings it in over the
+      // condense and caps it inside the room above the slot; it is what keeps
+      // the stick from being a stop within one frame). By hand there is no
+      // knee: the ribbon is on its slot until the stage sticks, so it never
+      // covers the page's words. 0 is the old catch.
       pinKneePx: 400,
     },
     // The field's opening: a circle anchored on the Coil's middle that grows
