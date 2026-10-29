@@ -1,6 +1,7 @@
 import type { CDPSession, Page } from "@playwright/test";
 import { test, expect } from "./support/fixtures";
-import { openHome } from "./support/coil";
+import { openHome, waitForScene } from "./support/coil";
+import { noWebgl2Api } from "./support/webgl";
 import { COIL } from "@/lib/coil/constants";
 import { siteContent } from "@/lib/content";
 import { coverage, dealFacts, flick, flingStream, startRecording, stopRecording, wheelStream, type Frame } from "./support/cutscene";
@@ -116,6 +117,8 @@ for (const size of SIZES) {
       expect(stays, stays.slice(0, 3).join("; ")).toEqual([]);
       expect(frames[frames.length - 1].deal).toMatch(/unfurled|dealt/);
       expect(await scrollY(page), "nowhere near the end of the page").toBeLessThan(facts.max - 200);
+      // A fine pointer's lock is its listeners alone: the root's overflow (and so a classic scrollbar) is never toggled.
+      if (!size.phone) expect(new Set(frames.map((f) => f.overflow)), "the root's overflow through the cutscene").toEqual(new Set(["visible"]));
       const held = lockSpan(frames);
       test.info().annotations.push({ type: "fling", description: `deal started at scrollY ${dealing[0].y.toFixed(0)}; past page 2's top at most ${pastLanding(frames).toFixed(1)} px; the lock held ${held.heldMs.toFixed(0)} ms` });
     });
@@ -386,3 +389,150 @@ test.describe("the cutscene under a finger (390x844)", () => {
     expect(Math.abs(frames[frames.length - 1].workTop), "the deal's own scroll moved the page to page 2's top under overflow hidden").toBeLessThan(2);
   });
 });
+
+// ---------------------------------------------------------------- what stays as it was
+
+// Every moment <html data-deal-lock> is on, from before the page's own scripts run.
+async function logLock(page: Page) {
+  await page.addInitScript(() => {
+    const w = window as unknown as { __lockSeen: number };
+    w.__lockSeen = 0;
+    new MutationObserver(() => {
+      if (document.documentElement.hasAttribute("data-deal-lock")) w.__lockSeen += 1;
+    }).observe(document, { subtree: true, attributes: true, attributeFilter: ["data-deal-lock"] });
+  });
+}
+const lockSeen = (page: Page) => page.evaluate(() => (window as unknown as { __lockSeen: number }).__lockSeen);
+
+// Layout shifts from the first frame.
+async function recordShifts(page: Page) {
+  await page.addInitScript(() => {
+    const w = window as unknown as { __shifts: number[]; __shiftTimes: number[] };
+    w.__shifts = [];
+    w.__shiftTimes = [];
+    new PerformanceObserver((list) => {
+      for (const entry of list.getEntries() as unknown as { value: number; startTime: number; hadRecentInput: boolean }[]) {
+        if (entry.hadRecentInput) continue;
+        w.__shifts.push(entry.value);
+        w.__shiftTimes.push(entry.startTime);
+      }
+    }).observe({ type: "layout-shift", buffered: true });
+  });
+}
+const shifted = (page: Page) => page.evaluate(() => (window as unknown as { __shifts: number[] }).__shifts.reduce((sum, value) => sum + value, 0));
+
+test.describe("no lock where there is no cutscene", () => {
+  test.describe("reduced motion", () => {
+    test.use({ reducedMotion: "reduce" });
+    test("Deal me in jumps, dealt at once, and the scroll is never held", async ({ page }) => {
+      await logLock(page);
+      await page.goto("/?coildebug=1");
+      await page.waitForFunction(() => document.documentElement.dataset.home === "ready" && document.querySelector("section[data-scene]")?.getAttribute("data-scene") === "still", null, { timeout: 30_000 });
+      await page.locator("[data-intro-cta] a").first().click();
+      await page.waitForFunction(() => Math.abs(document.getElementById("work")!.getBoundingClientRect().top) < 2, null, { timeout: 3000 });
+      expect(await lockSeen(page), "the lock was never taken").toBe(0);
+    });
+  });
+
+  test("a load into /#work opens the cards at once, with no lock", async ({ page }) => {
+    await logLock(page);
+    await page.goto("/?coildebug=1#work");
+    await waitForScene(page);
+    await expect(page.locator("html")).toHaveAttribute("data-deal", "dealt");
+    expect(await lockSeen(page)).toBe(0);
+  });
+
+  test("a Menu link to Work plays the deal as it always did: a page's own scroll is not the reader's, so no lock and no scroll of the deal's own", async ({ page }) => {
+    await logLock(page);
+    await openHome(page, { debug: "flight", at: "top" });
+    await page.getByRole("button", { name: siteContent.menu.ariaLabelOpen }).click();
+    await page.getByRole("dialog").getByRole("link", { name: "Work", exact: true }).click();
+    await expect(page.locator("html")).toHaveAttribute("data-deal", "dealt", { timeout: 20_000 });
+    await page.waitForFunction(() => Math.abs(document.getElementById("work")!.getBoundingClientRect().top) < 130, null, { timeout: 8000 });
+    expect(await lockSeen(page), "the Menu's own smooth scroll is left alone").toBe(0);
+  });
+
+  test("a script's scrollTo into the zone plays the deal without the lock", async ({ page }) => {
+    await logLock(page);
+    await openHome(page, { debug: "flight", at: "foot" });
+    const facts = await dealFacts(page);
+    await page.evaluate((y) => window.scrollTo({ top: y, behavior: "instant" }), facts.stickY + facts.range * 0.3);
+    await expect(page.locator("html")).toHaveAttribute("data-deal", "dealing", { timeout: 5000 });
+    await expect(page.locator("html")).toHaveAttribute("data-deal", "dealt", { timeout: 20_000 });
+    expect(await lockSeen(page)).toBe(0);
+  });
+
+  test("no WebGL: the existing path, the reader's scroll is never held", async ({ page }) => {
+    await logLock(page);
+    await page.addInitScript(noWebgl2Api);
+    await page.goto("/?coildebug=1");
+    await page.waitForFunction(() => document.documentElement.dataset.home === "ready" && document.querySelector("section[data-scene]")?.getAttribute("data-scene") === "still", null, { timeout: 30_000 });
+    await page.locator("[data-intro-cta] a").first().click();
+    await expect(page.locator("html")).toHaveAttribute("data-deal", "dealt", { timeout: 15_000 });
+    expect(await lockSeen(page)).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------- the room, and CLS
+
+// "Back to my cards" had the foot's old room above it before the ribbon's own beat was added (eca8851): 2.5rem on a phone,
+// the story's gap (3rem) from a tablet up. With the ribbon's room closed it has them again.
+for (const size of SIZES) {
+  test.describe(`the foot's room and layout shift at ${size.name}`, () => {
+    test.use({ viewport: size.viewport, hasTouch: !!size.phone, isMobile: !!size.phone });
+    const want = size.phone ? 40 : 48;
+
+    test("with the ribbon's room closed, Back to my cards has the room it had before eca8851", async ({ page }) => {
+      await openHome(page, { debug: "flight", at: "foot" });
+      const room = () =>
+        page.evaluate(() => {
+          const rect = (s: string) => document.querySelector(s)!.getBoundingClientRect();
+          return { cta: rect("[data-intro-cta]").top - rect("[data-intro-late]").bottom, gone: document.querySelector("[data-coil-ribbon]")!.hasAttribute("data-gone") };
+        });
+      const open = await room();
+      expect(open.gone).toBe(false);
+      expect(open.cta, "the foot with the ribbon's room open: the beat above the slot, the slot, the button's gap").toBeGreaterThan(want + 100);
+      await dealLink(page).click();
+      await expect(page.locator("html")).toHaveAttribute("data-deal", "dealt", { timeout: 20_000 });
+      await page.waitForFunction(() => document.querySelector("[data-coil-ribbon]")!.hasAttribute("data-gone"), null, { timeout: 5000 });
+      expect((await room()).cta, "block 4 to the button once the slot is closed").toBeCloseTo(want, 0);
+    });
+
+    test("a load into /#work has the closed foot's room from the first paint", async ({ page }) => {
+      await page.goto("/?coildebug=1#work");
+      await waitForScene(page);
+      await page.waitForTimeout(500);
+      const gap = await page.evaluate(() => document.querySelector("[data-intro-cta]")!.getBoundingClientRect().top - document.querySelector("[data-intro-late]")!.getBoundingClientRect().bottom);
+      expect(gap).toBeCloseTo(want, 0);
+    });
+
+    test("layout shift stays 0 on / and on /#work, and the lock moves nothing: the layout's width is the same through the cutscene", async ({ page, cdp }) => {
+      await recordShifts(page);
+      await openHome(page, { debug: "flight", at: "top" });
+      await page.waitForTimeout(1500);
+      expect(await shifted(page), "cumulative layout shift on / after it has loaded").toBeLessThan(0.001);
+      await page.evaluate(() => ((window as unknown as { __shifts: number[] }).__shifts.length = 0));
+      await fromBlock4(page);
+      const at = middle(size);
+      await cdp.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: at.x, y: at.y });
+      await startRecording(page);
+      await wheelStream(cdp, flingStream(), at);
+      await expect(page.locator("html")).toHaveAttribute("data-deal", "dealt", { timeout: 20_000 });
+      const frames = await stopRecording(page);
+      // The lock never changes the layout's width: no scrollbar comes or goes (a fine pointer's lock is listeners alone; a phone's has overlay scrollbars).
+      expect(new Set(frames.map((f) => f.clientWidth)), "the root's client width through the cutscene").toEqual(new Set([frames[0].clientWidth]));
+      // And no shift is the lock's: none within 100 ms of its being taken or let go.
+      const span = lockSpan(frames);
+      const shifts = await page.evaluate(() => (window as unknown as { __shiftTimes: number[] }).__shiftTimes);
+      for (const at of [frames[span.first].t, frames[span.last].t]) {
+        expect(shifts.filter((t) => t >= at - 50 && t <= at + 100), `layout shifts around the lock at ${Math.round(at)} ms`).toEqual([]);
+      }
+      const second = await page.context().newPage();
+      await recordShifts(second);
+      await second.goto("/?coildebug=1#work");
+      await waitForScene(second);
+      await second.waitForTimeout(1500);
+      expect(await shifted(second), "cumulative layout shift on /#work").toBeLessThan(0.001);
+    });
+  });
+}

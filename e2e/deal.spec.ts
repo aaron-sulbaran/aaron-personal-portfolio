@@ -6,7 +6,8 @@ import { siteContent } from "@/lib/content";
 // The deal (hero rework, slices 2, 4a, 4c and 4d): the cards section is closed
 // until the reader deals, by the button or by scrolling, once per page load; then
 // the ribbon at page 1's foot rushes in toward the button and curls into the
-// wheel, which spins up, the page scrolls itself to the cards (a click only), the
+// wheel, which spins up, the page scrolls itself to the cards (the cutscene: the
+// click's or the reader's own scroll's, e2e/deal-cutscene.spec.ts), the
 // wheel flattens into the band and unfurls into the Coil, the field opens from
 // under it and the columns arrive last, all on one clock. The Coil is the
 // reader's the moment it unfurls, before the columns are in.
@@ -115,7 +116,7 @@ test("deal: the Coil's canvas is a sticky stage whose rail starts above the ribb
   expect(Math.abs((await stageTop()) + 120)).toBeLessThan(2);
 });
 
-test("deal: the reader's wheel during the scroll takes the page back and only the scroll, never the deal", async ({ page }) => {
+test("deal: the reader's wheel during the click's scroll no longer takes the page back: the cutscene holds it to page 2", async ({ page }) => {
   await openHome(page, { at: "foot" });
   await page.mouse.move(720, 450);
   const startY = await page.evaluate(() => window.scrollY);
@@ -123,15 +124,13 @@ test("deal: the reader's wheel during the scroll takes the page back and only th
   // Polled every frame or so: the scroll joins after the rush and runs about a second, so a slow poll could land after it.
   await expect.poll(() => page.evaluate(() => window.scrollY), { timeout: 5000, intervals: [30] }).toBeGreaterThan(startY + 60);
   expect(await page.evaluate(() => document.documentElement.style.scrollBehavior)).toBe("auto");
+  expect(await page.evaluate(() => document.documentElement.hasAttribute("data-deal-lock"))).toBe(true);
   await page.mouse.wheel(0, -200);
-  await page.waitForTimeout(200);
-  const taken = await page.evaluate(() => window.scrollY);
-  await page.waitForTimeout(600);
-  // The tween let go: the page is where the reader left it, not still being carried to the cards.
-  expect(Math.abs((await page.evaluate(() => window.scrollY)) - taken)).toBeLessThan(2);
-  expect(await page.evaluate(() => document.documentElement.style.scrollBehavior)).toBe("");
-  // The deal carried on to its end on its own clock.
+  // The wheel was swallowed: the scroll carried on to the cards section's top, where the page now stays.
+  await page.waitForFunction(() => Math.abs(document.getElementById("work")!.getBoundingClientRect().top) < 2, null, { timeout: 8000 });
+  await expect.poll(() => page.evaluate(() => document.documentElement.style.scrollBehavior), { message: "the root's smooth scroll is put back when the scroll arrives" }).toBe("");
   await expect(html(page)).toHaveAttribute("data-deal", "dealt", { timeout: 20_000 });
+  expect(Math.abs((await rectOf(page, "#work")).top)).toBeLessThan(2);
   expect(await entrances(page)).toBe(1);
 });
 
@@ -147,17 +146,25 @@ test("deal: a stage that leaves the screen mid-deal finishes the deal at once, n
   expect(await opacityOf(page, "#work [data-deal-title]")).toBe(1);
 });
 
-test("deal: scrolling by hand deals, and the page never stops scrolling while it plays", async ({ page }) => {
+test("deal: scrolling by hand deals as a cutscene: the page holds the reader's wheel until the Coil unfurls, then the wheel is theirs again", async ({ page }) => {
   await openHome(page, { at: "top" });
   await scrollDownByHand(page, async () => (await deal(page)) === "dealing", 60);
   expect(await deal(page)).toBe("dealing");
-  // Vertical scroll is never hijacked: no lock on the body, and the wheel still moves the page.
+  // The cutscene holds the reader's input (a listener lock: the body's own overflow is never touched on a desktop).
   expect(await page.evaluate(() => document.body.style.overflow)).not.toBe("hidden");
-  const before = await page.evaluate(() => window.scrollY);
+  expect(await page.evaluate(() => document.documentElement.hasAttribute("data-deal-lock"))).toBe(true);
+  const before = await page.evaluate(() => document.getElementById("work")!.getBoundingClientRect().top);
   await page.mouse.wheel(0, 200);
-  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(before);
+  await page.waitForTimeout(150);
+  // A wheel during it neither adds to the scroll nor takes it back: page 2's top only comes nearer, never past.
+  const during = await page.evaluate(() => document.getElementById("work")!.getBoundingClientRect().top);
+  expect(during).toBeLessThanOrEqual(before + 0.5);
+  expect(during).toBeGreaterThanOrEqual(-0.5);
   await expect(html(page)).toHaveAttribute("data-deal", "dealt", { timeout: 20_000 });
+  expect(await page.evaluate(() => document.documentElement.hasAttribute("data-deal-lock"))).toBe(false);
   expect(await entrances(page)).toBe(1);
+  // The reader has the page again once the Coil is theirs.
+  expect(Math.abs((await rectOf(page, "#work")).top)).toBeLessThan(2);
 });
 
 test("deal: a load with the cards section already in view opens at once, with no deal played", async ({ page }) => {

@@ -22,6 +22,7 @@ export type Frame = {
   blockOpacity: number; // the least opacity of a story block
   lock: string | null; // <html data-deal-lock> when the page carries it
   overflow: string; // the root's computed overflow-y
+  clientWidth: number; // the root's client width (a scrollbar coming or going changes it)
 };
 
 type Recorder = { on: boolean; frames: Frame[] };
@@ -68,6 +69,7 @@ export async function startRecording(page: Page) {
         blockOpacity: blocks.reduce((least, el) => Math.min(least, opacityOf(el)), 1),
         lock: document.documentElement.getAttribute("data-deal-lock"),
         overflow: getComputedStyle(document.documentElement).overflowY,
+        clientWidth: document.documentElement.clientWidth,
       });
     };
     const tick = () => {
