@@ -118,6 +118,37 @@ const values = {
     // past `outAt` of the viewport's height. waitSceneMs: how long the cards
     // wait for a scene still on its way.
     trigger: { enterAtProgress: 0.18, outAt: 0.35, waitSceneMs: 4000 },
+    // The cutscene (Aaron's hand test, 2026-10-29): from the moment the deal
+    // starts, by the reader's scroll or by "Deal me in", until the Coil is
+    // unfurled, the page takes the reader's wheel, touch and scroll keys, and its
+    // own eased scroll brings the page to page 2's top (lib/home/dealLock.ts).
+    // quietMs: after the unfurl the lock lets go only once the reader's input has
+    // been quiet this long, so the tail of a trackpad or touch fling that started
+    // the deal cannot carry on scrolling the page once it ends. capMs: the lock
+    // lets go this long after it took input whatever else happened (a scene that
+    // never starts, a tab hidden mid-deal, an error, an unmount): a page that
+    // never gives the scroll back is the worst failure this can ship.
+    // The hand path's scroll (lib/home/handScroll.ts) takes over at the page's
+    // current speed: velocityWindowMs is the stretch of scroll samples that speed
+    // is read from, staleMs how old the last sample may be before the page counts
+    // as at rest, minLegMs the shortest the leg runs (a fling that has all but
+    // reached the landing), overshootPx the most the page may pass the landing
+    // when a fling has already carried it there (it eases back); the leg never
+    // passes the landing otherwise.
+    // readerWindowMs: how long after a wheel, a scroll key or a scrollbar drag, or
+    // after a touch that moved, a scroll still counts as the reader's own (the OS's
+    // and the browser's own smooth scrolling and momentum outlast the input), as
+    // opposed to a page's own scroll (the Menu's links, an anchor), which plays the
+    // deal without the cutscene as it always did.
+    cutscene: {
+      quietMs: 120,
+      capMs: 3000,
+      velocityWindowMs: 100,
+      staleMs: 90,
+      minLegMs: 100,
+      overshootPx: 24,
+      readerWindowMs: { wheel: 450, key: 700, touch: 2500, scrollbar: 500 },
+    },
     // The deal's one clock, in ms from the click (docs/superpowers/specs/2026-10-22-wheel-deal-motion.md
     // section 2, retimed in slice 4d to be fast: the Coil is unfurled about 2.0 s
     // after the click and the columns are in about 2.6 s). The ribbon rushes in

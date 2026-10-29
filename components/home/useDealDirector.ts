@@ -7,7 +7,10 @@ import type { HeroScene } from "@/lib/coil/heroStill";
 import { claimDealMirror, dealTrigger, dispatchDeal, getDeal, subscribeDeal, type DealSource } from "@/lib/home/deal";
 import { setDealStarter } from "@/lib/home/dealFlow";
 import { entranceTuningOf, getKnobs } from "@/lib/home/dealKnobs";
+import { takeDealLock, type DealLock } from "@/lib/home/dealLock";
 import { createDealMaster, type DealMaster } from "@/lib/home/dealMaster";
+import { scrollVelocity, type ScrollSample } from "@/lib/home/handScroll";
+import { attachReaderInput, type ReaderInput } from "@/lib/home/readerInput";
 import { finishIntroArrival } from "@/lib/home/introArrivalEnd";
 import { clearOpen, openParts, prepareOpen, type OpenParts } from "@/lib/home/dealOpen";
 import { stageGone, stickyProgress } from "@/lib/home/stickyRange";
@@ -18,12 +21,23 @@ import { stageGone, stickyProgress } from "@/lib/home/stickyRange";
 // (lib/home/deal.ts dealTrigger, pure and tested) or when "Deal me in" is
 // clicked (lib/home/dealFlow.ts calls the starter registered here), and
 // plays it as one master timeline (lib/home/dealMaster.ts): the Coil's own
-// clock, the teaser's text, the page's scroll (a click only) and the columns.
-// It says when the deal is over.
+// clock, the teaser's text, the page's scroll and the columns. It says when the
+// deal is over.
 //
-// The reader's own scroll is never taken: by hand it only reads it, and on a
-// click the page's scroll is a child of the master that the reader's wheel,
-// touch or key kills alone.
+// With the scene drawing, the deal is a cutscene (docs/coil-input-model.md,
+// docs/superpowers/specs/2026-10-22-wheel-deal-motion.md section 4): from the
+// moment it starts, by a click or by the reader's own scroll past the trigger, to
+// the Coil's unfurl, the page takes the reader's wheel, touch and scroll keys
+// (lib/home/dealLock.ts) and its own eased scroll brings the page to page 2's top,
+// which nothing the reader does can kill or add to. On the reader's scroll it
+// takes over at the page's own speed and direction (lib/home/handScroll.ts), so
+// there is no stop and no start. The lock lets go after the unfurl, once the
+// reader's input has been quiet for a moment (the tail of the fling that started
+// it never reaches the page), and at the latest a few seconds after it took
+// input, whatever happened. It is for the reader's scroll and the click only: a
+// page's own scroll that crosses the trigger (a Menu link, an anchor) plays the
+// deal as it always did, and so does a deal with no scene (the still path), whose
+// click scroll the reader's wheel, touch or key still takes back.
 
 const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
@@ -57,6 +71,11 @@ export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance 
   const sceneWait = useRef<{ timer: number; over: boolean } | null>(null);
   const evaluateRef = useRef<() => void>(() => {});
   const beginRef = useRef<(source: DealSource) => boolean>(() => false);
+  // The cutscene's lock (it outlives the session by its tail), what the reader's input
+  // has been, and the page's recent scroll positions (the speed the hand leg starts at).
+  const lockRef = useRef<DealLock | null>(null);
+  const readerRef = useRef<ReaderInput | null>(null);
+  const samples = useRef<ScrollSample[]>([]);
 
   useEffect(() => {
     live.current = { scene, reducedMotion };
@@ -78,12 +97,21 @@ export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance 
     session.current = null;
   }, []);
 
+  // The cutscene's lock lets go now (a deal that ends some way other than its own end).
+  const dropLock = useCallback(() => {
+    const lock = lockRef.current;
+    lockRef.current = null;
+    lock?.release();
+  }, []);
+
   // The deal is over: the Coil's clock has run out (or there is no scene) and
   // the columns are in. Interactivity (opening a card, the wheel) starts here.
   const maybeFinish = useCallback(() => {
     const current = session.current;
     if (!current || !current.domDone || (current.needsScene && !current.sceneDone)) return;
     endSession();
+    // The deal ran its course: the lock keeps the reader's input out only until it has been quiet.
+    lockRef.current?.unfurled();
     dispatchDeal({ type: "finish" });
   }, [endSession]);
 
@@ -94,10 +122,11 @@ export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance 
   const settle = useCallback(() => {
     const current = session.current;
     endSession();
+    dropLock();
     current?.master?.finish();
     setEntrance(AT_REST);
     dispatchDeal({ type: "skip" });
-  }, [endSession, setEntrance]);
+  }, [dropLock, endSession, setEntrance]);
 
   // Starts the deal; false when it cannot yet (the scene is on its way, so the
   // cards section stays closed meanwhile).
@@ -139,6 +168,21 @@ export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance 
       // the Coil's own clock runs the deal, a scene still on its way included
       // (it starts at its first frame).
       const mode = sceneState === "still" ? "fade" : "scene";
+      // The cutscene: with the scene drawing, a click or the reader's own scroll (not
+      // a page's own, which plays the deal as it always did) holds the reader's input
+      // until the Coil is unfurled. Taken before anything else of the deal runs.
+      const now = performance.now();
+      const cutscene = mode === "scene" && (source === "click" || (source === "scroll" && (readerRef.current?.driving(now) ?? false)));
+      const velocity = cutscene && source === "scroll" ? scrollVelocity(samples.current, now) : 0;
+      if (cutscene) {
+        dropLock();
+        const lock = takeDealLock((why) => {
+          if (lockRef.current === lock) lockRef.current = null;
+          // A lock that let go early (the cap, a hidden tab) leaves the page to the reader: the deal's scroll stops where it is.
+          if (why === "cap" || why === "hidden") session.current?.master?.stopScroll();
+        });
+        lockRef.current = lock;
+      }
       const parts = openParts(section);
       prepareOpen(parts, mode);
       const next: Session = { master: null, parts, needsScene: mode === "scene", sceneDone: false, domDone: false, stageSeen: false, safety: 0 };
@@ -147,7 +191,7 @@ export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance 
         parts,
         mode,
         knobs,
-        scroll: source === "click",
+        scroll: source === "click" ? { kind: "click", holds: cutscene } : cutscene ? { kind: "hand", velocity } : null,
         onDone: () => {
           next.domDone = true;
           maybeFinish();
@@ -162,7 +206,7 @@ export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance 
       evaluateRef.current();
       return true;
     },
-    [maybeFinish, sectionRef, setEntrance, settle],
+    [dropLock, maybeFinish, sectionRef, setEntrance, settle],
   );
   useEffect(() => {
     beginRef.current = begin;
@@ -208,12 +252,25 @@ export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance 
     maybeFinish();
   }, [maybeFinish]);
 
-  // The reader's scroll, read (never written).
+  // The reader's own input, read (never written): whose scroll a scroll is.
+  useEffect(() => {
+    const { input, detach } = attachReaderInput();
+    readerRef.current = input;
+    return () => {
+      detach();
+      readerRef.current = null;
+    };
+  }, []);
+
+  // The page's scroll, read (never written here): which way it goes and how fast.
   useEffect(() => {
     direction.current.y = window.scrollY;
     let frame = 0;
     const onScroll = () => {
       const y = window.scrollY;
+      const rows = samples.current;
+      rows.push({ t: performance.now(), y });
+      if (rows.length > 8) rows.shift();
       if (y !== direction.current.y) direction.current = { y, down: y > direction.current.y };
       if (!frame) {
         frame = requestAnimationFrame(() => {
@@ -238,10 +295,13 @@ export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance 
   useEffect(() => {
     return subscribeDeal(() => {
       const state = getDeal();
+      // The Coil is unfurled: the lock's quiet gap starts (it lets go once the reader's input has been quiet).
+      if (state.unfurled || state.phase === "dealt") lockRef.current?.unfurled();
       if (state.phase === "dealt" && session.current) {
         // Skipped from outside while dealing: put everything in its end state.
         const current = session.current;
         endSession();
+        dropLock();
         current.master?.finish();
         setEntrance(AT_REST);
       } else if (state.phase === "dealt" && state.entrances === 0) {
@@ -250,6 +310,7 @@ export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance 
         // The lab's replay: closed again, the wheel turns, a new entrance waits.
         const current = session.current;
         endSession();
+        dropLock();
         current?.master?.kill();
         const section = sectionRef.current;
         if (section) clearOpen(openParts(section));
@@ -257,7 +318,7 @@ export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance 
       }
       evaluateRef.current();
     });
-  }, [endSession, sectionRef, setEntrance]);
+  }, [dropLock, endSession, sectionRef, setEntrance]);
 
   useEffect(() => {
     evaluateRef.current();
@@ -277,19 +338,21 @@ export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance 
     if (!reducedMotion) return;
     const current = session.current;
     endSession();
+    dropLock();
     current?.master?.finish();
     setEntrance(AT_REST);
     dispatchDeal({ type: "reduced" });
-  }, [reducedMotion, endSession, setEntrance]);
+  }, [reducedMotion, dropLock, endSession, setEntrance]);
 
   useEffect(
     () => () => {
       const current = session.current;
       endSession();
+      dropLock();
       current?.master?.kill();
       if (sceneWait.current) window.clearTimeout(sceneWait.current.timer);
     },
-    [endSession],
+    [dropLock, endSession],
   );
 
   return { completeScene, settle };

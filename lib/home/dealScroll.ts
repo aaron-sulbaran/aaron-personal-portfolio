@@ -1,11 +1,16 @@
 import type { gsap as Gsap } from "gsap";
 import { gsap } from "@/lib/gsap";
+import type { HandPlan } from "@/lib/home/handScroll";
 
 // The deal's scroll: the page scrolls itself from where the reader is to the
-// top of the cards section, as one child of the deal's master timeline. Never
-// a hijack: the reader's own wheel, touch or key takes the scroll back
-// (ScrollToPlugin's autoKill, which kills only this child, never the deal).
-// Reduced motion jumps.
+// top of the cards section, as one child of the deal's master timeline. In the
+// cutscene (a click or the reader's own scroll with the scene drawing) nothing the
+// reader does can take it back: the lock holds their input for the deal's length
+// (lib/home/dealLock.ts), the click's leg is not autoKill-ed, and the hand path's
+// leg (addHandScroll) takes over at the page's own speed. Without the cutscene
+// (no scene, the fallback click path) the reader's own wheel, touch or key takes
+// the scroll back (ScrollToPlugin's autoKill, which kills only this child, never the
+// deal). Reduced motion jumps.
 const SPEED_PX_PER_S = 1800;
 const MIN_S = 0.6;
 const MAX_S = 1.4;
@@ -50,10 +55,12 @@ export type ScrollChild = {
 };
 
 // Adds the scroll to the master at `startMs`, over `durationMs`, power2.inOut.
-export function addDealScroll(master: ReturnType<typeof Gsap.timeline>, top: number, startMs: number, durationMs: number, onEnd?: () => void): ScrollChild {
+// `autoKill`: the reader's own scroll takes it back (off in the cutscene, whose
+// lock keeps the reader's input out and whose leg nothing else may stop).
+export function addDealScroll(master: ReturnType<typeof Gsap.timeline>, top: number, startMs: number, durationMs: number, onEnd?: () => void, autoKill = true): ScrollChild {
   const hold = holdSmoothScrollOff(onEnd);
   const tween = gsap.to(window, {
-    scrollTo: { y: top, autoKill: true, onAutoKill: hold.end },
+    scrollTo: { y: top, autoKill, onAutoKill: hold.end },
     duration: durationMs / 1000,
     ease: "power2.inOut",
     onStart: hold.start,
@@ -67,6 +74,30 @@ export function addDealScroll(master: ReturnType<typeof Gsap.timeline>, top: num
     kill() {
       tween.kill();
       hold.end();
+    },
+  };
+}
+
+// The hand path's leg: the page takes over from the reader's own scroll at its
+// current speed (lib/home/handScroll.ts plans the curve) and eases to the landing.
+// It starts with the deal (the master's zero) and writes the position itself, an
+// instant scroll each tick, so the root's smooth scroll never smooths a step and
+// there is nothing to put back.
+export function addHandScroll(master: ReturnType<typeof Gsap.timeline>, plan: HandPlan, y0: number, landing: number): ScrollChild {
+  const progress = { e: 0 };
+  const tween = gsap.to(progress, {
+    e: 1,
+    duration: plan.durationMs / 1000,
+    ease: plan.ease,
+    onUpdate: () => window.scrollTo({ top: y0 + (landing - y0) * progress.e, behavior: "instant" }),
+  });
+  // Made on the global timeline, moved into the master at its zero (the label "scroll").
+  master.addLabel("scroll", 0);
+  master.add(tween, "scroll");
+  return {
+    kill() {
+      // A child of the master: the master's length is the clock proxy's, so it is not shortened.
+      tween.kill();
     },
   };
 }

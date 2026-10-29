@@ -880,6 +880,21 @@ section[data-scene="on"] [data-coil-stage] {
 html[data-deal] section[data-scene="off"] [data-coil-stage] {
   opacity: 0;
 }
+/* The deal's cutscene holds the reader's scroll from the moment it starts until the
+   Coil is unfurled (lib/home/dealLock.ts sets data-deal-lock on <html> for that
+   long). On a desktop the lock is its listeners alone: a scrollbar that came and
+   went would shift the layout. On a phone the browser's own momentum outlasts the
+   finger and ignores preventDefault once it lifts, so the root stops scrolling
+   (overflow hidden: the page's own scrollTo, which is the deal's scroll, still moves
+   it) and takes no new touch as a scroll (touch-action none). Overlay scrollbars
+   there: nothing shifts. */
+@media (pointer: coarse) {
+  html[data-deal-lock] {
+    overflow: hidden;
+    touch-action: none;
+    overscroll-behavior: none;
+  }
+}
 /* ---- end the deal ---- */
 
 /* ---- page 1 (hero rework, slice 3) ---- */
