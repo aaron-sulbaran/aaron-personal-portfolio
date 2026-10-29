@@ -77,7 +77,7 @@ describe("the modal photos", () => {
       band: ["Me with my section, the low reeds.", "Practicing back when I was just a section leader for the low reeds.", "Right after a competition run, seeing my friends and laughing."],
       travel: ["Me at Mount Fuji on my second trip to Japan.", "Me at the Museum of the Future in Dubai.", "Me in Cartagena, Colombia."],
       "capital-one": ["Me at my first internship, the Analyst Early Internship Program.", "Me with my co-interns my second summer.", "Me in New York City for my final Capital One internship."],
-      hackathons: ["My team and me at Amazon's Austin office, the day we placed second at the AWS Agentic AI Hackathon, October 2026.", "Me at Hook 'Em Hacks, winning.", "Me at a one-day Vercel hackathon in New York City."],
+      hackathons: ["My team and I at Amazon's Austin office for the AWS AI Hackathon.", "Me at Hook 'Em Hacks, winning.", "Me at a one-day Vercel hackathon in New York City."],
       anthropic: ["Me, my co-ambassadors and the judges at Hooked on Claude, our hackathon.", "Me teaching a live Claude session for Longhorn Neurotech.", "Me teaching during one of our learning sessions."],
       misuki: ["Me and Misuki outside Gregory Gym.", "Misuki breaks down on me (a lot), but I keep her going.", "Owning a manual Miata is part of why I went to the Mazda Museum in Hiroshima, where I saw the real Mazda 787B that won Le Mans in 1991."],
       ieee: ["Me at a rock climbing social with IEEE and other engineering orgs.", "Us receiving our Outstanding Large Student Branch plaque.", "Me at my last IEEE Rising Stars conference as president of the chapter."],
