@@ -1,6 +1,7 @@
 import { siteContent } from "@/lib/content";
 import { test, expect } from "./support/fixtures";
 import { openCardFromBook } from "./support/cards";
+import { shoot } from "./support/pixels";
 
 // The Hackathons card (2026-10-27): the AWS photo beside its paragraph, with its caption; (2026-10-29) the modal's media
 // alternating sides, the Muse Friends demo among them in the photos' 4:3 frame.
@@ -146,10 +147,17 @@ test.describe("on a phone", () => {
     expect(frame.x).toBeGreaterThanOrEqual(stage.x - 1);
     expect(frame.x + frame.width).toBeLessThanOrEqual(stage.x + stage.width + 1);
     expect(frame.width, "nearly the page's width").toBeGreaterThan(280);
-    // Its native controls are laid out at the size it is drawn (not a few pixels wide), and a press on it plays.
     const box = (await player.boundingBox())!;
     expect(box.width / box.height).toBeCloseTo(16 / 9, 1);
     expect(box.width).toBeGreaterThan(280);
+    // Its native controls are laid out at the width it is drawn: the dark scrim under them runs across the whole bottom of the
+    // video (the poster there is pale), not a few pixels at the left as Chrome left it when the controls were attached off screen.
+    const strip = await shoot(page, { x: box.x, y: box.y + box.height - 8, width: box.width, height: 4 });
+    const luma = (share: number) => {
+      const at = (2 * strip.width + Math.floor(share * (strip.width - 1))) * 4;
+      return 0.2126 * strip.rgba[at] + 0.7152 * strip.rgba[at + 1] + 0.0722 * strip.rgba[at + 2];
+    };
+    for (const share of [0.3, 0.6, 0.85]) expect(luma(share), `the scrim at ${share} of the width`).toBeLessThan(110);
     await next.click();
     await page.waitForTimeout(700);
     await expect(pages.nth(3)).toContainText("Hook 'Em Hacks");

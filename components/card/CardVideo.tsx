@@ -17,8 +17,9 @@ import type { GalleryVideo } from "@/lib/gallery/card";
 // Chrome lays out its native controls once and does not redo it while the video
 // is off screen, so a video on a phone pager page that is not the current one
 // showed a control bar a few pixels wide when turned to. Each time the video
-// comes into view, unless it is playing or focused, its controls are attached
+// is mostly in view, unless it is playing or focused, its controls are attached
 // again so they are laid out at the size it is drawn.
+const SEEN = 0.5;
 const BARS: CSSProperties = { backgroundColor: "color-mix(in srgb, var(--color-foreground) 6%, var(--color-background))" };
 
 export function CardVideo({ video, label }: { video: GalleryVideo; label: string }) {
@@ -27,15 +28,20 @@ export function CardVideo({ video, label }: { video: GalleryVideo; label: string
     const element = ref.current;
     if (!element) return;
     let frame = 0;
-    const observer = new IntersectionObserver((entries) => {
-      if (!entries.some((entry) => entry.isIntersecting)) return;
-      if (!element.paused || document.activeElement === element) return;
-      element.controls = false;
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => {
-        element.controls = true;
-      });
-    });
+    // Only once it is mostly in view: a page sliding in touches the edge (an intersection of ratio 0) while it is still
+    // off screen, and attaching then leaves the controls as cramped as before.
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((entry) => entry.isIntersecting && entry.intersectionRatio >= SEEN)) return;
+        if (!element.paused || document.activeElement === element) return;
+        element.controls = false;
+        cancelAnimationFrame(frame);
+        frame = requestAnimationFrame(() => {
+          element.controls = true;
+        });
+      },
+      { threshold: [SEEN, 1] },
+    );
     observer.observe(element);
     return () => {
       observer.disconnect();
