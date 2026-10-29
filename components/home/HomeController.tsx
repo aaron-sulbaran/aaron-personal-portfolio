@@ -51,8 +51,11 @@ import { Portal } from "@/components/Portal";
 // scene as a new `entrance`), and nothing opens (a card, the wheel, a hover)
 // until it is over, apart from the Coil itself, which takes the wheel and the
 // pointer the moment it is unfurled. The Coil's canvas is a sticky stage that
-// starts at page 1's foot (the rail below). The deal never locks the scroll: on a click its own
-// scroll is one the reader's wheel, touch or key takes back.
+// starts at page 1's foot (the rail below). With the scene drawing the deal is a
+// cutscene: a click or the reader's own scroll past the trigger holds the
+// reader's wheel, touch and scroll keys until the Coil is unfurled, and the
+// deal's own eased scroll brings the page to page 2 (the director, and
+// lib/home/dealLock.ts); that lock is not the entrance lock below.
 //
 // Nothing here renders per frame: the scene reads what it needs once per
 // change, and the per-frame state lives in the scene's own loop.
@@ -152,8 +155,9 @@ export function HomeController({ children }: Props) {
   // The lock: when a scene claims the entrance the phase is "entering" from
   // here and the scroll lock covers it, releasing once when it completes.
   // Nothing claims it: the deal gates the section with its own state (the
-  // Coil is not interactive and no title answers until it is dealt) because
-  // the deal must never lock the reader's scroll, so the page is ready at once.
+  // Coil is not interactive and no title answers until it is dealt), and the
+  // deal's own, shorter hold on the reader's scroll is the cutscene's lock
+  // (lib/home/dealLock.ts), so the page is ready at once.
   useIsoLayoutEffect(() => {
     const releaseReadiness = claimHomeReadiness();
     const releaseRestoration = takeManualScrollRestoration();

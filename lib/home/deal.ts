@@ -12,10 +12,12 @@ import { COIL } from "@/lib/coil/constants";
 //             that the Coil takes the wheel the moment it is unfurled (below)
 //   dealt     at rest; the cards are the reader's
 //
-// What triggers each step is pure (dealTrigger, tested): a click plays the
-// deal with its own scroll, the reader scrolling far enough into the sticky
-// stage's range plays it without one, and a load with the section already in
-// view deals at once. Reduced motion starts dealt (no spin, no flight, no
+// What triggers each step is pure (dealTrigger, tested): a click or the
+// reader scrolling far enough into the sticky stage's range plays the deal, and
+// with the scene drawing either is the cutscene (the page holds the reader's
+// scroll until the Coil is unfurled and its own eased scroll brings the page to
+// page 2: components/home/useDealDirector.ts); a load with the section already
+// in view deals at once. Reduced motion starts dealt (no spin, no flight, no
 // opening) but not spent: the teaser keeps its invitation until the reader
 // deals.
 
