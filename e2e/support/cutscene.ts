@@ -147,16 +147,11 @@ export async function wheelStream(cdp: CDPSession, stream: readonly (readonly [n
   await Promise.all(sent);
 }
 
-// A finger on a phone: down at `from`, moves of `steps` over `ms`, up. Returns
-// once the touchEnd is acknowledged. The browser's own fling (momentum) follows
-// on its compositor, as it does for a real flick.
-export async function touchDrag(cdp: CDPSession, from: Point, dy: number, { ms = 300, steps = 12 }: { ms?: number; steps?: number } = {}) {
-  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: from.x, y: from.y }] });
-  for (let i = 1; i <= steps; i++) {
-    await sleep(ms / steps);
-    await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: from.x, y: from.y + (dy * i) / steps }] });
-  }
-  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+// A finger flick on a phone: from `from`, `distance` px (negative: the finger goes up the screen, the
+// page down) at `speed` px/s, then lifted, so the browser's own momentum follows as it does for a
+// real flick. (DevTools' synthesized gesture: touch events at speed, and the fling after them.)
+export async function flick(cdp: CDPSession, from: Point, distance: number, speed: number) {
+  await cdp.send("Input.synthesizeScrollGesture", { x: from.x, y: from.y, yDistance: distance, speed, gestureSourceType: "touch", preventFling: false });
 }
 
 // Where the page's sticky range runs, in scroll position, and where the deal lands.
