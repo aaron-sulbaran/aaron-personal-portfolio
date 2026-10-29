@@ -1078,47 +1078,8 @@ html[data-slot="closed"] .intro-foot__ribbon,
 .intro-foot:has([data-coil-ribbon][data-gone]) .intro-foot__ribbon {
   display: none;
 }
-/* The click's ring and press (components/home/IntroCta.tsx, DealPulse.tsx): the
-   layer covers page 1's foot, the whole viewport wide, above the stage's canvas
-   (which paints the cards); it clips nothing. The ring is one ellipse centered on
-   the button that spreads from nothing to the strip's farther side while it
-   fades, a soft band of the accent token (never a color of its own) whose peak is
-   the ring's strength. It is as tall as the strip is above the button, so it is
-   whole at every size and nothing cuts it. The button's press is a keyframe of
-   the press scale and a spring past it. Transform and opacity only; reduced
-   motion has neither. */
-.deal-pulse {
-  position: absolute;
-  inset: 0 -6vw;
-  z-index: 5;
-  pointer-events: none;
-}
-.deal-pulse__ring {
-  position: absolute;
-  left: var(--pulse-x);
-  top: var(--pulse-y);
-  width: var(--pulse-size);
-  height: var(--pulse-height);
-  margin: calc(var(--pulse-height) / -2) 0 0 calc(var(--pulse-size) / -2);
-  border-radius: 9999px;
-  background: radial-gradient(
-    closest-side,
-    transparent 0%,
-    transparent 84%,
-    color-mix(in srgb, var(--color-accent) calc(var(--pulse-strength) * 40%), transparent) 91%,
-    color-mix(in srgb, var(--color-accent) calc(var(--pulse-strength) * 100%), transparent) 96%,
-    transparent 100%
-  );
-  opacity: 0;
-  transform: scale(0.03);
-  will-change: transform, opacity;
-  animation: deal-pulse var(--pulse-ms, 700ms) cubic-bezier(0.23, 1, 0.32, 1) forwards;
-}
-@keyframes deal-pulse {
-  0% { opacity: 0; transform: scale(0.03); }
-  12% { opacity: 1; animation-timing-function: cubic-bezier(0.32, 0, 0.67, 0); }
-  100% { opacity: 0; transform: scale(1); }
-}
+/* The click's press (components/home/IntroCta.tsx): the button's keyframe of the
+   press scale and a spring past it. Transform only; reduced motion has none. */
 [data-deal-press][data-pressed] {
   animation: deal-press 520ms cubic-bezier(0.23, 1, 0.32, 1);
 }
@@ -1129,9 +1090,6 @@ html[data-slot="closed"] .intro-foot__ribbon,
   100% { transform: scale(1); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .deal-pulse {
-    display: none;
-  }
   [data-deal-press][data-pressed] {
     animation: none;
   }

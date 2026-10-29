@@ -26,12 +26,12 @@ describe("the deal's knobs", () => {
   });
 
   it("clamps a value to its range and ignores what is not a knob", () => {
-    const clamped = clampKnobs({ openMs: 99_999, scrollMs: -5, flattenMs: 900, notAKnob: 3, riffleMs: 800, glowSize: 1, settleMs: 5 });
+    const clamped = clampKnobs({ openMs: 99_999, scrollMs: -5, flattenMs: 900, notAKnob: 3, riffleMs: 800, glowSize: 1, settleMs: 5, clickRingMs: 700, clickRingStrength: 0.8 });
     expect(clamped.openMs).toBe(KNOB_SPEC.openMs.max);
     expect(clamped.scrollMs).toBe(KNOB_SPEC.scrollMs.min);
     expect(clamped.flattenMs).toBe(900);
-    // Not knobs: unknown keys and the retired deck, riffle, glow and settle ones.
-    for (const gone of ["notAKnob", "riffleMs", "glowSize", "settleMs"]) expect(gone in clamped, gone).toBe(false);
+    // Not knobs: unknown keys and the retired deck, riffle, glow, settle and click ring ones (a saved lab record may still hold them).
+    for (const gone of ["notAKnob", "riffleMs", "glowSize", "settleMs", "clickRingMs", "clickRingStrength"]) expect(gone in clamped, gone).toBe(false);
   });
 
   it("falls back to the base for a non-finite number, a string or a wrong type", () => {
@@ -49,9 +49,8 @@ describe("the deal's knobs", () => {
     expect(tuning.ribbon).toEqual({ cardHeightPx: COIL.deal.ribbon.cardHeightPx, cardHeightPhonePx: COIL.deal.ribbon.cardHeightPhonePx, gapPx: COIL.deal.ribbon.gapPx, speedPxPerS: COIL.deal.ribbon.speedPxPerS, fadeWidthPx: COIL.deal.ribbon.fadeWidthPx, offsetYPx: COIL.deal.ribbon.offsetYPx, hoverSpeedFactor: COIL.deal.ribbon.hoverSpeedFactor, hoverTighten: COIL.deal.ribbon.hoverTighten, hoverEaseMs: COIL.deal.ribbon.hoverEaseMs, gatherPitch: COIL.deal.ribbon.gatherPitch });
     expect(tuning.timeline).toMatchObject({ condenseMs: COIL.deal.timeline.condenseMs, curlMs: COIL.deal.timeline.curlMs, condensePower: COIL.deal.timeline.condensePower, windRampMs: COIL.deal.timeline.windRampMs });
     expect(tuning.open).toEqual({ ms: 1200, reach: 0.8 });
-    // The click's ring is DOM, not the scene's: its knobs stay out of the tuning, and default to the constants'.
-    expect(DEFAULT_KNOBS.clickRingMs).toBe(COIL.deal.click.ringMs);
-    expect(DEFAULT_KNOBS.clickRingStrength).toBe(COIL.deal.click.ringStrength);
+    // The click's press is DOM, not the scene's: the button presses to 0.97. Its pile is the ribbon's gather pitch.
+    expect(COIL.deal.click).toEqual({ pressScale: 0.97 });
     expect(DEFAULT_KNOBS.ribbonGatherPitch).toBe(COIL.deal.ribbon.gatherPitch);
     // The defaults are COIL itself, so an untouched lab changes nothing.
     expect(tunedConstants(entranceTuningOf(DEFAULT_KNOBS))).toBe(COIL);

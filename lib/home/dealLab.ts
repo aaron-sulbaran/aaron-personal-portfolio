@@ -18,8 +18,6 @@ export const DEAL_LAB_KNOBS: readonly NumericKnob[] = [
   "ribbonHoverTighten",
   "ribbonHoverEaseMs",
   "ribbonGatherPitch",
-  "clickRingMs",
-  "clickRingStrength",
   "condenseMs",
   "condensePower",
   "curlMs",
