@@ -19,7 +19,7 @@ import { Words } from "./Words";
 // photo, or every group of photos taking turns, its own row with its words
 // beside it, vertically centred, the sides alternating from the left; then the
 // closing words, the mentors on Mentorship (Talos's sting and Discord channel among its
-// paragraphs, its team after them; a card's video after its paragraph), the links and the close hint. A
+// paragraphs, its team after them), the links and the close hint. A card's demo video is a row's media like a photo (lib/gallery/card). A
 // vertical photo is drawn in one box and a horizontal one in another, and a
 // photo narrower than the card's photo column sits against the panel's edge,
 // so the words keep one place on each side. A card with no photos has no rows,

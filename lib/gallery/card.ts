@@ -8,7 +8,9 @@ import { galleryPlan, groupedPlan, namedPlan, type Plan } from "./plan";
 // on a photo card), the word units they sit beside, Aaron's plan, and the
 // desktop panel's width; and the header's tile and meta line by layout.
 
-export interface GalleryPhoto { src: string; width: number; height: number; alt: string; caption: string | null; captionShort: string | null; beside?: number }
+// A demo video drawn in the place of a photo (components/card/CardVideo): the file, its poster and its own pixels.
+export interface GalleryVideo { src: string; poster: string; width: number; height: number }
+export interface GalleryPhoto { src: string; width: number; height: number; alt: string; caption: string | null; captionShort: string | null; beside?: number; video?: GalleryVideo }
 export type WordUnit = { kind: "block"; index: number } | { kind: "entry"; index: number };
 export interface Gallery { key: CardKey; photos: readonly GalleryPhoto[]; lead: number | undefined; words: readonly WordUnit[]; plan: Plan; aspects: readonly number[]; panelWidth: number; slot: number }
 
@@ -17,6 +19,11 @@ export interface Gallery { key: CardKey; photos: readonly GalleryPhoto[]; lead: 
 // (the final pass); every other photo card keeps the lab's round six rule, as
 // Aaron picked it.
 const NAMED: ReadonlySet<CardKey> = new Set<CardKey>(["band", "travel"]);
+
+// A card's demo video is media like its photos: it sits beside the paragraph it names and takes its turn on a
+// side of the rows, in the photos' 4:3 frame (a 16:9 video is letterboxed inside it, components/card/CardVideo).
+// Its src is the poster, so a group that ever held it would still draw an image.
+const VIDEO_FRAME = { width: 4, height: 3 };
 
 const cache = new Map<CardKey, Gallery>();
 
@@ -33,6 +40,9 @@ export function galleryOf(key: CardKey): Gallery {
       src: photo.src, width: photo.width, height: photo.height, alt: photo.alt, caption: photo.caption, captionShort: photo.captionShort ?? null,
       beside: photo.block !== undefined ? photo.block : blocks.length + photo.timeline,
     })),
+    ...(modal.video
+      ? [{ src: modal.video.poster, ...VIDEO_FRAME, alt: modal.video.label, caption: null, captionShort: null, beside: modal.video.beside, video: { src: modal.video.src, poster: modal.video.poster, width: modal.video.width, height: modal.video.height } }]
+      : []),
   ];
   const lead = picture ? 0 : undefined;
   const words = [...blocks, ...entries];

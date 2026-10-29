@@ -32,7 +32,7 @@ describe("each card's gallery", () => {
       talos: [],
       travel: [{ photos: [0], words: [0] }, { photos: [1, 2, 3], words: [1] }],
       "capital-one": [{ photos: [0], words: [1] }, { photos: [1], words: [2] }, { photos: [2], words: [3] }],
-      hackathons: [{ photos: [0], words: [0] }, { photos: [1], words: [1, 2] }, { photos: [2], words: [3] }, { photos: [3], words: [4] }],
+      hackathons: [{ photos: [0], words: [0] }, { photos: [1], words: [1] }, { photos: [4], words: [2] }, { photos: [2], words: [3] }, { photos: [3], words: [4] }],
       anthropic: [{ photos: [0], words: [0] }, { photos: [1, 2], words: [1] }],
       misuki: [{ photos: [0], words: [0] }, { photos: [1, 2, 3], words: [1] }],
       ieee: [{ photos: [0], words: [0, 1] }, { photos: [1], words: [2, 3] }, { photos: [2], words: [4] }],
@@ -44,6 +44,22 @@ describe("each card's gallery", () => {
     expect(Object.fromEntries(keys.map((key) => [key, [galleryOf(key).plan.intro, galleryOf(key).plan.closing]]))).toMatchObject({
       "capital-one": [[0], [4]], hackathons: [[], []], jobs: [[0, 1, 2, 3], []], "min-max": [[0], []], talos: [[0, 1], []], "this-site": [[0], []], fsdatalink: [[0, 1], []], band: [[], []], travel: [[], []],
     });
+  });
+
+  it("draws the Hackathons card's demo video as media in the photos' 4:3 frame, beside its own paragraph, each piece of media a row of its own", () => {
+    const { photos, plan, words, aspects } = galleryOf("hackathons");
+    const video = siteContent.cards.hackathons.modal.video!;
+    const index = photos.findIndex((photo) => photo.video);
+    expect(index, "the video is the last of the card's media").toBe(photos.length - 1);
+    expect(photos[index]).toMatchObject({ alt: video.label, caption: null, beside: video.beside, video: { src: video.src, poster: video.poster, width: video.width, height: video.height } });
+    expect(aspects[index], "in the 4:3 frame, whatever the file's own shape").toBeCloseTo(4 / 3, 6);
+    expect(photos.filter((photo) => photo.video)).toHaveLength(1);
+    // One media a row, in the order of the paragraphs they sit beside: UFCU picture, AWS photo, HackTX video, Hook 'Em photo, Vercel photo.
+    expect(plan.slides.map((slide) => slide.photos)).toEqual([[0], [1], [index], [2], [3]]);
+    expect(plan.slides.map((slide) => slide.own)).toEqual(words.map((_, unit) => unit));
+    expect(plan.slides[2].own, "beside the HackTX paragraph").toBe(video.beside);
+    // Every row alternates sides from the left (components/card/CardRows), so no two consecutive media share one.
+    expect(plan.slides.map((_, i) => (i % 2 === 0 ? "left" : "right"))).toEqual(["left", "right", "left", "right", "left"]);
   });
 
   it("gives every photo row of every card a word, the card picture never taking turns, unless the card has no word to give", () => {

@@ -9,8 +9,8 @@ import { axisOf, releaseOf, rubberBand, type Axis, type PagerAction } from "@/li
 // either end) and turns one page on release; vertically it moves the panel
 // and closes the modal past the flick, else springs back; a vertical drag on
 // words that scroll is theirs. A press anywhere on the pager holds a turning
-// group until the pointer comes up (pressing). A press on a button or a link
-// is theirs.
+// group until the pointer comes up (pressing). A press on a button, a link or
+// a video (its controls, its seek bar) is theirs.
 
 type Drag = { id: number; x: number; y: number; axis: Axis | null; lastX: number; lastY: number; lastT: number; velocity: number; scrolls: boolean };
 type Options = { index: number; count: number; reduced: boolean; dispatch: (action: PagerAction) => void; onDismiss: () => void };
@@ -42,7 +42,7 @@ export function usePagerDrag(rootRef: RefObject<HTMLElement | null>, { index, co
     if (e.pointerType === "mouse" && e.button !== 0) return;
     setPressing(true);
     const target = e.target as HTMLElement;
-    if (target.closest("button, a")) return;
+    if (target.closest("button, a, video")) return;
     const text = target.closest<HTMLElement>("[data-pager-text]");
     drag.current = { id: e.pointerId, x: e.clientX, y: e.clientY, axis: null, lastX: e.clientX, lastY: e.clientY, lastT: e.timeStamp, velocity: 0, scrolls: !!text && text.scrollHeight > text.clientHeight + 1 };
   };

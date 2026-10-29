@@ -11,13 +11,14 @@ import { pagerSteps, partId, planSteps, type MaskStep, type StepOptions } from "
 // the flown card parks on the header's tile, which never masks, so the first
 // page's picture masks like any photo. Mentorship's mentors mask after the rows
 // and before the links; Talos's sting follows its first paragraph, its Discord channel
-// its second, and its team's two paragraphs come where the mentors would. lines counts a split part's lines.
+// its second, and its team's two paragraphs come where the mentors would. A card's demo video is one of its
+// photos (lib/gallery/card), so it masks as a photo does. lines counts a split part's lines.
 export function cardSteps(gallery: Gallery, layout: "rows" | "pager", flying: boolean, lines?: (id: string) => number): MaskStep[] {
   const o: StepOptions = {
     flown: flying && layout === "rows" ? gallery.lead : undefined,
     hasCaption: (photo) => gallery.photos[photo]?.caption != null,
     hasLinks: siteContent.cards[gallery.key].modal.links.length > 0,
-    after: gallery.key === "talos" ? TALOS_AFTER : videoAfter(gallery),
+    after: gallery.key === "talos" ? TALOS_AFTER : undefined,
     trailing: gallery.key === "mentorship" && siteContent.cards.mentorship.mentors.people.length > 0 ? [partId.mentors] : gallery.key === "talos" ? [partId.talos] : [],
     lines,
   };
@@ -29,14 +30,6 @@ export function cardSteps(gallery: Gallery, layout: "rows" | "pager", flying: bo
 // once when nothing does (a book row, a touch tap), so the panel never sits
 // empty waiting for a flight that is not coming.
 export const maskStartMs = (flying: boolean) => (flying ? GALLERY.mask.landingMs : 0);
-
-// A card's demo video masks in right after the paragraph it sits beside, with it.
-export function videoAfter(gallery: Gallery): Readonly<Record<number, readonly string[]>> | undefined {
-  const video = siteContent.cards[gallery.key].modal.video;
-  if (!video) return undefined;
-  const unit = gallery.words.findIndex((word) => word.kind === "block" && word.index === video.beside);
-  return unit < 0 ? undefined : { [unit]: [partId.video] };
-}
 
 // What follows each of Talos's opening paragraphs: the sting after the first,
 // the Discord channel after the second (components/card/talosParts).
