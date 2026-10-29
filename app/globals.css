@@ -1082,6 +1082,19 @@ html[data-deal="pending"] .intro-name:not([data-name-canvas]) [data-name-visual]
     margin-top: 7rem;
   }
 }
+/* Once the ribbon's room is closed (the cards are dealt and the reader is below it),
+   the foot has the room it had before the ribbon's own: "Back to my cards" sits a
+   paragraph's gap under block 4, not the beat the ribbon wanted above it. */
+html[data-slot="closed"] .intro-foot,
+.intro-foot:has([data-coil-ribbon][data-gone]) {
+  margin-top: 2.5rem;
+}
+@media (min-width: 768px) {
+  html[data-slot="closed"] .intro-foot,
+  .intro-foot:has([data-coil-ribbon][data-gone]) {
+    margin-top: var(--story-gap, 3rem);
+  }
+}
 .intro-foot__ribbon {
   width: 100%;
   display: flex;
