@@ -13,7 +13,8 @@ export type DealKnobs = {
   // The ribbon (COIL.deal.ribbon): the first screen's drifting row.
   ribbonCardHeightPx: number;
   ribbonCardHeightPhonePx: number;
-  ribbonGapPx: number;
+  ribbonGapPx: number; // between cards on a desktop or a tablet
+  ribbonGapPhonePx: number; // between cards on a phone-wide canvas (under COIL.deal.ribbon.phoneBelowPx)
   ribbonSpeedPxPerS: number;
   ribbonFadeWidthPx: number;
   ribbonOffsetYPx: number; // the row's vertical nudge from its slot
@@ -60,7 +61,8 @@ export type KnobSpec = { label: string; group: string; min: number; max: number;
 export const KNOB_SPEC: Record<NumericKnob, KnobSpec> = {
   ribbonCardHeightPx: { label: "Card height, desktop", group: "Ribbon", min: 80, max: 320, step: 5, unit: "px" },
   ribbonCardHeightPhonePx: { label: "Card height, phone", group: "Ribbon", min: 60, max: 240, step: 5, unit: "px" },
-  ribbonGapPx: { label: "Gap between cards", group: "Ribbon", min: 0, max: 80, step: 2, unit: "px" },
+  ribbonGapPx: { label: "Gap between cards, desktop", group: "Ribbon", min: 0, max: 120, step: 2, unit: "px" },
+  ribbonGapPhonePx: { label: "Gap between cards, phone", group: "Ribbon", min: 0, max: 120, step: 2, unit: "px" },
   ribbonSpeedPxPerS: { label: "Drift speed", group: "Ribbon", min: 0, max: 120, step: 1, unit: " px/s" },
   ribbonFadeWidthPx: { label: "Edge fade width", group: "Ribbon", min: 0, max: 300, step: 4, unit: "px" },
   ribbonOffsetYPx: { label: "Vertical nudge", group: "Ribbon", min: -200, max: 200, step: 4, unit: "px" },
@@ -100,6 +102,7 @@ export const DEFAULT_KNOBS: DealKnobs = {
   ribbonCardHeightPx: D.ribbon.cardHeightPx,
   ribbonCardHeightPhonePx: D.ribbon.cardHeightPhonePx,
   ribbonGapPx: D.ribbon.gapPx,
+  ribbonGapPhonePx: D.ribbon.gapPhonePx,
   ribbonSpeedPxPerS: D.ribbon.speedPxPerS,
   ribbonFadeWidthPx: D.ribbon.fadeWidthPx,
   ribbonOffsetYPx: D.ribbon.offsetYPx,
@@ -159,6 +162,7 @@ export function entranceTuningOf(knobs: DealKnobs): EntranceTuning {
       cardHeightPx: knobs.ribbonCardHeightPx,
       cardHeightPhonePx: knobs.ribbonCardHeightPhonePx,
       gapPx: knobs.ribbonGapPx,
+      gapPhonePx: knobs.ribbonGapPhonePx,
       speedPxPerS: knobs.ribbonSpeedPxPerS,
       fadeWidthPx: knobs.ribbonFadeWidthPx,
       offsetYPx: knobs.ribbonOffsetYPx,

@@ -275,7 +275,8 @@ export function solveGeometry(viewport: Viewport, cardCount: number, c: CoilCons
   // cards on) outside the canvas plus a card on each side.
   const ribbonCardPx = canvas.width < rb.phoneBelowPx ? rb.cardHeightPhonePx : rb.cardHeightPx;
   const ribbonCardWidth = ribbonCardPx * c.cardAspect;
-  const ribbonGapPx = Math.max(rb.gapPx, (canvas.width + 2 * ribbonCardWidth) / cardCount - ribbonCardWidth);
+  const ribbonBaseGapPx = canvas.width < rb.phoneBelowPx ? rb.gapPhonePx : rb.gapPx;
+  const ribbonGapPx = Math.max(ribbonBaseGapPx, (canvas.width + 2 * ribbonCardWidth) / cardCount - ribbonCardWidth);
   const ribbonAnchorY = ribbonCy !== null ? wheelAnchor.y : rb.anchorY;
 
   return {

@@ -4,7 +4,7 @@ import { DEAL_LAB_GROUPS, DEAL_LAB_KNOBS, dealLabValues } from "@/lib/home/dealL
 
 describe("the deal's lab knobs", () => {
   it("has a slider for every moving part of the table in the spec, each in a group the panel shows", () => {
-    for (const key of ["peakCardsPerSecond", "coarsePeakCardsPerSecond", "upMs", "textOutMs", "scrollStartMs", "scrollMs", "flattenStartMs", "flattenMs", "slowStartMs", "slowMs", "pullStartMs", "pullMs", "openStartMs", "openMs", "openReach", "columnsDelayMs", "columnsStaggerMs", "ribbonCardHeightPx", "ribbonCardHeightPhonePx", "ribbonGapPx", "ribbonSpeedPxPerS", "ribbonFadeWidthPx", "ribbonOffsetYPx", "condenseMs", "curlMs", "condensePower", "ribbonHoverSpeedFactor", "ribbonHoverTighten", "ribbonHoverEaseMs", "wheelPinKneePx", "windRampMs", "wheelLeanDeg", "wheelScale", "wheelOffsetX", "wheelOffsetY"] as const) {
+    for (const key of ["peakCardsPerSecond", "coarsePeakCardsPerSecond", "upMs", "textOutMs", "scrollStartMs", "scrollMs", "flattenStartMs", "flattenMs", "slowStartMs", "slowMs", "pullStartMs", "pullMs", "openStartMs", "openMs", "openReach", "columnsDelayMs", "columnsStaggerMs", "ribbonCardHeightPx", "ribbonCardHeightPhonePx", "ribbonGapPx", "ribbonGapPhonePx", "ribbonSpeedPxPerS", "ribbonFadeWidthPx", "ribbonOffsetYPx", "condenseMs", "curlMs", "condensePower", "ribbonHoverSpeedFactor", "ribbonHoverTighten", "ribbonHoverEaseMs", "wheelPinKneePx", "windRampMs", "wheelLeanDeg", "wheelScale", "wheelOffsetX", "wheelOffsetY"] as const) {
       expect(DEAL_LAB_KNOBS, key).toContain(key);
     }
     for (const key of DEAL_LAB_KNOBS) expect(DEAL_LAB_GROUPS as readonly string[], key).toContain(KNOB_SPEC[key].group);

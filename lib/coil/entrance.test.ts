@@ -557,9 +557,23 @@ describe("the ribbon (page 1's foot)", () => {
       const cardW = geo.ribbon.cardPx * COIL.cardAspect;
       const pitch = cardW + geo.ribbon.gapPx;
       expect(pitch * geo.cardCount, `at ${w}`).toBeGreaterThanOrEqual(w + 2 * cardW - 1e-6);
-      expect(geo.ribbon.gapPx).toBeGreaterThanOrEqual(COIL.deal.ribbon.gapPx);
+      expect(geo.ribbon.gapPx).toBeGreaterThanOrEqual(w < COIL.deal.ribbon.phoneBelowPx ? COIL.deal.ribbon.gapPhonePx : COIL.deal.ribbon.gapPx);
       expect(ribbonHoverPitch(geo) * geo.ribbon.cardPx * geo.cardCount, `the hover's pitch at ${w}`).toBeGreaterThanOrEqual(w + 2 * cardW - 1e-6);
     }
+  });
+
+  it("takes the gap by the canvas's width: the phone's under phoneBelowPx, the desktop's from it (the wrap's wider gap aside)", () => {
+    const rb = COIL.deal.ribbon;
+    expect(phoneGeo.ribbon.gapPx).toBe(rb.gapPhonePx);
+    expect(wideGeo.ribbon.gapPx).toBe(rb.gapPx);
+    for (const [w, gap] of [[rb.phoneBelowPx - 1, rb.gapPhonePx], [rb.phoneBelowPx, rb.gapPx], [768, rb.gapPx], [1024, rb.gapPx]] as const) {
+      const geo = solveGeometry({ width: w, height: 800 }, 14, COIL, { canvas: { width: w, height: 800 } });
+      expect(geo.ribbon.gapPx, `at ${w}`).toBe(gap);
+    }
+    // A knob moves its own width's gap only.
+    const wider = tunedConstants({ ribbon: { gapPhonePx: 60 } });
+    expect(solveGeometry({ width: 390, height: 460 }, 14, wider, { canvas: { width: 390, height: 460 } }).ribbon.gapPx).toBe(60);
+    expect(solveGeometry({ width: 1280, height: 800 }, 14, wider, { canvas: { width: 1280, height: 800 } }).ribbon.gapPx).toBe(rb.gapPx);
   });
 
   it("drifts left at the knob's px per second, as a card rate that is the same however the gaps then close", () => {

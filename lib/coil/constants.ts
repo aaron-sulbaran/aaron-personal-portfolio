@@ -173,12 +173,15 @@ const values = {
     // page leaves for it, nudged by offsetYPx; where the page has no slot it
     // sits at `anchorY` (a share of the canvas's height). The card's height
     // is a knob for a desktop and for a phone-wide canvas (below
-    // phoneBelowPx), the gap between cards another.
+    // phoneBelowPx), the gap between cards another each (gapPx, and gapPhonePx
+    // below it): a gap of about a third of a card's width reads as a contact
+    // sheet, a slow strip wants more than half (design review, 2026-10-29).
     ribbon: {
       cardHeightPx: 170,
       cardHeightPhonePx: 120,
       phoneBelowPx: 640,
-      gapPx: 24,
+      gapPx: 48,
+      gapPhonePx: 32,
       speedPxPerS: 20,
       fadeWidthPx: 120,
       offsetYPx: 0,

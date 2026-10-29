@@ -11,6 +11,7 @@ export const DEAL_LAB_KNOBS: readonly NumericKnob[] = [
   "ribbonCardHeightPx",
   "ribbonCardHeightPhonePx",
   "ribbonGapPx",
+  "ribbonGapPhonePx",
   "ribbonSpeedPxPerS",
   "ribbonFadeWidthPx",
   "ribbonOffsetYPx",
