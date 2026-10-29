@@ -14,18 +14,24 @@ export type RibbonBox = {
   // How far the "Deal me in" button's middle sits from the canvas's middle across, px: the
   // row gathers toward it at the click.
   buttonDx: number;
+  // The room above the slot, px: from block 4's foot (the late grid's bottom) to the slot's
+  // top. The ribbon's lead on the click stays inside it. Null when it was not measured.
+  roomAbove: number | null;
 };
 
-export const NO_RIBBON: RibbonBox = { cy: null, buttonDx: 0 };
+export const NO_RIBBON: RibbonBox = { cy: null, buttonDx: 0, roomAbove: null };
 
 export function measureRibbon(host: HTMLElement): RibbonBox {
   const rail = host.closest("[data-coil-rail]")?.getBoundingClientRect();
   if (!rail) return NO_RIBBON;
   const slot = document.querySelector("[data-coil-ribbon]")?.getBoundingClientRect();
   const button = document.querySelector("[data-deal-button]")?.getBoundingClientRect();
+  const late = document.querySelector("[data-intro-late]")?.getBoundingClientRect();
   const stage = host.getBoundingClientRect();
+  const placed = slot && slot.height > 0;
   return {
-    cy: slot && slot.height > 0 ? slot.top + slot.height / 2 - rail.top : null,
+    cy: placed ? slot.top + slot.height / 2 - rail.top : null,
     buttonDx: button && button.width > 0 ? button.left + button.width / 2 - (stage.left + stage.width / 2) : 0,
+    roomAbove: placed && late ? Math.max(0, slot.top - late.bottom) : null,
   };
 }

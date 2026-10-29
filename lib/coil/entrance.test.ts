@@ -17,6 +17,7 @@ import {
   isBeforeEntrance,
   isEntering,
   isRested,
+  kneeLead,
   openProgress,
   outOfBandAlpha,
   pullCurve,
@@ -466,6 +467,59 @@ describe("the wheel's slow-down into the stage's sticking", () => {
   it("is carried on the clock, and is 0 where the clock has none", () => {
     expect(entranceClock(0).dyPx).toBe(0);
     expect(entranceClock(0, COIL, { dyPx: -30 }).dyPx).toBe(-30);
+  });
+});
+
+describe("the ribbon's lead on the click (the knee, click path only)", () => {
+  const K = COIL.deal.wheel.pinKneePx;
+  const RAMP = COIL.deal.timeline.condenseMs;
+  // Where the knee leads most: a third of its length before the stick, 4K/27 up.
+  const MOST = (4 * K) / 27;
+
+  it("is no lead at all before the click, however near the stick the page is: the ribbon is on its slot", () => {
+    for (let x = 1; x < K; x += 7) {
+      expect(kneeLead(x, K, Number.NEGATIVE_INFINITY, RAMP, null), `x ${x}`).toBe(0);
+      expect(kneeLead(x, K, -300, RAMP, null), `x ${x}`).toBe(0);
+      expect(kneeLead(x, K, 0, RAMP, null), `x ${x}`).toBe(0);
+    }
+  });
+
+  it("is the whole knee once the condense has run, and none outside the knee", () => {
+    for (const x of [1, 20, K / 3, K / 2, K - 1]) expect(kneeLead(x, K, RAMP, RAMP, null), `x ${x}`).toBeCloseTo(pinKnee(x, K), 9);
+    expect(kneeLead(K / 3, K, 10_000, RAMP, null)).toBeCloseTo(-MOST, 9);
+    for (const x of [K, K * 2, 0, -40]) expect(kneeLead(x, K, RAMP, RAMP, null), `x ${x}`).toBe(0);
+    expect(kneeLead(K / 3, 0, RAMP, RAMP, null)).toBe(0);
+  });
+
+  it("comes in over the condense as a smoothstep, so a click inside the knee does not step the row", () => {
+    const x = K / 3;
+    let last = 0;
+    for (let ms = 1; ms <= RAMP; ms += 8) {
+      const lead = kneeLead(x, K, ms, RAMP, null);
+      expect(lead, `ms ${ms}`).toBeLessThanOrEqual(last + 1e-9);
+      expect(last - lead, `step at ${ms} ms`).toBeLessThan(1.5);
+      last = lead;
+    }
+    expect(kneeLead(x, K, RAMP / 2, RAMP, null)).toBeCloseTo(-MOST / 2, 6);
+    expect(Math.abs(kneeLead(x, K, 5, RAMP, null))).toBeLessThan(0.05);
+  });
+
+  it("never exceeds the cap: inside the room above the slot, whatever the knee asks", () => {
+    for (const cap of [0, 10, 40, 56, MOST + 1]) {
+      for (let x = 1; x < K; x += 3) {
+        const lead = kneeLead(x, K, 5 * RAMP, RAMP, cap);
+        expect(-lead, `x ${x}, cap ${cap}`).toBeLessThanOrEqual(cap + 1e-9);
+        expect(lead).toBeLessThanOrEqual(0);
+      }
+    }
+    // A cap above what the knee asks changes nothing; a negative one is no room, not a push down.
+    expect(kneeLead(K / 3, K, RAMP, RAMP, 500)).toBeCloseTo(-MOST, 9);
+    expect(kneeLead(K / 3, K, RAMP, RAMP, -20)).toBe(0);
+  });
+
+  it("fits the room the page leaves above the slot on a desktop and on a phone, a breath short (7rem and 4.5rem, less 16 px)", () => {
+    expect(MOST).toBeLessThan(112 - 16);
+    expect(MOST).toBeGreaterThan(72 - 16 - 8);
   });
 });
 

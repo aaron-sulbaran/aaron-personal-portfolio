@@ -1,5 +1,5 @@
 import { dealOffsetAt, dealOmega, dealSpeedOf, integrateDealSpeed, sceneMs } from "@/lib/coil/dealSpeed";
-import { entranceClock, entranceHelix, fieldMask, pinKnee, tunedConstants, type EntranceTuning } from "@/lib/coil/entrance";
+import { entranceClock, entranceHelix, fieldMask, kneeLead, tunedConstants, type EntranceTuning } from "@/lib/coil/entrance";
 import { FIELD } from "@/lib/coil/field.glsl";
 import { clamp01, type HelixFrame } from "@/lib/coil/geometry";
 import { siteEase } from "@/lib/coil/motion";
@@ -31,6 +31,8 @@ import type { CoilEntrance } from "./types";
 // Slice 7: a rotation (or a resize across the narrow line) rebuilds the whole
 // frame; the cards and the name fade back in over this, so nothing pops.
 const REBUILD_FADE_MS = 450;
+// The click's lead stops this far short of the paragraph above the ribbon's slot.
+const LEAD_BREATH_PX = 16;
 
 type Curve = { table: Float32Array; firstMs: number; base: number; atPull: number };
 type Tuned = ReturnType<typeof tunedConstants>;
@@ -161,14 +163,20 @@ export function createEntrance(ctx: SceneCtx) {
   }
 
   // How far the ribbon (and then the wheel) sits off its slot as the stage
-  // sticks (lib/coil/entrance.ts pinKnee): read from the rail's live place, only
-  // while it is still the wheel (a forced frame is the same wherever the page is
-  // scrolled).
+  // sticks (lib/coil/entrance.ts kneeLead): read from the rail's live place, on the
+  // click's path only, and only while it is still the wheel (a forced frame is the
+  // same wherever the page is scrolled). Before the click the ribbon is exactly on
+  // its slot, so it never covers the page's words; the lead is capped inside the
+  // room above the slot, a breath short of it.
   function slotDy(ms: number, c: Tuned) {
     if (flags.forcedEntranceMs !== null || c.deal.wheel.pinKneePx <= 0) return 0;
     if (ms >= c.deal.timeline.flattenStartMs + c.deal.timeline.flattenMs) return 0;
     if (rail === undefined) rail = ctx.host.closest("[data-coil-rail]");
-    return rail ? pinKnee(rail.getBoundingClientRect().top, c.deal.wheel.pinKneePx) : 0;
+    if (!rail) return 0;
+    const room = st.ribbon.roomAbove;
+    const cap = room === null ? null : room - LEAD_BREATH_PX;
+    // `ms` is the scene's clock, zero at the end of the condense: the click was condenseMs before.
+    return kneeLead(rail.getBoundingClientRect().top, c.deal.wheel.pinKneePx, ms + c.deal.timeline.condenseMs, c.deal.timeline.condenseMs, cap);
   }
 
   // The hover's hold on the ribbon, eased each frame until the click and held

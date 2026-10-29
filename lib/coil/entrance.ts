@@ -233,6 +233,24 @@ export function pinKnee(railTopPx: number, kneePx: number): number {
   return (2 * x * x) / kneePx - (x * x * x) / (kneePx * kneePx) - x;
 }
 
+// How far the ribbon (and then the wheel) leads its slot, px (up is negative), on
+// the click path only. By hand the ribbon tracks its slot exactly (the stage rides
+// the page with it until it sticks, then it is stuck), so there is no lead and
+// nothing for the ribbon to cover. The click's own scroll moves fast, and there
+// the knee is what keeps the stick from being a stop within one frame: it comes
+// in over the condense (a smoothstep from the click, so a click inside the knee
+// does not step the row), `sinceClickMs` is the time from the click (minus
+// infinity before it), and it never exceeds `capPx`, which the scene sets to less
+// than the room above the slot, so even the click never carries the ribbon onto
+// the paragraph above it. `capPx` of null is no cap (the room was not measured).
+export function kneeLead(railTopPx: number, kneePx: number, sinceClickMs: number, rampMs: number, capPx: number | null): number {
+  if (!Number.isFinite(sinceClickMs) || sinceClickMs <= 0) return 0;
+  const t = Math.min(1, sinceClickMs / Math.max(1, rampMs));
+  const lead = pinKnee(railTopPx, kneePx) * (t * t * (3 - 2 * t));
+  // (`+ 0` turns a capped -0 into 0.)
+  return (capPx === null ? lead : Math.max(lead, -Math.max(0, capPx))) + 0;
+}
+
 // ---------------------------------------------------------------- the pull
 
 // Frame level: the band's winding, radius, rise, card size and lean pulled

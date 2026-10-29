@@ -1047,17 +1047,24 @@ html[data-deal="pending"] .intro-name:not([data-name-canvas]) [data-name-visual]
     margin-block: var(--story-gap, 3rem);
   }
 }
+/* The foot is the call to action, a beat of its own after the story: room above
+   the ribbon's slot (4.5rem on a phone, 7rem from a tablet up; the story's own
+   paragraph gaps stay at --story-gap) and the button a little way below it (2rem,
+   2.5rem). The cards of the stage's ribbon are as tall as the slot and the button's
+   place while the stage is stuck is derived from the foot's gap
+   (components/home/useStageLead.ts), so a gap changed here moves both. */
 .intro-foot {
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1.5rem;
-  margin-top: 2.5rem;
+  gap: 2rem;
+  margin-top: 4.5rem;
 }
 @media (min-width: 768px) {
   .intro-foot {
-    margin-top: var(--story-gap, 3rem);
+    gap: 2.5rem;
+    margin-top: 7rem;
   }
 }
 .intro-foot__ribbon {
@@ -1069,6 +1076,33 @@ html[data-deal="pending"] .intro-name:not([data-name-canvas]) [data-name-visual]
   position: relative;
   width: 100%;
   height: var(--ribbon-h);
+}
+/* "Deal me in" and its line go with the ribbon while the stage is stuck. The stage
+   sticks with the ribbon at its middle; the page then scrolls on, up to where a
+   scroll starts the deal, and the button, which is below the ribbon, would rise
+   into it. So the button's block sticks (a compositor job, no script per frame)
+   where it was the instant the stage stuck (--cta-stick, set by useStageLead) for
+   the stage's range (--cta-room, the room it may travel: a spacer that the track's
+   negative margin takes back out of the layout). With no stuck stage (reduced
+   motion, no WebGL, the cards dealt) neither variable is set, the pin has no
+   offset and the button is an ordinary block. The track takes no pointer; the
+   button does. */
+.intro-foot__cta-track {
+  position: relative;
+  pointer-events: none;
+  margin-bottom: calc(var(--cta-room, 0px) * -1);
+}
+.intro-foot__cta-pin {
+  position: sticky;
+  top: var(--cta-stick, auto);
+  display: flex;
+  justify-content: center;
+}
+.intro-foot__cta-pin > * {
+  pointer-events: auto;
+}
+.intro-foot__cta-room {
+  height: var(--cta-room, 0px);
 }
 /* The ribbon's room closes once the cards are dealt and the reader has scrolled
    past it (components/home/useSlotRelease.ts). A load that lands below page 1
@@ -1101,7 +1135,7 @@ html[data-slot="closed"] .intro-foot__ribbon,
   inset: 0 -6vw;
   align-items: center;
   justify-content: center;
-  gap: 24px;
+  gap: 48px;
   -webkit-mask-image: linear-gradient(90deg, transparent, #000 120px, #000 calc(100% - 120px), transparent);
   mask-image: linear-gradient(90deg, transparent, #000 120px, #000 calc(100% - 120px), transparent);
 }
@@ -1114,6 +1148,13 @@ html[data-slot="closed"] .intro-foot__ribbon,
 html:not([data-deal]) .ribbon-still,
 body:has(section[data-scene="still"]) .ribbon-still {
   display: flex;
+}
+/* The scene's gap between cards: 48 px, 32 on a phone-wide canvas (COIL.deal.ribbon
+   gapPx, gapPhonePx; phoneBelowPx). */
+@media (max-width: 639px) {
+  .ribbon-still {
+    gap: 32px;
+  }
 }
 /* ---- end page 1 ---- */
 

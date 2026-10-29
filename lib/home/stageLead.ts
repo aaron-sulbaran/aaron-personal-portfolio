@@ -35,3 +35,20 @@ export function stageLeadPx(f: LeadFacts, c: CoilConstants = COIL): number {
   const top = f.slotCenter - stageReachAbove(f.frameHeight, f.canvasWidth, c);
   return Math.max(0, f.sectionTop - top);
 }
+
+// Where "Deal me in" and its line stick while the stage is stuck: how far down the
+// screen the top of the button's block is, px. The stuck ribbon's middle is the
+// stage's reach down the screen (its slot's middle when the stage sticks), its cards
+// are the slot's height, and the button sits the foot's gap below them: the place
+// the button has at the instant the stage sticks. Pinned there it never rises into
+// the ribbon as the reader scrolls on to the point where a scroll starts the deal.
+export type CtaFacts = {
+  frameHeight: number;
+  canvasWidth: number;
+  slotHeight: number; // the ribbon slot's height (its cards')
+  gapPx: number; // the foot's gap between the slot and the button
+};
+
+export function ctaStickPx(f: CtaFacts, c: CoilConstants = COIL): number {
+  return stageReachAbove(f.frameHeight, f.canvasWidth, c) + f.slotHeight / 2 + f.gapPx;
+}

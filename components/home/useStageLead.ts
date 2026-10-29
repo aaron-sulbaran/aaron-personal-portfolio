@@ -4,7 +4,7 @@ import { useEffect, useRef, type RefObject } from "react";
 import type { HeroScene } from "@/lib/coil/heroStill";
 import { getDeal, subscribeDeal } from "@/lib/home/deal";
 import { gsap } from "@/lib/gsap";
-import { stageLeadPx } from "@/lib/home/stageLead";
+import { ctaStickPx, stageLeadPx } from "@/lib/home/stageLead";
 
 // The sticky stage's reach up the page. The Coil's canvas is a stage as tall as
 // the cards section's frame that sticks at the top of the screen; to hold the
@@ -22,6 +22,11 @@ import { stageLeadPx } from "@/lib/home/stageLead";
 // 1's text or its "Back to my cards". A reader already at or past the section's
 // top sees no change; neither does a load that never dealt (a return to the home
 // by client navigation). A replay brings the lead back.
+//
+// "Deal me in" and its line go with the ribbon while the stage is stuck: the same
+// measure puts the button's pin where the button is when the stage sticks, for as
+// long as the stage's range (--cta-stick and --cta-room on page 1's foot), so the
+// page scrolling on from the stick never lifts the button into the ribbon above it.
 
 // The stage's glide down to the section once the deal has let go of it.
 const GLIDE_S = 0.55;
@@ -38,11 +43,25 @@ export function useStageLead(sectionRef: RefObject<HTMLElement | null>, scene: H
     const measure = () => {
       const slot = document.querySelector("[data-coil-ribbon]")?.getBoundingClientRect();
       const frame = section.querySelector("[data-coil-frame]")?.getBoundingClientRect();
+      const foot = document.querySelector<HTMLElement>("[data-intro-foot]");
       let lead = 0;
+      let stick: number | null = null;
       if (slot && frame && !released.current) {
         lead = stageLeadPx({ sectionTop: section.getBoundingClientRect().top, slotCenter: slot.top + slot.height / 2, frameHeight: frame.height, canvasWidth: frame.width });
+        if (foot && slot.height > 0) {
+          stick = ctaStickPx({ frameHeight: frame.height, canvasWidth: frame.width, slotHeight: slot.height, gapPx: parseFloat(getComputedStyle(foot).rowGap) || 0 });
+        }
       }
-      section.style.setProperty("--run-lead", `${Math.round(Math.max(0, lead))}px`);
+      const run = `${Math.round(Math.max(0, lead))}px`;
+      section.style.setProperty("--run-lead", run);
+      // The button goes with the ribbon while the stage is stuck (app/globals.css .intro-foot__cta-pin):
+      // it sticks where it was when the stage stuck, for the stage's own range, and is an ordinary
+      // block again once the stage has no lead.
+      if (foot) {
+        foot.style.setProperty("--cta-room", lead > 0 && stick !== null ? run : "0px");
+        if (lead > 0 && stick !== null) foot.style.setProperty("--cta-stick", `${Math.round(stick)}px`);
+        else foot.style.removeProperty("--cta-stick");
+      }
     };
     const stageEl = () => section.querySelector<HTMLElement>("[data-coil-sticky]");
     const update = () => {
