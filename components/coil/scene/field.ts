@@ -97,9 +97,13 @@ export function createField(ctx: SceneCtx, gl: Gl, init: CompositeInit, fragment
       uGlyphAbs: { value: 0 },
       uGreetFloor: { value: 1 },
       uGreetCap: { value: 0 },
+      uGlyphRows: { value: 0 },
       // ---- end the name ----
     },
   });
+  // The name canvas's solid (lib/coil/nameCanvas.glsl.ts): the name's is its
+  // ink, this very uniform; a page title's fill gives it one of its own.
+  compMaterial.uniforms.uSolidK = compMaterial.uniforms.uNameK;
   const compMesh = new Mesh(quad, compMaterial);
   compMesh.frustumCulled = false;
   compScene.add(compMesh);

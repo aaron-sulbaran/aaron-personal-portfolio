@@ -44,7 +44,7 @@ export function Connect() {
       <div className="mx-auto grid max-w-6xl grid-cols-1 gap-12 md:grid-cols-12 md:gap-16">
         <div className="md:col-span-5">
           <SectionNumber value={PAGE_NUMBERS.connect} className="mb-3" />
-          <SectionHeading>{heading}</SectionHeading>
+          <SectionHeading fill="connect">{heading}</SectionHeading>
           <Block kind="body" as="p" className="mt-5 max-w-md text-base leading-relaxed text-muted md:text-lg" data-wave-words>
             <InlineCopy source={body} />
           </Block>

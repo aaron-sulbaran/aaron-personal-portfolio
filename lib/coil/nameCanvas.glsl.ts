@@ -10,12 +10,18 @@ import { NAME_COMPOSITE_GLSL } from "./field.glsl";
 // gradient (uNameK), the surface growing over it (uSurfIn), the wake, the
 // per-letter minimum and the grain. The output is premultiplied by the letters'
 // coverage.
+//
+// Every page title wears the same fill (components/coil/fill): uSolidK is how
+// much of the solid the letters show before the surface grows over it. The
+// name's is its ink (the same uniform as uNameK: the loader's solid name); a
+// title's is 1 with the solid in the title's own ink and no grain, so the first
+// frame is the DOM text it takes over from.
 export const NAME_ONLY_FRAG = /* glsl */ `
   uniform sampler2D uField, uName;
   uniform vec4 uView, uNameRect;
   uniform vec2 uFull, uNameSpan;
   uniform vec3 uGradTop, uGradBottom;
-  uniform float uNameK, uNameA, uGreetA, uGreetSplit, uLod, uGrain, uDpr;
+  uniform float uNameK, uSolidK, uNameA, uGreetA, uGreetSplit, uLod, uGrain, uDpr;
   float h12(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
   ${NAME_COMPOSITE_GLSL}
 
@@ -35,7 +41,7 @@ export const NAME_ONLY_FRAG = /* glsl */ `
     float gy = clamp((g.y - uNameSpan.x) / uNameSpan.y, 0.0, 1.0);
     vec3 gc = mix(uGradTop, uGradBottom, smoothstep(0.0, 1.0, gy));
     vec2 cell = floor((px - uNameRect.xy) * uDpr);
-    vec3 letters = mix(field, gc + (h12(cell + 17.0) - 0.5) * 2.0 * uGrain, clamp(uNameK, 0.0, 1.0));
+    vec3 letters = mix(field, gc + (h12(cell + 17.0) - 0.5) * 2.0 * uGrain, clamp(uSolidK, 0.0, 1.0));
     if (uSurfIn > 0.0) letters = mix(letters, nameLetters(field, g, greeting), uSurfIn);
     gl_FragColor = vec4(letters * m, m);
   }

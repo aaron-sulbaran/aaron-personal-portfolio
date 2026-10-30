@@ -1015,7 +1015,8 @@ html[data-deal] section[data-scene="off"] [data-coil-stage] {
   color: var(--color-accent);
 }
 /* The name's canvas reaches past the lockup (room for the sheen and the
-   pointer's wake) and takes no pointer. */
+   pointer's wake) and takes no pointer. The fill (components/coil/fill) puts
+   its canvas in this box while the name holds one. */
 .intro-name__canvas {
   position: absolute;
   inset: calc(var(--lk) * var(--name-reach, 0.3) * -1);
@@ -1023,12 +1024,40 @@ html[data-deal] section[data-scene="off"] [data-coil-stage] {
   height: calc(100% + 2 * var(--lk) * var(--name-reach, 0.3));
   pointer-events: none;
 }
+.intro-name__canvas > canvas,
+.title-fill__host > canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+/* Every numbered page's title wears the name's fill (components/sections/
+   TitleFill.tsx): the heading is the wrapper's first child and the fill's
+   canvas covers it and a little past (room for Profa's ink), over the text,
+   taking no pointer, so the heading stays selectable under it. Before the
+   canvas's first frame, and whenever it holds none, the heading shows in its
+   own ink ("rest"); while the canvas draws it ("on") the heading's glyphs are
+   hidden (text-fill only: its colour, its selection and its name stay). */
+.title-fill {
+  position: relative;
+}
+.title-fill__host {
+  position: absolute;
+  inset: -0.75rem;
+  pointer-events: none;
+}
+.title-fill[data-title-fill="on"] > :first-child {
+  -webkit-text-fill-color: transparent;
+}
 /* Where the canvas does not draw the name (no script, reduced motion, no WebGL
    2) the h1 shows as text with the field as its fill: the field's poster under
    a veil of the accent, deepest at the top, so the letters stay readable on the
-   page in both themes (the dark theme's accent is the light one). */
+   page in both themes (the dark theme's accent is the light one). A page title
+   whose fill cannot run ("still") wears the same fill, line by line as the
+   name's two lines do. */
 @supports (background-clip: text) or (-webkit-background-clip: text) {
-  .intro-heading [data-name-visual] {
+  .intro-heading [data-name-visual],
+  .title-fill[data-title-fill="still"] > :first-child:not(:has(.sections-line)),
+  .title-fill[data-title-fill="still"] > :first-child .sections-line {
     color: transparent;
     background-image:
       linear-gradient(to bottom, color-mix(in srgb, var(--color-accent) 92%, transparent), color-mix(in srgb, var(--color-accent) 68%, transparent)),

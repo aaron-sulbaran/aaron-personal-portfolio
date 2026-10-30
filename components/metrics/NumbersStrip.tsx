@@ -15,7 +15,7 @@ export function NumbersStrip() {
       <div className="mx-auto flex max-w-6xl flex-col gap-10">
         <div className="flex flex-col gap-6">
           <SectionNumber value={PAGE_NUMBERS.numbers} className="-mb-3" />
-          <SectionHeading id={METRICS_TITLE_ID} words>{title}</SectionHeading>
+          <SectionHeading id={METRICS_TITLE_ID} words fill="numbers">{title}</SectionHeading>
           <SectionSubline id={METRICS_LABEL_ID} words wide>{groupLabel}</SectionSubline>
         </div>
         <Metrics />

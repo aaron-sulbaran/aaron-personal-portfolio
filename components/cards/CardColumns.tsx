@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { PAGE_NUMBERS, siteContent, type ColumnView } from "@/lib/content";
 import { SectionNumber } from "@/components/sections/SectionNumber";
+import { TitleFill } from "@/components/sections/TitleFill";
 import { CardProgress } from "./CardProgress";
 import { CardTitle } from "./CardTitle";
 
@@ -10,7 +11,8 @@ import { CardTitle } from "./CardTitle";
 // the Coil is laid out in ([data-coil-pane], read by the scene's layout). The
 // wrapper takes no pointer, so the canvas keeps every gesture in the middle.
 // The page's number and title ("Here's what I've been up to.", which answers
-// page 1's question) lead the Work column on a desktop, and span the top of
+// page 1's question, in page 1's name's fill once the deal is done:
+// TitleFill) lead the Work column on a desktop, and span the top of
 // the columns on a phone; the progress line ("N of 14 opened") closes the Work
 // column, and on a phone the two columns. The labels and titles carry
 // data-deal-label and data-deal-title: the deal holds them back
@@ -37,9 +39,11 @@ function PageTitle({ className }: { className: string }) {
   return (
     <div data-deal-label="" className={className}>
       <SectionNumber value={PAGE_NUMBERS.work} className="mb-1.5" />
-      <h2 data-page-title="" className="font-display text-[1.3125rem] leading-[1.12] text-foreground md:text-[clamp(1.25rem,1.7vw,1.75rem)]">
-        {siteContent.columns.title}
-      </h2>
+      <TitleFill fillKey="work" gate="deal">
+        <h2 data-page-title="" className="font-display text-[1.3125rem] leading-[1.12] text-foreground md:text-[clamp(1.25rem,1.7vw,1.75rem)]">
+          {siteContent.columns.title}
+        </h2>
+      </TitleFill>
     </div>
   );
 }

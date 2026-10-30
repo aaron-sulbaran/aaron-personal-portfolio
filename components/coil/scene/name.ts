@@ -1,9 +1,7 @@
 import {
   CanvasTexture,
   LinearMipmapLinearFilter,
-  Mesh,
   NearestFilter,
-  Scene,
   ShaderMaterial,
   WebGLRenderTarget,
   type Texture,
@@ -11,7 +9,7 @@ import {
 } from "three";
 import { siteContent } from "@/lib/content";
 import { COIL } from "@/lib/coil/constants";
-import { FIELD, FULLSCREEN_VERT, GLYPH_FRAG, NAME } from "@/lib/coil/field.glsl";
+import { FIELD, NAME } from "@/lib/coil/field.glsl";
 import { nameCompositeInk } from "@/lib/coil/debugFlags";
 import { clamp01, isNarrow } from "@/lib/coil/geometry";
 import { siteEase } from "@/lib/coil/motion";
@@ -19,6 +17,7 @@ import { nameInkGain } from "@/lib/coil/nameInk";
 import { getIntroKnobs } from "@/lib/home/introKnobs";
 import { toBytes } from "@/lib/coil/theme";
 import type { NameTarget } from "@/lib/coil/nameTarget";
+import { createGlyphReduction } from "./glyphReduction";
 import type { NameSurface } from "./nameSurface";
 import type { Gl } from "./renderer";
 import type { LoopLink, SceneCtx } from "./state";
@@ -152,37 +151,9 @@ export function createName(
   const { st, host, live, flags } = ctx;
   const { view } = st;
   const { posterMode } = flags;
-  const { renderer, orthoCamera } = gl;
   // The per-letter reduction reads what the composite reads (shared uniforms).
   const cu = comp.uniforms;
-  const glyphMaterial = new ShaderMaterial({
-    depthTest: false,
-    depthWrite: false,
-    vertexShader: FULLSCREEN_VERT,
-    fragmentShader: GLYPH_FRAG,
-    uniforms: {
-      uField: cu.uField,
-      uName: cu.uName,
-      uSurf: cu.uSurf,
-      uNameRect: cu.uNameRect,
-      uFull: cu.uFull,
-      uSurfMean: cu.uSurfMean,
-      uNameK: cu.uNameK,
-      uDetail: cu.uDetail,
-      uFloor: cu.uFloor,
-      uFloorSign: cu.uFloorSign,
-      uGlyphN: cu.uGlyphN,
-      uGlyphBox: cu.uGlyphBox,
-      uGreetFloor: cu.uGreetFloor,
-      uGlyphPrev: { value: glyphTargets[1].texture },
-      uGlyphBlend: { value: 1 },
-    },
-  });
-  let glyphFresh = true; // no reduction yet: the first one lands at once
-  const glyphScene = new Scene();
-  const glyphMesh = new Mesh(gl.quad, glyphMaterial);
-  glyphMesh.frustumCulled = false;
-  glyphScene.add(glyphMesh);
+  const reduction = createGlyphReduction(gl, comp, glyphTargets, surface);
   let greetBlock = 0; // the greeting's band above the name's mask, CSS px at rest
   let surfaceInFrom: number | null = null; // when the loader's solid name landed
   let nameTexture: Texture | null = null;
@@ -321,18 +292,7 @@ export function createName(
     const showing = cu.uNameA.value > 0 || cu.uGreetA.value > 0;
     surface.render(showing);
     if (!showing || posterMode) return;
-    const [from, into] = cu.uGlyph.value === glyphTargets[0].texture ? glyphTargets : [glyphTargets[1], glyphTargets[0]];
-    glyphMaterial.uniforms.uGlyphPrev.value = from.texture;
-    glyphMaterial.uniforms.uGlyphBlend.value = glyphFresh
-      ? 1
-      : surface.wake().active
-        ? 0
-        : 1 - Math.exp(-Math.max(0, dt) / NAME.glyphEaseS);
-    renderer.setRenderTarget(into);
-    renderer.render(glyphScene, orthoCamera);
-    renderer.setRenderTarget(null);
-    cu.uGlyph.value = into.texture;
-    glyphFresh = false;
+    reduction.render(dt);
   }
 
   // ---- slice 4: the loader's continuity exit ----
@@ -375,17 +335,11 @@ export function createName(
   // ---- end slice 4 ----
 
   // QA: each letter's mean contrast as the reduction last measured it.
-  function glyphMeans() {
-    const px = new Uint8Array(NAME.maxGlyphs * 4);
-    const current = cu.uGlyph.value === glyphTargets[0].texture ? glyphTargets[0] : glyphTargets[1];
-    renderer.readRenderTargetPixels(current, 0, 0, NAME.maxGlyphs, 1, px);
-    return Array.from({ length: cu.uGlyphN.value as number }, (_, i) => (px[i * 4] / 255 - 0.5) * 0.5);
-  }
+  const glyphMeans = reduction.means;
 
   function dispose() {
     nameTexture?.dispose();
-    glyphMaterial.dispose();
-    glyphTargets.forEach((target) => target.dispose());
+    reduction.dispose();
     surface.dispose();
   }
 
@@ -404,6 +358,8 @@ export function createName(
     // QA: the mask, its rect and its letters (the per-letter readout).
     lockup: () => lockup,
     glyphMeans,
+    // The reduction's pass, for a fill that compiles its programs before its first frame.
+    reductionScene: reduction.scene,
     dispose,
   };
 }

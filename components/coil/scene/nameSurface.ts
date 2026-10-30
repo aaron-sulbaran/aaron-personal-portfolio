@@ -97,12 +97,15 @@ export function createNameSurface(ctx: SceneCtx, gl: Gl) {
   let dirty = true;
 
   // The lockup's rect (CSS px, the greeting included) at rest: the target's
-  // size, the plane's extent over it, the wake's grid.
-  function layout(rect: NameRectCss, dpr: number) {
+  // size, the plane's extent over it, the wake's grid. The plane spans
+  // NAME_SURFACE.viewHeight across the rect's height, or, for a page title
+  // (components/coil/fill/title.ts), `unitsPerPx` of it per CSS px: the name's
+  // own, so a px there is a px here and the folds are the name's size.
+  function layout(rect: NameRectCss, dpr: number, unitsPerPx?: number) {
     const scale = Math.min(NAME_SURFACE.rtScale * dpr, NAME_SURFACE.rtMaxWidth / Math.max(1, rect.w));
     surfaceTarget.setSize(Math.max(8, Math.round(rect.w * scale)), Math.max(8, Math.round(rect.h * scale)));
-    const aspect = rect.w / Math.max(1, rect.h);
-    material.uniforms.uExt.value.set((NAME_SURFACE.viewHeight * aspect) / 2, NAME_SURFACE.viewHeight / 2);
+    const perPx = unitsPerPx ?? NAME_SURFACE.viewHeight / Math.max(1, rect.h);
+    material.uniforms.uExt.value.set((rect.w * perPx) / 2, (rect.h * perPx) / 2);
     wakeRectOf(rect, wakeRect);
     dirty = true;
   }

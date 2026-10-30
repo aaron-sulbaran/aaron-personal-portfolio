@@ -131,8 +131,9 @@ export const NAME = {
   // ink (the unwound list's lead draws the whole surface).
   lightness: [0.22, 0.95] as const,
   // The per-letter reduction's slots: the name's letters from 0, the
-  // greeting in the last.
-  maxGlyphs: 8,
+  // greeting in the last. A page title's letters take them too (the title
+  // fill, components/coil/fill/title.ts), so there is room for a title's line.
+  maxGlyphs: 32,
 } as const;
 
 // The surface pass: the lab's water plane (Dusk: fov 45 at distance 5, so the
@@ -418,6 +419,9 @@ export const NAME_COMPOSITE_GLSL = /* glsl */ `
   uniform sampler2D uGlyph;
   uniform vec4 uGlyphBox[${NAME.maxGlyphs}];
   uniform float uGlyphN, uGlyphRel, uGlyphAbs, uGreetFloor, uGreetCap;
+  // 0: the letters are one row (the name), so a letter is its columns; 1: a
+  // title's letters wrap, so a letter is its box (its line's rows too).
+  uniform float uGlyphRows;
   ${WAKE_SAMPLE_GLSL}
   ${OKLAB_GLSL}
   vec3 h32(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * vec3(0.1031, 0.1030, 0.0973)); p3 += dot(p3, p3.yxz + 33.33); return fract((p3.xxy + p3.yzz) * p3.zyx); }
@@ -443,7 +447,7 @@ export const NAME_COMPOSITE_GLSL = /* glsl */ `
       strongest = max(strongest, c);
       total += c;
       vec4 box = uGlyphBox[i];
-      if (g.x >= box.x && g.x < box.z) mine = c;
+      if (g.x >= box.x && g.x < box.z && (uGlyphRows < 0.5 || (g.y >= box.y && g.y < box.w))) mine = c;
     }
     float floorL = uFloor * mix(1.0, uGreetFloor, greeting);
     L = uFloorSign > 0.0 ? min(L, fl.x - floorL) : max(L, fl.x + floorL);
