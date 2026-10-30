@@ -926,6 +926,19 @@ html[data-deal] section[data-scene="off"] [data-coil-stage] {
   position: relative;
   margin-bottom: calc(var(--lk) * var(--lk-bottom-trim) * -1);
 }
+/* The name's line starts a whole px below the lockup's top (the greeting's
+   room, rounded), so its baseline, a whole number of device px into the line,
+   sits on a whole device px wherever the lockup's top does (page 1's is the
+   page's own padding). Chrome paints a baseline that falls between pixels a
+   pixel up or down by rules no script can read, while the name's canvas draws
+   on the layout's own baseline: on a whole pixel the two are the same pixel,
+   so the loader's landing and a jump back never move the name. The unrounded
+   margin is the fallback. */
+@supports (width: round(1.4px, 1px)) {
+  .name-lockup__greet {
+    margin-bottom: calc(round(var(--lk) * (var(--lk-greet) + var(--lk-pull)), 1px) - var(--lk) * var(--lk-greet));
+  }
+}
 
 /* ---- page 1 (slice 4d) ---- */
 /* Everything about me on one page, then the cards: the name ("Hi, I'm Aaron",
@@ -1332,6 +1345,11 @@ html[data-intro-loader="on"] #intro-heading {
 }
 .intro-loader[data-shrink] :is(.intro-loader__base, .intro-loader__fill, .name-lockup__greet) {
   color: inherit;
+}
+/* One copy of the name lands: two copies in one ink are one name with its
+   edges' antialiasing doubled, a hair bolder than the canvas name it becomes. */
+.intro-loader[data-shrink] .intro-loader__fill {
+  visibility: hidden;
 }
 .intro-loader__count {
   position: absolute;

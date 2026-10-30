@@ -19,8 +19,9 @@ import { flipTransform, type Rect } from "@/lib/home/nameFlip";
 // The loader's imperative run, outside React: one rAF loop easing the fill
 // toward the real tally (never ahead of it, never faster than its shortest
 // run), the 600ms number rule, the hold at 100, then the shrink: the lockup is
-// carried onto the heading by a uniform scale and a shift (GSAP, transform
-// only) while the dark ground dissolves, and one frame hands the lockup over:
+// laid out as the heading is and carried there from its big look by a uniform
+// scale and a shift that end at none (GSAP, transform only) while the dark
+// ground dissolves, and one frame hands the lockup over:
 // to the canvas name the scene draws on that same place, wearing the colours the
 // canvas name starts in (lib/home/loaderLanding.ts), or, where no scene can take
 // it, to the heading, which was server-rendered there all along. IntroLoader.tsx renders
@@ -39,6 +40,9 @@ type Phase = "fill" | "hold" | "shrink" | "done";
 
 // How long the loader waits for the scene to take the landed name before it leaves anyway.
 const HANDOFF_GIVE_UP_MS = 1500;
+
+// What the shrink sets on the lockup to lay it out as the heading is.
+const LANDING_LAYOUT = ["--lk", "inset", "margin", "left", "top"] as const;
 
 const rectOf = (el: Element): Rect => {
   const r = el.getBoundingClientRect();
@@ -69,6 +73,7 @@ export function runIntroLoader(parts: LoaderParts): () => void {
 
   // A clean start (a replay begins on top of a finished one).
   gsap.set([lockup, ground, count], { clearProps: "all" });
+  for (const prop of LANDING_LAYOUT) lockup.style.removeProperty(prop);
   root.removeAttribute("data-full");
   root.removeAttribute("data-shrink");
   root.style.setProperty("--p", "0");
@@ -132,12 +137,27 @@ export function runIntroLoader(parts: LoaderParts): () => void {
     if (window.scrollY !== 0) window.scrollTo({ top: 0, behavior: "instant" });
     const heading = document.getElementById(INTRO_HEADING_ID);
     if (!heading) return finish();
-    const flip = flipTransform(rectOf(lockup), rectOf(heading));
+    // The lockup is laid out again as the heading is, at its size and in its
+    // place (the root is the viewport), and its big look becomes a transform
+    // that the shrink takes to none. So the travel ends on the heading's own
+    // layout with nothing scaled: the pixels the heading and the canvas name
+    // draw there. A scaled lockup's glyphs land up to a device px off their
+    // layout (Chrome places a transformed glyph run its own way), which was
+    // the step the name took at the handoff. The relayout shares its frame
+    // with the shrink's first, which moves the name tens of px.
+    const big = rectOf(lockup);
+    const place = rectOf(heading);
+    lockup.style.setProperty("--lk", getComputedStyle(heading).fontSize);
+    lockup.style.setProperty("inset", "auto");
+    lockup.style.setProperty("margin", "0");
+    lockup.style.setProperty("left", `${place.left}px`);
+    lockup.style.setProperty("top", `${place.top}px`);
+    const flip = flipTransform(rectOf(lockup), big);
     const ink = heading.querySelector("[data-lockup-name]") ?? heading;
     const seconds = knobs.shrinkMs / 1000;
+    gsap.set(lockup, { transformOrigin: "0 0", x: flip.x, y: flip.y, scale: flip.scale });
     timeline = gsap.timeline({ onComplete: handOff });
-    timeline.set(lockup, { transformOrigin: "0 0" });
-    timeline.to(lockup, { x: flip.x, y: flip.y, scale: flip.scale, duration: seconds, ease: knobs.shrinkEase }, 0);
+    timeline.to(lockup, { x: 0, y: 0, scale: 1, duration: seconds, ease: knobs.shrinkEase }, 0);
     // The ground clears first, so the name is never mid-ink over a mid-grey ground; the ink follows it to the landing's.
     timeline.to(ground, { opacity: 0, duration: seconds * 0.5, ease: "power1.inOut" }, seconds * 0.08);
     // The scene can take the name (it has drawn): the ink goes to the canvas name's own, the greeting solid above it.
