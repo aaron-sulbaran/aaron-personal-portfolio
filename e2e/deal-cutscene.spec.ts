@@ -4,7 +4,7 @@ import { openHome, waitForScene } from "./support/coil";
 import { noWebgl2Api } from "./support/webgl";
 import { COIL } from "@/lib/coil/constants";
 import { siteContent } from "@/lib/content";
-import { coverage, dealFacts, flick, flingStream, readBlue, rowAt, startCast, startRecording, stopRecording, wheelStream, type Frame } from "./support/cutscene";
+import { coverage, dealFacts, flick, flingStream, readBlue, rowAt, startCast, startRecording, stopRecording, wheelGesture, wheelStream, type Frame } from "./support/cutscene";
 import { decodePng } from "./support/pixels";
 
 // The deal is a short cutscene (Aaron's hand test, 2026-10-29). Whichever way it
@@ -140,6 +140,28 @@ for (const size of SIZES) {
         await hardFling(page, cdp, slowdown);
       });
     }
+
+    // A trackpad's swipe is one wheel gesture: had the page let its first wheel through, every
+    // later one would arrive uncancellable and the compositor would scroll it without waiting.
+    test("one long wheel gesture (a trackpad's swipe) from block 4 lands on page 2 with the CPU 6x slower", async ({ page, cdp }) => {
+      await openHome(page, { debug: "flight", at: "top" });
+      await fromBlock4(page);
+      const at = middle(size);
+      await cdp.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: at.x, y: at.y });
+      await cdp.send("Emulation.setCPUThrottlingRate", { rate: 6 });
+      await startRecording(page);
+      await wheelGesture(cdp, at, 2400, 6000);
+      await unfurledOrDealt(page);
+      await page.waitForTimeout(1500);
+      const frames = await stopRecording(page);
+      await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
+      const dealing = frames.filter((f) => f.deal === "dealing");
+      expect(dealing.length, "frames of the deal").toBeGreaterThan(20);
+      expect(pastLanding(frames), `how far past page 2's top the page went (the bound is ${OVERSHOOT_BOUND_PX} px)`).toBeLessThanOrEqual(OVERSHOOT_BOUND_PX);
+      const stays = landsAndStays(frames);
+      expect(stays, stays.slice(0, 3).join("; ")).toEqual([]);
+      test.info().annotations.push({ type: "gesture", description: `deal started at scrollY ${dealing[0].y.toFixed(0)}; past page 2's top at most ${pastLanding(frames).toFixed(1)} px` });
+    });
 
     test("the tail of the fling is swallowed past the unfurl: the lock lets go only once the input has been quiet", async ({ page, cdp }) => {
       await openHome(page, { debug: "flight", at: "top" });
