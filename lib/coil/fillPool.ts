@@ -13,16 +13,17 @@ export const FILL_POOL = {
   farViewports: 2,
 } as const;
 
-// Titles held in their own ink, not the fill, until Aaron says otherwise. The
-// bar is 3:1 against what is really behind a title (lib/coil/letterContrast.ts
-// titleContrast). Page 2's ("work") sits on the Coil's blue field. Its letters
-// floored against a field of their own box measured 2.6 to 2.8:1 at 1280 in
-// light (2026-10-29); made of the Coil's field behind them instead (Aaron's
-// pick, 2026-10-30: TitleFill backdrop "coil") they measure 2.75:1 in light
-// (3.5 in dark): the floor's 0.31 of OKLab lightness is under 3:1 where that
-// field is palest, even with the two fields' clocks held together. So it waits
-// in ink; the name's floor stays where it is. ?coildebug=fill-all draws it.
-export const FILL_HELD_IN_INK: readonly string[] = ["work"];
+// Titles held in their own ink, not the fill: none. The bar is 3:1 against
+// what is really behind a title (lib/coil/letterContrast.ts titleContrast).
+// Page 2's ("work") sits on the Coil's blue field, and its letters are made of
+// that field behind them (TitleFill backdrop "coil"), so the ink's floor stands
+// off the real backdrop. It reads 3.5:1 in dark and on a phone, and 2.75:1 at
+// its weakest at 1280 in light (2026-10-30), where the field is palest: the
+// floor's 0.31 of OKLab lightness gives no more there. Aaron chose the fill
+// anyway ("part two title has to include the gradient", 2026-10-30), a known
+// gap, and the name's floor stays where it is. A title named here would wait in
+// its ink; ?coildebug=fill-all draws it regardless.
+export const FILL_HELD_IN_INK: readonly string[] = [];
 
 export type PoolEntry = {
   readonly id: string;
