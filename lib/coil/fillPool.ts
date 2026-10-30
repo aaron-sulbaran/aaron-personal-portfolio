@@ -1,0 +1,46 @@
+// Which titles hold a WebGL context of their own right now (the title fill,
+// components/coil/fill/pool.ts). One canvas a title, created only near the
+// viewport and released once far, with at most FILL_POOL.cap of them alive at
+// once on top of the Coil's: the nearest titles that want one get one. Pure.
+//
+//   near   within `nearViewports` of the viewport: a title may start one
+//   far    more than `farViewports` away: a title lets its one go
+//   in between, a title keeps what it has (no thrash at the edge).
+
+export const FILL_POOL = {
+  cap: 2,
+  nearViewports: 1,
+  farViewports: 2,
+} as const;
+
+export type PoolEntry = {
+  readonly id: string;
+  readonly alive: boolean;
+  // May it draw at all now (motion allowed, WebGL, its own gate: page 2's waits out the deal).
+  readonly eligible: boolean;
+  // px between the title and the viewport: 0 while any of it is on screen.
+  readonly distance: number;
+};
+
+export type PoolPlan = { readonly acquire: readonly string[]; readonly release: readonly string[] };
+
+export function planPool(entries: readonly PoolEntry[], viewportH: number, pool: { cap: number; nearViewports: number; farViewports: number } = FILL_POOL): PoolPlan {
+  const near = pool.nearViewports * viewportH;
+  const far = pool.farViewports * viewportH;
+  const wanting = entries
+    .filter((e) => e.eligible && (e.distance <= near || (e.alive && e.distance <= far)))
+    // The nearest first; on a tie, one already alive keeps its context.
+    .sort((a, b) => a.distance - b.distance || Number(b.alive) - Number(a.alive));
+  const keep = new Set(wanting.slice(0, pool.cap).map((e) => e.id));
+  return {
+    acquire: entries.filter((e) => !e.alive && keep.has(e.id)).map((e) => e.id),
+    release: entries.filter((e) => e.alive && !keep.has(e.id)).map((e) => e.id),
+  };
+}
+
+// px from a rect to the viewport's band [0, viewportH): 0 when they overlap.
+export function distanceToViewport(rect: { top: number; bottom: number }, viewportH: number): number {
+  if (rect.bottom <= 0) return -rect.bottom;
+  if (rect.top >= viewportH) return rect.top - viewportH;
+  return 0;
+}
