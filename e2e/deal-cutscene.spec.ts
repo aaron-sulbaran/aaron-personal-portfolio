@@ -4,7 +4,8 @@ import { openHome, waitForScene } from "./support/coil";
 import { noWebgl2Api } from "./support/webgl";
 import { COIL } from "@/lib/coil/constants";
 import { siteContent } from "@/lib/content";
-import { coverage, dealFacts, flick, flingStream, startRecording, stopRecording, wheelStream, type Frame } from "./support/cutscene";
+import { coverage, dealFacts, flick, flingStream, readBlue, rowAt, startCast, startRecording, stopRecording, wheelStream, type Frame } from "./support/cutscene";
+import { decodePng } from "./support/pixels";
 
 // The deal is a short cutscene (Aaron's hand test, 2026-10-29). Whichever way it
 // starts, a scroll past the trigger or "Deal me in", the page takes the reader's
@@ -534,5 +535,103 @@ for (const size of SIZES) {
       await second.waitForTimeout(1500);
       expect(await shifted(second), "cumulative layout shift on /#work").toBeLessThan(0.001);
     });
+  });
+}
+
+// ---------------------------------------------------------------- page 2's blue blooms from the Coil
+
+// Aaron: page 2's blue arrives only by blooming from the middle of the animation. The page stays
+// off-white through the scroll toward the cards and before Deal me in; then the field opens from under
+// the Coil (COIL.deal.open: a circle anchored on the Coil's middle, from COIL.deal.timeline.openStartMs
+// on the scene's clock). No blue edge may slide up from the bottom of the viewport meanwhile, on either
+// path, with the cutscene's eased scroll moving the page. Read from a CDP screencast (the pixels a
+// reader sees) beside the recorder's rows, which carry the scene's clock and the Coil's cards.
+for (const size of SIZES) {
+  test.describe(`the blue blooms from the Coil's middle at ${size.name}`, () => {
+    test.use({ viewport: size.viewport, deviceScaleFactor: 1, hasTouch: !!size.phone, isMobile: !!size.phone });
+
+    for (const via of ["hand", "click"] as const) {
+      test(`${via} path: off-white through the approach and the scroll, then the blue opens from under the Coil`, async ({ page, cdp }) => {
+        test.setTimeout(120_000);
+        const { width, height } = size.viewport;
+        const openStart = COIL.deal.timeline.openStartMs;
+        await openHome(page, { debug: "flight", at: "top" });
+        const facts = await dealFacts(page);
+        await fromBlock4(page);
+        const at = middle(size);
+        await cdp.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: at.x, y: at.y });
+        await startRecording(page);
+        const cast = await startCast(cdp);
+        const notch = () => cdp.send("Input.dispatchMouseEvent", { type: "mouseWheel", x: at.x, y: at.y, deltaX: 0, deltaY: 40 });
+        if (via === "hand") {
+          // About 1,000 px/s down the page, from block 4, until the scroll deals.
+          await startDealByWheel(page, cdp, at);
+        } else {
+          // The same approach, stopped 240 px short of the stage's stick, then to a tenth into its range (short of
+          // where a scroll deals); and Deal me in.
+          for (let i = 0; i < 200 && (await page.evaluate(() => document.querySelector("[data-coil-rail]")!.getBoundingClientRect().top)) > 240; i++) {
+            await notch();
+            await page.waitForTimeout(40);
+          }
+          await page.evaluate((y) => window.scrollTo({ top: y, behavior: "instant" }), facts.stickY + facts.range * 0.08);
+          await page.waitForTimeout(400);
+          await dealLink(page).click();
+        }
+        await unfurledOrDealt(page);
+        await page.waitForTimeout(800);
+        const rows = await stopRecording(page);
+        await cast.stop();
+
+        type Read = { row: Frame; bottom: number; band: number; bandMid: number };
+        const reads: Read[] = [];
+        const step = Math.max(1, Math.floor(cast.frames.length / 150));
+        for (const [i, frame] of cast.frames.entries()) {
+          const row = rowAt(rows, frame.wall);
+          if (!row || i % step !== 0) continue;
+          const image = decodePng(frame.png);
+          expect(image.width, "the screencast is the viewport's size").toBe(width);
+          const bottom = readBlue(image, image.height - 6);
+          const band = readBlue(image, Math.round(image.height * 0.9));
+          reads.push({ row, bottom: bottom.count, band: band.count, bandMid: (band.minX + band.maxX) / 2 });
+        }
+        // Before the field opens: the page is off-white, the whole way to the cards.
+        const before = reads.filter((r) => r.row.deal === "closed" || (r.row.deal === "dealing" && (r.row.clock ?? -1e9) < openStart - 100));
+        expect(before.length, "frames before the bloom").toBeGreaterThan(10);
+        const early = before.filter((r) => r.band > 0 || r.bottom > 0);
+        expect(early.map((r) => `${Math.round(r.row.t)} ms, scene clock ${r.row.clock === null ? "n/a" : Math.round(r.row.clock)}: ${r.bottom} blue px in the last rows, ${r.band} in the last tenth`).slice(0, 4), "blue at the viewport's bottom before the bloom").toEqual([]);
+        // While it grows: the viewport's last rows never show the field (it fades to the page at the stage's foot, and on a
+        // phone the stage is the top third of the screen), and where blue does reach the last tenth it is an arc about the
+        // middle, never a band that came up from the edge.
+        const growing = reads.filter((r) => r.row.clock !== null && r.row.clock >= openStart && r.row.deal !== "dealt");
+        expect(growing.length, "frames while the bloom grows").toBeGreaterThan(8);
+        const atFoot = reads.filter((r) => r.bottom > 0);
+        expect(atFoot.map((r) => `${Math.round(r.row.t)} ms: ${r.bottom} px`).slice(0, 4), "blue in the viewport's last rows").toEqual([]);
+        const arcs = reads.filter((r) => r.band > 20);
+        const sliding = arcs.filter((r) => Math.abs(r.bandMid - width / 2) > 0.06 * width);
+        expect(sliding.map((r) => `${Math.round(r.row.t)} ms: the arc's middle at ${r.bandMid.toFixed(0)} of ${width}`).slice(0, 4), "blue in the last tenth off the middle").toEqual([]);
+        if (arcs.length) expect(arcs[0].row.clock ?? -1e9, "the first blue in the last tenth comes after the bloom has begun").toBeGreaterThanOrEqual(openStart);
+        // The bloom is anchored on the canvas's middle, which the Coil's wheel settles onto as the field opens: through the
+        // wheel's phase (before it lifts into the helix, whose cards' union is not its middle) the wheel's middle (the
+        // cards' union) is within a tenth of the screen's shorter side of the bloom's centre, whichever way the page moves.
+        const middleOf = (cards: { left: number; top: number; right: number; bottom: number }[]) => ({
+          x: (Math.min(...cards.map((c) => c.left)) + Math.max(...cards.map((c) => c.right))) / 2,
+          y: (Math.min(...cards.map((c) => c.top)) + Math.max(...cards.map((c) => c.bottom))) / 2,
+        });
+        const apart = (f: Frame) => {
+          if (!f.stage || f.cards.length !== 14) return null;
+          const coil = middleOf(f.cards);
+          return Math.hypot(coil.x - (f.stage.left + f.stage.right) / 2, coil.y - (f.stage.top + f.stage.bottom) / 2);
+        };
+        const wheel = rows.filter((f) => f.clock !== null && f.clock >= openStart && f.clock < openStart + 450).map(apart).filter((d): d is number => d !== null);
+        expect(wheel.length, "frames of the wheel as the bloom opens").toBeGreaterThan(5);
+        expect(Math.max(...wheel), "how far the wheel's middle is from the bloom's centre, px").toBeLessThan(0.1 * Math.min(width, height));
+        const moved = (() => {
+          const a = rows.find((f) => f.clock !== null && f.clock >= openStart);
+          const b = rows.find((f) => f.clock !== null && f.clock >= openStart + 400);
+          return a && b ? b.y - a.y : 0;
+        })();
+        test.info().annotations.push({ type: "bloom", description: `${reads.length} frames read; ${before.length} before the bloom, ${growing.length} growing; the page moved ${moved.toFixed(0)} px over the bloom's first 400 ms; ${arcs.length} frames with blue in the last tenth` });
+      });
+    }
   });
 }

@@ -1,5 +1,6 @@
 import type { CDPSession, Page } from "@playwright/test";
 import type { Point } from "./coil";
+import { type Image } from "./pixels";
 
 // The deal's cutscene, read from outside: a per-frame recorder (the page's
 // scroll, the deal's state and clock, the cards' projected rectangles against
@@ -11,6 +12,7 @@ export type Rect = { left: number; top: number; right: number; bottom: number };
 
 export type Frame = {
   t: number; // performance.now(), ms, once every callback of the frame has run
+  wall: number; // the same moment on the wall clock, ms (a screencast frame's timestamp is read against it)
   y: number; // window.scrollY
   workTop: number; // the cards section's top in the viewport (page 2's top: 0 where the deal lands)
   deal: string; // <html data-deal>
@@ -18,6 +20,7 @@ export type Frame = {
   cards: Rect[]; // the cards' projected quads' bounding boxes, viewport px
   blocks: Rect[]; // page 1's story blocks ([data-block]) and the button's line
   cta: Rect | null; // "Deal me in"
+  stage: Rect | null; // the Coil's canvas ([data-coil-stage]), whose middle the field's bloom is anchored on
   ctaOpacity: number;
   blockOpacity: number; // the least opacity of a story block
   lock: string | null; // <html data-deal-lock> when the page carries it
@@ -54,6 +57,7 @@ export async function startRecording(page: Page) {
       const blocks = Array.from(document.querySelectorAll("[data-block]"));
       recorder.frames.push({
         t: performance.now(),
+        wall: performance.timeOrigin + performance.now(),
         y: window.scrollY,
         workTop: document.getElementById("work")!.getBoundingClientRect().top,
         deal: document.documentElement.dataset.deal ?? "",
@@ -65,6 +69,10 @@ export async function startRecording(page: Page) {
         }),
         blocks: blocks.map((el) => box(el.getBoundingClientRect())),
         cta: cta ? box(cta.getBoundingClientRect()) : null,
+        stage: (() => {
+          const el = document.querySelector("#work [data-coil-stage]");
+          return el ? box(el.getBoundingClientRect()) : null;
+        })(),
         ctaOpacity: cta ? opacityOf(cta) : 0,
         blockOpacity: blocks.reduce((least, el) => Math.min(least, opacityOf(el)), 1),
         lock: document.documentElement.getAttribute("data-deal-lock"),
@@ -164,4 +172,77 @@ export async function dealFacts(page: Page) {
     const work = document.getElementById("work")!.getBoundingClientRect();
     return { stickY: rail.top + window.scrollY, range: rail.height - stage.height, landing: work.top + window.scrollY, max: document.documentElement.scrollHeight - window.innerHeight };
   });
+}
+
+// ---------------------------------------------------------------- pixels: the field's blue
+
+// A CDP screencast: PNG frames with the wall-clock time each was swapped in, to be read beside the
+// recorder's rows (startRecording's `wall`). Run it at a device scale factor of 1, so a frame is the
+// viewport's own size.
+export type Cast = { frames: { wall: number; png: Buffer }[]; stop: () => Promise<void> };
+
+export async function startCast(cdp: CDPSession): Promise<Cast> {
+  const frames: Cast["frames"] = [];
+  const onFrame = (event: { data: string; sessionId: number; metadata: { timestamp?: number } }) => {
+    frames.push({ wall: (event.metadata.timestamp ?? Date.now() / 1000) * 1000, png: Buffer.from(event.data, "base64") });
+    void cdp.send("Page.screencastFrameAck", { sessionId: event.sessionId }).catch(() => undefined);
+  };
+  cdp.on("Page.screencastFrame", onFrame);
+  await cdp.send("Page.startScreencast", { format: "png", everyNthFrame: 1 });
+  return {
+    frames,
+    stop: async () => {
+      await cdp.send("Page.stopScreencast").catch(() => undefined);
+      cdp.off("Page.screencastFrame", onFrame);
+    },
+  };
+}
+
+// The page is off-white, text and the Coil's cards are neutral or warm, and the field is blue: a pixel
+// is the field's blue when its blue runs this far past its red.
+export const BLUE_PAST_RED = 8;
+
+export type BlueRead = {
+  count: number;
+  // The extent of the blue in the rows read, px (NaN with none).
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
+  // Its centroid.
+  cx: number;
+  cy: number;
+};
+
+// Reads the field's blue in rows `fromY` to `toY` (exclusive) of a frame.
+export function readBlue(image: Image, fromY = 0, toY = image.height): BlueRead {
+  let count = 0;
+  let sx = 0;
+  let sy = 0;
+  let minX = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+  for (let y = fromY; y < toY; y++) {
+    for (let x = 0; x < image.width; x++) {
+      const i = (y * image.width + x) * 4;
+      if (image.rgba[i + 2] - image.rgba[i] < BLUE_PAST_RED) continue;
+      count++;
+      sx += x;
+      sy += y;
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+  }
+  const none = count === 0;
+  return { count, minX: none ? NaN : minX, maxX: none ? NaN : maxX, minY: none ? NaN : minY, maxY: none ? NaN : maxY, cx: none ? NaN : sx / count, cy: none ? NaN : sy / count };
+}
+
+// The recorder row nearest a screencast frame in time (within `within` ms, else none).
+export function rowAt(frames: Frame[], wall: number, within = 60): Frame | null {
+  let best: Frame | null = null;
+  for (const f of frames) if (!best || Math.abs(f.wall - wall) < Math.abs(best.wall - wall)) best = f;
+  return best && Math.abs(best.wall - wall) <= within ? best : null;
 }
