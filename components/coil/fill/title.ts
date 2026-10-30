@@ -1,6 +1,7 @@
-import { CanvasTexture, LinearMipmapLinearFilter, type Texture, type Vector4 } from "three";
+import { CanvasTexture, LinearMipmapLinearFilter, Vector4, type Texture } from "three";
 import { COIL } from "@/lib/coil/constants";
 import { NAME, NAME_SURFACE } from "@/lib/coil/field.glsl";
+import { FIELD_WINDOW_VERT } from "@/lib/coil/nameCanvas.glsl";
 import { clamp01 } from "@/lib/coil/geometry";
 import { siteEase } from "@/lib/coil/motion";
 import { applyColor, parseColor, type Rgba } from "@/lib/coil/theme";
@@ -107,10 +108,42 @@ function nameUnitsPerPx(fontPx: number) {
   return NAME_SURFACE.viewHeight / Math.max(1, lockup);
 }
 
-function createTitleLettering({ ctx, gl, field, surface, glyphTargets }: FillParts, heading: HTMLElement, canvas: HTMLCanvasElement) {
+// The field a title's letters are made of: its own box's (the name's way), or,
+// for a title on the Coil's field, the window of that field it sits on
+// (Aaron, 2026-10-30: "base it on the blue around the cards"), so the ink's
+// floor stands off the very field behind it. `backdrop` gives that field's
+// canvas, or null where the title is off it.
+export type TitleFillOptions = { backdrop?: () => HTMLElement | null };
+
+function createTitleLettering({ ctx, gl, field, surface, glyphTargets }: FillParts, heading: HTMLElement, canvas: HTMLCanvasElement, options: TitleFillOptions) {
   const { st } = ctx;
   const { view } = st;
   const cu = field.compMaterial.uniforms;
+  const fu = field.fieldMaterial.uniforms;
+  const windowed = Boolean(options.backdrop);
+  if (windowed) {
+    fu.uWindow = { value: new Vector4(0, 0, 1, 1) };
+    field.fieldMaterial.vertexShader = FIELD_WINDOW_VERT;
+    field.fieldMaterial.needsUpdate = true;
+  }
+  // Where this canvas is in the backdrop's frame, each frame (the title and
+  // the Coil's stage scroll apart); a move redraws the field.
+  function frameField() {
+    if (!windowed) return;
+    const own = canvas.getBoundingClientRect();
+    const frame = options.backdrop?.()?.getBoundingClientRect();
+    const on = frame && frame.width > 0 && frame.height > 0 && own.bottom > frame.top && own.top < frame.bottom && own.right > frame.left && own.left < frame.right;
+    const w = fu.uWindow.value as Vector4;
+    const was = [w.x, w.y, w.z, w.w, fu.uAspect.value as number].join();
+    if (on) {
+      w.set((own.left - frame.left) / frame.width, (frame.bottom - own.bottom) / frame.height, own.width / frame.width, own.height / frame.height);
+      fu.uAspect.value = frame.width / frame.height;
+    } else {
+      w.set(0, 0, 1, 1);
+      fu.uAspect.value = view.width / view.height;
+    }
+    if ([w.x, w.y, w.z, w.w, fu.uAspect.value as number].join() !== was) st.lastFieldTime = Number.NaN;
+  }
   // The solid is the title's own ink, whole; the rest is the name's.
   cu.uSolidK = { value: 1 };
   cu.uGlyphRows.value = 1;
@@ -156,6 +189,7 @@ function createTitleLettering({ ctx, gl, field, surface, glyphTargets }: FillPar
     glyphs.forEach((glyph, i) => boxes[i].set((glyph.x0 - rect.x) / rect.w, (glyph.y0 - rect.y) / rect.h, (glyph.x1 - rect.x) / rect.w, (glyph.y1 - rect.y) / rect.h));
     cu.uGlyphN.value = glyphs.length;
     surface.layout(rect, view.dpr, nameUnitsPerPx(parseFloat(getComputedStyle(heading).fontSize) || 16));
+    frameField();
   }
 
   return {
@@ -167,6 +201,7 @@ function createTitleLettering({ ctx, gl, field, surface, glyphTargets }: FillPar
     layout,
     applyTheme,
     fade() {
+      frameField();
       cu.uSurfIn.value = siteEase(clamp01((surfaceInS * 1000) / NAME.surfaceInMs));
     },
     step(dt: number) {
@@ -202,8 +237,8 @@ export type TitleFillRuntime = FillRuntime & {
   glyphMeans: () => number[];
 };
 
-export function startTitleFill(canvas: HTMLCanvasElement, heading: HTMLElement, hooks: FillHooks): TitleFillRuntime {
-  const fill = startFill(canvas, (parts) => createTitleLettering(parts, heading, canvas), hooks, { compileAsync: true });
+export function startTitleFill(canvas: HTMLCanvasElement, heading: HTMLElement, hooks: FillHooks, options: TitleFillOptions = {}): TitleFillRuntime {
+  const fill = startFill(canvas, (parts) => createTitleLettering(parts, heading, canvas, options), hooks, { compileAsync: true });
   // A font that swaps in late moves every glyph: lay out again.
   const onFonts = () => fill.relayout();
   document.fonts.addEventListener("loadingdone", onFonts);

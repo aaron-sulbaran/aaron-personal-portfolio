@@ -39,7 +39,7 @@ function PageTitle({ className }: { className: string }) {
   return (
     <div data-deal-label="" className={className}>
       <SectionNumber value={PAGE_NUMBERS.work} className="mb-1.5" />
-      <TitleFill fillKey="work" gate="deal">
+      <TitleFill fillKey="work" gate="deal" backdrop="coil">
         <h2 data-page-title="" className="font-display text-[1.3125rem] leading-[1.12] text-foreground md:text-[clamp(1.25rem,1.7vw,1.75rem)]">
           {siteContent.columns.title}
         </h2>

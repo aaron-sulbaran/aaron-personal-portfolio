@@ -15,11 +15,13 @@ export const FILL_POOL = {
 
 // Titles held in their own ink, not the fill, until Aaron says otherwise. The
 // bar is 3:1 against what is really behind a title (lib/coil/letterContrast.ts
-// titleContrast). Page 2's ("work") sits on the Coil's blue field, darker than
-// the field its own canvas draws, so its letters, floored against that paler
-// field, measured 2.6:1 at 1280 in light (2026-10-29; dark and 390 cleared 3:1).
-// Raising the ink floor enough to clear it would change the name's look, so it
-// waits in ink. ?coildebug=fill-all draws it anyway (QA, and for the decision).
+// titleContrast). Page 2's ("work") sits on the Coil's blue field. Its letters
+// floored against a field of their own box measured 2.6 to 2.8:1 at 1280 in
+// light (2026-10-29); made of the Coil's field behind them instead (Aaron's
+// pick, 2026-10-30: TitleFill backdrop "coil") they measure 2.75:1 in light
+// (3.5 in dark): the floor's 0.31 of OKLab lightness is under 3:1 where that
+// field is palest, even with the two fields' clocks held together. So it waits
+// in ink; the name's floor stays where it is. ?coildebug=fill-all draws it.
 export const FILL_HELD_IN_INK: readonly string[] = ["work"];
 
 export type PoolEntry = {
