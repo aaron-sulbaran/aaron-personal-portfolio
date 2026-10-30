@@ -40,7 +40,12 @@ const webgl2Ready = () => (webgl2 ??= canCreateWebGL2());
 // QA (?coildebug): the wrapper element carries its runtime, so a spec reads the title it can see.
 type QaWrapper = HTMLElement & { __titleFill?: { runtime: () => TitleFillRuntime | null } };
 
-export function TitleFill({ children, fillKey, gate }: { children: ReactNode; fillKey: string; gate?: "deal" }) {
+// backdrop "coil": the title sits on the Coil's field (page 2's) and its letters
+// are made of that field, framed to the Coil's own canvas, rather than of one
+// over their own box (components/coil/fill/title.ts).
+const coilCanvas = () => document.querySelector<HTMLElement>("[data-coil-stage] canvas");
+
+export function TitleFill({ children, fillKey, gate, backdrop }: { children: ReactNode; fillKey: string; gate?: "deal"; backdrop?: "coil" }) {
   const hostRef = useRef<HTMLSpanElement>(null);
   const id = useId();
   const reduced = useReducedMotionLive();
@@ -94,16 +99,21 @@ export function TitleFill({ children, fillKey, gate }: { children: ReactNode; fi
       import("@/components/coil/sceneChunk").then(({ startTitleFill }) => {
         if (mine !== generation) return;
         try {
-          runtime = startTitleFill(next, heading, {
-            onFirstFrame: () => {
-              if (mine === generation) say("on");
+          runtime = startTitleFill(
+            next,
+            heading,
+            {
+              onFirstFrame: () => {
+                if (mine === generation) say("on");
+              },
+              onContextLost: giveUp,
+              onError: (error) => {
+                console.error("A title's fill failed; the page's own title carries on.", error);
+                giveUp();
+              },
             },
-            onContextLost: giveUp,
-            onError: (error) => {
-              console.error("A title's fill failed; the page's own title carries on.", error);
-              giveUp();
-            },
-          });
+            backdrop === "coil" ? { backdrop: coilCanvas } : {},
+          );
           runtime.setPaused(gated && dealPlaying());
         } catch (error) {
           console.error("A title's fill failed to start; the page's own title carries on.", error);
@@ -143,7 +153,7 @@ export function TitleFill({ children, fillKey, gate }: { children: ReactNode; fi
       wrapper.removeAttribute("data-title-fill");
       delete (wrapper as QaWrapper).__titleFill;
     };
-  }, [reduced, gate, fillKey, id]);
+  }, [reduced, gate, backdrop, fillKey, id]);
 
   return (
     <div data-title-fill-key={fillKey} className="title-fill">

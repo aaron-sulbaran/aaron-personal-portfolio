@@ -63,14 +63,17 @@ export function stillFallback(theme: StillTheme): string {
 }
 
 // Why the hero is still, for the notice (components/coil/StillNotice.tsx).
-export type StillCause = "noWebgl" | "unavailable" | "reducedMotion";
+export type StillCause = "noWebgl" | "unavailable";
 // Why a scene that could have run did not: no context could start
 // ("noWebgl"), or it started and failed (a chunk, a render error, a second
 // lost context).
 export type StillFailure = "noWebgl" | "unavailable";
 
-export function stillCause({ reducedMotion, hasApi, failure }: { reducedMotion: boolean; hasApi: boolean; failure: StillFailure | null }): StillCause {
-  if (reducedMotion) return "reducedMotion";
+// Reduced motion has no notice (Aaron, 2026-10-30, board item A13: "cut the
+// notice"): the reader asked for less motion, so the still and the jump stand
+// on their own. null: no notice.
+export function stillCause({ reducedMotion, hasApi, failure }: { reducedMotion: boolean; hasApi: boolean; failure: StillFailure | null }): StillCause | null {
+  if (reducedMotion) return null;
   if (!hasApi) return "noWebgl";
   return failure ?? "unavailable";
 }

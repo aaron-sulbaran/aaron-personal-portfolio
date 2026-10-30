@@ -12,12 +12,17 @@ import { FILL_HELD_IN_INK } from "@/lib/coil/fillPool";
 // moves, reads at 3:1 or better against what is really behind it, shifts
 // nothing, falls back as the name does, holds at most two contexts with the
 // name, and that page 2's waits out the deal. A title held in its ink
-// (FILL_HELD_IN_INK: page 2's, under 3:1 on the blue field at 1280 in light)
-// stays in ink; ?coildebug=fill-all draws it anyway, so its gate, its pool
-// share and its numbers are still tested and read.
+// (FILL_HELD_IN_INK, none today) stays in ink; ?coildebug=fill-all draws it.
 
 const DRAWN = TITLE_KEYS.filter((key) => !FILL_HELD_IN_INK.includes(key));
 const HELD = TITLE_KEYS.filter((key) => FILL_HELD_IN_INK.includes(key));
+
+// The bar is 3:1. Page 2's title, made of the Coil's field it sits on, reads
+// 2.75:1 at its weakest at 1280 in light, where that field is palest: Aaron
+// chose the fill anyway (2026-10-30), so that one case is pinned at the
+// measured floor, a known gap, not the bar.
+const PAGE2_LIGHT_DESKTOP_FLOOR = 2.7;
+const floorFor = (key: string, size: string, colorScheme: string) => (key === "work" && size === "1280" && colorScheme === "light" ? PAGE2_LIGHT_DESKTOP_FLOOR : 3);
 
 const SIZES = [
   { name: "1280", viewport: { width: 1280, height: 800 }, phone: false },
@@ -108,7 +113,8 @@ for (const size of SIZES) {
     });
 
     for (const colorScheme of ["light", "dark"] as const) {
-      test(`each title reads at 3:1 or better against what is really behind it, in ${colorScheme}, or is reported as left in ink`, async ({ page }) => {
+      const pinned = size.name === "1280" && colorScheme === "light" ? " (page 2's pinned at its measured 2.7, Aaron's accepted gap)" : "";
+      test(`each title reads at 3:1 or better against what is really behind it, in ${colorScheme}${pinned}, or is reported as left in ink`, async ({ page }) => {
         await page.emulateMedia({ colorScheme });
         // fill-all: a held title draws too, so its numbers are read for the decision.
         await openHome(page, { debug: "1,fill-all" });
@@ -126,7 +132,7 @@ for (const size of SIZES) {
           const least = Math.min(...readings.map((r) => r.min));
           const held = FILL_HELD_IN_INK.includes(key);
           report.push(`${key}${held ? " (left in ink; its fill, drawn for the readout)" : ""} min ${least.toFixed(2)} (medians ${readings.map((r) => r.median.toFixed(2)).join(", ")})`);
-          if (!held) expect.soft(least, `${key}: the weakest glyph's ratio`).toBeGreaterThanOrEqual(3);
+          if (!held) expect.soft(least, `${key}: the weakest glyph's ratio`).toBeGreaterThanOrEqual(floorFor(key, size.name, colorScheme));
         }
         test.info().annotations.push({ type: "contrast", description: report.join("; ") });
       });
@@ -215,8 +221,7 @@ test.describe("the fallbacks are the name's", () => {
 
 test("the fill's contexts: never more than two alive on top of the Coil's, none made for a title more than a viewport away, top to bottom and back", async ({ page }) => {
   const read = await countContexts(page);
-  // fill-all: every title wears it, the most the pool is ever asked for.
-  await openHome(page, { debug: "1,fill-all", at: "top" });
+  await openHome(page, { at: "top" });
   // Into page 2 the way a reader goes (the deal plays on the way), then on down and back up in steps.
   await page.evaluate(() => document.getElementById("work")!.scrollIntoView({ behavior: "instant" }));
   await page.waitForFunction(() => document.documentElement.dataset.deal === "dealt", null, { timeout: 15_000 });
@@ -242,8 +247,7 @@ test("the fill's contexts: never more than two alive on top of the Coil's, none 
 });
 
 test("page 2's title waits out the deal: no canvas and no frame from the deal's start until it is unfurled, then its fill takes over", async ({ page }) => {
-  // Held in ink by default; fill-all draws it, so the gate is what is tested.
-  await openHome(page, { debug: "1,fill-all", at: "foot" });
+  await openHome(page, { at: "foot" });
   await page.evaluate(() => {
     const w = window as unknown as { __workDuring: { deal: string; canvas: number; frames: number }[] };
     w.__workDuring = [];

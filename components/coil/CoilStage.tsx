@@ -124,6 +124,9 @@ export function CoilStage({
     else setFailure("unavailable");
   }, [onSceneChange]);
 
+  // Why the page is still, for its notice; none under reduced motion (lib/coil/heroStill.ts stillCause).
+  const notice = stillCause({ reducedMotion, hasApi: hasWebGL2(), failure });
+
   return (
     <div ref={stageRef} data-coil-stage="" className="pointer-events-auto absolute inset-0 overflow-hidden">
       <Poster still={still} />
@@ -151,9 +154,7 @@ export function CoilStage({
         onRowOpen={onRowOpen}
         entrance={entrance}
       />
-      {heroScene === "still" && ready && hero
-        ? createPortal(<StillNotice cause={stillCause({ reducedMotion, hasApi: hasWebGL2(), failure })} />, hero)
-        : null}
+      {heroScene === "still" && ready && hero && notice ? createPortal(<StillNotice cause={notice} />, hero) : null}
     </div>
   );
 }

@@ -45,3 +45,13 @@ export const NAME_ONLY_FRAG = /* glsl */ `
     gl_FragColor = mix(was, vec4(letters * m, m), uSurfIn);
   }
 `;
+
+// A title that sits on the Coil's field (page 2's) sees that field, not one of
+// its own: the field pass (FIELD_FRAG, unchanged) is drawn over a window of the
+// Coil canvas's frame. uWindow is the title canvas in that frame's uv (x, y
+// from the bottom left, w, h); (0, 0, 1, 1) is the canvas's own frame.
+export const FIELD_WINDOW_VERT = /* glsl */ `
+  uniform vec4 uWindow;
+  varying vec2 vUv;
+  void main() { vUv = uWindow.xy + uv * uWindow.zw; gl_Position = vec4(position.xy, 0.0, 1.0); }
+`;

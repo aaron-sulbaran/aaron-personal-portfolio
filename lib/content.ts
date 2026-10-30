@@ -142,11 +142,11 @@ export const siteContent = {
       greeting: "Greeting",
     },
     // The still page's notice (no scene can run): why the page is still, by
-    // cause, and its dismiss. Approved copy.
+    // cause, and its dismiss. Approved copy. Reduced motion has none (Aaron,
+    // 2026-10-30): the still and the jump stand on their own.
     still: {
       noWebgl: "I can see your browser has graphics acceleration off, so you'll miss the best part of this page.",
       unavailable: "Your browser couldn't start the moving scene, so you'll miss the best part of this page.",
-      reducedMotion: "Your system asks for less motion, so you're seeing the still version of this page.",
       dismiss: "Got it",
     },
   },
