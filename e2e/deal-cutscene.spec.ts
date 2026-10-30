@@ -282,6 +282,16 @@ for (const size of SIZES) {
       expect(await locked(page)).toBe(false);
     });
 
+    test("the cap: leaving the page mid-deal (the home unmounts) lets go at once", async ({ page }) => {
+      await openHome(page, { debug: "flight", at: "foot" });
+      await dealLink(page).click();
+      await expect.poll(() => dealState(page)).toBe("dealing");
+      expect(await locked(page)).toBe(true);
+      await page.evaluate(() => (window as unknown as { next: { router: { push: (path: string) => void } } }).next.router.push("/quick"));
+      await page.waitForURL("**/quick**", { timeout: 15_000 });
+      expect(await locked(page), "the lock outlived the home").toBe(false);
+    });
+
     test("the cap: the scene dying mid-deal (its context lost) gives the scroll back within the cap", async ({ page, cdp }) => {
       await openHome(page, { debug: "flight", at: "foot" });
       const at = middle(size);
