@@ -135,8 +135,9 @@ test.describe("layout shift", () => {
       });
       await page.goto(path.replace("/", "/?coildebug=1"));
       await waitForScene(page);
-      if (path === "/#work") await showTitle(page, "work");
       await page.waitForTimeout(1500);
+      // And on down the page: each title's fill takes over from its ink in place.
+      if (path === "/#work") for (const key of DRAWN) await showTitle(page, key);
       expect(await page.evaluate(() => (window as unknown as { __shift: number }).__shift)).toBeLessThan(0.0001);
     });
   }
@@ -175,12 +176,15 @@ test.describe("the fallbacks are the name's", () => {
     await other.addInitScript(noWebglContext);
     await other.goto("/?coildebug=1");
     await expect.poll(() => titleState(other, "connect")).not.toBe(null);
-    // With the API but no context, a title only finds out when it is near: bring each one in.
+    // The deal first (it scrolls the page to page 2 on its own), then, with the
+    // API but no context, a title only finds out when it is near: bring each one in.
+    await other.evaluate(() => document.getElementById("work")!.scrollIntoView({ behavior: "instant" }));
+    await other.waitForFunction(() => document.documentElement.dataset.deal === "dealt", null, { timeout: 15_000 });
     for (const key of DRAWN) {
-      await other.evaluate((k) => [...document.querySelectorAll(`[data-title-fill-key="${k}"]`)].find((e) => e.getClientRects().length)!.scrollIntoView({ block: "center" }), key);
-      if (key === "work") await other.waitForFunction(() => document.documentElement.dataset.deal === "dealt", null, { timeout: 15_000 });
+      await other.evaluate((k) => [...document.querySelectorAll(`[data-title-fill-key="${k}"]`)].find((e) => e.getClientRects().length)!.scrollIntoView({ block: "center", behavior: "instant" }), key);
       await expect.poll(() => titleState(other, key), { message: key, timeout: 10_000 }).toBe("still");
     }
+    for (const key of HELD) expect(await titleState(other, key), `${key}: held in its ink`).toBe("rest");
     await other.close();
   });
 
