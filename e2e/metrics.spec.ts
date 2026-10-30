@@ -617,3 +617,10 @@ test("capture: the numbers strip, Commits and Tokens, at 1440 in both themes and
   await page.setViewportSize({ width: 390, height: 844 });
   await shoot("tokens", "light", "-390");
 });
+
+// The hint under the skyline reads by pointer type: a mouse double-clicks to reset (a touch screen's reads double-tap, touch.spec).
+test("metrics: with a mouse the skyline's hint says double-click to reset", async ({ page }) => {
+  await openHome(page);
+  await expect(page.getByText(m.chart.hintSkyline, { exact: true })).toHaveCount(1);
+  await expect(page.getByText(m.chart.hintSkylineTouch, { exact: true })).toHaveCount(0);
+});

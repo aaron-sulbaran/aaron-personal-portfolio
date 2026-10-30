@@ -258,6 +258,8 @@ export const siteContent = {
       highlight: (level: string) => `Highlight ${level.toLowerCase()} days`,
       hintFlat: "Hover a day for details, arrow keys to explore",
       hintSkyline: "Drag to orbit, double-click to reset",
+      // The same hint on a touch screen, where there is no click to double.
+      hintSkylineTouch: "Drag to orbit, double-tap to reset",
       label: (total: string, from: string, to: string, skyline: boolean) =>
         `${total} contributions from ${from} to ${to}, shown as a ${skyline ? "3D skyline" : "heat map"}. Use the arrow keys to read individual days.`,
     },

@@ -1,6 +1,7 @@
 "use client";
 
 import { PillToggle } from "@/components/fx/PillToggle";
+import { useCoarsePointer } from "@/components/useCoarsePointer";
 import { siteContent } from "@/lib/content";
 import type { SeriesChoice } from "@/lib/metrics/settings";
 
@@ -31,10 +32,12 @@ export function ToolKey({ colors }: { colors: string[] }) {
   );
 }
 
+// The skyline's hint by pointer type, as the modals' close hint is: a double-tap on a touch screen, a double-click with a mouse.
 export function SkylineHint({ view }: { view: View }) {
+  const coarse = useCoarsePointer();
   return (
     <span className="relative grid flex-1">
-      {([["flat", copy.hintFlat], ["skyline", copy.hintSkyline]] as const).map(([v, text]) => (
+      {([["flat", copy.hintFlat], ["skyline", coarse ? copy.hintSkylineTouch : copy.hintSkyline]] as const).map(([v, text]) => (
         <span key={v} aria-hidden={v !== view} className="transition-opacity duration-500 [grid-area:1/1] motion-reduce:transition-none" style={{ opacity: v === view ? 1 : 0 }}>
           {text}
         </span>
