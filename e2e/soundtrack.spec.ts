@@ -404,13 +404,55 @@ test("dock: unanswered, the pill arrives as \"Music?\" with no label and nothing
   expect(await storedChoice(page)).toBeNull();
 });
 
+// The band asks once. Answered, a later visit gets no question and one Play it;
+// the first visit keeps its question through its own answer.
+test("band: after an answer the band stops asking on later visits, and its one control is Play it", async ({ page }) => {
+  await openHome(page, { path: HOME, at: "top" });
+  const band = page.locator("#listen");
+  await scrollBandIntoView(page);
+  await expect(band.getByRole("heading", { name: L.line })).toBeVisible();
+  await band.getByRole("button", { name: L.decline, exact: true }).click();
+  // Same visit: the question stays, beside the one Play it.
+  await expect(band.locator('[data-control="off"]')).toBeVisible();
+  await expect(band.getByRole("heading", { name: L.line })).toBeVisible();
+  expect(await storedChoice(page)).toBe("off");
+
+  // A later visit: no question, no Not now, no Resume; just Play it.
+  await page.reload();
+  await settled(page);
+  await scrollBandIntoView(page);
+  await expect(band.getByRole("heading", { name: L.line })).toHaveCount(0);
+  expect(await band.innerText()).not.toContain(L.line);
+  await expect(band.getByRole("button", { name: L.decline, exact: true })).toBeHidden();
+  await expect(band.getByRole("button", { name: L.resume, exact: true })).toBeHidden();
+  await expect(band.getByRole("button", { name: L.accept, exact: true })).toBeVisible();
+  await expect(band.getByRole("button"), "Play it is the band's only control").toHaveCount(1);
+});
+
+test("band: a stored yes also returns without the question, to one Play it that starts the music", async ({ page, browserName }) => {
+  test.skip(browserName === "webkit", "WebKit cannot be launched muted");
+  await page.addInitScript((key) => localStorage.setItem(key, "on"), SOUNDTRACK_KEY);
+  await openHome(page, { path: HOME, at: "top" });
+  const band = page.locator("#listen");
+  await scrollBandIntoView(page);
+  await expect(band.getByRole("heading", { name: L.line })).toHaveCount(0);
+  await expect(band.getByRole("button", { name: L.resume, exact: true })).toHaveCount(0);
+  const play = band.getByRole("button", { name: L.accept, exact: true });
+  await expect(play).toBeVisible();
+  await play.click();
+  await expect(page.locator(BAND_CARD)).toBeVisible();
+});
+
 test("dock: a returning visitor is welcomed back once per session, then gets the quiet \"Paused\" capsule", async ({ page }) => {
   await page.addInitScript((key) => localStorage.setItem(key, "on"), SOUNDTRACK_KEY);
   await armDock(page);
   await openHome(page, { path: HOME });
-  // A stored yes restores as paused: the band offers Resume.
+  // A stored yes restores as paused: the band has stopped asking, and offers Play it.
   await scrollBandIntoView(page);
-  expect(await bandLayerShown(page, "paused"), "Resume shown in the band").toBe(true);
+  expect(await bandLayerShown(page, "paused"), "Play it shown in the band").toBe(true);
+  await expect(page.locator("#listen").getByRole("heading", { name: L.line })).toHaveCount(0);
+  await expect(page.locator('#listen [data-control="paused"]')).toContainText(L.accept);
+  await expect(page.locator('#listen [data-control="paused"]')).not.toContainText(L.resume);
 
   await toCards(page);
   await expect.poll(() => dockText(page), { timeout: 1000, message: "the greeting" }).toBe(S.dockReturning);

@@ -306,12 +306,15 @@ test.describe("where the player lives", () => {
     await expect(pill.getByRole("slider", { name: S.ariaSeek })).toBeVisible();
   });
 
-  test("player: a restored pause resumes from the band's Resume with the player opening there", async ({ page, browserName }) => {
+  test("player: a restored pause resumes from the band's one Play it, with no question, and the player opens there", async ({ page, browserName }) => {
     test.skip(browserName === "webkit", "WebKit cannot be launched muted");
     await page.addInitScript(() => localStorage.setItem("aaron-soundtrack", "on"));
     await openHome(page, { path: HOME });
     await parkBand(page);
     await expect(band(page).locator('[data-control="paused"]')).toBeVisible();
+    await expect(band(page).locator('[data-control="paused"]')).toContainText(L.accept);
+    await expect(band(page).locator('[data-control="paused"]')).not.toContainText(L.resume);
+    await expect(band(page).getByRole("heading", { name: L.line })).toHaveCount(0);
     await expect(page.locator(BAND_CARD)).toHaveCount(0);
     await band(page).locator('[data-control="paused"]').click();
     await expect(page.locator(BAND_CARD).getByRole("button", { name: S.ariaPause, exact: true })).toBeVisible();
