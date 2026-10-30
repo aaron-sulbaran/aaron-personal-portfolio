@@ -48,6 +48,23 @@ function inkX(el: HTMLElement, originLeft: number): { left: number; right: numbe
   return { left: left - originLeft, right: right - originLeft };
 }
 
+// Every link and button the line keeps off (a tap target is as big as its box, not its ink), outside the cards section, whose
+// shader hides the line. A fixed one rides over the page and has no place on it; neither has one that is not drawn.
+const TARGETS = "a[href], button, [role='button'], [role='link'], input, select, textarea, summary";
+
+function measureLinks(root: HTMLElement, origin: number, originLeft: number): Rect[] {
+  const links: Rect[] = [];
+  root.querySelectorAll<HTMLElement>(TARGETS).forEach((el) => {
+    if (!el.offsetWidth || !el.offsetHeight || stuck(el) || el.closest('[data-wave-anchor="cards"], [data-wave-path], [aria-hidden="true"], [inert]')) return;
+    if (getComputedStyle(el).visibility === "hidden") return;
+    for (let n: HTMLElement | null = el; n; n = n.parentElement) if (getComputedStyle(n).position === "fixed") return;
+    const t = docTop(el) - origin;
+    const r = el.getBoundingClientRect();
+    links.push({ left: r.left - originLeft, right: r.right - originLeft, top: t, bottom: t + el.offsetHeight });
+  });
+  return links;
+}
+
 export function measureAnchors(root: HTMLElement, origin: number): Anchors | null {
   const originLeft = root.getBoundingClientRect().left;
   const box = {} as Record<SectionKey, Span>;
@@ -79,5 +96,5 @@ export function measureAnchors(root: HTMLElement, origin: number): Anchors | nul
     blocks.push({ ...inkX(w, originLeft), top: t, bottom: t + w.offsetHeight });
   });
   const line = root.querySelector<HTMLElement>("[data-wave-band-line]");
-  return { width: root.clientWidth, box, words, blocks, headings: [], links: [], hairlines: [], line: line ? docTop(line) - origin + line.offsetHeight / 2 : undefined };
+  return { width: root.clientWidth, box, words, blocks, headings: [], links: measureLinks(root, origin, originLeft), hairlines: [], line: line ? docTop(line) - origin + line.offsetHeight / 2 : undefined };
 }

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import pages from "./fixtures/pages.json";
 import { SAMPLE_STEP, TRAIN_PX } from "./constants";
 import { sampleSpine } from "./geometry";
-import { SIGNATURE_ON, resolveSpine, type Anchors, type SpinePoint } from "./spine";
+import { signatureFor, resolveSpine, type Anchors, type SpinePoint } from "./spine";
 import { checkLine, chooseTrain, visibleOptions } from "./visible";
 
 const sizes = Object.keys(pages) as (keyof typeof pages)[];
@@ -14,18 +14,19 @@ describe("always visible, the shipped line", () => {
   const chosenTrain = (size: keyof typeof pages) => {
     const anchors = pages[size].anchors as Anchors;
     const opts = optsFor(size);
-    const samples = sampleSpine(resolveSpine({ points: SIGNATURE_ON }, anchors, { bandRun: opts.bandRun, viewport: opts.viewport }), SAMPLE_STEP);
+    const samples = sampleSpine(resolveSpine({ points: signatureFor(anchors.width) }, anchors, { bandRun: opts.bandRun, viewport: opts.viewport }), SAMPLE_STEP);
     return chooseTrain(samples, anchors, opts);
   };
   it.each(sizes)("keeps some drawn dot on screen at every scroll position with the train chooseTrain picks at %s", (size) => {
     const train = chosenTrain(size);
-    expect(checkLine(SIGNATURE_ON, pages[size].anchors as Anchors, { ...optsFor(size), train }).visible.worstGapPx).toBe(0);
+    const anchors = pages[size].anchors as Anchors;
+    expect(checkLine(signatureFor(anchors.width), anchors, { ...optsFor(size), train }).visible.worstGapPx).toBe(0);
   });
   it("picks these trains on the measured page", () => {
     expect(Object.fromEntries(sizes.map((size) => [size, chosenTrain(size)]))).toEqual({ "1440x900": TRAIN_PX, "1024x768": TRAIN_PX, "390x844": TRAIN_PX });
   });
   it("reaches its end at max scroll and ends past an edge at 1440", () => {
-    const { end } = checkLine(SIGNATURE_ON, pages["1440x900"].anchors as Anchors, optsFor("1440x900"));
+    const { end } = checkLine(signatureFor(1440), pages["1440x900"].anchors as Anchors, optsFor("1440x900"));
     expect(end.shortPx).toBeLessThanOrEqual(1);
     expect(end.endsOff).toBe(true);
   });
