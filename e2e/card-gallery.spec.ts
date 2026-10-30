@@ -99,9 +99,7 @@ test("gallery rows: no photo row sits without words, the band's card picture hol
     const { dialog } = await openCardFromBook(page, key, { home: false });
     const rows = dialog.locator('[data-row="photo"]');
     for (let i = 0; i < (await rows.count()); i++) {
-      // The jobs card has ten pieces of media beside four paragraphs, so one row (MOD's two photos) has none, by design (lib/gallery/jobs).
-      const none = key === "jobs" && slideWords(galleryOf(key).plan.slides[i]).length === 0;
-      await expect(rows.nth(i).locator('[data-text-column] [data-mask^="words-"]').first(), `${key} row ${i}`).toHaveCount(none ? 0 : 1);
+      await expect(rows.nth(i).locator('[data-text-column] [data-mask^="words-"]').first(), `${key} row ${i}`).toHaveCount(1);
     }
     if (key === "band") {
       await expect(rows).toHaveCount(3);

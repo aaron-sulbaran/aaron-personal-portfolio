@@ -25,7 +25,8 @@ async function pieces(dialog: import("@playwright/test").Locator): Promise<Piece
         const label = kind === "tag" ? (frame.querySelector("[data-job-tag]")?.getAttribute("aria-label") ?? "") : kind === "embed" ? (frame.querySelector("iframe")?.getAttribute("title") ?? "") : (frame.querySelector("img")?.getAttribute("alt") ?? "");
         return { kind, label, row: rows.findIndex((row) => row.contains(frame)), left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom };
       })
-      .sort((a, b) => a.row - b.row || a.left - b.left);
+      // Reading order: its row, then line by line (a 2 by 2 block's tags, then its photos), then left to right.
+      .sort((a, b) => a.row - b.row || (Math.abs(a.top - b.top) > 2 ? a.top - b.top : a.left - b.left));
   });
 }
 
@@ -42,13 +43,15 @@ for (const viewport of [{ width: 1280, height: 800 }, { width: 1440, height: 900
       const tags = (await pieces(dialog)).filter((piece) => piece.kind === "tag").map((piece) => piece.label);
       expect(tags).toEqual(["Aritzia", "Apple", "Student mentor, UT Austin", "MOD Pizza", "Popeyes"].map((employer) => tag.label(employer)));
       expect(tags).toEqual(tagLabels);
-      // The photos follow their own job: the Aritzia poster beside Aritzia's tag, the badge beside Apple's, the MOD pair after MOD's tag.
+      // The photos sit with their own job's tag: the Aritzia poster beside Aritzia's, the badge beside Apple's, MOD's pair under MOD's.
       const all = await pieces(dialog);
-      const rowOf = (label: string) => all.find((piece) => piece.label === label)!.row;
+      const at = (label: string) => all.find((piece) => piece.label === label)!;
       for (const photo of modal.photos) {
-        const job = tag.label(timeline[photo.timeline!].employer);
-        if (photo.timeline === 3) expect(rowOf(photo.alt), `${photo.alt} follows MOD's tag`).toBe(rowOf(job) + 1);
-        else expect(rowOf(photo.alt), `${photo.alt} sits with ${job}`).toBe(rowOf(job));
+        const job = at(tag.label(timeline[photo.timeline!].employer));
+        expect(at(photo.alt).row, `${photo.alt} sits with ${job.label}`).toBe(job.row);
+        if (photo.timeline === 3) {
+          expect(at(photo.alt).top, `${photo.alt} is under MOD's tag`).toBeGreaterThan(job.bottom - 1);
+        }
       }
     });
 
@@ -88,7 +91,7 @@ for (const viewport of [{ width: 1280, height: 800 }, { width: 1440, height: 900
     test("jobs modal: the media alternate sides down the modal, each cluster beside its paragraph, none stacked under another", async ({ page }) => {
       const { dialog } = await openCardFromBook(page, "jobs", { settled: true });
       const rows = dialog.locator('[data-row="photo"]');
-      await expect(rows).toHaveCount(5);
+      await expect(rows).toHaveCount(4);
       const layout = await rows.evaluateAll((els) =>
         els.map((row) => {
           const media = [...row.querySelectorAll("[data-photo-frame]")].map((frame) => frame.getBoundingClientRect());
@@ -97,13 +100,13 @@ for (const viewport of [{ width: 1280, height: 800 }, { width: 1440, height: 900
           return { side: row.getAttribute("data-side"), slot: { left: slot.left, right: slot.right }, text: { left: text.getBoundingClientRect().left, right: text.getBoundingClientRect().right }, words: text.querySelectorAll('[data-mask^="words-"]').length, media: media.length };
         }),
       );
-      expect(layout.map((row) => row.side)).toEqual(["left", "right", "left", "right", "left"]);
+      expect(layout.map((row) => row.side)).toEqual(["left", "right", "left", "right"]);
       layout.forEach((row, i) => {
         if (row.side === "left") expect(row.text.left, `row ${i}: words right of their media`).toBeGreaterThan(row.slot.right);
         else expect(row.text.right, `row ${i}: words left of their media`).toBeLessThan(row.slot.left);
       });
-      // Paragraphs one to four beside the clusters of rows one, two, three and five; row four (MOD's two photos) has none.
-      expect(layout.map((row) => row.words)).toEqual([1, 1, 1, 0, 1]);
+      // The four rows pair with the four paragraphs, one each.
+      expect(layout.map((row) => row.words)).toEqual([1, 1, 1, 1]);
       // In reading order no two consecutive media share a column (a cluster's two sit side by side), and each is no higher than the one before.
       const all = await pieces(dialog);
       expect(all).toHaveLength(modal.photos.length + timeline.length + 1);
@@ -124,9 +127,18 @@ for (const viewport of [{ width: 1280, height: 800 }, { width: 1440, height: 900
         for (const piece of cluster) expect(row.side === "left" ? piece.right <= middle + 1 : piece.left >= middle - 1, `${piece.label} on the ${row.side}`).toBe(true);
       });
       // Popeyes' tag is beside the post's paragraph, in its words column, under the words.
-      const last = rows.nth(4);
+      const last = rows.nth(3);
       await expect(last.locator("[data-text-column] [data-aside] [data-job-tag]")).toHaveAttribute("aria-label", tag.label("Popeyes"));
       await expect(last.locator("[data-cluster] iframe")).toHaveCount(1);
+      // Paragraph 3's row is a 2 by 2 block: UT Austin's and MOD's tags on top, MOD's selfie and sign under them, in the same two columns.
+      const block = all.filter((piece) => piece.row === 2);
+      expect(block.map((piece) => piece.label)).toEqual([tag.label("Student mentor, UT Austin"), tag.label("MOD Pizza"), modal.photos[2].alt, modal.photos[3].alt]);
+      const [ut, mod, selfie, sign] = block;
+      expect(Math.abs(ut.top - mod.top), "the tags share a line").toBeLessThan(2);
+      expect(Math.abs(selfie.top - sign.top), "the photos share a line").toBeLessThan(2);
+      expect(selfie.top, "the photos are under the tags").toBeGreaterThanOrEqual(Math.max(ut.bottom, mod.bottom) - 1);
+      expect(Math.abs(selfie.left - ut.left) < 2 && Math.abs(sign.left - mod.left) < 2, "in the tags' columns").toBe(true);
+      expect(Math.abs(ut.right - mod.left), "a gap, not an overlap, between columns").toBeLessThanOrEqual(GALLERY.cluster.gap + 1);
     });
 
     test("jobs modal: Aaron's LinkedIn post is embedded as he wrote it, lazy and titled, at its native 504 by 1258 in the photos' radius and border", async ({ page, offsite }) => {

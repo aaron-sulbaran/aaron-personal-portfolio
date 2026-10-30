@@ -54,8 +54,13 @@ export function CardRows({ gallery, renderMedia, flying }: Props) {
       >
         <div className={`flex shrink-0 ${EDGE[side]}`} style={{ width: slot }}>
           {slide.together ? (
-            // A cluster: the row's pieces side by side, all in view, never taking turns (lib/gallery/jobs).
-            <div className="flex items-start" style={{ columnGap: GALLERY.cluster.gap }} data-cluster={slide.photos.length}>
+            // A cluster: the row's pieces side by side, all in view, never taking turns (lib/gallery/jobs); more than two wrap
+            // after the second into a 2 by 2 block, its second line under its first.
+            <div
+              className="flex flex-wrap items-start"
+              style={{ columnGap: GALLERY.cluster.gap, rowGap: GALLERY.cluster.gap, ...(slide.photos.length > 2 ? { maxWidth: GALLERY.cluster.itemWidth * 2 + GALLERY.cluster.gap } : {}) }}
+              data-cluster={slide.photos.length}
+            >
               {slide.photos.map((photo) => (
                 <StillPhoto key={photo} photo={photos[photo]} index={photo} box={box(photo)} />
               ))}

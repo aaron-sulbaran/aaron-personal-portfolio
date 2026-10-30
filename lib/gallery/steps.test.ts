@@ -18,8 +18,7 @@ describe("a card's mask steps", () => {
       ["title"], ["meta"],
       ["photo-4", "photo-0", "caption-0", "words-0"],
       ["photo-5", "photo-1", "caption-1", "words-1"],
-      ["photo-6", "photo-7", "words-2"],
-      ["photo-2", "caption-2", "photo-3", "caption-3"],
+      ["photo-6", "photo-7", "photo-2", "caption-2", "photo-3", "caption-3", "words-2"],
       ["photo-9", "photo-8", "words-3"],
       ["links"],
     ]);
