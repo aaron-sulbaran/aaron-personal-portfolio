@@ -20,8 +20,8 @@ import { WaveCanvas } from "./WaveCanvas";
 // pill (the music is playing or paused in it). Before an answer the pill is
 // "Music?", a second ask, and waits for the prompt itself to scroll away
 // unanswered (lib/waveform/pillGate.ts). The wave sits under the copy at every
-// width, and phones have no stock pill. The freeze toggle is not here: it
-// lives in the playback pill and the phone's isle.
+// width, and phones have no stock pill. The freeze toggle is not here: the
+// Menu's chip is the one freeze control, and the open player has its own.
 export function BandStage() {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const [inView, setInView] = useState(false);

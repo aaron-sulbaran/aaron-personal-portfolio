@@ -54,7 +54,7 @@ export const siteContent = {
     decline: "Not now",
     pause: "Pause",
     resume: "Resume",
-    // The wave's freeze, in the playback pill and the phone's isle.
+    // The wave's freeze inside the open player (the band's card, the desktop pill and the phone's island).
     freeze: "Freeze the wave",
     unfreeze: "Let the wave move",
   },

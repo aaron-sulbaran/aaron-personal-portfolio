@@ -21,8 +21,8 @@ type Props = {
 // with quiet shuffle and repeat, and the Tracks. It has no surface of its own
 // (the host gives it glass or the island's black), no close button, no credit
 // line: where it opens and closes is the host's business. Its last row holds the
-// Tracks and, beside it, the wave's freeze (the one place the wave can be frozen
-// from, with the playback pill's).
+// Tracks and, beside it, the wave's freeze (the Menu's chip is the only other
+// control that freezes it).
 export function NowPlaying({ active, reduce }: Props) {
   const controls = usePlayerControls(active);
   const [open, setOpen] = useState(false);

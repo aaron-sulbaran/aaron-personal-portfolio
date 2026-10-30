@@ -11,7 +11,6 @@ import { getPlayFailed, getRestoredSoundtrack, startSoundtrack, subscribeSoundtr
 import { getDeal, subscribeDeal } from "@/lib/home/deal";
 import { DOCK, capsuleName, capsuleText, dockLabel, dockMode, labelHoldRuns, type DockLabel } from "@/lib/waveform/dock";
 import { isPhone, subscribePhone } from "@/lib/waveform/layout";
-import { FreezeButton } from "./FreezeControls";
 import { DockGlyph, PillSlot, glass } from "./PillParts";
 import { PillAnnouncer, PillLabel, labelLine, useLabelHold } from "./PillLabel";
 import { GREETED_KEY } from "@/lib/home/firstVisit";
@@ -37,9 +36,9 @@ function readGreeted(): boolean {
 // One click plays, and the player (components/player) takes the isle: the pill
 // steps away for as long as the music is playing or paused in the player. Every
 // hidden layer is inert, so nothing invisible is focusable. Portaled to body so
-// no transformed ancestor captures it. Beside the capsule sits the wave's freeze
-// (a round glass button: wherever the reader is, the wave can be frozen from
-// here). Phones have no pill; there the band is the control.
+// no transformed ancestor captures it. The wave's freeze is not here: the Menu's
+// chip is the one freeze control. Phones have no pill; there the band is the
+// control.
 export function PlaybackPill({ reached }: { reached: boolean }) {
   return (
     <Portal>
@@ -178,7 +177,6 @@ function PillInner({ reached }: { reached: boolean }) {
               </span>
             </PillSlot>
           </Fill>
-          <FreezeButton size={DOCK.capsulePx} />
         </div>
       </div>
       <PillAnnouncer line={mode === "label" ? line : null} />

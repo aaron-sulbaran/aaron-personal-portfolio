@@ -802,7 +802,7 @@ test("dock: a live reduced-motion toggle leaves the docked pill where it is", as
         opacity: 1,
         transform: "",
       });
-      // Its left edge and its line hold: the box's width does not (the freeze button beside the capsule goes under reduced motion).
+      // Its left edge and its line hold.
       expect(Math.hypot(s.x - s.width / 2 - (rest.x - rest.width / 2), s.y - rest.y), "the box held still").toBeLessThanOrEqual(0.5);
     }
   }

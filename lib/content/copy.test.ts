@@ -178,7 +178,7 @@ describe("the music band", () => {
     for (const gone of ["subline", "acceptedNote", "declinedNote", "pausedNote"]) expect(listen).not.toHaveProperty(gone);
   });
 
-  it("keeps the wave's freeze words for the playback pill and the phone's isle", () => {
+  it("keeps the wave's freeze words for the open player", () => {
     expect([listen.freeze, listen.unfreeze]).toEqual(["Freeze the wave", "Let the wave move"]);
   });
 

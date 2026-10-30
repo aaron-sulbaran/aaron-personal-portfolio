@@ -230,23 +230,22 @@ test("intro: the music is one quiet line between the blocks, with one button for
   expect(await band.innerText()).not.toContain("No problem");
 });
 
-test("intro: the wave's freeze is in the playback pill, where the reader is wherever the page is", async ({ page }) => {
+test("intro: the playback pill carries no freeze disc beside its capsule", async ({ page }) => {
   await armDock(page);
   await openHome(page, { at: "top" });
   const band = page.locator("#listen");
   await band.scrollIntoViewIfNeeded();
   await band.getByRole("button", { name: L.decline, exact: true }).click();
-  // Past the band the pill arrives, with the freeze beside its capsule.
+  // Past the band the pill arrives with its capsule alone: no snowflake, no second button.
   await scrollToY(page, Math.round((await documentTop(page, "#listen")) + (await boxOf(page, "#listen")).height + 200));
   await expect.poll(async () => (await readDock(page))?.inert, { message: "the pill past the band" }).toBe(false);
-  const freeze = page.locator(`${PILL} [data-wave-freeze]`);
-  await expect(freeze).toHaveAttribute("aria-pressed", "false");
-  await expect(freeze).toHaveAccessibleName(L.freeze);
-  await freeze.click();
-  await expect(freeze).toHaveAttribute("aria-pressed", "true");
-  await expect(freeze).toHaveAccessibleName(L.unfreeze);
-  await freeze.click();
-  await expect(freeze).toHaveAttribute("aria-pressed", "false");
+  await expect(page.locator(PILL)).toHaveCount(1);
+  await expect(page.locator(PILL).getByRole("button")).toHaveCount(1);
+  await expect(page.locator(`${PILL} [data-wave-freeze]`)).toHaveCount(0);
+  await expect(page.locator("[data-wave-freeze]")).toHaveCount(0);
+  // The box is the capsule's own width: nothing sits beside it.
+  const [pill, capsule] = await Promise.all([boxOf(page, `${PILL} > div`), boxOf(page, CAPSULE)]);
+  expect(Math.abs(pill.width - capsule.width), "the pill's box is the capsule").toBeLessThanOrEqual(1);
 });
 
 test("intro: the Music? pill stays hidden while the prompt is on screen, and shows once it has scrolled away unanswered", async ({ page }) => {
