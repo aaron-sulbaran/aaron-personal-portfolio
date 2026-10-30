@@ -89,7 +89,10 @@ test("inline links (touch): a tap on an inner pop of the open definition pins it
     await page.waitForTimeout(350);
     const read = await bubble(page).evaluate((el) => {
       const rect = el.getBoundingClientRect();
+      const was = (el as HTMLElement).style.pointerEvents;
+      (el as HTMLElement).style.pointerEvents = "auto"; // the label takes no pointer unless it holds a link; let it be hit for this one reading
       const mid = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+      (el as HTMLElement).style.pointerEvents = was;
       return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: innerWidth, height: innerHeight, topmost: !!mid && el.contains(mid) };
     });
     expect(read.left).toBeGreaterThanOrEqual(0);

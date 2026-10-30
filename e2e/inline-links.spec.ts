@@ -133,7 +133,11 @@ async function expectPopShown(page: Page, dialog: ReturnType<Page["locator"]>, k
   const zPanel = await dialog.evaluate((el) => Number(getComputedStyle(el).zIndex));
   const read = await label.evaluate((el) => {
     const rect = el.getBoundingClientRect();
+    // The label takes no pointer (a hover must reach what is under it), so let it be hit for this one reading.
+    const was = (el as HTMLElement).style.pointerEvents;
+    (el as HTMLElement).style.pointerEvents = "auto";
     const mid = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+    (el as HTMLElement).style.pointerEvents = was;
     return {
       rect: { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom },
       view: { width: innerWidth, height: innerHeight },
