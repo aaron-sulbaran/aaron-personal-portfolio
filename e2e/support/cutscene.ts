@@ -157,6 +157,15 @@ export async function wheelStream(cdp: CDPSession, stream: readonly (readonly [n
   await Promise.all(sent);
 }
 
+// One long wheel gesture, as a trackpad's swipe arrives: DevTools' synthesized
+// gesture sends a phased sequence of wheels (began, changed, ended), where each
+// Input.dispatchMouseEvent wheel is a gesture of its own. Chromium lets only such a
+// gesture's first wheel decide whether the rest can be cancelled. `distance` px down
+// the page at `speed` px/s.
+export async function wheelGesture(cdp: CDPSession, at: Point, distance: number, speed: number) {
+  await cdp.send("Input.synthesizeScrollGesture", { x: at.x, y: at.y, yDistance: -distance, speed, gestureSourceType: "mouse" });
+}
+
 // A finger flick on a phone: from `from`, `distance` px (negative: the finger goes up the screen, the
 // page down) at `speed` px/s, then lifted, so the browser's own momentum follows as it does for a
 // real flick. (DevTools' synthesized gesture: touch events at speed, and the fling after them.)

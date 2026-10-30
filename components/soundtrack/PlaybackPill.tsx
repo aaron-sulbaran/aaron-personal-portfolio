@@ -8,7 +8,8 @@ import { FILL_PICK, FILL_TRANSITION } from "@/lib/fx/fill";
 import { isKeyboardFocus } from "@/lib/input/modality";
 import { getSoundtrackPlayer } from "@/lib/audio";
 import { getPlayFailed, getRestoredSoundtrack, startSoundtrack, subscribeSoundtrack, useSoundtrack } from "@/lib/soundtrack";
-import { DOCK, capsuleName, capsuleText, dockLabel, dockMode, type DockLabel } from "@/lib/waveform/dock";
+import { getDeal, subscribeDeal } from "@/lib/home/deal";
+import { DOCK, capsuleName, capsuleText, dockLabel, dockMode, labelHoldRuns, type DockLabel } from "@/lib/waveform/dock";
 import { isPhone, subscribePhone } from "@/lib/waveform/layout";
 import { FreezeButton } from "./FreezeControls";
 import { DockGlyph, PillSlot, glass } from "./PillParts";
@@ -16,6 +17,8 @@ import { PillAnnouncer, PillLabel, labelLine, useLabelHold } from "./PillLabel";
 import { GREETED_KEY } from "@/lib/home/firstVisit";
 import { usePillFade } from "./usePillFade";
 import { useReducedMotionLive } from "./useReducedMotionLive";
+
+const dealIsPlaying = () => getDeal().phase === "dealing";
 
 function readGreeted(): boolean {
   try {
@@ -92,7 +95,9 @@ function PillInner({ reached }: { reached: boolean }) {
       /* storage unavailable */
     }
   };
-  useLabelHold(kind, mode === "label" && landed, held.pointer || held.focus, markShown);
+  // The label's clock waits while the deal plays: the cutscene holds the screen (lib/waveform/dock.ts labelHoldRuns).
+  const dealPlaying = useSyncExternalStore(subscribeDeal, dealIsPlaying, () => false);
+  useLabelHold(kind, labelHoldRuns({ mode, landed, dealPlaying }), held.pointer || held.focus, markShown);
 
   const player = getSoundtrackPlayer();
   const [trackIndex, setTrackIndex] = useState(() => player.getSnapshot().trackIndex);

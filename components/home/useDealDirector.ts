@@ -14,6 +14,8 @@ import { attachReaderInput, type ReaderInput } from "@/lib/home/readerInput";
 import { finishIntroArrival } from "@/lib/home/introArrivalEnd";
 import { clearOpen, openParts, prepareOpen, type OpenParts } from "@/lib/home/dealOpen";
 import { stageGone, stickyProgress } from "@/lib/home/stickyRange";
+import { attachTriggerGuard, type TriggerGuard } from "@/lib/home/triggerGuard";
+import { guardArmed, triggerScrollY } from "@/lib/home/triggerGuardRules";
 
 // The deal's director: it watches where the reader is on page 1's foot and the
 // cards section, opens the section at once when a load or a jump finds it in
@@ -38,6 +40,14 @@ import { stageGone, stickyProgress } from "@/lib/home/stickyRange";
 // page's own scroll that crosses the trigger (a Menu link, an anchor) plays the
 // deal as it always did, and so does a deal with no scene (the still path), whose
 // click scroll the reader's wheel, touch or key still takes back.
+//
+// The reader's scroll starts it on the input itself where it can: within about a
+// viewport above the trigger the trigger's guard (lib/home/triggerGuard.ts) reads
+// each wheel, touch move and scroll key before the browser scrolls, and the one
+// that would carry the page past the trigger starts the deal at once and is
+// cancelled, so a fling on a busy main thread cannot outrun the deal. The page's
+// `scroll` event (dealTrigger, below) stays the way in for everything else: a
+// scrollbar drag, a gesture that began before the guard listened, a page's own scroll.
 
 const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
@@ -57,6 +67,11 @@ type Session = {
   safety: number;
 };
 
+// The reader's own input is about to carry the page past the trigger (the trigger's
+// guard): the deal is theirs, a cutscene, at the input's speed (px/s down the page;
+// undefined: the page's own scroll speed).
+type ReaderCross = { velocity?: number };
+
 type Args = {
   sectionRef: RefObject<HTMLElement | null>;
   scene: HeroScene;
@@ -70,12 +85,14 @@ export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance 
   const direction = useRef({ y: 0, down: false });
   const sceneWait = useRef<{ timer: number; over: boolean } | null>(null);
   const evaluateRef = useRef<() => void>(() => {});
-  const beginRef = useRef<(source: DealSource) => boolean>(() => false);
+  const beginRef = useRef<(source: DealSource, input?: ReaderCross) => boolean>(() => false);
   // The cutscene's lock (it outlives the session by its tail), what the reader's input
-  // has been, and the page's recent scroll positions (the speed the hand leg starts at).
+  // has been, the page's recent scroll positions (the speed the hand leg starts at),
+  // and the trigger's guard.
   const lockRef = useRef<DealLock | null>(null);
   const readerRef = useRef<ReaderInput | null>(null);
   const samples = useRef<ScrollSample[]>([]);
+  const guardRef = useRef<TriggerGuard | null>(null);
 
   useEffect(() => {
     live.current = { scene, reducedMotion };
@@ -129,9 +146,10 @@ export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance 
   }, [dropLock, endSession, setEntrance]);
 
   // Starts the deal; false when it cannot yet (the scene is on its way, so the
-  // cards section stays closed meanwhile).
+  // cards section stays closed meanwhile). `input`: the trigger's guard starts it
+  // for the reader's own input, before that input has moved the page.
   const begin = useCallback(
-    (source: DealSource): boolean => {
+    (source: DealSource, input?: ReaderCross): boolean => {
       const state = getDeal();
       if (state.phase === "dealt") {
         dispatchDeal({ type: "enter", source: "view" });
@@ -172,8 +190,9 @@ export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance 
       // a page's own, which plays the deal as it always did) holds the reader's input
       // until the Coil is unfurled. Taken before anything else of the deal runs.
       const now = performance.now();
-      const cutscene = mode === "scene" && (source === "click" || (source === "scroll" && (readerRef.current?.driving(now) ?? false)));
-      const velocity = cutscene && source === "scroll" ? scrollVelocity(samples.current, now) : 0;
+      const readers = source === "scroll" && (input !== undefined || (readerRef.current?.driving(now) ?? false));
+      const cutscene = mode === "scene" && (source === "click" || readers);
+      const velocity = cutscene && source === "scroll" ? (input?.velocity ?? scrollVelocity(samples.current, now)) : 0;
       if (cutscene) {
         dropLock();
         const lock = takeDealLock((why) => {
@@ -222,12 +241,9 @@ export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance 
     const rail = section.querySelector<HTMLElement>("[data-coil-rail]")?.getBoundingClientRect();
     const stage = section.querySelector<HTMLElement>("[data-coil-sticky]")?.getBoundingClientRect();
     const viewportHeight = window.innerHeight;
-    const progress = stickyProgress({
-      railTop: rail?.top ?? box.top,
-      range: rail && stage ? rail.height - stage.height : 0,
-      sectionTop: box.top,
-      viewportHeight,
-    });
+    const scrollY = window.scrollY;
+    const geometry = { railTop: rail?.top ?? box.top, range: rail && stage ? rail.height - stage.height : 0, sectionTop: box.top, viewportHeight };
+    const progress = stickyProgress(geometry);
     const trigger = dealTrigger(
       { stickyProgress: progress, sectionTop: box.top, sectionBottom: box.bottom, viewportHeight, scrollingDown: direction.current.down },
       getDeal(),
@@ -239,6 +255,12 @@ export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance 
       if (!stageGone(stage.top, stage.bottom, viewportHeight)) session.current.stageSeen = true;
       else if (session.current.stageSeen) settle();
     }
+    // The trigger's guard listens within about a viewport above the trigger while the
+    // deal waits for the reader's scroll (a still scene has no cutscene to start).
+    const deal = getDeal();
+    const waiting = deal.phase === "idle" && !deal.hold && !session.current && live.current.scene !== "still" && !live.current.reducedMotion;
+    const triggerY = triggerScrollY({ scrollY, ...geometry });
+    guardRef.current?.set(guardArmed({ scrollY, triggerY, viewportHeight, waiting }) ? triggerY : null);
   }, [sectionRef, settle]);
   useEffect(() => {
     evaluateRef.current = evaluate;
@@ -259,6 +281,18 @@ export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance 
     return () => {
       detach();
       readerRef.current = null;
+    };
+  }, []);
+
+  // The trigger's guard: the reader's input that would carry the page past the
+  // trigger starts the deal, and is the cutscene's when the cutscene took the page.
+  useEffect(() => {
+    const guard = attachTriggerGuard((velocity) => beginRef.current("scroll", { velocity }) && lockRef.current !== null);
+    guardRef.current = guard;
+    evaluateRef.current();
+    return () => {
+      guard.detach();
+      guardRef.current = null;
     };
   }, []);
 
@@ -351,6 +385,10 @@ export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance 
       dropLock();
       current?.master?.kill();
       if (sceneWait.current) window.clearTimeout(sceneWait.current.timer);
+      // A deal cut short by leaving the home is over, as settle() makes it: the store
+      // outlives the home, and a deal left "dealing" would greet a return by client
+      // navigation with cards that never deal (and a dock label whose hold never runs).
+      if (current) dispatchDeal({ type: "skip" });
     },
     [dropLock, endSession],
   );

@@ -37,9 +37,10 @@ export function PillAnnouncer({ line }: { line: string | null }) {
   );
 }
 
-// The label's hold: DOCK.holdMs once the pill has landed, paused while the
-// pointer or focus is on the pill (the remainder resumes), then `onDone`
-// collapses it. A pill that leaves mid-hold, or a new label, starts afresh.
+// The label's hold: DOCK.holdMs once the pill has landed and no deal is playing
+// (`active`, lib/waveform/dock.ts labelHoldRuns), paused while the pointer or
+// focus is on the pill (the remainder resumes), then `onDone` collapses it. A
+// pill that leaves mid-hold, a deal that starts mid-hold, or a new label starts afresh.
 export function useLabelHold(kind: DockLabel, active: boolean, held: boolean, onDone: (kind: DockLabel) => void) {
   const remaining = useRef(DOCK.holdMs);
   const done = useRef(onDone);
