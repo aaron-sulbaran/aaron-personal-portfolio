@@ -3,6 +3,8 @@ import { COIL } from "@/lib/coil/constants";
 import { NAME, NAME_SURFACE } from "@/lib/coil/field.glsl";
 import { clamp01 } from "@/lib/coil/geometry";
 import { siteEase } from "@/lib/coil/motion";
+import { firstText, lineAnchor, paintAsText, paintedBaseline, textPx } from "@/lib/coil/lineAnchor";
+import { maskGrid, type DrawnBox } from "@/lib/coil/pixelGrid";
 import { applyColor, parseColor, type Rgba } from "@/lib/coil/theme";
 import { layoutTitle, packGlyphs, type CharRect, type TitleLayout } from "@/lib/coil/titleLayout";
 import { createGlyphReduction } from "../scene/glyphReduction";
@@ -52,47 +54,56 @@ function transform(text: string, how: string) {
   return text;
 }
 
-// The letters in white on clear, at `scale` device px per CSS px, from the
-// DOM's own lines. A line is drawn whole (the face's own shaping, as the page
-// shapes it); where the canvas's pen would drift from the page's glyphs by
-// more than a hair, each glyph is drawn at the page's own place instead.
-function paintMask(heading: HTMLElement, origin: DOMRect, scale: number): TitleMask | null {
-  const layout = layoutTitle(readChars(heading), origin);
+// The letters in white on clear, from the DOM's own lines, on the canvas's
+// device grid (lib/coil/pixelGrid.ts): `scale` is the buffer's px per CSS px,
+// the mask's corner on one of its pixels, each line on the baseline the page
+// lays it on (read off the layout, lib/coil/lineAnchor.ts, and on a whole
+// device px, where the page paints it) and set in the heading's own type, so
+// the first frame's glyphs are the page's glyphs. A line is drawn whole (the
+// face's own shaping, as the page shapes it); where the canvas's pen would
+// drift from the page's glyphs by more than a hair, each glyph is drawn at the
+// page's own place instead. Everything is CSS px from the canvas's corner.
+function paintMask(heading: HTMLElement, box: DrawnBox, scale: number): TitleMask | null {
+  const layout = layoutTitle(readChars(heading), box);
   if (!layout.lines.length) return null;
   const style = getComputedStyle(heading);
   const size = parseFloat(style.fontSize) || 16;
   const pad = Math.ceil(size * COIL.lockup.pad);
-  const rect = { x: layout.box.x - pad, y: layout.box.y - pad, w: layout.box.w + 2 * pad, h: layout.box.h + 2 * pad };
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.ceil(rect.w * scale);
-  canvas.height = Math.ceil(rect.h * scale);
-  const g = canvas.getContext("2d");
-  if (!g) throw new Error("2d context unavailable");
-  g.setTransform(scale, 0, 0, scale, 0, 0);
-  g.fillStyle = "white";
-  g.textBaseline = "alphabetic";
-  g.font = fontOf(style);
-  g.fontKerning = "normal";
-  const spacing = style.letterSpacing === "normal" ? "0px" : style.letterSpacing;
-  for (const line of layout.lines) {
-    const text = transform(line.text, style.textTransform);
-    g.letterSpacing = spacing;
-    const ascent = g.measureText(text).fontBoundingBoxAscent;
-    const baseline = line.top - rect.y + ascent;
-    const chars = [...text];
-    let drift = 0;
-    let prefix = "";
-    chars.forEach((ch, i) => {
-      drift = Math.max(drift, Math.abs(line.x + g.measureText(prefix).width - line.starts[i]));
-      prefix += ch;
-    });
-    if (drift <= 0.75) {
-      g.fillText(text, line.x - rect.x, baseline);
-      continue;
+  const { px, rect } = maskGrid({ x: layout.box.x - pad, y: layout.box.y - pad, w: layout.box.w + 2 * pad, h: layout.box.h + 2 * pad }, scale);
+  // The first line's baseline as the page lays it, and every line's as far
+  // under its text box's top, where the page paints it (lib/coil/lineAnchor.ts).
+  const first = firstText(heading);
+  const anchor = first ? lineAnchor(first) : null;
+  const drop = anchor ? anchor.y - anchor.top : null;
+  const perPx = textPx(box.dpr);
+  const painted = (lineTop: number, ascent: number) =>
+    drop === null ? lineTop + ascent : paintedBaseline({ x: 0, y: lineTop + box.top + drop, top: lineTop + box.top }, window.scrollY, perPx) - box.top;
+  const { canvas } = paintAsText(heading, px.w, px.h, (g) => {
+    g.setTransform(scale, 0, 0, scale, -px.x, -px.y);
+    g.fillStyle = "white";
+    g.textBaseline = "alphabetic";
+    g.font = fontOf(style);
+    g.fontKerning = "normal";
+    const spacing = style.letterSpacing === "normal" ? "0px" : style.letterSpacing;
+    for (const line of layout.lines) {
+      const text = transform(line.text, style.textTransform);
+      g.letterSpacing = spacing;
+      const baseline = painted(line.top, g.measureText(text).fontBoundingBoxAscent);
+      const chars = [...text];
+      let drift = 0;
+      let prefix = "";
+      chars.forEach((ch, i) => {
+        drift = Math.max(drift, Math.abs(line.x + g.measureText(prefix).width - line.starts[i]));
+        prefix += ch;
+      });
+      if (drift <= 0.75) {
+        g.fillText(text, line.x, baseline);
+        continue;
+      }
+      g.letterSpacing = "0px";
+      chars.forEach((ch, i) => g.fillText(ch, line.starts[i], baseline));
     }
-    g.letterSpacing = "0px";
-    chars.forEach((ch, i) => g.fillText(ch, line.starts[i] - rect.x, baseline));
-  }
+  });
   return { canvas, rect, layout };
 }
 
@@ -107,7 +118,7 @@ function nameUnitsPerPx(fontPx: number) {
   return NAME_SURFACE.viewHeight / Math.max(1, lockup);
 }
 
-function createTitleLettering({ ctx, gl, field, surface, glyphTargets }: FillParts, heading: HTMLElement, canvas: HTMLCanvasElement) {
+function createTitleLettering({ ctx, gl, field, surface, glyphTargets, box }: FillParts, heading: HTMLElement, canvas: HTMLCanvasElement) {
   const { st } = ctx;
   const { view } = st;
   const cu = field.compMaterial.uniforms;
@@ -127,8 +138,8 @@ function createTitleLettering({ ctx, gl, field, surface, glyphTargets }: FillPar
   }
 
   function layout() {
-    const scale = Math.min(2, window.devicePixelRatio || 1);
-    mask = paintMask(heading, canvas.getBoundingClientRect(), scale);
+    // The mask at the buffer's own resolution: a texel a buffer pixel.
+    mask = paintMask(heading, box(), view.dpr);
     texture?.dispose();
     texture = null;
     if (!mask) {
