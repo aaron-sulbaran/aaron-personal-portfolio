@@ -247,9 +247,9 @@ export function startFill<L extends Lettering>(
     layout();
     if (!raf) drawStill();
   });
-  resizeObserver.observe(canvas);
-  // The canvas is sized in px from its host: the host's own size is what moves.
-  if (canvas.parentElement) resizeObserver.observe(canvas.parentElement);
+  // The canvas is sized in px from its host (the layout sets it), so the
+  // host's size is what moves; a canvas with no host sizes itself.
+  resizeObserver.observe(canvas.parentElement ?? canvas);
   for (const el of lettering.observe()) resizeObserver.observe(el);
   const intersection = new IntersectionObserver((entries) => {
     visible = entries[entries.length - 1]?.isIntersecting ?? true;

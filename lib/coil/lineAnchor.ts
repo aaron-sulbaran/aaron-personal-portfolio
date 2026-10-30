@@ -14,21 +14,34 @@
 
 export type LineAnchor = { x: number; y: number; top: number };
 
+// Every line's anchor at once (one layout for all of them; null where a text
+// is not in the document).
+export function lineAnchors(texts: Text[]): (LineAnchor | null)[] {
+  const probes = texts.map((text) => {
+    const parent = text.parentNode;
+    if (!parent) return null;
+    const probe = document.createElement("span");
+    probe.setAttribute("aria-hidden", "true");
+    probe.style.cssText = "display:inline-block;width:0;height:0;margin:0;padding:0;border:0;vertical-align:baseline";
+    parent.insertBefore(probe, text);
+    return probe;
+  });
+  const at = probes.map((probe, i) => {
+    if (!probe) return null;
+    const r = probe.getBoundingClientRect();
+    const text = texts[i];
+    const range = document.createRange();
+    const start = Math.max(0, (text.textContent ?? "").search(/\S/));
+    range.setStart(text, start);
+    range.setEnd(text, start + 1);
+    return { x: r.left, y: r.top, top: range.getBoundingClientRect().top };
+  });
+  for (const probe of probes) probe?.remove();
+  return at;
+}
+
 export function lineAnchor(text: Text): LineAnchor | null {
-  const parent = text.parentNode;
-  if (!parent) return null;
-  const probe = document.createElement("span");
-  probe.setAttribute("aria-hidden", "true");
-  probe.style.cssText = "display:inline-block;width:0;height:0;margin:0;padding:0;border:0;vertical-align:baseline";
-  parent.insertBefore(probe, text);
-  const r = probe.getBoundingClientRect();
-  probe.remove();
-  const range = document.createRange();
-  const start = (text.textContent ?? "").search(/\S/);
-  range.setStart(text, Math.max(0, start));
-  range.setEnd(text, Math.max(0, start) + 1);
-  const box = range.getBoundingClientRect();
-  return { x: r.left, y: r.top, top: box.top };
+  return lineAnchors([text])[0];
 }
 
 // The px text is laid out and rounded in: a CSS px on a Mac, a device px elsewhere.
@@ -58,7 +71,7 @@ export function firstText(el: Node): Text | null {
 // stylistic sets, its antialiased smoothing: a canvas outside the document
 // draws "i'm" with the face's default apostrophe and a smoothed, bolder stem).
 // The canvas is out of the flow and unseen, and gone again before the task ends.
-export function paintAsText<T>(el: HTMLElement, width: number, height: number, draw: (g: CanvasRenderingContext2D) => T): { canvas: HTMLCanvasElement; value: T } {
+export function paintAsText<T>(el: HTMLElement, width: number, height: number, draw: (g: CanvasRenderingContext2D, canvas: HTMLCanvasElement) => T): { canvas: HTMLCanvasElement; value: T } {
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
@@ -68,7 +81,7 @@ export function paintAsText<T>(el: HTMLElement, width: number, height: number, d
   try {
     const g = canvas.getContext("2d");
     if (!g) throw new Error("2d context unavailable");
-    return { canvas, value: draw(g) };
+    return { canvas, value: draw(g, canvas) };
   } finally {
     canvas.remove();
   }

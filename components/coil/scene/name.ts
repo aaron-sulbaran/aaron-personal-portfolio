@@ -122,23 +122,26 @@ function paintNameLockup(greeting: string, name: string, family: string, sizePx:
 function paintPlacedLockup(heading: HTMLElement, greeting: string, name: string, family: string, at: NamePlacement, scale: number): NameLockup & { x: number; y: number; greetTop: number } {
   const nameFont = `900 ${at.name.size}px ${family}`;
   const greetFont = `900 ${at.greeting.size}px ${family}`;
-  const { gm, nm, greetCap } = paintAsText(heading, 1, 1, (probe) => {
-    probe.fontKerning = "normal";
-    probe.font = greetFont;
-    const greetMetrics = probe.measureText(greeting);
-    const cap = probe.measureText("H").actualBoundingBoxAscent;
-    probe.font = nameFont;
-    return { gm: greetMetrics, nm: probe.measureText(name), greetCap: cap };
-  }).value;
   const n = at.name;
   const gr = at.greeting;
   const pad = Math.ceil(n.size * COIL.lockup.pad);
-  const inkLeft = Math.min(n.pen - nm.actualBoundingBoxLeft, gr.pen - gm.actualBoundingBoxLeft);
-  const inkRight = Math.max(n.pen + nm.actualBoundingBoxRight, gr.pen + gm.actualBoundingBoxRight);
-  const inkTop = gr.baseline - gm.actualBoundingBoxAscent;
-  const inkBottom = n.baseline + nm.actualBoundingBoxDescent;
-  const { px, rect } = maskGrid({ x: inkLeft - pad, y: inkTop - pad, w: inkRight - inkLeft + 2 * pad, h: inkBottom - inkTop + 2 * pad }, scale);
-  const { canvas, value: glyphs } = paintAsText(heading, px.w, px.h, (g) => {
+  // One canvas, set in the heading's type: measured, sized to the mask, painted.
+  const { canvas, value } = paintAsText(heading, 1, 1, (probe, mask) => {
+    probe.fontKerning = "normal";
+    probe.font = greetFont;
+    const gm = probe.measureText(greeting);
+    const greetCap = probe.measureText("H").actualBoundingBoxAscent;
+    probe.font = nameFont;
+    const nm = probe.measureText(name);
+    const inkLeft = Math.min(n.pen - nm.actualBoundingBoxLeft, gr.pen - gm.actualBoundingBoxLeft);
+    const inkRight = Math.max(n.pen + nm.actualBoundingBoxRight, gr.pen + gm.actualBoundingBoxRight);
+    const inkTop = gr.baseline - gm.actualBoundingBoxAscent;
+    const inkBottom = n.baseline + nm.actualBoundingBoxDescent;
+    const { px, rect } = maskGrid({ x: inkLeft - pad, y: inkTop - pad, w: inkRight - inkLeft + 2 * pad, h: inkBottom - inkTop + 2 * pad }, scale);
+    // Sizing the canvas clears its state: everything is set again after.
+    mask.width = px.w;
+    mask.height = px.h;
+    const g = probe;
     g.setTransform(scale, 0, 0, scale, -px.x, -px.y);
     g.fillStyle = "white";
     g.textBaseline = "alphabetic";
@@ -147,11 +150,13 @@ function paintPlacedLockup(heading: HTMLElement, greeting: string, name: string,
     g.fillText(greeting, gr.pen, gr.baseline);
     g.font = nameFont;
     g.fillText(name, n.pen, n.baseline);
-    return [...name].map((_, i) => ({
+    const glyphs = [...name].map((_, i) => ({
       x0: n.pen + g.measureText(name.slice(0, i)).width - rect.x,
       x1: n.pen + g.measureText(name.slice(0, i + 1)).width - rect.x,
     }));
+    return { gm, nm, greetCap, rect, inkTop, glyphs };
   });
+  const { gm, nm, greetCap, rect, inkTop, glyphs } = value;
   const capTop = n.baseline - nm.actualBoundingBoxAscent;
   const greetLow = gr.baseline + Math.max(0, gm.actualBoundingBoxDescent);
   return {

@@ -1,4 +1,4 @@
-import { firstText, lineAnchor, paintedBaseline, textPx } from "@/lib/coil/lineAnchor";
+import { firstText, lineAnchors, paintedBaseline, textPx } from "@/lib/coil/lineAnchor";
 import type { NameTarget } from "@/lib/coil/nameTarget";
 import type { DrawnBox } from "@/lib/coil/pixelGrid";
 import { startFill, type FillHooks, type FillStats } from "../fill/engine";
@@ -17,20 +17,22 @@ import { createName, type LinePlacement, type NamePlacement } from "../scene/nam
 // paints its two lines, read off its layout (lib/coil/lineAnchor.ts), so the
 // canvas draws the page's own glyphs on the page's own pixels: the loader's
 // lockup lands there as the h1, and a jump back finds the h1 there.
-function placeLine(line: HTMLElement | null | undefined, box: DrawnBox): LinePlacement | null {
-  const text = line ? firstText(line) : null;
-  const at = text ? lineAnchor(text) : null;
-  const size = line ? parseFloat(getComputedStyle(line).fontSize) : 0;
-  if (!at || !(size > 0)) return null;
-  const baseline = paintedBaseline(at, window.scrollY, textPx(box.dpr));
-  return { pen: at.x - box.left, baseline: baseline - box.top, size };
-}
-
 function placeName(box: DrawnBox): NamePlacement | null {
   const heading = document.querySelector<HTMLElement>("[data-coil-name]");
-  const name = placeLine(heading?.querySelector<HTMLElement>("[data-lockup-name]"), box);
-  const greeting = placeLine(heading?.querySelector<HTMLElement>(".name-lockup__greet"), box);
-  if (!heading || !name || !greeting) return null;
+  const lines = [heading?.querySelector<HTMLElement>("[data-lockup-name]"), heading?.querySelector<HTMLElement>(".name-lockup__greet")];
+  const texts = lines.map((line) => (line ? firstText(line) : null));
+  if (!heading || !texts[0] || !texts[1]) return null;
+  const anchors = lineAnchors([texts[0], texts[1]]);
+  const perPx = textPx(box.dpr);
+  const place = (i: number): LinePlacement | null => {
+    const at = anchors[i];
+    const size = parseFloat(getComputedStyle(lines[i]!).fontSize);
+    if (!at || !(size > 0)) return null;
+    return { pen: at.x - box.left, baseline: paintedBaseline(at, window.scrollY, perPx) - box.top, size };
+  };
+  const name = place(0);
+  const greeting = place(1);
+  if (!name || !greeting) return null;
   return { name, greeting, corner: { left: box.left, top: box.top }, heading };
 }
 
