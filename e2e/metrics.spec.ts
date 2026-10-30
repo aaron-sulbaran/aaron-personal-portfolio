@@ -619,8 +619,10 @@ test("capture: the numbers strip, Commits and Tokens, at 1440 in both themes and
 });
 
 // The hint under the skyline reads by pointer type: a mouse double-clicks to reset (a touch screen's reads double-tap, touch.spec).
-test("metrics: with a mouse the skyline's hint says double-click to reset", async ({ page }) => {
+test("metrics: with a mouse the chart's hints say double-click to reset and hover a day", async ({ page }) => {
   await openHome(page);
   await expect(page.getByText(m.chart.hintSkyline, { exact: true })).toHaveCount(1);
   await expect(page.getByText(m.chart.hintSkylineTouch, { exact: true })).toHaveCount(0);
+  await expect(page.getByText(m.chart.hintFlat, { exact: true })).toHaveCount(1);
+  await expect(page.getByText(m.chart.hintFlatTouch, { exact: true })).toHaveCount(0);
 });

@@ -94,6 +94,8 @@ test("touch: the chart's hint says double-tap, and two taps on the chart reset a
   await expect(stage).toHaveAttribute("data-view-state", "skyline", { timeout: 15_000 });
   await expect(page.getByText(chart.hintSkylineTouch, { exact: true })).toHaveCount(1);
   await expect(page.getByText(chart.hintSkyline, { exact: true })).toHaveCount(0);
+  await expect(page.getByText(chart.hintFlatTouch, { exact: true })).toHaveCount(1);
+  await expect(page.getByText(chart.hintFlat, { exact: true })).toHaveCount(0);
 
   const canvas = stage.locator("canvas");
   const picture = () => canvas.evaluate((el) => (el as HTMLCanvasElement).toDataURL());
@@ -108,4 +110,18 @@ test("touch: the chart's hint says double-tap, and two taps on the chart reset a
   await page.waitForTimeout(80);
   await page.touchscreen.tap(corner.x, corner.y);
   await expect.poll(picture, { message: "two taps put it back", timeout: 8000 }).toBe(resting);
+});
+
+// The flat chart's touch hint tells the truth: a tap on a day shows its details.
+test("touch: a tap on a day of the flat chart shows its details, as the hint says", async ({ page }) => {
+  await openHome(page);
+  await page.evaluate(() => document.querySelector("[data-metrics-block]")!.scrollIntoView({ block: "center", behavior: "instant" }));
+  const stage = page.locator("[data-skyline-stage]");
+  await expect(stage).toHaveAttribute("data-view-state", "skyline", { timeout: 15_000 });
+  await page.locator("[data-metrics-block]").getByRole("button", { name: siteContent.metrics.chart.flat, exact: true }).tap();
+  await expect(stage).toHaveAttribute("data-view-state", "flat", { timeout: 15_000 });
+  await expect(page.locator("[data-metrics-block]").getByText(/ on [A-Z][a-z]+day, /)).toHaveCount(0);
+  const box = (await stage.boundingBox())!;
+  await page.touchscreen.tap(box.x + box.width * 0.55, box.y + box.height * 0.5);
+  await expect(page.locator("[data-metrics-block]").getByText(/\d+ contributions? on [A-Z][a-z]+day, /)).toBeVisible();
 });
