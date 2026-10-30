@@ -1,8 +1,10 @@
-// The loader's name becomes page 1's name: a uniform scale and a shift
-// (transform only, origin top left) that carry the loader's lockup onto the
-// heading it shrinks into, which is also where the name canvas draws the name
-// (it reads the heading's place, components/coil/nameCanvas/start.ts). The
-// DOM is the truth at run time (the loader measures both rects).
+// The loader's name becomes page 1's name: the lockup is laid out as the
+// heading is, at its size and in its place, and a uniform scale and a shift
+// (transform only, origin top left) give it its big look, which the shrink
+// takes to none. So the travel ends on the heading's own layout, which is also
+// where the name canvas draws the name (it reads the heading's lines,
+// components/coil/nameCanvas/start.ts). The DOM is the truth at run time (the
+// loader measures both rects).
 
 export type Rect = { left: number; top: number; width: number; height: number };
 export type Flip = { x: number; y: number; scale: number };

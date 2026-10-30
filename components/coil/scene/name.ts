@@ -249,7 +249,8 @@ export function createName(
   let corner: { left: number; top: number } | null = null;
   // An entrance that waits for the loader has reached the frame: the name and
   // the greeting are held at 0 and the surface has not begun, so a landing
-  // draws exactly the solid gradient the loader holds.
+  // draws exactly the solid the loader holds (the name canvas's solid is the
+  // loader's own ink, lib/coil/nameCanvas.glsl.ts).
   let awaitingLoader = false;
   // The page's loader was running when the scene began: the name waits for it
   // (the loader lands its lockup on it, landName) or for it to be done.
@@ -366,7 +367,7 @@ export function createName(
   // The name's and the greeting's fade, and the surface growing over the
   // loader's solid name once it lands. A name the loader is to land waits
   // (held at 0, the surface not begun) until it does, so a landing draws exactly
-  // the solid gradient the loader holds; a loader that is done without landing
+  // the solid the loader holds; a loader that is done without landing
   // the name (the scene was not ready when it ended) gives it up, and the name
   // shows from then on.
   function entranceFade(f: NameFrame) {
