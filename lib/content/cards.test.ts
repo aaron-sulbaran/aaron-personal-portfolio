@@ -164,6 +164,12 @@ describe("the fourteen cards", () => {
     expect(new Set(people.map((mentor) => mentor.href)).size).toBe(people.length);
   });
 
+  it("words the min/Max card as the co-pilot that is not launched yet, pointing the reader back here and to my socials", () => {
+    expect(cards["min-max"].modal.blocks).toEqual([
+      "An agentic credit card co-pilot that automatically picks the best card in your wallet for every purchase, every time. I haven't launched yet, but when I do, you'll see it here (and on my socials).",
+    ]);
+  });
+
   it("mark only the IEEE square as an opaque logo, its own ground", () => {
     const opaque = keys.filter((key) => { const visual = cards[key].visual; return visual.kind === "logo" && visual.logo?.opaque; });
     expect(opaque).toEqual(["ieee"]);

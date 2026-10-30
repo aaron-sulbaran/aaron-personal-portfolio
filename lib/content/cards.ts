@@ -29,7 +29,7 @@ export const cards: Cards = {
     short: "min/Max", visual: { kind: "logo", logo: logos["min-max"], tile: "plain", subtitle: "minimize spend. Maximize rewards" },
     book: { title: "min/Max", meta: "Founder, 2025 to now" },
     modal: { kind: "logo", title: "min/Max", links: [], photos: [], blocks: [
-      "An agentic credit card co-pilot that automatically picks the best card in your wallet for every purchase, every time. I haven't launched yet, but when I do you'll be the first to know.",
+      "An agentic credit card co-pilot that automatically picks the best card in your wallet for every purchase, every time. I haven't launched yet, but when I do, you'll see it here (and on my socials).",
     ] },
   },
   band: {
