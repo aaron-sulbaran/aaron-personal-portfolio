@@ -91,7 +91,7 @@ export type RowOffset = { dxPx: number; dyPx: number };
 
 // How far the row has gathered: `hover` is the anticipation's share of the way to
 // the hover's pitch (0 to 1, what the pointer over the button did), `rush` the
-// click's progress to the tight pile (0 until the click).
+// click's progress to the tight row (0 until the click).
 export type Gather = { hover: number; rush: number };
 
 // The share of the way to the button the row has taken, for its sideways travel:
@@ -102,7 +102,7 @@ export function gatherShare({ hover, rush }: Gather): number {
 }
 
 // The ribbon's frame at `gather` (the row as it drifts, then the pointer's
-// tightening, then the click's rush into a tight pile gathered to the button)
+// tightening, then the click's rush into a tight row gathered to the button)
 // and `curl` (0 flat, 1 the wheel): `wheel` is the frame the ring has at curl 1
 // (the wheel, or what it has become), and the frame is exactly that at curl 1.
 // The cards keep their size through the gathering, then shrink to the wheel's

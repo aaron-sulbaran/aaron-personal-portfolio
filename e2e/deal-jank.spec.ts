@@ -16,7 +16,8 @@ const FRAME_MS = 1000 / 60;
 // The deal from the click: the condense, then the scene's own clock (lib/coil/dealSpeed.ts).
 const LEAD_MS = COIL.deal.timeline.condenseMs;
 const TOTAL_MS = dealMs();
-const CURL_END_MS = LEAD_MS + COIL.deal.timeline.curlMs;
+// The curl starts curlStartMs from the end of the condense (before it, over its tail).
+const CURL_END_MS = LEAD_MS + COIL.deal.timeline.curlStartMs + COIL.deal.timeline.curlMs;
 const HIDE_PAGE =
   "html,body{transition:none!important}body *{visibility:hidden!important}section[data-scene] canvas{visibility:visible!important}";
 
@@ -275,8 +276,8 @@ for (const size of [
 // channel (no bright halo, no dark fringe) and the same share on every channel that can
 // tell them apart (no tinted rim). The open frame's top edge rises from the page with no
 // step.
-// The field opens from the end of the condense plus openStartMs, over open.ms: the frames from 1500 to 2100 have its edge on the canvas.
-const EDGE_FRAMES_MS = [0, 700, 1000, 1400, 1600, 1800, 2100, 2600];
+// The field opens from the end of the condense plus openStartMs, over open.ms: the frames from about 1650 to 2000 have its edge on the canvas.
+const EDGE_FRAMES_MS = [0, 800, 1300, 1700, 1800, 1950, 2200, 2600];
 for (const colorScheme of ["light", "dark"] as const) {
   test.describe(`jank 4: the mask's edge, ${colorScheme}`, () => {
     test.use({ colorScheme });

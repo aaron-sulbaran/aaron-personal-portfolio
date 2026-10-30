@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 import { test, expect } from "./support/fixtures";
 import { openHome } from "./support/coil";
+import { COIL } from "@/lib/coil/constants";
 import { dealMs } from "@/lib/coil/dealSpeed";
 import { projectPoint, type Camera } from "@/lib/coil/geometry";
 import { frameSeparation, MIN_GAP_SHARE, type SeparationPose } from "@/lib/coil/separation";
@@ -19,10 +20,13 @@ import { frameSeparation, MIN_GAP_SHARE, type SeparationPose } from "@/lib/coil/
 // - the least gap between any two cards stays at or above MIN_GAP_SHARE of a
 //   card's width.
 // And the deal never stands still: some card moves a visible amount in every
-// frame from the click to the unfurl (after it the columns are arriving).
+// frame from the click until the columns begin to arrive (they rise in until
+// dealt, over the pull's last, slowest stretch and the Coil at rest).
 
 const FRAME_MS = 1000 / 60;
 const TOTAL_MS = dealMs();
+// When the columns begin to arrive, from the click (lib/home/dealOpen.ts addOpen).
+const COLUMNS_FROM_MS = COIL.deal.timeline.condenseMs + COIL.deal.columns.delayMs;
 // The least a frame moves the card that moves most, CSS px: under a pixel reads as a pause.
 const LEAST_MOTION_PX = 1;
 
@@ -99,7 +103,7 @@ for (const size of [
       expect(failures.slice(0, 12), `${failures.length} frames fail`).toEqual([]);
     });
 
-    test("the deal never stands still: some card moves a visible amount in every frame from the click to the unfurl", async ({ page }) => {
+    test("the deal never stands still: some card moves a visible amount in every frame until the columns are arriving", async ({ page }) => {
       await openHome(page, { debug: "1", at: "foot" });
       await stageInView(page);
       const frames = await walk(page, 0, TOTAL_MS);
@@ -109,21 +113,26 @@ for (const size of [
         for (const pose of read.poses) if (pose.alpha > 0.5) map.set(Math.round(pose.u - read.offset), projectPoint(read.camera, pose.position));
         return map;
       });
-      let least = Infinity;
-      let leastAt = 0;
-      for (let i = 1; i < centers.length; i++) {
+      // The most any card moves in each frame, from the click on.
+      const moves = centers.slice(1).map((now, i) => {
         let most = 0;
-        for (const [key, p] of centers[i]) {
-          const q = centers[i - 1].get(key);
+        for (const [key, p] of now) {
+          const q = centers[i].get(key);
           if (q) most = Math.max(most, Math.hypot(p.x - q.x, p.y - q.y));
         }
-        if (most < least) {
-          least = most;
-          leastAt = frames[i].ms;
-        }
-      }
-      test.info().annotations.push({ type: "motion", description: `the stillest frame moves its fastest card ${least.toFixed(2)} px, at ${leastAt.toFixed(0)} ms` });
-      expect(least, `the stillest frame, at ${leastAt.toFixed(0)} ms`).toBeGreaterThanOrEqual(LEAST_MOTION_PX);
+        return { ms: frames[i + 1].ms, most };
+      });
+      // The Coil settles as the pull lands; the columns arrive from here on (their own
+      // 420 ms rises, staggered, until dealt), so the cards must keep moving until then.
+      const columnsMs = COLUMNS_FROM_MS;
+      const before = moves.filter((m) => m.ms <= columnsMs);
+      const stillest = before.reduce((a, b) => (b.most < a.most ? b : a));
+      const firstStill = moves.find((m) => m.most < LEAST_MOTION_PX);
+      test.info().annotations.push({
+        type: "motion",
+        description: `before the columns (${columnsMs} ms) the stillest frame moves its fastest card ${stillest.most.toFixed(2)} px, at ${stillest.ms.toFixed(0)} ms; the cards first move under ${LEAST_MOTION_PX} px at ${firstStill ? firstStill.ms.toFixed(0) : "never"} ms, the unfurl at ${TOTAL_MS} ms`,
+      });
+      expect(stillest.most, `the stillest frame before the columns, at ${stillest.ms.toFixed(0)} ms`).toBeGreaterThanOrEqual(LEAST_MOTION_PX);
     });
   });
 }

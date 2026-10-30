@@ -161,9 +161,16 @@ export function pairGap(a: SeparationPose, b: SeparationPose, aspect: number = C
   const mb = meshOf(b, aspect);
   const apart = length(sub(ma.center, mb.center)) - ma.reach - mb.reach;
   if (apart > farShare * width) return { gap: apart / width, intersect: false };
+  const near = Math.min(meshDistance(ma.outline, mb), meshDistance(mb.outline, ma));
+  // Two cards that cut through each other meet along a curve that ends on one's rim,
+  // so a rim this far from the other card (past the rim samples' spacing) cannot.
+  if (near > CLEAR_OF_CUT * Math.min(a.scale, b.scale)) return { gap: near / width, intersect: false };
   if (cutsThrough(ma, mb) || cutsThrough(mb, ma)) return { gap: 0, intersect: true };
-  return { gap: Math.min(meshDistance(ma.outline, mb), meshDistance(mb.outline, ma)) / width, intersect: false };
+  return { gap: near / width, intersect: false };
 }
+
+// Card heights: well over the rim samples' spacing (a twelfth of a card's height down its sides).
+const CLEAR_OF_CUT = 0.12;
 
 // ---------------------------------------------------------------- on screen
 
