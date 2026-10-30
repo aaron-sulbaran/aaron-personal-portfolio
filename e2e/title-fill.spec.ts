@@ -94,6 +94,17 @@ for (const size of SIZES) {
         expect(heading.hidden).toBe("true");
         test.info().annotations.push({ type: key, description: `mean change ${moved!.mean.toFixed(2)} over ${moved!.pixels} px` });
       }
+      // Off screen, a title's loop rests (it keeps its context while it is near).
+      const last = DRAWN[DRAWN.length - 1];
+      await page.evaluate((k) => {
+        const el = [...document.querySelectorAll(`[data-title-fill-key="${k}"]`)].find((e) => e.getClientRects().length)!;
+        window.scrollTo({ top: el.getBoundingClientRect().bottom + window.scrollY + 40, behavior: "instant" });
+      }, last);
+      await page.waitForTimeout(400);
+      const away = await titleStats(page, last);
+      await page.waitForTimeout(600);
+      expect(away, `${last}: still holds its canvas just off screen`).not.toBeNull();
+      expect((await titleStats(page, last))!.frames, `${last}: no frames while it is off screen`).toBe(away!.frames);
     });
 
     for (const colorScheme of ["light", "dark"] as const) {
