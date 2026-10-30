@@ -94,6 +94,10 @@ export interface CardVideoRef { src: string; poster: string; width: number; heig
 // and width and height its native size; title is the frame's accessible name, in my words.
 export interface CardEmbedRef { src: string; width: number; height: number; title: string; beside: number }
 
+// The same post as a link card, drawn in the embed's place where a 504 by 1258 frame cannot sit (a phone's pager page, where it would
+// scroll inside the page): its author, the post's hook line, and the words of the link. href is the post's own address (the card's link).
+export interface PostCardRef { href: string; byline: string; hook: string; cta: string }
+
 // Blocks carry **bold**, *italic* and the inline link markup (lib/content/links.ts).
 export interface CardModal {
   kind: CardModalKind;
@@ -109,6 +113,8 @@ export interface CardModal {
   blocks: readonly string[];
   video?: CardVideoRef;
   embed?: CardEmbedRef;
+  // Where the card has an embed: what a phone draws in its place.
+  postCard?: PostCardRef;
 }
 
 export interface CardContent {

@@ -211,3 +211,9 @@ export const FACE_Y = 0.84;
 export const FACE_X = 0.68;
 const shade = (c: RGB, k: number): RGB => [c[0] * k, c[1] * k, c[2] * k];
 export const bevelShades = (top: RGB) => ({ top, bottom: shade(top, FACE_Y), right: shade(top, FACE_X) });
+
+// A double-tap: two taps this close in time (ms) and place (px), the touch screen's double-click. Chrome sends a dblclick for it and
+// iOS Safari does not always, so the chart reads the taps itself.
+export const DOUBLE_TAP = { ms: 320, px: 32 } as const;
+export type Tap = { t: number; x: number; y: number };
+export const isDoubleTap = (prev: Tap | null, next: Tap): boolean => prev !== null && next.t - prev.t <= DOUBLE_TAP.ms && next.t >= prev.t && Math.hypot(next.x - prev.x, next.y - prev.y) <= DOUBLE_TAP.px;

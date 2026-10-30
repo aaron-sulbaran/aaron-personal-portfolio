@@ -5,11 +5,16 @@ import { GALLERY } from "./constants";
 // the modal, a sideways drag never does. Pure.
 
 export interface PagerState { index: number; count: number }
-export type PagerAction = { type: "next" } | { type: "prev" } | { type: "goto"; index: number };
+// count: the number of pages changed (a paragraph that did not fit got a page of its own); the page stays where it is, within the new count.
+export type PagerAction = { type: "next" } | { type: "prev" } | { type: "goto"; index: number } | { type: "count"; count: number };
 
 const clampPage = (index: number, count: number) => (count <= 0 ? 0 : Math.min(count - 1, Math.max(0, index)));
 
 export function pagerReducer(state: PagerState, action: PagerAction): PagerState {
+  if (action.type === "count") {
+    const index = clampPage(state.index, action.count);
+    return action.count === state.count && index === state.index ? state : { index, count: action.count };
+  }
   const index = action.type === "goto" ? action.index : state.index + (action.type === "next" ? 1 : -1);
   const clamped = clampPage(index, state.count);
   return clamped === state.index ? state : { ...state, index: clamped };

@@ -1,13 +1,13 @@
 import { DPR_CAP } from "@/lib/waveform/layout";
-import { EMPTY_COLUMNS, dotReach, layColumns, mapTiles, tileReach, type PathColumns, type TileMap } from "@/lib/wavepath/columns";
-import { ALPHAS, BAND_CLEAR_EXTRA, BAND_KEEP_FADE, SAMPLE_STEP, SPACING, TILE_MARGIN_PX, TILE_PX } from "@/lib/wavepath/constants";
-import { sampleSpine, type SpineSamples } from "@/lib/wavepath/geometry";
+import { EMPTY_COLUMNS, mapTiles, tileReach, type PathColumns, type TileMap } from "@/lib/wavepath/columns";
+import { ALPHAS, BAND_KEEP_FADE, SPACING, TILE_MARGIN_PX, TILE_PX } from "@/lib/wavepath/constants";
+import type { SpineSamples } from "@/lib/wavepath/geometry";
 import { HEAD_PARAMS, firstOnScreenY, gatedTarget, headTarget, runFlatness, runLength } from "@/lib/wavepath/head";
 import { buildPathDots, clearSink, createSink } from "@/lib/wavepath/paint";
 import { nearestColumn } from "@/lib/wavepath/pluck";
 import { pathProbe } from "@/lib/wavepath/probe";
-import { SIGNATURE_ON, resolveSpine } from "@/lib/wavepath/spine";
-import { amplitudeFor, chooseTrain, visibleOptions } from "@/lib/wavepath/visible";
+import { layLine } from "@/lib/wavepath/line";
+import { chooseTrain, visibleOptions } from "@/lib/wavepath/visible";
 import type { Keep } from "@/lib/wavepath/paint";
 import { createDotPainter, themeNow } from "../viewParts";
 import type { Changed, WaveConductor, WaveFrame, WaveView } from "../waveConductor";
@@ -95,20 +95,23 @@ export function createPathView(layer: HTMLElement, root: HTMLElement, conductor:
     origin = docTop(band);
     const anchors = measureAnchors(root, origin);
     if (!anchors) return;
-    if (probe) probe.layouts++;
     measured = anchors;
     width = anchors.width;
     innerWidth = window.innerWidth;
     viewport = window.innerHeight;
+    if (probe) {
+      probe.layouts++;
+      probe.layout = { anchors, viewport, origin };
+    }
     maxScrollY = Math.max(0, document.documentElement.scrollHeight - viewport);
-    amp = amplitudeFor(width);
-    const clearBand = dotReach(amp) + BAND_CLEAR_EXTRA;
     keep = { edge: anchors.box.band.bottom, fade: BAND_KEEP_FADE };
-    samples = sampleSpine(resolveSpine({ points: SIGNATURE_ON }, anchors, { bandRun: true, viewport, clearBand }), SAMPLE_STEP);
+    const line = layLine(anchors, viewport);
+    amp = line.amp;
+    samples = line.samples;
     runLen = runLength(samples, width);
     runFlat = runFlatness(samples, runLen);
     entry = firstOnScreenY(samples, width);
-    cols = layColumns(samples, SPACING, amp, anchors.blocks);
+    cols = line.cols;
     const height = anchors.box.footer.bottom;
     layer.style.top = `${origin - docTop(root)}px`;
     layer.style.height = `${height}px`;

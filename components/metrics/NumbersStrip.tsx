@@ -8,10 +8,11 @@ import { Metrics, METRICS_LABEL_ID, METRICS_TITLE_ID } from "./Metrics";
 // its own big heading, set exactly as Who I am's is, and under it the line
 // that names the chart's group, set as the line under Who I am's heading is
 // but on one line from md up. The home page and the metrics lab both render this.
+// No rule on its top edge: the cards section above ends in a soft edge, and a hairline under it would bring back the hard line it replaced.
 export function NumbersStrip() {
   const { title, groupLabel } = siteContent.metrics;
   return (
-    <section id="numbers" data-wave-anchor="numbers" className="relative w-full scroll-mt-24 border-t border-border px-6 py-24 md:px-10 md:py-40">
+    <section id="numbers" data-wave-anchor="numbers" className="relative w-full scroll-mt-24 px-6 py-24 md:px-10 md:py-40">
       <div className="mx-auto flex max-w-6xl flex-col gap-10">
         <div className="flex flex-col gap-6">
           <SectionNumber value={PAGE_NUMBERS.numbers} className="-mb-3" />

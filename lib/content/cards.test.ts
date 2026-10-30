@@ -144,6 +144,15 @@ describe("the fourteen cards", () => {
     for (const text of [modal.title, ...modal.blocks, modal.embed!.title, tag.name, tag.tipLabel, tag.label("Apple"), ...cards.jobs.timeline.map((entry) => entry.tip)]) expect(text, text).not.toMatch(/\u2014/);
   });
 
+  it("gives a phone the post as a link card in the embed's place: the post's own link, its hook line as Aaron wrote it, his name", () => {
+    const { modal } = cards.jobs;
+    const card = modal.postCard!;
+    expect(card).toEqual({ href: "https://lnkd.in/p/g3mXFGcY", byline: "Aaron Sulbaran", hook: "I don't trust people who haven't worked an unflattering job.", cta: "Read the post on LinkedIn" });
+    expect(card.href, "the modal's own link to the post").toBe(modal.links[0].href);
+    expect(modal.blocks[3], "the hook is the line his paragraph quotes").toContain(card.hook);
+    for (const text of [card.byline, card.hook, card.cta]) expect(text, text).not.toMatch(/\u2014/);
+  });
+
   it("name the six mentors who agreed, each with their own LinkedIn link and no line until I write one", () => {
     const { title, people } = cards.mentorship.mentors;
     expect(title).toBe("the people who shaped me");

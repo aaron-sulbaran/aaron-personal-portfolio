@@ -8,6 +8,7 @@ import {
   camera,
   cameraInto,
   dayMs,
+  DOUBLE_TAP,
   FACE_X,
   FACE_Y,
   heightShare,
@@ -17,6 +18,7 @@ import {
   switchAt,
   WAVE,
   type Cam,
+  isDoubleTap,
 } from "./maths";
 
 describe("the series switch", () => {
@@ -114,5 +116,18 @@ describe("cameraInto", () => {
       expect(got).toBe(out);
       expect(got).toEqual(camera(e, dYaw, dElev));
     }
+  });
+});
+
+describe("isDoubleTap", () => {
+  const first = { t: 1000, x: 100, y: 100 };
+  it("is two taps close in time and place", () => {
+    expect(isDoubleTap(first, { t: 1250, x: 110, y: 96 })).toBe(true);
+    expect(isDoubleTap(first, { t: 1000 + DOUBLE_TAP.ms, x: 100, y: 100 })).toBe(true);
+  });
+  it("is not a lone tap, a slow second one, or a second one elsewhere", () => {
+    expect(isDoubleTap(null, first)).toBe(false);
+    expect(isDoubleTap(first, { t: 1000 + DOUBLE_TAP.ms + 1, x: 100, y: 100 })).toBe(false);
+    expect(isDoubleTap(first, { t: 1200, x: 100 + DOUBLE_TAP.px + 1, y: 100 })).toBe(false);
   });
 });

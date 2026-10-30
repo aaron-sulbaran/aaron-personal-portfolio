@@ -1,18 +1,21 @@
 import { DOT_GAP } from "@/lib/waveform/dots";
-import { MAX_THICK, MUSIC, RUN_START, SHAPE_GAIN } from "./constants";
+import { CLEAR_MARGIN, MAX_THICK, MUSIC, RUN_START, SHAPE_GAIN } from "./constants";
 import type { SpineSamples } from "./geometry";
 import type { Rect } from "./spine";
 
 // Columns along the line, laid out on resize, never per frame: column j sits
 // at arc s_j = j * spacing + spacing / 2 with its point, unit normal, bend
-// taper and whether it sits on a text block's ink. The band's run uses the
-// same grid, so the two views meet in phase.
-export interface PathColumns { count: number; s: Float32Array; x: Float32Array; y: Float32Array; nx: Float32Array; ny: Float32Array; taper: Float32Array; inWords: Uint8Array }
+// taper, whether it sits on a text block's ink, and its room: how far its dots
+// may sit from its point before they reach a piece of text or a link (px,
+// Infinity where nothing is near). The band's run uses the same grid, so the two
+// views meet in phase.
+export interface PathColumns { count: number; s: Float32Array; x: Float32Array; y: Float32Array; nx: Float32Array; ny: Float32Array; taper: Float32Array; inWords: Uint8Array; room: Float32Array }
 
 const alloc = (count: number): PathColumns => ({
   count,
   s: new Float32Array(count), x: new Float32Array(count), y: new Float32Array(count),
   nx: new Float32Array(count), ny: new Float32Array(count), taper: new Float32Array(count), inWords: new Uint8Array(count),
+  room: new Float32Array(count).fill(Infinity),
 });
 export const EMPTY_COLUMNS = alloc(0);
 
@@ -21,7 +24,12 @@ export const EMPTY_COLUMNS = alloc(0);
 export const dotReach = (amp: number) => amp * SHAPE_GAIN * 1.5 + MAX_THICK * DOT_GAP;
 export const tileReach = (amp: number) => amp * (0.75 + MUSIC.share) + 24;
 
-export function layColumns(samples: SpineSamples, spacing: number, amp: number, blocks: Rect[]): PathColumns {
+// How far a point is from a rect (0 on it or inside).
+export const distanceTo = (r: Rect, x: number, y: number) => Math.hypot(Math.max(r.left - x, 0, x - r.right), Math.max(r.top - y, 0, y - r.bottom));
+
+// links: the links and buttons the dots keep off as they do the blocks' ink; each column's room is its distance to the nearest of
+// either, less the margin (lib/wavepath/paint thins and bounds the column's dots to it).
+export function layColumns(samples: SpineSamples, spacing: number, amp: number, blocks: Rect[], links: Rect[] = []): PathColumns {
   const c = alloc(Math.max(0, Math.floor(samples.length / spacing)));
   for (let j = 0; j < c.count; j++) {
     const s = j * spacing + spacing / 2;
@@ -39,6 +47,10 @@ export function layColumns(samples: SpineSamples, spacing: number, amp: number, 
         break;
       }
     }
+    let nearest = Infinity;
+    for (const r of blocks) nearest = Math.min(nearest, distanceTo(r, c.x[j], c.y[j]));
+    for (const r of links) nearest = Math.min(nearest, distanceTo(r, c.x[j], c.y[j]));
+    c.room[j] = Math.max(0, nearest - CLEAR_MARGIN);
   }
   return c;
 }

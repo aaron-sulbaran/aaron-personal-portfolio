@@ -1,4 +1,4 @@
-import { siteContent, type CardKey } from "@/lib/content";
+import { siteContent, type CardKey, type PostCardRef } from "@/lib/content";
 import { visibleText } from "@/lib/content/links";
 import { rowColumns, type Box, type ColumnSettings } from "./boxes";
 import { BOXES, CARD_PHONE_GROUPING, GALLERY, PHONE_GROUPING } from "./constants";
@@ -11,8 +11,9 @@ import { galleryPlan, namedPlan, type PhoneGrouping, type Plan } from "./plan";
 
 // A demo video drawn in the place of a photo (components/card/CardVideo): the file, its poster and its own pixels.
 export interface GalleryVideo { src: string; poster: string; width: number; height: number }
-// A post embedded in the place of a photo (components/card/LinkedInEmbed): its own address and native size, and its accessible name.
-export interface GalleryEmbed { src: string; width: number; height: number; title: string }
+// A post embedded in the place of a photo (components/card/LinkedInEmbed): its own address and native size, and its accessible name;
+// card is what a phone's pager draws instead (components/card/PostCard).
+export interface GalleryEmbed { src: string; width: number; height: number; title: string; card: PostCardRef }
 // tag: a job's name tag drawn in the place of a photo (components/card/JobTag), the index of its entry on the jobs timeline; its
 // width and height are a nominal box (the tag grows with its tip).
 export interface GalleryPhoto { src: string; width: number; height: number; alt: string; caption: string | null; captionShort: string | null; beside?: number; video?: GalleryVideo; tag?: number; embed?: GalleryEmbed }

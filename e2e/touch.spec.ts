@@ -1,5 +1,6 @@
 import type { CDPSession } from "@playwright/test";
 import { COIL } from "@/lib/coil/constants";
+import { siteContent } from "@/lib/content";
 import { test, expect } from "./support/fixtures";
 import { coilPoints, nextFrames, openHome, type Point } from "./support/coil";
 import type { HookWindow } from "./support/hooks";
@@ -81,4 +82,30 @@ test("touch: the first visit shows \"Tap a card\" once, never again", async ({ p
   // The line would be set in the effect that runs once the hero is ready.
   await nextFrames(page, 10);
   await expect(page.locator("section[data-scene] p", { hasText: "Tap a card" })).toHaveCount(0);
+});
+
+// The skyline's hint says what a finger does, and a double-tap really resets the view: the hint reads "double-tap to reset" (a mouse's
+// reads "double-click", metrics.spec), and after an orbit by a drag two taps in the same place bring the chart back to how it stood.
+test("touch: the chart's hint says double-tap, and two taps on the chart reset an orbit", async ({ page, cdp }) => {
+  const chart = siteContent.metrics.chart;
+  await openHome(page);
+  await page.evaluate(() => document.querySelector("[data-metrics-block]")!.scrollIntoView({ block: "center", behavior: "instant" }));
+  const stage = page.locator("[data-skyline-stage]");
+  await expect(stage).toHaveAttribute("data-view-state", "skyline", { timeout: 15_000 });
+  await expect(page.getByText(chart.hintSkylineTouch, { exact: true })).toHaveCount(1);
+  await expect(page.getByText(chart.hintSkyline, { exact: true })).toHaveCount(0);
+
+  const canvas = stage.locator("canvas");
+  const picture = () => canvas.evaluate((el) => (el as HTMLCanvasElement).toDataURL());
+  await nextFrames(page, 20);
+  const resting = await picture();
+  const box = (await canvas.boundingBox())!;
+  // An empty corner of the chart: a tap there pins no day, so the reset is the only thing the taps change.
+  const corner = { x: box.x + 6, y: box.y + 6 };
+  await swipe(cdp, { x: box.x + box.width * 0.5, y: box.y + box.height * 0.5 }, { x: box.x + box.width * 0.5 - 140, y: box.y + box.height * 0.5 }, 14);
+  await expect.poll(picture, { message: "the drag orbits the chart" }).not.toBe(resting);
+  await page.touchscreen.tap(corner.x, corner.y);
+  await page.waitForTimeout(80);
+  await page.touchscreen.tap(corner.x, corner.y);
+  await expect.poll(picture, { message: "two taps put it back", timeout: 8000 }).toBe(resting);
 });

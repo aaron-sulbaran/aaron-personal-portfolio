@@ -3,7 +3,8 @@ import { test, expect } from "./support/fixtures";
 import { siteContent } from "@/lib/content";
 import { openHome, scrollToY } from "./support/coil";
 import { settled } from "./support/fallback";
-import { documentTop, parkBand } from "./support/wave";
+import { documentTop, pageRects, parkBand } from "./support/wave";
+import { dotsOn, layLine, lineDots } from "@/lib/wavepath/line";
 import type { PathProbe } from "@/lib/wavepath/probe";
 
 // The scroll-drawn line (wave lab rounds 2 to 6), read through its probe.
@@ -434,3 +435,37 @@ test("wavepath: reduced motion: no ripple", async ({ page }) => {
   }
   expect(peak, "ripple height after declining under reduced motion").toBe(0);
 });
+
+// The line never lands on words, a link or a tap target (the lib's own line on the page's own measurements, as lib/wavepath/clear.test.ts
+// does on its fixture): laid on the anchors the page measured, every dot of it, still and with the music at its fullest, is
+// checked against every line of text and every link, button and control the browser drew.
+for (const size of [{ width: 390, height: 844 }, { width: 768, height: 1024 }, { width: 1280, height: 800 }]) {
+  test(`wavepath: no dot of the line lands on words, a link or a tap target at ${size.width}`, async ({ page }) => {
+    test.setTimeout(180_000);
+    await page.setViewportSize(size);
+    await open(page);
+    await decline(page);
+    // Walk the page so every reveal has played, then ask the line to lay itself out again on the finished page.
+    const end = await maxScroll(page);
+    for (let y = 0; y <= end; y += Math.round(size.height * 0.6)) {
+      await scrollToY(page, y);
+      await page.waitForTimeout(250);
+    }
+    await scrollToY(page, 0);
+    const before = await layouts(page);
+    await page.evaluate(() => window.dispatchEvent(new Event("wavepath:relayout")));
+    await expect.poll(() => layouts(page)).toBeGreaterThan(before);
+    const layout = await page.evaluate(() => (window as unknown as W).__wavePath.layout!);
+    expect(layout.anchors.links.length, "the links the line keeps off").toBeGreaterThan(10);
+    const { lines, targets } = await pageRects(page);
+    expect(lines.length).toBeGreaterThan(50);
+    expect(targets.length).toBeGreaterThan(10);
+    const laid = layLine(layout.anchors, layout.viewport);
+    for (const state of ["rest", "loud"] as const) {
+      const dots = lineDots(laid, state);
+      expect(dots.length / 3, `${state}: the line is drawn`).toBeGreaterThan(500);
+      expect(dotsOn(dots, lines).map(({ rect, dots: n }) => `${lines[rect].text} x${n}`), `${state}: text the line lands on`).toEqual([]);
+      expect(dotsOn(dots, targets).map(({ rect, dots: n }) => `${targets[rect].label} x${n}`), `${state}: links and controls the line lands on`).toEqual([]);
+    }
+  });
+}

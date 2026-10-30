@@ -1,7 +1,7 @@
 import { ACCENT_LINE, ACCENT_PEAK, CENTER_RADIUS, DOT_GAP, FUZZ_RADIUS } from "@/lib/waveform/dots";
 import { FLOOR } from "@/lib/waveform/field";
 import { BREATH, HEAD_SWELL, MAX_THICK, MUSIC, SHAPE_GAIN, SHIMMER, SOFT_FEATHER, SPECTRUM_PERIOD, TRAIN_FADE, WAVELENGTH } from "./constants";
-import type { PathColumns } from "./columns";
+import { dotReach, type PathColumns } from "./columns";
 import { bandAt, type MusicState } from "./music";
 import { pluckAt, type PluckState } from "./pluck";
 import { idleDisplacement, idleLift } from "./idle";
@@ -44,7 +44,20 @@ function clearOfBand(layerY: number, keep: Keep | null, j: number, q: number): b
   return d >= keep.fade || hash(j, q + 7) < smooth(d / keep.fade);
 }
 
-function emit(sink: DotSink, out: number[], x: number, y: number, r: number, top: number) {
+// A column with text or a link near has room (px) to put its dots in; however the music, the breath or a ripple would place a dot, it
+// stays inside that circle about the column's point, so no dot of the line lands on words or a link.
+const MIN_ROOM = 2;
+
+function emit(sink: DotSink, out: number[], x: number, y: number, r: number, top: number, px: number, py: number, room: number) {
+  if (room < Infinity) {
+    const dx = x - px;
+    const dy = y - py;
+    const d = Math.hypot(dx, dy);
+    if (d > room) {
+      x = px + (dx * room) / d;
+      y = py + (dy * room) / d;
+    }
+  }
   if (x >= 0 && x <= sink.width && y + top >= sink.viewTop && y + top <= sink.viewBottom) sink.onScreen++;
   out.push(x, y, r);
 }
@@ -61,11 +74,15 @@ export function buildPathDots(
   const rippling = !f.still && f.ripple.live;
   const idleGain = f.still ? 0 : f.idleGain ?? 0;
   const idleClock = f.idleClock ?? 0;
+  const reach = dotReach(amp);
   for (let k = first; k < first + count; k++) {
     const j = list[k];
     const s = cols.s[j];
     if (s < fromS || s >= toS || s > f.head || s < f.tail) continue;
-    let w = cols.taper[j] * (weights ? weights[j] : 1);
+    // Words or a link on the column's point, or too close to draw a dot: nothing. Near them, the column thins to the room it has.
+    const room = cols.room[j];
+    if (room < MIN_ROOM) continue;
+    let w = cols.taper[j] * (weights ? weights[j] : 1) * (room >= reach ? 1 : room / reach);
     let r = 1;
     if (!f.still) w *= 1 + HEAD_SWELL.gain * f.gate * Math.exp(-(((f.head - s) / HEAD_SWELL.px) ** 2));
     const inWords = cols.inWords[j] === 1;
@@ -91,8 +108,10 @@ export function buildPathDots(
     const magnitude = FLOOR + (mag - FLOOR) * w;
     const nx = cols.nx[j];
     const ny = cols.ny[j];
-    const cx = cols.x[j] - nx * disp * w * amp;
-    const cy = cols.y[j] - top - ny * disp * w * amp;
+    const px = cols.x[j];
+    const py = cols.y[j] - top;
+    const cx = px - nx * disp * w * amp;
+    const cy = py - ny * disp * w * amp;
     const peak = !inWords && magnitude > ACCENT_PEAK;
     const rows = Math.min(MAX_THICK, (magnitude * amp) / DOT_GAP);
     const thick = Math.ceil(rows - 1e-3);
@@ -101,7 +120,7 @@ export function buildPathDots(
       centre = smooth(rows);
       if (centre < 0.05) continue;
     }
-    if (clearOfBand(cy + top, keep, j, 0)) emit(sink, !inWords && magnitude > ACCENT_LINE ? sink.accent : sink.muted, cx, cy, CENTER_RADIUS * r * centre, top);
+    if (clearOfBand(cy + top, keep, j, 0)) emit(sink, !inWords && magnitude > ACCENT_LINE ? sink.accent : sink.muted, cx, cy, CENTER_RADIUS * r * centre, top, px, py, room);
     for (let q = 1; q <= thick; q++) {
       const fade = 1 - q / (rows + 1.5);
       const blink = 0.5 + 0.5 * Math.sin(j * 1.3 + q * 2.1);
@@ -111,8 +130,8 @@ export function buildPathDots(
       const out = q >= thick && peak ? sink.accent : sink.muted;
       const o = q * DOT_GAP;
       const fuzz = FUZZ_RADIUS * r * breathe * kept;
-      if (clearOfBand(cy + ny * o + top, keep, j, q)) emit(sink, out, cx + nx * o, cy + ny * o, fuzz, top);
-      if (clearOfBand(cy - ny * o + top, keep, j, q + 9)) emit(sink, out, cx - nx * o, cy - ny * o, fuzz, top);
+      if (clearOfBand(cy + ny * o + top, keep, j, q)) emit(sink, out, cx + nx * o, cy + ny * o, fuzz, top, px, py, room);
+      if (clearOfBand(cy - ny * o + top, keep, j, q + 9)) emit(sink, out, cx - nx * o, cy - ny * o, fuzz, top, px, py, room);
     }
   }
 }

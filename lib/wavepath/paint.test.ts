@@ -55,6 +55,44 @@ describe("dots along the curve", () => {
   });
 });
 
+describe("dots near words and links", () => {
+  const near = (room: number) => ({ ...cols, room: new Float32Array(cols.count).fill(room) });
+  const loud = () => {
+    const music = createMusic();
+    music.share = 1;
+    music.bins.fill(1);
+    return frame({ music, breath: 1, ripple: crest(0, 0.1), idleGain: 1, idleClock: 1 });
+  };
+  const crest = (at: number, age: number): RippleState => {
+    const r = createRipple();
+    startRipple(r, at);
+    stepRipple(r, age);
+    return r;
+  };
+  const drawn = (c: typeof cols, f: DotFrame) => {
+    const sink = createSink();
+    buildPathDots(c, all, 0, c.count, f, AMPLITUDE, 0, -Infinity, Infinity, null, sink);
+    return [...sink.muted, ...sink.accent];
+  };
+  it("draws nothing for a column on words, or with no room worth a dot", () => {
+    expect(drawn(near(0), frame())).toEqual([]);
+    expect(drawn(near(1.9), loud())).toEqual([]);
+  });
+  it("keeps every dot of a column inside its room, however loud the music, the breath and the ripple", () => {
+    const room = 14;
+    const dots = drawn(near(room), loud());
+    expect(dots.length).toBeGreaterThan(0);
+    for (let k = 0; k < dots.length; k += 3) {
+      const j = Math.round((dots[k] - cols.x[0]) / (cols.x[1] - cols.x[0]));
+      expect(Math.hypot(dots[k] - cols.x[j], dots[k + 1] - cols.y[j]), `dot ${k / 3}`).toBeLessThanOrEqual(room + 0.01);
+    }
+  });
+  it("thins a column to the room it has: less ink than a free one, and the same where the room is whole", () => {
+    expect(drawn(near(14), loud()).length).toBeLessThan(drawn(cols, loud()).length);
+    expect(drawn(near(1e6), frame())).toEqual(drawn(cols, frame()));
+  });
+});
+
 describe("the answer's ripple", () => {
   const crest = (at: number, age: number): RippleState => {
     const r = createRipple();

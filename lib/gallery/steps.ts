@@ -1,7 +1,7 @@
 import { siteContent } from "@/lib/content";
 import type { Gallery } from "./card";
 import { GALLERY } from "./constants";
-import { phonePages } from "./plan";
+import { phonePages, type Page } from "./plan";
 import { pagerSteps, partId, planSteps, type MaskStep, type StepOptions } from "./timing";
 
 // Which parts of a card's modal mask in, and in what order: the desktop rows
@@ -13,7 +13,8 @@ import { pagerSteps, partId, planSteps, type MaskStep, type StepOptions } from "
 // and before the links; Talos's sting follows its first paragraph, its Discord channel
 // its second, and its team's two paragraphs come where the mentors would. A card's demo video is one of its
 // photos (lib/gallery/card), so it masks as a photo does. lines counts a split part's lines.
-export function cardSteps(gallery: Gallery, layout: "rows" | "pager", flying: boolean, lines?: (id: string) => number): MaskStep[] {
+// pages: the phone's pages when they are not the card's own plan's (a pager that gave some paragraphs a page of their own).
+export function cardSteps(gallery: Gallery, layout: "rows" | "pager", flying: boolean, lines?: (id: string) => number, phone?: readonly Page[]): MaskStep[] {
   const o: StepOptions = {
     flown: flying && layout === "rows" ? gallery.lead : undefined,
     hasCaption: (photo) => gallery.photos[photo]?.caption != null,
@@ -22,7 +23,7 @@ export function cardSteps(gallery: Gallery, layout: "rows" | "pager", flying: bo
     trailing: gallery.key === "mentorship" && siteContent.cards.mentorship.mentors.people.length > 0 ? [partId.mentors] : gallery.key === "talos" ? [partId.talos] : [],
     lines,
   };
-  const pages = phonePages(gallery.plan, gallery.grouping);
+  const pages = phone ?? phonePages(gallery.plan, gallery.grouping);
   return layout === "pager" && pages.length > 0 ? pagerSteps(pages, o) : planSteps(gallery.plan, o);
 }
 

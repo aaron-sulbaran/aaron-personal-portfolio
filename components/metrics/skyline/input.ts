@@ -1,10 +1,11 @@
-import { ELEV_3D, ELEV_RANGE, YAW_3D, YAW_RANGE } from "@/lib/metrics/skyline/maths";
+import { ELEV_3D, ELEV_RANGE, YAW_3D, YAW_RANGE, isDoubleTap, type Tap } from "@/lib/metrics/skyline/maths";
 import type { Scene } from "./draw";
 import type { EngineConfig } from "./engine";
 import { pointInQuad } from "./paint";
 
 // Pointer and keyboard input for the engine: hover and tap a day, drag to
-// orbit in 3D, double-click to reset, arrow keys to walk the grid.
+// orbit in 3D, double-click (a mouse) or double-tap (a finger) to reset, arrow
+// keys to walk the grid.
 
 // The engine state input reads and writes.
 export type Ctl = {
@@ -87,13 +88,31 @@ const onMove = (ev: PointerEvent) => {
   canvas.style.cursor = orbitable() ? "grab" : i >= 0 ? "pointer" : "default";
 };
 
+const onDbl = () => {
+  ctl.yawGoal = 0;
+  ctl.elevGoal = 0;
+  kick();
+};
+
+let lastTap: Tap | null = null;
+
 const onUp = (ev: PointerEvent) => {
   if (!drag || ev.pointerId !== drag.id) return;
   const wasMoved = drag.moved;
   drag = null;
   if (canvas.hasPointerCapture(ev.pointerId)) canvas.releasePointerCapture(ev.pointerId);
   canvas.style.cursor = orbitable() ? "grab" : "default";
-  if (wasMoved) return;
+  if (wasMoved) {
+    lastTap = null;
+    return;
+  }
+  // Two taps of a finger reset the view as a double-click does (a mouse has its dblclick).
+  if (ev.pointerType !== "mouse") {
+    const tap = { t: ev.timeStamp, x: ev.clientX, y: ev.clientY };
+    const again = isDoubleTap(lastTap, tap);
+    lastTap = again ? null : tap;
+    if (again) onDbl();
+  }
   const [x, y] = local(ev);
   const i = hit(x, y);
   ctl.pinned = i === ctl.pinned ? -1 : i;
@@ -109,12 +128,6 @@ const onLeave = () => {
   if (drag) return;
   ctl.hovered = -1;
   refreshActive();
-};
-
-const onDbl = () => {
-  ctl.yawGoal = 0;
-  ctl.elevGoal = 0;
-  kick();
 };
 
 const KEYS = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End", "Escape", "Enter", " "];
