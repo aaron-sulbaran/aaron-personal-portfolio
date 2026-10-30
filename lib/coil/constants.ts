@@ -128,13 +128,14 @@ const values = {
     // lets go this long after it took input whatever else happened (a scene that
     // never starts, a tab hidden mid-deal, an error, an unmount): a page that
     // never gives the scroll back is the worst failure this can ship.
-    // The hand path's scroll (lib/home/handScroll.ts) takes over at the page's
-    // current speed: velocityWindowMs is the stretch of scroll samples that speed
-    // is read from, staleMs how old the last sample may be before the page counts
-    // as at rest, minLegMs the shortest the leg runs (a fling that has all but
-    // reached the landing), overshootPx the most the page may pass the landing
-    // when a fling has already carried it there (it eases back); the leg never
-    // passes the landing otherwise.
+    // The hand path's scroll (lib/home/handScroll.ts) takes over from the page's
+    // current speed and eases the reader in over about as long as the click's own
+    // scroll (Aaron, 2026-10-29: a hard fling used to land in about 95 ms, which read
+    // as a jump): velocityWindowMs is the stretch of scroll samples that speed is
+    // read from, staleMs how old the last sample may be before the page counts as at
+    // rest, overshootPx the most the page may pass the landing when a fling has
+    // already carried it there (it eases back); the leg never passes the landing
+    // otherwise.
     // readerWindowMs: how long after a wheel, a scroll key or a scrollbar drag, or
     // after a touch that moved, a scroll still counts as the reader's own (the OS's
     // and the browser's own smooth scrolling and momentum outlast the input), as
@@ -147,7 +148,6 @@ const values = {
       capMs: 3800,
       velocityWindowMs: 100,
       staleMs: 90,
-      minLegMs: 100,
       overshootPx: 24,
       readerWindowMs: { wheel: 450, key: 700, touch: 2500, scrollbar: 500 },
     },

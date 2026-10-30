@@ -3,7 +3,12 @@ import { COIL } from "@/lib/coil/constants";
 import { hermiteEase, planHandScroll, scrollVelocity, type HandPlan } from "@/lib/home/handScroll";
 
 const c = COIL.deal.cutscene;
-const NOMINAL = 1640;
+// The click's leg: it starts at the end of the condense and takes scrollMs; the hand
+// leg ends when it would, and lasts no less than it.
+const T = COIL.deal.timeline;
+const NOMINAL = T.condenseMs + T.scrollStartMs + T.scrollMs;
+const SHORTEST = T.scrollMs;
+const leg = (y0: number, v0: number, landing: number) => planHandScroll({ y0, v0, landing, nominalMs: NOMINAL, shortestMs: SHORTEST });
 
 // The page's y at a share of the leg's time.
 const yAt = (plan: HandPlan, y0: number, landing: number, s: number) => y0 + (landing - y0) * plan.ease(s);
@@ -41,11 +46,11 @@ describe("the page's speed at the trigger", () => {
 
 describe("the hand path's scroll plan", () => {
   it("is nothing when the page is already on the landing", () => {
-    expect(planHandScroll({ y0: 1000, v0: 800, landing: 1000.5, nominalMs: NOMINAL })).toBeNull();
+    expect(leg(1000, 800, 1000.5)).toBeNull();
   });
 
   it("from rest is a smoothstep over the nominal time: no start, no stop", () => {
-    const plan = planHandScroll({ y0: 1000, v0: 0, landing: 1400, nominalMs: NOMINAL })!;
+    const plan = leg(1000, 0, 1400)!;
     expect(plan.durationMs).toBe(NOMINAL);
     expect(plan.startVelocity).toBe(0);
     expect(plan.ease(0.5)).toBeCloseTo(0.5, 6);
@@ -54,8 +59,8 @@ describe("the hand path's scroll plan", () => {
   });
 
   it("starts at exactly the page's own speed when that fits the nominal time, and ends at rest", () => {
-    for (const v of [100, 400, 700]) {
-      const plan = planHandScroll({ y0: 1000, v0: v, landing: 1400, nominalMs: NOMINAL })!;
+    for (const v of [100, 400, 600]) {
+      const plan = leg(1000, v, 1400)!;
       expect(plan.durationMs).toBe(NOMINAL);
       expect(plan.startVelocity).toBeCloseTo(v, 6);
       expect(speedAt(plan, 1000, 1400, 0)).toBeCloseTo(v, 0);
@@ -64,35 +69,58 @@ describe("the hand path's scroll plan", () => {
     }
   });
 
-  it("a faster page gets a shorter leg that still starts at its speed, and never passes the landing", () => {
-    for (const v of [900, 2000, 6000, 11_500]) {
-      const plan = planHandScroll({ y0: 1000, v0: v, landing: 1400, nominalMs: NOMINAL })!;
+  it("a faster page gets a shorter leg that still starts at its speed, never shorter than the click's own leg", () => {
+    for (const v of [800, 900]) {
+      const plan = leg(1000, v, 1400)!;
       expect(plan.durationMs).toBeLessThan(NOMINAL);
-      expect(plan.durationMs).toBeGreaterThanOrEqual(c.minLegMs);
+      expect(plan.durationMs).toBeGreaterThanOrEqual(SHORTEST);
       expect(plan.startVelocity).toBeCloseTo(v, 6);
       expect(Math.abs(speedAt(plan, 1000, 1400, 0) - v) / v, "the speed it starts at, against the page's").toBeLessThan(0.002);
       expect(Math.max(...walk(plan, 1000, 1400))).toBeLessThanOrEqual(1400 + 1e-9);
     }
   });
 
+  it("a hard fling is caught: the leg lasts as long as the click's, starts at the fastest speed that fits, and eases out to the landing", () => {
+    // Aaron, 2026-10-29: a fling of about 9,000 px/s landed in about 95 ms, a jump.
+    for (const v of [2000, 6000, 9000, 11_500]) {
+      const plan = leg(1000, v, 1400)!;
+      expect(plan.durationMs).toBe(SHORTEST);
+      expect(plan.startVelocity).toBeLessThan(v);
+      expect(plan.startVelocity).toBeCloseTo((3 * 400) / (SHORTEST / 1000), 6);
+      const ys = walk(plan, 1000, 1400);
+      expect(Math.max(...ys)).toBeLessThanOrEqual(1400 + 1e-9);
+      // Eased out: it slows all the way in (its speed falls from the start to rest).
+      const speeds = Array.from({ length: 21 }, (_, i) => speedAt(plan, 1000, 1400, i / 20));
+      for (let i = 1; i < speeds.length; i++) expect(speeds[i]).toBeLessThanOrEqual(speeds[i - 1] + 1e-6);
+      expect(speeds.at(-1)!).toBeCloseTo(0, 0);
+      // Half the way in takes a fifth of the leg, not a frame.
+      expect(plan.ease(0.2)).toBeLessThan(0.5);
+    }
+  });
+
   it("only ever moves toward the landing", () => {
     for (const v of [0, 300, 1500, 9000]) {
-      const ys = walk(planHandScroll({ y0: 1000, v0: v, landing: 1400, nominalMs: NOMINAL })!, 1000, 1400);
+      const ys = walk(leg(1000, v, 1400)!, 1000, 1400);
       for (let i = 1; i < ys.length; i++) expect(ys[i]).toBeGreaterThanOrEqual(ys[i - 1] - 1e-9);
     }
   });
 
   it("a fling that has all but reached the landing holds its start speed to what fits, and does not pass it", () => {
-    const plan = planHandScroll({ y0: 1390, v0: 11_500, landing: 1400, nominalMs: NOMINAL })!;
-    expect(plan.durationMs).toBe(c.minLegMs);
+    const plan = leg(1390, 11_500, 1400)!;
+    expect(plan.durationMs).toBe(SHORTEST);
     expect(plan.startVelocity).toBeLessThan(11_500);
-    expect(plan.startVelocity).toBeCloseTo((3 * 10) / (c.minLegMs / 1000), 6);
+    expect(plan.startVelocity).toBeCloseTo((3 * 10) / (SHORTEST / 1000), 6);
     expect(Math.max(...walk(plan, 1390, 1400))).toBeLessThanOrEqual(1400 + 1e-9);
+  });
+
+  it("never lasts longer than the nominal leg, even if the click's own leg were longer", () => {
+    const plan = planHandScroll({ y0: 1000, v0: 9000, landing: 1400, nominalMs: 800, shortestMs: 1250 })!;
+    expect(plan.durationMs).toBe(800);
   });
 
   it("a page already past the landing eases back to it, going on no more than the overshoot budget", () => {
     for (const [y0, v] of [[1500, 0], [1500, 3000], [1430, 11_500], [2600, 6000]]) {
-      const plan = planHandScroll({ y0, v0: v, landing: 1400, nominalMs: NOMINAL })!;
+      const plan = leg(y0, v, 1400)!;
       const ys = walk(plan, y0, 1400);
       // Further down the page than it already was, at most the budget (a rounding's worth over).
       expect(Math.max(...ys) - y0).toBeLessThanOrEqual(c.overshootPx + 0.5);

@@ -68,8 +68,9 @@ export function createDealMaster({ parts, mode, knobs, scroll, onDone }: Args): 
     if (scroll.kind === "click") {
       scrollChild = addDealScroll(master, top, clickLegStartMs, knobs.scrollMs, undefined, !scroll.holds);
     } else {
-      // From the deal's zero, at the page's own speed, landing as the click's leg does.
-      const plan = planHandScroll({ y0, v0: scroll.velocity, landing: top, nominalMs: clickLegStartMs + knobs.scrollMs });
+      // From the deal's zero, from the page's own speed, landing as the click's leg does
+      // and lasting no less than it.
+      const plan = planHandScroll({ y0, v0: scroll.velocity, landing: top, nominalMs: clickLegStartMs + knobs.scrollMs, shortestMs: knobs.scrollMs });
       if (plan) scrollChild = addHandScroll(master, plan, y0, top);
     }
   }
