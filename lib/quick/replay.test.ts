@@ -12,7 +12,7 @@ function memory(keys: readonly string[]) {
 describe("replay first visit", () => {
   it("forgets the invite, the seen store, the hints, and the saved scroll", () => {
     expect(FIRST_VISIT_LOCAL).toContain(INVITE_KEY);
-    expect(FIRST_VISIT_LOCAL).toEqual(expect.arrayContaining(["aaron-hint-opened", "aaron-hint-keep", "aaron-hint-tap", "aaron-still-notice"]));
+    expect(FIRST_VISIT_LOCAL).toEqual(expect.arrayContaining(["aaron-hint-opened", "aaron-hint-keep", "aaron-still-notice"]));
     expect(FIRST_VISIT_SESSION).toEqual(expect.arrayContaining(["aaron-explored-tiles", "aps:home-scroll-y", "aaron-soundtrack-greeted"]));
   });
 

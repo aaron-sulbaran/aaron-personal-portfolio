@@ -3,7 +3,7 @@ import { SEEN_STORAGE_KEY } from "@/lib/home/seen";
 import { STILL_NOTICE_KEY } from "@/lib/home/stillNotice";
 import { VISITED_STORAGE_KEY } from "@/lib/inline/visited";
 import { HOME_SCROLL_KEY } from "@/lib/scroll";
-import { GREETED_KEY, KEEP_EXPLORING_KEY, TAP_CARD_KEY } from "@/lib/home/firstVisit";
+import { GREETED_KEY, KEEP_EXPLORING_KEY } from "@/lib/home/firstVisit";
 import { INVITE_KEY } from "./invite";
 
 // Everything the site remembers about a first visit, so the lab's "Replay first
@@ -14,7 +14,6 @@ export const FIRST_VISIT_LOCAL: readonly string[] = [
   INVITE_KEY,
   HINT_OPENED_KEY,
   KEEP_EXPLORING_KEY,
-  TAP_CARD_KEY,
   STILL_NOTICE_KEY,
   VISITED_STORAGE_KEY,
   // Round 1's invite, so an old answer never lingers.

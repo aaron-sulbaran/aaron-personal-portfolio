@@ -124,12 +124,11 @@ export const siteContent = {
     name: "Aaron",
     coilControl: "Coil",
     // First visit only, decorative (aria-hidden): the cursor's pill over a
-    // card until the first card opens, the one line after that first card
-    // flies home, and the touch screen's one line after the entrance.
+    // card until the first card opens, and the one line after that first card
+    // flies home. A touch screen gets neither.
     hints: {
       openMe: "Open me",
       keepExploring: "Keep exploring",
-      tapCard: "Tap a card",
     },
     // QA only, shown with ?coildebug=name: the wake grid over the name and
     // each letter's contrast against the field.

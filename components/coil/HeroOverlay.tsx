@@ -4,7 +4,7 @@ import { useEffect, useImperativeHandle, useRef, useState, type RefObject, type 
 import { bookRow, cardColumns, siteContent } from "@/lib/content";
 import { useEscapeKey } from "@/lib/modal";
 import { useSeen } from "@/lib/home/seen";
-import type { CoilEntrance, CoilSceneApi } from "./CoilScene";
+import type { CoilSceneApi } from "./CoilScene";
 import { HintLine } from "./HintLine";
 import { NameReadout } from "./NameReadout";
 import { Fill, FillArrow, FillSeed } from "@/components/fx/Fill";
@@ -13,8 +13,8 @@ import { FILL_PICK } from "@/lib/fx/fill";
 // The hero's DOM layer over the canvas. The greeting and the name are both
 // drawn in the canvas (fx-hero), so at rest this layer holds only the chevron
 // nudge that points off the helix after a few seconds of captured wheeling,
-// and the first-visit lines ("Keep exploring" once the first card has flown
-// home, "Tap a card" once on a touch screen). The scene positions the nudge
+// and the first-visit line ("Keep exploring" once the first card has flown
+// home; a touch screen gets none). The scene positions the nudge
 // from its own rAF through the handle, so it never lags the canvas.
 //
 // The unwind egg's list lives here too: a lead (a slot the canvas name, and
@@ -51,9 +51,6 @@ type Props = {
   api?: RefObject<CoilSceneApi | null>;
   // A row of the unwound list opens its card's modal (with the flight).
   onRowOpen?: (key: string, origin: HTMLElement) => void;
-  // The controller's entrance: null while the loader holds the pane. The
-  // touch line waits for it.
-  entrance?: CoilEntrance | null;
 };
 
 // The nudge sits this far off the pointer, toward where the page scrolls.
@@ -72,7 +69,7 @@ const LIST_GROUPS: { heading: string; rows: readonly ListRow[] }[] = cardColumns
 );
 const LIST_ROW_COUNT = LIST_GROUPS.reduce((sum, group) => sum + group.rows.length, 0);
 
-export function HeroOverlay({ ref, api, onRowOpen, entrance = null }: Props) {
+export function HeroOverlay({ ref, api, onRowOpen }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
   const nudgeRef = useRef<HTMLDivElement>(null);
   const nudgeOnRef = useRef(false);
@@ -272,7 +269,7 @@ export function HeroOverlay({ ref, api, onRowOpen, entrance = null }: Props) {
         </svg>
       </div>
 
-      <HintLine rootRef={rootRef} entrance={entrance} />
+      <HintLine rootRef={rootRef} />
       <NameReadout />
     </div>
   );

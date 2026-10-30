@@ -55,16 +55,16 @@ describe("first-visit hint store", () => {
       expect(store.opened()).toBe(false);
       expect(() => store.markOpened()).not.toThrow();
       expect(store.opened()).toBe(true);
-      expect(store.takeOnce("aaron-hint-tap")).toBe(true);
-      expect(store.takeOnce("aaron-hint-tap")).toBe(false);
+      expect(store.takeOnce("aaron-hint-keep")).toBe(true);
+      expect(store.takeOnce("aaron-hint-keep")).toBe(false);
     }
   });
 
   it("hands out a once-ever line exactly once, across visits", () => {
     const storage = memoryStorage();
-    expect(createHintStore(storage).takeOnce("aaron-hint-tap")).toBe(true);
+    expect(createHintStore(storage).takeOnce("aaron-hint-keep")).toBe(true);
     const next = createHintStore(storage);
-    expect(next.takeOnce("aaron-hint-tap")).toBe(false);
+    expect(next.takeOnce("aaron-hint-keep")).toBe(false);
     expect(next.opened()).toBe(false);
   });
 });

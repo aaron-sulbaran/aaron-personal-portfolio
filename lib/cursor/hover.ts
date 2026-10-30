@@ -50,9 +50,9 @@ export function subscribeSceneHoverKey(listener: () => void): () => void {
 // ---- fx-hero: the first-visit hint ----
 // Until a visitor opens their first card, hovering a card swells the custom
 // cursor into an "Open me" pill (CustomCursor); after that it never appears
-// again, on any visit. The one-time lines ("Keep exploring", "Tap a card") are
-// once-ever too. Kept in localStorage; a blocked or missing storage keeps the
-// state in memory for the visit and never throws.
+// again, on any visit. The one-time line ("Keep exploring") is once-ever too.
+// Kept in localStorage; a blocked or missing storage keeps the state in memory
+// for the visit and never throws.
 export const HINT_OPENED_KEY = "aaron-hint-opened";
 
 type HintStorage = Pick<Storage, "getItem" | "setItem">;

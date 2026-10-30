@@ -72,16 +72,21 @@ test("touch: a tap on a card opens its modal with no flight", async ({ page }) =
   await expect(page.locator("[data-flying-tile]")).toHaveCount(0);
 });
 
-test("touch: the first visit shows \"Tap a card\" once, never again", async ({ page }) => {
-  await openHome(page);
-  const hint = page.locator("section[data-scene] p[aria-hidden='true']", { hasText: "Tap a card" });
-  await expect(hint).toHaveCount(1);
-  await expect.poll(() => hint.evaluate((el) => Number(getComputedStyle(el).opacity))).toBeGreaterThan(0.9);
-
+test("touch: the first visit shows no hint line, \"Tap a card\" or any other", async ({ page }) => {
   await openHome(page);
   // The line would be set in the effect that runs once the hero is ready.
   await nextFrames(page, 10);
+  const lines = page.locator("section[data-scene] p[data-hint-line]");
+  await expect(lines).toHaveCount(1);
+  await expect(lines).toHaveText("");
   await expect(page.locator("section[data-scene] p", { hasText: "Tap a card" })).toHaveCount(0);
+  expect(await page.evaluate(() => localStorage.getItem("aaron-hint-tap"))).toBeNull();
+
+  // A touch screen's later visits are the same.
+  await openHome(page);
+  await nextFrames(page, 10);
+  await expect(page.locator("section[data-scene] p", { hasText: "Tap a card" })).toHaveCount(0);
+  await expect(page.locator("section[data-scene] p[data-hint-line]")).toHaveText("");
 });
 
 // The skyline's hint says what a finger does, and a double-tap really resets the view: the hint reads "double-tap to reset" (a mouse's

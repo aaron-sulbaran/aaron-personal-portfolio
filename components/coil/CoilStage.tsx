@@ -152,7 +152,6 @@ export function CoilStage({
         ref={overlayRef}
         api={apiRef}
         onRowOpen={onRowOpen}
-        entrance={entrance}
       />
       {heroScene === "still" && ready && hero && notice ? createPortal(<StillNotice cause={notice} />, hero) : null}
     </div>
