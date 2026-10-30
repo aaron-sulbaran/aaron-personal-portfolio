@@ -153,14 +153,19 @@ describe("the fourteen cards", () => {
     for (const text of [card.byline, card.hook, card.cta]) expect(text, text).not.toMatch(/\u2014/);
   });
 
-  it("name the six mentors who agreed, each with their own LinkedIn link and no line until I write one", () => {
+  it("name the six mentors who agreed, each with their own LinkedIn link and the line I wrote for them", () => {
     const { title, people } = cards.mentorship.mentors;
     expect(title).toBe("the people who shaped me");
     expect(people.map((mentor) => mentor.name)).toEqual(["Andrew Chang", "Diego Jimenez", "Jared Alonzo", "JJ Gonzales", "Joaquin Escobar", "Mike Ditson"]);
-    for (const mentor of people) {
-      expect(mentor.href, mentor.name).toMatch(/^https:\/\/www\.linkedin\.com\/in\/[a-z0-9-]+\/$/);
-      expect(mentor.line, mentor.name).toBeNull();
-    }
+    for (const mentor of people) expect(mentor.href, mentor.name).toMatch(/^https:\/\/www\.linkedin\.com\/in\/[a-z0-9-]+\/$/);
+    expect(people.map((mentor) => mentor.line)).toEqual([
+      "My freshman class mentor, introduction to IEEE UT (as prev. president), and longtime friend.",
+      "My mentor turned brother-in-law and one of my first examples of a first-gen, Latino engineer.",
+      "My best example of a peer as a mentor. Jared roots for everyone around him and helps anytime he can, even if we're the same age.",
+      "An amazing mentor and even better friend that reminds me to work hard without forgetting the play hard part. Maybe the funniest guy I know too.",
+      "A mentor that indirectly reminds me that engineering takes place outside of work too through his cool personal projects.",
+      "One of my favorite professors ever. Leading future leaders in product management at UT while keeping a VP of Product role.",
+    ]);
     expect(new Set(people.map((mentor) => mentor.href)).size).toBe(people.length);
   });
 

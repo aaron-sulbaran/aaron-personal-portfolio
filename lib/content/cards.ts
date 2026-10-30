@@ -15,14 +15,14 @@ export const cards: Cards = {
       "I wouldn't be where I am now without the mentors who have shaped me. People made time for me, so I make time back. I've coached first-year scholars, worked as a student mentor on campus, and been an official mentor to Hispanic Scholarship Fund (HSF) scholars at the annual STEM Summit.",
       "I take coffee chats in both directions. If I'm asking people for their time, I should be willing to give mine, and I lose track of time in them.",
     ] },
-    // All six agreed to be named (2026-10-09). Each line is mine to write; until then a mentor shows a name and a link.
+    // All six agreed to be named (2026-10-09). Each line is Aaron's own words, set verbatim from his build board answers.
     mentors: { title: "the people who shaped me", people: [
-      { name: "Andrew Chang", href: "https://www.linkedin.com/in/andrewlinchang/", line: null },
-      { name: "Diego Jimenez", href: "https://www.linkedin.com/in/djmora/", line: null },
-      { name: "Jared Alonzo", href: "https://www.linkedin.com/in/jared-alonzo/", line: null },
-      { name: "JJ Gonzales", href: "https://www.linkedin.com/in/jjgonzalesiv/", line: null },
-      { name: "Joaquin Escobar", href: "https://www.linkedin.com/in/jescobar25/", line: null },
-      { name: "Mike Ditson", href: "https://www.linkedin.com/in/mikeditson/", line: null },
+      { name: "Andrew Chang", href: "https://www.linkedin.com/in/andrewlinchang/", line: "My freshman class mentor, introduction to IEEE UT (as prev. president), and longtime friend." },
+      { name: "Diego Jimenez", href: "https://www.linkedin.com/in/djmora/", line: "My mentor turned brother-in-law and one of my first examples of a first-gen, Latino engineer." },
+      { name: "Jared Alonzo", href: "https://www.linkedin.com/in/jared-alonzo/", line: "My best example of a peer as a mentor. Jared roots for everyone around him and helps anytime he can, even if we're the same age." },
+      { name: "JJ Gonzales", href: "https://www.linkedin.com/in/jjgonzalesiv/", line: "An amazing mentor and even better friend that reminds me to work hard without forgetting the play hard part. Maybe the funniest guy I know too." },
+      { name: "Joaquin Escobar", href: "https://www.linkedin.com/in/jescobar25/", line: "A mentor that indirectly reminds me that engineering takes place outside of work too through his cool personal projects." },
+      { name: "Mike Ditson", href: "https://www.linkedin.com/in/mikeditson/", line: "One of my favorite professors ever. Leading future leaders in product management at UT while keeping a VP of Product role." },
     ] },
   },
   "min-max": {

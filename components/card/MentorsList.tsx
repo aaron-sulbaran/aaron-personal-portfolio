@@ -3,7 +3,7 @@ import { siteContent } from "@/lib/content";
 import { partId } from "@/lib/gallery/timing";
 
 // The Mentorship card's mentors, a section of its modal: each name a link to
-// their LinkedIn, and the line I write for them once I have.
+// their LinkedIn, and the line I wrote for them.
 export function MentorsList({ compact = false }: { compact?: boolean }) {
   const { title, people } = siteContent.cards.mentorship.mentors;
   const headingId = useId();

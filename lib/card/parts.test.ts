@@ -211,6 +211,12 @@ describe("the mentors and the links", () => {
     expect(html).toContain("the people who shaped me");
     expect(html.match(/<a [^>]*href="https:\/\/www\.linkedin\.com\/in\/[^"]+" target="_blank" rel="noopener noreferrer"/g)?.length).toBe(6);
   });
+  it("draws the line I wrote under each mentor's name", () => {
+    const html = renderToStaticMarkup(createElement(MentorsList, {}));
+    expect(html.match(/<p /g)?.length).toBe(6);
+    expect(html).toContain("My freshman class mentor, introduction to IEEE UT (as prev. president), and longtime friend.");
+    expect(html).toContain("One of my favorite professors ever.");
+  });
   it("leaves out a link drawn elsewhere on the page, and renders nothing when that was its only one", () => {
     const { href } = siteContent.cards.jobs.modal.links[0];
     expect(renderToStaticMarkup(createElement(CardLinks, { cardKey: "jobs" }))).toContain(href);
