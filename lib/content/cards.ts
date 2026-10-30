@@ -2,6 +2,9 @@ import { logos, modalPhotos, pictures } from "./media";
 import { talosTeam } from "./talos";
 import type { CardKey, Cards } from "./types";
 
+// The jobs card's LinkedIn post: the link under the modal's words, and the card a phone shows in the embed's place.
+const POST_HREF = "https://lnkd.in/p/g3mXFGcY";
+
 // The fourteen launch cards (docs/content/cards.md, approved 2026-10-08), in strand order.
 // Pictures, modal photos and logos are the photo export's files (./media); every card opens a modal.
 export const cards: Cards = {
@@ -118,7 +121,7 @@ export const cards: Cards = {
   jobs: {
     short: "Jobs", qualifier: "(part-time)", visual: { kind: "circles" },
     book: { title: "\"unflattering\" jobs that paid for school", meta: "Popeyes to Aritzia, 2021 to 2026" },
-    modal: { kind: "timeline", title: "The \"unflattering\" jobs that shaped me", links: [{ label: "The LinkedIn post", href: "https://lnkd.in/p/g3mXFGcY" }], photos: modalPhotos.jobs, blocks: [
+    modal: { kind: "timeline", title: "The \"unflattering\" jobs that shaped me", links: [{ label: "The LinkedIn post", href: POST_HREF }], photos: modalPhotos.jobs, blocks: [
       "I'm self-funded, so I've worked part-time alongside school almost every year since I legally could. Those jobs paid for my car in cash in high school, covered rent, and chipped away at tuition so I could graduate debt free.",
       "The money (although it was necessary) was secondary though. I realized that after finishing my degree, I have my whole life to work off a screen or in an office if I want to. So I intentionally went looking for jobs where I could interact with people face-to-face and solve their problem right away, even if that was looking for a shirt in the back.",
       "I think these jobs are an opportunity to experience the other side of daily interactions you might never think of after finishing your degree. That's why I've never shied away from a service industry job. I also learned how to make a fire pizza.",
@@ -132,7 +135,9 @@ export const cards: Cards = {
       height: 1258,
       title: "My LinkedIn post about unflattering jobs",
       beside: 3,
-    } },
+    },
+    // On a phone the post is this card instead (a frame that tall would scroll inside the page): the post's hook line and me, one link out.
+    postCard: { href: POST_HREF, byline: "Aaron Sulbaran", hook: "I don't trust people who haven't worked an unflattering job.", cta: "Read the post on LinkedIn" } },
     // Newest first (Aaron, 2026-10-29). Each job is a name tag in the modal (components/card/JobTag): the tip is on the page for a reader to
     // read, not behind a hover.
     timeline: [

@@ -30,6 +30,7 @@ export interface Plan {
 export interface Page extends Slide {
   links: boolean; // the card's links (and the mentors) sit on this page
   wordless?: boolean; // grouping B: a group's later photo alone with its caption
+  wordsOnly?: true; // a paragraph on a page of its own, no stage: it did not fit under its photo (splitWords); photo is still the one it belongs to
 }
 
 // A: a page a paragraph, the group turning in the stage. B: a page a photo, a
@@ -228,6 +229,17 @@ export function photoPages(plan: Plan): Page[] {
 
 export function phonePages(plan: Plan, grouping: PhoneGrouping): Page[] {
   return grouping === "photo" ? photoPages(plan) : pagesOf(plan);
+}
+
+// The pages with the words of the given pages' photos (a page's photo names it) moved onto a page of their own: the page keeps its
+// stage, wordless, and the words, and the card's links if the page had them, follow it on the next page. Order and every word stay.
+export function splitWords(pages: readonly Page[], split: readonly number[]): Page[] {
+  return pages.flatMap((page): Page[] => {
+    if (!split.includes(page.photo) || slideWords(page).length === 0) return [page];
+    const stage: Page = { ...page, before: [], own: undefined, after: [], links: false, wordless: true };
+    const words: Page = { photo: page.photo, photos: [page.photo], before: page.before, own: page.own, after: page.after, links: page.links, wordsOnly: true };
+    return [stage, words];
+  });
 }
 
 export function stageKind(page: Page, grouping: PhoneGrouping): StageKind {

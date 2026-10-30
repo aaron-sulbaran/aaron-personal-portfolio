@@ -5,6 +5,7 @@ import { siteContent } from "@/lib/content";
 import { pageStage, stageHeight } from "@/lib/gallery/boxes";
 import type { Gallery } from "@/lib/gallery/card";
 import { GALLERY } from "@/lib/gallery/constants";
+import { wordsToSplit, type UnitFit } from "@/lib/gallery/fit";
 import { pagerReducer } from "@/lib/gallery/pager";
 import { stageKind, type Page } from "@/lib/gallery/plan";
 import { useReducedMotionLive } from "@/components/soundtrack/useReducedMotionLive";
@@ -21,16 +22,22 @@ import { usePagerDrag } from "./usePagerDrag";
 // and a sideways drag change pages; a vertical flick on the stage, the header
 // or words that fit closes the modal. Under reduced motion pages change with
 // no travel.
+//
+// A card that splits (onSplit given, lib/gallery/constants CARD_PHONE_SPLITS)
+// reads each stage and each paragraph as laid out and gives a paragraph that
+// does not fit under its stage a page of its own, before the first paint and
+// again whenever the room changes; so no page scrolls its words inside it.
 
-type Props = { gallery: Gallery; pages: readonly Page[]; renderMedia: boolean; onClose: () => void };
+type Props = { gallery: Gallery; pages: readonly Page[]; renderMedia: boolean; onClose: () => void; split?: readonly number[]; onSplit?: (split: readonly number[]) => void };
 type Room = { width: number; height: number; visible: number };
 
 const g = siteContent.modals.gallery;
 
-export function CardPager({ gallery, pages, renderMedia, onClose }: Props) {
+export function CardPager({ gallery, pages, renderMedia, onClose, split = [], onSplit }: Props) {
   const count = pages.length;
   const reduced = useReducedMotionLive();
   const [state, dispatch] = useReducer(pagerReducer, { index: 0, count });
+  useLayoutEffect(() => dispatch({ type: "count", count }), [count]);
   const [room, setRoom] = useState<Room | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const viewportRef = useRef<HTMLDivElement | null>(null);
@@ -42,10 +49,10 @@ export function CardPager({ gallery, pages, renderMedia, onClose }: Props) {
     const kind = stageKind(page, gallery.grouping);
     const photos = kind === "turns" ? page.photos : [page.photo];
     const height = page.wordless ? heightFor(pager.wordlessMax, pager.captionRoomPx) : heightFor(pager.stageMax, pager.wordsRoomPx);
-    // A name tag fills the column up to a comfortable width, with a height of its own; the embedded post fills it and scrolls in its stage.
+    // A name tag and the post's card fill the column up to a comfortable width, each with a height of its own.
     const piece = gallery.photos[page.photo];
     const width = room?.width ?? 0;
-    const own = piece.embed ? { width, height } : piece.tag !== undefined ? { width: Math.min(width, pager.tagMaxPx), height } : null;
+    const own = piece.embed || piece.tag !== undefined ? { width: Math.min(width, pager.tagMaxPx), height } : null;
     return { kind, stage: { photos, ...(own ? { frame: own, boxes: [own] } : pageStage(photos, gallery.aspects, width, height)) } };
   });
 
@@ -58,6 +65,36 @@ export function CardPager({ gallery, pages, renderMedia, onClose }: Props) {
     observer.observe(viewport);
     return () => observer.disconnect();
   }, []);
+
+  // Which paragraphs do not fit under their stage, read from the pages as laid out (offsetHeight: a transform never changes it): the
+  // stage is as tall as it is wherever its words are, and the words' own height is their block's, so a split page and its parts agree.
+  const splitKey = split.join(",");
+  useLayoutEffect(() => {
+    const root = rootRef.current;
+    const viewport = viewportRef.current;
+    if (!onSplit || !room || !root || !viewport) return;
+    const measure = () => {
+      const units = new Map<number, Partial<UnitFit>>();
+      root.querySelectorAll<HTMLElement>("[data-pager-page]").forEach((el) => {
+        const photo = Number(el.dataset.unit);
+        const unit = units.get(photo) ?? { photo };
+        const stage = el.querySelector<HTMLElement>("[data-pager-stage]");
+        const words = el.querySelector<HTMLElement>("[data-pager-text] > div");
+        if (stage) unit.stage = stage.offsetHeight;
+        if (words) unit.words = words.offsetHeight;
+        units.set(photo, unit);
+      });
+      const whole = [...units.values()].filter((unit): unit is UnitFit => unit.stage !== undefined && unit.words !== undefined);
+      const next = wordsToSplit(whole, viewport.clientHeight, pager.pageGapPx);
+      if (next.join(",") !== splitKey) onSplit(next);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    root.querySelectorAll("[data-pager-stage], [data-pager-text] > div").forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+    // The measure reads the DOM; the room and the pages it was laid out for are what change it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [room?.width, room?.height, splitKey, onSplit]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -75,7 +112,9 @@ export function CardPager({ gallery, pages, renderMedia, onClose }: Props) {
 
   const travel = reduced || dragPx !== null ? 0 : pager.slideMs;
   const shown = gallery.photos[pages[state.index].photo];
-  const live = gallery.grouping === "photo" ? g.announce(state.index + 1, count, shown.captionShort ?? shown.caption ?? shown.alt) : g.pageNumber(state.index + 1, count);
+  const live = gallery.grouping === "photo" && !pages[state.index].wordsOnly ? g.announce(state.index + 1, count, shown.captionShort ?? shown.caption ?? shown.alt) : g.pageNumber(state.index + 1, count);
+  // A pager with a page of words alone has pages that are not photos, so its dots are named by page.
+  const dots = pages.some((page) => page.wordsOnly) ? "paragraph" : gallery.grouping;
   return (
     <div
       ref={rootRef}
@@ -95,11 +134,11 @@ export function CardPager({ gallery, pages, renderMedia, onClose }: Props) {
           data-pager-track=""
         >
           {pages.map((page, i) => (
-            <PagerPage key={page.photo} gallery={gallery} page={page} index={i} count={count} kind={layouts[i].kind} stage={layouts[i].stage} current={i === state.index} pressing={pressing} />
+            <PagerPage key={`${page.photo}${page.wordsOnly ? "-words" : ""}`} gallery={gallery} page={page} index={i} count={count} kind={layouts[i].kind} stage={layouts[i].stage} room={room?.height ?? 0} current={i === state.index} pressing={pressing} />
           ))}
         </div>
       </div>
-      {count > 1 && <PagerControls index={state.index} count={count} grouping={gallery.grouping} dispatch={dispatch} />}
+      {count > 1 && <PagerControls index={state.index} count={count} grouping={dots} dispatch={dispatch} />}
       <p className="sr-only" aria-live="polite">
         {live}
       </p>

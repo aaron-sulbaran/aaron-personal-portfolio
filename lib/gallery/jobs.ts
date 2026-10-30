@@ -39,7 +39,7 @@ export function jobsGallery(columns: Parameters<typeof columnsFor>[1]): JobsGall
     ...timeline.map((entry, job): GalleryPhoto => ({
       src: entry.logo?.src ?? "", width: tagBox.width, height: tagBox.height, alt: siteContent.cards.jobs.tag.label(entry.employer), caption: null, captionShort: null, tag: job,
     })),
-    { src: embed.src, width: embedBox.width, height: embedBox.height, alt: embed.title, caption: null, captionShort: null, embed: { src: embed.src, width: embed.width, height: embed.height, title: embed.title } },
+    { src: embed.src, width: embedBox.width, height: embedBox.height, alt: embed.title, caption: null, captionShort: null, embed: { src: embed.src, width: embed.width, height: embed.height, title: embed.title, card: modal.postCard! } },
   ];
   const boxes: Box[] = [...modal.photos.map(() => photoBox), ...timeline.map(() => tagBox), embedBox];
 

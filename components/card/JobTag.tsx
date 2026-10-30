@@ -7,7 +7,7 @@ import type { LogoRef } from "@/lib/content";
 // my role and when, and under that the insider tip itself, labelled as mine. Flat and in the site's card language: the
 // photos' radius, a hairline border and the page's own tokens, no sheen, clip or script face. The logo comes in a light and a
 // dark file, shown by theme. The tip is on the page for anyone to read, never behind a hover. Words: lib/content (cards.jobs.tag).
-const BAND = { backgroundColor: "color-mix(in srgb, var(--color-foreground) 5%, var(--color-background))" };
+export const TAG_BAND = { backgroundColor: "color-mix(in srgb, var(--color-foreground) 5%, var(--color-background))" };
 const LOGO = "h-auto max-h-9 w-auto max-w-[10.5rem]";
 
 function Logo({ logo }: { logo: LogoRef }) {
@@ -25,7 +25,7 @@ export function JobTag({ job }: { job: number }) {
   const copy = siteContent.cards.jobs.tag;
   return (
     <div role="group" aria-label={copy.label(tag.employer)} data-job-tag={job} className="flex flex-col overflow-hidden rounded-xl border border-border bg-background text-foreground">
-      <div className="flex h-[4.25rem] items-center justify-center border-b border-border px-5" style={BAND} data-job-tag-logo="">
+      <div className="flex h-[4.25rem] items-center justify-center border-b border-border px-5" style={TAG_BAND} data-job-tag-logo="">
         {tag.logo && <Logo logo={tag.logo} />}
       </div>
       <div className="flex flex-col gap-1 px-5 pb-4 pt-4">

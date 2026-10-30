@@ -185,19 +185,98 @@ for (const viewport of [{ width: 1280, height: 800 }, { width: 1440, height: 900
   });
 }
 
+// What a phone's pager page holds, read off its markup: the media on it (a name tag, a photo or the post's link card), or "words" for a
+// paragraph on a page of its own.
+type Kind = "tag" | "photo" | "card" | "words";
+const kindsOf = (pages: import("@playwright/test").Locator) =>
+  pages.evaluateAll((els) => els.map((el): Kind => (el.hasAttribute("data-words-only") ? "words" : el.querySelector("[data-job-tag]") ? "tag" : el.querySelector("[data-post-card]") ? "card" : "photo")));
+
+// The page's whole read at once: nothing on it is scrolled, clipped or wider than the panel, in the pager's pages as laid out.
+async function readPages(page: import("@playwright/test").Page) {
+  return page.evaluate((gap) => {
+    const dialog = document.querySelector<HTMLElement>('[role="dialog"][data-card-modal="jobs"]')!;
+    const viewport = dialog.querySelector<HTMLElement>("[data-pager-viewport]")!.getBoundingClientRect();
+    const room = dialog.querySelector<HTMLElement>("[data-pager-viewport]")!.clientHeight;
+    const pages = [...dialog.querySelectorAll<HTMLElement>("[data-pager-page]")].map((el) => {
+      const stage = el.querySelector<HTMLElement>("[data-pager-stage]");
+      const text = el.querySelector<HTMLElement>("[data-pager-text]");
+      const inner = text?.firstElementChild as HTMLElement | undefined;
+      // Anything inside the page that scrolls, or has more to show than it draws.
+      const scrolled = [...el.querySelectorAll<HTMLElement>("*")].filter((node) => /(auto|scroll)/.test(getComputedStyle(node).overflowY) && node.scrollHeight > node.clientHeight + 1).length;
+      const tip = el.querySelector<HTMLElement>("[data-job-tag-tip]");
+      return {
+        unit: Number(el.dataset.unit),
+        stage: stage ? stage.offsetHeight : null,
+        stageBottom: stage ? stage.getBoundingClientRect().bottom : null,
+        words: inner ? inner.offsetHeight : null,
+        wordsBottom: inner?.lastElementChild ? inner.lastElementChild.getBoundingClientRect().bottom : null,
+        textBottom: text ? text.getBoundingClientRect().bottom : null,
+        scrolled,
+        scrollsFlag: !!text?.hasAttribute("data-scrolls"),
+        tipInside: tip ? tip.getBoundingClientRect().bottom <= viewport.bottom + 1 : true,
+        paragraphs: [...el.querySelectorAll<HTMLElement>('[data-pager-text] p[data-mask^="words-"]')].map((p) => ({ unit: Number(p.dataset.mask!.slice(6)), text: p.textContent ?? "" })),
+        iframes: el.querySelectorAll("iframe").length,
+        gap,
+      };
+    });
+    return { room, viewportBottom: viewport.bottom, pages };
+  }, GALLERY.pager.pageGapPx);
+}
+
 test.describe("on a phone", () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
 
-  test("jobs modal: at 390 the pager gives each tag, photo and the post a page, with no sideways overflow anywhere", async ({ page }) => {
+  test("jobs modal: at 390 each tag, photo and the post's card has a page, a paragraph that does not fit under its tag has a page of its own, and nothing scrolls inside a page", async ({ page }) => {
     const { dialog } = await openCardFromBook(page, "jobs", { settled: true });
     await expect(dialog).toHaveAttribute("data-gallery-layout", "pager");
     const pages = dialog.locator("[data-pager-page]");
-    await expect(pages).toHaveCount(10);
-    // Tags flow in the pager like photos: Aritzia's tag with the first paragraph, then its poster, and so on; the post's page, then Popeyes' tag.
-    const kinds = await pages.evaluateAll((els) => els.map((el) => (el.querySelector("[data-job-tag]") ? "tag" : el.querySelector("iframe") ? "embed" : "photo")));
-    expect(kinds).toEqual(["tag", "photo", "tag", "photo", "tag", "tag", "photo", "photo", "embed", "tag"]);
+    const kinds = await kindsOf(pages);
+    // The media, newest first, in the order they always had (a tag, then its photo; the post's card, then Popeyes' tag) with a page of words
+    // wherever a paragraph did not fit; no frame of the post anywhere on a phone.
+    expect(kinds.filter((kind) => kind !== "words")).toEqual(["tag", "photo", "tag", "photo", "tag", "tag", "photo", "photo", "card", "tag"]);
+    await expect(dialog.locator("iframe")).toHaveCount(0);
+    await expect(dialog.locator("[data-embed-stage]")).toHaveCount(0);
+    expect(kinds.filter((kind) => kind === "words").length, "the paragraphs that did not fit").toBeGreaterThan(0);
+
+    const read = await readPages(page);
+    expect(read.pages).toHaveLength(kinds.length);
+    // Every word shows, once and in order: the four paragraphs, whole.
+    const shown = read.pages.flatMap((p) => p.paragraphs);
+    expect(shown.map((p) => p.unit)).toEqual([0, 1, 2, 3]);
+    expect(shown.map((p) => p.text)).toEqual(modal.blocks.map((block) => visibleText(block)));
+    read.pages.forEach((p, i) => {
+      expect(p.scrolled, `page ${i + 1}: nothing in it scrolls`).toBe(0);
+      expect(p.scrollsFlag, `page ${i + 1}: its words are not in a scroll window`).toBe(false);
+      expect(p.tipInside, `page ${i + 1}: the tip is not cut off at the foot`).toBe(true);
+      if (p.stageBottom !== null) expect(p.stageBottom, `page ${i + 1}: its stage ends inside the pages`).toBeLessThanOrEqual(read.viewportBottom + 1);
+      if (p.wordsBottom !== null) expect(p.wordsBottom, `page ${i + 1}: its words end inside their area`).toBeLessThanOrEqual(p.textBottom! + 1);
+    });
+    // A paragraph has a page to itself only when it would not have fitted under its stage; one that fits stays with it.
+    const stages = new Map(read.pages.flatMap((p) => (p.stage !== null ? [[p.unit, p.stage] as const] : [])));
+    kinds.forEach((kind, i) => {
+      const p = read.pages[i];
+      const words = p.words;
+      if (kind === "words") expect(stages.get(p.unit)! + p.gap + words!, `page ${i + 1}: stage, gap and words together`).toBeGreaterThan(read.room + 1);
+      else if (words !== null && p.stage !== null) expect(p.stage + p.gap + words, `page ${i + 1}: stage, gap and words together`).toBeLessThanOrEqual(read.room + 1);
+    });
+    // A page of words follows the media its paragraph sat beside: the first tag's, the second's, the third's, and the post's card.
+    const anchorOf = (unit: number) => {
+      const at = read.pages.findIndex((p) => p.paragraphs.some((q) => q.unit === unit));
+      return kinds[at] === "words" ? at - 1 : at;
+    };
+    expect([0, 1, 2, 3].map((unit) => kinds[anchorOf(unit)])).toEqual(["tag", "tag", "tag", "card"]);
+    expect([0, 1, 2].map((unit) => read.pages[anchorOf(unit)].unit), "the tags of Aritzia, Apple and UT Austin").toEqual([4, 5, 6]);
+    // The title is three lines or fewer: it stepped down from four.
+    const title = await dialog.locator("[data-pager] h2").evaluate((el) => ({ height: el.getBoundingClientRect().height, line: parseFloat(getComputedStyle(el).lineHeight) }));
+    expect(Math.round(title.height / title.line), "lines in the title").toBeLessThanOrEqual(3);
+  });
+
+  test("jobs modal: at 390 every page is within the panel, the controls too, and the post is one link card to the post", async ({ page }) => {
+    const { dialog } = await openCardFromBook(page, "jobs", { settled: true });
+    const pages = dialog.locator("[data-pager-page]");
+    const count = await pages.count();
     const next = dialog.getByRole("button", { name: siteContent.modals.gallery.nextPage, exact: true });
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < count; i++) {
       const overflow = await page.evaluate(() => {
         const root = document.documentElement;
         const dialogEl = document.querySelector<HTMLElement>('[role="dialog"][data-card-modal="jobs"]')!;
@@ -211,24 +290,49 @@ test.describe("on a phone", () => {
       const controls = (await dialog.locator("[data-pager-controls]").boundingBox())!;
       const panelBox = (await dialog.locator("[data-gallery-panel]").boundingBox())!;
       expect(controls.x + controls.width, `page ${i + 1}: controls inside the panel`).toBeLessThanOrEqual(panelBox.x + panelBox.width);
-      if (i < 9) {
+      if (i < count - 1) {
         await next.click();
         await page.waitForTimeout(450);
       }
     }
-    // On the post's page the frame fills the column and keeps its native height inside a stage that scrolls; it is never shrunk.
-    await dialog.locator('[data-pager-dot="8"]').click();
-    await page.waitForTimeout(450);
-    const frame = dialog.locator('[data-pager-page="8"] iframe');
-    const stage = dialog.locator('[data-pager-page="8"] [data-embed-stage]');
-    const column = (await stage.boundingBox())!;
-    const drawn = (await frame.boundingBox())!;
-    expect(drawn.width, "fills the column, no wider").toBeLessThanOrEqual(column.width + 0.5);
-    expect(drawn.width, "fills the column").toBeGreaterThan(column.width - 4);
-    expect(Math.round(drawn.height), "its native height").toBe(1258);
-    expect(await stage.evaluate((el) => el.scrollHeight > el.clientHeight + 100), "the stage scrolls it").toBe(true);
-    await expect(dialog.locator('[data-pager-page="8"]')).toContainText("I wrote about my work experience outside of class on LinkedIn");
-    await expect(dialog.locator('[data-pager-page="8"]').getByRole("link", { name: /The LinkedIn post/ })).toBeVisible();
+    // The post's page: one link card, in the site's card language, to the post's own link, with Aaron's name, its hook line and the way in.
+    const card = dialog.locator("[data-post-card]");
+    await expect(card).toHaveCount(1);
+    await expect(card).toHaveAttribute("href", modal.links[0].href);
+    await expect(card).toHaveAttribute("target", "_blank");
+    await expect(card).toHaveAttribute("rel", /noopener/);
+    await expect(card).toContainText(modal.postCard!.byline);
+    await expect(card).toContainText(modal.postCard!.hook);
+    await expect(card).toContainText(modal.postCard!.cta);
+    await expect(dialog.getByRole("link", { name: /The LinkedIn post/ }), "the card is the link: the label link is not drawn beside it").toHaveCount(0);
+    const frame = await card.evaluate((el) => {
+      const style = getComputedStyle(el);
+      const mask = el.closest("[data-mask]") as HTMLElement;
+      return { radius: parseFloat(getComputedStyle(mask).borderTopLeftRadius), border: parseFloat(style.borderTopWidth), shadow: style.boxShadow };
+    });
+    expect(frame.radius, "the photos' radius").toBeGreaterThan(8);
+    expect(frame.border).toBe(1);
+    expect(frame.shadow, "flat: no shadow").toBe("none");
+  });
+
+  // A short phone: Safari's 664px tall window, where a page has under 370px: the tags shrink to fit it and no tip is cut off.
+  test.describe("at 664 tall", () => {
+    test.use({ viewport: { width: 390, height: 664 } });
+    test("jobs modal: on a short phone a tag shrinks to the page's room, never past 80 percent, and still nothing scrolls or is cut off", async ({ page }) => {
+      const { dialog } = await openCardFromBook(page, "jobs", { settled: true });
+      const read = await readPages(page);
+      expect(read.room, "the pages' room is short").toBeLessThan(400);
+      read.pages.forEach((p, i) => {
+        expect(p.scrolled, `page ${i + 1}: nothing in it scrolls`).toBe(0);
+        expect(p.tipInside, `page ${i + 1}: the tip is not cut off at the foot`).toBe(true);
+        if (p.stage !== null) expect(p.stage, `page ${i + 1}: its stage fits the room`).toBeLessThanOrEqual(read.room + 1);
+      });
+      const scales = await dialog.locator("[data-fit-scale]").evaluateAll((els) => els.map((el) => Number(el.getAttribute("data-fit-scale"))));
+      expect(scales.length, "tags taller than the room are shrunk").toBeGreaterThan(0);
+      for (const scale of scales) expect(scale).toBeGreaterThanOrEqual(GALLERY.pager.fitFloor);
+      // Every paragraph is still whole.
+      expect(read.pages.flatMap((p) => p.paragraphs).map((p) => p.text)).toEqual(modal.blocks.map((block) => visibleText(block)));
+    });
   });
 });
 

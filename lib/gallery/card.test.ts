@@ -81,7 +81,7 @@ describe("each card's gallery", () => {
     expect(photos).toHaveLength(modal.photos.length + timeline.length + 1);
     expect(photos.slice(0, 4).map((photo) => photo.caption)).toEqual(modal.photos.map((photo) => photo.caption));
     expect(photos.slice(4, 9).map((photo) => photo.tag)).toEqual([0, 1, 2, 3, 4]);
-    expect(photos[9].embed).toEqual({ src: modal.embed!.src, width: 504, height: 1258, title: "My LinkedIn post about unflattering jobs" });
+    expect(photos[9].embed).toEqual({ src: modal.embed!.src, width: 504, height: 1258, title: "My LinkedIn post about unflattering jobs", card: modal.postCard });
     expect(photos.filter((photo) => photo.tag !== undefined || photo.embed).every((photo) => photo.caption === null)).toBe(true);
     // Every piece is in exactly one place, in a cluster or beside the words.
     const placed = plan.slides.flatMap((slide) => [...slide.photos, ...(slide.aside ?? [])]);

@@ -6,6 +6,7 @@ import { CARD_PICTURE_SIZES, galleryRowSizes } from "@/lib/photoSizes";
 import { CardVideo } from "./CardVideo";
 import { JobTag } from "./JobTag";
 import { LinkedInEmbed } from "./LinkedInEmbed";
+import { PostCard } from "./PostCard";
 import { EMBED_BORDER } from "@/lib/gallery/jobs";
 
 // A photo in its box (object-fit: cover), its caption under it. The card picture
@@ -13,10 +14,11 @@ import { EMBED_BORDER } from "@/lib/gallery/jobs";
 // image stays in the page at no opacity, so its alt text is still read. Not
 // draggable: a mouse drag on an image would start the browser's own drag and
 // cancel the phone pager's pointer stream. A card's demo video is drawn in the
-// same frame in the image's place (photo.video, components/card/CardVideo).
-type Props = { photo: GalleryPhoto; index: number; box: Box; slot?: boolean; renderMedia?: boolean; sizes?: string; caption?: string | null };
+// same frame in the image's place (photo.video, components/card/CardVideo). A post is its embedded frame, or with `card` (a phone's
+// pager page, which has no room for the frame) a link card (components/card/PostCard).
+type Props = { photo: GalleryPhoto; index: number; box: Box; slot?: boolean; renderMedia?: boolean; sizes?: string; caption?: string | null; card?: boolean };
 
-export function StillPhoto({ photo, index, box, slot = false, renderMedia = true, sizes, caption = photo.caption }: Props) {
+export function StillPhoto({ photo, index, box, slot = false, renderMedia = true, sizes, caption = photo.caption, card = false }: Props) {
   // The jobs card's other two kinds of media sit in the same stagger: a name tag (its height is its own, set by its tip) and
   // the embedded post (the photos' radius and a hairline border around the frame, drawn outside the post's own pixels).
   if (photo.tag !== undefined) {
@@ -25,6 +27,17 @@ export function StillPhoto({ photo, index, box, slot = false, renderMedia = true
         <div data-mask={partId.photo(index)} data-mask-kind="photo" className="overflow-hidden rounded-xl">
           <div data-mask-media="">
             <JobTag job={photo.tag} />
+          </div>
+        </div>
+      </figure>
+    );
+  }
+  if (photo.embed && card) {
+    return (
+      <figure className="m-0 flex shrink-0 flex-col" style={{ width: box.width, maxWidth: "100%" }} data-photo-frame={index} data-media="post-card">
+        <div data-mask={partId.photo(index)} data-mask-kind="photo" className="overflow-hidden rounded-xl">
+          <div data-mask-media="">
+            <PostCard card={photo.embed.card} />
           </div>
         </div>
       </figure>

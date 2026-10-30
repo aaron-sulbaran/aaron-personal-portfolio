@@ -5,7 +5,7 @@ import type { GalleryEmbed } from "@/lib/gallery/card";
 // modal is open, and loads lazily, so a row below the fold costs nothing until it is near. The frame around it (StillPhoto)
 // takes the photos' radius and a hairline border. Width fills the column and never exceeds it, so on a phone it fits
 // with no sideways overflow; its height stays the post's native one, and the stage that holds it scrolls (PagerPage).
-export function LinkedInEmbed({ embed }: { embed: GalleryEmbed }) {
+export function LinkedInEmbed({ embed }: { embed: Pick<GalleryEmbed, "src" | "width" | "height" | "title"> }) {
   return (
     <iframe
       src={embed.src}
