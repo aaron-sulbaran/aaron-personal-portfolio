@@ -29,7 +29,11 @@ export interface ColumnSettings { boxes: Boxes; wideFrom: number; columnGap: num
 // place on every row; the panel is that column, the gap, the words, the padding
 // and the border. A card with no photos is the words alone.
 export function rowColumns(aspects: readonly number[], g: ColumnSettings) {
-  const slot = aspects.reduce((widest, aspect) => Math.max(widest, boxFor(aspect, g.boxes, g.wideFrom).width), 0);
+  return columnsFor(aspects.reduce((widest, aspect) => Math.max(widest, boxFor(aspect, g.boxes, g.wideFrom).width), 0), g);
+}
+
+// The same, for a card whose media column is a width of its own (the jobs card's clusters, lib/gallery/jobs).
+export function columnsFor(slot: number, g: ColumnSettings) {
   const inner = slot > 0 ? slot + g.columnGap + g.textWidth : g.textWidth;
   return { slot, panel: inner + 2 * g.padding + 2 * g.border };
 }

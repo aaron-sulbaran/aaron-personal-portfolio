@@ -12,11 +12,20 @@ describe("a card's mask steps", () => {
     ]);
     expect(ids(cardSteps(galleryOf("mentorship"), "rows", false))[2]).toEqual(["photo-0", "caption-0", "words-0"]);
   });
-  it("masks the jobs card's opening words and entries one by one before its rows", () => {
+  it("masks the jobs card's rows together: every piece of a cluster with its paragraph, and the tag beside the post with them", () => {
+    // Photos 0 to 3 are the Aritzia poster, the Apple badge and the two MOD photos, then tags 4 to 8 (Aritzia to Popeyes) and the post, 9.
     expect(ids(cardSteps(galleryOf("jobs"), "rows", false))).toEqual([
-      ["title"], ["meta"], ["words-0"], ["words-1"], ["words-2"], ["words-3"],
-      ["photo-0", "caption-0", "words-4", "words-5", "rotator-0"], ["photo-2", "caption-2", "words-6"], ["photo-3", "caption-3", "words-7"], ["links"],
+      ["title"], ["meta"],
+      ["photo-4", "photo-0", "caption-0", "words-0"],
+      ["photo-5", "photo-1", "caption-1", "words-1"],
+      ["photo-6", "photo-7", "words-2"],
+      ["photo-2", "caption-2", "photo-3", "caption-3"],
+      ["photo-9", "photo-8", "words-3"],
+      ["links"],
     ]);
+  });
+  it("masks a phone's jobs card a page a piece, the first page's tag first", () => {
+    expect(ids(cardSteps(galleryOf("jobs"), "pager", false))).toEqual([["title"], ["meta"], ["photo-4"], ["words-0"], ["pager"]]);
   });
   it("masks a phone's header, its first page and the pager's controls, the card picture too when a flown card parks on the header's tile", () => {
     expect(ids(cardSteps(galleryOf("capital-one"), "pager", false))).toEqual([["title"], ["meta"], ["photo-0", "caption-0"], ["words-0", "words-1"], ["pager"]]);

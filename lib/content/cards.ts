@@ -118,23 +118,36 @@ export const cards: Cards = {
   jobs: {
     short: "Jobs", qualifier: "(part-time)", visual: { kind: "circles" },
     book: { title: "\"unflattering\" jobs that paid for school", meta: "Popeyes to Aritzia, 2021 to 2026" },
-    modal: { kind: "timeline", title: "The jobs that paid my way", links: [{ label: "The LinkedIn post", href: "https://lnkd.in/p/g3mXFGcY" }], photos: modalPhotos.jobs, blocks: [
-      "I'm self-funded, so I've worked almost every year since high school. Those jobs paid for my car in cash, covered rent, and chipped away at tuition so I could graduate debt free.",
-      "The money (although it was necessary) isn't what I took away. I realized that after finishing my degree, I have my whole life to work off a screen and specs. So I intentionally went looking for jobs where someone walks up with a problem and you solve it face to face in that shift. I think some people want to move away from service industry jobs as quickly as possible once they're in school, but I took it as an opportunity to try out some different things before claiming a desk in an office.",
+    modal: { kind: "timeline", title: "The \"unflattering\" jobs that shaped me", links: [{ label: "The LinkedIn post", href: "https://lnkd.in/p/g3mXFGcY" }], photos: modalPhotos.jobs, blocks: [
+      "I'm self-funded, so I've worked part-time alongside school almost every year since I legally could. Those jobs paid for my car in cash in high school, covered rent, and chipped away at tuition so I could graduate debt free.",
+      "The money (although it was necessary) was secondary though. I realized that after finishing my degree, I have my whole life to work off a screen or in an office if I want to. So I intentionally went looking for jobs where I could interact with people face-to-face and solve their problem right away, even if that was looking for a shirt in the back.",
+      "I think these jobs are an opportunity to experience the other side of daily interactions you might never think of after finishing your degree. That's why I've never shied away from a service industry job. I also learned how to make a fire pizza.",
       "I wrote about my work experience outside of class on LinkedIn, and my hook was \"I don't trust people who haven't worked an unflattering job.\" It got 130,000 impressions and almost a thousand reactions. My favorite line is \"You know to be nice to the person behind the counter because you were the person behind the counter.\" I guess it resonated with people.",
-    ] },
+    ],
+    // Aaron's embed code, 2026-10-29: the post beside the last paragraph, which is about it. The frame mounts only while the modal is open
+    // and loads lazily; the link above stays as the way in for a reader whose blockers stop the frame.
+    embed: {
+      src: "https://www.linkedin.com/embed/feed/update/urn:li:ugcPost:7463750786611630080",
+      width: 504,
+      height: 1258,
+      title: "My LinkedIn post about unflattering jobs",
+      beside: 3,
+    } },
+    // Newest first (Aaron, 2026-10-29). Each job is a name tag in the modal (components/card/JobTag): the tip is on the page for a reader to
+    // read, not behind a hover.
     timeline: [
-      { employer: "Popeyes", role: null, when: "Sophomore year of high school", logo: logos.popeyes,
-        tip: "Get the blackened tenders every time, they have to make them fresh usually (bonus points if you can get them on a spicy chicken sandwich, secret menu item)" },
-      { employer: "MOD Pizza", role: null, when: "Sophomore to senior year of high school", logo: logos.mod,
-        tip: "Try the sri-rancha and hot honey sauce combo. Also mix their berry lemonade with sprite and powerade for a mocktail my store called the \"galaxy\"" },
-      { employer: "Student mentor, UT Austin", role: null, when: "Sophomore year of college", logo: logos["ut-austin"],
-        tip: "Use your college resources! This one is a no brainer but if you don't we just get paid to do homework" },
-      { employer: "Apple", role: "Specialist, then technical specialist", when: "2024 to 2025", logo: logos.apple,
-        tip: "Get AppleCare and some sort of cloud storage. Simple as that, it always broke my heart to see people lose their photos and have to shell out $1k for a new phone. And yes, Apple can't recover anything the privacy is real." },
       { employer: "Aritzia", role: null, when: "2025 to 2026", logo: logos.aritzia,
         tip: "My most random job. For the interview they asked me to dress in my best clothing, which I thought was funny. If you work here, all the women in your life will want a discount. With that said, the effortless pants and sweatfleece line are basically unisex products..." },
+      { employer: "Apple", role: "Specialist, then technical specialist", when: "2024 to 2025", logo: logos.apple,
+        tip: "Get AppleCare and some sort of cloud storage. Simple as that, it always broke my heart to see people lose their photos and have to shell out $1k for a new phone. And yes, Apple can't recover anything the privacy is real." },
+      { employer: "Student mentor, UT Austin", role: null, when: "Sophomore year of college", logo: logos["ut-austin"],
+        tip: "Use your college resources! This one is a no brainer but if you don't we just get paid to do homework" },
+      { employer: "MOD Pizza", role: null, when: "Sophomore to senior year of high school", logo: logos.mod,
+        tip: "Try the sri-rancha and hot honey sauce combo. Also mix their berry lemonade with sprite and powerade for a mocktail my store called the \"galaxy\"" },
+      { employer: "Popeyes", role: null, when: "Sophomore year of high school", logo: logos.popeyes,
+        tip: "Get the blackened tenders every time, they have to make them fresh usually (bonus points if you can get them on a spicy chicken sandwich, secret menu item)" },
     ],
+    tag: { name: "Aaron", tipLabel: "My tip", label: (employer) => `My name tag from ${employer}, with my tip` },
   },
   "this-site": {
     short: "This site", visual: { kind: "mark" },

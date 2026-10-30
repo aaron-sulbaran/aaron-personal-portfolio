@@ -1,6 +1,6 @@
 import { siteContent } from "@/lib/content";
 import type { Gallery } from "./card";
-import { GALLERY, PHONE_GROUPING } from "./constants";
+import { GALLERY } from "./constants";
 import { phonePages } from "./plan";
 import { pagerSteps, partId, planSteps, type MaskStep, type StepOptions } from "./timing";
 
@@ -22,7 +22,7 @@ export function cardSteps(gallery: Gallery, layout: "rows" | "pager", flying: bo
     trailing: gallery.key === "mentorship" && siteContent.cards.mentorship.mentors.people.length > 0 ? [partId.mentors] : gallery.key === "talos" ? [partId.talos] : [],
     lines,
   };
-  const pages = phonePages(gallery.plan, PHONE_GROUPING);
+  const pages = phonePages(gallery.plan, gallery.grouping);
   return layout === "pager" && pages.length > 0 ? pagerSteps(pages, o) : planSteps(gallery.plan, o);
 }
 

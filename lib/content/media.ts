@@ -55,11 +55,12 @@ export const modalPhotos = {
     photo("hackathons-1-hookem", 1600, 1135, { block: 3 }, "Me and my team holding keyboard prizes under the winner is min/Max slide at Hook 'Em Hacks", "Me at Hook 'Em Hacks, winning."),
     photo("hackathons-2-vercel", 1200, 1600, { block: 4 }, "Me with the Built in NYC poster at the Vercel one-day hackathon in New York", "Me at a one-day Vercel hackathon in New York City."),
   ],
+  // Newest job first (cards.jobs.timeline's order): Aritzia 0, Apple 1, MOD 3. UT Austin (2) and Popeyes (4) have no photo.
   jobs: [
-    photo("jobs-1-mod-selfie", 1200, 1600, { timeline: 1 }, "A mirror selfie of me in a Keep MOD Weird shirt, cap and flannel", "Me at my MOD store, in a Keep MOD Weird tee."),
-    photo("jobs-2-mod-sign", 1200, 1600, { timeline: 1 }, "The back of the sign at my MOD store with my last clock-out slip and two MOD stickers", "My last clock-out at MOD, April 15, 2023, 10 pm, with two stickers to leave my mark."),
-    photo("jobs-3-apple", 1200, 1600, { timeline: 3 }, "My Apple employee badge with my Memoji", "My Apple employee badge."),
-    photo("jobs-4-aritzia-poster", 998, 1600, { timeline: 4 }, "The We Are Aritzia poster introducing me as the newest member of The Domain team", "The poster that introduced me to the team at Aritzia."),
+    photo("jobs-4-aritzia-poster", 998, 1600, { timeline: 0 }, "The We Are Aritzia poster introducing me as the newest member of The Domain team", "The poster that introduced me to the team at Aritzia."),
+    photo("jobs-3-apple", 1200, 1600, { timeline: 1 }, "My Apple employee badge with my Memoji", "My Apple employee badge."),
+    photo("jobs-1-mod-selfie", 1200, 1600, { timeline: 3 }, "A mirror selfie of me in a Keep MOD Weird shirt, cap and flannel", "Me at my MOD store, in a Keep MOD Weird tee."),
+    photo("jobs-2-mod-sign", 1200, 1600, { timeline: 3 }, "The back of the sign at my MOD store with my last clock-out slip and two MOD stickers", "My last clock-out at MOD, April 15, 2023, 10 pm, with two stickers to leave my mark."),
   ],
   misuki: [
     photo("misuki-1-gregory-gym", 1126, 1501, { block: 0 }, "Me and Misuki, my 2001 Miata, in front of the Texas Fight stairs at Gregory Gym", "Me and Misuki outside Gregory Gym."),

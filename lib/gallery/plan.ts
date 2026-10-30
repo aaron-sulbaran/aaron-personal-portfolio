@@ -15,6 +15,10 @@ export interface Slide {
   own?: number; // the word unit this row's photo owns
   before: number[]; // free units shown before own
   after: number[]; // and after it
+  // The jobs card's rows: photos are shown side by side, all at once, in the row's media column (never taking turns), and
+  // aside is media drawn in the words column under the words (the last row's tag beside the LinkedIn post).
+  together?: true;
+  aside?: number[];
 }
 
 export interface Plan {
@@ -214,10 +218,11 @@ export function pagesOf(plan: Plan): Page[] {
 
 // B: a group's first photo keeps the words; each later photo is a page alone.
 export function photoPages(plan: Plan): Page[] {
-  return pagesOf(plan).flatMap((page) => {
-    const [first, ...rest] = page.photos;
+  return pagesOf(plan).flatMap(({ together, aside, ...page }) => {
+    // A row of media seen together (the jobs card) is a page a piece: the first holds the row's words (none, on a row with none).
+    const [first, ...rest] = [...page.photos, ...(together ? (aside ?? []) : [])];
     const wordless = rest.map((photo): Page => ({ photo, photos: [photo], before: [], after: [], links: false, wordless: true }));
-    return [{ ...page, photo: first, photos: [first] }, ...wordless];
+    return [{ ...page, photo: first, photos: [first], ...(slideWords(page).length === 0 ? { wordless: true } : {}) }, ...wordless];
   });
 }
 

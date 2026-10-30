@@ -85,6 +85,22 @@ export function PagerPage({ gallery, page, index, count, kind, stage, current, p
 function StillStage({ gallery, photo, box, height }: { gallery: Gallery; photo: number; box: Box; height: number }) {
   const picture = gallery.photos[photo];
   const caption = picture.captionShort ?? picture.caption;
+  // The embedded post keeps its native height inside a stage that scrolls (a touch scrolls it, never the pager), and a name tag's height
+  // is its tip's, so its stage is as tall as the tag and leaves the words the rest; a photo stands on the floor of a stage of its own height.
+  if (picture.embed) {
+    return (
+      <div className="relative w-full shrink-0 overflow-y-auto overscroll-contain" style={{ height, touchAction: "pan-y" }} data-pager-stage="" data-embed-stage="" tabIndex={-1}>
+        <StillPhoto photo={picture} index={photo} box={box} caption={null} />
+      </div>
+    );
+  }
+  if (picture.tag !== undefined) {
+    return (
+      <div className="relative flex w-full shrink-0 items-start justify-center" data-pager-stage="">
+        <StillPhoto photo={picture} index={photo} box={box} caption={null} />
+      </div>
+    );
+  }
   return (
     <>
       <div className="relative flex w-full shrink-0 items-end justify-center" style={{ height }} data-pager-stage="">

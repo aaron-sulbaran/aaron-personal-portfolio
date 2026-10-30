@@ -27,10 +27,20 @@ test("gallery rows: every card's rows follow its plan, the sides alternate, each
     for (const [i, slide] of gallery.plan.slides.entries()) {
       const row = rows.nth(i);
       await expect(row).toHaveAttribute("data-side", i % 2 === 0 ? "left" : "right");
-      const boxes = slide.photos.map((photo) => boxFor(gallery.aspects[photo], BOXES, GALLERY.wideFrom));
-      const expected = slide.photos.length > 1 ? groupFrame(boxes) : boxes[0];
-      const drawn = (await row.locator(slide.photos.length > 1 ? "[data-rotator-frame]" : `[data-photo-frame="${slide.photo}"] > div`).first().boundingBox())!;
-      expect(within(drawn.width, expected.width) && within(drawn.height, expected.height), `${key} row ${i}: ${drawn.width} by ${drawn.height}`).toBe(true);
+      if (slide.together) {
+        // The jobs card's cluster: every piece side by side in its own box (a name tag's height is its tip's, the post's its own).
+        for (const photo of [...slide.photos, ...(slide.aside ?? [])]) {
+          const box = gallery.boxes![photo];
+          const drawn = (await row.locator(`[data-photo-frame="${photo}"]`).boundingBox())!;
+          expect(within(drawn.width, box.width), `${key} row ${i} piece ${photo}: ${drawn.width}`).toBe(true);
+          if (gallery.photos[photo].tag === undefined) expect(within(drawn.height, box.height), `${key} row ${i} piece ${photo}: ${drawn.height}`).toBe(true);
+        }
+      } else {
+        const boxes = slide.photos.map((photo) => boxFor(gallery.aspects[photo], BOXES, GALLERY.wideFrom));
+        const expected = slide.photos.length > 1 ? groupFrame(boxes) : boxes[0];
+        const drawn = (await row.locator(slide.photos.length > 1 ? "[data-rotator-frame]" : `[data-photo-frame="${slide.photo}"] > div`).first().boundingBox())!;
+        expect(within(drawn.width, expected.width) && within(drawn.height, expected.height), `${key} row ${i}: ${drawn.width} by ${drawn.height}`).toBe(true);
+      }
       const words = await row.locator('[data-text-column] [data-mask^="words-"]').evaluateAll((els) => els.map((el) => el.getAttribute("data-mask")));
       expect(words, `${key} row ${i}`).toEqual(slideWords(slide).map((unit) => `words-${unit}`));
     }

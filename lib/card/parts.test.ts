@@ -8,7 +8,9 @@ import { CardFace } from "@/components/card/CardFace";
 import { CardHeader } from "@/components/card/CardHeader";
 import { CardLinks } from "@/components/card/CardLinks";
 import { MentorsList } from "@/components/card/MentorsList";
-import { TimelineEntry } from "@/components/card/TimelineEntry";
+import { JobTag } from "@/components/card/JobTag";
+import { LinkedInEmbed } from "@/components/card/LinkedInEmbed";
+import { siteContent } from "@/lib/content";
 
 // next/image's optimizer needs a server; a plain img is enough to read the markup.
 vi.mock("next/image", () => ({ default: (props: Record<string, unknown>) => createElement("img", { src: props.src, alt: props.alt, className: props.className, style: props.style }) }));
@@ -117,13 +119,57 @@ describe("the header", () => {
   });
 });
 
-describe("the timeline entry", () => {
-  it("makes the employer's name its insider tip and shows the role and when", () => {
-    const html = renderToStaticMarkup(createElement(TimelineEntry, { entry: 3, unit: 6 }));
-    expect(html).toMatch(/<button [^>]*data-inline="tip" data-inline-key="job-3"[^>]*>Apple<\/button>/);
-    expect(html).toContain("Specialist, then technical specialist");
-    expect(html).toContain("2024 to 2025");
-    expect(html).toContain('data-mask="words-6"');
+describe("a job's name tag", () => {
+  const tag = (job: number) => renderToStaticMarkup(createElement(JobTag, { job }));
+  it("shows the logo across the top, my name, the role and when, then the labelled tip, all as visible words", () => {
+    const apple = tag(1);
+    expect(apple).toContain('data-job-tag="1"');
+    expect(apple).toContain('aria-label="My name tag from Apple, with my tip"');
+    expect(apple.indexOf("data-job-tag-logo")).toBeLessThan(apple.indexOf("data-job-tag-name"));
+    expect(apple.indexOf("data-job-tag-name")).toBeLessThan(apple.indexOf("data-job-tag-role"));
+    expect(apple.indexOf("data-job-tag-role")).toBeLessThan(apple.indexOf("data-job-tag-when"));
+    expect(apple.indexOf("data-job-tag-when")).toBeLessThan(apple.indexOf("data-job-tag-tip"));
+    expect(apple).toMatch(/data-job-tag-name[^>]*>Aaron</);
+    expect(apple).toContain("Specialist, then technical specialist");
+    expect(apple).toContain("2024 to 2025");
+    expect(apple).toMatch(/>My tip</);
+    expect(apple).toContain("Get AppleCare and some sort of cloud storage.");
+    // Both files of a logo that has a dark one, shown by theme; no hover tip on the page for it.
+    expect(apple).toContain("/work/logos/jobs/apple-logo-black.svg");
+    expect(apple).toContain("/work/logos/jobs/apple-logo-white.svg");
+    expect(apple).not.toContain('data-inline="tip"');
+  });
+  it("gives a job whose role the timeline leaves out the role quick.ts has, and draws a logo with one file once", () => {
+    const popeyes = tag(4);
+    expect(popeyes).toContain("Shift Lead");
+    expect(popeyes).not.toMatch(/Shift Lead, 20/);
+    expect(popeyes.match(/<img /g)?.length, "one logo file, one image").toBe(1);
+    expect(tag(0)).toContain("Sales Associate");
+    expect(tag(2)).toContain("Student Mentor");
+    expect(tag(3)).toContain("All-Star Squad Member");
+  });
+  it("is flat in the card language: the tokens, the photos' radius and a hairline, no hex, shadow, pin or script face", () => {
+    for (let job = 0; job < siteContent.cards.jobs.timeline.length; job++) {
+      const html = tag(job);
+      expect(html).toContain("rounded-xl");
+      expect(html).toContain("border-border");
+      expect(html).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
+      expect(html).not.toMatch(/shadow|gradient|rotate|font-script|handwriting/);
+    }
+  });
+});
+
+describe("the embedded LinkedIn post", () => {
+  it("is Aaron's frame: his src exactly, native 504 by 1258, lazy, with no border and a title in my words", () => {
+    const html = renderToStaticMarkup(createElement(LinkedInEmbed, { embed: siteContent.cards.jobs.modal.embed! }));
+    expect(html).toContain('src="https://www.linkedin.com/embed/feed/update/urn:li:ugcPost:7463750786611630080"');
+    expect(html).toContain('width="504"');
+    expect(html).toContain('height="1258"');
+    expect(html).toContain('loading="lazy"');
+    expect(html).toContain('frameBorder="0"');
+    expect(html).toContain('title="My LinkedIn post about unflattering jobs"');
+    expect(html).toContain("allowFullScreen");
+    expect(html).toMatch(/class="[^"]*\bw-full\b[^"]*\bmax-w-full\b/);
   });
 });
 

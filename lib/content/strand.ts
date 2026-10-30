@@ -27,7 +27,8 @@ export function strandCardOf(key: CardKey): StrandCard | null {
     case "mark":
       return { key, kind: "work", face: { kind: "mark" } };
     case "circles": {
-      const logos = cards.jobs.timeline.map((entry) => entry.logo);
+      // The face keeps its discs oldest first, Popeyes to Aritzia, as the book's meta reads and as it was drawn; the modal's timeline runs newest first.
+      const logos = [...cards.jobs.timeline].reverse().map((entry) => entry.logo);
       return logos.every((logo): logo is LogoRef => logo !== null) ? { key, kind: "work", face: { kind: "circles", logos } } : null;
     }
   }

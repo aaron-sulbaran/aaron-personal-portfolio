@@ -33,7 +33,7 @@ const EDGE = { left: "justify-start", right: "justify-end" } as const;
 export function CardRows({ gallery, renderMedia, flying }: Props) {
   const { plan, photos, aspects, lead, slot } = gallery;
   // The card picture is always the vertical box (3:4), so the flown card fits it exactly.
-  const box = (photo: number) => (photo === lead ? BOXES.vertical : boxFor(aspects[photo], BOXES, GALLERY.wideFrom));
+  const box = (photo: number) => gallery.boxes?.[photo] ?? (photo === lead ? BOXES.vertical : boxFor(aspects[photo], BOXES, GALLERY.wideFrom));
   const prose = (unit: number) => (
     <div key={`words-${unit}`} className={gallery.key === "talos" ? "flex flex-col" : undefined} style={{ maxWidth: GALLERY.proseMaxWidth, rowGap: GALLERY.proseGap }}>
       <Words gallery={gallery} unit={unit} />
@@ -42,7 +42,7 @@ export function CardRows({ gallery, renderMedia, flying }: Props) {
   );
   const row = (slide: Slide, i: number) => {
     const side = i % 2 === 0 ? "left" : "right";
-    const turns = slide.photos.length > 1;
+    const turns = slide.photos.length > 1 && !slide.together;
     return (
       <div
         key={`row-${slide.photo}`}
@@ -50,10 +50,17 @@ export function CardRows({ gallery, renderMedia, flying }: Props) {
         style={{ columnGap: GALLERY.columnGap }}
         data-row="photo"
         data-side={side}
-        data-turns={turns ? slide.photos.length : undefined}
+        data-turns={turns && !slide.together ? slide.photos.length : undefined}
       >
         <div className={`flex shrink-0 ${EDGE[side]}`} style={{ width: slot }}>
-          {turns ? (
+          {slide.together ? (
+            // A cluster: the row's pieces side by side, all in view, never taking turns (lib/gallery/jobs).
+            <div className="flex items-start" style={{ columnGap: GALLERY.cluster.gap }} data-cluster={slide.photos.length}>
+              {slide.photos.map((photo) => (
+                <StillPhoto key={photo} photo={photos[photo]} index={photo} box={box(photo)} />
+              ))}
+            </div>
+          ) : turns ? (
             <RotatingPhoto gallery={gallery} photos={slide.photos} boxes={slide.photos.map((photo) => box(photo))} />
           ) : (
             <StillPhoto photo={photos[slide.photo]} index={slide.photo} box={box(slide.photo)} slot={slide.photo === lead} renderMedia={slide.photo === lead ? renderMedia : true} />
@@ -61,6 +68,11 @@ export function CardRows({ gallery, renderMedia, flying }: Props) {
         </div>
         <div className="flex min-w-0 flex-1 flex-col gap-4" style={{ maxWidth: GALLERY.textWidth }} data-text-column="">
           {slideWords(slide).map((unit) => [<Words key={unit} gallery={gallery} unit={unit} />, afterWords(gallery, unit, flying)])}
+          {slide.aside?.map((photo) => (
+            <div key={photo} className="pt-2" data-aside="">
+              <StillPhoto photo={photos[photo]} index={photo} box={box(photo)} />
+            </div>
+          ))}
         </div>
       </div>
     );

@@ -60,7 +60,9 @@ function photoParts(photo: number, o: StepOptions): MaskPart[] {
 function slideParts(slide: Slide, o: StepOptions): MaskPart[] {
   // A unit's words, then whatever follows them (Talos's parts), in the row's one step.
   const words = (unit: number) => [part(partId.words(unit), o), ...(o.after?.[unit] ?? []).map((id) => part(id, o))];
-  return [...photoParts(slide.photo, o), ...slide.before.flatMap(words), ...(slide.own === undefined ? [] : words(slide.own)), ...slide.after.flatMap(words)];
+  // A cluster's every piece (and the one beside the words) masks in with its row; any other row has its one photo.
+  const media = slide.together ? [...slide.photos, ...(slide.aside ?? [])] : [slide.photo];
+  return [...media.flatMap((photo) => photoParts(photo, o)), ...slide.before.flatMap(words), ...(slide.own === undefined ? [] : words(slide.own)), ...slide.after.flatMap(words)];
 }
 
 const ends = (o: StepOptions): MaskStep[] => [...(o.trailing ?? []).map((id) => [part(id, o)]), ...(o.hasLinks ? [[part(partId.links, o)]] : [])];
@@ -74,7 +76,7 @@ export function planSteps(plan: Plan, o: StepOptions): MaskStep[] {
     steps.push([part(partId.words(unit), o)]);
     for (const id of o.after?.[unit] ?? []) steps.push([part(id, o)]);
   }
-  for (const slide of plan.slides) steps.push([...slideParts(slide, o), ...(slide.photos.length > 1 ? [{ id: partId.rotator(slide.photo) }] : [])]);
+  for (const slide of plan.slides) steps.push([...slideParts(slide, o), ...(slide.photos.length > 1 && !slide.together ? [{ id: partId.rotator(slide.photo) }] : [])]);
   for (const unit of plan.closing) steps.push([part(partId.words(unit), o)]);
   return [...steps, ...ends(o)];
 }

@@ -1,8 +1,9 @@
 import { siteContent, type CardKey } from "@/lib/content";
 import { visibleText } from "@/lib/content/links";
-import { rowColumns, type Box } from "./boxes";
-import { BOXES, GALLERY } from "./constants";
-import { galleryPlan, groupedPlan, namedPlan, type Plan } from "./plan";
+import { rowColumns, type Box, type ColumnSettings } from "./boxes";
+import { BOXES, CARD_PHONE_GROUPING, GALLERY, PHONE_GROUPING } from "./constants";
+import { jobsGallery } from "./jobs";
+import { galleryPlan, namedPlan, type PhoneGrouping, type Plan } from "./plan";
 
 // One card's modal as the gallery reads it: its photos (the card picture first
 // on a photo card), the word units they sit beside, Aaron's plan, and the
@@ -10,9 +11,14 @@ import { galleryPlan, groupedPlan, namedPlan, type Plan } from "./plan";
 
 // A demo video drawn in the place of a photo (components/card/CardVideo): the file, its poster and its own pixels.
 export interface GalleryVideo { src: string; poster: string; width: number; height: number }
-export interface GalleryPhoto { src: string; width: number; height: number; alt: string; caption: string | null; captionShort: string | null; beside?: number; video?: GalleryVideo }
-export type WordUnit = { kind: "block"; index: number } | { kind: "entry"; index: number };
-export interface Gallery { key: CardKey; photos: readonly GalleryPhoto[]; lead: number | undefined; words: readonly WordUnit[]; plan: Plan; aspects: readonly number[]; panelWidth: number; slot: number }
+// A post embedded in the place of a photo (components/card/LinkedInEmbed): its own address and native size, and its accessible name.
+export interface GalleryEmbed { src: string; width: number; height: number; title: string }
+// tag: a job's name tag drawn in the place of a photo (components/card/JobTag), the index of its entry on the jobs timeline; its
+// width and height are a nominal box (the tag grows with its tip).
+export interface GalleryPhoto { src: string; width: number; height: number; alt: string; caption: string | null; captionShort: string | null; beside?: number; video?: GalleryVideo; tag?: number; embed?: GalleryEmbed }
+export type WordUnit = { kind: "block"; index: number };
+// boxes: each piece's own box where a card sets them (the jobs card's); the rest take the gallery's two boxes by orientation. grouping: the phone pager's.
+export interface Gallery { key: CardKey; photos: readonly GalleryPhoto[]; lead: number | undefined; words: readonly WordUnit[]; plan: Plan; aspects: readonly number[]; panelWidth: number; slot: number; boxes?: readonly Box[]; grouping: PhoneGrouping }
 
 // The photo cards the gallery lab never showed Aaron follow cards.md's pairings
 // (ruled on the plan's review, 2026-10-10), bent so that no row is without words
@@ -33,24 +39,29 @@ export function galleryOf(key: CardKey): Gallery {
   const { visual, modal } = siteContent.cards[key];
   const picture = visual.kind === "photo" ? visual.photo : null;
   const blocks = modal.blocks.map((_, index): WordUnit => ({ kind: "block", index }));
-  const entries = key === "jobs" ? siteContent.cards.jobs.timeline.map((_, index): WordUnit => ({ kind: "entry", index })) : [];
+  const columnSettings: ColumnSettings = { boxes: BOXES, wideFrom: GALLERY.wideFrom, columnGap: GALLERY.columnGap, textWidth: GALLERY.textWidth, padding: GALLERY.panelPadding, border: GALLERY.panelBorder };
+  const grouping = CARD_PHONE_GROUPING[key] ?? PHONE_GROUPING;
+  if (key === "jobs") {
+    const jobs = jobsGallery(columnSettings);
+    const gallery: Gallery = { key, photos: jobs.photos, lead: undefined, words: blocks, plan: jobs.plan, aspects: jobs.photos.map((photo) => photo.width / photo.height), panelWidth: jobs.panel, slot: jobs.slot, boxes: jobs.boxes, grouping };
+    cache.set(key, gallery);
+    return gallery;
+  }
   const photos: GalleryPhoto[] = [
     ...(picture ? [{ src: picture.src, width: picture.width, height: picture.height, alt: picture.alt, caption: modal.picture?.caption ?? null, captionShort: null }] : []),
     ...modal.photos.map((photo) => ({
       src: photo.src, width: photo.width, height: photo.height, alt: photo.alt, caption: photo.caption, captionShort: photo.captionShort ?? null,
-      beside: photo.block !== undefined ? photo.block : blocks.length + photo.timeline,
+      beside: photo.block,
     })),
     ...(modal.video
       ? [{ src: modal.video.poster, ...VIDEO_FRAME, alt: modal.video.label, caption: null, captionShort: null, beside: modal.video.beside, video: { src: modal.video.src, poster: modal.video.poster, width: modal.video.width, height: modal.video.height } }]
       : []),
   ];
   const lead = picture ? 0 : undefined;
-  const words = [...blocks, ...entries];
-  const plan =
-    key === "jobs" ? groupedPlan(words.length, photos) : lead !== undefined && NAMED.has(key) ? namedPlan(words.length, photos, lead) : galleryPlan(words.length, photos, lead);
+  const plan = lead !== undefined && NAMED.has(key) ? namedPlan(blocks.length, photos, lead) : galleryPlan(blocks.length, photos, lead);
   const aspects = photos.map((photo) => photo.width / photo.height);
-  const columns = rowColumns(aspects, { boxes: BOXES, wideFrom: GALLERY.wideFrom, columnGap: GALLERY.columnGap, textWidth: GALLERY.textWidth, padding: GALLERY.panelPadding, border: GALLERY.panelBorder });
-  const gallery: Gallery = { key, photos, lead, words, plan, aspects, panelWidth: columns.panel, slot: columns.slot };
+  const columns = rowColumns(aspects, columnSettings);
+  const gallery: Gallery = { key, photos, lead, words: blocks, plan, aspects, panelWidth: columns.panel, slot: columns.slot, grouping };
   cache.set(key, gallery);
   return gallery;
 }

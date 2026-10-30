@@ -1,19 +1,19 @@
 import { describe, expect, it } from "vitest";
 import { siteContent } from "@/lib/content";
 import { parseInlineLinks } from "@/lib/content/links";
-import { jobTipKey, register, registerHas, resolveTip } from "@/lib/content/register";
+import { register, registerHas, resolveTip } from "@/lib/content/register";
 
 describe("the inline register", () => {
   it("holds the approved keys and only those", () => {
     expect(Object.keys(register.def)).toEqual(["product", "voltage", "arc"]);
-    expect(Object.keys(register.tip)).toEqual(["two-as", "voltaage", "killer-drones", "music-note", "ieee-ao", "this-site-playground", "job-0", "job-1", "job-2", "job-3", "job-4"]);
+    expect(Object.keys(register.tip)).toEqual(["two-as", "voltaage", "killer-drones", "music-note", "ieee-ao", "this-site-playground"]);
     expect(Object.keys(register.pop)).toEqual(["leadership-award", "sandboarding", "downhill-skating", "skydiving", "rock-climbing", "venezuela-flag", "family", "friends", "misuki-suki", "matcha", "sister-kyoto", "contrabass-clarinet", "rango", "catatumbo-lightning", "lake-maracaibo", "3d-printing", "ut-ece-logo", "tool-user", "bambu-h2s", "steve-jobs-iphone"]);
   });
 
-  it("carries each jobs timeline tip, word for word, under its entry's key", () => {
-    expect(siteContent.cards.jobs.timeline.map((entry, i) => register.tip[jobTipKey(i)]?.text)).toEqual(siteContent.cards.jobs.timeline.map((entry) => entry.tip));
-    expect(jobTipKey(4)).toBe("job-4");
-    expect(registerHas("tip", "job-2")).toBe(true);
+  it("keeps no hover tip for the jobs' employers: their tips are name tags on the page now", () => {
+    expect(Object.keys(register.tip).filter((key) => key.startsWith("job-"))).toEqual([]);
+    expect(registerHas("tip", "job-0")).toBe(false);
+    for (const entry of siteContent.cards.jobs.timeline) expect(Object.values(register.tip).map((tip) => tip.text)).not.toContain(entry.tip);
   });
 
   it("is the register siteContent carries", () => {
