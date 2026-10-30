@@ -69,3 +69,9 @@ export const SAMPLE_STEP = 4; // px of arc between spine samples
 export const RUN_START = -24; // px past the left edge
 export const RUN_SPACING = 120; // px between the run's points: dense, so the curve through them stays level
 export const RUN_PAST = 100; // px the run carries on past the right edge before any turn, so a turn is never on screen
+
+// The path's dots keep this far from any text or link (px beyond a dot's own radius), however the page is laid out.
+export const CLEAR_MARGIN = 4;
+// A gutter beside the page's words sits where the dots at this share of their full reach still clear them (lib/wavepath/spine keep).
+// Nearer than that the line thins to fit (lib/wavepath/columns fit); farther it keeps its whole shape.
+export const GUTTER_FIT = 0.7;

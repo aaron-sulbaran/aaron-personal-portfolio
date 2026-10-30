@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import pages from "./fixtures/pages.json";
-import { AMPLITUDE, SAMPLE_STEP, SPACING } from "./constants";
+import { AMPLITUDE, CLEAR_MARGIN, SAMPLE_STEP, SPACING } from "./constants";
 import { layColumns, mapTiles, runColumns } from "./columns";
 import { sampleSpine } from "./geometry";
 import { SIGNATURE_ON, resolveSpine, type Anchors } from "./spine";
@@ -27,6 +27,19 @@ describe("columns", () => {
     const cols = layColumns(samples, SPACING, AMPLITUDE, [{ left: 0, right: 400, top: 130, bottom: 140 }]);
     expect(cols.inWords[5]).toBe(1);
     expect(cols.inWords[60]).toBe(0);
+  });
+  it("gives each column its room: the distance to the nearest text or link, less the margin, and none where nothing is near", () => {
+    const alone = layColumns(samples, SPACING, AMPLITUDE, []);
+    expect(Math.min(...alone.room)).toBe(Infinity);
+    // The run is level at y 135 from x -24: column j sits at x = 13j - 17.5. Text under 100px of it, a link 55px above column 20.
+    const onRun = { left: 0, right: 100, top: 130, bottom: 140 };
+    const above = { left: 200, right: 300, top: 60, bottom: 80 };
+    const cols = layColumns(samples, SPACING, AMPLITUDE, [onRun], [above]);
+    expect(cols.room[5]).toBe(0);
+    expect(cols.x[20]).toBeGreaterThan(200);
+    expect(cols.x[20]).toBeLessThan(300);
+    expect(cols.room[20]).toBeCloseTo(cols.y[20] - 80 - CLEAR_MARGIN, 3);
+    expect(cols.room[60], "far from both").toBeGreaterThan(300);
   });
   it("lists each column in every tile its reach touches", () => {
     const cols = layColumns(samples, SPACING, AMPLITUDE, []);
