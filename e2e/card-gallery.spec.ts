@@ -31,7 +31,7 @@ test("gallery rows: every card's rows follow its plan, the sides alternate, each
         // The jobs card's cluster: every piece side by side in its own box (a name tag's height is its tip's, the post's its own).
         for (const photo of [...slide.photos, ...(slide.aside ?? [])]) {
           const box = gallery.boxes![photo];
-          const drawn = (await row.locator(`[data-photo-frame="${photo}"]`).boundingBox())!;
+          const drawn = (await row.locator(`[data-photo-frame="${photo}"] > div`).first().boundingBox())!;
           expect(within(drawn.width, box.width), `${key} row ${i} piece ${photo}: ${drawn.width}`).toBe(true);
           if (gallery.photos[photo].tag === undefined) expect(within(drawn.height, box.height), `${key} row ${i} piece ${photo}: ${drawn.height}`).toBe(true);
         }
@@ -99,7 +99,9 @@ test("gallery rows: no photo row sits without words, the band's card picture hol
     const { dialog } = await openCardFromBook(page, key, { home: false });
     const rows = dialog.locator('[data-row="photo"]');
     for (let i = 0; i < (await rows.count()); i++) {
-      await expect(rows.nth(i).locator('[data-text-column] [data-mask^="words-"]').first(), `${key} row ${i}`).toHaveCount(1);
+      // The jobs card has ten pieces of media beside four paragraphs, so one row (MOD's two photos) has none, by design (lib/gallery/jobs).
+      const none = key === "jobs" && slideWords(galleryOf(key).plan.slides[i]).length === 0;
+      await expect(rows.nth(i).locator('[data-text-column] [data-mask^="words-"]').first(), `${key} row ${i}`).toHaveCount(none ? 0 : 1);
     }
     if (key === "band") {
       await expect(rows).toHaveCount(3);
