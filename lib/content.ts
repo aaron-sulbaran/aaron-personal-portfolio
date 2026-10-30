@@ -119,8 +119,8 @@ export const siteContent = {
   // The Coil hero. The heading is the server-rendered h1; greeting and name
   // are the two parts the scene draws, together, in the canvas.
   hero: {
-    heading: "Hi, I'm Aaron.",
-    greeting: "Hi, I'm",
+    heading: "hi, i'm Aaron.",
+    greeting: "hi, i'm",
     name: "Aaron",
     coilControl: "Coil",
     // First visit only, decorative (aria-hidden): the cursor's pill over a
@@ -161,8 +161,9 @@ export const siteContent = {
   // "seen" is shared with the Coil.
   columns: {
     ariaLabel: "Work and builds",
-    // The section's title, above the cards: it answers page 1's question (a draft, for Aaron to rewrite).
-    title: "Here's what I've been up to.",
+    // The section's title, above the cards: it answers page 1's question (a draft, for Aaron to rewrite). Page titles are lowercase;
+    // only a name keeps its capital.
+    title: "here's what i've been up to.",
     seenLabel: "opened",
     // The count under the Work column (a line under the columns on a phone), shown from the first card opened.
     progress: (opened: number, total: number) => `${opened} of ${total} opened`,
