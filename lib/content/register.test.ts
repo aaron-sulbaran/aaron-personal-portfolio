@@ -7,7 +7,7 @@ describe("the inline register", () => {
   it("holds the approved keys and only those", () => {
     expect(Object.keys(register.def)).toEqual(["product", "voltage", "arc"]);
     expect(Object.keys(register.tip)).toEqual(["two-as", "voltaage", "killer-drones", "music-note", "ieee-ao", "this-site-playground", "job-0", "job-1", "job-2", "job-3", "job-4"]);
-    expect(Object.keys(register.pop)).toEqual(["leadership-award", "sandboarding", "downhill-skating", "skydiving", "rock-climbing", "venezuela-flag", "family", "friends", "misuki-suki", "matcha", "sister-kyoto", "contrabass-clarinet", "rango", "catatumbo-lightning", "lake-maracaibo", "3d-printing", "ut-ece-logo"]);
+    expect(Object.keys(register.pop)).toEqual(["leadership-award", "sandboarding", "downhill-skating", "skydiving", "rock-climbing", "venezuela-flag", "family", "friends", "misuki-suki", "matcha", "sister-kyoto", "contrabass-clarinet", "rango", "catatumbo-lightning", "lake-maracaibo", "3d-printing", "ut-ece-logo", "tool-user", "bambu-h2s", "steve-jobs-iphone"]);
   });
 
   it("carries each jobs timeline tip, word for word, under its entry's key", () => {
@@ -45,9 +45,10 @@ describe("the inline register", () => {
     expect(register.def.product.hint).toBe("click to read how I define a product");
   });
 
-  it("gives every pop with a photo a caption line, so a popover never shows a bare picture", () => {
+  it("gives every pop with a photo a caption line, so a popover never shows a bare picture, except the tool-user meme, which is captionless on purpose", () => {
     const bare = Object.entries(register.pop).filter(([, entry]) => entry.file && !entry.caption?.trim()).map(([key]) => key);
-    expect(bare).toEqual([]);
+    expect(bare).toEqual(["tool-user"]);
+    expect(register.pop["tool-user"].alt).toBe("A stick figure holding a hammer, labeled: this part fits the problem, this part fits the user");
   });
 
   it("describes every pop without the third person, with its exported file, the approved captions and link", () => {
@@ -74,6 +75,8 @@ describe("the inline register", () => {
       "lake-maracaibo": "The famous Puente General Rafael Urdaneta over Lake Maracaibo.",
       "3d-printing": "My at-home workbench. This is where I tinker with my personal hardware projects.",
       "ut-ece-logo": "UT Austin Electrical and Computer Engineering",
+      "bambu-h2s": "Bambu Lab's H2S Combo printer, the type hobbyists know is the best on the market.",
+      "steve-jobs-iphone": "Steve Jobs introducing the first iPhone in 2007.",
     });
     expect(Object.values(register.pop).every((entry) => entry.crop === null)).toBe(true);
     expect(Object.entries(register.pop).filter(([, entry]) => entry.href).map(([key, entry]) => [key, entry.href])).toEqual([["matcha", "https://maps.app.goo.gl/4KPkA9BV3CjAPwvg6"]]);

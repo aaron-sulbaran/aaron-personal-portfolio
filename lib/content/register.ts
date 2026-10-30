@@ -71,6 +71,10 @@ export const register: InlineRegister = {
     "lake-maracaibo": { file: { src: "/photos/pops/lake-maracaibo.jpg", width: 250, height: 342 }, alt: "A vintage Venezuelan stamp showing the bridge over Lake Maracaibo and a tanker passing beneath it", caption: "The famous Puente General Rafael Urdaneta over Lake Maracaibo.", crop: null },
     "3d-printing": { file: { src: "/photos/pops/3d-printing.jpg", width: 600, height: 800 }, alt: "My 3D printer on a shelf above my filament spools, lit by neon", caption: "My at-home workbench. This is where I tinker with my personal hardware projects.", crop: null },
     "ut-ece-logo": { file: { src: "/photos/pops/ut-ece-logo.jpg", width: 800, height: 243 }, alt: "The UT Austin Chandra Department of Electrical and Computer Engineering logo", caption: "UT Austin Electrical and Computer Engineering", crop: null },
+    // The product definition's three (docs/content/tooltips.md, approved 2026-10-29). The meme has no caption, on purpose: it is just funny.
+    "tool-user": { file: { src: "/photos/pops/tool-user.jpg", width: 800, height: 484 }, alt: "A stick figure holding a hammer, labeled: this part fits the problem, this part fits the user", crop: null },
+    "bambu-h2s": { file: { src: "/photos/pops/bambu-h2s.jpg", width: 600, height: 800 }, alt: "A Bambu Lab H2S 3D printer with its AMS filament unit on top", caption: "Bambu Lab's H2S Combo printer, the type hobbyists know is the best on the market.", crop: null },
+    "steve-jobs-iphone": { file: { src: "/photos/pops/steve-jobs-iphone.jpg", width: 800, height: 533 }, alt: "Steve Jobs holding up the first iPhone on stage in front of the Apple logo", caption: "Steve Jobs introducing the first iPhone in 2007.", crop: null },
   },
 };
 

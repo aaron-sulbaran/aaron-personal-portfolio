@@ -22,7 +22,8 @@ export interface PopEntry {
   // The exported file (scripts/export-photos.mjs); null only for a pop whose photo is not exported.
   file: { src: string; width: number; height: number } | null;
   alt: string;
-  caption: string | null;
+  // Optional on purpose: a pop with no caption shows its photo alone, with no empty line or gap under it, and its alt still describes it.
+  caption?: string;
   crop: PhotoCrop | null;
   // Opens in a new tab on click; hover and the first tap still show the pop.
   href?: string;

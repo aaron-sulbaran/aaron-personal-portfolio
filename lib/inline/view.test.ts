@@ -41,6 +41,14 @@ describe("tipView", () => {
       description: "Rango, the chameleon in a Hawaiian shirt, in a dance pose. yeah, this guy from that one kid's movie",
     });
   });
+  it("shows the tool-user meme with no caption at all, so its popover is the photo alone, still described by its alt", () => {
+    const meme = siteContent.register.pop["tool-user"];
+    expect(meme.caption, "no caption on purpose").toBeUndefined();
+    expect(tipView("pop", "tool-user")).toMatchObject({ text: null, caption: null, link: null, description: meme.alt });
+    expect(tipView("pop", "tool-user")?.photo).toMatchObject({ src: "/photos/pops/tool-user.jpg", alt: meme.alt, displayWidth: 280, displayHeight: 169 });
+    expect(tipView("pop", "bambu-h2s")?.caption).toBe("Bambu Lab's H2S Combo printer, the type hobbyists know is the best on the market.");
+    expect(tipView("pop", "steve-jobs-iphone")?.caption).toBe("Steve Jobs introducing the first iPhone in 2007.");
+  });
   it("carries the matcha's Maps link and label", () => { expect(tipView("pop", "matcha")?.link).toEqual({ href: pop.matcha.href, label: "Open in Google Maps" }); });
 });
 describe("the gamer tag tip's link", () => {
@@ -68,10 +76,10 @@ describe("popView", () => {
     const alt = "Me at the lake";
     const caption = "The lake in June.";
     expect(popView({ file: null, alt, caption, crop: null })).toMatchObject({ text: null, photo: null, caption, description: `${alt}. ${caption}` });
-    expect(popView({ file: null, alt, caption: null, crop: null })).toMatchObject({ text: alt, photo: null, caption: null, description: alt });
+    expect(popView({ file: null, alt, crop: null })).toMatchObject({ text: alt, photo: null, caption: null, description: alt });
   });
   it("sizes a landed photo 280px wide at its own aspect", () => {
-    const view = popView({ file: { src: "/inline/x.jpg", width: 800, height: 600 }, alt: "Me", caption: null, crop: null });
+    const view = popView({ file: { src: "/inline/x.jpg", width: 800, height: 600 }, alt: "Me", crop: null });
     expect(view.photo).toEqual({ src: "/inline/x.jpg", width: 800, height: 600, alt: "Me", displayWidth: 280, displayHeight: 210 });
     expect(view.text).toBeNull();
     expect(POP_PHOTO_SIZES).toBe("280px");
