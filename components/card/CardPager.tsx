@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, useReducer, useRef, useState } from "react"
 import { siteContent } from "@/lib/content";
 import { pageStage, stageHeight } from "@/lib/gallery/boxes";
 import type { Gallery } from "@/lib/gallery/card";
-import { GALLERY, PHONE_GROUPING } from "@/lib/gallery/constants";
+import { GALLERY } from "@/lib/gallery/constants";
 import { pagerReducer } from "@/lib/gallery/pager";
 import { stageKind, type Page } from "@/lib/gallery/plan";
 import { useReducedMotionLive } from "@/components/soundtrack/useReducedMotionLive";
@@ -15,7 +15,7 @@ import { usePagerDrag } from "./usePagerDrag";
 
 // The phone's gallery (under 1024px), the lab's round six pager: the header
 // fixed above (a flown card parks on its tile, so no page carries it), one
-// page a paragraph (PHONE_GROUPING), each page's photo or group whole in a
+// page a paragraph (the gallery's grouping), each page's photo or group whole in a
 // stage at most 40 percent of the visible height with the words under it.
 // The arrows and dots under the pages, the arrow keys anywhere in the dialog
 // and a sideways drag change pages; a vertical flick on the stage, the header
@@ -39,10 +39,14 @@ export function CardPager({ gallery, pages, renderMedia, onClose }: Props) {
   // The stage's cap, or less when the page is too short to leave the words their room.
   const heightFor = (share: number, below: number) => stageHeight((room?.visible ?? 0) * share, (room?.height ?? 0) - below, pager.stageFloorPx);
   const layouts = pages.map((page) => {
-    const kind = stageKind(page, PHONE_GROUPING);
+    const kind = stageKind(page, gallery.grouping);
     const photos = kind === "turns" ? page.photos : [page.photo];
     const height = page.wordless ? heightFor(pager.wordlessMax, pager.captionRoomPx) : heightFor(pager.stageMax, pager.wordsRoomPx);
-    return { kind, stage: { photos, ...pageStage(photos, gallery.aspects, room?.width ?? 0, height) } };
+    // A name tag fills the column up to a comfortable width, with a height of its own; the embedded post fills it and scrolls in its stage.
+    const piece = gallery.photos[page.photo];
+    const width = room?.width ?? 0;
+    const own = piece.embed ? { width, height } : piece.tag !== undefined ? { width: Math.min(width, pager.tagMaxPx), height } : null;
+    return { kind, stage: { photos, ...(own ? { frame: own, boxes: [own] } : pageStage(photos, gallery.aspects, width, height)) } };
   });
 
   useLayoutEffect(() => {
@@ -71,7 +75,7 @@ export function CardPager({ gallery, pages, renderMedia, onClose }: Props) {
 
   const travel = reduced || dragPx !== null ? 0 : pager.slideMs;
   const shown = gallery.photos[pages[state.index].photo];
-  const live = PHONE_GROUPING === "photo" ? g.announce(state.index + 1, count, shown.captionShort ?? shown.caption ?? "") : g.pageNumber(state.index + 1, count);
+  const live = gallery.grouping === "photo" ? g.announce(state.index + 1, count, shown.captionShort ?? shown.caption ?? shown.alt) : g.pageNumber(state.index + 1, count);
   return (
     <div
       ref={rootRef}
@@ -95,7 +99,7 @@ export function CardPager({ gallery, pages, renderMedia, onClose }: Props) {
           ))}
         </div>
       </div>
-      {count > 1 && <PagerControls index={state.index} count={count} dispatch={dispatch} />}
+      {count > 1 && <PagerControls index={state.index} count={count} grouping={gallery.grouping} dispatch={dispatch} />}
       <p className="sr-only" aria-live="polite">
         {live}
       </p>

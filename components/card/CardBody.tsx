@@ -2,7 +2,6 @@
 
 import { useRef } from "react";
 import type { Gallery } from "@/lib/gallery/card";
-import { PHONE_GROUPING } from "@/lib/gallery/constants";
 import { phonePages } from "@/lib/gallery/plan";
 import { cardSteps, maskStartMs } from "@/lib/gallery/steps";
 import { useReducedMotionLive } from "@/components/soundtrack/useReducedMotionLive";
@@ -21,7 +20,7 @@ type Props = { gallery: Gallery; layout: GalleryLayout; renderMedia: boolean; fl
 export function CardBody({ gallery, layout, renderMedia, flying, onClose }: Props) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const reduced = useReducedMotionLive();
-  const pages = phonePages(gallery.plan, PHONE_GROUPING);
+  const pages = phonePages(gallery.plan, gallery.grouping);
   const paged = layout === "pager" && pages.length > 0;
   useMaskIn(rootRef, { reduced, runKey: `${gallery.key}|${layout}`, startMs: maskStartMs(flying), stepsFor: (lines) => cardSteps(gallery, layout, flying, lines) });
   return (

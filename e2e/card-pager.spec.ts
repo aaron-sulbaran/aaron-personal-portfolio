@@ -59,26 +59,31 @@ test("pager: Mentorship's mentors and its link ride on its last page", async ({ 
   await expect(dialog.locator('[data-pager-page="0"] [data-mentors]')).toHaveCount(0);
 });
 
-test("pager: every photo is whole in its stage, and no stage is taller than 40 percent of the height", async ({ page }) => {
+test("pager: every photo is whole in its stage, and no stage is taller than 40 percent of the height (55 percent on a page with no words; a name tag is as tall as its tip, and the embedded post scrolls in its stage)", async ({ page }) => {
   test.setTimeout(120_000);
   await openHome(page);
   for (const key of PAGED) {
     const { dialog } = await openCardFromBook(page, key, { home: false });
-    const problems = await dialog.evaluate((root, cap) => {
+    const problems = await dialog.evaluate((root, caps) => {
       const out: string[] = [];
       root.querySelectorAll("[data-pager-page]").forEach((pageEl) => {
         const stage = pageEl.querySelector("[data-pager-stage]");
         if (!stage) return;
         const box = stage.getBoundingClientRect();
         const at = pageEl.getAttribute("data-pager-page");
-        if (box.height > cap + 0.5) out.push(`page ${at}: stage ${box.height}px`);
+        // The jobs card's two own kinds of stage: the post scrolls inside its stage (whole by design only in width), a name tag takes its tip's height.
+        const scrolls = stage.hasAttribute("data-embed-stage");
+        const tag = !!stage.querySelector("[data-job-tag]");
+        const cap = pageEl.hasAttribute("data-wordless") ? caps.wordless : caps.stage;
+        if (!scrolls && !tag && box.height > cap + 0.5) out.push(`page ${at}: stage ${box.height}px`);
+        if (scrolls) return;
         stage.querySelectorAll("[data-photo-frame]").forEach((photo) => {
           const r = photo.getBoundingClientRect();
           if (r.top < box.top - 0.5 || r.bottom > box.bottom + 0.5 || r.left < box.left - 0.5 || r.right > box.right + 0.5) out.push(`page ${at}: photo ${photo.getAttribute("data-photo-frame")} cropped`);
         });
       });
       return out;
-    }, 844 * GALLERY.pager.stageMax);
+    }, { stage: 844 * GALLERY.pager.stageMax, wordless: 844 * GALLERY.pager.wordlessMax });
     expect(problems, key).toEqual([]);
     await page.keyboard.press("Escape");
     await expect(dialog).toHaveCount(0);

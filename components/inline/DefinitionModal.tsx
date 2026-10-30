@@ -12,7 +12,9 @@ const RISE = { hidden: { opacity: 0, y: 16, scale: 0.97 }, visible: { opacity: 1
 const FADE = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { duration: 0.18 } }, exit: { opacity: 0, transition: { duration: 0.12 } } };
 // The house text modal for a definition link (the card modal's shell: Portal, the
 // lib/modal hooks, the shared backdrop). It stacks above the dialog it opens from
-// (the mark card, a card modal; both z-50), under the flight and the inline label. No flight and no layoutId bloom:
+// (the mark card, a card modal; both z-50), under the flight and the inline label (z-58, so a photo pop opened from a
+// word in the panel's own paragraphs sits above it; the label's listeners are the page's, so hover, focus and tap work
+// in here as anywhere, and Escape closes the label before the panel: lib/modal's stack). No flight and no layoutId bloom:
 // the word sits in a masked SplitText line. Reduced motion fades.
 export function DefinitionModal({ entry, onClose }: { entry: DefinitionEntry | null; onClose: () => void }) {
   const open = entry !== null;
@@ -39,7 +41,11 @@ export function DefinitionModal({ entry, onClose }: { entry: DefinitionEntry | n
                 <X aria-hidden="true" className="h-4 w-4" />
               </button>
               <h2 id={titleId} className="pr-12 font-display text-3xl leading-tight text-foreground md:text-4xl">{entry.title}</h2>
-              <p className="text-base leading-relaxed text-foreground md:text-lg md:leading-[1.55]"><InlineCopy source={entry.body} /></p>
+              <div className="flex flex-col gap-4" data-definition-body="">
+                {entry.body.map((paragraph) => (
+                  <p key={paragraph} className="text-base leading-relaxed text-foreground md:text-lg md:leading-[1.55]"><InlineCopy source={paragraph} /></p>
+                ))}
+              </div>
               <span className="font-label text-label text-muted">{closeHint}</span>
             </motion.div>
           </motion.div>

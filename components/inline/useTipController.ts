@@ -39,6 +39,10 @@ export function useTipController(bubbleRef: RefObject<HTMLElement | null>): { st
   }, [bubbleRef]);
   // One size read per shown target, never one per move. A fresh label lands
   // in place (a style flush with no data-trail) before it may trail a mouse.
+  // A label can still grow after that read (a caption setting in its own font, a photo taking its
+  // place), and a tall photo pop placed by the earlier, smaller size ran past the viewport's edge;
+  // so its size is watched, which costs no layout read on a move, and a change places it again.
+  const watchedRef = useRef<{ bubble: HTMLElement; observer: ResizeObserver } | null>(null);
   useLayoutEffect(() => {
     const fresh = !stateRef.current.target;
     stateRef.current = state;
@@ -46,9 +50,22 @@ export function useTipController(bubbleRef: RefObject<HTMLElement | null>): { st
     if (!bubble || !state.target) return;
     if (fresh) delete bubble.dataset.trail;
     sizeRef.current = { width: bubble.offsetWidth, height: bubble.offsetHeight };
+    if (typeof ResizeObserver !== "undefined" && watchedRef.current?.bubble !== bubble) {
+      watchedRef.current?.observer.disconnect();
+      const observer = new ResizeObserver(() => {
+        if (!stateRef.current.target) return;
+        const next = { width: bubble.offsetWidth, height: bubble.offsetHeight };
+        if (next.width === sizeRef.current.width && next.height === sizeRef.current.height) return;
+        sizeRef.current = next;
+        place();
+      });
+      observer.observe(bubble);
+      watchedRef.current = { bubble, observer };
+    }
     place();
     if (fresh) { bubble.getBoundingClientRect(); bubble.dataset.trail = ""; }
   }, [state, place, bubbleRef]);
+  useEffect(() => () => watchedRef.current?.observer.disconnect(), []);
   useEffect(() => {
     const show = (link: HTMLElement, type: "hover" | "focus" | "press" | "tap") => {
       const target = targetOf(link);

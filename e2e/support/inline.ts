@@ -46,3 +46,11 @@ export async function productLink(page: Page): Promise<Locator> {
 export const fillOf = (link: Locator) => link.evaluate((el) => Number(getComputedStyle(el).getPropertyValue("--inline-p")));
 export const barScale = (link: Locator) => link.evaluate((el) => new DOMMatrixReadOnly(getComputedStyle(el, "::after").transform).a);
 export const rest = (page: Page) => page.mouse.move(2, 2);
+
+// The product definition's three photo pops, in the order its paragraphs hold them (lib/content/register.ts), with the words that open each.
+export const PRODUCT_POPS = [
+  { key: "tool-user", words: "pick up" },
+  { key: "bambu-h2s", words: "get it immediately" },
+  { key: "steve-jobs-iphone", words: "the iPhone" },
+] as const;
+export const productPop = (dialog: Locator, key: string) => dialog.locator(`[data-inline="pop"][data-inline-key="${key}"]`);

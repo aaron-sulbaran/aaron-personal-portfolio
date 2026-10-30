@@ -33,7 +33,7 @@ test("cards section: the two columns hold the fourteen cards, Work on the left a
   expect(left!.x).toBeLessThan(right!.x);
   await expect(page.locator("#work h3")).toHaveText(["Work", "Builds"]);
   await expect(page.locator("#work h4")).toHaveText(["Off the clock"]);
-  for (const title of titles) await expect(page.locator(`#work button[data-card="${title.key}"]`)).toHaveText(title.short);
+  for (const title of titles) await expect(page.locator(`#work button[data-card="${title.key}"]`)).toHaveText(title.qualifier ? `${title.short} ${title.qualifier}` : title.short);
   // The headings are the accent token and a size and colour of their own, never one more title.
   const accent = await accentColor(page);
   for (const heading of await page.locator("#work h3, #work h4").all()) {
@@ -44,6 +44,33 @@ test("cards section: the two columns hold the fourteen cards, Work on the left a
   const heading = await page.locator("#work h3").first().evaluate((el) => ({ color: getComputedStyle(el).color, size: parseFloat(getComputedStyle(el).fontSize) }));
   expect(heading.color).not.toBe(title.color);
   expect(title.size, "titles are larger than the headings").toBeGreaterThan(heading.size);
+});
+
+// The Work column's jobs title reads "Jobs (part-time)": one title, one button, one accessible name, the qualifier lighter and
+// smaller in the same row, so it reads as a qualifier and not a second heading.
+test("cards section: the Work column's jobs title reads Jobs (part-time), one button with one name, the qualifier lighter and smaller on the same line", async ({ page }) => {
+  await openHome(page);
+  const jobs = page.locator('#work button[data-card="jobs"]');
+  await jobs.scrollIntoViewIfNeeded();
+  await expect(jobs).toHaveText("Jobs (part-time)");
+  await expect(page.locator('#work button[data-card="jobs"]')).toHaveCount(1);
+  await expect(page.getByRole("button", { name: "Jobs (part-time)" })).toHaveCount(1);
+  // It sits in the Work column, among the other work titles.
+  expect(await jobs.evaluate((el) => !!el.closest("li")?.parentElement?.querySelector('button[data-card="capital-one"]'))).toBe(true);
+  const read = await jobs.evaluate((el) => {
+    const word = el.querySelector<HTMLElement>("[data-title-qualifier]")!;
+    const button = el.getBoundingClientRect();
+    const qualifier = word.getBoundingClientRect();
+    const first = getComputedStyle(el);
+    const note = getComputedStyle(word);
+    return { buttonHeight: button.height, qualifierMid: qualifier.top + qualifier.height / 2, buttonMid: button.top + button.height / 2, size: [parseFloat(first.fontSize), parseFloat(note.fontSize)], color: [first.color, note.color], weight: [first.fontWeight, note.fontWeight] };
+  });
+  expect(read.size[1], "smaller").toBeLessThan(read.size[0] * 0.8);
+  expect(read.color[1], "lighter: the muted token, not the title's colour").not.toBe(read.color[0]);
+  expect(Math.abs(read.qualifierMid - read.buttonMid), "in the same row as the title").toBeLessThan(read.buttonHeight / 2);
+  expect(read.buttonHeight, "one line, not two").toBeLessThan(read.size[0] * 2.2);
+  await jobs.click();
+  await expect(cardDialog(page, "jobs")).toBeVisible();
 });
 
 // The lists are a size larger and the gutters a little wider for them: at 1280 and 1440 nothing of either column reaches into the pane the Coil is laid out in, or past the screen's edge.

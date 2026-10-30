@@ -6,8 +6,9 @@
 export interface PhotoCrop { x: number; y: number; w: number; h: number }
 
 // The inline register: what [words](def:key), (tip:key) and (pop:key) open.
-// hint: the hover line on a definition, so the word says the click opens it.
-export interface DefinitionEntry { title: string; body: string; hint?: string }
+// hint: the hover line on a definition, so the word says the click opens it. body is its paragraphs, each carrying the
+// inline link markup (lib/content/links.ts), so a definition can hold a pop of its own.
+export interface DefinitionEntry { title: string; body: readonly string[]; hint?: string }
 
 export interface TipEntry {
   text: string;
@@ -22,7 +23,8 @@ export interface PopEntry {
   // The exported file (scripts/export-photos.mjs); null only for a pop whose photo is not exported.
   file: { src: string; width: number; height: number } | null;
   alt: string;
-  caption: string | null;
+  // Optional on purpose: a pop with no caption shows its photo alone, with no empty line or gap under it, and its alt still describes it.
+  caption?: string;
   crop: PhotoCrop | null;
   // Opens in a new tab on click; hover and the first tap still show the pop.
   href?: string;
@@ -58,9 +60,9 @@ interface ModalPhotoBase extends PhotoRef {
 }
 // What a photo sits beside is set per photo from docs/content/cards.md ("Which paragraph each
 // photo sits beside"), never by position: photo i is not block i, and two photos may share a block
-// (they stack under it). The jobs card's photos pair with timeline entries instead of paragraphs
-// (today 1, 1, 3, 4: the two MOD photos, Apple, Aritzia), so its timeline needs room for a photo
-// under an entry. block indexes modal.blocks; timeline indexes cards.jobs.timeline; never both.
+// (they stack under it). The jobs card's photos belong to a job instead of a paragraph (today 0, 1, 3, 3: the
+// Aritzia poster, the Apple badge, the two MOD photos), and sit beside that job's name tag (lib/gallery/jobs).
+// block indexes modal.blocks; timeline indexes cards.jobs.timeline (newest first); never both.
 export type ModalPhoto = ModalPhotoBase & ({ block: number; timeline?: never } | { timeline: number; block?: never });
 // opaque: the logo is its own ground (the IEEE square), drawn as the tile's face and never on a plate.
 // ground: an opaque logo's edge colour, measured from the file; the card face is filled with it so the
@@ -87,6 +89,11 @@ export interface CardLink { label: string; href: string }
 // video's pixels; label is its accessible name, in my words.
 export interface CardVideoRef { src: string; poster: string; width: number; height: number; label: string; beside: number }
 
+// A post embedded in a card's modal (components/card/LinkedInEmbed), media like a photo: it takes a row's side beside the
+// paragraph it sits beside (beside indexes modal.blocks), in the photos' radius and border. src is the embed's own address
+// and width and height its native size; title is the frame's accessible name, in my words.
+export interface CardEmbedRef { src: string; width: number; height: number; title: string; beside: number }
+
 // Blocks carry **bold**, *italic* and the inline link markup (lib/content/links.ts).
 export interface CardModal {
   kind: CardModalKind;
@@ -101,11 +108,15 @@ export interface CardModal {
   photos: readonly ModalPhoto[];
   blocks: readonly string[];
   video?: CardVideoRef;
+  embed?: CardEmbedRef;
 }
 
 export interface CardContent {
   // One or two words: the card's title in the cards section's columns.
   short: string;
+  // A qualifier set after the short title in its column, lighter and smaller, in the same row: still one title, one
+  // button, one accessible name ("Jobs (part-time)"). Only the columns read it; the ribbon, the list and the hints keep short.
+  qualifier?: string;
   visual: CardVisual;
   book: { title: string; meta: string };
   modal: CardModal;
@@ -114,7 +125,11 @@ export interface CardContent {
 // line: one sentence on how they helped me, in my words; null until I write it, and nothing renders for it.
 export interface Mentor { name: string; href: string; line: string | null }
 export interface MentorsList { title: string; people: readonly Mentor[] }
+// One job, newest first. role is null where quick.ts's jobs entries already say it (lib/content/jobTags.ts reads it from there).
 export interface TimelineEntry { employer: string; role: string | null; when: string; logo: LogoRef | null; tip: string }
+// The words on a name tag around a job's tip (components/card/JobTag): the name set on it, the small label over the tip, and the
+// tag's accessible name.
+export interface JobTagCopy { name: string; tipLabel: string; label: (employer: string) => string }
 
 // The Talos modal's extras (lib/content/talos.ts): the lockup the sting ends on, a
 // screenshot of its Discord channel, and where it is headed. The specialists and the eight
@@ -138,7 +153,7 @@ export interface TalosTeam {
 export type Cards = Record<Exclude<CardKey, "mentorship" | "jobs" | "talos">, CardContent> & {
   mentorship: CardContent & { mentors: MentorsList };
   talos: CardContent & { team: TalosTeam };
-  jobs: CardContent & { timeline: readonly TimelineEntry[] };
+  jobs: CardContent & { timeline: readonly TimelineEntry[]; tag: JobTagCopy };
 };
 
 // The soundtrack (docs/content/music.md). An adapted track is credited as adapted, never as

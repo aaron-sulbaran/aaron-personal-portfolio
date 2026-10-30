@@ -96,11 +96,11 @@ describe("the fourteen cards", () => {
       { label: "musefriends.tech", href: "https://musefriends.tech" },
       { label: "Muse Friends on GitHub", href: "https://github.com/aaron-sulbaran/muse-friends" },
     ]);
-    expect(cards.jobs.timeline.at(-1)?.tip.endsWith("basically unisex products...")).toBe(true);
-    expect(cards.jobs.timeline.at(-1)?.tip).toBe("My most random job. For the interview they asked me to dress in my best clothing, which I thought was funny. If you work here, all the women in your life will want a discount. With that said, the effortless pants and sweatfleece line are basically unisex products...");
+    expect(cards.jobs.timeline[0].tip.endsWith("basically unisex products...")).toBe(true);
+    expect(cards.jobs.timeline[0].tip).toBe("My most random job. For the interview they asked me to dress in my best clothing, which I thought was funny. If you work here, all the women in your life will want a discount. With that said, the effortless pants and sweatfleece line are basically unisex products...");
     expect(Object.fromEntries(keys.map((key) => [key, cards[key].modal.blocks.length]))).toEqual({
       mentorship: 2, "min-max": 1, band: 3, talos: 2, travel: 2, "capital-one": 5, hackathons: 5,
-      anthropic: 2, misuki: 2, ieee: 5, jobs: 3, "this-site": 1, fsdatalink: 2, "building-in-public": 3,
+      anthropic: 2, misuki: 2, ieee: 5, jobs: 4, "this-site": 1, fsdatalink: 2, "building-in-public": 3,
     });
   });
 
@@ -120,10 +120,28 @@ describe("the fourteen cards", () => {
     expect(cards["building-in-public"].modal.links.map((link) => link.label)).toEqual(["LinkedIn", "X (@imaaronsulbaran)"]);
   });
 
-  it("run the jobs timeline oldest to newest, one tip each", () => {
-    expect(cards.jobs.timeline.map((entry) => entry.employer)).toEqual(["Popeyes", "MOD Pizza", "Student mentor, UT Austin", "Apple", "Aritzia"]);
-    expect(cards.jobs.timeline.map((entry) => entry.role)).toEqual([null, null, null, "Specialist, then technical specialist", null]);
+  it("run the jobs timeline newest to oldest, one tip each", () => {
+    expect(cards.jobs.timeline.map((entry) => entry.employer)).toEqual(["Aritzia", "Apple", "Student mentor, UT Austin", "MOD Pizza", "Popeyes"]);
+    expect(cards.jobs.timeline.map((entry) => entry.role)).toEqual([null, "Specialist, then technical specialist", null, null, null]);
     for (const entry of cards.jobs.timeline) expect(entry.tip.length).toBeGreaterThan(0);
+  });
+
+  it("writes the jobs modal as Aaron's title and four paragraphs, with his LinkedIn post embedded beside the last", () => {
+    const { modal, tag } = cards.jobs;
+    expect(modal.title).toBe('The "unflattering" jobs that shaped me');
+    expect(modal.blocks).toHaveLength(4);
+    expect(modal.blocks[0]).toBe("I'm self-funded, so I've worked part-time alongside school almost every year since I legally could. Those jobs paid for my car in cash in high school, covered rent, and chipped away at tuition so I could graduate debt free.");
+    expect(modal.blocks[1]).toBe("The money (although it was necessary) was secondary though. I realized that after finishing my degree, I have my whole life to work off a screen or in an office if I want to. So I intentionally went looking for jobs where I could interact with people face-to-face and solve their problem right away, even if that was looking for a shirt in the back.");
+    expect(modal.blocks[2]).toBe("I think these jobs are an opportunity to experience the other side of daily interactions you might never think of after finishing your degree. That's why I've never shied away from a service industry job. I also learned how to make a fire pizza.");
+    expect(modal.blocks[3]).toBe("I wrote about my work experience outside of class on LinkedIn, and my hook was \"I don't trust people who haven't worked an unflattering job.\" It got 130,000 impressions and almost a thousand reactions. My favorite line is \"You know to be nice to the person behind the counter because you were the person behind the counter.\" I guess it resonated with people.");
+    expect(modal.links).toEqual([{ label: "The LinkedIn post", href: "https://lnkd.in/p/g3mXFGcY" }]);
+    // Aaron's embed code, as written: the src exactly, the native size, and a title in my words (never "Embedded post").
+    expect(modal.embed).toEqual({ src: "https://www.linkedin.com/embed/feed/update/urn:li:ugcPost:7463750786611630080", width: 504, height: 1258, title: "My LinkedIn post about unflattering jobs", beside: 3 });
+    expect(modal.embed!.beside, "beside the paragraph about the post").toBe(modal.blocks.length - 1);
+    expect(tag.name).toBe("Aaron");
+    expect(tag.tipLabel).toBe("My tip");
+    expect(tag.label("Apple")).toBe("My name tag from Apple, with my tip");
+    for (const text of [modal.title, ...modal.blocks, modal.embed!.title, tag.name, tag.tipLabel, tag.label("Apple"), ...cards.jobs.timeline.map((entry) => entry.tip)]) expect(text, text).not.toMatch(/\u2014/);
   });
 
   it("name the six mentors who agreed, each with their own LinkedIn link and no line until I write one", () => {

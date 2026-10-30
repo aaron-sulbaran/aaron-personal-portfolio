@@ -16,6 +16,9 @@ export const GALLERY = {
   columnGap: 56, // photo to words
   panelPadding: 40,
   panelBorder: 1,
+  // The jobs card's media column holds two pieces side by side (a name tag and its photo, or the two tags of the next row), each this wide,
+  // so a pair is as wide as the LinkedIn post at its native 504 (components/card/LinkedInEmbed): 244 + 16 + 244.
+  cluster: { itemWidth: 244, gap: 16, tagHeight: 330 },
   headerTile: { width: 60, height: 80 }, // 3:4, so a flown logo card fills it
   headerTileCompact: { width: 42, height: 56 }, // the phone header's, clear of the close button
   talosTileCompact: { width: 51, height: 68 }, // Talos's phone tile: its mark at 40 percent is 20.4px
@@ -34,6 +37,7 @@ export const GALLERY = {
     wordsRoomPx: 128, // under the stage: the caption and two lines of words
     captionRoomPx: 72, // under a wordless page's stage
     stageFloorPx: 120,
+    tagMaxPx: 340, // a name tag's widest on a phone page (the jobs card): its height is its own
     wordsFadePx: 28, // the soft fade at the foot of a page's words that scroll
     insetPx: 74, // the backdrop's px-4, the panel's p-5 and its 1px border, both sides
     sheetInsetPx: 48, // the backdrop's py-6, top and bottom: the sheet is the visible height less this
@@ -66,3 +70,7 @@ export const BOXES = uniformBoxes(GALLERY.verticalWidth, GALLERY.horizontalWidth
 // C ("strip") needs the lab's PagerStrip, which this slice does not build, so the
 // type refuses it.
 export const PHONE_GROUPING: Exclude<PhoneGrouping, "strip"> = "paragraph";
+
+// A card's own phone grouping where it differs: the jobs card's rows hold several pieces of media at once (name tags
+// and photos that must all be seen, never taking turns), so on a phone each is a page of its own, the first with the words.
+export const CARD_PHONE_GROUPING: Partial<Record<string, Exclude<PhoneGrouping, "strip">>> = { jobs: "photo" };

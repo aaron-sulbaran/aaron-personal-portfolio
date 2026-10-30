@@ -35,7 +35,7 @@ const allRefs: Ref[] = [
 
 describe("every picture, photo, pop and logo the content names", () => {
   it("is a file in public with the recorded width and height", () => {
-    expect(allRefs.length).toBe(71);
+    expect(allRefs.length).toBe(74);
     for (const ref of allRefs) {
       const [width, height] = imageSize(join(PUBLIC, ref.src));
       expect(ref.width, ref.where).toBeCloseTo(width, 1);
@@ -66,7 +66,7 @@ describe("the modal photos", () => {
       anthropic: ["block 0", "block 1", "block 1"],
       misuki: ["block 0", "block 1", "block 1"],
       ieee: ["block 0", "block 3", "block 4"],
-      jobs: ["timeline 1", "timeline 1", "timeline 3", "timeline 4"],
+      jobs: ["timeline 0", "timeline 1", "timeline 3", "timeline 3"],
       "building-in-public": ["block 0", "block 0"],
     });
   });
@@ -81,7 +81,7 @@ describe("the modal photos", () => {
       anthropic: ["Me, my co-ambassadors and the judges at Hooked on Claude, our hackathon.", "Me teaching a live Claude session for Longhorn Neurotech.", "Me teaching during one of our learning sessions."],
       misuki: ["Me and Misuki outside Gregory Gym.", "Misuki breaks down on me (a lot), but I keep her going.", "Owning a manual Miata is part of why I went to the Mazda Museum in Hiroshima, where I saw the real Mazda 787B that won Le Mans in 1991."],
       ieee: ["Me at a rock climbing social with IEEE and other engineering orgs.", "Us receiving our Outstanding Large Student Branch plaque.", "Me at my last IEEE Rising Stars conference as president of the chapter."],
-      jobs: ["Me at my MOD store, in a Keep MOD Weird tee.", "My last clock-out at MOD, April 15, 2023, 10 pm, with two stickers to leave my mark.", "My Apple employee badge.", "The poster that introduced me to the team at Aritzia."],
+      jobs: ["The poster that introduced me to the team at Aritzia.", "My Apple employee badge.", "Me at my MOD store, in a Keep MOD Weird tee.", "My last clock-out at MOD, April 15, 2023, 10 pm, with two stickers to leave my mark."],
       "building-in-public": ["My top performing posts on LinkedIn.", "Me in Toronto, another one."],
     });
   });
@@ -118,11 +118,11 @@ describe("the logos", () => {
       fsdatalink: ["/work/logos/fsdatalink/fsdatalink-logo.avif", "/work/logos/fsdatalink/fsdatalink-logo-light.png"],
     });
     expect(cards.jobs.timeline.map((entry) => [entry.employer, entry.logo?.src, entry.logo?.srcDark])).toEqual([
-      ["Popeyes", "/work/logos/jobs/popeyes-logo.svg", null],
-      ["MOD Pizza", "/work/logos/jobs/mod-pizza-logo.svg", null],
-      ["Student mentor, UT Austin", "/work/logos/jobs/ut-austin-logo.svg", "/work/logos/jobs/ut-austin-logo-white.svg"],
-      ["Apple", "/work/logos/jobs/apple-logo-black.svg", "/work/logos/jobs/apple-logo-white.svg"],
       ["Aritzia", "/work/logos/jobs/aritzia-logo.svg", "/work/logos/jobs/aritzia-logo-light.svg"],
+      ["Apple", "/work/logos/jobs/apple-logo-black.svg", "/work/logos/jobs/apple-logo-white.svg"],
+      ["Student mentor, UT Austin", "/work/logos/jobs/ut-austin-logo.svg", "/work/logos/jobs/ut-austin-logo-white.svg"],
+      ["MOD Pizza", "/work/logos/jobs/mod-pizza-logo.svg", null],
+      ["Popeyes", "/work/logos/jobs/popeyes-logo.svg", null],
     ]);
   });
 });

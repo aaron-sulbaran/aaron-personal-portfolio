@@ -1,19 +1,19 @@
 import { describe, expect, it } from "vitest";
 import { siteContent } from "@/lib/content";
 import { parseInlineLinks } from "@/lib/content/links";
-import { jobTipKey, register, registerHas, resolveTip } from "@/lib/content/register";
+import { register, registerHas, resolveTip } from "@/lib/content/register";
 
 describe("the inline register", () => {
   it("holds the approved keys and only those", () => {
     expect(Object.keys(register.def)).toEqual(["product", "voltage", "arc"]);
-    expect(Object.keys(register.tip)).toEqual(["two-as", "voltaage", "killer-drones", "music-note", "ieee-ao", "this-site-playground", "job-0", "job-1", "job-2", "job-3", "job-4"]);
-    expect(Object.keys(register.pop)).toEqual(["leadership-award", "sandboarding", "downhill-skating", "skydiving", "rock-climbing", "venezuela-flag", "family", "friends", "misuki-suki", "matcha", "sister-kyoto", "contrabass-clarinet", "rango", "catatumbo-lightning", "lake-maracaibo", "3d-printing", "ut-ece-logo"]);
+    expect(Object.keys(register.tip)).toEqual(["two-as", "voltaage", "killer-drones", "music-note", "ieee-ao", "this-site-playground"]);
+    expect(Object.keys(register.pop)).toEqual(["leadership-award", "sandboarding", "downhill-skating", "skydiving", "rock-climbing", "venezuela-flag", "family", "friends", "misuki-suki", "matcha", "sister-kyoto", "contrabass-clarinet", "rango", "catatumbo-lightning", "lake-maracaibo", "3d-printing", "ut-ece-logo", "tool-user", "bambu-h2s", "steve-jobs-iphone"]);
   });
 
-  it("carries each jobs timeline tip, word for word, under its entry's key", () => {
-    expect(siteContent.cards.jobs.timeline.map((entry, i) => register.tip[jobTipKey(i)]?.text)).toEqual(siteContent.cards.jobs.timeline.map((entry) => entry.tip));
-    expect(jobTipKey(4)).toBe("job-4");
-    expect(registerHas("tip", "job-2")).toBe(true);
+  it("keeps no hover tip for the jobs' employers: their tips are name tags on the page now", () => {
+    expect(Object.keys(register.tip).filter((key) => key.startsWith("job-"))).toEqual([]);
+    expect(registerHas("tip", "job-0")).toBe(false);
+    for (const entry of siteContent.cards.jobs.timeline) expect(Object.values(register.tip).map((tip) => tip.text)).not.toContain(entry.tip);
   });
 
   it("is the register siteContent carries", () => {
@@ -35,19 +35,27 @@ describe("the inline register", () => {
   });
 
   it("defines the mark card's two electrical terms in my words", () => {
-    expect(register.def.voltage).toEqual({ title: "Voltage", body: "the difference in electric potential between two points" });
-    expect(register.def.arc).toEqual({ title: "Arc", body: "a continuous electrical discharge that occurs when electric current flows through an air gap between two electrodes" });
+    expect(register.def.voltage).toEqual({ title: "Voltage", body: ["the difference in electric potential between two points"] });
+    expect(register.def.arc).toEqual({ title: "Arc", body: ["a continuous electrical discharge that occurs when electric current flows through an air gap between two electrodes"] });
   });
 
-  it("defines product in Aaron's words", () => {
+  it("defines product in Aaron's words: three paragraphs with three photo pops, still opened by a click and still hinted", () => {
     expect(register.def.product.title).toBe("What a product is");
-    expect(register.def.product.body.startsWith("A product (to me) is a tool that's genuinely useful")).toBe(true);
+    expect(register.def.product.body).toEqual([
+      "A product (to me) is a tool that's genuinely useful to someone and easy for them to [pick up](pop:tool-user). If it's for everyone, anyone should get it on their first try. If it's for niche hobbyists, the hobbyists in that community should [get it immediately](pop:bambu-h2s).",
+      "About 99% of the time, a product should be built for the user instead of forcing the user to get used to the product.",
+      "The other 1% is how you get a moonshot product like [the iPhone](pop:steve-jobs-iphone), which didn't just change the way people use a phone (the product), it changed the world.",
+    ]);
     expect(register.def.product.hint).toBe("click to read how I define a product");
+    // Every pop the paragraphs point at is in the register, so none falls back to plain words.
+    for (const paragraph of register.def.product.body) expect(parseInlineLinks(paragraph, registerHas).unknown).toEqual([]);
+    expect(register.def.product.body.join(" ").match(/\(pop:[a-z0-9-]+\)/g)).toEqual(["(pop:tool-user)", "(pop:bambu-h2s)", "(pop:steve-jobs-iphone)"]);
   });
 
-  it("gives every pop with a photo a caption line, so a popover never shows a bare picture", () => {
+  it("gives every pop with a photo a caption line, so a popover never shows a bare picture, except the tool-user meme, which is captionless on purpose", () => {
     const bare = Object.entries(register.pop).filter(([, entry]) => entry.file && !entry.caption?.trim()).map(([key]) => key);
-    expect(bare).toEqual([]);
+    expect(bare).toEqual(["tool-user"]);
+    expect(register.pop["tool-user"].alt).toBe("A stick figure holding a hammer, labeled: this part fits the problem, this part fits the user");
   });
 
   it("describes every pop without the third person, with its exported file, the approved captions and link", () => {
@@ -74,6 +82,8 @@ describe("the inline register", () => {
       "lake-maracaibo": "The famous Puente General Rafael Urdaneta over Lake Maracaibo.",
       "3d-printing": "My at-home workbench. This is where I tinker with my personal hardware projects.",
       "ut-ece-logo": "UT Austin Electrical and Computer Engineering",
+      "bambu-h2s": "Bambu Lab's H2S Combo printer, the type hobbyists know is the best on the market.",
+      "steve-jobs-iphone": "Steve Jobs introducing the first iPhone in 2007.",
     });
     expect(Object.values(register.pop).every((entry) => entry.crop === null)).toBe(true);
     expect(Object.entries(register.pop).filter(([, entry]) => entry.href).map(([key, entry]) => [key, entry.href])).toEqual([["matcha", "https://maps.app.goo.gl/4KPkA9BV3CjAPwvg6"]]);

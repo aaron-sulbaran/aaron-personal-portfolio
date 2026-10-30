@@ -29,6 +29,19 @@ describe("the legacy shapes are gone", () => {
   });
 });
 
+describe("the four page titles", () => {
+  it("are lowercase, only the name Aaron keeping its capital, in the apostrophe style the source already uses", () => {
+    const { hero, columns, metrics, connect } = siteContent;
+    expect([hero.heading, hero.greeting, hero.name]).toEqual(["hi, i'm Aaron.", "hi, i'm", "Aaron"]);
+    expect(hero.heading, "the h1 reads as the two lines the scene draws").toBe(`${hero.greeting} ${hero.name}.`);
+    expect([columns.title, metrics.title, connect.heading]).toEqual(["here's what i've been up to.", "proof of work", "wanna chat?"]);
+    for (const title of [hero.heading, columns.title, metrics.title, connect.heading]) {
+      expect(title.replace(/\bAaron\b/g, ""), title).toBe(title.replace(/\bAaron\b/g, "").toLowerCase());
+      expect(title, "straight apostrophes only").not.toMatch(/[\u2018\u2019]/);
+    }
+  });
+});
+
 describe("menu", () => {
   it("lists the four pages, in the page's order", () => {
     expect(siteContent.menu.items.map((item) => item.key)).toEqual(["home", "work", "numbers", "connect"]);

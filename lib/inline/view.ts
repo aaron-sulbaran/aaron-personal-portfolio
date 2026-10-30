@@ -35,7 +35,7 @@ export function popView(entry: PopEntry): TipView {
   return {
     text: photo || entry.caption ? null : entry.alt,
     photo,
-    caption: entry.caption,
+    caption: entry.caption ?? null,
     link: entry.href ? { href: entry.href, label: entry.hrefLabel ?? entry.href } : null,
     description: [entry.alt, entry.caption].filter(Boolean).join(". "),
   };

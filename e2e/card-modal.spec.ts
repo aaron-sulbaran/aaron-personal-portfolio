@@ -112,15 +112,14 @@ test("card modal: the mentors are a section of Mentorship's modal, six names lin
   await expect(mentors.getByRole("link", { name: new RegExp(people[0].name) })).toHaveAttribute("href", people[0].href);
 });
 
-test("card modal: the jobs timeline runs oldest to newest, each employer's name its insider tip", async ({ page }) => {
+test("card modal: the jobs modal shows each job as a name tag with its tip on the page, no hover tip on an employer's name", async ({ page }) => {
   const { dialog } = await openCardFromBook(page, "jobs");
-  await expect(dialog.locator("[data-timeline-entry]")).toHaveCount(5);
-  const apple = dialog.getByRole("button", { name: "Apple", exact: true });
+  await expect(dialog.locator("[data-job-tag]")).toHaveCount(5);
+  const apple = dialog.locator('[data-job-tag="1"]');
   await apple.scrollIntoViewIfNeeded();
-  await apple.hover();
-  const tip = page.locator("[data-inline-tip]");
-  await expect(tip).toHaveAttribute("data-shown", "true");
-  await expect(tip).toContainText("Get AppleCare and some sort of cloud storage.");
+  await expect(apple).toContainText("Get AppleCare and some sort of cloud storage.");
+  await expect(dialog.getByRole("button", { name: "Apple", exact: true })).toHaveCount(0);
+  await expect(page.locator("[data-inline-tip]")).toHaveAttribute("data-shown", "false");
 });
 
 for (const kind of ["photo", "work"] as const) {
