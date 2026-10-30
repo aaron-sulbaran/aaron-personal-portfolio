@@ -1,5 +1,6 @@
 import { COIL, type CoilConstants } from "./constants";
 import { helixRotation, type CoilGeometry, type HelixFrame, type Vec3 } from "./geometry";
+import { MIN_GAP_SHARE } from "./separation";
 
 // The ribbon at page 1's foot (slices 4c and 4d): the 14 cards in one flat row,
 // face up, drifting left above "Deal me in", and what becomes of it at the click. It is
@@ -25,23 +26,28 @@ export function ribbonPitchUnits(geo: CoilGeometry): number {
   return COIL.cardAspect + geo.ribbon.gapPx / geo.ribbon.cardPx;
 }
 
-// The closest the gaps tighten to under the hover's anticipation: the ring's own
+// The closest the gaps tighten to under the hover's anticipation: the wheel's own
 // pitch, or wider where the canvas is so wide that the row's wrap, cardCount
 // cards on, would show. (The click's gather goes tighter than this: below.)
 export function ribbonHoverPitch(geo: CoilGeometry): number {
   const wrap = (geo.canvas.width + 2 * geo.ribbon.cardPx * COIL.cardAspect) / (geo.cardCount * geo.ribbon.cardPx);
-  return Math.max(geo.step, wrap);
+  return Math.max(geo.ringStep, wrap);
 }
 
-// The pile the click gathers the row into, in card heights between one card and
-// the next: a fraction of a card's width, so each card lies mostly over the one
-// before it, like a deck being squared up (slice 5; Aaron: "bunch tightly around
-// its center, overlapping"). The row is then much shorter than the canvas; its
-// two ends fade out (ringEndFade) so the strand's wrap is never seen, and the
-// cards keep their order by a hair of depth (entrancePose's stack), so the
-// overlap never flickers. Never wider than the row was.
+// The tightest a row of cards ever packs, in card heights between one card and
+// the next: a card's width and MIN_GAP_SHARE of it (lib/coil/separation.ts).
+export function ribbonClosestPitch(): number {
+  return COIL.cardAspect * (1 + MIN_GAP_SHARE);
+}
+
+// The tight row the click gathers the cards into, in card heights between one
+// card and the next (Aaron, 2026-10-29: the rush bunches the row up, but every
+// card stays its own, with a gap: "the cards should still have space between them
+// and act as their own individual assets"; slice 5's pile, each card over most of
+// the last, is gone). Never tighter than ribbonClosestPitch, never wider than the
+// row was. Its two ends fade out (ringEndFade) so the strand's wrap is never seen.
 export function ribbonGatherPitch(geo: CoilGeometry, c: CoilConstants = COIL): number {
-  return Math.min(ribbonPitchUnits(geo), Math.max(0.02, c.deal.ribbon.gatherPitch));
+  return Math.min(ribbonPitchUnits(geo), Math.max(ribbonClosestPitch(), c.deal.ribbon.gatherPitch));
 }
 
 // The strand's speed while the ribbon drifts, in cards per second: negative, the
@@ -113,7 +119,9 @@ export function ribbonHelix(
   const g = gatherShare(gather);
   const k = clamp01(curl);
   const hovered = lerp(ribbonPitchUnits(geo), ribbonHoverPitch(geo), clamp01(gather.hover));
-  const pitch = lerp(lerp(hovered, ribbonGatherPitch(geo, c), clamp01(gather.rush)), geo.step, k);
+  // The ring's own pitch: the wheel's (and the band's), as the row ends up.
+  const ring = wheel.radius * wheel.angStep;
+  const pitch = lerp(lerp(hovered, ribbonGatherPitch(geo, c), clamp01(gather.rush)), ring, k);
   const angStep = Math.max(1e-5, wheel.angStep * k);
   const radius = pitch / angStep;
   const leanRad = lerp(0, wheel.leanRad, k);

@@ -21,6 +21,7 @@ export const DEAL_LAB_KNOBS: readonly NumericKnob[] = [
   "ribbonGatherPitch",
   "condenseMs",
   "condensePower",
+  "curlStartMs",
   "curlMs",
   "windRampMs",
   "peakCardsPerSecond",

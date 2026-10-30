@@ -33,8 +33,9 @@ import {
   windOnset,
   windRamp,
 } from "@/lib/coil/entrance";
-import { ribbonAnchor, ribbonCardsPerSecond, ribbonGatherPitch, ribbonHoverPitch, gatherShare, ribbonEdge, ribbonEdgeAlpha, ribbonEdgeAlphaWorld, ribbonHelix, ribbonPitchUnits } from "@/lib/coil/ribbon";
+import { ribbonAnchor, ribbonCardsPerSecond, ribbonClosestPitch, ribbonGatherPitch, ribbonHoverPitch, gatherShare, ribbonEdge, ribbonEdgeAlpha, ribbonEdgeAlphaWorld, ribbonHelix, ribbonPitchUnits } from "@/lib/coil/ribbon";
 import { coilPose, mod, poseAt, restHelix, solveGeometry, type Basis, type CoilGeometry, type HelixFrame } from "@/lib/coil/geometry";
+import { MIN_GAP_SHARE } from "@/lib/coil/separation";
 
 const TAU = Math.PI * 2;
 const DEG = Math.PI / 180;
@@ -73,20 +74,25 @@ describe("entrance clock", () => {
     expect(isBeforeEntrance(entranceClock(Number.NEGATIVE_INFINITY))).toBe(true);
   });
 
-  it("follows slice 4d's table, with slice 5's longer rush: the Coil is unfurled by about 2.3 s after the click (the rush before the curl is 500 to 700 ms), the flatten overlaps the spin-up, the hold at the peak is 200 ms at most, and the field's opening and the slowing are over before the lift lands", () => {
-    expect(TL.condenseMs).toBeGreaterThanOrEqual(500);
+  it("follows the 2026-10-29 table: the Coil is unfurled 2.5 to 2.8 s after the click (the rush before the curl is 400 to 700 ms), the spin-up is a wind-up the eye can follow, the flatten overlaps it, the hold at the peak is 200 to 400 ms, and the field's opening and the slowing are over before the lift lands", () => {
+    expect(TL.condenseMs).toBeGreaterThanOrEqual(400);
     expect(TL.condenseMs).toBeLessThanOrEqual(700);
-    expect(TL.condenseMs + TL.pullStartMs + TL.pullMs).toBeLessThanOrEqual(2400);
-    expect(TL.condenseMs + TL.pullStartMs + TL.pullMs).toBeGreaterThanOrEqual(1900);
+    expect(TL.condenseMs + TL.pullStartMs + TL.pullMs).toBeLessThanOrEqual(2800);
+    expect(TL.condenseMs + TL.pullStartMs + TL.pullMs).toBeGreaterThanOrEqual(2500);
+    expect(TL.upMs).toBeGreaterThanOrEqual(700);
     expect(TL.flattenStartMs).toBeLessThan(TL.upMs);
     expect(TL.flattenStartMs + TL.flattenMs).toBeGreaterThan(TL.upMs);
-    expect(TL.slowStartMs - TL.upMs).toBeLessThanOrEqual(200);
-    expect(TL.slowStartMs).toBeGreaterThanOrEqual(TL.upMs);
+    expect(TL.slowStartMs - TL.upMs).toBeGreaterThanOrEqual(200);
+    expect(TL.slowStartMs - TL.upMs).toBeLessThanOrEqual(400);
     expect(TL.openStartMs + COIL.deal.open.ms).toBeLessThanOrEqual(TL.pullStartMs + TL.pullMs);
-    expect(TL.slowStartMs + TL.slowMs).toBeLessThanOrEqual(TL.pullStartMs + TL.pullMs);
+    // The slowing is over well before the lift lands, so the strand ends exactly at the idle pace.
+    expect(TL.pullStartMs + TL.pullMs - (TL.slowStartMs + TL.slowMs)).toBeGreaterThanOrEqual(250);
     // The wheel is all but flat when the lift starts: they overlap by 150 ms at most.
     expect(TL.flattenStartMs + TL.flattenMs - TL.pullStartMs).toBeLessThanOrEqual(150);
     expect(TL.flattenStartMs + TL.flattenMs).toBeGreaterThanOrEqual(TL.pullStartMs);
+    // The curl starts over the condense's tail (its second half), never before the click.
+    expect(TL.curlStartMs).toBeLessThan(0);
+    expect(-TL.curlStartMs).toBeLessThanOrEqual(TL.condenseMs / 2);
   });
 
   it("pulls on the pull curve, with the axial parting leading the winding", () => {
@@ -323,6 +329,13 @@ describe("the wheel's place", () => {
     expect((2 * bandRadius + 0.3) * (geo.wheelCardWorld / geo.camera.worldPerPx)).toBeCloseTo(COIL.deal.wheel.diameterOfHeight * 736, 9);
   });
 
+  it("is a ring with room between its cards: the same cards, the ring wider by gapShare of a card's width at each gap", () => {
+    expect(geo.ringStep).toBeCloseTo(COIL.cardAspect * (1 + COIL.deal.wheel.gapShare), 12);
+    expect(geo.ringStep).toBeGreaterThan(geo.step);
+    const band = pullHelix(restHelix(geo), geo, 0);
+    expect(band.radius).toBeCloseTo((14 * geo.ringStep) / TAU, 12);
+  });
+
   it("projects to the anchor on the canvas, nudged by the lab's offsets", () => {
     const px = (frame: ReturnType<typeof wheelPlacement>) => ({
       x: 640 + frame.center[0] / geo.camera.worldPerPx,
@@ -494,10 +507,12 @@ describe("the ribbon's lead on the click (the knee, click path only)", () => {
   it("comes in over the condense as a smoothstep, so a click inside the knee does not step the row", () => {
     const x = K / 3;
     let last = 0;
-    for (let ms = 1; ms <= RAMP; ms += 8) {
+    // A 60 Hz frame at a time: the lead never steps more than a few px (the smoothstep's
+    // steepest is 1.5 times its average, MOST over the condense).
+    for (let ms = 1; ms <= RAMP; ms += 1000 / 60) {
       const lead = kneeLead(x, K, ms, RAMP, null);
       expect(lead, `ms ${ms}`).toBeLessThanOrEqual(last + 1e-9);
-      expect(last - lead, `step at ${ms} ms`).toBeLessThan(1.5);
+      expect(last - lead, `step at ${ms} ms`).toBeLessThan(4);
       last = lead;
     }
     expect(kneeLead(x, K, RAMP / 2, RAMP, null)).toBeCloseTo(-MOST / 2, 6);
@@ -714,12 +729,24 @@ describe("the ribbon (page 1's foot)", () => {
     expect(condenseProgress(entranceClock(-TL.condenseMs * (2 / 3)))).toBeGreaterThan(0.5);
     expect(condenseProgress(entranceClock(0))).toBe(1);
     expect(condenseProgress(entranceClock(T))).toBe(1);
-    expect(curlProgress(entranceClock(-1))).toBe(0);
-    expect(curlProgress(entranceClock(0))).toBe(0);
-    expect(curlProgress(entranceClock(TL.curlMs / 2))).toBeCloseTo(0.5, 9);
-    expect(curlProgress(entranceClock(TL.curlMs))).toBe(1);
+    // The curl over curlMs from curlStartMs, over the condense's tail: the two slow ends overlap.
+    const curlAt = (ms: number) => curlProgress(entranceClock(TL.curlStartMs + ms));
+    expect(curlProgress(entranceClock(Number.NEGATIVE_INFINITY))).toBe(0);
+    expect(curlAt(-1)).toBe(0);
+    expect(curlAt(0)).toBe(0);
+    expect(curlAt(TL.curlMs / 2)).toBeCloseTo(0.5, 9);
+    expect(curlAt(TL.curlMs)).toBe(1);
+    expect(curlProgress(entranceClock(0))).toBeGreaterThan(0);
+    expect(condenseProgress(entranceClock(TL.curlStartMs))).toBeLessThan(1);
     // The flatten starts once the curl has begun, and over the spin-up.
-    expect(TL.flattenStartMs).toBeGreaterThan(0);
+    expect(TL.flattenStartMs).toBeGreaterThan(TL.curlStartMs);
+  });
+
+  it("never starts the curl before the click, whatever the knobs say", () => {
+    const c = tunedConstants({ timeline: { condenseMs: 300, curlStartMs: -900 } });
+    expect(curlProgress(entranceClock(-301, c), c)).toBe(0);
+    expect(curlProgress(entranceClock(-300, c), c)).toBe(0);
+    expect(curlProgress(entranceClock(-299, c), c)).toBeGreaterThan(0);
   });
 
   it("is 0 until the click whatever the pointer's anticipation did: that is the hover's own share, which the rush starts from", () => {
@@ -743,38 +770,48 @@ describe("the ribbon (page 1's foot)", () => {
     expect(condenseProgress(entranceClock(-TL.condenseMs / 2))).toBeCloseTo(1 - Math.pow(0.5, TL.condensePower), 9);
   });
 
-  it("gathers into a tight pile, far tighter than the hover's tightening and than the ring, that overlaps the cards", () => {
+  it("gathers into a tight row with gaps: tighter than the hover's tightening and than the ring, never a pile", () => {
     for (const geo of [wideGeo, phoneGeo]) {
       const wheel = restHelix(geo);
       const piled = ribbonHelix(wheel, geo, PILE, 0);
       const pitch = ribbonGatherPitch(geo);
       expect(pitch).toBeCloseTo(COIL.deal.ribbon.gatherPitch, 12);
-      expect(pitch).toBeLessThan(ribbonHoverPitch(geo) / 3);
-      expect(pitch).toBeLessThan(COIL.cardAspect / 3);
-      // Adjacent cards of the pile are `pitch` card heights apart across the row.
+      expect(pitch).toBeLessThan(ribbonHoverPitch(geo));
+      expect(pitch).toBeLessThan(geo.ringStep);
+      // Never closer than the separation floor: a gap of MIN_GAP_SHARE of a card's width at least.
+      expect(pitch).toBeGreaterThanOrEqual(COIL.cardAspect * (1 + MIN_GAP_SHARE));
+      // Adjacent cards of the row are `pitch` card heights apart across it.
       const a = poseAt(piled, 0).position;
       const b = poseAt(piled, 1).position;
       expect(Math.hypot(b[0] - a[0], b[1] - a[1]) / piled.cardWorld).toBeCloseTo(pitch, 3);
-      // A pile's row is far shorter than the canvas, the cluster of fourteen no wider than the canvas's third.
-      expect(geo.cardCount * pitch * geo.ribbon.cardPx).toBeLessThan(geo.canvas.width * 0.7);
     }
+    // However tight the lab asks for, the row keeps the floor.
+    const tight = tunedConstants({ ribbon: { gatherPitch: 0.2 } });
+    expect(ribbonGatherPitch(wideGeo, tight)).toBeCloseTo(ribbonClosestPitch(), 12);
     expect(gatherShare({ hover: 0.5, rush: 0.5 })).toBeCloseTo(0.75, 12);
     expect(gatherShare({ hover: 0, rush: 1 })).toBe(1);
   });
 
-  it("stacks the pile in the strand's order by a hair of depth, in step with the rush, and nothing before the click or once curled", () => {
+  it("curls the row into the ring at the ring's own pitch, never closer than the gathered row", () => {
+    for (const geo of [wideGeo, phoneGeo]) {
+      const band = pullHelix(restHelix(geo), geo, 0);
+      expect(band.radius * band.angStep).toBeCloseTo(geo.ringStep, 12);
+      let least = Number.POSITIVE_INFINITY;
+      for (let k = 0; k <= 1; k += 0.05) {
+        const frame = ribbonHelix(band, geo, PILE, k);
+        least = Math.min(least, frame.radius * Math.max(frame.angStep, 1e-5));
+      }
+      expect(least).toBeGreaterThanOrEqual(ribbonGatherPitch(geo) - 1e-6);
+    }
+  });
+
+  it("leaves the cards where the frame puts them: no hair of depth between them, before, through or after the rush", () => {
     const frame = ribbonHelix(restHelix(wideGeo), wideGeo, PILE, 0);
     const pose = (u: number) => coilPose(frame, u, 0);
-    const lone = (u: number, clock: ReturnType<typeof entranceClock>) => entrancePose(pose(u), { cardCount: 14 }, clock);
-    const clickClock = entranceClock(-TL.condenseMs / 4);
-    const front = lone(3, clickClock);
-    const back = lone(-3, clickClock);
-    expect(front.position[2]).toBeGreaterThan(back.position[2]);
-    expect(front.position[2] - back.position[2]).toBeLessThan(0.1 * front.scale);
-    const before = lone(3, entranceClock(Number.NEGATIVE_INFINITY));
-    expect(before.position[2]).toBe(pose(3).position[2]);
-    const curled = lone(3, entranceClock(TL.curlMs));
-    expect(curled.position[2]).toBe(pose(3).position[2]);
+    for (const ms of [Number.NEGATIVE_INFINITY, -TL.condenseMs / 4, TL.curlMs]) {
+      const clock = entranceClock(ms);
+      expect(entrancePose(pose(3), { cardCount: 14 }, clock).position).toEqual(pose(3).position);
+    }
   });
 
   it("gathers the row toward the button: its anchor shifts across with the gaps closing, and is the ordinary row with no offset", () => {
@@ -819,9 +856,11 @@ describe("the ribbon (page 1's foot)", () => {
   });
 
   it("tunes through the lab: a longer condense and curl move the same marks", () => {
-    const c = tunedConstants({ timeline: { condenseMs: 1000, curlMs: 300 } });
+    const c = tunedConstants({ timeline: { condenseMs: 1000, curlStartMs: 0, curlMs: 300 } });
     expect(condenseProgress(entranceClock(-500, c), c)).toBeCloseTo(1 - Math.pow(0.5, c.deal.timeline.condensePower), 9);
     expect(curlProgress(entranceClock(150, c), c)).toBeCloseTo(0.5, 9);
+    const early = tunedConstants({ timeline: { curlStartMs: -200, curlMs: 400 } });
+    expect(curlProgress(entranceClock(0, early), early)).toBeCloseTo(0.5, 9);
   });
 });
 

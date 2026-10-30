@@ -168,7 +168,7 @@ export function windOnset(x: number, ramp: number) {
   return eased / (1 - k / 2);
 }
 
-// The click's rush: the row's gaps closing into a tight pile gathered toward the
+// The click's rush: the row's gaps closing into a tight row gathered toward the
 // button, an ease out of power condensePower over condenseMs, which ends where the
 // clock is 0. It is 0 before the click and 1 once the clock has run past it. (The
 // pointer's anticipation before the click is clock.gather0, a share of the way to
@@ -179,13 +179,17 @@ export function condenseProgress(clock: EntranceClock, c: CoilConstants = clock.
   return 1 - Math.pow(1 - seg(elapsedMs(clock) + condenseMs, 0, condenseMs), Math.max(1, condensePower));
 }
 
-// The row curling into the wheel: a smoothstep over curlMs from the clock's 0 (its
+// The row curling into the wheel: a smoothstep over curlMs from curlStartMs (its
 // steepest is 1.5 times its average, where power2.inOut's was 3: the cards at the
-// row's far ends travel most of the screen, and none may step more than 40 px a frame).
+// row's far ends travel most of the screen, and none may step more than 40 px a
+// frame). It starts curlStartMs from the clock's 0, before it when negative: over
+// the condense's slow tail, so the two slow ends never meet in a frame that
+// stands still. Before the click it is 0 whatever the knobs say.
 export function curlProgress(clock: EntranceClock, c: CoilConstants = clock.c ?? COIL) {
-  const { curlMs } = c.deal.timeline;
-  if (isRested(clock) || curlMs <= 0) return elapsedMs(clock) >= 0 ? 1 : 0;
-  return smooth(seg(elapsedMs(clock), 0, curlMs));
+  const { curlMs, curlStartMs, condenseMs } = c.deal.timeline;
+  const start = Math.max(-condenseMs, curlStartMs);
+  if (isRested(clock) || curlMs <= 0) return elapsedMs(clock) >= start ? 1 : 0;
+  return smooth(seg(elapsedMs(clock), start, start + curlMs));
 }
 
 // ---------------------------------------------------------------- the wheel
@@ -256,7 +260,10 @@ export function kneeLead(railTopPx: number, kneePx: number, sinceClickMs: number
 // Frame level: the band's winding, radius, rise, card size and lean pulled
 // toward the rested helix (`rest` may already carry the stretch envelope) by
 // the pull itself: 0 is the closed band; 1 returns the rest frame as is, so a
-// rested coil is exactly the rest frame.
+// rested coil is exactly the rest frame. The band's wider pitch (its gaps,
+// geo.ringStep) closes to the Coil's own as it winds, never while the seam is
+// parting (the seam's two cards are a card's height apart only once it has), and
+// on a smoothstep of the winding, so it adds nothing to the winding's onset.
 export function pullHelix(rest: HelixFrame, geo: CoilGeometry, pull: number, c: CoilConstants = COIL): HelixFrame {
   if (pull >= 1) return rest;
   const n = geo.cardCount;
@@ -265,7 +272,7 @@ export function pullHelix(rest: HelixFrame, geo: CoilGeometry, pull: number, c: 
   return {
     ...rest,
     angStep,
-    radius: geo.step / angStep,
+    radius: lerp(geo.ringStep, geo.step, smooth(wind)) / angStep,
     dy: lerp((c.lab.washerPitch / n) * part, rest.dy, wind),
     cardWorld: lerp(geo.bandCardWorld, rest.cardWorld, pull),
     leanRad: lerp(c.camera.bandLeanDeg * DEG, rest.leanRad, pull),
@@ -335,18 +342,8 @@ export function entrancePose<P extends CardPose>(
   const curl = curlProgress(clock, c);
   const edge = curl >= 1 || !card.edge ? 1 : lerp(ribbonEdgeAlphaWorld(pose.position[0], card.edge), 1, curl);
   const alpha = pose.alpha * shown * edge * ringEndFade(pose.u - clock.drift, card.cardCount, curl);
-  // The pile the click gathers: cards that overlap lie in the strand's order, one
-  // a hair nearer than the one before (a flat row's cards are coplanar, and
-  // coplanar overlap flickers), in step with the rush and gone as the row curls.
-  const stack = (1 - curl) * condenseProgress(clock, c) * STACK_STEP * pose.u * pose.scale;
-  if (stack === 0) return { ...pose, alpha };
-  return { ...pose, alpha, position: [pose.position[0], pose.position[1], pose.position[2] + stack] };
+  return { ...pose, alpha };
 }
-
-// A hair of depth between one card of the gathered pile and the next, in card
-// heights per strand position: at most a few tenths of a percent of the row's
-// perspective, and far more than the depth buffer's resolution.
-const STACK_STEP = 0.004;
 
 // ---------------------------------------------------------------- the field
 
