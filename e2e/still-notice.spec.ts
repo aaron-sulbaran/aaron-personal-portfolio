@@ -78,10 +78,16 @@ test("a scene that throws: the notice says it could not start", async ({ page })
 
 test.describe("reduced motion", () => {
   test.use({ contextOptions: { reducedMotion: "reduce" } });
-  test("the notice names the motion setting", async ({ page }) => {
+  // Aaron, 2026-10-30 (board item A13): the reader asked for less motion, so the still and the jump stand on their own.
+  test("no notice: the still and the jump stand on their own", async ({ page }) => {
     await page.goto("/");
     await settled(page);
-    await expectNotice(page, copy.reducedMotion);
+    await expect(page.locator("section[data-scene]")).toHaveAttribute("data-scene", "still");
+    await expect(page.locator("[data-hero-still]")).toHaveAttribute("data-still-ready", "");
+    await page.evaluate(() => document.getElementById("work")!.scrollIntoView({ block: "start", behavior: "instant" }));
+    await page.waitForTimeout(500);
+    await expect(notice(page)).toHaveCount(0);
+    await expect(page.getByText("less motion")).toHaveCount(0);
   });
 });
 

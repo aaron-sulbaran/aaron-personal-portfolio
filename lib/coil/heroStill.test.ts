@@ -48,8 +48,9 @@ describe("hero still", () => {
 });
 
 describe("still cause", () => {
-  it("names reduced motion first, then a missing context, else a scene that failed", () => {
-    expect(stillCause({ reducedMotion: true, hasApi: false, failure: "unavailable" })).toBe("reducedMotion");
+  it("has no notice under reduced motion, then names a missing context, else a scene that failed", () => {
+    expect(stillCause({ reducedMotion: true, hasApi: false, failure: "unavailable" })).toBeNull();
+    expect(stillCause({ reducedMotion: true, hasApi: true, failure: null })).toBeNull();
     expect(stillCause({ reducedMotion: false, hasApi: false, failure: null })).toBe("noWebgl");
     expect(stillCause({ reducedMotion: false, hasApi: true, failure: "noWebgl" })).toBe("noWebgl");
     expect(stillCause({ reducedMotion: false, hasApi: true, failure: "unavailable" })).toBe("unavailable");
