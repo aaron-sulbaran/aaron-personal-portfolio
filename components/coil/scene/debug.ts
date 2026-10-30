@@ -11,6 +11,7 @@ import {
   type Quad,
   type Silhouette,
 } from "@/lib/coil/geometry";
+import type { SeparationPose } from "@/lib/coil/separation";
 import type { Cards } from "./cards";
 import type { Entrance } from "./entrance";
 import type { Field } from "./field";
@@ -83,6 +84,10 @@ export type DebugStats = {
   // Slice 7: every visible card's bent corners in viewport px (for the
   // header and greeting overlap checks).
   visibleQuads?: () => Quad[];
+  // Every slot's pose as last rendered and the camera they were drawn with (the
+  // canvas's own px): the cards' separation (e2e/deal-separation.spec.ts,
+  // lib/coil/separation.ts).
+  renderedPoses?: () => { camera: Camera | null; poses: SeparationPose[] };
   // ---- the name debug: CPU ms of the name step (the surface's clock and the wake) per frame ----
   namePass?: number[];
   nameFx?: () => NameFx;
@@ -228,6 +233,12 @@ export function installSceneHooks(ctx: SceneCtx, parts: HookParts) {
       .filter((pose) => pose && pose.alpha > 0.01)
       .map((pose) => projectQuad(pose, st.geoCamera as Camera, { left: rect.left, top: rect.top }));
   };
+  debug.renderedPoses = () => ({
+    camera: st.geoCamera,
+    poses: st.rendered
+      .filter(Boolean)
+      .map(({ u, position, basis, scale, bend, beta, alpha }) => ({ u, position, basis, scale, bend, beta, alpha })),
+  });
   debug.nameFx = () => {
     const lock = name.lockup();
     return {
