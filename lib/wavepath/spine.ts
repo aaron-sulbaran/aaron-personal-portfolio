@@ -225,12 +225,14 @@ export const SIGNATURE_ON_MOVES: Move[] = [
 export const SIGNATURE_ON: SpinePoint[] = composePoints(SIGNATURE_ON_MOVES);
 
 // A phone's words and links fill the width, so beside them the line is only ever past the edge: the gutters above land there
-// (the line peeks in at the edge), and where the page has clear air between sections the line comes in across it and goes back out.
+// (the line peeks in at the edge), and where the page has clear air between sections (between the numbers and Connect, and under
+// Connect's links) the line comes in across it and goes back out.
 export const SIGNATURE_PHONE_MOVES: Move[] = [
   ...SIGNATURE_ON_MOVES.filter((m) => m.at !== "numbers" && m.at !== "connect"),
   { at: "numbers", kind: "gutter", side: "right", reach: 0, slope: 0.9, centre: 0.55, mid: 0.955 },
   { at: "gap2", kind: "bay", side: "right", reach: 0.7, slope: 0.7, centre: 0.5 },
   { at: "connect", kind: "gutter", side: "right", reach: 0, slope: 0.6, centre: 0.5, mid: 0.955 },
+  { at: "gap3", kind: "bay", side: "right", reach: 0.6, slope: 0.3, centre: 0.5 },
 ];
 export const SIGNATURE_PHONE: SpinePoint[] = composePoints(SIGNATURE_PHONE_MOVES);
 

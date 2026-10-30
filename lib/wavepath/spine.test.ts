@@ -22,13 +22,16 @@ describe("the line", () => {
       { at: "footer", y: 0.4, x: 1.12, box: true }, { at: "footer", y: 0.8, x: 1.12, box: true },
     ]);
   });
-  it("is the same line on a phone but for a bay across the clear air between the numbers and Connect", () => {
+  it("is the same line on a phone but for two bays across the clear air: between the numbers and Connect, and under Connect's links", () => {
     expect(signatureFor(390)).toBe(SIGNATURE_PHONE);
     expect(signatureFor(768)).toBe(SIGNATURE_ON);
     expect(SIGNATURE_PHONE.filter((p) => p.at === "gap2")).toEqual([
       { at: "gap2", y: 0.15, x: 1.2 }, { at: "gap2", y: 0.5, x: 0.3 }, { at: "gap2", y: 0.85, x: 1.2 },
     ]);
-    expect(SIGNATURE_PHONE.filter((p) => p.at !== "gap2")).toEqual(SIGNATURE_ON);
+    expect(SIGNATURE_PHONE.filter((p) => p.at === "gap3")).toEqual([
+      { at: "gap3", y: 0.35, x: 1.2 }, { at: "gap3", y: 0.5, x: 0.4 }, { at: "gap3", y: 0.65, x: 1.2 },
+    ]);
+    expect(SIGNATURE_PHONE.filter((p) => p.at !== "gap2" && p.at !== "gap3")).toEqual(SIGNATURE_ON);
   });
   it("starts as a level run on the band's measured line, from 24px past the left edge", () => {
     const points = resolveSpine({ points: SIGNATURE_ON }, { ...a1440, line: 135 }, { bandRun: true, viewport: 900 });
