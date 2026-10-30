@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { siteContent } from "@/lib/content";
 import { parseInlineLinks, plainText } from "@/lib/content/links";
+import { quickCopy } from "@/lib/content/quick";
 import { registerHas } from "@/lib/content/register";
 
 const { intro, whoIAm } = siteContent;
@@ -65,6 +66,13 @@ describe("the teaser", () => {
     expect(intro.teaser.line).toBe("Want to see what I've been up to?");
     expect(intro.teaser.deal).toBe("Deal me in");
     expect(intro.teaser.back).toBe("Back to my cards");
-    expect(intro.teaser.quick).toBe("In a rush? The 30-second version");
+    expect(intro.teaser.quick).toBe("In a rush? The MVP");
+  });
+  it("ends the line on the MVP's short word, which is what unfurls, and names the whole of it for assistive tech", () => {
+    expect(intro.teaser.quick.endsWith(` ${quickCopy.titleShort}`)).toBe(true);
+    expect(intro.teaser.quickName).toBe("In a rush? The MVP, my Minimum Viable Portfolio");
+    expect(intro.teaser.quickName.startsWith(intro.teaser.quick)).toBe(true);
+    expect(intro.teaser.quickName.endsWith(quickCopy.title)).toBe(true);
+    expect(JSON.stringify(intro)).not.toContain("30-second");
   });
 });

@@ -41,18 +41,12 @@ export const quickCopy = {
   closingLabel: "Ways to reach me",
   now: "now",
   menuChip: "MVP",
+  // The Menu chip's name for assistive tech: the short word it draws, and what it stands for (page 1's line has its own, intro.teaser.quickName).
+  menuChipName: "The MVP, my Minimum Viable Portfolio",
+  // The quiet line under the chip in the phone's Menu sheet, where nothing unfurls.
+  menuChipNote: "Minimum Viable Portfolio",
   tripLabel: "The trip so far",
   tripTo: (year: string) => `Go to ${year}`,
-  invite: {
-    pill: "In a rush? The MVP version",
-    pillName: "The MVP version",
-    dismiss: "Dismiss the MVP invite",
-    toastTitle: "In a rush?",
-    toastBody: "My Minimum Viable Portfolio has my years and my cards on one page.",
-    yes: "Show me",
-    no: "I'll explore",
-    line: "In a rush? Here's the MVP version",
-  },
 } as const;
 
 // Aaron's year lines, 2026-10-14. 2022's "in" is the missing word from his note.

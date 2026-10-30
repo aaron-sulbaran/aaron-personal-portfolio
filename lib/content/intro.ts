@@ -6,7 +6,7 @@
 // The blocks are data: dropping a tip to plain words on this page is an edit
 // to these strings. Aaron rewrites them later.
 // Page 1 tells all four, whole, in this order; the teaser at its foot is the
-// button that deals and the way to the 30-second version.
+// button that deals and the way to the MVP.
 export const intro = {
   ariaLabel: "About me",
   blocks: [
@@ -47,6 +47,9 @@ export const intro = {
     deal: "Deal me in",
     // The button once the cards are dealt: it leads back to them, no replay.
     back: "Back to my cards",
-    quick: "In a rush? The 30-second version",
+    // Page 1's line under Deal me in. Its last word is the MVP's short name, which unfurls on a fine pointer (components/quick/MvpUnfurl);
+    // quickName is what assistive tech reads (its start is the line as drawn).
+    quick: "In a rush? The MVP",
+    quickName: "In a rush? The MVP, my Minimum Viable Portfolio",
   },
 } as const;

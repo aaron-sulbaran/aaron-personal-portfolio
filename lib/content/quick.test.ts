@@ -116,12 +116,13 @@ describe("quick copy", () => {
     for (const { rest } of parts) expect(rest).toMatch(/^[a-z]+$/);
   });
 
-  it("names the MVP in the invite's pill, toast and line, and the pill's name closes its sentence", () => {
-    const { invite } = quickCopy;
-    expect(invite.pill.endsWith(invite.pillName)).toBe(true);
-    expect(invite.toastBody).toBe("My Minimum Viable Portfolio has my years and my cards on one page.");
-    expect(invite.line).toContain("MVP");
-    expect(invite.dismiss).toContain("MVP");
+  it("names the MVP for assistive tech wherever it is drawn as its short word, and leaves the retired invite's copy out", () => {
+    expect(quickCopy.menuChipName).toBe("The MVP, my Minimum Viable Portfolio");
+    expect(quickCopy.menuChipName.startsWith(`The ${quickCopy.menuChip}`)).toBe(true);
+    expect(quickCopy.menuChipName.endsWith(quickCopy.title)).toBe(true);
+    expect(quickCopy.menuChipNote).toBe(quickCopy.title);
+    expect(quickCopy).not.toHaveProperty("invite");
+    expect(JSON.stringify(quickCopy)).not.toContain("In a rush");
   });
 
   it("closes on links Connect already has", () => {
