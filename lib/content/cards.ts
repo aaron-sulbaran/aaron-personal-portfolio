@@ -116,7 +116,7 @@ export const cards: Cards = {
     ] },
   },
   jobs: {
-    short: "Jobs", visual: { kind: "circles" },
+    short: "Jobs", qualifier: "(part-time)", visual: { kind: "circles" },
     book: { title: "\"unflattering\" jobs that paid for school", meta: "Popeyes to Aritzia, 2021 to 2026" },
     modal: { kind: "timeline", title: "The jobs that paid my way", links: [{ label: "The LinkedIn post", href: "https://lnkd.in/p/g3mXFGcY" }], photos: modalPhotos.jobs, blocks: [
       "I'm self-funded, so I've worked almost every year since high school. Those jobs paid for my car in cash, covered rent, and chipped away at tuition so I could graduate debt free.",

@@ -106,6 +106,9 @@ export interface CardModal {
 export interface CardContent {
   // One or two words: the card's title in the cards section's columns.
   short: string;
+  // A qualifier set after the short title in its column, lighter and smaller, in the same row: still one title, one
+  // button, one accessible name ("Jobs (part-time)"). Only the columns read it; the ribbon, the list and the hints keep short.
+  qualifier?: string;
   visual: CardVisual;
   book: { title: string; meta: string };
   modal: CardModal;

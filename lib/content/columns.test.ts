@@ -38,6 +38,15 @@ describe("the cards section's columns", () => {
     });
   });
 
+  it("set \"(part-time)\" after the jobs title as a qualifier of the one title, and no other card has one", () => {
+    const titles = cardColumns.flatMap((column) => column.groups.flatMap((group) => group.titles));
+    expect(titles.filter((title) => title.qualifier).map((title) => [title.key, title.short, title.qualifier])).toEqual([["jobs", "Jobs", "(part-time)"]]);
+    // Only the Work column reads it: the card's short title stays "Jobs" wherever else a short title is used.
+    expect(cards.jobs.short).toBe("Jobs");
+    expect(cardColumns[0].groups[0].titles.find((title) => title.key === "jobs")?.qualifier).toBe("(part-time)");
+    for (const key of Object.keys(cards) as CardKey[]) if (key !== "jobs") expect(cards[key].qualifier, key).toBeUndefined();
+  });
+
   it("keep each card's full book title, as a visitor reads it, for assistive tech", () => {
     const titles = Object.fromEntries(cardColumns.flatMap((column) => column.groups.flatMap((group) => group.titles.map((title) => [title.key, title.full]))));
     expect(titles.ieee).toBe("IEEE UT Austin");
@@ -47,7 +56,7 @@ describe("the cards section's columns", () => {
 
   it("build a view from a spec", () => {
     const view = columnView({ key: "work", heading: "Work", groups: [{ heading: null, keys: ["travel"] }] });
-    expect(view.groups[0].titles).toEqual([{ key: "travel", short: "Travel", full: "Travel" }]);
+    expect(view.groups[0].titles).toEqual([{ key: "travel", short: "Travel", qualifier: null, full: "Travel" }]);
     expect(columnSpecs).toHaveLength(2);
   });
 });
