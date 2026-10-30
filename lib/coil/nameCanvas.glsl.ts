@@ -6,23 +6,23 @@ import { NAME_COMPOSITE_GLSL } from "./field.glsl";
 // canvas is clear everywhere else, so the page shows through and the field is
 // never anywhere but inside the letterforms. The uniforms are the composite's
 // own names (scene/name.ts and its glyph pass write them and read them), and
-// the letters' colour is that composite's `letters` exactly: the loader's solid
-// gradient (uNameK), the surface growing over it (uSurfIn), the wake, the
-// per-letter minimum and the grain. The output is premultiplied by the letters'
-// coverage.
+// the letters' colour, once the surface has grown in (uSurfIn), is that
+// composite's `letters` exactly: the surface, the wake, the per-letter minimum
+// and the grain. The output is premultiplied by the letters' coverage.
 //
-// Every page title wears the same fill (components/coil/fill): uSolidK is how
-// much of the solid the letters show before the surface grows over it. The
-// name's is its ink (the same uniform as uNameK: the loader's solid name); a
-// title's is 1 with the solid in the title's own ink and no grain, so the first
-// frame is the DOM text it takes over from.
+// Before the surface grows in, the letters are the page's own text they take
+// over from, pixel for pixel (the solid): a flat ink over the page, not over
+// the field, at the solid's opacity (uSolidK). The name's is what the loader's
+// lockup lands in (lib/home/loaderLanding.ts): "Aaron" in the gradient's
+// middle at the ink's opacity (the same uniform as uNameK), "hi, i'm" in its
+// top colour, whole, and no grain. Every page title wears the same fill
+// (components/coil/fill): a title's solid is its own ink, whole.
 export const NAME_ONLY_FRAG = /* glsl */ `
   uniform sampler2D uField, uName;
   uniform vec4 uView, uNameRect;
-  uniform vec2 uFull, uNameSpan;
+  uniform vec2 uFull;
   uniform vec3 uGradTop, uGradBottom;
-  uniform float uNameK, uSolidK, uNameA, uGreetA, uGreetSplit, uLod, uGrain, uDpr;
-  float h12(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
+  uniform float uNameK, uSolidK, uNameA, uGreetA, uGreetSplit, uLod;
   ${NAME_COMPOSITE_GLSL}
 
   void main() {
@@ -36,13 +36,12 @@ export const NAME_ONLY_FRAG = /* glsl */ `
     float greeting = 1.0 - step(uGreetSplit, g.y);
     float m = cover * mix(uNameA, uGreetA, greeting);
     if (m <= 0.0) { gl_FragColor = vec4(0.0); return; }
-    // The loader's solid name: a vertical gradient over the name's band with
-    // static grain locked to the name's own device pixels.
-    float gy = clamp((g.y - uNameSpan.x) / uNameSpan.y, 0.0, 1.0);
-    vec3 gc = mix(uGradTop, uGradBottom, smoothstep(0.0, 1.0, gy));
-    vec2 cell = floor((px - uNameRect.xy) * uDpr);
-    vec3 letters = mix(field, gc + (h12(cell + 17.0) - 0.5) * 2.0 * uGrain, clamp(uSolidK, 0.0, 1.0));
-    if (uSurfIn > 0.0) letters = mix(letters, nameLetters(field, g, greeting), uSurfIn);
-    gl_FragColor = vec4(letters * m, m);
+    // The solid: the page's text as it was, over the page (premultiplied).
+    float k = mix(clamp(uSolidK, 0.0, 1.0), 1.0, greeting);
+    vec3 solid = mix(mix(uGradTop, uGradBottom, 0.5), uGradTop, greeting);
+    vec4 was = vec4(solid, 1.0) * k * m;
+    if (uSurfIn <= 0.0) { gl_FragColor = was; return; }
+    vec3 letters = nameLetters(field, g, greeting);
+    gl_FragColor = mix(was, vec4(letters * m, m), uSurfIn);
   }
 `;
