@@ -35,14 +35,21 @@ describe("the inline register", () => {
   });
 
   it("defines the mark card's two electrical terms in my words", () => {
-    expect(register.def.voltage).toEqual({ title: "Voltage", body: "the difference in electric potential between two points" });
-    expect(register.def.arc).toEqual({ title: "Arc", body: "a continuous electrical discharge that occurs when electric current flows through an air gap between two electrodes" });
+    expect(register.def.voltage).toEqual({ title: "Voltage", body: ["the difference in electric potential between two points"] });
+    expect(register.def.arc).toEqual({ title: "Arc", body: ["a continuous electrical discharge that occurs when electric current flows through an air gap between two electrodes"] });
   });
 
-  it("defines product in Aaron's words", () => {
+  it("defines product in Aaron's words: three paragraphs with three photo pops, still opened by a click and still hinted", () => {
     expect(register.def.product.title).toBe("What a product is");
-    expect(register.def.product.body.startsWith("A product (to me) is a tool that's genuinely useful")).toBe(true);
+    expect(register.def.product.body).toEqual([
+      "A product (to me) is a tool that's genuinely useful to someone and easy for them to [pick up](pop:tool-user). If it's for everyone, anyone should get it on their first try. If it's for niche hobbyists, the hobbyists in that community should [get it immediately](pop:bambu-h2s).",
+      "About 99% of the time, a product should be built for the user instead of forcing the user to get used to the product.",
+      "The other 1% is how you get a moonshot product like [the iPhone](pop:steve-jobs-iphone), which didn't just change the way people use a phone (the product), it changed the world.",
+    ]);
     expect(register.def.product.hint).toBe("click to read how I define a product");
+    // Every pop the paragraphs point at is in the register, so none falls back to plain words.
+    for (const paragraph of register.def.product.body) expect(parseInlineLinks(paragraph, registerHas).unknown).toEqual([]);
+    expect(register.def.product.body.join(" ").match(/\(pop:[a-z0-9-]+\)/g)).toEqual(["(pop:tool-user)", "(pop:bambu-h2s)", "(pop:steve-jobs-iphone)"]);
   });
 
   it("gives every pop with a photo a caption line, so a popover never shows a bare picture, except the tool-user meme, which is captionless on purpose", () => {

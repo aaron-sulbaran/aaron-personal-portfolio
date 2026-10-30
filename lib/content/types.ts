@@ -6,8 +6,9 @@
 export interface PhotoCrop { x: number; y: number; w: number; h: number }
 
 // The inline register: what [words](def:key), (tip:key) and (pop:key) open.
-// hint: the hover line on a definition, so the word says the click opens it.
-export interface DefinitionEntry { title: string; body: string; hint?: string }
+// hint: the hover line on a definition, so the word says the click opens it. body is its paragraphs, each carrying the
+// inline link markup (lib/content/links.ts), so a definition can hold a pop of its own.
+export interface DefinitionEntry { title: string; body: readonly string[]; hint?: string }
 
 export interface TipEntry {
   text: string;

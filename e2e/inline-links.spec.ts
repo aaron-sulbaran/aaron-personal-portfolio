@@ -3,7 +3,8 @@ import { siteContent } from "@/lib/content";
 import { tipText } from "@/lib/content/tracks";
 import { openHome } from "./support/coil";
 import { test, expect } from "./support/fixtures";
-import { barScale, bubble, CALENDAR, DEF, fillOf, MATCHA, MATCHA_HREF, openFixture, POP, productLink, rest, tipLink, tabTo, TIP } from "./support/inline";
+import { visibleText } from "@/lib/content/links";
+import { barScale, bubble, CALENDAR, DEF, fillOf, MATCHA, MATCHA_HREF, openFixture, POP, PRODUCT_POPS, productLink, productPop, rest, tipLink, tabTo, TIP } from "./support/inline";
 // The copy's inline links (components/inline) by mouse and keyboard, each on a
 // lines-split Block; touch is e2e/inline-links-touch.spec.ts (the touch project).
 const { register } = siteContent;
@@ -102,10 +103,117 @@ test("inline links: a definition opens the house text modal by mouse; Escape clo
   await expect(link).toHaveAttribute("aria-haspopup", "dialog");
   await link.click();
   const dialog = page.getByRole("dialog", { name: register.def.product.title });
-  await expect(dialog).toContainText(register.def.product.body);
+  // Its three paragraphs, as I wrote them, each in a paragraph of its own.
+  await expect(dialog.locator("[data-definition-body] p")).toHaveText(register.def.product.body.map((paragraph) => visibleText(paragraph)));
   await page.keyboard.press("Escape");
   await expect(dialog).toBeHidden();
   await expect(link).toBeFocused();
+});
+
+// The product definition holds three photo pops inside its own open panel: a pop inside an open popover.
+async function openProduct(page: Page) {
+  const link = await productLink(page);
+  await link.click();
+  const dialog = page.getByRole("dialog", { name: register.def.product.title });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator("[data-definition-body] p")).toHaveCount(3);
+  await expect(dialog.locator('[data-inline="pop"]')).toHaveCount(3);
+  return { link, dialog };
+}
+// What a showing label must satisfy beside the panel: above it, whole inside the viewport, holding the pop's photo (and its caption when it has one).
+async function expectPopShown(page: Page, dialog: ReturnType<Page["locator"]>, key: string) {
+  const entry = register.pop[key];
+  const label = bubble(page);
+  await expect(label).toHaveAttribute("data-shown", "true");
+  await expect(label).toHaveAttribute("data-target", `pop:${key}`);
+  await expect(label.locator("img")).toHaveAttribute("alt", entry.alt);
+  if (entry.caption) await expect(label).toContainText(entry.caption);
+  else expect((await label.innerText()).trim(), "a captionless pop has no caption line").toBe("");
+  await page.waitForTimeout(350); // the label's fade and its trail settle
+  const zPanel = await dialog.evaluate((el) => Number(getComputedStyle(el).zIndex));
+  const read = await label.evaluate((el) => {
+    const rect = el.getBoundingClientRect();
+    const mid = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+    return {
+      rect: { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom },
+      view: { width: innerWidth, height: innerHeight },
+      topmost: !!mid && el.contains(mid),
+      zLabel: Number(getComputedStyle(el).zIndex),
+    };
+  });
+  expect(read.rect.left, "inside the viewport, left").toBeGreaterThanOrEqual(0);
+  expect(read.rect.top, "inside the viewport, top").toBeGreaterThanOrEqual(0);
+  expect(read.rect.right, "inside the viewport, right").toBeLessThanOrEqual(read.view.width);
+  expect(read.rect.bottom, "inside the viewport, bottom").toBeLessThanOrEqual(read.view.height);
+  expect(read.zLabel, "the label's layer is above the dialog's").toBeGreaterThan(zPanel);
+  expect(read.topmost, "nothing of the panel is drawn over the label").toBe(true);
+  await expect(dialog).toBeVisible();
+}
+test("inline links: the product definition's three paragraphs hold three photo pops inside the panel itself", async ({ page }) => {
+  const { dialog } = await openProduct(page);
+  const pops = dialog.locator('[data-definition-body] [data-inline="pop"]');
+  await expect(pops).toHaveText(PRODUCT_POPS.map((pop) => pop.words));
+  // One in the first paragraph twice over, none in the second, the iPhone's in the third.
+  await expect(dialog.locator("[data-definition-body] p").nth(0).locator('[data-inline="pop"]')).toHaveCount(2);
+  await expect(dialog.locator("[data-definition-body] p").nth(1).locator('[data-inline="pop"]')).toHaveCount(0);
+  await expect(dialog.locator("[data-definition-body] p").nth(2).locator('[data-inline="pop"]')).toHaveCount(1);
+  for (const { key } of PRODUCT_POPS) await expect(productPop(dialog, key)).toHaveAccessibleDescription([register.pop[key].alt, register.pop[key].caption].filter(Boolean).join(". "));
+});
+for (const viewport of [{ width: 1280, height: 800 }, { width: 1280, height: 560 }]) {
+  test(`inline links: each inner pop opens on hover above the open panel and inside the viewport, at ${viewport.width} by ${viewport.height}`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    const { dialog } = await openProduct(page);
+    for (const { key } of PRODUCT_POPS) {
+      await productPop(dialog, key).hover();
+      await expectPopShown(page, dialog, key);
+      await page.mouse.move(viewport.width / 2, 8);
+      await expect(bubble(page)).toHaveAttribute("data-shown", "false");
+    }
+  });
+  test(`inline links: each inner pop opens on keyboard focus under its word, above the panel and inside the viewport, at ${viewport.width} by ${viewport.height}`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    const { dialog } = await openProduct(page);
+    for (const { key } of PRODUCT_POPS) {
+      await tabTo(page, productPop(dialog, key));
+      await expect(bubble(page)).toHaveAttribute("data-mode", "focus");
+      await expectPopShown(page, dialog, key);
+    }
+  });
+}
+test("inline links: Escape closes an inner pop first and then the panel, and focus goes home", async ({ page }) => {
+  const { link, dialog } = await openProduct(page);
+  // A hovered pop: the first Escape takes the label, the second the panel.
+  await productPop(dialog, "bambu-h2s").hover();
+  await expectPopShown(page, dialog, "bambu-h2s");
+  await page.keyboard.press("Escape");
+  await expect(bubble(page)).toHaveAttribute("data-shown", "false");
+  await expect(dialog).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  await expect(link).toBeFocused();
+  // A focused pop: the first Escape closes the label and leaves focus on the word, still inside the panel; the second closes the panel.
+  await link.click();
+  await expect(dialog).toBeVisible();
+  await tabTo(page, productPop(dialog, "steve-jobs-iphone"));
+  await expectPopShown(page, dialog, "steve-jobs-iphone");
+  await page.keyboard.press("Escape");
+  await expect(bubble(page)).toHaveAttribute("data-shown", "false");
+  await expect(dialog).toBeVisible();
+  await expect(productPop(dialog, "steve-jobs-iphone")).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  await expect(link).toBeFocused();
+});
+test("inline links: clicking an inner pop, or the panel's own words, never closes the panel", async ({ page }) => {
+  const { dialog } = await openProduct(page);
+  for (const { key } of PRODUCT_POPS) {
+    await productPop(dialog, key).click();
+    await expect(dialog).toBeVisible();
+  }
+  await dialog.locator("[data-definition-body] p").nth(1).click();
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: siteContent.modals.closeAriaLabel }).click();
+  await expect(dialog).toBeHidden();
 });
 test("inline links: a definition opens from the keyboard, holds focus inside, and returns it", async ({ page }) => {
   const link = await productLink(page);

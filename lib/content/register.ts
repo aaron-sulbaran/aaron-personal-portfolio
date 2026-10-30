@@ -13,16 +13,21 @@ export const register: InlineRegister = {
   def: {
     product: {
       title: "What a product is",
-      body: "A product (to me) is a tool that's genuinely useful to someone and easy for them to pick up. If it's for everyone, anyone should get it on their first try. If it's for niche hobbyists, the hobbyists in that community should get it immediately. About 99% of the time a product should be built for the user instead of forcing the user to get used to the product. The other 1% is how you get a moonshot product like the iPhone, which didn't just change the way people use a phone (the product), it changed the world.",
+      // Three paragraphs, with three photo pops of their own (Aaron, 2026-10-29), which open inside the open panel.
+      body: [
+        "A product (to me) is a tool that's genuinely useful to someone and easy for them to [pick up](pop:tool-user). If it's for everyone, anyone should get it on their first try. If it's for niche hobbyists, the hobbyists in that community should [get it immediately](pop:bambu-h2s).",
+        "About 99% of the time, a product should be built for the user instead of forcing the user to get used to the product.",
+        "The other 1% is how you get a moonshot product like [the iPhone](pop:steve-jobs-iphone), which didn't just change the way people use a phone (the product), it changed the world.",
+      ],
       hint: "click to read how I define a product",
     },
     voltage: {
       title: "Voltage",
-      body: "the difference in electric potential between two points",
+      body: ["the difference in electric potential between two points"],
     },
     arc: {
       title: "Arc",
-      body: "a continuous electrical discharge that occurs when electric current flows through an air gap between two electrodes",
+      body: ["a continuous electrical discharge that occurs when electric current flows through an air gap between two electrodes"],
     },
   },
   tip: {
