@@ -217,6 +217,17 @@ describe("the mentors and the links", () => {
     expect(html).toContain("My freshman class mentor, introduction to IEEE UT (as prev. president), and longtime friend.");
     expect(html).toContain("One of my favorite professors ever.");
   });
+  it("draws one mentor at a time for the phone pager, the heading only with the first", () => {
+    const first = renderToStaticMarkup(createElement(MentorsList, { compact: true, only: 0 }));
+    expect(first).toContain("the people who shaped me");
+    expect(first.match(/<a /g)?.length).toBe(1);
+    expect(first).toContain("Andrew Chang");
+    const third = renderToStaticMarkup(createElement(MentorsList, { compact: true, only: 2 }));
+    expect(third).not.toContain("the people who shaped me");
+    expect(third.match(/<a /g)?.length).toBe(1);
+    expect(third).toContain("Jared Alonzo");
+    expect(renderToStaticMarkup(createElement(MentorsList, { only: 6 }))).toBe("");
+  });
   it("leaves out a link drawn elsewhere on the page, and renders nothing when that was its only one", () => {
     const { href } = siteContent.cards.jobs.modal.links[0];
     expect(renderToStaticMarkup(createElement(CardLinks, { cardKey: "jobs" }))).toContain(href);
