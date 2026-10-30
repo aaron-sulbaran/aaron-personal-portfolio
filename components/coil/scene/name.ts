@@ -14,6 +14,8 @@ import { nameCompositeInk } from "@/lib/coil/debugFlags";
 import { clamp01, isNarrow } from "@/lib/coil/geometry";
 import { siteEase } from "@/lib/coil/motion";
 import { nameInkGain } from "@/lib/coil/nameInk";
+import { paintAsText } from "@/lib/coil/lineAnchor";
+import { maskGrid } from "@/lib/coil/pixelGrid";
 import { getIntroKnobs } from "@/lib/home/introKnobs";
 import { toBytes } from "@/lib/coil/theme";
 import type { NameTarget } from "@/lib/coil/nameTarget";
@@ -110,6 +112,71 @@ function paintNameLockup(greeting: string, name: string, family: string, sizePx:
   };
 }
 
+// The lockup where the page lays it out (the name's own canvas, hero rework
+// slice 4d): each line painted at the page's own pen and baseline at the page's
+// own size, on the canvas's device grid (lib/coil/pixelGrid.ts): the mask's
+// pixels are the buffer's, its corner on one, and both baselines on whole
+// rows, so the glyphs are the page's own glyphs, pixel for pixel, and nothing
+// resamples them. `scale` is the buffer's px per CSS px. Everything returned is
+// CSS px, the rect's corner from the canvas's drawn corner.
+function paintPlacedLockup(heading: HTMLElement, greeting: string, name: string, family: string, at: NamePlacement, scale: number): NameLockup & { x: number; y: number; greetTop: number } {
+  const nameFont = `900 ${at.name.size}px ${family}`;
+  const greetFont = `900 ${at.greeting.size}px ${family}`;
+  const { gm, nm, greetCap } = paintAsText(heading, 1, 1, (probe) => {
+    probe.fontKerning = "normal";
+    probe.font = greetFont;
+    const greetMetrics = probe.measureText(greeting);
+    const cap = probe.measureText("H").actualBoundingBoxAscent;
+    probe.font = nameFont;
+    return { gm: greetMetrics, nm: probe.measureText(name), greetCap: cap };
+  }).value;
+  const n = at.name;
+  const gr = at.greeting;
+  const pad = Math.ceil(n.size * COIL.lockup.pad);
+  const inkLeft = Math.min(n.pen - nm.actualBoundingBoxLeft, gr.pen - gm.actualBoundingBoxLeft);
+  const inkRight = Math.max(n.pen + nm.actualBoundingBoxRight, gr.pen + gm.actualBoundingBoxRight);
+  const inkTop = gr.baseline - gm.actualBoundingBoxAscent;
+  const inkBottom = n.baseline + nm.actualBoundingBoxDescent;
+  const { px, rect } = maskGrid({ x: inkLeft - pad, y: inkTop - pad, w: inkRight - inkLeft + 2 * pad, h: inkBottom - inkTop + 2 * pad }, scale);
+  const { canvas, value: glyphs } = paintAsText(heading, px.w, px.h, (g) => {
+    g.setTransform(scale, 0, 0, scale, -px.x, -px.y);
+    g.fillStyle = "white";
+    g.textBaseline = "alphabetic";
+    g.fontKerning = "normal";
+    g.font = greetFont;
+    g.fillText(greeting, gr.pen, gr.baseline);
+    g.font = nameFont;
+    g.fillText(name, n.pen, n.baseline);
+    return [...name].map((_, i) => ({
+      x0: n.pen + g.measureText(name.slice(0, i)).width - rect.x,
+      x1: n.pen + g.measureText(name.slice(0, i + 1)).width - rect.x,
+    }));
+  });
+  const capTop = n.baseline - nm.actualBoundingBoxAscent;
+  const greetLow = gr.baseline + Math.max(0, gm.actualBoundingBoxDescent);
+  return {
+    canvas,
+    x: rect.x,
+    y: rect.y,
+    width: rect.w,
+    height: rect.h,
+    pad,
+    nameInkWidth: nm.actualBoundingBoxLeft + nm.actualBoundingBoxRight,
+    inkBearing: nm.actualBoundingBoxLeft,
+    ascent: nm.actualBoundingBoxAscent,
+    descent: nm.actualBoundingBoxDescent,
+    // The name's own band starts a pad above its cap top; the greeting is everything above it.
+    greetBlock: capTop - pad - rect.y,
+    split: (greetLow + capTop) / 2 - rect.y,
+    greetCap,
+    greetPx: gr.size,
+    greetBaseline: gr.baseline - rect.y,
+    greetTop: inkTop - rect.y,
+    glyphs,
+    greetX: { x0: gr.pen - gm.actualBoundingBoxLeft - rect.x, x1: gr.pen + gm.actualBoundingBoxRight - rect.x },
+  };
+}
+
 // The greeting shows with the name: the loader lands both, or both rise as
 // the band opens.
 // ---- end fx-hero ----
@@ -128,10 +195,13 @@ export type NameFrame = {
   nameFromLoader: boolean;
 };
 
-// Where the page's own lockup is, in the name's canvas (CSS px): its pen start,
-// its baseline and its font size. A name with none is centered, as the hero's
-// name always was.
-export type NamePlacement = { left: number; baseline: number; size: number };
+// Where the page lays its own lockup out, in the name's canvas (CSS px from the
+// canvas's drawn corner): each line's pen, its baseline (on a whole device px,
+// where the page paints it) and its font size; that corner in the viewport;
+// and the heading whose type the letters are set in. A name with none is
+// centered, as the hero's name always was.
+export type LinePlacement = { pen: number; baseline: number; size: number };
+export type NamePlacement = { name: LinePlacement; greeting: LinePlacement; corner: { left: number; top: number }; heading: HTMLElement };
 
 // The page's loader (components/home/loader) is on the screen: armed by the head
 // script, and not yet done.
@@ -169,6 +239,9 @@ export function createName(
     greeting: { left: number; baseline: number; fontPx: number };
   } | null = null;
   let nameLanded = false;
+  // The canvas's drawn corner in the viewport, for a placed name (the Coil's
+  // scene reads its host's box).
+  let corner: { left: number; top: number } | null = null;
   // An entrance that waits for the loader has reached the frame: the name and
   // the greeting are held at 0 and the surface has not begun, so a landing
   // draws exactly the solid gradient the loader holds.
@@ -178,18 +251,15 @@ export function createName(
   const underLoader = loaderRuns();
 
   function layoutName(placed: NamePlacement | null = null) {
-    if (!st.geo && !placed) return;
+    if (placed) return layoutPlaced(placed);
+    if (!st.geo) return;
     const { width: W, height: H } = view;
     const narrow = isNarrow(view);
-    let size: number;
-    if (placed) size = placed.size;
-    else {
-      const probe = document.createElement("canvas").getContext("2d");
-      if (!probe) return;
-      probe.font = `900 100px ${st.nameFamily}`;
-      const w100 = probe.measureText(siteContent.hero.name).width || 1;
-      size = ((W * (narrow ? COIL.lockup.widthNarrow : COIL.lockup.widthWide)) / w100) * 100;
-    }
+    const probe = document.createElement("canvas").getContext("2d");
+    if (!probe) return;
+    probe.font = `900 100px ${st.nameFamily}`;
+    const w100 = probe.measureText(siteContent.hero.name).width || 1;
+    const size = ((W * (narrow ? COIL.lockup.widthNarrow : COIL.lockup.widthWide)) / w100) * 100;
     // ---- fx-hero: "Hi, I'm" drawn with the name, one mask ----
     const scale = Math.min(2, window.devicePixelRatio || 1);
     const mask = paintNameLockup(siteContent.hero.greeting, siteContent.hero.name, st.nameFamily, size, scale);
@@ -201,8 +271,8 @@ export function createName(
     texture.anisotropy = 4;
     nameTexture = texture;
     const inkWidth = mask.nameInkWidth;
-    const capTop = placed ? placed.baseline - mask.ascent : H / 2 - mask.ascent / 2;
-    const left = placed ? placed.left - mask.inkBearing : (W - inkWidth) / 2;
+    const capTop = H / 2 - mask.ascent / 2;
+    const left = (W - inkWidth) / 2;
     const span = mask.ascent + mask.descent + 2 * mask.pad;
     cu.uName.value = texture;
     cu.uNameRect.value.set(left - mask.pad, capTop - mask.pad - mask.greetBlock, mask.width, mask.height);
@@ -239,6 +309,47 @@ export function createName(
     const greetingPx = narrow ? 16 : Math.min(21, Math.max(16, W * 0.0125));
     live.current.overlay.current?.layout(posterMode ? null : { controlPx: Math.round(greetingPx * 0.86) });
     // ---- end fx-hero ----
+  }
+
+  // The page's lockup, laid where the page lays it (the name's own canvas).
+  function layoutPlaced(placed: NamePlacement) {
+    const mask = paintPlacedLockup(placed.heading, siteContent.hero.greeting, siteContent.hero.name, st.nameFamily, placed, view.dpr);
+    lockup = { ...mask, scale: view.dpr };
+    corner = placed.corner;
+    nameTexture?.dispose();
+    const texture = new CanvasTexture(mask.canvas);
+    texture.generateMipmaps = true;
+    texture.minFilter = LinearMipmapLinearFilter;
+    texture.anisotropy = 4;
+    nameTexture = texture;
+    const span = mask.ascent + mask.descent + 2 * mask.pad;
+    cu.uName.value = texture;
+    cu.uNameRect.value.set(mask.x, mask.y, mask.width, mask.height);
+    cu.uNameSpan.value.set(mask.greetBlock / mask.height, span / mask.height);
+    cu.uGreetSplit.value = mask.split / mask.height;
+    greetBlock = mask.greetBlock;
+    // A texel a buffer pixel: the mask is read at its own resolution.
+    cu.uLod.value = Math.max(0, Math.log2(mask.canvas.height / (mask.height * view.dpr)));
+    cu.uNameA.value = posterMode ? 0 : 1;
+    surface.layout({ x: mask.x, y: mask.y, w: mask.width, h: mask.height }, view.dpr);
+    const boxes = cu.uGlyphBox.value as Vector4[];
+    const glyphs = mask.glyphs.slice(0, NAME.maxGlyphs - 1);
+    const n = placed.name;
+    const nameTop = (n.baseline - mask.ascent - mask.y) / mask.height;
+    const nameBottom = (n.baseline + mask.descent - mask.y) / mask.height;
+    glyphs.forEach((glyph, i) => boxes[i].set(glyph.x0 / mask.width, nameTop, glyph.x1 / mask.width, nameBottom));
+    cu.uGlyphN.value = glyphs.length;
+    // The greeting in the last slot (its mean, for the greeting's cap).
+    boxes[NAME.maxGlyphs - 1].set(mask.greetX.x0 / mask.width, mask.greetTop / mask.height, mask.greetX.x1 / mask.width, mask.split / mask.height);
+    nameBox = {
+      left: n.pen - mask.inkBearing,
+      baseline: n.baseline,
+      inkWidth: mask.nameInkWidth,
+      size: n.size,
+      maskTop: n.baseline - mask.ascent - mask.pad,
+      maskHeight: span,
+      greeting: { left: mask.x + mask.greetX.x0, baseline: placed.greeting.baseline, fontPx: placed.greeting.size },
+    };
   }
 
   // The name's middle in the canvas (CSS px): where the field's opening grows
@@ -298,7 +409,7 @@ export function createName(
   // ---- slice 4: the loader's continuity exit ----
   function nameRect(): NameTarget | null {
     if (!st.ready || !nameBox) return null;
-    const rect = host.getBoundingClientRect();
+    const rect = corner ?? host.getBoundingClientRect();
     return {
       left: rect.left + nameBox.left,
       baseline: rect.top + nameBox.baseline,

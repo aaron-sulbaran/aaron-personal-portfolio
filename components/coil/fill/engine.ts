@@ -4,6 +4,7 @@ import { COIL } from "@/lib/coil/constants";
 import { OPEN_ALL } from "@/lib/coil/entrance";
 import { FIELD } from "@/lib/coil/field.glsl";
 import { NAME_ONLY_FRAG } from "@/lib/coil/nameCanvas.glsl";
+import { wholePxBox, type DrawnBox } from "@/lib/coil/pixelGrid";
 import { readCoilTheme, watchTheme } from "@/lib/coil/theme";
 import { readDebugFlags } from "../scene/debug";
 import { createField, type Field } from "../scene/field";
@@ -50,7 +51,16 @@ export type FillParts = {
   surface: NameSurface;
   glyphTargets: [WebGLRenderTarget, WebGLRenderTarget];
   loop: LoopLink;
+  // The canvas's box, on whole CSS px, where the browser draws it and the
+  // drawing buffer covers it: the letters' CSS px are counted from its corner.
+  // Current from the layout on.
+  box: () => DrawnBox;
 };
+
+// The fill draws at the screen's own resolution (to 2x, the phones' budget):
+// its letters take over from the page's own text, so they are as sharp as it
+// and each buffer pixel is one screen pixel (no stretch to the screen).
+const FILL_DPR_CAP = 2;
 
 // Where the letters are and how they come in: the name's or a title's.
 export type Lettering = {
@@ -111,6 +121,7 @@ export function startFill<L extends Lettering>(
   let paused = false;
   let lastTime = performance.now();
   let disposed = false;
+  let box: DrawnBox = { left: 0, top: 0, width: 1, height: 1, dpr: 1 };
 
   const loop: LoopLink = {
     wake: () => wake(),
@@ -124,7 +135,7 @@ export function startFill<L extends Lettering>(
   const surface = createNameSurface(ctx, gl);
   const glyphTargets = createGlyphTargets();
   const field = createField(ctx, gl, { surface: surface.texture, wake: surface.wakeUniforms, glyph: glyphTargets[0].texture }, NAME_ONLY_FRAG);
-  const lettering = makeLettering({ ctx, gl, field, surface, glyphTargets, loop });
+  const lettering = makeLettering({ ctx, gl, field, surface, glyphTargets, loop, box: () => box });
   const { view, pointer } = st;
 
   function running() {
@@ -138,14 +149,26 @@ export function startFill<L extends Lettering>(
     st.lastFieldTime = Number.NaN;
   }
 
-  // The canvas's size in CSS px is its layout box (the page's CSS sizes it).
+  // The canvas is its host's box (the page's CSS sizes the host) set on whole
+  // CSS px, so the browser draws it exactly there (lib/coil/pixelGrid.ts), and
+  // the buffer is that box at the fill's resolution, in whole pixels.
   function layout() {
-    const rect = canvas.getBoundingClientRect();
-    view.width = Math.max(1, canvas.clientWidth || rect.width);
-    view.height = Math.max(1, canvas.clientHeight || rect.height);
-    view.dpr = Math.min(window.devicePixelRatio || 1, st.budget.dprCap);
-    renderer.setPixelRatio(view.dpr);
-    renderer.setSize(view.width, view.height, false);
+    const host = canvas.parentElement ?? canvas;
+    const whole = wholePxBox(host.getBoundingClientRect(), { x: window.scrollX, y: window.scrollY });
+    if (host !== canvas) {
+      const { style } = canvas;
+      style.position = "absolute";
+      style.left = `${whole.inHost.left}px`;
+      style.top = `${whole.inHost.top}px`;
+      style.width = `${whole.width}px`;
+      style.height = `${whole.height}px`;
+    }
+    box = { left: whole.left, top: whole.top, width: whole.width, height: whole.height, dpr: window.devicePixelRatio || 1 };
+    view.width = box.width;
+    view.height = box.height;
+    view.dpr = Math.min(box.dpr, FILL_DPR_CAP);
+    renderer.setPixelRatio(1);
+    renderer.setSize(Math.max(1, Math.round(view.width * view.dpr)), Math.max(1, Math.round(view.height * view.dpr)), false);
     const buffer = renderer.getDrawingBufferSize(new Vector2());
     gl.uView.value.set(0, 0, 1 / buffer.x, 1 / buffer.y);
     gl.fieldTarget.setSize(Math.max(8, Math.round(view.width / FIELD.divisor)), Math.max(8, Math.round(view.height / FIELD.divisor)));
@@ -225,6 +248,8 @@ export function startFill<L extends Lettering>(
     if (!raf) drawStill();
   });
   resizeObserver.observe(canvas);
+  // The canvas is sized in px from its host: the host's own size is what moves.
+  if (canvas.parentElement) resizeObserver.observe(canvas.parentElement);
   for (const el of lettering.observe()) resizeObserver.observe(el);
   const intersection = new IntersectionObserver((entries) => {
     visible = entries[entries.length - 1]?.isIntersecting ?? true;

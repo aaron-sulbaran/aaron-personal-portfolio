@@ -1,7 +1,8 @@
+import { firstText, lineAnchor, paintedBaseline, textPx } from "@/lib/coil/lineAnchor";
 import type { NameTarget } from "@/lib/coil/nameTarget";
-import { PROFA } from "@/lib/home/lockup";
+import type { DrawnBox } from "@/lib/coil/pixelGrid";
 import { startFill, type FillHooks, type FillStats } from "../fill/engine";
-import { createName, type NamePlacement } from "../scene/name";
+import { createName, type LinePlacement, type NamePlacement } from "../scene/name";
 
 // The page's name, drawn in its own small canvas (hero rework, slice 4d) by the
 // fill every numbered page's title wears (../fill/engine.ts). The Coil's stage
@@ -12,17 +13,25 @@ import { createName, type NamePlacement } from "../scene/name";
 //
 // Reduced motion mounts none of this: the page's CSS fallback is the name then.
 
-// Where the lockup sits in the canvas: the page's own h1 ([data-coil-name], whose
-// [data-lockup-name] line is "Aaron") said where, as in the loader's landing.
-function placeName(canvas: HTMLElement): NamePlacement | null {
+// Where the lockup sits in the canvas: where the page's own h1 ([data-coil-name])
+// paints its two lines, read off its layout (lib/coil/lineAnchor.ts), so the
+// canvas draws the page's own glyphs on the page's own pixels: the loader's
+// lockup lands there as the h1, and a jump back finds the h1 there.
+function placeLine(line: HTMLElement | null | undefined, box: DrawnBox): LinePlacement | null {
+  const text = line ? firstText(line) : null;
+  const at = text ? lineAnchor(text) : null;
+  const size = line ? parseFloat(getComputedStyle(line).fontSize) : 0;
+  if (!at || !(size > 0)) return null;
+  const baseline = paintedBaseline(at, window.scrollY, textPx(box.dpr));
+  return { pen: at.x - box.left, baseline: baseline - box.top, size };
+}
+
+function placeName(box: DrawnBox): NamePlacement | null {
   const heading = document.querySelector<HTMLElement>("[data-coil-name]");
-  const line = heading?.querySelector<HTMLElement>("[data-lockup-name]");
-  if (!heading || !line) return null;
-  const size = parseFloat(getComputedStyle(heading).fontSize);
-  const stage = canvas.getBoundingClientRect();
-  const rect = line.getBoundingClientRect();
-  if (!(size > 0) || rect.width <= 0) return null;
-  return { left: rect.left - stage.left, baseline: rect.top - stage.top + PROFA.base * size, size };
+  const name = placeLine(heading?.querySelector<HTMLElement>("[data-lockup-name]"), box);
+  const greeting = placeLine(heading?.querySelector<HTMLElement>(".name-lockup__greet"), box);
+  if (!heading || !name || !greeting) return null;
+  return { name, greeting, corner: { left: box.left, top: box.top }, heading };
 }
 
 export type NameCanvasHooks = FillHooks;
@@ -45,7 +54,7 @@ export type NameCanvasRuntime = {
 export function startNameCanvas(canvas: HTMLCanvasElement, hooks: NameCanvasHooks, { compileAsync = false } = {}): NameCanvasRuntime {
   const fill = startFill(
     canvas,
-    ({ ctx, gl, field, surface, glyphTargets, loop }) => {
+    ({ ctx, gl, field, surface, glyphTargets, loop, box }) => {
       const { st } = ctx;
       const name = createName(ctx, gl, field.compMaterial, surface, glyphTargets, loop);
       return {
@@ -55,7 +64,7 @@ export function startNameCanvas(canvas: HTMLCanvasElement, hooks: NameCanvasHook
             document.fonts.load(`900 100px ${st.nameFamily}`).then(() => undefined),
             new Promise<void>((resolve) => window.setTimeout(resolve, 6000)),
           ]),
-        layout: () => name.layoutName(placeName(canvas)),
+        layout: () => name.layoutName(placeName(box())),
         fade: (now: number) => name.entranceFade({ now, nameFromLoader: false }),
         step: (dt: number) => name.step({ dt, listProgress: 0 }),
         renderSurface: (dt: number) => name.renderSurface({ dt }),

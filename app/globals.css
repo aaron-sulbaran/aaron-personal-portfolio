@@ -957,7 +957,18 @@ html[data-deal] section[data-scene="off"] [data-coil-stage] {
 .intro {
   --lk: var(--lk-d);
   --ribbon-h: var(--ribbon-d);
-  padding: 8rem 6vw 1.5rem;
+  --intro-gutter: 6vw;
+  padding: 8rem var(--intro-gutter) 1.5rem;
+}
+/* Page 1's grid on whole px: the name's box is where its letters are painted.
+   Chrome paints a layer's content from its corner rounded to a whole px (the
+   name's stage, held for its arrival, and the loader's lockup both are
+   layers), so a name laid out on a fraction is painted up to half a px off its
+   layout, and the canvas name, which draws on the layout, would not meet it. */
+@supports (width: round(1.4px, 1px)) {
+  .intro {
+    --intro-gutter: round(6vw, 1px);
+  }
 }
 @media (max-width: 767px) {
   .intro {
@@ -973,6 +984,11 @@ html[data-deal] section[data-scene="off"] [data-coil-stage] {
   width: 100%;
   max-width: 1240px;
   margin-inline: auto;
+}
+@supports (width: round(1.4px, 1px)) {
+  .intro-grid {
+    margin-inline: max(0px, round(down, (100% - 1240px) / 2, 1px)) auto;
+  }
 }
 @media (min-width: 768px) {
   .intro-grid {
@@ -1097,7 +1113,7 @@ html[data-deal="pending"] .intro-name:not([data-name-canvas]) [data-name-visual]
   to { visibility: visible; }
 }
 .intro-band {
-  margin: 2.25rem -6vw;
+  margin: 2.25rem calc(var(--intro-gutter, 6vw) * -1);
 }
 @media (min-width: 768px) {
   .intro-band {
@@ -1202,7 +1218,7 @@ html[data-slot="closed"] .intro-foot__ribbon,
 .ribbon-still {
   display: none;
   position: absolute;
-  inset: 0 -6vw;
+  inset: 0 calc(var(--intro-gutter, 6vw) * -1);
   align-items: center;
   justify-content: center;
   gap: 48px;
