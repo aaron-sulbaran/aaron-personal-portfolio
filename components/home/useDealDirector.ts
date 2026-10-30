@@ -385,6 +385,10 @@ export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance 
       dropLock();
       current?.master?.kill();
       if (sceneWait.current) window.clearTimeout(sceneWait.current.timer);
+      // A deal cut short by leaving the home is over, as settle() makes it: the store
+      // outlives the home, and a deal left "dealing" would greet a return by client
+      // navigation with cards that never deal (and a dock label whose hold never runs).
+      if (current) dispatchDeal({ type: "skip" });
     },
     [dropLock, endSession],
   );

@@ -329,6 +329,11 @@ for (const size of SIZES) {
       await page.evaluate(() => (window as unknown as { next: { router: { push: (path: string) => void } } }).next.router.push("/quick"));
       await page.waitForURL("**/quick**", { timeout: 15_000 });
       expect(await locked(page), "the lock outlived the home").toBe(false);
+      // Back to the home by client navigation: the deal that was cut short is over (dealt,
+      // the Coil at rest), never left playing with no one to finish it.
+      await page.evaluate(() => (window as unknown as { next: { router: { push: (path: string) => void } } }).next.router.push("/"));
+      await page.waitForURL((url) => url.pathname === "/", { timeout: 15_000 });
+      await expect.poll(() => dealState(page), { message: "the deal on the way back" }).toBe("dealt");
     });
 
     test("the cap: the scene dying mid-deal (its context lost) gives the scroll back within the cap", async ({ page, cdp }) => {
