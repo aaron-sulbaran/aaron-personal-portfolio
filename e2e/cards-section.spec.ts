@@ -33,7 +33,7 @@ test("cards section: the two columns hold the fourteen cards, Work on the left a
   expect(left!.x).toBeLessThan(right!.x);
   await expect(page.locator("#work h3")).toHaveText(["Work", "Builds"]);
   await expect(page.locator("#work h4")).toHaveText(["Off the clock"]);
-  for (const title of titles) await expect(page.locator(`#work button[data-card="${title.key}"]`)).toHaveText(title.qualifier ? `${title.short} ${title.qualifier}` : title.short);
+  for (const title of titles) await expect(page.locator(`#work button[data-card="${title.key}"]`)).toHaveText(title.short);
   // The headings are the accent token and a size and colour of their own, never one more title.
   const accent = await accentColor(page);
   for (const heading of await page.locator("#work h3, #work h4").all()) {
@@ -46,29 +46,26 @@ test("cards section: the two columns hold the fourteen cards, Work on the left a
   expect(title.size, "titles are larger than the headings").toBeGreaterThan(heading.size);
 });
 
-// The Work column's jobs title reads "Jobs (part-time)": one title, one button, one accessible name, the qualifier lighter and
-// smaller in the same row, so it reads as a qualifier and not a second heading.
-test("cards section: the Work column's jobs title reads Jobs (part-time), one button with one name, the qualifier lighter and smaller on the same line", async ({ page }) => {
+// The Work column's jobs title reads "Part-time jobs": one title like "Family business", the same face, weight and colour as
+// every other title in the column, one button with one accessible name.
+test("cards section: the Work column's jobs title reads Part-time jobs, set like every other title in the column", async ({ page }) => {
   await openHome(page);
   const jobs = page.locator('#work button[data-card="jobs"]');
   await jobs.scrollIntoViewIfNeeded();
-  await expect(jobs).toHaveText("Jobs (part-time)");
+  await expect(jobs).toHaveText("Part-time jobs");
   await expect(page.locator('#work button[data-card="jobs"]')).toHaveCount(1);
-  await expect(page.getByRole("button", { name: "Jobs (part-time)" })).toHaveCount(1);
+  await expect(page.getByRole("button", { name: "Part-time jobs" })).toHaveCount(1);
+  await expect(page.locator("[data-title-qualifier]")).toHaveCount(0);
   // It sits in the Work column, among the other work titles.
   expect(await jobs.evaluate((el) => !!el.closest("li")?.parentElement?.querySelector('button[data-card="capital-one"]'))).toBe(true);
-  const read = await jobs.evaluate((el) => {
-    const word = el.querySelector<HTMLElement>("[data-title-qualifier]")!;
-    const button = el.getBoundingClientRect();
-    const qualifier = word.getBoundingClientRect();
-    const first = getComputedStyle(el);
-    const note = getComputedStyle(word);
-    return { buttonHeight: button.height, qualifierMid: qualifier.top + qualifier.height / 2, buttonMid: button.top + button.height / 2, size: [parseFloat(first.fontSize), parseFloat(note.fontSize)], color: [first.color, note.color], weight: [first.fontWeight, note.fontWeight] };
-  });
-  expect(read.size[1], "smaller").toBeLessThan(read.size[0] * 0.8);
-  expect(read.color[1], "lighter: the muted token, not the title's colour").not.toBe(read.color[0]);
-  expect(Math.abs(read.qualifierMid - read.buttonMid), "in the same row as the title").toBeLessThan(read.buttonHeight / 2);
-  expect(read.buttonHeight, "one line, not two").toBeLessThan(read.size[0] * 2.2);
+  const look = (key: string) =>
+    page.locator(`#work button[data-card="${key}"]`).evaluate((el) => {
+      const words = el.querySelector("span span")!;
+      const style = getComputedStyle(words);
+      return { family: style.fontFamily, weight: style.fontWeight, size: style.fontSize, color: style.color, height: el.getBoundingClientRect().height };
+    });
+  const [mine, family] = [await look("jobs"), await look("fsdatalink")];
+  expect(mine, "set exactly as Family business is").toEqual(family);
   await jobs.click();
   await expect(cardDialog(page, "jobs")).toBeVisible();
 });

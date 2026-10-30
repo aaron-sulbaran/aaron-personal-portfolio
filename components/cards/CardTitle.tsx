@@ -20,9 +20,7 @@ export function CardTitle({ title }: { title: ColumnTitle }) {
   // The seen dot follows the title's last word on the same line, glued to it, and sits on the
   // middle of the line's x-height, or on the middle of the capitals when that word has no
   // lowercase (lib/home/seenDot.ts), so it is centered on the text line however the title
-  // wraps. The underline is the words' only: it never reaches the dot. A qualifier ("(part-time)") is
-  // part of the same title: lighter and smaller, after the last word on the same line, inside the
-  // underline and before the dot, and read as one name with the words ("Jobs (part-time)").
+  // wraps. The underline is the words' only: it never reaches the dot.
   const words = title.short.split(" ");
   const last = words.pop() ?? "";
   const head = words.join(" ");
@@ -51,14 +49,6 @@ export function CardTitle({ title }: { title: ColumnTitle }) {
           {head ? " " : ""}
           <span className="whitespace-nowrap">
             {last}
-            {title.qualifier && (
-              <>
-                {" "}
-                <span data-title-qualifier="" className="font-sans text-[0.68em] font-normal text-muted">
-                  {title.qualifier}
-                </span>
-              </>
-            )}
             {seen && <span data-seen-dot="" aria-hidden="true" className={`${seenDotClass(last)} ml-2.5 inline-block h-2 w-2 shrink-0 rounded-full border border-current opacity-70`} />}
           </span>
         </span>

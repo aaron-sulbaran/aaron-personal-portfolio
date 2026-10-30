@@ -21,9 +21,9 @@ export const columnSpecs: readonly ColumnSpec[] = [
   },
 ];
 
-// A title: the short words shown, a qualifier set after them where the card has one (null otherwise), and the card's
+// A title: the words shown in the column (the card's columnShort where it has one, else its short), and the card's
 // full book title for assistive tech.
-export interface ColumnTitle { key: CardKey; short: string; qualifier: string | null; full: string }
+export interface ColumnTitle { key: CardKey; short: string; full: string }
 export interface ColumnGroupView { heading: string | null; titles: readonly ColumnTitle[] }
 export interface ColumnView { key: ColumnKey; heading: string; groups: readonly ColumnGroupView[] }
 
@@ -33,7 +33,7 @@ export function columnView(spec: ColumnSpec): ColumnView {
     heading: spec.heading,
     groups: spec.groups.map((group) => ({
       heading: group.heading,
-      titles: group.keys.map((key) => ({ key, short: cards[key].short, qualifier: cards[key].qualifier ?? null, full: visibleText(cards[key].book.title) })),
+      titles: group.keys.map((key) => ({ key, short: cards[key].columnShort ?? cards[key].short, full: visibleText(cards[key].book.title) })),
     })),
   };
 }

@@ -116,7 +116,7 @@ export const cards: Cards = {
     ] },
   },
   jobs: {
-    short: "Jobs", qualifier: "(part-time)", visual: { kind: "circles" },
+    short: "Jobs", columnShort: "Part-time jobs", visual: { kind: "circles" },
     book: { title: "\"unflattering\" jobs that paid for school", meta: "Popeyes to Aritzia, 2021 to 2026" },
     modal: { kind: "timeline", title: "The \"unflattering\" jobs that shaped me", links: [{ label: "The LinkedIn post", href: "https://lnkd.in/p/g3mXFGcY" }], photos: modalPhotos.jobs, blocks: [
       "I'm self-funded, so I've worked part-time alongside school almost every year since I legally could. Those jobs paid for my car in cash in high school, covered rent, and chipped away at tuition so I could graduate debt free.",

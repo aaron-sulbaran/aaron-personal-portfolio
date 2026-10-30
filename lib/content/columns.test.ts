@@ -38,13 +38,13 @@ describe("the cards section's columns", () => {
     });
   });
 
-  it("set \"(part-time)\" after the jobs title as a qualifier of the one title, and no other card has one", () => {
+  it("title the jobs card \"Part-time jobs\" in the Work column only, and no other card has a column title of its own", () => {
     const titles = cardColumns.flatMap((column) => column.groups.flatMap((group) => group.titles));
-    expect(titles.filter((title) => title.qualifier).map((title) => [title.key, title.short, title.qualifier])).toEqual([["jobs", "Jobs", "(part-time)"]]);
-    // Only the Work column reads it: the card's short title stays "Jobs" wherever else a short title is used.
+    expect(cardColumns[0].groups[0].titles.find((title) => title.key === "jobs")?.short).toBe("Part-time jobs");
+    // Only the columns read it: the card's short title stays "Jobs" for the ribbon, the list and the hints.
     expect(cards.jobs.short).toBe("Jobs");
-    expect(cardColumns[0].groups[0].titles.find((title) => title.key === "jobs")?.qualifier).toBe("(part-time)");
-    for (const key of Object.keys(cards) as CardKey[]) if (key !== "jobs") expect(cards[key].qualifier, key).toBeUndefined();
+    for (const key of Object.keys(cards) as CardKey[]) if (key !== "jobs") expect(cards[key].columnShort, key).toBeUndefined();
+    for (const title of titles) if (title.key !== "jobs") expect(title.short, title.key).toBe(cards[title.key].short);
   });
 
   it("keep each card's full book title, as a visitor reads it, for assistive tech", () => {
@@ -56,7 +56,7 @@ describe("the cards section's columns", () => {
 
   it("build a view from a spec", () => {
     const view = columnView({ key: "work", heading: "Work", groups: [{ heading: null, keys: ["travel"] }] });
-    expect(view.groups[0].titles).toEqual([{ key: "travel", short: "Travel", qualifier: null, full: "Travel" }]);
+    expect(view.groups[0].titles).toEqual([{ key: "travel", short: "Travel", full: "Travel" }]);
     expect(columnSpecs).toHaveLength(2);
   });
 });
