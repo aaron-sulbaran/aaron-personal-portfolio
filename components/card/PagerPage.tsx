@@ -6,6 +6,7 @@ import type { Box } from "@/lib/gallery/boxes";
 import type { Gallery } from "@/lib/gallery/card";
 import { GALLERY } from "@/lib/gallery/constants";
 import { slideWords, type Page, type StageKind } from "@/lib/gallery/plan";
+import { END } from "@/lib/gallery/paginate";
 import { partId } from "@/lib/gallery/timing";
 import { PAGER_PHOTO_SIZES } from "@/lib/photoSizes";
 import { afterWords } from "./afterWords";
@@ -18,12 +19,12 @@ import { Words } from "./Words";
 
 // One page of the phone pager (the gallery lab's round six): the stage,
 // exactly as tall as what it draws fitted whole; the caption; then the words
-// in their own area, which scrolls only when they are longer than the room (a
-// soft fade at its foot says so), with the mentors and the links on the last
-// page. On the jobs card a paragraph that does not fit under its stage has a
-// page of its own (wordsOnly: no stage, the words and the links alone), so
-// nothing scrolls inside a page there. A page that is not current is inert and
-// hidden from assistive tech.
+// in their own area, with the mentors and the links after the last of them.
+// Words that do not fit beside their stage have pages of their own (wordsOnly:
+// no stage; the pager measures and lays them out, lib/gallery/paginate), so
+// the area scrolls, behind a soft fade at its foot, only for one paragraph
+// taller than a whole page (a very short window). A page that is not current
+// is inert and hidden from assistive tech.
 // No page carries the flight's slot (a flown card parks on the header's tile,
 // which stays put while the pages turn), so every photo draws itself.
 
@@ -37,8 +38,13 @@ const WORDS_FADE: CSSProperties = { maskImage: fade, WebkitMaskImage: fade };
 export function PagerPage({ gallery, page, index, count, kind, stage, room, current, pressing }: Props) {
   const textRef = useRef<HTMLDivElement | null>(null);
   const [scrolls, setScrolls] = useState(false);
-  // The post's own link is the post card's, so the card's link to it is not drawn a second time on a page beside the card.
+  // The post's own link is the post card's, so the card's link to it is not drawn a second time on a page beside the card. The end block
+  // (the mentors and the card's links) is drawn only when it has something in it: an empty one would still cost a gap.
   const embed = gallery.photos[page.photo].embed;
+  const skip = embed ? embed.card.href : undefined;
+  const links = siteContent.cards[gallery.key].modal.links.filter((link) => link.href !== skip);
+  const mentors = page.links && gallery.key === "mentorship";
+  const hasEnd = page.links && (mentors || links.length > 0);
 
   useLayoutEffect(() => {
     const text = textRef.current;
@@ -78,10 +84,20 @@ export function PagerPage({ gallery, page, index, count, kind, stage, room, curr
           data-pager-text=""
           data-scrolls={scrolls ? "" : undefined}
         >
+          {/* The words as blocks the pager can measure (data-block: each paragraph with what follows it, then the end block); gap-4 and pb-6 are GALLERY.pager.blockGapPx and endPadPx. */}
           <div className="flex flex-col gap-4 pb-6">
-            {slideWords(page).map((unit) => [<Words key={unit} gallery={gallery} unit={unit} compact />, afterWords(gallery, unit, false)])}
-            {page.links && gallery.key === "mentorship" && <MentorsList compact />}
-            {page.links && <CardLinks cardKey={gallery.key} skip={embed ? embed.card.href : undefined} />}
+            {slideWords(page).map((unit) => (
+              <div key={unit} className="flex flex-col gap-4" data-block={`w${unit}`}>
+                <Words gallery={gallery} unit={unit} compact />
+                {afterWords(gallery, unit, false)}
+              </div>
+            ))}
+            {hasEnd && (
+              <div className="flex flex-col gap-4" data-block={END}>
+                {mentors && <MentorsList compact />}
+                {links.length > 0 && <CardLinks cardKey={gallery.key} skip={skip} />}
+              </div>
+            )}
           </div>
         </div>
       )}

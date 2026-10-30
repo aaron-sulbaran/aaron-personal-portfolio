@@ -17,10 +17,12 @@ const g = siteContent.modals.gallery;
 const keys = Object.keys(siteContent.cards) as CardKey[];
 const PAGED = keys.filter((key) => galleryOf(key).plan.slides.length > 0);
 
+// The band's paragraphs all fit beside their photos at 390 by 844, so its pager is one page a paragraph (a card whose words did not fit
+// would have more: the words that do not fit beside their photo get a page of their own, card-phone.spec).
 test("pager: a phone opens one page a paragraph, the header above the pages and the controls under them", async ({ page }) => {
-  const { dialog } = await openCardFromBook(page, "capital-one");
+  const { dialog } = await openCardFromBook(page, "band");
   await expect(dialog).toHaveAttribute("data-gallery-layout", "pager");
-  const count = phonePages(galleryOf("capital-one").plan, PHONE_GROUPING).length;
+  const count = phonePages(galleryOf("band").plan, PHONE_GROUPING).length;
   await expect(dialog.locator("[data-pager-page]")).toHaveCount(count);
   const header = (await dialog.locator("[data-pager] h2").boundingBox())!;
   const viewport = (await dialog.locator("[data-pager-viewport]").boundingBox())!;
@@ -52,11 +54,14 @@ test("pager: an arrow key with a modifier held is the browser's, not the pager's
   await expect(dialog.locator("[data-pager]")).toHaveAttribute("data-page", "1");
 });
 
-test("pager: Mentorship's mentors and its link ride on its last page", async ({ page }) => {
+test("pager: Mentorship's mentors and its link ride together on one page, its last", async ({ page }) => {
   const { dialog } = await openCardFromBook(page, "mentorship");
-  await expect(dialog.locator('[data-pager-page="1"] [data-mentors]')).toHaveCount(1);
-  await expect(dialog.locator('[data-pager-page="1"] a', { hasText: siteContent.cards.mentorship.modal.links[0].label })).toHaveCount(1);
-  await expect(dialog.locator('[data-pager-page="0"] [data-mentors]')).toHaveCount(0);
+  const pages = dialog.locator("[data-pager-page]");
+  const last = pages.last();
+  await expect(last.locator("[data-mentors]")).toHaveCount(1);
+  await expect(last.locator("a", { hasText: siteContent.cards.mentorship.modal.links[0].label })).toHaveCount(1);
+  await expect(dialog.locator("[data-mentors]")).toHaveCount(1);
+  await expect(pages.first().locator("[data-mentors]")).toHaveCount(0);
 });
 
 test("pager: every photo is whole in its stage, and no stage is taller than 40 percent of the height (55 percent on a page with no words; a name tag and the post's card are as tall as their words)", async ({ page }) => {
@@ -137,26 +142,30 @@ test("pager: a mouse click on the Coil flies a photo card onto the phone header'
 });
 
 test("pager: keyboard focus never falls out of the dialog when its control disables or its page goes inert, and Tab from the body comes back in", async ({ page }) => {
-  const capital = await openCardFromBook(page, "capital-one", { settled: true });
-  const next = capital.dialog.getByRole("button", { name: g.nextPage });
+  const band = await openCardFromBook(page, "band", { settled: true });
+  const next = band.dialog.getByRole("button", { name: g.nextPage });
   await next.focus();
   await page.keyboard.press("Enter");
-  await expect(capital.dialog.locator("[data-pager]")).toHaveAttribute("data-page", "1");
+  await expect(band.dialog.locator("[data-pager]")).toHaveAttribute("data-page", "1");
   await page.keyboard.press("Enter");
-  await expect(capital.dialog.locator("[data-pager]")).toHaveAttribute("data-page", "2");
+  await expect(band.dialog.locator("[data-pager]")).toHaveAttribute("data-page", "2");
   await expect(next).toBeDisabled();
-  await expect(capital.dialog.getByRole("button", { name: g.previousPage })).toBeFocused();
+  await expect(band.dialog.getByRole("button", { name: g.previousPage })).toBeFocused();
   await page.keyboard.press("Escape");
-  await expect(capital.dialog).toHaveCount(0);
+  await expect(band.dialog).toHaveCount(0);
 
   const { dialog } = await openCardFromBook(page, "misuki", { home: false, settled: true });
-  await dialog.getByRole("button", { name: g.nextPage }).click();
-  await expect(dialog.locator("[data-pager]")).toHaveAttribute("data-page", "1");
+  // The page of Misuki's second paragraph, whichever page that is once its first has had its own.
+  const pages = dialog.locator("[data-pager-page]");
+  const at = await pages.evaluateAll((els) => els.findIndex((el) => [...el.querySelectorAll("button")].some((button) => button.textContent === "Fast and Furious")));
+  await dialog.locator(`[data-pager-dot="${at}"]`).click();
+  await expect(dialog.locator("[data-pager]")).toHaveAttribute("data-page", String(at));
   const tip = dialog.getByRole("button", { name: "Fast and Furious", exact: true });
   await tip.focus();
   await page.keyboard.press("ArrowLeft");
-  await expect(dialog.locator("[data-pager]")).toHaveAttribute("data-page", "0");
-  await expect(dialog.getByRole("button", { name: g.pageNumber(1, 2) })).toBeFocused();
+  await expect(dialog.locator("[data-pager]")).toHaveAttribute("data-page", String(at - 1));
+  // Focus lands on a live control of the dialog (the nearest one: a page of plain words has none of its own, so a pager control), not on the body.
+  await expect.poll(() => page.evaluate(() => { const el = document.activeElement; return el !== document.body && !!el?.closest('[role="dialog"]') && !el.closest("[inert]"); })).toBe(true);
 
   await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
   expect(await page.evaluate(() => document.activeElement === document.body)).toBe(true);
@@ -198,7 +207,7 @@ async function slowDrag(page: Page, from: { x: number; y: number }, by: { x: num
 }
 
 test("pager: a sideways drag turns one page, a short one springs back, and past the start it stays", async ({ page }) => {
-  const { dialog } = await openCardFromBook(page, "capital-one", { settled: true });
+  const { dialog } = await openCardFromBook(page, "band", { settled: true });
   const pager = dialog.locator("[data-pager]");
   const stage = (i: number) => dialog.locator(`[data-pager-page="${i}"] [data-pager-stage]`);
   await slowDrag(page, await centerOf(stage(0)), { x: 120, y: 0 });
@@ -214,7 +223,7 @@ test("pager: a sideways drag turns one page, a short one springs back, and past 
 });
 
 test("pager: a vertical drag on the stage springs back short of 96px and closes the modal past it", async ({ page }) => {
-  const { dialog } = await openCardFromBook(page, "capital-one", { settled: true });
+  const { dialog } = await openCardFromBook(page, "band", { settled: true });
   const panel = dialog.locator("[data-gallery-panel]");
   const before = (await panel.boundingBox())!.y;
   const stage = dialog.locator('[data-pager-page="0"] [data-pager-stage]');
@@ -225,11 +234,18 @@ test("pager: a vertical drag on the stage springs back short of 96px and closes 
   await expect(dialog).toHaveCount(0);
 });
 
-test("pager: long words scroll in their own area and never dismiss, while a drag on the stage still does", async ({ page }) => {
-  // Capital One's first paragraph is longer than the room under its photo (the jobs card gives such a paragraph a page of its own instead).
-  const { dialog } = await openCardFromBook(page, "capital-one", { settled: true });
-  const first = dialog.locator('[data-pager-page="0"]');
-  const words = first.locator("[data-pager-text]");
+// A page's words only scroll where a single paragraph is taller than the whole page (a very short window: every other overflow is paged,
+// card-phone.spec): Misuki's first paragraph is about 310px, more than the 199px a 420px tall window leaves a page. The pointer then
+// belongs to the words, and a drag on the stage still closes the modal.
+test("pager: a paragraph taller than a very short page scrolls in its own area and never dismisses, while a drag on the stage still does", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 420 });
+  const { dialog } = await openCardFromBook(page, "misuki", { settled: true });
+  const pages = dialog.locator("[data-pager-page]");
+  const at = await pages.evaluateAll((els) => els.findIndex((el) => el.querySelector("[data-scrolls]")));
+  expect(at, "a page whose words scroll").toBeGreaterThanOrEqual(0);
+  await dialog.locator(`[data-pager-dot="${at}"]`).click();
+  await page.waitForTimeout(GALLERY.pager.slideMs + 100);
+  const words = pages.nth(at).locator("[data-pager-text]");
   await expect(words).toHaveAttribute("data-scrolls", "");
   await slowDrag(page, await centerOf(words), { x: 0, y: -150 });
   await slowDrag(page, await centerOf(words), { x: 0, y: 150 });
@@ -239,7 +255,9 @@ test("pager: long words scroll in their own area and never dismiss, while a drag
   await page.mouse.wheel(0, 300);
   await expect.poll(() => words.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
   await expect(dialog).toBeVisible();
-  await slowDrag(page, await centerOf(first.locator("[data-pager-stage]")), { x: 0, y: 130 });
+  await dialog.locator('[data-pager-dot="0"]').click();
+  await page.waitForTimeout(GALLERY.pager.slideMs + 100);
+  await slowDrag(page, await centerOf(pages.first().locator("[data-pager-stage]")), { x: 0, y: 130 });
   await expect(dialog).toHaveCount(0);
 });
 
@@ -279,12 +297,19 @@ test("pager: under reduced motion a drag moves nothing, a cancel changes nothing
   await expect(pager).toHaveAttribute("data-page", "1");
 });
 
+// Mentorship's group of turning photos is on the page after its first paragraph's; which page that is depends on how the words fit.
+async function toGroup(dialog: Locator) {
+  const at = await dialog.locator("[data-pager-page]").evaluateAll((els) => els.findIndex((el) => el.querySelector("[data-rotator]")));
+  await dialog.locator(`[data-pager-dot="${at}"]`).click();
+  return dialog.locator(`[data-pager-page="${at}"] [data-rotator]`);
+}
+
 test("pager turns: a page's group turns in its stage only while its page is current, its marks inside the current photo's corner", async ({ page }) => {
   const { dialog } = await openCardFromBook(page, "mentorship");
-  const group = dialog.locator('[data-pager-page="1"] [data-rotator]');
+  const group = dialog.locator("[data-rotator]");
   await page.waitForTimeout(GALLERY.mask.landingMs + GALLERY.rotate.delayMs + 400);
   await expect(group).not.toHaveAttribute("data-rotator-runs", "");
-  await dialog.getByRole("button", { name: g.nextPage }).click();
+  await toGroup(dialog);
   await expect(group).toHaveAttribute("data-rotator-runs", "");
   await expect(group).toHaveAttribute("data-rotator-index", "1", { timeout: GALLERY.rotate.intervalMs + 2000 });
   await page.waitForTimeout(GALLERY.rotate.changeMs + 150);
@@ -297,9 +322,8 @@ test("pager turns: a page's group turns in its stage only while its page is curr
 
 test("pager turns: a tap on the stage steps the group at once, Enter steps it, and a press held over 500ms only holds it", async ({ page }) => {
   const { dialog } = await openCardFromBook(page, "mentorship");
-  await dialog.getByRole("button", { name: g.nextPage }).click();
+  const group = await toGroup(dialog);
   await page.waitForTimeout(GALLERY.pager.slideMs + 100);
-  const group = dialog.locator('[data-pager-page="1"] [data-rotator]');
   const frame = group.locator("[data-rotator-frame]");
   await frame.click();
   await expect(group).toHaveAttribute("data-rotator-index", "1");
@@ -320,8 +344,7 @@ test("pager turns: under reduced motion the group never turns on its own, and a 
   await page.goto("/");
   await settled(page);
   const { dialog } = await openCardFromBook(page, "mentorship", { home: false });
-  await dialog.getByRole("button", { name: g.nextPage }).click();
-  const group = dialog.locator('[data-pager-page="1"] [data-rotator]');
+  const group = await toGroup(dialog);
   await page.waitForTimeout(GALLERY.mask.landingMs + GALLERY.rotate.delayMs + 400);
   await expect(group).not.toHaveAttribute("data-rotator-runs", "");
   await group.locator("[data-rotator-frame]").click();

@@ -3,6 +3,8 @@
 // at ae9b6dd, rotatingPlan), with one guard: the card picture never takes turns,
 // because a parked flown card covers it. Pure: both layouts and the tests read it.
 
+import type { Shape } from "./paginate";
+
 export interface PlanPhoto {
   // The word unit (a paragraph, or on the jobs card a timeline entry) this photo
   // belongs beside; undefined, or a unit the card lacks, names none.
@@ -30,7 +32,7 @@ export interface Plan {
 export interface Page extends Slide {
   links: boolean; // the card's links (and the mentors) sit on this page
   wordless?: boolean; // grouping B: a group's later photo alone with its caption
-  wordsOnly?: true; // a paragraph on a page of its own, no stage: it did not fit under its photo (splitWords); photo is still the one it belongs to
+  wordsOnly?: true; // words on a page of their own, no stage: they did not fit beside their photo (repage); photo is still the one they belong to
 }
 
 // A: a page a paragraph, the group turning in the stage. B: a page a photo, a
@@ -231,14 +233,17 @@ export function phonePages(plan: Plan, grouping: PhoneGrouping): Page[] {
   return grouping === "photo" ? photoPages(plan) : pagesOf(plan);
 }
 
-// The pages with the words of the given pages' photos (a page's photo names it) moved onto a page of their own: the page keeps its
-// stage, wordless, and the words, and the card's links if the page had them, follow it on the next page. Order and every word stay.
-export function splitWords(pages: readonly Page[], split: readonly number[]): Page[] {
+// The pages laid out as the pager measured them (lib/gallery/paginate): a unit named in the shape keeps its stage's page, with whatever words
+// fit beside the stage (wordless when none do), and the rest of its words, and the card's links when its page had them, follow on pages
+// of their own (wordsOnly: no stage). Order and every word stay.
+export function repage(pages: readonly Page[], shape: Shape): Page[] {
   return pages.flatMap((page): Page[] => {
-    if (!split.includes(page.photo) || slideWords(page).length === 0) return [page];
-    const stage: Page = { ...page, before: [], own: undefined, after: [], links: false, wordless: true };
-    const words: Page = { photo: page.photo, photos: [page.photo], before: page.before, own: page.own, after: page.after, links: page.links, wordsOnly: true };
-    return [stage, words];
+    const unit = shape[page.photo];
+    if (!unit || page.wordsOnly) return [page];
+    const { stage, more } = unit;
+    const first: Page = { ...page, before: stage.units, own: undefined, after: [], links: stage.end, ...(stage.units.length === 0 && !stage.end ? { wordless: true as const } : {}) };
+    const rest = more.map((chunk): Page => ({ photo: page.photo, photos: [page.photo], before: chunk.units, after: [], links: chunk.end, wordsOnly: true }));
+    return [first, ...rest];
   });
 }
 

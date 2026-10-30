@@ -38,7 +38,9 @@ export const GALLERY = {
     captionRoomPx: 72, // under a wordless page's stage
     stageFloorPx: 120,
     tagMaxPx: 340, // a name tag's widest on a phone page (the jobs card): its height is its own; so is the post card's
-    pageGapPx: 12, // between a page's stage and its words (PagerPage's gap-3)
+    pageGapPx: 12, // between a page's stage, its caption and its words (PagerPage's gap-3)
+    blockGapPx: 16, // between the blocks of a page's words (PagerPage's gap-4)
+    endPadPx: 24, // under a page's last block (PagerPage's pb-6)
     fitFloor: 0.8, // a name tag or the post's card taller than a short phone's page is shrunk to fit, but never below this share of its size
     longTitleChars: 24, // a longer modal title steps down a size in the phone header, so it takes three lines, not four
     wordsFadePx: 28, // the soft fade at the foot of a page's words that scroll
@@ -77,7 +79,3 @@ export const PHONE_GROUPING: Exclude<PhoneGrouping, "strip"> = "paragraph";
 // A card's own phone grouping where it differs: the jobs card's rows hold several pieces of media at once (name tags
 // and photos that must all be seen, never taking turns), so on a phone each is a page of its own, the first with the words.
 export const CARD_PHONE_GROUPING: Partial<Record<string, Exclude<PhoneGrouping, "strip">>> = { jobs: "photo" };
-
-// The cards whose phone pager gives a paragraph a page of its own when it does not fit under its stage (lib/gallery/fit), so no page
-// ever scrolls its words inside the page. The others keep their paragraph under its photo, scrolling only if it is longer than the room.
-export const CARD_PHONE_SPLITS: ReadonlySet<string> = new Set(["jobs"]);
