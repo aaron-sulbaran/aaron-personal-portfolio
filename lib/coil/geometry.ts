@@ -110,6 +110,9 @@ export type CoilGeometry = {
   readonly cosLean: number;
   readonly cardsPerTurn: number;
   readonly step: number; // arc per card: width plus the neighbor gap
+  // The deal's wheel and band (one ring of all N cards): arc per card, the
+  // card's width plus COIL.deal.wheel.gapShare of it, wider than `step`.
+  readonly ringStep: number;
   readonly radius: number; // card units
   readonly pitch: number; // card heights per turn: 1 + turn gap
   readonly dy: number; // axial rise per card
@@ -255,8 +258,11 @@ export function solveGeometry(viewport: Viewport, cardCount: number, c: CoilCons
     if (slotCount % 2 === 1) slotCount += 1;
   }
 
-  // The entrance's closed band: every card on one turn, sized to fit across the pane.
-  const bandRadius = (cardCount * step) / TAU;
+  // The entrance's closed band: every card on one turn, a gap of gapShare of a
+  // card's width between each two, sized to fit across the pane (where it does
+  // not, the band's cards are smaller, never closer).
+  const ringStep = c.cardAspect * (1 + c.deal.wheel.gapShare);
+  const bandRadius = (cardCount * ringStep) / TAU;
   const bandPx = Math.min(cardPx, (0.84 * perpChord) / (2 * bandRadius + 0.6));
 
   // The ribbon's center, CSS px from the canvas's top (the page's slot for it).
@@ -264,12 +270,14 @@ export function solveGeometry(viewport: Viewport, cardCount: number, c: CoilCons
   const ribbonCy = options.ribbonCy ?? null;
   const rb = c.deal.ribbon;
 
-  // The wheel: the same ring, sized to a share of the canvas's height. It forms
-  // where the ribbon is (the middle across, the slot's height down), as shares
-  // of the canvas; with no slot, at the constants' anchor.
+  // The wheel: the same ring, its cards sized so a ring of them at the Coil's own
+  // pitch would be a share of the canvas's height across; the ring itself is
+  // wider by its gaps, the cards the same size. It forms where the ribbon is (the
+  // middle across, the slot's height down), as shares of the canvas; with no
+  // slot, at the constants' anchor.
   const wheelDiameter = c.deal.wheel.diameterOfHeight * canvas.height;
   const wheelAnchor = ribbonCy !== null ? { x: 0.5, y: (ribbonCy + rb.offsetYPx) / canvas.height } : { x: c.deal.wheel.anchor[0], y: c.deal.wheel.anchor[1] };
-  const wheelPx = wheelDiameter / (2 * bandRadius + WHEEL_RING_PAD);
+  const wheelPx = wheelDiameter / ((2 * cardCount * step) / TAU + WHEEL_RING_PAD);
 
   // The ribbon: its card, and the gap that keeps the row's wrap (cardCount
   // cards on) outside the canvas plus a card on each side.
@@ -289,6 +297,7 @@ export function solveGeometry(viewport: Viewport, cardCount: number, c: CoilCons
     cosLean,
     cardsPerTurn,
     step,
+    ringStep,
     radius,
     pitch,
     dy,

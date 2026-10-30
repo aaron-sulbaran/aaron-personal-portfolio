@@ -36,13 +36,17 @@ describe("when the cutscene's lock lets go", () => {
     expect(msUntilDue(clock(), 1000)).toBe(capMs);
     expect(msUntilDue(clock({ unfurledAtMs: 2000, lastInputMs: 1990 }), 2000)).toBe(quietMs - 10);
     expect(msUntilDue(clock({ unfurledAtMs: 2000, lastInputMs: 1000 }), 2000)).toBe(0);
-    expect(msUntilDue(clock({ unfurledAtMs: 3900, lastInputMs: 3990 }), 3990)).toBe(10);
+    // Near the cap with input still arriving: the cap comes first.
+    const late = 1000 + capMs - 100;
+    expect(msUntilDue(clock({ unfurledAtMs: late, lastInputMs: late + 90 }), late + 90)).toBe(10);
     expect(msUntilDue(clock(), 1000 + capMs + 50)).toBe(0);
   });
 
-  it("the cap is about three seconds and the quiet gap about 120 ms", () => {
-    expect(capMs).toBeGreaterThanOrEqual(2800);
-    expect(capMs).toBeLessThanOrEqual(3200);
+  it("the cap keeps more than a second over the unfurl, and the quiet gap is about 120 ms", () => {
+    // The unfurl comes the condense and the scene's pull after the trigger (lib/coil/dealSpeed.ts).
+    const unfurl = COIL.deal.timeline.condenseMs + COIL.deal.timeline.pullStartMs + COIL.deal.timeline.pullMs;
+    expect(capMs - unfurl).toBeGreaterThanOrEqual(1000);
+    expect(capMs - unfurl).toBeLessThanOrEqual(1500);
     expect(quietMs).toBeGreaterThanOrEqual(80);
     expect(quietMs).toBeLessThanOrEqual(160);
   });

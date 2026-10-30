@@ -136,10 +136,10 @@ for (const size of SIZES) {
         window.addEventListener("wheel", () => (w.__lastWheel = performance.now()), { capture: true, passive: true });
       });
       await startRecording(page);
-      // The burst, then a creeping tail (2 px an event) well past the unfurl, which comes about 2.3 s after the deal starts.
+      // The burst, then a creeping tail (2 px an event) well past the unfurl, which comes about 2.65 s after the deal starts.
       const burst = flingStream({ events: 30, ms: 300, tailMs: 0 });
       const creep: [number, number][] = [];
-      for (let t = 300; t < 2900; t += 16) creep.push([t, 2]);
+      for (let t = 300; t < 3300; t += 16) creep.push([t, 2]);
       await wheelStream(cdp, [...burst, ...creep], at);
       await page.waitForTimeout(1200);
       const frames = await stopRecording(page);
@@ -164,7 +164,7 @@ for (const size of SIZES) {
       await cdp.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: at.x, y: at.y });
       await startDealByWheel(page, cdp, at);
       // The wheel has formed (the ribbon's rush and its curl are over); the reader changes their mind.
-      await untilClock(page, 700);
+      await untilClock(page, COIL.deal.timeline.curlStartMs + COIL.deal.timeline.curlMs);
       await startRecording(page);
       await wheelStream(cdp, flingStream({ events: 14, ms: 350, tailMs: 600, sign: -1 }), at);
       await page.waitForTimeout(3000);
@@ -186,7 +186,7 @@ for (const size of SIZES) {
       await cdp.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: at.x, y: at.y });
       await startDealByWheel(page, cdp, at);
       await startRecording(page);
-      // The leg is over in a moment at this speed; keys during the rest of the lock.
+      // Keys through the leg (it eases the page in over about the click's scroll time) and the rest of the lock.
       await page.waitForTimeout(400);
       for (const key of ["Space", "PageDown", "ArrowDown", "End", "PageUp", "Home", "ArrowUp", "Shift+Space"]) {
         await page.keyboard.press(key);

@@ -21,12 +21,14 @@ export type DealKnobs = {
   ribbonHoverSpeedFactor: number; // how many times faster the row eases while the pointer is over the button
   ribbonHoverTighten: number; // how far its gaps tighten toward the button then, of the way to a closed row
   ribbonHoverEaseMs: number; // how long the anticipation takes to take hold (and let go)
-  // The click (slice 5): the pile the row gathers into.
-  ribbonGatherPitch: number; // card heights between cards of the pile (smaller is tighter)
+  // The click: the tight row the cards gather into (never tighter than a gap of
+  // lib/coil/separation.ts MIN_GAP_SHARE of a card's width).
+  ribbonGatherPitch: number; // card heights between cards of the row (smaller is tighter; a card is 0.75 wide)
   // The deal's clock, in ms from the click (COIL.deal.timeline); every time
   // after the two below counts from the end of the condense.
   condenseMs: number; // the ribbon's gaps close and the row rushes in toward the button
   condensePower: number; // the rush's strength: how front loaded its ease out is (3 is power2.out)
+  curlStartMs: number; // the row starts curling into the wheel (before the condense ends when negative)
   curlMs: number; // the row curls into the wheel
   windRampMs: number; // the pull's winding eases in (0: starts at full rate)
   peakCardsPerSecond: number; // the wheel's top speed
@@ -69,9 +71,10 @@ export const KNOB_SPEC: Record<NumericKnob, KnobSpec> = {
   ribbonHoverSpeedFactor: { label: "Hover: speed-up", group: "Anticipation", min: 1, max: 8, step: 0.1, unit: "x" },
   ribbonHoverTighten: { label: "Hover: gaps tighten", group: "Anticipation", min: 0, max: 1, step: 0.01 },
   ribbonHoverEaseMs: { label: "Hover: ease", group: "Anticipation", min: 60, max: 800, step: 10, unit: "ms" },
-  ribbonGatherPitch: { label: "Gather: how tight (card heights apart)", group: "Click", min: 0.03, max: 0.8, step: 0.01 },
+  ribbonGatherPitch: { label: "Gather: how tight (card heights apart)", group: "Click", min: 0.8, max: 1.2, step: 0.01 },
   condenseMs: { label: "Rush in (gaps close)", group: "Click", min: 0, max: 2000, step: 10, unit: "ms" },
   condensePower: { label: "Rush: strength", group: "Click", min: 1, max: 7, step: 0.1 },
+  curlStartMs: { label: "Curl starts (after the rush)", group: "Condense and curl", min: -1000, max: 1000, step: 10, unit: "ms" },
   curlMs: { label: "Curl into the wheel", group: "Condense and curl", min: 0, max: 2000, step: 10, unit: "ms" },
   windRampMs: { label: "Winding onset ramp", group: "Lift", min: 0, max: 700, step: 5, unit: "ms" },
   peakCardsPerSecond: { label: "Peak speed", group: "Spin", min: 2, max: 20, step: 0.5, unit: " cards/s" },
@@ -112,6 +115,7 @@ export const DEFAULT_KNOBS: DealKnobs = {
   ribbonGatherPitch: D.ribbon.gatherPitch,
   condenseMs: D.timeline.condenseMs,
   condensePower: D.timeline.condensePower,
+  curlStartMs: D.timeline.curlStartMs,
   curlMs: D.timeline.curlMs,
   windRampMs: D.timeline.windRampMs,
   peakCardsPerSecond: D.timeline.peakCardsPerSecond,
@@ -174,6 +178,7 @@ export function entranceTuningOf(knobs: DealKnobs): EntranceTuning {
     timeline: {
       condenseMs: knobs.condenseMs,
       condensePower: knobs.condensePower,
+      curlStartMs: knobs.curlStartMs,
       curlMs: knobs.curlMs,
       windRampMs: knobs.windRampMs,
       peakCardsPerSecond: knobs.peakCardsPerSecond,

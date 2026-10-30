@@ -1,17 +1,20 @@
 import { COIL, type CoilConstants } from "@/lib/coil/constants";
 
 // The cutscene's scroll when the reader's own scroll started the deal. The
-// reader is already moving, so the deal's scroll takes over at the page's
-// current speed and direction and eases to page 2's top: no stop and no start.
-// Pure; lib/home/dealMaster.ts plays it as a child of the deal's clock.
+// reader is already moving, so the deal's scroll takes over from the page's
+// current speed and direction and eases the reader in to page 2's top over about
+// as long as the click's own scroll takes (Aaron, 2026-10-29: "it slowly kind of
+// eases them into the animation"; a hard fling used to land in about 95 ms, a
+// jump). Pure; lib/home/dealMaster.ts plays it as a child of the deal's clock.
 //
 // The curve is a cubic Hermite from (y0, speed v) to (landing, rest), over D:
 //   y(s) = y0 + d * (a (s - 2s^2 + s^3) + 3s^2 - 2s^3), s = t / D, d = landing - y0,
 //   a = v D / d  (the speed the curve starts at, in units of the plain ease's d / D)
-// Its start speed is exactly v, its end speed 0, and while 0 <= a <= 3 it is
-// monotone (it never passes the landing). a is held to that range: the leg is
-// shortened (never below minLegMs) until v fits, and if it still does not (a fling
-// that has all but reached the landing) the start speed is the fastest that fits.
+// Its end speed is 0, and while 0 <= a <= 3 it is monotone (it never passes the
+// landing). D is the nominal leg (it ends as the click's leg would) when the
+// page's own speed fits it; a faster page shortens it, never below the click's own
+// leg (`shortestMs`), and a page faster still (a hard fling) starts at the fastest
+// speed that fits, a = 3: the page is caught and eased in, never carried past.
 // With v = 0 it is a smoothstep, the same stand-still start as the click's ease.
 
 export type ScrollSample = { t: number; y: number };
@@ -61,17 +64,23 @@ const RETURN_MIN_MS = 300;
 
 // Where the page is (y0, px), how fast it is going down the page (v0, px/s) and where
 // the deal lands it. `nominalMs` is how long the leg may take (the click's leg ends
-// at the same moment). Null when the page is already there.
-export function planHandScroll(args: { y0: number; v0: number; landing: number; nominalMs: number }, c: CoilConstants = COIL): HandPlan | null {
+// at the same moment), `shortestMs` the least it takes (the click's leg's own
+// length). Null when the page is already there.
+export function planHandScroll(
+  args: { y0: number; v0: number; landing: number; nominalMs: number; shortestMs: number },
+  c: CoilConstants = COIL,
+): HandPlan | null {
   const { y0, landing, nominalMs } = args;
-  const { minLegMs, overshootPx } = c.deal.cutscene;
+  const { overshootPx } = c.deal.cutscene;
+  const shortestMs = Math.min(nominalMs, Math.max(1, args.shortestMs));
   const d = landing - y0;
   if (Math.abs(d) <= 1) return null;
   const v = Math.max(0, args.v0);
   if (d > 0) {
-    // As fast as the page is going, as far as the landing and no further.
+    // As fast as the page is going, if that fits a leg no shorter than the click's;
+    // as far as the landing and no further.
     let durationMs = nominalMs;
-    if (v > 0 && (v * durationMs) / 1000 > MAX_A * d) durationMs = Math.min(nominalMs, Math.max(minLegMs, ((MAX_A * d) / v) * 1000));
+    if (v > 0 && (v * durationMs) / 1000 > MAX_A * d) durationMs = Math.max(shortestMs, ((MAX_A * d) / v) * 1000);
     const startVelocity = Math.min(v, (MAX_A * d) / (durationMs / 1000));
     return { durationMs, startVelocity, ease: hermiteEase((startVelocity * (durationMs / 1000)) / d) };
   }

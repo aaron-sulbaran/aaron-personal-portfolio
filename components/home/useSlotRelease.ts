@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { RELAYOUT_EVENT } from "@/components/soundtrack/path/pathView";
 import { ScrollTrigger } from "@/lib/gsap";
 import { getDeal, subscribeDeal } from "@/lib/home/deal";
+import { dealScrollMoving } from "@/lib/home/dealScroll";
 import { COIL } from "@/lib/coil/constants";
 import { SLOT_CLOSED, SLOT_KEY } from "@/lib/home/slotInit";
 
@@ -14,7 +15,8 @@ import { SLOT_CLOSED, SLOT_KEY } from "@/lib/home/slotInit";
 // and the page is held where it was: the cards section stays under the reader
 // whatever the page lost above it. The scroll is set once, in the same frame,
 // and never while the reader is still scrolling (a touch fling is not cut
-// short): the moment the reader stops. On a click that is the end of the deal's
+// short), nor while the deal's own scroll is still easing the page in: the moment
+// the reader and the deal's scroll have stopped. On a click that is the end of the deal's
 // own scroll, a second before the deal ends, so the layout settling (a
 // ScrollTrigger refresh follows a height change) is over before the cards are
 // the reader's. A reader still looking at the slot keeps it until they scroll
@@ -86,6 +88,10 @@ export function useSlotRelease() {
         if (waiting) return soon();
         predictedUntil = 0;
       }
+      // The deal's own scroll is still easing the page in (its last stretch moves it
+      // under a pixel a frame): its positions are the page's as it was, so the slot
+      // waits for it to end.
+      if (dealScrollMoving()) return soon();
       const state = getDeal();
       const dealtByScene = (state.phase === "dealing" || state.phase === "dealt") && state.spent && document.querySelector('section[data-scene="on"]') !== null;
       const gone = slot.hasAttribute("data-gone");

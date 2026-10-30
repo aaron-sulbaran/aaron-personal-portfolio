@@ -93,7 +93,7 @@ describe("the winding's onset ramp, measured on the poses", () => {
   it("is no kick at any longer ramp either: the onset only falls as the ramp grows, to the floor of the deal's own acceleration", () => {
     const [, geo] = geos[1];
     let last = Number.POSITIVE_INFINITY;
-    for (const ramp of [200, 300, 400, 480]) {
+    for (const ramp of [200, 300, 400, 480, 590]) {
       const now = secondDifferences(geo, ramp, followed).worstOnset;
       expect(now).toBeLessThanOrEqual(last);
       last = now;

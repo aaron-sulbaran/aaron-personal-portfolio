@@ -128,73 +128,82 @@ const values = {
     // lets go this long after it took input whatever else happened (a scene that
     // never starts, a tab hidden mid-deal, an error, an unmount): a page that
     // never gives the scroll back is the worst failure this can ship.
-    // The hand path's scroll (lib/home/handScroll.ts) takes over at the page's
-    // current speed: velocityWindowMs is the stretch of scroll samples that speed
-    // is read from, staleMs how old the last sample may be before the page counts
-    // as at rest, minLegMs the shortest the leg runs (a fling that has all but
-    // reached the landing), overshootPx the most the page may pass the landing
-    // when a fling has already carried it there (it eases back); the leg never
-    // passes the landing otherwise.
+    // The hand path's scroll (lib/home/handScroll.ts) takes over from the page's
+    // current speed and eases the reader in over about as long as the click's own
+    // scroll (Aaron, 2026-10-29: a hard fling used to land in about 95 ms, which read
+    // as a jump): velocityWindowMs is the stretch of scroll samples that speed is
+    // read from, staleMs how old the last sample may be before the page counts as at
+    // rest, overshootPx the most the page may pass the landing when a fling has
+    // already carried it there (it eases back); the leg never passes the landing
+    // otherwise.
     // readerWindowMs: how long after a wheel, a scroll key or a scrollbar drag, or
     // after a touch that moved, a scroll still counts as the reader's own (the OS's
     // and the browser's own smooth scrolling and momentum outlast the input), as
     // opposed to a page's own scroll (the Menu's links, an anchor), which plays the
     // deal without the cutscene as it always did.
+    // capMs keeps more than a second over the unfurl (about 2.67 s after the
+    // trigger), the most a stalled frame may eat before the lock lets go early.
     cutscene: {
       quietMs: 120,
-      capMs: 3000,
+      capMs: 3800,
       velocityWindowMs: 100,
       staleMs: 90,
-      minLegMs: 100,
       overshootPx: 24,
       readerWindowMs: { wheel: 450, key: 700, touch: 2500, scrollbar: 500 },
     },
     // The deal's one clock, in ms from the click (docs/superpowers/specs/2026-10-22-wheel-deal-motion.md
-    // section 2, retimed in slice 4d to be fast: the Coil is unfurled about 2.0 s
-    // after the click and the columns are in about 2.6 s). The ribbon rushes in
-    // toward the button, curls into the wheel, which spins up (speed from the
-    // ribbon's own pace to the peak, power2.out) and flattens into the band while
-    // the spin is still rising; the page scrolls itself to page 2; the band holds
-    // its peak for a moment, slows to the idle pace (smoothstep), then lifts into
-    // 3D and unfurls (the pull, on its cubic-bezier) while the field opens from
-    // under it (below) and the columns arrive last. Every number is a lab knob's
-    // default.
+    // section 2, retimed in slice 4d to be fast and again on 2026-10-29 to let it
+    // simmer: Aaron's review of the cutscene video asked for about 2.5 to 3 s for the
+    // whole cycle, a wheel seen spinning up, and no dead frames. The Coil is unfurled
+    // about 2.67 s after the click and the columns are in about 2.95 s). The ribbon
+    // rushes in toward the button, curls into the wheel, which spins up (speed from
+    // the ribbon's own pace to the peak, power2.out) and flattens into the band while
+    // the spin is still rising; the page scrolls itself to page 2; the band holds its
+    // peak for a moment, slows to the idle pace (smoothstep), then lifts into 3D and
+    // unfurls (the pull, on its cubic-bezier) while the field opens from under it
+    // (below) and the columns arrive last. Every number is a lab knob's default.
     timeline: {
       // The deal begins with the ribbon's own act, the gaps between the cards
       // closing and the row rushing in toward the button (an ease out of power
       // condensePower; 3 is GSAP's power2.out), and every other time below counts
       // from the end of it, the scene clock's zero. The curl (the row curling into
-      // the wheel) takes curlMs from there, over the spin-up: long enough that no
-      // card steps more than 40 px a frame while the far end of the row travels in.
-      condenseMs: 640,
-      condensePower: 2.2,
-      curlMs: 700,
+      // the wheel) starts curlStartMs from there (before it: the condense's slow
+      // tail and the curl's slow start overlap, so no frame between them stands
+      // still) and takes curlMs, over the spin-up: long enough that no card steps
+      // more than 40 px a frame while the far end of the row travels in.
+      condenseMs: 440,
+      condensePower: 1.8,
+      curlStartMs: -220,
+      curlMs: 960,
       // The pull's winding eases in over this long instead of starting at full
       // rate (0 is the old kick at windStart, 34 px over two frames); a time on the
-      // pull's own scale. At this pull length 480 is where the ramp covers the whole
-      // winding: it takes the kick down to the deal's ordinary acceleration at the
-      // sizes the deal runs at, and a longer ramp takes it no lower
-      // (lib/coil/windOnset.test.ts sweeps it; e2e/deal-jank.spec.ts holds the drawn frames to it).
-      windRampMs: 480,
+      // pull's own scale. At this pull length 590 is where the ramp covers the whole
+      // winding (the winding is the last 0.62 of pullMs): it takes the kick down to
+      // the deal's ordinary acceleration at the sizes the deal runs at, and a longer
+      // ramp takes it no lower (lib/coil/windOnset.test.ts sweeps it;
+      // e2e/deal-jank.spec.ts holds the drawn frames to it).
+      windRampMs: 590,
       peakCardsPerSecond: 12.5, // COIL.spinCapCardsPerSecond
       // A coarse pointer's top speed: a phone can drop to 30 Hz (Low Power
       // Mode), where 9 cards a second is 0.3 card a frame, the most the eye
       // reads as turning the right way (above it the wheel strobes backward).
       coarsePeakCardsPerSecond: 9,
-      // The spin reaches its peak at upMs and holds it until slowStartMs: 200 ms
-      // of hold, no more.
-      upMs: 450,
+      // The spin reaches its peak at upMs (a wind-up the eye can follow) and holds
+      // it until slowStartMs: 300 ms of hold.
+      upMs: 800,
       textOutMs: 250,
       scrollStartMs: 0,
-      scrollMs: 1000,
+      scrollMs: 1250,
       // The flatten starts while the spin is still rising.
-      flattenStartMs: 220,
-      flattenMs: 730,
-      slowStartMs: 650,
+      flattenStartMs: 450,
+      flattenMs: 900,
+      slowStartMs: 1100,
       slowMs: 700,
-      pullStartMs: 850,
-      pullMs: 800,
-      openStartMs: 600,
+      pullStartMs: 1250,
+      pullMs: 950,
+      // The field opens from under the Coil as the band starts slowing, and is
+      // whole as the pull lands (open.ms below is Aaron's, never retimed).
+      openStartMs: 1150,
     },
     // The ribbon (slices 4c and 4d, page 1's foot): the 14 cards in one flat
     // row, face up, drifting left at speedPxPerS (a card rate once the row's
@@ -223,10 +232,12 @@ const values = {
       hoverSpeedFactor: 3.5,
       hoverTighten: 0.55,
       hoverEaseMs: 260,
-      // What the click gathers the row into: the pitch between cards of the tight
-      // pile (card heights; a card is 0.75 wide, so 0.14 overlaps each card with
-      // the next by four fifths of its width), lib/coil/ribbon.ts ribbonGatherPitch.
-      gatherPitch: 0.14,
+      // What the click gathers the row into: the pitch between cards of a tight row
+      // (card heights; a card is 0.75 wide, so 0.84 leaves a gap of 12 percent of a
+      // card's width), lib/coil/ribbon.ts ribbonGatherPitch. A row with gaps, never
+      // a pile (Aaron, 2026-10-29: the cards "act as their own individual
+      // assets"): it is held above lib/coil/separation.ts MIN_GAP_SHARE.
+      gatherPitch: 0.84,
     },
     // The click's DOM (components/home/IntroCta.tsx): the button's press (scale).
     click: { pressScale: 0.97 },
@@ -234,11 +245,18 @@ const values = {
     // ring seen from a little above, face up (the spec guessed a lean of about
     // 10 degrees; that reads as a thin band, 18 and a ring 1.3 times the
     // diameter below read as a wheel). It sits at `anchor` (shares of the
-    // canvas) at diameterOfHeight of the canvas's height; scale and the offsets
-    // (shares of the canvas) nudge it from there.
+    // canvas); its cards are the size that makes a ring at the Coil's own pitch
+    // diameterOfHeight of the canvas's height across, and scale and the offsets
+    // (shares of the canvas) nudge it from there. gapShare: the room between two
+    // cards of the wheel and of the band, as a share of a card's width (Aaron,
+    // 2026-10-29: the ring had the Coil's own 7 percent and its cards read as
+    // slivers cutting through each other). The ring is that much wider than the
+    // Coil's pitch would make it, with the cards the same size; the band's cards
+    // shrink only where the pane cannot hold its wider ring (geometry.ts bandPx).
     wheel: {
       leanDeg: -18,
       scale: 1.3,
+      gapShare: 0.2,
       offsetX: 0,
       offsetY: 0,
       anchor: [0.5, 0.5] as const,
@@ -265,7 +283,7 @@ const values = {
     open: { reach: 1, ms: 1050, fromPx: 36, featherPx: 28, featherShare: 0.3, topFadePx: 72, fadeMs: 600 },
     // The two columns arrive last: group labels, then titles; delayMs counts
     // from the end of the condense (the scene clock's zero).
-    columns: { delayMs: 1250, staggerMs: 22, labelStaggerMs: 50, fadeMs: 420, riseY: 14 },
+    columns: { delayMs: 1700, staggerMs: 22, labelStaggerMs: 50, fadeMs: 420, riseY: 14 },
   },
 
   // Page 1, who I am (hero rework, slices 3 and 4d;

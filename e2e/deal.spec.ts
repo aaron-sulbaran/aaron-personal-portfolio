@@ -288,7 +288,7 @@ test("deal: the click presses the button in and springs it back, and draws no ri
   expect(frames.at(-1)!.pressed, "the press is over by the end").toBe(false);
 });
 
-test("deal: the Coil is unfurled by about 2 s after the click and the columns are in by about 2.6 s", async ({ page }) => {
+test("deal: the Coil is unfurled about 2.6 s after the click and the columns are in by about 3 s (Aaron: 2.5 to 3 s for the whole cycle)", async ({ page }) => {
   await logDeal(page);
   await openHome(page, { at: "foot" });
   await page.evaluate(() => {
@@ -305,10 +305,10 @@ test("deal: the Coil is unfurled by about 2 s after the click and the columns ar
   const clicked = marks.dealing;
   expect(clicked).toBeGreaterThan(0);
   test.info().annotations.push({ type: "timings", description: `click to unfurled ${(marks.unfurled - clicked).toFixed(0)} ms, to dealt ${(marks.dealt - clicked).toFixed(0)} ms` });
-  expect(marks.unfurled - clicked, "click to unfurled").toBeGreaterThan(1700);
-  expect(marks.unfurled - clicked, "click to unfurled").toBeLessThan(2400);
-  expect(marks.dealt - clicked, "click to dealt").toBeGreaterThan(2300);
-  expect(marks.dealt - clicked, "click to dealt").toBeLessThan(3100);
+  expect(marks.unfurled - clicked, "click to unfurled").toBeGreaterThan(2400);
+  expect(marks.unfurled - clicked, "click to unfurled").toBeLessThan(2900);
+  expect(marks.dealt - clicked, "click to dealt").toBeGreaterThan(2500);
+  expect(marks.dealt - clicked, "click to dealt").toBeLessThan(3200);
 });
 
 test("deal: scrolling back up shows page 1 as it was, with Back to my cards, and the cards stay dealt both ways", async ({ page }) => {
