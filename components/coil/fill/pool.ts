@@ -88,8 +88,3 @@ export function joinFillPool(member: FillMember) {
     },
   };
 }
-
-// QA: how many members hold a context now.
-export function fillPoolAlive() {
-  return [...members.values()].filter((m) => m.alive).map((m) => m.id);
-}
