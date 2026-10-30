@@ -36,6 +36,18 @@ export function dockMode(input: DockInput): DockMode {
   return input.labelShown ? "capsule" : "label";
 }
 
+// Whether the open label's hold (DOCK.holdMs) is counting down: the pill has
+// landed open and no deal is playing. The deal is a cutscene that holds the
+// screen for about 3 s (lib/home/dealLock.ts), and the band is a short scroll
+// above its trigger, so a label that lands on the way down would spend its whole
+// hold under it, unread (a returning visitor's "Welcome back" collapsed mid-deal).
+// While the deal plays the label stays open and its clock waits; it starts from
+// the top once the deal is dealt. Where no deal plays (a deep load, reduced
+// motion, cards already dealt) it counts from the landing, as it always did.
+export function labelHoldRuns({ mode, landed, dealPlaying }: { mode: DockMode; landed: boolean; dealPlaying: boolean }): boolean {
+  return mode === "label" && landed && !dealPlaying;
+}
+
 export function dockLabel(input: DockInput): DockLabel {
   if (input.failed) return "failed";
   if (input.returning) return "returning";

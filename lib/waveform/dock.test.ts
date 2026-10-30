@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { capsuleName, capsuleText, dockLabel, dockMode } from "./dock";
+import { capsuleName, capsuleText, dockLabel, dockMode, labelHoldRuns } from "./dock";
 
 const base = { music: "before" as const, reached: true, phone: false, labelShown: false, returning: false, failed: false };
 const STATES = ["before", "on", "paused", "off"] as const;
@@ -28,6 +28,14 @@ describe("dock", () => {
     expect(dockLabel({ ...base, music: "paused" })).toBe("accepted");
     expect(dockLabel({ ...base, music: "paused", returning: true })).toBe("returning");
     expect(dockLabel({ ...base, music: "paused", returning: true, failed: true })).toBe("failed");
+  });
+  it("the label's hold counts down only once the pill has landed open and no deal is playing", () => {
+    expect(labelHoldRuns({ mode: "label", landed: true, dealPlaying: false })).toBe(true);
+    // Under the deal's cutscene the label stays open and its clock waits.
+    expect(labelHoldRuns({ mode: "label", landed: true, dealPlaying: true })).toBe(false);
+    expect(labelHoldRuns({ mode: "label", landed: false, dealPlaying: false })).toBe(false);
+    expect(labelHoldRuns({ mode: "capsule", landed: true, dealPlaying: false })).toBe(false);
+    expect(labelHoldRuns({ mode: "hidden", landed: true, dealPlaying: false })).toBe(false);
   });
   it("capsule text", () => {
     expect(capsuleText("on", "Small Steps")).toBe("Small Steps");

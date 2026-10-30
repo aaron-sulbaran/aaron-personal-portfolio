@@ -428,6 +428,35 @@ test("dock: a returning visitor is welcomed back once per session, then gets the
   await expect(page.locator(CAPSULE)).toHaveAccessibleName(`${S.capsulePaused}. ${S.invite}`);
 });
 
+// The greeting's hold runs while the reader can read it, never under the deal's
+// cutscene: a returning visitor who scrolls down by hand passes the band (the
+// pill lands, greeting open) and reaches the deal a moment later, which holds the
+// screen for about 3 s. The greeting is still open when the deal is dealt, and its
+// whole hold runs from there.
+test("dock: a returning visitor who scrolls down by hand reads the greeting once the deal is dealt, not under it", async ({ page, cdp }) => {
+  await page.addInitScript((key) => localStorage.setItem(key, "on"), SOUNDTRACK_KEY);
+  await armDock(page);
+  await openHome(page, { path: HOME, at: "top" });
+  const at = { x: 720, y: 300 };
+  await cdp.send("Input.dispatchMouseEvent", { type: "mouseMoved", ...at });
+  await startDock(page);
+  // A brisk hand scroll, 120 px a notch every 50 ms, until the deal has started (its lock swallows the rest).
+  for (let i = 0; i < 200 && (await page.evaluate(() => document.documentElement.dataset.deal)) === "closed"; i++) {
+    await cdp.send("Input.dispatchMouseEvent", { type: "mouseWheel", ...at, deltaX: 0, deltaY: 120 });
+    await page.waitForTimeout(50);
+  }
+  const greetedAt = await page.evaluate((line) => (window as unknown as { __e2eDock: { peek: () => { t: number; text: string }[] } }).__e2eDock.peek().find((s) => s.text === line)?.t ?? null, S.dockReturning);
+  expect(greetedAt, "the greeting landed before the deal started").not.toBeNull();
+  await page.waitForFunction(() => document.documentElement.dataset.deal === "dealt", null, { timeout: 15_000 });
+  const dealtAt = await page.evaluate(() => performance.now());
+  expect(await dockText(page), "the greeting when the deal is dealt").toBe(S.dockReturning);
+  await expect.poll(() => dockText(page), { timeout: DOCK.holdMs + 3000, message: "the collapsed capsule" }).toBe(S.capsulePaused);
+  const samples = await stopDock(page);
+  const lastGreeting = samples.filter((s) => s.text === S.dockReturning).at(-1)!.t;
+  // Its hold ran after the deal, the whole of it (less a frame or two of the recorder's sampling).
+  expect(lastGreeting - dealtAt, "the greeting's time after the deal is dealt, ms").toBeGreaterThanOrEqual(DOCK.holdMs - 100);
+});
+
 test("dock: a click on the restored Paused capsule resumes playback", async ({ page, browserName }) => {
   test.skip(browserName === "webkit", "WebKit cannot be launched muted");
   await page.addInitScript((key) => localStorage.setItem(key, "on"), SOUNDTRACK_KEY);
