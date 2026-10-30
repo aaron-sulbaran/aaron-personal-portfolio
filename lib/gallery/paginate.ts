@@ -1,13 +1,15 @@
 // How a phone's pager pages a card's words so that nothing scrolls inside a page: the pure half (components/card/CardPager measures the
-// numbers, lib/gallery/plan repage lays the pages out from the result). A page's words are blocks in order (each paragraph, then the end
-// block, the mentors and the card's links); the blocks of a photo's page are laid down greedily, first beside its stage, then page by page
-// with the whole room. A block that does not fit beside the stage starts a page of its own, and a run of blocks that is too tall for one
-// page goes on to the next, so every word shows, in order, on a page that holds it.
+// numbers, lib/gallery/plan repage lays the pages out from the result). A page's words are blocks in order (each paragraph, then one
+// block for each of Mentorship's mentors, then the end block, the card's links); the blocks of a photo's page are laid down greedily,
+// first beside its stage, then page by page with the whole room. A block that does not fit beside the stage starts a page of its own, and
+// a run of blocks that is too tall for one page goes on to the next, so every word shows, in order, on a page that holds it.
 
 export const END = "end";
+// A mentor's block: the first carries the mentors' heading, and a mentor is never split from their line.
+export const mentorId = (index: number) => `m${index}`;
 
 export interface BlockSize {
-  id: string; // "w3" (word unit 3), or END
+  id: string; // "w3" (word unit 3), "m2" (mentor 2), or END
   height: number; // px
 }
 
@@ -19,7 +21,10 @@ export interface UnitMeasure {
 
 export interface Chunk {
   units: number[];
-  end: boolean; // the end block (the mentors and the card's links) is on this page
+  end: boolean; // the end block (the card's links) is on this page
+  // Which mentors are on this page. Present on every chunk of a unit that has mentor blocks (an empty list when none is here), absent
+  // on a unit that has none, so a page with no mentor blocks to place is told nothing about them.
+  mentors?: number[];
 }
 
 // stage: what shares the stage's page (nothing when no block fits beside it); more: the pages of words after it.
@@ -34,9 +39,12 @@ export interface PageRules {
   endPad: number; // under the last block of a page
 }
 
-const chunkOf = (blocks: readonly BlockSize[]): Chunk => ({
-  units: blocks.filter((block) => block.id !== END).map((block) => Number(block.id.slice(1))),
+const indexed = (blocks: readonly BlockSize[], prefix: string) => blocks.filter((block) => block.id.startsWith(prefix)).map((block) => Number(block.id.slice(1)));
+
+const chunkOf = (blocks: readonly BlockSize[], withMentors: boolean): Chunk => ({
+  units: indexed(blocks, "w"),
   end: blocks.some((block) => block.id === END),
+  ...(withMentors ? { mentors: indexed(blocks, "m") } : {}),
 });
 
 export const heightOf = (blocks: readonly BlockSize[], { blockGap, endPad }: PageRules) =>
@@ -60,7 +68,8 @@ export function paginate(units: readonly UnitMeasure[], room: number, rules: Pag
       limit = room;
       pages.push([block]);
     }
-    if (pages.length > 1) shape[photo] = { stage: chunkOf(pages[0]), more: pages.slice(1).map(chunkOf) };
+    const withMentors = blocks.some((block) => block.id.startsWith("m"));
+    if (pages.length > 1) shape[photo] = { stage: chunkOf(pages[0], withMentors), more: pages.slice(1).map((chunk) => chunkOf(chunk, withMentors)) };
   }
   return shape;
 }
@@ -72,7 +81,7 @@ export const shapeKey = (shape: Shape): string =>
     .sort((a, b) => a - b)
     .map((photo) => {
       const { stage, more } = shape[photo];
-      const part = (chunk: Chunk) => `${chunk.units.join(".")}${chunk.end ? "+" : ""}`;
+      const part = (chunk: Chunk) => `${chunk.units.join(".")}${chunk.mentors?.length ? `~${chunk.mentors.join(".")}` : ""}${chunk.end ? "+" : ""}`;
       return `${photo}:${part(stage)}|${more.map(part).join("|")}`;
     })
     .join(";");

@@ -6,7 +6,7 @@ import type { Box } from "@/lib/gallery/boxes";
 import type { Gallery } from "@/lib/gallery/card";
 import { GALLERY } from "@/lib/gallery/constants";
 import { slideWords, type Page, type StageKind } from "@/lib/gallery/plan";
-import { END } from "@/lib/gallery/paginate";
+import { END, mentorId } from "@/lib/gallery/paginate";
 import { partId } from "@/lib/gallery/timing";
 import { PAGER_PHOTO_SIZES } from "@/lib/photoSizes";
 import { afterWords } from "./afterWords";
@@ -19,7 +19,8 @@ import { Words } from "./Words";
 
 // One page of the phone pager (the gallery lab's round six): the stage,
 // exactly as tall as what it draws fitted whole; the caption; then the words
-// in their own area, with the mentors and the links after the last of them.
+// in their own area, with the mentors (a block each) and the links after the
+// last of them.
 // Words that do not fit beside their stage have pages of their own (wordsOnly:
 // no stage; the pager measures and lays them out, lib/gallery/paginate), so
 // the area scrolls, behind a soft fade at its foot, only for one paragraph
@@ -39,12 +40,13 @@ export function PagerPage({ gallery, page, index, count, kind, stage, room, curr
   const textRef = useRef<HTMLDivElement | null>(null);
   const [scrolls, setScrolls] = useState(false);
   // The post's own link is the post card's, so the card's link to it is not drawn a second time on a page beside the card. The end block
-  // (the mentors and the card's links) is drawn only when it has something in it: an empty one would still cost a gap.
+  // (the card's links) is drawn only when it has something in it: an empty one would still cost a gap. Mentorship's mentors are a block each
+  // after the words: the pager says which sit on this page (page.mentors); until it has measured, the page that has the links has them all.
   const embed = gallery.photos[page.photo].embed;
   const skip = embed ? embed.card.href : undefined;
   const links = siteContent.cards[gallery.key].modal.links.filter((link) => link.href !== skip);
-  const mentors = page.links && gallery.key === "mentorship";
-  const hasEnd = page.links && (mentors || links.length > 0);
+  const mentors = gallery.key === "mentorship" ? page.mentors ?? (page.links ? siteContent.cards.mentorship.mentors.people.map((_, i) => i) : []) : [];
+  const hasEnd = page.links && links.length > 0;
 
   useLayoutEffect(() => {
     const text = textRef.current;
@@ -84,7 +86,7 @@ export function PagerPage({ gallery, page, index, count, kind, stage, room, curr
           data-pager-text=""
           data-scrolls={scrolls ? "" : undefined}
         >
-          {/* The words as blocks the pager can measure (data-block: each paragraph with what follows it, then the end block); gap-4 and pb-6 are GALLERY.pager.blockGapPx and endPadPx. */}
+          {/* The words as blocks the pager can measure (data-block: each paragraph with what follows it, each mentor, then the end block); gap-4 and pb-6 are GALLERY.pager.blockGapPx and endPadPx. */}
           <div className="flex flex-col gap-4 pb-6">
             {slideWords(page).map((unit) => (
               <div key={unit} className="flex flex-col gap-4" data-block={`w${unit}`}>
@@ -92,10 +94,14 @@ export function PagerPage({ gallery, page, index, count, kind, stage, room, curr
                 {afterWords(gallery, unit, false)}
               </div>
             ))}
+            {mentors.map((mentor) => (
+              <div key={mentor} data-block={mentorId(mentor)}>
+                <MentorsList compact only={mentor} />
+              </div>
+            ))}
             {hasEnd && (
               <div className="flex flex-col gap-4" data-block={END}>
-                {mentors && <MentorsList compact />}
-                {links.length > 0 && <CardLinks cardKey={gallery.key} skip={skip} />}
+                <CardLinks cardKey={gallery.key} skip={skip} />
               </div>
             )}
           </div>

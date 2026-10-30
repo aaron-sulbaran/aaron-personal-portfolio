@@ -30,7 +30,9 @@ export interface Plan {
 }
 
 export interface Page extends Slide {
-  links: boolean; // the card's links (and the mentors) sit on this page
+  links: boolean; // the card's links (and, unless mentors says which, all the mentors) sit on this page
+  // Which of Mentorship's mentors sit on this page, once the pager has split them across pages (repage); absent, a page that has the links has them all.
+  mentors?: readonly number[];
   wordless?: boolean; // grouping B: a group's later photo alone with its caption
   wordsOnly?: true; // words on a page of their own, no stage: they did not fit beside their photo (repage); photo is still the one they belong to
 }
@@ -234,15 +236,16 @@ export function phonePages(plan: Plan, grouping: PhoneGrouping): Page[] {
 }
 
 // The pages laid out as the pager measured them (lib/gallery/paginate): a unit named in the shape keeps its stage's page, with whatever words
-// fit beside the stage (wordless when none do), and the rest of its words, and the card's links when its page had them, follow on pages
-// of their own (wordsOnly: no stage). Order and every word stay.
+// fit beside the stage (wordless when none do), and the rest of its words, Mentorship's mentors and the card's links when its page had them,
+// follow on pages of their own (wordsOnly: no stage). Order and every word stay.
 export function repage(pages: readonly Page[], shape: Shape): Page[] {
   return pages.flatMap((page): Page[] => {
     const unit = shape[page.photo];
     if (!unit || page.wordsOnly) return [page];
     const { stage, more } = unit;
-    const first: Page = { ...page, before: stage.units, own: undefined, after: [], links: stage.end, ...(stage.units.length === 0 && !stage.end ? { wordless: true as const } : {}) };
-    const rest = more.map((chunk): Page => ({ photo: page.photo, photos: [page.photo], before: chunk.units, after: [], links: chunk.end, wordsOnly: true }));
+    const empty = stage.units.length === 0 && !stage.end && !stage.mentors?.length;
+    const first: Page = { ...page, before: stage.units, own: undefined, after: [], links: stage.end, ...(stage.mentors ? { mentors: stage.mentors } : {}), ...(empty ? { wordless: true as const } : {}) };
+    const rest = more.map((chunk): Page => ({ photo: page.photo, photos: [page.photo], before: chunk.units, after: [], links: chunk.end, ...(chunk.mentors ? { mentors: chunk.mentors } : {}), wordsOnly: true }));
     return [first, ...rest];
   });
 }

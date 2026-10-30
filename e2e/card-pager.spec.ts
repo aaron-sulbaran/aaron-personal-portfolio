@@ -54,14 +54,22 @@ test("pager: an arrow key with a modifier held is the browser's, not the pager's
   await expect(dialog.locator("[data-pager]")).toHaveAttribute("data-page", "1");
 });
 
-test("pager: Mentorship's mentors and its link ride together on one page, its last", async ({ page }) => {
-  const { dialog } = await openCardFromBook(page, "mentorship");
+test("pager: Mentorship's mentors follow its words a block each, in order across the pages, their heading once with the first, and its link on the last page", async ({ page }) => {
+  const { dialog } = await openCardFromBook(page, "mentorship", { settled: true });
+  const { title, people } = siteContent.cards.mentorship.mentors;
   const pages = dialog.locator("[data-pager-page]");
-  const last = pages.last();
-  await expect(last.locator("[data-mentors]")).toHaveCount(1);
-  await expect(last.locator("a", { hasText: siteContent.cards.mentorship.modal.links[0].label })).toHaveCount(1);
-  await expect(dialog.locator("[data-mentors]")).toHaveCount(1);
+  // Every mentor once and in order, wherever the pager put them, with their line.
+  expect(await dialog.locator("[data-mentors] a").evaluateAll((links) => links.map((link) => link.getAttribute("href")))).toEqual(people.map((mentor) => mentor.href));
+  for (const mentor of people) await expect(dialog.getByText(mentor.line!, { exact: true })).toHaveCount(1);
+  await expect(dialog.locator("h3", { hasText: title })).toHaveCount(1);
+  // The first page is the card's own words, and the heading stands on the page with the first mentor.
   await expect(pages.first().locator("[data-mentors]")).toHaveCount(0);
+  const headed = pages.filter({ has: page.locator("h3", { hasText: title }) });
+  await expect(headed).toHaveCount(1);
+  await expect(headed.locator(`a[href="${people[0].href}"]`)).toHaveCount(1);
+  // The link is after the last mentor: on the last page.
+  await expect(dialog.locator("a", { hasText: siteContent.cards.mentorship.modal.links[0].label })).toHaveCount(1);
+  await expect(pages.last().locator("a", { hasText: siteContent.cards.mentorship.modal.links[0].label })).toHaveCount(1);
 });
 
 test("pager: every photo is whole in its stage, and no stage is taller than 40 percent of the height (55 percent on a page with no words; a name tag and the post's card are as tall as their words)", async ({ page }) => {
