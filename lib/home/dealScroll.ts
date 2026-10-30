@@ -54,16 +54,37 @@ export type ScrollChild = {
   kill: () => void;
 };
 
+// Whether the deal's own scroll is moving the page right now (either leg, from its
+// first tick to however it ends). Its positions are the page's as it was when the
+// leg began, so nothing may change the height of what is above the reader under
+// it: the ribbon's slot waits for it to end before it closes up
+// (components/home/useSlotRelease.ts). The leg's eased tail moves the page less
+// than a pixel a frame for a while, long enough to look like a reader who stopped.
+const moving = new Set<object>();
+export function dealScrollMoving(): boolean {
+  return moving.size > 0;
+}
+function movingWhile(key: object) {
+  return { start: () => void moving.add(key), end: () => void moving.delete(key) };
+}
+
 // Adds the scroll to the master at `startMs`, over `durationMs`, power2.inOut.
 // `autoKill`: the reader's own scroll takes it back (off in the cutscene, whose
 // lock keeps the reader's input out and whose leg nothing else may stop).
 export function addDealScroll(master: ReturnType<typeof Gsap.timeline>, top: number, startMs: number, durationMs: number, onEnd?: () => void, autoKill = true): ScrollChild {
-  const hold = holdSmoothScrollOff(onEnd);
+  const leg = movingWhile({});
+  const hold = holdSmoothScrollOff(() => {
+    leg.end();
+    onEnd?.();
+  });
   const tween = gsap.to(window, {
     scrollTo: { y: top, autoKill, onAutoKill: hold.end },
     duration: durationMs / 1000,
     ease: "power2.inOut",
-    onStart: hold.start,
+    onStart: () => {
+      leg.start();
+      hold.start();
+    },
     onComplete: hold.end,
     onInterrupt: hold.end,
   });
@@ -74,6 +95,7 @@ export function addDealScroll(master: ReturnType<typeof Gsap.timeline>, top: num
     kill() {
       tween.kill();
       hold.end();
+      leg.end();
     },
   };
 }
@@ -85,11 +107,15 @@ export function addDealScroll(master: ReturnType<typeof Gsap.timeline>, top: num
 // there is nothing to put back.
 export function addHandScroll(master: ReturnType<typeof Gsap.timeline>, plan: HandPlan, y0: number, landing: number): ScrollChild {
   const progress = { e: 0 };
+  const leg = movingWhile(progress);
   const tween = gsap.to(progress, {
     e: 1,
     duration: plan.durationMs / 1000,
     ease: plan.ease,
+    onStart: leg.start,
     onUpdate: () => window.scrollTo({ top: y0 + (landing - y0) * progress.e, behavior: "instant" }),
+    onComplete: leg.end,
+    onInterrupt: leg.end,
   });
   // Made on the global timeline, moved into the master at its zero (the label "scroll").
   master.addLabel("scroll", 0);
@@ -98,6 +124,7 @@ export function addHandScroll(master: ReturnType<typeof Gsap.timeline>, plan: Ha
     kill() {
       // A child of the master: the master's length is the clock proxy's, so it is not shortened.
       tween.kill();
+      leg.end();
     },
   };
 }
