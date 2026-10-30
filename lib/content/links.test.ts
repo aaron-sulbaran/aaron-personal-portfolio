@@ -96,7 +96,7 @@ describe("inlineRuns", () => {
 describe("visibleText and the footnote", () => {
   it("never pairs a link's asterisk with emphasis", () => { expect(visibleText("no matter what you're building[*](tip:killer-drones). I *know* it")).toBe("no matter what you're building*. I know it"); });
   it("reads the approved Connect body as a visitor sees it", () => {
-    const body = "I check everything (or Talos does) so take your pick. If you want to talk screen to screen, [grab a time on my calendar](https://cal.com/aaron-sulbaran). If you're in my city, let's grab a coffee ([or matcha](pop:matcha)). I take coffee chats with anyone, no matter what you're building[*](tip:killer-drones).";
+    const body = "I check everything (or Talos does) so take your pick. If you want to talk screen to screen, grab a time on my calendar. If you're in my city, let's grab a coffee ([or matcha](pop:matcha)). I take coffee chats with anyone, no matter what you're building[*](tip:killer-drones).";
     expect(visibleText(body)).toBe("I check everything (or Talos does) so take your pick. If you want to talk screen to screen, grab a time on my calendar. If you're in my city, let's grab a coffee (or matcha). I take coffee chats with anyone, no matter what you're building*.");
   });
 });

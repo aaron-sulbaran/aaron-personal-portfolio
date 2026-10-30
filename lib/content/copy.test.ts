@@ -88,9 +88,9 @@ describe("where the links sit, pinned as raw markup", () => {
     );
   });
 
-  it("keeps Connect's calendar link, matcha pop and footnote on their approved words", () => {
+  it("keeps Connect's plain calendar words, matcha pop and footnote on their approved words", () => {
     expect(connect.body).toBe(
-      "I check everything (or Talos does) so take your pick. If you want to talk screen to screen, [grab a time on my calendar](https://cal.com/aaron-sulbaran). If you're in my city, let's grab a coffee ([or matcha](pop:matcha)). I take coffee chats with anyone, no matter what you're building[*](tip:killer-drones).",
+      "I check everything (or Talos does) so take your pick. If you want to talk screen to screen, grab a time on my calendar. If you're in my city, let's grab a coffee ([or matcha](pop:matcha)). I take coffee chats with anyone, no matter what you're building[*](tip:killer-drones).",
     );
   });
 
@@ -147,12 +147,12 @@ describe("Connect", () => {
     expect(connect.links.map((link) => [link.label, link.icon])).toEqual([["LinkedIn", "linkedin"], ["GitHub", "github"], ["Email", "mail"], ["Instagram", "instagram"], ["X", "x"]]);
   });
 
-  it("links the calendar, the matcha pop and the killer-drones footnote", () => {
+  it("links the matcha pop and the killer-drones footnote, and leaves the calendar to the one Book some time link", () => {
     expect(referenced(connect.body)).toEqual(["pop:matcha", "tip:killer-drones"]);
-    expect(externals(connect.body)).toEqual(["https://cal.com/aaron-sulbaran"]);
+    expect(externals(connect.body)).toEqual([]);
   });
 
-  it("has one big link, Book some time, to the same calendar", () => {
+  it("has one calendar link, the big Book some time", () => {
     expect(connect.primary).toEqual({ label: "Book some time", href: "https://cal.com/aaron-sulbaran" });
   });
 
