@@ -62,6 +62,7 @@ export function buildBlock(el: HTMLElement, { kind, index, split, reduce, measur
   const plan = planBlock({ kind, reduce, index, split, rows });
   const settle = () => {
     delete el.dataset.sectionsState;
+    delete el.dataset.sectionsShown;
   };
   if (!plan) {
     el.dataset.sectionsState = "still";
@@ -111,6 +112,11 @@ export function buildBlock(el: HTMLElement, { kind, index, split, reduce, measur
     const tl = gsap.timeline({
       paused: true,
       defaults: { ease: plan.ease, duration: plan.duration },
+      // Whole for good: data-sections-shown says so (a page title's fill,
+      // components/sections/TitleFill.tsx, reads its letters only once they rest).
+      onUpdate(this: gsap.core.Timeline) {
+        if (this.totalProgress() >= 1) el.dataset.sectionsShown = "";
+      },
       scrollTrigger:
         reached < 1
           ? {

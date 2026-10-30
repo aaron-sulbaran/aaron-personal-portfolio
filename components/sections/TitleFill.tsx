@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, type ReactNode } from "react";
 import { joinFillPool } from "@/components/coil/fill/pool";
+import { FILL_HELD_IN_INK } from "@/lib/coil/fillPool";
 import { canCreateWebGL2 } from "@/components/coil/webglProbe";
 import type { TitleFillRuntime } from "@/components/coil/fill/title";
 import { useReducedMotionLive } from "@/components/soundtrack/useReducedMotionLive";
@@ -26,7 +27,8 @@ import { HOLDING_MODE } from "@/lib/holding";
 // gate "deal": page 2's title waits out the deal (html[data-deal] from
 // "pending" through "unfurled"): no canvas is made while the deal plays, and
 // one already drawing holds still, so it never costs the deal a frame.
-// fillKey names the title for QA (data-title-fill-key, ?coildebug hooks).
+// fillKey names the title for QA (data-title-fill-key, ?coildebug hooks) and
+// for FILL_HELD_IN_INK, the titles that stay in their ink until Aaron decides.
 
 const DEAL_PLAYING = new Set(["pending", "closed", "dealing", "unfurled"]);
 const dealPlaying = () => DEAL_PLAYING.has(document.documentElement.dataset.deal ?? "");
@@ -49,6 +51,11 @@ export function TitleFill({ children, fillKey, gate }: { children: ReactNode; fi
     const heading = wrapper?.firstElementChild;
     if (!host || !wrapper || !(heading instanceof HTMLElement) || heading === host) return;
     const say = (state: "rest" | "on" | "still") => wrapper.setAttribute("data-title-fill", state);
+    // A title held in its ink (lib/coil/fillPool.ts FILL_HELD_IN_INK) stays there, whatever the page can draw.
+    if (FILL_HELD_IN_INK.includes(fillKey) && !/[?&]coildebug=[^&]*\bfill-all\b/.test(window.location.search)) {
+      say("rest");
+      return;
+    }
     if (reduced || HOLDING_MODE || typeof WebGL2RenderingContext === "undefined") {
       say("still");
       return;
@@ -105,11 +112,14 @@ export function TitleFill({ children, fillKey, gate }: { children: ReactNode; fi
       }, giveUp);
     };
 
+    // A sections heading rises in line by line (lib/sections/engine.ts); its
+    // letters are read once they rest, so the reveal is the page's own, in ink.
+    const revealed = () => !heading.hasAttribute("data-sections-block") || heading.dataset.sectionsState === "still" || heading.hasAttribute("data-sections-shown");
     const member = joinFillPool({
       id: `${fillKey}:${id}`,
       el: wrapper,
       // A gated title starts none while the deal plays; one it has holds still instead.
-      eligible: () => !failed && (!gated || !dealPlaying() || runtime !== null),
+      eligible: () => !failed && revealed() && (!gated || !dealPlaying() || runtime !== null),
       acquire,
       release,
     });
@@ -120,11 +130,14 @@ export function TitleFill({ children, fillKey, gate }: { children: ReactNode; fi
         })
       : null;
     dealWatch?.observe(document.documentElement, { attributes: true, attributeFilter: ["data-deal"] });
+    const revealWatch = new MutationObserver(() => member.update());
+    revealWatch.observe(heading, { attributes: true, attributeFilter: ["data-sections-shown", "data-sections-state"] });
 
     if (/coildebug/.test(window.location.search)) (wrapper as QaWrapper).__titleFill = { runtime: () => runtime };
 
     return () => {
       dealWatch?.disconnect();
+      revealWatch.disconnect();
       member.leave();
       release();
       wrapper.removeAttribute("data-title-fill");

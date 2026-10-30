@@ -13,6 +13,15 @@ export const FILL_POOL = {
   farViewports: 2,
 } as const;
 
+// Titles held in their own ink, not the fill, until Aaron says otherwise. The
+// bar is 3:1 against what is really behind a title (lib/coil/letterContrast.ts
+// titleContrast). Page 2's ("work") sits on the Coil's blue field, darker than
+// the field its own canvas draws, so its letters, floored against that paler
+// field, measured 2.6:1 at 1280 in light (2026-10-29; dark and 390 cleared 3:1).
+// Raising the ink floor enough to clear it would change the name's look, so it
+// waits in ink. ?coildebug=fill-all draws it anyway (QA, and for the decision).
+export const FILL_HELD_IN_INK: readonly string[] = ["work"];
+
 export type PoolEntry = {
   readonly id: string;
   readonly alive: boolean;

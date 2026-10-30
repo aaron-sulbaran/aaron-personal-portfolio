@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cityBlockDistance, letterContrast, oklabL, type LetterContrastInput } from "@/lib/coil/letterContrast";
+import { cityBlockDistance, contrastRatio, letterContrast, oklabL, relativeLuminance, titleContrast, type LetterContrastInput } from "@/lib/coil/letterContrast";
 
 describe("oklabL", () => {
   it("is 0 for black, 1 for white, and rises with gray", () => {
@@ -80,5 +80,38 @@ describe("letterContrast", () => {
   it("reads lighter letters as positive (dark theme)", () => {
     const out = letterContrast(lockup([0.4, 0.4, 0.4, 0.4, 0.4], 0.26, 0.4));
     expect(out.meanDL).toBeCloseTo(0.14, 5);
+  });
+});
+
+describe("a page title's letters against what is behind them", () => {
+  // Two 10 by 20 px glyphs on one line of a 120 by 80 grid, at 1 px a CSS px.
+  const width = 120;
+  const height = 80;
+  const glyphs = [
+    { x0: 40, x1: 50, y0: 30, y1: 50 },
+    { x0: 60, x1: 70, y0: 30, y1: 50 },
+  ];
+  const grid = (inside: number, outside: number) => {
+    const out = new Float32Array(width * height).fill(outside);
+    for (const g of glyphs) for (let y = g.y0; y < g.y1; y++) for (let x = g.x0; x < g.x1; x++) out[y * width + x] = inside;
+    return out;
+  };
+  const cover = grid(1, 0);
+
+  it("reads each glyph's inside against the backdrop's ring, as a WCAG ratio", () => {
+    const paper = relativeLuminance(250, 250, 247);
+    const ink = relativeLuminance(10, 10, 10);
+    const read = titleContrast({ letters: grid(ink, paper), behind: grid(paper, paper), cover, width, height, glyphs, scale: 1 });
+    expect(read.glyphs).toHaveLength(2);
+    for (const ratio of read.glyphs) expect(ratio).toBeCloseTo(contrastRatio(ink, paper), 5);
+    expect(read.min).toBeCloseTo(contrastRatio(ink, paper), 5);
+  });
+
+  it("takes the backdrop from the frame with the title hidden: a dark field behind lowers it", () => {
+    const fill = relativeLuminance(80, 110, 150);
+    const field = relativeLuminance(190, 210, 230);
+    const read = titleContrast({ letters: grid(fill, 0.9), behind: grid(field, field), cover, width, height, glyphs, scale: 1 });
+    expect(read.min).toBeCloseTo(contrastRatio(fill, field), 5);
+    expect(read.min).toBeLessThan(contrastRatio(fill, 0.9));
   });
 });

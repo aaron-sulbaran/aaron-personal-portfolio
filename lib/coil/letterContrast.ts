@@ -181,3 +181,82 @@ export function letterContrast(input: LetterContrastInput): LetterContrast {
     greetDL: gInCount && gRingCount ? gIn / gInCount - gRing / gRingCount : Number.NaN,
   };
 }
+
+// ---- the page titles (components/coil/fill/title.ts) ----
+//
+// A title's letters measured the way letterContrast measures the name's, as a
+// WCAG ratio (Aaron's bar for display type: 3:1), against what is really
+// behind them (page 2's title sits on the blue field, not the page's paper):
+// per glyph, the mean relative luminance inside it (the mask eroded, 2 CSS px
+// as for the name, 1 px for page 2's small title, whose strokes are about 4
+// px: 2 would leave no core) against the mean of the backdrop around it (a
+// ring 6 to 26 CSS px out from the title's ink, in the glyph's columns
+// widened 30 px). The backdrop is read
+// from a frame with the title (and the page's number by it) hidden, so no
+// other ink counts as backdrop; the letters from a frame as the page shows them.
+
+export type TitleContrastInput = {
+  letters: Float32Array; // relative luminance per pixel (WCAG), the page as shown, row 0 at the top
+  behind: Float32Array; // the same grid with the title hidden: its backdrop
+  cover: Float32Array; // the mask's coverage 0..1 on the same grid
+  width: number;
+  height: number;
+  glyphs: readonly { x0: number; x1: number; y0: number; y1: number }[]; // pixel boxes, each on its line's rows
+  scale: number; // pixels per CSS px
+  erode?: number; // CSS px taken off the letters' edges (default 2, the name's)
+};
+
+export type TitleContrast = { glyphs: number[]; min: number; median: number };
+
+const channelToLinear = (byte: number) => {
+  const c = byte / 255;
+  return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+};
+
+// WCAG relative luminance of an sRGB byte triple.
+export function relativeLuminance(r: number, g: number, b: number) {
+  return 0.2126 * channelToLinear(r) + 0.7152 * channelToLinear(g) + 0.0722 * channelToLinear(b);
+}
+
+export function contrastRatio(a: number, b: number) {
+  return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+}
+
+export function titleContrast({ letters, behind, cover, width, height, glyphs, scale, erode: erodeCss = 2 }: TitleContrastInput): TitleContrast {
+  const n = width * height;
+  const ink = new Uint8Array(n);
+  const any = new Uint8Array(n);
+  const notInk = new Uint8Array(n);
+  for (let i = 0; i < n; i++) {
+    ink[i] = cover[i] > 0.98 ? 1 : 0;
+    any[i] = cover[i] > 0.02 ? 1 : 0;
+    notInk[i] = ink[i] ? 0 : 1;
+  }
+  const inside = cityBlockDistance(notInk, width, height);
+  const fromAll = cityBlockDistance(any, width, height);
+  const erode = erodeCss * scale;
+  const near = 6 * scale;
+  const far = 26 * scale;
+  const widen = 30 * scale;
+  const ratios = glyphs.map(({ x0, x1, y0, y1 }) => {
+    let inSum = 0;
+    let inCount = 0;
+    let ringSum = 0;
+    let ringCount = 0;
+    for (let y = Math.max(0, Math.floor(y0 - far)); y < Math.min(height, Math.ceil(y1 + far)); y++) {
+      for (let x = Math.max(0, Math.floor(x0 - widen)); x < Math.min(width, Math.ceil(x1 + widen)); x++) {
+        const i = y * width + x;
+        if (x >= x0 && x < x1 && y >= y0 && y < y1 && ink[i] && inside[i] > erode) {
+          inSum += letters[i];
+          inCount++;
+        } else if (fromAll[i] > near && fromAll[i] <= far) {
+          ringSum += behind[i];
+          ringCount++;
+        }
+      }
+    }
+    return inCount && ringCount ? contrastRatio(inSum / inCount, ringSum / ringCount) : Number.NaN;
+  });
+  const sorted = ratios.filter(Number.isFinite).sort((a, b) => a - b);
+  return { glyphs: ratios, min: sorted[0] ?? Number.NaN, median: sorted[Math.floor(sorted.length / 2)] ?? Number.NaN };
+}
