@@ -98,20 +98,27 @@ for (const size of SIZES) {
   test.describe(`the cutscene at ${size.name}`, () => {
     test.use({ viewport: size.viewport, deviceScaleFactor: size.phone ? 2 : 1, hasTouch: !!size.phone, isMobile: !!size.phone });
 
-    test("a hard fling down from block 4 plays the deal and lands on page 2, and stays there", async ({ page, cdp }) => {
+    // The fling from block 4, on a CPU `slowdown` times slower than the machine's (CDP's
+    // Emulation.setCPUThrottlingRate, from just before the first wheel): a phone, or a busy page.
+    // The landing must not depend on how fast the page's own thread is: the wheel that would
+    // carry the page past the trigger is decided on as it arrives, before the browser scrolls.
+    async function hardFling(page: Page, cdp: CDPSession, slowdown = 1) {
       await openHome(page, { debug: "flight", at: "top" });
       const facts = await dealFacts(page);
       await fromBlock4(page);
       const at = middle(size);
       await cdp.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: at.x, y: at.y });
+      if (slowdown > 1) await cdp.send("Emulation.setCPUThrottlingRate", { rate: slowdown });
       await startRecording(page);
       // About 40 wheels of 80 to 150 px over 400 ms (a trackpad's burst), then a decaying tail for 1.5 s.
       await wheelStream(cdp, flingStream(), at);
       await unfurledOrDealt(page);
       await page.waitForTimeout(1500);
       const frames = await stopRecording(page);
+      if (slowdown > 1) await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
       const dealing = frames.filter((f) => f.deal === "dealing");
-      expect(dealing.length, "frames of the deal").toBeGreaterThan(60);
+      // The deal plays (a slowed CPU draws fewer frames over the same wall-clock seconds).
+      expect(dealing.length, "frames of the deal").toBeGreaterThan(slowdown > 1 ? 20 : 60);
       // The fling is carried: it started the deal, and the page did not go past it down the page.
       expect(pastLanding(frames), `how far past page 2's top the page went (the bound is ${OVERSHOOT_BOUND_PX} px)`).toBeLessThanOrEqual(OVERSHOOT_BOUND_PX);
       const stays = landsAndStays(frames);
@@ -121,8 +128,18 @@ for (const size of SIZES) {
       // A fine pointer's lock is its listeners alone: the root's overflow (and so a classic scrollbar) is never toggled.
       if (!size.phone) expect(new Set(frames.map((f) => f.overflow)), "the root's overflow through the cutscene").toEqual(new Set(["visible"]));
       const held = lockSpan(frames);
-      test.info().annotations.push({ type: "fling", description: `deal started at scrollY ${dealing[0].y.toFixed(0)}; past page 2's top at most ${pastLanding(frames).toFixed(1)} px; the lock held ${held.heldMs.toFixed(0)} ms` });
+      test.info().annotations.push({ type: "fling", description: `${slowdown}x CPU: deal started at scrollY ${dealing[0].y.toFixed(0)}; past page 2's top at most ${pastLanding(frames).toFixed(1)} px; the lock held ${held.heldMs.toFixed(0)} ms` });
+    }
+
+    test("a hard fling down from block 4 plays the deal and lands on page 2, and stays there", async ({ page, cdp }) => {
+      await hardFling(page, cdp);
     });
+
+    for (const slowdown of [4, 6]) {
+      test(`a hard fling down from block 4 lands on page 2 with the CPU ${slowdown}x slower`, async ({ page, cdp }) => {
+        await hardFling(page, cdp, slowdown);
+      });
+    }
 
     test("the tail of the fling is swallowed past the unfurl: the lock lets go only once the input has been quiet", async ({ page, cdp }) => {
       await openHome(page, { debug: "flight", at: "top" });

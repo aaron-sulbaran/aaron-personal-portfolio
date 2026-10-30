@@ -41,7 +41,7 @@ const ATTRIBUTE = "data-deal-lock";
 let active: DealLock | null = null;
 
 // A text field (or anything editable) keeps its own arrows and space.
-function typesText(target: EventTarget | null): boolean {
+export function typesText(target: EventTarget | null): boolean {
   return target instanceof HTMLElement && (target.isContentEditable || target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement);
 }
 

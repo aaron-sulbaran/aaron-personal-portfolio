@@ -143,6 +143,10 @@ const values = {
     // deal without the cutscene as it always did.
     // capMs keeps more than a second over the unfurl (about 2.67 s after the
     // trigger), the most a stalled frame may eat before the lock lets go early.
+    // guardAheadVh: how far above the trigger, in viewport heights, the page starts
+    // deciding on the reader's wheel, touch and scroll keys themselves before the
+    // browser scrolls (lib/home/triggerGuard.ts), so the deal starts on the input
+    // that would carry the page past the trigger, however busy the main thread is.
     cutscene: {
       quietMs: 120,
       capMs: 3800,
@@ -150,6 +154,7 @@ const values = {
       staleMs: 90,
       overshootPx: 24,
       readerWindowMs: { wheel: 450, key: 700, touch: 2500, scrollbar: 500 },
+      guardAheadVh: 1,
     },
     // The deal's one clock, in ms from the click (docs/superpowers/specs/2026-10-22-wheel-deal-motion.md
     // section 2, retimed in slice 4d to be fast and again on 2026-10-29 to let it
