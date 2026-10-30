@@ -184,6 +184,7 @@ test("jank 1: the ribbon's condense and curl move the cards around the middle sm
   expect(result.length, "cards around the middle").toBeGreaterThan(3);
   let mostStep = 0;
   let worstSecond = 0;
+  let worstSecondAt = "";
   let gaps = 0;
   const finite = (p: { x: number; y: number } | undefined) => !!p && Number.isFinite(p.x);
   for (const { key, points } of result) {
@@ -197,12 +198,16 @@ test("jank 1: the ribbon's condense and curl move the cards around the middle sm
     for (let i = 1; i < points.length; i++) if (finite(points[i]) && finite(points[i - 1])) mostStep = Math.max(mostStep, Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y));
     for (let i = 1; i < points.length - 1; i++) {
       if (!finite(points[i - 1]) || !finite(points[i]) || !finite(points[i + 1])) continue;
-      worstSecond = Math.max(worstSecond, Math.hypot(points[i + 1].x - 2 * points[i].x + points[i - 1].x, points[i + 1].y - 2 * points[i].y + points[i - 1].y));
+      const second = Math.hypot(points[i + 1].x - 2 * points[i].x + points[i - 1].x, points[i + 1].y - 2 * points[i].y + points[i - 1].y);
+      if (second > worstSecond) {
+        worstSecond = second;
+        worstSecondAt = `${key} at ${(i * FRAME_MS).toFixed(0)} ms`;
+      }
     }
   }
-  test.info().annotations.push({ type: "condense and curl", description: `${result.length} cards: the most a frame steps ${mostStep.toFixed(1)} px, the worst second difference ${worstSecond.toFixed(1)} px, ${gaps} frames out of sight across a ring-end swap` });
+  test.info().annotations.push({ type: "condense and curl", description: `${result.length} cards: the most a frame steps ${mostStep.toFixed(1)} px, the worst second difference ${worstSecond.toFixed(1)} px (${worstSecondAt}), ${gaps} frames out of sight across a ring-end swap` });
   expect(mostStep, `a frame steps a card ${mostStep.toFixed(1)} px`).toBeLessThanOrEqual(FRAME_STEP_BOUND_PX);
-  expect(worstSecond, `second difference ${worstSecond.toFixed(1)} px`).toBeLessThanOrEqual(SECOND_DIFFERENCE_BOUND_PX);
+  expect(worstSecond, `second difference ${worstSecond.toFixed(1)} px (${worstSecondAt})`).toBeLessThanOrEqual(SECOND_DIFFERENCE_BOUND_PX);
 });
 
 // ---------------------------------------------------------------- risk 3: the sticky stage
@@ -276,8 +281,9 @@ for (const size of [
 // channel (no bright halo, no dark fringe) and the same share on every channel that can
 // tell them apart (no tinted rim). The open frame's top edge rises from the page with no
 // step.
-// The field opens from the end of the condense plus openStartMs, over open.ms: the frames from about 1650 to 2000 have its edge on the canvas.
-const EDGE_FRAMES_MS = [0, 800, 1300, 1700, 1800, 1950, 2200, 2600];
+// The field opens from the end of the condense plus openStartMs, over open.ms: the frames from about 1650 to 2000 have its edge on the canvas,
+// and from about 1800 on it is clear of the band's cards.
+const EDGE_FRAMES_MS = [0, 800, 1300, 1800, 1880, 1950, 2200, 2600];
 for (const colorScheme of ["light", "dark"] as const) {
   test.describe(`jank 4: the mask's edge, ${colorScheme}`, () => {
     test.use({ colorScheme });

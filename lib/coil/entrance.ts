@@ -317,9 +317,11 @@ export function inRing(u: number, drift: number, cardCount: number) {
 // other) are a gap apart, not yet at the same place, so they fade out toward the window's
 // end for as long as the gap is open, and the swap is not seen. It is nothing once the
 // ring has closed (curl 1), where a card and its twin are one place: the fade is let
-// go over the last RING_END_RELEASE of the curl, when the gap is a few px.
+// go over the last RING_END_RELEASE of the curl, when the gap is a few px. (At 3
+// percent, the wider ring of 2026-10-29 left its twins 10 px apart while both showed,
+// and a swap in that last stretch read as a 17 px kick: e2e/deal-jank.spec.ts.)
 export const RING_END_FADE_SLOTS = 1.2;
-const RING_END_RELEASE = 0.03;
+const RING_END_RELEASE = 0.01;
 export function ringEndFade(v: number, cardCount: number, curl: number) {
   if (curl >= 1) return 1;
   const release = smooth(seg(curl, 1 - RING_END_RELEASE, 1));
