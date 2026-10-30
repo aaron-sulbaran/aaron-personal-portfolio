@@ -182,6 +182,11 @@ describe("the music band", () => {
     expect([listen.freeze, listen.unfreeze]).toEqual(["Freeze the wave", "Let the wave move"]);
   });
 
+  it("words the wave's freeze the same in the Menu's chip as in the player: one unfreeze label everywhere", () => {
+    expect([siteContent.menu.freeze, siteContent.menu.unfreeze]).toEqual([listen.freeze, listen.unfreeze]);
+    expect(JSON.stringify(siteContent)).not.toContain("Let it move");
+  });
+
   it("carries no link, so the line stays quiet", () => {
     for (const text of [listen.line, listen.accept, listen.decline, listen.pause, listen.resume]) expect(referenced(text)).toEqual([]);
   });

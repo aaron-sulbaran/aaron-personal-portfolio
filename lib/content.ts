@@ -75,7 +75,7 @@ export const siteContent = {
     markAriaLabel: "Back to top",
     // The wave's freeze, in the panel so a phone with no music playing can stop it too.
     freeze: "Freeze the wave",
-    unfreeze: "Let it move",
+    unfreeze: "Let the wave move",
     // The panel's bottom row: email first, then the socials as text links.
     email: { label: "aarondsulbaran@gmail.com", href: "mailto:aarondsulbaran@gmail.com" },
     socials: [

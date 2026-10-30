@@ -74,7 +74,7 @@ test("chrome: no top bar at any scroll position; the Menu lists the four pages w
 });
 
 // The freeze is always reachable (a phone with no music playing has no pill):
-// the Menu panel holds "Freeze the wave", which reads "Let it move" while the
+// the Menu panel holds "Freeze the wave", which reads "Let the wave move" while the
 // wave is frozen, and a second press lets it go.
 test("chrome: the Menu freezes the wave and lets it move again", async ({ page }) => {
   await openHome(page, { at: "top" });
