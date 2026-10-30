@@ -15,8 +15,8 @@ export function CardLinks({ cardKey, skip }: { cardKey: CardKey; skip?: string }
         const element = inlineLinkElement({ kind: "external", text: link.label, href: link.href, strong: false, em: false });
         if (!element) return null;
         return (
-          <li key={link.href} className="font-label text-label-lg text-accent">
-            <a {...element.props}>
+          <li key={link.href} className="min-w-0 max-w-full font-label text-label-lg text-accent">
+            <a {...element.props} className={`${element.props.className} card-link`}>
               {link.label}
               <span className="sr-only">, {siteContent.columns.externalLabel}</span>
             </a>

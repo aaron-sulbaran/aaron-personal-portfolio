@@ -654,6 +654,8 @@ html:not([data-input="pointer"]) .fx:focus-visible,
 }
 /* In the label face (Profa Bold) the bar rides 0.441em under the baseline while the descenders reach 0.168em, so it hung about 4px clear of them against body copy's 2.3px; the lift sets it 2.3px under them at every label size. Measure again when the full cut lands. */
 .font-label .inline-link, .inline-link.font-label { --inline-line-lift: calc(0.273em - 2.3px); }
+/* A card's own links stand on their own line, so a label longer than the column wraps instead of clipping ("Check out my final performance ever" at 390); the line sits under the last line. */
+.inline-link.card-link { white-space: normal; max-width: 100%; text-wrap: balance; }
 .inline-glyph { display: inline-block; width: 0.8em; height: 0.8em; margin-left: 0.25em; vertical-align: -0.04em; color: var(--color-accent); pointer-events: none; }
 .inline-link::after { background: var(--color-accent); transform: scaleX(var(--inline-p)); transform-origin: 50% 50%; }
 .inline-link[data-inline-open], html:not([data-input="pointer"]) .inline-link:focus-visible { --inline-p: 1; }
