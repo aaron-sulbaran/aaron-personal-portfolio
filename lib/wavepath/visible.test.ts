@@ -1,35 +1,36 @@
 import { describe, expect, it } from "vitest";
+import layout from "./fixtures/layout.json";
 import pages from "./fixtures/pages.json";
 import { SAMPLE_STEP, TRAIN_PX } from "./constants";
-import { sampleSpine } from "./geometry";
-import { signatureFor, resolveSpine, type Anchors, type SpinePoint } from "./spine";
-import { checkLine, chooseTrain, visibleOptions } from "./visible";
+import { sampleSpine, type Point } from "./geometry";
+import { layLine } from "./line";
+import type { Anchors } from "./spine";
+import { blankScrolls, checkLine, chooseTrain, visibleOptions } from "./visible";
 
-const sizes = Object.keys(pages) as (keyof typeof pages)[];
-const optsFor = (size: keyof typeof pages) => visibleOptions(pages[size].anchors.width, pages[size].viewport);
+const measured = { ...Object.fromEntries(Object.entries(pages).map(([k, v]) => [`pages ${k}`, v])), ...Object.fromEntries(Object.entries(layout).map(([k, v]) => [`layout ${k}`, v])) } as Record<string, { anchors: unknown; viewport: number }>;
+const sizes = Object.keys(measured);
 
-describe("always visible, the shipped line", () => {
-  // The shipped guarantee: with the train chooseTrain picks (the train, or the whole line
-  // drawn when the train would leave a gap), some drawn dot is on screen at every scroll position.
-  const chosenTrain = (size: keyof typeof pages) => {
-    const anchors = pages[size].anchors as Anchors;
-    const opts = optsFor(size);
-    const samples = sampleSpine(resolveSpine({ points: signatureFor(anchors.width) }, anchors, { bandRun: opts.bandRun, viewport: opts.viewport }), SAMPLE_STEP);
-    return chooseTrain(samples, anchors, opts);
-  };
-  it.each(sizes)("keeps some drawn dot on screen at every scroll position with the train chooseTrain picks at %s", (size) => {
-    const train = chosenTrain(size);
-    const anchors = pages[size].anchors as Anchors;
-    expect(checkLine(signatureFor(anchors.width), anchors, { ...optsFor(size), train }).visible.worstGapPx).toBe(0);
-  });
-  it("picks these trains on the measured page", () => {
-    expect(Object.fromEntries(sizes.map((size) => [size, chosenTrain(size)]))).toEqual({ "1440x900": TRAIN_PX, "1024x768": TRAIN_PX, "390x844": TRAIN_PX });
-  });
-  it("reaches its end at max scroll and ends past an edge at 1440", () => {
-    const { end } = checkLine(signatureFor(1440), pages["1440x900"].anchors as Anchors, optsFor("1440x900"));
-    expect(end.shortPx).toBeLessThanOrEqual(1);
-    expect(end.endsOff).toBe(true);
-  });
+describe("in view, the shipped line", () => {
+  for (const size of sizes) {
+    const anchors = measured[size].anchors as Anchors;
+    const viewport = measured[size].viewport;
+    const opts = visibleOptions(anchors.width, viewport);
+    const { samples } = layLine(anchors, viewport);
+
+    // The serpentine stays off screen past words with no gap to cross in: the screen may be empty there, and only there. The train
+    // never adds an empty screen to those: it lets go of a crossing only once the crossing has left the view.
+    it(`keeps the train, which never empties a screen the whole line would not, at ${size}`, () => {
+      expect(chooseTrain(samples, anchors, opts)).toBe(TRAIN_PX);
+      const own = new Set(blankScrolls(samples, anchors, { ...opts, train: null }));
+      expect(blankScrolls(samples, anchors, opts).filter((y) => !own.has(y))).toEqual([]);
+    });
+
+    it(`reaches its end at max scroll, past an edge, at ${size}`, () => {
+      const { end } = checkLine(samples, anchors, opts);
+      expect(end.shortPx).toBeLessThanOrEqual(1);
+      expect(end.endsOff).toBe(true);
+    });
+  }
 });
 
 function page(width = 1200): Anchors {
@@ -43,21 +44,24 @@ function page(width = 1200): Anchors {
   return { width, box, words, blocks: [], headings: [], links: [], hairlines: [] };
 }
 
-describe("always visible, the check itself", () => {
+describe("in view, the check itself", () => {
   const opts = { ...visibleOptions(1200, 800), bandRun: false, head: { mode: "viewport" as const, headAt: 0.7, preDrawn: 0, fromBand: false } };
-  const line = (xs: number[]): SpinePoint[] =>
-    (["cards", "numbers", "connect"] as const).flatMap((at, i) => [{ at, y: 0.1, x: xs[i] }, { at, y: 0.9, x: xs[i] }]);
-  it("passes a line that stays on screen", () => expect(checkLine(line([0.5, 0.5, 0.5]), page(), opts).visible.worstGapPx).toBe(0));
-  it("passes an edge run hugging the margin", () => expect(checkLine(line([0.015, 0.5, 0.5]), page(), opts).visible.worstGapPx).toBe(0));
+  // A line down the page at these x, one per 600 px band from 600 to 2400.
+  const line = (xs: number[]): Point[] => xs.flatMap((x, i) => [{ x: x * 1200, y: 600 + i * 600 + 60 }, { x: x * 1200, y: 600 + i * 600 + 540 }]);
+  const samples = (xs: number[]) => sampleSpine(line(xs), SAMPLE_STEP);
+  it("passes a line that stays on screen", () => expect(checkLine(samples([0.5, 0.5, 0.5]), page(), opts).visible.worstGapPx).toBe(0));
+  it("passes an edge run hugging the margin", () => expect(checkLine(samples([0.015, 0.5, 0.5]), page(), opts).visible.worstGapPx).toBe(0));
   it("fails a line that leaves for a section, and says where", () => {
-    const report = checkLine(line([0.5, -0.3, -0.3]), page(), opts);
-    expect(report.visible.worstGapPx).toBeGreaterThan(0);
-    expect(report.visible.atY).toBeGreaterThan(400);
+    const report = checkLine(samples([0.5, -0.3, -0.3]), page(), opts).visible;
+    expect(report.worstGapPx).toBeGreaterThan(0);
+    expect(report.atY).toBeGreaterThan(400);
   });
-  it("keeps the train for a line that passes, draws the whole line for one that does not", () => {
-    const ok = sampleSpine(resolveSpine({ points: line([0.5, 0.5, 0.5]) }, page()), SAMPLE_STEP);
-    const gone = sampleSpine(resolveSpine({ points: line([0.5, -0.3, -0.3]) }, page()), SAMPLE_STEP);
+  it("keeps the train for a line whose empty screens are its own, draws the whole line when the train would add one", () => {
+    const ok = samples([0.5, 0.5, 0.5]);
     expect(chooseTrain(ok, page(), opts)).toBe(opts.train);
-    expect(chooseTrain(gone, page(), opts)).toBeNull();
+    // A line whose on-screen stretches sit far apart along the line but close down the page: the train lets go of the first long
+    // before the second comes, while the whole line would still show the first.
+    const coil = sampleSpine([{ x: 600, y: 700 }, { x: 600, y: 900 }, { x: 5000, y: 910 }, { x: 5000, y: 1200 }, { x: 600, y: 1210 }, { x: 600, y: 2400 }], SAMPLE_STEP);
+    expect(chooseTrain(coil, page(), opts)).toBeNull();
   });
 });

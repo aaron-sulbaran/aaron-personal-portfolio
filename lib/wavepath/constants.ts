@@ -70,8 +70,18 @@ export const RUN_START = -24; // px past the left edge
 export const RUN_SPACING = 120; // px between the run's points: dense, so the curve through them stays level
 export const RUN_PAST = 100; // px the run carries on past the right edge before any turn, so a turn is never on screen
 
+// The line's route (lib/wavepath/serpentine), one shape per kind of window. A crossing keeps at least minRoom of the dots' reach
+// (plus CLEAR_MARGIN) from any text or link, and is placed for the most room up to their whole reach, then for descent: each px
+// it drops across the page is worth `descent` px of room, up to `drop` of the width. The next crossing starts at least `gap` px
+// lower; `window` is how much lower than the first crossing that fits a better placed one may start. Tuned by eye on the real page.
+export interface RouteShape { minRoom: number; gap: number; window: number; drop: number; descent: number }
+export const ROUTE = {
+  phone: { minRoom: 0.35, gap: 200, window: 120, drop: 0.5, descent: 0.3 },
+  wide: { minRoom: 0.45, gap: 240, window: 160, drop: 0.22, descent: 0.3 },
+  step: 4, // px between the heights the search tries
+  turn: 70, // px past the edge a turn swings out
+  sample: 8, // px between the points the route is drawn through
+} as const satisfies { phone: RouteShape; wide: RouteShape; step: number; turn: number; sample: number };
+
 // The path's dots keep this far from any text or link (px beyond a dot's own radius), however the page is laid out.
 export const CLEAR_MARGIN = 4;
-// A gutter beside the page's words sits where the dots at this share of their full reach still clear them (lib/wavepath/spine keep).
-// Nearer than that the line thins to fit (lib/wavepath/columns fit); farther it keeps its whole shape.
-export const GUTTER_FIT = 0.7;

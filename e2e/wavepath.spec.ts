@@ -3,9 +3,12 @@ import { test, expect } from "./support/fixtures";
 import { siteContent } from "@/lib/content";
 import { openHome, scrollToY } from "./support/coil";
 import { settled } from "./support/fallback";
-import { documentTop, pageRects, parkBand } from "./support/wave";
+import { documentTop, pageRects, pageSettled, parkBand } from "./support/wave";
+import { dotReach } from "@/lib/wavepath/columns";
 import { dotsOn, layLine, lineDots } from "@/lib/wavepath/line";
 import type { PathProbe } from "@/lib/wavepath/probe";
+import { marginDrop, seamCrossing, stretchEnds, tightestInView } from "@/lib/wavepath/rules";
+import { blankAt, visibleOptions } from "@/lib/wavepath/visible";
 
 // The scroll-drawn line (wave lab rounds 2 to 6), read through its probe.
 // Never "Play it" here: "Not now" starts the line too, and nothing may play.
@@ -22,6 +25,9 @@ const maxScroll = (page: Page) => page.evaluate(() => document.documentElement.s
 const headAtRest = (page: Page) => page.waitForFunction(() => { const f = (window as unknown as W).__wavePath.frame(); return !!f && f.length > 0 && f.head === f.target; });
 // The last block of page 1, whose foot is the first thing below the band's own stretch of the line.
 const BELOW_BAND = "#story-outside";
+// The top of page 3: the line's first crossing below the cards section is in view there at every size. Page 1's words leave no gap
+// tall enough to cross in today, so the line is out of sight beside them (lib/wavepath/serpentine).
+const CROSSING = "#numbers";
 const toBlock = async (page: Page, sel: string) => scrollToY(page, Math.round(await documentTop(page, sel)));
 
 async function open(page: Page) {
@@ -41,34 +47,36 @@ const accept = (page: Page) => page.locator("#listen").getByRole("button", { nam
 // The reader's freeze is in the playback pill and the player, which are out of reach while the band is parked in view, so the tests use the probe's own.
 const freeze = (page: Page) => page.evaluate(() => (window as unknown as W).__wavePath.freeze(true));
 
-// The line is one line: it leaves the band's run to the right and dives off
-// screen to clear the band before it turns back, so it never crosses the band.
-// That dive is arc length the train has to cover, and just below the band, on a
-// wide window, the screen can hold no ink for a short stretch of scroll (about
-// 150px at 1440 wide: the dive's arc over the draw's 2.5px of arc per page px).
-// Everywhere else, and everywhere on a narrower window, some dot is in view.
-const DIVE_SCROLL_PX = 200;
-
+// The line is a serpentine (lib/wavepath/serpentine): it crosses the page in the gaps between its words and stays off screen past
+// a block of words too tall to have one. So the screen may be empty of the line, but only where the line itself has nothing to
+// show there: at every 50px of scroll with no drawn dot in view, the lib, laid on the page as the page measured it, must agree
+// that even the whole line drawn behind the head shows nothing there (never the train letting go of a crossing still in view).
 for (const size of [{ width: 1440, height: 900 }, { width: 1024, height: 768 }, { width: 390, height: 844 }]) {
-  test(`wavepath: some drawn dot is in view at every 50px of scroll at ${size.width}, but for the dive under the band`, async ({ page }) => {
-    test.setTimeout(180_000);
+  test(`wavepath: the screen is empty of the line only where the line has nothing to show, at ${size.width}`, async ({ page }) => {
+    test.setTimeout(240_000);
     await page.setViewportSize(size);
     await open(page);
     await decline(page);
     const bandTop = Math.round(await documentTop(page, "#listen"));
-    const bandBottom = bandTop + Math.round(await page.locator("#listen").evaluate((el) => el.getBoundingClientRect().height));
     const start = Math.max(0, Math.round(bandTop - size.height / 2));
     const end = await maxScroll(page);
-    const empty: number[] = [];
+    const unexplained: number[] = [];
+    let empty = 0;
     for (let y = start; ; y = Math.min(end, y + 50)) {
       await scrollToY(page, y);
       await headAtRest(page);
-      if ((await visibleDots(page)) === 0) empty.push(y);
+      if ((await visibleDots(page)) === 0) {
+        empty++;
+        const layout = await page.evaluate(() => (window as unknown as W).__wavePath.layout!);
+        const { samples } = layLine(layout.anchors, layout.viewport);
+        const opts = { ...visibleOptions(layout.anchors.width, layout.viewport), train: null };
+        // One step of slack either way: the lib samples the line, the page draws dots.
+        const own = [-50, 0, 50].some((d) => blankAt(samples, layout.anchors, opts, y - layout.origin + d));
+        if (!own) unexplained.push(y);
+      }
       if (y >= end) break;
     }
-    const outside = empty.filter((y) => y < bandBottom || y > bandBottom + size.height);
-    expect(outside, "scroll positions with no drawn dot in view, away from the dive under the band").toEqual([]);
-    expect(empty.length * 50, `px of scroll with nothing drawn: ${empty.join(", ")}`).toBeLessThanOrEqual(DIVE_SCROLL_PX);
+    expect(unexplained, `scroll positions with no drawn dot in view that the line itself would show (${empty} empty in all)`).toEqual([]);
   });
 }
 
@@ -158,7 +166,7 @@ test("wavepath: reduced motion draws the whole line still and runs no loop", asy
   await page.waitForFunction(() => ((window as unknown as W).__wavePath.frame()?.length ?? 0) > 0);
   const f = await frame(page);
   expect(f.head).toBe(f.length);
-  for (const sel of [BELOW_BAND, "#numbers", "#connect"]) {
+  for (const sel of [CROSSING, "#connect"]) {
     await toBlock(page, sel);
     expect(await visibleDots(page), `drawn dots at ${sel}`).toBeGreaterThan(0);
   }
@@ -244,7 +252,7 @@ test("wavepath: crossing to a phone width re-lays the line in view", async ({ pa
   const wide = (await frame(page)).length;
   await page.setViewportSize({ width: 390, height: 844 });
   await page.waitForFunction((w) => (window as unknown as W).__wavePath.frame()!.length !== w, wide);
-  await toBlock(page, BELOW_BAND);
+  await toBlock(page, CROSSING);
   await headAtRest(page);
   expect(await visibleDots(page)).toBeGreaterThan(0);
 });
@@ -268,7 +276,7 @@ test("wavepath: one section reflow lays the line out once and keeps it in view",
   await page.waitForTimeout(800);
   expect((await layouts(page)) - before.layouts, "layouts per reflow").toBe(1);
   expect((await frame(page)).length).toBeGreaterThan(before.length);
-  await toBlock(page, BELOW_BAND);
+  await toBlock(page, CROSSING);
   await headAtRest(page);
   expect(await visibleDots(page)).toBeGreaterThan(0);
 });
@@ -438,24 +446,32 @@ test("wavepath: reduced motion: no ripple", async ({ page }) => {
 
 // The line never lands on words, a link or a tap target (the lib's own line on the page's own measurements, as lib/wavepath/clear.test.ts
 // does on its fixture): laid on the anchors the page measured, every dot of it, still and with the music at its fullest, is
-// checked against every line of text and every link, button and control the browser drew.
-for (const size of [{ width: 390, height: 844 }, { width: 768, height: 1024 }, { width: 1280, height: 800 }]) {
-  test(`wavepath: no dot of the line lands on words, a link or a tap target at ${size.width}`, async ({ page }) => {
+// checked against every line of text and every link, button and control the browser drew. The serpentine's own rules are read off
+// the same line: each stretch in view runs from one edge past the other, none turns tighter than 0.6 of the width, none runs
+// down a margin.
+async function walkAndMeasure(page: Page) {
+  const end = await maxScroll(page);
+  const vh = page.viewportSize()!.height;
+  for (let y = 0; y <= end; y += Math.round(vh * 0.6)) {
+    await scrollToY(page, y);
+    await page.waitForTimeout(250);
+  }
+  await scrollToY(page, 0);
+  await pageSettled(page);
+  const before = await layouts(page);
+  await page.evaluate(() => window.dispatchEvent(new Event("wavepath:relayout")));
+  await expect.poll(() => layouts(page)).toBeGreaterThan(before);
+  await pageSettled(page);
+  return page.evaluate(() => (window as unknown as W).__wavePath.layout!);
+}
+
+for (const size of [{ width: 390, height: 844 }, { width: 768, height: 1024 }, { width: 1280, height: 800 }, { width: 1440, height: 900 }, { width: 1920, height: 1080 }]) {
+  test(`wavepath: no dot of the line lands on words, a link or a tap target, and it crosses cleanly, at ${size.width}`, async ({ page }) => {
     test.setTimeout(180_000);
     await page.setViewportSize(size);
     await open(page);
     await decline(page);
-    // Walk the page so every reveal has played, then ask the line to lay itself out again on the finished page.
-    const end = await maxScroll(page);
-    for (let y = 0; y <= end; y += Math.round(size.height * 0.6)) {
-      await scrollToY(page, y);
-      await page.waitForTimeout(250);
-    }
-    await scrollToY(page, 0);
-    const before = await layouts(page);
-    await page.evaluate(() => window.dispatchEvent(new Event("wavepath:relayout")));
-    await expect.poll(() => layouts(page)).toBeGreaterThan(before);
-    const layout = await page.evaluate(() => (window as unknown as W).__wavePath.layout!);
+    const layout = await walkAndMeasure(page);
     expect(layout.anchors.links.length, "the links the line keeps off").toBeGreaterThan(10);
     const { lines, targets } = await pageRects(page);
     expect(lines.length).toBeGreaterThan(50);
@@ -466,6 +482,99 @@ for (const size of [{ width: 390, height: 844 }, { width: 768, height: 1024 }, {
       expect(dots.length / 3, `${state}: the line is drawn`).toBeGreaterThan(500);
       expect(dotsOn(dots, lines).map(({ rect, dots: n }) => `${lines[rect].text} x${n}`), `${state}: text the line lands on`).toEqual([]);
       expect(dotsOn(dots, targets).map(({ rect, dots: n }) => `${targets[rect].label} x${n}`), `${state}: links and controls the line lands on`).toEqual([]);
+    }
+    const reach = dotReach(laid.amp);
+    const W = layout.anchors.width;
+    const ends = stretchEnds(laid.samples, layout.anchors, reach);
+    expect(ends.length, "crossings in view").toBeGreaterThanOrEqual(2);
+    for (const { first, last } of ends) expect([Math.min(first, last) < -reach + 8, Math.max(first, last) > W + reach - 8], "a crossing runs edge to edge").toEqual([true, true]);
+    expect(tightestInView(laid.samples, layout.anchors, reach), "the tightest turn in view, px").toBeGreaterThanOrEqual(0.6 * W);
+    expect(marginDrop(laid.samples, layout.anchors, reach), "the most a crossing drops within a margin, px").toBeLessThan(120);
+  });
+}
+
+// A phone, as a phone (touch, a coarse pointer, device scale 3): the line leaves page 3 off the left edge and comes back between
+// page 4's heading and the footer, around the contact links, never on a link's box, its number or its heading.
+test.describe("wavepath on a phone", () => {
+  test.use({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, hasTouch: true, isMobile: true });
+  test("wavepath: at 390 the line leaves page 3 off the left edge and winds around the contact links without touching them", async ({ page }) => {
+    test.setTimeout(180_000);
+    await open(page);
+    await decline(page);
+    const layout = await walkAndMeasure(page);
+    const laid = layLine(layout.anchors, layout.viewport);
+    const reach = dotReach(laid.amp);
+    const keep = await page.evaluate((origin) => {
+      const rootLeft = document.querySelector("[data-wave-path]")!.parentElement!.getBoundingClientRect().left;
+      const rect = (el: Element) => {
+        const r = el.getBoundingClientRect();
+        return { left: r.left - rootLeft, right: r.right - rootLeft, top: r.top + window.scrollY - origin, bottom: r.bottom + window.scrollY - origin, label: (el.textContent ?? "").trim().slice(0, 24) };
+      };
+      const lastWords = [...document.querySelectorAll("#numbers [data-wave-words]")].map(rect).reduce((a, b) => (b.bottom > a.bottom ? b : a));
+      return {
+        links: [...document.querySelectorAll("#connect ul a")].map(rect),
+        heading: [...document.querySelectorAll("#connect h2, #connect [data-section-number]")].map(rect),
+        lastWords: lastWords.bottom,
+      };
+    }, layout.origin);
+    expect(keep.links.length).toBe(5);
+    const headingTop = Math.min(...keep.heading.map((h) => h.top));
+    const headingBottom = Math.max(...keep.heading.map((h) => h.bottom));
+    for (const state of ["rest", "loud"] as const) {
+      const dots = lineDots(laid, state);
+      expect(dotsOn(dots, keep.links).map(({ rect, dots: n }) => `${keep.links[rect].label} x${n}`), `${state}: contact links the line lands on`).toEqual([]);
+      expect(dotsOn(dots, keep.heading).map(({ rect, dots: n }) => `${keep.heading[rect].label} x${n}`), `${state}: page 4's number and heading`).toEqual([]);
+    }
+    const s = laid.samples;
+    const between = Array.from({ length: s.count }, (_, i) => i).filter((i) => s.y[i] > keep.lastWords && s.y[i] < headingTop);
+    expect(Math.min(...between.map((i) => s.x[i])), "the line past the left edge between page 3 and page 4").toBeLessThan(-reach);
+    expect(seamCrossing(laid.route.crossings, layout.anchors)?.from, "the crossing at page 4's top edge travels right to left").toBe("right");
+    const back = laid.route.crossings.filter((c) => c.yIn > headingBottom && c.yOut < layout.anchors.box.footer.top);
+    expect(back[0]?.from, "back in from the left under page 4's heading").toBe("left");
+    expect(back.some((c) => c.yOut < Math.min(...keep.links.map((l) => l.top))), "a crossing above the links").toBe(true);
+    expect(back.some((c) => c.yIn > Math.max(...keep.links.map((l) => l.bottom))), "a crossing below the links").toBe(true);
+  });
+});
+
+// Commits and Tokens on page 3: Tokens mounts the toolkit band under the chart, so the strip grows and everything under it moves
+// down. The line must not move above the chart, and the head and train of a reader parked at the chart must not move at all.
+for (const size of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) {
+  test(`wavepath: switching Commits and Tokens leaves the line at the chart where it was, at ${size.width}`, async ({ page }) => {
+    test.setTimeout(180_000);
+    await page.setViewportSize(size);
+    await open(page);
+    await decline(page);
+    await walkAndMeasure(page);
+    const chartTop = () => page.evaluate(() => document.querySelector("[data-metrics-block]")!.getBoundingClientRect().top + window.scrollY);
+    await scrollToY(page, Math.round((await chartTop()) - 100));
+    await pageSettled(page);
+    await headAtRest(page);
+    const read = async () => {
+      const { layout, f } = await page.evaluate(() => ({ layout: (window as unknown as W).__wavePath.layout!, f: (window as unknown as W).__wavePath.frame()! }));
+      const top = (await chartTop()) - layout.origin;
+      const { samples } = layLine(layout.anchors, layout.viewport);
+      const above: number[] = [];
+      for (let i = 0; i < samples.count && samples.y[i] < top; i++) above.push(samples.x[i], samples.y[i]);
+      return { above, head: f.head, train: f.train, layouts: (await layouts(page)) };
+    };
+    const choose = async (name: string) => {
+      const before = await layouts(page);
+      await page.locator("#numbers").getByRole("button", { name, exact: true }).first().click();
+      await expect(page.locator("[data-wave-state]")).toHaveAttribute("data-wave-state", "idle");
+      await expect.poll(() => layouts(page)).toBeGreaterThan(before);
+      await pageSettled(page);
+      await headAtRest(page);
+    };
+    const commits = await read();
+    expect(commits.above.length / 2, "samples above the chart").toBeGreaterThan(200);
+    for (const [name, label] of [["Tokens", "to Tokens"], ["Commits", "back to Commits"]] as const) {
+      await choose(name);
+      const now = await read();
+      expect(now.above.length, `${label}: samples above the chart`).toBe(commits.above.length);
+      const moved = now.above.reduce((worst, v, k) => Math.max(worst, Math.abs(v - commits.above[k])), 0);
+      expect(moved, `${label}: the most any point of the line above the chart moved, px`).toBeLessThan(0.05);
+      expect(Math.abs(now.head - commits.head), `${label}: the head, px of arc`).toBeLessThan(0.5);
+      expect(now.train, `${label}: the train`).toBe(commits.train);
     }
   });
 }
