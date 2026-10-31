@@ -12,6 +12,7 @@ import { TransitionLayer } from "@/components/transition/TransitionLayer";
 import { siteContent } from "@/lib/content";
 import { profaBlack, profaBold } from "@/lib/fonts";
 import { HOLDING_MODE } from "@/lib/holding";
+import { bandInitScript } from "@/lib/home/bandInit";
 import { dealInitScript } from "@/lib/home/dealInit";
 import { introLoaderInitScript } from "@/lib/home/introLoaderInit";
 import { introWordsInitScript } from "@/lib/home/introWordsInit";
@@ -70,6 +71,7 @@ export default function RootLayout({
         {!HOLDING_MODE && <script dangerouslySetInnerHTML={{ __html: introLoaderInitScript() }} />}
         {!HOLDING_MODE && <script dangerouslySetInnerHTML={{ __html: introWordsInitScript() }} />}
         {!HOLDING_MODE && <script dangerouslySetInnerHTML={{ __html: slotInitScript() }} />}
+        {!HOLDING_MODE && <script dangerouslySetInnerHTML={{ __html: bandInitScript() }} />}
         {!HOLDING_MODE && <script dangerouslySetInnerHTML={{ __html: landingInitScript() }} />}
       </head>
       <body className="font-sans">

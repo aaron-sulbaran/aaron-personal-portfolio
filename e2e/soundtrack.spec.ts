@@ -430,6 +430,79 @@ test("band: after a Not now the band stops asking on later visits, and its one c
   await expect(band.getByRole("button"), "Play it is the band's only control").toHaveCount(1);
 });
 
+// What the page draws of the band from its first frame, recorded from the start of the document: every animation frame says whether the
+// question is on screen (its element laid out) and whether the unanswered controls (Play it beside Not now) are drawn, the band's
+// height, and what the restored control looked like the first frame it existed; layout shifts are summed from the first one.
+// Animation frames only run once rendering is unblocked, so a frame is a moment a visitor could see.
+async function recordBandFrames(page: Page) {
+  await page.addInitScript(() => {
+    type Band = { frames: number; question: number; asking: number; heights: number[]; shift: number; first: Record<string, number> };
+    const band: Band = { frames: 0, question: 0, asking: 0, heights: [], shift: 0, first: {} };
+    Object.assign(window, { __band: band });
+    new PerformanceObserver((list) => {
+      for (const entry of list.getEntries() as unknown as { value: number; hadRecentInput: boolean }[]) if (!entry.hadRecentInput) band.shift += entry.value;
+    }).observe({ type: "layout-shift", buffered: true });
+    const tick = () => {
+      const question = document.querySelector<HTMLElement>("[data-band-question]");
+      if (question && getComputedStyle(question).display !== "none") band.question += 1;
+      const asking = document.querySelector<HTMLElement>('[data-band-layer="before"]');
+      if (asking && Number(getComputedStyle(asking).opacity) > 0) band.asking += 1;
+      const prompt = document.querySelector("[data-band-prompt]");
+      if (prompt) band.heights.push(Math.round(prompt.getBoundingClientRect().height * 10) / 10);
+      for (const name of ["off", "paused"]) {
+        const layer = document.querySelector<HTMLElement>(`[data-band-layer="${name}"]`);
+        if (layer && !(name in band.first)) band.first[name] = Number(getComputedStyle(layer).opacity);
+      }
+      band.frames += 1;
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
+}
+const bandFrames = (page: Page) =>
+  page.evaluate(() => (window as unknown as { __band: { frames: number; question: number; asking: number; heights: number[]; shift: number; first: Record<string, number> } }).__band);
+
+// A reload with a stored answer is drawn as it will rest from the first frame: no question, no Not now, the control the answer lands on already
+// there, the band the same height throughout, and nothing on the page moves. (A phone is where the question and the buttons stack, so the
+// band used to lose 27px when the stored answer restored.)
+for (const size of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) {
+  for (const [stored, control] of [["off", "off"], ["on", "paused"]] as const) {
+    test(`band: a reload at ${size.width} with a stored ${stored === "on" ? "yes" : "Not now"} never draws the question or Not now, and nothing shifts`, async ({ page }) => {
+      test.setTimeout(90_000);
+      await page.setViewportSize(size);
+      await page.addInitScript(([key, value]) => localStorage.setItem(key, value), [SOUNDTRACK_KEY, stored]);
+      await page.goto("/");
+      await settled(page);
+      await recordBandFrames(page);
+      await page.reload();
+      await settled(page);
+      await page.waitForTimeout(1500);
+      const band = await bandFrames(page);
+      expect(band.frames, "frames recorded from the start of the document").toBeGreaterThan(20);
+      expect(band.question, "frames that drew the question").toBe(0);
+      expect(band.asking, "frames that drew Play it beside Not now").toBe(0);
+      expect(band.first[control], "the restored control, the first frame it existed").toBe(1);
+      expect(Math.max(...band.heights) - Math.min(...band.heights), "the band's height through the load").toBeLessThan(0.5);
+      expect(band.shift, "layout shift").toBe(0);
+      await expect(page.locator(`#listen [data-band-layer="${control}"]`)).toHaveCount(1);
+      await expect(page.locator("#listen [data-band-question]")).toHaveCount(0);
+    });
+  }
+
+  test(`band: a first visit at ${size.width} still draws the question, so the recording sees it`, async ({ page }) => {
+    test.setTimeout(90_000);
+    await page.setViewportSize(size);
+    await recordBandFrames(page);
+    await page.goto("/");
+    await settled(page);
+    await page.waitForTimeout(1000);
+    const band = await bandFrames(page);
+    expect(band.question, "frames that drew the question").toBeGreaterThan(0);
+    expect(band.asking, "frames that drew Play it beside Not now").toBeGreaterThan(0);
+    await expect(page.locator("#listen [data-band-question]")).toHaveCount(1);
+  });
+}
+
 test("band: a stored yes also returns without the question, to one Resume that starts the music", async ({ page, browserName }) => {
   test.skip(browserName === "webkit", "WebKit cannot be launched muted");
   await page.addInitScript((key) => localStorage.setItem(key, "on"), SOUNDTRACK_KEY);

@@ -31,7 +31,11 @@ import { PRIMARY, QUIET, SMALL } from "./bandButtons";
 // restores (initSoundtrackFromStorage), the question goes, and the one control
 // left is the one the answer lands on: Resume for a stored yes (it restores as
 // paused, with nothing audible yet), Play it for a stored Not now. A first visit
-// keeps the question through every state.
+// keeps the question through every state. The server cannot read the answer, so a
+// head script (lib/home/bandInit.ts) puts it on <html> before paint and
+// globals.css draws the band as it will rest, with no question, no Not now and the
+// right control already showing: nothing flashes and nothing moves when this
+// component restores the same answer after hydration.
 //
 // With the player in the band the player is the feedback: the Pause or Resume
 // beside the heading goes, and the heading closes up on its own.
@@ -71,9 +75,13 @@ export function BandInvite() {
   return (
     <div ref={rootRef} data-band-prompt="" data-wave-avoid data-wave-words className="pointer-events-auto w-fit max-w-full">
       <div className="flex flex-wrap items-baseline gap-x-9 gap-y-2">
-        {!returning && <h2 className="font-display text-[clamp(1.0625rem,1.45vw,1.25rem)] leading-[1.1] text-foreground">{c.line}</h2>}
+        {!returning && (
+          <h2 data-band-question="" className="font-display text-[clamp(1.0625rem,1.45vw,1.25rem)] leading-[1.1] text-foreground">
+            {c.line}
+          </h2>
+        )}
         <div data-band-controls data-wave-ripple-origin className={`grid items-baseline ${closedUp ? "h-0 overflow-hidden" : ""}`}>
-          <Layer shown={music === "before"} className="flex items-baseline gap-4">
+          <Layer name="before" shown={music === "before"} className="flex items-baseline gap-4">
             <Fill {...FILL_PICK.band} shape="rect" type="button" data-control="before" onClick={act(startSoundtrack)} data-cursor-hover {...PRIMARY}>
               {c.accept}
             </Fill>
@@ -81,17 +89,17 @@ export function BandInvite() {
               {c.decline}
             </Fill>
           </Layer>
-          <Layer shown={music === "on" && !playerOwns}>
+          <Layer name="on" shown={music === "on" && !playerOwns}>
             <Fill {...FILL_PICK.band} shape="rect" type="button" data-control="on" onClick={act(pauseSoundtrack)} data-cursor-hover {...SMALL}>
               {c.pause}
             </Fill>
           </Layer>
-          <Layer shown={music === "paused" && !playerOwns}>
+          <Layer name="paused" shown={music === "paused" && !playerOwns}>
             <Fill {...FILL_PICK.band} shape="rect" type="button" data-control="paused" onClick={act(startSoundtrack)} data-cursor-hover {...SMALL}>
               {c.resume}
             </Fill>
           </Layer>
-          <Layer shown={music === "off"}>
+          <Layer name="off" shown={music === "off"}>
             <Fill {...FILL_PICK.band} shape="rect" type="button" data-control="off" onClick={act(startSoundtrack)} data-cursor-hover {...PRIMARY}>
               {c.accept}
             </Fill>
@@ -102,9 +110,10 @@ export function BandInvite() {
   );
 }
 
-function Layer({ shown, className = "", children }: { shown: boolean; className?: string; children: ReactNode }) {
+function Layer({ name, shown, className = "", children }: { name: string; shown: boolean; className?: string; children: ReactNode }) {
   return (
     <div
+      data-band-layer={name}
       inert={!shown}
       aria-hidden={shown ? undefined : true}
       className={`col-start-1 row-start-1 transition-opacity duration-300 ${shown ? "opacity-100 delay-150" : "opacity-0"} ${className}`}

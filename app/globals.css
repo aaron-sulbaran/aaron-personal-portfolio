@@ -507,6 +507,18 @@ html:not([data-input="pointer"]) .fx:focus-visible,
   }
 }
 
+/* The soundtrack band for a visitor who has answered it (components/soundtrack/
+   BandInvite.tsx, the head script lib/home/bandInit.ts): the question is gone
+   and the control the stored answer lands on is already the one showing, from the
+   first paint, so nothing flashes and nothing under the band moves when the
+   component restores the same answer after hydration. A stored Not now lands on
+   Play it, a stored yes on Resume. The layers keep their grid cell, so the
+   band's height is the controls' alone, as it is once restored. */
+html[data-band-answer] [data-band-question] { display: none; }
+html[data-band-answer] [data-band-layer="before"] { opacity: 0 !important; }
+html[data-band-answer="off"] [data-band-layer="off"],
+html[data-band-answer="on"] [data-band-layer="paused"] { opacity: 1 !important; }
+
 /* The MVP unfurl (components/quick/MvpUnfurl.tsx): "MVP" opens to "Minimum
    Viable Portfolio" while a fine pointer that can hover is over its
    [data-mvp-link] ancestor, or keyboard focus is on it, and folds back on leave

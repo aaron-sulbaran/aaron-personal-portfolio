@@ -2,6 +2,7 @@ import type { Page } from "@playwright/test";
 import { test, expect } from "./support/fixtures";
 import { siteContent } from "@/lib/content";
 import { playerStrings as P } from "@/lib/content/player";
+import { quickCopy } from "@/lib/content/quick";
 import { ISLE, PILL_IDLE_MS } from "@/lib/player/constants";
 import { openHome, scrollToY } from "./support/coil";
 import { settled } from "./support/fallback";
@@ -339,7 +340,7 @@ test.describe("where the player lives", () => {
     await openHome(page, { path: HOME });
     await playFromBand(page);
     await page.getByRole("button", { name: "Open menu" }).click();
-    await page.getByRole("dialog", { name: "Site menu" }).getByRole("link", { name: "MVP", exact: true }).click();
+    await page.getByRole("dialog", { name: "Site menu" }).getByRole("link", { name: quickCopy.menuChip }).click();
     await page.waitForURL("**/quick", { timeout: 20_000 });
     const pill = page.locator(PLAYER_PILL);
     await expect(pill).toHaveAttribute("data-player-pill", "collapsed");

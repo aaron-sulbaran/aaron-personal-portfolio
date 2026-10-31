@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { SOUNDTRACK_STORAGE_KEY } from "@/lib/home/bandInit";
 import { getSoundtrackPlayer } from "./audio";
 
 // The single source of truth for the soundtrack choice (spec sections 5 and 7).
@@ -19,7 +20,7 @@ export type SoundtrackState = "before" | "on" | "paused" | "off";
 
 type Listener = () => void;
 
-const STORAGE_KEY = "aaron-soundtrack";
+const STORAGE_KEY = SOUNDTRACK_STORAGE_KEY;
 
 let state: SoundtrackState = "before";
 const listeners = new Set<Listener>();
