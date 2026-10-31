@@ -1,12 +1,13 @@
 import { dotReach } from "./columns";
-import { sampleSpine, type SpineSamples } from "./geometry";
+import type { SpineSamples } from "./geometry";
 import { HEAD_PARAMS, headTarget, runLength, tailStart, type HeadParams } from "./head";
-import { resolveSpine, type Anchors, type SpinePoint } from "./spine";
-import { AMPLITUDE, PHONE_AMPLITUDE, PHONE_MAX_WIDTH, SAMPLE_STEP, TRAIN_FADE, TRAIN_PX } from "./constants";
+import type { Anchors } from "./spine";
+import { AMPLITUDE, PHONE_AMPLITUDE, PHONE_MAX_WIDTH, TRAIN_FADE, TRAIN_PX } from "./constants";
 
-// Aaron's one hard bound (round 5): some drawn wave on screen at every 50px
-// of scroll, checked on the authored line (round 6), plus the end reached at
-// max scroll. The lab's other rules and its generator do not ship.
+// Aaron's bound (round 5): some drawn wave on screen at every 50px of scroll, plus the end reached at max scroll. Since the
+// serpentine (2026-10-31) the line crosses only where the page has a gap to cross in and stays off screen past a block of words
+// too tall to have one, so the bound now reads: the screen is empty only where the line itself has nothing on screen to show (no
+// crossing within reach of the viewport), never because the train has already let go of a crossing still in view.
 export interface CheckOptions {
   amplitude: number;
   viewport: number;
@@ -49,40 +50,48 @@ function frameAt(samples: SpineSamples, anchors: Anchors, opts: CheckOptions, sc
   return { head, tail, maxScroll };
 }
 
-export function visibility(samples: SpineSamples, anchors: Anchors, opts: CheckOptions): VisibleReport {
+// Whether no drawn dot is on screen at a scroll position (layer px: the band's top at the viewport's top is 0).
+export function blankAt(samples: SpineSamples, anchors: Anchors, opts: CheckOptions, scroll: number): boolean {
   const width = anchors.width;
-  const maxScroll = Math.max(0, anchors.box.footer.bottom - opts.viewport);
-  let worst = 0;
-  let worstAt = 0;
-  let runStart = -1;
-  let positions = 0;
-  // The bound is some drawn dot on screen, so a spine point just past an edge
-  // still shows while its column's dots reach back (shape swing and rows).
+  // A spine point just past an edge still shows while its column's dots reach back (shape swing and rows).
   const peek = dotReach(opts.amplitude);
+  const { head, tail } = frameAt(samples, anchors, opts, scroll);
+  const last = Math.min(samples.count - 1, Math.floor(head / samples.step));
+  for (let i = Math.max(0, Math.ceil(tail / samples.step)); i <= last; i++) {
+    const y = samples.y[i];
+    if (samples.x[i] > -peek && samples.x[i] < width + peek && y > scroll && y < scroll + opts.viewport) return false;
+  }
+  return true;
+}
+
+// The scroll positions, every VISIBLE_STEP px from the top to the maximum scroll, at which no drawn dot is on screen.
+export function blankScrolls(samples: SpineSamples, anchors: Anchors, opts: CheckOptions): number[] {
+  const maxScroll = Math.max(0, anchors.box.footer.bottom - opts.viewport);
+  const blank: number[] = [];
   for (let scroll = 0; ; scroll = Math.min(maxScroll, scroll + VISIBLE_STEP)) {
-    positions++;
-    const { head, tail } = frameAt(samples, anchors, opts, scroll);
-    let seen = false;
-    const last = Math.min(samples.count - 1, Math.floor(head / samples.step));
-    for (let i = Math.max(0, Math.ceil(tail / samples.step)); i <= last; i++) {
-      const y = samples.y[i];
-      if (samples.x[i] > -peek && samples.x[i] < width + peek && y > scroll && y < scroll + opts.viewport) {
-        seen = true;
-        break;
-      }
-    }
-    if (!seen && runStart < 0) runStart = scroll;
-    if ((seen || scroll >= maxScroll) && runStart >= 0) {
-      const gap = scroll - runStart + (seen ? 0 : VISIBLE_STEP);
-      if (gap > worst) {
-        worst = gap;
-        worstAt = runStart;
-      }
-      runStart = -1;
-    }
+    if (blankAt(samples, anchors, opts, scroll)) blank.push(scroll);
     if (scroll >= maxScroll) break;
   }
-  return { worstGapPx: worst, atY: worstAt, positions };
+  return blank;
+}
+
+// The longest run of blank positions, as px of scroll, and where it starts.
+export function visibility(samples: SpineSamples, anchors: Anchors, opts: CheckOptions): VisibleReport {
+  const maxScroll = Math.max(0, anchors.box.footer.bottom - opts.viewport);
+  const blank = blankScrolls(samples, anchors, opts);
+  let worst = 0;
+  let worstAt = 0;
+  for (let i = 0; i < blank.length; ) {
+    let j = i;
+    while (j + 1 < blank.length && blank[j + 1] - blank[j] <= VISIBLE_STEP) j++;
+    const gap = blank[j] - blank[i] + VISIBLE_STEP;
+    if (gap > worst) {
+      worst = gap;
+      worstAt = blank[i];
+    }
+    i = j + 1;
+  }
+  return { worstGapPx: worst, atY: worstAt, positions: Math.floor(maxScroll / VISIBLE_STEP) + 2 };
 }
 
 export function endCheck(samples: SpineSamples, anchors: Anchors, opts: CheckOptions): EndReport {
@@ -93,14 +102,13 @@ export function endCheck(samples: SpineSamples, anchors: Anchors, opts: CheckOpt
   return { shortPx: Math.max(0, samples.length - head), endsOff };
 }
 
-export function checkLine(points: SpinePoint[], anchors: Anchors, opts: CheckOptions) {
-  const samples = sampleSpine(resolveSpine({ points }, anchors, { bandRun: opts.bandRun, viewport: opts.viewport }), SAMPLE_STEP);
+export function checkLine(samples: SpineSamples, anchors: Anchors, opts: CheckOptions) {
   return { visible: visibility(samples, anchors, opts), end: endCheck(samples, anchors, opts) };
 }
 
-// The documented fallback, at every width (390 included): the train while the
-// line keeps some wave on screen at every scroll position with it, else the
-// whole line stays drawn behind the head.
+// The train, unless it leaves the screen empty where the whole line drawn behind the head would not: then the whole line stays
+// drawn. Blank positions the whole line has too are the line's own (a stretch with no gap to cross in), not the train's.
 export function chooseTrain(samples: SpineSamples, anchors: Anchors, opts: CheckOptions): number | null {
-  return visibility(samples, anchors, opts).worstGapPx > 0 ? null : opts.train;
+  const own = new Set(blankScrolls(samples, anchors, { ...opts, train: null }));
+  return blankScrolls(samples, anchors, opts).every((y) => own.has(y)) ? opts.train : null;
 }

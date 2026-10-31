@@ -432,9 +432,11 @@ test.describe("the wave as one line", () => {
       // Released: the band's bottom edge above 0.4 of the viewport, still partly on screen.
       await bandPastLine(page, 40);
       await expect.poll(async () => (await frame(page)).gated).toBe(false);
-      await expect.poll(async () => (await pathInk(page)).painted, { message: "the path's ink once released" }).toBeGreaterThan(200);
+      // The line leaves the run past the right edge and stays out of sight until its first crossing, which may be a screen or more
+      // below (lib/wavepath/serpentine): the head sets off, and whatever ink the path has near the band stays under it.
+      await expect.poll(async () => { const f = await frame(page); return f.head > f.runLen && f.head === f.target; }, { message: "the head leaves the run once released" }).toBe(true);
       const ink = await pathInk(page);
-      expect(ink.minY!, `topmost path ink against the band's bottom edge ${ink.bandBottom}`).toBeGreaterThanOrEqual(ink.bandBottom - 1);
+      if (ink.painted) expect(ink.minY!, `topmost path ink against the band's bottom edge ${ink.bandBottom}`).toBeGreaterThanOrEqual(ink.bandBottom - 1);
       // The band's run is still drawn, whole, although the head has gone on.
       await page.waitForTimeout(600);
       expect(await bandInkPixels(page), "the band's own ink after the release").toBeGreaterThan(500);

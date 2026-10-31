@@ -3,9 +3,10 @@ import pages from "./fixtures/pages.json";
 import { AMPLITUDE, CLEAR_MARGIN, SAMPLE_STEP, SPACING } from "./constants";
 import { layColumns, mapTiles, runColumns } from "./columns";
 import { sampleSpine } from "./geometry";
-import { SIGNATURE_ON, resolveSpine, type Anchors } from "./spine";
+import { layLine } from "./line";
+import type { Anchors } from "./spine";
 
-const samples = sampleSpine(resolveSpine({ points: SIGNATURE_ON }, { ...(pages["1440x900"].anchors as Anchors), line: 135 }, { bandRun: true, viewport: 900 }), SAMPLE_STEP);
+const { samples } = layLine({ ...(pages["1440x900"].anchors as Anchors), line: 135 }, 900);
 
 describe("columns", () => {
   it("the band's run and the path share one grid: column j sits at the same arc and x", () => {

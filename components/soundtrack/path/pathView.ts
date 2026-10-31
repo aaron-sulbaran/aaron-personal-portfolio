@@ -7,6 +7,7 @@ import { buildPathDots, clearSink, createSink } from "@/lib/wavepath/paint";
 import { nearestColumn } from "@/lib/wavepath/pluck";
 import { pathProbe } from "@/lib/wavepath/probe";
 import { layLine } from "@/lib/wavepath/line";
+import { routeKind, type RouteKind } from "@/lib/wavepath/serpentine";
 import { chooseTrain, visibleOptions } from "@/lib/wavepath/visible";
 import type { Keep } from "@/lib/wavepath/paint";
 import { createDotPainter, themeNow } from "../viewParts";
@@ -34,6 +35,7 @@ export function createPathView(layer: HTMLElement, root: HTMLElement, conductor:
   let measured: Anchors | null = null;
   let origin = 0, viewport = 0, maxScrollY = 0, entry = 0, amp = 0, width = 0, raf = 0, innerWidth = 0, runLen = 0, runFlat = 0;
   let dirty = true, laid = false, destroyed = false;
+  let kind: RouteKind = "wide";
   // The line is one line: its return keeps clear of the band and no dot of the path lands in it.
   let keep: Keep | null = null;
   let alphas = ALPHAS[themeNow()];
@@ -106,6 +108,7 @@ export function createPathView(layer: HTMLElement, root: HTMLElement, conductor:
     maxScrollY = Math.max(0, document.documentElement.scrollHeight - viewport);
     keep = { edge: anchors.box.band.bottom, fade: BAND_KEEP_FADE };
     const line = layLine(anchors, viewport);
+    kind = line.route.kind;
     amp = line.amp;
     samples = line.samples;
     runLen = runLength(samples, width);
@@ -123,10 +126,12 @@ export function createPathView(layer: HTMLElement, root: HTMLElement, conductor:
   };
   // A window resize that leaves the width alone (a phone's toolbar collapsing
   // as it scrolls) moves only what hangs on the viewport's height: the scroll
-  // limit and the train check. The anchors, spine and tiles stay as laid.
+  // limit and the train check. The anchors, spine and tiles stay as laid,
+  // unless the window turned from portrait to landscape or back, which may
+  // give it the other shape of line (lib/wavepath/serpentine routeKind).
   const onResize = () => {
     if (destroyed || raf) return;
-    if (!laid || !samples || !measured || window.innerWidth !== innerWidth) return schedule();
+    if (!laid || !samples || !measured || window.innerWidth !== innerWidth || routeKind(width, window.innerHeight) !== kind) return schedule();
     viewport = window.innerHeight;
     maxScrollY = Math.max(0, document.documentElement.scrollHeight - viewport);
     conductor.setPath({ runLen, length: samples.length, train: chooseTrain(samples, measured, visibleOptions(width, viewport)), runFlat }, false);

@@ -28,24 +28,6 @@ export function bandRunPoints(anchors: Anchors, viewport: number): Point[] {
   return Array.from({ length: n + 1 }, (_, i) => ({ x: RUN_START + ((end - RUN_START) * i) / n, y }));
 }
 
-// Leaving the run: it ends a little past the right edge heading right. It
-// turns toward the line's next point on a circular arc (a quarter turn at
-// most, so a next point back on the page is reached by a turn past the edge,
-// never an on-screen hairpin), small enough to stay above that point, so the
-// line never climbs back.
-export function runExit(anchors: Anchors, viewport: number, next: Point | undefined): Point[] {
-  if (!next) return [];
-  const end = anchors.width + RUN_PAST;
-  const y = bandLineY(anchors, viewport);
-  const turn = next.x > end ? Math.min(Math.PI / 2, Math.atan2(next.y - y, next.x - end)) : Math.PI / 2;
-  if (turn <= 0) return [];
-  const r = Math.min(Math.min(180, Math.max(90, 0.12 * anchors.width)), Math.max(30, 0.45 * (next.y - y)));
-  return [1, 2, 3].map((k) => {
-    const a = (turn * k) / 3;
-    return { x: end + r * Math.sin(a), y: y + r - r * Math.cos(a) };
-  });
-}
-
 // The run's arc length: from the line's start to where it reaches the right edge.
 export function runLength(samples: SpineSamples, width: number): number {
   for (let i = 0; i < samples.count; i++) if (samples.x[i] >= width - 1) return i * samples.step;

@@ -1,23 +1,24 @@
 import { dotReach, layColumns, type PathColumns } from "./columns";
-import { BAND_CLEAR_EXTRA, CLEAR_MARGIN, GUTTER_FIT, SAMPLE_STEP, SPACING } from "./constants";
+import { BAND_CLEAR_EXTRA, SAMPLE_STEP, SPACING } from "./constants";
 import { sampleSpine, type SpineSamples } from "./geometry";
 import { createMusic } from "./music";
 import { buildPathDots, createSink, type DotFrame } from "./paint";
 import { createPlucks } from "./pluck";
 import { createRipple } from "./ripple";
-import { resolveSpine, signatureFor, type Anchors, type Rect } from "./spine";
+import { serpentine, type Route } from "./serpentine";
+import type { Anchors, Rect } from "./spine";
 import { amplitudeFor } from "./visible";
 
-// The line as the page lays it out: the route for the page's width on the measured anchors, sampled, and set in columns. One place for
-// the page (components/soundtrack/path/pathView) and for the checks that read the same line the page draws.
-export interface LaidLine { amp: number; samples: SpineSamples; cols: PathColumns }
+// The line as the page lays it out: the route for the window on the measured anchors (lib/wavepath/serpentine), sampled, and set in
+// columns. One place for the page (components/soundtrack/path/pathView) and for the checks that read the same line the page draws.
+export interface LaidLine { amp: number; samples: SpineSamples; cols: PathColumns; route: Route }
 
 export function layLine(anchors: Anchors, viewport: number): LaidLine {
   const amp = amplitudeFor(anchors.width);
   const reach = dotReach(amp);
-  const route = resolveSpine({ points: signatureFor(anchors.width) }, anchors, { bandRun: true, viewport, clearBand: reach + BAND_CLEAR_EXTRA, keep: GUTTER_FIT * reach + CLEAR_MARGIN });
-  const samples = sampleSpine(route, SAMPLE_STEP);
-  return { amp, samples, cols: layColumns(samples, SPACING, amp, anchors.blocks, anchors.links) };
+  const route = serpentine(anchors, viewport, { reach, clearBand: reach + BAND_CLEAR_EXTRA });
+  const samples = sampleSpine(route.points, SAMPLE_STEP);
+  return { amp, samples, cols: layColumns(samples, SPACING, amp, anchors.blocks, [...anchors.links, ...anchors.headings]), route };
 }
 
 // Every dot of the whole line (x, y, radius in layer px) in a frame with the head past the line's end. "rest" is the line still
