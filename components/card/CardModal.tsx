@@ -19,9 +19,11 @@ import { useGalleryLayout } from "./useGalleryLayout";
 // with the content), the tint and the glass as color-mix (bg-background/NN emits
 // nothing with var() colors). renderMedia: no flown card lands here, so the
 // modal draws its own card picture or header face. flying: a flown card is
-// parked over its slot, so the layout holds what it opened with.
+// parked over its slot, so the layout holds what it opened with. returnFocus:
+// what focus goes back to on close (lib/modal useFocusTrap, never scrolling the
+// page), named by whoever opened the modal.
 
-type Props = { cardKey: CardKey | null; onClose: () => void; renderMedia: boolean; flying: boolean };
+type Props = { cardKey: CardKey | null; onClose: () => void; renderMedia: boolean; flying: boolean; returnFocus?: () => HTMLElement | null };
 
 const tint: CSSProperties = { backgroundColor: "color-mix(in srgb, var(--color-background) 70%, transparent)" };
 const glass: CSSProperties = { backgroundColor: "color-mix(in srgb, var(--color-background) 85%, transparent)" };
@@ -36,7 +38,7 @@ const PANEL = {
   },
 };
 
-export function CardModal({ cardKey, onClose, renderMedia, flying }: Props) {
+export function CardModal({ cardKey, onClose, renderMedia, flying, returnFocus }: Props) {
   const dialogRef = useRef<HTMLDivElement | null>(null);
   // Live in both directions (framer-motion's useReducedMotion reads the preference once).
   const reduced = useReducedMotionLive();
@@ -44,7 +46,7 @@ export function CardModal({ cardKey, onClose, renderMedia, flying }: Props) {
   const open = cardKey !== null;
   useBodyScrollLock(open);
   useEscapeKey(open, onClose);
-  useFocusTrap(dialogRef, open);
+  useFocusTrap(dialogRef, open, returnFocus);
   const gallery = cardKey ? galleryOf(cardKey) : null;
   const rows = layout === "rows";
   const sheet = gallery !== null && !rows && gallery.plan.slides.length > 0;

@@ -356,6 +356,16 @@ export function HomeController({ children }: Props) {
     });
   }, [selection, flight]);
 
+  // Where focus goes when the modal closes, never scrolling the page (lib/modal useFocusTrap): the title or list row that opened it, or,
+  // for a card opened in the Coil (its canvas has nothing to focus), the card's title in the columns. With neither on the page, focus goes
+  // back to whatever held it when the modal opened (Deal me in, after the deal), still without a scroll.
+  const returnFocus = useCallback(() => {
+    if (!selection) return null;
+    if (selection.origin?.isConnected) return selection.origin;
+    const title = sectionRef.current?.querySelector<HTMLElement>(`button[data-card="${selection.key}"]`);
+    return title && title.offsetParent !== null ? title : null;
+  }, [selection]);
+
   const modalOpen = selection !== null;
   // The modal draws its own image in the slot unless a flown card is parked
   // over it (a flight going home no longer covers the slot).
@@ -421,7 +431,7 @@ export function HomeController({ children }: Props) {
         />
         {children}
       </section>
-      <CardModal cardKey={selection?.key ?? null} onClose={closeModal} renderMedia={renderMedia} flying={flight?.phase === "out"} />
+      <CardModal cardKey={selection?.key ?? null} onClose={closeModal} renderMedia={renderMedia} flying={flight?.phase === "out"} returnFocus={returnFocus} />
       <Portal>
         {flight && (
           <FlyingTile

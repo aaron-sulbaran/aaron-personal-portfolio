@@ -115,13 +115,24 @@ const trapStack: HTMLElement[] = [];
 // inert or disabled under the visitor (a pager page turning away, an arrow at
 // its end) hands focus to the nearest live control, the first one in the
 // closest enclosing element that still holds one. A body-level element marked
-// data-trap-extension (the inline tip label) counts as inside. Restores focus to the element
-// that was focused before the modal opened.
+// data-trap-extension (the inline tip label) counts as inside. On close, focus
+// returns to what opened the modal: returnTo where the caller names it (read as
+// it was while the modal was open), else the element that was focused when it
+// opened. That return never scrolls the page: the element that held focus can be
+// a screen away (Deal me in keeps focus through the deal, and a card opened from
+// the Coil's canvas leaves it there), and a focus scroll would jump the page under
+// the visitor.
 export function useFocusTrap(
   containerRef: React.RefObject<HTMLElement | null>,
   active: boolean,
+  returnTo?: () => HTMLElement | null,
 ) {
   const returnFocusRef = useRef<HTMLElement | null>(null);
+  // Updated after each commit, so the trap's cleanup (which runs before this in the commit that closes it) reads the open modal's.
+  const returnToRef = useRef(returnTo);
+  useEffect(() => {
+    returnToRef.current = returnTo;
+  });
 
   useEffect(() => {
     if (!active) return;
@@ -196,7 +207,9 @@ export function useFocusTrap(
       container.removeEventListener("keydown", handler);
       container.removeEventListener("focusin", onFocusIn);
       document.removeEventListener("keydown", onDocumentKeyDown);
-      returnFocusRef.current?.focus?.();
+      const named = returnToRef.current?.();
+      const target = named?.isConnected ? named : returnFocusRef.current;
+      if (target?.isConnected && typeof target.focus === "function") target.focus({ preventScroll: true });
     };
   }, [active, containerRef]);
 }
