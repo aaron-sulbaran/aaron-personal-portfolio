@@ -1,6 +1,7 @@
 import type { CDPSession } from "@playwright/test";
 import { COIL } from "@/lib/coil/constants";
 import { siteContent } from "@/lib/content";
+import { quickCopy } from "@/lib/content/quick";
 import { test, expect } from "./support/fixtures";
 import { coilPoints, nextFrames, openHome, type Point } from "./support/coil";
 import type { HookWindow } from "./support/hooks";
@@ -129,4 +130,59 @@ test("touch: a tap on a day of the flat chart shows its details, as the hint say
   const box = (await stage.boundingBox())!;
   await page.touchscreen.tap(box.x + box.width * 0.55, box.y + box.height * 0.5);
   await expect(page.locator("[data-metrics-block]").getByText(/\d+ contributions? on [A-Z][a-z]+day, /)).toBeVisible();
+});
+
+// The MVP's short name does not unfurl on a touch screen (no hover to read, and
+// the MVP page's own title does the reveal there): page 1's line just says
+// "In a rush? The MVP", and the Menu sheet shows "MVP" with a quiet second line
+// naming it. Nothing moves.
+test("touch: page 1's line says In a rush? The MVP and never unfurls; its words are still and its name is the whole MVP", async ({ page }) => {
+  await openHome(page, { at: "foot" });
+  await page.waitForFunction(() => !document.documentElement.dataset.introWords);
+  const { teaser } = siteContent.intro;
+  const line = page.getByRole("link", { name: teaser.quickName, exact: true });
+  await expect(line).toHaveCount(1);
+  await expect(line.locator(".mvp-short")).toHaveText(quickCopy.titleShort);
+  expect(await page.evaluate(() => matchMedia("(hover: hover) and (pointer: fine)").matches), "no hover to read").toBe(false);
+  const state = await line.evaluate((el, short) => {
+    const fan = el.querySelector<HTMLElement>(".mvp-fan")!;
+    return {
+      fan: getComputedStyle(fan).display,
+      slots: [...el.querySelectorAll<HTMLElement>(".mvp-slot")].map((slot) => [slot.getBoundingClientRect().width, getComputedStyle(slot).transitionDuration]),
+      text: (el.textContent ?? "").split(short)[0],
+    };
+  }, quickCopy.titleShort);
+  expect(state.fan, "the unfurled words are not drawn").toBe("none");
+  expect(state.slots.every(([width, duration]) => width === 0 && duration === "0s"), "no slot opens or moves").toBe(true);
+  expect(state.text).toBe(teaser.quick.slice(0, -quickCopy.titleShort.length));
+  const before = await line.boundingBox();
+  await page.locator("[data-intro-cta] a[href='#work']").evaluate((el) => el.dispatchEvent(new PointerEvent("pointerenter", { pointerType: "touch", bubbles: true })));
+  await nextFrames(page, 4);
+  expect(await line.boundingBox()).toEqual(before);
+});
+
+test("touch: the Menu sheet shows MVP with a quiet second line, Minimum Viable Portfolio, in the label face, and the chip does not grow", async ({ page }) => {
+  await openHome(page, { at: "top" });
+  await page.getByRole("button", { name: siteContent.menu.ariaLabelOpen }).click();
+  const dialog = page.getByRole("dialog", { name: siteContent.menu.dialogLabel });
+  const chip = dialog.getByRole("link", { name: quickCopy.menuChipName, exact: true });
+  await expect(chip).toBeVisible();
+  await page.waitForTimeout(1200);
+  const note = dialog.locator("[data-menu-mvp-note]");
+  await expect(note).toHaveText(quickCopy.menuChipNote);
+  await expect(note).toBeVisible();
+  const [chipBox, noteBox] = [(await chip.boundingBox())!, (await note.boundingBox())!];
+  const viewport = page.viewportSize()!;
+  expect(chipBox.width, "the chip is its short word").toBeLessThan(90);
+  expect(noteBox.y, "the line is under the chip").toBeGreaterThanOrEqual(chipBox.y + chipBox.height - 1);
+  expect(noteBox.x + noteBox.width, "the line fits the sheet").toBeLessThanOrEqual(viewport.width);
+  expect(noteBox.y + noteBox.height, "the line fits the sheet").toBeLessThanOrEqual(viewport.height);
+  const faces = await page.evaluate(() => {
+    const family = (selector: string) => getComputedStyle(document.querySelector(selector)!).fontFamily;
+    return { note: family("[data-menu-mvp-note]"), chip: family("[data-menu-mvp]") };
+  });
+  expect(faces.note, "the label face").toBe(faces.chip);
+  await chip.hover();
+  await nextFrames(page, 4);
+  expect((await chip.boundingBox())!.width, "no unfurl").toBe(chipBox.width);
 });

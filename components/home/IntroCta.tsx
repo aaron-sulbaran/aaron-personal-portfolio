@@ -3,7 +3,9 @@
 import { useState, type CSSProperties, type PointerEvent } from "react";
 import { Fill } from "@/components/fx/Fill";
 import { useReducedMotionLive } from "@/components/soundtrack/useReducedMotionLive";
+import { MvpUnfurl } from "@/components/quick/MvpUnfurl";
 import { siteContent } from "@/lib/content";
+import { quickCopy } from "@/lib/content/quick";
 import { COIL } from "@/lib/coil/constants";
 import { CTA_LABEL_CLASS, CTA_LABEL_OVER_CLASS, FILL_PICK } from "@/lib/fx/fill";
 import { isAfter, useDeal } from "@/lib/home/deal";
@@ -21,8 +23,10 @@ import { goTo } from "@/lib/quick/transitionStore";
 // cards). Once the cards are dealt and the text is back it reads "Back to my
 // cards" (it scrolls there, no replay), and never earlier, so the label cannot
 // flip under a line that is still fading. The small line leads to the
-// 30-second version (no button, no pill: it blends into the page). Nothing here
-// takes the scroll from the reader.
+// MVP (no button, no pill: it blends into the page); under a fine pointer its
+// "MVP" unfurls to "Minimum Viable Portfolio" over the page, past the line's box,
+// so the line stays centred and nothing moves (components/quick/MvpUnfurl).
+// Nothing here takes the scroll from the reader.
 //
 // The button moves with the cards above it. While a fine pointer is over it the
 // ribbon eases faster and its gaps tighten toward the button (the cue the scene
@@ -34,6 +38,8 @@ import { goTo } from "@/lib/quick/transitionStore";
 // (lib/home/introArrival.ts).
 export function IntroCta() {
   const { teaser } = siteContent.intro;
+  // The line up to its last word, which is the MVP's short name and unfurls.
+  const lead = teaser.quick.slice(0, teaser.quick.length - quickCopy.titleShort.length);
   const reducedMotion = useReducedMotionLive();
   const after = isAfter(useDeal());
   const [pressed, setPressed] = useState(false);
@@ -85,10 +91,13 @@ export function IntroCta() {
           event.preventDefault();
           goTo(EXPRESS_PATH);
         }}
+        aria-label={teaser.quickName}
         data-cursor-hover
-        className="rounded-sm font-label text-label-sm text-muted decoration-1 underline-offset-[4px] transition-colors duration-200 hover:text-foreground hover:underline focus-visible:text-foreground focus-visible:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        data-mvp-link=""
+        className="rounded-sm font-label text-label-sm text-muted transition-colors duration-200 hover:text-foreground focus-visible:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       >
-        {teaser.quick}
+        {lead}
+        <MvpUnfurl overlay fill />
       </a>
     </div>
   );

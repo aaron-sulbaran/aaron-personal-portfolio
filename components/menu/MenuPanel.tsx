@@ -5,6 +5,7 @@ import { motion, type Variants } from "framer-motion";
 import { usePathname } from "next/navigation";
 import { Moon, Snowflake, Sun } from "lucide-react";
 import { Fill } from "@/components/fx/Fill";
+import { MvpUnfurl } from "@/components/quick/MvpUnfurl";
 import { siteContent } from "@/lib/content";
 import { quickCopy } from "@/lib/content/quick";
 import { closeMenu } from "@/lib/menu";
@@ -187,18 +188,53 @@ export function MenuPanel({
               <span>{frozen ? unfreeze : freeze}</span>
             </Fill>
           )}
-          <a
-            href={onQuick ? HOME_PATH : EXPRESS_PATH}
-            onClick={(event) => {
-              if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
-              event.preventDefault();
-              closeMenu(() => goTo(onQuick ? HOME_PATH : EXPRESS_PATH));
-            }}
-            data-cursor-hover
-            className="inline-flex h-[34px] items-center rounded-[17px] px-3.5 font-label text-label text-accent shadow-[inset_0_0_0_1px_var(--color-border)]"
-          >
-            {onQuick ? quickCopy.back : quickCopy.menuChip}
-          </a>
+          {onQuick ? (
+            <a
+              href={HOME_PATH}
+              onClick={(event) => {
+                if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
+                event.preventDefault();
+                closeMenu(() => goTo(HOME_PATH));
+              }}
+              data-cursor-hover
+              className="inline-flex h-[34px] items-center rounded-[17px] px-3.5 font-label text-label text-accent shadow-[inset_0_0_0_1px_var(--color-border)]"
+            >
+              {quickCopy.back}
+            </a>
+          ) : (
+            // The chip holds its place in the row (the hidden copy sets the room); under a fine pointer its own box grows to the left
+            // over the chips beside it as "MVP" unfurls, so nothing in the row or the foot moves (components/quick/MvpUnfurl).
+            <span className="flex flex-col items-start gap-1.5">
+              <span className="relative inline-flex h-[34px]">
+                <span aria-hidden="true" className="invisible inline-flex h-[34px] items-center px-3.5 font-label text-label">
+                  {quickCopy.menuChip}
+                </span>
+                <Fill
+                  as="a"
+                  {...FILL_PICK.menu}
+                  href={EXPRESS_PATH}
+                  onClick={(event) => {
+                    if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
+                    event.preventDefault();
+                    closeMenu(() => goTo(EXPRESS_PATH));
+                  }}
+                  aria-label={quickCopy.menuChipName}
+                  data-cursor-hover
+                  data-mvp-link=""
+                  data-menu-mvp=""
+                  className="absolute right-0 top-0 inline-flex h-[34px] items-center whitespace-nowrap rounded-[17px] bg-[var(--menu-panel)] px-3.5 font-label text-label text-accent shadow-[inset_0_0_0_1px_var(--color-border)]"
+                  overClassName="flex items-center whitespace-nowrap px-3.5"
+                >
+                  <MvpUnfurl />
+                </Fill>
+              </span>
+              {sheet && (
+                <span data-menu-mvp-note="" className="font-label text-label-sm text-muted">
+                  {quickCopy.menuChipNote}
+                </span>
+              )}
+            </span>
+          )}
         </div>
         <div
           className={`flex font-label text-label ${

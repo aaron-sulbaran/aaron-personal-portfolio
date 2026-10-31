@@ -507,6 +507,41 @@ html:not([data-input="pointer"]) .fx:focus-visible,
   }
 }
 
+/* The MVP unfurl (components/quick/MvpUnfurl.tsx): "MVP" opens to "Minimum
+   Viable Portfolio" while a fine pointer that can hover is over its
+   [data-mvp-link] ancestor, or keyboard focus is on it, and folds back on leave
+   or blur. Each rest slides out from its capital, left to right (90ms apart),
+   the move of the MVP page's own title. Width goes 0 to auto, which animates
+   where interpolate-size does (Chromium); elsewhere the words switch at once.
+   Reduced motion switches at once everywhere. A touch screen has no hover to
+   read, so it never unfurls. The overlay's fan reaches past its box without a
+   reflow; its fill is the site's link fill, from the centre. */
+.mvp-unfurl { position: relative; display: inline-block; }
+.mvp-slot { display: inline-block; width: 0; overflow: hidden; opacity: 0; white-space: pre; vertical-align: top; interpolate-size: allow-keywords; }
+.mvp-fan { display: none; }
+@media (hover: hover) and (pointer: fine) {
+  .mvp-slot { transition: width 520ms var(--ease-out), opacity 320ms ease-out; }
+  .mvp-fan { display: block; position: absolute; left: 0; top: 0; visibility: hidden; white-space: nowrap; pointer-events: none; }
+  .mvp-fan--fill {
+    -webkit-text-fill-color: transparent;
+    background-image: linear-gradient(var(--color-accent), var(--color-accent)), linear-gradient(var(--color-foreground), var(--color-foreground));
+    background-repeat: no-repeat; background-position: center, center;
+    background-size: calc(var(--inline-p) * 100%) 100%, 100% 100%;
+    -webkit-background-clip: text; background-clip: text;
+    transition: --inline-p var(--inline-fill-ms) var(--inline-fill-ease);
+  }
+  [data-mvp-link]:hover { --inline-p: 1; }
+  [data-mvp-link]:hover .mvp-slot { width: auto; opacity: 1; transition-delay: calc(var(--i) * 90ms); }
+  [data-mvp-link]:hover .mvp-fan { visibility: visible; }
+  [data-mvp-link]:hover .mvp-short { visibility: hidden; }
+  html:not([data-input="pointer"]) [data-mvp-link]:focus-visible { --inline-p: 1; }
+  html:not([data-input="pointer"]) [data-mvp-link]:focus-visible .mvp-slot { width: auto; opacity: 1; transition-delay: calc(var(--i) * 90ms); }
+  html:not([data-input="pointer"]) [data-mvp-link]:focus-visible .mvp-fan { visibility: visible; }
+  html:not([data-input="pointer"]) [data-mvp-link]:focus-visible .mvp-short { visibility: hidden; }
+}
+@media (prefers-reduced-motion: reduce) { .mvp-slot, .mvp-fan--fill { transition: none !important; } }
+@media (forced-colors: active), print { .mvp-fan--fill { -webkit-text-fill-color: currentColor; background: none; } }
+
 /* The pill toggle (components/fx/PillToggle.tsx): the strip's Commits and
    Tokens, and Flat and Skyline. The fill's edges are
    --pt-a and --pt-b, the trailing edge follows 22 percent of the fill's clock

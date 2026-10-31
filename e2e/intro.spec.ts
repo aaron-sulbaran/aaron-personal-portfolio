@@ -266,13 +266,13 @@ test("intro: the Music? pill stays hidden while the prompt is on screen, and sho
   await expect(page.locator(PILL)).toHaveCount(1);
 });
 
-test("intro: Deal me in is a link to the cards at page 1's foot, the 30-second line is one muted line under it, and the ribbon has its room above", async ({ page }) => {
+test("intro: Deal me in is a link to the cards at page 1's foot, the MVP line is one muted line under it, and the ribbon has its room above", async ({ page }) => {
   await openHome(page, { at: "foot" });
   const cta = page.locator("[data-intro-cta]");
   await expect(dealLink(page)).toHaveText(new RegExp(intro.teaser.deal));
   await expect(dealLink(page)).toHaveAttribute("href", "#work");
-  await expect(cta.getByRole("link", { name: intro.teaser.quick })).toHaveAttribute("href", "/quick");
-  // The 30-second link is one small muted line under the button: no underline at rest, no button or pill look.
+  await expect(cta.getByRole("link", { name: intro.teaser.quickName, exact: true })).toHaveAttribute("href", "/quick");
+  // The MVP link is one small muted line under the button: no underline at rest, no button or pill look.
   const dealBox = await boxOf(page, "[data-intro-cta] a");
   const quickBox = await boxOf(page, '[data-intro-cta] a[href="/quick"]');
   expect(quickBox.top).toBeGreaterThanOrEqual(dealBox.top + dealBox.height - 1);

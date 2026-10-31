@@ -7,7 +7,7 @@ import { watchScripts } from "./support/chunks";
 import type { Page } from "@playwright/test";
 
 // The Express lane (docs/superpowers/specs/2026-10-13-express-lane-design.md):
-// its tiles open the cards' own modals, the way in is page 1's 30-second link
+// its tiles open the cards' own modals, the way in is page 1's MVP link
 // (the first-visit invite toast is gone), the transition runs both ways and
 // lands focus on the new page's heading, and the lane never fetches the Coil's
 // chunk. A first visit is the subject here, so the suite's default of a
@@ -49,7 +49,7 @@ test("express lane: the page reads whole at first paint and never requests the s
   expect(await scripts.sceneChunks()).toEqual([]);
 });
 
-test("express lane: a first visit shows no invite, on the top of the home or on a deep landing; the 30-second link is the way in", async ({ page }) => {
+test("express lane: a first visit shows no invite, on the top of the home or on a deep landing; the MVP link is the way in", async ({ page }) => {
   await page.goto("/");
   await homeReady(page);
   await page.waitForTimeout(3_000);
