@@ -227,8 +227,12 @@ test("mvp unfurl: hovering page 1's line fades MVP to Minimum Viable Portfolio i
   expectNoTravelAndAFade(away, rest, "leave");
   const back = away.at(-1)!;
   expect([back.full, back.short, back.cap], "rest: the short word back, the full name gone").toEqual([0, 1, 1]);
-  expect(away[0].cap, "the capital is back at once, under the full name").toBe(1);
+  expect(away.find((row) => !row.hovered)!.cap, "the capital is back at once, under the full name").toBe(1);
+  // The way back reverses it: the full name goes first and MVP returns as it finishes, and the glide keeps the full name's time.
   away.slice(1).forEach((row, i) => expect(row.startX, `the way back at ${Math.round(row.t)}ms`).toBeGreaterThanOrEqual(away[i].startX - 0.01));
+  for (const row of away) expect(Math.abs((row.startX - rest.startX) / shift - row.full), `the glide back against the fade at ${Math.round(row.t)}ms`).toBeLessThanOrEqual(0.05);
+  const mvpBack = away.find((row) => row.short > 0.01)!;
+  expect(mvpBack.full, "MVP returns as the full name finishes going").toBeLessThan(0.35);
   expect(back.startX).toBeCloseTo(rest.startX, 1);
 
   // Once per hover: one fade in, one fade back, and holding the pointer there plays nothing more.

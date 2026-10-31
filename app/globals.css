@@ -527,8 +527,11 @@ html[data-band-answer="on"] [data-band-layer="paused"] { opacity: 1 !important; 
    fades out; the full name, drawn over it from the same left edge and reaching
    past the line's box without a reflow, fades in a beat later. The capital the
    two share stays drawn under the full name's until the full name is in, then
-   goes, so that letter never dims mid-fade. Leaving plays the same swap the
-   other way, a little quicker. Only opacity animates, so Safari and Firefox get
+   goes, so that letter never dims mid-fade. Leaving reverses it, a little
+   quicker: the full name fades out first, over its own time, and "MVP" comes
+   back over its own as the full name finishes going (the lag, mirrored); the
+   capital is drawn again at once, under the full name's. Only opacity animates,
+   so Safari and Firefox get
    the same fade as Chromium (the old unfurl animated width to auto, which needs
    interpolate-size, and only Chromium has it). Once the full name is in it takes
    the pointer too, so reading along it to "Portfolio" does not fade it back.
@@ -541,22 +544,23 @@ html[data-band-answer="on"] [data-band-layer="paused"] { opacity: 1 !important; 
    under its button, so as the full name comes in the whole sentence (.mvp-glide,
    inside the link) glides left by half the width the full name adds
    (--mvp-shift, measured by components/quick/useMvpCentre) and ends centred
-   where it stood; leaving glides it back. On the way in the glide keeps the full
-   name's own time (it starts at the lag and runs as long as the full name's
-   fade, on the same curve), so the sentence moves exactly as the new words
-   arrive and the two read as one move; on the way back it runs from the first
-   frame over the way back's whole span. Within the sentence still no letter
-   travels. It is a translate, so nothing reflows. The link's own box stays put
+   where it stood; leaving glides it back. Both ways the glide keeps the full
+   name's own time (the same start, length and curve as its fade), so the
+   sentence moves exactly as those words arrive and go, the two read as one
+   move, and the sentence (its ink weighted by the fade) is centred under the
+   button on every frame. Within the sentence still no letter travels. It is a translate, so nothing reflows. The link's own box stays put
    and the full name takes the pointer once it is in, so between them they cover
    the sentence where it starts, where it ends and everywhere between: a pointer
    resting anywhere on the line stays on it while the words move under it, and
    the state never flickers.
 
    The numbers to tune by hand, all on [data-mvp-link]:
-   --mvp-out-ms   the word going away fades out over this ("MVP", on a hover)
-   --mvp-in-ms    the word arriving fades in over this (the full name, on a hover)
-   --mvp-lag-ms   and starts this far into the other one's fade
-   --mvp-back     the share of those times the way back takes (the glide too)
+   --mvp-out-ms   "MVP" fades out over this on a hover (and back in, on leaving)
+   --mvp-in-ms    the full name fades in over this on a hover (and out, on
+                  leaving); page 1's glide runs with it
+   --mvp-lag-ms   on a hover the full name starts this far into MVP's fade; on
+                  leaving MVP starts back this far before the full name is gone
+   --mvp-back     the share of those times the way back takes
    --mvp-ease     the curve of every fade, and of page 1's glide */
 [data-mvp-link] {
   --mvp-out-ms: 140ms;
@@ -572,9 +576,12 @@ html[data-band-answer="on"] [data-band-layer="paused"] { opacity: 1 !important; 
   .mvp-note { display: none; }
   .mvp-full {
     display: block; position: absolute; left: 0; top: 0; white-space: nowrap; pointer-events: none; opacity: 0;
-    transition: opacity calc(var(--mvp-out-ms) * var(--mvp-back)) var(--mvp-ease);
+    transition: opacity calc(var(--mvp-in-ms) * var(--mvp-back)) var(--mvp-ease);
   }
-  .mvp-short-rest { transition: opacity calc(var(--mvp-in-ms) * var(--mvp-back)) var(--mvp-ease) calc(var(--mvp-lag-ms) * var(--mvp-back)); }
+  .mvp-short-rest {
+    transition: opacity calc(var(--mvp-out-ms) * var(--mvp-back)) var(--mvp-ease)
+      calc(max(0ms, var(--mvp-lag-ms) + var(--mvp-in-ms) - var(--mvp-out-ms)) * var(--mvp-back));
+  }
   .mvp-full-fill {
     display: block;
     -webkit-text-fill-color: transparent;
@@ -597,7 +604,7 @@ html[data-band-answer="on"] [data-band-layer="paused"] { opacity: 1 !important; 
     opacity: 0;
     transition: opacity var(--mvp-out-ms) var(--mvp-ease) calc(var(--mvp-lag-ms) + var(--mvp-in-ms));
   }
-  [data-mvp-centre] .mvp-glide { transition: translate calc((var(--mvp-lag-ms) + var(--mvp-in-ms)) * var(--mvp-back)) var(--mvp-ease); }
+  [data-mvp-centre] .mvp-glide { transition: translate calc(var(--mvp-in-ms) * var(--mvp-back)) var(--mvp-ease); }
   :is([data-mvp-centre]:hover, html:not([data-input="pointer"]) [data-mvp-centre]:focus-visible) .mvp-glide {
     translate: var(--mvp-shift, 0px) 0;
     transition: translate var(--mvp-in-ms) var(--mvp-ease) var(--mvp-lag-ms);
