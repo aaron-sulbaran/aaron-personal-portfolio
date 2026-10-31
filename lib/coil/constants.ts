@@ -63,10 +63,14 @@ const values = {
   // is the rest of the site's). frontLift: a cue with no words that the cards
   // open, the card at the middle of the band sitting a little forward as a
   // hovered card does on a desktop; off until Aaron rules on it.
+  // wheelBandSvh is no knob: the deal's wheel at page 1's foot keeps the size
+  // it was tuned at on the old band (diameterOfHeight of this share of the
+  // screen, whatever bandSvh is), so it never grows over page 1's words.
   phone: {
     bandSvh: 58,
     cardHeightFrac: 0.28,
     frontLift: false,
+    wheelBandSvh: 34,
   },
 
   // Camera.

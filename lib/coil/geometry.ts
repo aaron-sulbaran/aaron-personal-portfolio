@@ -161,6 +161,14 @@ export function clearTopFor(viewport: Viewport, c: CoilConstants = COIL) {
   return isNarrow(viewport, c) ? c.narrow.headerClearPx + c.narrow.introBandPx : 0;
 }
 
+// The height the deal's wheel is sized from (COIL.deal.wheel.diameterOfHeight
+// of it): the canvas's, or on page 2's phone band the band the wheel was tuned
+// on (COIL.phone.wheelBandSvh of the screen), so the taller band leaves the
+// wheel at page 1's foot as it was. lib/home/stageLead.ts reads the same.
+export function wheelBasisPx(canvasHeight: number, phone: boolean, c: CoilConstants = COIL) {
+  return phone ? (canvasHeight * c.phone.wheelBandSvh) / c.phone.bandSvh : canvasHeight;
+}
+
 // How far the ring reaches past the cards' centers, in card heights: a card's
 // half thickness on its side and the lean's tilt.
 const WHEEL_RING_PAD = 0.3;
@@ -280,7 +288,7 @@ export function solveGeometry(viewport: Viewport, cardCount: number, c: CoilCons
   // wider by its gaps, the cards the same size. It forms where the ribbon is (the
   // middle across, the slot's height down), as shares of the canvas; with no
   // slot, at the constants' anchor.
-  const wheelDiameter = c.deal.wheel.diameterOfHeight * canvas.height;
+  const wheelDiameter = c.deal.wheel.diameterOfHeight * wheelBasisPx(canvas.height, !!options.phone, c);
   const wheelAnchor = ribbonCy !== null ? { x: 0.5, y: (ribbonCy + rb.offsetYPx) / canvas.height } : { x: c.deal.wheel.anchor[0], y: c.deal.wheel.anchor[1] };
   const wheelPx = wheelDiameter / ((2 * cardCount * step) / TAU + WHEEL_RING_PAD);
 

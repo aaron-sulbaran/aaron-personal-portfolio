@@ -166,6 +166,12 @@ describe("solveGeometry", () => {
       expect(geo.cardPx, "larger than the table's share would make it").toBeGreaterThan(band.height * COIL.cardHeightFrac);
       expect(geo.spans).toBe(true);
     }
+    // The deal's wheel keeps the size it was tuned at on the old band.
+    const band = { width: 390, height: (844 * COIL.phone.bandSvh) / 100 };
+    const tuned = { width: 390, height: (844 * COIL.phone.wheelBandSvh) / 100 };
+    const onBand = solveGeometry(band, STRAND, COIL, { phone: true });
+    const onTuned = solveGeometry(tuned, STRAND, COIL);
+    expect(onBand.wheelCardWorld / onBand.camera.worldPerPx).toBeCloseTo(onTuned.wheelCardWorld / onTuned.camera.worldPerPx, 6);
     // The same band off the phone keeps the table: narrow below 0.8, the table's card share.
     const plain = solveGeometry({ width: 390, height: 490 }, STRAND);
     expect(plain.narrow).toBe(true);

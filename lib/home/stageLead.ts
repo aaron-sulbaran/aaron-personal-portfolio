@@ -1,4 +1,5 @@
 import { COIL, type CoilConstants } from "@/lib/coil/constants";
+import { wheelBasisPx } from "@/lib/coil/geometry";
 
 // How far the Coil's sticky stage reaches up page 1 (slice 4d). The stage is as
 // tall as the cards section's frame and its rail runs from page 1's foot to the
@@ -21,18 +22,19 @@ export type LeadFacts = {
   slotCenter: number; // the ribbon slot's middle, the same frame
   frameHeight: number; // the stage's height (the cards section's frame)
   canvasWidth: number; // the stage's width, for the ribbon's card
+  phone?: boolean; // the frame is page 2's phone band (its wheel keeps its tuned size)
 };
 
-export function stageReachAbove(frameHeight: number, canvasWidth: number, c: CoilConstants = COIL): number {
+export function stageReachAbove(frameHeight: number, canvasWidth: number, c: CoilConstants = COIL, phone = false): number {
   const w = c.deal.wheel;
-  const ring = 0.5 * frameHeight * w.diameterOfHeight * w.scale * RING_REACH;
+  const ring = 0.5 * wheelBasisPx(frameHeight, phone, c) * w.diameterOfHeight * w.scale * RING_REACH;
   const rb = c.deal.ribbon;
   const card = canvasWidth < rb.phoneBelowPx ? rb.cardHeightPhonePx : rb.cardHeightPx;
   return Math.max(ring, card / 2 + ROW_ROOM_PX);
 }
 
 export function stageLeadPx(f: LeadFacts, c: CoilConstants = COIL): number {
-  const top = f.slotCenter - stageReachAbove(f.frameHeight, f.canvasWidth, c);
+  const top = f.slotCenter - stageReachAbove(f.frameHeight, f.canvasWidth, c, f.phone);
   return Math.max(0, f.sectionTop - top);
 }
 
@@ -47,8 +49,9 @@ export type CtaFacts = {
   canvasWidth: number;
   slotHeight: number; // the ribbon slot's height (its cards')
   gapPx: number; // the foot's gap between the slot and the button
+  phone?: boolean;
 };
 
 export function ctaStickPx(f: CtaFacts, c: CoilConstants = COIL): number {
-  return stageReachAbove(f.frameHeight, f.canvasWidth, c) + f.slotHeight / 2 + f.gapPx;
+  return stageReachAbove(f.frameHeight, f.canvasWidth, c, f.phone) + f.slotHeight / 2 + f.gapPx;
 }
