@@ -294,17 +294,19 @@ test.describe("the pill", () => {
 });
 
 test.describe("where the player lives", () => {
-  test("player: a window too narrow for the band's card docks the player at the pill's place instead", async ({ page }) => {
+  test("player: a tablet-wide window opens the card in the band too, in page 1's player's room, and docks nothing at the pill's place", async ({ page }) => {
+    // Until 2026-10-30 a window under 1024px docked the player at the isle, where its open card sat over the paragraph under the band.
     await page.setViewportSize({ width: 900, height: 700 });
     await openHome(page, { path: HOME });
     await parkBand(page);
     await accept(page).click();
-    const pill = page.locator(PLAYER_PILL);
-    await expect(pill).toHaveAttribute("data-player-pill", "pinned");
-    await expect(page.locator(BAND_CARD)).toHaveCount(0);
-    // With no card in the band the band keeps its own Pause.
-    await expect(band(page).locator('[data-control="on"]')).toBeVisible();
-    await expect(pill.getByRole("slider", { name: S.ariaSeek })).toBeVisible();
+    await expect(page.locator(BAND_CARD)).toBeVisible();
+    await expect(page.locator(PLAYER_PILL)).toHaveCount(0);
+    await expect(page.locator(BAND_CARD).getByRole("slider", { name: S.ariaSeek })).toBeVisible();
+    // The card is the band's feedback, so the band's own controls close up, and the card stands right of paragraph 2's columns.
+    await expect(band(page).locator("[data-band-controls]")).toBeHidden();
+    const [card, cell] = await Promise.all([page.locator(BAND_CARD).boundingBox(), page.locator("#story-outside").boundingBox()]);
+    expect(card!.x - (cell!.x + cell!.width)).toBeGreaterThanOrEqual(31);
   });
 
   test("player: a restored pause resumes from the band's one Resume, with no question, and the player opens there", async ({ page, browserName }) => {

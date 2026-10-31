@@ -11,8 +11,9 @@ import type { Zone } from "./zone";
 //   closed   nothing of the player's is showing (no music has started)
 //   band     the player is open in the band
 //   docked   the player stands open at the isle's dock: the music was started
-//            below the band, or the window is too narrow to hold the card
-//            beside the band's copy
+//            below the band, or the window is too narrow to hold the card in
+//            the band (no desktop width is, since page 1 left the card its
+//            room; lib/player/viewport.ts)
 //   to-pill  the band's player is handing off to the isle (the morph runs)
 //   to-band  the isle is handing back to the band's player
 //   pill     the player has collapsed into the isle (the pill on a desktop,
@@ -31,7 +32,7 @@ const DOCKED: PlayerState = { view: "docked" };
 
 export interface MachineConfig {
   phone: boolean;
-  // A desktop band wide enough (from 1024px) to hold the card beside the band's copy; narrower, the player docks instead.
+  // A desktop band wide enough to hold the card in its room (from 768px, lib/player/viewport.ts); narrower, the player docks instead.
   roomy: boolean;
   reduce: boolean;
 }
@@ -48,7 +49,7 @@ export type Handoff = "morph" | "fade";
 export const handoff = (config: MachineConfig): Handoff => (config.reduce ? "fade" : "morph");
 
 // Whether the band can hold the player: a phone always can (it sits under the
-// copy), a desktop from 1024px.
+// copy), a desktop when it is roomy (from 768px, the player's room on page 1).
 const bandHolds = (config: MachineConfig) => config.phone || config.roomy;
 
 export function step(state: PlayerState, event: PlayerEvent, config: MachineConfig): PlayerState {

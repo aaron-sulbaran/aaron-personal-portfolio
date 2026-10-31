@@ -3,18 +3,15 @@ import { LATE_BLOCKS, STORY_SIDES, TOP_BLOCKS, sideOf } from "@/lib/home/storyLa
 import { siteContent } from "@/lib/content";
 
 describe("page 1's stagger", () => {
-  it("tells all four blocks on page 1, each once, in order: two around the name, two after the wave", () => {
-    expect([...TOP_BLOCKS, ...LATE_BLOCKS]).toEqual([0, 1, 2, 3]);
-    expect(siteContent.intro.blocks).toHaveLength(4);
+  it("tells both paragraphs on page 1, each once, in order: one beside the name, one after the wave", () => {
+    expect([...TOP_BLOCKS, ...LATE_BLOCKS]).toEqual([0, 1]);
+    expect(siteContent.intro.blocks).toHaveLength(2);
   });
 
-  it("puts block 1 right of the name, block 2 under it on the left, then block 3 on the right and block 4 on the left", () => {
-    expect(STORY_SIDES).toEqual(["right", "left", "right", "left"]);
-    expect([0, 1, 2, 3].map(sideOf)).toEqual(["right", "left", "right", "left"]);
-  });
-
-  it("alternates sides after the name's own row, so no two blocks stack in one column", () => {
-    for (let i = 1; i < STORY_SIDES.length; i++) expect(STORY_SIDES[i]).not.toBe(STORY_SIDES[i - 1]);
+  it("puts paragraph 1 right of the name and paragraph 2 on the left after the wave, so the late grid's right side is free", () => {
+    expect(STORY_SIDES).toEqual(["right", "left"]);
+    expect([0, 1].map(sideOf)).toEqual(["right", "left"]);
+    expect(LATE_BLOCKS.map(sideOf)).toEqual(["left"]);
   });
 
   it("leans an unknown block left", () => {

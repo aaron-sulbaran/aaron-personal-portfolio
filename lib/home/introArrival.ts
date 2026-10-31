@@ -1,8 +1,8 @@
 import { COIL } from "@/lib/coil/constants";
 
 // Page 1's words arriving on load (slice 5). The steps are the order Aaron
-// asked for: the name's line, block 1, block 2, the band's question, blocks 3
-// and 4 together, the strip's button. Each [data-arrive] element carries its
+// asked for, on the two-paragraph page: the name's line, paragraph 1, the
+// band's question, paragraph 2, the strip's button. Each [data-arrive] element carries its
 // step (--arrive-step); the stagger, the item's duration and the rise are CSS
 // custom properties on the page (lib/home/introDom.ts) and app/globals.css
 // plays them as transitions once <html data-intro-words> says "play".
@@ -12,13 +12,13 @@ import { COIL } from "@/lib/coil/constants";
 
 export const ARRIVAL_STEP = {
   name: 0,
-  // Intro blocks 1 to 4, by index in siteContent.intro.blocks: 3 and 4 arrive together.
-  blocks: [1, 2, 4, 4],
-  band: 3,
-  button: 5,
+  // The two paragraphs, by index in siteContent.intro.blocks: one before the band, one after it.
+  blocks: [1, 3],
+  band: 2,
+  button: 4,
 } as const;
 
-export const ARRIVAL_STEPS = 6;
+export const ARRIVAL_STEPS = 5;
 
 export type ArrivalKnobs = { arrivalTotalMs: number; arrivalStaggerMs: number; arrivalRisePx: number };
 

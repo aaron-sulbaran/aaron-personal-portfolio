@@ -10,12 +10,17 @@ import { Glass } from "./Glass";
 import { NowPlaying } from "./NowPlaying";
 import { useFocusPlayer } from "./useFocusPlayer";
 
-// The player in the band, the music's home. From md up it floats at the band's
-// right edge, on the band's content grid, over the wave and clear of the copy;
-// on phones it sits in the flow under the copy. It stays mounted through the
-// hand-off to the isle (hidden, not removed) so its box can be measured for the
-// morph, and it is inert and invisible whenever it is not the one on show. Its
-// view is the player's machine (lib/player/machine), written by the host.
+// The player in the band, the music's home. From md up it stands in page 1's
+// player's room (app/globals.css, --player-room): as wide as the late grid's
+// columns right of paragraph 2 (at most 360px), at the band's right edge on the
+// grid's own width, hung from the wave's top, which is the static position
+// under the band's copy row (no top is set), so it covers the wave and the late
+// grid's empty right-hand columns and never a word, at any width, whatever the
+// copy above or beside it says. On phones it sits in the flow under the copy.
+// It stays mounted through the hand-off to the isle (hidden, not removed) so its
+// box can be measured for the morph, and it is inert and invisible whenever it
+// is not the one on show. Its view is the player's machine (lib/player/machine),
+// written by the host.
 export function BandPlayer() {
   const view = usePlayerView();
   const music = useSoundtrack();
@@ -33,19 +38,19 @@ export function BandPlayer() {
   if (!mounted) return null;
   const fade = reduce ? 200 : 160;
   return (
-    <div className="pointer-events-none relative z-20 px-[6vw] pt-3 md:absolute md:inset-x-0 md:top-3.5 md:pt-0" data-player-band-slot>
+    <div className="pointer-events-none relative z-20 px-[var(--intro-gutter,6vw)] pt-3 md:absolute md:inset-x-0 md:pt-0" data-player-band-slot>
       <div className="mx-auto flex max-w-[1240px] justify-end">
         <div
           data-player-band-card
           inert={!shown}
-          className="pointer-events-auto w-full md:w-auto"
+          className="pointer-events-auto w-full md:w-[var(--player-room,360px)]"
           style={{
             opacity: shown ? 1 : 0,
             visibility: shown ? "visible" : "hidden",
             transition: shown ? `opacity ${fade}ms ease` : `opacity ${fade}ms ease, visibility 0s linear ${fade}ms`,
           }}
         >
-          <Glass className="w-full p-4 md:w-[360px]">
+          <Glass className="w-full p-4">
             <NowPlaying active={shown} reduce={reduce} />
           </Glass>
         </div>

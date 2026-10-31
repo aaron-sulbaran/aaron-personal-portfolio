@@ -16,7 +16,7 @@ import { siteContent } from "@/lib/content";
 //     overlaps it;
 //   - on the click, every frame of the deal's own clock: the ribbon's lead (the
 //     knee that keeps the stick from being a stop) stays inside the room above
-//     the slot, so even the click never overlaps block 4.
+//     the slot, so even the click never overlaps the last paragraph.
 // Something faded out (opacity under SEEN) is not there to be covered; a test
 // that let a faded block count would pass by hiding it, so the lead tests also
 // hold the geometry to the blocks while the row is still a row.
@@ -152,25 +152,23 @@ for (const size of [
         const cta = rect("[data-intro-cta]");
         const lastLine = (() => {
           const range = document.createRange();
-          range.selectNodeContents(document.querySelector("#story-from [data-block-text]")!);
+          range.selectNodeContents(document.querySelector("#story-outside [data-block-text]")!);
           return Math.max(...Array.from(range.getClientRects()).map((r) => r.bottom));
         })();
-        return { fromLastLine: lastLine, lateBottom: late.bottom, slotTop: slot.top, slotBottom: slot.bottom, ctaTop: cta.top };
+        return { lastLine, lateBottom: late.bottom, slotTop: slot.top, slotBottom: slot.bottom, ctaTop: cta.top };
       });
-      // Above the slot: from block 4's last line (the late grid ends there).
+      // Above the slot: from the last paragraph's last line (the late grid ends there).
       expect(m.slotTop - m.lateBottom).toBeCloseTo(size.room.above, 0);
-      expect(m.slotTop - m.fromLastLine).toBeGreaterThanOrEqual(size.room.above - 1);
+      expect(m.slotTop - m.lastLine).toBeGreaterThanOrEqual(size.room.above - 1);
       // Slot to button.
       expect(m.ctaTop - m.slotBottom).toBeCloseTo(size.room.below, 0);
-      // The stagger's gaps between paragraphs stay as they were: 3rem on a desktop.
+      // The stagger's gaps stay as they were: 3rem on a desktop, from the name's row to the band and from the band to paragraph 2.
       if (!size.phone) {
-        const between = await page.evaluate(() => {
-          const bottom = (s: string) => document.querySelector(s)!.getBoundingClientRect().bottom;
-          const top = (s: string) => document.querySelector(s)!.getBoundingClientRect().top;
-          return top("#story-from") - bottom("#story-outside");
+        const gaps = await page.evaluate(() => {
+          const rect = (s: string) => document.querySelector(s)!.getBoundingClientRect();
+          return { above: rect("#listen").top - rect("[data-intro-top]").bottom, below: rect("#story-outside").top - rect("#listen").bottom };
         });
-        expect(between).toBeGreaterThanOrEqual(0);
-        expect(between).toBeLessThanOrEqual(48 + 2);
+        for (const gap of [gaps.above, gaps.below]) expect(gap).toBeCloseTo(48, 0);
       }
     });
 

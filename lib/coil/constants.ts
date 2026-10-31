@@ -314,7 +314,7 @@ const values = {
   // Page 1, who I am (hero rework, slices 3 and 4d;
   // docs/superpowers/specs/2026-10-21-hero-rework-design.md): the loader that
   // becomes the name, the name drawn in its own small canvas with the field
-  // inside its letters, the four blocks of the story staggered across the page
+  // inside its letters, the story's two paragraphs on either side of the page
   // with the thin wave between them, then the ribbon and the button at its
   // foot. Every number here is a lab knob's default (lib/home/introKnobs.ts
   // clamps them; /lab/hero, in dev only, overrides them at runtime). Aaron
@@ -342,13 +342,14 @@ const values = {
     // The room between blocks on a desktop.
     stagger: { gapRem: 3 },
     // Page 1's words arrive on load (Aaron, 2026-10-23), once the loader has
-    // handed the name over: the name's line, block 1, block 2, the band's
-    // question, blocks 3 and 4 together, the strip's button, each a step
-    // staggerMs after the last. totalMs is from the handoff to the last item
-    // done, so an item takes totalMs less the five staggers (650 ms at these
-    // numbers; lib/home/introArrival.ts). Each rises risePx and fades in on a
-    // strong ease out (arrivalEase); transform and opacity only.
-    arrival: { on: true, totalMs: 1400, staggerMs: 150, risePx: 14 },
+    // handed the name over: the name's line, paragraph 1, the band's question,
+    // paragraph 2, the strip's button, each a step staggerMs after the last.
+    // totalMs is from the handoff to the last item done, so an item takes
+    // totalMs less the four staggers (650 ms at these numbers, as it took when
+    // the page had six steps and 1400 ms; lib/home/introArrival.ts). Each rises
+    // risePx and fades in on a strong ease out (arrivalEase); transform and
+    // opacity only.
+    arrival: { on: true, totalMs: 1250, staggerMs: 150, risePx: 14 },
     // The name's own canvas: it reaches this far past the lockup (a share of
     // the name's font size) on every side, room for the sheen and the pointer's
     // wake, and draws the field only inside the letters.

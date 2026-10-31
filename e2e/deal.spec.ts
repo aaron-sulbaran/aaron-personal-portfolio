@@ -319,9 +319,9 @@ test("deal: scrolling back up shows page 1 as it was, with Back to my cards, and
   await page.evaluate(() => document.querySelector("[data-intro-cta]")!.scrollIntoView({ block: "center", behavior: "instant" }));
   await expect(back).toBeVisible();
   await expect(dealLink(page)).toHaveCount(0);
-  // Page 1 is whole: the name drawn with its gradient (the canvas, never a flat fill), all four blocks, the wave, and the ribbon's emptied room closed.
+  // Page 1 is whole: the name drawn with its gradient (the canvas, never a flat fill), both paragraphs, the wave, and the ribbon's emptied room closed.
   await expect(page.locator("[data-name-stage]")).toHaveAttribute("data-name-canvas", "on");
-  await expect(page.locator("[data-block-text]")).toHaveCount(4);
+  await expect(page.locator("[data-block-text]")).toHaveCount(2);
   await expect(page.locator("#listen")).toBeAttached();
   await expect(page.locator("[data-coil-ribbon][data-gone]")).toHaveCount(1);
   // Nothing of page 2 sits inside page 1: the stage has let go, and no title or card canvas is over it.

@@ -14,15 +14,16 @@ import { RibbonSlotRelease } from "./RibbonSlotRelease";
 import { RibbonStill } from "./RibbonStill";
 import { StoryBlock } from "./StoryBlock";
 
-// Page 1 (#about), "who I am": everything about me, whole, then the cards. Top to
-// bottom: the name ("Hi, I'm Aaron", the field inside its letters, drawn in its
-// own small canvas) with block 1 to its right and block 2 under it on the left;
-// the soundtrack band's wave across the page; block 3 on the right and block 4
-// on the left; then, at the page's foot, the ribbon of the fourteen cards (drawn
-// by the Coil scene in its slot) and "Deal me in", the ribbon a beat of its own
-// with room above it and the button its distance below. A phone stacks the same
-// order. Nothing here moves when the deal plays: the page scrolls on to the
-// cards, and a way back up finds this page as it was.
+// Page 1 (#about), "who I am": two paragraphs about me, whole, then the cards.
+// Top to bottom: the name ("Hi, I'm Aaron", the field inside its letters, drawn
+// in its own small canvas) with paragraph 1 to its right, in one row; the
+// soundtrack band's wave across the page; paragraph 2 on the left, the late
+// grid's right-hand columns left free as the open player's room (the band's card
+// stands there, so it never covers words); then, at the page's foot, the ribbon
+// of the fourteen cards (drawn by the Coil scene in its slot) and "Deal me in",
+// the ribbon a beat of its own with room above it and the button its distance
+// below. A phone stacks the same order. Nothing here moves when the deal plays:
+// the page scrolls on to the cards, and a way back up finds this page as it was.
 //
 // The h1 is the heading in every case: its sr-only text is what is read, and
 // its visual spans are the lockup the name canvas draws on (and, where no

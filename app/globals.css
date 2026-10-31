@@ -988,6 +988,15 @@ section[data-scene="on"] [data-coil-stage] {
 html[data-deal] section[data-scene="off"] [data-coil-stage] {
   opacity: 0;
 }
+/* Until then the rail is hidden too, which shows nothing new (its stage is clear)
+   but keeps its placing out of the page's layout shift: the rail reaches up page
+   1's foot by --run-lead, set on mount (components/home/useStageLead.ts), and since
+   page 1 tells two paragraphs that reach falls inside the first screen of a tall
+   window (from about 1440x900), where a stage that moved as it was placed counted
+   as a shift though nothing of it could be seen. */
+html[data-deal] section[data-scene="off"] [data-coil-rail] {
+  visibility: hidden;
+}
 /* The deal's cutscene holds the reader's scroll from the moment it starts until the
    Coil is unfurled (lib/home/dealLock.ts sets data-deal-lock on <html> for that
    long). On a desktop the lock is its listeners alone: a scrollbar that came and
@@ -1049,13 +1058,14 @@ html[data-deal] section[data-scene="off"] [data-coil-stage] {
 }
 
 /* ---- page 1 (slice 4d) ---- */
-/* Everything about me on one page, then the cards: the name ("Hi, I'm Aaron",
-   drawn in its own small canvas with the field inside its letters, this h1's
-   lockup as its place and size), block 1 to its right and block 2 under it on
-   the left, the thin wave across the page, block 3 on the right and block 4 on
-   the left, then the ribbon's slot and the button at the foot. --lk is the
-   name's font size (--lk-d on a desktop, --lk-p on a phone, from the lab's
-   knobs). A phone stacks the same order. */
+/* Two paragraphs about me on one page, then the cards: the name ("Hi, I'm
+   Aaron", drawn in its own small canvas with the field inside its letters, this
+   h1's lockup as its place and size) with paragraph 1 to its right in one row,
+   the thin wave across the page, paragraph 2 on the left with the late grid's
+   right-hand columns left free as the open player's room, then the ribbon's
+   slot and the button at the foot. --lk is the name's font size (--lk-d on a
+   desktop, --lk-p on a phone, from the lab's knobs). A phone stacks the same
+   order. */
 :root {
   --field-poster: url("/coil/field-light.avif");
 }
@@ -1066,6 +1076,7 @@ html[data-deal] section[data-scene="off"] [data-coil-stage] {
   --lk: var(--lk-d);
   --ribbon-h: var(--ribbon-d);
   --intro-gutter: 6vw;
+  --story-col-gap: 2rem;
   padding: 8rem var(--intro-gutter) 1.5rem;
 }
 /* Page 1's grid on whole px: the name's box is where its letters are painted.
@@ -1102,15 +1113,12 @@ html[data-deal] section[data-scene="off"] [data-coil-stage] {
   .intro-grid {
     display: grid;
     grid-template-columns: repeat(12, minmax(0, 1fr));
-    column-gap: 2rem;
+    column-gap: var(--story-col-gap);
     row-gap: var(--story-gap, 3rem);
     align-items: start;
   }
   .intro-grid > [data-block][data-side="right"] {
     grid-column: 7 / 13;
-  }
-  .intro-grid > [data-block][data-side="left"] {
-    grid-column: 1 / 8;
   }
   .intro-grid--top > .intro-name {
     grid-column: 1 / 7;
@@ -1119,15 +1127,36 @@ html[data-deal] section[data-scene="off"] [data-coil-stage] {
   .intro-grid--top > [data-block][data-side="right"] {
     grid-row: 1;
   }
-  .intro-grid--top > [data-block][data-side="left"] {
-    grid-row: 2;
-  }
-  .intro-grid--late > [data-block][data-side="right"] {
-    grid-column: 6 / 13;
-    grid-row: 1;
-  }
+  /* Paragraph 2 holds the late grid's left columns, 1 to 6 on a tablet (the
+     width paragraph 1 has beside the name); the rest is the player's room. */
   .intro-grid--late > [data-block][data-side="left"] {
-    grid-row: 2;
+    grid-column: 1 / 7;
+  }
+}
+/* From 1024px the room is columns 8 to 12, as wide as the card, so paragraph 2
+   takes the measure the left blocks always had: columns 1 to 7. */
+@media (min-width: 1024px) {
+  .intro-grid--late > [data-block][data-side="left"] {
+    grid-column: 1 / 8;
+  }
+}
+/* The open player's room (components/player/BandPlayer.tsx): the late grid's
+   columns right of paragraph 2, which hold no words. The band's card is as wide
+   as the room (never wider than the isle's open player, 360px, ISLE.openWidthPx)
+   and stands at the room's right edge, hanging from the wave's top, under the
+   band's copy row, over the wave and into those empty columns: no text is ever
+   under it, whatever the copy says or however long it runs. --player-room keeps
+   its percentage unresolved until a box uses it, and the box that does is the
+   band's content row, which is the grid's own width (the 1240px row inside the
+   page's gutter), so the room is the grid's columns to the pixel. */
+@media (min-width: 768px) {
+  .intro {
+    --player-room: min(360px, calc((100% - 11 * var(--story-col-gap)) / 12 * 6 + 5 * var(--story-col-gap)));
+  }
+}
+@media (min-width: 1024px) {
+  .intro {
+    --player-room: min(360px, calc((100% - 11 * var(--story-col-gap)) / 12 * 5 + 4 * var(--story-col-gap)));
   }
 }
 [data-block-text] {

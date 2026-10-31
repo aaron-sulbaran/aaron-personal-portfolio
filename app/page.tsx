@@ -18,7 +18,7 @@ export const revalidate = 86400;
 
 // The whole site is one scrolling document of four pages: page 1 (#about, who I
 // am: the name drawn in its own small canvas with the field inside its letters,
-// the four blocks of the story staggered across the page, the soundtrack band's
+// the story's two paragraphs on either side of the page, the soundtrack band's
 // thin wave between them, the ribbon of cards and "Deal me in" at its foot),
 // page 2 (#work, the cards: the Coil between two columns of titles), page 3
 // (#numbers, proof of work), page 4 (#connect), then the Footer. The loader (the

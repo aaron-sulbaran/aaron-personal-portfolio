@@ -10,9 +10,25 @@ const { intro, whoIAm } = siteContent;
 const ABOUT = whoIAm.blocks.flatMap((block) => [block.body, ...(block.sub ? [block.sub.body] : [])]);
 const sentencesOf = intro.blocks.flatMap((block) => block.sentences);
 
+// The four-paragraph page's photo pops, every one of which page 1 still carries.
+const PAGE_ONE_POPS = ["leadership-award", "family", "friends", "3d-printing", "sandboarding", "downhill-skating", "skydiving", "rock-climbing", "venezuela-flag"];
+
 describe("page 1's blocks", () => {
-  it("are four, who I am, what I love at work, what I love outside it and where I'm from", () => {
-    expect(intro.blocks.map((block) => block.key)).toEqual(["who", "work", "outside", "from"]);
+  it("are two paragraphs: who I am and how I work, then what I love outside work and where I'm from", () => {
+    expect(intro.blocks.map((block) => block.key)).toEqual(["who", "outside"]);
+  });
+
+  it("are the draft's whole sentences, as cut from About, link markup and all", () => {
+    expect(intro.blocks[0].sentences).toEqual([
+      "I'm a [product](def:product)-focused engineer.",
+      "I study Electrical and Computer Engineering (ECE) at UT Austin, but I spend most of my time building and talking to the people I'm building for.",
+      "I tend to gravitate towards [leadership positions](pop:leadership-award) because I love getting a group of people with very different skillsets working towards one goal.",
+    ]);
+    expect(intro.blocks[1].sentences).toEqual([
+      "I love people ([family](pop:family) & [friends](pop:friends)) outside of work too.",
+      "I love credit card-maxxing since it allows me to fulfill my wanderlust, recently got into [3D printing](pop:3d-printing) because it lets me work on the engineering I don't get to do in class, and love [extreme sports](pop:sandboarding) like [downhill skating](pop:downhill-skating), [skydiving](pop:skydiving), and [rock climbing](pop:rock-climbing).",
+      "I was born in Maracaibo, [Venezuela](pop:venezuela-flag), and moved to the U.S. when I was around 4.",
+    ]);
   });
 
   it("hold two to three sentences each", () => {
@@ -38,10 +54,9 @@ describe("page 1's blocks", () => {
     }
   });
 
-  it("bring back the six pops slice 1 cut, and the others the intro had", () => {
+  it("keep every photo pop the four paragraphs had, each once: the six slice 1 cut and the others the intro had", () => {
     const keys = sentencesOf.flatMap((sentence) => parseInlineLinks(sentence, registerHas).segments.flatMap((segment) => (segment.kind === "pop" ? [segment.key] : [])));
-    for (const key of ["sandboarding", "downhill-skating", "skydiving", "rock-climbing", "venezuela-flag", "3d-printing"]) expect(keys).toContain(key);
-    for (const key of ["leadership-award", "family", "friends"]) expect(keys).toContain(key);
+    expect([...keys].sort()).toEqual([...PAGE_ONE_POPS].sort());
   });
 
   it("point every link at the register", () => {
