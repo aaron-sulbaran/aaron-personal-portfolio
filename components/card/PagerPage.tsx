@@ -96,7 +96,9 @@ export function PagerPage({ gallery, page, index, count, kind, stage, trims, cur
           <div className={`flex flex-col gap-4 ${scrolls ? "pb-6" : ""}`}>
             {slideWords(page).map((unit) => (
               <div key={unit} className="flex flex-col gap-4" data-block={`w${unit}`} data-trimmed={trims[unit] ? trims[unit] : undefined}>
-                <Words gallery={gallery} unit={unit} compact trim={trims[unit] ?? 0} />
+                {/* A new paragraph element for each trim: the mask-in splits a paragraph into lines, and reverting that split restores the
+                    words it was given, so a paragraph trimmed in place would come back whole. */}
+                <Words key={trims[unit] ?? 0} gallery={gallery} unit={unit} compact trim={trims[unit] ?? 0} />
                 {afterWords(gallery, unit, false)}
               </div>
             ))}
