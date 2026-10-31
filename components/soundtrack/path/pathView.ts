@@ -8,7 +8,7 @@ import { nearestColumn } from "@/lib/wavepath/pluck";
 import { pathProbe } from "@/lib/wavepath/probe";
 import { layLine } from "@/lib/wavepath/line";
 import { routeKind, type RouteKind } from "@/lib/wavepath/serpentine";
-import { chooseTrain, visibleOptions } from "@/lib/wavepath/visible";
+import { visibleOptions } from "@/lib/wavepath/visible";
 import type { Keep } from "@/lib/wavepath/paint";
 import { createDotPainter, themeNow } from "../viewParts";
 import type { Changed, WaveConductor, WaveFrame, WaveView } from "../waveConductor";
@@ -121,12 +121,12 @@ export function createPathView(layer: HTMLElement, root: HTMLElement, conductor:
     syncTiles(height);
     map = mapTiles(cols, TILE_PX, tiles.length, tileReach(amp));
     dirty = true;
-    conductor.setPath({ runLen, length: samples.length, train: chooseTrain(samples, anchors, visibleOptions(width, viewport)), runFlat }, !laid);
+    conductor.setPath({ runLen, length: samples.length, train: visibleOptions(width, viewport).train, runFlat }, !laid);
     laid = true;
   };
   // A window resize that leaves the width alone (a phone's toolbar collapsing
   // as it scrolls) moves only what hangs on the viewport's height: the scroll
-  // limit and the train check. The anchors, spine and tiles stay as laid,
+  // limit and the train. The anchors, spine and tiles stay as laid,
   // unless the window turned from portrait to landscape or back, which may
   // give it the other shape of line (lib/wavepath/serpentine routeKind).
   const onResize = () => {
@@ -134,7 +134,7 @@ export function createPathView(layer: HTMLElement, root: HTMLElement, conductor:
     if (!laid || !samples || !measured || window.innerWidth !== innerWidth || routeKind(width, window.innerHeight) !== kind) return schedule();
     viewport = window.innerHeight;
     maxScrollY = Math.max(0, document.documentElement.scrollHeight - viewport);
-    conductor.setPath({ runLen, length: samples.length, train: chooseTrain(samples, measured, visibleOptions(width, viewport)), runFlat }, false);
+    conductor.setPath({ runLen, length: samples.length, train: visibleOptions(width, viewport).train, runFlat }, false);
   };
   const schedule = () => {
     if (!destroyed && !raf) raf = requestAnimationFrame(layout);

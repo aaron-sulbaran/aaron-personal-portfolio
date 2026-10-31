@@ -1,4 +1,4 @@
-import { CLEAR_MARGIN, PHONE_MAX_WIDTH, ROUTE, type RouteShape } from "./constants";
+import { CLEAR_MARGIN, EXCURSION_MARGIN, PHONE_MAX_WIDTH, ROUTE, TRAIN_PX, type RouteShape } from "./constants";
 import type { Point } from "./geometry";
 import { bandLineY, bandRunPoints } from "./head";
 import type { Anchors, Rect, Side, Span } from "./spine";
@@ -8,6 +8,9 @@ import type { Anchors, Rect, Side, Span } from "./spine";
 // crossings are found on the page as measured (its words, links and headings), never placed by hand, so a page whose words move
 // gets a line that moves with them. Where no gap is tall enough to cross in, the line stays off screen until the next one; it
 // never runs down a margin. Behind the cards section (its field is opaque) and past the edges the line is out of sight.
+// The line also leaves the screen before it comes back: between one crossing and the next it goes out past the edge, round and
+// back in, and that excursion is longer than the train the page draws (TRAIN_PX) plus a margin, so the tail has gone by the time
+// the head returns and no scroll position shows both legs of a turn.
 
 // Which shape of line a window gets: a phone's (narrow and portrait, the page in one column) or a wide one's. Width decides the
 // page's layout (one column below Tailwind's md, 768) and the aspect decides how the line reads on it; a window narrower than
@@ -168,6 +171,32 @@ export function roundedPolyline(corners: Point[], radius: number, step: number):
   return out;
 }
 
+// A corner of the route past an edge, and the side it is past.
+interface Exit extends Point {
+  side: Side;
+}
+const outward = (side: Side) => (side === "right" ? 1 : -1);
+
+// The corners of one excursion, from the corner where a leg leaves past an edge to the corner where the next one comes in (both
+// excluded): out `arm` px farther along the level, then down, then back in along the level. Where the next leg comes in from the other
+// side the line crosses behind the cards section, through `hidden` (a height inside it). With no arm the excursion is a drop.
+export function excursionCorners(out: Exit, into: Exit, arm: number, hidden: number): Point[] {
+  if (out.side === into.side) {
+    const d = outward(out.side);
+    const x = d * Math.max(d * out.x, d * into.x) + d * arm;
+    return [{ x, y: out.y }, { x, y: into.y }];
+  }
+  const xOut = out.x + outward(out.side) * arm;
+  const xIn = into.x + outward(into.side) * arm;
+  return [{ x: xOut, y: out.y }, { x: xOut, y: hidden }, { x: xIn, y: hidden }, { x: xIn, y: into.y }];
+}
+
+// The points with every one that sits on its predecessor left out.
+const distinct = (points: Point[]) => points.filter((p, i) => i === 0 || Math.hypot(p.x - points[i - 1].x, p.y - points[i - 1].y) > 0.01);
+const arcOf = (points: Point[]) => points.reduce((sum, p, i) => (i ? sum + Math.hypot(p.x - points[i - 1].x, p.y - points[i - 1].y) : 0), 0);
+// The arm grows in steps this long.
+const ARM_STEP = 10;
+
 // The crossing nearest page 4's top edge.
 export const seamCrossing = (crossings: Crossing[], anchors: Anchors) =>
   crossings.reduce<Crossing | null>((a, c) => (!a || Math.abs((c.yIn + c.yOut) / 2 - anchors.box.connect.top) < Math.abs((a.yIn + a.yOut) / 2 - anchors.box.connect.top) ? c : a), null);
@@ -175,8 +204,9 @@ export const seamCrossing = (crossings: Crossing[], anchors: Anchors) =>
 // Which side the line is on after a run of crossings that began from `start`.
 const sideAfter = (crossings: Crossing[], start: Side): Side => (crossings.length % 2 ? (start === "left" ? "right" : "left") : start);
 
-// The whole line: the band's level run, then off past the right edge, down out of sight and back in for the first crossing, and so
-// on; after the last crossing it carries on past the edge and ends there. Behind the cards section the line may change sides
+// The whole line: the band's level run, then off past the right edge, down out of sight and back in for the first crossing (out far
+// enough that the train has left the screen by the time it returns), and so on; after the last crossing it carries on past the edge
+// and ends there. Behind the cards section the line may change sides
 // unseen; it does so on a phone when that lets it leave page 3 off the left edge (the crossing nearest page 4's top edge runs right
 // to left) and come back from the left, under page 4's words, to wind around its links.
 export function serpentine(anchors: Anchors, viewport: number, opts: RouteOptions): Route {
@@ -206,26 +236,44 @@ export function serpentine(anchors: Anchors, viewport: number, opts: RouteOption
     const yR = c.from === "left" ? c.yOut : c.yIn;
     return yL + ((yR - yL) * (x + off)) / (W + 2 * off);
   };
-  // The corners, all past an edge or behind the cards: off the run's end heading right, then for each crossing the turn into it and
-  // the turn out of it, `turn` px past the edge it enters and the edge it leaves, each pair joined by a drop straight down out of
-  // sight. A change of side crosses behind the middle of the cards section.
-  const runEnd = run[run.length - 1];
-  let x = Math.max(runEnd.x, edge("right", 0)) + turn;
-  let side: Side = "right";
-  const corners: Point[] = [runEnd, { x, y: line }];
+  // The corners: off the run's end heading right, then for each crossing an excursion from the corner `turn` px past the edge the
+  // last leg leaves by to the corner `turn` px past the edge the crossing enters by. An excursion is a drop straight down, carried
+  // out farther along the level at its two ends until, from the edge of the screen and back to it, it is as long as the train plus
+  // EXCURSION_MARGIN. How far depends only on what the excursion must at least span (the gap the next crossing keeps below this
+  // one, or the cards section's height where it passes behind it), never on where the next crossing was placed, so a block that
+  // grows further down the page moves nothing above it. A change of side crosses behind the middle of the cards section.
+  const need = TRAIN_PX + EXCURSION_MARGIN;
+  const radius = turn * 0.8;
   const hidden = (cards.top + cards.bottom) / 2;
+  const runEnd = run[run.length - 1];
+  let out: Exit = { x: Math.max(runEnd.x, edge("right", 0)) + turn, y: line, side: "right" };
+  // Where the leg out of `out` crosses the edge of the screen, and how low the next crossing may start at the least.
+  let leg: Point = { x: edge("right", 0), y: line };
+  let lowest = floor;
+  let exitedAt = line;
+  const corners: Point[] = [runEnd, out];
   for (const c of crossings) {
-    if (c.from !== side) {
-      corners.push({ x, y: hidden });
-      x = edge(c.from, turn);
-      corners.push({ x, y: hidden });
+    const into: Exit = { x: edge(c.from, turn), y: at(c, edge(c.from, turn)), side: c.from };
+    const back: Point = { x: edge(c.from, 0), y: into.y };
+    // The least the drop spans: past the whole cards section where it passes behind it, else down to where the next crossing may start.
+    const passesCards = exitedAt <= cards.top && c.yIn >= cards.bottom;
+    const floorY = Math.max(out.y + 1, (passesCards ? cards.bottom : lowest) - shape.drop * turn);
+    const least: Exit = { ...into, y: floorY };
+    let arm = 0;
+    while (arm < need) {
+      const chain = distinct([leg, out, ...excursionCorners(out, least, arm, hidden), least, { ...back, y: floorY }]);
+      if (arcOf(roundedPolyline(chain, radius, ROUTE.sample)) >= need) break;
+      arm += ARM_STEP;
     }
-    corners.push({ x, y: at(c, x) });
-    side = c.from === "left" ? "right" : "left";
-    x = edge(side, turn);
-    corners.push({ x, y: at(c, x) });
+    corners.push(...excursionCorners(out, into, arm, hidden), into);
+    const leaves: Side = c.from === "left" ? "right" : "left";
+    out = { x: edge(leaves, turn), y: at(c, edge(leaves, turn)), side: leaves };
+    leg = { x: edge(leaves, 0), y: at(c, edge(leaves, 0)) };
+    lowest = c.yOut + shape.gap;
+    exitedAt = c.yOut;
+    corners.push(out);
   }
   // The line ends at its last corner, past the edge.
-  const tail = roundedPolyline(corners, turn * 0.8, ROUTE.sample);
+  const tail = roundedPolyline(distinct(corners), radius, ROUTE.sample);
   return { points: [...run.slice(0, -1), ...tail], crossings, off, kind };
 }

@@ -79,9 +79,14 @@ export const ROUTE = {
   phone: { minRoom: 0.35, gap: 200, window: 120, drop: 0.5, descent: 0.3 },
   wide: { minRoom: 0.45, gap: 240, window: 160, drop: 0.22, descent: 0.3 },
   step: 4, // px between the heights the search tries
-  turn: 70, // px past the edge a turn swings out
+  turn: 70, // px past the edge a turn swings out, before the excursion carries on out to its length (EXCURSION_MARGIN)
   sample: 8, // px between the points the route is drawn through
 } as const satisfies { phone: RouteShape; wide: RouteShape; step: number; turn: number; sample: number };
+
+// The line leaves the screen before it comes back: every excursion past an edge (out of one stretch in view, round a turn, and into
+// the next) is at least TRAIN_PX of arc plus this much, so the train's tail has left the screen by the time its head returns and the
+// reader never sees the two legs of a turn at once. The margin is the arc of line between them with no wave on screen.
+export const EXCURSION_MARGIN = 200;
 
 // The path's dots keep this far from any text or link (px beyond a dot's own radius), however the page is laid out.
 export const CLEAR_MARGIN = 4;

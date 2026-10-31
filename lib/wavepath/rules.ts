@@ -13,13 +13,13 @@ export function pastRun(samples: SpineSamples, width: number, reach: number) {
   return i;
 }
 
-// The line's stretches in view, as runs of sample indices: the spine within the dots' reach of the screen, not behind the cards
-// section's field, after the band's run.
-export function stretchesInView(samples: SpineSamples, anchors: Anchors, reach: number): number[][] {
+// The runs of sample indices from `first` on that are in view: the spine within the dots' reach of the screen, not behind the cards
+// section's field.
+function runsInView(samples: SpineSamples, anchors: Anchors, reach: number, first: number): number[][] {
   const cards = anchors.box.cards;
   const out: number[][] = [];
   let run: number[] = [];
-  for (let i = pastRun(samples, anchors.width, reach); i < samples.count; i++) {
+  for (let i = first; i < samples.count; i++) {
     const shown = samples.x[i] > -reach && samples.x[i] < anchors.width + reach && (samples.y[i] < cards.top || samples.y[i] > cards.bottom);
     if (shown) run.push(i);
     else if (run.length) {
@@ -29,6 +29,20 @@ export function stretchesInView(samples: SpineSamples, anchors: Anchors, reach: 
   }
   if (run.length) out.push(run);
   return out;
+}
+
+// The line's stretches in view after the band's run, as runs of sample indices.
+export const stretchesInView = (samples: SpineSamples, anchors: Anchors, reach: number): number[][] => runsInView(samples, anchors, reach, pastRun(samples, anchors.width, reach));
+
+// Every leg of the line in view, the band's run first.
+export const legsInView = (samples: SpineSamples, anchors: Anchors, reach: number): number[][] => runsInView(samples, anchors, reach, 0);
+
+// The arc, px, from the end of each leg in view to the start of the next: the line out past an edge, round a turn and back in. The
+// train is drawn this far behind the head, so while an excursion is longer than the train (plus a margin) the tail has left the
+// screen before the head comes back, and the screen never shows both legs of a turn.
+export function excursionsBetween(samples: SpineSamples, anchors: Anchors, reach: number): number[] {
+  const legs = legsInView(samples, anchors, reach);
+  return legs.slice(1).map((leg, k) => (leg[0] - legs[k][legs[k].length - 1]) * samples.step);
 }
 
 // The radius at sample i, from the turn between the chords to the samples k either side (px; Infinity on a straight).
@@ -46,6 +60,22 @@ export function tightestInView(samples: SpineSamples, anchors: Anchors, reach: n
   let tightest = Infinity;
   for (const run of stretchesInView(samples, anchors, reach)) for (const i of run) if (i >= 4 && i < samples.count - 4) tightest = Math.min(tightest, radiusAt(samples, i));
   return tightest;
+}
+
+// The samples on a bend tighter than this radius (px) are a turn: the legs are straight or sweep wide, so only a turn comes this tight.
+export const TURN_RADIUS = 120;
+
+// The turns in view at a scroll position (layer px: the band's top at the viewport's top is 0), as sample indices: bends within the
+// dots' reach of the screen, not behind the cards section's field.
+export function turnsInView(samples: SpineSamples, anchors: Anchors, reach: number, scroll: number, viewport: number): number[] {
+  const cards = anchors.box.cards;
+  const out: number[] = [];
+  for (let i = 4; i < samples.count - 4; i++) {
+    const { x, y } = { x: samples.x[i], y: samples.y[i] };
+    if (x <= -reach || x >= anchors.width + reach || y <= scroll - reach || y >= scroll + viewport + reach || (y >= cards.top && y <= cards.bottom)) continue;
+    if (radiusAt(samples, i) < TURN_RADIUS) out.push(i);
+  }
+  return out;
 }
 
 // Each stretch in view as where it enters and leaves (x of its first and last samples).

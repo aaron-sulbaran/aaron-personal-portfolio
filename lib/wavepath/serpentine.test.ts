@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import layout from "./fixtures/layout.json";
 import { dotReach } from "./columns";
+import { EXCURSION_MARGIN, TRAIN_PX } from "./constants";
 import { arcAtY } from "./geometry";
 import { layLine } from "./line";
-import { marginDrop, pastRun, seamCrossing, stretchEnds, stretchesInView, tightestInView } from "./rules";
-import { routeKind, roundedPolyline } from "./serpentine";
+import { excursionsBetween, legsInView, marginDrop, pastRun, radiusAt, seamCrossing, stretchEnds, stretchesInView, tightestInView, TURN_RADIUS, turnsInView } from "./rules";
+import { excursionCorners, routeKind, roundedPolyline } from "./serpentine";
 import type { Anchors } from "./spine";
+import { trainAt, visibleOptions } from "./visible";
 
 // The serpentine on the real page (the fixture: measureAnchors and the browser's own boxes at seven sizes, e2e/wavepath-fixture).
 // Every rule is read off the line the page itself would draw (layLine), never off the route's own bookkeeping.
@@ -78,6 +80,62 @@ describe("the serpentine on the page", () => {
       expect(s.x[end] < -reach || s.x[end] > W + reach).toBe(true);
     });
   }
+});
+
+// Aaron's note on the turns (A33): the wave may leave the screen, but it must leave whole before it comes back, so no scroll position
+// shows two legs joined by one turn. Read off the line the page would draw, at every 50 px of scroll the visitor can rest at.
+describe("the line leaves the screen before it comes back", () => {
+  const STEP = 50;
+  for (const size of sizes) {
+    const { page, anchors, laid, W, reach } = pageAt(size);
+    const s = laid.samples;
+    const opts = visibleOptions(W, page.viewport);
+    const legs = legsInView(s, anchors, reach);
+    const maxScroll = anchors.box.footer.bottom - page.viewport;
+    const scrolls = Array.from({ length: Math.ceil(maxScroll / STEP) + 1 }, (_, k) => Math.min(maxScroll, k * STEP));
+
+    it(`takes the train's length and a margin to go out past an edge and back in, every time, at ${size}`, () => {
+      // The band's run and each crossing are a leg; between two legs the line goes out, round a turn, and in again.
+      expect(legs.length).toBe(laid.route.crossings.length + 1);
+      const excursions = excursionsBetween(s, anchors, reach);
+      expect(excursions.length).toBe(legs.length - 1);
+      for (const px of excursions) expect(px, "arc of line between two legs in view, px").toBeGreaterThanOrEqual(TRAIN_PX + EXCURSION_MARGIN);
+    });
+
+    it(`shows at most one leg of the train at every 50 px of scroll at ${size}`, () => {
+      for (const scroll of scrolls) {
+        const { head, tail } = trainAt(s, anchors, opts, scroll);
+        // The whole train counts, its faded end too: a leg shows when one of its samples is both drawn and on the screen.
+        const shown = legs.filter((leg) => leg.some((i) => i * s.step >= tail && i * s.step <= head && s.y[i] > scroll && s.y[i] < scroll + page.viewport));
+        expect(shown.length, `legs of the train on screen at scroll ${scroll}`).toBeLessThanOrEqual(1);
+      }
+    });
+
+    it(`keeps every turn, amplitude and dot spread and all, off the screen at every 50 px of scroll at ${size}`, () => {
+      for (const scroll of scrolls) expect(turnsInView(s, anchors, reach, scroll, page.viewport), `samples on a turn in view at scroll ${scroll}`).toEqual([]);
+      // The turns exist, one pair for each excursion: the check is not passing for want of any.
+      const tight = Array.from({ length: s.count - 8 }, (_, k) => k + 4).filter((i) => radiusAt(s, i) < TURN_RADIUS);
+      expect(tight.length).toBeGreaterThan(laid.route.crossings.length);
+    });
+  }
+});
+
+describe("excursionCorners", () => {
+  const out = { x: 100, y: 10, side: "right" } as const;
+  it("is a plain drop with no arm, and carries both ends farther out along the level with one", () => {
+    const into = { x: 100, y: 50, side: "right" } as const;
+    expect(excursionCorners(out, into, 0, 30)).toEqual([{ x: 100, y: 10 }, { x: 100, y: 50 }]);
+    expect(excursionCorners(out, into, 40, 30)).toEqual([{ x: 140, y: 10 }, { x: 140, y: 50 }]);
+    expect(excursionCorners({ x: -100, y: 10, side: "left" }, { x: -100, y: 50, side: "left" }, 40, 30)).toEqual([{ x: -140, y: 10 }, { x: -140, y: 50 }]);
+  });
+  it("goes out farther from whichever corner is farther out", () => {
+    expect(excursionCorners({ x: 170, y: 10, side: "right" }, { x: 135, y: 50, side: "right" }, 25, 30)).toEqual([{ x: 195, y: 10 }, { x: 195, y: 50 }]);
+  });
+  it("crosses behind the cards when the next leg comes in from the other side, each end carried out by the arm", () => {
+    const into = { x: -100, y: 90, side: "left" } as const;
+    expect(excursionCorners(out, into, 0, 30)).toEqual([{ x: 100, y: 10 }, { x: 100, y: 30 }, { x: -100, y: 30 }, { x: -100, y: 90 }]);
+    expect(excursionCorners(out, into, 20, 30)).toEqual([{ x: 120, y: 10 }, { x: 120, y: 30 }, { x: -120, y: 30 }, { x: -120, y: 90 }]);
+  });
 });
 
 describe("on a phone", () => {

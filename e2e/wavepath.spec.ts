@@ -8,7 +8,7 @@ import { dotReach } from "@/lib/wavepath/columns";
 import { dotsOn, layLine, lineDots } from "@/lib/wavepath/line";
 import type { PathProbe } from "@/lib/wavepath/probe";
 import { marginDrop, seamCrossing, stretchEnds, tightestInView } from "@/lib/wavepath/rules";
-import { blankAt, visibleOptions } from "@/lib/wavepath/visible";
+import { blankAt, headOutOfFrame, visibleOptions } from "@/lib/wavepath/visible";
 
 // The scroll-drawn line (wave lab rounds 2 to 6), read through its probe.
 // Never "Play it" here: "Not now" starts the line too, and nothing may play.
@@ -48,11 +48,13 @@ const accept = (page: Page) => page.locator("#listen").getByRole("button", { nam
 const freeze = (page: Page) => page.evaluate(() => (window as unknown as W).__wavePath.freeze(true));
 
 // The line is a serpentine (lib/wavepath/serpentine): it crosses the page in the gaps between its words and stays off screen past
-// a block of words too tall to have one. So the screen may be empty of the line, but only where the line itself has nothing to
-// show there: at every 50px of scroll with no drawn dot in view, the lib, laid on the page as the page measured it, must agree
-// that even the whole line drawn behind the head shows nothing there (never the train letting go of a crossing still in view).
+// a block of words too tall to have one, and it leaves the screen whole before it comes back. So the screen may be empty of the
+// line, but only where the line itself has nothing to show there, or while the head is out of frame between one crossing and the
+// next (Aaron, A33: the wave need not always be on screen): at every 50px of scroll with no drawn dot in view, the lib, laid on the
+// page as the page measured it, must agree that even the whole line drawn behind the head shows nothing there, or that the head is
+// off screen there.
 for (const size of [{ width: 1440, height: 900 }, { width: 1024, height: 768 }, { width: 390, height: 844 }]) {
-  test(`wavepath: the screen is empty of the line only where the line has nothing to show, at ${size.width}`, async ({ page }) => {
+  test(`wavepath: the screen is empty of the line only where the line has nothing to show or its head is out of frame, at ${size.width}`, async ({ page }) => {
     test.setTimeout(240_000);
     await page.setViewportSize(size);
     await open(page);
@@ -71,12 +73,12 @@ for (const size of [{ width: 1440, height: 900 }, { width: 1024, height: 768 }, 
         const { samples } = layLine(layout.anchors, layout.viewport);
         const opts = { ...visibleOptions(layout.anchors.width, layout.viewport), train: null };
         // One step of slack either way: the lib samples the line, the page draws dots.
-        const own = [-50, 0, 50].some((d) => blankAt(samples, layout.anchors, opts, y - layout.origin + d));
+        const own = [-50, 0, 50].some((d) => blankAt(samples, layout.anchors, opts, y - layout.origin + d) || headOutOfFrame(samples, layout.anchors, opts, y - layout.origin + d));
         if (!own) unexplained.push(y);
       }
       if (y >= end) break;
     }
-    expect(unexplained, `scroll positions with no drawn dot in view that the line itself would show (${empty} empty in all)`).toEqual([]);
+    expect(unexplained, `scroll positions with no drawn dot in view that the line itself would show with its head in view (${empty} empty in all)`).toEqual([]);
   });
 }
 

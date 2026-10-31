@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import layout from "./fixtures/layout.json";
 import pages from "./fixtures/pages.json";
-import { SAMPLE_STEP, TRAIN_PX } from "./constants";
+import { SAMPLE_STEP } from "./constants";
 import { sampleSpine, type Point } from "./geometry";
 import { layLine } from "./line";
 import type { Anchors } from "./spine";
-import { blankScrolls, checkLine, chooseTrain, visibleOptions } from "./visible";
+import { blankScrolls, checkLine, headOutOfFrame, visibleOptions } from "./visible";
 
 const measured = { ...Object.fromEntries(Object.entries(pages).map(([k, v]) => [`pages ${k}`, v])), ...Object.fromEntries(Object.entries(layout).map(([k, v]) => [`layout ${k}`, v])) } as Record<string, { anchors: unknown; viewport: number }>;
 const sizes = Object.keys(measured);
@@ -17,12 +17,15 @@ describe("in view, the shipped line", () => {
     const opts = visibleOptions(anchors.width, viewport);
     const { samples } = layLine(anchors, viewport);
 
-    // The serpentine stays off screen past words with no gap to cross in: the screen may be empty there, and only there. The train
-    // never adds an empty screen to those: it lets go of a crossing only once the crossing has left the view.
-    it(`keeps the train, which never empties a screen the whole line would not, at ${size}`, () => {
-      expect(chooseTrain(samples, anchors, opts)).toBe(TRAIN_PX);
+    // The serpentine stays off screen past words with no gap to cross in, and the line leaves the screen whole before it comes back
+    // (Aaron, A33: it need not always be on screen). So the screen is empty where the whole line has nothing to show, or for the stretch
+    // the head is out of frame between one crossing and the next; never with the head in view.
+    it(`empties the screen only where the whole line would, or while the head is out of frame, at ${size}`, () => {
       const own = new Set(blankScrolls(samples, anchors, { ...opts, train: null }));
-      expect(blankScrolls(samples, anchors, opts).filter((y) => !own.has(y))).toEqual([]);
+      const added = blankScrolls(samples, anchors, opts).filter((y) => !own.has(y));
+      expect(added.filter((y) => !headOutOfFrame(samples, anchors, opts, y)), "scroll positions the train empties with its head in view").toEqual([]);
+      // Short: the head is off screen only while it goes round a turn, a step or two of scroll on the page's own grid.
+      expect(added.length * 50, "px of scroll the train empties that the whole line would not").toBeLessThanOrEqual(150);
     });
 
     it(`reaches its end at max scroll, past an edge, at ${size}`, () => {
@@ -56,12 +59,16 @@ describe("in view, the check itself", () => {
     expect(report.worstGapPx).toBeGreaterThan(0);
     expect(report.atY).toBeGreaterThan(400);
   });
-  it("keeps the train for a line whose empty screens are its own, draws the whole line when the train would add one", () => {
-    const ok = samples([0.5, 0.5, 0.5]);
-    expect(chooseTrain(ok, page(), opts)).toBe(opts.train);
+  it("empties the screen for a line that leaves and comes back only while its head is out of frame", () => {
     // A line whose on-screen stretches sit far apart along the line but close down the page: the train lets go of the first long
-    // before the second comes, while the whole line would still show the first.
+    // before the second comes, while the whole line would still show the first. The head is off screen for all of that.
     const coil = sampleSpine([{ x: 600, y: 700 }, { x: 600, y: 900 }, { x: 5000, y: 910 }, { x: 5000, y: 1200 }, { x: 600, y: 1210 }, { x: 600, y: 2400 }], SAMPLE_STEP);
-    expect(chooseTrain(coil, page(), opts)).toBeNull();
+    const own = new Set(blankScrolls(coil, page(), { ...opts, train: null }));
+    const added = blankScrolls(coil, page(), opts).filter((y) => !own.has(y));
+    expect(added.length).toBeGreaterThan(0);
+    expect(added.every((y) => headOutOfFrame(coil, page(), opts, y))).toBe(true);
+    // A line that stays on screen has its head in view throughout.
+    const ok = samples([0.5, 0.5, 0.5]);
+    expect([800, 1000, 1400].some((y) => headOutOfFrame(ok, page(), opts, y))).toBe(false);
   });
 });
