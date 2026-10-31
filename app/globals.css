@@ -1072,6 +1072,25 @@ html[data-deal] section[data-scene="off"] [data-coil-stage] {
     grid-column: 1 / 8;
   }
 }
+/* The open player's room (components/player/BandPlayer.tsx): the late grid's
+   columns right of paragraph 2, which hold no words. The band's card is as wide
+   as the room (never wider than the isle's open player, 360px, ISLE.openWidthPx)
+   and stands at the room's right edge, hanging from the wave's top, under the
+   band's copy row, over the wave and into those empty columns: no text is ever
+   under it, whatever the copy says or however long it runs. --player-room keeps
+   its percentage unresolved until a box uses it, and the box that does is the
+   band's content row, which is the grid's own width (the 1240px row inside the
+   page's gutter), so the room is the grid's columns to the pixel. */
+@media (min-width: 768px) {
+  .intro {
+    --player-room: min(360px, calc((100% - 11 * var(--story-col-gap)) / 12 * 6 + 5 * var(--story-col-gap)));
+  }
+}
+@media (min-width: 1024px) {
+  .intro {
+    --player-room: min(360px, calc((100% - 11 * var(--story-col-gap)) / 12 * 5 + 4 * var(--story-col-gap)));
+  }
+}
 [data-block-text] {
   max-width: 60ch;
 }
