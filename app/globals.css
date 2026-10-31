@@ -541,9 +541,11 @@ html[data-band-answer="on"] [data-band-layer="paused"] { opacity: 1 !important; 
    under its button, so as the full name comes in the whole sentence (.mvp-glide,
    inside the link) glides left by half the width the full name adds
    (--mvp-shift, measured by components/quick/useMvpCentre) and ends centred
-   where it stood; leaving glides it back. The glide runs from the hover's first
-   frame over the fade's whole span (the lag and the fade in) on the fade's
-   curve, so the two read as one move, and within the sentence still no letter
+   where it stood; leaving glides it back. On the way in the glide keeps the full
+   name's own time (it starts at the lag and runs as long as the full name's
+   fade, on the same curve), so the sentence moves exactly as the new words
+   arrive and the two read as one move; on the way back it runs from the first
+   frame over the way back's whole span. Within the sentence still no letter
    travels. It is a translate, so nothing reflows. The link's own box stays put
    and the full name takes the pointer once it is in, so between them they cover
    the sentence where it starts, where it ends and everywhere between: a pointer
@@ -598,7 +600,7 @@ html[data-band-answer="on"] [data-band-layer="paused"] { opacity: 1 !important; 
   [data-mvp-centre] .mvp-glide { transition: translate calc((var(--mvp-lag-ms) + var(--mvp-in-ms)) * var(--mvp-back)) var(--mvp-ease); }
   :is([data-mvp-centre]:hover, html:not([data-input="pointer"]) [data-mvp-centre]:focus-visible) .mvp-glide {
     translate: var(--mvp-shift, 0px) 0;
-    transition: translate calc(var(--mvp-lag-ms) + var(--mvp-in-ms)) var(--mvp-ease);
+    transition: translate var(--mvp-in-ms) var(--mvp-ease) var(--mvp-lag-ms);
   }
 }
 @media (prefers-reduced-motion: reduce) { .mvp-full, .mvp-short-rest, .mvp-short-cap, .mvp-full-fill, .mvp-glide { transition: none !important; } }

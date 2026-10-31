@@ -10,9 +10,10 @@ import { quickCopy } from "@/lib/content/quick";
 // only; the link around them carries the name.
 //
 // The short word stays in the line and holds its width; the full name is drawn
-// over it, reaching past the line's box, so page 1's line stays centred and the
-// Menu's line keeps its size. The two share their first letter, so the short
-// word's capital is its own span: it stays drawn under the full name's until
+// over it, reaching past the line's box, so nothing around it reflows (page 1's
+// sentence glides to stay centred instead, components/quick/useMvpCentre, and
+// the Menu's line keeps its size). The two share their first letter, so the
+// short word's capital is its own span: it stays drawn under the full name's until
 // the full name is in, and the one letter that is in both never dims mid-fade.
 // fill gives the full name the site's link fill (from the centre, in the
 // accent), where the element has no fill of its own.

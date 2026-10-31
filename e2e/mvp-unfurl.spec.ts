@@ -218,8 +218,10 @@ test("mvp unfurl: hovering page 1's line fades MVP to Minimum Viable Portfolio i
   // The full name starts a beat after the short word: on the first frame the short word has begun to go, the full name has barely come.
   const first = over.find((row) => row.short < 0.99)!;
   expect(first.full, "the full name lags the short word").toBeLessThan(0.2);
-  // The glide: the sentence only ever moves left, and ends half the added width from where it stood.
+  // The glide: the sentence only ever moves left, in step with the full name's fade (one move: the same start, length and curve, so
+  // its share of the way is the full name's opacity on every frame), and ends half the added width from where it stood.
   over.slice(1).forEach((row, i) => expect(row.startX, `the glide at ${Math.round(row.t)}ms`).toBeLessThanOrEqual(over[i].startX + 0.01));
+  for (const row of over) expect(Math.abs((row.startX - rest.startX) / shift - row.full), `the glide against the fade at ${Math.round(row.t)}ms`).toBeLessThanOrEqual(0.05);
   expect(open.startX - rest.startX).toBeCloseTo(shift, 1);
 
   expectNoTravelAndAFade(away, rest, "leave");
@@ -330,7 +332,9 @@ test("mvp unfurl: page 1's whole sentence is centred under the button, at rest a
 
 // The sentence glides under a resting pointer, so the hover must not flicker: the link's own box stays put and the full name takes
 // the pointer once it is in, so a pointer parked anywhere on the line stays on it. Parked by a single jump (no path across the line)
-// on the line's right end and on MVP, each frame after it lands is hovered, the full name only ever rises, to 1, and one fade runs.
+// on the line's right end and on MVP, and held there with a half pixel of hand tremor every 50ms (so the browser hit-tests the
+// moving words as a real resting mouse makes it), each frame after it lands is hovered, the full name only ever rises, to 1, and
+// one fade runs. Done the naive way (the link itself translated), the same parked pointer flips the hover about 28 times in 1.5s.
 test("mvp unfurl: a pointer parked on page 1's line, on its right end or on MVP, holds the state steady while the sentence glides under it", async ({ page }) => {
   await openLine(page);
   await watch(page);
@@ -347,6 +351,10 @@ test("mvp unfurl: a pointer parked on page 1's line, on its right end or on MVP,
     const before = await fades(page);
     await record(link, 1300);
     await page.mouse.move(spot.x, spot.y);
+    for (let i = 0; i < 24; i++) {
+      await page.waitForTimeout(50);
+      await page.mouse.move(spot.x + (i % 2 ? 0.5 : 0), spot.y);
+    }
     const rows = await recorded(page);
     const from = rows.findIndex((row) => row.hovered);
     expect(from, `${spot.name}: hovered`).toBeGreaterThanOrEqual(0);
