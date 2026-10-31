@@ -644,8 +644,11 @@ for (const size of SIZES) {
           if (!row || i % step !== 0) continue;
           const image = decodePng(frame.png);
           expect(image.width, "the screencast is the viewport's size").toBe(width);
-          const bottom = readBlue(image, image.height - 6);
-          const band = readBlue(image, Math.round(image.height * 0.9));
+          // Only the canvas can show the field: below the stage's foot the page's own words are read out (on a phone
+          // page 2's column labels, in the accent, reach the last tenth under the band).
+          const foot = row.stage ? Math.max(0, Math.min(image.height, Math.round(row.stage.bottom))) : image.height;
+          const bottom = readBlue(image, image.height - 6, Math.max(image.height - 6, foot));
+          const band = readBlue(image, Math.round(image.height * 0.9), Math.max(Math.round(image.height * 0.9), foot));
           reads.push({ row, bottom: bottom.count, band: band.count, bandMid: (band.minX + band.maxX) / 2 });
         }
         // Before the field opens: the page is off-white, the whole way to the cards.
