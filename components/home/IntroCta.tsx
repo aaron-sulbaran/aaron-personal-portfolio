@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, type CSSProperties, type PointerEvent } from "react";
+import { useRef, useState, type CSSProperties, type PointerEvent } from "react";
 import { Fill } from "@/components/fx/Fill";
 import { useReducedMotionLive } from "@/components/soundtrack/useReducedMotionLive";
 import { MvpUnfurl } from "@/components/quick/MvpUnfurl";
+import { useMvpCentre } from "@/components/quick/useMvpCentre";
 import { siteContent } from "@/lib/content";
 import { quickCopy } from "@/lib/content/quick";
 import { COIL } from "@/lib/coil/constants";
@@ -24,8 +25,11 @@ import { goTo } from "@/lib/quick/transitionStore";
 // cards" (it scrolls there, no replay), and never earlier, so the label cannot
 // flip under a line that is still fading. The small line leads to the
 // MVP (no button, no pill: it blends into the page); under a fine pointer its
-// "MVP" fades to "Minimum Viable Portfolio" in place, over the page and past the
-// line's box, so the line stays centred and nothing moves (components/quick/MvpUnfurl).
+// "MVP" fades to "Minimum Viable Portfolio" in place (components/quick/MvpUnfurl),
+// and as it does the whole sentence glides left by half the width the full name
+// adds, so it ends centred under the button. The glide is a translate on the
+// sentence inside the link (useMvpCentre measures it), so the link's own box and
+// everything around it hold still.
 // Nothing here takes the scroll from the reader.
 //
 // The button moves with the cards above it. While a fine pointer is over it the
@@ -43,6 +47,8 @@ export function IntroCta() {
   const reducedMotion = useReducedMotionLive();
   const after = isAfter(useDeal());
   const [pressed, setPressed] = useState(false);
+  const mvpLine = useRef<HTMLAnchorElement | null>(null);
+  useMvpCentre(mvpLine);
   // A mouse or pen over the button is the anticipation; touch has no hover to read.
   const cue = (on: boolean) => (event: PointerEvent) => {
     if (event.pointerType === "touch" || reducedMotion) return;
@@ -85,6 +91,7 @@ export function IntroCta() {
         </Fill>
       </span>
       <a
+        ref={mvpLine}
         href={EXPRESS_PATH}
         onClick={(event) => {
           if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
@@ -94,10 +101,13 @@ export function IntroCta() {
         aria-label={teaser.quickName}
         data-cursor-hover
         data-mvp-link=""
+        data-mvp-centre=""
         className="rounded-sm font-label text-label-sm text-muted transition-colors duration-200 hover:text-foreground focus-visible:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       >
-        {lead}
-        <MvpUnfurl fill />
+        <span className="mvp-glide">
+          {lead}
+          <MvpUnfurl fill />
+        </span>
       </a>
     </div>
   );

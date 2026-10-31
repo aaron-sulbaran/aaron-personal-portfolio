@@ -537,20 +537,34 @@ html[data-band-answer="on"] [data-band-layer="paused"] { opacity: 1 !important; 
    spells the name out instead. The full name's fill (page 1's line) is the
    site's link fill, from the centre.
 
-   The numbers to tune by hand, all on .mvp-unfurl:
+   Page 1's line ([data-mvp-centre], components/home/IntroCta) sits centred
+   under its button, so as the full name comes in the whole sentence (.mvp-glide,
+   inside the link) glides left by half the width the full name adds
+   (--mvp-shift, measured by components/quick/useMvpCentre) and ends centred
+   where it stood; leaving glides it back. The glide runs from the hover's first
+   frame over the fade's whole span (the lag and the fade in) on the fade's
+   curve, so the two read as one move, and within the sentence still no letter
+   travels. It is a translate, so nothing reflows. The link's own box stays put
+   and the full name takes the pointer once it is in, so between them they cover
+   the sentence where it starts, where it ends and everywhere between: a pointer
+   resting anywhere on the line stays on it while the words move under it, and
+   the state never flickers.
+
+   The numbers to tune by hand, all on [data-mvp-link]:
    --mvp-out-ms   the word going away fades out over this ("MVP", on a hover)
    --mvp-in-ms    the word arriving fades in over this (the full name, on a hover)
    --mvp-lag-ms   and starts this far into the other one's fade
-   --mvp-back     the share of those three times the way back takes
-   --mvp-ease     the curve of every fade */
-.mvp-unfurl {
+   --mvp-back     the share of those times the way back takes (the glide too)
+   --mvp-ease     the curve of every fade, and of page 1's glide */
+[data-mvp-link] {
   --mvp-out-ms: 140ms;
   --mvp-in-ms: 260ms;
   --mvp-lag-ms: 80ms;
   --mvp-back: 0.8;
   --mvp-ease: ease-out;
-  position: relative; display: inline-block;
 }
+.mvp-unfurl { position: relative; display: inline-block; }
+.mvp-glide { display: inline-block; }
 .mvp-full { display: none; }
 @media (hover: hover) and (pointer: fine) {
   .mvp-note { display: none; }
@@ -581,8 +595,13 @@ html[data-band-answer="on"] [data-band-layer="paused"] { opacity: 1 !important; 
     opacity: 0;
     transition: opacity var(--mvp-out-ms) var(--mvp-ease) calc(var(--mvp-lag-ms) + var(--mvp-in-ms));
   }
+  [data-mvp-centre] .mvp-glide { transition: translate calc((var(--mvp-lag-ms) + var(--mvp-in-ms)) * var(--mvp-back)) var(--mvp-ease); }
+  :is([data-mvp-centre]:hover, html:not([data-input="pointer"]) [data-mvp-centre]:focus-visible) .mvp-glide {
+    translate: var(--mvp-shift, 0px) 0;
+    transition: translate calc(var(--mvp-lag-ms) + var(--mvp-in-ms)) var(--mvp-ease);
+  }
 }
-@media (prefers-reduced-motion: reduce) { .mvp-full, .mvp-short-rest, .mvp-short-cap, .mvp-full-fill { transition: none !important; } }
+@media (prefers-reduced-motion: reduce) { .mvp-full, .mvp-short-rest, .mvp-short-cap, .mvp-full-fill, .mvp-glide { transition: none !important; } }
 @media (forced-colors: active), print { .mvp-full-fill { -webkit-text-fill-color: currentColor; background: none; } }
 
 /* The pill toggle (components/fx/PillToggle.tsx): the strip's Commits and
