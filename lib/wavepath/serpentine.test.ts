@@ -108,6 +108,36 @@ describe("on a phone", () => {
   }
 });
 
+describe("the route above a block that grows", () => {
+  // The numbers strip's Tokens view mounts its toolkit band under the chart: the strip's block grows and everything under it moves
+  // down. The line above the block's top must not move at all (the strip's chart is above the band).
+  for (const size of ["1280x800", "390x844"] as Size[]) {
+    it(`is the same to the px above the grown block at ${size}`, () => {
+      const page = layout[size];
+      const anchors = page.anchors as Anchors;
+      const board = anchors.blocks.filter((b) => b.top > anchors.box.numbers.top && b.top < anchors.box.numbers.bottom).sort((a, b) => b.bottom - b.top - (a.bottom - a.top))[0];
+      const grow = 320;
+      const moved = (y: number) => (y >= board.bottom ? y + grow : y);
+      const shift = <T extends { top: number; bottom: number }>(r: T): T => ({ ...r, top: r.top >= board.bottom ? r.top + grow : r.top, bottom: moved(r.bottom) });
+      const grown: Anchors = {
+        ...anchors,
+        box: Object.fromEntries(Object.entries(anchors.box).map(([k, v]) => [k, shift(v)])) as Anchors["box"],
+        words: Object.fromEntries(Object.entries(anchors.words).map(([k, v]) => [k, shift(v)])) as Anchors["words"],
+        blocks: anchors.blocks.map(shift),
+        links: anchors.links.map(shift),
+        headings: anchors.headings.map(shift),
+      };
+      const a = layLine(anchors, page.viewport).samples;
+      const b = layLine(grown, page.viewport).samples;
+      let compared = 0;
+      for (let i = 0; i < a.count && a.y[i] < board.top; i++, compared++) {
+        expect(Math.abs(b.x[i] - a.x[i]) + Math.abs(b.y[i] - a.y[i]), `sample ${i} at y ${a.y[i]}`).toBeLessThan(0.01);
+      }
+      expect(compared).toBeGreaterThan(200);
+    });
+  }
+});
+
 describe("roundedPolyline", () => {
   it("keeps the legs straight and turns each corner on an arc of the radius asked for", () => {
     const pts = roundedPolyline([{ x: 0, y: 0 }, { x: 200, y: 0 }, { x: 200, y: 200 }], 50, 2);

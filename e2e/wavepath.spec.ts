@@ -535,3 +535,46 @@ test.describe("wavepath on a phone", () => {
     expect(back.some((c) => c.yIn > Math.max(...keep.links.map((l) => l.bottom))), "a crossing below the links").toBe(true);
   });
 });
+
+// Commits and Tokens on page 3: Tokens mounts the toolkit band under the chart, so the strip grows and everything under it moves
+// down. The line must not move above the chart, and the head and train of a reader parked at the chart must not move at all.
+for (const size of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) {
+  test(`wavepath: switching Commits and Tokens leaves the line at the chart where it was, at ${size.width}`, async ({ page }) => {
+    test.setTimeout(180_000);
+    await page.setViewportSize(size);
+    await open(page);
+    await decline(page);
+    await walkAndMeasure(page);
+    const chartTop = () => page.evaluate(() => document.querySelector("[data-metrics-block]")!.getBoundingClientRect().top + window.scrollY);
+    await scrollToY(page, Math.round((await chartTop()) - 100));
+    await pageSettled(page);
+    await headAtRest(page);
+    const read = async () => {
+      const { layout, f } = await page.evaluate(() => ({ layout: (window as unknown as W).__wavePath.layout!, f: (window as unknown as W).__wavePath.frame()! }));
+      const top = (await chartTop()) - layout.origin;
+      const { samples } = layLine(layout.anchors, layout.viewport);
+      const above: number[] = [];
+      for (let i = 0; i < samples.count && samples.y[i] < top; i++) above.push(samples.x[i], samples.y[i]);
+      return { above, head: f.head, train: f.train, layouts: (await layouts(page)) };
+    };
+    const choose = async (name: string) => {
+      const before = await layouts(page);
+      await page.locator("#numbers").getByRole("button", { name, exact: true }).first().click();
+      await expect(page.locator("[data-wave-state]")).toHaveAttribute("data-wave-state", "idle");
+      await expect.poll(() => layouts(page)).toBeGreaterThan(before);
+      await pageSettled(page);
+      await headAtRest(page);
+    };
+    const commits = await read();
+    expect(commits.above.length / 2, "samples above the chart").toBeGreaterThan(200);
+    for (const [name, label] of [["Tokens", "to Tokens"], ["Commits", "back to Commits"]] as const) {
+      await choose(name);
+      const now = await read();
+      expect(now.above.length, `${label}: samples above the chart`).toBe(commits.above.length);
+      const moved = now.above.reduce((worst, v, k) => Math.max(worst, Math.abs(v - commits.above[k])), 0);
+      expect(moved, `${label}: the most any point of the line above the chart moved, px`).toBeLessThan(0.05);
+      expect(Math.abs(now.head - commits.head), `${label}: the head, px of arc`).toBeLessThan(0.5);
+      expect(now.train, `${label}: the train`).toBe(commits.train);
+    }
+  });
+}
