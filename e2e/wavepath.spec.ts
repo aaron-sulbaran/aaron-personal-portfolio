@@ -7,7 +7,7 @@ import { documentTop, pageRects, pageSettled, parkBand } from "./support/wave";
 import { dotReach } from "@/lib/wavepath/columns";
 import { dotsOn, layLine, lineDots } from "@/lib/wavepath/line";
 import type { PathProbe } from "@/lib/wavepath/probe";
-import { marginDrop, stretchEnds, tightestInView } from "@/lib/wavepath/rules";
+import { marginDrop, seamCrossing, stretchEnds, tightestInView } from "@/lib/wavepath/rules";
 import { blankAt, visibleOptions } from "@/lib/wavepath/visible";
 
 // The scroll-drawn line (wave lab rounds 2 to 6), read through its probe.
@@ -492,3 +492,46 @@ for (const size of [{ width: 390, height: 844 }, { width: 768, height: 1024 }, {
     expect(marginDrop(laid.samples, layout.anchors, reach), "the most a crossing drops within a margin, px").toBeLessThan(120);
   });
 }
+
+// A phone, as a phone (touch, a coarse pointer, device scale 3): the line leaves page 3 off the left edge and comes back between
+// page 4's heading and the footer, around the contact links, never on a link's box, its number or its heading.
+test.describe("wavepath on a phone", () => {
+  test.use({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, hasTouch: true, isMobile: true });
+  test("wavepath: at 390 the line leaves page 3 off the left edge and winds around the contact links without touching them", async ({ page }) => {
+    test.setTimeout(180_000);
+    await open(page);
+    await decline(page);
+    const layout = await walkAndMeasure(page);
+    const laid = layLine(layout.anchors, layout.viewport);
+    const reach = dotReach(laid.amp);
+    const keep = await page.evaluate((origin) => {
+      const rootLeft = document.querySelector("[data-wave-path]")!.parentElement!.getBoundingClientRect().left;
+      const rect = (el: Element) => {
+        const r = el.getBoundingClientRect();
+        return { left: r.left - rootLeft, right: r.right - rootLeft, top: r.top + window.scrollY - origin, bottom: r.bottom + window.scrollY - origin, label: (el.textContent ?? "").trim().slice(0, 24) };
+      };
+      const lastWords = [...document.querySelectorAll("#numbers [data-wave-words]")].map(rect).reduce((a, b) => (b.bottom > a.bottom ? b : a));
+      return {
+        links: [...document.querySelectorAll("#connect ul a")].map(rect),
+        heading: [...document.querySelectorAll("#connect h2, #connect [data-section-number]")].map(rect),
+        lastWords: lastWords.bottom,
+      };
+    }, layout.origin);
+    expect(keep.links.length).toBe(5);
+    const headingTop = Math.min(...keep.heading.map((h) => h.top));
+    const headingBottom = Math.max(...keep.heading.map((h) => h.bottom));
+    for (const state of ["rest", "loud"] as const) {
+      const dots = lineDots(laid, state);
+      expect(dotsOn(dots, keep.links).map(({ rect, dots: n }) => `${keep.links[rect].label} x${n}`), `${state}: contact links the line lands on`).toEqual([]);
+      expect(dotsOn(dots, keep.heading).map(({ rect, dots: n }) => `${keep.heading[rect].label} x${n}`), `${state}: page 4's number and heading`).toEqual([]);
+    }
+    const s = laid.samples;
+    const between = Array.from({ length: s.count }, (_, i) => i).filter((i) => s.y[i] > keep.lastWords && s.y[i] < headingTop);
+    expect(Math.min(...between.map((i) => s.x[i])), "the line past the left edge between page 3 and page 4").toBeLessThan(-reach);
+    expect(seamCrossing(laid.route.crossings, layout.anchors)?.from, "the crossing at page 4's top edge travels right to left").toBe("right");
+    const back = laid.route.crossings.filter((c) => c.yIn > headingBottom && c.yOut < layout.anchors.box.footer.top);
+    expect(back[0]?.from, "back in from the left under page 4's heading").toBe("left");
+    expect(back.some((c) => c.yOut < Math.min(...keep.links.map((l) => l.top))), "a crossing above the links").toBe(true);
+    expect(back.some((c) => c.yIn > Math.max(...keep.links.map((l) => l.bottom))), "a crossing below the links").toBe(true);
+  });
+});

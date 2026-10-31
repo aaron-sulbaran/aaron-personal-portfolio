@@ -1,5 +1,6 @@
 import type { SpineSamples } from "./geometry";
 import { runLength } from "./head";
+export { seamCrossing } from "./serpentine";
 import type { Anchors } from "./spine";
 
 // The serpentine's rules as checks on a laid line, shared by the unit tests (lib/wavepath/serpentine.test.ts, on the fixture) and

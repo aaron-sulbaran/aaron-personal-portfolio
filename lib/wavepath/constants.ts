@@ -76,7 +76,7 @@ export const RUN_PAST = 100; // px the run carries on past the right edge before
 // lower; `window` is how much lower than the first crossing that fits a better placed one may start. Tuned by eye on the real page.
 export interface RouteShape { minRoom: number; gap: number; window: number; drop: number; descent: number }
 export const ROUTE = {
-  phone: { minRoom: 0.4, gap: 200, window: 120, drop: 0.5, descent: 0.3 },
+  phone: { minRoom: 0.35, gap: 200, window: 120, drop: 0.5, descent: 0.3 },
   wide: { minRoom: 0.45, gap: 240, window: 160, drop: 0.22, descent: 0.3 },
   step: 4, // px between the heights the search tries
   turn: 70, // px past the edge a turn swings out

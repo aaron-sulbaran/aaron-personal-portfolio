@@ -168,11 +168,17 @@ export function roundedPolyline(corners: Point[], radius: number, step: number):
   return out;
 }
 
+// The crossing nearest page 4's top edge.
+export const seamCrossing = (crossings: Crossing[], anchors: Anchors) =>
+  crossings.reduce<Crossing | null>((a, c) => (!a || Math.abs((c.yIn + c.yOut) / 2 - anchors.box.connect.top) < Math.abs((a.yIn + a.yOut) / 2 - anchors.box.connect.top) ? c : a), null);
+
 // Which side the line is on after a run of crossings that began from `start`.
 const sideAfter = (crossings: Crossing[], start: Side): Side => (crossings.length % 2 ? (start === "left" ? "right" : "left") : start);
 
 // The whole line: the band's level run, then off past the right edge, down out of sight and back in for the first crossing, and so
-// on; after the last crossing it carries on past the edge and ends there.
+// on; after the last crossing it carries on past the edge and ends there. Behind the cards section the line may change sides
+// unseen; it does so on a phone when that lets it leave page 3 off the left edge (the crossing nearest page 4's top edge runs right
+// to left) and come back from the left, under page 4's words, to wind around its links.
 export function serpentine(anchors: Anchors, viewport: number, opts: RouteOptions): Route {
   const kind = routeKind(anchors.width, viewport);
   const shape = ROUTE[kind];
@@ -183,7 +189,14 @@ export function serpentine(anchors: Anchors, viewport: number, opts: RouteOption
   const cards = anchors.box.cards;
   const floor = Math.max(line + 80, anchors.box.band.bottom + opts.clearBand + CURVE_SLACK);
   const above = findCrossings(anchors, shape, opts, { from: floor, to: cards.top }, "right");
-  const after = findCrossings(anchors, shape, opts, { from: Math.max(floor, cards.bottom), to: Infinity }, sideAfter(above, "right"));
+  const natural = sideAfter(above, "right");
+  const below = (start: Side) => findCrossings(anchors, shape, opts, { from: Math.max(floor, cards.bottom), to: Infinity }, start);
+  let after = below(natural);
+  if (kind === "phone") {
+    const leavesLeft = (cs: Crossing[]) => seamCrossing(cs, anchors)?.from === "right";
+    const other = below(natural === "left" ? "right" : "left");
+    if (!leavesLeft(after) && leavesLeft(other)) after = other;
+  }
   const crossings = [...above, ...after];
   const turn = ROUTE.turn;
   const edge = (side: Side, by: number) => (side === "left" ? -off - by : W + off + by);
@@ -193,14 +206,23 @@ export function serpentine(anchors: Anchors, viewport: number, opts: RouteOption
     const yR = c.from === "left" ? c.yOut : c.yIn;
     return yL + ((yR - yL) * (x + off)) / (W + 2 * off);
   };
-  // The corners, all past an edge: off the run's end heading right, then for each crossing the turn into it and the turn out of
-  // it, `turn` px past the edge it enters and the edge it leaves, each pair joined by a drop straight down out of sight.
+  // The corners, all past an edge or behind the cards: off the run's end heading right, then for each crossing the turn into it and
+  // the turn out of it, `turn` px past the edge it enters and the edge it leaves, each pair joined by a drop straight down out of
+  // sight. A change of side crosses behind the middle of the cards section.
   const runEnd = run[run.length - 1];
   let x = Math.max(runEnd.x, edge("right", 0)) + turn;
+  let side: Side = "right";
   const corners: Point[] = [runEnd, { x, y: line }];
+  const hidden = (cards.top + cards.bottom) / 2;
   for (const c of crossings) {
+    if (c.from !== side) {
+      corners.push({ x, y: hidden });
+      x = edge(c.from, turn);
+      corners.push({ x, y: hidden });
+    }
     corners.push({ x, y: at(c, x) });
-    x = edge(c.from === "left" ? "right" : "left", turn);
+    side = c.from === "left" ? "right" : "left";
+    x = edge(side, turn);
     corners.push({ x, y: at(c, x) });
   }
   // The line ends at its last corner, past the edge.

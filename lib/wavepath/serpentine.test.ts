@@ -3,7 +3,7 @@ import layout from "./fixtures/layout.json";
 import { dotReach } from "./columns";
 import { arcAtY } from "./geometry";
 import { layLine } from "./line";
-import { marginDrop, pastRun, stretchEnds, stretchesInView, tightestInView } from "./rules";
+import { marginDrop, pastRun, seamCrossing, stretchEnds, stretchesInView, tightestInView } from "./rules";
 import { routeKind, roundedPolyline } from "./serpentine";
 import type { Anchors } from "./spine";
 
@@ -41,7 +41,9 @@ describe("the serpentine on the page", () => {
       const { crossings } = laid.route;
       expect(crossings.length).toBeGreaterThanOrEqual(2);
       for (let k = 1; k < crossings.length; k++) expect(crossings[k].yIn).toBeGreaterThan(crossings[k - 1].yOut);
-      for (let k = 1; k < crossings.length; k++) expect(crossings[k].from).not.toBe(crossings[k - 1].from);
+      // Sides alternate, but for one change behind the cards section.
+      const behind = crossings.filter((c, k) => k > 0 && c.from === crossings[k - 1].from);
+      expect(behind.length).toBeLessThanOrEqual(1);
     });
 
     it(`shows each stretch across the whole width: in from one edge and out past the other at ${size}`, () => {
@@ -74,6 +76,34 @@ describe("the serpentine on the page", () => {
       for (let i = pastRun(s, W, reach); i < s.count; i++) if (s.x[i] > -reach && s.x[i] < W + reach) expect(s.y[i]).toBeGreaterThan(anchors.box.band.bottom + reach);
       const end = s.count - 1;
       expect(s.x[end] < -reach || s.x[end] > W + reach).toBe(true);
+    });
+  }
+});
+
+describe("on a phone", () => {
+  for (const size of sizes.filter((k) => Number(k.split("x")[0]) < 600)) {
+    const { page, anchors, laid, reach } = pageAt(size);
+    const s = laid.samples;
+    // Page 4's heading ("wanna chat?"), the loose text of the connect section that sits highest (its number is above it).
+    const heading = anchors.headings.filter((h) => h.top >= anchors.box.connect.top).sort((a, b) => b.bottom - b.top - (a.bottom - a.top))[0];
+    // The contact links: the rows under the heading that run the page's width.
+    const links = page.targets.filter((t) => t.top >= heading.bottom && t.right - t.left > 0.8 * anchors.width);
+
+    it(`leaves page 3 off the left edge, never turning back on screen, at ${size}`, () => {
+      const lastWords = Math.max(...anchors.blocks.filter((b) => b.bottom <= heading.top).map((b) => b.bottom));
+      const between = Array.from({ length: s.count }, (_, i) => i).filter((i) => s.y[i] > lastWords && s.y[i] < heading.top);
+      expect(Math.min(...between.map((i) => s.x[i])), "the line past the left edge between page 3 and page 4").toBeLessThan(-reach);
+      // It got there travelling left: the crossing nearest page 4's top edge comes in from the right.
+      expect(seamCrossing(laid.route.crossings, anchors)?.from).toBe("right");
+    });
+
+    it(`comes back from the left between page 4's heading and the footer, around its links, at ${size}`, () => {
+      const back = laid.route.crossings.filter((c) => c.yIn > heading.bottom && c.yOut < anchors.box.footer.top);
+      expect(back.length).toBeGreaterThanOrEqual(1);
+      expect(back[0].from).toBe("left");
+      // Around the links: one crossing above the first link row or between rows, one below the last.
+      expect(back.some((c) => c.yOut < Math.min(...links.map((t) => t.top)))).toBe(true);
+      expect(back.some((c) => c.yIn > Math.max(...links.map((t) => t.bottom)))).toBe(true);
     });
   }
 });
