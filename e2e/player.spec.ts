@@ -340,7 +340,7 @@ test.describe("where the player lives", () => {
     await openHome(page, { path: HOME });
     await playFromBand(page);
     await page.getByRole("button", { name: "Open menu" }).click();
-    await page.getByRole("dialog", { name: "Site menu" }).getByRole("link", { name: quickCopy.menuChip }).click();
+    await page.getByRole("dialog", { name: "Site menu" }).getByRole("link", { name: quickCopy.menuLinkName, exact: true }).click();
     await page.waitForURL("**/quick", { timeout: 20_000 });
     const pill = page.locator(PLAYER_PILL);
     await expect(pill).toHaveAttribute("data-player-pill", "collapsed");

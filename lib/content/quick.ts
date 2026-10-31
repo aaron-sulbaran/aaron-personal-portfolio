@@ -40,11 +40,11 @@ export const quickCopy = {
   listLabel: "My years, newest first",
   closingLabel: "Ways to reach me",
   now: "now",
-  menuChip: "MVP",
-  // The Menu chip's name for assistive tech: the short word it draws, and what it stands for (page 1's line has its own, intro.teaser.quickName).
-  menuChipName: "The MVP, my Minimum Viable Portfolio",
-  // The quiet line under the chip in the phone's Menu sheet, where nothing unfurls.
-  menuChipNote: "Minimum Viable Portfolio",
+  // The Menu's MVP link, on its own line, draws titleShort. Its name for assistive tech: the short word it draws, and what it stands
+  // for (page 1's line has its own, intro.teaser.quickName).
+  menuLinkName: "The MVP, my Minimum Viable Portfolio",
+  // The quiet words beside the Menu's MVP link where nothing unfurls (a touch screen, the phone's sheet).
+  menuLinkNote: "Minimum Viable Portfolio",
   tripLabel: "The trip so far",
   tripTo: (year: string) => `Go to ${year}`,
 } as const;

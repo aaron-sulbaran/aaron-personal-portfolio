@@ -102,7 +102,7 @@ describe("quick copy", () => {
       expect(/\bAaron (is|was|has)\b/.test(text), text).toBe(false);
     }
     expect(quickCopy.title).toBe("Minimum Viable Portfolio");
-    expect(quickCopy.menuChip).toBe("MVP");
+    expect(quickCopy.titleShort).toBe("MVP");
     expect(quickCopy.hint).toBe("(Click each experience card to learn more)");
     expect(JSON.stringify(quickCopy)).not.toContain("30-second");
     expect(JSON.stringify(quickCopy)).not.toContain("Express lane");
@@ -117,10 +117,11 @@ describe("quick copy", () => {
   });
 
   it("names the MVP for assistive tech wherever it is drawn as its short word, and leaves the retired invite's copy out", () => {
-    expect(quickCopy.menuChipName).toBe("The MVP, my Minimum Viable Portfolio");
-    expect(quickCopy.menuChipName.startsWith(`The ${quickCopy.menuChip}`)).toBe(true);
-    expect(quickCopy.menuChipName.endsWith(quickCopy.title)).toBe(true);
-    expect(quickCopy.menuChipNote).toBe(quickCopy.title);
+    expect(quickCopy.menuLinkName).toBe("The MVP, my Minimum Viable Portfolio");
+    expect(quickCopy.menuLinkName.startsWith(`The ${quickCopy.titleShort}`)).toBe(true);
+    expect(quickCopy.menuLinkName.endsWith(quickCopy.title)).toBe(true);
+    expect(quickCopy.menuLinkNote).toBe(quickCopy.title);
+    expect(quickCopy).not.toHaveProperty("menuChip");
     expect(quickCopy).not.toHaveProperty("invite");
     expect(JSON.stringify(quickCopy)).not.toContain("In a rush");
   });

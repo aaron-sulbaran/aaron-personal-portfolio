@@ -6,13 +6,13 @@ import { openHome, scrollToFoot } from "./support/coil";
 import { settled } from "./support/fallback";
 import { tabTo } from "./support/inline";
 
-// The MVP's short name, "MVP", unfurls to "Minimum Viable Portfolio" in the Menu
-// chip and in page 1's line under Deal me in, on a fine pointer that can hover
-// (a hover or keyboard focus), in the move of the MVP page's own title
-// (components/quick/MvpUnfurl, globals.css "The MVP unfurl"). It plays once per
-// hover and folds back on leave or blur, switches at once under reduced motion,
-// and moves nothing: page 1's line stays centred and the chip's box grows over
-// its neighbours. A touch screen never unfurls (e2e/touch.spec.ts).
+// The MVP's short name, "MVP", unfurls to "Minimum Viable Portfolio" on the
+// Menu's MVP line and in page 1's line under Deal me in, on a fine pointer that
+// can hover (a hover or keyboard focus) (components/quick/MvpUnfurl, globals.css
+// "The MVP unfurl"). It plays once per hover and folds back on leave or blur,
+// switches at once under reduced motion, and moves nothing: page 1's line stays
+// centred, and the Menu's line is its own, so the full name covers nothing. A
+// touch screen never unfurls (e2e/touch.spec.ts).
 
 const { teaser } = siteContent.intro;
 const M = siteContent.menu;
@@ -27,7 +27,7 @@ const boxOf = (target: Locator): Promise<Box> =>
 const widthOf = async (target: Locator) => (await boxOf(target)).width;
 const line = (page: Page) => page.locator("[data-intro-cta] a[data-mvp-link]");
 const fan = (page: Page) => page.locator("[data-intro-cta] .mvp-fan");
-const chip = (page: Page) => page.locator("[data-menu-mvp]");
+const menuLink = (page: Page) => page.locator("[data-menu-mvp]");
 
 // The unfurled width, once the transitions have run their course.
 async function settledWidth(target: Locator) {
@@ -163,55 +163,106 @@ test("mvp unfurl: the unfurled words take the link fill from the centre, in the 
   expect((await inkOf()).clip).toMatch(/text/);
 });
 
-test("mvp unfurl: the Menu chip is named for the whole MVP and goes to the MVP page", async ({ page }) => {
-  await openHome(page, { at: "top" });
+// The Menu's foot: the settings (theme, freeze the wave), then the MVP on a line of its own, then the contact row.
+async function openMenu(page: Page, path = "/") {
+  if (path === "/") await openHome(page, { at: "top" });
+  else await page.goto(path);
   await page.getByRole("button", { name: M.ariaLabelOpen }).click();
   const dialog = page.getByRole("dialog", { name: M.dialogLabel });
-  const link = dialog.getByRole("link", { name: quickCopy.menuChipName, exact: true });
-  await expect(link).toHaveCount(1);
-  await expect(link).toHaveAttribute("href", "/quick");
-  await expect(dialog.locator("[data-menu-mvp-note]")).toHaveCount(0);
-});
-
-test("mvp unfurl: the Menu chip grows over its neighbours on hover and focus, and nothing around it moves", async ({ page }) => {
-  await openHome(page, { at: "top" });
-  await page.getByRole("button", { name: M.ariaLabelOpen }).click();
-  const dialog = page.getByRole("dialog", { name: M.dialogLabel });
-  await expect(chip(page)).toBeVisible();
+  await expect(dialog.locator("[data-menu-mvp-line]")).toBeVisible();
+  // The foot has risen in (its own 0.5s after a 0.42s wait).
   await page.waitForTimeout(1200);
   await page.mouse.move(2, 2);
-  const row = dialog.locator("[data-menu-mvp]").locator("xpath=ancestor::span[1]");
-  const neighbours = [dialog.locator("[data-menu-freeze]"), dialog.getByRole("link", { name: siteContent.menu.email.label }), dialog.getByRole("link", { name: "LinkedIn" })];
-  const before = { chip: await boxOf(chip(page)), slot: await boxOf(row), others: await Promise.all(neighbours.map(boxOf)) };
+  return dialog;
+}
+// The full name drawn over the line: shown, and at full strength.
+const fullDrawn = (link: Locator) =>
+  link.evaluate((el) => {
+    const style = getComputedStyle(el.querySelector(".mvp-full, .mvp-fan")!);
+    return style.visibility === "visible" && Number(style.opacity) > 0.99;
+  });
+
+test("mvp unfurl: the Menu's MVP is a link on a line of its own between the settings and the contact row, named for the whole MVP", async ({ page }) => {
+  const dialog = await openMenu(page);
+  const link = dialog.getByRole("link", { name: quickCopy.menuLinkName, exact: true });
+  await expect(link).toHaveCount(1);
+  await expect(link).toHaveAttribute("href", "/quick");
+  // The chip row keeps the settings only.
+  const chips = dialog.locator("[data-menu-freeze]").locator("xpath=..");
+  await expect(chips.locator("[data-menu-mvp]")).toHaveCount(0);
+  await expect(chips.locator(":scope > *")).toHaveCount(2);
+  const email = dialog.getByRole("link", { name: M.email.label, exact: true });
+  const [chipBox, lineBox, emailBox] = [await boxOf(chips), await boxOf(dialog.locator("[data-menu-mvp-line]")), await boxOf(email)];
+  expect(lineBox.y, "under the chips").toBeGreaterThanOrEqual(chipBox.y + chipBox.height);
+  expect(lineBox.y + lineBox.height, "over the contact row").toBeLessThanOrEqual(emailBox.y);
+  // Set like the email link: the label face, in the accent.
+  const look = (target: Locator) => target.evaluate((el) => { const s = getComputedStyle(el); return [s.fontFamily, s.fontSize, s.fontWeight, s.color]; });
+  expect(await look(link)).toEqual(await look(email));
+  // On a fine pointer the note is not drawn: the link unfurls instead.
+  await expect(dialog.locator("[data-menu-mvp-note]")).toBeHidden();
+});
+
+test("mvp unfurl: the Menu's MVP line unfurls on hover and focus over the empty line to its right, and nothing in the foot moves", async ({ page }) => {
+  const dialog = await openMenu(page);
+  const link = menuLink(page);
+  const others = [
+    dialog.getByRole("button", { name: M.themeAriaLabelToDark }),
+    dialog.locator("[data-menu-freeze]"),
+    dialog.locator("[data-menu-mvp-line]"),
+    dialog.getByRole("link", { name: M.email.label, exact: true }),
+    dialog.getByRole("link", { name: "LinkedIn" }),
+  ];
+  const before = { link: await boxOf(link), others: await Promise.all(others.map(boxOf)) };
+  const panel = await boxOf(dialog.locator("#site-menu"));
   await watch(page);
 
-  await chip(page).hover();
-  await expect.poll(async () => (await widthOf(chip(page))) > before.chip.width + 100, { message: "the chip opens" }).toBe(true);
-  const open = await settledWidth(chip(page));
-  const opened = await boxOf(chip(page));
-  expect(opened.x + opened.width, "anchored by its right edge").toBeCloseTo(before.chip.x + before.chip.width, 0);
-  expect(open).toBeGreaterThan(before.chip.width + 100);
-  expect(await boxOf(row), "the room it holds in the row").toEqual(before.slot);
-  expect(await Promise.all(neighbours.map(boxOf)), "the chips and rows beside it").toEqual(before.others);
-  expect(await chip(page).evaluate((el) => getComputedStyle(el).getPropertyValue("--fx-p")), "the pill fill").toBe("1");
-  expect(await runs(page)).toBe(6);
+  await link.hover();
+  await expect.poll(() => fullDrawn(link), { message: "the full name is drawn" }).toBe(true);
+  await page.waitForTimeout(700);
+  expect(await boxOf(link), "the link's own box").toEqual(before.link);
+  expect(await Promise.all(others.map(boxOf)), "the chips, the line and the contact row").toEqual(before.others);
+  const full = await boxOf(link.locator(".mvp-full, .mvp-fan"));
+  expect(full.x, "from the link's left edge").toBeCloseTo(before.link.x, 0);
+  expect(full.x + full.width, "inside the panel").toBeLessThan(panel.x + panel.width);
   await page.mouse.move(2, 2);
-  expect(await settledWidth(chip(page))).toBeCloseTo(before.chip.width, 0);
-  expect(await outsideShifts(page), "anything but the chip that shifted").toEqual([]);
-  expect(await shifts(page), "layout shift, the chip's own growth").toBeLessThan(0.002);
+  await expect.poll(() => fullDrawn(link)).toBe(false);
 
-  // Keyboard focus does the same, and the blur folds it back.
-  await tabTo(page, chip(page));
-  expect(await settledWidth(chip(page))).toBeGreaterThan(before.chip.width + 100);
+  // Keyboard focus does the same, and the blur takes it back.
+  await tabTo(page, link);
+  await expect.poll(() => fullDrawn(link)).toBe(true);
   await page.keyboard.press("Tab");
-  expect(await settledWidth(chip(page))).toBeCloseTo(before.chip.width, 0);
-  expect(await outsideShifts(page)).toEqual([]);
+  await expect.poll(() => fullDrawn(link)).toBe(false);
+  expect(await Promise.all(others.map(boxOf))).toEqual(before.others);
+  expect(await outsideShifts(page), "anything in the foot that shifted").toEqual([]);
+});
+
+test("mvp unfurl: on the MVP page the way home holds the same line, so the Menu keeps one shape", async ({ page }) => {
+  const parts = async (dialog: Locator) => ({
+    chips: await boxOf(dialog.locator("[data-menu-freeze]").locator("xpath=..")),
+    line: await boxOf(dialog.locator("[data-menu-mvp-line]")),
+    email: await boxOf(dialog.getByRole("link", { name: M.email.label, exact: true })),
+  });
+  const home = await parts(await openMenu(page));
+  const dialog = await openMenu(page, "/quick");
+  await expect(dialog.locator("[data-menu-mvp]")).toHaveCount(0);
+  const back = dialog.locator("[data-menu-mvp-line]").getByRole("link", { name: quickCopy.back, exact: true });
+  await expect(back).toHaveAttribute("href", "/");
+  expect(await parts(dialog)).toEqual(home);
+});
+
+test("mvp unfurl: the Menu does not start scrolling at the desktop sizes it fits today", async ({ page }) => {
+  for (const [width, height] of [[1280, 800], [1440, 900], [1280, 720]]) {
+    await page.setViewportSize({ width, height });
+    const dialog = await openMenu(page);
+    const scroll = await dialog.locator("#site-menu").evaluate((el) => ({ scroll: el.scrollHeight, client: el.clientHeight }));
+    expect(scroll.scroll, `${width}x${height}`).toBeLessThanOrEqual(scroll.client);
+  }
 });
 
 test.describe("reduced motion", () => {
   test.use({ contextOptions: { reducedMotion: "reduce" } });
 
-  test("mvp unfurl: under reduced motion the words switch at once, on page 1's line and in the Menu chip", async ({ page }) => {
+  test("mvp unfurl: under reduced motion the words switch at once, on page 1's line and the Menu's MVP line", async ({ page }) => {
     await page.goto("/");
     await settled(page);
     await scrollToFoot(page);
@@ -234,12 +285,11 @@ test.describe("reduced motion", () => {
 
     await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
     await page.getByRole("button", { name: M.ariaLabelOpen }).click();
-    await expect(chip(page)).toBeVisible();
+    await expect(menuLink(page)).toBeVisible();
     await page.waitForTimeout(800);
-    const chipRest = await widthOf(chip(page));
-    await chip(page).hover();
+    await menuLink(page).hover();
     await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-    expect(await widthOf(chip(page))).toBeGreaterThan(chipRest + 100);
+    expect(await fullDrawn(menuLink(page)), "the full name, on the frame after the hover").toBe(true);
     expect(await runs(page), "no width transition ran").toBe(0);
     expect(await outsideShifts(page)).toEqual([]);
   });

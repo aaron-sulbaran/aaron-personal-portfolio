@@ -89,7 +89,7 @@ test("express lane: the transition runs both ways and lands focus on each page's
   await expect(page.locator(`#${INTRO_HEADING_ID}`)).toBeFocused();
 });
 
-test("express lane: the Menu chip takes either page to the other", async ({ page }) => {
+test("express lane: the Menu's MVP line takes either page to the other", async ({ page }) => {
   await page.goto("/quick");
   await page.getByRole("button", { name: "Open menu" }).click();
   await page.getByRole("dialog", { name: "Site menu" }).getByRole("link", { name: quickCopy.back }).click();
@@ -97,7 +97,7 @@ test("express lane: the Menu chip takes either page to the other", async ({ page
   await idle(page);
   await expect(page.locator(`#${INTRO_HEADING_ID}`)).toBeFocused();
   await page.getByRole("button", { name: "Open menu" }).click();
-  await page.getByRole("dialog", { name: "Site menu" }).getByRole("link", { name: quickCopy.menuChip }).click();
+  await page.getByRole("dialog", { name: "Site menu" }).getByRole("link", { name: quickCopy.menuLinkName, exact: true }).click();
   await expect(page).toHaveURL(/\/quick$/);
   await idle(page);
   await expect(page.locator("#express-lane-title")).toBeFocused();

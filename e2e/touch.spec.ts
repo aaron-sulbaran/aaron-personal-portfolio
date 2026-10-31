@@ -134,8 +134,8 @@ test("touch: a tap on a day of the flat chart shows its details, as the hint say
 
 // The MVP's short name does not unfurl on a touch screen (no hover to read, and
 // the MVP page's own title does the reveal there): page 1's line just says
-// "In a rush? The MVP", and the Menu sheet shows "MVP" with a quiet second line
-// naming it. Nothing moves.
+// "In a rush? The MVP", and the Menu sheet shows "MVP" with the name spelled
+// out quietly beside it. Nothing moves.
 test("touch: page 1's line says In a rush? The MVP and never unfurls; its words are still and its name is the whole MVP", async ({ page }) => {
   await openHome(page, { at: "foot" });
   await page.waitForFunction(() => !document.documentElement.dataset.introWords);
@@ -161,28 +161,38 @@ test("touch: page 1's line says In a rush? The MVP and never unfurls; its words 
   expect(await line.boundingBox()).toEqual(before);
 });
 
-test("touch: the Menu sheet shows MVP with a quiet second line, Minimum Viable Portfolio, in the label face, and the chip does not grow", async ({ page }) => {
-  await openHome(page, { at: "top" });
-  await page.getByRole("button", { name: siteContent.menu.ariaLabelOpen }).click();
-  const dialog = page.getByRole("dialog", { name: siteContent.menu.dialogLabel });
-  const chip = dialog.getByRole("link", { name: quickCopy.menuChipName, exact: true });
-  await expect(chip).toBeVisible();
-  await page.waitForTimeout(1200);
-  const note = dialog.locator("[data-menu-mvp-note]");
-  await expect(note).toHaveText(quickCopy.menuChipNote);
-  await expect(note).toBeVisible();
-  const [chipBox, noteBox] = [(await chip.boundingBox())!, (await note.boundingBox())!];
-  const viewport = page.viewportSize()!;
-  expect(chipBox.width, "the chip is its short word").toBeLessThan(90);
-  expect(noteBox.y, "the line is under the chip").toBeGreaterThanOrEqual(chipBox.y + chipBox.height - 1);
-  expect(noteBox.x + noteBox.width, "the line fits the sheet").toBeLessThanOrEqual(viewport.width);
-  expect(noteBox.y + noteBox.height, "the line fits the sheet").toBeLessThanOrEqual(viewport.height);
-  const faces = await page.evaluate(() => {
-    const family = (selector: string) => getComputedStyle(document.querySelector(selector)!).fontFamily;
-    return { note: family("[data-menu-mvp-note]"), chip: family("[data-menu-mvp]") };
-  });
-  expect(faces.note, "the label face").toBe(faces.chip);
-  await chip.hover();
-  await nextFrames(page, 4);
-  expect((await chip.boundingBox())!.width, "no unfurl").toBe(chipBox.width);
+// The Menu sheet at a 390 wide phone: the MVP is a link on a line of its own, with the name spelled out quietly beside it on the same
+// line (nothing unfurls on a touch screen), and the sheet still fits without scrolling at the shorter phone.
+test("touch: the Menu sheet's MVP line reads MVP with Minimum Viable Portfolio quietly beside it, nothing unfurls, and the sheet does not scroll", async ({ page }) => {
+  for (const height of [844, 667]) {
+    await page.setViewportSize({ width: 390, height });
+    await openHome(page, { at: "top" });
+    await page.getByRole("button", { name: siteContent.menu.ariaLabelOpen }).click();
+    const dialog = page.getByRole("dialog", { name: siteContent.menu.dialogLabel });
+    const link = dialog.getByRole("link", { name: quickCopy.menuLinkName, exact: true });
+    await expect(link).toBeVisible();
+    await page.waitForTimeout(1200);
+    const note = dialog.locator("[data-menu-mvp-note]");
+    await expect(note).toHaveText(quickCopy.menuLinkNote);
+    await expect(note).toBeVisible();
+    const [linkBox, noteBox] = [(await link.boundingBox())!, (await note.boundingBox())!];
+    expect(linkBox.width, `${height}: the link is its short word`).toBeLessThan(60);
+    expect(noteBox.x, `${height}: the note is beside the link`).toBeGreaterThanOrEqual(linkBox.x + linkBox.width);
+    expect(noteBox.y, `${height}: on the same line`).toBeGreaterThanOrEqual(linkBox.y - 2);
+    expect(noteBox.y + noteBox.height, `${height}: on the same line`).toBeLessThanOrEqual(linkBox.y + linkBox.height + 2);
+    expect(noteBox.x + noteBox.width, `${height}: the note fits the sheet`).toBeLessThanOrEqual(390);
+    const faces = await page.evaluate(() => {
+      const family = (selector: string) => getComputedStyle(document.querySelector(selector)!).fontFamily;
+      return { note: family("[data-menu-mvp-note]"), link: family("[data-menu-mvp]") };
+    });
+    expect(faces.note, "the label face").toBe(faces.link);
+    const scroll = await dialog.locator("#site-menu").evaluate((el) => ({ scroll: el.scrollHeight, client: el.clientHeight }));
+    expect(scroll.scroll, `${height}: the sheet does not scroll`).toBeLessThanOrEqual(scroll.client);
+    await link.hover();
+    await nextFrames(page, 4);
+    expect((await link.boundingBox())!.width, "no unfurl").toBe(linkBox.width);
+    expect(await link.locator(".mvp-full, .mvp-fan").evaluate((el) => getComputedStyle(el).display), "the full name is never drawn").toBe("none");
+    await page.getByRole("button", { name: siteContent.menu.ariaLabelClose }).click();
+    await expect(dialog).toHaveCount(0);
+  }
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type CSSProperties } from "react";
+import { useState, type CSSProperties, type MouseEvent } from "react";
 import { motion, type Variants } from "framer-motion";
 import { usePathname } from "next/navigation";
 import { Moon, Snowflake, Sun } from "lucide-react";
@@ -17,11 +17,17 @@ import { THEME_STORAGE_KEY, syncThemeColorMeta, type Theme } from "@/lib/theme";
 import { setFrozen, useFrozen } from "@/lib/waveform/freeze";
 
 // The menu's content: the four pages in the display face, each with its number
-// (01 to 04), a third of the way down, then the theme, quick view and wave
-// freeze chips and the contact row at the bottom. (The freeze is here so a phone
-// with no music playing, which has no pill, can stop the wave too.) MenuPill mounts it in one of two frames: inside the pill as it grows
-// into the right-hand panel (desktop), or in the bottom sheet (phone). It
-// animates only its own children; the frame's motion belongs to MenuPill.
+// (01 to 04), a third of the way down, then the foot: the theme and wave freeze
+// chips (the settings), the MVP on a line of its own, and the contact row. (The
+// freeze is here so a phone with no music playing, which has no pill, can stop
+// the wave too.) The MVP line is set like the email link; on a fine pointer its
+// "MVP" unfurls to "Minimum Viable Portfolio" in place, with nothing beside it to
+// cover (components/quick/MvpUnfurl), and where nothing unfurls a quiet note
+// beside it spells the name out. On the MVP page the way home holds that line,
+// so the Menu keeps one shape on both pages. MenuPill mounts it in one of two
+// frames: inside the pill as it grows into the right-hand panel (desktop), or in
+// the bottom sheet (phone). It animates only its own children; the frame's
+// motion belongs to MenuPill.
 //
 // `stage` drives the choreography: "in" staggers the links up (60ms apart)
 // and the footer after them; "out" fades everything quickly so the frame can
@@ -48,6 +54,16 @@ const fadeVariants: Variants = {
   hidden: { opacity: 0 },
   in: { opacity: 1, transition: { duration: 0.2 } },
   out: { opacity: 0, transition: { duration: 0.2 } },
+};
+
+// The foot's text links (the MVP line, the email, the socials): the label face's accent, deepening on hover.
+const FOOT_LINK_CLASS = "text-accent transition-colors duration-200 hover:text-accent-hover";
+
+// A plain click closes the Menu and then runs the page transition; a modified click opens the link as the browser would.
+const closeThenGo = (href: string) => (event: MouseEvent<HTMLAnchorElement>) => {
+  if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
+  event.preventDefault();
+  closeMenu(() => goTo(href));
 };
 
 export function MenuPanel({
@@ -188,52 +204,32 @@ export function MenuPanel({
               <span>{frozen ? unfreeze : freeze}</span>
             </Fill>
           )}
+        </div>
+        {/* One line, one link. The short word holds the line; under a fine pointer the full name is drawn over the empty line to its
+            right, so nothing in the foot moves. Elsewhere the note (hidden under a fine pointer, globals.css "The MVP unfurl") sits
+            beside it, or under it if the line is ever too narrow. */}
+        <div data-menu-mvp-line="" className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1 font-label text-label">
           {onQuick ? (
-            <a
-              href={HOME_PATH}
-              onClick={(event) => {
-                if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
-                event.preventDefault();
-                closeMenu(() => goTo(HOME_PATH));
-              }}
-              data-cursor-hover
-              className="inline-flex h-[34px] items-center rounded-[17px] px-3.5 font-label text-label text-accent shadow-[inset_0_0_0_1px_var(--color-border)]"
-            >
+            <a href={HOME_PATH} onClick={closeThenGo(HOME_PATH)} data-cursor-hover data-menu-home="" className={FOOT_LINK_CLASS}>
               {quickCopy.back}
             </a>
           ) : (
-            // The chip holds its place in the row (the hidden copy sets the room); under a fine pointer its own box grows to the left
-            // over the chips beside it as "MVP" unfurls, so nothing in the row or the foot moves (components/quick/MvpUnfurl).
-            <span className="flex flex-col items-start gap-1.5">
-              <span className="relative inline-flex h-[34px]">
-                <span aria-hidden="true" className="invisible inline-flex h-[34px] items-center px-3.5 font-label text-label">
-                  {quickCopy.menuChip}
-                </span>
-                <Fill
-                  as="a"
-                  {...FILL_PICK.menu}
-                  href={EXPRESS_PATH}
-                  onClick={(event) => {
-                    if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
-                    event.preventDefault();
-                    closeMenu(() => goTo(EXPRESS_PATH));
-                  }}
-                  aria-label={quickCopy.menuChipName}
-                  data-cursor-hover
-                  data-mvp-link=""
-                  data-menu-mvp=""
-                  className="absolute right-0 top-0 inline-flex h-[34px] items-center whitespace-nowrap rounded-[17px] bg-[var(--menu-panel)] px-3.5 font-label text-label text-accent shadow-[inset_0_0_0_1px_var(--color-border)]"
-                  overClassName="flex items-center whitespace-nowrap px-3.5"
-                >
-                  <MvpUnfurl />
-                </Fill>
+            <>
+              <a
+                href={EXPRESS_PATH}
+                onClick={closeThenGo(EXPRESS_PATH)}
+                aria-label={quickCopy.menuLinkName}
+                data-cursor-hover
+                data-mvp-link=""
+                data-menu-mvp=""
+                className={FOOT_LINK_CLASS}
+              >
+                <MvpUnfurl overlay />
+              </a>
+              <span aria-hidden="true" data-menu-mvp-note="" className="mvp-note text-label-sm text-muted">
+                {quickCopy.menuLinkNote}
               </span>
-              {sheet && (
-                <span data-menu-mvp-note="" className="font-label text-label-sm text-muted">
-                  {quickCopy.menuChipNote}
-                </span>
-              )}
-            </span>
+            </>
           )}
         </div>
         <div
@@ -241,7 +237,7 @@ export function MenuPanel({
             sheet ? "flex-col gap-2.5" : "flex-wrap justify-between gap-x-5 gap-y-2.5"
           }`}
         >
-          <a href={email.href} data-cursor-hover className="text-accent transition-colors duration-200 hover:text-accent-hover">
+          <a href={email.href} data-cursor-hover className={FOOT_LINK_CLASS}>
             {email.label}
           </a>
           <span className="flex gap-4">
@@ -252,7 +248,7 @@ export function MenuPanel({
                 target="_blank"
                 rel="noopener noreferrer"
                 data-cursor-hover
-                className="text-accent transition-colors duration-200 hover:text-accent-hover"
+                className={FOOT_LINK_CLASS}
               >
                 {social.label}
               </a>

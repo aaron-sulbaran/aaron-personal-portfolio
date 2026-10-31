@@ -526,12 +526,14 @@ html[data-band-answer="on"] [data-band-layer="paused"] { opacity: 1 !important; 
    the move of the MVP page's own title. Width goes 0 to auto, which animates
    where interpolate-size does (Chromium); elsewhere the words switch at once.
    Reduced motion switches at once everywhere. A touch screen has no hover to
-   read, so it never unfurls. The overlay's fan reaches past its box without a
-   reflow; its fill is the site's link fill, from the centre. */
+   read, so it never unfurls; there .mvp-note, a quiet line beside the link (the
+   Menu's), spells the name out instead. The overlay's fan reaches past its box
+   without a reflow; its fill is the site's link fill, from the centre. */
 .mvp-unfurl { position: relative; display: inline-block; }
 .mvp-slot { display: inline-block; width: 0; overflow: hidden; opacity: 0; white-space: pre; vertical-align: top; interpolate-size: allow-keywords; }
 .mvp-fan { display: none; }
 @media (hover: hover) and (pointer: fine) {
+  .mvp-note { display: none; }
   .mvp-slot { transition: width 520ms var(--ease-out), opacity 320ms ease-out; }
   .mvp-fan { display: block; position: absolute; left: 0; top: 0; visibility: hidden; white-space: nowrap; pointer-events: none; }
   .mvp-fan--fill {
