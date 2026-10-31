@@ -4,6 +4,7 @@ import { cardAt, coilPoints, openHome, scrollToCards, scrollToFoot } from "./sup
 import { approach } from "./support/input";
 import { decodePng } from "./support/pixels";
 import type { HookWindow } from "./support/hooks";
+import { COIL } from "@/lib/coil/constants";
 import { siteContent } from "@/lib/content";
 import { SEEN_STORAGE_KEY } from "@/lib/home/seen";
 import { PROFA_CAP_HEIGHT_EM, PROFA_X_HEIGHT_EM } from "@/lib/home/seenDot";
@@ -280,12 +281,14 @@ test.describe("seen dot, painted", () => {
 test.describe("on a phone", () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
 
-  test("cards section: all fourteen titles are on one screen under the Coil, and a tap turns the Coil and opens the card", async ({ page }) => {
+  // Page 2 on a phone (Aaron, 2026-10-30): the Coil's band is most of the screen and the titles are its index under it,
+  // the page's title and the first rows on the screen the deal lands on and the rest a scroll away (e2e/coil-phone.spec.ts).
+  test("cards section: the titles are the index under the Coil, the first rows on the first screen, and a tap turns the Coil and opens the card", async ({ page }) => {
     await openHome(page);
-    for (const title of titles) await expect(page.locator(`#work button[data-card="${title.key}"]`)).toBeInViewport({ ratio: 1 });
     const coilBottom = await page.locator("#work [data-coil-stage]").evaluate((el) => el.getBoundingClientRect().bottom);
     const firstTitleTop = await page.locator('#work button[data-card="capital-one"]').evaluate((el) => el.getBoundingClientRect().top);
     expect(firstTitleTop).toBeGreaterThanOrEqual(coilBottom - 2);
+    for (const key of ["capital-one", "min-max"]) await expect(page.locator(`#work button[data-card="${key}"]`)).toBeInViewport({ ratio: 1 });
     await page.locator('#work button[data-card="travel"]').tap();
     await expect(cardDialog(page, "travel")).toBeVisible({ timeout: 8000 });
   });
@@ -301,9 +304,11 @@ test.describe("on a phone", () => {
       // The Coil fills the top part of the section and the columns sit under it: the stage has let go of page 1's foot, so it is the section's frame.
       expect(await page.evaluate(() => getComputedStyle(document.getElementById("work")!).getPropertyValue("--run-lead"))).toBe("0px");
       const section = await page.evaluate(() => document.getElementById("work")!.getBoundingClientRect().height);
-      // The section also holds the page's title above the columns and the progress line under them.
-      expect(stage.bottom - stage.top, "the Coil's share of the section").toBeGreaterThan(section * 0.3);
-      expect(stage.bottom - stage.top, "the Coil's share of the section").toBeLessThan(section * 0.65);
+      // The band is most of the screen (COIL.phone.bandSvh); the section also holds the page's title above the columns and the
+      // progress line under them.
+      expect(stage.bottom - stage.top, "the Coil's band").toBeGreaterThanOrEqual((844 * COIL.phone.bandSvh) / 100 - 1);
+      expect(stage.bottom - stage.top, "the Coil's share of the section").toBeGreaterThan(section * 0.4);
+      expect(stage.bottom - stage.top, "the Coil's share of the section").toBeLessThan(section * 0.7);
       for (const title of titles) {
         const box = await page.locator(`#work button[data-card="${title.key}"]`).evaluate((el) => {
           const r = el.getBoundingClientRect();
@@ -311,7 +316,6 @@ test.describe("on a phone", () => {
         });
         const overlaps = box.top < stage.bottom - 1 && box.bottom > stage.top + 1 && box.left < stage.right && box.right > stage.left;
         expect(overlaps, `${title.key} is clear of the Coil`).toBe(false);
-        await expect(page.locator(`#work button[data-card="${title.key}"]`)).toBeInViewport({ ratio: 1 });
       }
       // Two columns side by side under it.
       const lefts = await Promise.all(["capital-one", "min-max"].map((key) => page.locator(`#work button[data-card="${key}"]`).evaluate((el) => el.getBoundingClientRect().left)));

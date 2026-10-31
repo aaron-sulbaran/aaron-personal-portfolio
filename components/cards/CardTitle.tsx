@@ -58,5 +58,8 @@ export function CardTitle({ title }: { title: ColumnTitle }) {
   );
 }
 
+// On a phone the titles are the index under the Coil, a step below the page's
+// title in the same display face (Aaron, 2026-10-30: the Coil is the hero of
+// that screen); each row is still a 36px target the width of its column.
 const TITLE_CLASS =
-  "group/title flex min-h-11 w-full items-center rounded-sm text-left font-display text-[1.0625rem] leading-[1.15] text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent md:min-h-10 md:text-[clamp(1.1875rem,1.475vw,1.475rem)]";
+  "group/title flex min-h-9 w-full items-center rounded-sm text-left font-display text-[0.9375rem] leading-[1.15] text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent md:min-h-10 md:text-[clamp(1.1875rem,1.475vw,1.475rem)]";
