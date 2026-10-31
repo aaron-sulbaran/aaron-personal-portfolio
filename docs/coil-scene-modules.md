@@ -41,9 +41,9 @@ Every module is a factory: `createX(ctx, ...parts it calls, loop)` returns the f
 | `nameCanvas/start.ts` | Slice 4d: the page's name on the fill, its lettering `createName` (the lockup, the loader's landing `nameRect`, `landName`), placed where the h1 paints its two lines (`lib/coil/lineAnchor.ts`: each line's pen and painted baseline read off the layout, the mask set in the heading's own type on the buffer's grid), so its first frame is the loader's last, pixel for pixel. QA `stats()` on `window.__nameCanvas` behind `?coildebug`. Mounted by `components/home/NameCanvas.tsx` with `import()` of `components/coil/sceneChunk.ts`, the same entry CoilStage uses (two separate entries into three made two 580 KB copies of it), when the fill's pool (`fill/pool.ts`) gives it a context, never under reduced motion | fill/engine, name |
 | `fill/title.ts` | A numbered page's title on the fill: the glyphs read off the DOM (`lib/coil/titleLayout.ts`), the mask painted line by line in the heading's own type on the buffer's grid and each line's painted baseline (`lib/coil/lineAnchor.ts`), the title's own ink solid on the first frame (the page's text, pixel for pixel) and the surface grown over it on screen. Mounted by `components/sections/TitleFill.tsx`; at most two of the name and the titles hold a context (`lib/coil/fillPool.ts`) | fill/engine, glyphReduction |
 | `scene/nameProbe.ts` | QA only: the composite without the cards read back, the per-letter readout (`lib/coil/letterContrast.ts`) and lightness snapshots (`window.__coil.nameProbe`) | name |
-| `scene/cards.ts` | Slot meshes, shared card uniforms, painted faces and the repaint queue, seen levels, the helix frame, per slot poses (entrance, unwind, header band, rebuild, hidden, hover lift, seen ring), the silhouette, the card pass (and `hull`, which also hides the name when the `nameShown` prop is false); `quadOf`, `flightQuadOf`, `facesOf`, `slotOfKey` | name (QA hide) |
-| `scene/hover.ts` | Picking (`pickAt`, `cardAt`), the per frame hover and the cursor bridge (`lib/cursor/hover.ts`, which also carries the hovered card's key for the titles), the flown card's lift target, the row hold and hover-jump (`focusCard`), `heroVisible` | cards, loop |
-| `scene/input.ts` | Pointer and wheel handlers over `lib/coil/capture.ts` (plus the window scroll listener that disarms capture), click and tap opening, the touch drag and its coast, the scroll step (which also arms capture the frame `interactive` turns true: the Coil is the reader's from the unfurl, `armCapture`), conveyor and nudge steps | cards, hover, loop |
+| `scene/cards.ts` | Slot meshes, shared card uniforms, painted faces and the repaint queue, seen levels, the helix frame, per slot poses (entrance, unwind, header band, rebuild, hidden, hover lift and the phone cue's, seen ring), the silhouette, the card pass (and `hull`, which also hides the name when the `nameShown` prop is false); `quadOf`, `flightQuadOf`, `facesOf`, `slotOfKey` | name (QA hide) |
+| `scene/hover.ts` | Picking (`pickAt`, `cardAt`), the per frame hover and the cursor bridge (`lib/cursor/hover.ts`, which also carries the hovered card's key for the titles), page 2's phone cue (`COIL.phone.frontLift`, or `?coildebug=frontlift`: the card at the band's middle lifted as a hovered one), the flown card's lift target, the row hold and hover-jump (`focusCard`), `heroVisible` | cards, loop |
+| `scene/input.ts` | Pointer and wheel handlers over `lib/coil/capture.ts` (plus the window scroll listener that disarms capture; a coarse pointer's wheel is its own sighting), click and tap opening, the drag and its coast (pointer events of any kind, axis-locked by `lib/coil/dragAxis.ts`: the coarse pointer's, and any pointer's in page 2's phone layout), the scroll step (which also arms capture the frame `interactive` turns true: the Coil is the reader's from the unfurl, `armCapture`), conveyor and nudge steps | cards, hover, loop |
 | `scene/entrance.ts` | The deal on the scene's side (hero rework, slices 4a to 4d): the ribbon's drift at page 1's foot before the click (faster, and the gaps a little tighter, while the pointer is over "Deal me in": the eased `anticipation`, read from `lib/home/dealCue.ts`, frozen at the click so the speed curve starts from the pace the reader saw), the deal's one clock (`CoilEntrance.clockMs`, the director's master timeline, else the scene's own count; its zero is the end of the condense), the strand's offset from the integrated speed curve (`lib/coil/dealSpeed.ts`; this step is the one owner of `conveyor.offset` until the deal ends), the frame (`lib/coil/entrance.ts`: ribbon, wheel, band, helix; on the click only, the ribbon and wheel ride off their slot by `kneeLead` (`pinKnee` over the last `COIL.deal.wheel.pinKneePx` before the stage sticks, read from the rail's live rect, eased in over the condense and capped inside the room above the slot, `st.ribbon.roomAbove`); by hand the ribbon is on its slot), the field's mask (`st.open`, a circle from the canvas's middle whose feather widens as it opens), the bottom seam, `stepEntrance(ms)` behind `?coildebug`, the deal's lab tuning, the end reported once (the unfurl: the director dispatches `unfurl`, `interactive` follows), the rebuild fade | none |
 | `scene/unwind.ts` | The double-click toggle and `api.unwind`, the latch held in the frame, rows measured onto the z = 0 plane, the dormant scene name's move into the list's lead (nothing shows of it) | name, hover, loop |
 | `scene/flightOverlay.ts` | The flown card's own canvas and renderer on the scene canvas's pixel grid, its covers, its face copies, prewarm target, teardown | cards |
@@ -58,13 +58,13 @@ Every module is a factory: `createX(ctx, ...parts it calls, loop)` returns the f
 
 | Field(s) | Written by |
 |---|---|
-| `view`, `geo`, `geoCamera`, `pendingSize`, `contextLost` | renderer.ts |
+| `view`, `geo`, `geoCamera`, `pendingSize`, `contextLost`, `phoneStage` | renderer.ts |
 | `lastFieldTime` | field.ts, renderer.ts (layout), the root's `applyTheme` |
 | `nameFamily` | boot.ts |
 | `theme` | the root's theme watcher |
 | `budget`, `landedAhead` (reset) | boot.ts (`resync`) |
 | `poses`, `rendered`, `sil` | cards.ts |
-| `hoveredSlot` | hover.ts |
+| `hoveredSlot`, `frontSlot` | hover.ts |
 | `pointer`, `capture`, `dragging`, `coast`, `pressCaughtCoil` | input.ts (`coast` also cleared by entrance.ts while the strand is held) |
 | `conveyor` | input.ts (feeds), entrance.ts (owns the offset until the deal ends), unwind.ts (latched), hover.ts (glide) |
 | `envelope` | input.ts |
@@ -92,7 +92,7 @@ Every module is a factory: `createX(ctx, ...parts it calls, loop)` returns the f
 | seen | cards | |
 | slots | cards | (writes `st.poses`, `st.rendered`) |
 | silhouette | cards (and name's flow) | (writes `st.sil`) |
-| picking | hover | (writes `st.hoveredSlot`) |
+| picking | hover | (writes `st.hoveredSlot`, `st.frontSlot`) |
 | nudge | input | |
 | repaint | cards | |
 | field | field | |
