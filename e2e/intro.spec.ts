@@ -9,7 +9,7 @@ import { siteContent } from "@/lib/content";
 
 // Page 1, who I am (hero rework, slices 3 and 4d): the loader that becomes the
 // name, the name drawn in its own small canvas with the field inside its
-// letters, all four blocks of the story staggered across the page with the thin
+// letters, the story's two paragraphs on either side of the page with the thin
 // wave between them, the ribbon and Deal me in at its foot; the pages in order
 // (page 1, the cards, proof of work, Connect); and the lab page that stays out
 // of production.
@@ -34,7 +34,7 @@ const boxOf = (page: Page, selector: string): Promise<Box> =>
 const loaderState = (page: Page) => page.evaluate(() => document.documentElement.dataset.introLoader ?? null);
 const dealLink = (page: Page) => page.locator("[data-intro-cta] a").first();
 const nameStats = (page: Page) => page.evaluate(() => (window as unknown as { __nameCanvas: NameCanvasHook }).__nameCanvas.stats());
-// The seven items that arrive on load, in page order: the name's line, blocks 1 and 2, the band's question, blocks 3 and 4, the strip's button.
+// The five items that arrive on load, in page order: the name's line, paragraph 1, the band's question, paragraph 2, the strip's button.
 const arrivalOpacities = (page: Page) => page.evaluate(() => [...document.querySelectorAll("[data-arrive]")].map((el) => Number(getComputedStyle(el).opacity)));
 const blockBox = (page: Page, key: string) => boxOf(page, `#story-${key} [data-block-text]`);
 
@@ -140,43 +140,44 @@ test("intro: the name's canvas rests while it is off screen and wakes when it is
   await expect.poll(async () => (await nameStats(page)).frames, { message: "drawing again" }).toBeGreaterThan(away.frames + 5);
 });
 
-test("intro: all four blocks are on page 1, whole, staggered: block 1 beside the name, block 2 under it, the wave, then block 3 on the right and block 4 on the left", async ({ page }) => {
+test("intro: both paragraphs are on page 1, whole: paragraph 1 beside the name in one row, the wave, then paragraph 2 on the left with the right-hand columns free", async ({ page }) => {
   await openHome(page, { at: "top" });
-  await expect(page.locator("[data-story-block]")).toHaveCount(4);
-  await expect(page.locator("#about [data-story-block]")).toHaveCount(4);
+  await expect(page.locator("[data-story-block]")).toHaveCount(2);
+  await expect(page.locator("#about [data-story-block]")).toHaveCount(2);
   for (const text of await page.locator("[data-block-text]").all()) {
     await expect(text).toBeVisible();
     // No staging: nothing is hidden, shifted or fading in.
     expect(await text.evaluate((el) => getComputedStyle(el).opacity)).toBe("1");
     expect(await text.evaluate((el) => getComputedStyle(el).transform)).toBe("none");
   }
-  const [name, who, work, outside, from, band] = await Promise.all([
+  const [name, who, outside, band, late, outsideCell] = await Promise.all([
     boxOf(page, HEADING),
     blockBox(page, "who"),
-    blockBox(page, "work"),
     blockBox(page, "outside"),
-    blockBox(page, "from"),
     boxOf(page, "#listen"),
+    boxOf(page, "[data-intro-late]"),
+    boxOf(page, "#story-outside"),
   ]);
-  // Block 1 sits right of the name, with room between them, and starts at the name's height.
-  expect(who.left, "block 1 clear of the name").toBeGreaterThan(name.left + name.width + 60);
-  expect(Math.abs(who.top - name.top), "block 1 at the name's top").toBeLessThan(60);
-  // Block 2 is under the name on the left.
-  expect(work.top).toBeGreaterThanOrEqual(name.top + name.height);
-  expect(Math.abs(work.left - name.left)).toBeLessThan(2);
-  expect(work.left).toBeLessThan(who.left - 100);
-  // The wave across the page comes after block 2, then block 3 leans right of block 4, which is below it.
-  expect(band.top).toBeGreaterThanOrEqual(work.top + work.height - 1);
+  // Paragraph 1 sits right of the name, with room between them, and starts at the name's height: one row, nothing under the name.
+  expect(who.left, "paragraph 1 clear of the name").toBeGreaterThan(name.left + name.width + 60);
+  expect(Math.abs(who.top - name.top), "paragraph 1 at the name's top").toBeLessThan(60);
+  await expect(page.locator("[data-intro-top] [data-story-block]")).toHaveCount(1);
+  // The wave across the page comes after the row, then paragraph 2 on the left, at the name's left edge.
+  expect(band.top).toBeGreaterThanOrEqual(who.top + who.height - 1);
+  expect(band.top).toBeGreaterThanOrEqual(name.top + name.height - 1);
   expect(outside.top).toBeGreaterThanOrEqual(band.top + band.height - 1);
-  expect(outside.left, "block 3 leans right of block 4").toBeGreaterThan(from.left + 100);
-  expect(from.top).toBeGreaterThanOrEqual(outside.top + outside.height - 1);
-  // The words are the story's, whole: every block, with their def and pop links.
+  expect(Math.abs(outside.left - name.left)).toBeLessThan(2);
+  // Paragraph 2 is the late grid's one block, and its right-hand columns are free: the open player's room, a card's width and a column's gap.
+  await expect(page.locator("[data-intro-late] [data-story-block]")).toHaveCount(1);
+  expect(late.left + late.width - (outsideCell.left + outsideCell.width), "the room right of paragraph 2's columns").toBeGreaterThanOrEqual(360 + 31);
+  // The words are the story's, whole: both paragraphs, with their def and pop links.
   for (const block of intro.blocks) expect(await page.locator(`#story-${block.key}`).count(), block.key).toBe(1);
   await expect(page.locator('#story-who [data-inline="def"][data-inline-key="product"]')).toHaveCount(1);
-  await expect(page.locator('#story-work [data-inline="pop"][data-inline-key="leadership-award"]')).toHaveCount(1);
+  await expect(page.locator('#story-who [data-inline="pop"][data-inline-key="leadership-award"]')).toHaveCount(1);
+  for (const key of ["family", "friends", "venezuela-flag"]) await expect(page.locator(`#story-outside [data-inline="pop"][data-inline-key="${key}"]`), key).toHaveCount(1);
   const fontPx = await page.evaluate(() => parseFloat(getComputedStyle(document.querySelector("[data-block-text]")!).fontSize));
   // About 60 characters: 60ch is a little over 30 em in this face.
-  for (const box of [who, work, outside, from]) expect(box.width / fontPx, "the measure").toBeLessThan(45);
+  for (const box of [who, outside]) expect(box.width / fontPx, "the measure").toBeLessThan(45);
 });
 
 test("intro: the pages run page 1, the cards, proof of work, Connect, and nothing of the story sits after the cards", async ({ page }) => {
@@ -206,16 +207,16 @@ test("intro: the six pops that slice 1 cut are on the page and open on hover", a
   }
 });
 
-test("intro: the music is one quiet line between the blocks, with one button for each state and no sub-line", async ({ page }) => {
+test("intro: the music is one quiet line between the paragraphs, with one button for each state and no sub-line", async ({ page }) => {
   await openHome(page, { at: "top" });
   const band = page.locator("#listen");
   await band.scrollIntoViewIfNeeded();
   await expect(band.getByRole("heading", { name: L.line })).toBeVisible();
   await expect(band.getByRole("button", { name: L.accept, exact: true })).toBeVisible();
   await expect(band.getByRole("button", { name: L.decline, exact: true })).toBeVisible();
-  // The band is on page 1, between block 2 and block 3, and the wave sits under its copy, never under it.
-  const [work, bandBox, outside, copy, stage] = await Promise.all([blockBox(page, "work"), boxOf(page, "#listen"), blockBox(page, "outside"), boxOf(page, "[data-band-prompt]"), boxOf(page, "[data-wave-band-line]")]);
-  expect(bandBox.top).toBeGreaterThanOrEqual(work.top + work.height - 1);
+  // The band is on page 1, between paragraph 1 and paragraph 2, and the wave sits under its copy, never under it.
+  const [who, bandBox, outside, copy, stage] = await Promise.all([blockBox(page, "who"), boxOf(page, "#listen"), blockBox(page, "outside"), boxOf(page, "[data-band-prompt]"), boxOf(page, "[data-wave-band-line]")]);
+  expect(bandBox.top).toBeGreaterThanOrEqual(who.top + who.height - 1);
   expect(outside.top).toBeGreaterThanOrEqual(bandBox.top + bandBox.height - 1);
   expect(stage.top).toBeGreaterThanOrEqual(copy.top + copy.height - 1);
   // The other lines are gone from the page: nothing says the wave moves with the reader or can be frozen.
@@ -281,13 +282,13 @@ test("intro: Deal me in is a link to the cards at page 1's foot, the MVP line is
     return { decoration: style.textDecorationLine, background: style.backgroundColor, border: style.borderTopWidth, radius: style.borderTopLeftRadius };
   });
   expect(quick).toMatchObject({ decoration: "none", background: "rgba(0, 0, 0, 0)", border: "0px" });
-  // Both are centered under the ribbon, which is as tall as its cards, at the foot of the last block.
+  // Both are centered under the ribbon, which is as tall as its cards, at the foot of the last paragraph.
   const ribbon = await boxOf(page, "[data-coil-ribbon]");
-  const from = await blockBox(page, "from");
+  const last = await blockBox(page, "outside");
   const viewport = page.viewportSize()!;
   expect(Math.abs(dealBox.left + dealBox.width / 2 - viewport.width / 2)).toBeLessThan(2);
   expect(dealBox.top).toBeGreaterThanOrEqual(ribbon.top + ribbon.height - 1);
-  expect(ribbon.top).toBeGreaterThanOrEqual(from.top + from.height - 1);
+  expect(ribbon.top).toBeGreaterThanOrEqual(last.top + last.height - 1);
   expect(ribbon.height).toBeGreaterThan(100);
   // The scene draws the ribbon on its slot.
   await expect(page.locator("section[data-scene]")).toHaveAttribute("data-scene", "on");
@@ -300,13 +301,13 @@ for (const size of [
   test.describe(`page 1 at ${size.name}`, () => {
     test.use({ viewport: size.viewport, hasTouch: !!size.phone, isMobile: !!size.phone });
 
-    test("intro: the order is the name, blocks 1 and 2, the wave, blocks 3 and 4, the ribbon and Deal me in, with nothing wider than the screen", async ({ page }) => {
+    test("intro: the order is the name, paragraph 1, the wave, paragraph 2, the ribbon and Deal me in, with nothing wider than the screen", async ({ page }) => {
       await openHome(page, { at: "top" });
       const order = await page.evaluate(() => {
         const top = (selector: string) => document.querySelector(selector)!.getBoundingClientRect().top + window.scrollY;
-        return ["#intro-heading", "#story-who", "#story-work", "#listen", "#story-outside", "#story-from", "[data-coil-ribbon]", "[data-deal-button]", "#work"].map(top);
+        return ["#intro-heading", "#story-who", "#listen", "#story-outside", "[data-coil-ribbon]", "[data-deal-button]", "#work"].map(top);
       });
-      // The phone stacks in this order; the desktop's block 1 sits beside the name, so the name and block 1 start together.
+      // The phone stacks in this order; the desktop's paragraph 1 sits beside the name, so the name and paragraph 1 start together.
       const sorted = [...order].sort((a, b) => a - b);
       if (size.phone) expect(order).toEqual(sorted);
       else {
@@ -315,10 +316,10 @@ for (const size of [
       }
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(size.viewport.width);
       if (size.phone) {
-        // One column: every block shares a left edge, and none is hidden.
-        const lefts = await Promise.all(["who", "work", "outside", "from"].map(async (key) => Math.round((await blockBox(page, key)).left)));
+        // One column: both paragraphs share a left edge, and neither is hidden.
+        const lefts = await Promise.all(["who", "outside"].map(async (key) => Math.round((await blockBox(page, key)).left)));
         expect(new Set(lefts).size).toBe(1);
-        await expect(page.locator("[data-block-text]:visible")).toHaveCount(4);
+        await expect(page.locator("[data-block-text]:visible")).toHaveCount(2);
       }
     });
   });
@@ -346,8 +347,8 @@ test.describe("reduced motion", () => {
   test("intro: no word waits to arrive: nothing is held, every item is whole from the first frame", async ({ page }) => {
     await page.goto("/");
     expect(await page.evaluate(() => document.documentElement.dataset.introWords ?? null)).toBeNull();
-    expect(await arrivalOpacities(page)).toEqual(new Array(7).fill(1));
-    expect(await page.evaluate(() => [...document.querySelectorAll("[data-arrive]")].map((el) => getComputedStyle(el).transform))).toEqual(new Array(7).fill("none"));
+    expect(await arrivalOpacities(page)).toEqual(new Array(5).fill(1));
+    expect(await page.evaluate(() => [...document.querySelectorAll("[data-arrive]")].map((el) => getComputedStyle(el).transform))).toEqual(new Array(5).fill("none"));
   });
 });
 
@@ -364,11 +365,11 @@ test.describe("without JavaScript", () => {
     await expect(page.locator("[data-name-visual]").nth(1)).toHaveCSS("background-clip", /text/);
     await expect(page.locator("[data-ribbon-still]")).toBeVisible();
     expect(await page.locator("[data-ribbon-still] > *").count()).toBe(14);
-    await expect(page.locator("[data-block-text]")).toHaveCount(4);
+    await expect(page.locator("[data-block-text]")).toHaveCount(2);
     await expect(dealLink(page)).toBeVisible();
     await expect(dealLink(page)).toHaveAttribute("href", "#work");
     // Nothing waits to arrive: the server's HTML is never blank, every item shows.
-    expect(await arrivalOpacities(page)).toEqual(new Array(7).fill(1));
+    expect(await arrivalOpacities(page)).toEqual(new Array(5).fill(1));
   });
 });
 
@@ -434,25 +435,24 @@ test("intro: page 1's words arrive on load once the loader has handed the name o
   // Held before the first paint: while the loader runs everything but the name's line waits, transparent and a little low.
   expect(await page.evaluate(() => document.documentElement.dataset.introWords)).toBe("wait");
   const held = await arrivalOpacities(page);
-  expect(held.slice(1), "everything but the name's line is held").toEqual(new Array(6).fill(0));
+  expect(held.slice(1), "everything but the name's line is held").toEqual(new Array(4).fill(0));
   await page.waitForFunction(() => !document.documentElement.dataset.introWords && ((window as unknown as { __arrival: unknown[] }).__arrival.length ?? 0) > 20, null, { timeout: 30_000 });
   const samples = await page.evaluate(() => (window as unknown as { __arrival: ArrivalSample[] }).__arrival);
   const firstAbove = (index: number, level: number) => samples.find((sample) => sample.o[index] > level)?.t ?? Number.POSITIVE_INFINITY;
-  // Items in page order carry steps 0, 1, 2, 3, 4, 4, 5: each starts after the one before it, a stagger apart, and the pair at step 4 together.
-  const starts = [0, 1, 2, 3, 4, 5, 6].map((i) => firstAbove(i, 0.04));
+  // Items in page order carry steps 0 to 4 (the name's line, paragraph 1, the band, paragraph 2, the button): each starts after the one before it, a stagger apart.
+  const starts = [0, 1, 2, 3, 4].map((i) => firstAbove(i, 0.04));
   expect(starts[0], "the name's line is there at the handoff").toBe(samples[0].t);
-  for (const [a, b] of [[1, 2], [2, 3], [3, 4], [5, 6]]) expect(starts[b] - starts[a], `item ${b} starts after item ${a}`).toBeGreaterThan(80);
-  expect(Math.abs(starts[5] - starts[4]), "blocks 3 and 4 arrive together").toBeLessThan(60);
+  for (const [a, b] of [[1, 2], [2, 3], [3, 4]]) expect(starts[b] - starts[a], `item ${b} starts after item ${a}`).toBeGreaterThan(80);
   // Each rises into place on transform and opacity alone, and everything is whole within two seconds of the handoff.
-  const done = [1, 2, 3, 4, 5, 6].map((i) => firstAbove(i, 0.99));
+  const done = [1, 2, 3, 4].map((i) => firstAbove(i, 0.99));
   expect(Math.max(...done), "every item whole, ms after the handoff").toBeLessThan(2000);
   expect(samples[0].y.slice(1).every((y) => y >= 0), "items start low and rise").toBe(true);
-  expect(samples.at(-1)!.y, "and end in place").toEqual(new Array(7).fill(0));
+  expect(samples.at(-1)!.y, "and end in place").toEqual(new Array(5).fill(0));
   // Once per page load: the attribute is gone and a scroll down and back replays nothing.
   await scrollToY(page, 2400);
   await scrollToY(page, 0);
   expect(await page.evaluate(() => document.documentElement.dataset.introWords ?? null)).toBeNull();
-  expect(await arrivalOpacities(page)).toEqual(new Array(7).fill(1));
+  expect(await arrivalOpacities(page)).toEqual(new Array(5).fill(1));
 });
 
 test("intro: if the page's own script never plays the arrival, the stylesheet shows every word by itself", async ({ page }) => {
@@ -461,7 +461,7 @@ test("intro: if the page's own script never plays the arrival, the stylesheet sh
   await page.route("**/_next/static/chunks/**/*.js", (route) => route.abort());
   await page.goto("/", { waitUntil: "domcontentloaded" });
   expect(await page.evaluate(() => document.documentElement.dataset.introWords ?? null)).toBe("wait");
-  // (The name's line is already in place under the loader; the other six wait.)
+  // (The name's line is already in place under the loader; the other four wait.)
   await expect.poll(async () => Math.min(...(await arrivalOpacities(page))), { timeout: 20_000 }).toBe(1);
 });
 

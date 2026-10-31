@@ -43,9 +43,9 @@ const SIZES: Size[] = [
 ];
 const middle = (size: Size) => ({ x: size.viewport.width / 2, y: size.viewport.height / 2 });
 
-// Block 4 near the top of the screen: a fling from here has the whole foot and the stage's range ahead of it.
-async function fromBlock4(page: Page, from = 120) {
-  await page.evaluate((top) => window.scrollTo({ top: document.getElementById("story-from")!.getBoundingClientRect().top + window.scrollY - top, behavior: "instant" }), from);
+// The last paragraph near the top of the screen: a fling from here has the whole foot and the stage's range ahead of it.
+async function fromLastParagraph(page: Page, from = 120) {
+  await page.evaluate((top) => window.scrollTo({ top: document.getElementById("story-outside")!.getBoundingClientRect().top + window.scrollY - top, behavior: "instant" }), from);
   await page.waitForTimeout(300);
 }
 
@@ -98,14 +98,14 @@ for (const size of SIZES) {
   test.describe(`the cutscene at ${size.name}`, () => {
     test.use({ viewport: size.viewport, deviceScaleFactor: size.phone ? 2 : 1, hasTouch: !!size.phone, isMobile: !!size.phone });
 
-    // The fling from block 4, on a CPU `slowdown` times slower than the machine's (CDP's
+    // The fling from the last paragraph, on a CPU `slowdown` times slower than the machine's (CDP's
     // Emulation.setCPUThrottlingRate, from just before the first wheel): a phone, or a busy page.
     // The landing must not depend on how fast the page's own thread is: the wheel that would
     // carry the page past the trigger is decided on as it arrives, before the browser scrolls.
     async function hardFling(page: Page, cdp: CDPSession, slowdown = 1) {
       await openHome(page, { debug: "flight", at: "top" });
       const facts = await dealFacts(page);
-      await fromBlock4(page);
+      await fromLastParagraph(page);
       const at = middle(size);
       await cdp.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: at.x, y: at.y });
       if (slowdown > 1) await cdp.send("Emulation.setCPUThrottlingRate", { rate: slowdown });
@@ -131,21 +131,21 @@ for (const size of SIZES) {
       test.info().annotations.push({ type: "fling", description: `${slowdown}x CPU: deal started at scrollY ${dealing[0].y.toFixed(0)}; past page 2's top at most ${pastLanding(frames).toFixed(1)} px; the lock held ${held.heldMs.toFixed(0)} ms` });
     }
 
-    test("a hard fling down from block 4 plays the deal and lands on page 2, and stays there", async ({ page, cdp }) => {
+    test("a hard fling down from the last paragraph plays the deal and lands on page 2, and stays there", async ({ page, cdp }) => {
       await hardFling(page, cdp);
     });
 
     for (const slowdown of [4, 6]) {
-      test(`a hard fling down from block 4 lands on page 2 with the CPU ${slowdown}x slower`, async ({ page, cdp }) => {
+      test(`a hard fling down from the last paragraph lands on page 2 with the CPU ${slowdown}x slower`, async ({ page, cdp }) => {
         await hardFling(page, cdp, slowdown);
       });
     }
 
     // A trackpad's swipe is one wheel gesture: had the page let its first wheel through, every
     // later one would arrive uncancellable and the compositor would scroll it without waiting.
-    test("one long wheel gesture (a trackpad's swipe) from block 4 lands on page 2 with the CPU 6x slower", async ({ page, cdp }) => {
+    test("one long wheel gesture (a trackpad's swipe) from the last paragraph lands on page 2 with the CPU 6x slower", async ({ page, cdp }) => {
       await openHome(page, { debug: "flight", at: "top" });
-      await fromBlock4(page);
+      await fromLastParagraph(page);
       const at = middle(size);
       await cdp.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: at.x, y: at.y });
       await cdp.send("Emulation.setCPUThrottlingRate", { rate: 6 });
@@ -165,7 +165,7 @@ for (const size of SIZES) {
 
     test("the tail of the fling is swallowed past the unfurl: the lock lets go only once the input has been quiet", async ({ page, cdp }) => {
       await openHome(page, { debug: "flight", at: "top" });
-      await fromBlock4(page);
+      await fromLastParagraph(page);
       const at = middle(size);
       await cdp.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: at.x, y: at.y });
       // When the last wheel reached the window (the page's own clock), from before the lock's listener.
@@ -197,7 +197,7 @@ for (const size of SIZES) {
       expect(pastLanding(frames)).toBeLessThanOrEqual(OVERSHOOT_BOUND_PX);
     });
 
-    test("start the deal by scroll, then wheel up hard: the page never goes up and nothing slides over block 4", async ({ page, cdp }) => {
+    test("start the deal by scroll, then wheel up hard: the page never goes up and nothing slides over the last paragraph", async ({ page, cdp }) => {
       await openHome(page, { debug: "flight", at: "foot" });
       const at = middle(size);
       await cdp.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: at.x, y: at.y });
@@ -220,7 +220,7 @@ for (const size of SIZES) {
 
     test("the scroll keys do nothing during the lock, and scroll the page after it", async ({ page, cdp }) => {
       await openHome(page, { debug: "flight", at: "top" });
-      await fromBlock4(page);
+      await fromLastParagraph(page);
       const at = middle(size);
       await cdp.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: at.x, y: at.y });
       await startDealByWheel(page, cdp, at);
@@ -365,7 +365,7 @@ test.describe("the cutscene under a finger (390x844)", () => {
 
   test("a drag that starts the deal: the finger carries on and the page lands on page 2, never past it", async ({ page, cdp }) => {
     await openHome(page, { debug: "flight", at: "top" });
-    await fromBlock4(page, 160);
+    await fromLastParagraph(page, 160);
     await startRecording(page);
     let y = at.y + 200;
     await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: at.x, y }] });
@@ -396,7 +396,7 @@ test.describe("the cutscene under a finger (390x844)", () => {
 
   test("a fast flick down: the deal plays and the page lands on page 2, and the browser's momentum never carries it past", async ({ page, cdp }) => {
     await openHome(page, { debug: "flight", at: "top" });
-    await fromBlock4(page, 160);
+    await fromLastParagraph(page, 160);
     await startRecording(page);
     // A long fast flick (1,400 px at 5,000 px/s, then the browser's own momentum): the finger is still
     // moving when the deal starts, and the page would be carried far past page 2 without the lock.
@@ -410,7 +410,7 @@ test.describe("the cutscene under a finger (390x844)", () => {
     expect(stays, stays.slice(0, 3).join("; ")).toEqual([]);
   });
 
-  test("a flick up mid-deal moves nothing, and nothing slides over block 4", async ({ page, cdp }) => {
+  test("a flick up mid-deal moves nothing, and nothing slides over the last paragraph", async ({ page, cdp }) => {
     await openHome(page, { debug: "flight", at: "foot" });
     await page.mouse.move(at.x, at.y);
     await startRecording(page);
@@ -550,7 +550,7 @@ for (const size of SIZES) {
       await dealLink(page).click();
       await expect(page.locator("html")).toHaveAttribute("data-deal", "dealt", { timeout: 20_000 });
       await page.waitForFunction(() => document.querySelector("[data-coil-ribbon]")!.hasAttribute("data-gone"), null, { timeout: 5000 });
-      expect((await room()).cta, "block 4 to the button once the slot is closed").toBeCloseTo(want, 0);
+      expect((await room()).cta, "the last paragraph to the button once the slot is closed").toBeCloseTo(want, 0);
     });
 
     test("a load into /#work has the closed foot's room from the first paint", async ({ page }) => {
@@ -567,7 +567,7 @@ for (const size of SIZES) {
       await page.waitForTimeout(1500);
       expect(await shifted(page), "cumulative layout shift on / after it has loaded").toBeLessThan(0.001);
       await page.evaluate(() => ((window as unknown as { __shifts: number[] }).__shifts.length = 0));
-      await fromBlock4(page);
+      await fromLastParagraph(page);
       const at = middle(size);
       await cdp.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: at.x, y: at.y });
       await startRecording(page);
@@ -611,14 +611,14 @@ for (const size of SIZES) {
         const openStart = COIL.deal.timeline.openStartMs;
         await openHome(page, { debug: "flight", at: "top" });
         const facts = await dealFacts(page);
-        await fromBlock4(page);
+        await fromLastParagraph(page);
         const at = middle(size);
         await cdp.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: at.x, y: at.y });
         await startRecording(page);
         const cast = await startCast(cdp);
         const notch = () => cdp.send("Input.dispatchMouseEvent", { type: "mouseWheel", x: at.x, y: at.y, deltaX: 0, deltaY: 40 });
         if (via === "hand") {
-          // About 1,000 px/s down the page, from block 4, until the scroll deals.
+          // About 1,000 px/s down the page, from the last paragraph, until the scroll deals.
           await startDealByWheel(page, cdp, at);
         } else {
           // The same approach, stopped 240 px short of the stage's stick, then to a tenth into its range (short of

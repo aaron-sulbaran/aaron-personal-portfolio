@@ -5,14 +5,10 @@ import { DEFAULT_INTRO_KNOBS, INTRO_KNOB_SPEC, clampIntroKnobs } from "@/lib/hom
 import { introDomPlan } from "@/lib/home/introDom";
 
 describe("page 1's words arriving", () => {
-  it("runs the steps in the order Aaron asked for", () => {
+  it("runs the steps in the order Aaron asked for: the name, paragraph 1, the band, paragraph 2, the button, one step each", () => {
     const { name, blocks, band, button } = ARRIVAL_STEP;
-    expect(name).toBeLessThan(blocks[0]);
-    expect(blocks[0]).toBeLessThan(blocks[1]);
-    expect(blocks[1]).toBeLessThan(band);
-    expect(band).toBeLessThan(blocks[2]);
-    expect(blocks[2]).toBe(blocks[3]);
-    expect(blocks[3]).toBeLessThan(button);
+    expect(blocks).toHaveLength(2);
+    expect([name, blocks[0], band, blocks[1], button]).toEqual([0, 1, 2, 3, 4]);
     expect(Math.max(name, ...blocks, band, button)).toBe(ARRIVAL_STEPS - 1);
   });
 
@@ -27,7 +23,7 @@ describe("page 1's words arriving", () => {
   });
 
   it("derives an item's time from the total and the staggers before the last step, held to 250 ms and 2 s", () => {
-    expect(arrivalPlan({ ...DEFAULT_ARRIVAL, arrivalTotalMs: 2000, arrivalStaggerMs: 100 }).itemMs).toBe(1500);
+    expect(arrivalPlan({ ...DEFAULT_ARRIVAL, arrivalTotalMs: 2000, arrivalStaggerMs: 100 }).itemMs).toBe(1600);
     expect(arrivalPlan({ ...DEFAULT_ARRIVAL, arrivalTotalMs: 600, arrivalStaggerMs: 400 }).itemMs).toBe(250);
     expect(arrivalPlan({ ...DEFAULT_ARRIVAL, arrivalTotalMs: 3500, arrivalStaggerMs: 0 }).itemMs).toBe(2000);
   });
