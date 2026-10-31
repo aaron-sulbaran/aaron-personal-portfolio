@@ -4,30 +4,28 @@ import { parseInlineLinks, plainText } from "@/lib/content/links";
 import { quickCopy } from "@/lib/content/quick";
 import { registerHas } from "@/lib/content/register";
 
-const { intro, whoIAm } = siteContent;
+const { intro } = siteContent;
 
-// Everything About held, as one string per body, to look each cut up in.
-const ABOUT = whoIAm.blocks.flatMap((block) => [block.body, ...(block.sub ? [block.sub.body] : [])]);
 const sentencesOf = intro.blocks.flatMap((block) => block.sentences);
 
-// The four-paragraph page's photo pops, every one of which page 1 still carries.
-const PAGE_ONE_POPS = ["leadership-award", "family", "friends", "3d-printing", "sandboarding", "downhill-skating", "skydiving", "rock-climbing", "venezuela-flag"];
+// The photo pops page 1 carries, each once. The leadership photo sits on "leading"; the Venezuela flag is off the page until Aaron places it (its media entry stays in the register); "wanderlust" has no pop yet.
+const PAGE_ONE_POPS = ["leadership-award", "family", "friends", "3d-printing", "sandboarding", "downhill-skating", "skydiving", "rock-climbing"];
 
 describe("page 1's blocks", () => {
-  it("are two paragraphs: who I am and how I work, then what I love outside work and where I'm from", () => {
+  it("are two paragraphs: who I am and how I work, then what I love outside work", () => {
     expect(intro.blocks.map((block) => block.key)).toEqual(["who", "outside"]);
   });
 
-  it("are the draft's whole sentences, as cut from About, link markup and all", () => {
+  it("are Aaron's own sentences, verbatim, link markup and all", () => {
     expect(intro.blocks[0].sentences).toEqual([
       "I'm a [product](def:product)-focused engineer.",
-      "I study Electrical and Computer Engineering (ECE) at UT Austin, but I spend most of my time building and talking to the people I'm building for.",
-      "I tend to gravitate towards [leadership positions](pop:leadership-award) because I love getting a group of people with very different skillsets working towards one goal.",
+      "I study Electrical and Computer Engineering (ECE) at UT Austin, but beyond class I'm passionate about building products people actually want to use.",
+      "I love [leading](pop:leadership-award) people with very different skillsets to achieve ambitious goals.",
     ]);
     expect(intro.blocks[1].sentences).toEqual([
-      "I love people ([family](pop:family) & [friends](pop:friends)) outside of work too.",
-      "I love credit card-maxxing since it allows me to fulfill my wanderlust, recently got into [3D printing](pop:3d-printing) because it lets me work on the engineering I don't get to do in class, and love [extreme sports](pop:sandboarding) like [downhill skating](pop:downhill-skating), [skydiving](pop:skydiving), and [rock climbing](pop:rock-climbing).",
-      "I was born in Maracaibo, [Venezuela](pop:venezuela-flag), and moved to the U.S. when I was around 4.",
+      "I also love people (you'll often see me with [family](pop:family) & [friends](pop:friends)) outside of work too.",
+      "My biggest hobby is credit card-maxxing since it allows me to fulfill my wanderlust.",
+      "I've also gotten into [3D printing](pop:3d-printing) because it lets me work on the engineering I don't get to do in class and have always been a fan of [extreme sports](pop:sandboarding) like [downhill skating](pop:downhill-skating), [skydiving](pop:skydiving), and [rock climbing](pop:rock-climbing).",
     ]);
   });
 
@@ -38,25 +36,14 @@ describe("page 1's blocks", () => {
     }
   });
 
-  it("are cut word for word from the About copy, markup and all, and say nothing new", () => {
-    for (const sentence of sentencesOf) expect(ABOUT.some((body) => body.includes(sentence)), sentence).toBe(true);
-  });
-
-  it("keep each block's sentences in the order About has them", () => {
-    const about = ABOUT.join(" ");
-    for (const block of intro.blocks) {
-      let at = -1;
-      for (const sentence of block.sentences) {
-        const found = about.indexOf(sentence);
-        expect(found, sentence).toBeGreaterThan(at);
-        at = found;
-      }
-    }
-  });
-
-  it("keep every photo pop the four paragraphs had, each once: the six slice 1 cut and the others the intro had", () => {
+  it("carry the photo pops Aaron placed, each once, and not the Venezuela flag", () => {
     const keys = sentencesOf.flatMap((sentence) => parseInlineLinks(sentence, registerHas).segments.flatMap((segment) => (segment.kind === "pop" ? [segment.key] : [])));
     expect([...keys].sort()).toEqual([...PAGE_ONE_POPS].sort());
+    expect(keys).not.toContain("venezuela-flag");
+  });
+
+  it("put the leadership photo on \"leading\"", () => {
+    expect(intro.blocks[0].sentences[2]).toContain("[leading](pop:leadership-award)");
   });
 
   it("point every link at the register", () => {

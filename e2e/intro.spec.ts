@@ -17,7 +17,7 @@ import { siteContent } from "@/lib/content";
 const L = siteContent.listen;
 const { intro, hero } = siteContent;
 const HEADING = "#intro-heading";
-const SIX_POPS = ["sandboarding", "downhill-skating", "skydiving", "rock-climbing", "venezuela-flag", "3d-printing"];
+const HOBBY_POPS = ["sandboarding", "downhill-skating", "skydiving", "rock-climbing", "3d-printing"];
 // Everything of the page hidden but the name's canvas, so a pixel read is its own.
 const HIDE_PAGE = "html,body{transition:none!important}body *{visibility:hidden!important}[data-name-canvas-el]{visibility:visible!important}";
 
@@ -174,7 +174,7 @@ test("intro: both paragraphs are on page 1, whole: paragraph 1 beside the name i
   for (const block of intro.blocks) expect(await page.locator(`#story-${block.key}`).count(), block.key).toBe(1);
   await expect(page.locator('#story-who [data-inline="def"][data-inline-key="product"]')).toHaveCount(1);
   await expect(page.locator('#story-who [data-inline="pop"][data-inline-key="leadership-award"]')).toHaveCount(1);
-  for (const key of ["family", "friends", "venezuela-flag"]) await expect(page.locator(`#story-outside [data-inline="pop"][data-inline-key="${key}"]`), key).toHaveCount(1);
+  for (const key of ["family", "friends"]) await expect(page.locator(`#story-outside [data-inline="pop"][data-inline-key="${key}"]`), key).toHaveCount(1);
   const fontPx = await page.evaluate(() => parseFloat(getComputedStyle(document.querySelector("[data-block-text]")!).fontSize));
   // About 60 characters: 60ch is a little over 30 em in this face.
   for (const box of [who, outside]) expect(box.width / fontPx, "the measure").toBeLessThan(45);
@@ -194,9 +194,9 @@ test("intro: the pages run page 1, the cards, proof of work, Connect, and nothin
   expect(siteContent.menu.items.map((item) => item.href)).toEqual(["#main", "#work", "#numbers", "#connect"]);
 });
 
-test("intro: the six pops that slice 1 cut are on the page and open on hover", async ({ page }) => {
+test("intro: the hobby pops (extreme sports and 3D printing) are on the page and open on hover", async ({ page }) => {
   await openHome(page, { at: "top" });
-  for (const key of SIX_POPS) {
+  for (const key of HOBBY_POPS) {
     const link = page.locator(`#about [data-inline="pop"][data-inline-key="${key}"]`);
     await expect(link, key).toHaveCount(1);
     await link.scrollIntoViewIfNeeded();

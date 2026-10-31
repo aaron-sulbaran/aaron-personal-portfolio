@@ -1,16 +1,17 @@
 // The home's first page, "who I am" (hero rework, slice 3): the heading is the
-// hero's (siteContent.hero), then two paragraphs of three sentences, each
-// sentence cut word for word from siteContent.whoIAm (nothing new is written;
-// lib/content/intro.test.ts holds each to that), carrying the inline link
-// markup (lib/content/links.ts) so the defs, tips and pops come with it. The
-// paragraphs are data: dropping a tip to plain words on this page is an edit to
-// these strings. Aaron rewrites them later.
-// Page 1 tells two paragraphs, whole, in this order (Aaron, 2026-10-30: four
-// were too much to read before the payoff; this cut is a draft he confirms, and
-// git history keeps the four-paragraph version): who I am and how I work beside
-// the name, then, after the wave, the people I love, the hobbies and where I'm
-// from. Every photo pop the four paragraphs carried is still here. The teaser at
-// its foot is the button that deals and the way to the MVP.
+// hero's (siteContent.hero), then two paragraphs of three sentences carrying the
+// inline link markup (lib/content/links.ts) so the defs, tips and pops come with
+// it. These are Aaron's own words for page 1, set down verbatim (2026-10-31); they
+// are no longer cut from siteContent.whoIAm, which About keeps as it was.
+// lib/content/intro.test.ts pins each sentence and the set of pops on the page.
+// The paragraphs are data: dropping a tip to plain words on this page is an edit
+// to these strings.
+// Page 1 tells two paragraphs, whole, in this order: who I am and how I work
+// beside the name, then, after the wave, the people I love and the hobbies. The
+// photo pop that sat on "leadership positions" now sits on "leading", and the
+// Venezuela flag is off the page until Aaron places it; its media entry stays in
+// the register. "wanderlust" has no pop yet (Aaron is choosing a photo). The
+// teaser at its foot is the button that deals and the way to the MVP.
 export const intro = {
   ariaLabel: "About me",
   blocks: [
@@ -18,16 +19,16 @@ export const intro = {
       key: "who",
       sentences: [
         "I'm a [product](def:product)-focused engineer.",
-        "I study Electrical and Computer Engineering (ECE) at UT Austin, but I spend most of my time building and talking to the people I'm building for.",
-        "I tend to gravitate towards [leadership positions](pop:leadership-award) because I love getting a group of people with very different skillsets working towards one goal.",
+        "I study Electrical and Computer Engineering (ECE) at UT Austin, but beyond class I'm passionate about building products people actually want to use.",
+        "I love [leading](pop:leadership-award) people with very different skillsets to achieve ambitious goals.",
       ],
     },
     {
       key: "outside",
       sentences: [
-        "I love people ([family](pop:family) & [friends](pop:friends)) outside of work too.",
-        "I love credit card-maxxing since it allows me to fulfill my wanderlust, recently got into [3D printing](pop:3d-printing) because it lets me work on the engineering I don't get to do in class, and love [extreme sports](pop:sandboarding) like [downhill skating](pop:downhill-skating), [skydiving](pop:skydiving), and [rock climbing](pop:rock-climbing).",
-        "I was born in Maracaibo, [Venezuela](pop:venezuela-flag), and moved to the U.S. when I was around 4.",
+        "I also love people (you'll often see me with [family](pop:family) & [friends](pop:friends)) outside of work too.",
+        "My biggest hobby is credit card-maxxing since it allows me to fulfill my wanderlust.",
+        "I've also gotten into [3D printing](pop:3d-printing) because it lets me work on the engineering I don't get to do in class and have always been a fan of [extreme sports](pop:sandboarding) like [downhill skating](pop:downhill-skating), [skydiving](pop:skydiving), and [rock climbing](pop:rock-climbing).",
       ],
     },
   ],
