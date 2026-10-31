@@ -29,8 +29,9 @@ import { PRIMARY, QUIET, SMALL } from "./bandButtons";
 //
 // A returning visitor has answered, and the band stops asking: the stored choice
 // restores (initSoundtrackFromStorage), the question goes, and the one control
-// left is Play it, for a stored yes (it restores as paused, with nothing audible
-// yet) and a stored no alike. A first visit keeps the question through every state.
+// left is the one the answer lands on: Resume for a stored yes (it restores as
+// paused, with nothing audible yet), Play it for a stored Not now. A first visit
+// keeps the question through every state.
 //
 // With the player in the band the player is the feedback: the Pause or Resume
 // beside the heading goes, and the heading closes up on its own.
@@ -86,8 +87,8 @@ export function BandInvite() {
             </Fill>
           </Layer>
           <Layer shown={music === "paused" && !playerOwns}>
-            <Fill {...FILL_PICK.band} shape="rect" type="button" data-control="paused" onClick={act(startSoundtrack)} data-cursor-hover {...(returning ? PRIMARY : SMALL)}>
-              {returning ? c.accept : c.resume}
+            <Fill {...FILL_PICK.band} shape="rect" type="button" data-control="paused" onClick={act(startSoundtrack)} data-cursor-hover {...SMALL}>
+              {c.resume}
             </Fill>
           </Layer>
           <Layer shown={music === "off"}>
