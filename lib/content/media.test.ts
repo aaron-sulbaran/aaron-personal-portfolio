@@ -8,6 +8,8 @@ const { cards, register } = siteContent;
 const keys = Object.keys(cards) as CardKey[];
 const PUBLIC = join(process.cwd(), "public");
 const THIRD_PERSON = /\b(?:Aaron|he|him|his)\b/i;
+// The pops that show a modal photo as it is (the Mt. Fuji picture on "wanderlust"), so they follow the modal photos' size rule, not the pops' own.
+const MODAL_PHOTO_POPS = ["wanderlust"];
 
 interface Ref { where: string; src: string; width: number; height: number }
 
@@ -35,7 +37,7 @@ const allRefs: Ref[] = [
 
 describe("every picture, photo, pop and logo the content names", () => {
   it("is a file in public with the recorded width and height", () => {
-    expect(allRefs.length).toBe(74);
+    expect(allRefs.length).toBe(75);
     for (const ref of allRefs) {
       const [width, height] = imageSize(join(PUBLIC, ref.src));
       expect(ref.width, ref.where).toBeCloseTo(width, 1);
@@ -46,10 +48,11 @@ describe("every picture, photo, pop and logo the content names", () => {
     expect(pictureRefs.map((ref) => ref.where)).toEqual(["mentorship picture", "band picture", "travel picture", "hackathons picture", "misuki picture", "building-in-public picture"]);
     for (const ref of pictureRefs) expect(Math.abs(ref.width - (ref.height * 3) / 4), ref.where).toBeLessThanOrEqual(1);
   });
-  it("keeps every photo file under 300,000 bytes, a modal photo within 1600 px and a pop within 800 px", () => {
+  it("keeps every photo file under 300,000 bytes, a modal photo within 1600 px and a pop within 800 px (a pop that shows a modal photo within 1600)", () => {
     for (const ref of photoRefs) {
       expect(statSync(join(PUBLIC, ref.src)).size, ref.where).toBeLessThanOrEqual(300_000);
-      expect(Math.max(ref.width, ref.height), ref.where).toBeLessThanOrEqual(ref.where.startsWith("pop ") ? 800 : 1600);
+      const ownPop = ref.where.startsWith("pop ") && !MODAL_PHOTO_POPS.includes(ref.where.slice(4));
+      expect(Math.max(ref.width, ref.height), ref.where).toBeLessThanOrEqual(ownPop ? 800 : 1600);
     }
   });
 });

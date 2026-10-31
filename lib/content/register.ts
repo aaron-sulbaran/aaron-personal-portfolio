@@ -1,5 +1,10 @@
 import type { InlineKind } from "./links";
+import { modalPhotos } from "./media";
 import type { InlineRegister, TipEntry } from "./types";
+
+// "wanderlust" pops the Mt. Fuji photo the Travel card's modal already holds (media.ts travel-1-fuji): one picture, with its file, alt
+// and caption as approved there, so there is no second export to keep in step.
+const fuji = modalPhotos.travel[0];
 
 // Every inline link the copy may point at (docs/content/tooltips.md, approved
 // 2026-10-08). Pop files are scripts/export-photos.mjs's, at their written pixels.
@@ -46,6 +51,7 @@ export const register: InlineRegister = {
     "venezuela-flag": { file: { src: "/photos/pops/venezuela-flag.jpg", width: 600, height: 800 }, alt: "Me holding a Venezuelan flag in a convention hall", caption: "Me repping my flag at SHPE 2025!", crop: null },
     family: { file: { src: "/photos/pops/family.jpg", width: 600, height: 800 }, alt: "My family in front of the UT Tower in 2023", caption: "My family posing in front of the UT tower. We call this alternating pose, \"la tipica\"", crop: null },
     friends: { file: { src: "/photos/pops/friends.jpg", width: 600, height: 800 }, alt: "My friends grad in 2025", caption: "Celebrating some of my best friends' graduation!", crop: null },
+    wanderlust: { file: { src: fuji.src, width: fuji.width, height: fuji.height }, alt: fuji.alt, caption: fuji.caption, crop: null },
     "misuki-suki": { file: { src: "/photos/pops/misuki-suki.jpg", width: 800, height: 603 }, alt: "Suki's S2000 from F&F", caption: "Suki's S2000 from 2 Fast 2 Furious, what I consider to be a peak roadster", crop: null },
     matcha: {
       file: { src: "/photos/pops/matcha.jpg", width: 600, height: 800 },

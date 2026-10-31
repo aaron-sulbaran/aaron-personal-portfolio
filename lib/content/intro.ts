@@ -7,11 +7,14 @@
 // The paragraphs are data: dropping a tip to plain words on this page is an edit
 // to these strings.
 // Page 1 tells two paragraphs, whole, in this order: who I am and how I work
-// beside the name, then, after the wave, the people I love and the hobbies. The
-// photo pop that sat on "leadership positions" now sits on "leading", and the
-// Venezuela flag is off the page until Aaron places it; its media entry stays in
-// the register. "wanderlust" has no pop yet (Aaron is choosing a photo). The
-// teaser at its foot is the button that deals and the way to the MVP.
+// beside the name, then, after the wave, where I come from, the people I love
+// and the hobbies (Aaron's own text for paragraph 2, set down 2026-10-31). The
+// photo pop that sat on "leadership positions" now sits on "leading"; the
+// Venezuela flag is back on the page, on "Venezuela"; "wanderlust" has the Mt.
+// Fuji photo (media.ts travel-1-fuji, reused by the register); the sandboarding
+// photo sits on "thrill seeker". The sentence that joins "thrill seeker" to
+// "I especially enjoy" is a semicolon where Aaron wrote a comma, a mechanics
+// fix. The teaser at its foot is the button that deals and the way to the MVP.
 export const intro = {
   ariaLabel: "About me",
   blocks: [
@@ -26,9 +29,9 @@ export const intro = {
     {
       key: "outside",
       sentences: [
-        "I also love people (you'll often see me with [family](pop:family) & [friends](pop:friends)) outside of work too.",
-        "My biggest hobby is credit card-maxxing since it allows me to fulfill my wanderlust.",
-        "I've also gotten into [3D printing](pop:3d-printing) because it lets me work on the engineering I don't get to do in class and have always been a fan of [extreme sports](pop:sandboarding) like [downhill skating](pop:downhill-skating), [skydiving](pop:skydiving), and [rock climbing](pop:rock-climbing).",
+        "Born in [Venezuela](pop:venezuela-flag) and raised in Texas, I love spending time with [family](pop:family) & [friends](pop:friends) while always happy to meet new people.",
+        "Outside of class, I use credit card-maxxing to fulfill my [wanderlust](pop:wanderlust) and [3D printing](pop:3d-printing) to satisfy my engineering itch.",
+        "I'm also a huge [thrill seeker](pop:sandboarding); I especially enjoy sports like [downhill skating](pop:downhill-skating), [skydiving](pop:skydiving), and [rock climbing](pop:rock-climbing).",
       ],
     },
   ],

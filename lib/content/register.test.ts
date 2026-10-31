@@ -1,13 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { siteContent } from "@/lib/content";
 import { parseInlineLinks } from "@/lib/content/links";
+import { modalPhotos } from "@/lib/content/media";
 import { register, registerHas, resolveTip } from "@/lib/content/register";
 
 describe("the inline register", () => {
   it("holds the approved keys and only those", () => {
     expect(Object.keys(register.def)).toEqual(["product", "voltage", "arc"]);
     expect(Object.keys(register.tip)).toEqual(["two-as", "voltaage", "killer-drones", "music-note", "ieee-ao", "this-site-playground"]);
-    expect(Object.keys(register.pop)).toEqual(["leadership-award", "sandboarding", "downhill-skating", "skydiving", "rock-climbing", "venezuela-flag", "family", "friends", "misuki-suki", "matcha", "sister-kyoto", "contrabass-clarinet", "rango", "catatumbo-lightning", "lake-maracaibo", "3d-printing", "ut-ece-logo", "tool-user", "bambu-h2s", "steve-jobs-iphone"]);
+    expect(Object.keys(register.pop)).toEqual(["leadership-award", "sandboarding", "downhill-skating", "skydiving", "rock-climbing", "venezuela-flag", "family", "friends", "wanderlust", "misuki-suki", "matcha", "sister-kyoto", "contrabass-clarinet", "rango", "catatumbo-lightning", "lake-maracaibo", "3d-printing", "ut-ece-logo", "tool-user", "bambu-h2s", "steve-jobs-iphone"]);
   });
 
   it("keeps no hover tip for the jobs' employers: their tips are name tags on the page now", () => {
@@ -61,7 +62,8 @@ describe("the inline register", () => {
   it("describes every pop without the third person, with its exported file, the approved captions and link", () => {
     for (const [key, entry] of Object.entries(register.pop)) {
       expect(entry.alt).not.toMatch(/\bAaron\b/);
-      expect(entry.file?.src, key).toBe(`/photos/pops/${key}.jpg`);
+      // "wanderlust" is the one pop that shows a card photo: the Mt. Fuji picture from the Travel card's modal, not a file of its own.
+      expect(entry.file?.src, key).toBe(key === "wanderlust" ? "/photos/cards/travel-1-fuji.jpg" : `/photos/pops/${key}.jpg`);
     }
     const captions = Object.fromEntries(Object.entries(register.pop).filter(([, entry]) => entry.caption).map(([key, entry]) => [key, entry.caption]));
     expect(captions).toEqual({
@@ -73,6 +75,7 @@ describe("the inline register", () => {
       "venezuela-flag": "Me repping my flag at SHPE 2025!",
       family: 'My family posing in front of the UT tower. We call this alternating pose, "la tipica"',
       friends: "Celebrating some of my best friends' graduation!",
+      wanderlust: "Me at Mount Fuji on my second trip to Japan.",
       "misuki-suki": "Suki's S2000 from 2 Fast 2 Furious, what I consider to be a peak roadster",
       matcha: "7T+ is my favorite matcha place in the world. Check it out in Kyoto! (click for directions)",
       "sister-kyoto": "Me with my sister at Fushimi Inari in Kyoto, doing our signature head bop. This siblings' Japan trip is probably my favorite so far!",
@@ -87,6 +90,13 @@ describe("the inline register", () => {
     });
     expect(Object.values(register.pop).every((entry) => entry.crop === null)).toBe(true);
     expect(Object.entries(register.pop).filter(([, entry]) => entry.href).map(([key, entry]) => [key, entry.href])).toEqual([["matcha", "https://maps.app.goo.gl/4KPkA9BV3CjAPwvg6"]]);
+  });
+
+  it("pops the Mt. Fuji photo on \"wanderlust\", the Travel card's own picture with its alt and caption, no file of its own", () => {
+    const fuji = modalPhotos.travel[0];
+    expect(fuji.src).toBe("/photos/cards/travel-1-fuji.jpg");
+    expect(register.pop.wanderlust).toEqual({ file: { src: fuji.src, width: 1200, height: 1600 }, alt: "Me on a street in Japan with Mt. Fuji behind me", caption: "Me at Mount Fuji on my second trip to Japan.", crop: null });
+    expect(registerHas("pop", "wanderlust")).toBe(true);
   });
 
   it("shows Rango as a photo pop with a film character's alt, and no longer as a tip", () => {

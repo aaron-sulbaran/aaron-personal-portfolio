@@ -8,8 +8,8 @@ const { intro } = siteContent;
 
 const sentencesOf = intro.blocks.flatMap((block) => block.sentences);
 
-// The photo pops page 1 carries, each once. The leadership photo sits on "leading"; the Venezuela flag is off the page until Aaron places it (its media entry stays in the register); "wanderlust" has no pop yet.
-const PAGE_ONE_POPS = ["leadership-award", "family", "friends", "3d-printing", "sandboarding", "downhill-skating", "skydiving", "rock-climbing"];
+// The photo pops page 1 carries, each once. The leadership photo sits on "leading", the Venezuela flag on "Venezuela", the Mt. Fuji photo on "wanderlust", the sandboarding photo on "thrill seeker".
+const PAGE_ONE_POPS = ["leadership-award", "venezuela-flag", "family", "friends", "wanderlust", "3d-printing", "sandboarding", "downhill-skating", "skydiving", "rock-climbing"];
 
 describe("page 1's blocks", () => {
   it("are two paragraphs: who I am and how I work, then what I love outside work", () => {
@@ -23,9 +23,9 @@ describe("page 1's blocks", () => {
       "I love [leading](pop:leadership-award) people with very different skillsets to achieve ambitious goals.",
     ]);
     expect(intro.blocks[1].sentences).toEqual([
-      "I also love people (you'll often see me with [family](pop:family) & [friends](pop:friends)) outside of work too.",
-      "My biggest hobby is credit card-maxxing since it allows me to fulfill my wanderlust.",
-      "I've also gotten into [3D printing](pop:3d-printing) because it lets me work on the engineering I don't get to do in class and have always been a fan of [extreme sports](pop:sandboarding) like [downhill skating](pop:downhill-skating), [skydiving](pop:skydiving), and [rock climbing](pop:rock-climbing).",
+      "Born in [Venezuela](pop:venezuela-flag) and raised in Texas, I love spending time with [family](pop:family) & [friends](pop:friends) while always happy to meet new people.",
+      "Outside of class, I use credit card-maxxing to fulfill my [wanderlust](pop:wanderlust) and [3D printing](pop:3d-printing) to satisfy my engineering itch.",
+      "I'm also a huge [thrill seeker](pop:sandboarding); I especially enjoy sports like [downhill skating](pop:downhill-skating), [skydiving](pop:skydiving), and [rock climbing](pop:rock-climbing).",
     ]);
   });
 
@@ -36,14 +36,16 @@ describe("page 1's blocks", () => {
     }
   });
 
-  it("carry the photo pops Aaron placed, each once, and not the Venezuela flag", () => {
+  it("carry the photo pops Aaron placed, each once, the Venezuela flag and the Mt. Fuji photo among them", () => {
     const keys = sentencesOf.flatMap((sentence) => parseInlineLinks(sentence, registerHas).segments.flatMap((segment) => (segment.kind === "pop" ? [segment.key] : [])));
     expect([...keys].sort()).toEqual([...PAGE_ONE_POPS].sort());
-    expect(keys).not.toContain("venezuela-flag");
   });
 
-  it("put the leadership photo on \"leading\"", () => {
+  it("put the leadership photo on \"leading\", the Mt. Fuji photo on \"wanderlust\" and the sandboarding photo on \"thrill seeker\"", () => {
     expect(intro.blocks[0].sentences[2]).toContain("[leading](pop:leadership-award)");
+    expect(intro.blocks[1].sentences[1]).toContain("[wanderlust](pop:wanderlust)");
+    expect(intro.blocks[1].sentences[2]).toContain("[thrill seeker](pop:sandboarding)");
+    expect(sentencesOf.join(" ")).not.toContain("extreme sports");
   });
 
   it("point every link at the register", () => {

@@ -17,7 +17,7 @@ import { siteContent } from "@/lib/content";
 const L = siteContent.listen;
 const { intro, hero } = siteContent;
 const HEADING = "#intro-heading";
-const HOBBY_POPS = ["sandboarding", "downhill-skating", "skydiving", "rock-climbing", "3d-printing"];
+const HOBBY_POPS = ["wanderlust", "sandboarding", "downhill-skating", "skydiving", "rock-climbing", "3d-printing"];
 // Everything of the page hidden but the name's canvas, so a pixel read is its own.
 const HIDE_PAGE = "html,body{transition:none!important}body *{visibility:hidden!important}[data-name-canvas-el]{visibility:visible!important}";
 
@@ -194,7 +194,7 @@ test("intro: the pages run page 1, the cards, proof of work, Connect, and nothin
   expect(siteContent.menu.items.map((item) => item.href)).toEqual(["#main", "#work", "#numbers", "#connect"]);
 });
 
-test("intro: the hobby pops (extreme sports and 3D printing) are on the page and open on hover", async ({ page }) => {
+test("intro: the hobby pops (wanderlust, thrill seeker's sports and 3D printing) are on the page and open on hover", async ({ page }) => {
   await openHome(page, { at: "top" });
   for (const key of HOBBY_POPS) {
     const link = page.locator(`#about [data-inline="pop"][data-inline-key="${key}"]`);
