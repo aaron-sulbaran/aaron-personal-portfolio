@@ -98,6 +98,16 @@ describe("paginate: trim", () => {
   });
 });
 
+describe("paginate: a window too short for the floor", () => {
+  it("gives a page whose words must scroll half of what the caption leaves, so the words keep an area of their own", () => {
+    // A 197px area (a 420px tall window): the floor and the caption leave the words nothing, so the stage takes (197 - 52 - 12) / 2.
+    const short = { ...rules, room: 197, cap: 168 };
+    const { shape, tooTall } = paginate([unit({ blocks: [block("w0", 300)] })], short);
+    expect(tooTall).toEqual(["w0"]);
+    expect(shape[0]).toEqual([{ photos: [0], stage: 66.5, units: [0], end: false }]);
+  });
+});
+
 describe("paginate: a stage of its own (the jobs card)", () => {
   it("gives a name tag the whole room, and leaves the post's paragraph its room under the post's card", () => {
     const tag = unit({ unit: 1, photos: [4], captions: [0], own: 409, blocks: [] });

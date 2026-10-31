@@ -102,6 +102,10 @@ export function dealPhotos(photos: readonly number[], k: number): { photos: numb
 
 type Laid = { chunks: Chunk[]; least: number; total: number };
 
+// A page whose words cannot fit beside even the floor (they scroll there): its stage is the floor, or on a window too short for that, half
+// of what the caption and gaps leave, so the words always keep an area of their own to scroll in.
+const scrollingStage = (caption: number, rules: PageRules) => Math.min(rules.floor, Math.max(0, (rules.room - (caption > 0 ? caption + rules.pageGap : 0) - rules.pageGap) / 2));
+
 function layUnit(unit: UnitMeasure, pageRules: PageRules, tooTall: string[]): Chunk[] {
   const { blocks, photos } = unit;
   const rules = unit.floor === undefined ? pageRules : { ...pageRules, floor: Math.min(pageRules.floor, unit.floor) };
@@ -139,8 +143,9 @@ function layUnit(unit: UnitMeasure, pageRules: PageRules, tooTall: string[]): Ch
       if (runs.some(endAlone)) continue;
       const chunks = runs.map((run, i): Chunk => {
         const { photos: shown, carried } = dealt[i];
-        const room = stageRoom(wordsHeight(run, rules.blockGap), captionOf(shown, carried), true, rules);
-        const stage = run.some((block) => over.has(block.id)) ? Math.min(room, rules.floor) : room;
+        const caption = captionOf(shown, carried);
+        const room = stageRoom(wordsHeight(run, rules.blockGap), caption, true, rules);
+        const stage = run.some((block) => over.has(block.id)) ? Math.min(room, scrollingStage(caption, rules)) : room;
         return { photos: shown, ...(carried ? { carried: true as const } : {}), stage, ...wordsOf(run, withMentors) };
       });
       const least = Math.min(...chunks.map((chunk) => chunk.stage));
@@ -152,7 +157,7 @@ function layUnit(unit: UnitMeasure, pageRules: PageRules, tooTall: string[]): Ch
   if (best) return best.chunks;
   // Nothing holds them even a block a page (the links with a paragraph that only just fits alone, or a window too short for the floor):
   // a block a page, the end block with the one before it. A page whose words do not fit names its paragraphs too tall, and its stage
-  // stands at the floor while its words scroll.
+  // stands at the floor (or half the room, scrollingStage) while its words scroll.
   const runs: BlockSize[][] = [];
   for (const block of blocks) {
     if (block.id === END && runs.length) runs[runs.length - 1].push(block);
@@ -161,9 +166,11 @@ function layUnit(unit: UnitMeasure, pageRules: PageRules, tooTall: string[]): Ch
   const dealt = dealPhotos(photos, runs.length);
   return runs.map((run, i) => {
     const { photos: shown, carried } = dealt[i];
-    const room = stageRoom(wordsHeight(run, rules.blockGap), captionOf(shown, carried), true, rules);
-    if (room < rules.floor - 0.5) for (const block of run) if (block.id.startsWith("w") && !tooTall.includes(block.id)) tooTall.push(block.id);
-    return { photos: shown, ...(carried ? { carried: true as const } : {}), stage: Math.max(rules.floor, Math.min(room, rules.cap)), ...wordsOf(run, withMentors) };
+    const caption = captionOf(shown, carried);
+    const room = stageRoom(wordsHeight(run, rules.blockGap), caption, true, rules);
+    const fits = room >= rules.floor - 0.5;
+    if (!fits) for (const block of run) if (block.id.startsWith("w") && !tooTall.includes(block.id)) tooTall.push(block.id);
+    return { photos: shown, ...(carried ? { carried: true as const } : {}), stage: fits ? room : scrollingStage(caption, rules), ...wordsOf(run, withMentors) };
   });
 }
 
