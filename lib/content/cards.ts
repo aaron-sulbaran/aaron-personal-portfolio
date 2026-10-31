@@ -105,7 +105,9 @@ export const cards: Cards = {
     modal: { kind: "photo", title: "Misuki", picture: { caption: "Me and Misuki at a Longhorn Car Club photo shoot." }, links: [], photos: modalPhotos.misuki, blocks: [
       "I worked all through high school to set myself up for college. That included an ongoing hunt for a car. I ended up buying this car early Senior year in cash, because I didn't want a car loan. The day my dad went to buy her for me, I was conducting a game-day halftime show and got a bank alert on my watch for a huge withdrawal from my bank account. I was nervous the whole performance, and then found out later he was trying to surprise me.",
       "Her engine blew in college, a family friend in Houston rebuilt it, and she's still my daily driver. I named her Misuki, from the M in Mazda and a nod to [Fast and Furious](pop:misuki-suki). I took her around Circuit of the Americas once, and it was one of the most fun days of my life.",
-    ] },
+    ],
+    // A short phone's page cannot hold the first paragraph beside a photo: these go first, in this order (and only there).
+    phoneOmit: { 0: ["That included an ongoing hunt for a car.", "I worked all through high school to set myself up for college."] } },
   },
   ieee: {
     short: "IEEE", visual: { kind: "logo", logo: logos.ieee, tile: "plain" },
@@ -137,7 +139,14 @@ export const cards: Cards = {
       beside: 3,
     },
     // On a phone the post is this card instead (a frame that tall would scroll inside the page): the post's hook line and me, one link out.
-    postCard: { href: POST_HREF, byline: "Aaron Sulbaran", hook: "I don't trust people who haven't worked an unflattering job.", cta: "Read the post on LinkedIn" } },
+    postCard: { href: POST_HREF, byline: "Aaron Sulbaran", hook: "I don't trust people who haven't worked an unflattering job.", cta: "Read the post on LinkedIn" },
+    // A short phone's page cannot hold these paragraphs beside their photo (or the post's card, which shows the post's hook itself): these
+    // go first, in this order (and only there).
+    phoneOmit: {
+      1: ["The money (although it was necessary) was secondary though."],
+      2: ["That's why I've never shied away from a service industry job."],
+      3: ["I guess it resonated with people.", "I wrote about my work experience outside of class on LinkedIn, and my hook was \"I don't trust people who haven't worked an unflattering job.\""],
+    } },
     // Newest first (Aaron, 2026-10-29). Each job is a name tag in the modal (components/card/JobTag): the tip is on the page for a reader to
     // read, not behind a hover.
     timeline: [
@@ -176,7 +185,9 @@ export const cards: Cards = {
       "I'm trying to build in public (tbh, I fell off for a couple of months and I'm easing back in). So far: 2,500+ people follow me on LinkedIn, and my posts have had 450,000 impressions in three months. Being active on LinkedIn opened doors in Toronto and NYC this summer and got me a few brand deals. After talking to enough founders and investors, I know I have to get on X next.",
       "While I love building, I also love creating and sharing. So why not share what works and what doesn't, with no polish on the parts that didn't. I'd rather be useful than look flawless.",
       "For every 100 people who think it's cringe, I get 1 person who DMs me saying \"your post inspired me to...\" and that makes it worth it to me.",
-    ] },
+    ],
+    // A short phone's page cannot hold the first paragraph beside a photo: these go first, in this order (and only there).
+    phoneOmit: { 0: ["After talking to enough founders and investors, I know I have to get on X next.", "I'm trying to build in public (tbh, I fell off for a couple of months and I'm easing back in)."] } },
   },
 };
 
