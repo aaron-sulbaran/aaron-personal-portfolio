@@ -222,6 +222,8 @@ export function installSceneHooks(ctx: SceneCtx, parts: HookParts) {
       field: [gl.fieldTarget.width, gl.fieldTarget.height],
       textures: [...sizes],
       narrow: st.geo?.narrow ?? null,
+      phone: st.phoneStage,
+      cardPx: st.geo?.cardPx ?? null,
       slots: st.geo?.slotCount ?? null,
       cards: tileCount,
     };

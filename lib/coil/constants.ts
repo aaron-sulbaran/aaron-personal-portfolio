@@ -53,6 +53,19 @@ const values = {
     introBandPx: 40,
   },
 
+  // Page 2 on a phone (below md, where the columns sit under the Coil rather
+  // than beside it). Aaron, 2026-10-30: the Coil is the hero of that screen
+  // and the list is its index, so the band takes most of the screen and its
+  // cards read as photos. Aaron tunes both by hand. bandSvh: the
+  // band's height as a share of the small viewport height (its least; it grows
+  // only where the list under it leaves more of the screen). cardHeightFrac: a
+  // card's height as a share of the band's (the table's cardHeightFrac above
+  // is the rest of the site's).
+  phone: {
+    bandSvh: 58,
+    cardHeightFrac: 0.28,
+  },
+
   // Camera.
   camera: {
     fovDeg: 26,

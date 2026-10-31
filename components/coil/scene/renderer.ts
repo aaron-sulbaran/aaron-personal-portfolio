@@ -118,6 +118,7 @@ export function createLayout(ctx: SceneCtx, gl: Gl, parts: LayoutParts, loop: Lo
     st.geo = solveGeometry(paneViewport({ left: rect.left, right: rect.right, width: view.width, height: view.height }, pane ?? null), tileCount, COIL, {
       canvas: { width: view.width, height: view.height },
       ribbonCy: (lastRibbonCy = st.ribbon.cy ?? lastRibbonCy),
+      phone: st.phoneStage,
     });
     // Slice 7: a new composition or a rotation lays every card out afresh;
     // fade the new frame in rather than jump (only while the loop runs: a

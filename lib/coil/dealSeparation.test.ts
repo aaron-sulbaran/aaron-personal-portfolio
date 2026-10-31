@@ -15,19 +15,22 @@ import { frameSeparation, MIN_GAP_SHARE } from "./separation";
 
 const FRAME_MS = 1000 / 60;
 
-type Stage = { pane: Viewport; canvas: Viewport; ribbonCy: number; coarse: boolean };
+type Stage = { pane: Viewport; canvas: Viewport; ribbonCy: number; coarse: boolean; phone?: boolean };
 
 // The stages as the page lays them out (measured on the page: the pane narrower
-// than the canvas where the columns flank it, the ribbon's slot about a third down).
+// than the canvas where the columns flank it, the ribbon's slot about a third
+// down; a phone's stage is page 2's band, COIL.phone.bandSvh of the screen).
 const STAGES: [string, Stage][] = [
   ["1280x800", { pane: { width: 858, height: 800 }, canvas: { width: 1280, height: 800 }, ribbonCy: 280, coarse: false }],
   ["1440x900", { pane: { width: 965, height: 900 }, canvas: { width: 1440, height: 900 }, ribbonCy: 315, coarse: false }],
-  ["390x844", { pane: { width: 390, height: 287 }, canvas: { width: 390, height: 287 }, ribbonCy: 100, coarse: true }],
+  ["390x844", { pane: { width: 390, height: 490 }, canvas: { width: 390, height: 490 }, ribbonCy: 171, coarse: true, phone: true }],
+  ["375x667", { pane: { width: 375, height: 387 }, canvas: { width: 375, height: 387 }, ribbonCy: 135, coarse: true, phone: true }],
+  ["430x932", { pane: { width: 430, height: 541 }, canvas: { width: 430, height: 541 }, ribbonCy: 189, coarse: true, phone: true }],
 ];
 
-function walk({ pane, canvas, ribbonCy, coarse }: Stage, hover: number, buttonDxPx: number) {
+function walk({ pane, canvas, ribbonCy, coarse, phone }: Stage, hover: number, buttonDxPx: number) {
   const c = COIL;
-  const geo = solveGeometry(pane, 14, c, { canvas, ribbonCy });
+  const geo = solveGeometry(pane, 14, c, { canvas, ribbonCy, phone });
   const camera = cameraFor(canvas, c);
   const rate = ribbonCardsPerSecond(geo, c, hover);
   const table = integrateDealSpeed(dealSpeedOf(rate, c, coarse), sceneMs(c));

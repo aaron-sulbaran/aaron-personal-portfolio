@@ -183,7 +183,7 @@ export async function coilPoints(page: Page): Promise<CoilPoints> {
     const sil = coil.silhouette?.() ?? null;
     const slotCount = Number(coil.budget().slots);
     const rect = document.querySelector("[data-coil-stage]")!.getBoundingClientRect();
-    // The margins are a share of a small stage (a phone's is a third of the screen): 80px and 40px on a tall one.
+    // The margins are a share of a small stage (a phone's is page 2's band, a little over half the screen): 80px and 40px on a tall one.
     const visible = Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, 0);
     const top = Math.max(rect.top, 0) + Math.min(80, visible * 0.18);
     const bottom = Math.min(rect.bottom, window.innerHeight) - Math.min(40, visible * 0.12);

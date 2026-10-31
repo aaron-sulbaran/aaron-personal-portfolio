@@ -156,6 +156,22 @@ describe("solveGeometry", () => {
     expect(solveGeometry({ width: 1024, height: 768 }, STRAND).narrow).toBe(false);
   });
 
+  it("composes page 2's phone band wide, whatever its aspect, with its cards the band's own share", () => {
+    for (const band of [{ width: 390, height: 490 }, { width: 375, height: 387 }, { width: 430, height: 541 }]) {
+      const geo = solveGeometry(band, STRAND, COIL, { phone: true });
+      expect(geo.narrow, `${band.width}x${band.height}`).toBe(false);
+      expect(geo.clearTopPx).toBe(0);
+      expect(geo.axisRad).toBeCloseTo((COIL.axisDeg * Math.PI) / 180, 12);
+      expect(geo.cardPx).toBeLessThanOrEqual(band.height * COIL.phone.cardHeightFrac + 1e-9);
+      expect(geo.cardPx, "larger than the table's share would make it").toBeGreaterThan(band.height * COIL.cardHeightFrac);
+      expect(geo.spans).toBe(true);
+    }
+    // The same band off the phone keeps the table: narrow below 0.8, the table's card share.
+    const plain = solveGeometry({ width: 390, height: 490 }, STRAND);
+    expect(plain.narrow).toBe(true);
+    expect(plain.cardPx).toBeLessThanOrEqual(490 * COIL.cardHeightFrac + 1e-9);
+  });
+
   it("points the axis toward the top left on screen", () => {
     const geo = solveGeometry(DESKTOP, STRAND);
     expect(geo.axisDir.x).toBeLessThan(0);

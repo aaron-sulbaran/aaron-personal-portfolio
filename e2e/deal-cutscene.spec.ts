@@ -654,7 +654,7 @@ for (const size of SIZES) {
         const early = before.filter((r) => r.band > 0 || r.bottom > 0);
         expect(early.map((r) => `${Math.round(r.row.t)} ms, scene clock ${r.row.clock === null ? "n/a" : Math.round(r.row.clock)}: ${r.bottom} blue px in the last rows, ${r.band} in the last tenth`).slice(0, 4), "blue at the viewport's bottom before the bloom").toEqual([]);
         // While it grows: the viewport's last rows never show the field (it fades to the page at the stage's foot, and on a
-        // phone the stage is the top third of the screen), and where blue does reach the last tenth it is an arc about the
+        // phone the stage is page 2's band, the top part of the screen), and where blue does reach the last tenth it is an arc about the
         // middle, never a band that came up from the edge.
         const growing = reads.filter((r) => r.row.clock !== null && r.row.clock >= openStart && r.row.deal !== "dealt");
         expect(growing.length, "frames while the bloom grows").toBeGreaterThan(8);
