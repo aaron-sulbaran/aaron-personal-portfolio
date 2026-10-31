@@ -24,8 +24,8 @@ import { goTo } from "@/lib/quick/transitionStore";
 // cards" (it scrolls there, no replay), and never earlier, so the label cannot
 // flip under a line that is still fading. The small line leads to the
 // MVP (no button, no pill: it blends into the page); under a fine pointer its
-// "MVP" unfurls to "Minimum Viable Portfolio" over the page, past the line's box,
-// so the line stays centred and nothing moves (components/quick/MvpUnfurl).
+// "MVP" fades to "Minimum Viable Portfolio" in place, over the page and past the
+// line's box, so the line stays centred and nothing moves (components/quick/MvpUnfurl).
 // Nothing here takes the scroll from the reader.
 //
 // The button moves with the cards above it. While a fine pointer is over it the
@@ -97,7 +97,7 @@ export function IntroCta() {
         className="rounded-sm font-label text-label-sm text-muted transition-colors duration-200 hover:text-foreground focus-visible:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       >
         {lead}
-        <MvpUnfurl overlay fill />
+        <MvpUnfurl fill />
       </a>
     </div>
   );

@@ -21,7 +21,7 @@ import { setFrozen, useFrozen } from "@/lib/waveform/freeze";
 // chips (the settings), the MVP on a line of its own, and the contact row. (The
 // freeze is here so a phone with no music playing, which has no pill, can stop
 // the wave too.) The MVP line is set like the email link; on a fine pointer its
-// "MVP" unfurls to "Minimum Viable Portfolio" in place, with nothing beside it to
+// "MVP" fades to "Minimum Viable Portfolio" in place, with nothing beside it to
 // cover (components/quick/MvpUnfurl), and where nothing unfurls a quiet note
 // beside it spells the name out. On the MVP page the way home holds that line,
 // so the Menu keeps one shape on both pages. MenuPill mounts it in one of two
@@ -224,7 +224,7 @@ export function MenuPanel({
                 data-menu-mvp=""
                 className={FOOT_LINK_CLASS}
               >
-                <MvpUnfurl overlay />
+                <MvpUnfurl />
               </a>
               <span aria-hidden="true" data-menu-mvp-note="" className="mvp-note text-label-sm text-muted">
                 {quickCopy.menuLinkNote}

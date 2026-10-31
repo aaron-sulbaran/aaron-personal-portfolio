@@ -145,15 +145,18 @@ test("touch: page 1's line says In a rush? The MVP and never unfurls; its words 
   await expect(line.locator(".mvp-short")).toHaveText(quickCopy.titleShort);
   expect(await page.evaluate(() => matchMedia("(hover: hover) and (pointer: fine)").matches), "no hover to read").toBe(false);
   const state = await line.evaluate((el, short) => {
-    const fan = el.querySelector<HTMLElement>(".mvp-fan")!;
+    const full = el.querySelector<HTMLElement>(".mvp-full")!;
     return {
-      fan: getComputedStyle(fan).display,
-      slots: [...el.querySelectorAll<HTMLElement>(".mvp-slot")].map((slot) => [slot.getBoundingClientRect().width, getComputedStyle(slot).transitionDuration]),
+      full: getComputedStyle(full).display,
+      short: [".mvp-short-cap", ".mvp-short-rest"].map((selector) => {
+        const style = getComputedStyle(el.querySelector(selector)!);
+        return [style.opacity, style.transitionDuration];
+      }),
       text: (el.textContent ?? "").split(short)[0],
     };
   }, quickCopy.titleShort);
-  expect(state.fan, "the unfurled words are not drawn").toBe("none");
-  expect(state.slots.every(([width, duration]) => width === 0 && duration === "0s"), "no slot opens or moves").toBe(true);
+  expect(state.full, "the full name is not drawn").toBe("none");
+  expect(state.short, "the short word is whole and has nothing to fade").toEqual([["1", "0s"], ["1", "0s"]]);
   expect(state.text).toBe(teaser.quick.slice(0, -quickCopy.titleShort.length));
   const before = await line.boundingBox();
   await page.locator("[data-intro-cta] a[href='#work']").evaluate((el) => el.dispatchEvent(new PointerEvent("pointerenter", { pointerType: "touch", bubbles: true })));
@@ -191,7 +194,7 @@ test("touch: the Menu sheet's MVP line reads MVP with Minimum Viable Portfolio q
     await link.hover();
     await nextFrames(page, 4);
     expect((await link.boundingBox())!.width, "no unfurl").toBe(linkBox.width);
-    expect(await link.locator(".mvp-full, .mvp-fan").evaluate((el) => getComputedStyle(el).display), "the full name is never drawn").toBe("none");
+    expect(await link.locator(".mvp-full").evaluate((el) => getComputedStyle(el).display), "the full name is never drawn").toBe("none");
     await page.getByRole("button", { name: siteContent.menu.ariaLabelClose }).click();
     await expect(dialog).toHaveCount(0);
   }

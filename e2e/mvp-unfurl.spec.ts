@@ -6,13 +6,16 @@ import { openHome, scrollToFoot } from "./support/coil";
 import { settled } from "./support/fallback";
 import { tabTo } from "./support/inline";
 
-// The MVP's short name, "MVP", unfurls to "Minimum Viable Portfolio" on the
-// Menu's MVP line and in page 1's line under Deal me in, on a fine pointer that
-// can hover (a hover or keyboard focus) (components/quick/MvpUnfurl, globals.css
-// "The MVP unfurl"). It plays once per hover and folds back on leave or blur,
-// switches at once under reduced motion, and moves nothing: page 1's line stays
-// centred, and the Menu's line is its own, so the full name covers nothing. A
-// touch screen never unfurls (e2e/touch.spec.ts).
+// The MVP's short name, "MVP", fades to "Minimum Viable Portfolio" in place on
+// the Menu's MVP line and in page 1's line under Deal me in, on a fine pointer
+// that can hover (a hover or keyboard focus) (components/quick/MvpUnfurl,
+// globals.css "The MVP unfurl"). Nothing travels: the short word fades out where
+// it stands, the full name fades in over it from the same left edge, and the
+// capital the two share keeps its place and its ink the whole way. It plays once
+// per hover and fades back on leave or blur, switches at once under reduced
+// motion, and moves nothing: page 1's line stays centred, and the Menu's line is
+// its own, so the full name covers nothing. A touch screen never unfurls
+// (e2e/touch.spec.ts).
 
 const { teaser } = siteContent.intro;
 const M = siteContent.menu;
@@ -24,38 +27,71 @@ const boxOf = (target: Locator): Promise<Box> =>
     const r = el.getBoundingClientRect();
     return { x: r.x, y: r.y, width: r.width, height: r.height };
   });
-const widthOf = async (target: Locator) => (await boxOf(target)).width;
 const line = (page: Page) => page.locator("[data-intro-cta] a[data-mvp-link]");
-const fan = (page: Page) => page.locator("[data-intro-cta] .mvp-fan");
 const menuLink = (page: Page) => page.locator("[data-menu-mvp]");
+const full = (link: Locator) => link.locator(".mvp-full");
+const opacityOf = (target: Locator) => target.evaluate((el) => Number(getComputedStyle(el).opacity));
 
-// The unfurled width, once the transitions have run their course.
-async function settledWidth(target: Locator) {
-  let last = -1;
-  await expect
-    .poll(async () => {
-      const now = await widthOf(target);
-      const same = Math.abs(now - last) < 0.01;
-      last = now;
-      return same;
-    }, { intervals: [150, 150, 150, 150, 150, 150, 150, 150, 150, 150], timeout: 5000 })
-    .toBe(true);
-  return last;
+// One frame of a link's drawing: each layer's opacity, and the left edge of the capital in the short word and in the full name.
+type Row = { t: number; short: number; cap: number; full: number; shortCapX: number; fullCapX: number };
+
+// Samples the link's drawing on every frame for `ms` from now (collect with recorded()).
+async function record(link: Locator, ms: number) {
+  await link.evaluate((el, ms) => {
+    const capLeft = (root: Element) => {
+      const text = document.createTreeWalker(root, NodeFilter.SHOW_TEXT).nextNode()!;
+      const range = document.createRange();
+      range.setStart(text, 0);
+      range.setEnd(text, 1);
+      return range.getBoundingClientRect().left;
+    };
+    const opacity = (selector: string) => Number(getComputedStyle(el.querySelector(selector)!).opacity);
+    const sample = (t: number): Row => ({
+      t,
+      short: opacity(".mvp-short-rest"),
+      cap: opacity(".mvp-short-cap"),
+      full: opacity(".mvp-full"),
+      shortCapX: capLeft(el.querySelector(".mvp-short-cap")!),
+      fullCapX: capLeft(el.querySelector(".mvp-full")!),
+    });
+    const rows: Row[] = [];
+    const t0 = performance.now();
+    (window as unknown as { __rows: Promise<Row[]> }).__rows = new Promise((resolve) => {
+      const tick = () => {
+        const t = performance.now() - t0;
+        rows.push(sample(t));
+        if (t < ms) requestAnimationFrame(tick);
+        else resolve(rows);
+      };
+      requestAnimationFrame(tick);
+    });
+  }, ms);
+}
+const recorded = (page: Page) => page.evaluate(() => (window as unknown as { __rows: Promise<Row[]> }).__rows);
+
+// What a recording must show, whichever way the fade runs: the capital never moves (in either layer) and its ink never dims, since
+// the short word's capital is drawn until the full name's is in, and both layers really fade (a frame partway) rather than switch.
+function expectNoTravelAndAFade(rows: Row[], restX: number, label: string) {
+  expect(rows.length, `${label}: frames sampled`).toBeGreaterThan(10);
+  for (const row of rows) {
+    expect(Math.abs(row.shortCapX - restX), `${label}: the short word's capital at ${Math.round(row.t)}ms`).toBeLessThanOrEqual(0.5);
+    expect(Math.abs(row.fullCapX - restX), `${label}: the full name's capital at ${Math.round(row.t)}ms`).toBeLessThanOrEqual(0.5);
+    expect(1 - (1 - row.cap) * (1 - row.full), `${label}: the capital's ink at ${Math.round(row.t)}ms`).toBeGreaterThanOrEqual(0.99);
+  }
+  const partway = (value: number) => value > 0.05 && value < 0.95;
+  expect(rows.some((row) => partway(row.full)), `${label}: the full name fades rather than switches`).toBe(true);
+  expect(rows.some((row) => partway(row.short)), `${label}: the short word fades rather than switches`).toBe(true);
 }
 
-async function arrived(page: Page) {
-  await page.waitForFunction(() => !document.documentElement.dataset.introWords);
-}
-
-// Layout shifts and width transitions from here on, kept on window. A shift is told apart by where it happened: the unfurling words
-// themselves move as the room opens (Chromium counts that travel, a few millionths of a viewport each), and anything else on the page
-// moving is the fault this guards against.
+// Layout shifts and every transition that runs inside an MVP link from here on, kept on window. Only opacity, colour and the link
+// fill may run: a width, a transform or a position would be a letter travelling.
 async function watch(page: Page) {
   await page.evaluate(() => {
-    const w = window as unknown as { __shift: number; __outside: string[]; __runs: string[] };
+    const w = window as unknown as { __shift: number; __outside: string[]; __props: string[]; __fades: number };
     w.__shift = 0;
     w.__outside = [];
-    w.__runs = [];
+    w.__props = [];
+    w.__fades = 0;
     new PerformanceObserver((list) => {
       type Source = { node: Node | null };
       for (const entry of list.getEntries() as unknown as { value: number; hadRecentInput: boolean; sources: Source[] }[]) {
@@ -63,19 +99,27 @@ async function watch(page: Page) {
         w.__shift += entry.value;
         for (const { node } of entry.sources) {
           const el = node instanceof Element ? node : (node?.parentElement ?? null);
-          if (!el?.closest("[data-mvp-link]")) w.__outside.push(`${el?.tagName ?? "?"}.${el?.className ?? ""}`);
+          w.__outside.push(`${el?.tagName ?? "?"}.${el?.className ?? ""}`);
         }
       }
     }).observe({ type: "layout-shift" });
     document.addEventListener("transitionrun", (event) => {
       const target = event.target as HTMLElement;
-      if (target.classList.contains("mvp-slot") && event.propertyName === "width") w.__runs.push("slot");
+      if (!target.closest("[data-mvp-link]")) return;
+      if (!w.__props.includes(event.propertyName)) w.__props.push(event.propertyName);
+      if (target.classList.contains("mvp-full") && event.propertyName === "opacity") w.__fades += 1;
     });
   });
 }
 const shifts = (page: Page) => page.evaluate(() => (window as unknown as { __shift: number }).__shift);
-const outsideShifts = (page: Page) => page.evaluate(() => (window as unknown as { __outside: string[] }).__outside);
-const runs = (page: Page) => page.evaluate(() => (window as unknown as { __runs: string[] }).__runs.length);
+const shifted = (page: Page) => page.evaluate(() => (window as unknown as { __outside: string[] }).__outside);
+const props = (page: Page) => page.evaluate(() => (window as unknown as { __props: string[] }).__props);
+const fades = (page: Page) => page.evaluate(() => (window as unknown as { __fades: number }).__fades);
+const ONLY_FADES = ["opacity", "color", "--inline-p"];
+
+async function arrived(page: Page) {
+  await page.waitForFunction(() => !document.documentElement.dataset.introWords);
+}
 
 async function openLine(page: Page) {
   await openHome(page, { at: "foot" });
@@ -83,85 +127,6 @@ async function openLine(page: Page) {
   await page.mouse.move(2, 2);
   await expect(line(page)).toBeVisible();
 }
-
-test("mvp unfurl: page 1's line reads In a rush? The MVP, is named for the whole MVP, and goes to the MVP page", async ({ page }) => {
-  await openLine(page);
-  await expect(page.getByRole("link", { name: teaser.quickName, exact: true })).toHaveCount(1);
-  await expect(line(page)).toHaveAttribute("href", "/quick");
-  // What is drawn at rest: the line and its short word; the unfurled words are held back.
-  await expect(line(page).locator(".mvp-short")).toHaveText(quickCopy.titleShort);
-  expect(await line(page).evaluate((el, lead) => (el.textContent ?? "").startsWith(lead), teaser.quick.slice(0, -quickCopy.titleShort.length))).toBe(true);
-  await expect(fan(page)).toBeHidden();
-  expect(await fan(page).evaluate((el) => el.getAttribute("aria-hidden"))).toBe("true");
-});
-
-test("mvp unfurl: hovering page 1's line unfurls MVP to Minimum Viable Portfolio once, and leaving folds it back", async ({ page }) => {
-  await openLine(page);
-  await watch(page);
-  const rest = await widthOf(fan(page));
-  await line(page).hover();
-  await expect(fan(page)).toBeVisible();
-  const open = await settledWidth(fan(page));
-  expect(open, "the unfurled words are wider than MVP").toBeGreaterThan(rest + 60);
-  await expect(fan(page)).toHaveText(WORDS);
-  // Once per hover: three words open (one run each), and holding the pointer there plays nothing more.
-  expect(await runs(page)).toBe(3);
-  await page.waitForTimeout(700);
-  expect(await runs(page)).toBe(3);
-  // The short word gives way to the unfurled one, in place.
-  await expect(line(page).locator(".mvp-short")).toHaveCSS("visibility", "hidden");
-  await page.mouse.move(2, 2);
-  await expect(fan(page)).toBeHidden();
-  expect(await settledWidth(fan(page))).toBeCloseTo(rest, 0);
-  expect(await runs(page), "folding back runs the three words again").toBe(6);
-  await line(page).hover();
-  await expect.poll(() => runs(page), { message: "the next hover plays again" }).toBe(9);
-});
-
-test("mvp unfurl: keyboard focus on page 1's line unfurls it, and a blur folds it back", async ({ page }) => {
-  await openLine(page);
-  const rest = await widthOf(fan(page));
-  await tabTo(page, line(page));
-  await expect(fan(page)).toBeVisible();
-  expect(await settledWidth(fan(page))).toBeGreaterThan(rest + 60);
-  await expect(fan(page)).toHaveText(WORDS);
-  await page.keyboard.press("Tab");
-  await expect(fan(page)).toBeHidden();
-  expect(await settledWidth(fan(page))).toBeCloseTo(rest, 0);
-});
-
-test("mvp unfurl: page 1's line stays centred and nothing moves while it unfurls (no layout shift)", async ({ page }) => {
-  await openLine(page);
-  const deal = page.locator("[data-deal-button]");
-  const centreX = (b: Box) => b.x + b.width / 2;
-  const [line0, deal0] = [await boxOf(line(page)), await boxOf(deal)];
-  expect(Math.abs(centreX(line0) - centreX(deal0)), "the line is centred under Deal me in at rest").toBeLessThanOrEqual(1);
-  const page0 = await page.evaluate(() => ({ height: document.documentElement.scrollHeight, width: document.documentElement.scrollWidth }));
-  await watch(page);
-  await line(page).hover();
-  await settledWidth(fan(page));
-  expect(await boxOf(line(page)), "the line's own box").toEqual(line0);
-  expect(await boxOf(deal), "Deal me in").toEqual(deal0);
-  // The words reach past the line's box on the right and stay on the screen.
-  const [open, viewport] = [await boxOf(fan(page)), page.viewportSize()!];
-  expect(open.x + open.width).toBeGreaterThan(line0.x + line0.width);
-  expect(open.x + open.width).toBeLessThan(viewport.width);
-  expect(await page.evaluate(() => ({ height: document.documentElement.scrollHeight, width: document.documentElement.scrollWidth }))).toEqual(page0);
-  await page.mouse.move(2, 2);
-  await settledWidth(fan(page));
-  expect(await boxOf(line(page))).toEqual(line0);
-  expect(await outsideShifts(page), "anything but the unfurling words that shifted").toEqual([]);
-  expect(await shifts(page), "layout shift while it unfurled and folded, the words' own travel").toBeLessThan(0.0001);
-});
-
-test("mvp unfurl: the unfurled words take the link fill from the centre, in the accent", async ({ page }) => {
-  await openLine(page);
-  const inkOf = () => fan(page).evaluate((el) => ({ p: Number(getComputedStyle(el).getPropertyValue("--inline-p")), clip: getComputedStyle(el).backgroundClip }));
-  expect((await inkOf()).p).toBe(0);
-  await line(page).hover();
-  await expect.poll(async () => (await inkOf()).p, { message: "the fill comes in" }).toBe(1);
-  expect((await inkOf()).clip).toMatch(/text/);
-});
 
 // The Menu's foot: the settings (theme, freeze the wave), then the MVP on a line of its own, then the contact row.
 async function openMenu(page: Page, path = "/") {
@@ -175,12 +140,121 @@ async function openMenu(page: Page, path = "/") {
   await page.mouse.move(2, 2);
   return dialog;
 }
-// The full name drawn over the line: shown, and at full strength.
-const fullDrawn = (link: Locator) =>
-  link.evaluate((el) => {
-    const style = getComputedStyle(el.querySelector(".mvp-full, .mvp-fan")!);
-    return style.visibility === "visible" && Number(style.opacity) > 0.99;
-  });
+
+// Hovers the link while every frame is sampled, then leaves it the same way; returns both recordings and the capital's resting x.
+async function hoverAndLeave(page: Page, link: Locator) {
+  const restX = await link.locator(".mvp-short-cap").evaluate((el) => el.getBoundingClientRect().left);
+  await record(link, 900);
+  await link.hover();
+  const over = await recorded(page);
+  await record(link, 900);
+  await page.mouse.move(2, 2);
+  const away = await recorded(page);
+  return { restX, over, away };
+}
+
+test("mvp unfurl: page 1's line reads In a rush? The MVP, is named for the whole MVP, and goes to the MVP page", async ({ page }) => {
+  await openLine(page);
+  await expect(page.getByRole("link", { name: teaser.quickName, exact: true })).toHaveCount(1);
+  await expect(line(page)).toHaveAttribute("href", "/quick");
+  // What is drawn at rest: the line and its short word; the full name is there, faded out, and hidden from assistive tech.
+  await expect(line(page).locator(".mvp-short")).toHaveText(quickCopy.titleShort);
+  expect(await line(page).evaluate((el, lead) => (el.textContent ?? "").startsWith(lead), teaser.quick.slice(0, -quickCopy.titleShort.length))).toBe(true);
+  await expect(full(line(page))).toHaveText(WORDS);
+  expect(await opacityOf(full(line(page)))).toBe(0);
+  expect(await full(line(page)).getAttribute("aria-hidden")).toBe("true");
+});
+
+test("mvp unfurl: hovering page 1's line fades MVP to Minimum Viable Portfolio in place, once, and leaving fades it back; no letter travels", async ({ page }) => {
+  await openLine(page);
+  await watch(page);
+  const { restX, over, away } = await hoverAndLeave(page, line(page));
+
+  expectNoTravelAndAFade(over, restX, "hover");
+  const open = over.at(-1)!;
+  expect([open.full, open.short, open.cap], "open: the full name in, the short word out").toEqual([1, 0, 0]);
+  // The full name starts a beat after the short word: on the first frame the short word has begun to go, the full name has barely come.
+  const first = over.find((row) => row.short < 0.99)!;
+  expect(first.full, "the full name lags the short word").toBeLessThan(0.2);
+
+  expectNoTravelAndAFade(away, restX, "leave");
+  const rest = away.at(-1)!;
+  expect([rest.full, rest.short, rest.cap], "rest: the short word back, the full name gone").toEqual([0, 1, 1]);
+  expect(away[0].cap, "the capital is back at once, under the full name").toBe(1);
+
+  // Once per hover: one fade in, one fade back, and holding the pointer there plays nothing more.
+  expect(await fades(page)).toBe(2);
+  await line(page).hover();
+  await expect.poll(() => opacityOf(full(line(page)))).toBe(1);
+  await page.waitForTimeout(700);
+  expect(await fades(page), "the next hover plays once").toBe(3);
+  expect((await props(page)).filter((name) => !ONLY_FADES.includes(name)), "anything but a fade that ran").toEqual([]);
+});
+
+test("mvp unfurl: once open, the full name holds the pointer, so reading along it to Portfolio does not fade it back", async ({ page }) => {
+  await openLine(page);
+  const lineBox = await boxOf(line(page));
+  await line(page).hover();
+  await expect.poll(() => opacityOf(full(line(page)))).toBe(1);
+  const words = await boxOf(full(line(page)));
+  // Past the line's own box, over the end of "Portfolio".
+  const end = { x: words.x + words.width - 8, y: words.y + words.height / 2 };
+  expect(end.x).toBeGreaterThan(lineBox.x + lineBox.width + 20);
+  await page.mouse.move(end.x, end.y, { steps: 6 });
+  await page.waitForTimeout(500);
+  expect(await opacityOf(full(line(page))), "still open over Portfolio").toBe(1);
+  await page.mouse.move(end.x + 60, end.y + 60, { steps: 4 });
+  await expect.poll(() => opacityOf(full(line(page))), { message: "off the words it fades back" }).toBe(0);
+  // At rest the full name takes no pointer: the same spot does not open it.
+  await page.mouse.move(end.x, end.y, { steps: 4 });
+  await page.waitForTimeout(500);
+  expect(await opacityOf(full(line(page))), "the faded name is not a target").toBe(0);
+});
+
+test("mvp unfurl: keyboard focus on page 1's line fades it in, and a blur fades it back", async ({ page }) => {
+  await openLine(page);
+  await tabTo(page, line(page));
+  await expect.poll(() => opacityOf(full(line(page)))).toBe(1);
+  expect(await opacityOf(line(page).locator(".mvp-short-rest"))).toBe(0);
+  await page.keyboard.press("Tab");
+  await expect.poll(() => opacityOf(full(line(page)))).toBe(0);
+  expect(await opacityOf(line(page).locator(".mvp-short-rest"))).toBe(1);
+});
+
+test("mvp unfurl: page 1's line stays centred and nothing moves while it fades (layout shift 0)", async ({ page }) => {
+  await openLine(page);
+  const deal = page.locator("[data-deal-button]");
+  const centreX = (b: Box) => b.x + b.width / 2;
+  const [line0, deal0] = [await boxOf(line(page)), await boxOf(deal)];
+  expect(Math.abs(centreX(line0) - centreX(deal0)), "the line is centred under Deal me in at rest").toBeLessThanOrEqual(1);
+  const page0 = await page.evaluate(() => ({ height: document.documentElement.scrollHeight, width: document.documentElement.scrollWidth }));
+  await watch(page);
+  await line(page).hover();
+  await expect.poll(() => opacityOf(full(line(page)))).toBe(1);
+  expect(await boxOf(line(page)), "the line's own box").toEqual(line0);
+  expect(await boxOf(deal), "Deal me in").toEqual(deal0);
+  // The words reach past the line's box on the right, from the short word's left edge, and stay on the screen.
+  const [open, short, viewport] = [await boxOf(full(line(page))), await boxOf(line(page).locator(".mvp-short")), page.viewportSize()!];
+  expect(open.x).toBeCloseTo(short.x, 1);
+  expect(open.x + open.width).toBeGreaterThan(line0.x + line0.width);
+  expect(open.x + open.width).toBeLessThan(viewport.width);
+  expect(await page.evaluate(() => ({ height: document.documentElement.scrollHeight, width: document.documentElement.scrollWidth }))).toEqual(page0);
+  await page.mouse.move(2, 2);
+  await expect.poll(() => opacityOf(full(line(page)))).toBe(0);
+  expect(await boxOf(line(page))).toEqual(line0);
+  expect(await shifted(page), "anything that shifted").toEqual([]);
+  expect(await shifts(page), "layout shift while it faded in and back").toBe(0);
+});
+
+test("mvp unfurl: the full name takes the link fill from the centre, in the accent", async ({ page }) => {
+  await openLine(page);
+  const ink = line(page).locator(".mvp-full-fill");
+  const inkOf = () => ink.evaluate((el) => ({ p: Number(getComputedStyle(el).getPropertyValue("--inline-p")), clip: getComputedStyle(el).backgroundClip }));
+  expect((await inkOf()).p).toBe(0);
+  await line(page).hover();
+  await expect.poll(async () => (await inkOf()).p, { message: "the fill comes in" }).toBe(1);
+  expect((await inkOf()).clip).toMatch(/text/);
+});
 
 test("mvp unfurl: the Menu's MVP is a link on a line of its own between the settings and the contact row, named for the whole MVP", async ({ page }) => {
   const dialog = await openMenu(page);
@@ -198,11 +272,11 @@ test("mvp unfurl: the Menu's MVP is a link on a line of its own between the sett
   // Set like the email link: the label face, in the accent.
   const look = (target: Locator) => target.evaluate((el) => { const s = getComputedStyle(el); return [s.fontFamily, s.fontSize, s.fontWeight, s.color]; });
   expect(await look(link)).toEqual(await look(email));
-  // On a fine pointer the note is not drawn: the link unfurls instead.
+  // On a fine pointer the note is not drawn: the link fades to the full name instead.
   await expect(dialog.locator("[data-menu-mvp-note]")).toBeHidden();
 });
 
-test("mvp unfurl: the Menu's MVP line unfurls on hover and focus over the empty line to its right, and nothing in the foot moves", async ({ page }) => {
+test("mvp unfurl: the Menu's MVP line fades in place on hover, over the empty line to its right, and nothing in the foot moves", async ({ page }) => {
   const dialog = await openMenu(page);
   const link = menuLink(page);
   const others = [
@@ -216,24 +290,30 @@ test("mvp unfurl: the Menu's MVP line unfurls on hover and focus over the empty 
   const panel = await boxOf(dialog.locator("#site-menu"));
   await watch(page);
 
+  await record(link, 900);
+  const restX = await link.locator(".mvp-short-cap").evaluate((el) => el.getBoundingClientRect().left);
   await link.hover();
-  await expect.poll(() => fullDrawn(link), { message: "the full name is drawn" }).toBe(true);
-  await page.waitForTimeout(700);
+  const over = await recorded(page);
+  expectNoTravelAndAFade(over, restX, "hover");
+  expect(over.at(-1)!.full, "the full name's opacity").toBe(1);
   expect(await boxOf(link), "the link's own box").toEqual(before.link);
   expect(await Promise.all(others.map(boxOf)), "the chips, the line and the contact row").toEqual(before.others);
-  const full = await boxOf(link.locator(".mvp-full, .mvp-fan"));
-  expect(full.x, "from the link's left edge").toBeCloseTo(before.link.x, 0);
-  expect(full.x + full.width, "inside the panel").toBeLessThan(panel.x + panel.width);
+  const words = await boxOf(full(link));
+  expect(words.x, "from the link's left edge").toBeCloseTo(before.link.x, 0);
+  expect(words.x + words.width, "inside the panel").toBeLessThan(panel.x + panel.width);
   await page.mouse.move(2, 2);
-  await expect.poll(() => fullDrawn(link)).toBe(false);
+  await expect.poll(() => opacityOf(full(link))).toBe(0);
+  expect(await shifts(page), "layout shift").toBe(0);
+  expect((await props(page)).filter((name) => !ONLY_FADES.includes(name)), "anything but a fade that ran").toEqual([]);
+});
 
-  // Keyboard focus does the same, and the blur takes it back.
+test("mvp unfurl: keyboard focus on the Menu's MVP fades it in, and a blur fades it back", async ({ page }) => {
+  await openMenu(page);
+  const link = menuLink(page);
   await tabTo(page, link);
-  await expect.poll(() => fullDrawn(link)).toBe(true);
+  await expect.poll(() => opacityOf(full(link))).toBe(1);
   await page.keyboard.press("Tab");
-  await expect.poll(() => fullDrawn(link)).toBe(false);
-  expect(await Promise.all(others.map(boxOf))).toEqual(before.others);
-  expect(await outsideShifts(page), "anything in the foot that shifted").toEqual([]);
+  await expect.poll(() => opacityOf(full(link))).toBe(0);
 });
 
 test("mvp unfurl: on the MVP page the way home holds the same line, so the Menu keeps one shape", async ({ page }) => {
@@ -263,34 +343,32 @@ test.describe("reduced motion", () => {
   test.use({ contextOptions: { reducedMotion: "reduce" } });
 
   test("mvp unfurl: under reduced motion the words switch at once, on page 1's line and the Menu's MVP line", async ({ page }) => {
+    const twoFrames = () => page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    const drawn = (link: Locator) =>
+      link.evaluate((el) => [".mvp-full", ".mvp-short-rest", ".mvp-short-cap"].map((selector) => Number(getComputedStyle(el.querySelector(selector)!).opacity)));
     await page.goto("/");
     await settled(page);
     await scrollToFoot(page);
     await page.mouse.move(2, 2);
     await expect(line(page)).toBeVisible();
     await watch(page);
-    const slot = line(page).locator(".mvp-slot").first();
-    await expect(slot).toHaveCSS("transition-duration", "0s");
-    const rest = await widthOf(fan(page));
+    await expect(full(line(page))).toHaveCSS("transition-duration", "0s");
     await line(page).hover();
-    // On the frame after the hover, not after a transition: the words are open.
-    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-    const open = await widthOf(fan(page));
-    expect(open).toBeGreaterThan(rest + 60);
-    expect(await settledWidth(fan(page))).toBeCloseTo(open, 1);
-    expect(await runs(page), "no width transition ran").toBe(0);
+    // On the frame after the hover, not after a fade: the full name is in and the short word is gone.
+    await twoFrames();
+    expect(await drawn(line(page))).toEqual([1, 0, 0]);
     await page.mouse.move(2, 2);
-    await expect(fan(page)).toBeHidden();
-    expect(await widthOf(fan(page))).toBeCloseTo(rest, 0);
+    await twoFrames();
+    expect(await drawn(line(page))).toEqual([0, 1, 1]);
 
     await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
     await page.getByRole("button", { name: M.ariaLabelOpen }).click();
     await expect(menuLink(page)).toBeVisible();
     await page.waitForTimeout(800);
     await menuLink(page).hover();
-    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-    expect(await fullDrawn(menuLink(page)), "the full name, on the frame after the hover").toBe(true);
-    expect(await runs(page), "no width transition ran").toBe(0);
-    expect(await outsideShifts(page)).toEqual([]);
+    await twoFrames();
+    expect(await drawn(menuLink(page)), "the Menu's line, on the frame after the hover").toEqual([1, 0, 0]);
+    expect(await fades(page), "no fade ran").toBe(0);
+    expect(await shifted(page)).toEqual([]);
   });
 });

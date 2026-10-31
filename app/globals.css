@@ -519,24 +519,48 @@ html[data-band-answer] [data-band-layer="before"] { opacity: 0 !important; }
 html[data-band-answer="off"] [data-band-layer="off"],
 html[data-band-answer="on"] [data-band-layer="paused"] { opacity: 1 !important; }
 
-/* The MVP unfurl (components/quick/MvpUnfurl.tsx): "MVP" opens to "Minimum
+/* The MVP unfurl (components/quick/MvpUnfurl.tsx): "MVP" gives way to "Minimum
    Viable Portfolio" while a fine pointer that can hover is over its
-   [data-mvp-link] ancestor, or keyboard focus is on it, and folds back on leave
-   or blur. Each rest slides out from its capital, left to right (90ms apart),
-   the move of the MVP page's own title. Width goes 0 to auto, which animates
-   where interpolate-size does (Chromium); elsewhere the words switch at once.
-   Reduced motion switches at once everywhere. A touch screen has no hover to
-   read, so it never unfurls; there .mvp-note, a quiet line beside the link (the
-   Menu's), spells the name out instead. The overlay's fan reaches past its box
-   without a reflow; its fill is the site's link fill, from the centre. */
-.mvp-unfurl { position: relative; display: inline-block; }
-.mvp-slot { display: inline-block; width: 0; overflow: hidden; opacity: 0; white-space: pre; vertical-align: top; interpolate-size: allow-keywords; }
-.mvp-fan { display: none; }
+   [data-mvp-link] ancestor, or keyboard focus is on it, and comes back on leave
+   or blur. It is a fade and nothing else: no width, no slide, no per-word
+   stagger, so no letter travels. The short word holds the line's width and
+   fades out; the full name, drawn over it from the same left edge and reaching
+   past the line's box without a reflow, fades in a beat later. The capital the
+   two share stays drawn under the full name's until the full name is in, then
+   goes, so that letter never dims mid-fade. Leaving plays the same swap the
+   other way, a little quicker. Only opacity animates, so Safari and Firefox get
+   the same fade as Chromium (the old unfurl animated width to auto, which needs
+   interpolate-size, and only Chromium has it). Once the full name is in it takes
+   the pointer too, so reading along it to "Portfolio" does not fade it back.
+   Reduced motion switches at once. A touch screen has no hover to read, so it
+   never unfurls; there .mvp-note, a quiet line beside the link (the Menu's),
+   spells the name out instead. The full name's fill (page 1's line) is the
+   site's link fill, from the centre.
+
+   The numbers to tune by hand, all on .mvp-unfurl:
+   --mvp-out-ms   the word going away fades out over this ("MVP", on a hover)
+   --mvp-in-ms    the word arriving fades in over this (the full name, on a hover)
+   --mvp-lag-ms   and starts this far into the other one's fade
+   --mvp-back     the share of those three times the way back takes
+   --mvp-ease     the curve of every fade */
+.mvp-unfurl {
+  --mvp-out-ms: 140ms;
+  --mvp-in-ms: 260ms;
+  --mvp-lag-ms: 80ms;
+  --mvp-back: 0.8;
+  --mvp-ease: ease-out;
+  position: relative; display: inline-block;
+}
+.mvp-full { display: none; }
 @media (hover: hover) and (pointer: fine) {
   .mvp-note { display: none; }
-  .mvp-slot { transition: width 520ms var(--ease-out), opacity 320ms ease-out; }
-  .mvp-fan { display: block; position: absolute; left: 0; top: 0; visibility: hidden; white-space: nowrap; pointer-events: none; }
-  .mvp-fan--fill {
+  .mvp-full {
+    display: block; position: absolute; left: 0; top: 0; white-space: nowrap; pointer-events: none; opacity: 0;
+    transition: opacity calc(var(--mvp-out-ms) * var(--mvp-back)) var(--mvp-ease);
+  }
+  .mvp-short-rest { transition: opacity calc(var(--mvp-in-ms) * var(--mvp-back)) var(--mvp-ease) calc(var(--mvp-lag-ms) * var(--mvp-back)); }
+  .mvp-full-fill {
+    display: block;
     -webkit-text-fill-color: transparent;
     background-image: linear-gradient(var(--color-accent), var(--color-accent)), linear-gradient(var(--color-foreground), var(--color-foreground));
     background-repeat: no-repeat; background-position: center, center;
@@ -544,17 +568,22 @@ html[data-band-answer="on"] [data-band-layer="paused"] { opacity: 1 !important; 
     -webkit-background-clip: text; background-clip: text;
     transition: --inline-p var(--inline-fill-ms) var(--inline-fill-ease);
   }
-  [data-mvp-link]:hover { --inline-p: 1; }
-  [data-mvp-link]:hover .mvp-slot { width: auto; opacity: 1; transition-delay: calc(var(--i) * 90ms); }
-  [data-mvp-link]:hover .mvp-fan { visibility: visible; }
-  [data-mvp-link]:hover .mvp-short { visibility: hidden; }
-  html:not([data-input="pointer"]) [data-mvp-link]:focus-visible { --inline-p: 1; }
-  html:not([data-input="pointer"]) [data-mvp-link]:focus-visible .mvp-slot { width: auto; opacity: 1; transition-delay: calc(var(--i) * 90ms); }
-  html:not([data-input="pointer"]) [data-mvp-link]:focus-visible .mvp-fan { visibility: visible; }
-  html:not([data-input="pointer"]) [data-mvp-link]:focus-visible .mvp-short { visibility: hidden; }
+  :is([data-mvp-link]:hover, html:not([data-input="pointer"]) [data-mvp-link]:focus-visible) { --inline-p: 1; }
+  :is([data-mvp-link]:hover, html:not([data-input="pointer"]) [data-mvp-link]:focus-visible) .mvp-full {
+    opacity: 1; pointer-events: auto;
+    transition: opacity var(--mvp-in-ms) var(--mvp-ease) var(--mvp-lag-ms);
+  }
+  :is([data-mvp-link]:hover, html:not([data-input="pointer"]) [data-mvp-link]:focus-visible) .mvp-short-rest {
+    opacity: 0;
+    transition: opacity var(--mvp-out-ms) var(--mvp-ease);
+  }
+  :is([data-mvp-link]:hover, html:not([data-input="pointer"]) [data-mvp-link]:focus-visible) .mvp-short-cap {
+    opacity: 0;
+    transition: opacity var(--mvp-out-ms) var(--mvp-ease) calc(var(--mvp-lag-ms) + var(--mvp-in-ms));
+  }
 }
-@media (prefers-reduced-motion: reduce) { .mvp-slot, .mvp-fan--fill { transition: none !important; } }
-@media (forced-colors: active), print { .mvp-fan--fill { -webkit-text-fill-color: currentColor; background: none; } }
+@media (prefers-reduced-motion: reduce) { .mvp-full, .mvp-short-rest, .mvp-short-cap, .mvp-full-fill { transition: none !important; } }
+@media (forced-colors: active), print { .mvp-full-fill { -webkit-text-fill-color: currentColor; background: none; } }
 
 /* The pill toggle (components/fx/PillToggle.tsx): the strip's Commits and
    Tokens, and Flat and Skyline. The fill's edges are
