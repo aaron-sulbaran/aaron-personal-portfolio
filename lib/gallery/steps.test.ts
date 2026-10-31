@@ -23,8 +23,8 @@ describe("a card's mask steps", () => {
       ["links"],
     ]);
   });
-  it("masks a phone's jobs card a page a piece, the first page's tag first", () => {
-    expect(ids(cardSteps(galleryOf("jobs"), "pager", false))).toEqual([["title"], ["meta"], ["photo-4"], ["words-0"], ["pager"]]);
+  it("masks a phone's jobs card from its first page: the Aritzia poster, its caption, then the first paragraph", () => {
+    expect(ids(cardSteps(galleryOf("jobs"), "pager", false))).toEqual([["title"], ["meta"], ["photo-0", "caption-0"], ["words-0"], ["pager"]]);
   });
   it("masks a phone's header, its first page and the pager's controls, the card picture too when a flown card parks on the header's tile", () => {
     expect(ids(cardSteps(galleryOf("capital-one"), "pager", false))).toEqual([["title"], ["meta"], ["photo-0", "caption-0"], ["words-0", "words-1"], ["pager"]]);

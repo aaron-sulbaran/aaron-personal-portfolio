@@ -18,7 +18,7 @@ const keys = Object.keys(siteContent.cards) as CardKey[];
 const PAGED = keys.filter((key) => galleryOf(key).plan.slides.length > 0);
 
 // The band's paragraphs all fit beside their photos at 390 by 844, so its pager is one page a paragraph (a card whose words did not fit
-// would have more: the words that do not fit beside their photo get a page of their own, card-phone.spec).
+// would have more: words that cannot fit beside even a short stage go on to pages that each carry a photo, card-phone.spec).
 test("pager: a phone opens one page a paragraph, the header above the pages and the controls under them", async ({ page }) => {
   const { dialog } = await openCardFromBook(page, "band");
   await expect(dialog).toHaveAttribute("data-gallery-layout", "pager");
@@ -72,7 +72,7 @@ test("pager: Mentorship's mentors follow its words a block each, in order across
   await expect(pages.last().locator("a", { hasText: siteContent.cards.mentorship.modal.links[0].label })).toHaveCount(1);
 });
 
-test("pager: every photo is whole in its stage, and no stage is taller than 40 percent of the height (55 percent on a page with no words; a name tag and the post's card are as tall as their words)", async ({ page }) => {
+test("pager: every photo sits inside its stage, whole or on a short stage cropped to keep its width, and no stage is taller than 40 percent of the height (55 percent on a page with no words; a name tag and the post's card are as tall as their words)", async ({ page }) => {
   test.setTimeout(120_000);
   await openHome(page);
   for (const key of PAGED) {
@@ -90,11 +90,13 @@ test("pager: every photo is whole in its stage, and no stage is taller than 40 p
         if (!own && box.height > cap + 0.5) out.push(`page ${at}: stage ${box.height}px`);
         stage.querySelectorAll("[data-photo-frame]").forEach((photo) => {
           const r = photo.getBoundingClientRect();
-          if (r.top < box.top - 0.5 || r.bottom > box.bottom + 0.5 || r.left < box.left - 0.5 || r.right > box.right + 0.5) out.push(`page ${at}: photo ${photo.getAttribute("data-photo-frame")} cropped`);
+          if (r.top < box.top - 0.5 || r.bottom > box.bottom + 0.5 || r.left < box.left - 0.5 || r.right > box.right + 0.5) out.push(`page ${at}: photo ${photo.getAttribute("data-photo-frame")} outside its stage`);
+          // A photo cropped to a short stage keeps its share of the page's width.
+          if (stage.hasAttribute("data-cropped") && r.width < box.width * caps.share - 1) out.push(`page ${at}: cropped photo ${Math.round(r.width)}px wide of ${Math.round(box.width)}`);
         });
       });
       return out;
-    }, { stage: 844 * GALLERY.pager.stageMax, wordless: 844 * GALLERY.pager.wordlessMax });
+    }, { stage: 844 * GALLERY.pager.stageMax, wordless: 844 * GALLERY.pager.wordlessMax, share: GALLERY.pager.photoMinShare });
     expect(problems, key).toEqual([]);
     await page.keyboard.press("Escape");
     await expect(dialog).toHaveCount(0);
@@ -242,9 +244,9 @@ test("pager: a vertical drag on the stage springs back short of 96px and closes 
   await expect(dialog).toHaveCount(0);
 });
 
-// A page's words only scroll where a single paragraph is taller than the whole page (a very short window: every other overflow is paged,
-// card-phone.spec): Misuki's first paragraph is about 310px, more than the 199px a 420px tall window leaves a page. The pointer then
-// belongs to the words, and a drag on the stage still closes the modal.
+// A page's words only scroll where a single paragraph is taller than the whole page even with its phone omissions dropped (a very short
+// window: every other overflow is paged, card-phone.spec): Misuki's first paragraph is still over 230px, more than a 420px tall window
+// leaves a page beside a photo. The pointer then belongs to the words, and a drag on the stage still closes the modal.
 test("pager: a paragraph taller than a very short page scrolls in its own area and never dismisses, while a drag on the stage still does", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 420 });
   const { dialog } = await openCardFromBook(page, "misuki", { settled: true });
@@ -305,7 +307,8 @@ test("pager: under reduced motion a drag moves nothing, a cancel changes nothing
   await expect(pager).toHaveAttribute("data-page", "1");
 });
 
-// Mentorship's group of turning photos is on the page after its first paragraph's; which page that is depends on how the words fit.
+// Travel's group of turning photos is on the page after its first paragraph's; which page that is depends on how the words fit (Mentorship's
+// group, beside its mentors, is dealt out a photo a page at 390 by 844).
 async function toGroup(dialog: Locator) {
   const at = await dialog.locator("[data-pager-page]").evaluateAll((els) => els.findIndex((el) => el.querySelector("[data-rotator]")));
   await dialog.locator(`[data-pager-dot="${at}"]`).click();
@@ -313,7 +316,7 @@ async function toGroup(dialog: Locator) {
 }
 
 test("pager turns: a page's group turns in its stage only while its page is current, its marks inside the current photo's corner", async ({ page }) => {
-  const { dialog } = await openCardFromBook(page, "mentorship");
+  const { dialog } = await openCardFromBook(page, "travel");
   const group = dialog.locator("[data-rotator]");
   await page.waitForTimeout(GALLERY.mask.landingMs + GALLERY.rotate.delayMs + 400);
   await expect(group).not.toHaveAttribute("data-rotator-runs", "");
@@ -329,7 +332,7 @@ test("pager turns: a page's group turns in its stage only while its page is curr
 });
 
 test("pager turns: a tap on the stage steps the group at once, Enter steps it, and a press held over 500ms only holds it", async ({ page }) => {
-  const { dialog } = await openCardFromBook(page, "mentorship");
+  const { dialog } = await openCardFromBook(page, "travel");
   const group = await toGroup(dialog);
   await page.waitForTimeout(GALLERY.pager.slideMs + 100);
   const frame = group.locator("[data-rotator-frame]");
@@ -351,7 +354,7 @@ test("pager turns: under reduced motion the group never turns on its own, and a 
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
   await settled(page);
-  const { dialog } = await openCardFromBook(page, "mentorship", { home: false });
+  const { dialog } = await openCardFromBook(page, "travel", { home: false });
   const group = await toGroup(dialog);
   await page.waitForTimeout(GALLERY.mask.landingMs + GALLERY.rotate.delayMs + 400);
   await expect(group).not.toHaveAttribute("data-rotator-runs", "");

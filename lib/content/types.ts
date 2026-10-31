@@ -115,6 +115,10 @@ export interface CardModal {
   embed?: CardEmbedRef;
   // Where the card has an embed: what a phone draws in its place.
   postCard?: PostCardRef;
+  // The sentences a phone may leave out of a paragraph, by its index in blocks: verbatim, whole, in the order they go. A phone's pager
+  // drops them one at a time, only on a page too short for the paragraph beside its photo (lib/gallery/paginate); the desktop and
+  // every page with the room keep every word (Aaron allowed a little less text on mobile, 2026-10-30).
+  phoneOmit?: Readonly<Record<number, readonly string[]>>;
 }
 
 export interface CardContent {

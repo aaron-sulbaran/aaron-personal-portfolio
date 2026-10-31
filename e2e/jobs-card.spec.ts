@@ -2,6 +2,7 @@ import { siteContent } from "@/lib/content";
 import { visibleText } from "@/lib/content/links";
 import { jobTags } from "@/lib/content/jobTags";
 import { GALLERY } from "@/lib/gallery/constants";
+import { phoneCopy } from "@/lib/gallery/omit";
 import { test, expect } from "./support/fixtures";
 import { openCardFromBook } from "./support/cards";
 
@@ -185,11 +186,10 @@ for (const viewport of [{ width: 1280, height: 800 }, { width: 1440, height: 900
   });
 }
 
-// What a phone's pager page holds, read off its markup: the media on it (a name tag, a photo or the post's link card), or "words" for a
-// paragraph on a page of its own.
-type Kind = "tag" | "photo" | "card" | "words";
+// What a phone's pager page holds, read off its markup: the media on it (a name tag, a photo or the post's link card).
+type Kind = "tag" | "photo" | "card";
 const kindsOf = (pages: import("@playwright/test").Locator) =>
-  pages.evaluateAll((els) => els.map((el): Kind => (el.hasAttribute("data-words-only") ? "words" : el.querySelector("[data-job-tag]") ? "tag" : el.querySelector("[data-post-card]") ? "card" : "photo")));
+  pages.evaluateAll((els) => els.map((el): Kind => (el.querySelector("[data-job-tag]") ? "tag" : el.querySelector("[data-post-card]") ? "card" : "photo")));
 
 // The page's whole read at once: nothing on it is scrolled, clipped or wider than the panel, in the pager's pages as laid out.
 async function readPages(page: import("@playwright/test").Page) {
@@ -214,6 +214,8 @@ async function readPages(page: import("@playwright/test").Page) {
         scrolled,
         scrollsFlag: !!text?.hasAttribute("data-scrolls"),
         tipInside: tip ? tip.getBoundingClientRect().bottom <= viewport.bottom + 1 : true,
+        tag: el.querySelector<HTMLElement>("[data-job-tag]")?.dataset.jobTag ?? null,
+        photos: [...el.querySelectorAll<HTMLElement>("[data-photo-frame]")].filter((frame) => !frame.querySelector("[data-job-tag], [data-post-card]")).map((frame) => Number(frame.dataset.photoFrame)),
         paragraphs: [...el.querySelectorAll<HTMLElement>('[data-pager-text] p[data-mask^="words-"]')].map((p) => ({ unit: Number(p.dataset.mask!.slice(6)), text: p.textContent ?? "" })),
         iframes: el.querySelectorAll("iframe").length,
         gap,
@@ -223,24 +225,29 @@ async function readPages(page: import("@playwright/test").Page) {
   }, GALLERY.pager.pageGapPx);
 }
 
+// A paragraph as written, or with its first phone omissions dropped (whole sentences, verbatim): how many.
+const omitted = (unit: number, text: string) => {
+  const omit = modal.phoneOmit?.[unit] ?? [];
+  return Array.from({ length: omit.length + 1 }, (_, n) => n).find((n) => visibleText(phoneCopy(modal.blocks[unit], omit, n)) === text) ?? -1;
+};
+
 test.describe("on a phone", () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
 
-  test("jobs modal: at 390 each tag, photo and the post's card has a page, a paragraph that does not fit under its tag has a page of its own, and nothing scrolls inside a page", async ({ page }) => {
+  test("jobs modal: at 390 each paragraph stands with its row's photo (the post's card for the last), each name tag is a page of its own, and nothing scrolls inside a page", async ({ page }) => {
     const { dialog } = await openCardFromBook(page, "jobs", { settled: true });
     await expect(dialog).toHaveAttribute("data-gallery-layout", "pager");
     const pages = dialog.locator("[data-pager-page]");
-    const kinds = await kindsOf(pages);
-    // The media, newest first, in the order they always had (a tag, then its photo; the post's card, then Popeyes' tag) with a page of words
-    // wherever a paragraph did not fit; no frame of the post anywhere on a phone.
-    expect(kinds.filter((kind) => kind !== "words")).toEqual(["tag", "photo", "tag", "photo", "tag", "tag", "photo", "photo", "card", "tag"]);
+    // Newest first: the poster and the first paragraph, Aritzia's tag; the badge and the second, Apple's tag; MOD's photos and the third,
+    // UT Austin's and MOD's tags; the post's card and the last, Popeyes' tag. No frame of the post anywhere on a phone.
+    expect(await kindsOf(pages)).toEqual(["photo", "tag", "photo", "tag", "photo", "tag", "tag", "card", "tag"]);
     await expect(dialog.locator("iframe")).toHaveCount(0);
     await expect(dialog.locator("[data-embed-stage]")).toHaveCount(0);
-    expect(kinds.filter((kind) => kind === "words").length, "the paragraphs that did not fit").toBeGreaterThan(0);
 
     const read = await readPages(page);
-    expect(read.pages).toHaveLength(kinds.length);
-    // Every word shows, once and in order: the four paragraphs, whole.
+    expect(read.pages.map((p) => p.tag).filter((job) => job !== null), "the tags, newest job first").toEqual(["0", "1", "2", "3", "4"]);
+    expect(read.pages.filter((p) => p.paragraphs.length).map((p) => p.photos), "each paragraph beside its row's photos").toEqual([[0], [1], [2, 3], []]);
+    // Every word shows, once and in order: the four paragraphs, whole, with the room at 844.
     const shown = read.pages.flatMap((p) => p.paragraphs);
     expect(shown.map((p) => p.unit)).toEqual([0, 1, 2, 3]);
     expect(shown.map((p) => p.text)).toEqual(modal.blocks.map((block) => visibleText(block)));
@@ -250,22 +257,8 @@ test.describe("on a phone", () => {
       expect(p.tipInside, `page ${i + 1}: the tip is not cut off at the foot`).toBe(true);
       if (p.stageBottom !== null) expect(p.stageBottom, `page ${i + 1}: its stage ends inside the pages`).toBeLessThanOrEqual(read.viewportBottom + 1);
       if (p.wordsBottom !== null) expect(p.wordsBottom, `page ${i + 1}: its words end inside their area`).toBeLessThanOrEqual(p.textBottom! + 1);
+      if (p.words !== null && p.stage !== null) expect(p.stage + p.gap + p.words, `page ${i + 1}: stage, gap and words together`).toBeLessThanOrEqual(read.room + 1);
     });
-    // A paragraph has a page to itself only when it would not have fitted under its stage; one that fits stays with it.
-    const stages = new Map(read.pages.flatMap((p) => (p.stage !== null ? [[p.unit, p.stage] as const] : [])));
-    kinds.forEach((kind, i) => {
-      const p = read.pages[i];
-      const words = p.words;
-      if (kind === "words") expect(stages.get(p.unit)! + p.gap + words!, `page ${i + 1}: stage, gap and words together`).toBeGreaterThan(read.room + 1);
-      else if (words !== null && p.stage !== null) expect(p.stage + p.gap + words, `page ${i + 1}: stage, gap and words together`).toBeLessThanOrEqual(read.room + 1);
-    });
-    // A page of words follows the media its paragraph sat beside: the first tag's, the second's, the third's, and the post's card.
-    const anchorOf = (unit: number) => {
-      const at = read.pages.findIndex((p) => p.paragraphs.some((q) => q.unit === unit));
-      return kinds[at] === "words" ? at - 1 : at;
-    };
-    expect([0, 1, 2, 3].map((unit) => kinds[anchorOf(unit)])).toEqual(["tag", "tag", "tag", "card"]);
-    expect([0, 1, 2].map((unit) => read.pages[anchorOf(unit)].unit), "the tags of Aritzia, Apple and UT Austin").toEqual([4, 5, 6]);
     // The title is three lines or fewer: it stepped down from four.
     const title = await dialog.locator("[data-pager] h2").evaluate((el) => ({ height: el.getBoundingClientRect().height, line: parseFloat(getComputedStyle(el).lineHeight) }));
     expect(Math.round(title.height / title.line), "lines in the title").toBeLessThanOrEqual(3);
@@ -315,23 +308,36 @@ test.describe("on a phone", () => {
     expect(frame.shadow, "flat: no shadow").toBe("none");
   });
 
-  // A short phone: Safari's 664px tall window, where a page has under 370px: the tags shrink to fit it and no tip is cut off.
+  // Safari's 664px tall window: the long title takes a size less, and a paragraph that cannot fit beside its photo drops its phone
+  // omissions (the post's paragraph: its last line, then its first, which the post's card above it already shows).
   test.describe("at 664 tall", () => {
     test.use({ viewport: { width: 390, height: 664 } });
-    test("jobs modal: on a short phone a tag shrinks to the page's room, never past 80 percent, and still nothing scrolls or is cut off", async ({ page }) => {
-      const { dialog } = await openCardFromBook(page, "jobs", { settled: true });
+    test("jobs modal: on a short phone nothing scrolls or is cut off, and a paragraph only ever drops whole sentences", async ({ page }) => {
+      await openCardFromBook(page, "jobs", { settled: true });
       const read = await readPages(page);
-      expect(read.room, "the pages' room is short").toBeLessThan(400);
+      expect(read.room, "the pages' room is short").toBeLessThan(440);
       read.pages.forEach((p, i) => {
         expect(p.scrolled, `page ${i + 1}: nothing in it scrolls`).toBe(0);
+        expect(p.scrollsFlag, `page ${i + 1}: its words are not in a scroll window`).toBe(false);
         expect(p.tipInside, `page ${i + 1}: the tip is not cut off at the foot`).toBe(true);
         if (p.stage !== null) expect(p.stage, `page ${i + 1}: its stage fits the room`).toBeLessThanOrEqual(read.room + 1);
       });
+      const shown = read.pages.flatMap((p) => p.paragraphs);
+      expect(shown.map((p) => p.unit)).toEqual([0, 1, 2, 3]);
+      for (const p of shown) expect(omitted(p.unit, p.text), `paragraph ${p.unit}: as written or with whole sentences dropped`).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  // A shorter window still (an in-app browser's): a name tag taller than the room shrinks to fit it, never past 80 percent, its tip whole.
+  test.describe("at 600 tall", () => {
+    test.use({ viewport: { width: 390, height: 600 } });
+    test("jobs modal: a tag shrinks to the page's room, never past 80 percent, and no tip is cut off", async ({ page }) => {
+      const { dialog } = await openCardFromBook(page, "jobs", { settled: true });
+      const read = await readPages(page);
+      read.pages.forEach((p, i) => expect(p.tipInside, `page ${i + 1}: the tip is not cut off at the foot`).toBe(true));
       const scales = await dialog.locator("[data-fit-scale]").evaluateAll((els) => els.map((el) => Number(el.getAttribute("data-fit-scale"))));
       expect(scales.length, "tags taller than the room are shrunk").toBeGreaterThan(0);
       for (const scale of scales) expect(scale).toBeGreaterThanOrEqual(GALLERY.pager.fitFloor);
-      // Every paragraph is still whole.
-      expect(read.pages.flatMap((p) => p.paragraphs).map((p) => p.text)).toEqual(modal.blocks.map((block) => visibleText(block)));
     });
   });
 });

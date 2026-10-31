@@ -12,9 +12,10 @@ import { partId } from "@/lib/gallery/timing";
 // cell so the caption block is the tallest caption's height. Only the current
 // layer and caption show (app/globals.css); useRotator writes the change.
 
-type LayerProps = { gallery: Gallery; photo: number; box: Box; frame: Box; layer: number; current: boolean; sizes: string };
+// position: on a phone's page, the object-position that keeps a cropped photo's subject in view (the desktop leaves it unset).
+type LayerProps = { gallery: Gallery; photo: number; box: Box; frame: Box; layer: number; current: boolean; sizes: string; position?: string };
 
-export function GroupLayer({ gallery, photo, box, frame, layer, current, sizes }: LayerProps) {
+export function GroupLayer({ gallery, photo, box, frame, layer, current, sizes, position }: LayerProps) {
   const { src, alt } = gallery.photos[photo];
   return (
     <div
@@ -28,7 +29,7 @@ export function GroupLayer({ gallery, photo, box, frame, layer, current, sizes }
       <div data-mask={partId.photo(photo)} data-mask-kind="photo" className="absolute inset-0 overflow-hidden rounded-xl">
         <div data-mask-media="" className="absolute inset-0">
           <div data-rotator-media="" className="absolute inset-0">
-            <Image src={src} alt={alt} fill quality={90} draggable={false} sizes={sizes} className="object-cover" />
+            <Image src={src} alt={alt} fill quality={90} draggable={false} sizes={sizes} className="object-cover" style={position ? { objectPosition: position } : undefined} />
           </div>
         </div>
       </div>
