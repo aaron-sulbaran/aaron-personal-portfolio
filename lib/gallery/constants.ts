@@ -24,7 +24,7 @@ export const GALLERY = {
   talosTileCompact: { width: 51, height: 68 }, // Talos's phone tile: its mark at 40 percent is 20.4px
   talosMarkMinPx: 20, // the Talos kit's smallest mark (interactions-brief.md section 2)
   pager: {
-    stageMax: 0.4, // of the visible height
+    stageMax: 0.4, // of the visible height: a page's photo stage at its tallest (shorter where its words need the room)
     wordlessMax: 0.55, // grouping B's photo-only pages
     slideMs: 360,
     flickPx: 96,
@@ -34,13 +34,16 @@ export const GALLERY = {
     swipePx: 48, // a sideways drag this far turns a page
     flickSpeed: 0.6, // a quicker release (px per ms) turns or closes on a short drag
     minFlickPx: 24, // the least a quick release must have travelled to count
-    wordsRoomPx: 128, // under the stage: the caption and two lines of words
+    wordsRoomPx: 128, // under the stage before the pager has measured: the caption and two lines of words
     captionRoomPx: 72, // under a wordless page's stage
-    stageFloorPx: 120,
+    stageFloorPx: 140, // a photo stage's shortest beside words: past it the words go on to another page with a photo of its own
+    wideFloorShare: 0.7, // a stage of wide photos may be shorter than that, down to the height that keeps them this share of the page's width
+    stageMinPx: 100, // and never shorter than this
+    photoMinShare: 0.6, // a photo on a short stage keeps this share of the page's width, cropped about its subject (lib/gallery/boxes phoneBox)
     tagMaxPx: 340, // a name tag's widest on a phone page (the jobs card): its height is its own; so is the post card's
     pageGapPx: 12, // between a page's stage, its caption and its words (PagerPage's gap-3)
     blockGapPx: 16, // between the blocks of a page's words (PagerPage's gap-4)
-    endPadPx: 24, // under a page's last block (PagerPage's pb-6)
+    endPadPx: 24, // under the last block of words that scroll (PagerPage's pb-6), clear of the fade
     fitFloor: 0.8, // a name tag or the post's card taller than a short phone's page is shrunk to fit, but never below this share of its size
     longTitleChars: 24, // a longer modal title steps down a size in the phone header, so it takes three lines, not four
     wordsFadePx: 28, // the soft fade at the foot of a page's words that scroll
@@ -76,6 +79,3 @@ export const BOXES = uniformBoxes(GALLERY.verticalWidth, GALLERY.horizontalWidth
 // type refuses it.
 export const PHONE_GROUPING: Exclude<PhoneGrouping, "strip"> = "paragraph";
 
-// A card's own phone grouping where it differs: the jobs card's rows hold several pieces of media at once (name tags
-// and photos that must all be seen, never taking turns), so on a phone each is a page of its own, the first with the words.
-export const CARD_PHONE_GROUPING: Partial<Record<string, Exclude<PhoneGrouping, "strip">>> = { jobs: "photo" };

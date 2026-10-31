@@ -2,11 +2,11 @@
 
 import { useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { siteContent } from "@/lib/content";
-import type { Box } from "@/lib/gallery/boxes";
+import { focusOf, type Box, type StageBox } from "@/lib/gallery/boxes";
 import type { Gallery } from "@/lib/gallery/card";
 import { GALLERY } from "@/lib/gallery/constants";
 import { slideWords, type Page, type StageKind } from "@/lib/gallery/plan";
-import { END, mentorId } from "@/lib/gallery/paginate";
+import { END, mentorId, type Trims } from "@/lib/gallery/paginate";
 import { partId } from "@/lib/gallery/timing";
 import { PAGER_PHOTO_SIZES } from "@/lib/photoSizes";
 import { afterWords } from "./afterWords";
@@ -17,26 +17,27 @@ import { PhoneRotator } from "./PhoneRotator";
 import { StillPhoto } from "./StillPhoto";
 import { Words } from "./Words";
 
-// One page of the phone pager (the gallery lab's round six): the stage,
-// exactly as tall as what it draws fitted whole; the caption; then the words
-// in their own area, with the mentors (a block each) and the links after the
-// last of them.
-// Words that do not fit beside their stage have pages of their own (wordsOnly:
-// no stage; the pager measures and lays them out, lib/gallery/paginate), so
-// the area scrolls, behind a soft fade at its foot, only for one paragraph
-// taller than a whole page (a very short window). A page that is not current
-// is inert and hidden from assistive tech.
+// One page of the phone pager (the gallery lab's round six): the stage, as
+// tall as the pager gave it and exactly as tall as what it draws (a photo
+// whole, or on a short stage kept at a readable width and cropped about its
+// subject); the caption; then the words in their own area, with the mentors
+// (a block each) and the links after the last of them. Every page has a photo
+// and words (lib/gallery/paginate): a photo carried onto a page after its own
+// is drawn again with no caption and no mask of its own. The words area
+// scrolls, behind a soft fade at its foot, only for one paragraph taller than a
+// whole page with nothing left to drop (a very short window). A page that is
+// not current is inert and hidden from assistive tech.
 // No page carries the flight's slot (a flown card parks on the header's tile,
 // which stays put while the pages turn), so every photo draws itself.
 
-type Stage = { photos: readonly number[]; frame: Box; boxes: readonly Box[] };
-type Props = { gallery: Gallery; page: Page; index: number; count: number; kind: StageKind; stage: Stage; room: number; current: boolean; pressing: boolean };
+type Stage = { photos: readonly number[]; frame: Box; boxes: readonly StageBox[] };
+type Props = { gallery: Gallery; page: Page; index: number; count: number; kind: StageKind; stage: Stage; trims: Trims; current: boolean; pressing: boolean };
 
 const g = siteContent.modals.gallery;
 const fade = `linear-gradient(to bottom, black calc(100% - ${GALLERY.pager.wordsFadePx}px), transparent)`;
 const WORDS_FADE: CSSProperties = { maskImage: fade, WebkitMaskImage: fade };
 
-export function PagerPage({ gallery, page, index, count, kind, stage, room, current, pressing }: Props) {
+export function PagerPage({ gallery, page, index, count, kind, stage, trims, current, pressing }: Props) {
   const textRef = useRef<HTMLDivElement | null>(null);
   const [scrolls, setScrolls] = useState(false);
   // The post's own link is the post card's, so the card's link to it is not drawn a second time on a page beside the card. The end block
@@ -51,7 +52,12 @@ export function PagerPage({ gallery, page, index, count, kind, stage, room, curr
   useLayoutEffect(() => {
     const text = textRef.current;
     if (!text) return;
-    const read = () => setScrolls(text.scrollHeight > text.clientHeight + 1);
+    // The words' own height, less the padding they take only while they scroll, so words laid out to fit are never held scrolling by it.
+    const read = () => {
+      const inner = text.firstElementChild as HTMLElement | null;
+      const words = inner ? inner.offsetHeight - parseFloat(getComputedStyle(inner).paddingBottom || "0") : text.scrollHeight;
+      setScrolls(words > text.clientHeight + 1);
+    };
     read();
     const observer = new ResizeObserver(read);
     observer.observe(text);
@@ -68,15 +74,15 @@ export function PagerPage({ gallery, page, index, count, kind, stage, room, curr
       inert={!current}
       className="flex h-full w-full shrink-0 flex-col gap-3"
       data-pager-page={index}
-      data-unit={page.photo}
+      data-unit={page.unit ?? index}
       data-stage-kind={kind}
       data-wordless={page.wordless ? "" : undefined}
-      data-words-only={page.wordsOnly ? "" : undefined}
+      data-carried={page.carried ? "" : undefined}
     >
-      {page.wordsOnly ? null : kind === "turns" ? (
+      {kind === "turns" ? (
         <PhoneRotator gallery={gallery} photos={stage.photos} frame={stage.frame} boxes={stage.boxes} active={current} pressing={pressing} />
       ) : (
-        <StillStage gallery={gallery} photo={page.photo} box={stage.boxes[0]} height={stage.frame.height} room={room} />
+        <StillStage gallery={gallery} photo={page.photo} box={stage.boxes[0]} height={stage.frame.height} carried={!!page.carried} />
       )}
       {!page.wordless && (
         <div
@@ -86,11 +92,11 @@ export function PagerPage({ gallery, page, index, count, kind, stage, room, curr
           data-pager-text=""
           data-scrolls={scrolls ? "" : undefined}
         >
-          {/* The words as blocks the pager can measure (data-block: each paragraph with what follows it, each mentor, then the end block); gap-4 and pb-6 are GALLERY.pager.blockGapPx and endPadPx. */}
-          <div className="flex flex-col gap-4 pb-6">
+          {/* The words as blocks the pager can measure (data-block: each paragraph with what follows it, each mentor, then the end block); gap-4 is GALLERY.pager.blockGapPx, and pb-6 (endPadPx) clears the fade only on words that scroll. */}
+          <div className={`flex flex-col gap-4 ${scrolls ? "pb-6" : ""}`}>
             {slideWords(page).map((unit) => (
-              <div key={unit} className="flex flex-col gap-4" data-block={`w${unit}`}>
-                <Words gallery={gallery} unit={unit} compact />
+              <div key={unit} className="flex flex-col gap-4" data-block={`w${unit}`} data-trimmed={trims[unit] ? trims[unit] : undefined}>
+                <Words gallery={gallery} unit={unit} compact trim={trims[unit] ?? 0} />
                 {afterWords(gallery, unit, false)}
               </div>
             ))}
@@ -111,24 +117,23 @@ export function PagerPage({ gallery, page, index, count, kind, stage, room, curr
   );
 }
 
-// One photo standing on its stage's floor, whole, its caption under the stage.
-function StillStage({ gallery, photo, box, height, room }: { gallery: Gallery; photo: number; box: Box; height: number; room: number }) {
+// One photo standing on its stage's floor, its caption under the stage (none when it was shown on an earlier page).
+function StillStage({ gallery, photo, box, height, carried }: { gallery: Gallery; photo: number; box: StageBox; height: number; carried: boolean }) {
   const picture = gallery.photos[photo];
-  const caption = picture.captionShort ?? picture.caption;
+  const caption = carried ? null : (picture.captionShort ?? picture.caption);
   // A name tag's height is its tip's, and the post is a link card (a frame as tall as the post would scroll inside the page), so their stage
-  // is as tall as the tag or the card (shrunk to the page's room when that is short, FitStage) and leaves the words the rest; a photo stands
-  // on the floor of a stage of its own height.
+  // is as tall as the tag or the card, shrunk to the room the pager gave it when that is short (FitStage), and leaves the words the rest.
   if (picture.embed || picture.tag !== undefined) {
     return (
-      <FitStage room={room}>
+      <FitStage room={height}>
         <StillPhoto photo={picture} index={photo} box={box} caption={null} card />
       </FitStage>
     );
   }
   return (
     <>
-      <div className="relative flex w-full shrink-0 items-end justify-center" style={{ height }} data-pager-stage="">
-        <StillPhoto photo={picture} index={photo} box={box} sizes={PAGER_PHOTO_SIZES} caption={null} />
+      <div className="relative flex w-full shrink-0 items-end justify-center" style={{ height }} data-pager-stage="" data-cropped={box.cropped ? "" : undefined}>
+        <StillPhoto photo={picture} index={photo} box={box} sizes={PAGER_PHOTO_SIZES} caption={null} position={focusOf(picture.focus)} mask={!carried} />
       </div>
       {caption && (
         <p data-mask={partId.caption(photo)} data-mask-kind="text" data-mask-split="" className="shrink-0 font-label text-label text-muted">

@@ -24,6 +24,36 @@ export const pictures = {
   "building-in-public": picture("building-in-public-picture", "Me holding my badge in front of the Ship NYC sign at Vercel Ship in New York"),
 } as const;
 
+// Where each tall photo's subject sits, as a share of its height from the top. A phone page short on room keeps a photo at a readable
+// width and crops it top and bottom (lib/gallery/boxes phoneBox), keeping this line in view; read off each photo, 2026-10-30. A photo
+// not named here is cropped about its middle; the desktop never reads this.
+export const phoneFocus: Readonly<Record<string, number>> = {
+  "/photos/cards/mentorship-picture.jpg": 0.32,
+  "/photos/cards/band-picture.jpg": 0.32,
+  "/photos/cards/band-2-practice.jpg": 0.62,
+  "/photos/cards/band-3-competition.jpg": 0.28,
+  "/photos/cards/travel-picture.jpg": 0.5,
+  "/photos/cards/travel-1-fuji.jpg": 0.42,
+  "/photos/cards/travel-2-dubai.jpg": 0.55,
+  "/photos/cards/travel-3-cartagena.jpg": 0.62,
+  "/photos/cards/capital-one-1-2024.jpg": 0.4,
+  "/photos/cards/capital-one-2-2025.jpg": 0.42,
+  "/photos/cards/capital-one-3-2026.jpg": 0.6,
+  "/photos/cards/hackathons-picture.jpg": 0.5,
+  "/photos/cards/hackathons-2-vercel.jpg": 0.45,
+  "/photos/cards/anthropic-2-session.jpg": 0.4,
+  "/photos/cards/misuki-picture.jpg": 0.52,
+  "/photos/cards/misuki-1-gregory-gym.jpg": 0.7,
+  "/photos/cards/misuki-2-shop.jpg": 0.42,
+  "/photos/cards/ieee-3-rising-stars.jpg": 0.42,
+  "/photos/cards/jobs-4-aritzia-poster.jpg": 0.18,
+  "/photos/cards/jobs-3-apple.jpg": 0.5,
+  "/photos/cards/jobs-1-mod-selfie.jpg": 0.32,
+  "/photos/cards/jobs-2-mod-sign.jpg": 0.4,
+  "/photos/cards/building-in-public-picture.jpg": 0.5,
+  "/photos/cards/building-2-toronto.jpg": 0.45,
+};
+
 export const modalPhotos = {
   mentorship: [
     photo("mentorship-1-booth", 1125, 978, { block: 0 }, "Me with other mentors and scholars at the Hispanic Scholarship Fund STEM Summit photo booth, September 2026", "Me at my second HSF, this time as a mentor."),

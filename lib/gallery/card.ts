@@ -1,9 +1,10 @@
 import { siteContent, type CardKey, type PostCardRef } from "@/lib/content";
 import { visibleText } from "@/lib/content/links";
+import { phoneFocus } from "@/lib/content/media";
 import { rowColumns, type Box, type ColumnSettings } from "./boxes";
-import { BOXES, CARD_PHONE_GROUPING, GALLERY, PHONE_GROUPING } from "./constants";
+import { BOXES, GALLERY, PHONE_GROUPING } from "./constants";
 import { jobsGallery } from "./jobs";
-import { galleryPlan, namedPlan, type PhoneGrouping, type Plan } from "./plan";
+import { clusterPages, galleryPlan, namedPlan, phonePages, type Page, type PhoneGrouping, type Plan } from "./plan";
 
 // One card's modal as the gallery reads it: its photos (the card picture first
 // on a photo card), the word units they sit beside, Aaron's plan, and the
@@ -16,10 +17,14 @@ export interface GalleryVideo { src: string; poster: string; width: number; heig
 export interface GalleryEmbed { src: string; width: number; height: number; title: string; card: PostCardRef }
 // tag: a job's name tag drawn in the place of a photo (components/card/JobTag), the index of its entry on the jobs timeline; its
 // width and height are a nominal box (the tag grows with its tip).
-export interface GalleryPhoto { src: string; width: number; height: number; alt: string; caption: string | null; captionShort: string | null; beside?: number; video?: GalleryVideo; tag?: number; embed?: GalleryEmbed }
+// focus: where a tall photo's subject sits, a share of its height from the top, kept in view when a phone page crops it (lib/content/media).
+export interface GalleryPhoto { src: string; width: number; height: number; alt: string; caption: string | null; captionShort: string | null; beside?: number; video?: GalleryVideo; tag?: number; embed?: GalleryEmbed; focus?: number }
 export type WordUnit = { kind: "block"; index: number };
-// boxes: each piece's own box where a card sets them (the jobs card's); the rest take the gallery's two boxes by orientation. grouping: the phone pager's.
-export interface Gallery { key: CardKey; photos: readonly GalleryPhoto[]; lead: number | undefined; words: readonly WordUnit[]; plan: Plan; aspects: readonly number[]; panelWidth: number; slot: number; boxes?: readonly Box[]; grouping: PhoneGrouping }
+// boxes: each piece's own box where a card sets them (the jobs card's); the rest take the gallery's two boxes by orientation. grouping: the
+// phone pager's. pages: the phone's pages before its pager measures them (lib/gallery/paginate lays the pages out from these).
+export interface Gallery { key: CardKey; photos: readonly GalleryPhoto[]; lead: number | undefined; words: readonly WordUnit[]; plan: Plan; aspects: readonly number[]; panelWidth: number; slot: number; boxes?: readonly Box[]; grouping: PhoneGrouping; pages: readonly Page[] }
+
+const focused = (photo: GalleryPhoto): GalleryPhoto => (phoneFocus[photo.src] === undefined ? photo : { ...photo, focus: phoneFocus[photo.src] });
 
 // The photo cards the gallery lab never showed Aaron follow cards.md's pairings
 // (ruled on the plan's review, 2026-10-10), bent so that no row is without words
@@ -41,10 +46,13 @@ export function galleryOf(key: CardKey): Gallery {
   const picture = visual.kind === "photo" ? visual.photo : null;
   const blocks = modal.blocks.map((_, index): WordUnit => ({ kind: "block", index }));
   const columnSettings: ColumnSettings = { boxes: BOXES, wideFrom: GALLERY.wideFrom, columnGap: GALLERY.columnGap, textWidth: GALLERY.textWidth, padding: GALLERY.panelPadding, border: GALLERY.panelBorder };
-  const grouping = CARD_PHONE_GROUPING[key] ?? PHONE_GROUPING;
+  const grouping = PHONE_GROUPING;
   if (key === "jobs") {
     const jobs = jobsGallery(columnSettings);
-    const gallery: Gallery = { key, photos: jobs.photos, lead: undefined, words: blocks, plan: jobs.plan, aspects: jobs.photos.map((photo) => photo.width / photo.height), panelWidth: jobs.panel, slot: jobs.slot, boxes: jobs.boxes, grouping };
+    const photos = jobs.photos.map(focused);
+    // On a phone a cluster cannot sit beside its words: each row's photos stand with its paragraph, and each name tag is a page of its own.
+    const pages = clusterPages(jobs.plan, (piece) => photos[piece].tag !== undefined);
+    const gallery: Gallery = { key, photos, lead: undefined, words: blocks, plan: jobs.plan, aspects: photos.map((photo) => photo.width / photo.height), panelWidth: jobs.panel, slot: jobs.slot, boxes: jobs.boxes, grouping, pages };
     cache.set(key, gallery);
     return gallery;
   }
@@ -57,12 +65,12 @@ export function galleryOf(key: CardKey): Gallery {
     ...(modal.video
       ? [{ src: modal.video.poster, ...VIDEO_FRAME, alt: modal.video.label, caption: null, captionShort: null, beside: modal.video.beside, video: { src: modal.video.src, poster: modal.video.poster, width: modal.video.width, height: modal.video.height } }]
       : []),
-  ];
+  ].map(focused);
   const lead = picture ? 0 : undefined;
   const plan = lead !== undefined && NAMED.has(key) ? namedPlan(blocks.length, photos, lead) : galleryPlan(blocks.length, photos, lead);
   const aspects = photos.map((photo) => photo.width / photo.height);
   const columns = rowColumns(aspects, columnSettings);
-  const gallery: Gallery = { key, photos, lead, words: blocks, plan, aspects, panelWidth: columns.panel, slot: columns.slot, grouping };
+  const gallery: Gallery = { key, photos, lead, words: blocks, plan, aspects, panelWidth: columns.panel, slot: columns.slot, grouping, pages: phonePages(plan, grouping) };
   cache.set(key, gallery);
   return gallery;
 }

@@ -1,7 +1,7 @@
 import { siteContent } from "@/lib/content";
 import type { Gallery } from "./card";
 import { GALLERY } from "./constants";
-import { phonePages, type Page } from "./plan";
+import type { Page } from "./plan";
 import { pagerSteps, partId, planSteps, type MaskStep, type StepOptions } from "./timing";
 
 // Which parts of a card's modal mask in, and in what order: the desktop rows
@@ -23,7 +23,7 @@ export function cardSteps(gallery: Gallery, layout: "rows" | "pager", flying: bo
     trailing: gallery.key === "mentorship" && siteContent.cards.mentorship.mentors.people.length > 0 ? [partId.mentors] : gallery.key === "talos" ? [partId.talos] : [],
     lines,
   };
-  const pages = phone ?? phonePages(gallery.plan, gallery.grouping);
+  const pages = phone ?? gallery.pages;
   return layout === "pager" && pages.length > 0 ? pagerSteps(pages, o) : planSteps(gallery.plan, o);
 }
 

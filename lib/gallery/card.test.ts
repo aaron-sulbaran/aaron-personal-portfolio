@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { siteContent, type CardKey } from "@/lib/content";
+import { phoneFocus } from "@/lib/content/media";
 import { galleryOf, headerMeta, headerTileOf } from "@/lib/gallery/card";
 import { GALLERY, PHONE_GROUPING } from "@/lib/gallery/constants";
 import { phonePages, slideWords } from "@/lib/gallery/plan";
@@ -107,16 +108,32 @@ describe("each card's gallery", () => {
     expect(plan.slides.map((_, i) => (i % 2 === 0 ? "left" : "right"))).toEqual(["left", "right", "left", "right"]);
   });
 
-  it("sets the jobs card's phone pager a page a piece: each tag and photo its own page, the first of a row with the row's words, the post's page then Popeyes' tag", () => {
+  it("sets the jobs card's phone pages photo and paragraph first, then each name tag a page of its own: no photo without words", () => {
     const gallery = galleryOf("jobs");
-    expect(gallery.grouping).toBe("photo");
-    const pages = phonePages(gallery.plan, gallery.grouping);
-    expect(pages.map((page) => page.photo)).toEqual([4, 0, 5, 1, 6, 7, 2, 3, 9, 8]);
-    expect(pages.map((page) => slideWords(page))).toEqual([[0], [], [1], [], [2], [], [], [], [3], []]);
-    expect(pages.filter((page) => page.wordless).map((page) => page.photo)).toEqual([0, 1, 7, 2, 3, 8]);
-    expect(pages.map((page) => page.links)).toEqual([false, false, false, false, false, false, false, false, true, false]);
-    expect(pages.every((page) => page.photos.length === 1 && !page.together && !page.aside)).toBe(true);
-    for (const key of keys.filter((candidate) => candidate !== "jobs")) expect(galleryOf(key).grouping, key).toBe(PHONE_GROUPING);
+    expect(gallery.grouping).toBe("paragraph");
+    const { pages, photos } = gallery;
+    // The poster and the first paragraph, Aritzia's tag; the badge and the second, Apple's tag; MOD's two photos taking turns beside the
+    // third, UT Austin's and MOD's tags; the post's card and the last paragraph, Popeyes' tag.
+    expect(pages.map((page) => page.photos)).toEqual([[0], [4], [1], [5], [2, 3], [6], [7], [9], [8]]);
+    expect(pages.map((page) => slideWords(page))).toEqual([[0], [], [1], [], [2], [], [], [3], []]);
+    expect(pages.filter((page) => page.wordless).every((page) => photos[page.photo].tag !== undefined), "only a name tag stands without a paragraph").toBe(true);
+    expect(pages.filter((page) => !page.wordless).every((page) => photos[page.photo].tag === undefined), "every paragraph beside a photo or the post's card").toBe(true);
+    expect(pages.map((page) => page.links)).toEqual([false, false, false, false, false, false, false, true, false]);
+    expect(pages.every((page) => !page.together && !page.aside)).toBe(true);
+    // Every piece of media once.
+    expect(pages.flatMap((page) => page.photos).sort((a, b) => a - b)).toEqual(photos.map((_, i) => i));
+    for (const key of keys) expect(galleryOf(key).grouping, key).toBe(PHONE_GROUPING);
+    for (const key of keys.filter((candidate) => candidate !== "jobs")) expect(galleryOf(key).pages, key).toEqual(phonePages(galleryOf(key).plan, PHONE_GROUPING));
+  });
+
+  it("knows where each tall photo's subject is, so a phone page that crops it keeps the subject in view", () => {
+    const focused = keys.flatMap((key) => galleryOf(key).photos.filter((photo) => photo.focus !== undefined));
+    expect(focused.length).toBeGreaterThan(15);
+    for (const photo of focused) expect(photo.focus!, photo.src).toBeGreaterThanOrEqual(0);
+    for (const photo of focused) expect(photo.focus!, photo.src).toBeLessThanOrEqual(1);
+    expect(galleryOf("capital-one").photos[0].focus).toBe(0.4);
+    const sources = new Set(keys.flatMap((key) => galleryOf(key).photos.map((photo) => photo.src)));
+    expect(Object.keys(phoneFocus).filter((src) => !sources.has(src)), "every focus names a photo the modals show").toEqual([]);
   });
 
   it("sizes each panel to its widest box: 918 all vertical, 1022 with a horizontal photo, 542 with none, 1104 for the jobs card's clusters and post", () => {

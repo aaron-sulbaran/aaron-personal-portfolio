@@ -33,8 +33,13 @@ export interface Page extends Slide {
   links: boolean; // the card's links (and, unless mentors says which, all the mentors) sit on this page
   // Which of Mentorship's mentors sit on this page, once the pager has split them across pages (repage); absent, a page that has the links has them all.
   mentors?: readonly number[];
-  wordless?: boolean; // grouping B: a group's later photo alone with its caption
-  wordsOnly?: true; // words on a page of their own, no stage: they did not fit beside their photo (repage); photo is still the one they belong to
+  wordless?: boolean; // a page with no words beside its media: grouping B's later photos, and the jobs card's name tags (a tag's tip is its words)
+  // Set by the pager once it has measured (repage): the phone page this came from, which of its pages this is, the stage's height,
+  // and whether its photo was shown on an earlier page (drawn again with no caption).
+  unit?: number;
+  part?: number;
+  stage?: number;
+  carried?: true;
 }
 
 // A: a page a paragraph, the group turning in the stage. B: a page a photo, a
@@ -235,18 +240,42 @@ export function phonePages(plan: Plan, grouping: PhoneGrouping): Page[] {
   return grouping === "photo" ? photoPages(plan) : pagesOf(plan);
 }
 
-// The pages laid out as the pager measured them (lib/gallery/paginate): a unit named in the shape keeps its stage's page, with whatever words
-// fit beside the stage (wordless when none do), and the rest of its words, Mentorship's mentors and the card's links when its page had them,
-// follow on pages of their own (wordsOnly: no stage). Order and every word stay.
+// A row of media seen together (the jobs card's) on a phone, where a cluster cannot sit beside words: the row's photos stand with its
+// words on one page (two take turns), or, in a row with no photo, its other piece (the post's card) does; then each of its name tags is
+// a page of its own, the tag's tip that page's words. Every other row is a page as pagesOf lays it.
+export function clusterPages(plan: Plan, isTag: (photo: number) => boolean): Page[] {
+  return pagesOf(plan).flatMap(({ together, aside, ...page }): Page[] => {
+    if (!together) return [page];
+    const pieces = [...page.photos, ...(aside ?? [])];
+    const stage = pieces.filter((piece) => !isTag(piece));
+    const shown = stage.length ? stage : pieces.slice(0, 1);
+    const tags = pieces.filter((piece) => !shown.includes(piece));
+    return [{ ...page, photo: shown[0], photos: shown }, ...tags.map((tag): Page => ({ photo: tag, photos: [tag], before: [], after: [], links: false, wordless: true }))];
+  });
+}
+
+// The pages laid out as the pager measured them (lib/gallery/paginate): each phone page becomes the pages its shape gives it, each with
+// its stage's height, its photos (a group dealt out over several pages, or a photo carried onto a page after its own) and its words,
+// Mentorship's mentors and the card's links where the shape puts them. A page the shape does not name stays as it is. Order and every
+// word stay.
 export function repage(pages: readonly Page[], shape: Shape): Page[] {
-  return pages.flatMap((page): Page[] => {
-    const unit = shape[page.photo];
-    if (!unit || page.wordsOnly) return [page];
-    const { stage, more } = unit;
-    const empty = stage.units.length === 0 && !stage.end && !stage.mentors?.length;
-    const first: Page = { ...page, before: stage.units, own: undefined, after: [], links: stage.end, ...(stage.mentors ? { mentors: stage.mentors } : {}), ...(empty ? { wordless: true as const } : {}) };
-    const rest = more.map((chunk): Page => ({ photo: page.photo, photos: [page.photo], before: chunk.units, after: [], links: chunk.end, ...(chunk.mentors ? { mentors: chunk.mentors } : {}), wordsOnly: true }));
-    return [first, ...rest];
+  return pages.flatMap((page, unit): Page[] => {
+    const chunks = shape[unit];
+    if (!chunks?.length) return [{ ...page, unit }];
+    return chunks.map((chunk, part): Page => ({
+      ...page,
+      unit,
+      part,
+      photo: chunk.photos[0] ?? page.photo,
+      photos: chunk.photos.length ? [...chunk.photos] : [...page.photos],
+      before: [...chunk.units],
+      own: undefined,
+      after: [],
+      links: chunk.end,
+      stage: chunk.stage,
+      ...(chunk.mentors ? { mentors: chunk.mentors } : {}),
+      ...(chunk.carried ? { carried: true as const } : {}),
+    }));
   });
 }
 

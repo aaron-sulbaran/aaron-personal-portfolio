@@ -20,7 +20,7 @@ export function uniformBoxes(verticalWidth: number, horizontalWidth: number): Bo
 export const boxFor = (aspect: number, boxes: Boxes, wideFrom: number): Box => (isWide(aspect, wideFrom) ? boxes.horizontal : boxes.vertical);
 
 export function groupFrame(boxes: readonly Box[]): Box {
-  return boxes.reduce((frame, box) => ({ width: Math.max(frame.width, box.width), height: Math.max(frame.height, box.height) }), { width: 0, height: 0 });
+  return boxes.reduce<Box>((frame, box) => ({ width: Math.max(frame.width, box.width), height: Math.max(frame.height, box.height) }), { width: 0, height: 0 });
 }
 
 export interface ColumnSettings { boxes: Boxes; wideFrom: number; columnGap: number; textWidth: number; padding: number; border: number }
@@ -38,10 +38,27 @@ export function columnsFor(slot: number, g: ColumnSettings) {
   return { slot, panel: inner + 2 * g.padding + 2 * g.border };
 }
 
-export function pageStage(photos: readonly number[], aspects: readonly number[], innerWidth: number, height: number) {
-  const boxes = photos.map((photo) => fitWhole(aspects[photo], innerWidth, height));
+// A phone page's photo: whole in its stage while that leaves it at least minShare of the page's width. On a stage too short for that
+// (a page that gave its words the room), it keeps that width and is cropped top and bottom (object-fit: cover, about the photo's own
+// focus, lib/content/media), so it never shrinks to a thumbnail.
+export type StageBox = Box & { cropped: boolean };
+
+export function phoneBox(aspect: number, innerWidth: number, height: number, minShare: number): StageBox {
+  const whole = fitWhole(aspect, innerWidth, height);
+  const least = innerWidth * Math.min(1, minShare);
+  if (whole.height <= 0 || whole.width + 0.5 >= least) return { ...whole, cropped: false };
+  return { width: least, height, cropped: true };
+}
+
+// A page's stage, its frame the largest of its boxes: every photo whole, or with minShare, cropped where whole would be narrower than
+// that share of the width. whole names media that is never cropped (a demo video letterboxes itself in its own frame).
+export function pageStage(photos: readonly number[], aspects: readonly number[], innerWidth: number, height: number, minShare = 0, whole: (photo: number) => boolean = () => false) {
+  const boxes = photos.map((photo): StageBox => (minShare > 0 && !whole(photo) ? phoneBox(aspects[photo], innerWidth, height, minShare) : { ...fitWhole(aspects[photo], innerWidth, height), cropped: false }));
   return { frame: groupFrame(boxes), boxes };
 }
+
+// The CSS object-position that keeps a cropped photo's subject in view: focus is a share of its height from the top (lib/content/media).
+export const focusOf = (focus: number | undefined) => `50% ${Math.round((focus ?? 0.5) * 100)}%`;
 
 // The cap, or less when the page is too short to leave the words their room,
 // never below the floor.

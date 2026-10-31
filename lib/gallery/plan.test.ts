@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { galleryPlan, groupedPlan, namedPlan, pagesOf, phonePages, photoOrder, photoPages, slideWords, stageKind, type Plan } from "@/lib/gallery/plan";
+import { clusterPages, galleryPlan, groupedPlan, namedPlan, pagesOf, phonePages, photoOrder, photoPages, slideWords, stageKind, type Plan } from "@/lib/gallery/plan";
 
 // The rows as Aaron reads them: which photos, beside which words.
 const rows = (plan: Plan) => plan.slides.map((slide) => ({ photos: slide.photos, words: slideWords(slide) }));
@@ -133,6 +133,19 @@ describe("pages on a phone", () => {
   });
   it("C: a group is a strip under its page's words", () => {
     expect(phonePages(mentorship, "strip").map((page) => stageKind(page, "strip"))).toEqual(["still", "strip"]);
+  });
+  it("lays a row seen together (the jobs card's) out on a phone as its photos beside its words, then each name tag a page of its own", () => {
+    // Photos 0 and 1 are photos, 4 to 6 are tags, 9 is the post's card; the last row has Popeyes' tag (8) beside the post's paragraph.
+    const together = (photos: number[], own: number, aside?: number[]) => ({ photo: photos[0], photos, own, before: [], after: [], together: true as const, ...(aside ? { aside } : {}) });
+    const plan: Plan = { intro: [], slides: [together([4, 0], 0), together([5, 6, 1, 2], 1), together([9], 2, [8])], closing: [] };
+    const pages = clusterPages(plan, (photo) => [4, 5, 6, 8].includes(photo));
+    expect(pages.map((page) => [page.photos, slideWords(page), !!page.wordless, page.links])).toEqual([
+      [[0], [0], false, false], [[4], [], true, false],
+      [[1, 2], [1], false, false], [[5], [], true, false], [[6], [], true, false],
+      [[9], [2], false, true], [[8], [], true, false],
+    ]);
+    expect(pages.every((page) => !page.together && !page.aside)).toBe(true);
+    expect(clusterPages({ intro: [], slides: [{ photo: 3, photos: [3], own: 0, before: [], after: [] }], closing: [] }, () => false)).toEqual(pagesOf({ intro: [], slides: [{ photo: 3, photos: [3], own: 0, before: [], after: [] }], closing: [] }));
   });
   it("gives a card with no photos no pages", () => {
     expect(pagesOf(galleryPlan(2, []))).toEqual([]);

@@ -2,7 +2,7 @@
 
 import { useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent } from "react";
 import { siteContent } from "@/lib/content";
-import type { Box } from "@/lib/gallery/boxes";
+import { focusOf, type Box } from "@/lib/gallery/boxes";
 import type { Gallery } from "@/lib/gallery/card";
 import { GALLERY } from "@/lib/gallery/constants";
 import { isKeyboardFocus } from "@/lib/input/modality";
@@ -15,7 +15,8 @@ import { useRotator } from "./useRotator";
 // has a group of photos they take turns inside the page's stage on the
 // desktop's rules (useRotator). The frame is the group's largest photo fitted
 // whole and each photo is drawn at its own fit centred in it, so the stage
-// never changes size and nothing is cropped. Small marks in a pill inside the
+// never changes size (on a stage the pager shortened, a photo keeps a readable
+// width and is cropped about its subject, lib/gallery/boxes phoneBox). Small marks in a pill inside the
 // current photo's bottom right corner say where the group is (in a group of
 // two shapes the pill glides to the next photo's corner with the change),
 // well away from the page dots. A tap on the stage steps the group (Enter or
@@ -84,7 +85,7 @@ export function PhoneRotator({ gallery, photos, frame, boxes, active, pressing }
           data-rotator-frame=""
         >
           {photos.map((photo, i) => (
-            <GroupLayer key={photo} gallery={gallery} photo={photo} box={boxes[i]} frame={frame} layer={i} current={i === index} sizes={PAGER_PHOTO_SIZES} />
+            <GroupLayer key={photo} gallery={gallery} photo={photo} box={boxes[i]} frame={frame} layer={i} current={i === index} sizes={PAGER_PHOTO_SIZES} position={focusOf(gallery.photos[photo].focus)} />
           ))}
           <div aria-hidden="true" className="pointer-events-none absolute z-[3] flex items-center gap-1 rounded-full px-1.5 py-1" style={{ ...pill, ...marksAt }} data-rotator-marks="">
             {photos.map((photo, i) =>
