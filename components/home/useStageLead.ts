@@ -44,12 +44,14 @@ export function useStageLead(sectionRef: RefObject<HTMLElement | null>, scene: H
       const slot = document.querySelector("[data-coil-ribbon]")?.getBoundingClientRect();
       const frame = section.querySelector("[data-coil-frame]")?.getBoundingClientRect();
       const foot = document.querySelector<HTMLElement>("[data-intro-foot]");
+      // Page 2's phone band (the pane beside the columns is not rendered): the scene sizes the wheel as on the band it was tuned on.
+      const phone = section.querySelector("[data-coil-pane]")?.getClientRects().length === 0;
       let lead = 0;
       let stick: number | null = null;
       if (slot && frame && !released.current) {
-        lead = stageLeadPx({ sectionTop: section.getBoundingClientRect().top, slotCenter: slot.top + slot.height / 2, frameHeight: frame.height, canvasWidth: frame.width });
+        lead = stageLeadPx({ sectionTop: section.getBoundingClientRect().top, slotCenter: slot.top + slot.height / 2, frameHeight: frame.height, canvasWidth: frame.width, phone });
         if (foot && slot.height > 0) {
-          stick = ctaStickPx({ frameHeight: frame.height, canvasWidth: frame.width, slotHeight: slot.height, gapPx: parseFloat(getComputedStyle(foot).rowGap) || 0 });
+          stick = ctaStickPx({ frameHeight: frame.height, canvasWidth: frame.width, slotHeight: slot.height, gapPx: parseFloat(getComputedStyle(foot).rowGap) || 0, phone });
         }
       }
       const run = `${Math.round(Math.max(0, lead))}px`;

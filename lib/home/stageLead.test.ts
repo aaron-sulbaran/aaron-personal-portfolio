@@ -10,6 +10,13 @@ describe("the stage's reach up page 1", () => {
     expect(reach).toBeLessThan(radius * 1.4);
   });
 
+  it("on page 2's phone band, reaches as far as on the band the wheel was tuned on", () => {
+    const band = (844 * COIL.phone.bandSvh) / 100;
+    const tuned = (844 * COIL.phone.wheelBandSvh) / 100;
+    expect(stageReachAbove(band, 390, COIL, true)).toBeCloseTo(stageReachAbove(tuned, 390), 9);
+    expect(stageLeadPx({ sectionTop: 1000, slotCenter: 800, frameHeight: band, canvasWidth: 390, phone: true })).toBeCloseTo(200 + stageReachAbove(tuned, 390), 9);
+  });
+
   it("never reaches less than the ribbon's own card needs, however small the stage", () => {
     expect(stageReachAbove(120, 1280)).toBeGreaterThanOrEqual(COIL.deal.ribbon.cardHeightPx / 2);
     expect(stageReachAbove(120, 390)).toBeGreaterThanOrEqual(COIL.deal.ribbon.cardHeightPhonePx / 2);

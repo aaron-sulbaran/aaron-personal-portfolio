@@ -39,6 +39,8 @@ export type SceneState = {
   rendered: CardPose[];
   sil: Silhouette | null;
   hoveredSlot: number;
+  // The card page 2's phone cue sets a little forward (COIL.phone.frontLift), -1 for none.
+  frontSlot: number;
   hiddenSlot: number | null;
   pointer: Pointer;
   // ---- fx-input state: who owns the wheel gesture, and the book row hold ----
@@ -49,6 +51,10 @@ export type SceneState = {
   coast: { rest: number } | null;
   pressCaughtCoil: boolean; // this touch stopped a coast: it is a catch, not a tap
   rebuildAt: number | null; // when the last rebuild began
+  // The stage is page 2's phone layout (the columns under the Coil, no pane
+  // beside them), as of the last layout: the band's own card size
+  // (COIL.phone) and a drag for any pointer.
+  phoneStage: boolean;
   // The field's opening (radius 0: the faded patch behind the paragraphs stays
   // faded; the field itself is always drawn).
   open: FieldMask;
@@ -129,6 +135,7 @@ export function createSceneState(theme: CoilTheme, budget: RenderBudget, conveyo
     rendered: [],
     sil: null,
     hoveredSlot: -1,
+    frontSlot: -1,
     hiddenSlot: null,
     pointer: { clientX: -1, clientY: -1, x: -1, y: -1, inside: false, known: false },
     capture: createCapture(),
@@ -137,6 +144,7 @@ export function createSceneState(theme: CoilTheme, budget: RenderBudget, conveyo
     coast: null,
     pressCaughtCoil: false,
     rebuildAt: null,
+    phoneStage: false,
     open: { cx: 0, cy: 0, radius: 0, feather: 0 },
     ribbon: NO_RIBBON,
     seam: FIELD.seamFade,

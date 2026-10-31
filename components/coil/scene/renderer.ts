@@ -109,11 +109,16 @@ export function createLayout(ctx: SceneCtx, gl: Gl, parts: LayoutParts, loop: Lo
     seenRingDpr.value = buffer.y / view.height; // fx-hero: the seen ring stays one CSS px wide
     st.lastFieldTime = Number.NaN;
     const before = st.geo;
-    const pane = host.closest("[data-coil-section]")?.querySelector("[data-coil-pane]")?.getBoundingClientRect();
+    const paneEl = host.closest("[data-coil-section]")?.querySelector("[data-coil-pane]");
+    const pane = paneEl?.getBoundingClientRect();
+    // The pane is laid out only beside the columns (md up); below that it is
+    // not rendered at all and the stage is page 2's phone band.
+    st.phoneStage = !!paneEl && paneEl.getClientRects().length === 0;
     st.ribbon = measureRibbon(host);
     st.geo = solveGeometry(paneViewport({ left: rect.left, right: rect.right, width: view.width, height: view.height }, pane ?? null), tileCount, COIL, {
       canvas: { width: view.width, height: view.height },
       ribbonCy: (lastRibbonCy = st.ribbon.cy ?? lastRibbonCy),
+      phone: st.phoneStage,
     });
     // Slice 7: a new composition or a rotation lays every card out afresh;
     // fade the new frame in rather than jump (only while the loop runs: a

@@ -644,8 +644,11 @@ for (const size of SIZES) {
           if (!row || i % step !== 0) continue;
           const image = decodePng(frame.png);
           expect(image.width, "the screencast is the viewport's size").toBe(width);
-          const bottom = readBlue(image, image.height - 6);
-          const band = readBlue(image, Math.round(image.height * 0.9));
+          // Only the canvas can show the field: below the stage's foot the page's own words are read out (on a phone
+          // page 2's column labels, in the accent, reach the last tenth under the band).
+          const foot = row.stage ? Math.max(0, Math.min(image.height, Math.round(row.stage.bottom))) : image.height;
+          const bottom = readBlue(image, image.height - 6, Math.max(image.height - 6, foot));
+          const band = readBlue(image, Math.round(image.height * 0.9), Math.max(Math.round(image.height * 0.9), foot));
           reads.push({ row, bottom: bottom.count, band: band.count, bandMid: (band.minX + band.maxX) / 2 });
         }
         // Before the field opens: the page is off-white, the whole way to the cards.
@@ -654,7 +657,7 @@ for (const size of SIZES) {
         const early = before.filter((r) => r.band > 0 || r.bottom > 0);
         expect(early.map((r) => `${Math.round(r.row.t)} ms, scene clock ${r.row.clock === null ? "n/a" : Math.round(r.row.clock)}: ${r.bottom} blue px in the last rows, ${r.band} in the last tenth`).slice(0, 4), "blue at the viewport's bottom before the bloom").toEqual([]);
         // While it grows: the viewport's last rows never show the field (it fades to the page at the stage's foot, and on a
-        // phone the stage is the top third of the screen), and where blue does reach the last tenth it is an arc about the
+        // phone the stage is page 2's band, the top part of the screen), and where blue does reach the last tenth it is an arc about the
         // middle, never a band that came up from the edge.
         const growing = reads.filter((r) => r.row.clock !== null && r.row.clock >= openStart && r.row.deal !== "dealt");
         expect(growing.length, "frames while the bloom grows").toBeGreaterThan(8);

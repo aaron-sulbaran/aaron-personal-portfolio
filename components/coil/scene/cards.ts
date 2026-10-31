@@ -225,7 +225,7 @@ export function createCards(ctx: SceneCtx, gl: Gl) {
       if (posterMode || j === st.hiddenSlot) pose = { ...pose, alpha: 0 };
       poses[j] = pose;
 
-      slot.hover += ((j === st.hoveredSlot ? 1 : 0) - slot.hover) * hoverStep;
+      slot.hover += ((j === st.hoveredSlot || j === st.frontSlot ? 1 : 0) - slot.hover) * hoverStep;
       const lift = slot.hover > 0.001 ? slot.hover : 0;
       const shown: CardPose = lift
         ? { ...pose, scale: pose.scale * (1 + HOVER_SCALE * lift), fade: pose.fade * (1 - HOVER_UNFADE * lift) }

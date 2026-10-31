@@ -161,6 +161,14 @@ export function clearTopFor(viewport: Viewport, c: CoilConstants = COIL) {
   return isNarrow(viewport, c) ? c.narrow.headerClearPx + c.narrow.introBandPx : 0;
 }
 
+// The height the deal's wheel is sized from (COIL.deal.wheel.diameterOfHeight
+// of it): the canvas's, or on page 2's phone band the band the wheel was tuned
+// on (COIL.phone.wheelBandSvh of the screen), so the taller band leaves the
+// wheel at page 1's foot as it was. lib/home/stageLead.ts reads the same.
+export function wheelBasisPx(canvasHeight: number, phone: boolean, c: CoilConstants = COIL) {
+  return phone ? (canvasHeight * c.phone.wheelBandSvh) / c.phone.bandSvh : canvasHeight;
+}
+
 // How far the ring reaches past the cards' centers, in card heights: a card's
 // half thickness on its side and the lean's tilt.
 const WHEEL_RING_PAD = 0.3;
@@ -172,6 +180,8 @@ export type SolveOptions = {
   // The ribbon's center, CSS px from the canvas's top (the page's slot for it);
   // the wheel forms there too.
   ribbonCy?: number | null;
+  // The pane is page 2's phone band (COIL.phone): its cards are a larger share of it.
+  phone?: boolean;
 };
 
 export function solveGeometry(viewport: Viewport, cardCount: number, c: CoilConstants = COIL, options: SolveOptions = {}): CoilGeometry {
@@ -179,11 +189,14 @@ export function solveGeometry(viewport: Viewport, cardCount: number, c: CoilCons
   const H = viewport.height;
   const camera = cameraFor(viewport, c);
   const region = { width: W, height: H };
-  const narrow = isNarrow(region, c);
+  // Page 2's phone band composes wide whatever its aspect: the band sits under
+  // the page's header with nothing to clear, and a diagonal coil fills a band
+  // about as tall as it is wide (a near-vertical one there showed four cards).
+  const narrow = !options.phone && isNarrow(region, c);
   // On a narrow pane the diagonal relaxes toward vertical with fewer cards per turn.
   const axisDeg = narrow ? c.axisDeg * c.narrow.axisFactor : c.axisDeg;
   const strandFit = narrow ? c.narrow.strandFit : c.strandFit;
-  const clearTopPx = clearTopFor(region, c);
+  const clearTopPx = narrow ? clearTopFor(region, c) : 0;
   // The region the coil spans: the pane under the clear band.
   const regionCenterY = clearTopPx + (H - clearTopPx) / 2;
   const cardsPerTurn = narrow ? Math.min(c.cardsPerTurn, c.narrow.maxCardsPerTurn) : c.cardsPerTurn;
@@ -198,7 +211,7 @@ export function solveGeometry(viewport: Viewport, cardCount: number, c: CoilCons
   const axisPerp = { x: Math.cos(axisRad), y: -Math.sin(axisRad) };
   const perpChord = chord(axisPerp.x, axisPerp.y, W, H);
 
-  const kTarget = H * c.cardHeightFrac;
+  const kTarget = H * (options.phone ? c.phone.cardHeightFrac : c.cardHeightFrac);
   const kPerp = (0.5 * perpChord * (narrow ? 0.98 : 0.94)) / (radius + 0.42);
   let cardPx = Math.min(kTarget, kPerp);
 
@@ -275,7 +288,7 @@ export function solveGeometry(viewport: Viewport, cardCount: number, c: CoilCons
   // wider by its gaps, the cards the same size. It forms where the ribbon is (the
   // middle across, the slot's height down), as shares of the canvas; with no
   // slot, at the constants' anchor.
-  const wheelDiameter = c.deal.wheel.diameterOfHeight * canvas.height;
+  const wheelDiameter = c.deal.wheel.diameterOfHeight * wheelBasisPx(canvas.height, !!options.phone, c);
   const wheelAnchor = ribbonCy !== null ? { x: 0.5, y: (ribbonCy + rb.offsetYPx) / canvas.height } : { x: c.deal.wheel.anchor[0], y: c.deal.wheel.anchor[1] };
   const wheelPx = wheelDiameter / ((2 * cardCount * step) / TAU + WHEEL_RING_PAD);
 
