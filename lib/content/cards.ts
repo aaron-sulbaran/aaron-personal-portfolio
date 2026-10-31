@@ -140,13 +140,9 @@ export const cards: Cards = {
     },
     // On a phone the post is this card instead (a frame that tall would scroll inside the page): the post's hook line and me, one link out.
     postCard: { href: POST_HREF, byline: "Aaron Sulbaran", hook: "I don't trust people who haven't worked an unflattering job.", cta: "Read the post on LinkedIn" },
-    // A short phone's page cannot hold these paragraphs beside their photo (or the post's card, which shows the post's hook itself): these
-    // go first, in this order (and only there).
-    phoneOmit: {
-      1: ["The money (although it was necessary) was secondary though."],
-      2: ["That's why I've never shied away from a service industry job."],
-      3: ["I guess it resonated with people.", "I wrote about my work experience outside of class on LinkedIn, and my hook was \"I don't trust people who haven't worked an unflattering job.\""],
-    } },
+    // A short phone's page cannot hold the last paragraph under the post's card (which shows the post's hook itself): these go first, in
+    // this order (and only there).
+    phoneOmit: { 3: ["I guess it resonated with people.", "I wrote about my work experience outside of class on LinkedIn, and my hook was \"I don't trust people who haven't worked an unflattering job.\""] } },
     // Newest first (Aaron, 2026-10-29). Each job is a name tag in the modal (components/card/JobTag): the tip is on the page for a reader to
     // read, not behind a hover.
     timeline: [
