@@ -303,8 +303,8 @@ test.describe("where the player lives", () => {
     await expect(page.locator(BAND_CARD)).toBeVisible();
     await expect(page.locator(PLAYER_PILL)).toHaveCount(0);
     await expect(page.locator(BAND_CARD).getByRole("slider", { name: S.ariaSeek })).toBeVisible();
-    // The card is the band's feedback, so the band's own Pause steps aside, and the card stands right of paragraph 2's columns.
-    await expect(band(page).locator('[data-control="on"]')).toBeHidden();
+    // The card is the band's feedback, so the band's own controls close up, and the card stands right of paragraph 2's columns.
+    await expect(band(page).locator("[data-band-controls]")).toBeHidden();
     const [card, cell] = await Promise.all([page.locator(BAND_CARD).boundingBox(), page.locator("#story-outside").boundingBox()]);
     expect(card!.x - (cell!.x + cell!.width)).toBeGreaterThanOrEqual(31);
   });
