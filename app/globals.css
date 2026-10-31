@@ -929,6 +929,15 @@ section[data-scene="on"] [data-coil-stage] {
 html[data-deal] section[data-scene="off"] [data-coil-stage] {
   opacity: 0;
 }
+/* Until then the rail is hidden too, which shows nothing new (its stage is clear)
+   but keeps its placing out of the page's layout shift: the rail reaches up page
+   1's foot by --run-lead, set on mount (components/home/useStageLead.ts), and since
+   page 1 tells two paragraphs that reach falls inside the first screen of a tall
+   window (from about 1440x900), where a stage that moved as it was placed counted
+   as a shift though nothing of it could be seen. */
+html[data-deal] section[data-scene="off"] [data-coil-rail] {
+  visibility: hidden;
+}
 /* The deal's cutscene holds the reader's scroll from the moment it starts until the
    Coil is unfurled (lib/home/dealLock.ts sets data-deal-lock on <html> for that
    long). On a desktop the lock is its listeners alone: a scrollbar that came and
