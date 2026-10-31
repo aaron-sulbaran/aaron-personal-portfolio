@@ -171,6 +171,7 @@ describe("Connect", () => {
 describe("the music band", () => {
   it("asks and offers in my words, and says nothing else: one line, then one button per state", () => {
     expect(listen.line).toBe("Want some music while you scroll?");
+    expect(listen.lineReturning).toBe("Want some music while you scroll?");
     expect(listen.accept).toBe("Play it");
     expect(listen.decline).toBe("Not now");
     expect([listen.pause, listen.resume]).toEqual(["Pause", "Resume"]);
@@ -188,7 +189,7 @@ describe("the music band", () => {
   });
 
   it("carries no link, so the line stays quiet", () => {
-    for (const text of [listen.line, listen.accept, listen.decline, listen.pause, listen.resume]) expect(referenced(text)).toEqual([]);
+    for (const text of [listen.line, listen.lineReturning, listen.accept, listen.decline, listen.pause, listen.resume]) expect(referenced(text)).toEqual([]);
   });
 });
 

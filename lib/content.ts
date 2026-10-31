@@ -45,11 +45,15 @@ export const siteContent = {
   intro,
   // The soundtrack band in the middle of page 1 (components/soundtrack): the one place
   // the music is offered and controlled, with the waveform running through
-  // it: the question with its two answers, then one button per state. No
-  // sub-line and no note (slice 4d).
+  // it: the question with its two answers, on every visit, then one play
+  // button per state. No sub-line and no note (slice 4d).
   listen: {
     ariaLabel: "Soundtrack",
+    // The question on a first visit, and lineReturning the one for a visitor who has answered before:
+    // the same words today (Aaron, 2026-10-31), so a different returning title is one string here.
     line: "Want some music while you scroll?",
+    lineReturning: "Want some music while you scroll?",
+    // The play choice reads accept before an answer and after a Not now, resume after a yes (it restores as paused).
     accept: "Play it",
     decline: "Not now",
     pause: "Pause",
