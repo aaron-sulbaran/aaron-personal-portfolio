@@ -20,6 +20,8 @@ export type DebugFlags = {
   pinned: boolean;
   hideCards: boolean;
   hideName: boolean;
+  // ?coildebug=frontlift: page 2's phone cue on (COIL.phone.frontLift), for review.
+  frontLift: boolean;
   heldAt: number | null;
   forcedEntranceMs: number | null;
   inkOverride: number | null;
@@ -46,6 +48,7 @@ export function parseDebugFlags(search: string): DebugFlags {
     pinned: posterMode || stillMode,
     hideCards: tokens.has("nocards"),
     hideName: tokens.has("noname"),
+    frontLift: tokens.has("frontlift"),
     heldAt: heldAt ? Number(heldAt[1]) : null,
     inkOverride: ink ? Math.min(1, Number(ink[1]) / 100) : null,
     forcedEntranceMs: forced ? Number(forced[1]) : null,

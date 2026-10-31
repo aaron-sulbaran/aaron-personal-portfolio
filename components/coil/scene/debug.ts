@@ -38,7 +38,8 @@ import type { UnwindWiring } from "./unwind";
 // frozen there), throw=render, throw=frame (the error boundary paths), flight
 // (lib/coil/flightProbe.ts), name (the wake grid and the per-letter readout
 // over the hero, NameReadout.tsx), ink=<percent> (the name's ink held there;
-// 100 shows the whole surface, the crease check). Any value turns on
+// 100 shows the whole surface, the crease check), frontlift (page 2's phone
+// cue, COIL.phone.frontLift, on for review). Any value turns on
 // window.__coil.
 
 export function debugTokens() {

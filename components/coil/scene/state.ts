@@ -39,6 +39,8 @@ export type SceneState = {
   rendered: CardPose[];
   sil: Silhouette | null;
   hoveredSlot: number;
+  // The card page 2's phone cue sets a little forward (COIL.phone.frontLift), -1 for none.
+  frontSlot: number;
   hiddenSlot: number | null;
   pointer: Pointer;
   // ---- fx-input state: who owns the wheel gesture, and the book row hold ----
@@ -133,6 +135,7 @@ export function createSceneState(theme: CoilTheme, budget: RenderBudget, conveyo
     rendered: [],
     sil: null,
     hoveredSlot: -1,
+    frontSlot: -1,
     hiddenSlot: null,
     pointer: { clientX: -1, clientY: -1, x: -1, y: -1, inside: false, known: false },
     capture: createCapture(),

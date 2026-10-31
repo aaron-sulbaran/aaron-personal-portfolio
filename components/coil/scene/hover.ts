@@ -68,6 +68,30 @@ export function createHover(ctx: SceneCtx, cards: Cards, loop: LoopLink) {
     st.hoveredSlot = nextHover;
     setSceneHover(nextHover >= 0);
     setSceneHoverKey(nextHover >= 0 ? tiles[slots[nextHover].tile].key : null);
+    st.frontSlot = frontCue(f) ? frontAt() : -1;
+  }
+
+  // Page 2's phone cue (COIL.phone.frontLift, or ?coildebug=frontlift): with
+  // no hover to lift a card, the one at the middle of the band's visible part
+  // sits a little forward, as a hovered card does on a desktop, and the lift
+  // passes from card to card as the Coil turns.
+  function frontCue(f: SceneFrame) {
+    const { props } = f;
+    return (
+      (COIL.phone.frontLift || ctx.flags.frontLift) &&
+      st.phoneStage &&
+      props.input === "coarse" &&
+      props.interactive &&
+      !props.frozen &&
+      !st.frozenByApi &&
+      !unwind.on
+    );
+  }
+  function frontAt() {
+    const rect = host.getBoundingClientRect();
+    const top = Math.max(0, -rect.top, st.geo?.clearTopPx ?? 0);
+    const bottom = Math.min(view.height, window.innerHeight - rect.top);
+    return bottom > top ? pickAt(view.width / 2, (top + bottom) / 2) : -1;
   }
 
   // Where a flown card's lift is heading: the hover rule above, with the

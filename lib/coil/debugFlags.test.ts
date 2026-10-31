@@ -36,6 +36,11 @@ describe("scene debug flags", () => {
       heldAt: 3, inkOverride: 1, forcedEntranceMs: -200, hideCards: true, driftParam: "calm",
     });
   });
+  it("frontlift turns page 2's phone cue on for review, and only that token does", () => {
+    expect(parseDebugFlags("?coildebug=1,frontlift").frontLift).toBe(true);
+    expect(parseDebugFlags("?coildebug=1").frontLift).toBe(false);
+    expect(parseDebugFlags("").frontLift).toBe(false);
+  });
   it("holds the field clock at 0 for the poster and the still, else at= or the live clock", () => {
     expect(heldFieldS(parseDebugFlags("?coildebug=still"), 7)).toBe(0);
     expect(heldFieldS(parseDebugFlags("?coildebug=poster"), 7)).toBe(0);
