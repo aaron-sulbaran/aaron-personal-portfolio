@@ -8,29 +8,29 @@ import {
   pointerMoved,
   type CaptureState,
 } from "@/lib/coil/capture";
+import { moveDrag, pressDrag, releaseVelocity, type DragTrack } from "@/lib/coil/dragAxis";
 import { insideSilhouette } from "@/lib/coil/geometry";
 import { addWheel, rowHoldWeight, stepConveyor, stepEnvelope, wheelPixels } from "@/lib/coil/motion";
-import { Observer } from "@/lib/gsap";
 import type { Cards } from "./cards";
 import { pushStat } from "./debug";
 import { canvasPoint, heroVisible, type Hover } from "./hover";
 import type { LoopLink, SceneCtx, SceneFrame } from "./state";
 
-// What moves the coil. A fine pointer's wheel spins it when the gesture
-// starts on a card, or in the seam between two, after a real pointer move
-// (ownership per gesture, lib/coil/capture.ts; the rules are
-// docs/coil-input-model.md section 3), and a click opens the card
-// under it; a coarse pointer drags it sideways and throws it, and a tap opens
-// the card with no flight. Each frame the conveyor takes its feeds (idle,
-// wheel, the throw's coast) through one smoothing stage and the spin cap, and
-// the nudge shows while a coil gesture is held. Page scroll is not a feed: the
-// coil keeps its own pace while the page moves (Aaron, 2026-10-06).
+// What moves the coil. A wheel spins it when the gesture starts on a card, or
+// in the seam between two, after a real pointer move (ownership per gesture,
+// lib/coil/capture.ts; the rules are docs/coil-input-model.md section 3), and
+// a fine pointer's click opens the card under it; a coarse pointer, and any
+// pointer in page 2's phone layout, drags it sideways and throws it, and a
+// coarse pointer's tap opens the card with no flight. Each frame the conveyor
+// takes its feeds (idle, wheel, the throw's coast) through one smoothing stage
+// and the spin cap, and the nudge shows while a coil gesture is held. Page
+// scroll is not a feed: the coil keeps its own pace while the page moves
+// (Aaron, 2026-10-06).
 
 // Slice 7, the touch drag: a released flick coasts on this time constant (an
 // exponential throw, distance = velocity * tau) and settles on a card.
 const COAST_TAU_S = 0.325;
 const COAST_SETTLED_CARDS = 0.002;
-const DRAG_MINIMUM_PX = 4;
 const CLICK_SLOP_PX = 6;
 
 export function createInput(ctx: SceneCtx, cards: Cards, hover: Hover, loop: LoopLink) {
@@ -54,18 +54,13 @@ export function createInput(ctx: SceneCtx, cards: Cards, hover: Hover, loop: Loo
 
   // ---- fx-input: wheel ownership (lib/coil/capture.ts) ----
   // The hero may take a wheel gesture: ready, entrance over, not frozen, not
-  // unwound, a fine pointer, and not a pinch (ctrl + wheel).
+  // unwound, and not a pinch (ctrl + wheel). Any input driver: a phone never
+  // sends a wheel, but a tablet's trackpad and a desktop browser emulating a
+  // phone (Chrome's device toolbar, a coarse pointer with no hover) do, and
+  // the wheel moves the cards there as it does on a desktop (Aaron, 2026-10-30).
   function wheelInteractive(event: WheelEvent) {
     const props = live.current;
-    return (
-      st.ready &&
-      !props.frozen &&
-      !st.frozenByApi &&
-      props.interactive &&
-      props.input === "fine" &&
-      !event.ctrlKey &&
-      !unwind.on
-    );
+    return st.ready && !props.frozen && !st.frozenByApi && props.interactive && !event.ctrlKey && !unwind.on;
   }
 
   // The pointer over the canvas and inside the helix's projected hull (gaps
@@ -135,6 +130,20 @@ export function createInput(ctx: SceneCtx, cards: Cards, hover: Hover, loop: Loo
   const onWheel = (event: WheelEvent) => {
     const now = performance.now();
     const fresh = gestureOwner(st.capture, now) === null;
+    // A coarse pointer sends no hover moves (a tablet's trackpad may; Chrome's
+    // device toolbar never does), so a fresh gesture's own position is the
+    // pointer's sighting: a wheel where the last one was is a still pointer,
+    // and one that has moved rearmPx since the page last scrolled arms capture,
+    // the same rule the fine pointer's moves keep.
+    if (fresh && live.current.input === "coarse" && (event.clientX !== 0 || event.clientY !== 0)) {
+      const moved = !pointer.known || event.clientX !== pointer.clientX || event.clientY !== pointer.clientY;
+      pointer.clientX = event.clientX;
+      pointer.clientY = event.clientY;
+      pointer.known = true;
+      updatePointerLocal();
+      pointer.inside = pointerOverHero(event.target);
+      if (moved) setCapture(pointerMoved(st.capture, { nowMs: now, insideSilhouette: pointerInsideHelix(), x: event.clientX, y: event.clientY }), now);
+    }
     if (fresh) {
       // Some synthesized wheels carry no position (0, 0); the last pointer
       // position stands in, as in the lab.
@@ -203,7 +212,9 @@ export function createInput(ctx: SceneCtx, cards: Cards, hover: Hover, loop: Loo
     downAt = null;
     if (!start || Math.hypot(event.clientX - start.x, event.clientY - start.y) > CLICK_SLOP_PX) return;
     // ---- slice 7: a tap opens the card under the finger, with no flight ----
-    if (event.pointerType === "touch") {
+    // A coarse pointer's click (a tablet's trackpad) is a tap too: it has no
+    // hover to pick with.
+    if (event.pointerType === "touch" || live.current.input === "coarse") {
       const props = live.current;
       if (!st.ready || st.dragging || st.pressCaughtCoil || !props.interactive || props.frozen || st.frozenByApi || unwind.on) return;
       const card = hover.cardAt(event.clientX, event.clientY);
@@ -230,19 +241,30 @@ export function createInput(ctx: SceneCtx, cards: Cards, hover: Hover, loop: Loo
     };
   }
 
-  // ---- slice 7: the coarse pointer's drag-to-spin ----
+  // ---- slice 7: the drag-to-spin ----
   // The hero is touch-action: pan-y, so the browser keeps every vertical swipe
-  // (a swipe starting on a card scrolls the page, never hijacked) and hands
-  // horizontal ones to this Observer, which locks each gesture to its first
-  // axis. A horizontal drag moves the conveyor's target under the finger (the
-  // front card follows it); the release throws it, and the throw coasts
-  // through the same smoothing stage and speed cap and settles on a card. A
-  // new touch catches a coasting coil. Nothing before the entrance ends, while
-  // frozen or unwound, or on a fine pointer (its wheel and hover do the work).
+  // (a swipe starting on a card scrolls the page, never hijacked; the browser
+  // cancels the pointer when it takes the pan) and hands horizontal ones to
+  // these pointer listeners, which lock each press to its first axis
+  // (lib/coil/dragAxis.ts). A horizontal drag moves the conveyor's target
+  // under the finger (the front card follows it); the release throws it, and
+  // the throw coasts through the same smoothing stage and speed cap and
+  // settles on a card. A new press catches a coasting coil. Nothing before the
+  // entrance ends, while frozen or unwound. The drag is the coarse pointer's,
+  // and any pointer's in page 2's phone layout (a mouse in a phone-width
+  // window, a tablet's trackpad): plain pointer events, never touch events,
+  // since a browser decides at load whether it has touch (Chrome's device
+  // toolbar switched on after load sends touches as pointer events only), and
+  // a trackpad's press is no touch at all. On a desktop the fine pointer's
+  // wheel and hover do the work.
   let pressScrollY = 0;
+  let press: { id: number; track: DragTrack } | null = null;
+  function dragDriver() {
+    return live.current.input === "coarse" || st.phoneStage;
+  }
   function canDrag() {
     const props = live.current;
-    return st.ready && props.interactive && props.input === "coarse" && !props.frozen && !st.frozenByApi && !unwind.on;
+    return st.ready && props.interactive && dragDriver() && !props.frozen && !st.frozenByApi && !unwind.on;
   }
   // Cards per px of horizontal finger travel: the front card's arc per card,
   // across the screen.
@@ -250,39 +272,55 @@ export function createInput(ctx: SceneCtx, cards: Cards, hover: Hover, loop: Loo
     if (!st.geo) return 0;
     return 1 / Math.max(1, st.geo.step * st.geo.cardPx * Math.cos(st.geo.axisRad));
   }
+  const onDragPress = (event: PointerEvent) => {
+    // One press at a time (a second finger is a pinch, not a drag), the main button only.
+    if (press || (event.pointerType === "mouse" && event.button !== 0) || !dragDriver()) return;
+    press = { id: event.pointerId, track: pressDrag(event.clientX, event.clientY, performance.now()) };
+    pressScrollY = window.scrollY;
+    st.pressCaughtCoil = st.coast !== null;
+    if (st.coast) {
+      conveyor.target = conveyor.offset;
+      st.coast = null;
+    }
+  };
+  const onDragMove = (event: PointerEvent) => {
+    if (!press || event.pointerId !== press.id) return;
+    const next = moveDrag(press.track, event.clientX, event.clientY, performance.now());
+    press.track = next.track;
+    // The page moved: the browser took this press as a vertical pan.
+    if (next.track.axis !== "x" || Math.abs(window.scrollY - pressScrollY) > 2 || !canDrag()) return;
+    st.dragging = true;
+    conveyor.glide = null;
+    conveyor.target += next.dx * dragCardsPerPx();
+    loop.wake();
+  };
+  const onDragRelease = (event: PointerEvent) => {
+    if (!press || event.pointerId !== press.id) return;
+    const track = press.track;
+    press = null;
+    if (!st.dragging) return;
+    st.dragging = false;
+    if (!canDrag()) return;
+    const cap = COIL.spinCapCardsPerSecond;
+    const velocity = Math.min(cap, Math.max(-cap, releaseVelocity(track, performance.now()) * dragCardsPerPx()));
+    st.coast = { rest: Math.round(conveyor.target + velocity * COAST_TAU_S) };
+    loop.wake();
+  };
   function listenDrag() {
-    const dragObserver = Observer.create({
-      target: host,
-      type: "touch",
-      lockAxis: true,
-      dragMinimum: DRAG_MINIMUM_PX,
-      onPress: () => {
-        pressScrollY = window.scrollY;
-        st.pressCaughtCoil = st.coast !== null;
-        if (st.coast) {
-          conveyor.target = conveyor.offset;
-          st.coast = null;
-        }
-      },
-      onDrag: (self) => {
-        // The page moved: the browser took this gesture as a vertical pan.
-        if (self.axis !== "x" || Math.abs(window.scrollY - pressScrollY) > 2 || !canDrag()) return;
-        st.dragging = true;
-        conveyor.glide = null;
-        conveyor.target += self.deltaX * dragCardsPerPx();
-        loop.wake();
-      },
-      onRelease: (self) => {
-        if (!st.dragging) return;
-        st.dragging = false;
-        if (!canDrag()) return;
-        const cap = COIL.spinCapCardsPerSecond;
-        const velocity = Math.min(cap, Math.max(-cap, self.velocityX * dragCardsPerPx()));
-        st.coast = { rest: Math.round(conveyor.target + velocity * COAST_TAU_S) };
-        loop.wake();
-      },
-    });
-    return () => dragObserver.kill(); // slice 7
+    // The press on the canvas; the moves and the release wherever the pointer
+    // goes, after the hero's own tap listeners (bubbling), so a drag's release
+    // is still a drag when the tap check reads it.
+    host.addEventListener("pointerdown", onDragPress);
+    window.addEventListener("pointermove", onDragMove, { passive: true });
+    window.addEventListener("pointerup", onDragRelease);
+    window.addEventListener("pointercancel", onDragRelease);
+    return () => {
+      host.removeEventListener("pointerdown", onDragPress);
+      window.removeEventListener("pointermove", onDragMove);
+      window.removeEventListener("pointerup", onDragRelease);
+      window.removeEventListener("pointercancel", onDragRelease);
+      press = null;
+    };
   }
   // ---- end slice 7 ----
 
