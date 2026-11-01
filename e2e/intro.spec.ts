@@ -17,7 +17,7 @@ import { siteContent } from "@/lib/content";
 const L = siteContent.listen;
 const { intro, hero } = siteContent;
 const HEADING = "#intro-heading";
-const HOBBY_POPS = ["wanderlust", "sandboarding", "downhill-skating", "skydiving", "rock-climbing", "3d-printing"];
+const HOBBY_POPS = ["wanderlust", "thrill-seeker", "3d-printing"];
 // Everything of the page hidden but the name's canvas, so a pixel read is its own.
 const HIDE_PAGE = "html,body{transition:none!important}body *{visibility:hidden!important}[data-name-canvas-el]{visibility:visible!important}";
 
@@ -194,7 +194,7 @@ test("intro: the pages run page 1, the cards, proof of work, Connect, and nothin
   expect(siteContent.menu.items.map((item) => item.href)).toEqual(["#main", "#work", "#numbers", "#connect"]);
 });
 
-test("intro: the hobby pops (wanderlust, thrill seeker's sports and 3D printing) are on the page and open on hover", async ({ page }) => {
+test("intro: the hobby pops (wanderlust, thrill seeker's cycling sports photos and 3D printing) are on the page and open on hover", async ({ page }) => {
   await openHome(page, { at: "top" });
   for (const key of HOBBY_POPS) {
     const link = page.locator(`#about [data-inline="pop"][data-inline-key="${key}"]`);
@@ -202,9 +202,37 @@ test("intro: the hobby pops (wanderlust, thrill seeker's sports and 3D printing)
     await link.scrollIntoViewIfNeeded();
     await expect(link).toBeVisible();
     await link.hover();
-    await expect(bubble(page), key).toContainText(siteContent.register.pop[key as keyof typeof siteContent.register.pop].caption!);
+    // A pop that cycles has no caption of its own: it opens on its first photo's.
+    const entry = siteContent.register.pop[key];
+    await expect(bubble(page), key).toContainText((entry.caption ?? entry.cycle?.[0].caption)!);
     await page.mouse.move(2, 2);
   }
+});
+
+test("intro: the thrill seeker pop crossfades its four photos on a 1.6s beat, one at a time in one square frame, and starts over on the next open", async ({ page }) => {
+  await openHome(page, { at: "top" });
+  const frames = siteContent.register.pop["thrill-seeker"].cycle!;
+  const link = page.locator('#about [data-inline="pop"][data-inline-key="thrill-seeker"]');
+  await link.scrollIntoViewIfNeeded();
+  await link.hover();
+  const active = bubble(page).locator('img[data-state="active"]');
+  await expect(active).toHaveAttribute("alt", frames[0].alt);
+  const frame = bubble(page).locator(".pop-cycle");
+  const size = await frame.evaluate((el) => [el.clientWidth, el.clientHeight]);
+  expect(size[0], "a square").toBe(size[1]);
+  // In order, the next within about one beat of the last, and the frame never changes size.
+  for (const next of [1, 2]) {
+    await expect(active).toHaveAttribute("alt", frames[next].alt, { timeout: 3000 });
+    expect(await frame.evaluate((el) => [el.clientWidth, el.clientHeight])).toEqual(size);
+  }
+  // Closed and opened again, it begins on the first photo, not where it left off.
+  await page.keyboard.press("Escape");
+  await expect(bubble(page)).toHaveAttribute("data-shown", "false");
+  await page.mouse.move(2, 2);
+  await link.hover();
+  await expect(bubble(page).locator('img[data-state="active"]')).toHaveAttribute("alt", frames[0].alt);
+  // And it loops: all four, then the first again.
+  for (const next of [1, 2, 3, 0]) await expect(bubble(page).locator('img[data-state="active"]')).toHaveAttribute("alt", frames[next].alt, { timeout: 3000 });
 });
 
 test("intro: the music is one quiet line between the paragraphs, with one button for each state and no sub-line", async ({ page }) => {

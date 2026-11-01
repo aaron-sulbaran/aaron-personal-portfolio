@@ -8,7 +8,7 @@ describe("the inline register", () => {
   it("holds the approved keys and only those", () => {
     expect(Object.keys(register.def)).toEqual(["product", "voltage", "arc"]);
     expect(Object.keys(register.tip)).toEqual(["two-as", "voltaage", "killer-drones", "music-note", "ieee-ao", "this-site-playground"]);
-    expect(Object.keys(register.pop)).toEqual(["leadership-award", "sandboarding", "downhill-skating", "skydiving", "rock-climbing", "venezuela-flag", "family", "friends", "wanderlust", "misuki-suki", "matcha", "sister-kyoto", "contrabass-clarinet", "rango", "catatumbo-lightning", "lake-maracaibo", "3d-printing", "ut-ece-logo", "tool-user", "bambu-h2s", "steve-jobs-iphone"]);
+    expect(Object.keys(register.pop)).toEqual(["leadership-award", "sandboarding", "downhill-skating", "skydiving", "rock-climbing", "thrill-seeker", "venezuela-flag", "family", "friends", "wanderlust", "misuki-suki", "matcha", "sister-kyoto", "contrabass-clarinet", "rango", "catatumbo-lightning", "lake-maracaibo", "3d-printing", "ut-ece-logo", "tool-user", "bambu-h2s", "steve-jobs-iphone"]);
   });
 
   it("keeps no hover tip for the jobs' employers: their tips are name tags on the page now", () => {
@@ -62,6 +62,8 @@ describe("the inline register", () => {
   it("describes every pop without the third person, with its exported file, the approved captions and link", () => {
     for (const [key, entry] of Object.entries(register.pop)) {
       expect(entry.alt).not.toMatch(/\bAaron\b/);
+      // "thrill-seeker" cycles four photos that are other pops' files (its own describe, below): it has no file of its own.
+      if (entry.cycle) continue;
       // "wanderlust" is the one pop that shows a card photo: the Mt. Fuji picture from the Travel card's modal, not a file of its own.
       expect(entry.file?.src, key).toBe(key === "wanderlust" ? "/photos/cards/travel-1-fuji.jpg" : `/photos/pops/${key}.jpg`);
     }
@@ -120,6 +122,27 @@ describe("the inline register", () => {
     expect(resolveTip(entry, true)).toBe(entry.text);
     expect(resolveTip(register.tip["killer-drones"], false)).toBe("unless it's killer drones, I don't do that");
     for (const [key, entry] of Object.entries(register.tip)) if (entry.adaptedClause) expect(entry.text.includes(entry.adaptedClause), key).toBe(true);
+  });
+  it("cycles the four sports photos on \"thrill-seeker\", in order, as the very same files, alts and captions the pops of their own hold", () => {
+    const entry = register.pop["thrill-seeker"];
+    expect(entry.file).toBeNull();
+    expect(entry.caption).toBeUndefined();
+    expect(entry.href).toBeUndefined();
+    expect(entry.alt).not.toMatch(/\bAaron\b/);
+    const order = ["sandboarding", "skydiving", "downhill-skating", "rock-climbing"] as const;
+    expect(entry.cycle).toHaveLength(4);
+    entry.cycle!.forEach((frame, index) => {
+      const own = register.pop[order[index]];
+      expect(frame.file, order[index]).toEqual(own.file);
+      expect(frame.alt, order[index]).toBe(own.alt);
+      expect(frame.caption, order[index]).toBe(own.caption);
+      expect(frame.focus, order[index]).toEqual(own.focus);
+      expect(frame.focus.x >= 0 && frame.focus.x <= 100 && frame.focus.y >= 0 && frame.focus.y <= 100, `${order[index]}: a focus point inside the file`).toBe(true);
+    });
+    // The four pops of their own stay for the pages that name them.
+    for (const key of order) expect(registerHas("pop", key)).toBe(true);
+    expect(entry.cycle!.map((frame) => [frame.file.width, frame.file.height])).toEqual([[600, 800], [800, 600], [600, 800], [600, 800]]);
+    expect(entry.cycle![1].focus.x).toBeGreaterThan(50); // the freefall subject sits a little right of the middle
   });
   it("labels every pop link for the touch label", () => {
     for (const [key, entry] of Object.entries(register.pop)) if (entry.href) expect(entry.hrefLabel, key).toBeTruthy();

@@ -4,6 +4,7 @@ import { useState, type CSSProperties, type Ref } from "react";
 import type { TipState } from "@/lib/inline/tipState";
 import { shownLink, tipView } from "@/lib/inline/view";
 import { POP_SIZE_VARS } from "@/lib/photoSizes";
+import { PopCycle } from "./PopCycle";
 // The one label every tip and photo pop shares, portalled to body and placed
 // by useTipController. Hidden from assistive tech: each link already carries
 // these words through aria-describedby. A pop's link shows only when a tap
@@ -14,7 +15,8 @@ import { POP_SIZE_VARS } from "@/lib/photoSizes";
 // data-trap-extension), and while it fades the label is inert. Once the state
 // goes idle the label keeps its last words while it fades out. Every photo pop
 // is one height, its width following the photo (the sizes are lib/photoSizes's,
-// written on the label as custom properties; app/globals.css, "photo pops").
+// written on the label as custom properties; app/globals.css, "photo pops"), and
+// a pop that cycles its photos (PopCycle) fills a square of that height.
 export function TipBubble({ state, ref }: { state: TipState; ref: Ref<HTMLDivElement> }) {
   const [last, setLast] = useState(state);
   if (state.target && state !== last) setLast(state);
@@ -22,6 +24,13 @@ export function TipBubble({ state, ref }: { state: TipState; ref: Ref<HTMLDivEle
   const view = shown.target ? tipView(shown.target.kind, shown.target.key) : null;
   const link = shown.target ? shownLink(shown.target.kind, shown.target.key, shown.via) : null;
   const live = !!state.target;
+  // A cycling pop starts over from its first photo on every open: each open is a new instance.
+  const [opens, setOpens] = useState(0);
+  const [wasLive, setWasLive] = useState(false);
+  if (live !== wasLive) {
+    setWasLive(live);
+    if (live) setOpens(opens + 1);
+  }
   const tipLink = shown.target?.kind === "tip" ? link : null;
   const pinnedLink = tipLink ? null : link;
   return (
@@ -39,8 +48,9 @@ export function TipBubble({ state, ref }: { state: TipState; ref: Ref<HTMLDivEle
         </span>
       )}
       {view && !view.text && (
-        <span data-fit={view.photo?.fit} style={view.photo ? ({ "--pop-aspect": view.photo.width / view.photo.height } as CSSProperties) : undefined}
+        <span data-fit={view.cycle ? "square" : view.photo?.fit} style={view.cycle ? ({ "--pop-aspect": 1 } as CSSProperties) : view.photo ? ({ "--pop-aspect": view.photo.width / view.photo.height } as CSSProperties) : undefined}
           className="pop-card gap-2 rounded-xl border border-border bg-background p-2 text-foreground shadow-[var(--pill-shadow)]">
+          {view.cycle && <PopCycle key={opens} frames={view.cycle} live={live} />}
           {view.photo && (
             <span className="pop-frame rounded-lg">
               <Image src={view.photo.src} alt={view.photo.alt} fill sizes={view.photo.sizes} loading="eager" className="object-cover" />

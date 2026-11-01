@@ -61,3 +61,7 @@ export function galleryRowSizes(sourceAspect: number, box: { width: number; heig
 
 // A pager photo, fitted whole inside the panel's inner width.
 export const PAGER_PHOTO_SIZES = `calc(100vw - ${GALLERY.pager.insetPx}px)`;
+
+// The request width for a photo cover-cropped into the cycling pop's square frame
+// (one pop height a side): the frame's side, widened by the crop when the photo is landscape.
+export const popSquareSizes = (sourceAspect: number): string => `${Math.ceil(POP_PHOTO.height.desktop * coverScale(sourceAspect, 1))}px`;

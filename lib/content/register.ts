@@ -1,10 +1,20 @@
 import type { InlineKind } from "./links";
 import { modalPhotos } from "./media";
-import type { InlineRegister, TipEntry } from "./types";
+import type { InlineRegister, PopFrame, TipEntry } from "./types";
 
 // "wanderlust" pops the Mt. Fuji photo the Travel card's modal already holds (media.ts travel-1-fuji): one picture, with its file, alt
 // and caption as approved there, so there is no second export to keep in step.
 const fuji = modalPhotos.travel[0];
+
+// The four photos "thrill seeker" cycles through, in Aaron's order (2026-10-31). Each keeps its own pop in the register for the
+// pages that name it, and the cycle holds the very same file, alt and caption, so there is no second copy to keep in step. The
+// cycle's frame is one square and each photo is cover-cropped in it; focus is the point the crop keeps centred, as percentages
+// of the file: the vertical band of a portrait that holds its subject (the sandboarder, the boards, the climber), and for the
+// 4:3 skydiving photo a little right of the middle, so the helmet and the waving hand both stay inside.
+const sandboarding = { file: { src: "/photos/pops/sandboarding.jpg", width: 600, height: 800 }, alt: "Me sandboarding down a dune in the Dubai desert", caption: "Sandboarding on dunes just outside of Dubai", focus: { x: 50, y: 45 } } satisfies PopFrame;
+const skydiving = { file: { src: "/photos/pops/skydiving.jpg", width: 800, height: 600 }, alt: "Me in freefall on a tandem skydive", caption: "Me on my first jump, look at that smile!", focus: { x: 55, y: 50 } } satisfies PopFrame;
+const downhillSkating = { file: { src: "/photos/pops/downhill-skating.jpg", width: 600, height: 800 }, alt: "My skateboards and longboards lined up at the back of my Miata", caption: "A collection of boards, although only half of these are mine", focus: { x: 50, y: 75 } } satisfies PopFrame;
+const rockClimbing = { file: { src: "/photos/pops/rock-climbing.jpg", width: 600, height: 800 }, alt: "Me climbing a wall at a bouldering gym", caption: "Catch me on El Capitan next... right...", focus: { x: 50, y: 100 } } satisfies PopFrame;
 
 // Every inline link the copy may point at (docs/content/tooltips.md, approved
 // 2026-10-08). Pop files are scripts/export-photos.mjs's, at their written pixels.
@@ -44,10 +54,12 @@ export const register: InlineRegister = {
   },
   pop: {
     "leadership-award": { file: { src: "/photos/pops/leadership-award.jpg", width: 600, height: 800 }, alt: "Me holding my Cockrell Student Leadership Award certificate", caption: "Getting the Cockrell School undergraduate leadership award.", crop: null },
-    sandboarding: { file: { src: "/photos/pops/sandboarding.jpg", width: 600, height: 800 }, alt: "Me sandboarding down a dune in the Dubai desert", caption: "Sandboarding on dunes just outside of Dubai", crop: null },
-    "downhill-skating": { file: { src: "/photos/pops/downhill-skating.jpg", width: 600, height: 800 }, alt: "My skateboards and longboards lined up at the back of my Miata", caption: "A collection of boards, although only half of these are mine", crop: null },
-    skydiving: { file: { src: "/photos/pops/skydiving.jpg", width: 800, height: 600 }, alt: "Me in freefall on a tandem skydive", caption: "Me on my first jump, look at that smile!", crop: null },
-    "rock-climbing": { file: { src: "/photos/pops/rock-climbing.jpg", width: 600, height: 800 }, alt: "Me climbing a wall at a bouldering gym", caption: "Catch me on El Capitan next... right...", crop: null },
+    sandboarding: { ...sandboarding, crop: null },
+    "downhill-skating": { ...downhillSkating, crop: null },
+    skydiving: { ...skydiving, crop: null },
+    "rock-climbing": { ...rockClimbing, crop: null },
+    // "thrill seeker" on page 1: the four above, one at a time (components/inline/PopCycle). Its words describe the set.
+    "thrill-seeker": { file: null, alt: "Four photos from my adventures: sandboarding, skydiving, downhill skating and rock climbing", crop: null, cycle: [sandboarding, skydiving, downhillSkating, rockClimbing] },
     "venezuela-flag": { file: { src: "/photos/pops/venezuela-flag.jpg", width: 600, height: 800 }, alt: "Me holding a Venezuelan flag in a convention hall", caption: "Me repping my flag at SHPE 2025!", crop: null },
     family: { file: { src: "/photos/pops/family.jpg", width: 600, height: 800 }, alt: "My family in front of the UT Tower in 2023", caption: "My family posing in front of the UT tower. We call this alternating pose, \"la tipica\"", crop: null },
     friends: { file: { src: "/photos/pops/friends.jpg", width: 600, height: 800 }, alt: "My friends grad in 2025", caption: "Celebrating some of my best friends' graduation!", crop: null },

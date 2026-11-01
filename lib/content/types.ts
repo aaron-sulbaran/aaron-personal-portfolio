@@ -19,8 +19,20 @@ export interface TipEntry {
   link?: { href: string; label: string };
 }
 
+// The point of a photo a crop keeps centred, as percentages of the file (CSS object-position): x 0 is its left edge, y 0 its top.
+export interface PopFocus { x: number; y: number }
+
+// One photo of a pop that cycles: the file, alt and caption of the pop that has it
+// on its own, and where the frame's crop is centred.
+export interface PopFrame {
+  file: { src: string; width: number; height: number };
+  alt: string;
+  caption?: string;
+  focus: PopFocus;
+}
+
 export interface PopEntry {
-  // The exported file (scripts/export-photos.mjs); null only for a pop whose photo is not exported.
+  // The exported file (scripts/export-photos.mjs); null only for a pop whose photo is not exported, or a pop that cycles (its photos are in cycle).
   file: { src: string; width: number; height: number } | null;
   alt: string;
   // Optional on purpose: a pop with no caption shows its photo alone, with no empty line or gap under it, and its alt still describes it.
@@ -30,6 +42,11 @@ export interface PopEntry {
   href?: string;
   // The words of the link inside a tap-pinned pop (touch only).
   hrefLabel?: string;
+  // Where the photo's crop is centred when the pop's width is clamped to a small screen; the middle when absent.
+  focus?: PopFocus;
+  // A pop that shows several photos, one at a time, each with its own caption: they cycle in this order in one square frame,
+  // and alt describes the set. Such a pop has no file or caption of its own.
+  cycle?: readonly PopFrame[];
 }
 
 export interface InlineRegister {

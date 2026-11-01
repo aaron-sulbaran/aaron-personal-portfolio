@@ -50,6 +50,38 @@ describe("tipView", () => {
   });
   it("carries the matcha's Maps link and label", () => { expect(tipView("pop", "matcha")?.link).toEqual({ href: pop.matcha.href, label: "Open in Google Maps" }); });
 });
+describe("a pop that cycles its photos", () => {
+  const view = tipView("pop", "thrill-seeker");
+  it("holds the four photos in order, each in a square at the one pop height, with its own caption and focus", () => {
+    expect(view?.text).toBeNull();
+    expect(view?.photo).toBeNull();
+    expect(view?.caption).toBeNull();
+    expect(view?.link).toBeNull();
+    const keys = ["sandboarding", "skydiving", "downhill-skating", "rock-climbing"] as const;
+    expect(view?.cycle?.map((frame) => frame.photo.src)).toEqual(keys.map((key) => `/photos/pops/${key}.jpg`));
+    expect(view?.cycle?.map((frame) => frame.caption)).toEqual(keys.map((key) => pop[key].caption));
+    for (const [index, frame] of (view?.cycle ?? []).entries()) {
+      expect([frame.photo.displayWidth, frame.photo.displayHeight], keys[index]).toEqual([360, 360]);
+      expect(frame.photo.alt).toBe(pop[keys[index]].alt);
+      expect(frame.photo.focus).toEqual(pop[keys[index]].focus);
+    }
+  });
+  it("asks for the landscape photo wider than the square it is cropped into, and a portrait at the square", () => {
+    expect(view?.cycle?.map((frame) => frame.photo.sizes)).toEqual(["360px", "480px", "360px", "360px"]);
+  });
+  it("is described by its own words and then each photo's, since the label that shows them is hidden", () => {
+    const description = view?.description ?? "";
+    expect(description.startsWith(pop["thrill-seeker"].alt)).toBe(true);
+    for (const key of ["sandboarding", "skydiving", "downhill-skating", "rock-climbing"] as const) {
+      expect(description).toContain(pop[key].alt);
+      expect(description).toContain(pop[key].caption!);
+    }
+  });
+  it("leaves every other pop with no cycle at all", () => {
+    expect(tipView("pop", "contrabass-clarinet")).not.toHaveProperty("cycle");
+    expect(tipView("pop", "sandboarding")).not.toHaveProperty("cycle");
+  });
+});
 describe("the gamer tag tip's link", () => {
   it("carries its words and its https link, described by the words alone", () => {
     expect(tipView("tip", "voltaage")).toEqual({

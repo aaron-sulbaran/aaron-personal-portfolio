@@ -804,7 +804,19 @@ html:not([data-band-answer]) [data-band-title="returning"] { display: none; }
 }
 @media (max-width: 767px) { .pop-card { --pop-h: var(--pop-h-phone); } }
 .pop-frame { position: relative; display: block; overflow: hidden; height: var(--pop-h); }
-.pop-card[data-fit="whole"] .pop-frame { height: auto; aspect-ratio: var(--pop-aspect); }
+.pop-card[data-fit="whole"] .pop-frame, .pop-card[data-fit="square"] .pop-frame { height: auto; aspect-ratio: var(--pop-aspect); }
+/* A pop that cycles its photos (components/inline/PopCycle) is a square, one pop height a side, whose width the same clamp holds,
+   every photo cropped to it around its own focus point. The photos are stacked: the active one fades in on top while the one it
+   replaces stays whole beneath until it has (so the pair never dips to the page behind), and the rest are hidden. Its captions
+   stack the same way in one grid cell, so the tallest sets the card's height and no photo changes it. Reduced motion swaps
+   instantly, on the same beat. */
+.pop-cycle-photo { z-index: 0; opacity: 0; transition: opacity 450ms cubic-bezier(0.4, 0, 0.2, 1); }
+.pop-cycle-photo[data-state="active"] { z-index: 2; opacity: 1; }
+.pop-cycle-photo[data-state="previous"] { z-index: 1; opacity: 1; transition: none; }
+.pop-captions { display: grid; }
+.pop-captions > span { grid-area: 1 / 1; opacity: 0; transition: opacity 450ms cubic-bezier(0.4, 0, 0.2, 1); }
+.pop-captions > span[data-state="active"] { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .pop-cycle-photo, .pop-captions > span { transition: none; } }
 /* ---- end photo pops ---- */
 /* ---- end inline links ---- */
 /* ---- footer (C6) ---- */

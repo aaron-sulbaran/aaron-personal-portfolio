@@ -11,10 +11,12 @@
 // and the hobbies (Aaron's own text for paragraph 2, set down 2026-10-31). The
 // photo pop that sat on "leadership positions" now sits on "leading"; the
 // Venezuela flag is back on the page, on "Venezuela"; "wanderlust" has the Mt.
-// Fuji photo (media.ts travel-1-fuji, reused by the register); the sandboarding
-// photo sits on "thrill seeker". The sentence that joins "thrill seeker" to
-// "I especially enjoy" is a semicolon where Aaron wrote a comma, a mechanics
-// fix. The teaser at its foot is the button that deals and the way to the MVP.
+// Fuji photo (media.ts travel-1-fuji, reused by the register); "thrill seeker"
+// pops the four sports photos one after another (sandboarding, skydiving,
+// downhill skating, rock climbing: register pop.thrill-seeker), and the
+// paragraph's last sentence is Aaron's own new one (2026-10-31), which no longer
+// names the sports as links of their own. The teaser at its foot is the button
+// that deals and the way to the MVP.
 export const intro = {
   ariaLabel: "About me",
   blocks: [
@@ -31,7 +33,7 @@ export const intro = {
       sentences: [
         "Born in [Venezuela](pop:venezuela-flag) and raised in Texas, I love spending time with [family](pop:family) & [friends](pop:friends) while always happy to meet new people.",
         "Outside of class, I use credit card-maxxing to fulfill my [wanderlust](pop:wanderlust) and [3D printing](pop:3d-printing) to satisfy my engineering itch.",
-        "I'm also a huge [thrill seeker](pop:sandboarding); I especially enjoy sports like [downhill skating](pop:downhill-skating), [skydiving](pop:skydiving), and [rock climbing](pop:rock-climbing).",
+        "I'm also a huge [thrill seeker](pop:thrill-seeker) and will say yes to just about any adventure.",
       ],
     },
   ],

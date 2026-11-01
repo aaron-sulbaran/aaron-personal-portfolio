@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { siteContent } from "@/lib/content";
-import { CARD_PICTURE_SIZES, coverScale, galleryRowSizes, PAGER_PHOTO_SIZES, POP_PHOTO, POP_SIZE_VARS, popPhotoBox } from "@/lib/photoSizes";
+import { CARD_PICTURE_SIZES, coverScale, galleryRowSizes, PAGER_PHOTO_SIZES, POP_PHOTO, POP_SIZE_VARS, popPhotoBox, popSquareSizes } from "@/lib/photoSizes";
 import { jpegSize } from "@/lib/testing/jpegSize";
 
 describe("photo sizes", () => {
@@ -56,6 +56,20 @@ describe("the photo pop's size", () => {
     // 3:2 (the iPhone photo is a hair over) still takes the pop height, and never reaches the cap.
     expect(popPhotoBox(1500, 1000)).toEqual({ fit: "cover", width: 540, height: 360 });
     expect(popPhotoBox(800, 533)).toEqual({ fit: "cover", width: 540, height: 360 });
+  });
+  it("crops a cycling pop's photos into a square one pop height a side, asking for a landscape photo wider than the square", () => {
+    expect(popSquareSizes(3 / 4)).toBe("360px");
+    expect(popSquareSizes(1)).toBe("360px");
+    expect(popSquareSizes(4 / 3)).toBe("480px");
+  });
+  it("fades a cycling pop's photos in over the one they replace, and swaps them instantly under reduced motion", () => {
+    const css = readFileSync(join(process.cwd(), "app/globals.css"), "utf8");
+    const block = css.slice(css.indexOf("/* ---- photo pops"), css.indexOf("/* ---- end photo pops ---- */")).replace(/\/\*[\s\S]*?\*\//g, "");
+    expect(block).toContain('.pop-card[data-fit="whole"] .pop-frame, .pop-card[data-fit="square"] .pop-frame { height: auto; aspect-ratio: var(--pop-aspect); }');
+    expect(block).toMatch(/\.pop-cycle-photo \{[^}]*opacity: 0; transition: opacity 450ms/);
+    expect(block).toContain('.pop-cycle-photo[data-state="active"] { z-index: 2; opacity: 1; }');
+    expect(block).toContain('.pop-cycle-photo[data-state="previous"] { z-index: 1; opacity: 1; transition: none; }');
+    expect(block).toContain("@media (prefers-reduced-motion: reduce) { .pop-cycle-photo, .pop-captions > span { transition: none; } }");
   });
   it("leaves its numbers to this file: the stylesheet's photo pops block holds no pixel size of its own but the phone breakpoint", () => {
     const css = readFileSync(join(process.cwd(), "app/globals.css"), "utf8");
