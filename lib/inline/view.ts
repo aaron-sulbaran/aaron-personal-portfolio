@@ -1,7 +1,7 @@
 import { siteContent } from "@/lib/content";
 import { tipText } from "@/lib/content/tracks";
 import type { PopEntry } from "@/lib/content/types";
-import { POP_PHOTO_WIDTH } from "@/lib/photoSizes";
+import { popPhotoBox } from "@/lib/photoSizes";
 import type { TipKind } from "./attrs";
 
 export interface PopPhoto {
@@ -9,8 +9,13 @@ export interface PopPhoto {
   width: number;
   height: number;
   alt: string;
+  // The box the stylesheet draws it in on desktop (lib/photoSizes, popPhotoBox): one height for every photo pop, the width following the photo.
   displayWidth: number;
   displayHeight: number;
+  // "cover": drawn at the pop height. "whole": a very wide photo, shown uncropped with its height following its width.
+  fit: "cover" | "whole";
+  // The request width: the box's width, since a photo has its own shape there.
+  sizes: string;
 }
 
 export interface TipView {
@@ -24,14 +29,18 @@ export interface TipView {
 // A pop whose photo has not landed (C4) shows its caption, or its alt when it
 // has none, so a pop link never opens onto nothing.
 export function popView(entry: PopEntry): TipView {
-  const photo = entry.file
-    ? {
-        ...entry.file,
-        alt: entry.alt,
-        displayWidth: POP_PHOTO_WIDTH,
-        displayHeight: Math.round((POP_PHOTO_WIDTH * entry.file.height) / entry.file.width),
-      }
-    : null;
+  const box = entry.file ? popPhotoBox(entry.file.width, entry.file.height) : null;
+  const photo =
+    entry.file && box
+      ? {
+          ...entry.file,
+          alt: entry.alt,
+          displayWidth: box.width,
+          displayHeight: box.height,
+          fit: box.fit,
+          sizes: `${box.width}px`,
+        }
+      : null;
   return {
     text: photo || entry.caption ? null : entry.alt,
     photo,

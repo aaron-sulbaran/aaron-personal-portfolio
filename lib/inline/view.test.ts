@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { siteContent } from "@/lib/content";
 import { tipText } from "@/lib/content/tracks";
-import { POP_PHOTO_SIZES } from "@/lib/photoSizes";
 import { holdsLink, popView, shownLink, tipView } from "@/lib/inline/view";
 const { pop } = siteContent.register;
 describe("tipView", () => {
@@ -25,7 +24,7 @@ describe("tipView", () => {
     const clarinet = pop["contrabass-clarinet"];
     expect(tipView("pop", "contrabass-clarinet")).toEqual({
       text: null,
-      photo: { ...clarinet.file, alt: clarinet.alt, displayWidth: 280, displayHeight: 373 },
+      photo: { ...clarinet.file, alt: clarinet.alt, displayWidth: 270, displayHeight: 360, fit: "cover", sizes: "270px" },
       caption: clarinet.caption,
       link: null,
       description: `${clarinet.alt}. ${clarinet.caption}`,
@@ -35,7 +34,7 @@ describe("tipView", () => {
   it("shows Rango as a landed pop, described by its alt and caption", () => {
     expect(tipView("pop", "rango")).toEqual({
       text: null,
-      photo: { ...pop.rango.file, alt: pop.rango.alt, displayWidth: 280, displayHeight: 374 },
+      photo: { ...pop.rango.file, alt: pop.rango.alt, displayWidth: 270, displayHeight: 360, fit: "cover", sizes: "270px" },
       caption: "yeah, this guy from that one kid's movie",
       link: null,
       description: "Rango, the chameleon in a Hawaiian shirt, in a dance pose. yeah, this guy from that one kid's movie",
@@ -45,7 +44,7 @@ describe("tipView", () => {
     const meme = siteContent.register.pop["tool-user"];
     expect(meme.caption, "no caption on purpose").toBeUndefined();
     expect(tipView("pop", "tool-user")).toMatchObject({ text: null, caption: null, link: null, description: meme.alt });
-    expect(tipView("pop", "tool-user")?.photo).toMatchObject({ src: "/photos/pops/tool-user.jpg", alt: meme.alt, displayWidth: 280, displayHeight: 169 });
+    expect(tipView("pop", "tool-user")?.photo).toMatchObject({ src: "/photos/pops/tool-user.jpg", alt: meme.alt, displayWidth: 558, displayHeight: 338, fit: "whole" });
     expect(tipView("pop", "bambu-h2s")?.caption).toBe("Bambu Lab's H2S Combo printer, the type hobbyists know is the best on the market.");
     expect(tipView("pop", "steve-jobs-iphone")?.caption).toBe("Steve Jobs introducing the first iPhone in 2007.");
   });
@@ -78,10 +77,23 @@ describe("popView", () => {
     expect(popView({ file: null, alt, caption, crop: null })).toMatchObject({ text: null, photo: null, caption, description: `${alt}. ${caption}` });
     expect(popView({ file: null, alt, crop: null })).toMatchObject({ text: alt, photo: null, caption: null, description: alt });
   });
-  it("sizes a landed photo 280px wide at its own aspect", () => {
-    const view = popView({ file: { src: "/inline/x.jpg", width: 800, height: 600 }, alt: "Me", crop: null });
-    expect(view.photo).toEqual({ src: "/inline/x.jpg", width: 800, height: 600, alt: "Me", displayWidth: 280, displayHeight: 210 });
-    expect(view.text).toBeNull();
-    expect(POP_PHOTO_SIZES).toBe("280px");
+  it("draws a landed photo at the one pop height, its width following its own shape, a landscape wider than a portrait", () => {
+    const landscape = popView({ file: { src: "/inline/x.jpg", width: 800, height: 600 }, alt: "Me", crop: null });
+    expect(landscape.photo).toEqual({ src: "/inline/x.jpg", width: 800, height: 600, alt: "Me", displayWidth: 480, displayHeight: 360, fit: "cover", sizes: "480px" });
+    expect(landscape.text).toBeNull();
+    const portrait = popView({ file: { src: "/inline/y.jpg", width: 600, height: 800 }, alt: "Me", crop: null });
+    expect(portrait.photo).toMatchObject({ displayWidth: 270, displayHeight: 360, fit: "cover" });
+  });
+  it("shows every pop photo of every register entry at the same height, bar the very wide few it shows whole", () => {
+    const heights = new Set<number>();
+    const whole: string[] = [];
+    for (const [key, entry] of Object.entries(pop)) {
+      const photo = popView(entry).photo;
+      if (!photo) continue;
+      if (photo.fit === "whole") whole.push(key);
+      else heights.add(photo.displayHeight);
+    }
+    expect([...heights]).toEqual([360]);
+    expect(whole).toEqual(["ut-ece-logo", "tool-user"]);
   });
 });

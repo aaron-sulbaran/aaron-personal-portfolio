@@ -1,7 +1,8 @@
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { siteContent } from "@/lib/content";
-import { CARD_PICTURE_SIZES, coverScale, galleryRowSizes, PAGER_PHOTO_SIZES } from "@/lib/photoSizes";
+import { CARD_PICTURE_SIZES, coverScale, galleryRowSizes, PAGER_PHOTO_SIZES, POP_PHOTO, POP_SIZE_VARS, popPhotoBox } from "@/lib/photoSizes";
 import { jpegSize } from "@/lib/testing/jpegSize";
 
 describe("photo sizes", () => {
@@ -31,5 +32,38 @@ describe("the card modal's image sizes", () => {
     expect(galleryRowSizes(998 / 1600, vertical)).toBe("320px");
     expect(galleryRowSizes(1600 / 1205, horizontal)).toBe("424px");
     expect(galleryRowSizes(1600 / 858, horizontal)).toBe("594px");
+  });
+});
+
+describe("the photo pop's size", () => {
+  it("is one height on desktop and one on a phone, kept in this one place", () => {
+    expect(POP_PHOTO.height).toEqual({ desktop: 360, phone: 320 });
+    expect(POP_PHOTO.maxWidth).toBe(558);
+    expect(POP_SIZE_VARS).toEqual({ "--pop-h-desktop": "360px", "--pop-h-phone": "320px", "--pop-w-max": "558px", "--pop-edge": "40px" });
+    // No cap below today's pop (373 tall), and none above the Fuji pop's.
+    expect(POP_PHOTO.height.desktop).toBeLessThanOrEqual(373);
+    expect(POP_PHOTO.height.phone).toBeGreaterThanOrEqual(300);
+  });
+  it("draws a portrait narrow and a landscape wide at the same height, so a 4:3 photo is not cropped on desktop", () => {
+    expect(popPhotoBox(600, 800)).toEqual({ fit: "cover", width: 270, height: 360 });
+    expect(popPhotoBox(800, 600)).toEqual({ fit: "cover", width: 480, height: 360 });
+    expect(popPhotoBox(800, 800)).toEqual({ fit: "cover", width: 360, height: 360 });
+    expect(popPhotoBox(1200, 1600)).toEqual(popPhotoBox(600, 800));
+  });
+  it("shows a very wide photo whole at the widest width, its height following, so a meme's words and a logo are never cut", () => {
+    expect(popPhotoBox(800, 484)).toEqual({ fit: "whole", width: 558, height: 338 });
+    expect(popPhotoBox(800, 243)).toEqual({ fit: "whole", width: 558, height: 169 });
+    // 3:2 (the iPhone photo is a hair over) still takes the pop height, and never reaches the cap.
+    expect(popPhotoBox(1500, 1000)).toEqual({ fit: "cover", width: 540, height: 360 });
+    expect(popPhotoBox(800, 533)).toEqual({ fit: "cover", width: 540, height: 360 });
+  });
+  it("leaves its numbers to this file: the stylesheet's photo pops block holds no pixel size of its own but the phone breakpoint", () => {
+    const css = readFileSync(join(process.cwd(), "app/globals.css"), "utf8");
+    const block = css.slice(css.indexOf("/* ---- photo pops"), css.indexOf("/* ---- end photo pops ---- */")).replace(/\/\*[\s\S]*?\*\//g, "");
+    expect(block.length).toBeGreaterThan(0);
+    expect(block).toContain("--pop-h: var(--pop-h-desktop);");
+    expect(block).toContain("@media (max-width: 767px) { .pop-card { --pop-h: var(--pop-h-phone); } }");
+    expect(block).toContain("calc(100vw - var(--pop-edge))");
+    expect(block.replace("max-width: 767px", "").match(/\b\d+(?:\.\d+)?px\b/g)).toBeNull();
   });
 });

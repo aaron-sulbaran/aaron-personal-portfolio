@@ -785,6 +785,27 @@ html:not([data-band-answer]) [data-band-title="returning"] { display: none; }
   .inline-tip { scale: none; transition: opacity 120ms linear, visibility 0s linear 120ms; }
   .inline-tip[data-shown="true"] { scale: none; transition: opacity 120ms linear, visibility 0s; }
 }
+/* ---- photo pops: every one the same height. The sizes are written once, in
+   lib/photoSizes.ts (POP_PHOTO), and reach here as custom properties on the
+   label (components/inline/TipBubble): --pop-h-desktop, --pop-h-phone,
+   --pop-w-max and --pop-edge. A photo pop is a grid card, one column wide: the
+   column is the photo's own shape at the pop height (--pop-aspect, the file's
+   width over its height), held to the widest a pop may be and to the viewport
+   less a margin, so a landscape photo (the skydiving one) is wider at the same
+   height and a phone never overflows. Captions sit in that same column, so a
+   long one wraps rather than widening the card. A photo is drawn to cover its
+   frame: it is cropped only where the viewport clamps its width, and a
+   very wide one (a meme, a logo) is shown whole instead, its height following
+   its width, so no word or mark is cut. ---- */
+.pop-card {
+  --pop-h: var(--pop-h-desktop);
+  --pop-w: min(calc(var(--pop-h) * var(--pop-aspect, 0.75)), var(--pop-w-max), calc(100vw - var(--pop-edge)));
+  display: grid; grid-template-columns: var(--pop-w); width: max-content;
+}
+@media (max-width: 767px) { .pop-card { --pop-h: var(--pop-h-phone); } }
+.pop-frame { position: relative; display: block; overflow: hidden; height: var(--pop-h); }
+.pop-card[data-fit="whole"] .pop-frame { height: auto; aspect-ratio: var(--pop-aspect); }
+/* ---- end photo pops ---- */
 /* ---- end inline links ---- */
 /* ---- footer (C6) ---- */
 /* The poster stand-in's drift (components/footer/PosterField.tsx): the
