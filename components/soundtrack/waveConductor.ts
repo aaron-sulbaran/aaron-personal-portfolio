@@ -1,14 +1,15 @@
 import { getSoundtrackPlayer } from "@/lib/audio";
-import { getRestoredSoundtrack, getSoundtrackState, subscribeSoundtrack, type SoundtrackState } from "@/lib/soundtrack";
+import { getRestoredSoundtrack, getSoundtrackState, subscribeSoundtrack } from "@/lib/soundtrack";
 import { createLeveller, levelColumns } from "@/lib/waveform/level";
-import { BREATH, PLUCK, RELEASE_LINE, RIPPLE, SHIMMER, SPECTRUM_BINS, TRAIN_FADE } from "@/lib/wavepath/constants";
+import { pressOf, swells } from "@/lib/wavepath/answer";
+import { BREATH, PLUCK, RELEASE_LINE, SHIMMER, SPECTRUM_BINS, TRAIN_FADE } from "@/lib/wavepath/constants";
 import { createHead, stepHead, tailStart, type HeadState } from "@/lib/wavepath/head";
 import { bandAway, checkRelease, createWaveHold, pressAnswer, type HoldResult } from "@/lib/wavepath/hold";
 import { createMusic, stepMusic } from "@/lib/wavepath/music";
 import type { DotFrame } from "@/lib/wavepath/paint";
 import { createNear, createPlucks, createPointer, movePointer, notePointer, stepPlucks, type Near, type PointerTrack } from "@/lib/wavepath/pluck";
 import { attachProbe, pathProbe } from "@/lib/wavepath/probe";
-import { createRipple, startRipple, stepRipple } from "@/lib/wavepath/ripple";
+import { createRipple, rippleHeight, startRipple, stepRipple } from "@/lib/wavepath/ripple";
 
 // The wave's one engine (the engine split): once per frame it steps the
 // clocks, the levelled music, the head and the plucks into one frame, and
@@ -21,7 +22,10 @@ import { createRipple, startRipple, stepRipple } from "@/lib/wavepath/ripple";
 // while the band is still in view holds the wave exactly there
 // (lib/wavepath/hold): no following, no music, no ripple, until the band has
 // scrolled away; then the answer takes effect and its ripple goes out from the
-// buttons (a live press only; a restored choice sends none). After either
+// buttons (a live press only; a restored choice sends none). A Not now is
+// answered at once instead, in the band: a gentle swell (SWELL) rolls out from
+// the buttons across the run, then the wave settles into its idle motion, and
+// no ripple follows at the release. After either
 // answer the whole line breathes and follows; peaks and the music need
 // "Play it". While no music shapes the line (paused, declined or held) an idle
 // ripple (lib/wavepath/idle) travels through it, so it is never dead flat.
@@ -198,13 +202,8 @@ function createInstance(still: boolean): Instance {
     frame.pointer.on = false;
     frame.plucks.nearJ = -1;
   };
-  // A ripple answers a live press only: "before" to "on" or "off", and "off" to
-  // "on" (Play it chosen again). Never pause and resume, and never a restore:
-  // initSoundtrackFromStorage moves "before" to "paused" or "off" without a
-  // press, and getRestoredSoundtrack() is set before that change notifies, so a
-  // move out of "before" with a restored choice is the restore.
-  const isPress = (from: SoundtrackState, to: SoundtrackState) =>
-    (from === "before" && getRestoredSoundtrack() === null && (to === "on" || to === "off")) || (from === "off" && to === "on");
+  // A live press is answered, a restore is not (lib/wavepath/answer): a yes with a ripple, once the band has scrolled away, and a
+  // Not now at once, in the band, with a gentle swell.
   const rippleOrigin = () => {
     for (const v of views) if (v.rippleOrigin) return v.rippleOrigin();
     return frame.runLen / 2;
@@ -212,9 +211,11 @@ function createInstance(still: boolean): Instance {
   let lastState = getSoundtrackState();
   const onSoundtrack = () => {
     const next = getSoundtrackState();
-    const answer: HoldResult | null = !still && isPress(lastState, next) ? pressAnswer(hold, bandIsAway()) : null;
+    const press = pressOf(lastState, next, getRestoredSoundtrack());
+    const answer: HoldResult | null = !still && press ? pressAnswer(hold, bandIsAway(), press) : null;
     frame.decided = next !== "before" && !hold.on;
     if (answer?.startRipple && !frozen) startRipple(frame.ripple, rippleOrigin());
+    if (swells(press, still, frozen)) startRipple(frame.ripple, rippleOrigin(), "swell");
     lastState = next;
     wake();
   };
@@ -259,7 +260,7 @@ function createInstance(still: boolean): Instance {
   }
   const unsubscribe = subscribeSoundtrack(onSoundtrack);
   const detachProbe = attachProbe({
-    frame: () => ({ head: frame.head, target: frame.state.target, cap: frame.state.cap, length: frame.length, runLen: frame.runLen, train: frame.train, decided: frame.decided, gated: frame.gated, idle: frame.idleGain, runFlat: frame.runFlat, ripple: frame.ripple.live ? RIPPLE.amp * Math.exp(-RIPPLE.decay * frame.ripple.age) : 0 }),
+    frame: () => ({ head: frame.head, target: frame.state.target, cap: frame.state.cap, length: frame.length, runLen: frame.runLen, train: frame.train, decided: frame.decided, gated: frame.gated, idle: frame.idleGain, runFlat: frame.runFlat, ripple: rippleHeight(frame.ripple) }),
     visibleDots: () => views.reduce((n, v) => n + v.countVisible(frame), 0),
   });
 

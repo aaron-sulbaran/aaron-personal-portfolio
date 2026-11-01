@@ -52,6 +52,12 @@ export const BREATH = { rate: 0.9, depth: 0.35 } as const;
 // Aaron retunes it here.
 export const RIPPLE = { amp: 0.45, speed: 650, width: 70, decay: 1.2, swell: 0.4, lifeS: 3 } as const;
 
+// The "Not now" swell: what the wave answers a Not now with, a gentler cousin of the ripple above, sent from the buttons at once (a
+// yes's ripple waits for the band to scroll away; this one is for the band's own run, in view). One broad, low crest rolls out both
+// ways across the wave in about a second and is gone, and the wave carries on with its idle motion. Same fields as RIPPLE; it must
+// stay under it in height and weight, or the dots' room (lib/wavepath/fit) is too small for it. Aaron retunes it here.
+export const SWELL = { amp: 0.3, speed: 850, width: 160, decay: 1.9, swell: 0.25, lifeS: 1.3 } as const;
+
 // The idle ripple: a gentle wave that travels along the line while no music
 // shapes it (paused, declined, or the wave held after an answer), so the line
 // is never dead flat. Freeze and reduced motion still it. amp: the crest's

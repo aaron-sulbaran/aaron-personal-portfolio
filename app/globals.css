@@ -524,6 +524,24 @@ html[data-band-answer="on"] [data-band-state="before"] [data-band-layer="paused"
 html[data-band-answer] [data-band-title="first"]:not(:only-child) { display: none; }
 html:not([data-band-answer]) [data-band-title="returning"] { display: none; }
 
+/* Not now, once chosen (components/soundtrack/BandInvite.tsx; lib/home/bandLayers.ts declineChosen): after a Not now, this visit or a
+   stored one, it is the answer and no longer a button. It keeps its place beside Play it, which stays the invitation, and loses its hover,
+   its press and its pointer; it reads as the chosen option, quietly: the label in the ink, its muted underline traded for the house
+   fill's rise line (1.5px, the line Play it carries) resting where the fill starts. A stored Not now reads so from the first paint, off
+   the attribute the head script already sets (data-band-answer="off", while the band is still "before" and the component has not
+   restored it), so nothing flashes and nothing moves: only colours change. The !important beats the inline values Fill writes. */
+[data-band-state="off"] [data-band-layer="decline"] .fx,
+html[data-band-answer="off"] [data-band-state="before"] [data-band-layer="decline"] .fx {
+  --fx-p: 0 !important;
+  --fx-line: 1.5px !important;
+  --fx-fill-bg: var(--color-muted);
+  color: var(--color-foreground);
+  text-decoration-color: transparent;
+  pointer-events: none;
+  cursor: default;
+  transition: color 300ms ease, text-decoration-color 300ms ease;
+}
+
 /* The MVP unfurl (components/quick/MvpUnfurl.tsx): "MVP" gives way to "Minimum
    Viable Portfolio" while a fine pointer that can hover is over its
    [data-mvp-link] ancestor, or keyboard focus is on it, and comes back on leave

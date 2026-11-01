@@ -395,18 +395,22 @@ test("wavepath: a theme switch at rest repaints once, then rests", async ({ page
   expect(await paints(page)).toBe(rested);
 });
 
-// The ripple (revision): one Gaussian crest sent from the answer buttons along
-// the line, then the line settles into breathing. Muted browsers: Play it is safe.
-test("wavepath: Not now sends a ripple, once the band has scrolled away, that settles into breathing", async ({ page }) => {
+// The ripple (revision): one Gaussian crest sent from the answer buttons along the line, then the line settles into breathing. A Not now
+// answers at once, in the band, with the gentler swell (lib/wavepath/answer, SWELL), and sends no ripple when the band scrolls away.
+// Muted browsers: Play it is safe.
+test("wavepath: Not now sends a swell at once, in the band, that settles into breathing, and no ripple at the release", async ({ page }) => {
   await open(page);
   expect(await rippleNow(page), "no ripple before pressing").toBe(0);
   await decline(page);
-  // The answer waits for the band to leave, and so does its ripple.
-  await page.waitForTimeout(500);
-  expect(await rippleNow(page), "no ripple while the band is in view").toBe(0);
+  await expect.poll(() => rippleNow(page), { timeout: 300, message: "a swell within 300ms of the press" }).toBeGreaterThan(0);
+  await expect.poll(() => rippleNow(page), { timeout: 3000, message: "the swell ends within 3s" }).toBe(0);
   await toBlock(page, BELOW_BAND);
-  await expect.poll(() => rippleNow(page), { timeout: 300, message: "a ripple within 300ms of the release" }).toBeGreaterThan(0);
-  await expect.poll(() => rippleNow(page), { timeout: 4000, message: "the ripple ends within 4s" }).toBe(0);
+  let peak = 0;
+  for (let t = 0; t < 600; t += 50) {
+    peak = Math.max(peak, await rippleNow(page));
+    await page.waitForTimeout(50);
+  }
+  expect(peak, "ripple height at the release").toBe(0);
   await page.mouse.move(4, 4);
   const before = await paints(page);
   await page.waitForTimeout(1000);
