@@ -318,8 +318,8 @@ for (const colorScheme of ["light", "dark"] as const) {
         };
       });
       expect(read.ink, `${kind}: the word rests in the accent (its text is clipped from a gradient of it)`).toContain(read.accent);
-      if (kind === "definition" || kind === "tip") expect(read.lineImage, `${kind}: a dotted line`).toContain("repeating-linear-gradient");
-      else expect(read.line, `${kind}: a line in the accent`).toBe(read.restingLine);
+      expect(read.line, `${kind}: one solid line in the accent, never dotted`).toBe(read.restingLine);
+      expect(read.lineImage, `${kind}: not a dotted line`).not.toContain("repeating-linear-gradient");
       expect(read.fill, `${kind}: filled from the accent token`).toBe(read.accent);
       expect(read.decoration, `${kind}: a bar, not text-decoration`).toBe("none");
       expect([read.barHeight === read.fillHeight, read.barBottom], `${kind}: the fill is the line's size and place`).toEqual([true, true]);
