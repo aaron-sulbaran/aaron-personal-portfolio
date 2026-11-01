@@ -1,17 +1,30 @@
 // The wave path's numbers, from the wave lab's preset "Aaron's pick 3, always
-// on" at lab commit cba9355, and the sections pick (DRAW_SPEED is 2800, Aaron's
-// ruling over the preset's 4000, and follows the 0.8s lag at about 2.5px of arc
-// per page px). Change them here, never in a view.
+// on" at lab commit cba9355, and the sections pick. Change them here, never in
+// a view.
 
 export const HEAD_AT = 0.7; // where on the viewport the head line sits, 0 top to 1 bottom
-export const TRAIN_PX = 1600; // the drawn train behind the head, px of arc
 export const TRAIN_FADE = 0.3; // the train's tail fade, as a share of its length
-export const DRAW_SPEED = 2800; // the head's speed cap, px of arc per second
-export const DRAW_EASE_S = 0.25; // the speed eases in over this long
-export const HEAD_SMOOTHING = 7; // the head closes this share of its gap per second
-export const HEAD_REST_PX = 0.2; // within this of the target the head rests
+export const HEAD_REST_PX = 1; // within this of the target the head rests
 export const GATE_S = 0.25; // the swell's gate relaxes over this long
 export const HEAD_SWELL = { gain: 0.7, px: 140 } as const;
+
+// THE WAVE'S PACE: Aaron tunes these by hand (lib/wavepath/pace, head). The head draws the line at a calm pace while any ink of
+// its train is on the screen, and runs fast only while none is, to catch up unseen. Aaron, 2026-10-31: after the wave left the
+// screen whole before it came back, a slow scroll drew it across the screen in under a second ("so fast"), and he wanted it "a
+// bit less springy". At a steady 300 px/s of scroll the calm pace draws the screen's width in CROSS_S seconds, whatever the scroll.
+//   TRAIN_PX: the drawn train behind the head, px of arc. Every excursion off the screen is this long plus EXCURSION_MARGIN, so a
+//     shorter train means less line to clear between two crossings (and the head catches up sooner).
+//   CROSS_S: seconds the head takes to draw the screen's whole width while any of its train shows (a wide window, a phone).
+//   DRAW_SPEED: the head's speed cap, px of arc per second, while none of its train is on the screen.
+//   HEAD_SMOOTHING: the head closes this share of its gap to the target per second (lower: a longer, softer settle).
+//   DRAW_EASE_S, DRAW_TURN_S: seconds the head's speed takes to ease in from rest, and to turn round when the reader scrolls back
+//     (no spring, no surge).
+export const TRAIN_PX = 1600;
+export const CROSS_S = { wide: 2.1, phone: 1.6 } as const;
+export const DRAW_SPEED = 2800;
+export const HEAD_SMOOTHING = 4;
+export const DRAW_EASE_S = 0.35;
+export const DRAW_TURN_S = 0.2;
 
 export const AMPLITUDE = 80;
 export const PHONE_AMPLITUDE = 48;

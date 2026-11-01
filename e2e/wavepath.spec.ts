@@ -134,31 +134,35 @@ test("wavepath: after Not now the head leaves the band and reaches the end at ma
   expect((await page.evaluate(() => (window as unknown as W).__e2eMedia())).every(Boolean), "every media element paused").toBe(true);
 });
 
-// At 2800px/s (the sections pick) a 2100 to 2600px flick arrives within 50px
-// in 1.13 to 1.32s and rests in 1.87 to 2.05s (simulated); "settles" is arrival.
-test("wavepath: a 1.5-screen flick arrives within 1.5s at the draw cap", async ({ page }) => {
+// A 1.5-screen flick sends the head far ahead of where it is. It may run at the draw cap only while no ink of its train shows (the
+// probe's cap: lib/wavepath/pace); in view it goes no faster than the calm pace (Aaron, 2026-10-31: "so fast"). So at every frame
+// its speed stays under the cap the probe reports, and it still gets there.
+test("wavepath: a 1.5-screen flick never outruns the cap, and arrives", async ({ page }) => {
   await open(page);
   await decline(page);
   await toBlock(page, BELOW_BAND);
   await headAtRest(page);
-  const run = await page.evaluate(() => new Promise<{ arrived: number; rest: number; gap: number }>((resolve) => {
+  const run = await page.evaluate(() => new Promise<{ rest: number; gap: number; worst: number }>((resolve) => {
     const p = (window as unknown as W).__wavePath;
     window.scrollTo({ top: window.scrollY + 1.5 * window.innerHeight, behavior: "instant" });
     const t0 = performance.now();
-    let arrived = 0, gap = 0;
+    let gap = 0, worst = 0, last = p.frame()!.head, lastAt = t0;
     const tick = () => {
       const f = p.frame()!;
-      const now = performance.now() - t0;
+      const at = performance.now();
       gap = Math.max(gap, f.target - f.head);
-      if (!arrived && gap > 0 && f.target - f.head < 50) arrived = now;
-      if ((gap > 0 && f.head === f.target) || now > 5000) return resolve({ arrived, rest: now, gap });
+      // Speed over the frame against the cap in force; a frame is not exact, so the margin is a fifth.
+      if (at > lastAt) worst = Math.max(worst, ((f.head - last) / ((at - lastAt) / 1000)) / (f.cap * 1.2));
+      last = f.head;
+      lastAt = at;
+      if ((gap > 0 && f.head === f.target) || at - t0 > 15_000) return resolve({ rest: at - t0, gap, worst });
       requestAnimationFrame(tick);
     };
     requestAnimationFrame(tick);
   }));
   expect(run.gap, "the flick's line, px of arc").toBeGreaterThan(1000);
-  expect(run.arrived).toBeLessThanOrEqual(1500);
-  expect(run.rest).toBeLessThanOrEqual(2400);
+  expect(run.worst, "the head's speed over the cap in force, with a fifth to spare").toBeLessThanOrEqual(1);
+  expect(run.rest, "the head arrives").toBeLessThan(15_000);
 });
 
 test("wavepath: reduced motion draws the whole line still and runs no loop", async ({ page }) => {

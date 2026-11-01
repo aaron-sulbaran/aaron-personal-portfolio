@@ -35,6 +35,7 @@ const MAX_STEP_S = 0.1;
 
 export interface WaveFrame extends DotFrame {
   scrollY: number;
+  dt: number; // seconds this frame steps
   decided: boolean; // lib/soundtrack.ts: anything but "before"
   gated: boolean; // the band is below the release line, so the head waits at the run's end
   idleGain: number; // the idle ripple's strength now: 1 with no music, fading out as the music shapes the line, 0 when still
@@ -88,7 +89,7 @@ function createInstance(still: boolean): Instance {
   let frozen = false, destroyed = false, snap = false, raf = 0, last = 0, breathClock = 0;
   const frame: WaveFrame = {
     head: 0, tail: -Infinity, train: null, runLen: 0, gate: 0, breath: 0, shimmer: 0,
-    music: createMusic(), plucks: createPlucks(), ripple: createRipple(), still, scrollY: window.scrollY,
+    music: createMusic(), plucks: createPlucks(), ripple: createRipple(), still, scrollY: window.scrollY, dt: 1 / 60,
     decided: getSoundtrackState() !== "before", gated: false, idleGain: 0, idleClock: 0, length: 0, runFlat: 0,
     state: createHead(), pointer: createPointer(), near: createNear(),
   };
@@ -108,6 +109,7 @@ function createInstance(still: boolean): Instance {
   };
 
   const step = (t: number, dt: number): boolean => {
+    frame.dt = dt;
     refreshGate();
     for (const v of views) v.prepare(frame);
     if (snap) {
@@ -257,7 +259,7 @@ function createInstance(still: boolean): Instance {
   }
   const unsubscribe = subscribeSoundtrack(onSoundtrack);
   const detachProbe = attachProbe({
-    frame: () => ({ head: frame.head, target: frame.state.target, length: frame.length, runLen: frame.runLen, train: frame.train, decided: frame.decided, gated: frame.gated, idle: frame.idleGain, runFlat: frame.runFlat, ripple: frame.ripple.live ? RIPPLE.amp * Math.exp(-RIPPLE.decay * frame.ripple.age) : 0 }),
+    frame: () => ({ head: frame.head, target: frame.state.target, cap: frame.state.cap, length: frame.length, runLen: frame.runLen, train: frame.train, decided: frame.decided, gated: frame.gated, idle: frame.idleGain, runFlat: frame.runFlat, ripple: frame.ripple.live ? RIPPLE.amp * Math.exp(-RIPPLE.decay * frame.ripple.age) : 0 }),
     visibleDots: () => views.reduce((n, v) => n + v.countVisible(frame), 0),
   });
 
