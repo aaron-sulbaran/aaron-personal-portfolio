@@ -18,11 +18,11 @@ test("inline links (touch): a tap pins a tip under its link and a tap elsewhere 
   await page.locator("main").tap({ position: { x: 4, y: 4 } });
   await expect(bubble(page)).toHaveAttribute("data-shown", "false");
   await expect(tipLink(page)).not.toHaveAttribute("data-inline-open", "");
-  // A tap is a click: the link stays filled, like a visited one.
+  // The tap showed its tip, which is what discovers a word: the link stays filled.
   expect(await fillOf(tipLink(page))).toBe(1);
 });
 
-test("inline links (touch): a link never tapped stays empty on a touch screen, and a tap marks it for the next visit", async ({ page }) => {
+test("inline links (touch): a word never tapped stays empty on a touch screen, and the tap that shows its tip marks it for the next visit", async ({ page }) => {
   await openFixture(page, TIP);
   expect(await fillOf(tipLink(page))).toBe(0);
   await tipLink(page).tap();

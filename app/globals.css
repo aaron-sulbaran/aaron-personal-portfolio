@@ -702,9 +702,11 @@ html:not([data-band-answer]) [data-band-title="returning"] { display: none; }
    resting line from the centre (scaleX 0 to 1). It runs on hover, on keyboard
    focus, while the link's tip, pop or definition is open or pinned
    (data-inline-open, written by useTipController and useDefinition), and for
-   good once the link has been clicked (the visited rules that
-   components/inline/useVisitedLinks injects from lib/inline/visited.ts: a rule
-   keeps the browser's :visited out of it, which cannot style a background).
+   good once the link has been met: a tip, pop or definition when its content
+   first shows (not when it is clicked), an external link when it is clicked
+   (the rule that components/inline/useVisitedLinks injects from
+   lib/inline/visited.ts: a rule keeps the browser's :visited out of it, which
+   cannot style a background).
    What a link does is told by the cursor label, not by its line. A link never
    wraps and is inline-block like a button, because SplitText clones a plain
    inline anchor into an empty, focusable copy. Its box is padded by

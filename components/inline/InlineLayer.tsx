@@ -17,8 +17,9 @@ const DESCRIBED: Array<readonly [TipKind, string]> = [
 ];
 // The copy's inline links come alive here, once per page (app/layout.tsx):
 // definitions open the house text modal, tips and pops share one label, and
-// every tip and pop link is described by a hidden element listed below, and a
-// clicked link stays filled (useVisitedLinks).
+// every tip and pop link is described by a hidden element listed below, a word
+// whose content has shown stays filled (useTipController, useDefinition), and
+// a followed external link does too (useVisitedLinks).
 export function InlineLayer() {
   const bubbleRef = useRef<HTMLDivElement | null>(null);
   const tip = useTipController(bubbleRef);

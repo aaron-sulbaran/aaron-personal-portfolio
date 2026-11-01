@@ -341,7 +341,7 @@ for (const colorScheme of ["light", "dark"] as const) {
   });
 }
 
-test("inline links: hover fills the word and its line together from the centre, on the same 350ms curve, and hover out empties them", async ({ page }) => {
+test("inline links: hover fills the word and its line together from the centre, on the same 350ms curve, and hover out empties a definition and an external link while a tip or a pop, whose content has shown, stays filled", async ({ page }) => {
   await openFixture(page, ...LINE_CASES.map(([, copy]) => copy));
   for (const [kind, , selector] of LINE_CASES) {
     const link = page.locator(selector).first();
@@ -361,8 +361,10 @@ test("inline links: hover fills the word and its line together from the centre, 
     await expect.poll(() => fillOf(link), { message: `${kind}: fills` }).toBe(1);
     expect(await barScale(link)).toBe(1);
     await rest(page);
-    await expect.poll(() => fillOf(link), { message: `${kind}: empties` }).toBe(0);
-    expect(await barScale(link)).toBe(0);
+    // A tip or pop is discovered by the hover that showed it; a definition's hover line is not its content, and an external link is met by a click.
+    const met = kind === "tip" || kind === "pop" ? 1 : 0;
+    await expect.poll(() => fillOf(link), { message: `${kind}: ${met ? "stays filled" : "empties"}` }).toBe(met);
+    expect(await barScale(link)).toBe(met);
   }
 });
 
@@ -390,39 +392,42 @@ test("inline links: keyboard focus fills a link while its ring shows, and the ri
   await expect.poll(() => fillOf(tipLink(page))).toBe(1);
   expect(await tipLink(page).evaluate((el) => getComputedStyle(el).outlineStyle)).toBe("solid");
   await page.keyboard.press("Tab");
-  await expect.poll(() => fillOf(tipLink(page))).toBe(0);
+  await expect.poll(() => fillOf(tipLink(page))).toBe(1); // the focus showed its tip: discovered, so it stays filled
 });
 
-test("inline links: a link stays filled while its tip is open, hovered or focused, and neither marks it clicked; Enter does", async ({ page }) => {
+test("inline links: a word is discovered the moment its tip shows, by keyboard focus, and stays filled for good", async ({ page }) => {
   await openFixture(page, TIP);
   const link = tipLink(page);
+  expect(await page.evaluate(() => localStorage.getItem("aaron-inline-visited"))).toBeNull();
   await tabTo(page, link);
   await expect(link).toHaveAttribute("data-inline-open", "");
+  expect(await page.evaluate(() => localStorage.getItem("aaron-inline-visited"))).toBe(JSON.stringify(["tip:killer-drones"]));
   await page.keyboard.press("Escape");
   await expect(link).not.toHaveAttribute("data-inline-open", "");
   await expect.poll(() => fillOf(link)).toBe(1); // still focused with a ring
   await page.keyboard.press("Tab");
-  await expect.poll(() => fillOf(link)).toBe(0);
-  await link.hover();
-  await expect(link).toHaveAttribute("data-inline-open", "");
   await rest(page);
-  await expect(link).not.toHaveAttribute("data-inline-open", "");
+  await expect.poll(() => fillOf(link)).toBe(1); // discovered: stays filled with nothing open
+});
+
+test("inline links: a word is discovered when a mouse's hover shows its tip, with no click", async ({ page }) => {
+  await openFixture(page, TIP);
+  const link = tipLink(page);
+  await rest(page);
   await expect.poll(() => fillOf(link)).toBe(0);
   expect(await page.evaluate(() => localStorage.getItem("aaron-inline-visited"))).toBeNull();
-  await tabTo(page, tipLink(page));
-  await page.keyboard.press("Escape");
-  await page.keyboard.press("Enter");
+  await link.hover();
   await expect(link).toHaveAttribute("data-inline-open", "");
   expect(await page.evaluate(() => localStorage.getItem("aaron-inline-visited"))).toBe(JSON.stringify(["tip:killer-drones"]));
-  await page.keyboard.press("Tab");
   await rest(page);
-  await expect.poll(() => fillOf(link)).toBe(1); // clicked: stays filled
+  await expect(link).not.toHaveAttribute("data-inline-open", "");
+  await expect.poll(() => fillOf(link)).toBe(1);
 });
 
 test("inline links (reduced motion): the word and its line switch with no tween", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await openFixture(page, TIP);
-  const link = tipLink(page);
+  await openFixture(page, DEF);
+  const link = page.locator('[data-inline="def"]').first();
   // The global reduced-motion rule leaves 0.001ms, a switch.
   expect(await link.evaluate((el) => parseFloat(getComputedStyle(el).transitionDuration))).toBeLessThan(0.00001);
   const box = (await link.boundingBox())!;
@@ -470,7 +475,7 @@ test("inline links: the line sits below every descender with a clear gap, inside
   }
 });
 
-test("inline links: a clicked definition stays filled once its modal closes and after a reload, with no flash on load", async ({ page }) => {
+test("inline links: an opened definition stays filled once its modal closes and after a reload, with no flash on load", async ({ page }) => {
   const link = await productLink(page);
   await rest(page);
   await expect.poll(() => fillOf(link)).toBe(0);
@@ -490,10 +495,9 @@ test("inline links: a clicked definition stays filled once its modal closes and 
   await page.waitForSelector("html[data-inline-links='ready']", { state: "attached" });
   const again = page.locator('[data-inline="def"][data-inline-key="product"]').first();
   expect(await fillOf(again)).toBe(1);
-  expect(await again.evaluate((el) => getComputedStyle(el).transitionDuration)).toBe("0s");
 });
 
-test("inline links: an external link followed stays filled, and links never clicked stay empty", async ({ page, offsite }) => {
+test("inline links: an external link followed stays filled, and links never revealed stay empty", async ({ page, offsite }) => {
   await openFixture(page, TIP, CALENDAR);
   const calendar = page.getByRole("link", { name: "grab a time on my calendar" });
   const popup = page.waitForEvent("popup");
@@ -509,7 +513,7 @@ test("inline links: an external link followed stays filled, and links never clic
   expect(await fillOf(tipLink(page))).toBe(0);
 });
 
-test("inline links: storage that throws does not break clicking; the link fills for this page view", async ({ page }) => {
+test("inline links: storage that throws does not break opening a definition; the link fills for this page view", async ({ page }) => {
   await page.addInitScript(() => {
     Storage.prototype.setItem = () => { throw new Error("QuotaExceededError"); };
   });

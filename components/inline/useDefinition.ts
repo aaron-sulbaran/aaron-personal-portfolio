@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { siteContent } from "@/lib/content";
 import type { DefinitionEntry } from "@/lib/content/types";
 import { markOpen } from "@/lib/inline/open";
+import { markDiscovered } from "@/lib/inline/visited";
 const { def } = siteContent.register;
 const BLOCK = "[data-sections-block]";
 const WATCH_CAP_MS = 2000;
@@ -67,6 +68,7 @@ export function useDefinition(dismissTip: () => void): { entry: DefinitionEntry 
       triggerRef.current = trigger;
       blockRef.current = trigger.closest(BLOCK);
       setKey(next);
+      markDiscovered("def", next); // opening the definition is its content showing
     };
     document.addEventListener("click", onClick);
     return () => {
