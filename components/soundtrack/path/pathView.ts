@@ -1,8 +1,9 @@
 import { DPR_CAP } from "@/lib/waveform/layout";
 import { EMPTY_COLUMNS, mapTiles, tileReach, type PathColumns, type TileMap } from "@/lib/wavepath/columns";
-import { ALPHAS, BAND_KEEP_FADE, SPACING, TILE_MARGIN_PX, TILE_PX } from "@/lib/wavepath/constants";
+import { ALPHAS, BAND_KEEP_FADE, DRAW_SPEED, SPACING, TILE_MARGIN_PX, TILE_PX } from "@/lib/wavepath/constants";
 import type { SpineSamples } from "@/lib/wavepath/geometry";
 import { HEAD_PARAMS, firstOnScreenY, gatedTarget, headTarget, runFlatness, runLength } from "@/lib/wavepath/head";
+import { calmSpeed, headCap } from "@/lib/wavepath/pace";
 import { buildPathDots, clearSink, createSink } from "@/lib/wavepath/paint";
 import { nearestColumn } from "@/lib/wavepath/pluck";
 import { pathProbe } from "@/lib/wavepath/probe";
@@ -33,7 +34,7 @@ export function createPathView(layer: HTMLElement, root: HTMLElement, conductor:
   let map: TileMap = mapTiles(EMPTY_COLUMNS, TILE_PX, 0, 0);
   let samples: SpineSamples | null = null;
   let measured: Anchors | null = null;
-  let origin = 0, viewport = 0, maxScrollY = 0, entry = 0, amp = 0, width = 0, raf = 0, innerWidth = 0, runLen = 0, runFlat = 0;
+  let origin = 0, viewport = 0, maxScrollY = 0, entry = 0, amp = 0, width = 0, raf = 0, innerWidth = 0, runLen = 0, runFlat = 0, calm = DRAW_SPEED;
   let dirty = true, laid = false, destroyed = false;
   let kind: RouteKind = "wide";
   // The line is one line: its return keeps clear of the band and no dot of the path lands in it.
@@ -109,6 +110,7 @@ export function createPathView(layer: HTMLElement, root: HTMLElement, conductor:
     keep = { edge: anchors.box.band.bottom, fade: BAND_KEEP_FADE };
     const line = layLine(anchors, viewport);
     kind = line.route.kind;
+    calm = calmSpeed(kind, width);
     amp = line.amp;
     samples = line.samples;
     runLen = runLength(samples, width);
@@ -153,6 +155,8 @@ export function createPathView(layer: HTMLElement, root: HTMLElement, conductor:
       f.state.target = gatedTarget(raw, f.runLen, f.length, following, f.still);
       const j = Math.min(cols.count - 1, Math.max(0, Math.floor(f.state.head / SPACING)));
       f.state.gateTarget = following && cols.inWords[j] !== 1 ? 1 : 0;
+      // The head draws at a calm pace while any ink of its train shows, and runs fast only unseen (lib/wavepath/pace).
+      f.state.cap = !measured || f.still ? DRAW_SPEED : headCap(calm, { samples, head: f.head, tail: f.tail, train: f.train, width, viewTop: f.scrollY - origin, viewHeight: viewport, amplitude: amp, cards: measured.box.cards, dt: f.dt });
       if (f.pointer.moved) nearestColumn(cols, f.pointer.x, f.pointer.y + f.scrollY - origin, f.head, f.tail, f.near);
     },
     paint(f: WaveFrame, changed: Changed | null) {

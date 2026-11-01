@@ -52,3 +52,27 @@ describe("the wave waiting after an answer", () => {
     expect(hold.on).toBe(true);
   });
 });
+
+describe("a Not now in the hold", () => {
+  it("holds the wave while the band shows, but keeps no ripple back: its answer is the swell, at the press", () => {
+    const hold = createWaveHold();
+    expect(pressAnswer(hold, false, "decline")).toEqual({ startRipple: false });
+    expect(hold).toEqual({ on: true, ripple: false });
+    expect(checkRelease(hold, true)).toEqual({ released: true, startRipple: false });
+    expect(hold.on).toBe(false);
+  });
+
+  it("sends no ripple either when the band is already scrolled away", () => {
+    const hold = createWaveHold();
+    expect(pressAnswer(hold, true, "decline")).toEqual({ startRipple: false });
+    expect(hold.on).toBe(false);
+  });
+
+  it("leaves a yes's ripple as it was: Play it after a Not now still sends one at the release", () => {
+    const hold = createWaveHold();
+    pressAnswer(hold, false, "decline");
+    checkRelease(hold, true);
+    pressAnswer(hold, false, "play");
+    expect(checkRelease(hold, true)).toEqual({ released: true, startRipple: true });
+  });
+});

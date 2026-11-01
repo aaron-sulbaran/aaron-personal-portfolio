@@ -1,3 +1,5 @@
+import type { Press } from "./answer";
+
 // The wave's wait after an answer. An answer to the band does not send the
 // line off at once: the wave keeps the look it had before the answer (the run
 // breathing, the head waiting at its end, no music, no pluck) until the band
@@ -21,15 +23,18 @@ export const bandAway = (rect: { top: number; bottom: number }, viewportHeight: 
 
 // A live answer press. With the band already scrolled away it behaves as a
 // press always did: the ripple goes out now. Otherwise the wave is held and
-// the ripple waits for the release.
-export function pressAnswer(hold: WaveHold, away: boolean): HoldResult {
+// the ripple waits for the release. A Not now sends no ripple at all, now or
+// at the release: its answer is the swell in the band, at the press
+// (lib/wavepath/answer), and the held wave just waits to follow.
+export function pressAnswer(hold: WaveHold, away: boolean, answer: Press = "play"): HoldResult {
+  const ripple = answer === "play";
   if (away) {
     hold.on = false;
     hold.ripple = false;
-    return { startRipple: true };
+    return { startRipple: ripple };
   }
   hold.on = true;
-  hold.ripple = true;
+  hold.ripple = ripple;
   return { startRipple: false };
 }
 

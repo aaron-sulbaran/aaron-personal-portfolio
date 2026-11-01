@@ -1,4 +1,4 @@
-import { DRAW_EASE_S, DRAW_SPEED, GATE_S, HEAD_AT, HEAD_REST_PX, HEAD_SMOOTHING, RUN_PAST, RUN_SPACING, RUN_START } from "./constants";
+import { DRAW_EASE_S, DRAW_TURN_S, DRAW_SPEED, GATE_S, HEAD_AT, HEAD_REST_PX, HEAD_SMOOTHING, RUN_PAST, RUN_SPACING, RUN_START } from "./constants";
 import { arcAtY, type Point, type SpineSamples } from "./geometry";
 import type { Anchors } from "./spine";
 
@@ -94,10 +94,11 @@ export interface HeadState {
   head: number;
   target: number;
   vel: number;
+  cap: number; // the speed the head may go at now, px of arc per second (lib/wavepath/pace); the view writes it each frame
   gate: number;
   gateTarget: number;
 }
-export const createHead = (): HeadState => ({ head: 0, target: 0, vel: 0, gate: 0, gateTarget: 0 });
+export const createHead = (): HeadState => ({ head: 0, target: 0, vel: 0, cap: DRAW_SPEED, gate: 0, gateTarget: 0 });
 
 // Where the head may go: the whole line under reduced motion, the run's end
 // until the visitor answers the band, else the scroll's target.
@@ -106,9 +107,9 @@ export function gatedTarget(raw: number, runLen: number, length: number, decided
   return decided ? raw : runLen;
 }
 
-// One step toward the target, never faster than DRAW_SPEED px of arc per
-// second, the speed eased in over DRAW_EASE_S; the swell's gate relaxes over
-// GATE_S. True while either still moves.
+// One step toward the target, never faster than the head's cap (at most DRAW_SPEED px of arc per second). Its speed eases in over
+// DRAW_EASE_S and turns round over DRAW_TURN_S; slowing for the target is the gap's own closing (HEAD_SMOOTHING per second), so the
+// head neither lurches off, nor overshoots, nor surges to catch up. The swell's gate relaxes over GATE_S. True while either still moves.
 export function stepHead(h: HeadState, dt: number, still: boolean): boolean {
   if (still) {
     h.head = h.target;
@@ -117,8 +118,12 @@ export function stepHead(h: HeadState, dt: number, still: boolean): boolean {
     return false;
   }
   const gap = h.target - h.head;
-  const want = Math.max(-DRAW_SPEED, Math.min(DRAW_SPEED, gap * HEAD_SMOOTHING));
-  h.vel = Math.abs(want) > Math.abs(h.vel) ? want + (h.vel - want) * Math.exp(-dt / DRAW_EASE_S) : want;
+  const cap = Math.min(DRAW_SPEED, h.cap);
+  const want = Math.max(-cap, Math.min(cap, gap * HEAD_SMOOTHING));
+  const turning = want * h.vel < 0;
+  if (turning || Math.abs(want) > Math.abs(h.vel)) h.vel = want + (h.vel - want) * Math.exp(-dt / (turning ? DRAW_TURN_S : DRAW_EASE_S));
+  else h.vel = want;
+  h.vel = Math.max(-cap, Math.min(cap, h.vel));
   h.head += h.vel * dt;
   if ((gap > 0 && h.head > h.target) || (gap < 0 && h.head < h.target) || Math.abs(h.head - h.target) < HEAD_REST_PX) {
     h.head = h.target;

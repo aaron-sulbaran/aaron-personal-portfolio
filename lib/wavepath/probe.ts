@@ -1,11 +1,11 @@
 // The wave path's QA surface, only with `wavedebug` in the URL (query, or
-// after the hash): window.__wavePath. ripple is the answer's crest height now (0 when none). freeze(on) is the
+// after the hash): window.__wavePath. cap is the speed the head may go at now, px of arc per second. ripple is the answer's crest height now (0 when none). freeze(on) is the
 // reader's "Freeze the wave" without the pill's or the player's button. Without it pathProbe() is null and every
 // caller pays one null check.
 import { setFrozen } from "@/lib/waveform/freeze";
 import type { Anchors } from "./spine";
 
-export type ProbeFrame = { head: number; target: number; length: number; runLen: number; train: number | null; decided: boolean; gated: boolean; idle: number; runFlat: number; ripple: number };
+export type ProbeFrame = { head: number; target: number; cap: number; length: number; runLen: number; train: number | null; decided: boolean; gated: boolean; idle: number; runFlat: number; ripple: number };
 // layout: what the page was last laid out on, in layer px (origin: the band's document top, the root's left): the measured anchors and the
 // viewport's height, so a check can lay the same line on the same page.
 export type ProbeLayout = { anchors: Anchors; viewport: number; origin: number };

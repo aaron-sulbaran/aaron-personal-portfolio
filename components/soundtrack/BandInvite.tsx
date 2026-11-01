@@ -3,7 +3,7 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { Fill } from "@/components/fx/Fill";
 import { siteContent } from "@/lib/content";
-import { bandLayersShown } from "@/lib/home/bandLayers";
+import { bandLayersShown, declineChosen } from "@/lib/home/bandLayers";
 import { FILL_PICK } from "@/lib/fx/fill";
 import { bandPlayerMounted } from "@/lib/player/machine";
 import { usePlayerView } from "@/lib/player/viewStore";
@@ -39,6 +39,12 @@ import { PRIMARY, QUIET, SMALL } from "./bandButtons";
 // after hydration. The question's words are copy.line on a first visit and
 // copy.lineReturning after one; today they are the same words, so only one is drawn.
 //
+// A Not now is answered: the wave rolls a gentle swell out of the band (lib/wavepath/answer), and
+// Not now stays beside Play it as the chosen option, this visit or a stored one: no longer a button
+// (disabled, aria-pressed), drawn with its underline filled and settled, with no hover
+// (app/globals.css, "Not now, once chosen"). Play it stays the invitation, and choosing it later
+// moves the answer with the state, as ever.
+//
 // With the player in the band the player is the feedback: the Pause or Resume
 // beside the heading goes, and the heading closes up on its own.
 //
@@ -52,6 +58,7 @@ export function BandInvite() {
   // Nothing of the band's own shows then, so the controls close up instead of holding their height: the player sits right under the heading on a phone, and the wave's keep-out shrinks to the heading on a desktop. The controls keep their width, where an answer's ripple starts.
   const closedUp = playerOwns && (music === "on" || music === "paused");
   const shown = bandLayersShown(music, playerOwns);
+  const declined = declineChosen(music);
   const moveFocus = useRef(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
 
@@ -71,11 +78,6 @@ export function BandInvite() {
   const act = (write: () => void) => () => {
     moveFocus.current = true;
     write();
-  };
-  // Not now is also offered after a Not now, where it changes nothing: no focus to move then.
-  const decline = () => {
-    moveFocus.current = music !== "off";
-    stopSoundtrack();
   };
 
   return (
@@ -110,7 +112,7 @@ export function BandInvite() {
           </div>
           {/* Not now keeps its place beside whichever play layer shows, so it is never drawn twice. */}
           <Layer name="decline" shown={shown.decline}>
-            <Fill {...FILL_PICK.band} shape="rect" type="button" onClick={decline} data-cursor-hover {...QUIET}>
+            <Fill {...FILL_PICK.band} shape="rect" type="button" onClick={act(stopSoundtrack)} disabled={declined} aria-pressed={declined} data-cursor-hover {...QUIET}>
               {c.decline}
             </Fill>
           </Layer>

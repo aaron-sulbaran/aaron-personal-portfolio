@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { siteContent } from "@/lib/content";
-import { bandLayersShown } from "@/lib/home/bandLayers";
+import { bandLayersShown, declineChosen } from "@/lib/home/bandLayers";
 import { BAND_ANSWER_ATTRIBUTE, SOUNDTRACK_STORAGE_KEY, bandInitScript } from "@/lib/home/bandInit";
 
 // The head script, run against a stub of the page.
@@ -42,7 +42,8 @@ const { listen } = siteContent;
 describe("the band on every visit", () => {
   it("never hides the question or Not now for an answer: the head script chooses labels, not whether it asks", () => {
     expect(GLOBALS).not.toMatch(/\[data-band-question\]\s*\{[^}]*display:\s*none/);
-    expect(GLOBALS).not.toMatch(/data-band-layer="decline"/);
+    // Not now may be styled as the chosen answer (below), never hidden.
+    expect(GLOBALS).not.toMatch(/data-band-layer="decline"\][^{]*\{[^}]*(display:\s*none|opacity:\s*0\b|visibility:\s*hidden)/);
   });
 
   it("draws a stored Not now on Play it and a stored yes on Resume, before the band restores", () => {
@@ -96,5 +97,50 @@ describe("which band layers show", () => {
         expect(playLayers.filter(Boolean).length, `${music} ${playerOwns}`).toBeLessThanOrEqual(1);
       }
     }
+  });
+});
+
+describe("Not now, once chosen", () => {
+  it("is the answer exactly when the state is off, this visit or a stored one, and never otherwise", () => {
+    expect(declineChosen("off")).toBe(true);
+    for (const music of ["before", "on", "paused"] as const) expect(declineChosen(music), music).toBe(false);
+  });
+
+  it("stays shown beside Play it when chosen, so the question always carries both choices and nothing moves", () => {
+    expect(bandLayersShown("off", false).decline).toBe(true);
+    expect(bandLayersShown("off", true).decline).toBe(true);
+  });
+
+  // The rule's declarations, read off globals.css.
+  const rule = GLOBALS.match(/\[data-band-state="off"\] \[data-band-layer="decline"\] \.fx,\s*html\[data-band-answer="off"\] \[data-band-state="before"\] \[data-band-layer="decline"\] \.fx \{([^}]*)\}/)?.[1] ?? "";
+
+  it("is drawn from the first paint for a stored Not now, off the attribute the head script already sets, and once the state is off", () => {
+    expect(rule).not.toBe("");
+    expect(GLOBALS).toContain('html[data-band-answer="off"] [data-band-state="before"] [data-band-layer="decline"] .fx');
+    expect(GLOBALS).toContain('[data-band-state="off"] [data-band-layer="decline"] .fx');
+    // Only the stored answer "off" reads as chosen: a stored yes keeps its Not now a plain button.
+    expect(GLOBALS).not.toMatch(/html\[data-band-answer="on"\][^{]*data-band-layer="decline"/);
+  });
+
+  it("settles the fill's rise line, holds the fill off whatever hovers or focuses it, and takes no pointer", () => {
+    expect(rule).toMatch(/--fx-line:\s*1\.5px\s*!important/);
+    expect(rule).toMatch(/--fx-p:\s*0\s*!important/);
+    expect(rule).toMatch(/pointer-events:\s*none/);
+    expect(rule).toMatch(/cursor:\s*default/);
+  });
+
+  it("only changes colours, so nothing shifts: no size, padding, margin, display or position", () => {
+    for (const property of ["width", "height", "padding", "margin", "display", "position", "font-size", "font-weight", "line-height", "letter-spacing"]) {
+      expect(rule, property).not.toMatch(new RegExp(`(^|[;\\s])${property}\\s*:`));
+    }
+  });
+
+  it("settles under reduced motion by the fill's own rule, which zeroes its transitions", () => {
+    expect(GLOBALS).toMatch(/@media \(prefers-reduced-motion: reduce\) \{\s*\.fx \{\s*transition-duration: 0s !important;/);
+  });
+
+  it("reaches the head script through the same attribute, with no second mechanism", () => {
+    expect(bandInitScript()).toContain(BAND_ANSWER_ATTRIBUTE);
+    expect(GLOBALS.match(/data-band-answer/g)?.length).toBeGreaterThan(1);
   });
 });
