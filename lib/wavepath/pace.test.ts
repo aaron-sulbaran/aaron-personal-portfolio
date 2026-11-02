@@ -17,9 +17,11 @@ describe("the calm speed", () => {
     expect(calmSpeed("wide", 1280) * CROSS_S.wide).toBeCloseTo(1280, 9);
     expect(calmSpeed("phone", 390) * CROSS_S.phone).toBeCloseTo(390, 9);
   });
-  it("is what a slow scroll was asked for: a full width in about 2 seconds or more on a wide window, 1.5 on a phone", () => {
-    expect(CROSS_S.wide).toBeGreaterThanOrEqual(2);
-    expect(CROSS_S.phone).toBeGreaterThanOrEqual(1.5);
+  it("sits in the band Aaron asked for: a full width in about 1.0 to 1.6 seconds", () => {
+    for (const s of [CROSS_S.wide, CROSS_S.phone]) {
+      expect(s).toBeGreaterThanOrEqual(1);
+      expect(s).toBeLessThanOrEqual(1.6);
+    }
   });
 });
 
@@ -65,8 +67,8 @@ describe("a steady scroll", () => {
       const frames = steadyScroll(page, { speed });
       const times = crossingTimes(page, frames);
 
-      it(`takes the screen's width in ${narrow(size) ? "1.5" : "2"} seconds or more to draw each crossing it is watched at, at ${size}, ${speed} px/s`, () => {
-        for (const c of times) if (c.seconds !== null) expect(c.seconds, `crossing ${c.index}`).toBeGreaterThanOrEqual(narrow(size) ? 1.5 : 2);
+      it(`takes about CROSS_S (${narrow(size) ? CROSS_S.phone : CROSS_S.wide} s) or more to draw each crossing it is watched at, at ${size}, ${speed} px/s`, () => {
+        for (const c of times) if (c.seconds !== null) expect(c.seconds, `crossing ${c.index}`).toBeGreaterThanOrEqual(0.95 * (narrow(size) ? CROSS_S.phone : CROSS_S.wide));
         if (speed === 300) expect(times.filter((c) => c.seconds !== null).length, "crossings watched at a slow scroll").toBeGreaterThanOrEqual(2);
       });
 
