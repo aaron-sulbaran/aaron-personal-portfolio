@@ -7,6 +7,7 @@ import { AsMark } from "@/components/menu/BrandMark";
 import { MARK_HOLD_IDLE, setMarkHold } from "@/lib/cursor/hover";
 import { isKeyboardFocus } from "@/lib/input/modality";
 import { loadCard } from "@/lib/mark/cardChunk";
+import { onMarkSummon } from "@/lib/mark/summon";
 import { MARK } from "@/lib/mark/constants";
 import { BAR_D, BOLT_D, FILL_BOTTOM, LEG_D, VIEW_BOX, risePaint } from "@/lib/mark/geometry";
 import { HOLD_IDLE, advance, cancel, click, press, release, sample, settle, type HoldSource } from "@/lib/mark/hold";
@@ -19,6 +20,8 @@ import { closeMenu, getMenuOpen } from "@/lib/menu";
 // for the cursor's ring. Keyboard: Enter or Space held; Escape cancels.
 // Touch: no pan, no callout, no context menu on the mark. The card never
 // opens over the Menu: a hold that fires with the Menu open closes it first.
+// The This site card can ask for the same card (lib/mark/summon): the mark
+// charges and strikes as it does for a held key.
 const HOLD_KEYS = new Set(["Enter", " "]);
 
 // The card carries GSAP and the cel strike, so it is its own chunk: the first
@@ -92,6 +95,20 @@ export function MarkTrigger({ ariaLabel, className, onActivate }: Props) {
       setMarkHold(MARK_HOLD_IDLE);
     };
   }, []);
+
+  // Asked for from elsewhere (the This site card's "Show me one", lib/mark/summon): the same charge a held key starts, which
+  // runs to the discharge and the card's strike with nothing further held (a keyboard hold swallows no click).
+  useEffect(
+    () =>
+      onMarkSummon(() => {
+        if (openRef.current) return;
+        void loadCard();
+        setArmed(true);
+        hold.current = press(hold.current, performance.now(), "key");
+        kick.current();
+      }),
+    [],
+  );
 
   const now = () => performance.now();
   const arm = () => {

@@ -130,6 +130,10 @@ export interface CardModal {
   links: readonly CardLink[];
   photos: readonly ModalPhoto[];
   blocks: readonly string[];
+  // A standalone last line after the paragraphs: line, then control, a link-styled button that closes the card and plays the
+  // logo's easter egg (components/card/CardEgg, lib/mark/summon). Drawn by the desktop rows and a phone card's words alone, so only
+  // a card with no photos carries it (a phone's pager does not draw it).
+  easterEgg?: { line: string; control: string };
   video?: CardVideoRef;
   embed?: CardEmbedRef;
   // Where the card has an embed: what a phone draws in its place.

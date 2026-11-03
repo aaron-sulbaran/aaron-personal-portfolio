@@ -4,6 +4,7 @@ import { rowBox } from "@/lib/gallery/boxes";
 import type { Gallery } from "@/lib/gallery/card";
 import { BOXES, GALLERY } from "@/lib/gallery/constants";
 import { slideWords, type Slide } from "@/lib/gallery/plan";
+import { CardEgg } from "./CardEgg";
 import { CardHeader } from "./CardHeader";
 import { CardLinks } from "./CardLinks";
 import { CloseHint } from "./CloseHint";
@@ -19,18 +20,18 @@ import { Words } from "./Words";
 // photo, or every group of photos taking turns, its own row with its words
 // beside it, vertically centred, the sides alternating from the left; then the
 // closing words, the mentors on Mentorship (Talos's sting and Discord channel among its
-// paragraphs, its team after them), the links and the close hint. A card's demo video is a row's media like a photo (lib/gallery/card). A
+// paragraphs, its team after them), This site's easter egg line, the links and the close hint. A card's demo video is a row's media like a photo (lib/gallery/card). A
 // vertical photo is drawn in one box and a horizontal one in another, and a
 // photo narrower than the card's photo column sits against the panel's edge,
 // so the words keep one place on each side. A card with no photos has no rows,
 // so its paragraphs sit a reading rhythm apart (GALLERY.proseGap), not a row's. The card picture leads the first
 // row and carries the flight's slot.
 
-type Props = { gallery: Gallery; renderMedia: boolean; flying: boolean };
+type Props = { gallery: Gallery; renderMedia: boolean; flying: boolean; onClose: () => void };
 
 const EDGE = { left: "justify-start", right: "justify-end" } as const;
 
-export function CardRows({ gallery, renderMedia, flying }: Props) {
+export function CardRows({ gallery, renderMedia, flying, onClose }: Props) {
   const { plan, photos, aspects, lead, slot } = gallery;
   // The card picture is always the vertical box (3:4), so the flown card fits it exactly.
   const box = (photo: number) => gallery.boxes?.[photo] ?? (photo === lead ? BOXES.vertical : rowBox(aspects[photo], BOXES, GALLERY.wideFrom, GALLERY.rowMaxCrop));
@@ -91,6 +92,7 @@ export function CardRows({ gallery, renderMedia, flying }: Props) {
         {plan.closing.map(prose)}
         {gallery.key === "mentorship" && <MentorsList />}
         {gallery.key === "talos" && <TalosTeam />}
+        <CardEgg cardKey={gallery.key} onClose={onClose} />
       </div>
       <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
         <CardLinks cardKey={gallery.key} />

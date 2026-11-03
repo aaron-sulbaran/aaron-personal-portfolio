@@ -39,11 +39,11 @@ export function CardBody({ gallery, layout, renderMedia, flying, onClose }: Prop
   return (
     <div ref={rootRef} data-card-body={layout} className={paged ? "flex min-h-0 flex-1 flex-col" : undefined}>
       {layout === "rows" ? (
-        <CardRows gallery={gallery} renderMedia={renderMedia} flying={flying} />
+        <CardRows gallery={gallery} renderMedia={renderMedia} flying={flying} onClose={onClose} />
       ) : paged ? (
         <CardPager gallery={gallery} base={base} pages={pages} renderMedia={renderMedia} onClose={onClose} layout={measured} onLayout={setMeasured} />
       ) : (
-        <CardWords gallery={gallery} renderMedia={renderMedia} flying={flying} />
+        <CardWords gallery={gallery} renderMedia={renderMedia} flying={flying} onClose={onClose} />
       )}
     </div>
   );

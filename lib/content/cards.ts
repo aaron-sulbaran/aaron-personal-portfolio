@@ -175,7 +175,7 @@ export const cards: Cards = {
     book: { title: "This site", meta: "Portfolio (design playground), 2026" },
     modal: { kind: "logo", title: "This site", meta: "Portfolio, 2026", links: [{ label: "The repo on GitHub", href: "https://github.com/aaron-sulbaran/aaron-personal-portfolio" }], photos: [], blocks: [
       "I'm building this site and continuing to update it as I grow. I [design](tip:this-site-playground) it, write the specs, and manage a team of AI agents that help me build it, which is a good test of how I'd run a product team. The repo is public.",
-    ] },
+    ], easterEgg: { line: "I've hidden a few easter eggs on this site.", control: "Show me one" } },
   },
   fsdatalink: {
     short: "Family business", visual: { kind: "logo", logo: logos.fsdatalink, tile: "plain" },

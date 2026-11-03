@@ -30,8 +30,8 @@ describe("a card's mask steps", () => {
     expect(ids(cardSteps(galleryOf("capital-one"), "pager", false))).toEqual([["title"], ["meta"], ["photo-0", "caption-0"], ["words-0", "words-1"], ["pager"]]);
     expect(ids(cardSteps(galleryOf("mentorship"), "pager", true))[2]).toEqual(["photo-0", "caption-0"]);
   });
-  it("masks a phone card with no photos as its words and its links", () => {
-    expect(ids(cardSteps(galleryOf("this-site"), "pager", false))).toEqual([["title"], ["meta"], ["words-0"], ["links"]]);
+  it("masks a phone card with no photos as its words, This site's easter egg line and its links", () => {
+    expect(ids(cardSteps(galleryOf("this-site"), "pager", false))).toEqual([["title"], ["meta"], ["words-0"], ["egg"], ["links"]]);
   });
   it("counts a split part's lines", () => {
     const steps = cardSteps(galleryOf("talos"), "rows", false, (id) => (id === "words-0" ? 4 : 1));

@@ -32,6 +32,7 @@ export const partId = {
   sting: "sting",
   discord: "discord",
   talos: "talos",
+  egg: "egg",
   links: "links",
   pager: "pager",
   words: (unit: number) => `words-${unit}`,
@@ -45,7 +46,7 @@ export interface StepOptions {
   hasCaption: (photo: number) => boolean;
   hasLinks: boolean;
   after?: Readonly<Record<number, readonly string[]>>; // parts that follow a word unit (Talos's sting and its Discord channel)
-  trailing?: readonly string[]; // parts after the plan and before the links (the mentors, Talos's team)
+  trailing?: readonly string[]; // parts after the plan and before the links (the mentors, Talos's team, the easter egg line)
   lines?: (id: string) => number;
 }
 

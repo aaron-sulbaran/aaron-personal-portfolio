@@ -11,7 +11,7 @@ import { pagerSteps, partId, planSteps, type MaskStep, type StepOptions } from "
 // the flown card parks on the header's tile, which never masks, so the first
 // page's picture masks like any photo. Mentorship's mentors mask after the rows
 // and before the links; Talos's sting follows its first paragraph, its Discord channel
-// its second, and its team's two paragraphs come where the mentors would. A card's demo video is one of its
+// its second, and its team's two paragraphs come where the mentors would; the easter egg line (This site) follows the words, before the links. A card's demo video is one of its
 // photos (lib/gallery/card), so it masks as a photo does. lines counts a split part's lines.
 // pages: the phone's pages when they are not the card's own plan's (a pager that gave some paragraphs a page of their own).
 export function cardSteps(gallery: Gallery, layout: "rows" | "pager", flying: boolean, lines?: (id: string) => number, phone?: readonly Page[]): MaskStep[] {
@@ -20,7 +20,10 @@ export function cardSteps(gallery: Gallery, layout: "rows" | "pager", flying: bo
     hasCaption: (photo) => gallery.photos[photo]?.caption != null,
     hasLinks: siteContent.cards[gallery.key].modal.links.length > 0,
     after: gallery.key === "talos" ? TALOS_AFTER : undefined,
-    trailing: gallery.key === "mentorship" && siteContent.cards.mentorship.mentors.people.length > 0 ? [partId.mentors] : gallery.key === "talos" ? [partId.talos] : [],
+    trailing: [
+      ...(gallery.key === "mentorship" && siteContent.cards.mentorship.mentors.people.length > 0 ? [partId.mentors] : gallery.key === "talos" ? [partId.talos] : []),
+      ...(siteContent.cards[gallery.key].modal.easterEgg ? [partId.egg] : []),
+    ],
     lines,
   };
   const pages = phone ?? gallery.pages;
