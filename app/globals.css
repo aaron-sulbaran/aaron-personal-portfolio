@@ -727,7 +727,8 @@ html[data-band-answer="off"] [data-band-state="before"] [data-band-layer="declin
    cannot style a background).
    What a link does is told by the cursor label, not by its line. A link never
    wraps and is inline-block like a button, because SplitText clones a plain
-   inline anchor into an empty, focusable copy. Its box is padded by
+   inline anchor into an empty, focusable copy (a card's own link, below, is
+   the one that wraps, and is drawn per line). Its box is padded by
    --inline-pad (and pulled back by the same negative margin, so nothing moves)
    because a text-clipped background paints only inside the box, and a
    descender sits within a hair of the 1.15 line box; the ring's offset gives the
@@ -773,8 +774,25 @@ html[data-band-answer="off"] [data-band-state="before"] [data-band-layer="declin
 .inline-link::before { background: color-mix(in srgb, var(--color-accent) var(--inline-line-rest), transparent); }
 /* In the label face (Profa Bold) the bar rides 0.441em under the baseline while the descenders reach 0.168em, so it hung about 4px clear of them against body copy's 2.3px; the lift sets it 2.3px under them at every label size. Measure again when the full cut lands. */
 .font-label .inline-link, .inline-link.font-label { --inline-line-lift: calc(0.273em - 2.3px); }
-/* A card's own links stand on their own line, so a label longer than the column wraps instead of clipping ("Check out my final performance ever" at 390); the line sits under the last line. */
-.inline-link.card-link { white-space: normal; max-width: 100%; text-wrap: balance; }
+/* A card's own links stand on their own line, so a label longer than the column wraps instead of clipping ("Check out my final performance ever" at 390). So it is an inline box, not the inline-block every other link is: each line it wraps to draws its own bar, as wide as its own words, under it (the bars are background layers, painted once per fragment with box-decoration-break: clone; text-wrap: balance is on the item, CardLinks). As an inline-block with max-width: 100% it wrapped every label at its own one-line width (the margin box is two pads narrower than the border box), and one bar ran the box's width under the stack of words.
+   The bar is the same bar: bottom is the pseudo bar's offset from the bottom of the padding box, less 15/16px, which is how much higher an inline box's padding box ends than the inline-block's line box in the label face at its link size (measured in Chrome at 19.08px, the 1.1925rem label-lg; measure again when the full cut lands, as the lift above says); its width is the words' (the padding box less both pads). */
+.inline-link.card-link {
+  --card-bar-trim: 0.9375px;
+  --card-bar-bottom: calc(var(--inline-pad) - var(--inline-line-gap) - var(--inline-line-width) + var(--inline-line-lift) - var(--card-bar-trim));
+  --card-bar-width: calc(100% - 2 * var(--inline-pad));
+  display: inline; white-space: normal;
+  -webkit-box-decoration-break: clone; box-decoration-break: clone;
+  background-image:
+    linear-gradient(var(--color-accent-hover), var(--color-accent-hover)),
+    linear-gradient(var(--color-accent), var(--color-accent)),
+    linear-gradient(color-mix(in srgb, var(--color-accent) var(--inline-line-rest), transparent), color-mix(in srgb, var(--color-accent) var(--inline-line-rest), transparent)),
+    linear-gradient(var(--color-accent), var(--color-accent));
+  background-position: center, center, center bottom var(--card-bar-bottom), center bottom var(--card-bar-bottom);
+  background-size: calc(var(--inline-p) * 100%) 100%, 100% 100%, var(--card-bar-width) var(--inline-line-width), calc(var(--inline-p) * var(--card-bar-width)) var(--inline-line-width);
+  -webkit-background-clip: text, text, padding-box, padding-box;
+  background-clip: text, text, padding-box, padding-box;
+}
+.inline-link.card-link::before, .inline-link.card-link::after { display: none; }
 .inline-link::after { background: var(--color-accent); transform: scaleX(var(--inline-p)); transform-origin: 50% 50%; }
 .inline-link[data-inline-open], html:not([data-input="pointer"]) .inline-link:focus-visible { --inline-p: 1; }
 @media (hover: hover) { .inline-link:hover { --inline-p: 1; } }
@@ -783,7 +801,7 @@ html[data-band-answer="off"] [data-band-state="before"] [data-band-layer="declin
 @media (prefers-reduced-motion: reduce) { .inline-link { transition: none; } }
 .inline-link::selection { -webkit-text-fill-color: var(--color-background); }
 @media (forced-colors: active), print {
-  .inline-link { -webkit-text-fill-color: currentColor; background: none; text-decoration: underline; }
+  .inline-link, .inline-link.card-link { -webkit-text-fill-color: currentColor; background: none; text-decoration: underline; }
   .inline-link::before, .inline-link::after { display: none; }
 }
 .inline-link:focus-visible { outline-offset: calc(1px - var(--inline-pad)); }
