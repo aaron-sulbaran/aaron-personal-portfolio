@@ -19,6 +19,16 @@ export function uniformBoxes(verticalWidth: number, horizontalWidth: number): Bo
 
 export const boxFor = (aspect: number, boxes: Boxes, wideFrom: number): Box => (isWide(aspect, wideFrom) ? boxes.horizontal : boxes.vertical);
 
+// A row's photo on a desktop: the box of its orientation, except where that box would cut more than maxCrop of the picture (a near-square
+// screenshot in the 4:3 box lost a quarter of its rows of text, a 1.87:1 award photo a third of its width): then the same width at the
+// picture's own height, so it is whole. A photo within maxCrop of its box keeps the box, so the rows keep their rhythm.
+export function rowBox(aspect: number, boxes: Boxes, wideFrom: number, maxCrop: number): Box {
+  const box = boxFor(aspect, boxes, wideFrom);
+  const boxAspect = box.width / box.height;
+  const cut = 1 - Math.min(aspect / boxAspect, boxAspect / aspect);
+  return aspect > 0 && cut > maxCrop ? { width: box.width, height: box.width / aspect } : box;
+}
+
 export function groupFrame(boxes: readonly Box[]): Box {
   return boxes.reduce<Box>((frame, box) => ({ width: Math.max(frame.width, box.width), height: Math.max(frame.height, box.height) }), { width: 0, height: 0 });
 }

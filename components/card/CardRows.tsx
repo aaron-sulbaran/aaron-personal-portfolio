@@ -1,6 +1,6 @@
 "use client";
 
-import { boxFor } from "@/lib/gallery/boxes";
+import { rowBox } from "@/lib/gallery/boxes";
 import type { Gallery } from "@/lib/gallery/card";
 import { BOXES, GALLERY } from "@/lib/gallery/constants";
 import { slideWords, type Slide } from "@/lib/gallery/plan";
@@ -33,7 +33,7 @@ const EDGE = { left: "justify-start", right: "justify-end" } as const;
 export function CardRows({ gallery, renderMedia, flying }: Props) {
   const { plan, photos, aspects, lead, slot } = gallery;
   // The card picture is always the vertical box (3:4), so the flown card fits it exactly.
-  const box = (photo: number) => gallery.boxes?.[photo] ?? (photo === lead ? BOXES.vertical : boxFor(aspects[photo], BOXES, GALLERY.wideFrom));
+  const box = (photo: number) => gallery.boxes?.[photo] ?? (photo === lead ? BOXES.vertical : rowBox(aspects[photo], BOXES, GALLERY.wideFrom, GALLERY.rowMaxCrop));
   const prose = (unit: number) => (
     <div key={`words-${unit}`} className={gallery.key === "talos" ? "flex flex-col" : undefined} style={{ maxWidth: GALLERY.proseMaxWidth, rowGap: GALLERY.proseGap }}>
       <Words gallery={gallery} unit={unit} />

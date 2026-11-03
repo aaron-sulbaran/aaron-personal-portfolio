@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { boxFor, fitWhole, groupFrame, pageStage, phoneBox, rowColumns, stageHeight, uniformBoxes } from "@/lib/gallery/boxes";
+import { boxFor, fitWhole, groupFrame, pageStage, phoneBox, rowBox, rowColumns, stageHeight, uniformBoxes } from "@/lib/gallery/boxes";
 
 const boxes = uniformBoxes(320, 424);
 const settings = { boxes, wideFrom: 1, columnGap: 56, textWidth: 460, padding: 40, border: 1 };
@@ -16,6 +16,32 @@ describe("the desktop boxes", () => {
     expect(boxFor(1125 / 978, boxes, 1)).toBe(boxes.horizontal);
     expect(boxFor(0.75, boxes, 1)).toBe(boxes.vertical);
     expect(boxFor(998 / 1600, boxes, 1)).toBe(boxes.vertical);
+  });
+  it("keeps a photo in its orientation's box unless the box would cut more than the allowed share of it", () => {
+    expect(rowBox(4 / 3, boxes, 1, 0.15)).toBe(boxes.horizontal);
+    expect(rowBox(0.75, boxes, 1, 0.15)).toBe(boxes.vertical);
+    // 1.1495 in the 4:3 box loses 13.8 percent of its height: it keeps the box.
+    expect(rowBox(1.1495, boxes, 1, 0.15)).toBe(boxes.horizontal);
+  });
+  it("draws a photo whole at its box's width when the box would cut it more than that", () => {
+    // The 1.87:1 award photo in the 4:3 box lost 29 percent of its width, a near-square screenshot 23 percent of its height.
+    const wide = rowBox(1.8679, boxes, 1, 0.15);
+    expect(wide.width).toBe(424);
+    expect(wide.height).toBeCloseTo(424 / 1.8679, 6);
+    const square = rowBox(532 / 517, boxes, 1, 0.15);
+    expect(square.width).toBe(424);
+    expect(square.height).toBeCloseTo(424 * 517 / 532, 6);
+    // A tall photo narrower than 3:4 stays 320 wide and takes the height it needs.
+    const tall = rowBox(998 / 1600, boxes, 1, 0.15);
+    expect(tall.width).toBe(320);
+    expect(tall.height).toBeCloseTo(320 * 1600 / 998, 6);
+  });
+  it("never lets a row's photo be cropped by more than the allowed share", () => {
+    for (const aspect of [0.5, 0.62, 0.7, 0.75, 0.8, 0.95, 1, 1.03, 1.15, 1.33, 1.5, 1.87, 2.4]) {
+      const box = rowBox(aspect, boxes, 1, 0.15);
+      const boxAspect = box.width / box.height;
+      expect(1 - Math.min(aspect / boxAspect, boxAspect / aspect), `aspect ${aspect}`).toBeLessThanOrEqual(0.15 + 1e-9);
+    }
   });
   it("sizes the photo column to the card's widest box and the panel around it", () => {
     expect(rowColumns([0.75, 0.75, 0.75], settings)).toEqual({ slot: 320, panel: 918 });

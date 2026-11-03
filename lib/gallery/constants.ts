@@ -11,6 +11,7 @@ export const GALLERY = {
   wideFrom: 1, // width over height from which a photo takes the horizontal box
   textWidth: 460, // the words beside a photo
   proseMaxWidth: "62ch", // words with no photo beside them
+  rowMaxCrop: 0.15, // a row's photo is drawn whole, in its own shape, when its orientation's box would cut more of it than this (lib/gallery/boxes rowBox)
   rowGap: 64,
   proseGap: 20, // between the paragraphs of a card with no photos: a reading rhythm, not a row's
   columnGap: 56, // photo to words

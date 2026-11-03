@@ -1,5 +1,5 @@
 import { siteContent, type CardKey } from "@/lib/content";
-import { boxFor, groupFrame } from "@/lib/gallery/boxes";
+import { groupFrame, rowBox } from "@/lib/gallery/boxes";
 import { galleryOf } from "@/lib/gallery/card";
 import { BOXES, GALLERY } from "@/lib/gallery/constants";
 import { slideWords } from "@/lib/gallery/plan";
@@ -36,7 +36,7 @@ test("gallery rows: every card's rows follow its plan, the sides alternate, each
           if (gallery.photos[photo].tag === undefined) expect(within(drawn.height, box.height), `${key} row ${i} piece ${photo}: ${drawn.height}`).toBe(true);
         }
       } else {
-        const boxes = slide.photos.map((photo) => boxFor(gallery.aspects[photo], BOXES, GALLERY.wideFrom));
+        const boxes = slide.photos.map((photo) => rowBox(gallery.aspects[photo], BOXES, GALLERY.wideFrom, GALLERY.rowMaxCrop));
         const expected = slide.photos.length > 1 ? groupFrame(boxes) : boxes[0];
         const drawn = (await row.locator(slide.photos.length > 1 ? "[data-rotator-frame]" : `[data-photo-frame="${slide.photo}"] > div`).first().boundingBox())!;
         expect(within(drawn.width, expected.width) && within(drawn.height, expected.height), `${key} row ${i}: ${drawn.width} by ${drawn.height}`).toBe(true);
