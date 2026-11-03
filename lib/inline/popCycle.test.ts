@@ -2,6 +2,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { PopCycle } from "@/components/inline/PopCycle";
+import { POP_CYCLE_MS } from "@/lib/inline/cycle";
 import { tipView } from "@/lib/inline/view";
 
 const frames = tipView("pop", "thrill-seeker")!.cycle!;
@@ -26,5 +27,17 @@ describe("PopCycle's first paint", () => {
     expect(html).toContain("Sandboarding on dunes just outside of Dubai");
     expect(html).toContain("Catch me on El Capitan next... right...");
     expect(html.match(/<span data-state="(?:active|idle)">/g)).toHaveLength(4);
+  });
+  it("marks which of the four photos is showing, in a pill over the photo's corner, so people know there are more", () => {
+    expect(html.match(/data-pop-mark="\d"/g)).toHaveLength(4);
+    expect(html).toMatch(/<span aria-hidden="true"[^>]*data-pop-marks="">/);
+    // The first photo's mark is the wide one with the fill timed to the beat; the other three are dots.
+    expect(html.match(/data-rotator-fill="timed"/g)).toHaveLength(1);
+    expect(html).toContain(`animation-duration:${POP_CYCLE_MS}ms`);
+    expect(html).toMatch(/<span class="relative block h-1 w-3[^>]*data-pop-mark="0"/);
+    expect(html.match(/<span class="block h-1 w-1 rounded-full bg-muted"[^>]*data-pop-mark="[123]"/g)).toHaveLength(3);
+  });
+  it("shows no marks for a lone photo", () => {
+    expect(renderToStaticMarkup(createElement(PopCycle, { frames: frames.slice(0, 1), live: true }))).not.toContain("data-pop-marks");
   });
 });

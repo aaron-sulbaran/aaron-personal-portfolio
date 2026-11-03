@@ -8,7 +8,7 @@ import { GALLERY } from "@/lib/gallery/constants";
 import { isKeyboardFocus } from "@/lib/input/modality";
 import { PAGER_PHOTO_SIZES } from "@/lib/photoSizes";
 import { useReducedMotionLive } from "@/components/soundtrack/useReducedMotionLive";
-import { GroupCaptions, GroupLayer, RotatorAnnounce, RotatorFill, rotatorTrack } from "./GroupParts";
+import { GroupCaptions, GroupLayer, RotatorAnnounce, RotatorFill, rotatorPill, rotatorTrack } from "./GroupParts";
 import { useRotator } from "./useRotator";
 
 // Round six on a phone, grouping A: a page holds one paragraph, and when it
@@ -27,7 +27,6 @@ import { useRotator } from "./useRotator";
 type Props = { gallery: Gallery; photos: readonly number[]; frame: Box; boxes: readonly Box[]; active: boolean; pressing: boolean };
 
 const g = siteContent.modals.gallery;
-const pill: CSSProperties = { backgroundColor: "color-mix(in srgb, var(--color-background) 78%, transparent)" };
 
 export function PhoneRotator({ gallery, photos, frame, boxes, active, pressing }: Props) {
   const count = photos.length;
@@ -87,7 +86,7 @@ export function PhoneRotator({ gallery, photos, frame, boxes, active, pressing }
           {photos.map((photo, i) => (
             <GroupLayer key={photo} gallery={gallery} photo={photo} box={boxes[i]} frame={frame} layer={i} current={i === index} sizes={PAGER_PHOTO_SIZES} position={focusOf(gallery.photos[photo].focus)} />
           ))}
-          <div aria-hidden="true" className="pointer-events-none absolute z-[3] flex items-center gap-1 rounded-full px-1.5 py-1" style={{ ...pill, ...marksAt }} data-rotator-marks="">
+          <div aria-hidden="true" className="pointer-events-none absolute z-[3] flex items-center gap-1 rounded-full px-1.5 py-1" style={{ ...rotatorPill, ...marksAt }} data-rotator-marks="">
             {photos.map((photo, i) =>
               i === index ? (
                 <span key={photo} className="relative block h-1 w-3 overflow-hidden rounded-full" style={rotatorTrack} data-rotator-mark={i}>

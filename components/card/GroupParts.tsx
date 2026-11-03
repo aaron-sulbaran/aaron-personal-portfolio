@@ -62,14 +62,18 @@ export function GroupCaptions({ photos, index, caption }: CaptionProps) {
 // before its fill starts (bg-accent/NN emits nothing with var() colors).
 export const rotatorTrack: CSSProperties = { backgroundColor: "color-mix(in srgb, var(--color-accent) 28%, transparent)" };
 
-// The current photo's fill, shared by the desktop dots and the phone marks: it
-// grows over the interval while the group runs (keyed by the caller on the
-// index so each photo's fill starts again) and stands full under reduced motion.
-export function RotatorFill({ reduced, runs }: { reduced: boolean; runs: boolean }) {
+// The pill the marks sit in over a photo's corner (a phone stage's, a cycling pop's): the page's background, mostly opaque.
+export const rotatorPill: CSSProperties = { backgroundColor: "color-mix(in srgb, var(--color-background) 78%, transparent)" };
+
+// The current photo's fill, shared by the desktop dots, the phone marks and a
+// cycling pop's marks: it grows over the interval (the group's own unless the
+// caller gives its beat) while the group runs (keyed by the caller on the index
+// so each photo's fill starts again) and stands full under reduced motion.
+export function RotatorFill({ reduced, runs, intervalMs = GALLERY.rotate.intervalMs }: { reduced: boolean; runs: boolean; intervalMs?: number }) {
   return (
     <span
       className="absolute inset-0 rounded-full bg-accent"
-      style={reduced ? undefined : { animationDuration: `${GALLERY.rotate.intervalMs}ms`, animationPlayState: runs ? "running" : "paused" }}
+      style={reduced ? undefined : { animationDuration: `${intervalMs}ms`, animationPlayState: runs ? "running" : "paused" }}
       data-rotator-fill={reduced ? "still" : "timed"}
     />
   );
