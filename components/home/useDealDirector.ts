@@ -35,11 +35,13 @@ import { guardArmed, triggerScrollY } from "@/lib/home/triggerGuardRules";
 // takes over at the page's own speed and direction (lib/home/handScroll.ts), so
 // there is no stop and no start. The lock lets go after the unfurl, once the
 // reader's input has been quiet for a moment (the tail of the fling that started
-// it never reaches the page), and at the latest a few seconds after it took
-// input, whatever happened. It is for the reader's scroll and the click only: a
-// page's own scroll that crosses the trigger (a Menu link, an anchor) plays the
-// deal as it always did, and so does a deal with no scene (the still path), whose
-// click scroll the reader's wheel, touch or key still takes back.
+// it never reaches the page) or sooner when the input is the reader's own and not
+// a tail dying away (a wheel kept turning, a fresh swipe, a new touch), and at the
+// latest a few seconds after it took input, whatever happened. It is for the
+// reader's scroll and the click only: a page's own scroll that crosses the trigger
+// (a Menu link, an anchor) plays the deal as it always did, and so does a deal
+// with no scene (the still path), whose click scroll the reader's wheel, touch or
+// key still takes back.
 //
 // The reader's scroll starts it on the input itself where it can: within about a
 // viewport above the trigger the trigger's guard (lib/home/triggerGuard.ts) reads

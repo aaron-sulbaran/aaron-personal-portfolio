@@ -167,9 +167,22 @@ const values = {
     // deciding on the reader's wheel, touch and scroll keys themselves before the
     // browser scrolls (lib/home/triggerGuard.ts), so the deal starts on the input
     // that would carry the page past the trigger, however busy the main thread is.
+    //
+    // A reader who keeps scrolling past the unfurl never gives the quiet gap, so the
+    // lock also lets go for the reader's own scroll (lib/home/dealLockRules.ts,
+    // lib/home/wheelTail.ts), handoverMs after the unfurl, the time the page needs to
+    // render the Coil as the reader's before it can take the wheel: a wheel stream
+    // that is not a momentum tail dying away (tail: it is read over windowMs, its
+    // newest recentMs against the rest; steadyRatio is how much of the rest's pace
+    // the newest slice must hold; minPxPerMs, about a pixel and a quarter a frame at
+    // 60 Hz, keeps the last pixels of a tail from counting while a gentle reading
+    // scroll still does; reversePx is a turn round that counts) or a finger that came
+    // down after the lock was taken. A tail still arriving is held as before.
     cutscene: {
       quietMs: 120,
       capMs: 3800,
+      handoverMs: 150,
+      tail: { windowMs: 450, recentMs: 150, steadyRatio: 1, minPxPerMs: 0.08, reversePx: 4 },
       velocityWindowMs: 100,
       staleMs: 90,
       overshootPx: 24,

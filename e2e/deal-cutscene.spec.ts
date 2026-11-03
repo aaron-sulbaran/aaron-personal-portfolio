@@ -13,8 +13,9 @@ import { decodePng } from "./support/pixels";
 // the Coil is unfurled, and its own eased scroll brings the page to page 2's top;
 // nothing the reader does can kill that scroll or add to it. At the unfurl the
 // lock lets go once the reader's input has been quiet (the tail of the fling that
-// started the deal is swallowed), and in any case a few seconds after it took
-// input. <html data-deal-lock> is on for exactly that long.
+// started the deal is swallowed) or is the reader's own and not a tail dying away
+// (lib/home/wheelTail.ts), and in any case a few seconds after it took input.
+// <html data-deal-lock> is on for exactly that long.
 //
 // Everything here is real input through the DevTools protocol, the path a
 // device's events take: a trackpad's fling is a burst of wheels and a decaying
@@ -175,10 +176,16 @@ for (const size of SIZES) {
         window.addEventListener("wheel", () => (w.__lastWheel = performance.now()), { capture: true, passive: true });
       });
       await startRecording(page);
-      // The burst, then a creeping tail (2 px an event) well past the unfurl, which comes about 2.65 s after the deal starts.
+      // The burst, then a long slow tail (a time constant of 0.6 s from 150 px an event, whole pixels,
+      // an event a frame) well past the unfurl, which comes about 2.65 s after the deal starts. A tail
+      // dies away; an even stream of pixels is a reader still scrolling, and the lock lets that through
+      // (lib/home/wheelTail.ts, lib/home/dealLockReplay.test.ts).
       const burst = flingStream({ events: 30, ms: 300, tailMs: 0 });
       const creep: [number, number][] = [];
-      for (let t = 300; t < 3300; t += 16) creep.push([t, 2]);
+      for (let t = 300; t < 3300; t += 16) {
+        const delta = Math.round(150 * Math.exp(-(t - 300) / 600));
+        if (delta >= 1) creep.push([t, delta]);
+      }
       await wheelStream(cdp, [...burst, ...creep], at);
       await page.waitForTimeout(1200);
       const frames = await stopRecording(page);

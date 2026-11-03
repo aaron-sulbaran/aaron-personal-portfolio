@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { COIL } from "@/lib/coil/constants";
-import { msUntilDue, releaseDue, swallowsKey, type LockClock } from "@/lib/home/dealLockRules";
+import { createLockClock, markUnfurled, msUntilDue, noteInput, releaseDue, swallowsKey, type LockClock } from "@/lib/home/dealLockRules";
 
-const { quietMs, capMs } = COIL.deal.cutscene;
+const { quietMs, capMs, handoverMs } = COIL.deal.cutscene;
 
-const clock = (over: Partial<LockClock> = {}): LockClock => ({ takenAtMs: 1000, unfurledAtMs: null, lastInputMs: 1000, ...over });
+const clock = (over: Partial<LockClock> = {}): LockClock => ({ ...createLockClock(1000), ...over });
 
 describe("when the cutscene's lock lets go", () => {
   it("holds while the Coil is not unfurled, however quiet the reader is", () => {
@@ -49,6 +49,72 @@ describe("when the cutscene's lock lets go", () => {
     expect(capMs - unfurl).toBeLessThanOrEqual(1500);
     expect(quietMs).toBeGreaterThanOrEqual(80);
     expect(quietMs).toBeLessThanOrEqual(160);
+  });
+});
+
+describe("when the reader's own scroll is let through", () => {
+  // A mouse wheel kept turning: a notch of 100 px every 50 ms. Returns when the lock
+  // is first due, with the reason.
+  const wheel = (c: LockClock, fromMs: number, toMs: number) => {
+    for (let t = fromMs; t <= toMs; t += 50) {
+      const due = noteInput(c, { kind: "wheel", px: 100 }, t);
+      if (due) return { at: t, due };
+    }
+    return { at: null, due: null };
+  };
+
+  it("holds a wheel kept turning until the Coil can have it, then lets go for it", () => {
+    const c = clock();
+    expect(wheel(c, 1500, 2350)).toEqual({ at: null, due: null });
+    expect(markUnfurled(c, 2400)).toBeNull();
+    // The unfurl was at 2400: the handover ends at 2400 + handoverMs.
+    expect(wheel(c, 2400, 2400 + handoverMs - 1)).toEqual({ at: null, due: null });
+    expect(wheel(c, 2400 + handoverMs, 3000)).toEqual({ at: 2400 + handoverMs, due: "gesture" });
+  });
+
+  it("holds it until the unfurl, however plainly the reader's", () => {
+    expect(wheel(clock(), 1100, 3000)).toEqual({ at: null, due: null });
+  });
+
+  it("is judged as the events arrive, so the timer is still only the cap and the quiet gap", () => {
+    const c = clock();
+    wheel(c, 1500, 2450);
+    markUnfurled(c, 2400);
+    expect(msUntilDue(c, 2450)).toBe(quietMs);
+  });
+
+  it("leaves a tail dying away held, and lets go once it is quiet", () => {
+    const c = clock();
+    // 60 px at 16 ms, losing 4 percent an event, from 1000 to 3000; unfurled at 2000.
+    let px = 60;
+    let t = 1000;
+    for (; t < 3000; t += 16) {
+      expect(noteInput(c, { kind: "wheel", px }, t), `at ${t}`).toBeNull();
+      if (t >= 2000) markUnfurled(c, t);
+      px *= 0.96;
+    }
+    expect(releaseDue(c, t - 16 + quietMs)).toBe("quiet");
+  });
+
+  it("lets go for a finger that came down after the lock was taken, not for one that began before it", () => {
+    const fresh = clock({ unfurledAtMs: 2400, lastInputMs: 2500 });
+    expect(releaseDue(fresh, 2400 + handoverMs + 10)).toBeNull();
+    noteInput(fresh, { kind: "touchStart" }, 2450);
+    expect(releaseDue(fresh, 2400 + handoverMs - 1)).toBeNull();
+    expect(releaseDue(fresh, 2400 + handoverMs)).toBe("gesture");
+    // The finger of the scroll that started the deal came down before the lock: only its moves count.
+    const own = clock({ unfurledAtMs: 2400, lastInputMs: 2500 });
+    noteInput(own, { kind: "touchMove" }, 2510);
+    expect(releaseDue(own, 2600)).toBeNull();
+  });
+
+  it("never lets go for a scroll key, which has no tail to tell from", () => {
+    const c = clock({ unfurledAtMs: 2400 });
+    for (let t = 2400; t < 3600; t += 33) expect(noteInput(c, { kind: "key" }, t)).toBeNull();
+  });
+
+  it("still lets go at the cap, ahead of anything", () => {
+    expect(wheel(clock(), 1100, 1000 + capMs)).toEqual({ at: 1000 + capMs, due: "cap" });
   });
 });
 
