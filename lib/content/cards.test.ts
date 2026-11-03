@@ -169,10 +169,11 @@ describe("the fourteen cards", () => {
     expect(new Set(people.map((mentor) => mentor.href)).size).toBe(people.length);
   });
 
-  it("words the min/Max card as the co-pilot that is not launched yet, pointing the reader back here and to my socials", () => {
+  it("words the min/Max card as the co-pilot in a private pilot, pointing the reader back here and to my socials, and links its site", () => {
     expect(cards["min-max"].modal.blocks).toEqual([
-      "An agentic credit card co-pilot that automatically picks the best card in your wallet for every purchase, every time. I haven't launched yet, but when I do, you'll see it here (and on my socials).",
+      "An agentic credit card co-pilot that automatically picks the best card in your wallet for every purchase, every time. Only the beta has launched and I'm currently running a private pilot, but when I fully launch, you'll see it here (and on my socials).",
     ]);
+    expect(cards["min-max"].modal.links).toEqual([{ label: "getminmax.com", href: "https://getminmax.com" }]);
   });
 
   it("mark only the IEEE square as an opaque logo, its own ground", () => {
