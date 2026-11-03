@@ -102,7 +102,12 @@ describe("each card's gallery", () => {
     // A cluster is a pair, or a 2 by 2 block, at the clusters' width; the post is at its native width plus its frame's hairline.
     expect(plan.slides.map((slide) => slide.photos.length)).toEqual([2, 2, 4, 1]);
     expect(boxes![4]).toEqual({ width: GALLERY.cluster.itemWidth, height: GALLERY.cluster.tagHeight });
-    expect(boxes![0]).toEqual({ width: GALLERY.cluster.itemWidth, height: (GALLERY.cluster.itemWidth * 4) / 3 });
+    // Every photo is whole in a box of its own shape at the cluster's width: the 3:4 ones come to 3:4, the poster (998 by 1600) is taller.
+    modal.photos.forEach((photo, i) => {
+      expect(boxes![i].width).toBe(GALLERY.cluster.itemWidth);
+      expect(boxes![i].height / boxes![i].width).toBeCloseTo(photo.height / photo.width, 6);
+    });
+    expect(boxes![1]).toEqual({ width: GALLERY.cluster.itemWidth, height: (GALLERY.cluster.itemWidth * 4) / 3 });
     expect(boxes![9]).toEqual({ width: 506, height: 1260 });
     // The rows alternate sides from the left (components/card/CardRows), so no cluster sits under another.
     expect(plan.slides.map((_, i) => (i % 2 === 0 ? "left" : "right"))).toEqual(["left", "right", "left", "right"]);

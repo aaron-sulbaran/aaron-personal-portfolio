@@ -25,7 +25,9 @@ export function jobsGallery(columns: Parameters<typeof columnsFor>[1]): JobsGall
   const { modal, timeline } = siteContent.cards.jobs;
   const embed = modal.embed!;
   const { itemWidth, gap, tagHeight } = GALLERY.cluster;
-  const photoBox: Box = { width: itemWidth, height: (itemWidth * 4) / 3 };
+  // A photo is drawn whole at the cluster's width, in its own shape (the Aritzia poster is 998 by 1600, a little narrower than the 3:4 of the
+  // others, and a 3:4 box cropped its top and bottom off); the others' 1200 by 1600 come to the 3:4 they were.
+  const photoBox = (photo: { width: number; height: number }): Box => ({ width: itemWidth, height: (itemWidth * photo.height) / photo.width });
   const tagBox: Box = { width: itemWidth, height: tagHeight };
   // The frame draws its border outside the post's own width, so the post keeps its native pixels.
   const embedBox: Box = { width: embed.width + 2 * EMBED_BORDER, height: embed.height + 2 * EMBED_BORDER };
@@ -41,7 +43,7 @@ export function jobsGallery(columns: Parameters<typeof columnsFor>[1]): JobsGall
     })),
     { src: embed.src, width: embedBox.width, height: embedBox.height, alt: embed.title, caption: null, captionShort: null, embed: { src: embed.src, width: embed.width, height: embed.height, title: embed.title, card: modal.postCard! } },
   ];
-  const boxes: Box[] = [...modal.photos.map(() => photoBox), ...timeline.map(() => tagBox), embedBox];
+  const boxes: Box[] = [...modal.photos.map(photoBox), ...timeline.map(() => tagBox), embedBox];
 
   const row = (own: number | undefined, together: number[], aside: number[] = []): Slide => ({
     photo: together[0], photos: together, own, before: [], after: [], together: true, ...(aside.length ? { aside } : {}),
