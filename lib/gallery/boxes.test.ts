@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { GALLERY } from "@/lib/gallery/constants";
 import { boxFor, fitWhole, groupFrame, pageStage, phoneBox, rowBox, rowColumns, stageHeight, uniformBoxes } from "@/lib/gallery/boxes";
 
 const boxes = uniformBoxes(320, 424);
@@ -69,7 +70,7 @@ describe("the phone stage", () => {
     expect(phoneBox(0.75, 316, 300, 0.6)).toEqual({ width: 225, height: 300, cropped: false });
   });
   it("never crops past the share it is allowed, however wide the page", () => {
-    const maxCrop = 0.3;
+    const maxCrop = GALLERY.pager.photoMaxCrop;
     for (const [width, height, aspect] of [[826, 240, 0.75], [826, 140, 0.6239], [316, 140, 0.75], [301, 202, 0.7506], [690, 200, 1]] as const) {
       const box = phoneBox(aspect, width, height, 0.6, maxCrop);
       const whole = fitWhole(aspect, width, height);
@@ -79,18 +80,19 @@ describe("the phone stage", () => {
       expect(box.width).toBeLessThanOrEqual(width * 0.6 + 1e-9);
       expect(box.height).toBe(box.cropped ? height : whole.height);
     }
-    // A 900 by 600 window's page: a 3:4 photo on a 240 stage kept at 60 percent of 826 was a 496 by 240 strip (64 percent cut); now a 257 by 240 box.
-    const box = phoneBox(0.75, 826, 240, 0.6, 0.3);
+    // A 900 by 600 window's page: a 3:4 photo on a 240 stage kept at 60 percent of 826 was a 496 by 240 strip (64 percent cut); now it is
+    // as wide as cutting maxCrop of it allows, 180 over (1 less maxCrop).
+    const box = phoneBox(0.75, 826, 240, 0.6, maxCrop);
     expect(box.cropped).toBe(true);
-    expect(box.width).toBeCloseTo(180 / 0.7, 6);
+    expect(box.width).toBeCloseTo(180 / (1 - maxCrop), 6);
     expect(box.height).toBe(240);
   });
   it("leaves a photo whole when no crop is allowed or it already fills its share", () => {
     expect(phoneBox(0.75, 316, 140, 0.6, 0)).toEqual({ ...fitWhole(0.75, 316, 140), cropped: false });
     expect(phoneBox(4 / 3, 316, 300, 0.6, 0.3)).toEqual({ width: 316, height: 237, cropped: false });
-    const stage = pageStage([0], [0.75], 826, 240, 0.6, () => false, 0.3);
+    const stage = pageStage([0], [0.75], 826, 240, 0.6, () => false, GALLERY.pager.photoMaxCrop);
     expect(stage.boxes[0].cropped).toBe(true);
-    expect(stage.frame.width).toBeCloseTo(180 / 0.7, 6);
+    expect(stage.frame.width).toBeCloseTo(180 / (1 - GALLERY.pager.photoMaxCrop), 6);
   });
   it("caps the stage, leaves the words their room and keeps a floor", () => {
     expect(stageHeight(337.6, 500, 120)).toBe(337.6);
