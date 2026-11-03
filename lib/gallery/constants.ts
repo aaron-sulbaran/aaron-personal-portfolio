@@ -40,6 +40,7 @@ export const GALLERY = {
     wideFloorShare: 0.7, // a stage of wide photos may be shorter than that, down to the height that keeps them this share of the page's width
     stageMinPx: 100, // and never shorter than this
     photoMinShare: 0.6, // a photo on a short stage keeps this share of the page's width, cropped about its subject (lib/gallery/boxes phoneBox)
+    photoMaxCrop: 0.3, // and is never cropped past this share of the picture, however wide the page (a 900 by 600 window would slice a portrait down to a strip)
     tagMaxPx: 340, // a name tag's widest on a phone page (the jobs card): its height is its own; so is the post card's
     pageGapPx: 12, // between a page's stage, its caption and its words (PagerPage's gap-3)
     blockGapPx: 16, // between the blocks of a page's words (PagerPage's gap-4)

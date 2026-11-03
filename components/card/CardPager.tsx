@@ -69,7 +69,7 @@ export function CardPager({ gallery, base, pages, renderMedia, onClose, layout, 
       return { kind, stage: { photos, frame: own, boxes: [{ ...own, cropped: false }] } };
     }
     const height = page.stage ?? firstStage(page);
-    return { kind, stage: { photos, ...pageStage(photos, gallery.aspects, width, height, pager.photoMinShare, (photo) => !!gallery.photos[photo].video) } };
+    return { kind, stage: { photos, ...pageStage(photos, gallery.aspects, width, height, pager.photoMinShare, (photo) => !!gallery.photos[photo].video, pager.photoMaxCrop) } };
   };
   const layouts = pages.map(layoutOf);
 

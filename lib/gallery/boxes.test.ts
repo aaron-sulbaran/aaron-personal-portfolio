@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { boxFor, fitWhole, groupFrame, pageStage, rowColumns, stageHeight, uniformBoxes } from "@/lib/gallery/boxes";
+import { boxFor, fitWhole, groupFrame, pageStage, phoneBox, rowColumns, stageHeight, uniformBoxes } from "@/lib/gallery/boxes";
 
 const boxes = uniformBoxes(320, 424);
 const settings = { boxes, wideFrom: 1, columnGap: 56, textWidth: 460, padding: 40, border: 1 };
@@ -35,6 +35,36 @@ describe("the phone stage", () => {
     const stage = pageStage([0, 1], [0.75, 4 / 3], 316, 300);
     expect(stage.frame).toEqual({ width: 316, height: 300 });
     expect(stage.boxes.map((box) => box.width / box.height)).toEqual([0.75, 4 / 3]);
+  });
+  it("crops a portrait on a short stage to the share of the width it keeps, as a phone's column does", () => {
+    // 316 wide, 140 tall: whole it is 105 wide, under the 60 percent (190) it keeps, so it fills that and is cropped.
+    expect(phoneBox(0.75, 316, 140, 0.6)).toEqual({ width: 316 * 0.6, height: 140, cropped: true });
+    // Tall enough to stay at that width whole, it is drawn whole.
+    expect(phoneBox(0.75, 316, 300, 0.6)).toEqual({ width: 225, height: 300, cropped: false });
+  });
+  it("never crops past the share it is allowed, however wide the page", () => {
+    const maxCrop = 0.3;
+    for (const [width, height, aspect] of [[826, 240, 0.75], [826, 140, 0.6239], [316, 140, 0.75], [301, 202, 0.7506], [690, 200, 1]] as const) {
+      const box = phoneBox(aspect, width, height, 0.6, maxCrop);
+      const whole = fitWhole(aspect, width, height);
+      // The share of the picture cut is one less the whole photo's width over the box's (the box is wider than the photo's own shape).
+      const cut = box.cropped ? 1 - whole.width / box.width : 0;
+      expect(cut, `${width} by ${height} at ${aspect}`).toBeLessThanOrEqual(maxCrop + 1e-9);
+      expect(box.width).toBeLessThanOrEqual(width * 0.6 + 1e-9);
+      expect(box.height).toBe(box.cropped ? height : whole.height);
+    }
+    // A 900 by 600 window's page: a 3:4 photo on a 240 stage kept at 60 percent of 826 was a 496 by 240 strip (64 percent cut); now a 257 by 240 box.
+    const box = phoneBox(0.75, 826, 240, 0.6, 0.3);
+    expect(box.cropped).toBe(true);
+    expect(box.width).toBeCloseTo(180 / 0.7, 6);
+    expect(box.height).toBe(240);
+  });
+  it("leaves a photo whole when no crop is allowed or it already fills its share", () => {
+    expect(phoneBox(0.75, 316, 140, 0.6, 0)).toEqual({ ...fitWhole(0.75, 316, 140), cropped: false });
+    expect(phoneBox(4 / 3, 316, 300, 0.6, 0.3)).toEqual({ width: 316, height: 237, cropped: false });
+    const stage = pageStage([0], [0.75], 826, 240, 0.6, () => false, 0.3);
+    expect(stage.boxes[0].cropped).toBe(true);
+    expect(stage.frame.width).toBeCloseTo(180 / 0.7, 6);
   });
   it("caps the stage, leaves the words their room and keeps a floor", () => {
     expect(stageHeight(337.6, 500, 120)).toBe(337.6);

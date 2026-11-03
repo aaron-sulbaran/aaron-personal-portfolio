@@ -40,20 +40,24 @@ export function columnsFor(slot: number, g: ColumnSettings) {
 
 // A phone page's photo: whole in its stage while that leaves it at least minShare of the page's width. On a stage too short for that
 // (a page that gave its words the room), it keeps that width and is cropped top and bottom (object-fit: cover, about the photo's own
-// focus, lib/content/media), so it never shrinks to a thumbnail.
+// focus, lib/content/media), so it never shrinks to a thumbnail. maxCrop bounds the crop: the share of the picture cut is one less
+// the whole photo's width over the box's, so on a wide page (a 900 by 600 window, where a share of the width is a box twice as wide as
+// tall) the box stops at the width that cuts maxCrop, and the photo is a smaller, whole-ish picture rather than a strip of one.
 export type StageBox = Box & { cropped: boolean };
 
-export function phoneBox(aspect: number, innerWidth: number, height: number, minShare: number): StageBox {
+export function phoneBox(aspect: number, innerWidth: number, height: number, minShare: number, maxCrop = 1): StageBox {
   const whole = fitWhole(aspect, innerWidth, height);
   const least = innerWidth * Math.min(1, minShare);
   if (whole.height <= 0 || whole.width + 0.5 >= least) return { ...whole, cropped: false };
-  return { width: least, height, cropped: true };
+  const width = Math.min(least, whole.width / (1 - Math.min(maxCrop, 0.99)));
+  if (width <= whole.width + 0.5) return { ...whole, cropped: false };
+  return { width, height, cropped: true };
 }
 
 // A page's stage, its frame the largest of its boxes: every photo whole, or with minShare, cropped where whole would be narrower than
-// that share of the width. whole names media that is never cropped (a demo video letterboxes itself in its own frame).
-export function pageStage(photos: readonly number[], aspects: readonly number[], innerWidth: number, height: number, minShare = 0, whole: (photo: number) => boolean = () => false) {
-  const boxes = photos.map((photo): StageBox => (minShare > 0 && !whole(photo) ? phoneBox(aspects[photo], innerWidth, height, minShare) : { ...fitWhole(aspects[photo], innerWidth, height), cropped: false }));
+// that share of the width (by at most maxCrop). whole names media that is never cropped (a demo video letterboxes itself in its own frame).
+export function pageStage(photos: readonly number[], aspects: readonly number[], innerWidth: number, height: number, minShare = 0, whole: (photo: number) => boolean = () => false, maxCrop = 1) {
+  const boxes = photos.map((photo): StageBox => (minShare > 0 && !whole(photo) ? phoneBox(aspects[photo], innerWidth, height, minShare, maxCrop) : { ...fitWhole(aspects[photo], innerWidth, height), cropped: false }));
   return { frame: groupFrame(boxes), boxes };
 }
 
