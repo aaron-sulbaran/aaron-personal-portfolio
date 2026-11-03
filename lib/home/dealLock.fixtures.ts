@@ -45,6 +45,28 @@ export function mouseWheel(startMs: number, endMs: number, from = "mouse"): Time
   return out;
 }
 
+// A fling as e2e/support/cutscene.ts sends it: a burst of events (80 to 150 px, one every
+// ms/events) and then a slow exponential tail (timeConstantMs, from startPx an event, one
+// event a frame, whole pixels) until endMs, with the events that round to nothing dropped.
+export function burstAndSlowTail(burstMs: number, endMs: number, { events = 30, startPx = 150, timeConstantMs = 600 } = {}, from = "fling"): TimedInput[] {
+  const out: TimedInput[] = [];
+  for (let i = 0; i < events; i++) out.push({ t: Math.round((i * burstMs) / events), kind: "wheel", px: 80 + ((i * 37) % 71), from });
+  for (let t = burstMs; t < endMs; t += 16) {
+    const px = Math.round(startPx * Math.exp(-(t - burstMs) / timeConstantMs));
+    if (px >= 1) out.push({ t, kind: "wheel", px, from });
+  }
+  return out;
+}
+
+// A reader scrolling at a steady pace with a trackpad, no momentum: pxPerFrame every
+// 16 to 17 ms with a pixel of wobble; negative scrolls up.
+export function steadyScroll(startMs: number, endMs: number, pxPerFrame: number, from = "steady"): TimedInput[] {
+  const wobble = [0, 1, -1, 0, 1, 0, -1, 1, 0, -1];
+  const out: TimedInput[] = [];
+  for (let i = 0, t = startMs; t <= endMs; i++, t += i % 3 === 0 ? 17 : 16) out.push({ t, kind: "wheel", px: pxPerFrame + Math.sign(pxPerFrame) * wobble[i % wobble.length], from });
+  return out;
+}
+
 // A held scroll key: auto-repeat every 33 ms.
 export function heldKey(startMs: number, endMs: number, from = "key"): TimedInput[] {
   const out: TimedInput[] = [];
@@ -113,7 +135,7 @@ export function playLock(inputs: readonly TimedInput[], { unfurlAtMs = UNFURL_MS
       played.passed.push(input);
       continue;
     }
-    const due = noteInput(clock, input.t);
+    const due = noteInput(clock, input, input.t);
     if (due) {
       letGo(input.t, due);
       played.passed.push(input);
