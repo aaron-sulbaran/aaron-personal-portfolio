@@ -7,6 +7,7 @@ import { Fill } from "@/components/fx/Fill";
 import { InlineCopy } from "@/components/inline/InlineCopy";
 import { MarkStrike } from "@/components/mark/MarkStrike";
 import { useCloseHint } from "@/components/modal/useCloseHint";
+import { useOutsidePress } from "@/components/modal/useOutsidePress";
 import { Portal } from "@/components/Portal";
 import { siteContent } from "@/lib/content";
 import { CTA_LABEL_CLASS, CTA_LABEL_OVER_CLASS, FILL_PICK } from "@/lib/fx/fill";
@@ -47,6 +48,7 @@ function MarkDialog({ reduced, onClose }: { reduced: boolean; onClose: () => voi
   useBodyScrollLock(true);
   useEscapeKey(true, onClose);
   useFocusTrap(dialogRef, true);
+  const outside = useOutsidePress(onClose);
 
   const isPresent = useIsPresent();
   const strike = useRef<{ ctx: gsap.Context; open: gsap.core.Timeline } | null>(null);
@@ -89,9 +91,7 @@ function MarkDialog({ reduced, onClose }: { reduced: boolean; onClose: () => voi
       animate="visible"
       exit="exit"
       variants={modalBackdropBlurVariants(0)}
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
+      {...outside}
       className="fixed inset-0 z-50 flex justify-center overflow-y-auto overscroll-contain px-4 py-6 md:px-10 md:py-14"
     >
       {!reduced && (

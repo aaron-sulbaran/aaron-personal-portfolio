@@ -8,6 +8,7 @@ import { galleryOf } from "@/lib/gallery/card";
 import { GALLERY } from "@/lib/gallery/constants";
 import { modalBackdropBlurVariants, modalBackdropTintVariants, useBodyScrollLock, useEscapeKey, useFocusTrap } from "@/lib/modal";
 import { Portal } from "@/components/Portal";
+import { useOutsidePress } from "@/components/modal/useOutsidePress";
 import { useReducedMotionLive } from "@/components/soundtrack/useReducedMotionLive";
 import { CardBody } from "./CardBody";
 import { useGalleryLayout } from "./useGalleryLayout";
@@ -47,6 +48,7 @@ export function CardModal({ cardKey, onClose, renderMedia, flying, returnFocus }
   useBodyScrollLock(open);
   useEscapeKey(open, onClose);
   useFocusTrap(dialogRef, open, returnFocus);
+  const outside = useOutsidePress(onClose);
   const gallery = cardKey ? galleryOf(cardKey) : null;
   const rows = layout === "rows";
   const sheet = gallery !== null && !rows && gallery.plan.slides.length > 0;
@@ -88,9 +90,7 @@ export function CardModal({ cardKey, onClose, renderMedia, flying, returnFocus }
             animate="visible"
             exit="exit"
             variants={modalBackdropBlurVariants(0, true)}
-            onMouseDown={(e) => {
-              if (e.target === e.currentTarget) onClose();
-            }}
+            {...outside}
             className={`fixed inset-0 z-50 flex justify-center ${sheet ? "overflow-hidden" : "overflow-y-auto overflow-x-hidden"} overscroll-contain ${rows ? "px-10 py-14" : "px-4 py-6"}`}
           >
             <motion.div

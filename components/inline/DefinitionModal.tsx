@@ -4,6 +4,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useId, useRef } from "react";
 import { Portal } from "@/components/Portal";
 import { useCloseHint } from "@/components/modal/useCloseHint";
+import { useOutsidePress } from "@/components/modal/useOutsidePress";
 import { siteContent } from "@/lib/content";
 import type { DefinitionEntry } from "@/lib/content/types";
 import { modalBackdropBlurVariants, modalBackdropTintVariants, useBodyScrollLock, useEscapeKey, useFocusTrap } from "@/lib/modal";
@@ -25,13 +26,14 @@ export function DefinitionModal({ entry, onClose }: { entry: DefinitionEntry | n
   useBodyScrollLock(open);
   useEscapeKey(open, onClose);
   useFocusTrap(dialogRef, open);
+  const outside = useOutsidePress(onClose);
   return (
     <Portal>
       <AnimatePresence>
         {entry && (
           <motion.div key="definition-modal" ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={titleId}
             initial="hidden" animate="visible" exit="exit" variants={modalBackdropBlurVariants(0)}
-            onMouseDown={(event) => event.target === event.currentTarget && onClose()}
+            {...outside}
             className="fixed inset-0 z-[52] flex justify-center overflow-y-auto overscroll-contain px-4 py-6 md:px-10 md:py-14">
             <motion.div aria-hidden="true" variants={modalBackdropTintVariants(0)} className="pointer-events-none fixed inset-0 bg-glass" />
             <motion.div data-definition-panel variants={reduced ? FADE : RISE} onMouseDown={(event) => event.stopPropagation()}
