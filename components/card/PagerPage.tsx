@@ -25,8 +25,10 @@ import { Words } from "./Words";
 // and words (lib/gallery/paginate): a photo carried onto a page after its own
 // is drawn again with no caption and no mask of its own. The words area
 // scrolls, behind a soft fade at its foot, only for one paragraph taller than a
-// whole page with nothing left to drop (a very short window). A page that is
-// not current is inert and hidden from assistive tech.
+// whole page with nothing left to drop (a very short window). A page with no
+// words (a name tag with its tip inside it) centres its stage in the page, since
+// nothing is under it: at the top it left half a tall phone's page empty. A page
+// that is not current is inert and hidden from assistive tech.
 // No page carries the flight's slot (a flown card parks on the header's tile,
 // which stays put while the pages turn), so every photo draws itself.
 
@@ -72,7 +74,7 @@ export function PagerPage({ gallery, page, index, count, kind, stage, trims, cur
       aria-label={g.pageLabel(index + 1, count)}
       aria-hidden={!current}
       inert={!current}
-      className="flex h-full w-full shrink-0 flex-col gap-3"
+      className={`flex h-full w-full shrink-0 flex-col gap-3 ${page.wordless ? "justify-center" : ""}`}
       data-pager-page={index}
       data-unit={page.unit ?? index}
       data-stage-kind={kind}
