@@ -30,7 +30,18 @@ export const cards: Cards = {
     book: { title: "min/Max", meta: "Founder, 2025 to now" },
     modal: { kind: "logo", title: "min/Max", links: [{ label: "getminmax.com", href: "https://getminmax.com" }], photos: [], blocks: [
       "An agentic credit card co-pilot that automatically picks the best card in your wallet for every purchase, every time. Only the beta has launched and I'm currently running a private pilot, but when I fully launch, you'll see it here (and on my socials).",
-    ] },
+    ],
+    // Its first and last frames differ (a checkout, then the "Why this card" view), so it plays once and holds on the last frame.
+    video: {
+      src: "/media/min-max/min-max-answer.mp4",
+      poster: "/media/min-max/min-max-answer-poster.jpg",
+      width: 1280,
+      height: 720,
+      label: "The min/Max Chrome extension at an $85.50 Amazon checkout: use Discover it Student, $0.86 back, then why it picked that card.",
+      caption: "min/Max names the card to use at checkout, in dollars.",
+      beside: 0,
+      playOnce: true,
+    } },
   },
   band: {
     short: "Band", visual: { kind: "photo", flipX: false, photo: pictures.band },

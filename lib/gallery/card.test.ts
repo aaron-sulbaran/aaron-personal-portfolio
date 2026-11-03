@@ -25,7 +25,7 @@ describe("each card's gallery", () => {
   it("sits every photo beside the words Aaron's rule gives it, and the band's and Travel's the same, the card picture holding the first word", () => {
     expect(Object.fromEntries(keys.map((key) => [key, rows(key)]))).toEqual({
       mentorship: [{ photos: [0], words: [0] }, { photos: [1, 2, 3], words: [1] }],
-      "min-max": [],
+      "min-max": [{ photos: [0], words: [0] }],
       band: [{ photos: [0], words: [0] }, { photos: [2, 1], words: [1] }, { photos: [3], words: [2] }],
       talos: [],
       travel: [{ photos: [0], words: [0] }, { photos: [1, 2, 3], words: [1] }],
@@ -41,7 +41,7 @@ describe("each card's gallery", () => {
       "building-in-public": [{ photos: [0], words: [0] }, { photos: [1], words: [1] }, { photos: [2], words: [2] }],
     });
     expect(Object.fromEntries(keys.map((key) => [key, [galleryOf(key).plan.intro, galleryOf(key).plan.closing]]))).toMatchObject({
-      "capital-one": [[0], [4]], hackathons: [[], []], jobs: [[], []], "min-max": [[0], []], talos: [[0, 1], []], "this-site": [[0], []], fsdatalink: [[0, 1], []], band: [[], []], travel: [[], []],
+      "capital-one": [[0], [4]], hackathons: [[], []], jobs: [[], []], "min-max": [[], []], talos: [[0, 1], []], "this-site": [[0], []], fsdatalink: [[0, 1], []], band: [[], []], travel: [[], []],
     });
   });
 
@@ -59,6 +59,21 @@ describe("each card's gallery", () => {
     expect(plan.slides[2].own, "beside the HackTX paragraph").toBe(video.beside);
     // Every row alternates sides from the left (components/card/CardRows), so no two consecutive media share one.
     expect(plan.slides.map((_, i) => (i % 2 === 0 ? "left" : "right"))).toEqual(["left", "right", "left", "right", "left"]);
+  });
+
+  it("draws the min/Max card's answer clip as its one piece of media, beside its paragraph, captioned, on a phone's page and a desktop row alike", () => {
+    const { photos, plan, pages } = galleryOf("min-max");
+    const video = siteContent.cards["min-max"].modal.video!;
+    expect(photos).toHaveLength(1);
+    expect(photos[0]).toMatchObject({ alt: video.label, caption: video.caption, beside: 0, video: { src: video.src, poster: video.poster, width: 1280, height: 720, playOnce: true } });
+    expect(plan.slides.map((slide) => ({ photos: slide.photos, own: slide.own }))).toEqual([{ photos: [0], own: 0 }]);
+    // One page: the clip and the paragraph together (the pager's photo-and-words rule), the card's link after them.
+    expect(pages).toEqual([{ photo: 0, photos: [0], own: 0, before: [], after: [], links: true }]);
+  });
+
+  it("plays only the min/Max clip by itself, once: the Hackathons demo stays on demand", () => {
+    expect(galleryOf("min-max").photos[0].video?.playOnce).toBe(true);
+    expect(galleryOf("hackathons").photos.find((photo) => photo.video)?.video).not.toHaveProperty("playOnce");
   });
 
   it("gives every photo row of every card a word, the card picture never taking turns, unless the card has no word to give", () => {
@@ -143,7 +158,7 @@ describe("each card's gallery", () => {
 
   it("sizes each panel to its widest box: 918 all vertical, 1022 with a horizontal photo, 542 with none, 1104 for the jobs card's clusters and post", () => {
     expect(Object.fromEntries(keys.map((key) => [key, galleryOf(key).panelWidth]))).toEqual({
-      mentorship: 1022, "min-max": 542, band: 1022, talos: 542, travel: 918, "capital-one": 918, hackathons: 1022,
+      mentorship: 1022, "min-max": 1022, band: 1022, talos: 542, travel: 918, "capital-one": 918, hackathons: 1022,
       anthropic: 1022, misuki: 1022, ieee: 1022, jobs: 1104, "this-site": 542, fsdatalink: 542, "building-in-public": 1022,
     });
   });

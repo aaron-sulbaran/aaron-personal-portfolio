@@ -22,11 +22,21 @@ function boxes(bytes: Buffer): string[] {
 const hasSound = (bytes: Buffer) => bytes.includes(Buffer.from("soun", "latin1"));
 
 describe("a card's demo video", () => {
-  it("is on the Hackathons card alone, beside its HackTX paragraph, labelled in my words", () => {
-    expect(withVideo).toEqual(["hackathons"]);
+  it("is on the Hackathons card, beside its HackTX paragraph, labelled in my words", () => {
+    expect(withVideo).toEqual(["min-max", "hackathons"]);
     const { video, blocks } = siteContent.cards.hackathons.modal;
     expect(blocks[video!.beside].startsWith("**HackTX, fall 2026.**")).toBe(true);
     expect(video!.label).toBe("A 38-second demo of Muse Friends, the feature I built at HackTX.");
+    expect(video!.playOnce).toBeUndefined();
+  });
+
+  it("is on the min/Max card too, beside its paragraph, with its alt and caption in my words, played once and held on its last frame", () => {
+    const { video, blocks } = siteContent.cards["min-max"].modal;
+    expect(video!.beside).toBeLessThan(blocks.length);
+    expect(video!.label).toBe("The min/Max Chrome extension at an $85.50 Amazon checkout: use Discover it Student, $0.86 back, then why it picked that card.");
+    expect(video!.caption).toBe("min/Max names the card to use at checkout, in dollars.");
+    expect(video!.playOnce).toBe(true);
+    expect([video!.width, video!.height]).toEqual([1280, 720]);
   });
 
   it("is a web copy: an MP4 that streams from its first bytes (the moov box before the media), no sound, under 3 MB", () => {

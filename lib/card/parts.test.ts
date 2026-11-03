@@ -236,6 +236,6 @@ describe("the mentors and the links", () => {
   });
   it("opens a card's links in a new tab, and renders nothing for a card with none", () => {
     expect(renderToStaticMarkup(createElement(CardLinks, { cardKey: "anthropic" }))).toMatch(/<a [^>]*href="https:\/\/txclaude.org" target="_blank" rel="noopener noreferrer"/);
-    expect(renderToStaticMarkup(createElement(CardLinks, { cardKey: "min-max" }))).toBe("");
+    expect(renderToStaticMarkup(createElement(CardLinks, { cardKey: "capital-one" }))).toBe("");
   });
 });

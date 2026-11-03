@@ -10,8 +10,9 @@ import { clusterPages, galleryPlan, namedPlan, phonePages, type Page, type Phone
 // on a photo card), the word units they sit beside, Aaron's plan, and the
 // desktop panel's width; and the header's tile and meta line by layout.
 
-// A demo video drawn in the place of a photo (components/card/CardVideo): the file, its poster and its own pixels.
-export interface GalleryVideo { src: string; poster: string; width: number; height: number }
+// A demo video drawn in the place of a photo (components/card/CardVideo): the file, its poster and its own pixels; playOnce
+// plays it by itself once and holds on its last frame (CardVideoRef).
+export interface GalleryVideo { src: string; poster: string; width: number; height: number; playOnce?: boolean }
 // A post embedded in the place of a photo (components/card/LinkedInEmbed): its own address and native size, and its accessible name;
 // card is what a phone's pager draws instead (components/card/PostCard).
 export interface GalleryEmbed { src: string; width: number; height: number; title: string; card: PostCardRef }
@@ -63,7 +64,10 @@ export function galleryOf(key: CardKey): Gallery {
       beside: photo.block,
     })),
     ...(modal.video
-      ? [{ src: modal.video.poster, ...VIDEO_FRAME, alt: modal.video.label, caption: null, captionShort: null, beside: modal.video.beside, video: { src: modal.video.src, poster: modal.video.poster, width: modal.video.width, height: modal.video.height } }]
+      ? [{
+          src: modal.video.poster, ...VIDEO_FRAME, alt: modal.video.label, caption: modal.video.caption ?? null, captionShort: null, beside: modal.video.beside,
+          video: { src: modal.video.src, poster: modal.video.poster, width: modal.video.width, height: modal.video.height, ...(modal.video.playOnce ? { playOnce: true } : {}) },
+        }]
       : []),
   ].map(focused);
   const lead = picture ? 0 : undefined;

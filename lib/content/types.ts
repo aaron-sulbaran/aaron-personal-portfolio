@@ -103,8 +103,10 @@ export interface CardLink { label: string; href: string }
 // A demo video in a card's modal (components/card/CardVideo), media like a photo: it takes a row's
 // side beside the paragraph it sits beside (beside indexes modal.blocks), in the photos' 4:3 frame,
 // letterboxed (lib/gallery/card). src and poster are files in public; width and height are the
-// video's pixels; label is its accessible name, in my words.
-export interface CardVideoRef { src: string; poster: string; width: number; height: number; label: string; beside: number }
+// video's pixels; label is its accessible name, in my words. caption: the line under it, as a photo's (absent for none).
+// playOnce: a clip whose last frame differs from its first, so it must not loop: it plays itself once when the card is
+// opened and holds on its last frame (components/card/CardVideo); absent, it is played on demand.
+export interface CardVideoRef { src: string; poster: string; width: number; height: number; label: string; beside: number; caption?: string; playOnce?: boolean }
 
 // A post embedded in a card's modal (components/card/LinkedInEmbed), media like a photo: it takes a row's side beside the
 // paragraph it sits beside (beside indexes modal.blocks), in the photos' radius and border. src is the embed's own address
