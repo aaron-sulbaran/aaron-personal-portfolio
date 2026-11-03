@@ -9,6 +9,10 @@ import { COIL, type CoilConstants } from "@/lib/coil/constants";
 //     scrolling the page once the Coil has the wheel.
 //   - cap: capMs after the lock took input, whatever else happened.
 // With no input at all the quiet gap is already met, so the lock lets go at the unfurl.
+//
+// The whole decision is here, as a clock the DOM half feeds (createLockClock,
+// noteInput, markUnfurled) and asks (releaseDue, msUntilDue), so a recorded wheel
+// stream can be replayed through the very rules the page runs (dealLock.fixtures.ts).
 
 export type LockClock = {
   takenAtMs: number;
@@ -19,6 +23,23 @@ export type LockClock = {
 };
 
 export type LockReason = "quiet" | "cap";
+
+export function createLockClock(takenAtMs: number): LockClock {
+  return { takenAtMs, unfurledAtMs: null, lastInputMs: takenAtMs };
+}
+
+// The reader's input arrived at nowMs. Returns why the lock must let go now, if it
+// must (the input then goes on to the page, unswallowed).
+export function noteInput(clock: LockClock, nowMs: number, c: CoilConstants = COIL): LockReason | null {
+  clock.lastInputMs = nowMs;
+  return releaseDue(clock, nowMs, c);
+}
+
+// The Coil is unfurled (or the deal ended without one) at nowMs.
+export function markUnfurled(clock: LockClock, nowMs: number, c: CoilConstants = COIL): LockReason | null {
+  clock.unfurledAtMs ??= nowMs;
+  return releaseDue(clock, nowMs, c);
+}
 
 export function releaseDue(clock: LockClock, nowMs: number, c: CoilConstants = COIL): LockReason | null {
   const { quietMs, capMs } = c.deal.cutscene;

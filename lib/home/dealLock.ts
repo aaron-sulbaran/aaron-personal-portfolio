@@ -1,6 +1,6 @@
 "use client";
 
-import { msUntilDue, releaseDue, swallowsKey, type LockClock, type LockReason } from "@/lib/home/dealLockRules";
+import { createLockClock, markUnfurled, msUntilDue, noteInput, releaseDue, swallowsKey, type LockReason } from "@/lib/home/dealLockRules";
 
 // The cutscene's lock: from the moment the deal starts (the reader's scroll
 // past the trigger, or "Deal me in") until the Coil is unfurled, the page takes
@@ -48,8 +48,7 @@ export function typesText(target: EventTarget | null): boolean {
 export function takeDealLock(onEnd?: (why: LockEnd) => void): DealLock {
   active?.release();
   const root = document.documentElement;
-  const started = performance.now();
-  const clock: LockClock = { takenAtMs: started, unfurledAtMs: null, lastInputMs: started };
+  const clock = createLockClock(performance.now());
   let timer = 0;
   let over = false;
 
@@ -75,28 +74,34 @@ export function takeDealLock(onEnd?: (why: LockEnd) => void): DealLock {
     window.clearTimeout(timer);
     timer = window.setTimeout(check, Math.max(1, msUntilDue(clock, performance.now())));
   };
-  // A swallowed event is input: the quiet gap starts again.
-  const swallow = (event: Event) => {
+  // A swallowed event is input: the quiet gap starts again. An input the rules say
+  // the lock must let go for passes on unswallowed.
+  const take = (event: Event) => {
+    const due = noteInput(clock, performance.now());
+    if (due) {
+      end(due);
+      return;
+    }
     event.preventDefault();
     event.stopImmediatePropagation();
-    clock.lastInputMs = performance.now();
     if (clock.unfurledAtMs !== null) arm();
   };
   const onWheel = (event: WheelEvent) => {
     // A pinch is the browser's zoom, and a purely sideways swipe scrolls nothing here (and is the history's).
     if (event.ctrlKey || event.deltaY === 0) return;
-    swallow(event);
+    take(event);
   };
   const onTouchMove = (event: TouchEvent) => {
     // A touch the browser has already taken as a scroll is no longer cancelable (the CSS holds those).
-    if (event.cancelable) swallow(event);
+    if (event.cancelable) take(event);
     else {
-      clock.lastInputMs = performance.now();
-      if (clock.unfurledAtMs !== null) arm();
+      const due = noteInput(clock, performance.now());
+      if (due) end(due);
+      else if (clock.unfurledAtMs !== null) arm();
     }
   };
   const onKey = (event: KeyboardEvent) => {
-    if (swallowsKey(event) && !typesText(event.target)) swallow(event);
+    if (swallowsKey(event) && !typesText(event.target)) take(event);
   };
   const onVisibility = () => {
     if (document.visibilityState === "hidden") end("hidden");
@@ -105,8 +110,9 @@ export function takeDealLock(onEnd?: (why: LockEnd) => void): DealLock {
   const lock: DealLock = {
     unfurled() {
       if (over) return;
-      clock.unfurledAtMs ??= performance.now();
-      check();
+      const due = markUnfurled(clock, performance.now());
+      if (due) end(due);
+      else arm();
     },
     release: () => end("forced"),
   };
