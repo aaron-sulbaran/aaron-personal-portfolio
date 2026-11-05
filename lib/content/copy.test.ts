@@ -23,7 +23,7 @@ const known = (target: string) => {
 
 describe("the page description", () => {
   it("is the one line for a link preview or a bio", () => {
-    expect(meta.description).toBe("I'm a product-focused engineer at UT Austin. I build for people, and I love leading them towards building great things.");
+    expect(meta.description).toBe("I'm a product-focused engineer. I study Electrical and Computer Engineering (ECE) at UT Austin, but beyond class I'm passionate about building products people actually want to use.");
   });
 });
 

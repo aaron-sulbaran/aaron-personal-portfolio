@@ -29,7 +29,7 @@ export const siteContent = {
   meta: {
     title: "Aaron Sulbaran",
     description:
-      "I'm a product-focused engineer at UT Austin. I build for people, and I love leading them towards building great things.",
+      "I'm a product-focused engineer. I study Electrical and Computer Engineering (ECE) at UT Austin, but beyond class I'm passionate about building products people actually want to use.",
     url: "https://aaronsulbaran.com",
   },
   // Every inline link the copy may point at (lib/content/register.ts).
