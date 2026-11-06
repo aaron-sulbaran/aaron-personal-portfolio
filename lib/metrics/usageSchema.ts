@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TOOL_GROUPS, type ToolGroup } from "./toolGroups";
 
 const counts = z.object({
   in: z.number().int().nonnegative(),
@@ -10,8 +11,8 @@ const counts = z.object({
 
 const count = z.number().int().nonnegative();
 
-export const TOOL_GROUPS = ["written", "used", "plugin", "mcp"] as const;
-export type ToolGroup = (typeof TOOL_GROUPS)[number];
+export { TOOL_GROUPS };
+export type { ToolGroup };
 
 // A tool from the curated public list (lib/metrics/toolkit-public.json) with
 // its call count in the window. Tools off the list are never named.
