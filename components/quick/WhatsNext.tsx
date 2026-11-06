@@ -19,7 +19,7 @@ export function WhatsNext({ line }: { line: string }) {
       <h2 id={NEXT_HEADING_ID} tabIndex={-1} className="font-display text-[2.75rem] leading-none text-foreground outline-none md:text-[3.5rem]" data-lane-line="">
         {quickCopy.next.label}
       </h2>
-      <p data-quick-next-line="" className="mt-4 max-w-2xl text-lg leading-relaxed text-foreground md:text-body-lg" data-lane-line="">
+      <p data-quick-next-line="" className="mt-4 max-w-2xl text-lg leading-relaxed text-foreground md:text-body-lg lg:text-body-quick" data-lane-line="">
         {line}
       </p>
       <p data-quick-resume="" data-lane-line="" data-lane-whole="" className="mt-3 max-w-2xl text-base leading-relaxed text-muted">

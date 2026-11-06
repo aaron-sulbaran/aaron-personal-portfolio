@@ -30,7 +30,7 @@ function YearHead({ row }: { row: YearRow }) {
       <h2 className="font-display text-[2.75rem] leading-none text-foreground md:text-[3.5rem]" data-lane-line="">
         {row.year}
       </h2>
-      <p className="mt-4 max-w-2xl text-lg leading-relaxed text-foreground md:text-body-lg" data-lane-line="">
+      <p className="mt-4 max-w-2xl text-lg leading-relaxed text-foreground md:text-body-lg lg:text-body-quick" data-lane-line="">
         {row.line}
       </p>
     </div>

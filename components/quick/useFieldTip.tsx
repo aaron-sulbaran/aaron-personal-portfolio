@@ -6,7 +6,7 @@ import { isKeyboardFocus } from "@/lib/input/modality";
 import { anchorPosition } from "@/lib/inline/placement";
 
 // A tip for one control, in the site's own tip look (components/inline/TipBubble:
-// the .inline-tip label at z-58, 13px Inter medium, the same rounded capsule).
+// the .inline-tip label at z-58, 13px body-face medium, the same rounded capsule).
 // It shows on a mouse hover or keyboard focus, never on a touch (touch screens get
 // a small muted line instead, where the page puts one), closes on Escape or a
 // scroll, and its words ride on the control as its description. It portals to

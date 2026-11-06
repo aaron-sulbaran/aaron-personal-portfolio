@@ -203,10 +203,22 @@ html[data-theme="dark"] {
   color-scheme: dark;
 }
 
+/* Desktop body copy (tailwind.config.ts, body-story and friends). Phones and tablets keep their
+   own sizes; from 1024px the body face reads a little larger and more open. */
+:root {
+  --body-scale: 1;
+  --body-lead: 1.55;
+}
+@media (min-width: 1024px) {
+  :root {
+    --body-scale: 1;
+    --body-lead: 1.55;
+  }
+}
+
 body {
   background: var(--color-background);
   color: var(--color-foreground);
-  font-feature-settings: "cv11", "ss01", "ss03";
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   transition: background-color 250ms ease-in-out, color 250ms ease-in-out;
