@@ -5,7 +5,7 @@
 import { setFrozen } from "@/lib/waveform/freeze";
 import type { Anchors } from "./spine";
 
-export type ProbeFrame = { head: number; target: number; cap: number; length: number; runLen: number; train: number | null; decided: boolean; gated: boolean; idle: number; runFlat: number; ripple: number };
+export type ProbeFrame = { head: number; target: number; cap: number; length: number; runLen: number; train: number | null; decided: boolean; gated: boolean; idle: number; runFlat: number; ripple: number; music: number };
 // layout: what the page was last laid out on, in layer px (origin: the band's document top, the root's left): the measured anchors and the
 // viewport's height, so a check can lay the same line on the same page.
 export type ProbeLayout = { anchors: Anchors; viewport: number; origin: number };
