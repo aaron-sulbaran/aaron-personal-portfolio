@@ -15,6 +15,7 @@ export const GALLERY = {
   rowGap: 64,
   proseGap: 20, // between the paragraphs of a card with no photos: a reading rhythm, not a row's
   columnGap: 56, // photo to words
+  stickyTop: 0, // a row whose media is taller than its words (the jobs card's post) pins its words at the top of the modal's scroll (inside its padding), beside the media as it passes
   panelPadding: 40,
   panelBorder: 1,
   // The jobs card's media column holds two pieces side by side (a name tag and its photo, or the two tags of the next row), each this wide,

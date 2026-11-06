@@ -97,7 +97,7 @@ export function CardModal({ cardKey, onClose, renderMedia, flying, returnFocus }
               variants={reduced ? PANEL.reduced : PANEL.full}
               data-gallery-panel=""
               onMouseDown={(e) => e.stopPropagation()}
-              className={`relative my-auto flex w-full flex-col overflow-hidden rounded-2xl border border-border shadow-[var(--shadow-card)] backdrop-blur-xl ${rows ? "p-10" : "p-5"}`}
+              className={`relative my-auto flex w-full flex-col ${rows ? "overflow-clip" : "overflow-hidden"} rounded-2xl border border-border shadow-[var(--shadow-card)] backdrop-blur-xl ${rows ? "p-10" : "p-5"}`}
               style={{ ...glass, maxWidth: rows ? gallery.panelWidth : undefined, height: sheet ? `calc(100dvh - ${GALLERY.pager.sheetInsetPx}px)` : undefined }}
             >
               <button
