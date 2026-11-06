@@ -199,10 +199,11 @@ test.describe("capture: jitter and release", () => {
   });
 });
 
-test.describe("capture: the coil keeps the wheel after its own gesture until the pointer really moves", () => {
-  const PAUSE_MS = 400;
+// The hold is a grace of COIL.capture.holdGraceMs after the last wheel event, not a standing hold.
+test.describe("capture: the coil keeps the wheel briefly after its own gesture", () => {
+  const PAUSE_MS = 300;
 
-  test("spin on a card, a pause with the pointer still, the next gesture is the coil's", async ({ page, cdp }) => {
+  test("spin on a card, a short pause with the pointer still, the next gesture is the coil's", async ({ page, cdp }) => {
     await openHome(page);
     const { card } = await coilPoints(page);
     await approach(cdp, card);
@@ -220,16 +221,14 @@ test.describe("capture: the coil keeps the wheel after its own gesture until the
     expect(pageTravel(next), "page movement, px").toBe(0);
   });
 
-  test("a coil gesture that ends with the pointer over a gap inside the helix keeps the next gesture, until a real move", async ({ page, cdp }) => {
+  test("a coil gesture that ends with the pointer over a gap inside the helix does not keep the next gesture past the grace", async ({ page, cdp }) => {
     await openHome(page);
     const { card, background } = await coilPoints(page);
     expect(background, "a background point inside the silhouette").toBeTruthy();
     await approach(cdp, card);
     // The hand drifts off the card onto the gap between turns while the coil
-    // still owns the gesture, then rests: what a seam the stretch opened
-    // under a still pointer looks like, made certain. The pause runs until
-    // the stretch has relaxed and the coil is at its idle pace, so the band
-    // of cards is back where it was and the gap is a gap again.
+    // still owns the gesture, then rests. The pause runs until the stretch has
+    // relaxed and the coil is at its idle pace, far past the grace.
     let where: Point = card;
     const spin = await frames(page, () =>
       trackpad(cdp, downFirstQuick, {
@@ -247,27 +246,14 @@ test.describe("capture: the coil keeps the wheel after its own gesture until the
     await waitForCoilSettled(page);
     await watchFirstWheel(page);
 
-    const next = await frames(page, () => trackpad(cdp, notches, { at: background! }), { tailMs: 100 });
+    const next = await frames(page, () => trackpad(cdp, firstPixels(downFirstQuick, 200), { at: background! }), { tailMs: 120 });
 
-    expect(await firstWheel(page), "no card under the still pointer at the first wheel, inside the helix, held").toMatchObject({
+    expect(await firstWheel(page), "no card under the still pointer, inside the helix, the hold lapsed").toMatchObject({
       owner: "none",
       onCard: false,
       insideSilhouette: true,
-      held: true,
     });
-    expect(next.wheels.every((wheel) => wheel.prevented), "the next gesture's events").toBe(true);
-    expect(pageTravel(next), "page movement, px").toBe(0);
-
-    // A real move of rearmPx, still over the gap: rule A decides again, the page's.
-    await waitForGestureEnd(page);
-    await waitForEnvelopeRest(page);
-    await waitForCoilSettled(page);
-    const moved = { x: background!.x + COIL.capture.rearmPx + 2, y: background!.y };
-    await pointerTo(cdp, moved);
-    await watchFirstWheel(page);
-    const after = await frames(page, () => trackpad(cdp, firstPixels(downFirstQuick, 200), { at: moved }), { tailMs: 120 });
-    expect(await firstWheel(page), "the moved pointer at the first wheel").toMatchObject({ owner: "none", onCard: false, held: false });
-    expectPageOwnedAll(after);
+    expectPageOwnedAll(next);
   });
 });
 
