@@ -19,15 +19,16 @@ import { createRipple, rippleHeight, startRipple, stepRipple } from "@/lib/wavep
 // head follows the scroll only once the band's bottom edge is above the release
 // line (RELEASE_LINE), in both directions, and until then only the band's own
 // run is drawn, breathing, with the head waiting at its end. Pressing an answer
-// while the band is still in view holds the wave exactly there
-// (lib/wavepath/hold): no following, no music, no ripple, until the band has
+// while the band is still in view holds the wave there
+// (lib/wavepath/hold): no following, no ripple, until the band has
 // scrolled away; then the answer takes effect and its ripple goes out from the
-// buttons (a live press only; a restored choice sends none). A Not now is
+// buttons (a live press only; a restored choice sends none). The hold keeps the line from following and the ripple back, never
+// the music: "Play it" shapes the band's run at once, with no scroll (Aaron, 2026-11-06). A Not now is
 // answered at once instead, in the band: a gentle swell (SWELL) rolls out from
 // the buttons across the run, then the wave settles into its idle motion, and
 // no ripple follows at the release. After either
 // answer the whole line breathes and follows; peaks and the music need
-// "Play it". While no music shapes the line (paused, declined or held) an idle
+// "Play it". While no music shapes the line (paused or declined) an idle
 // ripple (lib/wavepath/idle) travels through it, so it is never dead flat.
 // Freezing stops the clocks, the music, the plucks, the idle ripple and the
 // ripple; the head still follows the scroll. Reduced motion (`still`) never
@@ -134,7 +135,7 @@ function createInstance(still: boolean): Instance {
       breathClock += dt;
       frame.breath = Math.sin(breathClock * BREATH.rate);
       levelColumns(leveller, player.sample(t, SPECTRUM_BINS).means, dt, levelled);
-      music = stepMusic(frame.music, dt, getSoundtrackState() === "on" && !hold.on, levelled);
+      music = stepMusic(frame.music, dt, getSoundtrackState() === "on", levelled);
       frame.idleClock += dt;
       plucks = stepPlucks(frame.plucks, dt);
       // A crest that ends this frame still repaints once, to clear it.
@@ -260,7 +261,7 @@ function createInstance(still: boolean): Instance {
   }
   const unsubscribe = subscribeSoundtrack(onSoundtrack);
   const detachProbe = attachProbe({
-    frame: () => ({ head: frame.head, target: frame.state.target, cap: frame.state.cap, length: frame.length, runLen: frame.runLen, train: frame.train, decided: frame.decided, gated: frame.gated, idle: frame.idleGain, runFlat: frame.runFlat, ripple: rippleHeight(frame.ripple) }),
+    frame: () => ({ head: frame.head, target: frame.state.target, cap: frame.state.cap, length: frame.length, runLen: frame.runLen, train: frame.train, decided: frame.decided, gated: frame.gated, idle: frame.idleGain, runFlat: frame.runFlat, ripple: rippleHeight(frame.ripple), music: frame.music.share }),
     visibleDots: () => views.reduce((n, v) => n + v.countVisible(frame), 0),
   });
 

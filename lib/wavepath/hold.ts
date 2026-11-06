@@ -2,9 +2,8 @@ import type { Press } from "./answer";
 
 // The wave's wait after an answer. An answer to the band does not send the
 // line off at once: the wave keeps the look it had before the answer (the run
-// breathing, the head waiting at its end, no music, no pluck) until the band
-// has scrolled away; then it is released: the line follows, the music shapes
-// it, and the answer's ripple, kept back until now, goes out. Pure: the
+// breathing, the head waiting at its end, no pluck; the music is not held, it shapes the run at once) until the band
+// has scrolled away; then it is released: the line follows and the answer's ripple, kept back until now, goes out. Pure: the
 // conductor owns one state and feeds it presses and scroll checks.
 
 export interface WaveHold {
