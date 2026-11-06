@@ -1,5 +1,6 @@
 import publicList from "./toolkit-public.json";
-import { TOOL_GROUPS, type NamedTool, type Toolkit, type ToolGroup } from "./usageSchema";
+import { TOOL_GROUPS, type ToolGroup } from "./toolGroups";
+import type { NamedTool, Toolkit } from "./usageSchema";
 
 export type ToolkitName = { name: string; label: string; calls: number; marked: boolean };
 export type ToolkitGroup = { group: ToolGroup; count: number; names: ToolkitName[] };
