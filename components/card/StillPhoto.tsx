@@ -24,9 +24,9 @@ export function StillPhoto({ photo, index, box, slot = false, renderMedia = true
   // the embedded post (the photos' radius and a hairline border around the frame, drawn outside the post's own pixels).
   if (photo.tag !== undefined) {
     return (
-      <figure className="m-0 flex shrink-0 flex-col" style={{ width: box.width, maxWidth: "100%" }} data-photo-frame={index} data-media="tag">
-        <div data-mask={partId.photo(index)} data-mask-kind="photo" className="overflow-hidden rounded-xl">
-          <div data-mask-media="">
+      <figure className="m-0 flex h-full shrink-0 flex-col" style={{ width: box.width, maxWidth: "100%" }} data-photo-frame={index} data-media="tag">
+        <div data-mask={partId.photo(index)} data-mask-kind="photo" className="h-full overflow-hidden rounded-xl">
+          <div data-mask-media="" className="h-full">
             <JobTag job={photo.tag} />
           </div>
         </div>

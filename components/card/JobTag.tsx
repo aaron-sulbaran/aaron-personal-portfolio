@@ -24,7 +24,7 @@ export function JobTag({ job }: { job: number }) {
   const tag = jobTags[job];
   const copy = siteContent.cards.jobs.tag;
   return (
-    <div role="group" aria-label={copy.label(tag.employer)} data-job-tag={job} className="flex flex-col overflow-hidden rounded-xl border border-border bg-background text-foreground">
+    <div role="group" aria-label={copy.label(tag.employer)} data-job-tag={job} className="flex h-full flex-col overflow-hidden rounded-xl border border-border bg-background text-foreground">
       <div className="flex h-[4.25rem] items-center justify-center border-b border-border px-5" style={TAG_BAND} data-job-tag-logo="">
         {tag.logo && <Logo logo={tag.logo} />}
       </div>
@@ -33,7 +33,7 @@ export function JobTag({ job }: { job: number }) {
         {tag.role && <p className="font-label text-label text-accent" data-job-tag-role="">{tag.role}</p>}
         <p className="font-label text-label text-muted" data-job-tag-when="">{tag.when}</p>
       </div>
-      <div className="flex flex-col gap-1.5 border-t border-border px-5 pb-5 pt-4" data-job-tag-tip="">
+      <div className="flex flex-1 flex-col gap-1.5 border-t border-border px-5 pb-5 pt-4" data-job-tag-tip="">
         <p className="font-label text-label-sm text-muted">{copy.tipLabel}</p>
         <p className="text-[0.9375rem] leading-snug text-foreground">{tag.tip}</p>
       </div>
