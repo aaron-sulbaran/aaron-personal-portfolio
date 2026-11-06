@@ -10,6 +10,11 @@ export type PagerAction = { type: "next" } | { type: "prev" } | { type: "goto"; 
 
 const clampPage = (index: number, count: number) => (count <= 0 ? 0 : Math.min(count - 1, Math.max(0, index)));
 
+// The page to draw for a stored index and the current page count. The count can
+// shrink between renders (a rotation re-paginates before the reducer's count
+// action lands), so anything read during render goes through this.
+export const pageAt = clampPage;
+
 export function pagerReducer(state: PagerState, action: PagerAction): PagerState {
   if (action.type === "count") {
     const index = clampPage(state.index, action.count);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pagerReducer } from "@/lib/gallery/pager";
+import { pageAt, pagerReducer } from "@/lib/gallery/pager";
 
 describe("pagerReducer", () => {
   it("turns a page at a time and never past either end", () => {
@@ -22,5 +22,20 @@ describe("pagerReducer", () => {
   it("is the same state when the count is the same", () => {
     const state = { index: 2, count: 10 };
     expect(pagerReducer(state, { type: "count", count: 10 })).toBe(state);
+  });
+});
+
+describe("pageAt", () => {
+  it("keeps an index inside the count", () => {
+    expect(pageAt(2, 5)).toBe(2);
+    expect(pageAt(0, 5)).toBe(0);
+  });
+  it("pulls a stale index back when the count shrank (a rotation re-paginated)", () => {
+    expect(pageAt(9, 5)).toBe(4);
+    expect(pageAt(4, 1)).toBe(0);
+  });
+  it("is page 0 when there are no pages, and never negative", () => {
+    expect(pageAt(3, 0)).toBe(0);
+    expect(pageAt(-2, 5)).toBe(0);
   });
 });
