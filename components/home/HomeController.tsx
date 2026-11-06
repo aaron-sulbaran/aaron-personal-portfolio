@@ -272,6 +272,9 @@ export function HomeController({ children }: Props) {
   }, [focusCard]);
   // ---- end fx-input ----
 
+  // The touch title-open timer, while a glide to the card is under way.
+  const pendingOpenRef = useRef<number | null>(null);
+
   // A card in the scene (or its title or its row in the unwound list): freeze the scene so
   // the rendered pose is the flight pose, and open its modal with the card
   // flying in, at any window width (input by capability, Layer 1). A touch tap
@@ -304,6 +307,12 @@ export function HomeController({ children }: Props) {
     [openFromScene],
   );
 
+  // The delayed open reads the latest handler, not the one from the tap.
+  const handleRowOpenRef = useRef(handleRowOpen);
+  useEffect(() => {
+    handleRowOpenRef.current = handleRowOpen;
+  }, [handleRowOpen]);
+
   // A title: a pointer hovered it there already, so its card is at the front
   // and flies at once. A touch has no hover, so the Coil turns to the card
   // first (one glide) and the card flies when it arrives.
@@ -321,13 +330,24 @@ export function HomeController({ children }: Props) {
         handleRowOpen(key, origin);
         return;
       }
+      // A second tap inside the glide would share this closure's stale
+      // selection and flight, and open twice; the first open is the one.
+      if (pendingOpenRef.current !== null) return;
       focusCard(key, "pointer");
-      window.setTimeout(() => {
-        handleRowOpen(key, origin);
+      pendingOpenRef.current = window.setTimeout(() => {
+        pendingOpenRef.current = null;
+        handleRowOpenRef.current(key, origin);
         focusCard(null, "pointer");
       }, COIL.hoverJumpMs + TURN_SETTLE_MS);
     },
     [drivers.input, focusCard, handleRowOpen, openFromScene, settle],
+  );
+  useEffect(
+    () => () => {
+      if (pendingOpenRef.current !== null) window.clearTimeout(pendingOpenRef.current);
+      pendingOpenRef.current = null;
+    },
+    [],
   );
 
   const handleFlyOutComplete = useCallback(() => setFlight((f) => (f ? { ...f, revealed: true } : f)), []);
