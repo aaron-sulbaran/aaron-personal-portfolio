@@ -16,7 +16,7 @@ describe("the label face tokens", () => {
     expect(extend.fontSize["label-lg"]).toEqual(["1.1925rem", { letterSpacing: "0.01em", fontWeight: "700" }]);
   });
 
-  it("puts Profa Bold first in font-label, then Inter, with Inter's features reset", () => {
+  it("puts Profa Bold first in font-label, then the body face, with features reset", () => {
     expect(extend.fontFamily.label).toEqual([
       ["var(--font-label)", "var(--font-sans)", "system-ui", "sans-serif"],
       { fontFeatureSettings: "normal" },

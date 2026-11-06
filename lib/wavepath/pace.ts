@@ -33,7 +33,7 @@ export function inkOnScreen(f: InkFrame): boolean {
   const reach = dotReach(f.amplitude);
   const ahead = DRAW_SPEED * f.dt;
   const from = Math.max(0, (f.train === null ? 0 : f.tail + 0.2 * f.train * TRAIN_FADE) - ahead);
-  const last = Math.min(s.count - 1, Math.floor((f.head + ahead) / s.step));
+  const last = Math.min(s.count - 1, Math.ceil((f.head + ahead) / s.step) + 1);
   for (let i = Math.ceil(from / s.step); i <= last; i++) {
     const y = s.y[i];
     if (y > f.viewTop - reach && y < f.viewTop + f.viewHeight + reach && s.x[i] > -reach && s.x[i] < f.width + reach && !(y >= f.cards.top && y <= f.cards.bottom)) return true;
