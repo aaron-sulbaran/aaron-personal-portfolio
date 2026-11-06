@@ -1,10 +1,11 @@
 "use client";
 import { useCallback, useEffect, useLayoutEffect, useReducer, useRef, type RefObject } from "react";
+import { DISCOVER_DWELL_MS, discoverableId } from "@/lib/inline/discover";
 import { markOpen } from "@/lib/inline/open";
 import { anchorPosition, followPosition, type Size } from "@/lib/inline/placement";
 import { sameTarget, TIP_GRACE_MS, TIP_IDLE, tipMode, tipReducer, type TipState, type TipTarget } from "@/lib/inline/tipState";
-import { holdsLink, tipView } from "@/lib/inline/view";
-import { markDiscovered } from "@/lib/inline/visited";
+import { holdsLink } from "@/lib/inline/view";
+import { markVisited } from "@/lib/inline/visited";
 import { isKeyboardFocus } from "@/lib/input/modality";
 import { useEscapeKey } from "@/lib/modal";
 const linkOf = (node: EventTarget | null) =>
@@ -185,14 +186,19 @@ export function useTipController(bubbleRef: RefObject<HTMLElement | null>): { st
   }, [state]);
   // The link whose label is showing keeps its underline filled, hover or not.
   useEffect(() => (state.target ? markOpen(linkRef.current) : undefined), [state]);
-  // A tip or pop is discovered the first time its label shows, however it was
-  // shown (a mouse's hover, keyboard focus, a tap, Enter), and stays filled for
-  // good. A definition's hover line is not its content: that is marked when
-  // its definition opens (useDefinition).
+  // A tip or pop is discovered once its label has stayed shown for
+  // DISCOVER_DWELL_MS, however it was shown (a mouse's hover, keyboard focus, a
+  // tap, Enter), and stays filled for good; a word that only passed under the
+  // pointer fills while its label shows and empties after. The clock is the
+  // word's, so moving onto a held label and back keeps it running. A
+  // definition's hover line is not its content: that is marked when its
+  // definition opens (useDefinition).
+  const dwellId = discoverableId(state);
   useEffect(() => {
-    const target = state.target;
-    if (target && target.kind !== "def" && tipView(target.kind, target.key)) markDiscovered(target.kind, target.key);
-  }, [state]);
+    if (!dwellId) return;
+    const timer = window.setTimeout(() => markVisited(dwellId), DISCOVER_DWELL_MS);
+    return () => window.clearTimeout(timer);
+  }, [dwellId]);
   const dismiss = useCallback(() => dispatch({ type: "dismiss" }), []);
   // Escape with focus on a linked tip's label hands focus back to its word first.
   const escape = useCallback(() => {

@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { siteContent } from "@/lib/content";
-import { popPhotos } from "@/lib/inline/discover";
+import { DISCOVER_DWELL_MS, popPhotos } from "@/lib/inline/discover";
 import { tipText } from "@/lib/content/tracks";
 import { openHome } from "./support/coil";
 import { test, expect } from "./support/fixtures";
@@ -361,8 +361,9 @@ test("inline links: hover fills the word and its line together from the centre, 
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
     await expect.poll(() => fillOf(link), { message: `${kind}: fills` }).toBe(1);
     expect(await barScale(link)).toBe(1);
+    await page.waitForTimeout(DISCOVER_DWELL_MS);
     await rest(page);
-    // A tip or pop is discovered by the hover that showed it; a definition's hover line is not its content, and an external link is met by a click.
+    // A tip or pop is discovered by a hover that kept it shown a beat; a definition's hover line is not its content, and an external link is met by a click.
     const met = kind === "tip" || kind === "pop" ? 1 : 0;
     await expect.poll(() => fillOf(link), { message: `${kind}: ${met ? "stays filled" : "empties"}` }).toBe(met);
     expect(await barScale(link)).toBe(met);
@@ -392,17 +393,18 @@ test("inline links: keyboard focus fills a link while its ring shows, and the ri
   await tabTo(page, tipLink(page));
   await expect.poll(() => fillOf(tipLink(page))).toBe(1);
   expect(await tipLink(page).evaluate((el) => getComputedStyle(el).outlineStyle)).toBe("solid");
+  await page.waitForTimeout(DISCOVER_DWELL_MS);
   await page.keyboard.press("Tab");
   await expect.poll(() => fillOf(tipLink(page))).toBe(1); // the focus showed its tip: discovered, so it stays filled
 });
 
-test("inline links: a word is discovered the moment its tip shows, by keyboard focus, and stays filled for good", async ({ page }) => {
+test("inline links: a word is discovered once its tip has shown a beat, by keyboard focus, and stays filled for good", async ({ page }) => {
   await openFixture(page, TIP);
   const link = tipLink(page);
   expect(await page.evaluate(() => localStorage.getItem("aaron-inline-visited"))).toBeNull();
   await tabTo(page, link);
   await expect(link).toHaveAttribute("data-inline-open", "");
-  expect(await page.evaluate(() => localStorage.getItem("aaron-inline-visited"))).toBe(JSON.stringify(["tip:killer-drones"]));
+  await expect.poll(() => page.evaluate(() => localStorage.getItem("aaron-inline-visited"))).toBe(JSON.stringify(["tip:killer-drones"]));
   await page.keyboard.press("Escape");
   await expect(link).not.toHaveAttribute("data-inline-open", "");
   await expect.poll(() => fillOf(link)).toBe(1); // still focused with a ring
@@ -419,10 +421,22 @@ test("inline links: a word is discovered when a mouse's hover shows its tip, wit
   expect(await page.evaluate(() => localStorage.getItem("aaron-inline-visited"))).toBeNull();
   await link.hover();
   await expect(link).toHaveAttribute("data-inline-open", "");
-  expect(await page.evaluate(() => localStorage.getItem("aaron-inline-visited"))).toBe(JSON.stringify(["tip:killer-drones"]));
+  await expect.poll(() => page.evaluate(() => localStorage.getItem("aaron-inline-visited"))).toBe(JSON.stringify(["tip:killer-drones"]));
   await rest(page);
   await expect(link).not.toHaveAttribute("data-inline-open", "");
   await expect.poll(() => fillOf(link)).toBe(1);
+});
+
+test("inline links: a word that only passes under the pointer fills while its tip shows, then empties; it is not discovered", async ({ page }) => {
+  await openFixture(page, TIP);
+  const link = tipLink(page);
+  await link.hover();
+  await expect(link).toHaveAttribute("data-inline-open", "");
+  await rest(page);
+  await expect(link).not.toHaveAttribute("data-inline-open", "");
+  await page.waitForTimeout(DISCOVER_DWELL_MS);
+  expect(await page.evaluate(() => localStorage.getItem("aaron-inline-visited"))).toBeNull();
+  await expect.poll(() => fillOf(link)).toBe(0);
 });
 
 test("inline links: a photo pop opens on its own photo, never on the last pop's while its own still loads", async ({ page }) => {

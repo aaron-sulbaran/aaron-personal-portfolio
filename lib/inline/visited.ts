@@ -1,8 +1,9 @@
 // The words the visitor has met, kept in localStorage so they stay filled with
 // the accent. Two things fill a word for good:
 //   discovered: a def, tip or pop word whose content has shown (components/
-//     inline/useTipController on hover, keyboard focus, a tap or Enter, and
-//     useDefinition on opening a definition). Revealing is how these are met, so
+//     inline/useTipController once a hover, keyboard focus, a tap or Enter has
+//     kept it shown for lib/inline/discover's dwell, and useDefinition on
+//     opening a definition). Revealing is how these are met, so
 //     the mark is made then and never on a click: a word whose content appears
 //     whether it is clicked or not would be a disconnect if only a click filled it.
 //   followed: an external link (a card modal's, or a tip's own) the visitor

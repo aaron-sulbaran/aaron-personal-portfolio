@@ -1,4 +1,5 @@
 import { siteContent } from "@/lib/content";
+import { DISCOVER_DWELL_MS } from "@/lib/inline/discover";
 import { test, expect } from "./support/fixtures";
 import { bubble, fillOf, MATCHA, MATCHA_HREF, openFixture, PRODUCT_POPS, productLink, productPop, tipLink, TIP } from "./support/inline";
 
@@ -12,13 +13,13 @@ test("inline links (touch): a tap pins a tip under its link and a tap elsewhere 
   await expect(bubble(page)).toHaveAttribute("data-mode", "tap");
   await expect(tipLink(page)).toHaveAttribute("data-inline-open", "");
   await expect.poll(() => fillOf(tipLink(page))).toBe(1);
-  await page.waitForTimeout(250);
+  await page.waitForTimeout(DISCOVER_DWELL_MS);
   const link = (await tipLink(page).boundingBox())!;
   expect((await bubble(page).boundingBox())!.y).toBeGreaterThanOrEqual(link.y + link.height);
   await page.locator("main").tap({ position: { x: 4, y: 4 } });
   await expect(bubble(page)).toHaveAttribute("data-shown", "false");
   await expect(tipLink(page)).not.toHaveAttribute("data-inline-open", "");
-  // The tap showed its tip, which is what discovers a word: the link stays filled.
+  // The tap kept its tip shown a beat, which is what discovers a word: the link stays filled.
   expect(await fillOf(tipLink(page))).toBe(1);
 });
 
@@ -27,7 +28,7 @@ test("inline links (touch): a word never tapped stays empty on a touch screen, a
   expect(await fillOf(tipLink(page))).toBe(0);
   await tipLink(page).tap();
   await expect(bubble(page)).toHaveAttribute("data-mode", "tap");
-  expect(await page.evaluate(() => localStorage.getItem("aaron-inline-visited"))).toBe(JSON.stringify(["tip:killer-drones"]));
+  await expect.poll(() => page.evaluate(() => localStorage.getItem("aaron-inline-visited"))).toBe(JSON.stringify(["tip:killer-drones"]));
 });
 
 test("inline links (touch): the first tap on the matcha shows its pop and Maps link; that link opens the pin", async ({ page, offsite }) => {
