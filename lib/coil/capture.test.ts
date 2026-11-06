@@ -281,7 +281,7 @@ describe("continuation: things moving under a still pointer never change the nex
   function afterSpin() {
     const spin = replay(downFirstQuick, () => onCoil);
     expect(spin.state.owner).toBe("coil");
-    return { state: spin.state, nextMs: spin.endMs + GAP + 140 };
+    return { state: spin.state, nextMs: spin.endMs + GAP + 100 };
   }
   const nextGesture = (state: CaptureState, startMs: number, facts = background) =>
     replay(notches, () => facts, { startMs, state }).owners;
@@ -325,7 +325,7 @@ describe("continuation: things moving under a still pointer never change the nex
     expect(spin.state.owner).toBe("coil");
     expect(spin.state.held).toBe(true);
     const still = pointerMoved(spin.state, move(spin.endMs + GAP + 20, 302, 221));
-    expect(nextGesture(still, spin.endMs + GAP + 140, { ...background, x: 302, y: 221 }).every((owner) => owner === "coil")).toBe(true);
+    expect(nextGesture(still, spin.endMs + GAP + 100, { ...background, x: 302, y: 221 }).every((owner) => owner === "coil")).toBe(true);
   });
 
   it("a coil gesture released to the page, or a page gesture, holds nothing", () => {
@@ -334,7 +334,7 @@ describe("continuation: things moving under a still pointer never change the nex
     });
     expect(released.state.held).toBe(false);
     const back = pointerMoved(released.state, move(released.endMs + GAP + 10, 106, 100));
-    expect(nextGesture(back, released.endMs + GAP + 140).every((owner) => owner === "page")).toBe(true);
+    expect(nextGesture(back, released.endMs + GAP + 100).every((owner) => owner === "page")).toBe(true);
     const { state, nextMs } = afterSpin();
     const page = replay(notches, () => ({ ...onCoil, heroVisible: 0.3 }), { startMs: nextMs, state });
     expect(page.state.owner).toBe("page");
@@ -344,6 +344,129 @@ describe("continuation: things moving under a still pointer never change the nex
   it("the hero turning non-interactive mid-gesture holds nothing", () => {
     const { state } = replay(downFirstQuick, (index) => ({ ...onCoil, interactive: index < 10 }));
     expect(state.held).toBe(false);
+  });
+});
+
+describe("grace: the old hold lasts holdGraceMs, not forever", () => {
+  it("a fresh gesture past the grace, with no card under the still pointer, is the page's", () => {
+    const spin = replay(downFirstQuick, () => onCoil);
+    const late = spin.endMs + COIL.capture.holdGraceMs + 10;
+    const next = replay(notches, () => background, { startMs: late, state: spin.state });
+    expect(next.owners.every((owner) => owner === "page")).toBe(true);
+    // On a card it is still the coil's, grace or not.
+    const onCard = replay(notches, () => onCoil, { startMs: late, state: spin.state });
+    expect(onCard.owners.every((owner) => owner === "coil")).toBe(true);
+  });
+});
+
+describe("the still-pointer budget: spin, then pass", () => {
+  const BUDGET = COIL.capture.stillBudgetMs;
+  const fling = downFirstQuick.slice(0, 25); // about 300 ms of wheel
+  const slow: RecordedWheel[] = Array.from({ length: 40 }, (_, i) => [i * 16, 4]); // 4 px per 16 ms, 640 ms
+  const notchRun: readonly RecordedWheel[] = notches.slice(0, 8);
+
+  // Repeats `stream` with `pauseMs` between runs and the pointer resting on a
+  // card; returns the owner of each run (all events of a run must agree).
+  function runs(stream: readonly RecordedWheel[], count: number, pauseMs: number, between?: (run: number, nowMs: number, s: CaptureState) => CaptureState) {
+    let state = armedCapture();
+    let startMs = 1000;
+    const owners: (string | null)[] = [];
+    for (let run = 0; run < count; run += 1) {
+      if (between) state = between(run, startMs - 1, state);
+      const result = replay(stream, () => onCoil, { startMs, state });
+      expect(new Set(result.owners).size).toBe(1);
+      owners.push(result.owners[0]);
+      state = result.state;
+      startMs = result.endMs + pauseMs;
+    }
+    return owners;
+  }
+  const firstPage = (owners: (string | null)[]) => owners.indexOf("page");
+  const restsOnPage = (owners: (string | null)[]) => owners.slice(firstPage(owners)).every((owner) => owner === "page");
+
+  it("the first runs are the coil's: it takes the wheel the frame it unfurls", () => {
+    expect(runs(fling, 1, 600)).toEqual(["coil"]);
+  });
+
+  it("repeated trackpad flings on a resting pointer reach the page once the budget is spent", () => {
+    const owners = runs(fling, 12, 600);
+    expect(firstPage(owners)).toBeGreaterThan(1);
+    expect(firstPage(owners) * (fling[fling.length - 1][0])).toBeLessThanOrEqual(BUDGET + fling[fling.length - 1][0]);
+    expect(restsOnPage(owners)).toBe(true);
+  });
+
+  it("a slow stream in bursts reaches the page after the budget", () => {
+    const owners = runs(slow, 8, 400);
+    expect(firstPage(owners)).toBeGreaterThan(0);
+    expect(restsOnPage(owners)).toBe(true);
+  });
+
+  it("mouse notches in bursts reach the page after the budget", () => {
+    const owners = runs(notchRun, 10, 700);
+    expect(firstPage(owners)).toBeGreaterThan(0);
+    expect(restsOnPage(owners)).toBe(true);
+  });
+
+  it("a spin with a moving pointer stays the coil's: a move of rearmPx restarts the count", () => {
+    let side = 0;
+    const owners = runs(fling, 20, 600, (_run, nowMs, state) => {
+      side += 1;
+      return pointerMoved(state, move(nowMs, 106 + side * (REARM + 2), 100));
+    });
+    expect(owners.every((owner) => owner === "coil")).toBe(true);
+  });
+
+  it("jitter under rearmPx does not restart the count", () => {
+    const owners = runs(fling, 12, 600, (run, nowMs, state) => pointerMoved(state, move(nowMs, 106 + (run % 2) * 2, 100)));
+    expect(firstPage(owners)).toBeGreaterThan(0);
+  });
+
+  it("never flips mid-gesture: one endless stream stays the coil's past the budget", () => {
+    const endless: RecordedWheel[] = Array.from({ length: 400 }, (_, i) => [i * 16, 6]); // 6.4 s
+    const { owners } = replay(endless, () => onCoil);
+    expect(owners.every((owner) => owner === "coil")).toBe(true);
+    // And the next fresh gesture is the page's.
+    const state = replay(endless, () => onCoil).state;
+    const after = replay(notchRun, () => onCoil, { startMs: 1000 + 6400 + 500, state });
+    expect(after.owners.every((owner) => owner === "page")).toBe(true);
+  });
+
+  it("a page gesture never turns into the coil's mid-gesture, budget or not", () => {
+    let state = armedCapture();
+    state = { ...state, ownedMs: BUDGET };
+    const page = replay(notchRun, () => onCoil, { startMs: 1000, state });
+    expect(page.owners.every((owner) => owner === "page")).toBe(true);
+    const lands = replay(notchRun, (index) => ({ ...onCoil, onCard: index > 3 }), { startMs: 1000, state: armedCapture() });
+    expect(lands.owners.every((owner) => owner === "page")).toBe(true);
+  });
+
+  it("disarms when spent: a card under the still pointer stays the page's until the pointer moves", () => {
+    const spent = { ...armedCapture(), ownedMs: BUDGET };
+    const first = decideWheel(spent, { ...onCoil, nowMs: 5000 });
+    expect(first.owner).toBe("page");
+    expect(first.armed).toBe(false);
+    // Cards sliding under the pointer, page scrolls: still the page's.
+    const scrolled = pageScrolled(first, { nowMs: 5100, x: onCoil.x, y: onCoil.y });
+    expect(decideWheel(scrolled, { ...onCoil, nowMs: 6000 }).owner).toBe("page");
+    // A real move of rearmPx re-arms it and restarts the budget.
+    const moved = pointerMoved(first, move(7000, onCoil.x + REARM, onCoil.y));
+    expect(moved.ownedMs).toBe(0);
+    expect(decideWheel(moved, { ...onCoil, nowMs: 7100 }).owner).toBe("coil");
+  });
+
+  it("counts the deal's handoff: a gesture the coil takes at the unfurl accrues like any other", () => {
+    const parked = pageScrolled(pointerMoved(createCapture(), move(0, 400, 300)), { nowMs: 100, x: 400, y: 300 });
+    let state = armCapture(parked);
+    let startMs = 2000;
+    const owners: (string | null)[] = [];
+    for (let run = 0; run < 12; run += 1) {
+      const result = replay(fling, () => ({ ...onCoil, x: 400, y: 300 }), { startMs, state });
+      owners.push(result.owners[0]);
+      state = result.state;
+      startMs = result.endMs + 600;
+    }
+    expect(owners[0]).toBe("coil");
+    expect(owners.indexOf("page")).toBeGreaterThan(0);
   });
 });
 

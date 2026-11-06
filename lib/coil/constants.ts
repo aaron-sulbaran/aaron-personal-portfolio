@@ -109,6 +109,15 @@ const values = {
     // A real pointer move this far from where the page last scrolled under a
     // still pointer arms capture again (trackpad jitter is 1 to 3px).
     rearmPx: 6,
+    // Spin, then pass (2026-11-06): the coil's own wheel time with the pointer
+    // still (under rearmPx of movement) adds up; at this much, the next fresh
+    // gesture goes to the page and capture waits for the pointer to move.
+    // Cures the card under a resting pointer that held the wheel for good.
+    stillBudgetMs: 1500,
+    // After a coil gesture, a fresh one inside the helix hull stays the coil's
+    // for this long from its last wheel event (a stretched seam under a still
+    // pointer, a trackpad pausing a beat). Past it, only a card or seam counts.
+    holdGraceMs: 400,
   },
   // A book row hovered or focused holds the coil still on its card.
   rowHold: {
