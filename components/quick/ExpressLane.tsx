@@ -12,6 +12,7 @@ import { LaneHeader } from "./LaneHeader";
 import { RailVariant } from "./RailVariant";
 import { RoadVariant } from "./RoadVariant";
 import { useLaneMaskIn } from "./useLaneMaskIn";
+import { markQuestFound } from "@/lib/quests";
 import { useQuickModal } from "./useQuickModal";
 import { WhatsNext } from "./WhatsNext";
 
@@ -49,6 +50,7 @@ export function ExpressLane({ variant = "rail", titleMode, titleDelayMs, titleSt
 
   useEffect(() => {
     if (!visit) return;
+    markQuestFound("mvp:quick");
     try {
       writeAnswer(localStorage, "used");
     } catch {
