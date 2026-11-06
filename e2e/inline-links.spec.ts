@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test";
 import { siteContent } from "@/lib/content";
+import { popPhotos } from "@/lib/inline/discover";
 import { tipText } from "@/lib/content/tracks";
 import { openHome } from "./support/coil";
 import { test, expect } from "./support/fixtures";
@@ -422,6 +423,32 @@ test("inline links: a word is discovered when a mouse's hover shows its tip, wit
   await rest(page);
   await expect(link).not.toHaveAttribute("data-inline-open", "");
   await expect.poll(() => fillOf(link)).toBe(1);
+});
+
+test("inline links: a photo pop opens on its own photo, never on the last pop's while its own still loads", async ({ page }) => {
+  const [first] = popPhotos("leadership-award");
+  const [second] = popPhotos("3d-printing");
+  // Hold the second photo's download, warm-up included, so the label opens before it lands.
+  let release = () => {};
+  const held = new Promise<void>((resolve) => (release = resolve));
+  await page.route((url) => url.pathname === "/_next/image" && url.searchParams.get("url") === second.src, async (route) => {
+    await held;
+    await route.continue();
+  });
+  await openFixture(page, "I love [leading](pop:leadership-award) people and [3D printing](pop:3d-printing).");
+  const photo = bubble(page).locator(".pop-frame img");
+  const showing = (src: string) => photo.evaluate((img: HTMLImageElement, wanted) => img.complete && img.currentSrc.includes(wanted), encodeURIComponent(src));
+  await page.locator('[data-inline="pop"][data-inline-key="leadership-award"]').hover();
+  await expect.poll(() => showing(first.src)).toBe(true);
+  // An img whose src changes keeps painting its old picture until the new one loads (Chromium
+  // updates currentSrc at once, so only the element tells): the second pop must get its own img.
+  await photo.evaluate((img: HTMLImageElement) => void (img.dataset.firstPop = ""));
+  await rest(page);
+  await page.locator('[data-inline="pop"][data-inline-key="3d-printing"]').hover();
+  await expect(bubble(page)).toHaveAttribute("data-target", "pop:3d-printing");
+  await expect(photo).not.toHaveAttribute("data-first-pop", "");
+  release();
+  await expect.poll(() => showing(second.src)).toBe(true);
 });
 
 test("inline links (reduced motion): the word and its line switch with no tween", async ({ page }) => {

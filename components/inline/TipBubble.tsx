@@ -52,7 +52,9 @@ export function TipBubble({ state, ref }: { state: TipState; ref: Ref<HTMLDivEle
           className="pop-card gap-2 rounded-xl border border-border bg-background p-2 text-foreground shadow-[var(--pill-shadow)]">
           {view.cycle && <PopCycle key={opens} frames={view.cycle} live={live} />}
           {view.photo && (
-            <span className="pop-frame rounded-lg">
+            // Keyed by its photo: an img whose src changes keeps painting its old picture
+            // until the new one loads, so a reused img opened the next pop on the last one's photo.
+            <span key={view.photo.src} className="pop-frame rounded-lg">
               <Image src={view.photo.src} alt={view.photo.alt} fill sizes={view.photo.sizes} loading="eager" className="object-cover" />
             </span>
           )}

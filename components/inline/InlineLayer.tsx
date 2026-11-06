@@ -7,6 +7,7 @@ import { tipView } from "@/lib/inline/view";
 import { DefinitionModal } from "./DefinitionModal";
 import { TipBubble } from "./TipBubble";
 import { useDefinition } from "./useDefinition";
+import { usePopWarmup } from "./usePopWarmup";
 import { useTipController } from "./useTipController";
 import { useVisitedLinks } from "./useVisitedLinks";
 const { register } = siteContent;
@@ -18,13 +19,15 @@ const DESCRIBED: Array<readonly [TipKind, string]> = [
 // The copy's inline links come alive here, once per page (app/layout.tsx):
 // definitions open the house text modal, tips and pops share one label, and
 // every tip and pop link is described by a hidden element listed below, a word
-// whose content has shown stays filled (useTipController, useDefinition), and
-// a followed external link does too (useVisitedLinks).
+// whose content has shown stays filled (useTipController, useDefinition), a
+// followed external link does too (useVisitedLinks), and a photo pop near the
+// screen has its photo loaded before it is hovered (usePopWarmup).
 export function InlineLayer() {
   const bubbleRef = useRef<HTMLDivElement | null>(null);
   const tip = useTipController(bubbleRef);
   const definition = useDefinition(tip.dismiss);
   useVisitedLinks();
+  usePopWarmup();
   useEffect(() => {
     document.documentElement.dataset.inlineLinks = "ready";
     return () => void delete document.documentElement.dataset.inlineLinks;
