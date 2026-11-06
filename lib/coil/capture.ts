@@ -20,14 +20,23 @@ import { COIL, type CoilConstants } from "./constants";
 //   an anchor jump). So the page sliding a card under a still pointer never
 //   hands the next gesture to the coil, as cards passing under a still
 //   pointer never release it.
-// - Held (the continuation rule, the same symmetry): a coil gesture that ends
-//   without passing to the page leaves capture held, with a mark where the
-//   pointer was during it. While held, a fresh gesture is the coil's anywhere
-//   inside the silhouette, on a card or not: a spin's stretch opens the seams
-//   under a still pointer, and cards moving under it never change the next
-//   gesture's owner. A real move of rearmPx from the mark, a page scroll, a
-//   release or a page gesture clears it; then rule A decides again. It cannot
-//   rebuild the trap: the trap always scrolls the page, which clears it.
+// - Held (a short grace, not a standing hold): a coil gesture that ends
+//   without passing to the page leaves capture held for holdGraceMs after its
+//   last wheel event, with a mark where the pointer was during it. Inside the
+//   grace a fresh gesture is the coil's anywhere inside the silhouette, on a
+//   card or not: a spin's stretch opens seams under a still pointer, and a
+//   trackpad that pauses a beat mid-scroll must not hand the rest to the page.
+//   Past the grace only rule A decides, so a still pointer left over a gap
+//   never keeps the wheel. A real move of rearmPx from the mark, a page scroll,
+//   a release or a page gesture also ends it.
+// - The still-pointer budget (spin, then pass): the coil's own wheel time adds
+//   up while the pointer stays within rearmPx of where it was when the count
+//   began (a move of rearmPx restarts it). Once it reaches stillBudgetMs the
+//   next fresh gesture is the page's and capture disarms until the pointer
+//   moves rearmPx. A gesture already running is never cut off: ownership does
+//   not flip mid-gesture. This is what stops a card under a resting pointer
+//   from trapping the wheel for good; the deal's handoff counts, since the
+//   gesture that carries on after the unfurl is the coil's and accrues here.
 // - A coil gesture passes to the page only when the pointer itself moves
 //   outside the helix silhouette (or the hero stops being interactive); cards
 //   or gaps passing under a still pointer, or a move over a gap, never
@@ -50,6 +59,11 @@ export type CaptureState = {
   // Where the pointer was during the held coil gesture, viewport px.
   readonly heldX: number;
   readonly heldY: number;
+  // The still-pointer budget: ms of coil-owned wheel time since the pointer
+  // last moved rearmPx, and where the pointer was when the count began.
+  readonly ownedMs: number;
+  readonly stillX: number;
+  readonly stillY: number;
 };
 
 export type WheelFacts = {
@@ -72,7 +86,7 @@ export type PointerFacts = { nowMs: number; insideSilhouette: boolean; x: number
 // keeps its owner (a page scroll the reader began stays the page's); the next one
 // decides afresh by the usual rule.
 export function armCapture(state: CaptureState): CaptureState {
-  return state.armed ? state : { ...state, armed: true };
+  return state.armed ? state : { ...state, armed: true, ownedMs: 0 };
 }
 
 // The page scrolled with the pointer at (x, y), viewport px (NaN when unseen).
@@ -89,6 +103,9 @@ export function createCapture(): CaptureState {
     held: false,
     heldX: Number.NaN,
     heldY: Number.NaN,
+    ownedMs: 0,
+    stillX: Number.NaN,
+    stillY: Number.NaN,
   };
 }
 
@@ -107,25 +124,45 @@ export function decideWheel(state: CaptureState, facts: WheelFacts, c: CoilConst
   const { nowMs } = facts;
   if (live(state, nowMs, c)) {
     if (state.owner === "coil" && !facts.interactive) return { ...state, owner: "page", lastWheelMs: nowMs, held: false };
-    return { ...state, lastWheelMs: nowMs };
+    const ownedMs = state.owner === "coil" ? state.ownedMs + (nowMs - state.lastWheelMs) : state.ownedMs;
+    return { ...state, lastWheelMs: nowMs, ownedMs };
   }
-  const where = facts.onCard || (state.held && facts.insideSilhouette);
-  const coil = state.armed && facts.interactive && facts.heroVisible >= c.capture.heroVisibleMin && where;
-  return coil
-    ? { ...state, owner: "coil", lastWheelMs: nowMs, coilSinceMs: nowMs, held: true, heldX: facts.x, heldY: facts.y }
-    : { ...state, owner: "page", lastWheelMs: nowMs, coilSinceMs: Number.NaN, held: false };
+  const inGrace = state.held && nowMs - state.lastWheelMs < c.capture.holdGraceMs;
+  const where = facts.onCard || (inGrace && facts.insideSilhouette);
+  const wants = state.armed && facts.interactive && facts.heroVisible >= c.capture.heroVisibleMin && where;
+  if (wants && state.ownedMs >= c.capture.stillBudgetMs) {
+    // Spent: this gesture is the page's, and the coil waits for the pointer.
+    return { ...state, owner: "page", lastWheelMs: nowMs, coilSinceMs: Number.NaN, armed: false, held: false, markX: facts.x, markY: facts.y };
+  }
+  if (!wants) return { ...state, owner: "page", lastWheelMs: nowMs, coilSinceMs: Number.NaN, held: false };
+  const counting = !Number.isNaN(state.stillX) && state.ownedMs > 0;
+  return {
+    ...state,
+    owner: "coil",
+    lastWheelMs: nowMs,
+    coilSinceMs: nowMs,
+    held: true,
+    heldX: facts.x,
+    heldY: facts.y,
+    stillX: counting ? state.stillX : facts.x,
+    stillY: counting ? state.stillY : facts.y,
+  };
 }
 
 // A real pointer move (its position changed). Unarmed, the first sighting
 // marks where the pointer is and a move of rearmPx from the mark arms
-// capture. During a live coil gesture the hold's mark follows the pointer,
-// and outside the silhouette the gesture passes to the page for the rest of
-// it. After the gesture, a move of rearmPx from the hold's mark ends the hold.
+// capture (and restarts the budget). Armed, a move of rearmPx from where the
+// budget's count began restarts it. During a live coil gesture the hold's mark
+// follows the pointer, and outside the silhouette the gesture passes to the
+// page for the rest of it. After the gesture, a move of rearmPx from the
+// hold's mark ends the hold.
 export function pointerMoved(state: CaptureState, facts: PointerFacts, c: CoilConstants = COIL): CaptureState {
   let next = state;
   if (!state.armed) {
     if (Number.isNaN(state.markX) || Number.isNaN(state.markY)) next = { ...state, markX: facts.x, markY: facts.y };
-    else if (Math.hypot(facts.x - state.markX, facts.y - state.markY) >= c.capture.rearmPx) next = { ...state, armed: true };
+    else if (Math.hypot(facts.x - state.markX, facts.y - state.markY) >= c.capture.rearmPx) next = { ...state, armed: true, ownedMs: 0, stillX: Number.NaN, stillY: Number.NaN };
+  } else if (!Number.isNaN(state.stillX) && Math.hypot(facts.x - state.stillX, facts.y - state.stillY) >= c.capture.rearmPx) {
+    next = { ...state, ownedMs: 0, stillX: facts.x, stillY: facts.y };
   }
   if (next.owner === "coil" && live(next, facts.nowMs, c)) {
     if (!facts.insideSilhouette) return { ...next, owner: "page", coilSinceMs: Number.NaN, held: false };

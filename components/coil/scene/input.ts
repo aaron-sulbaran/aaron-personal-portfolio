@@ -121,10 +121,10 @@ export function createInput(ctx: SceneCtx, cards: Cards, hover: Hover, loop: Loo
 
   // Decided once per gesture (events under COIL.capture.gestureGapMs apart,
   // trackpad inertia included): a gesture that starts on a card or a seam
-  // (or anywhere inside the helix while the last coil gesture still holds the
-  // pointer), armed by a real pointer move since the page last scrolled, with
-  // the hero at least half in view, spins the coil from its first event, in
-  // both directions, and the page does not move; any other gesture scrolls
+  // (or anywhere inside the helix within holdGraceMs of the last coil gesture),
+  // armed by a real pointer move since the page last scrolled, with
+  // the hero at least half in view and the still-pointer budget unspent, spins
+  // the coil from its first event, in both directions, and the page does not move; any other gesture scrolls
   // the page natively. The coil responds on the frame after the event (one
   // smoothing stage and the spin cap, nothing before the first motion).
   const onWheel = (event: WheelEvent) => {
