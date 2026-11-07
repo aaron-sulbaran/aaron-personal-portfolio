@@ -29,8 +29,9 @@ test("gallery rows: every card's rows follow its plan, the sides alternate, each
       await expect(row).toHaveAttribute("data-side", i % 2 === 0 ? "left" : "right");
       if (slide.together) {
         // The jobs card's cluster: every piece side by side in its own box (a name tag's height is its tip's, the post's its own).
+        // An aside piece (the tag under the post's words) fills the words column instead.
         for (const photo of [...slide.photos, ...(slide.aside ?? [])]) {
-          const box = gallery.boxes![photo];
+          const box = slide.aside?.includes(photo) ? { ...gallery.boxes![photo], width: GALLERY.textWidth } : gallery.boxes![photo];
           const drawn = (await row.locator(`[data-photo-frame="${photo}"] > div`).first().boundingBox())!;
           expect(within(drawn.width, box.width), `${key} row ${i} piece ${photo}: ${drawn.width}`).toBe(true);
           if (gallery.photos[photo].tag === undefined) expect(within(drawn.height, box.height), `${key} row ${i} piece ${photo}: ${drawn.height}`).toBe(true);

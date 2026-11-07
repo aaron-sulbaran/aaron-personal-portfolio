@@ -251,11 +251,13 @@ test("intro: the music is one quiet line between the paragraphs, with one button
   const text = await band.innerText();
   for (const gone of ["It moves with you", "freeze it", "Paused.", "No problem", "Enjoy!"]) expect(text, gone).not.toContain(gone);
   await expect(band.locator("[data-band-subline], [data-band-note]")).toHaveCount(0);
-  // Not now: one Play it is what is left.
+  // Not now: Play it is the one invitation left, and Not now stays beside it as the chosen answer, no longer a button.
   await band.getByRole("button", { name: L.decline, exact: true }).click();
   await expect(band.locator('[data-control="off"]')).toBeVisible();
   await expect(band.locator('[data-control="off"]')).toBeFocused();
-  await expect(band.getByRole("button", { name: L.decline, exact: true })).toBeHidden();
+  const chosen = band.getByRole("button", { name: L.decline, exact: true });
+  await expect(chosen).toBeDisabled();
+  await expect(chosen).toHaveAttribute("aria-pressed", "true");
   expect(await band.innerText()).not.toContain("No problem");
 });
 

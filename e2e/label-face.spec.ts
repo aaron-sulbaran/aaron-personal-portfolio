@@ -187,12 +187,14 @@ test("label face: the band's answers sit on the question's baseline, 36px after 
       };
       const q = document.querySelector("#listen h2")!;
       const play = document.querySelector('#listen [data-control="before"]')!;
-      const not = play.nextElementSibling!;
+      // Not now keeps its own layer beside whichever play layer shows (components/soundtrack/BandInvite.tsx), not the Play button's sibling.
+      const not = document.querySelector('#listen [data-band-layer="decline"] button')!;
       const s = getComputedStyle(not);
       return {
         drift: ["before", "on", "paused"].map((k) => Math.abs(baseline(document.querySelector(`#listen [data-control="${k}"]`)!) - baseline(q))),
         afterQuestion: text(play).left - text(q).right,
-        inPair: text(not).left - text(play).right,
+        // Play it, Pause and Resume share one column as wide as the widest of them, so Not now keeps its place as the label changes: the 16px is from that column.
+        inPair: text(not).left - play.closest("[data-band-layer]")!.getBoundingClientRect().right,
         line: s.textDecorationLine,
         offset: s.textUnderlineOffset,
         alpha: Number(s.textDecorationColor.match(/([\d.]+)\)$/)![1]),
