@@ -2,6 +2,8 @@
 
 Status: design settled in the type lab on 2026-10-05 (preset "Aaron's final, reviewed", after an independent design review, a builder and reviewer exchange, and Aaron's rulings on the four open points). Not built. Lab record: `docs/lab-log-2026-10-05.md`, "Type lab". This spec is the source for the implementation plan; the lab's copied JSON for that preset is reproduced in the values below.
 
+Since 2026-11-06 (PR 104) the body face is Onest. Where the reasoning below names Inter, it is the body face as it was when this was written.
+
 ## 1. Why
 
 The site pairs Profa Black (display) with Inter (body). The small text in between, in Inter, read as default UI chrome beside the headlines: the back link and role line on a case page, "Pause" and "Resume" in the band, kickers, nav, the pill. Aaron wanted that text to carry the same voice as the display face. He chose Profa Bold.
@@ -10,14 +12,14 @@ The review found one thing his first pick lost: with every small text bold and i
 
 ## 2. The rule in one paragraph
 
-Small, non-body text is Profa Bold at 1.06 times its old size with 0.01em tracking and the line height it has today. It is the accent color when it can be clicked, or when it is a line attached to a Profa Black title (a role line, a book row's meta). Every other small text (hints, kickers, credit prose, the pill's secondary lines, the footer copyright) is the muted color in the same face. Body paragraphs stay Inter; display stays Profa Black.
+Small, non-body text is Profa Bold at 1.06 times its old size with 0.01em tracking and the line height it has today. It is the accent color when it can be clicked, or when it is a line attached to a Profa Black title (a role line, a book row's meta). Every other small text (hints, kickers, credit prose, the pill's secondary lines, the footer copyright) is the muted color in the same face. Body paragraphs are the body face (Onest); display stays Profa Black.
 
 ## 3. Values
 
 | Setting | Value |
 |---|---|
 | Face | Profa Bold, weight 700, from `app/fonts/ProfaTrial-Bold.ttf` until the full cut lands; the same unicode-range carve-out as Black for the stamped `*`, `;` and `@` |
-| Fallback | Inter, then system sans. The arrow and the `@` in the email fall back to it |
+| Fallback | the body face (Onest), then system sans. The arrow and the `@` in the email fall back to it |
 | Size steps | three: `label-sm` 12.72px (0.795rem), `label` 14.84px (0.9275rem), `label-lg` 19.08px (1.1925rem). Everything that was 10 to 13px lands on `label-sm`; 14 to 16px on `label`; the calls to action on `label-lg` |
 | Line height | as today for each element (`label` keeps text-sm's 20px line) |
 | Tracking | 0.01em on every step |

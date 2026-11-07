@@ -46,7 +46,7 @@ const config: Config = {
         "body-card": ["calc(1.125rem * var(--body-scale))", { lineHeight: "var(--body-lead)" }],
         "body-quick": ["calc(1.25rem * var(--body-scale))", { lineHeight: "var(--body-lead)" }],
         // The label face's three steps, the only label sizes. Weight lives
-        // here so the Inter fallback is bold too; only label sets a line.
+        // here so the body-face fallback is bold too; only label sets a line.
         "label-sm": ["0.795rem", { letterSpacing: "0.01em", fontWeight: "700" }],
         "label": ["0.9275rem", { lineHeight: "1.25rem", letterSpacing: "0.01em", fontWeight: "700" }],
         "label-lg": ["1.1925rem", { letterSpacing: "0.01em", fontWeight: "700" }],
