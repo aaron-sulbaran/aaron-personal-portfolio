@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { TOOL_GROUPS, type ToolGroup } from "./toolGroups";
 
 const counts = z.object({
   in: z.number().int().nonnegative(),
@@ -11,8 +10,11 @@ const counts = z.object({
 
 const count = z.number().int().nonnegative();
 
-export { TOOL_GROUPS };
-export type { ToolGroup };
+// The same four groups as ./toolGroups, which the client reads without zod. This file keeps its
+// own copy because scripts/usage-export.mjs loads it under plain Node, where a relative import
+// with no extension does not resolve; scriptModules.test.ts holds the two copies equal.
+export const TOOL_GROUPS = ["written", "used", "plugin", "mcp"] as const;
+export type ToolGroup = (typeof TOOL_GROUPS)[number];
 
 // A tool from the curated public list (lib/metrics/toolkit-public.json) with
 // its call count in the window. Tools off the list are never named.

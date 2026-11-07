@@ -309,14 +309,14 @@ test.describe("where the player lives", () => {
     expect(card!.x - (cell!.x + cell!.width)).toBeGreaterThanOrEqual(31);
   });
 
-  test("player: a restored pause resumes from the band's one Resume, with no question, and the player opens there", async ({ page, browserName }) => {
+  test("player: a restored pause resumes from the band's Resume, under the question asked again, and the player opens there", async ({ page, browserName }) => {
     test.skip(browserName === "webkit", "WebKit cannot be launched muted");
     await page.addInitScript(() => localStorage.setItem("aaron-soundtrack", "on"));
     await openHome(page, { path: HOME });
     await parkBand(page);
     await expect(band(page).locator('[data-control="paused"]')).toBeVisible();
     await expect(band(page).locator('[data-control="paused"]')).toContainText(L.resume);
-    await expect(band(page).getByRole("heading", { name: L.line })).toHaveCount(0);
+    await expect(band(page).getByRole("heading", { name: L.lineReturning })).toBeVisible();
     await expect(page.locator(BAND_CARD)).toHaveCount(0);
     await band(page).locator('[data-control="paused"]').click();
     await expect(page.locator(BAND_CARD).getByRole("button", { name: S.ariaPause, exact: true })).toBeVisible();
@@ -428,8 +428,7 @@ test.describe("the wave as one line", () => {
       await page.waitForTimeout(600);
       expect((await frame(page)).gated).toBe(true);
       expect((await pathInk(page)).painted, "path ink while the answer is held").toBe(0);
-      const ripple = (await frame(page)).ripple;
-      expect(ripple, "no ripple before the release").toBe(0);
+      // A live Not now sends its swell across the band at once (wavepath.spec.ts, "Not now sends a swell"), so the ripple is not read here.
 
       // Released: the band's bottom edge above 0.4 of the viewport, still partly on screen.
       await bandPastLine(page, 40);
@@ -482,12 +481,9 @@ test.describe("the wave as one line", () => {
     expect(await paints(), "repaints in a frozen second").toBe(still);
     await page.evaluate(() => (window as unknown as W).__wavePath.freeze(false));
     await band(page).locator('[data-control="off"]').click();
-    // Held until the band has scrolled away, the music does not take the line over yet.
-    await page.waitForTimeout(800);
-    expect((await frame(page)).idle).toBeGreaterThan(0.9);
-    // Released, it does: the idle ripple fades out as the music's share rises.
+    // The hold never holds the music (lib/wavepath/hold): with the band still in view, the idle ripple fades out as the music's share rises.
+    await expect.poll(async () => (await frame(page)).idle, { timeout: 6000, message: "the music takes the line over with no scroll" }).toBeLessThan(0.5);
     await bandPastLine(page, 60);
-    await expect.poll(async () => (await frame(page)).idle, { timeout: 6000 }).toBeLessThan(0.5);
     const pill = await hoverOpen(page);
     await pill.getByRole("button", { name: S.ariaPause, exact: true }).click();
     await expect.poll(async () => (await frame(page)).idle, { timeout: 6000, message: "the ripple back with no music" }).toBeGreaterThan(0.9);

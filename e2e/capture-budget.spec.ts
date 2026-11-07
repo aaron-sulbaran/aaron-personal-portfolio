@@ -1,8 +1,7 @@
 import { downFirstQuick } from "@/lib/coil/capture.fixtures";
-import { COIL } from "@/lib/coil/constants";
 import { test, expect } from "./support/fixtures";
-import { coilPoints, offset, openHome, waitForGestureEnd } from "./support/coil";
-import { approach, pointerTo, trackpad } from "./support/input";
+import { coilPoints, offset, openHome, settleOn, waitForGestureEnd } from "./support/coil";
+import { approach, trackpad } from "./support/input";
 
 // Spin, then pass (docs/coil-input-model.md section 3, "The still-pointer
 // budget"). Page 2 is one viewport tall and the Coil fills it, so before the
@@ -37,14 +36,15 @@ test.describe("capture: a resting pointer on a card cannot trap the wheel", () =
 
   test("a pointer that keeps moving keeps the coil", async ({ page, cdp }) => {
     await openHome(page);
-    const { card } = await coilPoints(page);
-    await approach(cdp, card);
     const startY = await page.evaluate(() => window.scrollY);
 
     for (let i = 0; i < FLINGS; i++) {
-      // A real move of rearmPx or more, staying on the card, restarts the count.
-      await pointerTo(cdp, { x: card.x + (i % 2 ? 1 : -1) * (COIL.capture.rearmPx + 3), y: card.y });
-      await trackpad(cdp, fling, { at: { x: card.x + (i % 2 ? 1 : -1) * (COIL.capture.rearmPx + 3), y: card.y } });
+      // Each spin carries the cards out from under a fixed point, and past the
+      // grace a gap is the page's, so the hand aims at a card again before each
+      // fling. approach() travels well over rearmPx, which restarts the count.
+      const at = await settleOn(page, cdp, async () => (await coilPoints(page)).card, (probe) => probe.onCard && probe.armed);
+      expect(at, `fling ${i}: a card to aim at`).not.toBeNull();
+      await trackpad(cdp, fling, { at: at! });
       await waitForGestureEnd(page);
       await page.waitForTimeout(PAUSE_MS);
     }
