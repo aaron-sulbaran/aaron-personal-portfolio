@@ -6,7 +6,7 @@ import { pageStage, stageHeight } from "@/lib/gallery/boxes";
 import type { Gallery } from "@/lib/gallery/card";
 import { GALLERY } from "@/lib/gallery/constants";
 import { layoutKey, moreTrims, paginate, trimsKey, type BlockSize, type PageRules, type Shape, type Trims, type UnitMeasure } from "@/lib/gallery/paginate";
-import { pagerReducer } from "@/lib/gallery/pager";
+import { pageAt, pagerReducer } from "@/lib/gallery/pager";
 import { stageKind, type Page } from "@/lib/gallery/plan";
 import { useReducedMotionLive } from "@/components/soundtrack/useReducedMotionLive";
 import { CardHeader } from "./CardHeader";
@@ -45,7 +45,8 @@ export function CardPager({ gallery, base, pages, renderMedia, onClose, layout, 
   const [room, setRoom] = useState<Room | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const viewportRef = useRef<HTMLDivElement | null>(null);
-  const { dragPx, pressing, handlers } = usePagerDrag(rootRef, { index: state.index, count, reduced, dispatch, onDismiss: onClose });
+  const index = pageAt(state.index, count);
+  const { dragPx, pressing, handlers } = usePagerDrag(rootRef, { index, count, reduced, dispatch, onDismiss: onClose });
   const { pager } = GALLERY;
   const visible = room?.visible ?? 0;
   const cap = visible * pager.stageMax;
@@ -146,8 +147,8 @@ export function CardPager({ gallery, base, pages, renderMedia, onClose, layout, 
   }, []);
 
   const travel = reduced || dragPx !== null ? 0 : pager.slideMs;
-  const shown = gallery.photos[pages[state.index].photo];
-  const live = gallery.grouping === "photo" ? g.announce(state.index + 1, count, shown.captionShort ?? shown.caption ?? shown.alt) : g.pageNumber(state.index + 1, count);
+  const shown = gallery.photos[pages[index].photo];
+  const live = gallery.grouping === "photo" ? g.announce(index + 1, count, shown.captionShort ?? shown.caption ?? shown.alt) : g.pageNumber(index + 1, count);
   return (
     <div
       ref={rootRef}
@@ -157,17 +158,17 @@ export function CardPager({ gallery, base, pages, renderMedia, onClose, layout, 
       className="flex min-h-0 flex-1 select-none flex-col gap-4 [touch-action:none]"
       {...handlers}
       data-pager=""
-      data-page={state.index}
+      data-page={index}
     >
       <CardHeader cardKey={gallery.key} renderMedia={renderMedia} compact />
       <div ref={viewportRef} className="relative min-h-0 flex-1 overflow-hidden" data-pager-viewport="">
         <div
           className="flex h-full"
-          style={{ transform: `translate3d(calc(${-state.index * 100}% + ${dragPx ?? 0}px), 0, 0)`, transition: `transform ${travel}ms ${GALLERY.ease.css}` }}
+          style={{ transform: `translate3d(calc(${-index * 100}% + ${dragPx ?? 0}px), 0, 0)`, transition: `transform ${travel}ms ${GALLERY.ease.css}` }}
           data-pager-track=""
         >
           {pages.map((page, i) => (
-            <PagerPage key={`${page.unit ?? i}-${page.part ?? 0}`} gallery={gallery} page={page} index={i} count={count} kind={layouts[i].kind} stage={layouts[i].stage} trims={layout.trims} current={i === state.index} pressing={pressing} />
+            <PagerPage key={`${page.unit ?? i}-${page.part ?? 0}`} gallery={gallery} page={page} index={i} count={count} kind={layouts[i].kind} stage={layouts[i].stage} trims={layout.trims} current={i === index} pressing={pressing} />
           ))}
         </div>
         {/* Each caption at the pages' width, out of sight, so the layout knows its height on whichever page it lands (or none: a photo carried onto a later page has none). */}
@@ -182,7 +183,7 @@ export function CardPager({ gallery, base, pages, renderMedia, onClose, layout, 
           })}
         </div>
       </div>
-      {count > 1 && <PagerControls index={state.index} count={count} grouping={gallery.grouping} dispatch={dispatch} />}
+      {count > 1 && <PagerControls index={index} count={count} grouping={gallery.grouping} dispatch={dispatch} />}
       <p className="sr-only" aria-live="polite">
         {live}
       </p>

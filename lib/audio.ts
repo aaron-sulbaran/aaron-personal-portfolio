@@ -197,6 +197,9 @@ export function getSoundtrackPlayer(): SoundtrackPlayer {
     // trust playback. Failure here is caught below alongside el.play().
     try {
       await audioCtx.resume();
+      // A pause() (or a newer play()) landed while the context was resuming:
+      // that later choice wins, so do not start the element or ramp the fade.
+      if (gen !== playGen) return;
       rampFadeIn();
       await el.play();
     } catch {
@@ -214,6 +217,9 @@ export function getSoundtrackPlayer(): SoundtrackPlayer {
   };
 
   const pause = () => {
+    // Supersede any play() still awaiting its resume, so it cannot start the
+    // element after the visitor chose pause or Not now.
+    playGen++;
     playing = false;
     el?.pause();
     emit();

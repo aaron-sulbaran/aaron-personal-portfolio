@@ -25,8 +25,7 @@ const config: Config = {
         // New code uses font-display.
         serif: ["var(--font-display)", "system-ui", "sans-serif"],
         sans: ["var(--font-sans)", "system-ui", "sans-serif"],
-        // The label face (docs/label-face-spec.md). Inter's cv11/ss01/ss03 on
-        // body are Inter's alternates; Profa takes its defaults, as in the lab.
+        // The label face (docs/label-face-spec.md). Profa takes its defaults, as in the lab.
         label: [["var(--font-label)", "var(--font-sans)", "system-ui", "sans-serif"], { fontFeatureSettings: "normal" }],
       },
       fontSize: {
@@ -41,6 +40,11 @@ const config: Config = {
         "display-name": ["clamp(5.5rem, 24.86vw, 32rem)", { lineHeight: "0.8", letterSpacing: "0" }],
         "section": ["clamp(2rem, 5vw, 3.5rem)", { lineHeight: "1.1", letterSpacing: "-0.02em" }],
         "body-lg": ["1.25rem", { lineHeight: "1.6" }],
+        // Desktop body copy (1024px and up; phones keep their own sizes). The scale and leading are
+        // tokens in globals.css so one place sets how large and how airy body text reads.
+        "body-story": ["calc(1.375rem * var(--body-scale))", { lineHeight: "var(--body-lead)" }],
+        "body-card": ["calc(1.125rem * var(--body-scale))", { lineHeight: "var(--body-lead)" }],
+        "body-quick": ["calc(1.25rem * var(--body-scale))", { lineHeight: "var(--body-lead)" }],
         // The label face's three steps, the only label sizes. Weight lives
         // here so the Inter fallback is bold too; only label sets a line.
         "label-sm": ["0.795rem", { letterSpacing: "0.01em", fontWeight: "700" }],

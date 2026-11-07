@@ -59,7 +59,7 @@ export function LaneHeader({ intro, looking, canJump, tipBack, titleMode, titleD
   return (
     <header className="mb-20 max-w-3xl md:mb-28">
       <MvpTitle mode={titleMode} delayMs={titleDelayMs} staggerMs={titleStaggerMs} durationMs={titleDurationMs} forceReduced={forceReduced} />
-      <p data-lane-line="" className="mt-6 max-w-2xl text-lg leading-relaxed text-muted md:text-body-lg">
+      <p data-lane-line="" className="mt-6 max-w-2xl text-lg leading-relaxed text-muted md:text-body-lg lg:text-body-quick">
         {intro}
       </p>
       {looking && <Looking line={looking} canJump={canJump} forceReduced={forceReduced} />}

@@ -11,7 +11,7 @@ export function Words({ gallery, unit, compact = false, className = "", trim = 0
   const word = gallery.words[unit];
   const { blocks, phoneOmit } = siteContent.cards[gallery.key].modal;
   return (
-    <p data-mask={partId.words(unit)} data-mask-kind="text" data-mask-split="" className={`text-foreground ${compact ? "text-base leading-relaxed" : "text-lg leading-[1.55]"} ${className}`}>
+    <p data-mask={partId.words(unit)} data-mask-kind="text" data-mask-split="" className={`text-foreground ${compact ? "text-base leading-relaxed" : "text-lg leading-[1.55] lg:text-body-card"} ${className}`}>
       <InlineCopy source={phoneCopy(blocks[word.index], phoneOmit?.[word.index], trim)} />
     </p>
   );

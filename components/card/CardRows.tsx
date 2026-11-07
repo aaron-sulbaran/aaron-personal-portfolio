@@ -47,7 +47,7 @@ export function CardRows({ gallery, renderMedia, flying, onClose }: Props) {
     return (
       <div
         key={`row-${slide.photo}`}
-        className={`flex items-center ${side === "right" ? "flex-row-reverse" : "flex-row"}`}
+        className={`flex ${slide.aside ? "items-start" : "items-center"} ${side === "right" ? "flex-row-reverse" : "flex-row"}`}
         style={{ columnGap: GALLERY.columnGap }}
         data-row="photo"
         data-side={side}
@@ -58,8 +58,8 @@ export function CardRows({ gallery, renderMedia, flying, onClose }: Props) {
             // A cluster: the row's pieces side by side, all in view, never taking turns (lib/gallery/jobs); more than two wrap
             // after the second into a 2 by 2 block, its second line under its first.
             <div
-              className="flex flex-wrap items-start"
-              style={{ columnGap: GALLERY.cluster.gap, rowGap: GALLERY.cluster.gap, ...(slide.photos.length > 2 ? { maxWidth: GALLERY.cluster.itemWidth * 2 + GALLERY.cluster.gap } : {}) }}
+              className={slide.photos.length > 2 ? "grid grid-cols-2 items-stretch" : "flex flex-wrap items-start"}
+              style={{ columnGap: GALLERY.cluster.gap, rowGap: GALLERY.cluster.gap, ...(slide.photos.length > 2 ? { width: GALLERY.cluster.itemWidth * 2 + GALLERY.cluster.gap, maxWidth: "100%" } : {}) }}
               data-cluster={slide.photos.length}
             >
               {slide.photos.map((photo) => (
@@ -72,11 +72,11 @@ export function CardRows({ gallery, renderMedia, flying, onClose }: Props) {
             <StillPhoto photo={photos[slide.photo]} index={slide.photo} box={box(slide.photo)} slot={slide.photo === lead} renderMedia={slide.photo === lead ? renderMedia : true} />
           )}
         </div>
-        <div className="flex min-w-0 flex-1 flex-col gap-4" style={{ maxWidth: GALLERY.textWidth }} data-text-column="">
+        <div className={`flex min-w-0 flex-1 flex-col gap-4 ${slide.aside ? "sticky" : ""}`} style={{ maxWidth: GALLERY.textWidth, ...(slide.aside ? { top: GALLERY.stickyTop } : {}) }} data-text-column="">
           {slideWords(slide).map((unit) => [<Words key={unit} gallery={gallery} unit={unit} />, afterWords(gallery, unit, flying)])}
           {slide.aside?.map((photo) => (
             <div key={photo} className="pt-2" data-aside="">
-              <StillPhoto photo={photos[photo]} index={photo} box={box(photo)} />
+              <StillPhoto photo={photos[photo]} index={photo} box={{ width: GALLERY.textWidth, height: box(photo).height }} />
             </div>
           ))}
         </div>

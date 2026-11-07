@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Onest } from "next/font/google";
 import { SiteLogo } from "@/components/SiteLogo";
 import { TopFade } from "@/components/TopFade";
 import { MenuPill } from "@/components/menu/MenuPill";
@@ -23,7 +23,7 @@ import { visitedInitScript } from "@/lib/inline/visited";
 import { THEME_BG_DARK, THEME_BG_LIGHT, themeInitScript } from "@/lib/theme";
 import "./globals.css";
 
-const inter = Inter({
+const onest = Onest({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-sans",
@@ -64,7 +64,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning className={`${inter.variable} ${profaBlack.variable} ${profaBold.variable}`}>
+    <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning className={`${onest.variable} ${profaBlack.variable} ${profaBold.variable}`}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         {!HOLDING_MODE && <script dangerouslySetInnerHTML={{ __html: visitedInitScript }} />}
