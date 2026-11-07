@@ -235,11 +235,14 @@ test("a reload deep in the page keeps the room closed: the saved position and th
   await page.goto("/?coildebug=1#work");
   await waitForScene(page);
   await expect.poll(() => page.evaluate(() => sessionStorage.getItem("aps:home-slot"))).toBe("gone");
-  await page.evaluate(() => {
+  const at = await page.evaluate(() => {
     window.scrollTo({ top: window.scrollY + 40, behavior: "instant" });
     history.replaceState(null, "", "/?coildebug=1");
+    return { y: Math.round(window.scrollY), work: Math.round(document.getElementById("work")!.getBoundingClientRect().top + window.scrollY) };
   });
-  await expect.poll(() => page.evaluate(() => Number(sessionStorage.getItem("aps:home-scroll-y")))).toBeGreaterThan(1000);
+  // Deep in the page is past page 1, wherever page 2 starts at this width and in this face (955px at 1440 since PR 104).
+  expect(at.y, "the reader is past page 1").toBeGreaterThan(at.work);
+  await expect.poll(() => page.evaluate(() => Number(sessionStorage.getItem("aps:home-scroll-y")))).toBeGreaterThanOrEqual(at.y - 1);
   await page.reload();
   expect(await slotAtParse(page), "closed before the page's own scripts ran").toBe("closed");
   await waitForScene(page);
