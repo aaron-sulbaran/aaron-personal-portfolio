@@ -1,9 +1,10 @@
 "use client";
 
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { Check, ChevronDown } from "lucide-react";
 import { useId, useState } from "react";
 import { TrailingIcon } from "@/components/quests/TrailingIcon";
+import { useReducedMotionLive } from "@/components/soundtrack/useReducedMotionLive";
 import { questCopy } from "@/lib/content/quests";
 import { questIds } from "@/lib/quests/registry";
 
@@ -15,7 +16,7 @@ type Step = "closed" | "asked" | "revealed";
 
 export function EggReveal({ found, touch }: { found: Readonly<Record<string, number>>; touch: boolean }) {
   const [step, setStep] = useState<Step>("closed");
-  const reduced = useReducedMotion();
+  const reduced = useReducedMotionLive();
   const regionId = useId();
   const copy = questCopy.panel.eggs;
   const eggs = questIds("eggs");

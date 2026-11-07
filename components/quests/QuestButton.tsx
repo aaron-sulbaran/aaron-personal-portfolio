@@ -1,7 +1,8 @@
 "use client";
 
-import { motion, useReducedMotion } from "framer-motion";
+import { motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
+import { useReducedMotionLive } from "@/components/soundtrack/useReducedMotionLive";
 import { Fill, FillArrow, FillSeed } from "@/components/fx/Fill";
 import { questCopy } from "@/lib/content/quests";
 import { CTA_CLASS, CTA_OVER_CLASS, FILL_PICK } from "@/lib/fx/fill";
@@ -30,7 +31,9 @@ type Props = {
 
 export function QuestButton({ found, total, countFrom, pulse, expanded, onOpen, buttonRef, replay = 0 }: Props) {
   const { label, count, countBelow, open } = questCopy.button;
-  const reduced = useReducedMotion();
+  // Hydration-safe: framer's useReducedMotion reads the preference during hydration, so the ring below was
+  // server-rendered and then dropped on the first client render under reduced motion (React #418).
+  const reduced = useReducedMotionLive();
   const [pulseRef, pulseOn] = usePulseOnView(pulse, !reduced, replay);
   const showCount = found >= countFrom;
   const accessibleName = showCount ? `${open}, ${count(found, total)}` : open;
