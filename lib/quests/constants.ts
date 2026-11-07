@@ -12,12 +12,8 @@ export const QUEST_RULES: QuestRules = {
   full: { cards: Infinity, pops: Infinity, eggs: Infinity, mvp: Infinity },
 };
 
-export type QuestButtonVariant = "plain" | "clock";
-
 export const QUEST = {
   storageKey: "aaron-quests-v1",
-  // plain: the question and the count. clock: the live run time leads the pill.
-  buttonVariant: "clock" as QuestButtonVariant,
   // The button shows its count once this many things are found (a low count reads as "barely started").
   countFrom: 3,
   // The run clock writes to storage at most this often, and always on hide.

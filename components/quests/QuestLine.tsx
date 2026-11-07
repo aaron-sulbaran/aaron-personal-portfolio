@@ -22,11 +22,9 @@ export function QuestLine() {
   return (
     <>
       <QuestButton
-        variant={QUEST.buttonVariant}
         found={totalFound(state)}
         total={totalQuests()}
         countFrom={QUEST.countFrom}
-        clockMs={state.clockMs}
         pulse={QUEST.pulse}
         expanded={open}
         onOpen={openRun}
