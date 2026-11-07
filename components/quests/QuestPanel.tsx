@@ -91,7 +91,7 @@ export function QuestPanel({ open, onClose, state, category, onCategory, returnT
                 <span className="sr-only">{copy.clock}</span>
                 <RunTime ms={shownMs} className={`font-display text-[2.75rem] leading-none ${finish ? "text-accent" : "text-foreground"}`} />
               </div>
-              <p className="mt-2 text-sm text-muted">{finish ? questCopy.finish[category] : copy.categories[category].blurb}</p>
+              {finish && <p className="mt-2 text-sm text-muted">{questCopy.finish[category]}</p>}
               {finish && <p className="mt-1 text-sm text-muted">{questCopy.finish.saved}</p>}
               <div className="mt-4">
                 <Splits groups={run.groups} found={state.found} touch={touch} category={category} onGo={onGo} />

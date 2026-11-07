@@ -17,9 +17,9 @@ export const questCopy = {
     close: "Close",
     clock: "Time",
     categories: {
-      any: { label: "Any%", blurb: "A real look around: a few cards, a few pop-ups, one easter egg." },
-      full: { label: "100%", blurb: "Everything: every card, every pop-up on page 1 and in the cards, both easter eggs, and the MVP." },
-    } satisfies Record<QuestCategory, { label: string; blurb: string }>,
+      any: { label: "Any%" },
+      full: { label: "100%" },
+    } satisfies Record<QuestCategory, { label: string }>,
     // An open row's line is a way there: a tap closes the run and takes the
     // visitor to the place (touch is the line a touch screen reads).
     groups: {
