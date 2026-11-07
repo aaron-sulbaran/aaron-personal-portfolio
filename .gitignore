@@ -40,8 +40,8 @@ yarn-error.log*
 next-env.d.ts
 .gstack/
 
-# Agent working documents and tooling, private per Living Document Protocol
-AGENTS.md
+# Agent working documents and tooling. AGENTS.md is tracked so every worktree and
+# subagent loads it (Living Document Protocol v2.1); its archive and the rest stay private.
 AGENTS_ARCHIVE.md
 PRODUCT.md
 DESIGN.md
