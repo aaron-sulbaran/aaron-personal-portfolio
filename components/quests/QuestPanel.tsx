@@ -1,9 +1,10 @@
 "use client";
 
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
 import { useId, useRef } from "react";
 import { PillToggle } from "@/components/fx/PillToggle";
+import { useReducedMotionLive } from "@/components/soundtrack/useReducedMotionLive";
 import { Portal } from "@/components/Portal";
 import { RunTime } from "@/components/quests/RunTime";
 import { Splits } from "@/components/quests/Splits";
@@ -29,7 +30,7 @@ type Props = {
 };
 
 export function QuestPanel({ open, onClose, state, category, onCategory, returnTo }: Props) {
-  const reduced = useReducedMotion();
+  const reduced = useReducedMotionLive();
   const panelRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
   useBodyScrollLock(open);
