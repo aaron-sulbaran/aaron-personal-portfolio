@@ -404,10 +404,9 @@ test("dock: unanswered, the pill arrives as \"Music?\" with no label and nothing
   expect(await storedChoice(page)).toBeNull();
 });
 
-// The band asks once. Answered, a later visit gets no question and one control, Play
-// it after a Not now and Resume after a yes; the first visit keeps its question
-// through its own answer.
-test("band: after a Not now the band stops asking on later visits, and its one control is Play it", async ({ page }) => {
+// The band asks on every visit, and only the play label adapts (e62d08e): a later visit gets the question with Play it after a Not now and
+// Resume after a yes, and Not now always, drawn as the chosen answer once it is the answer (698a78a).
+test("band: after a Not now a later visit still asks, offers Play it, and shows Not now as the answer", async ({ page }) => {
   await openHome(page, { path: HOME, at: "top" });
   const band = page.locator("#listen");
   await scrollBandIntoView(page);
@@ -418,16 +417,18 @@ test("band: after a Not now the band stops asking on later visits, and its one c
   await expect(band.getByRole("heading", { name: L.line })).toBeVisible();
   expect(await storedChoice(page)).toBe("off");
 
-  // A later visit: no question, no Not now, no Resume; just Play it.
+  // A later visit: the question again, Play it, and Not now as the chosen answer; no Resume.
   await page.reload();
   await settled(page);
   await scrollBandIntoView(page);
-  await expect(band.getByRole("heading", { name: L.line })).toHaveCount(0);
-  expect(await band.innerText()).not.toContain(L.line);
-  await expect(band.getByRole("button", { name: L.decline, exact: true })).toBeHidden();
+  await expect(band.getByRole("heading", { name: L.lineReturning })).toBeVisible();
+  const chosen = band.getByRole("button", { name: L.decline, exact: true });
+  await expect(chosen).toBeVisible();
+  await expect(chosen).toBeDisabled();
+  await expect(chosen).toHaveAttribute("aria-pressed", "true");
   await expect(band.getByRole("button", { name: L.resume, exact: true })).toBeHidden();
-  await expect(band.getByRole("button", { name: L.accept, exact: true })).toBeVisible();
-  await expect(band.getByRole("button"), "Play it is the band's only control").toHaveCount(1);
+  await expect(band.locator('[data-control="off"]')).toBeVisible();
+  await expect(band.getByRole("button"), "Play it and the chosen Not now").toHaveCount(2);
 });
 
 // What the page draws of the band from its first frame, recorded from the start of the document: every animation frame says whether the
@@ -462,12 +463,12 @@ async function recordBandFrames(page: Page) {
 const bandFrames = (page: Page) =>
   page.evaluate(() => (window as unknown as { __band: { frames: number; question: number; asking: number; heights: number[]; shift: number; first: Record<string, number> } }).__band);
 
-// A reload with a stored answer is drawn as it will rest from the first frame: no question, no Not now, the control the answer lands on already
-// there, the band the same height throughout, and nothing on the page moves. (A phone is where the question and the buttons stack, so the
-// band used to lose 27px when the stored answer restored.)
+// A reload with a stored answer is drawn as it will rest from the first frame: the question (asked on every visit), never the first visit's
+// Play it, the control the answer lands on already there, the band the same height throughout, and nothing on the page moves. (A phone is
+// where the question and the buttons stack, so the band used to lose 27px when the stored answer restored.)
 for (const size of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) {
   for (const [stored, control] of [["off", "off"], ["on", "paused"]] as const) {
-    test(`band: a reload at ${size.width} with a stored ${stored === "on" ? "yes" : "Not now"} never draws the question or Not now, and nothing shifts`, async ({ page }) => {
+    test(`band: a reload at ${size.width} with a stored ${stored === "on" ? "yes" : "Not now"} is drawn as it rests from the first frame, and nothing shifts`, async ({ page }) => {
       test.setTimeout(90_000);
       await page.setViewportSize(size);
       await page.addInitScript(([key, value]) => localStorage.setItem(key, value), [SOUNDTRACK_KEY, stored]);
@@ -479,13 +480,13 @@ for (const size of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) 
       await page.waitForTimeout(1500);
       const band = await bandFrames(page);
       expect(band.frames, "frames recorded from the start of the document").toBeGreaterThan(20);
-      expect(band.question, "frames that drew the question").toBe(0);
-      expect(band.asking, "frames that drew Play it beside Not now").toBe(0);
+      expect(band.question, "frames that drew the question").toBeGreaterThan(0);
+      expect(band.asking, "frames that drew the first visit's Play it").toBe(0);
       expect(band.first[control], "the restored control, the first frame it existed").toBe(1);
       expect(Math.max(...band.heights) - Math.min(...band.heights), "the band's height through the load").toBeLessThan(0.5);
       expect(band.shift, "layout shift").toBe(0);
       await expect(page.locator(`#listen [data-band-layer="${control}"]`)).toHaveCount(1);
-      await expect(page.locator("#listen [data-band-question]")).toHaveCount(0);
+      await expect(page.locator("#listen [data-band-question]")).toHaveCount(1);
     });
   }
 
@@ -503,18 +504,18 @@ for (const size of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) 
   });
 }
 
-test("band: a stored yes also returns without the question, to one Resume that starts the music", async ({ page, browserName }) => {
+test("band: a stored yes returns to the question with Resume beside Not now, and Resume starts the music", async ({ page, browserName }) => {
   test.skip(browserName === "webkit", "WebKit cannot be launched muted");
   await page.addInitScript((key) => localStorage.setItem(key, "on"), SOUNDTRACK_KEY);
   await openHome(page, { path: HOME, at: "top" });
   const band = page.locator("#listen");
   await scrollBandIntoView(page);
-  await expect(band.getByRole("heading", { name: L.line })).toHaveCount(0);
+  await expect(band.getByRole("heading", { name: L.lineReturning })).toBeVisible();
   await expect(band.getByRole("button", { name: L.accept, exact: true })).toHaveCount(0);
-  await expect(band.getByRole("button", { name: L.decline, exact: true })).toBeHidden();
+  await expect(band.getByRole("button", { name: L.decline, exact: true })).toBeEnabled();
   const resume = band.getByRole("button", { name: L.resume, exact: true });
   await expect(resume).toBeVisible();
-  await expect(band.getByRole("button"), "Resume is the band's only control").toHaveCount(1);
+  await expect(band.getByRole("button"), "Resume and Not now").toHaveCount(2);
   await resume.click();
   await expect(page.locator(BAND_CARD)).toBeVisible();
 });
@@ -523,10 +524,10 @@ test("dock: a returning visitor is welcomed back once per session, then gets the
   await page.addInitScript((key) => localStorage.setItem(key, "on"), SOUNDTRACK_KEY);
   await armDock(page);
   await openHome(page, { path: HOME });
-  // A stored yes restores as paused: the band has stopped asking, and offers Resume.
+  // A stored yes restores as paused: the band asks again and offers Resume.
   await scrollBandIntoView(page);
   expect(await bandLayerShown(page, "paused"), "Resume shown in the band").toBe(true);
-  await expect(page.locator("#listen").getByRole("heading", { name: L.line })).toHaveCount(0);
+  await expect(page.locator("#listen").getByRole("heading", { name: L.lineReturning })).toBeVisible();
   await expect(page.locator('#listen [data-control="paused"]')).toContainText(L.resume);
 
   await toCards(page);
