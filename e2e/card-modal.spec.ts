@@ -4,7 +4,7 @@ import { SEEN_STORAGE_KEY } from "@/lib/home/seen";
 import { test, expect } from "./support/fixtures";
 import { nextFrames, openHome } from "./support/coil";
 import { decodePng } from "./support/pixels";
-import { barScale, fillOf, rest } from "./support/inline";
+import { fillOf, rest } from "./support/inline";
 import { cardDialog, flyCard, openCardFromBook, panelAtRest } from "./support/cards";
 import type { HookWindow } from "./support/hooks";
 
@@ -268,14 +268,20 @@ test("card modal: a card's links are inline links, a line at rest that fills fro
   await link.scrollIntoViewIfNeeded();
   await rest(page);
   expect(await fillOf(link)).toBe(0);
-  expect(await barScale(link)).toBe(0);
-  const line = await link.evaluate((el) => ({ height: getComputedStyle(el, "::before").height, token: getComputedStyle(document.documentElement).getPropertyValue("--inline-line-width").trim() }));
-  expect(line.height).toBe(line.token);
-  expect(["1.5px", "2px"]).toContain(line.token);
+  // A card's link wraps, so it draws its bars as background layers per line (app/globals.css, ".inline-link.card-link"), not the pseudo bars:
+  // the words' fill, the resting line and the fill line are all driven by --inline-p.
+  const bars = await link.evaluate((el) => ({
+    pseudo: [getComputedStyle(el, "::before").display, getComputedStyle(el, "::after").display],
+    sizes: getComputedStyle(el).backgroundSize.split(/,\s*(?![^()]*\))/),
+    token: getComputedStyle(document.documentElement).getPropertyValue("--inline-line-width").trim(),
+  }));
+  expect(bars.pseudo).toEqual(["none", "none"]);
+  expect(bars.sizes, "words fill, words, resting line, fill line").toHaveLength(4);
+  expect(bars.sizes[2].trim().endsWith(` ${bars.token}`), `the resting line ${bars.sizes[2]} is ${bars.token} tall`).toBe(true);
+  expect(["1.5px", "2px"]).toContain(bars.token);
   expect(await link.evaluate((el) => getComputedStyle(el).textDecorationLine)).toBe("none");
   await link.hover();
   await expect.poll(() => fillOf(link)).toBe(1);
-  expect(await barScale(link)).toBe(1);
   await rest(page);
   await expect.poll(() => fillOf(link)).toBe(0);
 
@@ -285,5 +291,4 @@ test("card modal: a card's links are inline links, a line at rest that fills fro
   expect(await page.evaluate(() => localStorage.getItem("aaron-inline-visited"))).toBe(JSON.stringify(["external:https://ieee.ece.utexas.edu/"]));
   await rest(page);
   await expect.poll(() => fillOf(link), { timeout: 1000 }).toBe(1);
-  expect(await barScale(link)).toBe(1);
 });
