@@ -30,9 +30,11 @@ type Props = {
   returnTo?: () => HTMLElement | null;
   // A row's way there: the caller closes the run and takes the visitor to it.
   onGo: (target: QuestTarget) => void;
+  // The exit has finished, so whatever the close was for can start.
+  onClosed?: () => void;
 };
 
-export function QuestPanel({ open, onClose, state, category, onCategory, returnTo, onGo }: Props) {
+export function QuestPanel({ open, onClose, state, category, onCategory, returnTo, onGo, onClosed }: Props) {
   const reduced = useReducedMotionLive();
   const touch = useCoarsePointer();
   const panelRef = useRef<HTMLDivElement>(null);
@@ -48,7 +50,7 @@ export function QuestPanel({ open, onClose, state, category, onCategory, returnT
   const exit = reduced ? { opacity: 0 } : { opacity: 0, y: 18, scale: 0.98 };
   return (
     <Portal>
-      <AnimatePresence>
+      <AnimatePresence onExitComplete={onClosed}>
         {open && (
           <>
             <motion.div

@@ -20,7 +20,7 @@ type Props = {
 };
 
 const GO_CLASS =
-  "group/go mt-0.5 self-start rounded-sm text-left text-sm text-accent underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
+  "group/go mt-0.5 justify-self-start rounded-sm text-left text-sm text-accent underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
 
 export function Splits({ groups, found, touch, onGo }: Props) {
   const { groups: names, left, done } = questCopy.panel;
@@ -35,17 +35,9 @@ export function Splits({ groups, found, touch, onGo }: Props) {
             <span aria-hidden="true" className={`mt-0.5 grid h-5 w-5 place-items-center rounded-full ${g.done ? "bg-accent text-background" : "[box-shadow:inset_0_0_0_1px_color-mix(in_srgb,var(--color-muted)_55%,transparent)]"}`}>
               {g.done && <Check size={12} strokeWidth={3} />}
             </span>
-            <span className="flex min-w-0 flex-col gap-0.5">
-              <span className="font-label text-label-lg text-foreground">
-                {copy.label}
-                <span className="ml-2 tabular-nums text-muted">{count(Math.min(g.found, g.needed), g.needed)}</span>
-              </span>
-              {!g.done && g.group === "eggs" && <EggReveal found={found} touch={touch} />}
-              {!g.done && g.group !== "eggs" && goText && (
-                <button type="button" onClick={() => onGo(g.group as QuestTarget)} className={GO_CLASS}>
-                  <TrailingIcon text={goText} icon={<ArrowRight aria-hidden="true" size={14} strokeWidth={2.25} className="ml-1.5 inline-block align-[-2px] transition-transform duration-200 group-hover/go:translate-x-0.5 motion-reduce:transition-none" />} />
-                </button>
-              )}
+            <span className="min-w-0 font-label text-label-lg text-foreground">
+              {copy.label}
+              <span className="ml-2 tabular-nums text-muted">{count(Math.min(g.found, g.needed), g.needed)}</span>
             </span>
             <span className="pt-0.5 text-right font-label text-label tabular-nums">
               {g.done && g.doneAtMs !== null ? (
@@ -57,6 +49,16 @@ export function Splits({ groups, found, touch, onGo }: Props) {
                 <span className="text-muted">{left(g.left)}</span>
               )}
             </span>
+            {!g.done && g.group === "eggs" && (
+              <div className="col-span-2 col-start-2 mt-0.5 min-w-0">
+                <EggReveal found={found} touch={touch} />
+              </div>
+            )}
+            {!g.done && g.group !== "eggs" && goText && (
+              <button type="button" onClick={() => onGo(g.group as QuestTarget)} className={`${GO_CLASS} col-span-2 col-start-2`}>
+                <TrailingIcon text={goText} icon={<ArrowRight aria-hidden="true" size={14} strokeWidth={2.25} className="ml-1.5 inline-block align-[-2px] transition-transform duration-200 group-hover/go:translate-x-0.5 motion-reduce:transition-none" />} />
+              </button>
+            )}
           </li>
         );
       })}
