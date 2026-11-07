@@ -15,8 +15,8 @@ describe("runProgress", () => {
 
   it("asks 100% for everything", () => {
     const run = runProgress(state({}), "full");
-    expect(run.groups.map((g) => [g.group, g.needed])).toEqual([["cards", 14], ["pops", 8], ["eggs", 2], ["mvp", 1]]);
-    expect(run.neededTotal).toBe(25);
+    expect(run.groups.map((g) => [g.group, g.needed])).toEqual([["cards", 14], ["pops", 14], ["eggs", 2], ["mvp", 1]]);
+    expect(run.neededTotal).toBe(31);
   });
 
   it("dates a group by its needed-th find and caps the count at needed", () => {
@@ -45,12 +45,12 @@ describe("runProgress", () => {
     const everything = Object.fromEntries(ALL_QUEST_IDS.map((id) => [id, 4]));
     const full = runProgress(state(everything), "full");
     expect(full.complete).toBe(true);
-    expect(full.foundTotal).toBe(25);
+    expect(full.foundTotal).toBe(31);
   });
 
   it("counts every find uncapped for the button", () => {
-    expect(totalQuests()).toBe(25);
-    expect(totalFound(state(Object.fromEntries(ALL_QUEST_IDS.map((id) => [id, 0]))))).toBe(25);
+    expect(totalQuests()).toBe(31);
+    expect(totalFound(state(Object.fromEntries(ALL_QUEST_IDS.map((id) => [id, 0]))))).toBe(31);
     expect(totalFound(state({ "card:talos": 1, "bogus": 2 }))).toBe(1);
   });
 });

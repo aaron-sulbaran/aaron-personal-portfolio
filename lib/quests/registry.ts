@@ -1,8 +1,8 @@
 // Every quest id, by group. Cards come from the Coil's order (the keys the seen
-// store receives when a card modal closes), page-1 words are scanned out of the
-// intro copy so editing a pop there changes the quest with it, and the eggs
+// store receives when a card modal closes), words are scanned out of the intro
+// copy and then the cards' copy so editing a pop there changes the quest with it, and the eggs
 // and the MVP are fixed. Ids match the visited store's format for words.
-import { strandOrder } from "@/lib/content/cards";
+import { cards, strandOrder } from "@/lib/content/cards";
 import { intro } from "@/lib/content/intro";
 import type { QuestGroup } from "./types";
 
@@ -14,17 +14,23 @@ function collectStrings(value: unknown, out: string[]) {
   else if (value && typeof value === "object") for (const item of Object.values(value)) collectStrings(item, out);
 }
 
-function pageOneWords(): string[] {
+function wordsIn(source: unknown): string[] {
   const strings: string[] = [];
-  collectStrings(intro, strings);
+  collectStrings(source, strings);
   const ids = new Set<string>();
   for (const text of strings) for (const match of text.matchAll(WORD_TOKEN)) ids.add(`${match[1]}:${match[2]}`);
   return Array.from(ids).sort();
 }
 
+function allWords(): string[] {
+  const pageOne = wordsIn(intro);
+  const seen = new Set(pageOne);
+  return [...pageOne, ...wordsIn(cards).filter((id) => !seen.has(id))];
+}
+
 const IDS: Readonly<Record<QuestGroup, readonly string[]>> = {
   cards: strandOrder.map((key) => `card:${key}`),
-  pops: pageOneWords(),
+  pops: allWords(),
   eggs: ["egg:logo", "egg:period"],
   mvp: ["mvp:quick"],
 };

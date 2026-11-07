@@ -94,7 +94,7 @@ export function QuestPanel({ open, onClose, state, category, onCategory, returnT
               <p className="mt-2 text-sm text-muted">{finish ? questCopy.finish[category] : copy.categories[category].blurb}</p>
               {finish && <p className="mt-1 text-sm text-muted">{questCopy.finish.saved}</p>}
               <div className="mt-4">
-                <Splits groups={run.groups} found={state.found} touch={touch} onGo={onGo} />
+                <Splits groups={run.groups} found={state.found} touch={touch} category={category} onGo={onGo} />
               </div>
               <p className="mt-3 text-xs text-muted">{copy.privacy}</p>
             </motion.div>

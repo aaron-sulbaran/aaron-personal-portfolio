@@ -18,16 +18,16 @@ export const questCopy = {
     clock: "Time",
     categories: {
       any: { label: "Any%", blurb: "A real look around: a few cards, a few pop-ups, one easter egg." },
-      full: { label: "100%", blurb: "Everything: every card, every pop-up on page 1, both easter eggs, and the MVP." },
+      full: { label: "100%", blurb: "Everything: every card, every pop-up on page 1 and in the cards, both easter eggs, and the MVP." },
     } satisfies Record<QuestCategory, { label: string; blurb: string }>,
     // An open row's line is a way there: a tap closes the run and takes the
     // visitor to the place (touch is the line a touch screen reads).
     groups: {
       cards: { label: "Cards", go: "Open them from page 2" },
-      pops: { label: "Pop-ups", go: "Hover over the underlined words on page 1", touch: "Tap the underlined words on page 1" },
+      pops: { label: "Pop-ups", cardsNote: "Some of the cards have them too", go: "Hover over the underlined words on page 1", touch: "Tap the underlined words on page 1" },
       eggs: { label: "Easter eggs" },
       mvp: { label: "The MVP", go: "See the short version of my site" },
-    } satisfies Record<QuestGroup, { label: string; go?: string; touch?: string }>,
+    } satisfies Record<QuestGroup, { label: string; go?: string; touch?: string; cardsNote?: string }>,
     // The easter eggs stay a secret until asked twice: the row opens on a
     // teaser, then a button gives the eggs away.
     eggs: {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { strandOrder } from "@/lib/content/cards";
+import { cards, strandOrder } from "@/lib/content/cards";
+import { intro } from "@/lib/content/intro";
 import { ALL_QUEST_IDS, groupOf, isQuestId, questIds } from "./registry";
 
 describe("quest registry", () => {
@@ -8,7 +9,7 @@ describe("quest registry", () => {
     expect(questIds("cards")).toEqual(strandOrder.map((key) => `card:${key}`));
   });
 
-  it("has the eight words page 1 offers, in the visited store's id format", () => {
+  it("has the words page 1 and the cards offer, page 1 first, in the visited store's id format", () => {
     expect(questIds("pops")).toEqual([
       "def:product",
       "pop:3d-printing",
@@ -18,7 +19,21 @@ describe("quest registry", () => {
       "pop:thrill-seeker",
       "pop:venezuela-flag",
       "pop:wanderlust",
+      "pop:contrabass-clarinet",
+      "pop:misuki-suki",
+      "pop:rango",
+      "pop:sister-kyoto",
+      "tip:ieee-ao",
+      "tip:this-site-playground",
     ]);
+  });
+
+  it("takes every pops id from the intro or the cards copy", () => {
+    const copy = JSON.stringify([intro, cards]);
+    for (const id of questIds("pops")) {
+      const [kind, key] = id.split(":");
+      expect(copy).toContain(`](${kind}:${key})`);
+    }
   });
 
   it("has two eggs and the MVP", () => {
@@ -28,7 +43,7 @@ describe("quest registry", () => {
 
   it("has unique ids that each belong to one group", () => {
     expect(new Set(ALL_QUEST_IDS).size).toBe(ALL_QUEST_IDS.length);
-    expect(ALL_QUEST_IDS).toHaveLength(14 + 8 + 2 + 1);
+    expect(ALL_QUEST_IDS).toHaveLength(14 + 14 + 2 + 1);
     expect(groupOf("card:talos")).toBe("cards");
     expect(groupOf("pop:family")).toBe("pops");
     expect(groupOf("nope")).toBeNull();
