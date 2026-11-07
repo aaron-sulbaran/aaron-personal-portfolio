@@ -6,7 +6,8 @@ import { useId, useRef } from "react";
 import { PillToggle } from "@/components/fx/PillToggle";
 import { Portal } from "@/components/Portal";
 import { RunTime } from "@/components/quests/RunTime";
-import { Splits } from "@/components/quests/Splits";
+import { Splits, type QuestTarget } from "@/components/quests/Splits";
+import { useCoarsePointer } from "@/components/useCoarsePointer";
 import { questCopy } from "@/lib/content/quests";
 import { useBodyScrollLock, useEscapeKey, useFocusTrap } from "@/lib/modal";
 import { runProgress } from "@/lib/quests/progress";
@@ -26,10 +27,13 @@ type Props = {
   category: QuestCategory;
   onCategory: (next: QuestCategory) => void;
   returnTo?: () => HTMLElement | null;
+  // A row's way there: the caller closes the run and takes the visitor to it.
+  onGo: (target: QuestTarget) => void;
 };
 
-export function QuestPanel({ open, onClose, state, category, onCategory, returnTo }: Props) {
+export function QuestPanel({ open, onClose, state, category, onCategory, returnTo, onGo }: Props) {
   const reduced = useReducedMotion();
+  const touch = useCoarsePointer();
   const panelRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
   useBodyScrollLock(open);
@@ -63,7 +67,7 @@ export function QuestPanel({ open, onClose, state, category, onCategory, returnT
               aria-modal="true"
               aria-labelledby={titleId}
               data-quest-panel=""
-              className="fixed inset-x-3 bottom-3 z-50 mx-auto max-w-[26rem] rounded-2xl bg-glass-strong p-5 backdrop-blur-xl [box-shadow:inset_0_0_0_1px_var(--color-border)] md:bottom-8"
+              className="fixed inset-x-3 bottom-3 z-50 mx-auto max-h-[calc(100dvh-1.5rem)] max-w-[26rem] overflow-y-auto overscroll-contain rounded-2xl bg-glass-strong p-5 backdrop-blur-xl [box-shadow:inset_0_0_0_1px_var(--color-border)] md:bottom-8"
               initial={exit}
               animate={enter}
               exit={exit}
@@ -87,7 +91,7 @@ export function QuestPanel({ open, onClose, state, category, onCategory, returnT
               <p className="mt-2 text-sm text-muted">{finish ? questCopy.finish[category] : copy.categories[category].blurb}</p>
               {finish && <p className="mt-1 text-sm text-muted">{questCopy.finish.saved}</p>}
               <div className="mt-4">
-                <Splits groups={run.groups} />
+                <Splits groups={run.groups} found={state.found} touch={touch} onGo={onGo} />
               </div>
               <p className="mt-3 text-xs text-muted">{copy.privacy}</p>
             </motion.div>
