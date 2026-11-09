@@ -13,9 +13,9 @@ import { clusterPages, galleryPlan, namedPlan, phonePages, type Page, type Phone
 // A demo video drawn in the place of a photo (components/card/CardVideo): the file, its poster and its own pixels; playOnce
 // plays it by itself once and holds on its last frame (CardVideoRef).
 export interface GalleryVideo { src: string; poster: string; width: number; height: number; playOnce?: boolean }
-// A post embedded in the place of a photo (components/card/LinkedInEmbed): its own address and native size, and its accessible name;
-// card is what a phone's pager draws instead (components/card/PostCard).
-export interface GalleryEmbed { src: string; width: number; height: number; title: string; card: PostCardRef }
+// A post in the place of a photo, drawn as its link card (components/card/PostCard): the card's width on a desktop row, the post's
+// name, and the card.
+export interface GalleryEmbed { width: number; title: string; card: PostCardRef }
 // tag: a job's name tag drawn in the place of a photo (components/card/JobTag), the index of its entry on the jobs timeline; its
 // width and height are a nominal box (the tag grows with its tip).
 // focus: where a tall photo's subject sits, a share of its height from the top, kept in view when a phone page crops it (lib/content/media).
