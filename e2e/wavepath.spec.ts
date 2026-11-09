@@ -147,15 +147,19 @@ test("wavepath: a 1.5-screen flick never outruns the cap, and arrives", async ({
     const p = (window as unknown as W).__wavePath;
     window.scrollTo({ top: window.scrollY + 1.5 * window.innerHeight, behavior: "instant" });
     const t0 = performance.now();
-    let gap = 0, worst = 0, last = p.frame()!.head, lastAt = t0;
-    const tick = () => {
+    let gap = 0, worst = 0, last = p.frame()!.head, lastTs = -1;
+    // Each window is one frame on the clock the conductor integrates the head with, the rAF timestamp every callback of a frame
+    // shares. performance.now() at this callback is not that clock: this callback runs after the conductor's and whatever else
+    // painted or collected garbage ahead of it in the frame, so one slow frame and the short one after it read as a surge the
+    // head never made (its step is the cap times the frame's own dt in every window, in every build).
+    const tick = (ts: number) => {
       const f = p.frame()!;
-      const at = performance.now();
       gap = Math.max(gap, f.target - f.head);
       // Speed over the frame against the cap in force; a frame is not exact, so the margin is a fifth.
-      if (at > lastAt) worst = Math.max(worst, ((f.head - last) / ((at - lastAt) / 1000)) / (f.cap * 1.2));
+      if (lastTs >= 0 && ts > lastTs) worst = Math.max(worst, ((f.head - last) / ((ts - lastTs) / 1000)) / (f.cap * 1.2));
       last = f.head;
-      lastAt = at;
+      lastTs = ts;
+      const at = performance.now();
       if ((gap > 0 && f.head === f.target) || at - t0 > 15_000) return resolve({ rest: at - t0, gap, worst });
       requestAnimationFrame(tick);
     };
