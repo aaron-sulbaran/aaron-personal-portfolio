@@ -126,7 +126,7 @@ describe("the fourteen cards", () => {
     for (const entry of cards.jobs.timeline) expect(entry.tip.length).toBeGreaterThan(0);
   });
 
-  it("writes the jobs modal as Aaron's title and four paragraphs, with his LinkedIn post embedded beside the last", () => {
+  it("writes the jobs modal as Aaron's title and four paragraphs, with his LinkedIn post beside the last", () => {
     const { modal, tag } = cards.jobs;
     expect(modal.title).toBe('The "unflattering" jobs that shaped me');
     expect(modal.blocks).toHaveLength(4);
@@ -135,8 +135,8 @@ describe("the fourteen cards", () => {
     expect(modal.blocks[2]).toBe("I think these jobs are an opportunity to experience the other side of daily interactions you might never think of after finishing your degree. That's why I've never shied away from a service industry job. I also learned how to make a fire pizza.");
     expect(modal.blocks[3]).toBe("I wrote about my work experience outside of class on LinkedIn, and my hook was \"I don't trust people who haven't worked an unflattering job.\" It got 130,000 impressions and almost a thousand reactions. My favorite line is \"You know to be nice to the person behind the counter because you were the person behind the counter.\" I guess it resonated with people.");
     expect(modal.links).toEqual([{ label: "The LinkedIn post", href: "https://lnkd.in/p/g3mXFGcY" }]);
-    // Aaron's embed code, as written: the src exactly, the native size, and a title in my words (never "Embedded post").
-    expect(modal.embed).toEqual({ src: "https://www.linkedin.com/embed/feed/update/urn:li:ugcPost:7463750786611630080", width: 504, height: 1258, title: "My LinkedIn post about unflattering jobs", beside: 3 });
+    // The post as its card, no longer LinkedIn's frame (Aaron, 2026-11-09): as wide as a pair of photos, named in my words.
+    expect(modal.embed).toEqual({ width: 504, title: "My LinkedIn post about unflattering jobs", beside: 3 });
     expect(modal.embed!.beside, "beside the paragraph about the post").toBe(modal.blocks.length - 1);
     expect(tag.name).toBe("Aaron");
     expect(tag.tipLabel).toBe("My tip");
@@ -144,10 +144,10 @@ describe("the fourteen cards", () => {
     for (const text of [modal.title, ...modal.blocks, modal.embed!.title, tag.name, tag.tipLabel, tag.label("Apple"), ...cards.jobs.timeline.map((entry) => entry.tip)]) expect(text, text).not.toMatch(/\u2014/);
   });
 
-  it("gives a phone the post as a link card in the embed's place: the post's own link, its hook line as Aaron wrote it, his name", () => {
+  it("draws the post as a link card: the post's own link, its hook line as Aaron wrote it, his name, then View on LinkedIn", () => {
     const { modal } = cards.jobs;
     const card = modal.postCard!;
-    expect(card).toEqual({ href: "https://lnkd.in/p/g3mXFGcY", byline: "Aaron Sulbaran", hook: "I don't trust people who haven't worked an unflattering job.", cta: "Read the post on LinkedIn" });
+    expect(card).toEqual({ href: "https://lnkd.in/p/g3mXFGcY", byline: "Aaron Sulbaran", hook: "I don't trust people who haven't worked an unflattering job.", cta: "View on LinkedIn" });
     expect(card.href, "the modal's own link to the post").toBe(modal.links[0].href);
     expect(modal.blocks[3], "the hook is the line his paragraph quotes").toContain(card.hook);
     for (const text of [card.byline, card.hook, card.cta]) expect(text, text).not.toMatch(/\u2014/);

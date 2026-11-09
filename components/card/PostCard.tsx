@@ -3,10 +3,10 @@ import { BrandIcon } from "@/components/BrandIcons";
 import { siteContent, type PostCardRef } from "@/lib/content";
 import { TAG_BAND } from "./JobTag";
 
-// The LinkedIn post as a link card, where a phone's pager has no room for the post's own frame (504 by 1258 would scroll inside the page,
-// inside the pager, inside the modal): the name tags' language, flat, with a hairline and the photos' radius and the page's own tokens.
-// A mark across the top, who wrote it, the post's hook line, and one way out, the whole card being the link (a new tab). Words: lib/content
-// (cards.jobs.modal.postCard).
+// The LinkedIn post as a link card, on a desktop row and a phone's pager page alike, never LinkedIn's own frame (Aaron, 2026-11-09: it
+// cropped its photos, ran far longer than the card's words, linked off to random places and broke the cursor): the name tags' language,
+// flat, with a hairline and the photos' radius and the page's own tokens. A mark across the top, who wrote it, the post's hook line, and
+// "View on LinkedIn" right under them, the whole card being the link (a new tab). Words: lib/content (cards.jobs.modal.postCard).
 export function PostCard({ card }: { card: PostCardRef }) {
   return (
     <a
