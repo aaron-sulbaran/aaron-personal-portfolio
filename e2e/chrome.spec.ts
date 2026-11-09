@@ -147,3 +147,43 @@ for (const colorScheme of ["light", "dark"] as const) {
     expect((await facts()).display, "none from 640px up").toBe("none");
   });
 }
+
+// Page 2's list runs through the logo's corner. While a reader stops with the list under the logo, the logo
+// steps aside from 640px up (a phone has the top fade instead) and takes no pointer, so a click there
+// reaches the title; with the Menu open it is back, and it is back once the list has passed.
+async function putUnderLogo(page: import("@playwright/test").Page, title: string) {
+  const y = await page.evaluate((name) => {
+    const row = [...document.querySelectorAll("#work [data-deal-title]")].find((el) => el.textContent?.trim() === name)!;
+    return row.getBoundingClientRect().top + window.scrollY - 18;
+  }, title);
+  await scrollToY(page, y);
+}
+const logoOpacity = (page: import("@playwright/test").Page) => page.locator("[data-mark-trigger]").evaluate((el) => getComputedStyle(el).opacity);
+
+for (const width of [1440, 1280, 768]) {
+  test(`chrome: at ${width}px the logo steps aside while page 2's list is under it and comes back past it`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await openHome(page);
+    const logo = page.locator("[data-mark-trigger]");
+    await expect.poll(() => logoOpacity(page), "page 2's title row is below the logo").toBe("1");
+    await putUnderLogo(page, "IEEE");
+    await expect.poll(() => logoOpacity(page), "a title under the logo").toBe("0");
+    await expect(logo).toHaveCSS("pointer-events", "none");
+    await page.getByRole("button", { name: M.ariaLabelOpen }).click();
+    await expect.poll(() => logoOpacity(page), "back with the Menu open").toBe("1");
+    await page.getByRole("button", { name: M.ariaLabelClose }).click();
+    await expect(page.getByRole("dialog", { name: M.dialogLabel })).toHaveCount(0);
+    await expect.poll(() => logoOpacity(page), "gone again once the Menu closes").toBe("0");
+    await scrollToY(page, await page.evaluate(() => document.getElementById("numbers")!.getBoundingClientRect().top + window.scrollY + 40));
+    await expect.poll(() => logoOpacity(page), "back past the list").toBe("1");
+    await expect(logo).toHaveCSS("pointer-events", "auto");
+  });
+}
+
+test("chrome: on a phone the logo stays over page 2's list, with the top fade under it", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openHome(page);
+  await putUnderLogo(page, "IEEE");
+  await expect(page.locator("[data-mark-trigger]")).toHaveAttribute("data-words-under", "");
+  expect(await logoOpacity(page)).toBe("1");
+});
