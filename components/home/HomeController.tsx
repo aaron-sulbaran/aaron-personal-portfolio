@@ -32,6 +32,7 @@ import { StageRail } from "./StageRail";
 import { QUERIES, useCapabilities } from "./useCapabilities";
 import type { Drivers } from "@/lib/coil/drivers";
 import { CardModal } from "@/components/card/CardModal";
+import { homeDeck } from "@/lib/card/deck";
 import type { CoilEntrance } from "@/components/coil/CoilScene";
 import type { HeroScene } from "@/lib/coil/heroStill";
 import type { CoilCardRef, CoilSceneApi } from "@/components/coil/CoilScene";
@@ -376,6 +377,23 @@ export function HomeController({ children }: Props) {
     });
   }, [selection, flight]);
 
+  // A step to the card before or after (the modal's chevrons, arrow keys, a phone pager's ends): the card left counts as seen now, as a
+  // close would count it, so a run through the deck fills the progress line and the quest line as the visitor goes. A flown card parked
+  // in the modal goes home under the frost at once (the scene stays frozen while the modal is open), and the next card draws its own
+  // media. Focus returns, on close, to the title of the card the visitor ended on.
+  const stepTo = useCallback(
+    (key: CardKey) => {
+      if (!selection || key === selection.key) return;
+      markSeen(selection.key);
+      if (flight) {
+        sceneApiRef.current?.freeze(false);
+        setFlight(null);
+      }
+      setSelection({ key, origin: null });
+    },
+    [selection, flight],
+  );
+
   // Where focus goes when the modal closes, never scrolling the page (lib/modal useFocusTrap): the title or list row that opened it, or,
   // for a card opened in the Coil (its canvas has nothing to focus), the card's title in the columns. With neither on the page, focus goes
   // back to whatever held it when the modal opened (Deal me in, after the deal), still without a scroll.
@@ -451,7 +469,15 @@ export function HomeController({ children }: Props) {
         />
         {children}
       </section>
-      <CardModal cardKey={selection?.key ?? null} onClose={closeModal} renderMedia={renderMedia} flying={flight?.phase === "out"} returnFocus={returnFocus} />
+      <CardModal
+        cardKey={selection?.key ?? null}
+        onClose={closeModal}
+        renderMedia={renderMedia}
+        flying={flight?.phase === "out"}
+        returnFocus={returnFocus}
+        deck={homeDeck}
+        onStep={stepTo}
+      />
       <Portal>
         {flight && (
           <FlyingTile

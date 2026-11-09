@@ -119,6 +119,13 @@ export const siteContent = {
       roleCarousel: "carousel",
       roleSlide: "slide",
     },
+    // Stepping from one card's modal to the next (components/card/DeckRails): the side chevrons' names and what a
+    // screen reader hears when the card changes.
+    deck: {
+      previousCard: (title: string | null) => (title ? `Previous card: ${title}` : "Previous card"),
+      nextCard: (title: string | null) => (title ? `Next card: ${title}` : "Next card"),
+      announce: (title: string, place: number, count: number) => `${title}, card ${place} of ${count}`,
+    },
   },
   // The Coil hero. The heading is the server-rendered h1; greeting and name
   // are the two parts the scene draws, together, in the canvas.

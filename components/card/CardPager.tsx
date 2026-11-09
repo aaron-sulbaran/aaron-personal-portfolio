@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useReducer, useRef, useState } from "react";
 import { siteContent } from "@/lib/content";
+import type { Step } from "@/lib/card/deck";
 import { pageStage, stageHeight } from "@/lib/gallery/boxes";
 import type { Gallery } from "@/lib/gallery/card";
 import { GALLERY } from "@/lib/gallery/constants";
@@ -20,7 +21,10 @@ import { usePagerDrag } from "./usePagerDrag";
 // tag or post card) on a stage with its words under it. The arrows and dots
 // under the pages, the arrow keys anywhere in the dialog and a sideways drag
 // change pages; a vertical flick on the stage, the header or words that fit
-// closes the modal. Under reduced motion pages change with no travel.
+// closes the modal. Under reduced motion pages change with no travel. Past the
+// first or the last page, a drag or an arrow key goes to the card before or
+// after (onEdge, when the modal has a deck); the arrows under the pages only
+// ever change pages.
 //
 // The pager reads each block of words, each caption and each name tag's
 // natural height as laid out and, before the first paint and again whenever
@@ -32,12 +36,21 @@ import { usePagerDrag } from "./usePagerDrag";
 // a time (lib/content). Nothing scrolls inside a page.
 
 export type PagerLayout = { shape: Shape; trims: Trims; room: string };
-type Props = { gallery: Gallery; base: readonly Page[]; pages: readonly Page[]; renderMedia: boolean; onClose: () => void; layout: PagerLayout; onLayout: (next: PagerLayout) => void };
+type Props = {
+  gallery: Gallery;
+  base: readonly Page[];
+  pages: readonly Page[];
+  renderMedia: boolean;
+  onClose: () => void;
+  onEdge?: (step: Step) => void;
+  layout: PagerLayout;
+  onLayout: (next: PagerLayout) => void;
+};
 type Room = { width: number; height: number; visible: number };
 
 const g = siteContent.modals.gallery;
 
-export function CardPager({ gallery, base, pages, renderMedia, onClose, layout, onLayout }: Props) {
+export function CardPager({ gallery, base, pages, renderMedia, onClose, onEdge, layout, onLayout }: Props) {
   const count = pages.length;
   const reduced = useReducedMotionLive();
   const [state, dispatch] = useReducer(pagerReducer, { index: 0, count });
@@ -46,7 +59,11 @@ export function CardPager({ gallery, base, pages, renderMedia, onClose, layout, 
   const rootRef = useRef<HTMLDivElement | null>(null);
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const index = pageAt(state.index, count);
-  const { dragPx, pressing, handlers } = usePagerDrag(rootRef, { index, count, reduced, dispatch, onDismiss: onClose });
+  const { dragPx, pressing, handlers } = usePagerDrag(rootRef, { index, count, reduced, dispatch, onDismiss: onClose, onEdge });
+  const keyRef = useRef({ index, count, onEdge });
+  useEffect(() => {
+    keyRef.current = { index, count, onEdge };
+  });
   const { pager } = GALLERY;
   const visible = room?.visible ?? 0;
   const cap = visible * pager.stageMax;
@@ -140,7 +157,10 @@ export function CardPager({ gallery, base, pages, renderMedia, onClose, layout, 
       const target = e.target as Node | null;
       if (!dialog || !(target === document.body || (target !== null && dialog.contains(target)))) return;
       e.preventDefault();
-      dispatch({ type: e.key === "ArrowRight" ? "next" : "prev" });
+      const step = e.key === "ArrowRight" ? 1 : -1;
+      const { index: at, count: pages, onEdge: edge } = keyRef.current;
+      if (edge && (step === 1 ? at >= pages - 1 : at <= 0)) edge(step);
+      else dispatch({ type: step === 1 ? "next" : "prev" });
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);

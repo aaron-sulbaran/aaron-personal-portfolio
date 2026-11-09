@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type RefObject } from "react";
+import type { Step } from "@/lib/card/deck";
 import { GALLERY } from "@/lib/gallery/constants";
 import { axisOf, releaseOf, rubberBand, type Axis, type PagerAction } from "@/lib/gallery/pager";
 
@@ -10,12 +11,13 @@ import { axisOf, releaseOf, rubberBand, type Axis, type PagerAction } from "@/li
 // and closes the modal past the flick, else springs back; a vertical drag on
 // words that scroll is theirs. A press anywhere on the pager holds a turning
 // group until the pointer comes up (pressing). A press on a button, a link or
-// a video (its controls, its seek bar) is theirs.
+// a video (its controls, its seek bar) is theirs. A turn past the first or the
+// last page goes to the card before or after, where the modal has one (onEdge).
 
 type Drag = { id: number; x: number; y: number; axis: Axis | null; lastX: number; lastY: number; lastT: number; velocity: number; scrolls: boolean };
-type Options = { index: number; count: number; reduced: boolean; dispatch: (action: PagerAction) => void; onDismiss: () => void };
+type Options = { index: number; count: number; reduced: boolean; dispatch: (action: PagerAction) => void; onDismiss: () => void; onEdge?: (step: Step) => void };
 
-export function usePagerDrag(rootRef: RefObject<HTMLElement | null>, { index, count, reduced, dispatch, onDismiss }: Options) {
+export function usePagerDrag(rootRef: RefObject<HTMLElement | null>, { index, count, reduced, dispatch, onDismiss, onEdge }: Options) {
   const [dragPx, setDragPx] = useState<number | null>(null);
   const [pressing, setPressing] = useState(false);
   const drag = useRef<Drag | null>(null);
@@ -76,7 +78,11 @@ export function usePagerDrag(rootRef: RefObject<HTMLElement | null>, { index, co
     setDragPx(null);
     const dy = e.clientY - d.y;
     const release = cancelled ? "stay" : releaseOf(d.axis, e.clientX - d.x, dy, d.velocity, { flickPx: GALLERY.pager.flickPx });
-    if (release === "next" || release === "prev") dispatch({ type: release });
+    if (release === "next" || release === "prev") {
+      const step: Step = release === "next" ? 1 : -1;
+      if (onEdge && (step === 1 ? index >= count - 1 : index <= 0)) onEdge(step);
+      else dispatch({ type: release });
+    }
     else if (release === "dismiss") {
       if (!reduced) movePanel(Math.sign(dy) * (rootRef.current?.clientHeight ?? 600), GALLERY.pager.dismissMs);
       onDismiss();

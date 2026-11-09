@@ -14,6 +14,7 @@ import { RoadVariant } from "./RoadVariant";
 import { useLaneMaskIn } from "./useLaneMaskIn";
 import { markQuestFound } from "@/lib/quests";
 import { useQuickModal } from "./useQuickModal";
+import { deckOf } from "@/lib/card/deck";
 import { WhatsNext } from "./WhatsNext";
 
 // The Express lane: its head, then the years in the chosen variant, What's next
@@ -40,8 +41,9 @@ type Props = {
 
 export function ExpressLane({ variant = "rail", titleMode, titleDelayMs, titleStaggerMs, titleDurationMs, texts = DEFAULT_TEXTS, nextVariant = DEFAULT_NEXT_ID, showNextA = true, showLookingB = true, speed = 1, forceReduced = false, replay = 0, visit = false }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
-  const { open, modal } = useQuickModal();
   const rows = useMemo(() => yearRows(quickEntries, yearLines(texts)), [texts]);
+  const deck = useMemo(() => deckOf(rows.flatMap((row) => row.entries.map((entry) => entry.id))), [rows]);
+  const { open, modal } = useQuickModal(deck);
   const lines = nextLines(nextVariant, texts);
   const next = showNextA && lines.full ? lines.full : null;
   const looking = showLookingB && lines.short ? lines.short : null;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import type { Step } from "@/lib/card/deck";
 import type { Gallery } from "@/lib/gallery/card";
 import { shapeKey, trimsKey } from "@/lib/gallery/paginate";
 import { repage } from "@/lib/gallery/plan";
@@ -18,12 +19,13 @@ import type { GalleryLayout } from "./useGalleryLayout";
 // and never touches the photo a parked flown card covers. A phone's pager
 // measures its pages and lays them out so every page has a photo and words
 // (lib/gallery/paginate), and the mask-in is laid again on the pages that
-// follow (before the first paint, so nothing is seen).
-type Props = { gallery: Gallery; layout: GalleryLayout; renderMedia: boolean; flying: boolean; onClose: () => void };
+// follow (before the first paint, so nothing is seen). onEdge: a turn past the
+// pager's first or last page goes to the card before or after (useDeckStep).
+type Props = { gallery: Gallery; layout: GalleryLayout; renderMedia: boolean; flying: boolean; onClose: () => void; onEdge?: (step: Step) => void };
 
 const UNMEASURED: PagerLayout = { shape: {}, trims: {}, room: "" };
 
-export function CardBody({ gallery, layout, renderMedia, flying, onClose }: Props) {
+export function CardBody({ gallery, layout, renderMedia, flying, onClose, onEdge }: Props) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const reduced = useReducedMotionLive();
   const [measured, setMeasured] = useState<PagerLayout>(UNMEASURED);
@@ -41,7 +43,7 @@ export function CardBody({ gallery, layout, renderMedia, flying, onClose }: Prop
       {layout === "rows" ? (
         <CardRows gallery={gallery} renderMedia={renderMedia} flying={flying} onClose={onClose} />
       ) : paged ? (
-        <CardPager gallery={gallery} base={base} pages={pages} renderMedia={renderMedia} onClose={onClose} layout={measured} onLayout={setMeasured} />
+        <CardPager gallery={gallery} base={base} pages={pages} renderMedia={renderMedia} onClose={onClose} onEdge={onEdge} layout={measured} onLayout={setMeasured} />
       ) : (
         <CardWords gallery={gallery} renderMedia={renderMedia} flying={flying} onClose={onClose} />
       )}
