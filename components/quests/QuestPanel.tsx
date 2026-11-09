@@ -39,6 +39,7 @@ export function QuestPanel({ open, onClose, state, category, onCategory, returnT
   const touch = useCoarsePointer();
   const panelRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
+  const introId = useId();
   useBodyScrollLock(open);
   useEscapeKey(open, onClose);
   useFocusTrap(panelRef, open, returnTo);
@@ -69,6 +70,7 @@ export function QuestPanel({ open, onClose, state, category, onCategory, returnT
               role="dialog"
               aria-modal="true"
               aria-labelledby={titleId}
+              aria-describedby={introId}
               data-quest-panel=""
               className="fixed inset-x-3 bottom-3 z-50 mx-auto max-h-[calc(100dvh-1.5rem)] max-w-[26rem] overflow-y-auto overscroll-contain rounded-2xl bg-glass-strong p-5 backdrop-blur-xl [box-shadow:inset_0_0_0_1px_var(--color-border)] md:bottom-8"
               initial={exit}
@@ -84,9 +86,11 @@ export function QuestPanel({ open, onClose, state, category, onCategory, returnT
                   <X size={18} />
                 </button>
               </div>
+              <p id={introId} className="mt-1 text-sm text-muted">{copy.intro}</p>
               <div className="mt-3">
                 <PillToggle label={copy.title} options={CATEGORIES} value={category} onChange={onCategory} names={{ any: copy.categories.any.label, full: copy.categories.full.label }} />
               </div>
+              <p className="mt-2 text-xs text-muted">{copy.categories[category].meaning}</p>
               <div className="mt-5 flex items-baseline gap-3">
                 <span className="sr-only">{copy.clock}</span>
                 <RunTime ms={shownMs} className={`font-display text-[2.75rem] leading-none ${finish ? "text-accent" : "text-foreground"}`} />

@@ -16,10 +16,13 @@ export const questCopy = {
     title: "Your run",
     close: "Close",
     clock: "Time",
+    // These two lines are for readers who don't know speedrunning: they
+    // explain the terms rather than repeat the rows.
+    intro: "A speedrun of my site: the clock is your time here, and the list is everything there is to find.",
     categories: {
-      any: { label: "Any%" },
-      full: { label: "100%" },
-    } satisfies Record<QuestCategory, { label: string }>,
+      any: { label: "Any%", meaning: "Any% is the quick way through: a few of each." },
+      full: { label: "100%", meaning: "100% is finding every last thing." },
+    } satisfies Record<QuestCategory, { label: string; meaning: string }>,
     // An open row's line is a way there: a tap closes the run and takes the
     // visitor to the place (touch is the line a touch screen reads).
     groups: {
