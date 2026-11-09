@@ -1,3 +1,5 @@
+import { SECURITY_HEADERS } from "./lib/security/headers.mjs";
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // No x-powered-by header: it names the framework to anyone shopping for its advisories.
@@ -30,6 +32,10 @@ const nextConfig = {
       { source: "/simple", destination: "/quick", permanent: false },
       { source: "/recruiter", destination: "/quick", permanent: false },
     ];
+  },
+  // Every response, pages, assets and 404s alike (lib/security/headers.mjs).
+  async headers() {
+    return [{ source: "/:path*", headers: SECURITY_HEADERS }];
   },
 };
 
