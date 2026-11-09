@@ -8,7 +8,7 @@ import { openHome, scrollToY } from "./support/coil";
 import { settled } from "./support/fallback";
 import { toFooter, waitForWord } from "./support/footer";
 import { BAND_CARD, CLONE, ISLAND, PLAYER_PILL, bandPastLine, morphSamples, pillState, playFromBand, recordMorph, viewportHeight } from "./support/player";
-import { bandInkPixels, documentTop, parkBand, pathInk } from "./support/wave";
+import { bandInkPixels, documentTop, headAtRest, parkBand, pathInk } from "./support/wave";
 import type { PathProbe } from "@/lib/wavepath/probe";
 
 // The soundtrack player: the band's card after Play it, the hand-off into the
@@ -465,6 +465,7 @@ test.describe("the wave as one line", () => {
   test("player: the idle ripple runs while the line is held, declined or paused, stops frozen, and steps aside for the music", async ({ page }) => {
     await openHome(page, { path: HOME });
     await parkBand(page);
+    await headAtRest(page);
     await page.mouse.move(4, 4);
     await decline(page).click();
     await expect.poll(async () => (await frame(page)).idle, { message: "the idle ripple while declined and held" }).toBeGreaterThan(0.9);

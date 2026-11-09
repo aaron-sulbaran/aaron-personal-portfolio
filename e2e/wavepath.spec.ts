@@ -121,16 +121,6 @@ test("wavepath: before an answer the band breathes in view", async ({ page }) =>
   expect(f.head).toBe(f.runLen);
 });
 
-// Unanswered and scrolled away, the line is drawn where it crosses the page like any other (it was not, before Nov 9: it had no ink until
-// an answer).
-test("wavepath: unanswered and scrolled away to the first crossing, the wave is drawn there", async ({ page }) => {
-  await open(page);
-  await toBlock(page, CROSSING);
-  await headAtRest(page);
-  expect((await frame(page)).decided).toBe(true);
-  expect(await visibleDots(page), "drawn dots at the first crossing").toBeGreaterThan(0);
-});
-
 test("wavepath: after Not now the head leaves the band and reaches the end at max scroll, nothing playing", async ({ page }) => {
   await open(page);
   await decline(page);

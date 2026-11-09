@@ -19,6 +19,15 @@ export async function parkBand(page: Page, at = BAND_PARK) {
   await scrollToY(page, Math.round(y));
 }
 
+// The wave's head at rest on its target. Scrolled past an unanswered prompt the wave follows the reader (Nov 9), so a page opened at the
+// cards and scrolled back to the band has the head easing back to the run's end; a test that needs the quiet band waits for it here.
+export async function headAtRest(page: Page) {
+  await page.waitForFunction(() => {
+    const f = (window as unknown as { __wavePath: { frame: () => { head: number; target: number; length: number } | null } }).__wavePath.frame();
+    return !!f && f.length > 0 && f.head === f.target;
+  });
+}
+
 // The band's bottom edge at `y` px from the viewport's top.
 export async function bandBottomAt(page: Page, y: number) {
   const top = await page.evaluate((y) => document.getElementById("listen")!.getBoundingClientRect().bottom + window.scrollY - y, y);
