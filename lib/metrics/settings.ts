@@ -24,9 +24,9 @@ export const MORPH = { triggerPct: 60, inViewShare: 0.6, settledMs: 120, settleS
 // Which series the strip's chart shows: Commits (GitHub) or Tokens (Claude Code and Codex).
 export type SeriesChoice = "commits" | "tokens";
 
-// The Tokens view and the switch between the two (the metrics lab tunes
-// these; /lab/metrics, dev only). The token days are far more skewed than the
-// commits (one 7.5B day over a 72M median), so the curve lifts the small days.
+// The Tokens view and the switch between the two. The token days are far more
+// skewed than the commits (one 7.5B day over a 72M median), so the curve lifts
+// the small days.
 // minShare 0 draws each tool's true share of a day; segmentGap is the seam of
 // page colour between the two tools' segments, in CSS pixels. The wave is the
 // switch carried across the strip (lib/metrics/wave.ts): waveGapMs between
