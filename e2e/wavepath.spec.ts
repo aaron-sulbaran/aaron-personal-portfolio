@@ -84,15 +84,29 @@ for (const size of [{ width: 1440, height: 900 }, { width: 1024, height: 768 }, 
 
 test("wavepath: before an answer the band run is level and the head waits at its end", async ({ page }) => {
   await open(page);
-  let f = await frame(page);
+  const f = await frame(page);
   expect(f.decided).toBe(false);
   expect(f.runLen).toBeGreaterThan(0);
   expect(f.head).toBe(f.runLen);
   expect(f.runFlat, "the run's largest step off its line, px").toBeLessThan(0.5);
+});
+
+// Aaron, Nov 9: a reader who scrolls on past the prompt without pressing anything has said no. The wave alone takes it as a Not now and
+// trails them; the soundtrack stays unanswered with nothing saved, so the prompt and its "Music?" pill (intro.spec) are as they were,
+// and back at the prompt the run waits level again.
+test("wavepath: scrolling on past an unanswered prompt lets the head follow, and back at it the run waits", async ({ page }) => {
+  await open(page);
   await toBlock(page, BELOW_BAND);
-  await page.waitForTimeout(500);
+  await headAtRest(page);
+  let f = await frame(page);
+  expect(f.decided, "the wave follows").toBe(true);
+  expect(f.head, "the head has left the run").toBeGreaterThan(f.runLen);
+  expect(await page.evaluate(() => localStorage.getItem("aaron-soundtrack")), "nothing is saved").toBeNull();
+  await parkBand(page);
+  await headAtRest(page);
   f = await frame(page);
-  expect(f.head, "held at the run's end past the band").toBe(f.runLen);
+  expect(f.decided, "the prompt is back and still open").toBe(false);
+  expect(f.head, "the run waits level at its end").toBe(f.runLen);
 });
 
 // The undecided run breathes slowly (no peaks, no music) and the line does not follow: the head still waits.
@@ -107,17 +121,14 @@ test("wavepath: before an answer the band breathes in view", async ({ page }) =>
   expect(f.head).toBe(f.runLen);
 });
 
-// Before an answer the path has no ink, so with the band off screen and no ripple the loop sleeps.
-test("wavepath: undecided, with the band out of view, the loop sleeps", async ({ page }) => {
+// Unanswered and scrolled away, the line is drawn where it crosses the page like any other (it was not, before Nov 9: it had no ink until
+// an answer).
+test("wavepath: unanswered and scrolled away to the first crossing, the wave is drawn there", async ({ page }) => {
   await open(page);
-  await toBlock(page, "#numbers");
-  await page.mouse.move(4, 4);
-  // The band's last frames after it leaves view come a beat late; wait for a full second of none.
-  await expect.poll(async () => { const a = await ticks(page); await page.waitForTimeout(1000); return (await ticks(page)) === a; }, { timeout: 15_000, message: "conductor frames stop advancing" }).toBe(true);
-  const rested = await ticks(page);
-  await page.waitForTimeout(700);
-  expect(await ticks(page), "conductor frames while undecided and out of view").toBe(rested);
-  expect((await frame(page)).decided).toBe(false);
+  await toBlock(page, CROSSING);
+  await headAtRest(page);
+  expect((await frame(page)).decided).toBe(true);
+  expect(await visibleDots(page), "drawn dots at the first crossing").toBeGreaterThan(0);
 });
 
 test("wavepath: after Not now the head leaves the band and reaches the end at max scroll, nothing playing", async ({ page }) => {
