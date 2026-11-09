@@ -12,6 +12,7 @@ import { MARK } from "@/lib/mark/constants";
 import { BAR_D, BOLT_D, FILL_BOTTOM, LEG_D, VIEW_BOX, risePaint } from "@/lib/mark/geometry";
 import { HOLD_IDLE, advance, cancel, click, press, release, sample, settle, type HoldSource } from "@/lib/mark/hold";
 import { closeMenu, getMenuOpen } from "@/lib/menu";
+import { markQuestFound } from "@/lib/quests";
 
 // The top-left mark. A click scrolls to the top as it always has. A press
 // fills it two-tone from the bottom like the loader's name; a 650ms hold
@@ -71,6 +72,7 @@ export function MarkTrigger({ ariaLabel, className, onActivate }: Props) {
       let state = advance(hold.current, now);
       if (state.phase === "fired") {
         state = settle(state);
+        markQuestFound("egg:logo");
         if (getMenuOpen()) closeMenu();
         openRef.current = true;
         setArmed(true);

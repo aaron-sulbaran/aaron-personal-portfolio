@@ -7,6 +7,7 @@ import { glyphOutline, glyphPose } from "@/lib/footer/face";
 import { eggTransform, letterTransform, periodFrame, shadowEllipse } from "@/lib/footer/frame";
 import { reachInk, rippleReach, swelledXs, type FooterGeometry, type WordRest } from "@/lib/footer/geometry";
 import type { LetterFrame } from "@/lib/footer/word";
+import { markQuestFound } from "@/lib/quests";
 import { useWordMotion, type MotionConfig } from "./useWordMotion";
 
 // The wordmark over the whole footer, in one SVG whose units are the footer's px. The
@@ -187,6 +188,7 @@ export function Wordmark({ text, eggLabel, geo, rest, reduced, stage, egg }: Pro
           aria-label={eggLabel}
           data-egg="period"
           onClick={() => {
+            markQuestFound("egg:period");
             askEgg(egg);
             motion.current.wake();
           }}
