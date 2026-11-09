@@ -10,8 +10,13 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "verify": "pnpm typecheck && pnpm lint && pnpm test",
     "test": "vitest run",
+    "test:related": "vitest related --run",
+    "test:changed": "vitest run --changed origin/main",
     "test:e2e": "playwright test",
+    "test:e2e:holding": "E2E_HOLDING=1 playwright test --project=holding",
     "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
