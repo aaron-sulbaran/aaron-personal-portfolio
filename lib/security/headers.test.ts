@@ -15,8 +15,8 @@ describe("security headers", () => {
       const headers = response.headers;
       expect(headers.get("x-content-type-options"), url).toBe("nosniff");
       expect(headers.get("referrer-policy"), url).toBe("strict-origin-when-cross-origin");
-      expect(headers.get("content-security-policy"), url).toBe("frame-ancestors 'none'");
-      expect(headers.get("x-frame-options"), url).toBe("DENY");
+      expect(headers.get("content-security-policy"), url).toBe("frame-ancestors 'self'");
+      expect(headers.get("x-frame-options"), url).toBe("SAMEORIGIN");
       expect(headers.get("permissions-policy"), url).toBe("camera=(), microphone=(), geolocation=(), payment=(), usb=()");
     }
   });
