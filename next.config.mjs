@@ -4,6 +4,10 @@ import { SECURITY_HEADERS } from "./lib/security/headers.mjs";
 const nextConfig = {
   // No x-powered-by header: it names the framework to anyone shopping for its advisories.
   poweredByHeader: false,
+  // Next 16.4's next dev writes a managed block into AGENTS.md whenever it sees
+  // a coding agent. AGENTS.md is hand-kept (Layer 1 and Layer 2, with a size
+  // budget), so it stays off; false also removes a block an older run left.
+  agentRules: false,
   // The build's own timestamp, inlined at build time: the footer's "Last
   // updated" month is the month this build shipped, never a hand-kept string.
   env: {
