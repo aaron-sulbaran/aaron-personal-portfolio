@@ -97,7 +97,8 @@ describe("each card's gallery", () => {
     expect(photos).toHaveLength(modal.photos.length + timeline.length + 1);
     expect(photos.slice(0, 4).map((photo) => photo.caption)).toEqual(modal.photos.map((photo) => photo.caption));
     expect(photos.slice(4, 9).map((photo) => photo.tag)).toEqual([0, 1, 2, 3, 4]);
-    expect(photos[9].embed).toEqual({ src: modal.embed!.src, width: 504, height: 1258, title: "My LinkedIn post about unflattering jobs", card: modal.postCard });
+    expect(photos[9].embed).toEqual({ width: 504, title: "My LinkedIn post about unflattering jobs", card: modal.postCard });
+    expect(photos[9].src, "the post's own address").toBe(modal.postCard!.href);
     expect(photos.filter((photo) => photo.tag !== undefined || photo.embed).every((photo) => photo.caption === null)).toBe(true);
     // Every piece is in exactly one place, in a cluster or beside the words.
     const placed = plan.slides.flatMap((slide) => [...slide.photos, ...(slide.aside ?? [])]);
@@ -123,7 +124,8 @@ describe("each card's gallery", () => {
       expect(boxes![i].height / boxes![i].width).toBeCloseTo(photo.height / photo.width, 6);
     });
     expect(boxes![1]).toEqual({ width: GALLERY.cluster.itemWidth, height: (GALLERY.cluster.itemWidth * 4) / 3 });
-    expect(boxes![9]).toEqual({ width: 506, height: 1260 });
+    // The post's card has a height of its own, as a name tag has, so its box is nominal (the tag's).
+    expect(boxes![9]).toEqual({ width: 506, height: GALLERY.cluster.tagHeight });
     // The rows alternate sides from the left (components/card/CardRows), so no cluster sits under another.
     expect(plan.slides.map((_, i) => (i % 2 === 0 ? "left" : "right"))).toEqual(["left", "right", "left", "right"]);
   });
