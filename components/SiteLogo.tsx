@@ -21,10 +21,10 @@ import { navigateToSection } from "@/lib/scroll";
 // Page 2's list runs through the logo's corner, so while any part of it marked
 // data-logo-clear is under the logo, the logo's button carries
 // data-words-under and app/globals.css fades it out from 640px up (a phone has
-// the top fade instead), never with the Menu open or under keyboard focus
-// (lib/logoClear.ts). The check is a measurement on scroll and resize, written
-// to the button's own attribute so nothing renders, as components/TopFade.tsx
-// does.
+// the top fade instead), never with the Menu open, under keyboard focus or
+// under a pointer already resting on it (lib/logoClear.ts). The check is a
+// measurement on scroll and resize, written to the button's own attribute so
+// nothing renders, as components/TopFade.tsx does.
 export function SiteLogo() {
   const reducedMotion = !!useReducedMotion();
   const menuOpen = useMenuOpen();

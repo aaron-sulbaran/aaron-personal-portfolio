@@ -177,6 +177,11 @@ for (const width of [1440, 1280, 768]) {
     await scrollToY(page, await page.evaluate(() => document.getElementById("numbers")!.getBoundingClientRect().top + window.scrollY + 40));
     await expect.poll(() => logoOpacity(page), "back past the list").toBe("1");
     await expect(logo).toHaveCSS("pointer-events", "auto");
+    // A pointer already resting on the logo keeps it, ring and all (e2e/mark.spec.ts), with the list under it.
+    await logo.hover();
+    await putUnderLogo(page, "IEEE");
+    await expect(logo).toHaveAttribute("data-words-under", "");
+    expect(await logoOpacity(page), "kept under a resting pointer").toBe("1");
   });
 }
 
