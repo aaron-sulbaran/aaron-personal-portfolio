@@ -1,5 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // No x-powered-by header: it names the framework to anyone shopping for its advisories.
+  poweredByHeader: false,
   // The build's own timestamp, inlined at build time: the footer's "Last
   // updated" month is the month this build shipped, never a hand-kept string.
   env: {
