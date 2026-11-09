@@ -86,17 +86,17 @@ export function QuestPanel({ open, onClose, state, category, onCategory, returnT
                   <X size={18} />
                 </button>
               </div>
-              <p id={introId} className="mt-1 text-sm text-muted">{copy.intro}</p>
+              <p id={introId} className="mt-1 text-pretty text-sm text-muted">{copy.intro}</p>
               <div className="mt-3">
                 <PillToggle label={copy.title} options={CATEGORIES} value={category} onChange={onCategory} names={{ any: copy.categories.any.label, full: copy.categories.full.label }} />
               </div>
-              <p className="mt-2 text-xs text-muted">{copy.categories[category].meaning}</p>
+              <p className="mt-2 text-pretty text-xs text-muted">{copy.categories[category].meaning}</p>
               <div className="mt-5 flex items-baseline gap-3">
                 <span className="sr-only">{copy.clock}</span>
                 <RunTime ms={shownMs} className={`font-display text-[2.75rem] leading-none ${finish ? "text-accent" : "text-foreground"}`} />
               </div>
               {finish && <p className="mt-2 text-sm text-muted">{questCopy.finish[category]}</p>}
-              {finish && <p className="mt-1 text-sm text-muted">{questCopy.finish.saved}</p>}
+              {finish && <p className="mt-1 text-pretty text-sm text-muted">{questCopy.finish.saved}</p>}
               <div className="mt-4">
                 <Splits groups={run.groups} found={state.found} touch={touch} category={category} onGo={onGo} />
               </div>
