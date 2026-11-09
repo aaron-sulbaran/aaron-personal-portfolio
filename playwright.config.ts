@@ -84,7 +84,14 @@ export default defineConfig({
   forbidOnly: CI,
   timeout: 45_000,
   expect: { timeout: 10_000 },
-  reporter: [["list"], ["html", { outputFolder: "playwright-report", open: "never" }]],
+  // e2e-results/results.json keeps every run's per-test status and duration at
+  // one path, outside the folders Playwright and the HTML report clear. A CLI
+  // --reporter replaces this whole list, so full runs pass no --reporter.
+  reporter: [
+    ["list"],
+    ["html", { outputFolder: "playwright-report", open: "never" }],
+    ["json", { outputFile: "e2e-results/results.json" }],
+  ],
   use: {
     trace: "on-first-retry",
     screenshot: "only-on-failure",
