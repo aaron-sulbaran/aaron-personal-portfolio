@@ -7,7 +7,8 @@ import { useSeen } from "@/lib/home/seen";
 // set the dots and the Coil's rings read). Under the Work column on a desktop,
 // under the two columns on a phone (CardColumns places the one for each).
 // Hidden until the first card is opened: its room is kept, so nothing moves when
-// it appears, and it is out of the accessibility tree while it is hidden. The
+// it appears, and it is out of the accessibility tree while it is hidden (and,
+// hidden, it does not move the logo aside: components/SiteLogo.tsx). The
 // bar grows by transform only. A card counts once, when the visitor leaves it
 // (a close, or a step from its modal to the card before or after).
 const TOTAL = siteContent.columns.order.reduce((sum, column) => sum + column.groups.reduce((n, group) => n + group.titles.length, 0), 0);
@@ -23,6 +24,7 @@ export function CardProgress({ className = "" }: { className?: string }) {
   return (
     <div
       data-card-progress=""
+      data-logo-clear={shown ? "" : undefined}
       aria-hidden={shown ? undefined : true}
       className={`transition-opacity duration-500 ease-out motion-reduce:transition-none ${shown ? "opacity-100" : "opacity-0"} ${className}`}
     >
