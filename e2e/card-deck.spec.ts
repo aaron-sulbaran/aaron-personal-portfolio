@@ -12,7 +12,8 @@ import { cardDialog, cardRow, openCardFromBook, panelAtRest } from "./support/ca
 
 // Stepping from one card's modal to the next without closing it (components/card/DeckRails, useDeckStep, lib/card/deck): the side
 // chevrons and the arrow keys on a desktop, a swipe past a phone pager's first or last page (Aaron's pick, 2026-11-09), the order the
-// page shows its cards, and every card stepped past counting as opened, for the progress line and the quest line alike.
+// page shows its cards, going round its ends until every card has been seen (then the end's chevron grays), and every card stepped
+// past counting as opened, for the progress line and the quest line alike.
 
 const d = siteContent.modals.deck;
 const title = (key: CardKey) => siteContent.cards[key].short;
@@ -21,10 +22,10 @@ const questState = (page: Page) => page.evaluate(() => JSON.parse(localStorage.g
 const shownCard = (page: Page) => page.locator('[role="dialog"][data-card-modal]').getAttribute("data-card-modal");
 
 test.describe("on a desktop", () => {
-  // Guards: the chevrons stepping in the wrong order, past an end, or reopening the modal's shell; a flown card left parked so the
-  // next title no longer opens; the card left not counting. Fails at: the dialog marker, a chevron's name, the seen list, or the
-  // second open.
-  test("the side chevrons step through page 2's order in one open modal, and every card left counts as opened", async ({ page }) => {
+  // Guards: the chevrons stepping in the wrong order, stopping at an end while cards are unseen, or reopening the modal's shell; a
+  // flown card left parked so the next title no longer opens; the card left not counting. Fails at: the dialog marker, a chevron's
+  // name, the seen list, or the second open.
+  test("the side chevrons step through page 2's order in one open modal, go round its ends while cards are unseen, and every card left counts", async ({ page }) => {
     const { dialog } = await openCardFromBook(page, "ieee");
     await dialog.evaluate((el) => el.setAttribute("data-shell", "first"));
     await expect(page.getByRole("button", { name: d.previousCard(title("anthropic")) })).toBeVisible();
@@ -46,11 +47,13 @@ test.describe("on a desktop", () => {
     await cardRow(page, "travel").click();
     await expect(cardDialog(page, "travel")).toBeVisible();
     await panelAtRest(page, "travel");
+    // Travel is page 2's last card, and eleven are unseen: the deck goes round to Capital One.
     const next = page.locator('[data-deck-step="next"]');
-    await expect(next).toHaveAttribute("aria-disabled", "true");
-    await expect(next).toHaveAccessibleName(d.nextCard(null));
-    await next.dispatchEvent("click");
-    expect(await shownCard(page)).toBe("travel");
+    await expect(next).not.toHaveAttribute("aria-disabled", "true");
+    await expect(next).toHaveAccessibleName(d.nextCard(title("capital-one")));
+    await next.click();
+    await panelAtRest(page, "capital-one");
+    await expect(page.locator('[data-deck-step="prev"]')).toHaveAccessibleName(d.previousCard(title("travel")));
   });
 
   // Guards: the chevrons scrolling away with a long card, sitting on its words, or out of the focus trap. Fails at: the centre read
@@ -80,12 +83,14 @@ test.describe("on a desktop", () => {
     await expect(page.locator('[data-deck-step="next"]')).toBeFocused();
   });
 
-  // Guards: the arrow keys skipping a card, wrapping, or stepping the rotator's photos and the card at once; the run's card group not
-  // filling when the deck is walked instead of opened from the titles. Fails at: the walk's order, the end read, or the quest reads.
-  test("the arrow keys walk all fourteen, stop at the ends, and fill the Any% and 100% runs' cards", async ({ page }) => {
+  // Guards: the arrow keys skipping a card, going round once all are seen, or stepping the rotator's photos and the card at once;
+  // the run's card group not filling when the deck is walked instead of opened from the titles. Fails at: the walk's order, the end
+  // reads, or the quest reads.
+  test("the arrow keys walk all fourteen, gray the end once all are seen, and fill the Any% and 100% runs' cards", async ({ page }) => {
     await page.goto("/");
     await settled(page);
     await openCardFromBook(page, "capital-one", { home: false });
+    await expect(page.locator('[data-deck-step="prev"]')).toHaveAccessibleName(d.previousCard(title("travel")));
     const walked: (string | null)[] = [await shownCard(page)];
     for (let i = 0; i < homeDeck.length; i++) {
       await page.keyboard.press("ArrowRight");
@@ -93,6 +98,11 @@ test.describe("on a desktop", () => {
       walked.push(await shownCard(page));
     }
     expect(walked).toEqual([...homeDeck, homeDeck[homeDeck.length - 1]]);
+    const next = page.locator('[data-deck-step="next"]');
+    await expect(next).toHaveAttribute("aria-disabled", "true");
+    await expect(next).toHaveAccessibleName(d.nextCard(null));
+    await next.dispatchEvent("click");
+    expect(await shownCard(page)).toBe(homeDeck[homeDeck.length - 1]);
     await page.keyboard.press("ArrowLeft");
     await expect.poll(() => shownCard(page)).toBe(homeDeck[homeDeck.length - 2]);
     await page.keyboard.press("Escape");
@@ -137,7 +147,7 @@ test.describe("on a desktop", () => {
     await first.scrollIntoViewIfNeeded();
     await first.click();
     await panelAtRest(page, deck[0]);
-    await expect(page.locator('[data-deck-step="prev"]')).toHaveAttribute("aria-disabled", "true");
+    await expect(page.locator('[data-deck-step="prev"]')).toHaveAccessibleName(d.previousCard(title(deck[deck.length - 1])));
     for (const key of deck.slice(1, 4)) {
       await page.getByRole("button", { name: d.nextCard(title(key)) }).click();
       await panelAtRest(page, key);

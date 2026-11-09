@@ -3,13 +3,15 @@
 import { animate } from "framer-motion";
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { siteContent, type CardKey } from "@/lib/content";
-import { placeIn, stepFrom, type CardDeck, type Step } from "@/lib/card/deck";
+import { goesRound, placeIn, stepFrom, type CardDeck, type Step } from "@/lib/card/deck";
+import { useSeen } from "@/lib/home/seen";
 import { GALLERY } from "@/lib/gallery/constants";
 
 // Stepping the card modal to the card before or after it (lib/card/deck): the
 // step itself, the arrow keys where the pager does not own them (the desktop
 // rows, and a phone card with no pages; a phone pager hands its ends up
-// through onEdge instead), a sideways swipe on a phone card with no pages, and
+// through onEdge instead), going round past the deck's ends until every card
+// has been seen (the seen store), a sideways swipe on a phone card with no pages, and
 // the landing: the dialog back at its top, focus kept in the dialog, and the
 // new panel coming in from the side it was asked for (a fade alone under
 // reduced motion). The parent swaps
@@ -32,9 +34,10 @@ const FADE_S = 0.18;
 const TYPING = "input, textarea, select, video, audio, [contenteditable='true'], [role='slider']";
 
 export function useDeckStep({ dialogRef, panelRef, cardKey, deck, onStep, keys, swipe, reduced }: Options) {
-  const live = deck && onStep && cardKey ? { deck, onStep, cardKey } : null;
-  const prev = live ? stepFrom(live.deck, live.cardKey, -1) : null;
-  const next = live ? stepFrom(live.deck, live.cardKey, 1) : null;
+  const seen = useSeen();
+  const live = deck && onStep && cardKey ? { deck, onStep, cardKey, wrap: goesRound(deck, cardKey, seen) } : null;
+  const prev = live ? stepFrom(live.deck, live.cardKey, -1, live.wrap) : null;
+  const next = live ? stepFrom(live.deck, live.cardKey, 1, live.wrap) : null;
   const landingRef = useRef<Step | 0>(0);
   const [heard, setHeard] = useState<CardKey | null>(null);
   if (cardKey === null && heard !== null) setHeard(null);
@@ -43,7 +46,7 @@ export function useDeckStep({ dialogRef, panelRef, cardKey, deck, onStep, keys, 
   useEffect(() => {
     stepRef.current = (step: Step) => {
       if (!live) return;
-      const target = stepFrom(live.deck, live.cardKey, step);
+      const target = stepFrom(live.deck, live.cardKey, step, live.wrap);
       if (!target) return;
       landingRef.current = step;
       setHeard(target);

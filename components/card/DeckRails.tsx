@@ -12,8 +12,9 @@ import type { Step } from "@/lib/card/deck";
 // fixed layer would scroll away with the content, since the dialog's backdrop
 // filter makes it the fixed layer's containing block. A chevron sits just
 // outside the panel where the gutter has room and straddles the panel's edge
-// (over its padding, never its words) where it has not. At an end the chevron
-// stays, dimmed and aria-disabled, so focus never drops off it.
+// (over its padding, never its words) where it has not. The deck goes round
+// its ends until every card has been seen; then, at an end, the chevron stays,
+// dimmed and aria-disabled, so focus never drops off it.
 
 type Props = { prev: CardKey | null; next: CardKey | null; panelWidth: number; onStep: (step: Step) => void };
 

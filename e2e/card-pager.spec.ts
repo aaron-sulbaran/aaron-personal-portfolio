@@ -217,7 +217,7 @@ async function slowDrag(page: Page, from: { x: number; y: number }, by: { x: num
   await page.mouse.up();
 }
 
-// Past the first page a drag goes to the card before (Aaron's pick, 2026-11-09: e2e/card-deck.spec.ts walks the deck); it never wraps.
+// Past the first page a drag goes to the card before (Aaron's pick, 2026-11-09: e2e/card-deck.spec.ts walks the deck); the pages never wrap.
 test("pager: a sideways drag turns one page, a short one springs back, and past the start it goes to the card before", async ({ page }) => {
   const { dialog } = await openCardFromBook(page, "band", { settled: true });
   const pager = dialog.locator("[data-pager]");
