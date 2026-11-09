@@ -172,7 +172,7 @@ export function createFlight(
     loop.stop();
     const f: Flight = { slot, state: "rest", alpha: pose.alpha, e: 0, rect: null, lastSlot: null, pose: null, gap: 0 };
     flight = f;
-    mount.appendChild(o.canvas);
+    mount.appendChild(o.frame);
     act(f, "open");
     if (!f.pose) {
       flight = null;

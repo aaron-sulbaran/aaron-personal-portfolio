@@ -46,6 +46,8 @@ type Cover = { mesh: Mesh; uBend: { value: number }; uAxis: { value: Vector2 }; 
 
 export type Overlay = {
   canvas: HTMLCanvasElement;
+  // What is mounted: the canvas inside a frame the viewport's size (see createOverlay).
+  frame: HTMLDivElement;
   renderer: WebGLRenderer;
   camera: PerspectiveCamera;
   scene: Scene;
@@ -105,9 +107,15 @@ export function createFlightOverlay(ctx: SceneCtx, gl: Gl, cards: Cards) {
       flownRenderer.setClearColor(new Color(0, 0, 0), 0);
       flownRenderer.autoClear = false;
       flownRenderer.setPixelRatio(1);
-      flownCanvas.style.position = "fixed";
+      flownCanvas.style.position = "absolute";
       flownCanvas.style.pointerEvents = "none";
       flownCanvas.style.display = "block";
+      // The canvas is fitted in whole device px, so it can run a few px past the viewport's bottom or right edge,
+      // and parked in a dialog those px became the dialog's own scroll (21px of drag at 375 by 667). So it sits in
+      // a frame the viewport's size that clips them, fixed where the canvas was fixed: its coordinates are unchanged.
+      const frame = document.createElement("div");
+      Object.assign(frame.style, { position: "fixed", left: "0", top: "0", overflow: "hidden", pointerEvents: "none" });
+      frame.appendChild(flownCanvas);
       const flownShared: SharedCardUniforms = {
         uField: { value: null },
         uView: { value: new Vector4(0, 0, 1, 1) },
@@ -146,6 +154,7 @@ export function createFlightOverlay(ctx: SceneCtx, gl: Gl, cards: Cards) {
       flownScene.add(card, under);
       const created: Overlay = {
         canvas: flownCanvas,
+        frame,
         renderer: flownRenderer,
         camera: new PerspectiveCamera(COIL.camera.fovDeg, 1, 0.1, 100),
         scene: flownScene,
@@ -173,7 +182,7 @@ export function createFlightOverlay(ctx: SceneCtx, gl: Gl, cards: Cards) {
 
   function disposeOverlay(o: Overlay) {
     o.canvas.removeEventListener("webglcontextlost", o.onLost);
-    o.canvas.remove();
+    o.frame.remove();
     o.faces.forEach((face) => {
       face.front.dispose();
       face.back.dispose();
@@ -233,9 +242,11 @@ export function createFlightOverlay(ctx: SceneCtx, gl: Gl, cards: Cards) {
     const width = gridSize((window.innerWidth - left) * sx, device / sx);
     const height = gridSize((window.innerHeight - top) * sy, device / sy);
     o.origin = { left: rect.left, top: rect.top };
-    const fitted = [left, top, width, height, buffer.x, buffer.y, view.width, view.height, st.lastFieldTime].join(",");
+    const fitted = [left, top, width, height, buffer.x, buffer.y, view.width, view.height, st.lastFieldTime, window.innerWidth, window.innerHeight].join(",");
     if (fitted === o.fitted) return;
     o.fitted = fitted;
+    o.frame.style.width = `${window.innerWidth}px`;
+    o.frame.style.height = `${window.innerHeight}px`;
     o.renderer.setSize(width, height, false);
     o.canvas.style.left = `${left}px`;
     o.canvas.style.top = `${top}px`;
@@ -342,7 +353,7 @@ export function createFlightOverlay(ctx: SceneCtx, gl: Gl, cards: Cards) {
       overlay.renderer.setSize(1, 1, false);
       overlay.fitted = "";
     }
-    overlay?.canvas.remove();
+    overlay?.frame.remove();
   }
 
   // The drawn overlay, if there is one still able to draw.
