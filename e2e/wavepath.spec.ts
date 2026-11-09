@@ -165,6 +165,33 @@ test("wavepath: a 1.5-screen flick never outruns the cap, and arrives", async ({
   expect(run.rest, "the head arrives").toBeLessThan(15_000);
 });
 
+// A64: after a quick scroll from the top to the bottom of a 390 by 844 phone the wave drew on for 12.8 s; at the faster pace it takes
+// about 6.7 s. The bound sits between the two, so the old pace fails it and a slow machine's frames do not.
+test("wavepath: a quick scroll to the bottom of a phone is drawn out within 9 s", async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await open(page);
+  await decline(page);
+  await scrollToY(page, 0);
+  await headAtRest(page);
+  const trailing = await page.evaluate(() => new Promise<{ ms: number; gap: number }>((resolve) => {
+    const p = (window as unknown as W).__wavePath;
+    window.scrollTo({ top: document.documentElement.scrollHeight - window.innerHeight, behavior: "instant" });
+    const t0 = performance.now();
+    let gap = 0;
+    const tick = () => {
+      const f = p.frame()!;
+      const at = performance.now();
+      gap = Math.max(gap, f.target - f.head);
+      if ((gap > 1000 && f.head === f.target) || at - t0 > 30_000) return resolve({ ms: at - t0, gap });
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }));
+  expect(trailing.gap, "the line the scroll left to draw, px of arc").toBeGreaterThan(5000);
+  expect(trailing.ms, "ms until the head is at rest").toBeLessThan(9_000);
+});
+
 test("wavepath: reduced motion draws the whole line still and runs no loop", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto(HOME);
