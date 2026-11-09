@@ -5,7 +5,7 @@ import { defineConfig, devices, type Project } from "@playwright/test";
 
 // The end to end suite (e2e/). It runs against local production builds only,
 // never the dev server, a Vercel preview or the production domain: the full
-// site on 3140 and the holding page on 3141 (a separate build, see
+// site on 3140 and, opted in, the holding page on 3141 (a separate build, see
 // e2e/support/holding-server.mjs, since both modes cannot share one .next).
 // Every slice after wave-band-only serves its own build on its own port and
 // points the suite at it with E2E_BASE_URL; a full run sets E2E_FULL_PORT and
@@ -38,6 +38,10 @@ const OTHER_BUILD = process.env.E2E_BASE_URL;
 if (OTHER_BUILD && !/^http:\/\/localhost:\d+\/?$/.test(OTHER_BUILD)) throw new Error("E2E_BASE_URL must be a localhost URL");
 const FULL_URL = OTHER_BUILD ?? `http://localhost:${FULL_PORT}`;
 const HOLDING_URL = `http://localhost:${HOLDING_PORT}`;
+// The holding page is opt-in (E2E_HOLDING=1, or pnpm test:e2e:holding): its
+// project and its second build join the run only then, so a default run,
+// one spec or the whole suite, starts one build.
+const HOLDING = process.env.E2E_HOLDING === "1";
 
 // The desktop visitor the capture rules are written for: a fine, hovering
 // pointer on a 1440 by 900 pane at 1x.
@@ -80,7 +84,14 @@ export default defineConfig({
   forbidOnly: CI,
   timeout: 45_000,
   expect: { timeout: 10_000 },
-  reporter: [["list"], ["html", { outputFolder: "playwright-report", open: "never" }]],
+  // e2e-results/results.json keeps every run's per-test status and duration at
+  // one path, outside the folders Playwright and the HTML report clear. A CLI
+  // --reporter replaces this whole list, so full runs pass no --reporter.
+  reporter: [
+    ["list"],
+    ["html", { outputFolder: "playwright-report", open: "never" }],
+    ["json", { outputFile: "e2e-results/results.json" }],
+  ],
   use: {
     trace: "on-first-retry",
     screenshot: "only-on-failure",
@@ -97,7 +108,7 @@ export default defineConfig({
         launchOptions: { args: MUTED_ARGS },
       },
     },
-    { name: "holding", testMatch: /holding\.spec\.ts/, use: { ...desktop, baseURL: HOLDING_URL } },
+    ...(HOLDING ? [{ name: "holding", testMatch: /holding\.spec\.ts/, use: { ...desktop, baseURL: HOLDING_URL } }] : []),
     ...otherEngines,
   ],
   webServer: OTHER_BUILD ? [] : [
@@ -112,13 +123,17 @@ export default defineConfig({
       stdout: "ignore",
       stderr: "pipe",
     },
-    {
-      command: `node e2e/support/holding-server.mjs ${HOLDING_PORT}`,
-      url: HOLDING_URL,
-      reuseExistingServer: !CI,
-      timeout: 300_000,
-      stdout: "ignore",
-      stderr: "pipe",
-    },
+    ...(HOLDING
+      ? [
+          {
+            command: `node e2e/support/holding-server.mjs ${HOLDING_PORT}`,
+            url: HOLDING_URL,
+            reuseExistingServer: !CI,
+            timeout: 300_000,
+            stdout: "ignore" as const,
+            stderr: "pipe" as const,
+          },
+        ]
+      : []),
   ],
 });

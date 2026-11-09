@@ -63,8 +63,11 @@ export async function flyCard(page: Page, cdp: CDPSession, kind: "photo" | "work
       );
       return slot ? { slot: slot.slot, key: slot.key } : null;
     }, [kind, only ?? ""] as const);
-  await expect.poll(find, { timeout: 20_000, message: `a ${kind} card on screen` }).not.toBeNull();
-  const { slot, key } = (await find())!;
+  // Keep the card the poll matched: the Coil keeps moving, so a second find()
+  // can come back empty.
+  let spotted = null as Awaited<ReturnType<typeof find>>;
+  await expect.poll(async () => (spotted = await find()), { timeout: 20_000, message: `a ${kind} card on screen` }).not.toBeNull();
+  const { slot, key } = spotted!;
   await page.evaluate((n) => (window as HookWindow).__coilFlight!.scene.follow(n), slot);
   const center = await page.evaluate((n) => (window as HookWindow).__coilFlight!.scene.slot(n)!.center, slot);
   await pointerTo(cdp, center);
