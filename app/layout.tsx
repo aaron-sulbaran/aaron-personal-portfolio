@@ -5,6 +5,7 @@ import { TopFade } from "@/components/TopFade";
 import { MenuPill } from "@/components/menu/MenuPill";
 import { CustomCursor } from "@/components/CustomCursor";
 import { SiteAnalytics } from "@/components/SiteAnalytics";
+import { QuestMount } from "@/components/quests/QuestMount";
 import { InlineLayer } from "@/components/inline/InlineLayer";
 import { InputModality } from "@/components/InputModality";
 import { SoundtrackPlayer } from "@/components/player/SoundtrackPlayer";
@@ -88,6 +89,7 @@ export default function RootLayout({
         {!HOLDING_MODE && <InlineLayer />}
         {children}
         <SiteAnalytics />
+        {!HOLDING_MODE && <QuestMount />}
         {!HOLDING_MODE && <TransitionLayer />}
       </body>
     </html>

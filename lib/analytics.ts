@@ -3,6 +3,10 @@
 // drops those views. The list is empty today.
 const PRIVATE_ROUTES: readonly string[] = [];
 
+export function isPrivatePath(path: string, privateRoutes: readonly string[] = PRIVATE_ROUTES): boolean {
+  return privateRoutes.some((route) => path === route || path.startsWith(`${route}/`));
+}
+
 export function allowAnalyticsEvent(url: string, privateRoutes: readonly string[] = PRIVATE_ROUTES): boolean {
   let path: string;
   try {
@@ -10,5 +14,5 @@ export function allowAnalyticsEvent(url: string, privateRoutes: readonly string[
   } catch {
     return true;
   }
-  return !privateRoutes.some((route) => path === route || path.startsWith(`${route}/`));
+  return !isPrivatePath(path, privateRoutes);
 }
