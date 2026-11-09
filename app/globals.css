@@ -1648,4 +1648,21 @@ html[data-intro-loader="on"] #intro-heading {
     transition: opacity 180ms linear;
   }
 }
+/* The logo steps aside while page 2's list is under it (components/SiteLogo.tsx
+   writes data-words-under): from 640px up, where there is no top fade, and only
+   once the list shows (dealt, or a reduced motion visit, which has no deal).
+   Keyboard focus keeps it, and so does a pointer already resting on it (the
+   ring stays with it, e2e/mark.spec.ts); faded, it takes no pointer, so a
+   click there reaches the title. */
+@media (min-width: 640px) {
+  html:is(:not([data-deal]), [data-deal="dealt"]) [data-mark-trigger][data-words-under]:not(:focus-visible):not(:hover) {
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+@media (min-width: 640px) and (prefers-reduced-motion: no-preference) {
+  [data-mark-trigger] {
+    transition: opacity 200ms ease-out;
+  }
+}
 /* ---- end page 1 ---- */

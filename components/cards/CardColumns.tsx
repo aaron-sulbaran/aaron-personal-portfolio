@@ -16,8 +16,10 @@ import { CardTitle } from "./CardTitle";
 // the columns on a phone; the progress line ("N of 14 opened") closes the Work
 // column, and on a phone the two columns. The labels and titles carry
 // data-deal-label and data-deal-title: the deal holds them back
-// (app/globals.css) and brings them in last (lib/home/dealOpen.ts). A Server
-// Component: only the titles and the progress line are client leaves.
+// (app/globals.css) and brings them in last (lib/home/dealOpen.ts). The title,
+// the columns and the progress line carry data-logo-clear: the logo steps aside
+// while they are under it (components/SiteLogo.tsx). A Server Component: only
+// the titles and the progress line are client leaves.
 export function CardColumns() {
   const [work, builds] = siteContent.columns.order;
   return (
@@ -37,7 +39,7 @@ export function CardColumns() {
 
 function PageTitle({ className }: { className: string }) {
   return (
-    <div data-deal-label="" className={className}>
+    <div data-deal-label="" data-logo-clear="" className={className}>
       <SectionNumber value={PAGE_NUMBERS.work} className="mb-1.5" />
       <TitleFill fillKey="work" gate="deal" backdrop="coil">
         <h2 data-page-title="" className="font-display text-[1.3125rem] leading-[1.12] text-foreground md:text-[clamp(1.25rem,1.7vw,1.75rem)]">
@@ -50,7 +52,7 @@ function PageTitle({ className }: { className: string }) {
 
 function Column({ column, className = "" }: { column: ColumnView; className?: string }) {
   return (
-    <div className={className}>
+    <div data-logo-clear="" className={className}>
       <h3 data-deal-label="" className={HEADING_CLASS}>{column.heading}</h3>
       {column.groups.map((group) => (
         <Group key={group.heading ?? column.key} heading={group.heading}>
