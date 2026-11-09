@@ -1,5 +1,5 @@
 // Every quest id, by group. Cards come from the Coil's order (the keys the seen
-// store receives when a card modal closes), words are scanned out of the intro
+// store receives when a card modal closes or steps on to another card), words are scanned out of the intro
 // copy and then the cards' copy so editing a pop there changes the quest with it, and the eggs
 // and the MVP are fixed. Ids match the visited store's format for words.
 import { cards, strandOrder } from "@/lib/content/cards";

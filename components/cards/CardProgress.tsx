@@ -8,7 +8,8 @@ import { useSeen } from "@/lib/home/seen";
 // under the two columns on a phone (CardColumns places the one for each).
 // Hidden until the first card is opened: its room is kept, so nothing moves when
 // it appears, and it is out of the accessibility tree while it is hidden. The
-// bar grows by transform only. A card counts once, at close, as ever.
+// bar grows by transform only. A card counts once, when the visitor leaves it
+// (a close, or a step from its modal to the card before or after).
 const TOTAL = siteContent.columns.order.reduce((sum, column) => sum + column.groups.reduce((n, group) => n + group.titles.length, 0), 0);
 const KEYS = new Set(siteContent.columns.order.flatMap((column) => column.groups.flatMap((group) => group.titles.map((title) => title.key))));
 
