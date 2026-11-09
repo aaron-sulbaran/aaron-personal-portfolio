@@ -7,6 +7,7 @@ import { test, expect } from "./support/fixtures";
 import { openHome } from "./support/coil";
 import { settled } from "./support/fallback";
 import { cardDialog, flyCard, openCardFromBook, panelAtRest } from "./support/cards";
+import { homeDeck, stepFrom } from "@/lib/card/deck";
 
 // The phone gallery at 390 by 844 (a fine pointer: the pager follows the
 // width, a Coil click flies as it does on a desktop, and a mouse drag is a
@@ -216,12 +217,11 @@ async function slowDrag(page: Page, from: { x: number; y: number }, by: { x: num
   await page.mouse.up();
 }
 
-test("pager: a sideways drag turns one page, a short one springs back, and past the start it stays", async ({ page }) => {
+// Past the first page a drag goes to the card before (Aaron's pick, 2026-11-09: e2e/card-deck.spec.ts walks the deck); it never wraps.
+test("pager: a sideways drag turns one page, a short one springs back, and past the start it goes to the card before", async ({ page }) => {
   const { dialog } = await openCardFromBook(page, "band", { settled: true });
   const pager = dialog.locator("[data-pager]");
   const stage = (i: number) => dialog.locator(`[data-pager-page="${i}"] [data-pager-stage]`);
-  await slowDrag(page, await centerOf(stage(0)), { x: 120, y: 0 });
-  await expect(pager).toHaveAttribute("data-page", "0");
   await slowDrag(page, await centerOf(stage(0)), { x: -30, y: 0 });
   await expect(pager).toHaveAttribute("data-page", "0");
   await slowDrag(page, await centerOf(stage(0)), { x: -120, y: 0 });
@@ -230,6 +230,9 @@ test("pager: a sideways drag turns one page, a short one springs back, and past 
   await slowDrag(page, await centerOf(stage(1)), { x: 120, y: 0 });
   await expect(pager).toHaveAttribute("data-page", "0");
   await expect(dialog).toBeVisible();
+  await page.waitForTimeout(GALLERY.pager.slideMs + 100);
+  await slowDrag(page, await centerOf(stage(0)), { x: 120, y: 0 });
+  await expect(cardDialog(page, stepFrom(homeDeck, "band", -1)!)).toBeVisible();
 });
 
 test("pager: a vertical drag on the stage springs back short of 96px and closes the modal past it", async ({ page }) => {

@@ -19,7 +19,8 @@ type Props = { prev: CardKey | null; next: CardKey | null; panelWidth: number; o
 
 const d = siteContent.modals.deck;
 const glass: CSSProperties = { backgroundColor: "color-mix(in srgb, var(--color-background) 80%, transparent)" };
-// The rows' dialog padding (px-10, py-14), the chevron (h-11), and the gap it keeps from the panel where there is room.
+// The rows' dialog padding (px-10, py-14; a sticky top of 0 is measured inside that padding), the chevron (h-11), and the gap it
+// keeps from the panel where there is room.
 const GUTTER_PX = 40;
 const PAD_Y_PX = 56;
 const SIZE_PX = 44;
@@ -43,8 +44,8 @@ function Rail({ side, target, out, onStep }: { side: "prev" | "next"; target: Ca
   return (
     <div
       data-deck-rail={side}
-      className={`pointer-events-none sticky z-10 w-0 shrink-0 self-start ${isNext ? "" : "order-first"}`}
-      style={{ top: PAD_Y_PX, height: `calc(100dvh - ${PAD_Y_PX * 2}px)` }}
+      className={`pointer-events-none sticky top-0 z-10 w-0 shrink-0 self-start ${isNext ? "" : "order-first"}`}
+      style={{ height: `calc(100dvh - ${PAD_Y_PX * 2}px)` }}
     >
       <button
         type="button"
