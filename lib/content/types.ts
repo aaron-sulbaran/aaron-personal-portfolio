@@ -129,6 +129,9 @@ export interface CardModal {
   // where Aaron captioned it (docs/content/cards.md, "Modal photo captions").
   picture?: { caption: string };
   links: readonly CardLink[];
+  // Links that belong to one paragraph, drawn right under it (by its index in blocks) in every layout, in the card links' style; the
+  // card's own links stay at its foot.
+  paragraphLinks?: Readonly<Record<number, readonly CardLink[]>>;
   photos: readonly ModalPhoto[];
   blocks: readonly string[];
   // A standalone last line after the paragraphs: line, then control, a link-styled button that closes the card and plays the

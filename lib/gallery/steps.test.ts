@@ -41,9 +41,9 @@ describe("a card's mask steps", () => {
     expect(ids(cardSteps(galleryOf("talos"), "rows", false))).toEqual([["title"], ["meta"], ["words-0"], ["sting"], ["words-1"], ["discord"], ["talos"], ["links"]]);
     expect(ids(cardSteps(galleryOf("talos"), "pager", true)).slice(2, 4)).toEqual([["words-0"], ["sting"]]);
   });
-  it("masks the Hackathons card's video as a photo, in its own row with the HackTX paragraph it sits beside", () => {
+  it("masks the Hackathons card's video as a photo, in its own row with the HackTX paragraph it sits beside, each project's links after its paragraph", () => {
     expect(ids(cardSteps(galleryOf("hackathons"), "rows", false))).toEqual([
-      ["title"], ["meta"], ["photo-0", "caption-0", "words-0"], ["photo-1", "caption-1", "words-1"], ["photo-4", "words-2"], ["photo-2", "caption-2", "words-3"], ["photo-3", "caption-3", "words-4"], ["links"],
+      ["title"], ["meta"], ["photo-0", "caption-0", "words-0", "links-0"], ["photo-1", "caption-1", "words-1"], ["photo-4", "words-2", "links-2"], ["photo-2", "caption-2", "words-3"], ["photo-3", "caption-3", "words-4"],
     ]);
   });
   it("starts the sting once its stage has masked in", () => {
