@@ -1,4 +1,5 @@
 import { COIL } from "@/lib/coil/constants";
+import { dealPlaying } from "@/lib/coil/dealPlaying";
 import {
   flightPoseAt,
   handoff,
@@ -225,12 +226,18 @@ export function createFlight(
     };
   }
 
-  // The flown canvas and its program are made ahead of the first click.
+  // The flown canvas and its program are made ahead of the first click. The
+  // context and the compile are one synchronous hitch, so while the deal's
+  // cutscene plays the timer looks again later instead of spending its frames.
   function warm() {
     prewarm = window.setTimeout(() => {
       prewarm = 0;
       // Only a fine pointer flies cards (a tap opens its modal directly).
       if (st.disposed || st.contextLost || overlay.exists() || live.current.input !== "fine") return;
+      if (dealPlaying()) {
+        warm();
+        return;
+      }
       const o = overlay.liveOverlay();
       if (o) o.renderer.compile(o.scene, o.camera);
     }, 1200);

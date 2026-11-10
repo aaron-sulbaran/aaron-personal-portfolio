@@ -1,3 +1,4 @@
+import { dealPlaying } from "@/lib/coil/dealPlaying";
 import { FILL_POOL, distanceToViewport, planPool } from "@/lib/coil/fillPool";
 
 // The DOM half of the title contexts' pool (lib/coil/fillPool.ts): every
@@ -27,8 +28,6 @@ const members = new Map<string, Entry>();
 let observers: IntersectionObserver[] = [];
 let dealWatch: MutationObserver | null = null;
 let queued = 0;
-
-const dealPlaying = () => ["dealing", "unfurled"].includes(document.documentElement.dataset.deal ?? "");
 
 function evaluate() {
   queued = 0;
