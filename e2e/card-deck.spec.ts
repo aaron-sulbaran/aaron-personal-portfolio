@@ -257,6 +257,9 @@ test.describe("on a phone", () => {
     await expect(cardDialog(page, "min-max")).toBeVisible();
     await expect(cardDialog(page, "min-max").locator('[data-pager-arrow="next"]')).toBeFocused();
     expect(await seenKeys(page)).toEqual(["mentorship"]);
+    // The new panel slides in 28px from the side it was asked for, past the dialog's edge on a phone for that slide alone; the
+    // sideways read is of the card at rest, as the swipe test's is.
+    await panelAtRest(page, "min-max");
     expect(await noSideways(page)).toBe(true);
   });
 
