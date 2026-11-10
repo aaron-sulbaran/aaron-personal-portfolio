@@ -1,6 +1,6 @@
 "use client";
 
-import { siteContent } from "@/lib/content";
+import { ErrorPanel } from "@/components/ErrorPanel";
 
 type Props = {
   error: Error & { digest?: string };
@@ -8,23 +8,5 @@ type Props = {
 };
 
 export default function Error({ reset }: Props) {
-  const { title, body, retry } = siteContent.errorPage;
-
-  return (
-    <main
-      id="main"
-      className="flex min-h-screen flex-col items-center justify-center px-6 text-center"
-    >
-      <h1 className="font-display text-display leading-none tracking-tight text-foreground">
-        {title}
-      </h1>
-      <p className="mt-6 max-w-sm text-body-lg text-muted">{body}</p>
-      <button
-        onClick={reset}
-        className="mt-10 font-label text-label leading-6 text-accent transition-colors duration-200 hover:text-accent-hover"
-      >
-        {retry}
-      </button>
-    </main>
-  );
+  return <ErrorPanel reset={reset} />;
 }

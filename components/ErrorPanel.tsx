@@ -1,0 +1,25 @@
+import { siteContent } from "@/lib/content";
+
+// The error page's face, shared by app/error.tsx (inside the layout) and
+// app/global-error.tsx (the last resort, with no layout around it).
+export function ErrorPanel({ reset }: { reset: () => void }) {
+  const { title, body, retry } = siteContent.errorPage;
+
+  return (
+    <main
+      id="main"
+      className="flex min-h-screen flex-col items-center justify-center px-6 text-center"
+    >
+      <h1 className="font-display text-display leading-none tracking-tight text-foreground">
+        {title}
+      </h1>
+      <p className="mt-6 max-w-sm text-body-lg text-muted">{body}</p>
+      <button
+        onClick={reset}
+        className="mt-10 font-label text-label leading-6 text-accent transition-colors duration-200 hover:text-accent-hover"
+      >
+        {retry}
+      </button>
+    </main>
+  );
+}

@@ -4,6 +4,7 @@ import { SiteLogo } from "@/components/SiteLogo";
 import { TopFade } from "@/components/TopFade";
 import { MenuPill } from "@/components/menu/MenuPill";
 import { CustomCursor } from "@/components/CustomCursor";
+import { QuietBoundary } from "@/components/QuietBoundary";
 import { SiteAnalytics } from "@/components/SiteAnalytics";
 import { QuestMount } from "@/components/quests/QuestMount";
 import { InlineLayer } from "@/components/inline/InlineLayer";
@@ -83,14 +84,32 @@ export default function RootLayout({
         {!HOLDING_MODE && <TopFade />}
         {!HOLDING_MODE && <SiteLogo />}
         {!HOLDING_MODE && <MenuPill />}
-        {!HOLDING_MODE && <SoundtrackPlayer />}
+        {!HOLDING_MODE && (
+          <QuietBoundary>
+            <SoundtrackPlayer />
+          </QuietBoundary>
+        )}
         <InputModality />
-        <CustomCursor />
-        {!HOLDING_MODE && <InlineLayer />}
+        <QuietBoundary>
+          <CustomCursor />
+        </QuietBoundary>
+        {!HOLDING_MODE && (
+          <QuietBoundary>
+            <InlineLayer />
+          </QuietBoundary>
+        )}
         {children}
         <SiteAnalytics />
-        {!HOLDING_MODE && <QuestMount />}
-        {!HOLDING_MODE && <TransitionLayer />}
+        {!HOLDING_MODE && (
+          <QuietBoundary>
+            <QuestMount />
+          </QuietBoundary>
+        )}
+        {!HOLDING_MODE && (
+          <QuietBoundary>
+            <TransitionLayer />
+          </QuietBoundary>
+        )}
       </body>
     </html>
   );
