@@ -3,7 +3,7 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { Fill } from "@/components/fx/Fill";
 import { siteContent } from "@/lib/content";
-import { bandLayersShown, declineChosen } from "@/lib/home/bandLayers";
+import { bandLayersShown } from "@/lib/home/bandLayers";
 import { FILL_PICK } from "@/lib/fx/fill";
 import { bandPlayerMounted } from "@/lib/player/machine";
 import { usePlayerView } from "@/lib/player/viewStore";
@@ -39,11 +39,10 @@ import { PRIMARY, QUIET, SMALL } from "./bandButtons";
 // after hydration. The question's words are copy.line on a first visit and
 // copy.lineReturning after one; today they are the same words, so only one is drawn.
 //
-// A Not now is answered: the wave rolls a gentle swell out of the band (lib/wavepath/answer), and
-// Not now stays beside Play it as the chosen option, this visit or a stored one: no longer a button
-// (disabled, aria-pressed), drawn with its underline filled and settled, with no hover
-// (app/globals.css, "Not now, once chosen"). Play it stays the invitation, and choosing it later
-// moves the answer with the state, as ever.
+// A Not now is answered, and the band says so (Aaron, Nov 9: it used to recolour Not now and nothing else changed): the question gives way
+// to copy.lineDeclined ("If you change your mind, play it here") and Not now goes, this visit or a stored one. Play it stays, the one
+// control, and the wave rolls its gentle swell out of the band (lib/wavepath/answer). Choosing Play it later moves the answer with the
+// state, as ever, and the question is back.
 //
 // With the player in the band the player is the feedback: the Pause or Resume
 // beside the heading goes, and the heading closes up on its own.
@@ -58,7 +57,6 @@ export function BandInvite() {
   // Nothing of the band's own shows then, so the controls close up instead of holding their height: the player sits right under the heading on a phone, and the wave's keep-out shrinks to the heading on a desktop. The controls keep their width, where an answer's ripple starts.
   const closedUp = playerOwns && (music === "on" || music === "paused");
   const shown = bandLayersShown(music, playerOwns);
-  const declined = declineChosen(music);
   const moveFocus = useRef(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
 
@@ -83,9 +81,10 @@ export function BandInvite() {
   return (
     <div ref={rootRef} data-band-prompt="" data-band-state={music} data-wave-avoid data-wave-words className="pointer-events-auto w-fit max-w-full">
       <div className="flex flex-wrap items-baseline gap-x-9 gap-y-2">
-        <h2 data-band-question="" className="font-display text-[clamp(1.0625rem,1.45vw,1.25rem)] leading-[1.1] text-foreground">
+        <h2 data-band-question="" data-band-split={c.lineReturning !== c.line ? "" : undefined} className="font-display text-[clamp(1.0625rem,1.45vw,1.25rem)] leading-[1.1] text-foreground">
           <span data-band-title="first">{c.line}</span>
           {c.lineReturning !== c.line && <span data-band-title="returning">{c.lineReturning}</span>}
+          <span data-band-title="declined">{c.lineDeclined}</span>
         </h2>
         <div data-band-controls data-wave-ripple-origin className={`flex items-baseline gap-4 ${closedUp ? "h-0 overflow-hidden" : ""}`}>
           <div className="grid items-baseline">
@@ -112,7 +111,7 @@ export function BandInvite() {
           </div>
           {/* Not now keeps its place beside whichever play layer shows, so it is never drawn twice. */}
           <Layer name="decline" shown={shown.decline}>
-            <Fill {...FILL_PICK.band} shape="rect" type="button" onClick={act(stopSoundtrack)} disabled={declined} aria-pressed={declined} data-cursor-hover {...QUIET}>
+            <Fill {...FILL_PICK.band} shape="rect" type="button" onClick={act(stopSoundtrack)} data-cursor-hover {...QUIET}>
               {c.decline}
             </Fill>
           </Layer>

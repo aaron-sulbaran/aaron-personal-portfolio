@@ -525,39 +525,35 @@ html:not([data-input="pointer"]) .fx:focus-visible,
 }
 
 /* The soundtrack band for a visitor who has answered it (components/soundtrack/
-   BandInvite.tsx, the head script lib/home/bandInit.ts): the question and Not now
-   show on every visit, and the play choice is already the one the stored answer
-   lands on from the first paint, so nothing flashes and nothing under the band
-   moves when the component restores the same answer after hydration. A stored
-   Not now lands on Play it, a stored yes on Resume. The layers keep their grid
-   cell, so the band's height is the controls' alone. The layer rules stand only
-   until the component restores the answer (data-band-state leaves "before"), so
-   the band's own state takes over from there. The question's returning title, if
-   it differs from the first (copy listen.lineReturning), takes the first's place
-   for a returning visitor; a lone title is never hidden. */
+   BandInvite.tsx, the head script lib/home/bandInit.ts): the question shows on every
+   visit, and what the stored answer lands on is already drawn from the first paint, so
+   nothing flashes and nothing under the band moves when the component restores the same
+   answer after hydration. A stored Not now lands on Play it alone, under the declined
+   line; a stored yes lands on Resume beside Not now. The layers keep their grid cell, so
+   the band's height is the controls' alone. The layer rules stand only until the
+   component restores the answer (data-band-state leaves "before"), so the band's own
+   state takes over from there. The question's returning title, if it differs from the
+   first (copy listen.lineReturning, marked data-band-split), takes the first's place for
+   a returning visitor. */
 html[data-band-answer] [data-band-state="before"] [data-band-layer="before"] { opacity: 0 !important; }
 html[data-band-answer="off"] [data-band-state="before"] [data-band-layer="off"],
 html[data-band-answer="on"] [data-band-state="before"] [data-band-layer="paused"] { opacity: 1 !important; }
-html[data-band-answer] [data-band-title="first"]:not(:only-child) { display: none; }
+html[data-band-answer] [data-band-split] [data-band-title="first"] { display: none; }
 html:not([data-band-answer]) [data-band-title="returning"] { display: none; }
 
-/* Not now, once chosen (components/soundtrack/BandInvite.tsx; lib/home/bandLayers.ts declineChosen): after a Not now, this visit or a
-   stored one, it is the answer and no longer a button. It keeps its place beside Play it, which stays the invitation, and loses its hover,
-   its press and its pointer; it reads as the chosen option, quietly: the label in the ink, its muted underline traded for the house
-   fill's rise line (1.5px, the line Play it carries) resting where the fill starts. A stored Not now reads so from the first paint, off
-   the attribute the head script already sets (data-band-answer="off", while the band is still "before" and the component has not
-   restored it), so nothing flashes and nothing moves: only colours change. The !important beats the inline values Fill writes. */
-[data-band-state="off"] [data-band-layer="decline"] .fx,
-html[data-band-answer="off"] [data-band-state="before"] [data-band-layer="decline"] .fx {
-  --fx-p: 0 !important;
-  --fx-line: 1.5px !important;
-  --fx-fill-bg: var(--color-muted);
-  color: var(--color-foreground);
-  text-decoration-color: transparent;
-  pointer-events: none;
-  cursor: default;
-  transition: color 300ms ease, text-decoration-color 300ms ease;
-}
+/* After a Not now, this visit or a stored one (components/soundtrack/BandInvite.tsx; lib/home/bandLayers.ts): the question gives way to
+   the declined line (copy listen.lineDeclined) and Not now goes. Play it stays. A stored Not now reads so from the first paint, off the
+   attribute the head script already sets (data-band-answer="off", while the band is still "before" and the component has not restored
+   it), so nothing flashes and nothing moves. Once the state is "off" the component hides Not now itself (its layer is inert and clear),
+   so the layer rule below is only for the frames before it does. A stored yes keeps the question and its Not now. */
+[data-band-title="declined"] { display: none; }
+[data-band-state="off"] [data-band-title="first"],
+[data-band-state="off"] [data-band-title="returning"],
+html[data-band-answer="off"] [data-band-state="before"] [data-band-title="first"],
+html[data-band-answer="off"] [data-band-state="before"] [data-band-title="returning"] { display: none; }
+[data-band-state="off"] [data-band-title="declined"],
+html[data-band-answer="off"] [data-band-state="before"] [data-band-title="declined"] { display: inline; }
+html[data-band-answer="off"] [data-band-state="before"] [data-band-layer="decline"] { opacity: 0 !important; pointer-events: none; }
 
 /* The MVP unfurl (components/quick/MvpUnfurl.tsx): "MVP" gives way to "Minimum
    Viable Portfolio" while a fine pointer that can hover is over its

@@ -53,6 +53,9 @@ export const siteContent = {
     // the same words today (Aaron, 2026-10-31), so a different returning title is one string here.
     line: "Want some music while you scroll?",
     lineReturning: "Want some music while you scroll?",
+    // The line once the visitor has said Not now, this visit or a stored one (Aaron, Nov 9: after a Not now nothing changed): it says so and
+    // offers the music again, and Not now is gone. Play it stays beside it.
+    lineDeclined: "If you change your mind, play it here",
     // The play choice reads accept before an answer and after a Not now, resume after a yes (it restores as paused).
     accept: "Play it",
     decline: "Not now",
