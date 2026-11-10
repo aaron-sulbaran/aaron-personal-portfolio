@@ -8,6 +8,7 @@ import { openHome } from "./support/coil";
 import { settled } from "./support/fallback";
 import { cardDialog, flyCard, openCardFromBook, panelAtRest } from "./support/cards";
 import { homeDeck, stepFrom } from "@/lib/card/deck";
+import { SEEN_STORAGE_KEY } from "@/lib/home/seen";
 
 // The phone gallery at 390 by 844 (a fine pointer: the pager follows the
 // width, a Coil click flies as it does on a desktop, and a mouse drag is a
@@ -15,6 +16,7 @@ import { homeDeck, stepFrom } from "@/lib/card/deck";
 test.use({ viewport: { width: 390, height: 844 } });
 
 const g = siteContent.modals.gallery;
+const d = siteContent.modals.deck;
 const keys = Object.keys(siteContent.cards) as CardKey[];
 const PAGED = keys.filter((key) => galleryOf(key).plan.slides.length > 0);
 
@@ -30,14 +32,15 @@ test("pager: a phone opens one page a paragraph, the header above the pages and 
   expect(header.y + header.height).toBeLessThanOrEqual(viewport.y);
   const panel = (await dialog.locator("[data-gallery-panel]").boundingBox())!;
   expect(Math.abs(panel.height - (844 - GALLERY.pager.sheetInsetPx))).toBeLessThan(2);
-  await expect(dialog.getByRole("button", { name: g.previousPage })).toBeDisabled();
+  // Past the pages, the chevrons go to the card before and after (Aaron, Nov 9: a visitor can chevron through every card).
+  await expect(dialog.getByRole("button", { name: d.previousCard(siteContent.cards[stepFrom(homeDeck, "band", -1)!].short) })).toBeEnabled();
   await expect(dialog.getByRole("button", { name: g.pageNumber(1, count) })).toHaveAttribute("aria-current", "true");
   await dialog.getByRole("button", { name: g.nextPage }).click();
   await expect(dialog.locator("[data-pager]")).toHaveAttribute("data-page", "1");
   await expect(dialog.locator('[data-pager-page="0"]')).toHaveAttribute("aria-hidden", "true");
   await page.keyboard.press("ArrowRight");
   await expect(dialog.locator("[data-pager]")).toHaveAttribute("data-page", "2");
-  await expect(dialog.getByRole("button", { name: g.nextPage })).toBeDisabled();
+  await expect(dialog.getByRole("button", { name: d.nextCard(siteContent.cards[stepFrom(homeDeck, "band", 1)!].short) })).toBeEnabled();
   await page.keyboard.press("ArrowLeft");
   await expect(dialog.locator("[data-pager]")).toHaveAttribute("data-page", "1");
 });
@@ -153,17 +156,21 @@ test("pager: a mouse click on the Coil flies a photo card onto the phone header'
 });
 
 test("pager: keyboard focus never falls out of the dialog when its control disables or its page goes inert, and Tab from the body comes back in", async ({ page }) => {
-  const band = await openCardFromBook(page, "band", { settled: true });
-  const next = band.dialog.getByRole("button", { name: g.nextPage });
+  // The next chevron disables only where the deck stops: on the last card's last page, once every card has been seen.
+  await page.addInitScript(([key, keys]) => sessionStorage.setItem(key, keys), [SEEN_STORAGE_KEY, JSON.stringify(homeDeck)] as const);
+  const last = await openCardFromBook(page, homeDeck[homeDeck.length - 1], { settled: true });
+  const next = last.dialog.locator('[data-pager-arrow="next"]');
+  const lastPages = await last.dialog.locator("[data-pager-page]").count();
+  expect(lastPages).toBeGreaterThan(1);
   await next.focus();
-  await page.keyboard.press("Enter");
-  await expect(band.dialog.locator("[data-pager]")).toHaveAttribute("data-page", "1");
-  await page.keyboard.press("Enter");
-  await expect(band.dialog.locator("[data-pager]")).toHaveAttribute("data-page", "2");
+  for (let i = 1; i < lastPages; i++) {
+    await page.keyboard.press("Enter");
+    await expect(last.dialog.locator("[data-pager]")).toHaveAttribute("data-page", String(i));
+  }
   await expect(next).toBeDisabled();
-  await expect(band.dialog.getByRole("button", { name: g.previousPage })).toBeFocused();
+  await expect(last.dialog.locator('[data-pager-arrow="prev"]')).toBeFocused();
   await page.keyboard.press("Escape");
-  await expect(band.dialog).toHaveCount(0);
+  await expect(last.dialog).toHaveCount(0);
 
   const { dialog } = await openCardFromBook(page, "misuki", { home: false, settled: true });
   // The page of Misuki's second paragraph, whichever page that is once its first has had its own.

@@ -13,6 +13,11 @@ import type { CardKey } from "@/lib/content/types";
 export type CardDeck = readonly CardKey[];
 export type Step = -1 | 1;
 
+// What a card's own controls need to step past its ends (a phone pager's
+// drag, keys and chevrons; a phone card with no pages): the card before and
+// after, null where the deck stops, and the step (components/card/useDeckStep).
+export type DeckEdge = { prev: CardKey | null; next: CardKey | null; step: (step: Step) => void };
+
 export function deckOf(keys: Iterable<CardKey>): CardDeck {
   return Array.from(new Set(keys));
 }

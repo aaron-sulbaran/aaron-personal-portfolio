@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useReducer, useRef, useState } from "react";
 import { siteContent } from "@/lib/content";
-import type { Step } from "@/lib/card/deck";
+import type { DeckEdge } from "@/lib/card/deck";
 import { pageStage, stageHeight } from "@/lib/gallery/boxes";
 import type { Gallery } from "@/lib/gallery/card";
 import { GALLERY } from "@/lib/gallery/constants";
@@ -23,8 +23,9 @@ import { usePagerDrag } from "./usePagerDrag";
 // change pages; a vertical flick on the stage, the header or words that fit
 // closes the modal. Under reduced motion pages change with no travel. Past the
 // first or the last page, a drag or an arrow key goes to the card before or
-// after (onEdge, when the modal has a deck); the arrows under the pages only
-// ever change pages.
+// after (edge, when the modal has a deck), and so do the chevrons under the
+// pages (Aaron, 2026-11-09: a visitor can chevron through every card); a card
+// of one page shows the chevrons alone.
 //
 // The pager reads each block of words, each caption and each name tag's
 // natural height as laid out and, before the first paint and again whenever
@@ -42,7 +43,7 @@ type Props = {
   pages: readonly Page[];
   renderMedia: boolean;
   onClose: () => void;
-  onEdge?: (step: Step) => void;
+  edge?: DeckEdge;
   layout: PagerLayout;
   onLayout: (next: PagerLayout) => void;
 };
@@ -50,8 +51,9 @@ type Room = { width: number; height: number; visible: number };
 
 const g = siteContent.modals.gallery;
 
-export function CardPager({ gallery, base, pages, renderMedia, onClose, onEdge, layout, onLayout }: Props) {
+export function CardPager({ gallery, base, pages, renderMedia, onClose, edge, layout, onLayout }: Props) {
   const count = pages.length;
+  const onEdge = edge?.step;
   const reduced = useReducedMotionLive();
   const [state, dispatch] = useReducer(pagerReducer, { index: 0, count });
   useLayoutEffect(() => dispatch({ type: "count", count }), [count]);
@@ -203,7 +205,7 @@ export function CardPager({ gallery, base, pages, renderMedia, onClose, onEdge, 
           })}
         </div>
       </div>
-      {count > 1 && <PagerControls index={index} count={count} grouping={gallery.grouping} dispatch={dispatch} />}
+      {(count > 1 || edge) && <PagerControls index={index} count={count} grouping={gallery.grouping} dispatch={dispatch} edge={edge} />}
       <p className="sr-only" aria-live="polite">
         {live}
       </p>

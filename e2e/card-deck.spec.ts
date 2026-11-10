@@ -182,10 +182,10 @@ test.describe("on a phone", () => {
       return document.documentElement.scrollWidth <= innerWidth && (!dialog || dialog.scrollWidth <= dialog.clientWidth);
     });
 
-  // Guards: a swipe past the last page staying put (or past the first page wrapping), the page chevrons changing card, a card with
-  // no pages ignoring a swipe, side chevrons on a phone, or anything new scrolling sideways at 375 by 667. Fails at: the card or page
-  // read after a swipe, the rails' count, or the sideways read.
-  test("a swipe past the last page goes to the next card and past the first to the one before; the page chevrons stay pages", async ({ page, cdp }) => {
+  // Guards: a swipe past the last page staying put (or past the first page wrapping), the last page's chevron still a page chevron, a
+  // card with no pages ignoring a swipe, side chevrons on a phone, or anything new scrolling sideways at 375 by 667. Fails at: the card
+  // or page read after a swipe, the chevron's name, the rails' count, or the sideways read.
+  test("a swipe past the last page goes to the next card and past the first to the one before, and the last page's chevron names the next card", async ({ page, cdp }) => {
     await page.goto("/");
     await settled(page);
     const { dialog } = await openCardFromBook(page, "mentorship", { home: false, settled: true });
@@ -194,7 +194,8 @@ test.describe("on a phone", () => {
     const dots = await dialog.locator("[data-pager-dot]").count();
     await dialog.locator(`[data-pager-dot="${dots - 1}"]`).click();
     await expect(pager).toHaveAttribute("data-page", String(dots - 1));
-    await expect(dialog.getByRole("button", { name: siteContent.modals.gallery.nextPage })).toBeDisabled();
+    await expect(dialog.locator('[data-pager-arrow="next"]')).toHaveAccessibleName(d.nextCard(title("min-max")));
+    await expect(dialog.locator('[data-pager-arrow="next"]')).toBeEnabled();
     expect(await noSideways(page)).toBe(true);
 
     await swipe(page, cdp, -160);
@@ -211,6 +212,51 @@ test.describe("on a phone", () => {
     await expect(page.locator('[data-card-modal="mentorship"] [data-pager]')).toHaveAttribute("data-page", "0");
     await swipe(page, cdp, -160);
     await expect(page.locator('[data-card-modal="mentorship"] [data-pager]')).toHaveAttribute("data-page", "1");
+    expect(await noSideways(page)).toBe(true);
+  });
+
+  // Aaron, Nov 9: a visitor can chevron through every card. Guards: a last page's chevron that stops, a card with no pages and no
+  // chevrons, a step that drops focus to the close button, or a deck that never stops. Fails at: the order walked, the focused
+  // chevron, or the chevron at the deck's end.
+  test("the chevrons under the pages walk every card in the deck's order, and stop at its end once all have been seen", async ({ page }) => {
+    test.setTimeout(150_000);
+    await page.goto("/");
+    await settled(page);
+    await openCardFromBook(page, homeDeck[0], { home: false, settled: true });
+    await expect(page.locator('[data-card-modal] [data-pager-arrow="prev"]')).toHaveAccessibleName(d.previousCard(title(homeDeck[homeDeck.length - 1])));
+    const where = () =>
+      page.evaluate(() => {
+        const dialog = document.querySelector<HTMLElement>('[role="dialog"][data-card-modal]');
+        return `${dialog?.dataset.cardModal}:${dialog?.querySelector<HTMLElement>("[data-pager]")?.dataset.page ?? "-"}`;
+      });
+    const walked: string[] = [];
+    for (let taps = 0; taps < 80; taps++) {
+      const at = await where();
+      const key = at.split(":")[0];
+      if (walked[walked.length - 1] !== key) walked.push(key);
+      const next = page.locator(`[role="dialog"][data-card-modal="${key}"] [data-pager-arrow="next"]`);
+      await expect(next).toHaveCount(1);
+      if (await next.isDisabled()) break;
+      await next.click();
+      await expect.poll(where).not.toBe(at);
+    }
+    expect(walked).toEqual([...homeDeck]);
+    const last = homeDeck[homeDeck.length - 1];
+    await expect(cardDialog(page, last).locator('[data-pager-arrow="next"]')).toBeDisabled();
+    await expect(cardDialog(page, last).locator('[data-pager-arrow="prev"]')).toBeEnabled();
+  });
+
+  test("Enter on the last page's chevron lands focus on the next card's chevron", async ({ page }) => {
+    await page.goto("/");
+    await settled(page);
+    const { dialog } = await openCardFromBook(page, "mentorship", { home: false, settled: true });
+    const dots = await dialog.locator("[data-pager-dot]").count();
+    await dialog.locator(`[data-pager-dot="${dots - 1}"]`).click();
+    await dialog.locator('[data-pager-arrow="next"]').focus();
+    await page.keyboard.press("Enter");
+    await expect(cardDialog(page, "min-max")).toBeVisible();
+    await expect(cardDialog(page, "min-max").locator('[data-pager-arrow="next"]')).toBeFocused();
+    expect(await seenKeys(page)).toEqual(["mentorship"]);
     expect(await noSideways(page)).toBe(true);
   });
 

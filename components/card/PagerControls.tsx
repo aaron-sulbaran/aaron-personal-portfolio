@@ -1,40 +1,72 @@
 "use client";
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { siteContent } from "@/lib/content";
+import type { DeckEdge } from "@/lib/card/deck";
+import { siteContent, type CardKey } from "@/lib/content";
 import type { PagerAction } from "@/lib/gallery/pager";
 import type { PhoneGrouping } from "@/lib/gallery/plan";
 import { partId } from "@/lib/gallery/timing";
 
 // The pager's one row of controls: previous, the page dots, next. Real
-// buttons, the ends disabled; they only ever change pages.
+// buttons. Inside the pages they change pages; on the first page the back
+// chevron goes to the card before, and on the last the next chevron to the
+// card after (Aaron, 2026-11-09: a visitor can chevron through every card),
+// each named for that card. A chevron disables only where the deck stops
+// (lib/card/deck: once every card has been seen), or at a page end of a modal
+// with no deck. A card of one page shows no dots.
 
-type Props = { index: number; count: number; grouping: PhoneGrouping; dispatch: (action: PagerAction) => void };
+type Props = { index: number; count: number; grouping: PhoneGrouping; dispatch: (action: PagerAction) => void; edge?: DeckEdge };
 
 const g = siteContent.modals.gallery;
+const d = siteContent.modals.deck;
+const named = (key: CardKey) => siteContent.cards[key].short;
 
-export function PagerControls({ index, count, grouping, dispatch }: Props) {
+export function PagerControls({ index, count, grouping, dispatch, edge }: Props) {
   const dotLabel = (i: number) => (grouping === "photo" ? g.photoOf(i + 1, count) : g.pageNumber(i + 1, count));
+  const before = index === 0 ? (edge?.prev ?? null) : null;
+  const after = index >= count - 1 ? (edge?.next ?? null) : null;
   return (
     <div data-mask={partId.pager} data-mask-kind="text" className="flex shrink-0 items-center justify-between gap-2" data-pager-controls="">
-      <Arrow label={g.previousPage} disabled={index === 0} onClick={() => dispatch({ type: "prev" })} next={false} />
+      <Arrow
+        label={before ? d.previousCard(named(before)) : g.previousPage}
+        disabled={index === 0 && !before}
+        onClick={() => (before ? edge?.step(-1) : dispatch({ type: "prev" }))}
+        next={false}
+      />
       {/* The dots share the room between the arrows and give way to it, so a card of many pages (the jobs card's ten) never pushes the row past the panel. */}
       <div className="flex min-w-0 flex-1 items-center justify-center">
-        {Array.from({ length: count }, (_, i) => (
-          <button
-            key={i}
-            type="button"
-            aria-label={dotLabel(i)}
-            aria-current={i === index ? "true" : undefined}
-            onClick={() => dispatch({ type: "goto", index: i })}
-            className="group inline-flex h-8 w-7 min-w-0 shrink items-center justify-center"
-            data-pager-dot={i}
-          >
-            <span className={`block h-1.5 rounded-full motion-safe:transition-all motion-safe:duration-200 ${i === index ? "w-4 bg-accent" : "w-1.5 bg-border group-hover:bg-muted"}`} />
-          </button>
-        ))}
+        {count > 1 &&
+          Array.from({ length: count }, (_, i) => (
+            <button
+              key={i}
+              type="button"
+              aria-label={dotLabel(i)}
+              aria-current={i === index ? "true" : undefined}
+              onClick={() => dispatch({ type: "goto", index: i })}
+              className="group inline-flex h-8 w-7 min-w-0 shrink items-center justify-center"
+              data-pager-dot={i}
+            >
+              <span className={`block h-1.5 rounded-full motion-safe:transition-all motion-safe:duration-200 ${i === index ? "w-4 bg-accent" : "w-1.5 bg-border group-hover:bg-muted"}`} />
+            </button>
+          ))}
       </div>
-      <Arrow label={g.nextPage} disabled={index >= count - 1} onClick={() => dispatch({ type: "next" })} next />
+      <Arrow
+        label={after ? d.nextCard(named(after)) : g.nextPage}
+        disabled={index >= count - 1 && !after}
+        onClick={() => (after ? edge?.step(1) : dispatch({ type: "next" }))}
+        next
+      />
+    </div>
+  );
+}
+
+// A phone card with no pages (its words alone): the same two chevrons under
+// everything, each going to the card before or after.
+export function CardStepArrows({ edge }: { edge: DeckEdge }) {
+  return (
+    <div className="flex items-center justify-between gap-2" data-pager-controls="">
+      <Arrow label={d.previousCard(edge.prev && named(edge.prev))} disabled={!edge.prev} onClick={() => edge.step(-1)} next={false} />
+      <Arrow label={d.nextCard(edge.next && named(edge.next))} disabled={!edge.next} onClick={() => edge.step(1)} next />
     </div>
   );
 }

@@ -10,7 +10,8 @@ import { GALLERY } from "@/lib/gallery/constants";
 // Stepping the card modal to the card before or after it (lib/card/deck): the
 // step itself, the arrow keys where the pager does not own them (the desktop
 // rows, and a phone card with no pages; a phone pager hands its ends up
-// through onEdge instead), going round past the deck's ends until every card
+// through its edge instead, from its drag, its keys and its chevrons), going
+// round past the deck's ends until every card
 // has been seen (the seen store), a sideways swipe on a phone card with no pages, and
 // the landing: the dialog back at its top, focus kept in the dialog, and the
 // new panel coming in from the side it was asked for (a fade alone under
@@ -39,6 +40,7 @@ export function useDeckStep({ dialogRef, panelRef, cardKey, deck, onStep, keys, 
   const prev = live ? stepFrom(live.deck, live.cardKey, -1, live.wrap) : null;
   const next = live ? stepFrom(live.deck, live.cardKey, 1, live.wrap) : null;
   const landingRef = useRef<Step | 0>(0);
+  const fromChevronRef = useRef(false);
   const [heard, setHeard] = useState<CardKey | null>(null);
   if (cardKey === null && heard !== null) setHeard(null);
 
@@ -48,6 +50,7 @@ export function useDeckStep({ dialogRef, panelRef, cardKey, deck, onStep, keys, 
       if (!live) return;
       const target = stepFrom(live.deck, live.cardKey, step, live.wrap);
       if (!target) return;
+      fromChevronRef.current = document.activeElement instanceof HTMLElement && document.activeElement.hasAttribute("data-pager-arrow");
       landingRef.current = step;
       setHeard(target);
       live.onStep(target);
@@ -61,8 +64,12 @@ export function useDeckStep({ dialogRef, panelRef, cardKey, deck, onStep, keys, 
     if (!step || !panel) return;
     const dialog = dialogRef.current;
     dialog?.scrollTo({ top: 0 });
-    // Focus that sat in the card left (a link in its words) went with it: it lands on the new card's close button, not the page.
-    if (dialog && !dialog.contains(document.activeElement)) panel.querySelector<HTMLElement>("[data-card-close]")?.focus({ preventScroll: true });
+    // Focus that sat in the card left went with it. From a chevron under its pages it lands on the new card's chevron on the same
+    // side, so Enter keeps walking; from anything else (a link in its words) on the new card's close button, not the page.
+    if (dialog && !dialog.contains(document.activeElement)) {
+      const chevron = fromChevronRef.current ? panel.querySelector<HTMLElement>(`[data-pager-arrow="${step === 1 ? "next" : "prev"}"]:not(:disabled)`) : null;
+      (chevron ?? panel.querySelector<HTMLElement>("[data-card-close]"))?.focus({ preventScroll: true });
+    }
     const controls = reduced
       ? animate(panel, { opacity: [0, 1] }, { duration: FADE_S })
       : animate(panel, { opacity: [0, 1], x: [step * IN_PX, 0] }, { duration: IN_S, ease: [0.22, 1, 0.36, 1] });

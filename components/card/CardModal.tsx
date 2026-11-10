@@ -66,7 +66,7 @@ export function CardModal({ cardKey, onClose, renderMedia, flying, returnFocus, 
   const gallery = cardKey ? galleryOf(cardKey) : null;
   const rows = layout === "rows";
   const sheet = gallery !== null && !rows && gallery.plan.slides.length > 0;
-  // A phone pager owns the arrow keys and the sideways drag, and hands its ends up (onEdge); everywhere else they step here.
+  // A phone pager owns the arrow keys and the sideways drag, and hands its ends up (edge); everywhere else they step here.
   const nav = useDeckStep({ dialogRef, panelRef, cardKey, deck, onStep, keys: !sheet, swipe: !rows && !sheet, reduced });
   // Every open is a fresh body, even of the card still leaving, so its masks
   // replay from the start rather than revive the exiting run. A step is no
@@ -128,7 +128,7 @@ export function CardModal({ cardKey, onClose, renderMedia, flying, returnFocus, 
               >
                 <X aria-hidden="true" className="h-4 w-4" />
               </button>
-              <CardBody key={`${gallery.key}-${layout}`} gallery={gallery} layout={layout} renderMedia={renderMedia} flying={flying} onClose={onClose} onEdge={nav.enabled ? nav.step : undefined} />
+              <CardBody key={`${gallery.key}-${layout}`} gallery={gallery} layout={layout} renderMedia={renderMedia} flying={flying} onClose={onClose} edge={nav.enabled ? { prev: nav.prev, next: nav.next, step: nav.step } : undefined} />
             </motion.div>
             {rows && nav.enabled && <DeckRails prev={nav.prev} next={nav.next} panelWidth={gallery.panelWidth} onStep={nav.step} />}
             <p className="sr-only" aria-live="polite" data-deck-announce="">

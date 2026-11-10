@@ -1,8 +1,10 @@
+import type { DeckEdge } from "@/lib/card/deck";
 import type { Gallery } from "@/lib/gallery/card";
 import { CardEgg } from "./CardEgg";
 import { CardHeader } from "./CardHeader";
 import { CardLinks } from "./CardLinks";
 import { CloseHint } from "./CloseHint";
+import { CardStepArrows } from "./PagerControls";
 import { afterWords } from "./afterWords";
 import { TalosTeam } from "./TalosTeam";
 import { Words } from "./Words";
@@ -11,8 +13,9 @@ import { Words } from "./Words";
 // family business): the header, every paragraph, the links and the close
 // hint, a short modal that scrolls with the backdrop. Talos puts its sting and its
 // Discord channel among the paragraphs and its team after them; This site's
-// easter egg line stands last among them.
-export function CardWords({ gallery, renderMedia, flying, onClose }: { gallery: Gallery; renderMedia: boolean; flying: boolean; onClose: () => void }) {
+// easter egg line stands last among them. With a deck (edge), the pager's two
+// chevrons close it, stepping to the card before or after.
+export function CardWords({ gallery, renderMedia, flying, onClose, edge }: { gallery: Gallery; renderMedia: boolean; flying: boolean; onClose: () => void; edge?: DeckEdge }) {
   return (
     <div className="flex flex-col gap-6">
       <CardHeader cardKey={gallery.key} renderMedia={renderMedia} compact />
@@ -28,6 +31,7 @@ export function CardWords({ gallery, renderMedia, flying, onClose }: { gallery: 
         <CardLinks cardKey={gallery.key} />
         <CloseHint />
       </div>
+      {edge && <CardStepArrows edge={edge} />}
     </div>
   );
 }
