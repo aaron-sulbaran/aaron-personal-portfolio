@@ -404,31 +404,36 @@ test("dock: unanswered, the pill arrives as \"Music?\" with no label and nothing
   expect(await storedChoice(page)).toBeNull();
 });
 
-// The band asks on every visit, and only the play label adapts (e62d08e): a later visit gets the question with Play it after a Not now and
-// Resume after a yes, and Not now always, drawn as the chosen answer once it is the answer (698a78a).
-test("band: after a Not now a later visit still asks, offers Play it, and shows Not now as the answer", async ({ page }) => {
+// The band asks on every visit, and only the play label adapts (e62d08e): a later visit gets the question with Resume after a yes and
+// Not now beside it. After a Not now it no longer asks (Aaron, Nov 9: Not now only recoloured and nothing changed): the line says
+// "If you change your mind, play it here", Play it is the one control, and Not now is gone, this visit and a later one.
+test("band: after a Not now the line changes and Not now goes, this visit and a later one", async ({ page }) => {
   await openHome(page, { path: HOME, at: "top" });
   const band = page.locator("#listen");
   await scrollBandIntoView(page);
   await expect(band.getByRole("heading", { name: L.line })).toBeVisible();
   await band.getByRole("button", { name: L.decline, exact: true }).click();
-  // Same visit: the question stays, beside the one Play it.
+  // Same visit: the declined line in the question's place, the one Play it, no Not now.
   await expect(band.locator('[data-control="off"]')).toBeVisible();
-  await expect(band.getByRole("heading", { name: L.line })).toBeVisible();
+  await expect(band.getByRole("heading", { name: L.lineDeclined })).toBeVisible();
+  await expect(band.getByRole("heading", { name: L.line })).toHaveCount(0);
+  await expect(band.getByRole("button", { name: L.decline, exact: true })).toHaveCount(0);
+  await expect(band.getByRole("button"), "Play it alone").toHaveCount(1);
   expect(await storedChoice(page)).toBe("off");
 
-  // A later visit: the question again, Play it, and Not now as the chosen answer; no Resume.
+  // A later visit: the same, from the first paint; no Resume.
   await page.reload();
   await settled(page);
   await scrollBandIntoView(page);
-  await expect(band.getByRole("heading", { name: L.lineReturning })).toBeVisible();
-  const chosen = band.getByRole("button", { name: L.decline, exact: true });
-  await expect(chosen).toBeVisible();
-  await expect(chosen).toBeDisabled();
-  await expect(chosen).toHaveAttribute("aria-pressed", "true");
+  await expect(band.getByRole("heading", { name: L.lineDeclined })).toBeVisible();
+  await expect(band.getByRole("heading", { name: L.lineReturning })).toHaveCount(0);
+  await expect(band.getByRole("button", { name: L.decline, exact: true })).toHaveCount(0);
   await expect(band.getByRole("button", { name: L.resume, exact: true })).toBeHidden();
   await expect(band.locator('[data-control="off"]')).toBeVisible();
-  await expect(band.getByRole("button"), "Play it and the chosen Not now").toHaveCount(2);
+  await expect(band.getByRole("button"), "Play it alone").toHaveCount(1);
+  // Play it brings the question back with the state.
+  await band.locator('[data-control="off"]').click();
+  await expect(band.getByRole("heading", { name: L.lineDeclined })).toHaveCount(0);
 });
 
 // What the page draws of the band from its first frame, recorded from the start of the document: every animation frame says whether the
@@ -487,6 +492,11 @@ for (const size of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) 
       expect(band.shift, "layout shift").toBe(0);
       await expect(page.locator(`#listen [data-band-layer="${control}"]`)).toHaveCount(1);
       await expect(page.locator("#listen [data-band-question]")).toHaveCount(1);
+      // A stored Not now reads as declined from that first frame: the declined line, and no Not now to see.
+      if (stored === "off") {
+        await expect(page.locator("#listen").getByRole("heading", { name: L.lineDeclined })).toBeVisible();
+        await expect(page.locator("#listen").getByRole("button", { name: L.decline, exact: true })).toHaveCount(0);
+      }
     });
   }
 

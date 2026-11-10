@@ -9,7 +9,7 @@ describe("the soundtrack band's copy", () => {
   });
 
   it("says one line and one word per control: no sub-line, no note that could promise a player the band does not show", () => {
-    expect(Object.keys(listen).sort()).toEqual(["accept", "ariaLabel", "decline", "freeze", "line", "lineReturning", "pause", "resume", "unfreeze"]);
+    expect(Object.keys(listen).sort()).toEqual(["accept", "ariaLabel", "decline", "freeze", "line", "lineDeclined", "lineReturning", "pause", "resume", "unfreeze"]);
   });
 
   it("uses sentence case and no em dash", () => {
