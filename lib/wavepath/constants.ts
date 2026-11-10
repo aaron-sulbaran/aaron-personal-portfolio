@@ -14,9 +14,11 @@ export const HEAD_SWELL = { gain: 0.7, px: 140 } as const;
 // bit less springy". Then, 2026-11-02, 2.1 s and 1.6 s felt "a bit slow now, almost a bit of an overcompensation": "the sweet spot is
 // going to be in the middle at somewhere around 1.2-1.6 seconds probably or even slightly faster like 1.0-1.5". At a steady 300 px/s of scroll the calm pace draws the screen's width in CROSS_S seconds, whatever the scroll.
 // Then A64: after a quick scroll to the bottom of a 390 by 844 phone the wave drew on for 12.8 s, and he chose a faster pace
-// everywhere over a catch-up once the reader stops, knowing it brings back some of the surge above. So CROSS_S went from 1.4 and
-// 1.2 to 0.6 and 0.5, and DRAW_SPEED from 2800 to 5600: the head runs at it only with no ink on screen, so the faster catch-up adds
-// no surge a reader sees (the same scroll now draws on for 6.7 s on that phone, and 4.2 s at 1440 by 900, down from 6.6 s).
+// everywhere over a catch-up once the reader stops, knowing it brings back some of the surge above. A78 settled the numbers by
+// looking at them on a phone and a desktop: the phone's 0.5 "works fine", "doesn't come off as too rushed", and 0.6 on a desktop was
+// "way too fast", so a desktop went to 1.3. So CROSS_S went from 1.4 and 1.2 to 1.3 and 0.5, and DRAW_SPEED from 2800 to 5600: the
+// head runs at it only with no ink on screen, so the faster catch-up adds no surge a reader sees. The same scroll to the bottom now
+// draws on for 6.7 s on that phone (12.8 s before) and 4.8 s at 1440 by 900 (6.6 s before).
 //   TRAIN_PX: the drawn train behind the head, px of arc. Every excursion off the screen is this long plus EXCURSION_MARGIN, so a
 //     shorter train means less line to clear between two crossings (and the head catches up sooner).
 //   CROSS_S: seconds the head takes to draw the screen's whole width while any of its train shows (a wide window, a phone).
@@ -25,7 +27,7 @@ export const HEAD_SWELL = { gain: 0.7, px: 140 } as const;
 //   DRAW_EASE_S, DRAW_TURN_S: seconds the head's speed takes to ease in from rest, and to turn round when the reader scrolls back
 //     (no spring, no surge).
 export const TRAIN_PX = 1600;
-export const CROSS_S = { wide: 0.6, phone: 0.5 } as const;
+export const CROSS_S = { wide: 1.3, phone: 0.5 } as const;
 export const DRAW_SPEED = 5600;
 export const HEAD_SMOOTHING = 4;
 export const DRAW_EASE_S = 0.35;

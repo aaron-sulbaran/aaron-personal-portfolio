@@ -17,11 +17,14 @@ describe("the calm speed", () => {
     expect(calmSpeed("wide", 1280) * CROSS_S.wide).toBeCloseTo(1280, 9);
     expect(calmSpeed("phone", 390) * CROSS_S.phone).toBeCloseTo(390, 9);
   });
-  it("sits in the band A64 leaves: a full width in 0.4 to 1.0 seconds, faster than the 1.0 to 1.6 of 2026-11-02 but never a wipe", () => {
+  it("sits in the band A78 settled: a full width in 0.4 to 1.6 seconds, a desktop's 1.3 inside the 1.0 to 1.6 of 2026-11-02 and a phone's 0.5 faster by Aaron's own look, never a wipe", () => {
     for (const s of [CROSS_S.wide, CROSS_S.phone]) {
       expect(s).toBeGreaterThanOrEqual(0.4);
-      expect(s).toBeLessThanOrEqual(1);
+      expect(s).toBeLessThanOrEqual(1.6);
     }
+  });
+  it("keeps a desktop at its 1.3 s and a phone at its 0.5 s (A78: the 0.6 desktop was way too fast, the phone's 0.5 does not feel rushed)", () => {
+    expect(CROSS_S).toEqual({ wide: 1.3, phone: 0.5 });
   });
 });
 
@@ -85,10 +88,10 @@ describe("a steady scroll", () => {
   }
 });
 
-// A64: after a quick scroll to the bottom the wave drew on for 12.8 s on a 390 by 844 phone (the browser's own clock). A faster pace
-// brought it to 6.7 s there and 4.2 s at 1440 by 900; this simulation reads about half a second under the browser, 6.2 s and 3.6 s. The
-// calm pace through the stretches in view and the line's own length keep a floor under it, so these bounds guard the gain rather than
-// a goal.
+// A64: after a quick scroll to the bottom the wave drew on for 12.8 s on a 390 by 844 phone (the browser's own clock) and 6.6 s at
+// 1440 by 900. A faster pace (A78: desktop 1.3 s, phone 0.5 s, catch-up 5600) brought it to 6.7 s and 4.8 s; this simulation reads
+// about half a second under the browser, 6.2 s and 4.2 s. The calm pace through the stretches in view and the line's own length keep
+// a floor under it, so these bounds guard the gain rather than a goal.
 describe("a quick scroll to the bottom", () => {
   const trailing = (size: Size) => {
     const page = pageAt(size);
@@ -97,7 +100,7 @@ describe("a quick scroll to the bottom", () => {
     return frames[frames.length - 1].t - frames[landed].t;
   };
   it("stops drawing within 7 s on a 390 by 844 phone", () => expect(trailing("390x844")).toBeLessThan(7));
-  it("stops drawing within 4.2 s at 1440 by 900", () => expect(trailing("1440x900")).toBeLessThan(4.2));
+  it("stops drawing within 4.7 s at 1440 by 900", () => expect(trailing("1440x900")).toBeLessThan(4.7));
 });
 
 describe("the reader stops", () => {
