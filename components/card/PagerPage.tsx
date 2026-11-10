@@ -42,11 +42,11 @@ const WORDS_FADE: CSSProperties = { maskImage: fade, WebkitMaskImage: fade };
 export function PagerPage({ gallery, page, index, count, kind, stage, trims, current, pressing }: Props) {
   const textRef = useRef<HTMLDivElement | null>(null);
   const [scrolls, setScrolls] = useState(false);
-  // The post's own link is the post card's, so the card's link to it is not drawn a second time on a page beside the card. The end block
+  // The post's own link is under the post's frame, so the card's link to it is not drawn a second time on a page beside the post. The end block
   // (the card's links) is drawn only when it has something in it: an empty one would still cost a gap. Mentorship's mentors are a block each
   // after the words: the pager says which sit on this page (page.mentors); until it has measured, the page that has the links has them all.
   const embed = gallery.photos[page.photo].embed;
-  const skip = embed ? embed.card.href : undefined;
+  const skip = embed ? embed.href : undefined;
   const links = siteContent.cards[gallery.key].modal.links.filter((link) => link.href !== skip);
   const mentors = gallery.key === "mentorship" ? page.mentors ?? (page.links ? siteContent.cards.mentorship.mentors.people.map((_, i) => i) : []) : [];
   const hasEnd = page.links && links.length > 0;
@@ -121,13 +121,30 @@ export function PagerPage({ gallery, page, index, count, kind, stage, trims, cur
   );
 }
 
+// The post's stage: its frame scrolls inside itself, so rather than shrink (FitStage) it takes the room its paragraph leaves, as wide as the
+// post at most and up to GALLERY.post.pageMax tall. The pager reads an own stage's natural height off data-fit-inner, which here is a
+// fixed probe: a page that would leave the frame and its link less than pageMin drops the paragraph's phone omissions (fitFloor of the
+// probe is pageMin). Read off the frame itself, the first pass (drawn at the whole page's height) would trim every page for good.
+function PostStage({ gallery, photo, height }: { gallery: Gallery; photo: number; height: number }) {
+  const picture = gallery.photos[photo];
+  const { pageMin, pageMax } = GALLERY.post;
+  const post = Math.min(pageMax, height);
+  return (
+    <div className="relative flex w-full shrink-0 items-start justify-center" style={{ height: post }} data-pager-stage="">
+      <div aria-hidden="true" className="pointer-events-none invisible absolute left-0 top-0 w-px" style={{ height: pageMin / GALLERY.pager.fitFloor }} data-fit-inner="" />
+      <StillPhoto photo={picture} index={photo} box={{ width: picture.width, height: post }} caption={null} postHeight={post} />
+    </div>
+  );
+}
+
 // One photo standing on its stage's floor, its caption under the stage (none when it was shown on an earlier page).
 function StillStage({ gallery, photo, box, height, carried }: { gallery: Gallery; photo: number; box: StageBox; height: number; carried: boolean }) {
   const picture = gallery.photos[photo];
   const caption = carried ? null : (picture.captionShort ?? picture.caption);
-  // A name tag's height is its tip's, and the post is a link card (a frame as tall as the post would scroll inside the page), so their stage
-  // is as tall as the tag or the card, shrunk to the room the pager gave it when that is short (FitStage), and leaves the words the rest.
-  if (picture.embed || picture.tag !== undefined) {
+  if (picture.embed) return <PostStage gallery={gallery} photo={photo} height={height} />;
+  // A name tag's height is its tip's, so its stage is as tall as the tag, shrunk to the room the pager gave it when that is short
+  // (FitStage), and leaves the words the rest.
+  if (picture.tag !== undefined) {
     return (
       <FitStage room={height}>
         <StillPhoto photo={picture} index={photo} box={box} caption={null} />

@@ -109,14 +109,11 @@ export interface CardLink { label: string; href: string }
 export interface CardVideoRef { src: string; poster: string; width: number; height: number; label: string; beside: number; caption?: string; playOnce?: boolean }
 
 // A post in a card's modal, media like a photo: it takes a row's side beside the paragraph it sits beside (beside indexes
-// modal.blocks), drawn as its link card (postCard, components/card/PostCard), never as LinkedIn's own frame (Aaron, 2026-11-09:
-// the frame cropped its photos, ran far longer than the card's words and linked off to random places). width is the card's
-// width on a desktop row (a pair of photos is as wide); title names the post, in my words.
-export interface CardEmbedRef { width: number; title: string; beside: number }
-
-// The post's link card, on a desktop row and a phone's pager page alike: its author, the post's hook line, and the link under
-// them (a new tab). href is the post's own address (the card's link).
-export interface PostCardRef { href: string; byline: string; hook: string; cta: string }
+// modal.blocks), drawn as LinkedIn's own short embed (components/card/PostEmbed) with a link to the post under it. src is the
+// embed's address in its collapsed form (?collapsed=1: the post's text stops at one line and "...more"); width is the frame's on a
+// desktop row (a pair of photos is as wide); title is the frame's accessible name, in my words; href and cta are the link under the
+// frame (a new tab): the post's own address and its words.
+export interface CardEmbedRef { src: string; width: number; title: string; beside: number; href: string; cta: string }
 
 // Blocks carry **bold**, *italic* and the inline link markup (lib/content/links.ts).
 export interface CardModal {
@@ -137,8 +134,6 @@ export interface CardModal {
   easterEgg?: { line: string; control: string };
   video?: CardVideoRef;
   embed?: CardEmbedRef;
-  // Where the card has a post: the card it is drawn as.
-  postCard?: PostCardRef;
   // The sentences a phone may leave out of a paragraph, by its index in blocks: verbatim, whole, in the order they go. A phone's pager
   // drops them one at a time, only on a page too short for the paragraph beside its photo (lib/gallery/paginate); the desktop and
   // every page with the room keep every word (Aaron allowed a little less text on mobile, 2026-10-30).

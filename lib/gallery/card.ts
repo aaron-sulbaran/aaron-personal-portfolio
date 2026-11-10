@@ -1,4 +1,4 @@
-import { siteContent, type CardKey, type PostCardRef } from "@/lib/content";
+import { siteContent, type CardKey } from "@/lib/content";
 import { visibleText } from "@/lib/content/links";
 import { phoneFocus } from "@/lib/content/media";
 import { rowColumns, type Box, type ColumnSettings } from "./boxes";
@@ -13,9 +13,9 @@ import { clusterPages, galleryPlan, namedPlan, phonePages, type Page, type Phone
 // A demo video drawn in the place of a photo (components/card/CardVideo): the file, its poster and its own pixels; playOnce
 // plays it by itself once and holds on its last frame (CardVideoRef).
 export interface GalleryVideo { src: string; poster: string; width: number; height: number; playOnce?: boolean }
-// A post in the place of a photo, drawn as its link card (components/card/PostCard): the card's width on a desktop row, the post's
-// name, and the card.
-export interface GalleryEmbed { width: number; title: string; card: PostCardRef }
+// A post in the place of a photo, drawn as LinkedIn's short embed (components/card/PostEmbed): the embed's address, the frame's width
+// and height on a desktop row, its accessible name, and the link under it (href, cta).
+export interface GalleryEmbed { src: string; width: number; height: number; title: string; href: string; cta: string }
 // tag: a job's name tag drawn in the place of a photo (components/card/JobTag), the index of its entry on the jobs timeline; its
 // width and height are a nominal box (the tag grows with its tip).
 // focus: where a tall photo's subject sits, a share of its height from the top, kept in view when a phone page crops it (lib/content/media).

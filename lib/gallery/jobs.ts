@@ -17,7 +17,7 @@ import type { Plan, Slide } from "./plan";
 //   paragraph 4  the LinkedIn post's card, with Popeyes' tag in the words column beside it (Popeyes is the last job, so it lands there)
 // Every photo and tag appears exactly once (lib/gallery/card.test.ts).
 
-// The post's card is the post's width plus its hairline either side, as LinkedIn's frame was, so the rows keep their places.
+// The post's frame draws its hairline outside the post's own width, so the post keeps its 504 and the rows keep their places.
 export const EMBED_BORDER = 1;
 
 export interface JobsGallery { photos: GalleryPhoto[]; boxes: Box[]; plan: Plan; slot: number; panel: number }
@@ -30,8 +30,8 @@ export function jobsGallery(columns: Parameters<typeof columnsFor>[1]): JobsGall
   // others, and a 3:4 box cropped its top and bottom off); the others' 1200 by 1600 come to the 3:4 they were.
   const photoBox = (photo: { width: number; height: number }): Box => ({ width: itemWidth, height: (itemWidth * photo.height) / photo.width });
   const tagBox: Box = { width: itemWidth, height: tagHeight };
-  // The post's card: its height is its own, as a name tag's is, so this one is nominal (the tag's).
-  const embedBox: Box = { width: embed.width + 2 * EMBED_BORDER, height: tagHeight };
+  // The post's frame and its hairlines (the link under it is not counted).
+  const embedBox: Box = { width: embed.width + 2 * EMBED_BORDER, height: GALLERY.post.rowHeight + 2 * EMBED_BORDER };
 
   const tagAt = (job: number) => modal.photos.length + job;
   const embedAt = modal.photos.length + timeline.length;
@@ -42,7 +42,7 @@ export function jobsGallery(columns: Parameters<typeof columnsFor>[1]): JobsGall
     ...timeline.map((entry, job): GalleryPhoto => ({
       src: entry.logo?.src ?? "", width: tagBox.width, height: tagBox.height, alt: siteContent.cards.jobs.tag.label(entry.employer), caption: null, captionShort: null, tag: job,
     })),
-    { src: modal.postCard!.href, width: embedBox.width, height: embedBox.height, alt: embed.title, caption: null, captionShort: null, embed: { width: embed.width, title: embed.title, card: modal.postCard! } },
+    { src: embed.href, width: embedBox.width, height: embedBox.height, alt: embed.title, caption: null, captionShort: null, embed: { src: embed.src, width: embed.width, height: GALLERY.post.rowHeight, title: embed.title, href: embed.href, cta: embed.cta } },
   ];
   const boxes: Box[] = [...modal.photos.map(photoBox), ...timeline.map(() => tagBox), embedBox];
 

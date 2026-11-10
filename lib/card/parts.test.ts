@@ -10,7 +10,8 @@ import { CardHeader } from "@/components/card/CardHeader";
 import { CardLinks } from "@/components/card/CardLinks";
 import { MentorsList } from "@/components/card/MentorsList";
 import { JobTag } from "@/components/card/JobTag";
-import { PostCard } from "@/components/card/PostCard";
+import { PostEmbed } from "@/components/card/PostEmbed";
+import { galleryOf } from "@/lib/gallery/card";
 import { siteContent } from "@/lib/content";
 
 // next/image's optimizer needs a server; a plain img is enough to read the markup.
@@ -171,24 +172,35 @@ describe("a job's name tag", () => {
   });
 });
 
-describe("the LinkedIn post as its card, on a desktop and a phone", () => {
-  const { postCard } = siteContent.cards.jobs.modal;
-  const html = renderToStaticMarkup(createElement(PostCard, { card: postCard! }));
-  it("is one link out, in a new tab: the post's own address, with its hook line, my name and the way in", () => {
-    expect(html).toMatch(/^<a [^>]*href="https:\/\/lnkd.in\/p\/g3mXFGcY" target="_blank" rel="noopener noreferrer"/);
-    expect(html.match(/<a /g)).toHaveLength(1);
-    for (const text of ["Aaron Sulbaran", "I don&#x27;t trust people who haven&#x27;t worked an unflattering job.", "View on LinkedIn"]) expect(html).toContain(text);
-    // The way in comes right under the hook line (Aaron, 2026-11-09).
-    expect(html.indexOf("View on LinkedIn")).toBeGreaterThan(html.indexOf("unflattering job."));
-    expect(html).toContain("opens in a new tab");
-    expect(html).not.toContain("<iframe");
+describe("the LinkedIn post as LinkedIn's short embed, with View on LinkedIn under it", () => {
+  const photo = galleryOf("jobs").photos.find((piece) => piece.embed)!;
+  const html = renderToStaticMarkup(createElement(PostEmbed, { embed: photo.embed!, index: 9 }));
+  it("frames the collapsed embed, lazy and titled in my words, at the row's height", () => {
+    expect(html.match(/<iframe /g)).toHaveLength(1);
+    expect(html).toContain('src="https://www.linkedin.com/embed/feed/update/urn:li:ugcPost:7463750786611630080?collapsed=1"');
+    expect(html).toContain('title="My LinkedIn post about unflattering jobs"');
+    expect(html).toContain('loading="lazy"');
+    expect(html).toContain(`height:${GALLERY.post.rowHeight + 2}px`);
+    // The site's cursor hands off to the native one over the frame.
+    expect(html).toMatch(/data-cursor-native=""[^>]*>\s*<div data-mask-media/);
   });
-  it("is flat in the card language, like a name tag: the tokens, the photos' radius and a hairline, no hex, shadow or gradient", () => {
+  it("puts one link under the frame, to the post's own address in a new tab: View on LinkedIn", () => {
+    expect(html.indexOf("View on LinkedIn")).toBeGreaterThan(html.indexOf("<iframe"));
+    expect(html.match(/<a /g)).toHaveLength(1);
+    expect(html).toMatch(/<a [^>]*href="https:\/\/lnkd.in\/p\/g3mXFGcY" target="_blank" rel="noopener noreferrer"/);
+    expect(html).toContain("opens in a new tab");
+  });
+  it("is flat in the card language: the photos' radius and a hairline, tokens only, no hex, shadow or gradient", () => {
     expect(html).toContain("rounded-xl");
     expect(html).toContain("border-border");
     expect(html).toContain("text-accent");
     expect(html).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
     expect(html).not.toMatch(/shadow|gradient/);
+  });
+  it("on a phone's page, lets the frame fill what the figure leaves under the link instead of a fixed height", () => {
+    const fill = renderToStaticMarkup(createElement(PostEmbed, { embed: photo.embed!, index: 9, fill: true }));
+    expect(fill).toContain("flex-1");
+    expect(fill).not.toContain(`height:${GALLERY.post.rowHeight + 2}px`);
   });
 });
 

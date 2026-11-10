@@ -12,14 +12,15 @@ describe("a card's mask steps", () => {
     ]);
     expect(ids(cardSteps(galleryOf("mentorship"), "rows", false))[2]).toEqual(["photo-0", "caption-0", "words-0"]);
   });
-  it("masks the jobs card's rows together: every piece of a cluster with its paragraph, and the tag beside the post with them", () => {
+  it("masks the jobs card's rows together: every piece of a cluster with its paragraph, and the tag beside the post with them, the post's link after its frame", () => {
     // Photos 0 to 3 are the Aritzia poster, the Apple badge and the two MOD photos, then tags 4 to 8 (Aritzia to Popeyes) and the post, 9.
     expect(ids(cardSteps(galleryOf("jobs"), "rows", false))).toEqual([
       ["title"], ["meta"],
       ["photo-4", "photo-0", "caption-0", "words-0"],
       ["photo-5", "photo-1", "caption-1", "words-1"],
       ["photo-6", "photo-7", "photo-2", "caption-2", "photo-3", "caption-3", "words-2"],
-      ["photo-9", "photo-8", "words-3"],
+      // The post's frame, then View on LinkedIn under it where a photo's caption would be, then Popeyes' tag and the paragraph.
+      ["photo-9", "caption-9", "photo-8", "words-3"],
       ["links"],
     ]);
   });

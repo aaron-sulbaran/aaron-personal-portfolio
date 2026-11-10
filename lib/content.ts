@@ -412,7 +412,7 @@ export type MenuItem = (typeof siteContent.menu.items)[number];
 export type Track = SoundtrackTrack;
 export type {
   CardContent, CardKey, CardLink, CardModal, CardModalKind, CardPicture, Cards, CardVisual, DefinitionEntry, ImageRef,
-  InlineRegister, InspiredBy, LogoRef, Mentor, MentorsList, ModalPhoto, PhotoCrop, PhotoRef, PopEntry, PostCardRef, SoundtrackTrack, TimelineEntry,
+  InlineRegister, InspiredBy, LogoRef, Mentor, MentorsList, ModalPhoto, PhotoCrop, PhotoRef, PopEntry, SoundtrackTrack, TimelineEntry,
   TipEntry, TrackLicenseKind, WhoIAmBlock,
 } from "./content/types";
 export { bookRow, strandCardByKey, strandCardOf, strandCards } from "./content/strand";
