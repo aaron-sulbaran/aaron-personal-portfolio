@@ -488,6 +488,111 @@ test.describe("the wave as one line", () => {
     });
   }
 
+  // With the music on, the band's run is shaped by it and still leaves and comes back with the scroll. The music moves the ink from
+  // frame to frame, so each read is the most of a few.
+  for (const size of [{ width: 1440, height: 900 }, { width: 393, height: 852 }]) {
+    test(`player: with the music on, the band's run still sweeps off with the scroll and comes back, at ${size.width}`, async ({ page, browserName }) => {
+      test.skip(browserName === "webkit", "WebKit cannot be launched muted");
+      await page.setViewportSize(size);
+      await openHome(page, { path: HOME });
+      await playFromBand(page);
+      await page.waitForTimeout(800);
+      const peak = async () => {
+        let most = 0;
+        for (let i = 0; i < 6; i++) {
+          most = Math.max(most, await bandInkPixels(page));
+          await page.waitForTimeout(80);
+        }
+        return most;
+      };
+      const whole = await peak();
+      expect(whole, "the whole run with the music on").toBeGreaterThan(500);
+      await bandBottomAt(page, Math.round((RELEASE_LINE * size.height) / 2));
+      await page.waitForTimeout(BAND_SWEEP_S * 1000 + 400);
+      expect(await peak(), "half way to the top, the music on").toBeLessThan(0.85 * whole);
+      await bandBottomAt(page, 6);
+      await page.waitForTimeout(BAND_SWEEP_S * 1000 + 400);
+      expect(await peak(), "at the top edge, the music on").toBeLessThan(0.1 * whole);
+      await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
+      await expect.poll(peak, { timeout: 5000, message: "the run comes back with the music on" }).toBeGreaterThan(0.8 * whole);
+    });
+  }
+
+  // Reduced motion has no train: the band's run stays whole wherever the band is, and a flick to the top finds it whole at once.
+  test("player: under reduced motion the band's run stays whole as the band scrolls away and back", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await openHome(page, { path: HOME });
+    await parkBand(page);
+    await page.waitForTimeout(400);
+    const whole = await bandInkPixels(page);
+    expect(whole, "the whole run").toBeGreaterThan(500);
+    await bandBottomAt(page, Math.round((RELEASE_LINE * viewportHeight(page)) / 2));
+    await page.waitForTimeout(BAND_SWEEP_S * 1000 + 400);
+    expect(await bandInkPixels(page), "half way to the top, reduced motion").toBeGreaterThan(0.9 * whole);
+    const atTop = await page.evaluate(async () => {
+      window.scrollTo({ top: 0, behavior: "instant" });
+      await new Promise(requestAnimationFrame);
+      await new Promise(requestAnimationFrame);
+      const canvas = document.querySelector<HTMLCanvasElement>("#listen canvas")!;
+      const { data } = canvas.getContext("2d")!.getImageData(0, 0, canvas.width, canvas.height);
+      let painted = 0;
+      for (let i = 3; i < data.length; i += 4) if (data[i] > 0) painted++;
+      return painted;
+    });
+    expect(atTop, "two frames after a flick to the top, reduced motion").toBeGreaterThan(0.9 * whole);
+  });
+
+  // From its first drawn frame the band's run is whole, never part swept in from the right as the page loads; and the sweep is the
+  // canvas alone, so nothing scrolls sideways while it runs.
+  for (const size of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) {
+    test(`player: the band's run is whole from the first frame it is drawn, and nothing scrolls sideways while it sweeps, at ${size.width}`, async ({ page }) => {
+      test.setTimeout(90_000);
+      await page.setViewportSize(size);
+      await page.addInitScript(() => {
+        type Frame = { ink: number; minX: number; width: number };
+        const record: { frames: Frame[] } = { frames: [] };
+        Object.assign(window, { __bandRun: record });
+        const started = performance.now();
+        const tick = () => {
+          const canvas = document.querySelector<HTMLCanvasElement>("#listen canvas");
+          if (canvas && canvas.width && canvas.height) {
+            const { data } = canvas.getContext("2d")!.getImageData(0, 0, canvas.width, canvas.height);
+            let ink = 0;
+            let minX = Infinity;
+            for (let i = 3; i < data.length; i += 4) {
+              if (data[i] === 0) continue;
+              ink++;
+              minX = Math.min(minX, ((i - 3) / 4) % canvas.width);
+            }
+            if (ink > 0) record.frames.push({ ink, minX, width: canvas.width });
+          }
+          if (performance.now() - started < 6000) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      });
+      await openHome(page, { path: HOME, at: "top" });
+      await settled(page);
+      await page.waitForTimeout(1500);
+      const record = await page.evaluate(() => (window as unknown as { __bandRun: { frames: { ink: number; minX: number; width: number }[] } }).__bandRun);
+      expect(record.frames.length, "frames that drew the band's run").toBeGreaterThan(10);
+      const last = record.frames[record.frames.length - 1];
+      expect(record.frames[0].ink, "the first frame that drew the run, against the last").toBeGreaterThan(0.5 * last.ink);
+      for (const f of record.frames) expect(f.minX, "the run reaches its left end in every frame").toBeLessThan(0.1 * f.width);
+
+      const noSideways = () => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth);
+      expect(await noSideways(), "at the top").toBe(true);
+      await bandBottomAt(page, Math.round((RELEASE_LINE * size.height) / 2));
+      await page.waitForTimeout(BAND_SWEEP_S * 1000 + 400);
+      expect(await noSideways(), "half way through the sweep").toBe(true);
+      await bandBottomAt(page, 6);
+      await page.waitForTimeout(BAND_SWEEP_S * 1000 + 400);
+      expect(await noSideways(), "the run swept off").toBe(true);
+      await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
+      await page.waitForTimeout(BAND_SWEEP_S * 1000 + 400);
+      expect(await noSideways(), "back at the top").toBe(true);
+    });
+  }
+
   test("player: an answer pressed in the band holds the wave, then the line follows and the ripple goes out at the release", async ({ page }) => {
     await openHome(page, { path: HOME });
     await parkBand(page);
