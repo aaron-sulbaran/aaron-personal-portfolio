@@ -19,7 +19,7 @@ export function cardSteps(gallery: Gallery, layout: "rows" | "pager", flying: bo
     flown: flying && layout === "rows" ? gallery.lead : undefined,
     hasCaption: (photo) => gallery.photos[photo]?.caption != null,
     hasLinks: siteContent.cards[gallery.key].modal.links.length > 0,
-    after: gallery.key === "talos" ? TALOS_AFTER : undefined,
+    after: gallery.key === "talos" ? TALOS_AFTER : paragraphLinksAfter(gallery),
     trailing: [
       ...(gallery.key === "mentorship" && siteContent.cards.mentorship.mentors.people.length > 0 ? [partId.mentors] : gallery.key === "talos" ? [partId.talos] : []),
       ...(siteContent.cards[gallery.key].modal.easterEgg ? [partId.egg] : []),
@@ -34,6 +34,17 @@ export function cardSteps(gallery: Gallery, layout: "rows" | "pager", flying: bo
 // once when nothing does (a book row, a touch tap), so the panel never sits
 // empty waiting for a flight that is not coming.
 export const maskStartMs = (flying: boolean) => (flying ? GALLERY.mask.landingMs : 0);
+
+// A paragraph's own links mask in right after it (components/card/afterWords), by word unit.
+function paragraphLinksAfter(gallery: Gallery): StepOptions["after"] {
+  const links = siteContent.cards[gallery.key].modal.paragraphLinks;
+  if (!links) return undefined;
+  const after: Record<number, readonly string[]> = {};
+  gallery.words.forEach((word, unit) => {
+    if (links[word.index]?.length) after[unit] = [partId.paragraphLinks(word.index)];
+  });
+  return after;
+}
 
 // What follows each of Talos's opening paragraphs: the sting after the first,
 // the Discord channel after the second (components/card/talosParts).

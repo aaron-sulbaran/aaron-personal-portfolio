@@ -34,6 +34,7 @@ export const partId = {
   talos: "talos",
   egg: "egg",
   links: "links",
+  paragraphLinks: (unit: number) => `links-${unit}`,
   pager: "pager",
   words: (unit: number) => `words-${unit}`,
   photo: (photo: number) => `photo-${photo}`,

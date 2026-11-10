@@ -65,16 +65,27 @@ for (const viewport of [{ width: 1280, height: 800 }, { width: 1440, height: 900
 
 // The Muse Friends demo in the photos' 4:3 frame, radius and shadow: native controls, muted, its poster until played, never
 // autoplaying. The 16:9 demo is letterboxed inside the frame (a 4:3 centre crop would cut its mascots and its first headline).
-// And the card's two links, external.
-test("hackathons card: both links lead out, and the Muse Friends demo sits in the photos' 4:3 frame, shows its poster and controls and plays, muted", async ({ page }) => {
+// And each project's links, external, right under its own paragraph (Aaron, 2026-11-09), none at the card's foot.
+test("hackathons card: each project's links lead out from under its own paragraph, and the Muse Friends demo sits in the photos' 4:3 frame, shows its poster and controls and plays, muted", async ({ page }) => {
   const video = modal.video!;
   const { dialog } = await openCardFromBook(page, "hackathons", { settled: true });
-  for (const link of modal.links) {
-    const anchor = dialog.getByRole("link", { name: new RegExp(`^${link.label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`) });
-    await expect(anchor).toHaveAttribute("href", link.href);
-    await expect(anchor).toHaveAttribute("target", "_blank");
-    await expect(anchor).toHaveAttribute("rel", /noopener/);
+  const paragraphLinks = Object.entries(modal.paragraphLinks ?? {});
+  expect(paragraphLinks.map(([paragraph]) => Number(paragraph))).toEqual([0, 2]);
+  for (const [paragraph, links] of paragraphLinks) {
+    const list = dialog.locator(`[data-paragraph-links="${paragraph}"]`);
+    await expect(list).toHaveCount(1);
+    const words = (await dialog.locator(`p[data-mask="words-${paragraph}"]`).boundingBox())!;
+    const box = (await list.boundingBox())!;
+    expect(box.y, `paragraph ${paragraph}'s links under it`).toBeGreaterThanOrEqual(words.y + words.height - 1);
+    expect(box.y - (words.y + words.height), `right under it`).toBeLessThan(40);
+    for (const link of links) {
+      const anchor = list.getByRole("link", { name: new RegExp(`^${link.label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`) });
+      await expect(anchor).toHaveAttribute("href", link.href);
+      await expect(anchor).toHaveAttribute("target", "_blank");
+      await expect(anchor).toHaveAttribute("rel", /noopener/);
+    }
   }
+  await expect(dialog.locator('ul[data-mask="links"]'), "nothing left at the card's foot").toHaveCount(0);
   const player = dialog.locator("[data-card-video] video");
   await expect(player).toHaveCount(1);
   await player.scrollIntoViewIfNeeded();

@@ -92,10 +92,16 @@ describe("the fourteen cards", () => {
     expect(cards["capital-one"].modal.blocks[1].startsWith("**2024, business analyst.** My first look")).toBe(true);
     expect(cards.hackathons.modal.blocks.map((block) => block.slice(0, block.indexOf(".**") + 3))).toEqual(["**UFCU Develop U, fall 2026.**", "**AWS Agentic AI Hackathon (Austin), fall 2026.**", "**HackTX, fall 2026.**", "**Hook 'Em Hacks, spring 2026.**", "**Vercel one-day hackathon, New York.**"]);
     expect(cards.hackathons.modal.blocks.join(" ")).not.toContain("coming soon");
-    expect(cards.hackathons.modal.links).toEqual([
-      { label: "musefriends.tech", href: "https://musefriends.tech" },
-      { label: "Muse Friends on GitHub", href: "https://github.com/aaron-sulbaran/muse-friends" },
-    ]);
+    // Each project's links under its own paragraph (Aaron, 2026-11-09), none at the card's foot: UFCU Front Desk under UFCU Develop U,
+    // Muse Friends under HackTX.
+    expect(cards.hackathons.modal.links).toEqual([]);
+    expect(cards.hackathons.modal.paragraphLinks).toEqual({
+      0: [{ label: "UFCU Front Desk on GitHub", href: "https://github.com/aaron-sulbaran/ufcu-hackathon" }],
+      2: [
+        { label: "musefriends.tech", href: "https://musefriends.tech" },
+        { label: "Muse Friends on GitHub", href: "https://github.com/aaron-sulbaran/muse-friends" },
+      ],
+    });
     expect(cards.jobs.timeline[0].tip.endsWith("basically unisex products...")).toBe(true);
     expect(cards.jobs.timeline[0].tip).toBe("My most random job. For the interview they asked me to dress in my best clothing, which I thought was funny. If you work here, all the women in your life will want a discount. With that said, the effortless pants and sweatfleece line are basically unisex products...");
     expect(Object.fromEntries(keys.map((key) => [key, cards[key].modal.blocks.length]))).toEqual({

@@ -83,11 +83,16 @@ export const cards: Cards = {
   hackathons: {
     short: "Hackathons", visual: { kind: "photo", flipX: false, photo: pictures.hackathons },
     book: { title: "Hackathons", meta: "Builder, 2025 to now" },
-    // UFCU first, so the card picture (the UFCU win, beside the title) sits next to its own paragraph (docs/content/cards.md).
-    modal: { kind: "logo", title: "Hackathons", picture: { caption: "Me and my team winning UFCU Develop U, September 2026." }, links: [
-      { label: "musefriends.tech", href: "https://musefriends.tech" },
-      { label: "Muse Friends on GitHub", href: "https://github.com/aaron-sulbaran/muse-friends" },
-    ], photos: modalPhotos.hackathons, blocks: [
+    // UFCU first, so the card picture (the UFCU win, beside the title) sits next to its own paragraph (docs/content/cards.md). Each
+    // project's links sit under its own paragraph, not at the card's foot (Aaron, 2026-11-09: musefriends.tech "under the actual Hack
+    // Texas Fall 2026 thing", and UFCU Develop U "having its own link").
+    modal: { kind: "logo", title: "Hackathons", picture: { caption: "Me and my team winning UFCU Develop U, September 2026." }, links: [], paragraphLinks: {
+      0: [{ label: "UFCU Front Desk on GitHub", href: "https://github.com/aaron-sulbaran/ufcu-hackathon" }],
+      2: [
+        { label: "musefriends.tech", href: "https://musefriends.tech" },
+        { label: "Muse Friends on GitHub", href: "https://github.com/aaron-sulbaran/muse-friends" },
+      ],
+    }, photos: modalPhotos.hackathons, blocks: [
       "**UFCU Develop U, fall 2026.** Won with UFCU Front Desk, a digital front desk assistant that makes joining a credit union simple and still sounds like them.",
       "**AWS Agentic AI Hackathon (Austin), fall 2026.** Placed second with a hedge fund management workspace where each fund gets its own AI agent orchestrator, which spawns as many agents as necessary to research, hand work to each other, and share files, all while keeping provenance. It's built on and powered by Amazon Bedrock.",
       "**HackTX, fall 2026.** Built Muse Friends, a feature proposal for Meta's Muse where your Muse and your friend's Muse turn an abandoned Reel into an actual plan, and you both just say yes. It challenged me to think deeply about agent-to-agent communication and planning where hallucinations aren't an option.",

@@ -219,7 +219,16 @@ describe("the mentors and the links", () => {
     const { href } = siteContent.cards.jobs.modal.links[0];
     expect(renderToStaticMarkup(createElement(CardLinks, { cardKey: "jobs" }))).toContain(href);
     expect(renderToStaticMarkup(createElement(CardLinks, { cardKey: "jobs", skip: href }))).toBe("");
-    expect(renderToStaticMarkup(createElement(CardLinks, { cardKey: "hackathons", skip: href }))).toContain("musefriends.tech");
+    expect(renderToStaticMarkup(createElement(CardLinks, { cardKey: "anthropic", skip: href }))).toContain("txclaude.org");
+  });
+  it("draws a paragraph's own links under it, masked as that paragraph's, and none of them at the card's foot", () => {
+    const hacktx = renderToStaticMarkup(createElement(CardLinks, { cardKey: "hackathons", paragraph: 2 }));
+    expect(hacktx).toContain('data-mask="links-2"');
+    expect(hacktx).toMatch(/<a [^>]*href="https:\/\/musefriends.tech" target="_blank" rel="noopener noreferrer"/);
+    expect(hacktx).toContain("Muse Friends on GitHub");
+    expect(renderToStaticMarkup(createElement(CardLinks, { cardKey: "hackathons", paragraph: 0 }))).toContain("https://github.com/aaron-sulbaran/ufcu-hackathon");
+    expect(renderToStaticMarkup(createElement(CardLinks, { cardKey: "hackathons", paragraph: 1 }))).toBe("");
+    expect(renderToStaticMarkup(createElement(CardLinks, { cardKey: "hackathons" }))).toBe("");
   });
   it("opens a card's links in a new tab, and renders nothing for a card with none", () => {
     expect(renderToStaticMarkup(createElement(CardLinks, { cardKey: "anthropic" }))).toMatch(/<a [^>]*href="https:\/\/txclaude.org" target="_blank" rel="noopener noreferrer"/);
