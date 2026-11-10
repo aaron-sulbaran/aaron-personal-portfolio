@@ -14,7 +14,10 @@
 //      sentences, lib/content cards' phoneOmit) one at a time and measures again. One with nothing left to drop keeps a page of its
 //      own at the floor, and its words scroll there (a very short window).
 
+import { GALLERY } from "./constants";
+
 export const END = "end";
+const POST_STAGE = GALLERY.post;
 // A mentor's block: the first carries the mentors' heading, and a mentor is never split from their line.
 export const mentorId = (index: number) => `m${index}`;
 
@@ -111,11 +114,16 @@ function layUnit(unit: UnitMeasure, pageRules: PageRules, tooTall: string[]): Ch
   const rules = unit.floor === undefined ? pageRules : { ...pageRules, floor: Math.min(pageRules.floor, unit.floor) };
   const withMentors = blocks.some((block) => block.id.startsWith("m"));
   if (unit.own !== undefined) {
-    // A name tag, or the post's card with its paragraph under it: one page, the card shrunk to leave the paragraph its room.
+    // The post with its paragraph above it: one page. Its frame takes what the words leave, or, where that would cut through the post's
+    // photos, either its full height (the photos whole, the words scrolling above it) or, on a page too short for that and its least
+    // words, only the post's head and its line. The words are never trimmed for it (Aaron, 2026-11-09).
+    const { pageMin, teaser, wordsMin } = POST_STAGE;
     const words = wordsHeight(blocks, rules.blockGap);
-    const stage = blocks.length ? rules.room - words - rules.pageGap : rules.room;
-    if (blocks.length && stage < unit.own * rules.fitFloor - 0.5) tooTall.push(...blocks.filter((block) => block.id.startsWith("w")).map((block) => block.id));
-    return [{ photos: [...photos], stage: Math.max(0, stage), ...wordsOf(blocks, withMentors) }];
+    const fit = blocks.length ? rules.room - words - rules.pageGap : rules.room;
+    const whole = rules.room - rules.pageGap - wordsMin >= pageMin;
+    const stage = fit >= pageMin ? fit : whole ? pageMin : teaser;
+    if (blocks.length && fit < stage - 0.5) tooTall.push(...blocks.filter((block) => block.id.startsWith("w")).map((block) => block.id));
+    return [{ photos: [...photos], stage: Math.max(0, Math.min(stage, rules.room)), ...wordsOf(blocks, withMentors) }];
   }
   const captionOf = (shown: readonly number[], carried: boolean) => (carried ? 0 : Math.max(0, ...shown.map((photo) => unit.captions[photos.indexOf(photo)] ?? 0)));
   if (blocks.length === 0) return [{ photos: [...photos], stage: stageRoom(0, captionOf(photos, false), false, rules), ...wordsOf(blocks, withMentors) }];

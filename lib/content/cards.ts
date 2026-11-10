@@ -2,7 +2,7 @@ import { logos, modalPhotos, pictures } from "./media";
 import { talosTeam } from "./talos";
 import type { CardKey, Cards } from "./types";
 
-// The jobs card's LinkedIn post: the link under the modal's words, and the post's card beside the last paragraph.
+// The jobs card's LinkedIn post: the link under the modal's words, and the link under the post's frame beside the last paragraph.
 const POST_HREF = "https://lnkd.in/p/g3mXFGcY";
 
 // The fourteen launch cards (docs/content/cards.md, approved 2026-10-08), in strand order.
@@ -145,18 +145,20 @@ export const cards: Cards = {
       "I think these jobs are an opportunity to experience the other side of daily interactions you might never think of after finishing your degree. That's why I've never shied away from a service industry job. I also learned how to make a fire pizza.",
       "I wrote about my work experience outside of class on LinkedIn, and my hook was \"I don't trust people who haven't worked an unflattering job.\" It got 130,000 impressions and almost a thousand reactions. My favorite line is \"You know to be nice to the person behind the counter because you were the person behind the counter.\" I guess it resonated with people.",
     ],
-    // The post beside the last paragraph, which is about it (Aaron, 2026-10-29), as its card and no longer LinkedIn's frame (2026-11-09:
-    // "have the LinkedIn posts... be kind of a little truncated, and then have the view on LinkedIn sort of like right underneath").
+    // The post beside the last paragraph, which is about it (Aaron, 2026-10-29), as LinkedIn's own short embed, the way Jolie Zhou's
+    // site draws hers (2026-11-09: "it's a short embed. You can click more or whatever, and then you have the little view on LinkedIn
+    // piece underneath it"): the collapsed form of his embed code, then View on LinkedIn under the frame.
     embed: {
+      src: "https://www.linkedin.com/embed/feed/update/urn:li:ugcPost:7463750786611630080?collapsed=1",
       width: 504,
       title: "My LinkedIn post about unflattering jobs",
       beside: 3,
+      href: POST_HREF,
+      cta: "View on LinkedIn",
     },
-    // The post's card, on a desktop and a phone alike: the post's hook line and me, then one link out.
-    postCard: { href: POST_HREF, byline: "Aaron Sulbaran", hook: "I don't trust people who haven't worked an unflattering job.", cta: "View on LinkedIn" },
-    // A short phone's page cannot hold the last paragraph under the post's card (which shows the post's hook itself): these go first, in
-    // this order (and only there).
-    phoneOmit: { 3: ["I guess it resonated with people.", "I wrote about my work experience outside of class on LinkedIn, and my hook was \"I don't trust people who haven't worked an unflattering job.\""] } },
+    // No phone omissions: a phone keeps every word the desktop has, and a page's words scroll when they do not fit (Aaron, 2026-11-09: "I
+    // don't like the idea of dropping sentences ... not everything has to fit perfectly into one card itself").
+  },
     // Newest first (Aaron, 2026-10-29). Each job is a name tag in the modal (components/card/JobTag): the tip is on the page for a reader to
     // read, not behind a hover.
     timeline: [
@@ -171,7 +173,9 @@ export const cards: Cards = {
       { employer: "Popeyes", role: null, when: "Sophomore year of high school", logo: logos.popeyes,
         tip: "Get the blackened tenders every time, they have to make them fresh usually (bonus points if you can get them on a spicy chicken sandwich, secret menu item)" },
     ],
-    tag: { name: "Aaron", tipLabel: "My tip", label: (employer) => `My name tag from ${employer}, with my tip` },
+    // Aaron, 2026-11-09: no "Aaron" on every tag ("why does it have to say Aaron for every single one?"); the role is the big text. On a
+    // phone the tip is a dropdown under the tag: "replace the My tip label with something like hear more about this one".
+    tag: { tipLabel: "My tip", more: "Hear more about this one", label: (employer) => `My name tag from ${employer}, with my tip` },
   },
   "this-site": {
     short: "This site", visual: { kind: "mark" },

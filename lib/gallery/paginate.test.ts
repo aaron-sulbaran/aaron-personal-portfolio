@@ -1,3 +1,4 @@
+import { GALLERY } from "@/lib/gallery/constants";
 import { describe, expect, it } from "vitest";
 import { cuts, dealPhotos, END, layoutKey, mentorId, moreTrims, paginate, shapeKey, stageRoom, trimsKey, wordsHeight, type PageRules, type UnitMeasure } from "@/lib/gallery/paginate";
 import { repage, slideWords, type Page } from "@/lib/gallery/plan";
@@ -108,18 +109,22 @@ describe("paginate: a window too short for the floor", () => {
   });
 });
 
-describe("paginate: a stage of its own (the jobs card)", () => {
-  it("gives a name tag the whole room, and leaves the post's paragraph its room under the post's card", () => {
-    const tag = unit({ unit: 1, photos: [4], captions: [0], own: 409, blocks: [] });
-    const post = unit({ unit: 2, photos: [9], captions: [0], own: 237, blocks: [block("w3", 260)] });
-    const { shape, tooTall } = paginate([tag, post], rules);
-    expect(shape[1]).toEqual([{ photos: [4], stage: 600, units: [], end: false }]);
-    expect(shape[2]).toEqual([{ photos: [9], stage: 600 - 260 - 12, units: [3], end: false }]);
+describe("paginate: a stage of its own (the jobs card's post, under its paragraph)", () => {
+  const { pageMin, teaser, wordsMin } = GALLERY.post;
+  it("gives the post what its paragraph leaves when that holds the post's photos whole", () => {
+    const { shape, tooTall } = paginate([unit({ unit: 2, photos: [8], captions: [0], own: 500, blocks: [block("w3", 120)] })], rules);
+    expect(shape[2]).toEqual([{ photos: [8], stage: 600 - 120 - 12, units: [3], end: false }]);
     expect(tooTall).toEqual([]);
   });
-  it("names the post's paragraph too tall when the card would shrink past its floor beside it", () => {
-    const { tooTall } = paginate([unit({ photos: [9], captions: [0], own: 400, blocks: [block("w3", 300)] })], rules);
+  it("keeps pageMin where what is left would cut through the photos, and the paragraph scrolls above it, whole", () => {
+    const { shape, tooTall } = paginate([unit({ photos: [8], captions: [0], own: 500, blocks: [block("w3", 260)] })], rules);
+    expect(shape[0][0].stage).toBe(pageMin);
     expect(tooTall).toEqual(["w3"]);
+  });
+  it("shows only the post's head and line on a page too short for pageMin and the least words", () => {
+    const short = { ...rules, room: pageMin + wordsMin };
+    const { shape } = paginate([unit({ photos: [8], captions: [0], own: 500, blocks: [block("w3", 260)] })], short);
+    expect(shape[0][0].stage).toBe(teaser);
   });
 });
 

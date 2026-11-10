@@ -95,6 +95,9 @@ export function pagerSteps(pages: readonly Page[], o: StepOptions): MaskStep[] {
     const words = slideParts(first, o).slice(photo.length);
     if (first.links) words.push(...ends(o).flat());
     if (words.length) steps.push(words);
+    // The jobs card's name tags under the words (components/card/JobTagFold), masked as its tags are on a desktop.
+    const tags = (first.tags ?? []).map((tag) => part(partId.photo(tag), o));
+    if (tags.length) steps.push(tags);
   }
   if (pages.length > 1) steps.push([{ id: partId.pager }]);
   return steps;

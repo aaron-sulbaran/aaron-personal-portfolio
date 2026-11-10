@@ -17,7 +17,8 @@ import { pagerSteps, partId, planSteps, type MaskStep, type StepOptions } from "
 export function cardSteps(gallery: Gallery, layout: "rows" | "pager", flying: boolean, lines?: (id: string) => number, phone?: readonly Page[]): MaskStep[] {
   const o: StepOptions = {
     flown: flying && layout === "rows" ? gallery.lead : undefined,
-    hasCaption: (photo) => gallery.photos[photo]?.caption != null,
+    // The post's View on LinkedIn masks in where a photo's caption would, after its frame.
+    hasCaption: (photo) => gallery.photos[photo]?.caption != null || gallery.photos[photo]?.embed !== undefined,
     hasLinks: siteContent.cards[gallery.key].modal.links.length > 0,
     after: gallery.key === "talos" ? TALOS_AFTER : paragraphLinksAfter(gallery),
     trailing: [
