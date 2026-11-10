@@ -10,7 +10,8 @@ import { CardHeader } from "@/components/card/CardHeader";
 import { CardLinks } from "@/components/card/CardLinks";
 import { MentorsList } from "@/components/card/MentorsList";
 import { JobTag } from "@/components/card/JobTag";
-import { PostCard } from "@/components/card/PostCard";
+import { PostEmbed } from "@/components/card/PostEmbed";
+import { galleryOf } from "@/lib/gallery/card";
 import { siteContent } from "@/lib/content";
 
 // next/image's optimizer needs a server; a plain img is enough to read the markup.
@@ -133,16 +134,17 @@ describe("the header", () => {
 
 describe("a job's name tag", () => {
   const tag = (job: number) => renderToStaticMarkup(createElement(JobTag, { job }));
-  it("shows the logo across the top, my name, the role and when, then the labelled tip, all as visible words", () => {
+  it("shows the logo across the top, the role as its big text (never my name), when, then the labelled tip, all as visible words", () => {
     const apple = tag(1);
     expect(apple).toContain('data-job-tag="1"');
     expect(apple).toContain('aria-label="My name tag from Apple, with my tip"');
-    expect(apple.indexOf("data-job-tag-logo")).toBeLessThan(apple.indexOf("data-job-tag-name"));
-    expect(apple.indexOf("data-job-tag-name")).toBeLessThan(apple.indexOf("data-job-tag-role"));
+    expect(apple.indexOf("data-job-tag-logo")).toBeLessThan(apple.indexOf("data-job-tag-role"));
     expect(apple.indexOf("data-job-tag-role")).toBeLessThan(apple.indexOf("data-job-tag-when"));
     expect(apple.indexOf("data-job-tag-when")).toBeLessThan(apple.indexOf("data-job-tag-tip"));
-    expect(apple).toMatch(/data-job-tag-name[^>]*>Aaron</);
-    expect(apple).toContain("Specialist, then technical specialist");
+    expect(apple).not.toContain("data-job-tag-name");
+    expect(apple).not.toMatch(/>Aaron</);
+    expect(apple).toMatch(/data-job-tag-role[^>]*>Specialist, then technical specialist</);
+    expect(apple).toMatch(/font-display[^"]*"[^>]*data-job-tag-role/);
     expect(apple).toContain("2024 to 2025");
     expect(apple).toMatch(/>My tip</);
     expect(apple).toContain("Get AppleCare and some sort of cloud storage.");
@@ -171,24 +173,35 @@ describe("a job's name tag", () => {
   });
 });
 
-describe("the LinkedIn post as its card, on a desktop and a phone", () => {
-  const { postCard } = siteContent.cards.jobs.modal;
-  const html = renderToStaticMarkup(createElement(PostCard, { card: postCard! }));
-  it("is one link out, in a new tab: the post's own address, with its hook line, my name and the way in", () => {
-    expect(html).toMatch(/^<a [^>]*href="https:\/\/lnkd.in\/p\/g3mXFGcY" target="_blank" rel="noopener noreferrer"/);
-    expect(html.match(/<a /g)).toHaveLength(1);
-    for (const text of ["Aaron Sulbaran", "I don&#x27;t trust people who haven&#x27;t worked an unflattering job.", "View on LinkedIn"]) expect(html).toContain(text);
-    // The way in comes right under the hook line (Aaron, 2026-11-09).
-    expect(html.indexOf("View on LinkedIn")).toBeGreaterThan(html.indexOf("unflattering job."));
-    expect(html).toContain("opens in a new tab");
-    expect(html).not.toContain("<iframe");
+describe("the LinkedIn post as LinkedIn's short embed, with View on LinkedIn under it", () => {
+  const photo = galleryOf("jobs").photos.find((piece) => piece.embed)!;
+  const html = renderToStaticMarkup(createElement(PostEmbed, { embed: photo.embed!, index: 9 }));
+  it("frames the collapsed embed, lazy and titled in my words, at the row's height", () => {
+    expect(html.match(/<iframe /g)).toHaveLength(1);
+    expect(html).toContain('src="https://www.linkedin.com/embed/feed/update/urn:li:ugcPost:7463750786611630080?collapsed=1"');
+    expect(html).toContain('title="My LinkedIn post about unflattering jobs"');
+    expect(html).toContain('loading="lazy"');
+    expect(html).toContain(`height:${GALLERY.post.rowHeight + 2}px`);
+    // The site's cursor hands off to the native one over the frame.
+    expect(html).toMatch(/data-cursor-native=""[^>]*>\s*<div data-mask-media/);
   });
-  it("is flat in the card language, like a name tag: the tokens, the photos' radius and a hairline, no hex, shadow or gradient", () => {
+  it("puts one link under the frame, to the post's own address in a new tab: View on LinkedIn", () => {
+    expect(html.indexOf("View on LinkedIn")).toBeGreaterThan(html.indexOf("<iframe"));
+    expect(html.match(/<a /g)).toHaveLength(1);
+    expect(html).toMatch(/<a [^>]*href="https:\/\/lnkd.in\/p\/g3mXFGcY" target="_blank" rel="noopener noreferrer"/);
+    expect(html).toContain("opens in a new tab");
+  });
+  it("is flat in the card language: the photos' radius and a hairline, tokens only, no hex, shadow or gradient", () => {
     expect(html).toContain("rounded-xl");
     expect(html).toContain("border-border");
     expect(html).toContain("text-accent");
     expect(html).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
     expect(html).not.toMatch(/shadow|gradient/);
+  });
+  it("on a phone's page, lets the frame fill what the figure leaves under the link instead of a fixed height", () => {
+    const fill = renderToStaticMarkup(createElement(PostEmbed, { embed: photo.embed!, index: 9, fill: true }));
+    expect(fill).toContain("flex-1");
+    expect(fill).not.toContain(`height:${GALLERY.post.rowHeight + 2}px`);
   });
 });
 
@@ -219,7 +232,16 @@ describe("the mentors and the links", () => {
     const { href } = siteContent.cards.jobs.modal.links[0];
     expect(renderToStaticMarkup(createElement(CardLinks, { cardKey: "jobs" }))).toContain(href);
     expect(renderToStaticMarkup(createElement(CardLinks, { cardKey: "jobs", skip: href }))).toBe("");
-    expect(renderToStaticMarkup(createElement(CardLinks, { cardKey: "hackathons", skip: href }))).toContain("musefriends.tech");
+    expect(renderToStaticMarkup(createElement(CardLinks, { cardKey: "anthropic", skip: href }))).toContain("txclaude.org");
+  });
+  it("draws a paragraph's own links under it, masked as that paragraph's, and none of them at the card's foot", () => {
+    const hacktx = renderToStaticMarkup(createElement(CardLinks, { cardKey: "hackathons", paragraph: 2 }));
+    expect(hacktx).toContain('data-mask="links-2"');
+    expect(hacktx).toMatch(/<a [^>]*href="https:\/\/musefriends.tech" target="_blank" rel="noopener noreferrer"/);
+    expect(hacktx).toContain("Muse Friends on GitHub");
+    expect(renderToStaticMarkup(createElement(CardLinks, { cardKey: "hackathons", paragraph: 0 }))).toContain("https://github.com/aaron-sulbaran/ufcu-hackathon");
+    expect(renderToStaticMarkup(createElement(CardLinks, { cardKey: "hackathons", paragraph: 1 }))).toBe("");
+    expect(renderToStaticMarkup(createElement(CardLinks, { cardKey: "hackathons" }))).toBe("");
   });
   it("opens a card's links in a new tab, and renders nothing for a card with none", () => {
     expect(renderToStaticMarkup(createElement(CardLinks, { cardKey: "anthropic" }))).toMatch(/<a [^>]*href="https:\/\/txclaude.org" target="_blank" rel="noopener noreferrer"/);

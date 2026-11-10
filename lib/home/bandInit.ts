@@ -9,10 +9,10 @@
 // visitor was drawn Play it, and the word was swapped a moment later (on a yes, Play it
 // flashed before Resume). This script puts the answer on <html> as data-band-answer="on" |
 // "off" before anything is painted, and app/globals.css draws the band as it will rest, with
-// the label the answer lands on already showing, and for a stored Not now with Not now already
-// drawn as the chosen option (app/globals.css, "Not now, once chosen"). It chooses the labels
-// and the chosen look, never whether the question shows. A first visit has no attribute and is drawn as it always was; so does a
-// visitor whose storage is blocked.
+// the label the answer lands on already showing, and for a stored Not now with the declined line
+// already in the question's place and Not now already gone (copy.listen.lineDeclined). It chooses
+// the labels and the line, never whether the question shows. A first visit has no attribute and is
+// drawn as it always was; so does a visitor whose storage is blocked.
 export const SOUNDTRACK_STORAGE_KEY = "aaron-soundtrack";
 export const BAND_ANSWER_ATTRIBUTE = "data-band-answer";
 

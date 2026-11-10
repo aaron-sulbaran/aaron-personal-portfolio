@@ -92,10 +92,16 @@ describe("the fourteen cards", () => {
     expect(cards["capital-one"].modal.blocks[1].startsWith("**2024, business analyst.** My first look")).toBe(true);
     expect(cards.hackathons.modal.blocks.map((block) => block.slice(0, block.indexOf(".**") + 3))).toEqual(["**UFCU Develop U, fall 2026.**", "**AWS Agentic AI Hackathon (Austin), fall 2026.**", "**HackTX, fall 2026.**", "**Hook 'Em Hacks, spring 2026.**", "**Vercel one-day hackathon, New York.**"]);
     expect(cards.hackathons.modal.blocks.join(" ")).not.toContain("coming soon");
-    expect(cards.hackathons.modal.links).toEqual([
-      { label: "musefriends.tech", href: "https://musefriends.tech" },
-      { label: "Muse Friends on GitHub", href: "https://github.com/aaron-sulbaran/muse-friends" },
-    ]);
+    // Each project's links under its own paragraph (Aaron, 2026-11-09), none at the card's foot: UFCU Front Desk under UFCU Develop U,
+    // Muse Friends under HackTX.
+    expect(cards.hackathons.modal.links).toEqual([]);
+    expect(cards.hackathons.modal.paragraphLinks).toEqual({
+      0: [{ label: "UFCU Front Desk on GitHub", href: "https://github.com/aaron-sulbaran/ufcu-hackathon" }],
+      2: [
+        { label: "musefriends.tech", href: "https://musefriends.tech" },
+        { label: "Muse Friends on GitHub", href: "https://github.com/aaron-sulbaran/muse-friends" },
+      ],
+    });
     expect(cards.jobs.timeline[0].tip.endsWith("basically unisex products...")).toBe(true);
     expect(cards.jobs.timeline[0].tip).toBe("My most random job. For the interview they asked me to dress in my best clothing, which I thought was funny. If you work here, all the women in your life will want a discount. With that said, the effortless pants and sweatfleece line are basically unisex products...");
     expect(Object.fromEntries(keys.map((key) => [key, cards[key].modal.blocks.length]))).toEqual({
@@ -135,23 +141,26 @@ describe("the fourteen cards", () => {
     expect(modal.blocks[2]).toBe("I think these jobs are an opportunity to experience the other side of daily interactions you might never think of after finishing your degree. That's why I've never shied away from a service industry job. I also learned how to make a fire pizza.");
     expect(modal.blocks[3]).toBe("I wrote about my work experience outside of class on LinkedIn, and my hook was \"I don't trust people who haven't worked an unflattering job.\" It got 130,000 impressions and almost a thousand reactions. My favorite line is \"You know to be nice to the person behind the counter because you were the person behind the counter.\" I guess it resonated with people.");
     expect(modal.links).toEqual([{ label: "The LinkedIn post", href: "https://lnkd.in/p/g3mXFGcY" }]);
-    // The post as its card, no longer LinkedIn's frame (Aaron, 2026-11-09): as wide as a pair of photos, named in my words.
-    expect(modal.embed).toEqual({ width: 504, title: "My LinkedIn post about unflattering jobs", beside: 3 });
+    // LinkedIn's own short embed (Aaron, 2026-11-09, after Jolie Zhou's site): his embed code's address in its collapsed form, as wide as a
+    // pair of photos, named in my words, with View on LinkedIn to the post's own link under it.
+    expect(modal.embed).toEqual({
+      src: "https://www.linkedin.com/embed/feed/update/urn:li:ugcPost:7463750786611630080?collapsed=1",
+      width: 504,
+      title: "My LinkedIn post about unflattering jobs",
+      beside: 3,
+      href: "https://lnkd.in/p/g3mXFGcY",
+      cta: "View on LinkedIn",
+    });
+    expect(modal.embed!.href, "the modal's own link to the post").toBe(modal.links[0].href);
     expect(modal.embed!.beside, "beside the paragraph about the post").toBe(modal.blocks.length - 1);
-    expect(tag.name).toBe("Aaron");
+    // No "Aaron" on every tag (2026-11-09): the role is its big text, and a phone opens the tip with "Hear more about this one".
+    expect(tag).not.toHaveProperty("name");
     expect(tag.tipLabel).toBe("My tip");
+    expect(tag.more).toBe("Hear more about this one");
     expect(tag.label("Apple")).toBe("My name tag from Apple, with my tip");
-    for (const text of [modal.title, ...modal.blocks, modal.embed!.title, tag.name, tag.tipLabel, tag.label("Apple"), ...cards.jobs.timeline.map((entry) => entry.tip)]) expect(text, text).not.toMatch(/\u2014/);
+    for (const text of [modal.title, ...modal.blocks, modal.embed!.title, tag.tipLabel, tag.more, tag.label("Apple"), ...cards.jobs.timeline.map((entry) => entry.tip)]) expect(text, text).not.toMatch(/\u2014/);
   });
 
-  it("draws the post as a link card: the post's own link, its hook line as Aaron wrote it, his name, then View on LinkedIn", () => {
-    const { modal } = cards.jobs;
-    const card = modal.postCard!;
-    expect(card).toEqual({ href: "https://lnkd.in/p/g3mXFGcY", byline: "Aaron Sulbaran", hook: "I don't trust people who haven't worked an unflattering job.", cta: "View on LinkedIn" });
-    expect(card.href, "the modal's own link to the post").toBe(modal.links[0].href);
-    expect(modal.blocks[3], "the hook is the line his paragraph quotes").toContain(card.hook);
-    for (const text of [card.byline, card.hook, card.cta]) expect(text, text).not.toMatch(/\u2014/);
-  });
 
   it("name the six mentors who agreed, each with their own LinkedIn link and the line I wrote for them", () => {
     const { title, people } = cards.mentorship.mentors;

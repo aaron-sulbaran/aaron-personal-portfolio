@@ -19,8 +19,14 @@ export const GALLERY = {
   panelPadding: 40,
   panelBorder: 1,
   // The jobs card's media column holds two pieces side by side (a name tag and its photo, or the two tags of the next row), each this wide,
-  // so a pair is as wide as the LinkedIn post's card, 504 (components/card/PostCard): 244 + 16 + 244.
+  // so a pair is as wide as the LinkedIn post's frame, 504 (components/card/PostEmbed): 244 + 16 + 244.
   cluster: { itemWidth: 244, gap: 16, tagHeight: 330 },
+  // The LinkedIn post's frame, which scrolls inside itself (Jolie Zhou's are 600 tall, 520 on a phone): this tall on a desktop row; on a
+  // phone's page the frame and its link (together) take the room the post's paragraph above them leaves, up to pageMax (lib/gallery/
+  // paginate). Between teaser and pageMin the frame would cut through the post's photos (at 280 it cut his photo off at the face, "really
+  // unsettling", Aaron, 2026-11-09), so a page short of pageMin gives the post pageMin and lets the words scroll above it, keeping them at
+  // least wordsMin, and a page too short for that shows only the post's head, its line and "...more" (teaser).
+  post: { rowHeight: 600, pageMin: 420, pageMax: 520, teaser: 182, wordsMin: 120 },
   headerTile: { width: 60, height: 80 }, // 3:4, so a flown logo card fills it
   headerTileCompact: { width: 42, height: 56 }, // the phone header's, clear of the close button
   talosTileCompact: { width: 51, height: 68 }, // Talos's phone tile: its mark at 40 percent is 20.4px

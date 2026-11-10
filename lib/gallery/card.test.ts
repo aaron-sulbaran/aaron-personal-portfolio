@@ -34,8 +34,9 @@ describe("each card's gallery", () => {
       anthropic: [{ photos: [0], words: [0] }, { photos: [1, 2], words: [1] }],
       misuki: [{ photos: [0], words: [0] }, { photos: [1, 2, 3], words: [1] }],
       ieee: [{ photos: [0], words: [0, 1] }, { photos: [1], words: [2, 3] }, { photos: [2], words: [4] }],
-      // Photos 0 to 3 (Aritzia, Apple, MOD, MOD), tags 4 to 8 (Aritzia to Popeyes), the post 9: a cluster a row, one row a paragraph, the last tag beside the post's words (lib/gallery/jobs).
-      jobs: [{ photos: [4, 0], words: [0] }, { photos: [5, 1], words: [1] }, { photos: [6, 7, 2, 3], words: [2] }, { photos: [9], words: [3] }],
+      // Photos 0 to 2 (Aritzia, Apple, MOD), tags 3 to 7 (Aritzia to Popeyes), the post 8: a job's tag and photo a row, one row a paragraph,
+      // UT Austin's and Popeyes' tags beside the words (lib/gallery/jobs).
+      jobs: [{ photos: [3, 0], words: [0] }, { photos: [4, 1], words: [1] }, { photos: [6, 2], words: [2] }, { photos: [8], words: [3] }],
       "this-site": [],
       fsdatalink: [],
       "building-in-public": [{ photos: [0], words: [0] }, { photos: [1], words: [1] }, { photos: [2], words: [2] }],
@@ -93,57 +94,55 @@ describe("each card's gallery", () => {
   it("lays the jobs card out as clusters beside its paragraphs, newest first, every photo and tag once and the post beside the last paragraph", () => {
     const { photos, plan, boxes } = galleryOf("jobs");
     const { modal, timeline } = siteContent.cards.jobs;
-    // Media in order: the four photos, one tag a job (Aritzia to Popeyes), then the post.
+    // Media in order: the three photos, one tag a job (Aritzia to Popeyes), then the post.
     expect(photos).toHaveLength(modal.photos.length + timeline.length + 1);
-    expect(photos.slice(0, 4).map((photo) => photo.caption)).toEqual(modal.photos.map((photo) => photo.caption));
-    expect(photos.slice(4, 9).map((photo) => photo.tag)).toEqual([0, 1, 2, 3, 4]);
-    expect(photos[9].embed).toEqual({ width: 504, title: "My LinkedIn post about unflattering jobs", card: modal.postCard });
-    expect(photos[9].src, "the post's own address").toBe(modal.postCard!.href);
+    expect(photos.slice(0, 3).map((photo) => photo.caption)).toEqual(modal.photos.map((photo) => photo.caption));
+    expect(photos.slice(3, 8).map((photo) => photo.tag)).toEqual([0, 1, 2, 3, 4]);
+    expect(photos[8].embed).toEqual({ src: modal.embed!.src, width: 504, height: GALLERY.post.rowHeight, title: "My LinkedIn post about unflattering jobs", href: modal.embed!.href, cta: "View on LinkedIn" });
+    expect(photos[8].src, "the post's own address").toBe(modal.embed!.href);
     expect(photos.filter((photo) => photo.tag !== undefined || photo.embed).every((photo) => photo.caption === null)).toBe(true);
     // Every piece is in exactly one place, in a cluster or beside the words.
     const placed = plan.slides.flatMap((slide) => [...slide.photos, ...(slide.aside ?? [])]);
     expect([...placed].sort((a, b) => a - b)).toEqual(photos.map((_, i) => i));
     expect(plan.slides.every((slide) => slide.together)).toBe(true);
-    // The four rows pair with the four paragraphs in order, newest first: Aritzia, Apple, then UT Austin and MOD together, then the post.
+    // The four rows pair with the four paragraphs in order, newest first (Aaron, 2026-11-09): each job with a photo is its tag and that
+    // photo, the two with none ride beside the words (UT Austin with Aritzia, Popeyes with MOD), and the post is on its own.
     expect(plan.slides.map((slide) => slide.own)).toEqual([0, 1, 2, 3]);
-    expect(plan.slides[0].photos.map((photo) => photos[photo].tag ?? `photo ${photo}`)).toEqual([0, "photo 0"]);
-    expect(plan.slides[1].photos.map((photo) => photos[photo].tag ?? `photo ${photo}`)).toEqual([1, "photo 1"]);
-    // Paragraph 3's block, in reading order: UT Austin's and MOD's tags on top, MOD's selfie and sign under them (two by two).
-    expect(plan.slides[2].photos.map((photo) => photos[photo].tag ?? "photo")).toEqual([2, 3, "photo", "photo"]);
-    expect(plan.slides[2].photos.slice(2)).toEqual(modal.photos.flatMap((photo, i) => (photo.timeline === 3 ? [i] : [])));
-    // The last paragraph is beside the post, with Popeyes' tag in the words column next to them.
-    expect(plan.slides[3].photos.map((photo) => photos[photo].embed ? "post" : "other")).toEqual(["post"]);
-    expect(plan.slides[3].aside?.map((photo) => photos[photo].tag)).toEqual([4]);
+    const tagged = (list: readonly number[] | undefined) => (list ?? []).map((photo) => photos[photo].tag ?? `photo ${photo}`);
+    expect(plan.slides.map((slide) => tagged(slide.photos))).toEqual([[0, "photo 0"], [1, "photo 1"], [3, "photo 2"], ["photo 8"]]);
+    expect(plan.slides.map((slide) => tagged(slide.aside))).toEqual([[2], [], [4], []]);
+    expect(plan.slides[2].photos[1], "MOD's last clock-out").toBe(modal.photos.findIndex((photo) => photo.timeline === 3));
+    expect(photos[plan.slides[3].photos[0]].embed, "the post").toBeDefined();
     expect(plan.slides[3].own).toBe(modal.embed!.beside);
-    // A cluster is a pair, or a 2 by 2 block, at the clusters' width; the post is at its native width plus its frame's hairline.
-    expect(plan.slides.map((slide) => slide.photos.length)).toEqual([2, 2, 4, 1]);
-    expect(boxes![4]).toEqual({ width: GALLERY.cluster.itemWidth, height: GALLERY.cluster.tagHeight });
+    // A cluster is a pair at the clusters' width; the post is at its native width plus its frame's hairline.
+    expect(plan.slides.map((slide) => slide.photos.length)).toEqual([2, 2, 2, 1]);
+    expect(boxes![3]).toEqual({ width: GALLERY.cluster.itemWidth, height: GALLERY.cluster.tagHeight });
     // Every photo is whole in a box of its own shape at the cluster's width: the 3:4 ones come to 3:4, the poster (998 by 1600) is taller.
     modal.photos.forEach((photo, i) => {
       expect(boxes![i].width).toBe(GALLERY.cluster.itemWidth);
       expect(boxes![i].height / boxes![i].width).toBeCloseTo(photo.height / photo.width, 6);
     });
     expect(boxes![1]).toEqual({ width: GALLERY.cluster.itemWidth, height: (GALLERY.cluster.itemWidth * 4) / 3 });
-    // The post's card has a height of its own, as a name tag has, so its box is nominal (the tag's).
-    expect(boxes![9]).toEqual({ width: 506, height: GALLERY.cluster.tagHeight });
+    // The post's frame and its hairlines.
+    expect(boxes![8]).toEqual({ width: 506, height: GALLERY.post.rowHeight + 2 });
     // The rows alternate sides from the left (components/card/CardRows), so no cluster sits under another.
     expect(plan.slides.map((_, i) => (i % 2 === 0 ? "left" : "right"))).toEqual(["left", "right", "left", "right"]);
   });
 
-  it("sets the jobs card's phone pages photo and paragraph first, then each name tag a page of its own: no photo without words", () => {
+  it("sets the jobs card's phone pages as photo, paragraph, then that job's name tags under it: no tag a page of its own", () => {
     const gallery = galleryOf("jobs");
     expect(gallery.grouping).toBe("paragraph");
     const { pages, photos } = gallery;
-    // The poster and the first paragraph, Aritzia's tag; the badge and the second, Apple's tag; MOD's two photos taking turns beside the
-    // third, UT Austin's and MOD's tags; the post's card and the last paragraph, Popeyes' tag.
-    expect(pages.map((page) => page.photos)).toEqual([[0], [4], [1], [5], [2, 3], [6], [7], [9], [8]]);
-    expect(pages.map((page) => slideWords(page))).toEqual([[0], [], [1], [], [2], [], [], [3], []]);
-    expect(pages.filter((page) => page.wordless).every((page) => photos[page.photo].tag !== undefined), "only a name tag stands without a paragraph").toBe(true);
-    expect(pages.filter((page) => !page.wordless).every((page) => photos[page.photo].tag === undefined), "every paragraph beside a photo or the post's card").toBe(true);
-    expect(pages.map((page) => page.links)).toEqual([false, false, false, false, false, false, false, true, false]);
+    // One page a job (Aaron, 2026-11-09): the poster, the first paragraph, Aritzia's and UT Austin's tags; the badge, the second, Apple's tag;
+    // MOD's last clock-out, the third, MOD's and Popeyes' tags; the last paragraph and the post. A page's words scroll when they do not fit.
+    expect(pages.map((page) => page.photos)).toEqual([[0], [1], [2], [8]]);
+    expect(pages.map((page) => slideWords(page))).toEqual([[0], [1], [2], [3]]);
+    expect(pages.map((page) => page.tags)).toEqual([[3, 5], [4], [6, 7], undefined]);
+    expect(pages.some((page) => page.wordless), "no page without words").toBe(false);
+    expect(pages.map((page) => page.links)).toEqual([false, false, false, true]);
     expect(pages.every((page) => !page.together && !page.aside)).toBe(true);
-    // Every piece of media once.
-    expect(pages.flatMap((page) => page.photos).sort((a, b) => a - b)).toEqual(photos.map((_, i) => i));
+    // Every piece of media once, on a stage or as a tag.
+    expect(pages.flatMap((page) => [...page.photos, ...(page.tags ?? [])]).sort((a, b) => a - b)).toEqual(photos.map((_, i) => i));
     for (const key of keys) expect(galleryOf(key).grouping, key).toBe(PHONE_GROUPING);
     for (const key of keys.filter((candidate) => candidate !== "jobs")) expect(galleryOf(key).pages, key).toEqual(phonePages(galleryOf(key).plan, PHONE_GROUPING));
   });

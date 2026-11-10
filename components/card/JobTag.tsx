@@ -3,19 +3,23 @@ import { siteContent } from "@/lib/content";
 import { jobTags } from "@/lib/content/jobTags";
 import type { LogoRef } from "@/lib/content";
 
-// A job as an employee name tag, the way I'd hand one across a counter: the employer's logo across the top, my name set on it,
-// my role and when, and under that the insider tip itself, labelled as mine. Flat and in the site's card language: the
-// photos' radius, a hairline border and the page's own tokens, no sheen, clip or script face. The logo comes in a light and a
-// dark file, shown by theme. The tip is on the page for anyone to read, never behind a hover. Words: lib/content (cards.jobs.tag).
+// A job as an employee name tag, the way I'd hand one across a counter: the employer's logo across the top, my role set big on it
+// (not my name: Aaron, 2026-11-09, "why does it have to say Aaron for every single one?") and when, and under that the insider tip
+// itself, labelled as mine. Flat and in the site's card language: the photos' radius, a hairline border and the page's own tokens, no
+// sheen, clip or script face. The logo comes in a light and a dark file, shown by theme. On a desktop the tip is on the page for anyone
+// to read, never behind a hover; a phone draws the smaller tag with the tip as a dropdown (components/card/JobTagFold). Words:
+// lib/content (cards.jobs.tag).
 export const TAG_BAND = { backgroundColor: "color-mix(in srgb, var(--color-foreground) 5%, var(--color-background))" };
 const LOGO = "h-auto max-h-9 w-auto max-w-[10.5rem]";
+const LOGO_SMALL = "h-auto max-h-5 w-auto max-w-[6.5rem]";
 
-function Logo({ logo }: { logo: LogoRef }) {
+export function TagLogo({ logo, small = false }: { logo: LogoRef; small?: boolean }) {
   const size = { width: Math.round(logo.width), height: Math.round(logo.height) };
+  const fit = small ? LOGO_SMALL : LOGO;
   return (
     <>
-      <Image src={logo.src} alt="" {...size} className={`${LOGO} ${logo.srcDark ? "dark:hidden" : ""}`} draggable={false} />
-      {logo.srcDark && <Image src={logo.srcDark} alt="" {...size} className={`${LOGO} hidden dark:block`} draggable={false} />}
+      <Image src={logo.src} alt="" {...size} className={`${fit} ${logo.srcDark ? "dark:hidden" : ""}`} draggable={false} />
+      {logo.srcDark && <Image src={logo.srcDark} alt="" {...size} className={`${fit} hidden dark:block`} draggable={false} />}
     </>
   );
 }
@@ -26,11 +30,10 @@ export function JobTag({ job }: { job: number }) {
   return (
     <div role="group" aria-label={copy.label(tag.employer)} data-job-tag={job} className="flex h-full flex-col overflow-hidden rounded-xl border border-border bg-background text-foreground">
       <div className="flex h-[4.25rem] items-center justify-center border-b border-border px-5" style={TAG_BAND} data-job-tag-logo="">
-        {tag.logo && <Logo logo={tag.logo} />}
+        {tag.logo && <TagLogo logo={tag.logo} />}
       </div>
-      <div className="flex flex-col gap-1 px-5 pb-4 pt-4">
-        <p className="font-display text-[2rem] leading-none text-foreground" data-job-tag-name="">{copy.name}</p>
-        {tag.role && <p className="font-label text-label text-accent" data-job-tag-role="">{tag.role}</p>}
+      <div className="flex flex-col gap-1.5 px-5 pb-4 pt-4">
+        <p className="font-display text-[1.5rem] leading-[1.1] text-foreground" data-job-tag-role="">{tag.role ?? tag.employer}</p>
         <p className="font-label text-label text-muted" data-job-tag-when="">{tag.when}</p>
       </div>
       <div className="flex flex-1 flex-col gap-1.5 border-t border-border px-5 pb-5 pt-4" data-job-tag-tip="">

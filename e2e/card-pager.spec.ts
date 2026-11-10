@@ -88,19 +88,23 @@ test("pager: every photo sits inside its stage, whole or on a short stage croppe
         if (!stage) return;
         const box = stage.getBoundingClientRect();
         const at = pageEl.getAttribute("data-pager-page");
-        // The jobs card's two own kinds of stage: a name tag takes its tip's height, and the post's card its own.
-        const own = !!stage.querySelector("[data-job-tag], [data-post-card]");
+        // The jobs card's post has a stage of its own: the room its paragraph leaves, or pageMin (lib/gallery/paginate).
+        const own = !!stage.querySelector("[data-post-frame]");
         const cap = pageEl.hasAttribute("data-wordless") ? caps.wordless : caps.stage;
         if (!own && box.height > cap + 0.5) out.push(`page ${at}: stage ${box.height}px`);
         stage.querySelectorAll("[data-photo-frame]").forEach((photo) => {
           const r = photo.getBoundingClientRect();
           if (r.top < box.top - 0.5 || r.bottom > box.bottom + 0.5 || r.left < box.left - 0.5 || r.right > box.right + 0.5) out.push(`page ${at}: photo ${photo.getAttribute("data-photo-frame")} outside its stage`);
-          // A photo cropped to a short stage keeps its share of the page's width.
-          if (stage.hasAttribute("data-cropped") && r.width < box.width * caps.share - 1) out.push(`page ${at}: cropped photo ${Math.round(r.width)}px wide of ${Math.round(box.width)}`);
+          // A photo cropped to a short stage keeps its share of the page's width, or as much of it as cutting no more than maxCrop of the
+          // picture allows (lib/gallery/boxes phoneBox): a portrait on a floor stage (the jobs card's, whose words scroll) stops there.
+          const img = photo.querySelector("img");
+          const aspect = img && img.naturalHeight ? img.naturalWidth / img.naturalHeight : 0;
+          const least = Math.min(box.width * caps.share, aspect ? (r.height * aspect) / (1 - caps.maxCrop) : Infinity);
+          if (stage.hasAttribute("data-cropped") && r.width < least - 1) out.push(`page ${at}: cropped photo ${Math.round(r.width)}px wide of ${Math.round(box.width)}`);
         });
       });
       return out;
-    }, { stage: 844 * GALLERY.pager.stageMax, wordless: 844 * GALLERY.pager.wordlessMax, share: GALLERY.pager.photoMinShare });
+    }, { stage: 844 * GALLERY.pager.stageMax, wordless: 844 * GALLERY.pager.wordlessMax, share: GALLERY.pager.photoMinShare, maxCrop: GALLERY.pager.photoMaxCrop });
     expect(problems, key).toEqual([]);
     await page.keyboard.press("Escape");
     await expect(dialog).toHaveCount(0);
