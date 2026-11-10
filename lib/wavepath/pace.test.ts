@@ -17,11 +17,14 @@ describe("the calm speed", () => {
     expect(calmSpeed("wide", 1280) * CROSS_S.wide).toBeCloseTo(1280, 9);
     expect(calmSpeed("phone", 390) * CROSS_S.phone).toBeCloseTo(390, 9);
   });
-  it("sits in the band Aaron asked for: a full width in about 1.0 to 1.6 seconds", () => {
+  it("sits in the band A78 settled: a full width in 0.4 to 1.6 seconds, a desktop's 1.3 inside the 1.0 to 1.6 of 2026-11-02 and a phone's 0.5 faster by Aaron's own look, never a wipe", () => {
     for (const s of [CROSS_S.wide, CROSS_S.phone]) {
-      expect(s).toBeGreaterThanOrEqual(1);
+      expect(s).toBeGreaterThanOrEqual(0.4);
       expect(s).toBeLessThanOrEqual(1.6);
     }
+  });
+  it("keeps a desktop at its 1.3 s and a phone at its 0.5 s (A78: the 0.6 desktop was way too fast, the phone's 0.5 does not feel rushed)", () => {
+    expect(CROSS_S).toEqual({ wide: 1.3, phone: 0.5 });
   });
 });
 
@@ -85,6 +88,21 @@ describe("a steady scroll", () => {
   }
 });
 
+// A64: after a quick scroll to the bottom the wave drew on for 12.8 s on a 390 by 844 phone (the browser's own clock) and 6.6 s at
+// 1440 by 900. A faster pace (A78: desktop 1.3 s, phone 0.5 s, catch-up 5600) brought it to 6.7 s and 4.8 s; this simulation reads
+// about half a second under the browser, 6.2 s and 4.2 s. The calm pace through the stretches in view and the line's own length keep
+// a floor under it, so these bounds guard the gain rather than a goal.
+describe("a quick scroll to the bottom", () => {
+  const trailing = (size: Size) => {
+    const page = pageAt(size);
+    const frames = steadyScroll(page, { speed: 6000 });
+    const landed = frames.findIndex((f) => f.scroll >= page.maxScroll);
+    return frames[frames.length - 1].t - frames[landed].t;
+  };
+  it("stops drawing within 7 s on a 390 by 844 phone", () => expect(trailing("390x844")).toBeLessThan(7));
+  it("stops drawing within 4.7 s at 1440 by 900", () => expect(trailing("1440x900")).toBeLessThan(4.7));
+});
+
 describe("the reader stops", () => {
   // Stopped part way down the page, the head still has line to draw. It settles at the calm speed or less: it never passes its
   // target, and nothing in view speeds up to catch up.
@@ -101,10 +119,12 @@ describe("the reader stops", () => {
             expect(f.head, `head against its target at ${f.t.toFixed(2)}s`).toBeLessThanOrEqual(f.target + 1e-6);
             if (f.onScreen) expect(f.vel).toBeLessThanOrEqual(calm + 1e-6);
           }
-          // Within a stretch in view the head only slows: no surge to catch up with a reader who has stopped.
+          // Within a stretch in view the head only slows: no surge to catch up with a reader who has stopped. The head may still be
+          // finishing its ease in toward the calm speed (a frame's step is a few px/s, in proportion to the calm speed); a jump
+          // to the draw speed would be tens of times that.
           let before = Infinity;
           for (const f of after) {
-            if (f.onScreen) expect(f.vel, `head speed at ${f.t.toFixed(2)}s`).toBeLessThanOrEqual(before + 1);
+            if (f.onScreen) expect(f.vel, `head speed at ${f.t.toFixed(2)}s`).toBeLessThanOrEqual(before + 1 + 0.005 * calm);
             before = f.onScreen ? f.vel : Infinity;
           }
           const last = after[after.length - 1];

@@ -4,7 +4,7 @@ import { createLeveller, levelColumns } from "@/lib/waveform/level";
 import { pressOf, swells } from "@/lib/wavepath/answer";
 import { BREATH, PLUCK, RELEASE_LINE, SHIMMER, SPECTRUM_BINS, TRAIN_FADE } from "@/lib/wavepath/constants";
 import { createHead, stepHead, tailStart, type HeadState } from "@/lib/wavepath/head";
-import { bandAway, checkRelease, createWaveHold, pressAnswer, type HoldResult } from "@/lib/wavepath/hold";
+import { bandAway, checkRelease, createWaveHold, pressAnswer, wavefollows, type HoldResult } from "@/lib/wavepath/hold";
 import { createMusic, stepMusic } from "@/lib/wavepath/music";
 import type { DotFrame } from "@/lib/wavepath/paint";
 import { createNear, createPlucks, createPointer, movePointer, notePointer, stepPlucks, type Near, type PointerTrack } from "@/lib/wavepath/pluck";
@@ -41,7 +41,7 @@ const MAX_STEP_S = 0.1;
 export interface WaveFrame extends DotFrame {
   scrollY: number;
   dt: number; // seconds this frame steps
-  decided: boolean; // lib/soundtrack.ts: anything but "before"
+  decided: boolean; // the wave follows the reader: an answer whose hold has ended, or the band scrolled away unanswered (lib/wavepath/hold)
   gated: boolean; // the band is below the release line, so the head waits at the run's end
   idleGain: number; // the idle ripple's strength now: 1 with no music, fading out as the music shapes the line, 0 when still
   idleClock: number; // seconds the idle ripple has run
@@ -177,14 +177,18 @@ function createInstance(still: boolean): Instance {
     const band = document.getElementById("listen");
     return band ? bandAway(band.getBoundingClientRect(), window.innerHeight, RELEASE_LINE) : true;
   };
-  // The head waits at the run's end while the band is below the release line.
+  // The head waits at the run's end while the band is below the release line. Once it is above it the wave follows the reader, whether
+  // they answered or not: scrolling on past an unanswered prompt counts as a Not now for the wave alone (lib/wavepath/hold's
+  // wavefollows). The soundtrack stays "before", so the "Music?" pill still arrives.
   const refreshGate = () => {
-    frame.gated = !still && !bandIsAway();
+    const away = bandIsAway();
+    frame.gated = !still && !away;
+    frame.decided = wavefollows(getSoundtrackState() !== "before", hold.on, away);
   };
   // The hold ends: the answer takes effect (the line follows, the music shapes it) and the kept ripple goes out.
   const released = (result: { released: boolean; startRipple: boolean }) => {
     if (!result.released) return;
-    frame.decided = getSoundtrackState() !== "before";
+    refreshGate();
     if (result.startRipple && !frozen) startRipple(frame.ripple, rippleOrigin());
     wake();
   };
@@ -214,7 +218,7 @@ function createInstance(still: boolean): Instance {
     const next = getSoundtrackState();
     const press = pressOf(lastState, next, getRestoredSoundtrack());
     const answer: HoldResult | null = !still && press ? pressAnswer(hold, bandIsAway(), press) : null;
-    frame.decided = next !== "before" && !hold.on;
+    refreshGate();
     if (answer?.startRipple && !frozen) startRipple(frame.ripple, rippleOrigin());
     if (swells(press, still, frozen)) startRipple(frame.ripple, rippleOrigin(), "swell");
     lastState = next;

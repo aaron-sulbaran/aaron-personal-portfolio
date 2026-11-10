@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { RELEASE_LINE } from "./constants";
-import { bandAway, checkRelease, createWaveHold, pressAnswer } from "./hold";
+import { bandAway, checkRelease, createWaveHold, pressAnswer, wavefollows } from "./hold";
 
 const VIEWPORT = 900;
 const rect = (bottom: number) => ({ top: bottom - 270, bottom });
@@ -74,5 +74,17 @@ describe("a Not now in the hold", () => {
     checkRelease(hold, true);
     pressAnswer(hold, false, "play");
     expect(checkRelease(hold, true)).toEqual({ released: true, startRipple: true });
+  });
+});
+
+describe("whether the wave follows the reader", () => {
+  it("follows an answer once its hold has ended", () => {
+    expect(wavefollows(true, false, true)).toBe(true);
+    expect(wavefollows(true, true, false)).toBe(false);
+  });
+
+  it("counts scrolling the prompt away with no answer as a Not now, for the wave alone", () => {
+    expect(wavefollows(false, false, true), "scrolled away unanswered").toBe(true);
+    expect(wavefollows(false, false, false), "the prompt still on screen").toBe(false);
   });
 });
