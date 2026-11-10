@@ -30,6 +30,16 @@ describe("errorDetail", () => {
     expect(detail).not.toContain("token");
   });
 
+  it("drops the query string and fragment from a relative path in the message", () => {
+    const detail = errorDetail(new Error("Failed to load /some/path?key=abc#x now"));
+    expect(detail).toBe("Error: Failed to load /some/path now");
+    expect(detail).not.toContain("key");
+  });
+
+  it("leaves ordinary prose with a question mark alone", () => {
+    expect(errorDetail(new Error("Why did this fail? Unknown"))).toBe("Error: Why did this fail? Unknown");
+  });
+
   it("describes a thrown string, an object and nothing", () => {
     expect(errorDetail("plain text")).toBe("Thrown: plain text");
     expect(errorDetail({ message: "from an object", digest: "d1" })).toBe("Error: from an object (digest d1)");

@@ -12,8 +12,12 @@ type ErrorLike = { name?: unknown; message?: unknown; digest?: unknown };
 
 const asText = (value: unknown) => (typeof value === "string" ? value : "");
 
-// A URL inside a message loses its query string and fragment; a stack is never read.
-const stripUrlQueries = (text: string) => text.replace(/(https?:\/\/[^\s?#]+)[?#]\S*/g, "$1");
+// A URL or a relative path inside a message loses its query string and fragment; a stack is never read.
+// A path starts at a word boundary with "/", so prose like "fail? Unknown" is untouched.
+const stripUrlQueries = (text: string) =>
+  text
+    .replace(/(https?:\/\/[^\s?#]+)[?#]\S*/g, "$1")
+    .replace(/(^|[\s("'=])(\/[^\s?#"')]*)[?#]\S*/g, "$1$2");
 
 // "Name: message (digest d)": enough to tell errors apart, nothing that identifies a visitor.
 export function errorDetail(value: unknown): string {
