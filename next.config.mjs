@@ -1,4 +1,11 @@
 import { SECURITY_HEADERS } from "./lib/security/headers.mjs";
+import { parseZones, zoneRewrites } from "./lib/zones.mjs";
+
+// Other projects on this domain, from the SITE_ZONES env var (lib/zones.mjs).
+// A malformed value fails the build, so a typo never ships a site that
+// quietly drops a zone; the live deployment stays as it was.
+const zones = parseZones(process.env.SITE_ZONES);
+if (zones.error) throw new Error(`SITE_ZONES: ${zones.error}`);
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -36,6 +43,11 @@ const nextConfig = {
       { source: "/simple", destination: "/quick", permanent: false },
       { source: "/recruiter", destination: "/quick", permanent: false },
     ];
+  },
+  // Each zone's path goes to its own project (lib/zones.mjs). None are listed
+  // in the code; with SITE_ZONES unset this returns no rewrites.
+  async rewrites() {
+    return zoneRewrites(zones.data);
   },
   // Every response, pages, assets and 404s alike (lib/security/headers.mjs).
   async headers() {
