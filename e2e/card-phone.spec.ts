@@ -115,7 +115,8 @@ function checkParagraphs(key: CardKey, shown: { unit: number; text: string }[], 
     const omit = phoneOmit?.[unit] ?? [];
     const level = Array.from({ length: omit.length + 1 }, (_, n) => n).find((n) => visibleText(phoneCopy(blocks[unit], omit, n)) === text);
     if (level === undefined) out.push(`paragraph ${unit} is not its words with whole sentences dropped`);
-    else if (everyWord && level > 0) out.push(`paragraph ${unit} dropped ${level} sentence(s) on a window with the room`);
+    // The jobs card's last paragraph gives the post's frame its room even on a phone with the room (Aaron, 2026-11-09: a bigger frame).
+    else if (everyWord && level > 0 && !(key === "jobs" && unit === 3)) out.push(`paragraph ${unit} dropped ${level} sentence(s) on a window with the room`);
   }
   return out;
 }

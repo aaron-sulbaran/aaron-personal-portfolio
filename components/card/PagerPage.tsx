@@ -67,6 +67,47 @@ export function PagerPage({ gallery, page, index, count, kind, stage, trims, cur
     return () => observer.disconnect();
   }, []);
 
+  // The post's page sets its paragraph first and the post under it (Aaron, 2026-11-09: "it should be paragraph first and then underneath
+  // that, the LinkedIn embed"); the words take their own height there, not the rest of the page.
+  const postFirst = !!gallery.photos[page.photo].embed;
+  const stageEl =
+    kind === "turns" ? (
+      <PhoneRotator gallery={gallery} photos={stage.photos} frame={stage.frame} boxes={stage.boxes} active={current} pressing={pressing} />
+    ) : (
+      <StillStage gallery={gallery} photo={page.photo} box={stage.boxes[0]} height={stage.frame.height} carried={!!page.carried} />
+    );
+  const wordsEl = !page.wordless && (
+    <div
+      ref={textRef}
+      className={`min-h-0 overflow-y-auto overscroll-contain ${postFirst ? "shrink" : "flex-1"}`}
+      style={{ touchAction: scrolls ? "pan-y" : "none", ...(scrolls ? WORDS_FADE : {}) }}
+      data-pager-text=""
+      data-scrolls={scrolls ? "" : undefined}
+    >
+      {/* The words as blocks the pager can measure (data-block: each paragraph with what follows it, each mentor, then the end block); gap-4 is GALLERY.pager.blockGapPx, and pb-6 (endPadPx) clears the fade only on words that scroll. */}
+      <div className={`flex flex-col gap-4 ${scrolls ? "pb-6" : ""}`}>
+        {slideWords(page).map((unit) => (
+          <div key={unit} className="flex flex-col gap-4" data-block={`w${unit}`} data-trimmed={trims[unit] ? trims[unit] : undefined}>
+            {/* A new paragraph element for each trim: the mask-in splits a paragraph into lines, and reverting that split restores the
+                words it was given, so a paragraph trimmed in place would come back whole. */}
+            <Words key={trims[unit] ?? 0} gallery={gallery} unit={unit} compact trim={trims[unit] ?? 0} />
+            {afterWords(gallery, unit, false)}
+          </div>
+        ))}
+        {mentors.map((mentor) => (
+          <div key={mentor} data-block={mentorId(mentor)}>
+            <MentorsList compact only={mentor} />
+          </div>
+        ))}
+        {hasEnd && (
+          <div className="flex flex-col gap-4" data-block={END}>
+            <CardLinks cardKey={gallery.key} skip={skip} />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <div
       role="group"
@@ -81,47 +122,14 @@ export function PagerPage({ gallery, page, index, count, kind, stage, trims, cur
       data-wordless={page.wordless ? "" : undefined}
       data-carried={page.carried ? "" : undefined}
     >
-      {kind === "turns" ? (
-        <PhoneRotator gallery={gallery} photos={stage.photos} frame={stage.frame} boxes={stage.boxes} active={current} pressing={pressing} />
-      ) : (
-        <StillStage gallery={gallery} photo={page.photo} box={stage.boxes[0]} height={stage.frame.height} carried={!!page.carried} />
-      )}
-      {!page.wordless && (
-        <div
-          ref={textRef}
-          className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
-          style={{ touchAction: scrolls ? "pan-y" : "none", ...(scrolls ? WORDS_FADE : {}) }}
-          data-pager-text=""
-          data-scrolls={scrolls ? "" : undefined}
-        >
-          {/* The words as blocks the pager can measure (data-block: each paragraph with what follows it, each mentor, then the end block); gap-4 is GALLERY.pager.blockGapPx, and pb-6 (endPadPx) clears the fade only on words that scroll. */}
-          <div className={`flex flex-col gap-4 ${scrolls ? "pb-6" : ""}`}>
-            {slideWords(page).map((unit) => (
-              <div key={unit} className="flex flex-col gap-4" data-block={`w${unit}`} data-trimmed={trims[unit] ? trims[unit] : undefined}>
-                {/* A new paragraph element for each trim: the mask-in splits a paragraph into lines, and reverting that split restores the
-                    words it was given, so a paragraph trimmed in place would come back whole. */}
-                <Words key={trims[unit] ?? 0} gallery={gallery} unit={unit} compact trim={trims[unit] ?? 0} />
-                {afterWords(gallery, unit, false)}
-              </div>
-            ))}
-            {mentors.map((mentor) => (
-              <div key={mentor} data-block={mentorId(mentor)}>
-                <MentorsList compact only={mentor} />
-              </div>
-            ))}
-            {hasEnd && (
-              <div className="flex flex-col gap-4" data-block={END}>
-                <CardLinks cardKey={gallery.key} skip={skip} />
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      {postFirst && wordsEl}
+      {stageEl}
+      {!postFirst && wordsEl}
     </div>
   );
 }
 
-// The post's stage: its frame scrolls inside itself, so rather than shrink (FitStage) it takes the room its paragraph leaves, as wide as the
+// The post's stage: its frame scrolls inside itself, so rather than shrink (FitStage) it takes the room its paragraph (above it) leaves, as wide as the
 // post at most and up to GALLERY.post.pageMax tall. The pager reads an own stage's natural height off data-fit-inner, which here is a
 // fixed probe: a page that would leave the frame and its link less than pageMin drops the paragraph's phone omissions (fitFloor of the
 // probe is pageMin). Read off the frame itself, the first pass (drawn at the whole page's height) would trim every page for good.

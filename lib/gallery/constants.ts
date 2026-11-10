@@ -22,10 +22,10 @@ export const GALLERY = {
   // so a pair is as wide as the LinkedIn post's frame, 504 (components/card/PostEmbed): 244 + 16 + 244.
   cluster: { itemWidth: 244, gap: 16, tagHeight: 330 },
   // The LinkedIn post's frame, which scrolls inside itself (Jolie Zhou's are 600 tall, 520 on a phone): this tall on a desktop row; on a
-  // phone's page the frame and its link take the room the post's paragraph leaves, up to pageMax, and the paragraph drops its phone
-  // omissions (the post's hook, which the frame shows) before it leaves them less than pageMin (components/card/PagerPage PostStage).
-  // At 390 by 844 the whole paragraph leaves 320, so a phone with the room keeps every word (e2e/card-phone.spec.ts).
-  post: { rowHeight: 600, pageMin: 300, pageMax: 520 },
+  // phone's page the frame and its link take the room the post's paragraph (above them) leaves, up to pageMax, and the paragraph drops its
+  // phone omissions before it leaves them less than pageMin (components/card/PagerPage PostStage). 400 holds the post's head, its line
+  // and its two photos whole: at 280 the frame cut his photo off at the face ("really unsettling", Aaron, 2026-11-09).
+  post: { rowHeight: 600, pageMin: 400, pageMax: 520 },
   headerTile: { width: 60, height: 80 }, // 3:4, so a flown logo card fills it
   headerTileCompact: { width: 42, height: 56 }, // the phone header's, clear of the close button
   talosTileCompact: { width: 51, height: 68 }, // Talos's phone tile: its mark at 40 percent is 20.4px

@@ -151,9 +151,10 @@ export const cards: Cards = {
       href: POST_HREF,
       cta: "View on LinkedIn",
     },
-    // A short phone's page cannot hold the last paragraph under the post's frame (which shows the post's hook itself): these go first, in
-    // this order (and only there).
-    phoneOmit: { 3: ["I guess it resonated with people.", "I wrote about my work experience outside of class on LinkedIn, and my hook was \"I don't trust people who haven't worked an unflattering job.\""] } },
+    // On a phone the last paragraph comes first and the post's frame under it (Aaron, 2026-11-09), and the frame keeps its room over every
+    // word ("maybe a bigger frame is probably the better thing"): these go first, in this order (and only there). The paragraph keeps its
+    // hook and its numbers, which lead into the post below.
+    phoneOmit: { 3: ["I guess it resonated with people.", "My favorite line is \"You know to be nice to the person behind the counter because you were the person behind the counter.\""] } },
     // Newest first (Aaron, 2026-10-29). Each job is a name tag in the modal (components/card/JobTag): the tip is on the page for a reader to
     // read, not behind a hover.
     timeline: [
