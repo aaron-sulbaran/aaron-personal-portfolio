@@ -84,15 +84,29 @@ for (const size of [{ width: 1440, height: 900 }, { width: 1024, height: 768 }, 
 
 test("wavepath: before an answer the band run is level and the head waits at its end", async ({ page }) => {
   await open(page);
-  let f = await frame(page);
+  const f = await frame(page);
   expect(f.decided).toBe(false);
   expect(f.runLen).toBeGreaterThan(0);
   expect(f.head).toBe(f.runLen);
   expect(f.runFlat, "the run's largest step off its line, px").toBeLessThan(0.5);
+});
+
+// Aaron, Nov 9: a reader who scrolls on past the prompt without pressing anything has said no. The wave alone takes it as a Not now and
+// trails them; the soundtrack stays unanswered with nothing saved, so the prompt and its "Music?" pill (intro.spec) are as they were,
+// and back at the prompt the run waits level again.
+test("wavepath: scrolling on past an unanswered prompt lets the head follow, and back at it the run waits", async ({ page }) => {
+  await open(page);
   await toBlock(page, BELOW_BAND);
-  await page.waitForTimeout(500);
+  await headAtRest(page);
+  let f = await frame(page);
+  expect(f.decided, "the wave follows").toBe(true);
+  expect(f.head, "the head has left the run").toBeGreaterThan(f.runLen);
+  expect(await page.evaluate(() => localStorage.getItem("aaron-soundtrack")), "nothing is saved").toBeNull();
+  await parkBand(page);
+  await headAtRest(page);
   f = await frame(page);
-  expect(f.head, "held at the run's end past the band").toBe(f.runLen);
+  expect(f.decided, "the prompt is back and still open").toBe(false);
+  expect(f.head, "the run waits level at its end").toBe(f.runLen);
 });
 
 // The undecided run breathes slowly (no peaks, no music) and the line does not follow: the head still waits.
@@ -105,19 +119,6 @@ test("wavepath: before an answer the band breathes in view", async ({ page }) =>
   const f = await frame(page);
   expect(f.decided).toBe(false);
   expect(f.head).toBe(f.runLen);
-});
-
-// Before an answer the path has no ink, so with the band off screen and no ripple the loop sleeps.
-test("wavepath: undecided, with the band out of view, the loop sleeps", async ({ page }) => {
-  await open(page);
-  await toBlock(page, "#numbers");
-  await page.mouse.move(4, 4);
-  // The band's last frames after it leaves view come a beat late; wait for a full second of none.
-  await expect.poll(async () => { const a = await ticks(page); await page.waitForTimeout(1000); return (await ticks(page)) === a; }, { timeout: 15_000, message: "conductor frames stop advancing" }).toBe(true);
-  const rested = await ticks(page);
-  await page.waitForTimeout(700);
-  expect(await ticks(page), "conductor frames while undecided and out of view").toBe(rested);
-  expect((await frame(page)).decided).toBe(false);
 });
 
 test("wavepath: after Not now the head leaves the band and reaches the end at max scroll, nothing playing", async ({ page }) => {
@@ -146,15 +147,19 @@ test("wavepath: a 1.5-screen flick never outruns the cap, and arrives", async ({
     const p = (window as unknown as W).__wavePath;
     window.scrollTo({ top: window.scrollY + 1.5 * window.innerHeight, behavior: "instant" });
     const t0 = performance.now();
-    let gap = 0, worst = 0, last = p.frame()!.head, lastAt = t0;
-    const tick = () => {
+    let gap = 0, worst = 0, last = p.frame()!.head, lastTs = -1;
+    // Each window is one frame on the clock the conductor integrates the head with, the rAF timestamp every callback of a frame
+    // shares. performance.now() at this callback is not that clock: this callback runs after the conductor's and whatever else
+    // painted or collected garbage ahead of it in the frame, so one slow frame and the short one after it read as a surge the
+    // head never made (its step is the cap times the frame's own dt in every window, in every build).
+    const tick = (ts: number) => {
       const f = p.frame()!;
-      const at = performance.now();
       gap = Math.max(gap, f.target - f.head);
       // Speed over the frame against the cap in force; a frame is not exact, so the margin is a fifth.
-      if (at > lastAt) worst = Math.max(worst, ((f.head - last) / ((at - lastAt) / 1000)) / (f.cap * 1.2));
+      if (lastTs >= 0 && ts > lastTs) worst = Math.max(worst, ((f.head - last) / ((ts - lastTs) / 1000)) / (f.cap * 1.2));
       last = f.head;
-      lastAt = at;
+      lastTs = ts;
+      const at = performance.now();
       if ((gap > 0 && f.head === f.target) || at - t0 > 15_000) return resolve({ rest: at - t0, gap, worst });
       requestAnimationFrame(tick);
     };

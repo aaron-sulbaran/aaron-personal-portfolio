@@ -46,3 +46,9 @@ export function checkRelease(hold: WaveHold, away: boolean): { released: boolean
   hold.ripple = false;
   return { released: true, startRipple };
 }
+
+// Whether the wave follows the reader. An answer is followed once its hold has ended. Scrolling the band away with no answer counts as a
+// Not now, for the wave alone (Aaron, Nov 9: a reader who scrolls on without pressing anything has said no): the line trails them like
+// any other. Nothing is saved and the soundtrack stays "before", so the prompt is still open, its "Music?" pill still arrives, and a
+// reader who scrolls back to it finds the run waiting level, as before.
+export const wavefollows = (answered: boolean, holdOn: boolean, away: boolean): boolean => (answered ? !holdOn : away);

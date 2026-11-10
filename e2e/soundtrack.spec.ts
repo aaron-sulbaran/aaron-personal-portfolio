@@ -30,7 +30,7 @@ import {
   type DockSample,
 } from "./support/dock";
 import { BAND_CARD, PLAYER_PILL } from "./support/player";
-import { bandBottomAt, parkBand } from "./support/wave";
+import { bandBottomAt, headAtRest, parkBand } from "./support/wave";
 
 // The soundtrack band (#listen): in flow under the book, where the waveform
 // lives; "Play it" really plays (and the player takes over from there, see
@@ -739,6 +739,7 @@ test("dock: the freeze stops the band's wave, and letting it move again repaints
   await instrument(page);
   await openHome(page, { path: HOME });
   await scrollBandIntoView(page);
+  await headAtRest(page);
   await bandControl(page, "before").click();
   // The reader's freeze (the pill's and the player's button write the same flag).
   await page.evaluate(() => (window as unknown as { __wavePath: { freeze: (on: boolean) => void } }).__wavePath.freeze(true));
