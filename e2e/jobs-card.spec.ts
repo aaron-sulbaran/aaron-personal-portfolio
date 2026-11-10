@@ -7,11 +7,11 @@ import { test, expect } from "./support/fixtures";
 import { openCardFromBook } from "./support/cards";
 
 // The jobs modal (2026-10-29): Aaron's title and four paragraphs, the jobs newest first as employee name tags with their tips on
-// the page, his LinkedIn post beside the last paragraph as its card (no longer LinkedIn's frame, 2026-11-09), and the whole modal
-// staggered the way the others are.
+// the page, his LinkedIn post beside the last paragraph as LinkedIn's own short embed with View on LinkedIn under it (2026-11-09,
+// after Jolie Zhou's site), and the whole modal staggered the way the others are.
 
 const { modal, timeline, tag } = siteContent.cards.jobs;
-const postCard = modal.postCard!;
+const embed = modal.embed!;
 const tagLabels = jobTags.map((job) => tag.label(job.employer));
 
 type Piece = { kind: "tag" | "photo" | "post"; label: string; row: number; left: number; right: number; top: number; bottom: number };
@@ -23,8 +23,8 @@ async function pieces(dialog: import("@playwright/test").Locator): Promise<Piece
     return frames
       .map((frame) => {
         const rect = frame.getBoundingClientRect();
-        const kind = (frame.getAttribute("data-media") === "tag" ? "tag" : frame.getAttribute("data-media") === "post-card" ? "post" : "photo") as Piece["kind"];
-        const label = kind === "tag" ? (frame.querySelector("[data-job-tag]")?.getAttribute("aria-label") ?? "") : kind === "post" ? (frame.querySelector("[data-post-card-hook]")?.textContent ?? "") : (frame.querySelector("img")?.getAttribute("alt") ?? "");
+        const kind = (frame.getAttribute("data-media") === "tag" ? "tag" : frame.getAttribute("data-media") === "post" ? "post" : "photo") as Piece["kind"];
+        const label = kind === "tag" ? (frame.querySelector("[data-job-tag]")?.getAttribute("aria-label") ?? "") : kind === "post" ? (frame.querySelector("iframe")?.getAttribute("title") ?? "") : (frame.querySelector("img")?.getAttribute("alt") ?? "");
         return { kind, label, row: rows.findIndex((row) => row.contains(frame)), left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom };
       })
       // Reading order: its row, then line by line (a 2 by 2 block's tags, then its photos), then left to right.
@@ -131,7 +131,7 @@ for (const viewport of [{ width: 1280, height: 800 }, { width: 1440, height: 900
       // Popeyes' tag is beside the post's paragraph, in its words column, under the words.
       const last = rows.nth(3);
       await expect(last.locator("[data-text-column] [data-aside] [data-job-tag]")).toHaveAttribute("aria-label", tag.label("Popeyes"));
-      await expect(last.locator("[data-cluster] [data-post-card]")).toHaveCount(1);
+      await expect(last.locator("[data-cluster] [data-post-frame] iframe")).toHaveCount(1);
       // Paragraph 3's row is a 2 by 2 block: UT Austin's and MOD's tags on top, MOD's selfie and sign under them, in the same two columns.
       const block = all.filter((piece) => piece.row === 2);
       expect(block.map((piece) => piece.label)).toEqual([tag.label("Student mentor, UT Austin"), tag.label("MOD Pizza"), modal.photos[2].alt, modal.photos[3].alt]);
@@ -143,34 +143,44 @@ for (const viewport of [{ width: 1280, height: 800 }, { width: 1440, height: 900
       expect(Math.abs(ut.right - mod.left), "a gap, not an overlap, between columns").toBeLessThanOrEqual(GALLERY.cluster.gap + 1);
     });
 
-    test("jobs modal: the LinkedIn post is its card, never LinkedIn's frame: the hook line, then View on LinkedIn right under it, one link out", async ({ page, offsite }) => {
+    test("jobs modal: the LinkedIn post is LinkedIn's short embed, lazy and titled, in a short frame with View on LinkedIn under it", async ({ page, offsite }) => {
       await page.goto("/");
       await page.waitForFunction(() => document.documentElement.dataset.home === "ready");
-      const { dialog } = await openCardFromBook(page, "jobs", { settled: true, home: false });
-      const card = dialog.locator("[data-cluster] [data-post-card]");
-      await expect(card).toHaveCount(1);
-      await card.scrollIntoViewIfNeeded();
-      // No frame anywhere, so nothing is asked of LinkedIn: no cropped photos, no links off to its pages, and the cursor stays the site's.
+      // Nothing is asked of LinkedIn before the modal opens.
       await expect(page.locator("iframe")).toHaveCount(0);
       expect(offsite.filter((url) => url.includes("linkedin.com"))).toEqual([]);
-      // One link, to the post's own address, in a new tab.
-      await expect(card).toHaveAttribute("href", postCard.href);
-      await expect(card).toHaveAttribute("target", "_blank");
-      await expect(card).toHaveAttribute("rel", "noopener noreferrer");
-      await expect(card.locator("a")).toHaveCount(0);
-      await expect(card.locator("[data-post-card-name]")).toHaveText(postCard.byline);
-      await expect(card.locator("[data-post-card-hook]")).toHaveText(postCard.hook);
-      await expect(card.locator("[data-post-card-link]")).toContainText("View on LinkedIn");
-      // Short: the hook and the way in, with View on LinkedIn right under the hook, at the post's width and nowhere near the frame's 1258.
-      const hook = (await card.locator("[data-post-card-hook]").boundingBox())!;
-      const way = (await card.locator("[data-post-card-link]").boundingBox())!;
-      expect(way.y, "View on LinkedIn under the hook").toBeGreaterThanOrEqual(hook.y + hook.height - 1);
-      expect(way.y - (hook.y + hook.height), "right under it").toBeLessThan(40);
-      const size = (await card.boundingBox())!;
-      expect(Math.round(size.width), "the post's width with its hairlines").toBe(modal.embed!.width + 2);
-      expect(size.height, "short").toBeLessThan(320);
+      const { dialog } = await openCardFromBook(page, "jobs", { settled: true, home: false });
+      const post = dialog.locator('[data-cluster] [data-media="post"]');
+      await expect(post).toHaveCount(1);
+      await post.scrollIntoViewIfNeeded();
+      // One frame: the collapsed embed (the post's text stops at a line and "...more"), lazy, named in my words. It is asked for once near.
+      const frame = post.locator("[data-post-frame]");
+      const iframe = frame.locator("iframe");
+      await expect(iframe).toHaveCount(1);
+      await expect(iframe).toHaveAttribute("src", embed.src);
+      expect(embed.src).toMatch(/[?&]collapsed=1$/);
+      await expect(iframe).toHaveAttribute("loading", "lazy");
+      await expect(iframe).toHaveAttribute("title", embed.title);
+      await expect.poll(() => offsite.filter((url) => url.startsWith(embed.src)).length).toBeGreaterThan(0);
+      // Short: the post's width with its hairlines, the row's height (nowhere near the full post's 1258), filled by the frame.
+      const box = (await frame.boundingBox())!;
+      expect(Math.round(box.width), "the post's width with its hairlines").toBe(embed.width + 2);
+      expect(Math.round(box.height), "the row's height").toBe(GALLERY.post.rowHeight + 2);
+      const inner = (await iframe.boundingBox())!;
+      expect(Math.round(inner.width)).toBe(embed.width);
+      expect(Math.round(inner.height)).toBe(GALLERY.post.rowHeight);
+      // View on LinkedIn right under the frame: one link, to the post's own address, in a new tab.
+      const link = post.locator("[data-post-link]");
+      await expect(post.locator("a")).toHaveCount(1);
+      await expect(link).toContainText(embed.cta);
+      await expect(link).toHaveAttribute("href", embed.href);
+      await expect(link).toHaveAttribute("target", "_blank");
+      await expect(link).toHaveAttribute("rel", "noopener noreferrer");
+      const way = (await link.boundingBox())!;
+      expect(way.y, "View on LinkedIn under the frame").toBeGreaterThanOrEqual(box.y + box.height - 1);
+      expect(way.y - (box.y + box.height), "right under it").toBeLessThan(24);
       // The photos' frame: the same radius as a photo's, a hairline around it, flat.
-      const around = await card.evaluate((el) => {
+      const around = await frame.evaluate((el) => {
         const css = getComputedStyle(el);
         return { radius: css.borderTopLeftRadius, border: css.borderTopWidth, color: css.borderTopColor, shadow: css.boxShadow };
       });
@@ -180,13 +190,35 @@ for (const viewport of [{ width: 1280, height: 800 }, { width: 1440, height: 900
       expect(around.color).not.toBe("rgba(0, 0, 0, 0)");
       expect(around.shadow).toBe("none");
     });
+
+    test("jobs modal: over the post's frame the site's cursor hands off to the native one, and comes back on the way out", async ({ page }) => {
+      const { dialog } = await openCardFromBook(page, "jobs", { settled: true });
+      const frame = dialog.locator("[data-post-frame]");
+      await frame.scrollIntoViewIfNeeded();
+      const words = (await dialog.locator('[data-text-column] p[data-mask="words-3"]').boundingBox())!;
+      const dot = page.locator("[data-cursor-dot]");
+      await page.mouse.move(words.x + 20, words.y + 8, { steps: 4 });
+      await expect(dot).toHaveAttribute("data-visible", "");
+      // Into the frame: the dot hides, and the frame and its hairline show the native cursor, not the site's none.
+      const box = (await frame.boundingBox())!;
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 8 });
+      await expect(dot).not.toHaveAttribute("data-visible", "");
+      expect(await frame.evaluate((el) => getComputedStyle(el).cursor)).toBe("auto");
+      expect(await frame.locator("iframe").evaluate((el) => getComputedStyle(el).cursor)).toBe("auto");
+      // Back out onto the words: the dot is back, at the live pointer.
+      await page.mouse.move(words.x + 30, words.y + 10, { steps: 8 });
+      await expect(dot).toHaveAttribute("data-visible", "");
+      const at = await dot.evaluate((el) => new DOMMatrixReadOnly(getComputedStyle(el).transform));
+      expect(Math.round(at.m41)).toBe(Math.round(words.x + 30));
+      expect(Math.round(at.m42)).toBe(Math.round(words.y + 10));
+    });
   });
 }
 
-// What a phone's pager page holds, read off its markup: the media on it (a name tag, a photo or the post's link card).
-type Kind = "tag" | "photo" | "card";
+// What a phone's pager page holds, read off its markup: the media on it (a name tag, a photo or the post's frame).
+type Kind = "tag" | "photo" | "post";
 const kindsOf = (pages: import("@playwright/test").Locator) =>
-  pages.evaluateAll((els) => els.map((el): Kind => (el.querySelector("[data-job-tag]") ? "tag" : el.querySelector("[data-post-card]") ? "card" : "photo")));
+  pages.evaluateAll((els) => els.map((el): Kind => (el.querySelector("[data-job-tag]") ? "tag" : el.querySelector("[data-post-frame]") ? "post" : "photo")));
 
 // The page's whole read at once: nothing on it is scrolled, clipped or wider than the panel, in the pager's pages as laid out.
 async function readPages(page: import("@playwright/test").Page) {
@@ -212,7 +244,7 @@ async function readPages(page: import("@playwright/test").Page) {
         scrollsFlag: !!text?.hasAttribute("data-scrolls"),
         tipInside: tip ? tip.getBoundingClientRect().bottom <= viewport.bottom + 1 : true,
         tag: el.querySelector<HTMLElement>("[data-job-tag]")?.dataset.jobTag ?? null,
-        photos: [...el.querySelectorAll<HTMLElement>("[data-photo-frame]")].filter((frame) => !frame.querySelector("[data-job-tag], [data-post-card]")).map((frame) => Number(frame.dataset.photoFrame)),
+        photos: [...el.querySelectorAll<HTMLElement>("[data-photo-frame]")].filter((frame) => !frame.querySelector("[data-job-tag], [data-post-frame]")).map((frame) => Number(frame.dataset.photoFrame)),
         paragraphs: [...el.querySelectorAll<HTMLElement>('[data-pager-text] p[data-mask^="words-"]')].map((p) => ({ unit: Number(p.dataset.mask!.slice(6)), text: p.textContent ?? "" })),
         iframes: el.querySelectorAll("iframe").length,
         gap,
@@ -231,23 +263,25 @@ const omitted = (unit: number, text: string) => {
 test.describe("on a phone", () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
 
-  test("jobs modal: at 390 each paragraph stands with its row's photo (the post's card for the last), each name tag is a page of its own, and nothing scrolls inside a page", async ({ page }) => {
+  test("jobs modal: at 390 each paragraph stands with its row's photo (the post's frame for the last), each name tag is a page of its own, and nothing scrolls inside a page", async ({ page }) => {
     const { dialog } = await openCardFromBook(page, "jobs", { settled: true });
     await expect(dialog).toHaveAttribute("data-gallery-layout", "pager");
     const pages = dialog.locator("[data-pager-page]");
     // Newest first: the poster and the first paragraph, Aritzia's tag; the badge and the second, Apple's tag; MOD's photos and the third,
-    // UT Austin's and MOD's tags; the post's card and the last, Popeyes' tag. No frame of the post anywhere on a phone.
-    expect(await kindsOf(pages)).toEqual(["photo", "tag", "photo", "tag", "photo", "tag", "tag", "card", "tag"]);
-    await expect(dialog.locator("iframe")).toHaveCount(0);
-    await expect(dialog.locator("[data-embed-stage]")).toHaveCount(0);
+    // UT Austin's and MOD's tags; the post's frame and the last, Popeyes' tag. The frame is the post's only one (it scrolls inside itself,
+    // in LinkedIn's own document, so nothing in the page does).
+    expect(await kindsOf(pages)).toEqual(["photo", "tag", "photo", "tag", "photo", "tag", "tag", "post", "tag"]);
+    await expect(dialog.locator("iframe")).toHaveCount(1);
 
     const read = await readPages(page);
     expect(read.pages.map((p) => p.tag).filter((job) => job !== null), "the tags, newest job first").toEqual(["0", "1", "2", "3", "4"]);
     expect(read.pages.filter((p) => p.paragraphs.length).map((p) => p.photos), "each paragraph beside its row's photos").toEqual([[0], [1], [2, 3], []]);
-    // Every word shows, once and in order: the four paragraphs, whole, with the room at 844.
+    // Every paragraph shows, once and in order, the first three whole with the room at 844; the post's drops only whole sentences (its
+    // phone omissions, the hook line first among them, which the frame above it shows) to leave the frame its room.
     const shown = read.pages.flatMap((p) => p.paragraphs);
     expect(shown.map((p) => p.unit)).toEqual([0, 1, 2, 3]);
-    expect(shown.map((p) => p.text)).toEqual(modal.blocks.map((block) => visibleText(block)));
+    expect(shown.slice(0, 3).map((p) => p.text)).toEqual(modal.blocks.slice(0, 3).map((block) => visibleText(block)));
+    expect(omitted(3, shown[3].text), "the post's paragraph, as written or less whole sentences").toBeGreaterThanOrEqual(0);
     read.pages.forEach((p, i) => {
       expect(p.scrolled, `page ${i + 1}: nothing in it scrolls`).toBe(0);
       expect(p.scrollsFlag, `page ${i + 1}: its words are not in a scroll window`).toBe(false);
@@ -261,7 +295,7 @@ test.describe("on a phone", () => {
     expect(Math.round(title.height / title.line), "lines in the title").toBeLessThanOrEqual(3);
   });
 
-  test("jobs modal: at 390 every page is within the panel, the controls too, and the post is one link card to the post", async ({ page }) => {
+  test("jobs modal: at 390 every page is within the panel, the controls too, and the post's frame fits its column with View on LinkedIn under it", async ({ page }) => {
     const { dialog } = await openCardFromBook(page, "jobs", { settled: true });
     const pages = dialog.locator("[data-pager-page]");
     const count = await pages.count();
@@ -285,24 +319,31 @@ test.describe("on a phone", () => {
         await page.waitForTimeout(450);
       }
     }
-    // The post's page: one link card, in the site's card language, to the post's own link, with Aaron's name, its hook line and the way in.
-    const card = dialog.locator("[data-post-card]");
-    await expect(card).toHaveCount(1);
-    await expect(card).toHaveAttribute("href", modal.links[0].href);
-    await expect(card).toHaveAttribute("target", "_blank");
-    await expect(card).toHaveAttribute("rel", /noopener/);
-    await expect(card).toContainText(modal.postCard!.byline);
-    await expect(card).toContainText(modal.postCard!.hook);
-    await expect(card).toContainText(modal.postCard!.cta);
-    await expect(dialog.getByRole("link", { name: /The LinkedIn post/ }), "the card is the link: the label link is not drawn beside it").toHaveCount(0);
-    const frame = await card.evaluate((el) => {
+    // The post's page: LinkedIn's short embed, as wide as the column at most and no wider, between pageMin and pageMax tall, with the
+    // photos' radius and a hairline, then View on LinkedIn under it, the post's only link on the page.
+    const post = dialog.locator('[data-media="post"]');
+    const frame = post.locator("[data-post-frame]");
+    await expect(frame.locator("iframe")).toHaveAttribute("src", modal.embed!.src);
+    const column = (await dialog.locator("[data-pager-viewport]").boundingBox())!;
+    const box = (await frame.boundingBox())!;
+    expect(box.x, "inside the column").toBeGreaterThanOrEqual(column.x - 1);
+    expect(box.x + box.width, "inside the column").toBeLessThanOrEqual(column.x + column.width + 1);
+    expect(box.height, "a short frame that scrolls inside itself").toBeLessThanOrEqual(GALLERY.post.pageMax);
+    expect((await post.boundingBox())!.height, "the frame and its link keep their room at 844").toBeGreaterThanOrEqual(GALLERY.post.pageMin - 1);
+    const link = post.locator("[data-post-link]");
+    await expect(link).toHaveAttribute("href", modal.links[0].href);
+    await expect(link).toHaveAttribute("target", "_blank");
+    await expect(link).toHaveAttribute("rel", /noopener/);
+    await expect(link).toContainText(modal.embed!.cta);
+    expect((await link.boundingBox())!.y, "under the frame").toBeGreaterThanOrEqual(box.y + box.height - 1);
+    await expect(dialog.getByRole("link", { name: /The LinkedIn post/ }), "the link under the frame is the way in: the label link is not drawn beside it").toHaveCount(0);
+    const look = await frame.evaluate((el) => {
       const style = getComputedStyle(el);
-      const mask = el.closest("[data-mask]") as HTMLElement;
-      return { radius: parseFloat(getComputedStyle(mask).borderTopLeftRadius), border: parseFloat(style.borderTopWidth), shadow: style.boxShadow };
+      return { radius: parseFloat(style.borderTopLeftRadius), border: parseFloat(style.borderTopWidth), shadow: style.boxShadow };
     });
-    expect(frame.radius, "the photos' radius").toBeGreaterThan(8);
-    expect(frame.border).toBe(1);
-    expect(frame.shadow, "flat: no shadow").toBe("none");
+    expect(look.radius, "the photos' radius").toBeGreaterThan(8);
+    expect(look.border).toBe(1);
+    expect(look.shadow, "flat: no shadow").toBe("none");
   });
 
   // Safari's 664px tall window: the long title takes a size less, and a paragraph that cannot fit beside its photo drops its phone

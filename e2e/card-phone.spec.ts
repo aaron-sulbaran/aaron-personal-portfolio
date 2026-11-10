@@ -64,18 +64,18 @@ function readPage(page: Page, key: CardKey, index: number, rules: { minWords: nu
           }
         }
       }
-      // A photo of real size in view: the current one of a group, drawn (an image with its pixels, the video, a name tag or the post's card).
+      // A photo of real size in view: the current one of a group, drawn (an image with its pixels, the video, a name tag or the post's frame).
       const frames = [...pageEl.querySelectorAll<HTMLElement>("[data-photo-frame]")].filter((frame) => !frame.hasAttribute("data-rotator-layer") || frame.hasAttribute("data-current"));
       const real = frames.filter((frame) => {
         const box = frame.getBoundingClientRect();
         const img = frame.querySelector("img");
-        const drawn = !!frame.querySelector("video, [data-job-tag], [data-post-card]") || (!!img && img.complete && img.naturalWidth > 0);
+        const drawn = !!frame.querySelector("video, [data-job-tag], [data-post-frame]") || (!!img && img.complete && img.naturalWidth > 0);
         return drawn && box.width >= panel.width * r.minShare && box.height >= 60 && box.top >= area.top - 1 && box.bottom <= area.bottom + 1;
       });
       const media = real.length ? Math.max(...real.map((frame) => frame.getBoundingClientRect().width / panel.width)) : 0;
       if (!real.length) out.push(`${at}: no photo of real size (${frames.map((frame) => Math.round(frame.getBoundingClientRect().width)).join(", ") || "none"})`);
-      // Real words: the page's body (a paragraph, a mentor, a tag's tip, the post's hook) and its caption, never the card's links alone.
-      const bodies = [...pageEl.querySelectorAll<HTMLElement>('[data-block^="w"], [data-block^="m"], [data-job-tag-tip], [data-post-card-hook]')];
+      // Real words: the page's body (a paragraph, a mentor, a tag's tip) and its caption, never the card's links alone.
+      const bodies = [...pageEl.querySelectorAll<HTMLElement>('[data-block^="w"], [data-block^="m"], [data-job-tag-tip]')];
       const caption = [...pageEl.querySelectorAll<HTMLElement>('p[data-mask^="caption-"]')].filter((p) => !p.closest('[aria-hidden="true"]'));
       const words = [...bodies, ...caption].map((el) => el.textContent ?? "").join(" ").split(/\s+/).filter(Boolean).length;
       if (!bodies.length) out.push(`${at}: no paragraph, mentor or tip: only ${pageEl.querySelector("[data-block='end']") ? "the links" : "media"}`);
