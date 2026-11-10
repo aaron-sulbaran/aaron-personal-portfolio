@@ -51,12 +51,23 @@ function LogoThumb({ logo, tile }: { logo: LogoRef; tile: "plain" | "talos" }) {
   );
 }
 
+// An SVG is already vector and tiny, so it stays a plain img; any raster goes
+// through the optimizer (the IEEE square is a 1382 px JPEG shown at about 70 px).
+// The width and height are the file's own, so the box is the one the raw img had.
+function LogoPicture({ src, logo, className }: { src: string; logo: LogoRef; className: string }) {
+  if (src.toLowerCase().endsWith(".svg")) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={src} alt="" className={className} />;
+  }
+  return <Image src={src} alt="" width={logo.width} height={logo.height} sizes={THUMB_SIZES} quality={90} className={className} />;
+}
+
 function LogoImage({ logo }: { logo: LogoRef }) {
   const frame = "max-h-full max-w-full object-contain";
   return (
     <>
-      <img src={logo.src} alt="" className={`${frame} ${logo.srcDark ? "dark:hidden" : ""}`} />
-      {logo.srcDark && <img src={logo.srcDark} alt="" className={`${frame} hidden dark:block`} />}
+      <LogoPicture src={logo.src} logo={logo} className={`${frame} ${logo.srcDark ? "dark:hidden" : ""}`} />
+      {logo.srcDark && <LogoPicture src={logo.srcDark} logo={logo} className={`${frame} hidden dark:block`} />}
     </>
   );
 }
