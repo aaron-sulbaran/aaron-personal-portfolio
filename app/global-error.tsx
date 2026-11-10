@@ -1,7 +1,9 @@
 "use client";
 
+import { useEffect } from "react";
 import { Onest } from "next/font/google";
 import { ErrorPanel } from "@/components/ErrorPanel";
+import { reportClientError } from "@/components/SiteAnalytics";
 import { profaBlack, profaBold } from "@/lib/fonts";
 import { themeInitScript } from "@/lib/theme";
 import "./globals.css";
@@ -20,7 +22,12 @@ type Props = {
   reset: () => void;
 };
 
-export default function GlobalError({ reset }: Props) {
+export default function GlobalError({ error, reset }: Props) {
+  useEffect(() => {
+    console.error(error);
+    reportClientError("global-error", error);
+  }, [error]);
+
   return (
     <html lang="en" suppressHydrationWarning className={`${onest.variable} ${profaBlack.variable} ${profaBold.variable}`}>
       <head>

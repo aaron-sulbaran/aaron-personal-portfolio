@@ -5,6 +5,7 @@ import { TopFade } from "@/components/TopFade";
 import { MenuPill } from "@/components/menu/MenuPill";
 import { CustomCursor } from "@/components/CustomCursor";
 import { QuietBoundary } from "@/components/QuietBoundary";
+import { ClientErrorListener } from "@/components/ClientErrorListener";
 import { SiteAnalytics } from "@/components/SiteAnalytics";
 import { QuestMount } from "@/components/quests/QuestMount";
 import { InlineLayer } from "@/components/inline/InlineLayer";
@@ -85,28 +86,29 @@ export default function RootLayout({
         {!HOLDING_MODE && <SiteLogo />}
         {!HOLDING_MODE && <MenuPill />}
         {!HOLDING_MODE && (
-          <QuietBoundary>
+          <QuietBoundary where="player">
             <SoundtrackPlayer />
           </QuietBoundary>
         )}
         <InputModality />
-        <QuietBoundary>
+        <QuietBoundary where="cursor">
           <CustomCursor />
         </QuietBoundary>
         {!HOLDING_MODE && (
-          <QuietBoundary>
+          <QuietBoundary where="inline">
             <InlineLayer />
           </QuietBoundary>
         )}
         {children}
         <SiteAnalytics />
+        <ClientErrorListener />
         {!HOLDING_MODE && (
-          <QuietBoundary>
+          <QuietBoundary where="quests">
             <QuestMount />
           </QuietBoundary>
         )}
         {!HOLDING_MODE && (
-          <QuietBoundary>
+          <QuietBoundary where="transition">
             <TransitionLayer />
           </QuietBoundary>
         )}
