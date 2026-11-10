@@ -2,11 +2,15 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { ExpressLane } from "@/components/quick/ExpressLane";
 import { HOLDING_MODE } from "@/lib/holding";
+import { siteContent } from "@/lib/content";
 import { quickCopy } from "@/lib/content/quick";
+import { pageShare } from "@/lib/pageShare";
 
 export const metadata: Metadata = {
   title: quickCopy.title,
   description: quickCopy.intro,
+  // The tab title reads through the root template; the share cards get the same words.
+  ...pageShare({ path: "/quick", title: `${quickCopy.title} | ${siteContent.meta.title}`, description: quickCopy.intro }),
   robots: { index: true, follow: true },
 };
 

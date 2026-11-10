@@ -15,6 +15,7 @@ import { TransitionLayer } from "@/components/transition/TransitionLayer";
 import { siteContent } from "@/lib/content";
 import { profaBlack, profaBold } from "@/lib/fonts";
 import { HOLDING_MODE } from "@/lib/holding";
+import { OPEN_GRAPH_BASE, TWITTER_BASE } from "@/lib/pageShare";
 import { bandInitScript } from "@/lib/home/bandInit";
 import { dealInitScript } from "@/lib/home/dealInit";
 import { introLoaderInitScript } from "@/lib/home/introLoaderInit";
@@ -42,11 +43,10 @@ export const metadata: Metadata = {
     title: siteContent.meta.title,
     description: siteContent.meta.description,
     url: siteContent.meta.url,
-    siteName: siteContent.meta.title,
-    type: "website",
+    ...OPEN_GRAPH_BASE,
   },
   twitter: {
-    card: "summary_large_image",
+    ...TWITTER_BASE,
     title: siteContent.meta.title,
     description: siteContent.meta.description,
   },

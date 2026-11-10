@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Connect } from "@/components/Connect";
 import { Footer } from "@/components/Footer";
 import { PathLayer } from "@/components/soundtrack/path/PathLayer";
@@ -11,6 +12,9 @@ import { Intro } from "@/components/home/Intro";
 import { CardColumns } from "@/components/cards/CardColumns";
 import { NumbersStrip } from "@/components/metrics/NumbersStrip";
 import { MarkCardSource } from "@/components/mark/MarkCardSource";
+
+// The canonical is the bare origin; /quick sets its own (lib/pageShare.ts).
+export const metadata: Metadata = { alternates: { canonical: "/" } };
 
 // The contribution figures refresh once a day (lib/metrics/github.ts); a
 // literal, because Next reads segment config statically.
