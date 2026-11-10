@@ -519,9 +519,12 @@ test.describe("the wave as one line", () => {
   }
 
   // Reduced motion has no train: the band's run stays whole wherever the band is, and a flick to the top finds it whole at once.
+  // Reduced motion draws no Coil scene (the still ribbon stands in), so openHome, which waits for the scene, never resolves here:
+  // the page is opened as the other reduced motion tests open it.
   test("player: under reduced motion the band's run stays whole as the band scrolls away and back", async ({ page }) => {
     await page.emulateMedia({ reducedMotion: "reduce" });
-    await openHome(page, { path: HOME });
+    await page.goto(HOME);
+    await settled(page);
     await parkBand(page);
     await page.waitForTimeout(400);
     const whole = await bandInkPixels(page);
