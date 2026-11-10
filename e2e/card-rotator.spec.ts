@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { homeDeck, stepFrom } from "@/lib/card/deck";
 import { siteContent } from "@/lib/content";
 import { GALLERY } from "@/lib/gallery/constants";
 import { test, expect } from "./support/fixtures";
@@ -128,6 +129,9 @@ test("rotator: the keyboard path through Mentorship and Misuki reaches the dots,
     g.photoOf(1, 3), g.photoOf(2, 3), g.photoOf(3, 3), g.pausePhotos,
     ...siteContent.cards.mentorship.mentors.people.map((mentor) => `${mentor.name}, ${external}`),
     `${siteContent.cards.mentorship.modal.links[0].label}, ${external}`,
+    // The deck's chevrons (PR 128) come after the card's own controls, then the trap wraps to the close button.
+    siteContent.modals.deck.previousCard(siteContent.cards[stepFrom(homeDeck, "mentorship", -1)!].short),
+    siteContent.modals.deck.nextCard(siteContent.cards[stepFrom(homeDeck, "mentorship", 1)!].short),
     siteContent.modals.closeAriaLabel,
   ];
   const reached: string[] = [];
