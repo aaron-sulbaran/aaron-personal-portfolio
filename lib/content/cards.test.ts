@@ -147,10 +147,12 @@ describe("the fourteen cards", () => {
     });
     expect(modal.embed!.href, "the modal's own link to the post").toBe(modal.links[0].href);
     expect(modal.embed!.beside, "beside the paragraph about the post").toBe(modal.blocks.length - 1);
-    expect(tag.name).toBe("Aaron");
+    // No "Aaron" on every tag (2026-11-09): the role is its big text, and a phone opens the tip with "Hear more about this one".
+    expect(tag).not.toHaveProperty("name");
     expect(tag.tipLabel).toBe("My tip");
+    expect(tag.more).toBe("Hear more about this one");
     expect(tag.label("Apple")).toBe("My name tag from Apple, with my tip");
-    for (const text of [modal.title, ...modal.blocks, modal.embed!.title, tag.name, tag.tipLabel, tag.label("Apple"), ...cards.jobs.timeline.map((entry) => entry.tip)]) expect(text, text).not.toMatch(/\u2014/);
+    for (const text of [modal.title, ...modal.blocks, modal.embed!.title, tag.tipLabel, tag.more, tag.label("Apple"), ...cards.jobs.timeline.map((entry) => entry.tip)]) expect(text, text).not.toMatch(/\u2014/);
   });
 
 

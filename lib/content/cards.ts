@@ -168,7 +168,9 @@ export const cards: Cards = {
       { employer: "Popeyes", role: null, when: "Sophomore year of high school", logo: logos.popeyes,
         tip: "Get the blackened tenders every time, they have to make them fresh usually (bonus points if you can get them on a spicy chicken sandwich, secret menu item)" },
     ],
-    tag: { name: "Aaron", tipLabel: "My tip", label: (employer) => `My name tag from ${employer}, with my tip` },
+    // Aaron, 2026-11-09: no "Aaron" on every tag ("why does it have to say Aaron for every single one?"); the role is the big text. On a
+    // phone the tip is a dropdown under the tag: "replace the My tip label with something like hear more about this one".
+    tag: { tipLabel: "My tip", more: "Hear more about this one", label: (employer) => `My name tag from ${employer}, with my tip` },
   },
   "this-site": {
     short: "This site", visual: { kind: "mark" },

@@ -130,20 +130,21 @@ describe("each card's gallery", () => {
     expect(plan.slides.map((_, i) => (i % 2 === 0 ? "left" : "right"))).toEqual(["left", "right", "left", "right"]);
   });
 
-  it("sets the jobs card's phone pages photo and paragraph first, then each name tag a page of its own: no photo without words", () => {
+  it("sets the jobs card's phone pages as photo, paragraph, then that job's name tags under it: no tag a page of its own", () => {
     const gallery = galleryOf("jobs");
     expect(gallery.grouping).toBe("paragraph");
     const { pages, photos } = gallery;
-    // The poster and the first paragraph, Aritzia's tag; the badge and the second, Apple's tag; MOD's two photos taking turns beside the
-    // third, UT Austin's and MOD's tags; the post's card and the last paragraph, Popeyes' tag.
-    expect(pages.map((page) => page.photos)).toEqual([[0], [4], [1], [5], [2, 3], [6], [7], [9], [8]]);
-    expect(pages.map((page) => slideWords(page))).toEqual([[0], [], [1], [], [2], [], [], [3], []]);
-    expect(pages.filter((page) => page.wordless).every((page) => photos[page.photo].tag !== undefined), "only a name tag stands without a paragraph").toBe(true);
-    expect(pages.filter((page) => !page.wordless).every((page) => photos[page.photo].tag === undefined), "every paragraph beside a photo or the post's card").toBe(true);
-    expect(pages.map((page) => page.links)).toEqual([false, false, false, false, false, false, false, true, false]);
+    // The poster, the first paragraph and Aritzia's tag; the badge, the second and Apple's tag; MOD's two photos taking turns beside the
+    // third, UT Austin's and MOD's tags; the post, the last paragraph and Popeyes' tag. The pager carries a tag onto a page of its unit's
+    // own only where the room runs out (lib/gallery/paginate).
+    expect(pages.map((page) => page.photos)).toEqual([[0], [1], [2, 3], [9]]);
+    expect(pages.map((page) => slideWords(page))).toEqual([[0], [1], [2], [3]]);
+    expect(pages.map((page) => page.tags)).toEqual([[4], [5], [6, 7], [8]]);
+    expect(pages.some((page) => page.wordless), "no page without words").toBe(false);
+    expect(pages.map((page) => page.links)).toEqual([false, false, false, true]);
     expect(pages.every((page) => !page.together && !page.aside)).toBe(true);
-    // Every piece of media once.
-    expect(pages.flatMap((page) => page.photos).sort((a, b) => a - b)).toEqual(photos.map((_, i) => i));
+    // Every piece of media once, on a stage or as a tag.
+    expect(pages.flatMap((page) => [...page.photos, ...(page.tags ?? [])]).sort((a, b) => a - b)).toEqual(photos.map((_, i) => i));
     for (const key of keys) expect(galleryOf(key).grouping, key).toBe(PHONE_GROUPING);
     for (const key of keys.filter((candidate) => candidate !== "jobs")) expect(galleryOf(key).pages, key).toEqual(phonePages(galleryOf(key).plan, PHONE_GROUPING));
   });

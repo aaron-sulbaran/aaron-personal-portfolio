@@ -134,16 +134,17 @@ describe("the header", () => {
 
 describe("a job's name tag", () => {
   const tag = (job: number) => renderToStaticMarkup(createElement(JobTag, { job }));
-  it("shows the logo across the top, my name, the role and when, then the labelled tip, all as visible words", () => {
+  it("shows the logo across the top, the role as its big text (never my name), when, then the labelled tip, all as visible words", () => {
     const apple = tag(1);
     expect(apple).toContain('data-job-tag="1"');
     expect(apple).toContain('aria-label="My name tag from Apple, with my tip"');
-    expect(apple.indexOf("data-job-tag-logo")).toBeLessThan(apple.indexOf("data-job-tag-name"));
-    expect(apple.indexOf("data-job-tag-name")).toBeLessThan(apple.indexOf("data-job-tag-role"));
+    expect(apple.indexOf("data-job-tag-logo")).toBeLessThan(apple.indexOf("data-job-tag-role"));
     expect(apple.indexOf("data-job-tag-role")).toBeLessThan(apple.indexOf("data-job-tag-when"));
     expect(apple.indexOf("data-job-tag-when")).toBeLessThan(apple.indexOf("data-job-tag-tip"));
-    expect(apple).toMatch(/data-job-tag-name[^>]*>Aaron</);
-    expect(apple).toContain("Specialist, then technical specialist");
+    expect(apple).not.toContain("data-job-tag-name");
+    expect(apple).not.toMatch(/>Aaron</);
+    expect(apple).toMatch(/data-job-tag-role[^>]*>Specialist, then technical specialist</);
+    expect(apple).toMatch(/font-display[^"]*"[^>]*data-job-tag-role/);
     expect(apple).toContain("2024 to 2025");
     expect(apple).toMatch(/>My tip</);
     expect(apple).toContain("Get AppleCare and some sort of cloud storage.");

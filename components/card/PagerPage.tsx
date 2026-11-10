@@ -11,7 +11,7 @@ import { partId } from "@/lib/gallery/timing";
 import { PAGER_PHOTO_SIZES } from "@/lib/photoSizes";
 import { afterWords } from "./afterWords";
 import { CardLinks } from "./CardLinks";
-import { FitStage } from "./FitStage";
+import { JobTagFold } from "./JobTagFold";
 import { MentorsList } from "./MentorsList";
 import { PhoneRotator } from "./PhoneRotator";
 import { StillPhoto } from "./StillPhoto";
@@ -20,15 +20,15 @@ import { Words } from "./Words";
 // One page of the phone pager (the gallery lab's round six): the stage, as
 // tall as the pager gave it and exactly as tall as what it draws (a photo
 // whole, or on a short stage kept at a readable width and cropped about its
-// subject); the caption; then the words in their own area, with the mentors
-// (a block each) and the links after the last of them. Every page has a photo
-// and words (lib/gallery/paginate): a photo carried onto a page after its own
-// is drawn again with no caption and no mask of its own. The words area
-// scrolls, behind a soft fade at its foot, only for one paragraph taller than a
-// whole page with nothing left to drop (a very short window). A page with no
-// words (a name tag with its tip inside it) centres its stage in the page, since
-// nothing is under it: at the top it left half a tall phone's page empty. A page
-// that is not current is inert and hidden from assistive tech.
+// subject); the caption; then the words in their own area, with the jobs
+// card's name tags and the mentors (a block each) and the links after the last
+// of them. Every page has a photo and words (lib/gallery/paginate): a photo
+// carried onto a page after its own is drawn again with no caption and no mask
+// of its own. The words area scrolls, behind a soft fade at its foot, only for
+// one paragraph taller than a whole page with nothing left to drop (a very short
+// window), or while a name tag's tip is open (JobTagFold). A page with no words
+// (grouping B's later photos) centres its stage in the page, since nothing is
+// under it. A page that is not current is inert and hidden from assistive tech.
 // No page carries the flight's slot (a flown card parks on the header's tile,
 // which stays put while the pages turn), so every photo draws itself.
 
@@ -104,6 +104,9 @@ export function PagerPage({ gallery, page, index, count, kind, stage, trims, cur
                 {afterWords(gallery, unit, false)}
               </div>
             ))}
+            {(page.tags ?? []).map((photo) => (
+              <JobTagFold key={photo} photo={photo} job={gallery.photos[photo].tag!} />
+            ))}
             {mentors.map((mentor) => (
               <div key={mentor} data-block={mentorId(mentor)}>
                 <MentorsList compact only={mentor} />
@@ -121,7 +124,7 @@ export function PagerPage({ gallery, page, index, count, kind, stage, trims, cur
   );
 }
 
-// The post's stage: its frame scrolls inside itself, so rather than shrink (FitStage) it takes the room its paragraph leaves, as wide as the
+// The post's stage: its frame scrolls inside itself, so rather than shrink to fit it takes the room its paragraph leaves, as wide as the
 // post at most and up to GALLERY.post.pageMax tall. The pager reads an own stage's natural height off data-fit-inner, which here is a
 // fixed probe: a page that would leave the frame and its link less than pageMin drops the paragraph's phone omissions (fitFloor of the
 // probe is pageMin). Read off the frame itself, the first pass (drawn at the whole page's height) would trim every page for good.
@@ -142,15 +145,6 @@ function StillStage({ gallery, photo, box, height, carried }: { gallery: Gallery
   const picture = gallery.photos[photo];
   const caption = carried ? null : (picture.captionShort ?? picture.caption);
   if (picture.embed) return <PostStage gallery={gallery} photo={photo} height={height} />;
-  // A name tag's height is its tip's, so its stage is as tall as the tag, shrunk to the room the pager gave it when that is short
-  // (FitStage), and leaves the words the rest.
-  if (picture.tag !== undefined) {
-    return (
-      <FitStage room={height}>
-        <StillPhoto photo={picture} index={photo} box={box} caption={null} />
-      </FitStage>
-    );
-  }
   return (
     <>
       <div className="relative flex w-full shrink-0 items-end justify-center" style={{ height }} data-pager-stage="" data-cropped={box.cropped ? "" : undefined}>

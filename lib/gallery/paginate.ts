@@ -17,9 +17,12 @@
 export const END = "end";
 // A mentor's block: the first carries the mentors' heading, and a mentor is never split from their line.
 export const mentorId = (index: number) => `m${index}`;
+// A name tag's block on a phone (the jobs card's, components/card/JobTagFold), by its photo's index: it follows its paragraph like a
+// mentor follows hers, and is carried onto the unit's next page with a photo of its own when the page has no room for it.
+export const tagId = (photo: number) => `t${photo}`;
 
 export interface BlockSize {
-  id: string; // "w3" (word unit 3), "m2" (mentor 2), or END
+  id: string; // "w3" (word unit 3), "m2" (mentor 2), "t6" (the name tag that is photo 6), or END
   height: number; // px
 }
 
@@ -51,6 +54,8 @@ export interface Chunk {
   // Which mentors are on this page. Present on every chunk of a unit that has mentor blocks (an empty list when none is here), absent
   // on a unit that has none, so a page with no mentor blocks to place is told nothing about them.
   mentors?: number[];
+  // Which name tags are on this page, by photo, on the same terms as mentors.
+  tags?: number[];
 }
 
 // Every unit's pages, by unit.
@@ -60,10 +65,11 @@ export interface Paged { shape: Shape; tooTall: string[] }
 
 const indexed = (blocks: readonly BlockSize[], prefix: string) => blocks.filter((block) => block.id.startsWith(prefix)).map((block) => Number(block.id.slice(1)));
 
-const wordsOf = (blocks: readonly BlockSize[], withMentors: boolean) => ({
+const wordsOf = (blocks: readonly BlockSize[], withMentors: boolean, withTags = false) => ({
   units: indexed(blocks, "w"),
   end: blocks.some((block) => block.id === END),
   ...(withMentors ? { mentors: indexed(blocks, "m") } : {}),
+  ...(withTags ? { tags: indexed(blocks, "t") } : {}),
 });
 
 export const wordsHeight = (blocks: readonly BlockSize[], blockGap: number) => blocks.reduce((sum, block) => sum + block.height, 0) + blockGap * Math.max(0, blocks.length - 1);
@@ -110,15 +116,16 @@ function layUnit(unit: UnitMeasure, pageRules: PageRules, tooTall: string[]): Ch
   const { blocks, photos } = unit;
   const rules = unit.floor === undefined ? pageRules : { ...pageRules, floor: Math.min(pageRules.floor, unit.floor) };
   const withMentors = blocks.some((block) => block.id.startsWith("m"));
+  const withTags = blocks.some((block) => block.id.startsWith("t"));
   if (unit.own !== undefined) {
     // A name tag, or the post's card with its paragraph under it: one page, the card shrunk to leave the paragraph its room.
     const words = wordsHeight(blocks, rules.blockGap);
     const stage = blocks.length ? rules.room - words - rules.pageGap : rules.room;
     if (blocks.length && stage < unit.own * rules.fitFloor - 0.5) tooTall.push(...blocks.filter((block) => block.id.startsWith("w")).map((block) => block.id));
-    return [{ photos: [...photos], stage: Math.max(0, stage), ...wordsOf(blocks, withMentors) }];
+    return [{ photos: [...photos], stage: Math.max(0, stage), ...wordsOf(blocks, withMentors, withTags) }];
   }
   const captionOf = (shown: readonly number[], carried: boolean) => (carried ? 0 : Math.max(0, ...shown.map((photo) => unit.captions[photos.indexOf(photo)] ?? 0)));
-  if (blocks.length === 0) return [{ photos: [...photos], stage: stageRoom(0, captionOf(photos, false), false, rules), ...wordsOf(blocks, withMentors) }];
+  if (blocks.length === 0) return [{ photos: [...photos], stage: stageRoom(0, captionOf(photos, false), false, rules), ...wordsOf(blocks, withMentors, withTags) }];
 
   // The tallest a block can be and still fit beside a floor stage on a page of its own, whichever of the unit's captions is there.
   const widest = captionOf(photos, false);
@@ -146,7 +153,7 @@ function layUnit(unit: UnitMeasure, pageRules: PageRules, tooTall: string[]): Ch
         const caption = captionOf(shown, carried);
         const room = stageRoom(wordsHeight(run, rules.blockGap), caption, true, rules);
         const stage = run.some((block) => over.has(block.id)) ? Math.min(room, scrollingStage(caption, rules)) : room;
-        return { photos: shown, ...(carried ? { carried: true as const } : {}), stage, ...wordsOf(run, withMentors) };
+        return { photos: shown, ...(carried ? { carried: true as const } : {}), stage, ...wordsOf(run, withMentors, withTags) };
       });
       const least = Math.min(...chunks.map((chunk) => chunk.stage));
       if (least < rules.floor - 0.5) continue;
@@ -170,7 +177,7 @@ function layUnit(unit: UnitMeasure, pageRules: PageRules, tooTall: string[]): Ch
     const room = stageRoom(wordsHeight(run, rules.blockGap), caption, true, rules);
     const fits = room >= rules.floor - 0.5;
     if (!fits) for (const block of run) if (block.id.startsWith("w") && !tooTall.includes(block.id)) tooTall.push(block.id);
-    return { photos: shown, ...(carried ? { carried: true as const } : {}), stage: fits ? room : scrollingStage(caption, rules), ...wordsOf(run, withMentors) };
+    return { photos: shown, ...(carried ? { carried: true as const } : {}), stage: fits ? room : scrollingStage(caption, rules), ...wordsOf(run, withMentors, withTags) };
   });
 }
 
@@ -201,7 +208,7 @@ export function moreTrims(trims: Trims, tooTall: readonly string[], left: (unit:
 }
 
 // What a page holds, as a string: the same for the same pages, so the mask-in replays only when the pages themselves change.
-const chunkKey = (chunk: Chunk) => `${chunk.photos.join(".")}${chunk.carried ? "^" : ""}:${chunk.units.join(".")}${chunk.mentors?.length ? `~${chunk.mentors.join(".")}` : ""}${chunk.end ? "+" : ""}`;
+const chunkKey = (chunk: Chunk) => `${chunk.photos.join(".")}${chunk.carried ? "^" : ""}:${chunk.units.join(".")}${chunk.mentors?.length ? `~${chunk.mentors.join(".")}` : ""}${chunk.tags?.length ? `#${chunk.tags.join(".")}` : ""}${chunk.end ? "+" : ""}`;
 
 export const shapeKey = (shape: Shape): string =>
   Object.keys(shape)

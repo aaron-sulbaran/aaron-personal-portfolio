@@ -156,9 +156,9 @@ export interface Mentor { name: string; href: string; line: string | null }
 export interface MentorsList { title: string; people: readonly Mentor[] }
 // One job, newest first. role is null where quick.ts's jobs entries already say it (lib/content/jobTags.ts reads it from there).
 export interface TimelineEntry { employer: string; role: string | null; when: string; logo: LogoRef | null; tip: string }
-// The words on a name tag around a job's tip (components/card/JobTag): the name set on it, the small label over the tip, and the
-// tag's accessible name.
-export interface JobTagCopy { name: string; tipLabel: string; label: (employer: string) => string }
+// The words on a name tag around a job's tip (components/card/JobTag): the small label over the tip on a desktop, the control that
+// opens it on a phone (components/card/JobTagFold), and the tag's accessible name. The tag's big text is the job's role, not my name.
+export interface JobTagCopy { tipLabel: string; more: string; label: (employer: string) => string }
 
 // The Talos modal's extras (lib/content/talos.ts): the lockup the sting ends on, a
 // screenshot of its Discord channel, and where it is headed. The specialists and the eight

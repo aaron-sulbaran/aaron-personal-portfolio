@@ -33,7 +33,10 @@ export interface Page extends Slide {
   links: boolean; // the card's links (and, unless mentors says which, all the mentors) sit on this page
   // Which of Mentorship's mentors sit on this page, once the pager has split them across pages (repage); absent, a page that has the links has them all.
   mentors?: readonly number[];
-  wordless?: boolean; // a page with no words beside its media: grouping B's later photos, and the jobs card's name tags (a tag's tip is its words)
+  wordless?: boolean; // a page with no words beside its media: grouping B's later photos
+  // The jobs card's name tags on this page, by photo: under its words on a phone (components/card/JobTagFold), each a block the pager
+  // lays out (lib/gallery/paginate tagId). Before the pager has measured, a unit's page has all of them.
+  tags?: readonly number[];
   // Set by the pager once it has measured (repage): the phone page this came from, which of its pages this is, the stage's height,
   // and whether its photo was shown on an earlier page (drawn again with no caption).
   unit?: number;
@@ -241,16 +244,17 @@ export function phonePages(plan: Plan, grouping: PhoneGrouping): Page[] {
 }
 
 // A row of media seen together (the jobs card's) on a phone, where a cluster cannot sit beside words: the row's photos stand with its
-// words on one page (two take turns), or, in a row with no photo, its other piece (the post's card) does; then each of its name tags is
-// a page of its own, the tag's tip that page's words. Every other row is a page as pagesOf lays it.
+// words on one page (two take turns), or, in a row with no photo, its other piece (the post) does; its name tags follow its words, each a
+// block of its own (tags), never a page of their own (Aaron, 2026-11-09: "Why is there only one piece of text here?"). The pager carries
+// a tag onto the unit's next page, with a photo, only where the page has no room for it. Every other row is a page as pagesOf lays it.
 export function clusterPages(plan: Plan, isTag: (photo: number) => boolean): Page[] {
-  return pagesOf(plan).flatMap(({ together, aside, ...page }): Page[] => {
-    if (!together) return [page];
+  return pagesOf(plan).map(({ together, aside, ...page }): Page => {
+    if (!together) return page;
     const pieces = [...page.photos, ...(aside ?? [])];
     const stage = pieces.filter((piece) => !isTag(piece));
     const shown = stage.length ? stage : pieces.slice(0, 1);
     const tags = pieces.filter((piece) => !shown.includes(piece));
-    return [{ ...page, photo: shown[0], photos: shown }, ...tags.map((tag): Page => ({ photo: tag, photos: [tag], before: [], after: [], links: false, wordless: true }))];
+    return { ...page, photo: shown[0], photos: shown, ...(tags.length ? { tags } : {}) };
   });
 }
 
@@ -274,6 +278,7 @@ export function repage(pages: readonly Page[], shape: Shape): Page[] {
       links: chunk.end,
       stage: chunk.stage,
       ...(chunk.mentors ? { mentors: chunk.mentors } : {}),
+      ...(chunk.tags ? { tags: chunk.tags } : {}),
       ...(chunk.carried ? { carried: true as const } : {}),
     }));
   });
