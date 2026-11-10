@@ -50,7 +50,17 @@ describe("windowErrorValue", () => {
   });
 
   it("keeps a message-only event that says something", () => {
-    expect(windowErrorValue({ error: null, message: "ResizeObserver loop failed" })).toBe("ResizeObserver loop failed");
+    expect(windowErrorValue({ error: null, message: "Unexpected token '<'" })).toBe("Unexpected token '<'");
+  });
+
+  it("drops the benign ResizeObserver notices when they carry no error object", () => {
+    expect(windowErrorValue({ error: null, message: "ResizeObserver loop completed with undelivered notifications." })).toBeNull();
+    expect(windowErrorValue({ error: null, message: "ResizeObserver loop limit exceeded" })).toBeNull();
+  });
+
+  it("keeps a ResizeObserver error that carries a real error object", () => {
+    const error = new Error("ResizeObserver loop failed");
+    expect(windowErrorValue({ error, message: error.message })).toBe(error);
   });
 });
 

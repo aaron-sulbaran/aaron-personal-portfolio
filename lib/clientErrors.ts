@@ -35,11 +35,14 @@ export function errorDetail(value: unknown): string {
 }
 
 // A cross-origin script failure reaches window.onerror as a bare "Script error."
-// with no error object; it says nothing, so it is dropped.
+// with no error object; it says nothing, so it is dropped. So is the browser's
+// benign "ResizeObserver loop ..." notice, which also arrives with no error object
+// and would use up the report budget on every load.
 export function windowErrorValue(event: { error?: unknown; message?: string }): unknown {
   if (event.error != null) return event.error;
   const message = event.message ?? "";
-  return message === "" || message === "Script error." ? null : message;
+  if (message === "" || message === "Script error." || message.startsWith("ResizeObserver loop")) return null;
+  return message;
 }
 
 type ReporterOptions = {
