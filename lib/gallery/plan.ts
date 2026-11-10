@@ -34,8 +34,7 @@ export interface Page extends Slide {
   // Which of Mentorship's mentors sit on this page, once the pager has split them across pages (repage); absent, a page that has the links has them all.
   mentors?: readonly number[];
   wordless?: boolean; // a page with no words beside its media: grouping B's later photos
-  // The jobs card's name tags on this page, by photo: under its words on a phone (components/card/JobTagFold), each a block the pager
-  // lays out (lib/gallery/paginate tagId). Before the pager has measured, a unit's page has all of them.
+  // The jobs card's name tags on this page, by photo: under its paragraph on a phone, in that paragraph's block (components/card/JobTagFold).
   tags?: readonly number[];
   // Set by the pager once it has measured (repage): the phone page this came from, which of its pages this is, the stage's height,
   // and whether its photo was shown on an earlier page (drawn again with no caption).
@@ -244,9 +243,9 @@ export function phonePages(plan: Plan, grouping: PhoneGrouping): Page[] {
 }
 
 // A row of media seen together (the jobs card's) on a phone, where a cluster cannot sit beside words: the row's photos stand with its
-// words on one page (two take turns), or, in a row with no photo, its other piece (the post) does; its name tags follow its words, each a
-// block of its own (tags), never a page of their own (Aaron, 2026-11-09: "Why is there only one piece of text here?"). The pager carries
-// a tag onto the unit's next page, with a photo, only where the page has no room for it. Every other row is a page as pagesOf lays it.
+// words on one page (two take turns), or, in a row with no photo, its other piece (the post) does; its name tags, the aside's too, follow
+// its words on that page (tags), never a page of their own (Aaron, 2026-11-09: "Why is there only one piece of text here?"), and the
+// page's words scroll when they do not fit. Every other row is a page as pagesOf lays it.
 export function clusterPages(plan: Plan, isTag: (photo: number) => boolean): Page[] {
   return pagesOf(plan).map(({ together, aside, ...page }): Page => {
     if (!together) return page;
@@ -278,7 +277,6 @@ export function repage(pages: readonly Page[], shape: Shape): Page[] {
       links: chunk.end,
       stage: chunk.stage,
       ...(chunk.mentors ? { mentors: chunk.mentors } : {}),
-      ...(chunk.tags ? { tags: chunk.tags } : {}),
       ...(chunk.carried ? { carried: true as const } : {}),
     }));
   });

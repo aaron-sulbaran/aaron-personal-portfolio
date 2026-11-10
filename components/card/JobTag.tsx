@@ -11,7 +11,7 @@ import type { LogoRef } from "@/lib/content";
 // lib/content (cards.jobs.tag).
 export const TAG_BAND = { backgroundColor: "color-mix(in srgb, var(--color-foreground) 5%, var(--color-background))" };
 const LOGO = "h-auto max-h-9 w-auto max-w-[10.5rem]";
-const LOGO_SMALL = "h-auto max-h-6 w-auto max-w-[8rem]";
+const LOGO_SMALL = "h-auto max-h-5 w-auto max-w-[6.5rem]";
 
 export function TagLogo({ logo, small = false }: { logo: LogoRef; small?: boolean }) {
   const size = { width: Math.round(logo.width), height: Math.round(logo.height) };

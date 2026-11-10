@@ -12,20 +12,20 @@ describe("a card's mask steps", () => {
     ]);
     expect(ids(cardSteps(galleryOf("mentorship"), "rows", false))[2]).toEqual(["photo-0", "caption-0", "words-0"]);
   });
-  it("masks the jobs card's rows together: every piece of a cluster with its paragraph, and the tag beside the post with them, the post's link after its frame", () => {
-    // Photos 0 to 3 are the Aritzia poster, the Apple badge and the two MOD photos, then tags 4 to 8 (Aritzia to Popeyes) and the post, 9.
+  it("masks the jobs card's rows together: each job's tag and photo with its paragraph, a tag beside the words with them, the post's link after its frame", () => {
+    // Photos 0 to 2 are the Aritzia poster, the Apple badge and MOD's last clock-out, then tags 3 to 7 (Aritzia to Popeyes) and the post, 8.
     expect(ids(cardSteps(galleryOf("jobs"), "rows", false))).toEqual([
       ["title"], ["meta"],
-      ["photo-4", "photo-0", "caption-0", "words-0"],
-      ["photo-5", "photo-1", "caption-1", "words-1"],
-      ["photo-6", "photo-7", "photo-2", "caption-2", "photo-3", "caption-3", "words-2"],
-      // The post's frame, then View on LinkedIn under it where a photo's caption would be, then Popeyes' tag and the paragraph.
-      ["photo-9", "caption-9", "photo-8", "words-3"],
+      ["photo-3", "photo-0", "caption-0", "photo-5", "words-0"],
+      ["photo-4", "photo-1", "caption-1", "words-1"],
+      ["photo-6", "photo-2", "caption-2", "photo-7", "words-2"],
+      // The post's frame, then View on LinkedIn under it where a photo's caption would be, then the paragraph.
+      ["photo-8", "caption-8", "words-3"],
       ["links"],
     ]);
   });
-  it("masks a phone's jobs card from its first page: the Aritzia poster, its caption, the first paragraph, then Aritzia's tag under it", () => {
-    expect(ids(cardSteps(galleryOf("jobs"), "pager", false))).toEqual([["title"], ["meta"], ["photo-0", "caption-0"], ["words-0"], ["photo-4"], ["pager"]]);
+  it("masks a phone's jobs card from its first page: the Aritzia poster, its caption, the first paragraph, then Aritzia's and UT Austin's tags under it", () => {
+    expect(ids(cardSteps(galleryOf("jobs"), "pager", false))).toEqual([["title"], ["meta"], ["photo-0", "caption-0"], ["words-0"], ["photo-3", "photo-5"], ["pager"]]);
   });
   it("masks a phone's header, its first page and the pager's controls, the card picture too when a flown card parks on the header's tile", () => {
     expect(ids(cardSteps(galleryOf("capital-one"), "pager", false))).toEqual([["title"], ["meta"], ["photo-0", "caption-0"], ["words-0", "words-1"], ["pager"]]);

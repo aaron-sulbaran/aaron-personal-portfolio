@@ -10,11 +10,11 @@ import type { Plan, Slide } from "./plan";
 // each job is a name tag (components/card/JobTag), and its photos sit beside it. The rows still alternate sides as every
 // card's do, so no cluster sits under another, and each row's words are a paragraph beside its cluster.
 //
-// Newest first, paired with the four paragraphs, one row each (Aaron, 2026-10-29):
-//   paragraph 1  Aritzia's tag and its poster
+// Newest first, paired with the four paragraphs, one row each (Aaron, 2026-10-29; rearranged 2026-11-09):
+//   paragraph 1  Aritzia's tag and its poster, with UT Austin's tag in the words column beside it
 //   paragraph 2  Apple's tag and its badge
-//   paragraph 3  a 2 by 2 block: UT Austin's and MOD's tags on top, MOD's selfie and sign under them
-//   paragraph 4  the LinkedIn post's card, with Popeyes' tag in the words column beside it (Popeyes is the last job, so it lands there)
+//   paragraph 3  MOD's tag and its last clock-out, with Popeyes' tag in the words column beside it
+//   paragraph 4  the LinkedIn post
 // Every photo and tag appears exactly once (lib/gallery/card.test.ts).
 
 // The post's frame draws its hairline outside the post's own width, so the post keeps its 504 and the rows keep their places.
@@ -49,11 +49,14 @@ export function jobsGallery(columns: Parameters<typeof columnsFor>[1]): JobsGall
   const row = (own: number | undefined, together: number[], aside: number[] = []): Slide => ({
     photo: together[0], photos: together, own, before: [], after: [], together: true, ...(aside.length ? { aside } : {}),
   });
+  // Each job with a photo is its tag and that photo, beside a paragraph; the two with none ride along in the words column, as the phone's
+  // pages carry them under the words (Aaron, 2026-11-09: one page each for Aritzia, Apple and MOD, UT Austin "wherever it fits"): UT
+  // Austin beside the first paragraph with Aritzia, Popeyes beside the third with MOD (both high school), and the post on its own.
   const slides: Slide[] = [
-    row(0, [tagAt(0), ...photosOf(0)]),
+    row(0, [tagAt(0), ...photosOf(0)], [tagAt(2)]),
     row(1, [tagAt(1), ...photosOf(1)]),
-    row(2, [tagAt(2), tagAt(3), ...photosOf(3)]),
-    row(embed.beside, [embedAt], [tagAt(4)]),
+    row(2, [tagAt(3), ...photosOf(3)], [tagAt(4)]),
+    row(embed.beside, [embedAt]),
   ];
 
   // A row's media column is as wide as its cluster's first line (two pieces, or the post); the card's is the widest, so the words

@@ -276,10 +276,13 @@ test.describe("on a phone", () => {
     const read = await readPages(page);
     expect(read.pages.map((p) => p.tag).filter((job) => job !== null), "the tags, newest job first").toEqual(["0", "1", "2", "3", "4"]);
     expect(read.pages.filter((p) => p.paragraphs.length).map((p) => p.photos), "each paragraph beside its row's photos").toEqual([[0], [1], [2, 3], []]);
-    // Every word shows, once and in order: the four paragraphs, whole, with the room at 844 (the post's frame takes what its paragraph leaves).
+    // Every paragraph shows, once and in order, the first three whole with the room at 844; the post's drops only whole sentences (its phone
+    // omissions) to give the post's frame under it its room (Aaron, 2026-11-09: a bigger frame).
     const shown = read.pages.flatMap((p) => p.paragraphs);
     expect(shown.map((p) => p.unit)).toEqual([0, 1, 2, 3]);
-    expect(shown.map((p) => p.text)).toEqual(modal.blocks.map((block) => visibleText(block)));
+    expect(shown.slice(0, 3).map((p) => p.text)).toEqual(modal.blocks.slice(0, 3).map((block) => visibleText(block)));
+    expect(omitted(3, shown[3].text), "the post's paragraph, as written or less whole sentences").toBeGreaterThanOrEqual(0);
+    expect(shown[3].text, "it keeps the hook it leads into the post with").toContain("I don't trust people who haven't worked an unflattering job.");
     read.pages.forEach((p, i) => {
       expect(p.scrolled, `page ${i + 1}: nothing in it scrolls`).toBe(0);
       expect(p.scrollsFlag, `page ${i + 1}: its words are not in a scroll window`).toBe(false);
@@ -329,7 +332,10 @@ test.describe("on a phone", () => {
     expect(box.x, "inside the column").toBeGreaterThanOrEqual(column.x - 1);
     expect(box.x + box.width, "inside the column").toBeLessThanOrEqual(column.x + column.width + 1);
     expect(box.height, "a short frame that scrolls inside itself").toBeLessThanOrEqual(GALLERY.post.pageMax);
-    expect((await post.boundingBox())!.height, "the frame and its link keep their room at 844").toBeGreaterThanOrEqual(GALLERY.post.pageMin - 1);
+    expect((await post.boundingBox())!.height, "the frame and its link keep about pageMin at 844").toBeGreaterThanOrEqual(GALLERY.post.pageMin - 40);
+    // Its paragraph first, the post under it (Aaron, 2026-11-09).
+    const words = (await dialog.locator('[data-pager-page]:has([data-media="post"]) p[data-mask="words-3"]').boundingBox())!;
+    expect(box.y, "the post under its paragraph").toBeGreaterThanOrEqual(words.y + words.height);
     const link = post.locator("[data-post-link]");
     await expect(link).toHaveAttribute("href", modal.links[0].href);
     await expect(link).toHaveAttribute("target", "_blank");
