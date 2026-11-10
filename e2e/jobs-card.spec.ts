@@ -2,7 +2,6 @@ import { siteContent } from "@/lib/content";
 import { visibleText } from "@/lib/content/links";
 import { jobTags } from "@/lib/content/jobTags";
 import { GALLERY } from "@/lib/gallery/constants";
-import { phoneCopy } from "@/lib/gallery/omit";
 import { test, expect } from "./support/fixtures";
 import { openCardFromBook } from "./support/cards";
 
@@ -36,28 +35,30 @@ for (const viewport of [{ width: 1280, height: 800 }, { width: 1440, height: 900
   test.describe(`at ${viewport.width}`, () => {
     test.use({ viewport });
 
-    test("jobs modal: Aaron's title and four paragraphs, then the name tags newest first", async ({ page }) => {
+    test("jobs modal: Aaron's title and four paragraphs, each job's tag with its photo", async ({ page }) => {
       const { dialog } = await openCardFromBook(page, "jobs", { settled: true });
       await expect(dialog).toHaveAttribute("data-gallery-layout", "rows");
       await expect(dialog.getByRole("heading", { name: 'The "unflattering" jobs that shaped me', exact: true })).toBeVisible();
       await expect(dialog.locator('[data-text-column] p[data-mask^="words-"]')).toHaveText(modal.blocks.map((block) => visibleText(block)));
-      // The tags, down the page in reading order: Aritzia, Apple, UT Austin, MOD, Popeyes.
+      // The tags, down the page in reading order (Aaron, 2026-11-09): Aritzia's with its poster and UT Austin's beside the words, Apple's,
+      // then MOD's with its clock-out and Popeyes' beside the words.
       const tags = (await pieces(dialog)).filter((piece) => piece.kind === "tag").map((piece) => piece.label);
-      expect(tags).toEqual(["Aritzia", "Apple", "Student mentor, UT Austin", "MOD Pizza", "Popeyes"].map((employer) => tag.label(employer)));
-      expect(tags).toEqual(tagLabels);
-      // The photos sit with their own job's tag: the Aritzia poster beside Aritzia's, the badge beside Apple's, MOD's pair under MOD's.
+      expect(tags).toEqual(["Aritzia", "Student mentor, UT Austin", "Apple", "MOD Pizza", "Popeyes"].map((employer) => tag.label(employer)));
+      expect([...tags].sort()).toEqual([...tagLabels].sort());
+      // The photos sit with their own job's tag, side by side: the poster beside Aritzia's, the badge beside Apple's, the clock-out beside
+      // MOD's. The Keep MOD Weird selfie is gone.
       const all = await pieces(dialog);
       const at = (label: string) => all.find((piece) => piece.label === label)!;
+      expect(modal.photos).toHaveLength(3);
       for (const photo of modal.photos) {
         const job = at(tag.label(timeline[photo.timeline!].employer));
         expect(at(photo.alt).row, `${photo.alt} sits with ${job.label}`).toBe(job.row);
-        if (photo.timeline === 3) {
-          expect(at(photo.alt).top, `${photo.alt} is under MOD's tag`).toBeGreaterThan(job.bottom - 1);
-        }
+        expect(Math.abs(at(photo.alt).top - job.top), `${photo.alt} beside ${job.label}`).toBeLessThan(2);
       }
+      await expect(dialog.getByRole("img", { name: /Keep MOD Weird/ })).toHaveCount(0);
     });
 
-    test("jobs modal: every tag shows its logo, my name, role and when, and the labelled tip, legibly with no hover", async ({ page }) => {
+    test("jobs modal: every tag shows its logo, its role as the big text (never my name), when, and the labelled tip, legibly with no hover", async ({ page }) => {
       const { dialog } = await openCardFromBook(page, "jobs", { settled: true });
       await page.mouse.move(2, 2);
       for (const [job, view] of jobTags.entries()) {
@@ -65,8 +66,10 @@ for (const viewport of [{ width: 1280, height: 800 }, { width: 1440, height: 900
         await card.scrollIntoViewIfNeeded();
         await expect(card).toBeVisible();
         await expect(card.locator("[data-job-tag-logo] img:visible")).toHaveCount(1);
-        await expect(card.locator("[data-job-tag-name]")).toHaveText("Aaron");
+        await expect(card.locator("[data-job-tag-name]")).toHaveCount(0);
+        await expect(card).not.toContainText("Aaron");
         await expect(card.locator("[data-job-tag-role]")).toHaveText(view.role!);
+        expect(await card.locator("[data-job-tag-role]").evaluate((el) => parseFloat(getComputedStyle(el).fontSize)), "the role is the big text").toBeGreaterThanOrEqual(20);
         await expect(card.locator("[data-job-tag-when]")).toHaveText(view.when);
         await expect(card.locator("[data-job-tag-tip]")).toContainText(tag.tipLabel);
         await expect(card.locator("[data-job-tag-tip]")).toContainText(view.tip);
@@ -90,16 +93,15 @@ for (const viewport of [{ width: 1280, height: 800 }, { width: 1440, height: 900
       await expect(dialog.locator('[data-inline="tip"]')).toHaveCount(0);
     });
 
-    test("jobs modal: the media alternate sides down the modal, each cluster beside its paragraph, none stacked under another", async ({ page }) => {
+    test("jobs modal: the clusters alternate sides down the modal, each beside its paragraph, the photo-less jobs' tags beside the words", async ({ page }) => {
       const { dialog } = await openCardFromBook(page, "jobs", { settled: true });
       const rows = dialog.locator('[data-row="photo"]');
       await expect(rows).toHaveCount(4);
       const layout = await rows.evaluateAll((els) =>
         els.map((row) => {
-          const media = [...row.querySelectorAll("[data-photo-frame]")].map((frame) => frame.getBoundingClientRect());
           const slot = row.querySelector("[data-cluster]")!.getBoundingClientRect();
           const text = row.querySelector("[data-text-column]")!;
-          return { side: row.getAttribute("data-side"), slot: { left: slot.left, right: slot.right }, text: { left: text.getBoundingClientRect().left, right: text.getBoundingClientRect().right }, words: text.querySelectorAll('[data-mask^="words-"]').length, media: media.length };
+          return { side: row.getAttribute("data-side"), slot: { left: slot.left, right: slot.right }, text: { left: text.getBoundingClientRect().left, right: text.getBoundingClientRect().right }, words: text.querySelectorAll('[data-mask^="words-"]').length };
         }),
       );
       expect(layout.map((row) => row.side)).toEqual(["left", "right", "left", "right"]);
@@ -109,38 +111,24 @@ for (const viewport of [{ width: 1280, height: 800 }, { width: 1440, height: 900
       });
       // The four rows pair with the four paragraphs, one each.
       expect(layout.map((row) => row.words)).toEqual([1, 1, 1, 1]);
-      // In reading order no two consecutive media share a column (a cluster's two sit side by side), and each is no higher than the one before.
       const all = await pieces(dialog);
       expect(all).toHaveLength(modal.photos.length + timeline.length + 1);
-      for (let i = 1; i < all.length; i++) {
-        const [above, below] = [all[i - 1], all[i]];
-        const overlap = Math.min(above.right, below.right) - Math.max(above.left, below.left);
-        expect(overlap, `${above.label} and ${below.label} share no column`).toBeLessThanOrEqual(0);
-        expect(below.top, `${below.label} is no higher than ${above.label}`).toBeGreaterThanOrEqual(above.top - 1);
-      }
-      // And the clusters alternate: a row's media are all on its side of the panel's middle, the next row's on the other.
+      // The clusters alternate: a row's cluster is all on its side of the panel's middle, the next row's on the other, a cluster's two side by side.
       const panel = (await dialog.locator("[data-gallery-panel]").boundingBox())!;
       const middle = panel.x + panel.width / 2;
-      const byRow = new Map<number, Piece[]>();
-      for (const piece of all) byRow.set(piece.row, [...(byRow.get(piece.row) ?? []), piece]);
       layout.forEach((row, i) => {
-        const cluster = (byRow.get(i) ?? []).filter((piece) => piece.left >= row.slot.left - 1 && piece.right <= row.slot.right + 1);
-        expect(cluster.length, `row ${i}'s cluster`).toBeGreaterThan(0);
+        const cluster = all.filter((piece) => piece.row === i && piece.left >= row.slot.left - 1 && piece.right <= row.slot.right + 1);
+        expect(cluster.length, `row ${i}'s cluster`).toBe(i === 3 ? 1 : 2);
         for (const piece of cluster) expect(row.side === "left" ? piece.right <= middle + 1 : piece.left >= middle - 1, `${piece.label} on the ${row.side}`).toBe(true);
+        if (cluster.length === 2) expect(Math.abs(cluster[0].top - cluster[1].top), `row ${i}: side by side`).toBeLessThan(2);
       });
-      // Popeyes' tag is beside the post's paragraph, in its words column, under the words.
-      const last = rows.nth(3);
-      await expect(last.locator("[data-text-column] [data-aside] [data-job-tag]")).toHaveAttribute("aria-label", tag.label("Popeyes"));
-      await expect(last.locator("[data-cluster] [data-post-frame] iframe")).toHaveCount(1);
-      // Paragraph 3's row is a 2 by 2 block: UT Austin's and MOD's tags on top, MOD's selfie and sign under them, in the same two columns.
-      const block = all.filter((piece) => piece.row === 2);
-      expect(block.map((piece) => piece.label)).toEqual([tag.label("Student mentor, UT Austin"), tag.label("MOD Pizza"), modal.photos[2].alt, modal.photos[3].alt]);
-      const [ut, mod, selfie, sign] = block;
-      expect(Math.abs(ut.top - mod.top), "the tags share a line").toBeLessThan(2);
-      expect(Math.abs(selfie.top - sign.top), "the photos share a line").toBeLessThan(2);
-      expect(selfie.top, "the photos are under the tags").toBeGreaterThanOrEqual(Math.max(ut.bottom, mod.bottom) - 1);
-      expect(Math.abs(selfie.left - ut.left) < 2 && Math.abs(sign.left - mod.left) < 2, "in the tags' columns").toBe(true);
-      expect(Math.abs(ut.right - mod.left), "a gap, not an overlap, between columns").toBeLessThanOrEqual(GALLERY.cluster.gap + 1);
+      // UT Austin's tag is beside the first paragraph with Aritzia's, Popeyes' beside the third with MOD's, each in the words column under the
+      // words; the post stands alone beside the last.
+      await expect(rows.nth(0).locator("[data-text-column] [data-aside] [data-job-tag]")).toHaveAttribute("aria-label", tag.label("Student mentor, UT Austin"));
+      await expect(rows.nth(2).locator("[data-text-column] [data-aside] [data-job-tag]")).toHaveAttribute("aria-label", tag.label("Popeyes"));
+      await expect(rows.nth(1).locator("[data-aside]")).toHaveCount(0);
+      await expect(rows.nth(3).locator("[data-aside]")).toHaveCount(0);
+      await expect(rows.nth(3).locator("[data-cluster] [data-post-frame] iframe")).toHaveCount(1);
     });
 
     test("jobs modal: the LinkedIn post is LinkedIn's short embed, lazy and titled, in a short frame with View on LinkedIn under it", async ({ page, offsite }) => {
@@ -209,18 +197,14 @@ for (const viewport of [{ width: 1280, height: 800 }, { width: 1440, height: 900
       await page.mouse.move(words.x + 30, words.y + 10, { steps: 8 });
       await expect(dot).toHaveAttribute("data-visible", "");
       const at = await dot.evaluate((el) => new DOMMatrixReadOnly(getComputedStyle(el).transform));
-      expect(Math.round(at.m41)).toBe(Math.round(words.x + 30));
-      expect(Math.round(at.m42)).toBe(Math.round(words.y + 10));
+      // The pointer lands on a whole pixel, so within one of where it was sent.
+      expect(Math.abs(at.m41 - (words.x + 30))).toBeLessThanOrEqual(1);
+      expect(Math.abs(at.m42 - (words.y + 10))).toBeLessThanOrEqual(1);
     });
   });
 }
 
-// What a phone's pager page holds, read off its markup: the media on it (a name tag, a photo or the post's frame).
-type Kind = "tag" | "photo" | "post";
-const kindsOf = (pages: import("@playwright/test").Locator) =>
-  pages.evaluateAll((els) => els.map((el): Kind => (el.querySelector("[data-job-tag]") ? "tag" : el.querySelector("[data-post-frame]") ? "post" : "photo")));
-
-// The page's whole read at once: nothing on it is scrolled, clipped or wider than the panel, in the pager's pages as laid out.
+// What a phone's pager page holds, read off its markup: its stage (a photo or the post's frame) and the name tags under its words.
 async function readPages(page: import("@playwright/test").Page) {
   return page.evaluate((gap) => {
     const dialog = document.querySelector<HTMLElement>('[role="dialog"][data-card-modal="jobs"]')!;
@@ -229,24 +213,19 @@ async function readPages(page: import("@playwright/test").Page) {
     const pages = [...dialog.querySelectorAll<HTMLElement>("[data-pager-page]")].map((el) => {
       const stage = el.querySelector<HTMLElement>("[data-pager-stage]");
       const text = el.querySelector<HTMLElement>("[data-pager-text]");
-      const inner = text?.firstElementChild as HTMLElement | undefined;
-      // Anything inside the page that scrolls, or has more to show than it draws.
-      const scrolled = [...el.querySelectorAll<HTMLElement>("*")].filter((node) => /(auto|scroll)/.test(getComputedStyle(node).overflowY) && node.scrollHeight > node.clientHeight + 1).length;
-      const tip = el.querySelector<HTMLElement>("[data-job-tag-tip]");
       return {
-        unit: Number(el.dataset.unit),
+        kind: el.querySelector("[data-pager-stage] [data-post-frame]") ? "post" : "photo",
         stage: stage ? stage.offsetHeight : null,
+        stageTop: stage ? stage.getBoundingClientRect().top : null,
         stageBottom: stage ? stage.getBoundingClientRect().bottom : null,
-        words: inner ? inner.offsetHeight : null,
-        wordsBottom: inner?.lastElementChild ? inner.lastElementChild.getBoundingClientRect().bottom : null,
+        textTop: text ? text.getBoundingClientRect().top : null,
         textBottom: text ? text.getBoundingClientRect().bottom : null,
-        scrolled,
-        scrollsFlag: !!text?.hasAttribute("data-scrolls"),
-        tipInside: tip ? tip.getBoundingClientRect().bottom <= viewport.bottom + 1 : true,
-        tag: el.querySelector<HTMLElement>("[data-job-tag]")?.dataset.jobTag ?? null,
-        photos: [...el.querySelectorAll<HTMLElement>("[data-photo-frame]")].filter((frame) => !frame.querySelector("[data-job-tag], [data-post-frame]")).map((frame) => Number(frame.dataset.photoFrame)),
+        // Scrollers other than the words area (which may scroll).
+        scrolled: [...el.querySelectorAll<HTMLElement>("*")].filter((node) => !node.hasAttribute("data-pager-text") && /(auto|scroll)/.test(getComputedStyle(node).overflowY) && node.scrollHeight > node.clientHeight + 1).length,
+        stageTags: el.querySelectorAll("[data-pager-stage] [data-job-tag]").length,
+        tags: [...el.querySelectorAll<HTMLElement>("[data-pager-text] [data-job-tag]")].map((tag) => Number(tag.dataset.jobTag)),
+        photos: [...el.querySelectorAll<HTMLElement>("[data-pager-stage] [data-photo-frame]")].filter((frame) => !frame.querySelector("[data-post-frame]")).map((frame) => Number(frame.dataset.photoFrame)),
         paragraphs: [...el.querySelectorAll<HTMLElement>('[data-pager-text] p[data-mask^="words-"]')].map((p) => ({ unit: Number(p.dataset.mask!.slice(6)), text: p.textContent ?? "" })),
-        iframes: el.querySelectorAll("iframe").length,
         gap,
       };
     });
@@ -254,46 +233,70 @@ async function readPages(page: import("@playwright/test").Page) {
   }, GALLERY.pager.pageGapPx);
 }
 
-// A paragraph as written, or with its first phone omissions dropped (whole sentences, verbatim): how many.
-const omitted = (unit: number, text: string) => {
-  const omit = modal.phoneOmit?.[unit] ?? [];
-  return Array.from({ length: omit.length + 1 }, (_, n) => n).find((n) => visibleText(phoneCopy(modal.blocks[unit], omit, n)) === text) ?? -1;
-};
+// The jobs, newest first: Aritzia 0, Apple 1, UT Austin 2, MOD 3, Popeyes 4.
+const JOBS_ON_PAGES = [[0, 2], [1], [3, 4], []];
 
 test.describe("on a phone", () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
 
-  test("jobs modal: at 390 each paragraph stands with its row's photo (the post's frame for the last), each name tag is a page of its own, and nothing scrolls inside a page", async ({ page }) => {
+  test("jobs modal: at 390, one page a job: its photo, its whole paragraph, then its slim tags, the words scrolling where they run long", async ({ page }) => {
     const { dialog } = await openCardFromBook(page, "jobs", { settled: true });
     await expect(dialog).toHaveAttribute("data-gallery-layout", "pager");
-    const pages = dialog.locator("[data-pager-page]");
-    // Newest first: the poster and the first paragraph, Aritzia's tag; the badge and the second, Apple's tag; MOD's photos and the third,
-    // UT Austin's and MOD's tags; the post's frame and the last, Popeyes' tag. The frame is the post's only one (it scrolls inside itself,
-    // in LinkedIn's own document, so nothing in the page does).
-    expect(await kindsOf(pages)).toEqual(["photo", "tag", "photo", "tag", "photo", "tag", "tag", "post", "tag"]);
-    await expect(dialog.locator("iframe")).toHaveCount(1);
-
+    // Aaron, 2026-11-09: "I want Aritzia to be one, I want Apple to be one, I want Mod to be one", then the post. No photo twice.
     const read = await readPages(page);
-    expect(read.pages.map((p) => p.tag).filter((job) => job !== null), "the tags, newest job first").toEqual(["0", "1", "2", "3", "4"]);
-    expect(read.pages.filter((p) => p.paragraphs.length).map((p) => p.photos), "each paragraph beside its row's photos").toEqual([[0], [1], [2, 3], []]);
-    // Every paragraph shows, once and in order, the first three whole with the room at 844; the post's drops only whole sentences (its phone
-    // omissions) to give the post's frame under it its room (Aaron, 2026-11-09: a bigger frame).
+    expect(read.pages.map((p) => p.kind)).toEqual(["photo", "photo", "photo", "post"]);
+    expect(read.pages.map((p) => p.photos)).toEqual([[0], [1], [2], []]);
+    expect(read.pages.map((p) => p.tags), "each page's tags, under its words").toEqual(JOBS_ON_PAGES);
+    expect(read.pages.every((p) => p.stageTags === 0), "no tag is a page's stage").toBe(true);
+    await expect(dialog.locator("iframe")).toHaveCount(1);
+    // Every word, once and in order: the phone drops no sentence (Aaron, 2026-11-09).
     const shown = read.pages.flatMap((p) => p.paragraphs);
     expect(shown.map((p) => p.unit)).toEqual([0, 1, 2, 3]);
-    expect(shown.slice(0, 3).map((p) => p.text)).toEqual(modal.blocks.slice(0, 3).map((block) => visibleText(block)));
-    expect(omitted(3, shown[3].text), "the post's paragraph, as written or less whole sentences").toBeGreaterThanOrEqual(0);
-    expect(shown[3].text, "it keeps the hook it leads into the post with").toContain("I don't trust people who haven't worked an unflattering job.");
+    expect(shown.map((p) => p.text)).toEqual(modal.blocks.map((block) => visibleText(block)));
     read.pages.forEach((p, i) => {
-      expect(p.scrolled, `page ${i + 1}: nothing in it scrolls`).toBe(0);
-      expect(p.scrollsFlag, `page ${i + 1}: its words are not in a scroll window`).toBe(false);
-      expect(p.tipInside, `page ${i + 1}: the tip is not cut off at the foot`).toBe(true);
+      expect(p.scrolled, `page ${i + 1}: nothing but its words scrolls`).toBe(0);
       if (p.stageBottom !== null) expect(p.stageBottom, `page ${i + 1}: its stage ends inside the pages`).toBeLessThanOrEqual(read.viewportBottom + 1);
-      if (p.wordsBottom !== null) expect(p.wordsBottom, `page ${i + 1}: its words end inside their area`).toBeLessThanOrEqual(p.textBottom! + 1);
-      if (p.words !== null && p.stage !== null) expect(p.stage + p.gap + p.words, `page ${i + 1}: stage, gap and words together`).toBeLessThanOrEqual(read.room + 1);
+      if (p.textBottom !== null) expect(p.textBottom, `page ${i + 1}: its words area ends inside the pages`).toBeLessThanOrEqual(read.viewportBottom + 1);
     });
+    // The post's page: its paragraph first, the post under it.
+    const post = read.pages[3];
+    expect(post.stageTop!, "the post under its paragraph").toBeGreaterThanOrEqual(post.textBottom! - 1);
     // The title is three lines or fewer: it stepped down from four.
     const title = await dialog.locator("[data-pager] h2").evaluate((el) => ({ height: el.getBoundingClientRect().height, line: parseFloat(getComputedStyle(el).lineHeight) }));
     expect(Math.round(title.height / title.line), "lines in the title").toBeLessThanOrEqual(3);
+  });
+
+  test("jobs modal: at 390 a slim tag is the logo, the role big, the years and Hear more about this one, which opens the tip in place", async ({ page }) => {
+    const { dialog } = await openCardFromBook(page, "jobs", { settled: true });
+    const next = dialog.getByRole("button", { name: siteContent.modals.gallery.nextPage, exact: true });
+    await next.click();
+    await page.waitForTimeout(450);
+    const apple = dialog.locator('[data-pager-page="1"] [data-job-tag="1"]');
+    await expect(apple).toHaveAttribute("data-job-tag-fold", "");
+    await expect(apple.locator("[data-job-tag-logo] img:visible")).toHaveCount(1);
+    await expect(apple.locator("[data-job-tag-role]")).toHaveText(jobTags[1].role!);
+    await expect(apple.locator("[data-job-tag-when]")).toHaveText(jobTags[1].when);
+    await expect(apple).not.toContainText("Aaron");
+    // Slim: the logo's band is shorter than a desktop tag's, and the whole closed tag is short.
+    const band = (await apple.locator("[data-job-tag-logo]").boundingBox())!;
+    expect(band.height).toBeLessThanOrEqual(36);
+    // The dropdown: closed, then open on a tap, the tip under the tag and in view in the page's words; then closed again.
+    const more = apple.locator("[data-job-tag-more]");
+    await expect(more).toHaveText(tag.more);
+    await expect(more).toHaveAttribute("aria-expanded", "false");
+    const tip = dialog.locator('[data-pager-page="1"] [data-job-tag-tip]');
+    await expect(tip).toBeHidden();
+    await more.scrollIntoViewIfNeeded();
+    await more.tap();
+    await expect(more).toHaveAttribute("aria-expanded", "true");
+    await expect(tip).toBeVisible();
+    await expect(tip).toContainText(jobTags[1].tip);
+    const area = (await dialog.locator('[data-pager-page="1"] [data-pager-text]').boundingBox())!;
+    await expect.poll(async () => (await tip.boundingBox())!.y + (await tip.boundingBox())!.height, { message: "the tip scrolled into view" }).toBeLessThanOrEqual(area.y + area.height + 1);
+    expect((await tip.boundingBox())!.y, "under its tag").toBeGreaterThanOrEqual((await apple.boundingBox())!.y + (await apple.boundingBox())!.height - 1);
+    await more.tap();
+    await expect(more).toHaveAttribute("aria-expanded", "false");
+    await expect(tip).toBeHidden();
   });
 
   test("jobs modal: at 390 every page is within the panel, the controls too, and the post's frame fits its column with View on LinkedIn under it", async ({ page }) => {
@@ -311,7 +314,6 @@ test.describe("on a phone", () => {
         return { page: root.scrollWidth - root.clientWidth, dialog: dialogEl.scrollWidth - dialogEl.clientWidth, panel: panel.scrollWidth - panel.clientWidth, wide };
       });
       expect(overflow, `page ${i + 1}`).toEqual({ page: 0, dialog: 0, panel: 0, wide: 0 });
-      // The dots and arrows stay inside the panel, however many pages there are.
       const controls = (await dialog.locator("[data-pager-controls]").boundingBox())!;
       const panelBox = (await dialog.locator("[data-gallery-panel]").boundingBox())!;
       expect(controls.x + controls.width, `page ${i + 1}: controls inside the panel`).toBeLessThanOrEqual(panelBox.x + panelBox.width);
@@ -320,22 +322,18 @@ test.describe("on a phone", () => {
         await page.waitForTimeout(450);
       }
     }
-    // The post's page (the one before Popeyes' tag): LinkedIn's short embed, as wide as the column at most and no wider, between pageMin and
-    // pageMax tall, with the photos' radius and a hairline, then View on LinkedIn under it, the post's only link on the page.
-    await dialog.getByRole("button", { name: siteContent.modals.gallery.previousPage, exact: true }).click();
-    await page.waitForTimeout(450);
-    const post = dialog.locator('[data-media="post"]');
+    // The post's page (the last): LinkedIn's short embed under its paragraph, as wide as the column at most, pageMin with its photos whole at
+    // 844, with the photos' radius and a hairline, then View on LinkedIn under it, the post's only link on the page.
+    const post = dialog.locator('[data-pager-page="3"] [data-media="post"]');
     const frame = post.locator("[data-post-frame]");
     await expect(frame.locator("iframe")).toHaveAttribute("src", modal.embed!.src);
     const column = (await dialog.locator("[data-pager-viewport]").boundingBox())!;
     const box = (await frame.boundingBox())!;
     expect(box.x, "inside the column").toBeGreaterThanOrEqual(column.x - 1);
     expect(box.x + box.width, "inside the column").toBeLessThanOrEqual(column.x + column.width + 1);
-    expect(box.height, "a short frame that scrolls inside itself").toBeLessThanOrEqual(GALLERY.post.pageMax);
-    expect((await post.boundingBox())!.height, "the frame and its link keep about pageMin at 844").toBeGreaterThanOrEqual(GALLERY.post.pageMin - 40);
-    // Its paragraph first, the post under it (Aaron, 2026-11-09).
-    const words = (await dialog.locator('[data-pager-page]:has([data-media="post"]) p[data-mask="words-3"]').boundingBox())!;
-    expect(box.y, "the post under its paragraph").toBeGreaterThanOrEqual(words.y + words.height);
+    expect(Math.round((await post.boundingBox())!.height), "the post at pageMin, its photos whole").toBe(GALLERY.post.pageMin);
+    const words = (await dialog.locator('[data-pager-page="3"] [data-pager-text]').boundingBox())!;
+    expect(box.y, "the post under its paragraph").toBeGreaterThanOrEqual(words.y + words.height - 1);
     const link = post.locator("[data-post-link]");
     await expect(link).toHaveAttribute("href", modal.links[0].href);
     await expect(link).toHaveAttribute("target", "_blank");
@@ -352,43 +350,28 @@ test.describe("on a phone", () => {
     expect(look.shadow, "flat: no shadow").toBe("none");
   });
 
-  // Safari's 664px tall window: the long title takes a size less, and a paragraph that cannot fit beside its photo drops its phone
-  // omissions (the post's paragraph: its last line, then its first, which the post's card above it already shows).
+  // Safari's 664px tall window: still one page a job, every word kept (the words scroll), and the post shows only its head and line, never
+  // a frame that cuts through its photos.
   test.describe("at 664 tall", () => {
     test.use({ viewport: { width: 390, height: 664 } });
-    test("jobs modal: on a short phone nothing scrolls or is cut off, and a paragraph only ever drops whole sentences", async ({ page }) => {
+    test("jobs modal: on a short phone, still one page a job with every word, and the post as its head and line", async ({ page }) => {
       await openCardFromBook(page, "jobs", { settled: true });
       const read = await readPages(page);
       expect(read.room, "the pages' room is short").toBeLessThan(440);
+      expect(read.pages.map((p) => p.tags)).toEqual(JOBS_ON_PAGES);
       read.pages.forEach((p, i) => {
-        expect(p.scrolled, `page ${i + 1}: nothing in it scrolls`).toBe(0);
-        expect(p.scrollsFlag, `page ${i + 1}: its words are not in a scroll window`).toBe(false);
-        expect(p.tipInside, `page ${i + 1}: the tip is not cut off at the foot`).toBe(true);
+        expect(p.scrolled, `page ${i + 1}: nothing but its words scrolls`).toBe(0);
         if (p.stage !== null) expect(p.stage, `page ${i + 1}: its stage fits the room`).toBeLessThanOrEqual(read.room + 1);
       });
-      const shown = read.pages.flatMap((p) => p.paragraphs);
-      expect(shown.map((p) => p.unit)).toEqual([0, 1, 2, 3]);
-      for (const p of shown) expect(omitted(p.unit, p.text), `paragraph ${p.unit}: as written or with whole sentences dropped`).toBeGreaterThanOrEqual(0);
-    });
-  });
-
-  // A shorter window still (an in-app browser's): a name tag taller than the room shrinks to fit it, never past 80 percent, its tip whole.
-  test.describe("at 600 tall", () => {
-    test.use({ viewport: { width: 390, height: 600 } });
-    test("jobs modal: a tag shrinks to the page's room, never past 80 percent, and no tip is cut off", async ({ page }) => {
-      const { dialog } = await openCardFromBook(page, "jobs", { settled: true });
-      const read = await readPages(page);
-      read.pages.forEach((p, i) => expect(p.tipInside, `page ${i + 1}: the tip is not cut off at the foot`).toBe(true));
-      const scales = await dialog.locator("[data-fit-scale]").evaluateAll((els) => els.map((el) => Number(el.getAttribute("data-fit-scale"))));
-      expect(scales.length, "tags taller than the room are shrunk").toBeGreaterThan(0);
-      for (const scale of scales) expect(scale).toBeGreaterThanOrEqual(GALLERY.pager.fitFloor);
+      expect(read.pages.flatMap((p) => p.paragraphs).map((p) => p.text)).toEqual(modal.blocks.map((block) => visibleText(block)));
+      expect(read.pages[3].stage, "the post's teaser").toBe(GALLERY.post.teaser);
     });
   });
 });
 
-test("jobs modal: the pager's page size does not change what the desktop keeps: ten pieces of media, four paragraphs, one link", async () => {
+test("jobs modal: the pager's page size does not change what the desktop keeps: nine pieces of media, four paragraphs, one link", async () => {
   expect(GALLERY.cluster.itemWidth * 2 + GALLERY.cluster.gap, "a pair is as wide as the post").toBe(modal.embed!.width);
-  expect(modal.photos.length + timeline.length + 1).toBe(10);
+  expect(modal.photos.length + timeline.length + 1).toBe(9);
   expect(modal.blocks).toHaveLength(4);
   expect(modal.links).toHaveLength(1);
 });

@@ -84,8 +84,8 @@ test("pager: every photo sits inside its stage, whole or on a short stage croppe
         if (!stage) return;
         const box = stage.getBoundingClientRect();
         const at = pageEl.getAttribute("data-pager-page");
-        // The jobs card's two own kinds of stage: a name tag takes its tip's height, and the post's frame the room its paragraph leaves.
-        const own = !!stage.querySelector("[data-job-tag], [data-post-frame]");
+        // The jobs card's post has a stage of its own: the room its paragraph leaves, or pageMin (lib/gallery/paginate).
+        const own = !!stage.querySelector("[data-post-frame]");
         const cap = pageEl.hasAttribute("data-wordless") ? caps.wordless : caps.stage;
         if (!own && box.height > cap + 0.5) out.push(`page ${at}: stage ${box.height}px`);
         stage.querySelectorAll("[data-photo-frame]").forEach((photo) => {

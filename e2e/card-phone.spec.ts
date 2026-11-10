@@ -10,9 +10,11 @@ import { openCardFromBook } from "./support/cards";
 // Aaron's rule for the phone's card modals (2026-10-30): every page of every card's modal shows a photo and real words, the way the
 // desktop pairs them. This pages through all fourteen cards at three phones (and Safari's short 390 by 664 window), light and dark, with
 // real touch emulation, and on every page asserts:
-//   - a photo (or the demo video, or on the jobs card a name tag or the post's card) at least 30 percent of the panel's width, in view;
-//   - real words: a paragraph, a mentor, a tag's tip or the post's hook, and with the caption at least 12 words; never a link alone;
-//   - nothing clipped (every line of text inside the pages' area and the panel), nothing scrolling inside the page or the modal.
+//   - a photo (or the demo video, or on the jobs card the post's frame) at least 30 percent of the panel's width, in view;
+//   - real words: a paragraph, a mentor or a tag's tip, and with the caption at least 12 words; never a link alone;
+//   - nothing clipped (every line of text inside the pages' area and the panel), nothing scrolling inside the page or the modal, except
+//     the jobs card's words, which scroll where a page does not hold its paragraph and tags (Aaron, 2026-11-09: "not everything has to
+//     fit perfectly into one card itself. They can and are allowed to scroll").
 // Every paragraph shows once, in order, whole, or with its phone omissions dropped (whole sentences, lib/content cards' phoneOmit), and
 // only on a short window: at 390 by 844 and 430 by 932 every word stays. A card with no photos at all (min/Max, This site, the family
 // business; Talos has its sting and its Discord channel) is its words alone in one sheet: there only an inner scroller is a fault.
@@ -25,12 +27,14 @@ const SIZES = [
   { width: 390, height: 664, everyWord: false },
 ] as const;
 const MIN_WORDS = 12;
+// Cards whose pages' words may scroll (and so may sit past the pages' area until scrolled to): one page a job (e2e/jobs-card.spec.ts).
+const WORDS_SCROLL: readonly CardKey[] = ["jobs"];
 const MIN_MEDIA_SHARE = 0.3;
 
 type PageRead = { problems: string[]; paragraphs: { unit: number; text: string }[]; media: number; words: number };
 
 // One page, once it is the current page and at rest.
-function readPage(page: Page, key: CardKey, index: number, rules: { minWords: number; minShare: number }): Promise<PageRead> {
+function readPage(page: Page, key: CardKey, index: number, rules: { minWords: number; minShare: number; wordsScroll: boolean }): Promise<PageRead> {
   return page.evaluate(
     ([card, i, r]) => {
       const out: string[] = [];
@@ -40,8 +44,10 @@ function readPage(page: Page, key: CardKey, index: number, rules: { minWords: nu
       const area = dialog.querySelector<HTMLElement>("[data-pager-viewport]")!.getBoundingClientRect();
       const panel = dialog.querySelector<HTMLElement>("[data-gallery-panel]")!.getBoundingClientRect();
       const name = (el: Element) => `${el.tagName.toLowerCase()}${el.getAttribute("data-block") ? `[${el.getAttribute("data-block")}]` : ""}`;
-      // Nothing scrolls inside the page, and the modal itself does not scroll.
+      // Nothing scrolls inside the page (but a card's words that may), and the modal itself does not scroll.
+      const wordsScroll = r.wordsScroll;
       for (const el of pageEl.querySelectorAll<HTMLElement>("*")) {
+        if (wordsScroll && el.hasAttribute("data-pager-text")) continue;
         const style = getComputedStyle(el);
         if (/(auto|scroll)/.test(style.overflowY) && el.scrollHeight > el.clientHeight + 1) out.push(`${at}: ${name(el)} scrolls (${el.clientHeight} of ${el.scrollHeight}px)`);
         if (el.hasAttribute("data-scrolls")) out.push(`${at}: ${name(el)} is a scroll window`);
@@ -53,6 +59,7 @@ function readPage(page: Page, key: CardKey, index: number, rules: { minWords: nu
       for (let node = walker.nextNode(); node; node = walker.nextNode()) {
         const el = node.parentElement;
         if (!el || !node.textContent?.trim() || el.closest(".sr-only, [aria-hidden='true'], [inert]")) continue;
+        if (wordsScroll && el.closest("[data-pager-text]")) continue;
         const shown = getComputedStyle(el);
         if (shown.visibility === "hidden" || shown.display === "none" || Number(shown.opacity) === 0) continue;
         range.selectNodeContents(node);
@@ -115,8 +122,7 @@ function checkParagraphs(key: CardKey, shown: { unit: number; text: string }[], 
     const omit = phoneOmit?.[unit] ?? [];
     const level = Array.from({ length: omit.length + 1 }, (_, n) => n).find((n) => visibleText(phoneCopy(blocks[unit], omit, n)) === text);
     if (level === undefined) out.push(`paragraph ${unit} is not its words with whole sentences dropped`);
-    // The jobs card's last paragraph gives the post's frame its room even on a phone with the room (Aaron, 2026-11-09: a bigger frame).
-    else if (everyWord && level > 0 && !(key === "jobs" && unit === 3)) out.push(`paragraph ${unit} dropped ${level} sentence(s) on a window with the room`);
+    else if (everyWord && level > 0) out.push(`paragraph ${unit} dropped ${level} sentence(s) on a window with the room`);
   }
   return out;
 }
@@ -148,7 +154,7 @@ async function sweepCard(page: Page, key: CardKey, everyWord: boolean, problems:
     for (let i = 0; i < count; i++) {
       if (i > 0) await dialog.locator(`[data-pager-dot="${i}"]`).click();
       await settle(page, key, i);
-      const read = await readPage(page, key, i, { minWords: MIN_WORDS, minShare: MIN_MEDIA_SHARE });
+      const read = await readPage(page, key, i, { minWords: MIN_WORDS, minShare: MIN_MEDIA_SHARE, wordsScroll: WORDS_SCROLL.includes(key) });
       read.problems.forEach(say);
       shown.push(...read.paragraphs);
     }
