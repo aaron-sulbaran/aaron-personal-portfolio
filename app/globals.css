@@ -270,6 +270,11 @@ html[data-input="pointer"] .metrics-stage:has(canvas:focus-visible) {
   html.cursor-none * {
     cursor: none !important;
   }
+  /* The native cursor over a frame and its hairline, where the site's dot hides (components/CustomCursor). */
+  html.cursor-none [data-cursor-native],
+  html.cursor-none [data-cursor-native] * {
+    cursor: auto !important;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

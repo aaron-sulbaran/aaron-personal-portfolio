@@ -19,6 +19,9 @@ const PILL_POP_EASE = "cubic-bezier(0.16, 1, 0.3, 1)";
 // ---- end fx-hero ----
 
 const HOVER_SELECTOR = "[data-cursor-hover], a, button, [role='button']";
+// Where the native cursor takes over (an embedded frame, such as the jobs card's LinkedIn post): the page gets no pointer events inside a
+// frame, so the dot would freeze at its edge. The dot hides on the way in and comes back, at the live pointer, on the first move out.
+const NATIVE_SELECTOR = "[data-cursor-native]";
 
 // Desktop-only accent-colored cursor. Small filled dot by default; grows into
 // a hollow ring when hovering any interactive target. Uses CSS var so it
@@ -124,6 +127,10 @@ export function CustomCursor() {
 
     const handleMove = (event: MouseEvent) => {
       pointerAt.current = { x: event.clientX, y: event.clientY };
+      if ((event.target as Element | null)?.closest?.(NATIVE_SELECTOR)) {
+        setVisible(false);
+        return;
+      }
       resolveTarget(event.target as Element | null, false);
       place();
       // Reveal on the first move. handleMove writes the transform above BEFORE
@@ -136,9 +143,14 @@ export function CustomCursor() {
     };
 
     const handleLeave = () => setVisible(false);
+    // Entering a frame fires mouseover on it here, though its moves then go to the frame's own document.
+    const handleOver = (event: MouseEvent) => {
+      if ((event.target as Element | null)?.closest?.(NATIVE_SELECTOR)) setVisible(false);
+    };
 
     window.addEventListener("mousemove", handleMove, { passive: true });
     document.addEventListener("mouseleave", handleLeave);
+    document.addEventListener("mouseover", handleOver, { passive: true });
     window.addEventListener("scroll", recheckMark, { passive: true, capture: true });
     window.addEventListener("resize", recheckMark, { passive: true });
     document.addEventListener("transitionend", handleMarkTransition);
@@ -147,6 +159,7 @@ export function CustomCursor() {
       document.documentElement.classList.remove("cursor-none");
       window.removeEventListener("mousemove", handleMove);
       document.removeEventListener("mouseleave", handleLeave);
+      document.removeEventListener("mouseover", handleOver);
       window.removeEventListener("scroll", recheckMark, { capture: true });
       window.removeEventListener("resize", recheckMark);
       document.removeEventListener("transitionend", handleMarkTransition);
@@ -161,6 +174,8 @@ export function CustomCursor() {
     <div
       ref={dotRef}
       aria-hidden="true"
+      data-cursor-dot=""
+      data-visible={visible ? "" : undefined}
       style={{
         transform: "translate3d(-100px, -100px, 0)",
         opacity: visible ? 1 : 0,
