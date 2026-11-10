@@ -276,12 +276,10 @@ test.describe("on a phone", () => {
     const read = await readPages(page);
     expect(read.pages.map((p) => p.tag).filter((job) => job !== null), "the tags, newest job first").toEqual(["0", "1", "2", "3", "4"]);
     expect(read.pages.filter((p) => p.paragraphs.length).map((p) => p.photos), "each paragraph beside its row's photos").toEqual([[0], [1], [2, 3], []]);
-    // Every paragraph shows, once and in order, the first three whole with the room at 844; the post's drops only whole sentences (its
-    // phone omissions, the hook line first among them, which the frame above it shows) to leave the frame its room.
+    // Every word shows, once and in order: the four paragraphs, whole, with the room at 844 (the post's frame takes what its paragraph leaves).
     const shown = read.pages.flatMap((p) => p.paragraphs);
     expect(shown.map((p) => p.unit)).toEqual([0, 1, 2, 3]);
-    expect(shown.slice(0, 3).map((p) => p.text)).toEqual(modal.blocks.slice(0, 3).map((block) => visibleText(block)));
-    expect(omitted(3, shown[3].text), "the post's paragraph, as written or less whole sentences").toBeGreaterThanOrEqual(0);
+    expect(shown.map((p) => p.text)).toEqual(modal.blocks.map((block) => visibleText(block)));
     read.pages.forEach((p, i) => {
       expect(p.scrolled, `page ${i + 1}: nothing in it scrolls`).toBe(0);
       expect(p.scrollsFlag, `page ${i + 1}: its words are not in a scroll window`).toBe(false);
@@ -319,8 +317,10 @@ test.describe("on a phone", () => {
         await page.waitForTimeout(450);
       }
     }
-    // The post's page: LinkedIn's short embed, as wide as the column at most and no wider, between pageMin and pageMax tall, with the
-    // photos' radius and a hairline, then View on LinkedIn under it, the post's only link on the page.
+    // The post's page (the one before Popeyes' tag): LinkedIn's short embed, as wide as the column at most and no wider, between pageMin and
+    // pageMax tall, with the photos' radius and a hairline, then View on LinkedIn under it, the post's only link on the page.
+    await dialog.getByRole("button", { name: siteContent.modals.gallery.previousPage, exact: true }).click();
+    await page.waitForTimeout(450);
     const post = dialog.locator('[data-media="post"]');
     const frame = post.locator("[data-post-frame]");
     await expect(frame.locator("iframe")).toHaveAttribute("src", modal.embed!.src);
