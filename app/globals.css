@@ -721,8 +721,10 @@ html[data-band-answer="off"] [data-band-state="before"] [data-band-layer="declin
 }
 /* ---- end card modal ---- */
 /* ---- inline links (components/inline): one look for every kind, a pop, a tip
-   and a definition alike: the word in the accent over one solid line, with no
-   icon and no dotted variant anywhere (print and forced colours included). The
+   and a definition alike: the word in the accent, a step bolder than the
+   copy around it (600, Aaron on 2026-11-09: bold as well as underlined, so the
+   words read as something to open), over one solid line, with no icon and no
+   dotted variant anywhere (print and forced colours included). The
    line is a separate bar, not text-decoration, so it sits below the
    descenders with a clear gap and one thickness, in the accent at a low
    share. One registered number, --inline-p, runs 0 to 1 and drives both fills
@@ -768,7 +770,7 @@ html[data-band-answer="off"] [data-band-state="before"] [data-band-layer="declin
 }
 .inline-link {
   position: relative; display: inline-block; margin: calc(-1 * var(--inline-pad)); padding: var(--inline-pad); border: 0; white-space: nowrap;
-  font: inherit; line-height: 1.15; color: inherit; letter-spacing: inherit; text-align: inherit; text-decoration: none;
+  font: inherit; font-weight: 600; line-height: 1.15; color: inherit; letter-spacing: inherit; text-align: inherit; text-decoration: none;
   -webkit-text-fill-color: transparent;
   background-color: transparent;
   background-image: linear-gradient(var(--color-accent-hover), var(--color-accent-hover)), linear-gradient(var(--color-accent), var(--color-accent));
@@ -1644,6 +1646,23 @@ html[data-intro-loader="on"] #intro-heading {
 @media (max-width: 639.98px) and (prefers-reduced-motion: no-preference) {
   .top-fade {
     transition: opacity 180ms linear;
+  }
+}
+/* The logo steps aside while page 2's list is under it (components/SiteLogo.tsx
+   writes data-words-under): from 640px up, where there is no top fade, and only
+   once the list shows (dealt, or a reduced motion visit, which has no deal).
+   Keyboard focus keeps it, and so does a pointer already resting on it (the
+   ring stays with it, e2e/mark.spec.ts); faded, it takes no pointer, so a
+   click there reaches the title. */
+@media (min-width: 640px) {
+  html:is(:not([data-deal]), [data-deal="dealt"]) [data-mark-trigger][data-words-under]:not(:focus-visible):not(:hover) {
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+@media (min-width: 640px) and (prefers-reduced-motion: no-preference) {
+  [data-mark-trigger] {
+    transition: opacity 200ms ease-out;
   }
 }
 /* ---- end page 1 ---- */

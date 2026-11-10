@@ -2,7 +2,7 @@ import { logos, modalPhotos, pictures } from "./media";
 import { talosTeam } from "./talos";
 import type { CardKey, Cards } from "./types";
 
-// The jobs card's LinkedIn post: the link under the modal's words, and the card a phone shows in the embed's place.
+// The jobs card's LinkedIn post: the link under the modal's words, and the post's card beside the last paragraph.
 const POST_HREF = "https://lnkd.in/p/g3mXFGcY";
 
 // The fourteen launch cards (docs/content/cards.md, approved 2026-10-08), in strand order.
@@ -140,17 +140,15 @@ export const cards: Cards = {
       "I think these jobs are an opportunity to experience the other side of daily interactions you might never think of after finishing your degree. That's why I've never shied away from a service industry job. I also learned how to make a fire pizza.",
       "I wrote about my work experience outside of class on LinkedIn, and my hook was \"I don't trust people who haven't worked an unflattering job.\" It got 130,000 impressions and almost a thousand reactions. My favorite line is \"You know to be nice to the person behind the counter because you were the person behind the counter.\" I guess it resonated with people.",
     ],
-    // Aaron's embed code, 2026-10-29: the post beside the last paragraph, which is about it. The frame mounts only while the modal is open
-    // and loads lazily; the link above stays as the way in for a reader whose blockers stop the frame.
+    // The post beside the last paragraph, which is about it (Aaron, 2026-10-29), as its card and no longer LinkedIn's frame (2026-11-09:
+    // "have the LinkedIn posts... be kind of a little truncated, and then have the view on LinkedIn sort of like right underneath").
     embed: {
-      src: "https://www.linkedin.com/embed/feed/update/urn:li:ugcPost:7463750786611630080",
       width: 504,
-      height: 1258,
       title: "My LinkedIn post about unflattering jobs",
       beside: 3,
     },
-    // On a phone the post is this card instead (a frame that tall would scroll inside the page): the post's hook line and me, one link out.
-    postCard: { href: POST_HREF, byline: "Aaron Sulbaran", hook: "I don't trust people who haven't worked an unflattering job.", cta: "Read the post on LinkedIn" },
+    // The post's card, on a desktop and a phone alike: the post's hook line and me, then one link out.
+    postCard: { href: POST_HREF, byline: "Aaron Sulbaran", hook: "I don't trust people who haven't worked an unflattering job.", cta: "View on LinkedIn" },
     // A short phone's page cannot hold the last paragraph under the post's card (which shows the post's hook itself): these go first, in
     // this order (and only there).
     phoneOmit: { 3: ["I guess it resonated with people.", "I wrote about my work experience outside of class on LinkedIn, and my hook was \"I don't trust people who haven't worked an unflattering job.\""] } },

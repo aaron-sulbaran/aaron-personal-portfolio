@@ -19,7 +19,7 @@ export const GALLERY = {
   panelPadding: 40,
   panelBorder: 1,
   // The jobs card's media column holds two pieces side by side (a name tag and its photo, or the two tags of the next row), each this wide,
-  // so a pair is as wide as the LinkedIn post at its native 504 (components/card/LinkedInEmbed): 244 + 16 + 244.
+  // so a pair is as wide as the LinkedIn post's card, 504 (components/card/PostCard): 244 + 16 + 244.
   cluster: { itemWidth: 244, gap: 16, tagHeight: 330 },
   headerTile: { width: 60, height: 80 }, // 3:4, so a flown logo card fills it
   headerTileCompact: { width: 42, height: 56 }, // the phone header's, clear of the close button

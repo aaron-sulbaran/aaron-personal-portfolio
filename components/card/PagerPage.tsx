@@ -130,7 +130,7 @@ function StillStage({ gallery, photo, box, height, carried }: { gallery: Gallery
   if (picture.embed || picture.tag !== undefined) {
     return (
       <FitStage room={height}>
-        <StillPhoto photo={picture} index={photo} box={box} caption={null} card />
+        <StillPhoto photo={picture} index={photo} box={box} caption={null} />
       </FitStage>
     );
   }

@@ -10,7 +10,6 @@ import { CardHeader } from "@/components/card/CardHeader";
 import { CardLinks } from "@/components/card/CardLinks";
 import { MentorsList } from "@/components/card/MentorsList";
 import { JobTag } from "@/components/card/JobTag";
-import { LinkedInEmbed } from "@/components/card/LinkedInEmbed";
 import { PostCard } from "@/components/card/PostCard";
 import { siteContent } from "@/lib/content";
 
@@ -172,27 +171,15 @@ describe("a job's name tag", () => {
   });
 });
 
-describe("the embedded LinkedIn post", () => {
-  it("is Aaron's frame: his src exactly, native 504 by 1258, lazy, with no border and a title in my words", () => {
-    const html = renderToStaticMarkup(createElement(LinkedInEmbed, { embed: siteContent.cards.jobs.modal.embed! }));
-    expect(html).toContain('src="https://www.linkedin.com/embed/feed/update/urn:li:ugcPost:7463750786611630080"');
-    expect(html).toContain('width="504"');
-    expect(html).toContain('height="1258"');
-    expect(html).toContain('loading="lazy"');
-    expect(html).toContain('frameBorder="0"');
-    expect(html).toContain('title="My LinkedIn post about unflattering jobs"');
-    expect(html).toContain("allowFullScreen");
-    expect(html).toMatch(/class="[^"]*\bw-full\b[^"]*\bmax-w-full\b/);
-  });
-});
-
-describe("the LinkedIn post as a card on a phone", () => {
+describe("the LinkedIn post as its card, on a desktop and a phone", () => {
   const { postCard } = siteContent.cards.jobs.modal;
   const html = renderToStaticMarkup(createElement(PostCard, { card: postCard! }));
   it("is one link out, in a new tab: the post's own address, with its hook line, my name and the way in", () => {
     expect(html).toMatch(/^<a [^>]*href="https:\/\/lnkd.in\/p\/g3mXFGcY" target="_blank" rel="noopener noreferrer"/);
     expect(html.match(/<a /g)).toHaveLength(1);
-    for (const text of ["Aaron Sulbaran", "I don&#x27;t trust people who haven&#x27;t worked an unflattering job.", "Read the post on LinkedIn"]) expect(html).toContain(text);
+    for (const text of ["Aaron Sulbaran", "I don&#x27;t trust people who haven&#x27;t worked an unflattering job.", "View on LinkedIn"]) expect(html).toContain(text);
+    // The way in comes right under the hook line (Aaron, 2026-11-09).
+    expect(html.indexOf("View on LinkedIn")).toBeGreaterThan(html.indexOf("unflattering job."));
     expect(html).toContain("opens in a new tab");
     expect(html).not.toContain("<iframe");
   });
