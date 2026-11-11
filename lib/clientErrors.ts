@@ -23,8 +23,11 @@ export function errorDetail(value: unknown): string {
     const kind = value === null || value === undefined ? "unknown" : typeof value;
     return `Thrown: ${kind === "string" || kind === "number" || kind === "object" ? kind : "unknown"}`;
   }
-  const name = typeof value.name === "string" && IDENTIFIER.test(value.name) ? value.name : "Error";
-  const digest = typeof value.digest === "string" && DIGEST.test(value.digest) ? value.digest : "";
+  // Each property is read once: a getter could pass the check with one value and print another.
+  const rawName = value.name;
+  const rawDigest = value.digest;
+  const name = typeof rawName === "string" && IDENTIFIER.test(rawName) ? rawName : "Error";
+  const digest = typeof rawDigest === "string" && DIGEST.test(rawDigest) ? rawDigest : "";
   return `${name}${digest ? ` (digest ${digest})` : ""}`;
 }
 
@@ -35,13 +38,17 @@ export function errorDetail(value: unknown): string {
 // to drop that noise; none of it is sent.
 export function windowErrorValue(event: { error?: unknown; message?: string }): unknown {
   if (event.error != null) return event.error;
-  const message = event.message ?? "";
+  const message = typeof event.message === "string" ? event.message : "";
   if (message === "" || message === "Script error." || message.startsWith("ResizeObserver loop")) return null;
   return { name: "WindowError", message };
 }
 
+// Every place a report can come from is a source literal, so none can carry visitor text.
+export type BoundaryName = "player" | "cursor" | "inline" | "quests" | "transition";
+export type ErrorWhere = "window" | "unhandledrejection" | "error-page" | "global-error" | `boundary:${BoundaryName}`;
+
 type ReporterOptions = {
-  send: (name: string, properties: { where: string; detail: string }) => void;
+  send: (name: string, properties: { where: ErrorWhere; detail: string }) => void;
   pathname: () => string;
   isPrivate?: (path: string) => boolean;
   limit?: number;
@@ -53,11 +60,13 @@ export function createClientErrorReporter({ send, pathname, isPrivate = isPrivat
   // Once a private path has been seen, nothing is sent for the rest of the page load, even
   // from work that started there and fails after the reader moved on.
   let sawPrivate = false;
-  function report(where: string, value: unknown) {
+  function report(where: ErrorWhere, value: unknown) {
     try {
       if (!sawPrivate && isPrivate(pathname())) sawPrivate = true;
-      if (sawPrivate || sent >= limit) return;
+      // errorDetail reads the value's own getters, the only foreign code here; it runs before the cap
+      // check so a getter that reports again cannot slip past a cap that was already passed.
       const detail = errorDetail(value);
+      if (sawPrivate || sent >= limit) return;
       // Names are coarse, so the same name at a different place is a different report.
       const key = `${where}\n${detail}`;
       if (seen.has(key)) return;

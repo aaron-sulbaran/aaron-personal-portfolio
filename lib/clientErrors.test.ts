@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   CLIENT_ERROR_EVENT,
+  type ErrorWhere,
   MAX_ERROR_REPORTS,
   createClientErrorReporter,
   errorDetail,
@@ -39,6 +40,19 @@ describe("errorDetail", () => {
     expect(errorDetail(value)).toBe(expected);
   });
 
+  it.each(["name", "digest"] as const)("reads %s once, so a getter cannot pass the check and print another value", (field) => {
+    let reads = 0;
+    const value: Record<string, unknown> = { message: "marker words here", name: "TypeError", digest: "d1" };
+    Object.defineProperty(value, field, {
+      get() {
+        reads += 1;
+        return reads <= 2 ? (field === "name" ? "TypeError" : "d1") : "has some spaces";
+      },
+    });
+    expect(errorDetail(value)).toBe("TypeError (digest d1)");
+    expect(reads).toBe(1);
+  });
+
   // Pins decision D25: message text never leaves the browser. Fails if value.message is added back.
   it.each(["alpha bravo charlie", "Cannot read properties of undefined", "React error number four eighteen"])(
     "never includes the message text: %s",
@@ -58,6 +72,10 @@ describe("windowErrorValue", () => {
   it("ignores a cross-origin Script error with no error object", () => {
     expect(windowErrorValue({ error: null, message: "Script error." })).toBeNull();
     expect(windowErrorValue({ error: undefined, message: "" })).toBeNull();
+  });
+
+  it("treats a non-string message as empty", () => {
+    expect(windowErrorValue({ error: null, message: 42 as unknown as string })).toBeNull();
   });
 
   it("keeps a message-only event that says something", () => {
@@ -105,7 +123,7 @@ describe("createClientErrorReporter", () => {
     report("window", new Error("before"));
     report.visit("/private/area");
     report.visit("/");
-    report("window", new Error("after"));
+    report("window", new TypeError("after"));
     expect(send).toHaveBeenCalledTimes(1);
   });
 
@@ -121,7 +139,7 @@ describe("createClientErrorReporter", () => {
     const { send, report } = reporter();
     report("window", new Error("zebra marker words here"));
     report("error-page", Object.assign(new TypeError("zebra marker words here"), { digest: "d1" }));
-    report("layout", { name: "WindowError", message: "zebra marker words here" });
+    report("boundary:player", { name: "WindowError", message: "zebra marker words here" });
     expect(send).toHaveBeenCalledTimes(3);
     expect(JSON.stringify(send.mock.calls)).not.toContain("zebra");
   });
@@ -136,19 +154,58 @@ describe("createClientErrorReporter", () => {
   it("sends the same detail again from a different where", () => {
     const { send, report } = reporter();
     report("window", new TypeError("first"));
-    report("layout", new TypeError("second"));
+    report("boundary:player", new TypeError("second"));
     expect(send).toHaveBeenCalledTimes(2);
   });
 
   it("stops after three reports a page load, across wheres and names", () => {
     const { send, report } = reporter();
     report("window", new TypeError("a"));
-    report("layout", new TypeError("b"));
+    report("boundary:cursor", new TypeError("b"));
     report("error-page", new TypeError("c"));
     report("global-error", new TypeError("d"));
     report("window", new RangeError("e"));
     expect(MAX_ERROR_REPORTS).toBe(3);
     expect(send).toHaveBeenCalledTimes(3);
+  });
+
+  it("sends the same where with two different names twice", () => {
+    const { send, report } = reporter();
+    report("window", new TypeError("a"));
+    report("window", new RangeError("a"));
+    expect(send).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not spend the budget on duplicates", () => {
+    const { send, report } = reporter();
+    for (let i = 0; i < 3; i += 1) report("window", new Error("same"));
+    report("window", new TypeError("one"));
+    report("window", new RangeError("two"));
+    expect(send).toHaveBeenCalledTimes(3);
+  });
+
+  it("holds the cap when a getter reports again while the detail is built", () => {
+    const { send, report } = reporter();
+    const wheres: ErrorWhere[] = ["window", "unhandledrejection", "error-page"];
+    const reentrant = {
+      get message() {
+        for (const where of wheres) report(where, new TypeError("inner"));
+        return "outer";
+      },
+    };
+    report("global-error", reentrant);
+    expect(send).toHaveBeenCalledTimes(3);
+  });
+
+  it("neither throws nor sends when the message getter throws", () => {
+    const { send, report } = reporter();
+    const hostile = {
+      get message(): string {
+        throw new Error("getter");
+      },
+    };
+    expect(() => report("window", hostile)).not.toThrow();
+    expect(send).not.toHaveBeenCalled();
   });
 
   it.each([

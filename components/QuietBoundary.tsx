@@ -2,13 +2,14 @@
 
 import { Component, type ReactNode } from "react";
 import { reportClientError } from "@/components/SiteAnalytics";
+import type { BoundaryName } from "@/lib/clientErrors";
 
 // Around each non-essential mount in the root layout (player, cursor, inline
 // layer, quests, transition): one that throws renders nothing, so a broken
 // extra drops out instead of replacing the whole document with the global
 // error page. The chrome and the page itself stay outside it. What it
 // catches is reported, so a mount that drops out does not do so silently.
-type Props = { where: string; children: ReactNode };
+type Props = { where: BoundaryName; children: ReactNode };
 type State = { failed: boolean };
 
 export class QuietBoundary extends Component<Props, State> {
