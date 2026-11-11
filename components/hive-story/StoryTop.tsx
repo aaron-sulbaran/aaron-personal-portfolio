@@ -2,7 +2,9 @@ import Image from "next/image";
 import type { ReactNode } from "react";
 import { hiveStoryCopy } from "@/lib/content/hive-story";
 import { HIVE_SHOT_SIZES } from "@/lib/photoSizes";
-import { DotGlyph, HiveFlow } from "./Drawings";
+import { HiveFlow } from "./Drawings";
+import { FactTrip } from "./FactTrip";
+import { FactTripPlayer } from "./FactTripPlayer";
 
 const { title, lede, framing, why, steps, team, status } = hiveStoryCopy;
 
@@ -37,21 +39,29 @@ export function WhySection() {
   );
 }
 
+/** B's one-fact trip, the page's second section: the list of steps beside the trip drawn in bees, played in order. */
 export function StepsSection() {
   return (
     <section aria-labelledby="hive-steps" className="hive-section hive-wrap">
       <SectionHeading id="hive-steps">{steps.heading}</SectionHeading>
-      <ol className="mt-10 grid gap-x-10 gap-y-9 md:grid-cols-2 lg:grid-cols-3">
-        {steps.items.map((step) => (
-          <li key={step.title} className="grid grid-cols-[3.25rem_minmax(0,1fr)] gap-x-4">
-            <DotGlyph glyph={step.glyph} className="mt-0.5 h-[3.25rem] w-[3.25rem]" />
-            <div className="min-w-0">
-              <h3 className="text-[1.0625rem] font-semibold leading-snug">{step.title}</h3>
-              <p className="mt-1.5 leading-[1.55] text-muted">{step.body}</p>
-            </div>
-          </li>
-        ))}
-      </ol>
+      <FactTripPlayer>
+        <div className="mt-8 grid gap-8 lg:mt-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:items-start lg:gap-16">
+          <div className="lg:order-2 lg:sticky lg:top-24">
+            <FactTrip />
+          </div>
+          <ol className="grid gap-6 lg:order-1">
+            {steps.items.map((step, i) => (
+              <li key={step.title} data-step-item className="hive-step grid grid-cols-[1.75rem_minmax(0,1fr)] gap-x-3">
+                <span aria-hidden="true" className="font-label text-label-lg tabular-nums">{i + 1}</span>
+                <div className="min-w-0">
+                  <h3 className="text-[1.0625rem] font-semibold leading-snug">{step.title}</h3>
+                  <p className="mt-1 leading-[1.55] text-muted">{step.body}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </FactTripPlayer>
       <p className="mt-10 max-w-[40rem] text-[1.0625rem]">{steps.proof}</p>
     </section>
   );

@@ -23,8 +23,8 @@ export default function HiveStoryPage() {
   return (
     <main id="main" data-page="hive-story" className={`${doto.variable} hive-story`}>
       <StoryHero />
-      <WhySection />
       <StepsSection />
+      <WhySection />
       <TeamSection />
       <StatusSection />
       <ScenariosSection />

@@ -1,4 +1,4 @@
-import type { GlyphKey, ScenarioKey } from "@/lib/hive-story/glyphs";
+import type { ScenarioKey } from "@/lib/hive-story/glyphs";
 import type { NodeKey } from "@/lib/hive-story/flow";
 
 // /hive-story: the public, 60-second story of FH08 Hive. Draft copy, 2026-11-10,
@@ -52,14 +52,19 @@ export const hiveStoryCopy = {
   steps: {
     heading: "How one fact gets in",
     items: [
-      { glyph: "message", title: "Someone says it.", body: "A teammate posts in Discord or edits a doc in Drive. Nobody tags anything or fills out a form." },
-      { glyph: "quote", title: "AI pulls out the fact and its exact words.", body: "One model reads what's new and proposes facts, each with a quote from its source." },
-      { glyph: "check", title: "Code checks the quote is really there.", body: "If the words aren't in the cited message or doc, the fact never lands." },
-      { glyph: "judge", title: "A stronger model checks that it follows.", body: "It turns away jokes, guesses, and plans written up as if they were done." },
-      { glyph: "link", title: "It lands with a link back.", body: "Every fact in the Hive links to the exact message or doc section it came from." },
-      { glyph: "question", title: "Disagreements become questions.", body: "When two sources say different things, the Hive keeps both and asks the team instead of picking a winner." },
-    ] satisfies { glyph: GlyphKey; title: string; body: string }[],
+      { title: "Someone says it.", body: "A teammate posts in Discord or edits a doc in Drive. Nobody tags anything or fills out a form." },
+      { title: "AI pulls out the fact and its exact words.", body: "One model reads what's new and proposes facts, each with a quote from its source." },
+      { title: "Code checks the quote is really there.", body: "If the words aren't in the cited message or doc, the fact never lands." },
+      { title: "A stronger model checks that it follows.", body: "It turns away jokes, guesses, and plans written up as if they were done." },
+      { title: "It lands with a link back.", body: "Every fact in the Hive links to the exact message or doc section it came from." },
+      { title: "Disagreements become questions.", body: "When two sources say different things, the Hive keeps both and asks the team instead of picking a winner." },
+    ],
     proof: "After the first round of fixes, a hand check of 15 random facts found none wrong.",
+    // The trip drawing's own words, and its description for screen readers.
+    trip: {
+      labels: { discord: "Discord", drive: "Drive", hive: "The Hive", question: "open question" },
+      description: "One fact's trip: a Discord message, its quoted words, a code check and a stronger check, the fact landing in the Hive with a thread back to the message, then a Drive doc that disagrees and an open question linking both.",
+    },
   },
 
   team: {

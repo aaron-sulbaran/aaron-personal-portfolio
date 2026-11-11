@@ -1,6 +1,6 @@
 import { hiveStoryCopy } from "@/lib/content/hive-story";
 import { LAYOUTS } from "@/lib/hive-story/flow";
-import { GLYPHS, GLYPH_BOX, GLYPH_DOT, SCENARIOS, SCENARIO_BOX, type GlyphKey, type ScenarioKey } from "@/lib/hive-story/glyphs";
+import { SCENARIOS, SCENARIO_BOX, type ScenarioKey } from "@/lib/hive-story/glyphs";
 import { FlowSvg } from "./FlowSvg";
 import { FlowSwarm } from "./FlowSwarm";
 
@@ -16,18 +16,6 @@ export function HiveFlow() {
       </FlowSwarm>
       <figcaption className="sr-only">{hiveStoryCopy.flow.description}</figcaption>
     </figure>
-  );
-}
-
-/** One step's glyph: dark bees on a honey disc, like Beekeeper's reactions. */
-export function DotGlyph({ glyph, className }: { glyph: GlyphKey; className?: string }) {
-  return (
-    <svg viewBox={`0 0 ${GLYPH_BOX} ${GLYPH_BOX}`} className={className} aria-hidden="true" focusable="false">
-      <circle cx={50} cy={50} r={50} fill="var(--hive-honey)" />
-      <g fill="var(--hive-bee)">
-        {GLYPHS[glyph].map((p, i) => <circle key={i} cx={r2(p.x)} cy={r2(p.y)} r={GLYPH_DOT} />)}
-      </g>
-    </svg>
   );
 }
 

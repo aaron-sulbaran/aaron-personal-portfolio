@@ -1,58 +1,7 @@
-import {
-  arcDots,
-  centerOn,
-  checkDots,
-  dotsAlong,
-  hexLattice,
-  preparePath,
-  questionDots,
-  roundedRectDots,
-  segmentDots,
-  type Point,
-} from "./dots";
+import { checkDots, dotsAlong, hexLattice, preparePath, roundedRectDots, type Point } from "./dots";
 
-// The small drawings on /hive-story, in the same bees as the flow: one glyph per
-// step of a fact's trip (drawn on a honey disc, like Beekeeper's reactions) and
-// one small swarm per scenario. All in fixed boxes, so each is one SVG viewBox.
-
-export const GLYPH_BOX = 100;
-export const GLYPH_DOT = 5.6;
-
-export type GlyphKey = "message" | "quote" | "check" | "judge" | "link" | "question";
-
-const deg = Math.PI / 180;
-
-function message(): Point[] {
-  return [...roundedRectDots(20, 22, 60, 42, 13, 13.5), { x: 34, y: 76 }];
-}
-
-function quote(): Point[] {
-  const mark = (x: number) => [{ x, y: 40 }, { x: x - 2, y: 52 }, { x: x - 8, y: 62 }];
-  return centerOn([...mark(40), ...mark(66)], 50, 50);
-}
-
-function judge(): Point[] {
-  // A second, stronger check: the check mark sealed inside a ring.
-  return [...arcDots(50, 50, 33, 0, Math.PI * 2, 13.5).slice(1), ...checkDots(50, 51, 30)];
-}
-
-function link(): Point[] {
-  // Back to the source: an arrow pointing left whose tail hooks down.
-  const shaft = [{ x: 0, y: 0 }, ...segmentDots({ x: 0, y: 0 }, { x: 30, y: 0 }, 14)];
-  const hook = arcDots(30, 19, 19, -90 * deg, 0, 14).slice(1);
-  const tail = segmentDots({ x: 49, y: 19 }, { x: 49, y: 34 }, 14);
-  const wings = [{ x: 11.6, y: -13.8 }, { x: 11.6, y: 13.8 }];
-  return centerOn([...shaft, ...hook, ...tail, ...wings], 50, 50);
-}
-
-export const GLYPHS: Record<GlyphKey, Point[]> = {
-  message: message(),
-  quote: quote(),
-  check: checkDots(50, 50, 52),
-  judge: judge(),
-  link: link(),
-  question: questionDots(50, 50, 15, 13),
-};
+// The scenario swarms on /hive-story, in the same bees as the flow: one small
+// swarm per scenario, in a fixed box so each is one SVG viewBox.
 
 /* ---------- scenario swarms ---------- */
 

@@ -70,8 +70,27 @@ test("hive story: the clock runs while the stage is on screen", async ({ page })
   await expect(page.locator(".hive-caption")).not.toHaveText(hiveStoryCopy.flow.rest);
 });
 
+test("hive story: the fact's trip plays step by step once it is on screen", async ({ page }) => {
+  await page.goto(PATH);
+  const trip = page.locator(".hive-trip");
+  await trip.scrollIntoViewIfNeeded();
+  await expect(trip).toHaveAttribute("data-playing", "true");
+  await expect(trip.locator(".hive-step[data-now]")).toHaveCount(1);
+  // Early in the trip the Drive doc (step 6) is dimmed, not gone.
+  expect(await trip.locator("[data-at][data-off]").count()).toBeGreaterThan(0);
+});
+
 test.describe("under reduced motion", () => {
   test.use({ reducedMotion: "reduce" });
+
+  test("hive story: the fact's trip shows every step at once and never plays", async ({ page }) => {
+    await page.goto(PATH);
+    const trip = page.locator(".hive-trip");
+    await trip.scrollIntoViewIfNeeded();
+    await page.waitForTimeout(2_000);
+    await expect(trip).not.toHaveAttribute("data-playing", "true");
+    await expect(trip.locator("[data-off]")).toHaveCount(0);
+  });
 
   test("hive story: no bees fly, the canvas stays empty, and the caption is the one-line summary", async ({ page }) => {
     await page.goto(PATH);

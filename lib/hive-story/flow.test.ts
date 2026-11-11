@@ -18,7 +18,8 @@ import {
   type NodeKey,
   type PathKey,
 } from "./flow";
-import { GLYPHS, GLYPH_BOX, GLYPH_DOT, SCENARIOS, SCENARIO_BOX } from "./glyphs";
+import { SCENARIOS, SCENARIO_BOX } from "./glyphs";
+import { TRIP, TRIP_BOX, TRIP_ROUTES, TRIP_STEPS } from "./trip";
 
 const layouts = Object.values(LAYOUTS);
 const near = (a: number, b: number) => Math.abs(a - b) < 0.5;
@@ -105,10 +106,20 @@ describe("the timeline", () => {
 });
 
 describe("the small drawings", () => {
-  it("keeps every glyph's dots inside its honey disc", () => {
-    for (const [key, pts] of Object.entries(GLYPHS)) {
-      for (const p of pts) expect(Math.hypot(p.x - GLYPH_BOX / 2, p.y - GLYPH_BOX / 2) + GLYPH_DOT, key).toBeLessThanOrEqual(GLYPH_BOX / 2 - 4);
+  it("keeps every part of the fact's trip inside its box, each on a step from 0 to 6, and both bees' routes too", () => {
+    for (const part of TRIP) {
+      expect(part.at).toBeGreaterThanOrEqual(0);
+      expect(part.at).toBeLessThanOrEqual(TRIP_STEPS);
+      const pts = part.kind === "dots" || part.kind === "rings" ? part.points : part.kind === "glow" ? [{ x: part.x, y: part.y }, { x: part.x + part.w, y: part.y + part.h }] : [{ x: part.x, y: part.y }];
+      for (const p of pts) {
+        expect(p.x).toBeGreaterThan(0);
+        expect(p.x).toBeLessThan(TRIP_BOX.width);
+        expect(p.y).toBeGreaterThan(0);
+        expect(p.y).toBeLessThan(TRIP_BOX.height);
+      }
     }
+    for (const route of Object.values(TRIP_ROUTES)) for (const p of route) expect(p.x).toBeLessThan(TRIP_BOX.width);
+    expect(new Set(TRIP.map((part) => part.at))).toEqual(new Set([0, 1, 2, 3, 4, 5, 6]));
   });
 
   it("keeps every scenario inside its box", () => {
