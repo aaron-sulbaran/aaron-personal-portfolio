@@ -99,7 +99,8 @@ export function MoreSection() {
       <SectionHeading id="hive-more">{more.heading}</SectionHeading>
       <ul className="hive-links mt-4 flex flex-wrap gap-x-8 text-[1.0625rem]">
         {more.site.map((link) => (
-          <li key={link.href}><SiteLink href={link.href}>{link.href === "/quick" ? <MvpLabel text={link.label} /> : link.label}</SiteLink></li>
+          // One span inside the 44 px link box, so its words stay one line of text (a flex box drops the spaces around the bold capitals).
+          <li key={link.href}><SiteLink href={link.href}><span>{link.href === "/quick" ? <MvpLabel text={link.label} /> : link.label}</span></SiteLink></li>
         ))}
       </ul>
       <h3 className="mt-6 font-label text-label">{more.productsLabel}</h3>

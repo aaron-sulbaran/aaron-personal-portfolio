@@ -418,6 +418,9 @@ for (const width of [390, 1440]) {
         const box = await link.boundingBox();
         expect(box!.height, (await link.textContent()) ?? "link").toBeGreaterThanOrEqual(44);
         expect(box!.width, (await link.textContent()) ?? "link").toBeGreaterThanOrEqual(44);
+        // The bigger box keeps the words as written: no space lost where a label mixes in bold.
+        const [shown, written] = await link.evaluate((el) => [(el as HTMLElement).innerText.trim(), (el.textContent ?? "").trim()]);
+        expect(shown).toBe(written);
       }
     });
   });
