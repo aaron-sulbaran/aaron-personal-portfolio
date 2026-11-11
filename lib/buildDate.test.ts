@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { lastUpdatedMonth } from "@/lib/buildDate";
+import { builtAtDate, lastUpdatedMonth } from "@/lib/buildDate";
 import { siteContent } from "@/lib/content";
 
 describe("the footer's last updated month", () => {
@@ -11,5 +11,9 @@ describe("the footer's last updated month", () => {
 
   it("reads as the tagline", () => {
     expect(siteContent.footer.tagline(lastUpdatedMonth("2026-09-29T15:00:00.000Z"))).toBe("Last updated September 2026");
+  });
+
+  it("gives the sitemap the same instant", () => {
+    expect(builtAtDate("2026-09-29T15:00:00.000Z").toISOString()).toBe("2026-09-29T15:00:00.000Z");
   });
 });
