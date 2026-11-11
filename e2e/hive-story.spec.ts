@@ -84,8 +84,40 @@ test("hive story: the fact's trip plays step by step once it is on screen", asyn
   expect(await trip.locator("[data-at][data-off]").count()).toBeGreaterThan(0);
 });
 
+test("hive story: every animation can be stepped by hand, and a step holds until the reader moves on", async ({ page }) => {
+  await page.goto(PATH);
+  const groups = page.locator('[role="group"][aria-label$="step through"]');
+  await expect(groups).toHaveCount(4);
+  for (const group of await groups.all()) {
+    await group.scrollIntoViewIfNeeded();
+    const count = group.locator(".hive-control-count");
+    await group.getByRole("button", { name: /^Next,/ }).click();
+    const held = await count.textContent();
+    await expect(group.getByRole("button", { name: /^Play,/ })).toBeVisible();
+    await page.waitForTimeout(2_600);
+    expect(await count.textContent()).toBe(held);
+    await group.getByRole("button", { name: /^Back,/ }).click();
+    await expect(count).not.toHaveText(held ?? "");
+  }
+});
+
 test.describe("under reduced motion", () => {
   test.use({ reducedMotion: "reduce" });
+
+  test("hive story: nothing plays, but Back and Next still step through still frames", async ({ page }) => {
+    await page.goto(PATH);
+    await expect(page.getByRole("button", { name: /^(Play|Pause),/ })).toHaveCount(0);
+    const hero = page.locator('[role="group"][aria-label^="How information moves"]');
+    await hero.getByRole("button", { name: /^Next,/ }).click();
+    await expect(page.locator(".hive-caption")).toHaveText(hiveStoryCopy.flow.captions[1]);
+    const inked = await page.locator(".hive-stage canvas").evaluate((canvas: HTMLCanvasElement) => {
+      const data = canvas.getContext("2d")!.getImageData(0, 0, canvas.width, canvas.height).data;
+      let sum = 0;
+      for (let i = 3; i < data.length; i += 4) sum += data[i];
+      return sum;
+    });
+    expect(inked).toBeGreaterThan(0);
+  });
 
   test("hive story: the fact's trip shows every step at once and never plays", async ({ page }) => {
     await page.goto(PATH);

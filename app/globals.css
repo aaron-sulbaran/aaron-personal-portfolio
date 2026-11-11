@@ -1767,4 +1767,59 @@ html:has(main[data-page="hive-visual"][data-logo-edge]) [data-menu-pill]:not([ro
 @media (min-width: 1280px) {
   .hive-wrap { padding-inline: 4rem; }
 }
+/* Step controls: every animation on the page can be stepped by hand. */
+.hive-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.hive-control { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 36px; min-width: 36px; padding: 0 10px; border-radius: 999px; color: var(--hive-bee); background: transparent; box-shadow: inset 0 0 0 1.5px var(--hive-bee); font: 600 14px/1 var(--font-sans), system-ui, sans-serif; cursor: pointer; transition: background-color 160ms var(--ease-out), color 160ms var(--ease-out); }
+.hive-control-wide { padding: 0 14px; }
+.hive-control:disabled { opacity: 0.35; cursor: default; }
+.hive-control-count { margin-left: 4px; font-size: 14px; font-weight: 600; }
+@media (hover: hover) and (pointer: fine) {
+  .hive-control:not(:disabled):hover { background: var(--hive-bee); color: var(--hive-light); }
+}
+.hive-stage-foot { padding: 4px 16px 16px; }
+@media (min-width: 1024px) { .hive-stage-foot { padding: 0 40px 24px; } }
+
+/* The exhibit aside: a card of its own, tagged, so it reads as a side note. */
+.hive-exhibit { border-radius: 22px; padding: 16px 18px 18px; background: var(--hive-panel); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--hive-bee) 22%, transparent); }
+.hive-aside-tag { display: inline-block; padding: 3px 10px; border-radius: 999px; background: var(--hive-bee); color: var(--hive-light); }
+.hive-exhibit-box { position: relative; max-width: 300px; margin: 8px auto 0; }
+.hive-exhibit-box[data-live] .hive-exhibit-still { opacity: 0; }
+
+/* The AI-to-author demo: a generic AI pane and Beekeeper's channel. */
+.hive-loop-panes { display: grid; gap: 16px; }
+@media (min-width: 900px) { .hive-loop-panes { grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); align-items: start; } }
+.hive-loop [data-in] { transition: opacity 360ms var(--ease-out); }
+.hive-loop [data-off] { opacity: 0.12; }
+.hive-loop .hive-react[data-off], .hive-loop .hive-badge[data-off], .hive-loop .hive-discord-fact > span[data-off] { display: none; }
+.hive-loop:not([data-step]) [data-rest="off"] { display: none; }
+.hive-ai { border-radius: 18px; padding: 16px; background: var(--hive-light); color: var(--hive-bee); }
+.hive-pane-title { margin: 0 0 12px; font-size: 13px; font-weight: 600; color: var(--color-muted); }
+.hive-ai-ask { margin: 0 0 12px auto; width: fit-content; max-width: 90%; padding: 8px 12px; border-radius: 14px 14px 4px 14px; background: var(--hive-panel); font-size: 15px; }
+.hive-ai-tool { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 12px; box-shadow: inset 0 0 0 1.5px var(--hive-bee); }
+.hive-ai-tool code, .hive-tool-name { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 14px; font-weight: 600; }
+.hive-ai-arg { font-size: 13px; padding: 2px 8px; border-radius: 999px; background: var(--hive-panel); }
+.hive-ai-result { display: flex; align-items: center; gap: 8px; margin: 10px 0 0; font-size: 14px; }
+.hive-discord { --dc-bg: #313338; --dc-text: #DBDEE1; --dc-muted: #949BA4; --dc-name: #F2F3F5; --dc-blurple: #5865F2; border-radius: 18px; padding: 14px 16px 16px; background: var(--dc-bg); color: var(--dc-text); font-size: 15px; }
+.hive-discord-channel { margin: 0 0 12px; padding-bottom: 10px; border-bottom: 1px solid #3F4147; color: var(--dc-name); font-weight: 600; }
+.hive-discord-msg { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 0 12px; }
+.hive-discord-reply { margin-top: 14px; }
+.hive-discord-avatar, .hive-discord-person { width: 40px; height: 40px; border-radius: 50%; }
+.hive-discord-person { display: grid; place-items: center; background: #5D7A6A; color: var(--dc-name); font-weight: 700; }
+.hive-discord-who { margin: 0; color: var(--dc-name); }
+.hive-discord-app { font-size: 10px; font-weight: 700; padding: 1px 4px; border-radius: 4px; background: var(--dc-blurple); color: #FFFFFF; vertical-align: 2px; }
+.hive-discord-time { font-size: 12px; color: var(--dc-muted); margin-left: 4px; }
+.hive-discord-text { margin: 2px 0 8px; }
+.hive-mention { padding: 0 2px; border-radius: 3px; background: rgba(88, 101, 242, 0.3); color: #C9CDFB; font-weight: 500; }
+.hive-discord-fact { display: grid; gap: 8px; padding: 10px 12px; border-radius: 8px; background: #2B2D31; border-left: 4px solid var(--hive-honey); }
+.hive-discord-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 13px; color: var(--dc-muted); }
+.hive-discord-source { text-decoration: underline; text-underline-offset: 3px; }
+.hive-badge { padding: 1px 8px; border-radius: 999px; border: 1px dashed currentColor; }
+.hive-badge-on { border-style: solid; color: var(--hive-honey); }
+.hive-discord-reacts { display: flex; gap: 6px; margin: 8px 0 0; }
+.hive-react { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 8px; border-radius: 8px; background: #2B2D31; color: #B5BAC1; font-size: 14px; font-weight: 600; box-shadow: inset 0 0 0 1px transparent; }
+.hive-react-me { background: rgba(88, 101, 242, 0.15); box-shadow: inset 0 0 0 1px var(--dc-blurple); color: #C9CDFB; }
+.hive-bars { display: grid; gap: 6px; }
+.hive-bars > span { display: block; height: 8px; border-radius: 4px; background: #4E5058; }
+.hive-loop-step { margin: 14px 0 0; font-weight: 600; font-size: 1.0625rem; }
+.hive-loop-step span { display: inline-grid; place-items: center; width: 1.6rem; height: 1.6rem; margin-right: 8px; border-radius: 999px; background: var(--hive-bee); color: var(--hive-light); font-size: 14px; }
 /* ---- end /hive-visual ---- */

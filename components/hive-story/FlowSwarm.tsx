@@ -1,24 +1,30 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { hiveStoryCopy } from "@/lib/content/hive-story";
-import { LAYOUTS, LOOP_SECONDS, clockAt } from "@/lib/hive-story/flow";
-import { buildSwarm, drawSwarm, type SwarmColors } from "./drawSwarm";
+import { FLOW_STEPS, LAYOUTS, LOOP_SECONDS, clockAt, flowStepAt, stillAt } from "@/lib/hive-story/flow";
+import { buildSwarm, drawSwarm, type SwarmColors, type SwarmModel } from "./drawSwarm";
+import { StepControls } from "./StepControls";
 
 const { flow } = hiveStoryCopy;
 const WIDE = "(min-width: 1024px)";
 const REDUCED = "(prefers-reduced-motion: reduce)";
 
 // The honey stage: the clock and caption on top, the static diagram (children,
-// server-rendered) over a canvas of flying bees. Motion only runs on screen, in
-// a visible tab, and never under reduced motion, live in both directions; at
-// rest the stage shows the whole diagram and a one-line summary.
+// server-rendered) over a canvas of flying bees, and the step controls. It plays
+// on its own while on screen; Back and Next play one step and hold, Play goes
+// back to the loop. Under reduced motion nothing plays: the stage rests on its
+// summary and Back and Next show each step as a still frame.
 export function FlowSwarm({ children }: { children: ReactNode }) {
   const headRef = useRef<HTMLDivElement>(null);
   const clockRef = useRef<HTMLSpanElement>(null);
   const captionRef = useRef<HTMLParagraphElement>(null);
   const boxRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const api = useRef<{ goTo: (step: number) => void; setAuto: (auto: boolean) => void } | null>(null);
+  const [step, setStep] = useState(0);
+  const [auto, setAutoState] = useState(true);
+  const [reduced, setReduced] = useState(false);
 
   useEffect(() => {
     const head = headRef.current, clock = clockRef.current, caption = captionRef.current, box = boxRef.current, canvas = canvasRef.current;
@@ -28,15 +34,14 @@ export function FlowSwarm({ children }: { children: ReactNode }) {
     const wide = window.matchMedia(WIDE);
     const style = getComputedStyle(box);
     const colors: SwarmColors = { bee: style.getPropertyValue("--hive-bee").trim(), glow: style.getPropertyValue("--hive-glow").trim() };
-    let model = buildSwarm(LAYOUTS[wide.matches ? "wide" : "tall"]);
-    let raf = 0, onScreen = false, elapsed = 0, last = 0, shown = "";
+    let model: SwarmModel = buildSwarm(LAYOUTS[wide.matches ? "wide" : "tall"]);
+    let raf = 0, onScreen = false, elapsed = 0, last = 0, shown = "", isAuto = !reduce.matches, holdAt: number | null = null, stepShown = 0;
 
     const fit = () => {
       const dpr = Math.min(2, window.devicePixelRatio || 1);
-      const w = box.clientWidth, h = box.clientHeight;
-      canvas.width = Math.round(w * dpr);
-      canvas.height = Math.round(h * dpr);
-      const scale = (w / model.layout.width) * dpr;
+      canvas.width = Math.round(box.clientWidth * dpr);
+      canvas.height = Math.round(box.clientHeight * dpr);
+      const scale = (box.clientWidth / model.layout.width) * dpr;
       ctx.setTransform(scale, 0, 0, scale, 0, 0);
     };
     const paint = () => {
@@ -49,49 +54,64 @@ export function FlowSwarm({ children }: { children: ReactNode }) {
         shown = key;
         clock.textContent = entry.time;
         caption.textContent = flow.captions[entry.caption];
+        head.dataset.live = "true";
       }
+      const s = flowStepAt(t);
+      if (s !== stepShown) { stepShown = s; setStep(s); }
     };
     const frame = (now: number) => {
       elapsed += Math.min(0.1, (now - last) / 1000);
       last = now;
+      if (holdAt !== null && elapsed >= holdAt) { elapsed = holdAt; paint(); raf = 0; return; }
       paint();
       raf = requestAnimationFrame(frame);
     };
-    const settle = () => {
-      cancelAnimationFrame(raf);
-      raf = 0;
+    const start = () => { if (!raf && onScreen && !document.hidden) { last = performance.now(); raf = requestAnimationFrame(frame); } };
+    const stop = () => { cancelAnimationFrame(raf); raf = 0; };
+    const rest = () => {
+      stop();
+      delete head.dataset.live;
+      shown = "";
+      caption.textContent = flow.rest;
+      ctx.clearRect(0, 0, model.layout.width, model.layout.height);
     };
     const update = () => {
-      const live = onScreen && !reduce.matches && !document.hidden;
-      if (live && !raf) {
-        head.dataset.live = "true";
-        last = performance.now();
-        raf = requestAnimationFrame(frame);
-      } else if (!live && raf) settle();
-      if (reduce.matches) {
-        settle();
-        delete head.dataset.live;
-        shown = "";
-        caption.textContent = flow.rest;
-        ctx.clearRect(0, 0, model.layout.width, model.layout.height);
-      }
+      setReduced(reduce.matches);
+      if (reduce.matches && isAuto) { isAuto = false; setAutoState(false); holdAt = null; rest(); return; }
+      if (onScreen && !document.hidden && (isAuto || (holdAt !== null && elapsed < holdAt))) start();
+      else stop();
     };
-    const relayout = () => {
-      model = buildSwarm(LAYOUTS[wide.matches ? "wide" : "tall"]);
-      fit();
-      if (!reduce.matches) paint();
+    api.current = {
+      goTo: (s) => {
+        isAuto = false;
+        setAutoState(false);
+        stop();
+        if (reduce.matches) { elapsed = stillAt(s); holdAt = elapsed; paint(); return; }
+        elapsed = FLOW_STEPS[s].start;
+        holdAt = FLOW_STEPS[s].end;
+        start();
+      },
+      setAuto: (on) => {
+        if (reduce.matches) return;
+        isAuto = on;
+        setAutoState(on);
+        holdAt = null;
+        if (on) start(); else stop();
+      },
     };
 
     fit();
     const io = new IntersectionObserver(([entry]) => { onScreen = entry.isIntersecting; update(); });
     io.observe(box);
-    const ro = new ResizeObserver(() => { fit(); if (raf) paint(); });
+    const ro = new ResizeObserver(() => { fit(); if (shown) paint(); });
     ro.observe(box);
+    const relayout = () => { model = buildSwarm(LAYOUTS[wide.matches ? "wide" : "tall"]); fit(); if (shown) paint(); };
     reduce.addEventListener("change", update);
     wide.addEventListener("change", relayout);
     document.addEventListener("visibilitychange", update);
+    update();
     return () => {
-      settle();
+      stop();
       io.disconnect();
       ro.disconnect();
       reduce.removeEventListener("change", update);
@@ -99,6 +119,10 @@ export function FlowSwarm({ children }: { children: ReactNode }) {
       document.removeEventListener("visibilitychange", update);
     };
   }, []);
+
+  const back = useCallback(() => api.current?.goTo(Math.max(0, step - 1)), [step]);
+  const next = useCallback(() => api.current?.goTo(Math.min(FLOW_STEPS.length - 1, step + 1)), [step]);
+  const toggle = useCallback(() => api.current?.setAuto(!auto), [auto]);
 
   return (
     <div className="hive-stage rounded-[22px] lg:rounded-[30px]">
@@ -113,6 +137,9 @@ export function FlowSwarm({ children }: { children: ReactNode }) {
       <div ref={boxRef} className="hive-stage-box">
         <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" aria-hidden="true" />
         {children}
+      </div>
+      <div className="hive-stage-foot">
+        <StepControls step={step} count={FLOW_STEPS.length} playing={auto && !reduced} canPlay={!reduced} onBack={back} onNext={next} onToggle={toggle} label={flow.label} />
       </div>
     </div>
   );

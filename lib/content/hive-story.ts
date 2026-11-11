@@ -44,22 +44,30 @@ export const hiveStoryCopy = {
   why: {
     heading: "Why I built it",
     body: [
-      "Seven of us are building a bee swarm art exhibit, and our real thinking happens in bursts: a hundred Discord messages in an hour, then a doc comes together and gets submitted. Decisions, owners, and numbers end up scattered across chats and docs, and everyone's AI starts from zero.",
-      "I wanted one place that keeps the whole team, and every teammate's AI, on the same page, without anyone changing how they work or having to maintain it.",
+      "Seven of us build one exhibit, and our decisions end up scattered across chats and docs.",
+      "I wanted one shared memory that keeps everyone, and everyone's AI, on the same page with no extra work.",
     ],
+    // The aside: what the exhibit itself is, as an illustration.
+    exhibit: {
+      tag: "Aside: the exhibit itself",
+      body: "Our senior design project is a bee swarm art exhibit: the bees find a person, settle into their outline, and move with them.",
+      note: "An illustration, not the real exhibit.",
+      steps: ["The bees wander.", "Someone walks up.", "The bees settle into their outline.", "They wave, and the bees move with them."],
+      description: "An illustration of the exhibit: wandering bees settle into the outline of a person, and when the person waves, the bees on the arm move with them.",
+    },
   },
 
   steps: {
     heading: "How one fact gets in",
     items: [
-      { title: "Someone says it.", body: "A teammate posts in Discord or edits a doc in Drive. Nobody tags anything or fills out a form." },
-      { title: "AI pulls out the fact and its exact words.", body: "One model reads what's new and proposes facts, each with a quote from its source." },
-      { title: "Code checks the quote is really there.", body: "If the words aren't in the cited message or doc, the fact never lands." },
-      { title: "A stronger model checks that it follows.", body: "It turns away jokes, guesses, and plans written up as if they were done." },
-      { title: "It lands with a link back.", body: "Every fact in the Hive links to the exact message or doc section it came from." },
-      { title: "Disagreements become questions.", body: "When two sources say different things, the Hive keeps both and asks the team instead of picking a winner." },
+      { title: "Someone says it." },
+      { title: "AI pulls out the fact and its exact words." },
+      { title: "Code checks the words are really there." },
+      { title: "A stronger model checks it follows." },
+      { title: "It lands with a link back." },
+      { title: "Disagreements become questions." },
     ],
-    proof: "After the first round of fixes, a hand check of 15 random facts found none wrong.",
+    proof: "After the first fixes, a hand check of 15 random facts found none wrong.",
     // The trip drawing's own words, and its description for screen readers.
     trip: {
       labels: { discord: "Discord", drive: "Drive", hive: "The Hive", question: "open question" },
@@ -69,8 +77,8 @@ export const hiveStoryCopy = {
 
   team: {
     heading: "What my team sees",
-    body: "The team page lives at aaronsulbaran.com/hive behind a private link, drawn in the same bees. Each day of the week is a column of comb: honey cells are due, capped cells are decided, a dashed cell is an AI session waiting on its author, and open questions sit beside the week.",
-    note: "Shown with a made-up team and made-up facts. The real page is being built now and stays private.",
+    body: "A private page in the same bees: honey cells are due, capped cells are decided, dashed cells wait on their author.",
+    note: "Shown with a made-up team and made-up facts. The real page stays private.",
     shots: {
       desktop: { src: "/hive-story/team-page-desktop.jpg", width: 2880, height: 1580, alt: "The team page's This week view on a laptop: a dark page with a honeycomb calendar, honey cells on the days something is due, and three open questions beside the week." },
       phone: { src: "/hive-story/team-page-phone.jpg", width: 780, height: 1688, alt: "The same view on a phone, with the week's comb above the open questions and a Copy for your AI button." },
@@ -82,40 +90,94 @@ export const hiveStoryCopy = {
     now: {
       label: "Running now",
       items: [
-        { title: "The hourly copy", body: "Beekeeper, a read-only bot, and a Drive reader copy new messages and doc changes into a private archive every hour. Only teammates who said yes are stored.", why: "Nobody changes how they work." },
-        { title: "The nightly check", body: "Every night the archive becomes cited facts, checked the way above.", why: "Facts I can put in a report with a link next to them." },
+        { title: "The hourly copy", body: "Discord and Drive, from teammates who said yes." },
+        { title: "The nightly check", body: "Cited facts I can put in a report." },
       ],
     },
     next: {
       label: "Next",
       items: [
-        { title: "The team page", body: "A private page with what's due, who owns what, the open questions, and recent decisions.", why: "One place to look before a meeting or a deadline." },
-        { title: "A connector for everyone's AI", body: "Teammates' assistants search the Hive directly, and add notes from their own sessions: a benchmark, a finding, a decision, a blocker.", why: "Work done in an AI chat doesn't vanish when the chat closes." },
-        { title: "The fast lane", body: "A new note is readable by every teammate's AI within seconds and checked within minutes.", why: "A sprint the night before a deadline can't wait for the nightly run." },
-        { title: "Beekeeper asks the author", body: "One post per batch, mentioning only the note's author. A tap confirms, a reply corrects, and the correction wins.", why: "AI writes the note, and the person whose work it was has the final say." },
+        { title: "The team page", body: "What's due, who owns it, what's open." },
+        { title: "A connector for everyone's AI", body: "Search the Hive, add notes from a session." },
+        { title: "The fast lane", body: "Notes checked in minutes, not overnight." },
+        { title: "Beekeeper asks the author", body: "A tap confirms, a reply corrects." },
       ],
     },
   },
 
   scenarios: {
     heading: "Several people at once",
-    intro: "The Hive rewards trying things in parallel, and people stay in charge of what's true.",
+    intro: "Trying things in parallel pays off, and people still decide what's true.",
     items: [
-      { key: "prototypes", title: "Three prototypes of one part", body: "Three of us try three versions of the same part at once. Each session's notes land side by side, marked unconfirmed, so the comparison is already written down when we pick one." },
-      { key: "ideas", title: "Two ideas in parallel", body: "Two people chase two different ideas. Their findings stay separate, each linked to its own session, and nothing merges until a person decides." },
-      { key: "sprint", title: "The night before a deadline", body: "Five people working at once see each other's results within minutes, not the next morning. Beekeeper asks each author once, and a tap is all it takes." },
+      { key: "prototypes", title: "Three prototypes of one part", body: "Each session's notes land side by side, unconfirmed, ready to compare." },
+      { key: "ideas", title: "Two ideas in parallel", body: "Findings stay apart until a person decides." },
+      { key: "sprint", title: "The night before a deadline", body: "Five people see each other's results in minutes." },
     ] satisfies { key: ScenarioKey; title: string; body: string }[],
   },
 
   calls: {
     heading: "The calls I made",
+    // The demo: a teammate's AI uses the Hive's own tool, then Beekeeper asks the author.
+    loop: {
+      label: "From a teammate's AI to the author's tap",
+      ai: {
+        title: "Any AI assistant",
+        ask: "Save this benchmark to the Hive.",
+        tool: "hive_add_note",
+        args: "kind: finding",
+        result: "Saved. Just in, not yet checked.",
+      },
+      discord: {
+        channel: "beekeeper",
+        name: "Beekeeper",
+        app: "APP",
+        time: "9:06 PM",
+        lead: "1 fact landed from",
+        author: "Ada",
+        tail: "'s AI session",
+        source: "AI session note",
+        badges: { unconfirmed: "AI session, unconfirmed", confirmed: "Confirmed by Ada", corrected: "Corrected by Ada" },
+        reply: "replied",
+      },
+      reacts: { pending: "Waiting on the author", confirmed: "Confirmed", corrected: "Corrected" },
+      steps: [
+        "A teammate's AI saves a note with the Hive's own tool.",
+        "Beekeeper posts once, tagging only the author.",
+        "A react is already waiting.",
+        "A tap confirms.",
+        "Or a reply corrects, and the correction wins.",
+      ],
+      description: "A demo: an AI assistant calls hive_add_note to save a finding; within minutes Beekeeper posts once in #beekeeper, mentioning only the author, with a pending react already placed; the author's tap turns it to confirmed, or the author's reply corrects the fact.",
+    },
+    toolsLabel: "Built for the Hive",
+    tools: {
+      connector: {
+        label: "The connector, for any AI assistant",
+        items: [
+          { name: "hive_now", body: "What's due, who owns it, what just landed" },
+          { name: "hive_search", body: "Facts, each with its source" },
+          { name: "hive_page", body: "A person, a doc, a requirement" },
+          { name: "hive_questions", body: "Open questions, both sides" },
+          { name: "hive_add_note", body: "A note from your session" },
+          { name: "hive_sync", body: "Pull Discord now" },
+        ],
+      },
+      beekeeper: {
+        label: "Beekeeper, only in #beekeeper",
+        items: [
+          { name: "/ask", body: "Answers with sources" },
+          { name: "One post per batch", body: "Tags only the author" },
+          { name: "Its own reacts", body: "Waiting, confirmed, corrected" },
+        ],
+      },
+    },
     items: [
-      { title: "Read only.", body: "Beekeeper reads and never writes back to our docs, and it only speaks in its own channel. The cost: it can point at a problem but never fix it." },
-      { title: "Consent first.", body: "Only teammates who said yes are stored, and removing someone erases them on the next run." },
-      { title: "A question instead of a guess.", body: "When sources disagree, the Hive asks. It's slower than picking a winner, but it's never confidently wrong about who decided what." },
-      { title: "Nothing ranks anyone.", body: "A person's page holds their role and what they own. No message counts, no activity scores." },
-      { title: "Schedules, not servers.", body: "Everything runs on a timer on free tiers. The trade is that facts can lag by up to a day, which is what the fast lane is for." },
-      { title: "People have the final say.", body: "AI notes never post to Discord and never overwrite a fact. The author confirms or corrects." },
+      { title: "Read only.", body: "It points at problems, never edits." },
+      { title: "Consent first.", body: "Only teammates who said yes." },
+      { title: "Ask, don't guess.", body: "Disagreements become questions." },
+      { title: "No rankings.", body: "Roles and owned items only." },
+      { title: "Schedules, not servers.", body: "$0, nothing to keep alive." },
+      { title: "People decide.", body: "AI notes wait for their author." },
     ],
   },
 
@@ -137,7 +199,7 @@ export const hiveStoryCopy = {
       { label: "Work", href: "/#work" },
       { label: "Proof of work", href: "/#numbers" },
       { label: "Connect", href: "/#connect" },
-      { label: "The MVP, my 30-second version", href: "/quick" },
+      { label: "my 30-second M(inimum) V(iable) P(ortfolio)", href: "/quick" },
     ],
     productsLabel: "Other things I've built",
     products: [
@@ -147,4 +209,6 @@ export const hiveStoryCopy = {
   },
   // Under the hero, so the way back to the portfolio is on the first screen too.
   backLink: { label: "See the rest of my portfolio", href: "/" },
+  // Every animation on the page can be stepped by hand.
+  controls: { group: "step through", back: "Back", next: "Next", pause: "Pause", play: "Play", count: (n: number, total: number) => `${n} of ${total}` },
 } as const;

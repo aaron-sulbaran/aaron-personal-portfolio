@@ -4,6 +4,7 @@ import { hiveStoryCopy } from "@/lib/content/hive-story";
 import { HIVE_SHOT_SIZES } from "@/lib/photoSizes";
 import { HiveFlow } from "./Drawings";
 import { FactTrip } from "./FactTrip";
+import { ExhibitSwarm } from "./ExhibitSwarm";
 import { FactTripPlayer } from "./FactTripPlayer";
 import { SiteLink } from "./StoryBottom";
 
@@ -34,9 +35,14 @@ export function StoryHero() {
 export function WhySection() {
   return (
     <section aria-labelledby="hive-why" className="hive-section hive-wrap">
-      <SectionHeading id="hive-why">{why.heading}</SectionHeading>
-      <div className="mt-6 grid max-w-[44rem] gap-4 text-[1.0625rem] leading-[1.6] lg:text-[1.15rem]">
-        {why.body.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+      <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.85fr)] lg:items-start lg:gap-16">
+        <div>
+          <SectionHeading id="hive-why">{why.heading}</SectionHeading>
+          <div className="mt-6 grid max-w-[36rem] gap-4 text-[1.125rem] leading-[1.55] lg:text-[1.25rem]">
+            {why.body.map((line) => <p key={line}>{line}</p>)}
+          </div>
+        </div>
+        <ExhibitSwarm />
       </div>
     </section>
   );
@@ -52,14 +58,11 @@ export function StepsSection() {
           <div className="lg:order-2 lg:sticky lg:top-24">
             <FactTrip />
           </div>
-          <ol className="grid gap-6 lg:order-1">
+          <ol className="grid gap-4 lg:order-1 lg:gap-5">
             {steps.items.map((step, i) => (
-              <li key={step.title} data-step-item className="hive-step grid grid-cols-[1.75rem_minmax(0,1fr)] gap-x-3">
+              <li key={step.title} data-step-item className="hive-step grid grid-cols-[1.75rem_minmax(0,1fr)] items-center gap-x-3">
                 <span aria-hidden="true" className="hive-step-n font-label text-label tabular-nums">{i + 1}</span>
-                <div className="min-w-0">
-                  <h3 className="text-[1.0625rem] font-semibold leading-snug">{step.title}</h3>
-                  <p className="mt-1 leading-[1.55] text-muted">{step.body}</p>
-                </div>
+                <p className="min-w-0 text-[1.0625rem] font-semibold leading-snug lg:text-[1.15rem]">{step.title}</p>
               </li>
             ))}
           </ol>
@@ -103,14 +106,13 @@ export function StatusSection() {
         {columns.map((column) => (
           <div key={column.label}>
             <h3 className="flex items-center gap-3 font-label text-label-lg"><Marker next={column.next} />{column.label}</h3>
-            <ul className="mt-5 grid gap-6">
+            <ul className="mt-5 grid gap-4">
               {column.items.map((item) => (
                 <li key={item.title} className="grid grid-cols-[0.75rem_minmax(0,1fr)] gap-x-4">
                   <span className="pt-[0.45rem]"><Marker next={column.next} /></span>
                   <div className="min-w-0">
                     <p className="font-semibold">{item.title}</p>
-                    <p className="mt-1 leading-[1.55]">{item.body}</p>
-                    <p className="mt-1 leading-[1.55] text-muted">{item.why}</p>
+                    <p className="mt-0.5 leading-[1.55] text-muted">{item.body}</p>
                   </div>
                 </li>
               ))}

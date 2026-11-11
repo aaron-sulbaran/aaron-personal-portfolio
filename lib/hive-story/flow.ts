@@ -198,6 +198,20 @@ export const CLOCK: readonly { at: number; time: string; caption: number }[] = [
   { at: 10.2, time: "21:06", caption: 4 },
 ];
 
+/** The flow's steps for reading it by hand, one per caption: the hours, the night, the fast lane, the read, the tap. */
+export const FLOW_STEPS: readonly { start: number; end: number }[] = [
+  { start: 0, end: 3.7 }, { start: 3.8, end: 6.95 }, { start: 7.0, end: 8.85 }, { start: 8.9, end: 10.15 }, { start: 10.2, end: 12.6 },
+];
+
+export function flowStepAt(t: number): number {
+  let index = 0;
+  FLOW_STEPS.forEach((step, i) => { if (t >= step.start) index = i; });
+  return index;
+}
+
+/** The still frame a step shows under reduced motion: its bees caught mid-way. */
+export const stillAt = (step: number) => FLOW_STEPS[step].start + 0.55 * (FLOW_STEPS[step].end - FLOW_STEPS[step].start);
+
 export function clockAt(t: number) {
   return CLOCK.reduce((current, entry) => (t >= entry.at ? entry : current), CLOCK[0]);
 }

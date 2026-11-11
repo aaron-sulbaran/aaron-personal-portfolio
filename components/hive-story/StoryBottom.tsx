@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { hiveStoryCopy } from "@/lib/content/hive-story";
 import { ScenarioSwarm } from "./Drawings";
+import { HiveLoopDemo } from "./HiveLoopDemo";
 import { SectionHeading } from "./StoryTop";
 
 const { scenarios, calls, numbers, more, framing } = hiveStoryCopy;
@@ -24,15 +25,40 @@ export function ScenariosSection() {
   );
 }
 
+function Marker() {
+  return <span aria-hidden="true" className="hive-marker hive-marker-next mt-[0.45rem]" />;
+}
+
+/** The calls, shown before they're said: the demo of an AI note reaching its author, the tools built for the Hive, then each call in a line. */
 export function CallsSection() {
+  const { tools } = calls;
   return (
     <section aria-labelledby="hive-calls" className="hive-section hive-wrap">
       <SectionHeading id="hive-calls">{calls.heading}</SectionHeading>
-      <dl className="mt-10 grid gap-x-16 gap-y-7 lg:grid-cols-2">
+      <div className="mt-10">
+        <HiveLoopDemo />
+      </div>
+      <h3 className="mt-14 font-label text-label-lg">{calls.toolsLabel}</h3>
+      <div className="mt-5 grid gap-10 md:grid-cols-2 md:gap-12">
+        {[tools.connector, tools.beekeeper].map((group) => (
+          <div key={group.label} className="min-w-0">
+            <p className="flex items-center gap-3 font-semibold"><Marker />{group.label}</p>
+            <ul className="mt-3 grid gap-3 sm:gap-2">
+              {group.items.map((tool) => (
+                <li key={tool.name} className="grid gap-x-4 leading-[1.45] sm:grid-cols-[minmax(0,11rem)_minmax(0,1fr)]">
+                  {/^(hive_|\/)/.test(tool.name) ? <code className="hive-tool-name">{tool.name}</code> : <span className="font-semibold">{tool.name}</span>}
+                  <span className="text-muted">{tool.body}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+      <dl className="mt-14 grid gap-x-12 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
         {calls.items.map((item) => (
           <div key={item.title} className="min-w-0">
             <dt className="font-semibold">{item.title}</dt>
-            <dd className="mt-1 leading-[1.55] text-muted">{item.body}</dd>
+            <dd className="m-0 text-muted">{item.body}</dd>
           </div>
         ))}
       </dl>
@@ -56,6 +82,11 @@ export function NumbersSection() {
   );
 }
 
+/** Aaron's MVP label, "M(inimum) V(iable) P(ortfolio)": the three capitals carry the weight. */
+function MvpLabel({ text }: { text: string }) {
+  return <>{text.split(/([MVP])(?=\()/).map((part, i) => (/^[MVP]$/.test(part) ? <b key={i}>{part}</b> : part))}</>;
+}
+
 /** A link home: a plain path goes through next/link, a section of the home through a real navigation, as the Menu does (lib/scroll.ts), so the home places the scroll. */
 export function SiteLink({ href, children }: { href: string; children: ReactNode }) {
   if (href.includes("#")) return <a href={href} className="hive-link">{children}</a>;
@@ -68,7 +99,7 @@ export function MoreSection() {
       <SectionHeading id="hive-more">{more.heading}</SectionHeading>
       <ul className="mt-6 flex flex-wrap gap-x-8 gap-y-3 text-[1.0625rem]">
         {more.site.map((link) => (
-          <li key={link.href}><SiteLink href={link.href}>{link.label}</SiteLink></li>
+          <li key={link.href}><SiteLink href={link.href}>{link.href === "/quick" ? <MvpLabel text={link.label} /> : link.label}</SiteLink></li>
         ))}
       </ul>
       <h3 className="mt-8 font-label text-label">{more.productsLabel}</h3>
