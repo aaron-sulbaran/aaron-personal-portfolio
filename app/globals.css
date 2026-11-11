@@ -1698,9 +1698,9 @@ html:has(main[data-page="hive-visual"]) {
   color-scheme: light;
 }
 html:has(main[data-page="hive-visual"]) [data-mark-trigger] { color: var(--hive-light); }
-/* Aaron's white logo is about 1.7:1 on honey. The edge option (data-logo-edge
-   on the page's main, off until he picks it) rims the logo and the closed Menu
-   pill in bee ink, so their edges meet honey at over 10:1 and the logo stays white. */
+/* Aaron's white logo is about 1.7:1 on honey. The edge (data-logo-edge on the
+   page's main, his pick) rims the logo and the closed Menu pill in bee ink, so
+   their edges meet honey at over 10:1 and the logo stays white. */
 html:has(main[data-page="hive-visual"][data-logo-edge]) [data-mark-trigger] {
   filter: drop-shadow(1px 0 0 var(--hive-bee)) drop-shadow(-1px 0 0 var(--hive-bee)) drop-shadow(0 1px 0 var(--hive-bee)) drop-shadow(0 -1px 0 var(--hive-bee));
 }

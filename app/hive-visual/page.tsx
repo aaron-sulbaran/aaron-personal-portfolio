@@ -18,9 +18,10 @@ export const metadata: Metadata = {
   openGraph: { title: hiveStoryCopy.title, description: hiveStoryCopy.description, url: "/hive-visual" },
 };
 
-// Aaron asked for the AS logo white on honey (about 1.7:1). true rims it, and
-// the Menu pill, in bee ink so it reads at 3:1 or better; his call.
-const LOGO_EDGE = false;
+// The AS logo is white on honey (Aaron), rimmed in bee ink with the Menu pill so
+// it reads at 3:1 or better and matches the page's ink on honey (his pick,
+// 2026-11-10). false leaves the logo plain white, about 1.7:1.
+const LOGO_EDGE = true;
 
 export default function HiveStoryPage() {
   if (HOLDING_MODE) redirect("/");
