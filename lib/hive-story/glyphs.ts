@@ -1,6 +1,6 @@
 import { checkDots, dotsAlong, hexLattice, preparePath, roundedRectDots, type Point } from "./dots";
 
-// The scenario swarms on /hive-story, in the same bees as the flow: one small
+// The scenario swarms on /hive-visual, in the same bees as the flow: one small
 // swarm per scenario, in a fixed box so each is one SVG viewBox.
 
 /* ---------- scenario swarms ---------- */

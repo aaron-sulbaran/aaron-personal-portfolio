@@ -5,8 +5,9 @@ import { HIVE_SHOT_SIZES } from "@/lib/photoSizes";
 import { HiveFlow } from "./Drawings";
 import { FactTrip } from "./FactTrip";
 import { FactTripPlayer } from "./FactTripPlayer";
+import { SiteLink } from "./StoryBottom";
 
-const { title, lede, framing, why, steps, team, status } = hiveStoryCopy;
+const { title, lede, framing, backLink, why, steps, team, status } = hiveStoryCopy;
 
 export function SectionHeading({ id, children }: { id: string; children: ReactNode }) {
   return <h2 id={id} className="font-display text-[clamp(2rem,4.5vw,3.25rem)] leading-[1.05] tracking-[-0.02em] text-balance">{children}</h2>;
@@ -23,7 +24,9 @@ export function StoryHero() {
       <div className="mt-5 lg:mt-10">
         <HiveFlow />
       </div>
-      <p className="mt-3 max-w-[40rem] text-sm text-muted lg:text-[0.95rem]">{framing}</p>
+      <p className="mt-3 max-w-[44rem] text-sm text-muted lg:text-[0.95rem]">
+        {framing} <SiteLink href={backLink.href}>{backLink.label}</SiteLink>
+      </p>
     </header>
   );
 }

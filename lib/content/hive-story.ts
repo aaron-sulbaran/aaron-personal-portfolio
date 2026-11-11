@@ -1,7 +1,7 @@
 import type { ScenarioKey } from "@/lib/hive-story/glyphs";
 import type { NodeKey } from "@/lib/hive-story/flow";
 
-// /hive-story: the public, 60-second story of FH08 Hive. Draft copy, 2026-11-10,
+// /hive-visual: the public, 60-second story of FH08 Hive. Draft copy, 2026-11-10,
 // written from Aaron's own words in the Hive's design and decision records,
 // for his edit. Public on purpose: no teammates, no messages or quotes, no
 // company names, and nothing a reader could take for team data.
@@ -130,12 +130,21 @@ export const hiveStoryCopy = {
   },
 
   more: {
-    heading: "More of what I build",
-    links: [
-      { label: "My site", href: "/", external: false },
-      { label: "The MVP, my 30-second version", href: "/quick", external: false },
-      { label: "min/Max", href: "https://getminmax.com", external: true },
-      { label: "Muse Friends", href: "https://musefriends.tech", external: true },
+    heading: "The rest of my portfolio",
+    // The home's own sections, named as the Menu names them, then the other products.
+    site: [
+      { label: "About me", href: "/#about" },
+      { label: "Work", href: "/#work" },
+      { label: "Proof of work", href: "/#numbers" },
+      { label: "Connect", href: "/#connect" },
+      { label: "The MVP, my 30-second version", href: "/quick" },
+    ],
+    productsLabel: "Other things I've built",
+    products: [
+      { label: "min/Max", href: "https://getminmax.com" },
+      { label: "Muse Friends", href: "https://musefriends.tech" },
     ],
   },
+  // Under the hero, so the way back to the portfolio is on the first screen too.
+  backLink: { label: "See the rest of my portfolio", href: "/" },
 } as const;

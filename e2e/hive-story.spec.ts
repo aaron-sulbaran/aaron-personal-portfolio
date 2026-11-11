@@ -1,11 +1,11 @@
 import { test, expect } from "./support/fixtures";
 import { hiveStoryCopy } from "@/lib/content/hive-story";
 
-// /hive-story, FH08 Hive's public story: every word in the server HTML, a
+// /hive-visual, FH08 Hive's public story: every word in the server HTML, a
 // phone's first screen that says what it is, bees that fly only when they
 // should, and a page that stays out of search and the sitemap until Aaron says.
 
-const PATH = "/hive-story";
+const PATH = "/hive-visual";
 
 test("hive story: the server HTML carries every word and the whole diagram, and asks not to be indexed", async ({ request }) => {
   const html = await (await request.get(PATH)).text();
@@ -120,10 +120,16 @@ test("hive story: the bees pause once the stage scrolls away", async ({ page }) 
   expect(await clock.textContent()).toBe(parked);
 });
 
+test("hive story: links back to every part of the portfolio, from the first screen and the end", async ({ page }) => {
+  await page.goto(PATH);
+  await expect(page.locator(`#main header a[href="${hiveStoryCopy.backLink.href}"]`)).toBeVisible();
+  for (const link of hiveStoryCopy.more.site) await expect(page.locator(`#main a[href="${link.href}"]`)).toHaveText(link.label);
+});
+
 test("hive story: links out open in a new tab without an opener", async ({ page }) => {
   await page.goto(PATH);
   const external = page.locator('#main a[href^="https://"]');
-  expect(await external.count()).toBe(hiveStoryCopy.more.links.filter((link) => link.external).length);
+  expect(await external.count()).toBe(hiveStoryCopy.more.products.length);
   for (const link of await external.all()) {
     await expect(link).toHaveAttribute("target", "_blank");
     await expect(link).toHaveAttribute("rel", "noopener noreferrer");

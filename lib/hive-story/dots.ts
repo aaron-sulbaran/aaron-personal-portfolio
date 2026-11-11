@@ -1,4 +1,4 @@
-// Dot geometry for /hive-story. Everything on the page is drawn the way
+// Dot geometry for /hive-visual. Everything on the page is drawn the way
 // Beekeeper's avatar is: evenly spaced dots ("bees") tracing a shape. These are
 // pure functions, shared by the server-rendered SVG and the client's canvas.
 

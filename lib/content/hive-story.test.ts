@@ -3,7 +3,7 @@ import { hiveStoryCopy } from "@/lib/content/hive-story";
 import { CLOCK } from "@/lib/hive-story/flow";
 import { walkStrings } from "@/lib/testing/walk";
 
-// /hive-story is public: these pin the rules from its brief, not the wording.
+// /hive-visual is public: these pin the rules from its brief, not the wording.
 const leaves = walkStrings(hiveStoryCopy);
 
 describe("the Hive story's copy", () => {
@@ -36,10 +36,9 @@ describe("the Hive story's copy", () => {
     for (const entry of CLOCK) expect(hiveStoryCopy.flow.captions[entry.caption]).toBeTruthy();
   });
 
-  it("links within the site by path and out of it over https", () => {
-    for (const link of hiveStoryCopy.more.links) {
-      if (link.external) expect(link.href.startsWith("https://")).toBe(true);
-      else expect(link.href.startsWith("/")).toBe(true);
-    }
+  it("links back to every part of the portfolio by path, and out over https", () => {
+    expect(hiveStoryCopy.more.site.map((link) => link.href)).toEqual(["/#about", "/#work", "/#numbers", "/#connect", "/quick"]);
+    expect(hiveStoryCopy.backLink.href).toBe("/");
+    for (const link of hiveStoryCopy.more.products) expect(link.href.startsWith("https://")).toBe(true);
   });
 });

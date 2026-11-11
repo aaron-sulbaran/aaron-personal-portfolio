@@ -14,8 +14,8 @@ export const metadata: Metadata = {
   title: hiveStoryCopy.title,
   description: hiveStoryCopy.description,
   robots: { index: false, follow: true },
-  alternates: { canonical: "/hive-story" },
-  openGraph: { title: hiveStoryCopy.title, description: hiveStoryCopy.description, url: "/hive-story" },
+  alternates: { canonical: "/hive-visual" },
+  openGraph: { title: hiveStoryCopy.title, description: hiveStoryCopy.description, url: "/hive-visual" },
 };
 
 export default function HiveStoryPage() {

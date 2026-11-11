@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { hiveStoryCopy } from "@/lib/content/hive-story";
 import { ScenarioSwarm } from "./Drawings";
 import { SectionHeading } from "./StoryTop";
@@ -13,7 +14,7 @@ export function ScenariosSection() {
       <ul className="mt-10 grid gap-8 md:grid-cols-3 md:gap-6">
         {scenarios.items.map((item) => (
           <li key={item.key} className="min-w-0">
-            <div className="rounded-[18px] bg-[var(--hive-honey)] p-3"><ScenarioSwarm scenario={item.key} /></div>
+            <div className="rounded-[18px] bg-[var(--hive-panel)] p-3"><ScenarioSwarm scenario={item.key} /></div>
             <h3 className="mt-4 text-[1.0625rem] font-semibold">{item.title}</h3>
             <p className="mt-1.5 leading-[1.55] text-muted">{item.body}</p>
           </li>
@@ -55,18 +56,26 @@ export function NumbersSection() {
   );
 }
 
+/** A link home: a plain path goes through next/link, a section of the home through a real navigation, as the Menu does (lib/scroll.ts), so the home places the scroll. */
+export function SiteLink({ href, children }: { href: string; children: ReactNode }) {
+  if (href.includes("#")) return <a href={href} className="hive-link">{children}</a>;
+  return <Link href={href} className="hive-link">{children}</Link>;
+}
+
 export function MoreSection() {
   return (
     <section aria-labelledby="hive-more" className="hive-section hive-wrap pb-32">
       <SectionHeading id="hive-more">{more.heading}</SectionHeading>
       <ul className="mt-6 flex flex-wrap gap-x-8 gap-y-3 text-[1.0625rem]">
-        {more.links.map((link) => (
+        {more.site.map((link) => (
+          <li key={link.href}><SiteLink href={link.href}>{link.label}</SiteLink></li>
+        ))}
+      </ul>
+      <h3 className="mt-8 font-label text-label">{more.productsLabel}</h3>
+      <ul className="mt-3 flex flex-wrap gap-x-8 gap-y-3 text-[1.0625rem]">
+        {more.products.map((link) => (
           <li key={link.href}>
-            {link.external ? (
-              <a href={link.href} target="_blank" rel="noopener noreferrer" className="hive-link">{link.label}</a>
-            ) : (
-              <Link href={link.href} className="hive-link">{link.label}</Link>
-            )}
+            <a href={link.href} target="_blank" rel="noopener noreferrer" className="hive-link">{link.label}</a>
           </li>
         ))}
       </ul>

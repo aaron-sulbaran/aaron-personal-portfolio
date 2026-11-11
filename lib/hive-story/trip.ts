@@ -9,7 +9,7 @@ import {
   type Point,
 } from "./dots";
 
-// One fact's trip, drawn in bees (the second section of /hive-story, from
+// One fact's trip, drawn in bees (the second section of /hive-visual, from
 // direction B): a Discord message, its quote, the code check, the stronger
 // check, the fact landing in the Hive with a thread back to its source, then a
 // Drive doc that disagrees and a question. Every part carries the step (1 to 6)

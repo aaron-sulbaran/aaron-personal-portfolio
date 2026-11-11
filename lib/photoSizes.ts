@@ -66,7 +66,7 @@ export const PAGER_PHOTO_SIZES = `calc(100vw - ${GALLERY.pager.insetPx}px)`;
 // (one pop height a side): the frame's side, widened by the crop when the photo is landscape.
 export const popSquareSizes = (sourceAspect: number): string => `${Math.ceil(POP_PHOTO.height.desktop * coverScale(sourceAspect, 1))}px`;
 
-// /hive-story's two screenshots of the team page: the desktop shot spans the
+// /hive-visual's two screenshots of the team page: the desktop shot spans the
 // content column next to the phone shot from 768px up; below that only the
 // phone shot shows, at most 320px wide.
 export const HIVE_SHOT_SIZES = {
