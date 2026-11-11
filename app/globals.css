@@ -1789,7 +1789,8 @@ html:has(main[data-page="hive-visual"][data-logo-edge]) [data-menu-pill]:not([ro
 
 /* The AI-to-author demo: a generic AI pane and Beekeeper's channel. */
 .hive-loop-panes { display: grid; gap: 16px; }
-@media (min-width: 900px) { .hive-loop-panes { grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); align-items: start; } }
+/* Side by side, the two panes share an edge: the shorter one stretches. */
+@media (min-width: 900px) { .hive-loop-panes { grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); align-items: stretch; } }
 .hive-loop [data-in] { transition: opacity 360ms var(--ease-out); }
 .hive-loop [data-off] { opacity: 0.12; }
 .hive-loop .hive-react[data-off], .hive-loop .hive-badge[data-off], .hive-loop .hive-discord-fact > span[data-off] { display: none; }
