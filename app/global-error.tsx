@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { Onest } from "next/font/google";
 import { ErrorPanel } from "@/components/ErrorPanel";
-import { reportClientError } from "@/components/SiteAnalytics";
+import { ensureAnalytics, reportClientError } from "@/components/SiteAnalytics";
 import { profaBlack, profaBold } from "@/lib/fonts";
 import { themeInitScript } from "@/lib/theme";
 import "./globals.css";
@@ -25,6 +25,7 @@ type Props = {
 export default function GlobalError({ error, reset }: Props) {
   useEffect(() => {
     console.error(error);
+    ensureAnalytics();
     reportClientError("global-error", error);
   }, [error]);
 
