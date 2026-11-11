@@ -1,5 +1,6 @@
 import { siteContent } from "@/lib/content";
 import { OG_SIZE } from "@/lib/og/constants";
+import { LLMS_ALTERNATE } from "@/lib/agents/alternate";
 
 // Next replaces the parent's openGraph and twitter objects whole when a page
 // sets its own, so the fields the root layout sets for every page live here
@@ -22,6 +23,6 @@ export function pageShare({ path, title, description }: Share) {
   return {
     openGraph: { ...OPEN_GRAPH_BASE, title, description, url: path, images: [SHARE_IMAGE] },
     twitter: { ...TWITTER_BASE, title, description, images: [SHARE_IMAGE] },
-    alternates: { canonical: path },
+    alternates: { canonical: path, types: LLMS_ALTERNATE },
   };
 }

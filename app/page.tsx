@@ -4,6 +4,7 @@ import { Footer } from "@/components/Footer";
 import { PathLayer } from "@/components/soundtrack/path/PathLayer";
 import { Holding } from "@/components/Holding";
 import { JsonLd } from "@/components/JsonLd";
+import { LLMS_ALTERNATE } from "@/lib/agents/alternate";
 import { HOLDING_MODE } from "@/lib/holding";
 import { DealLabMount } from "@/components/home/DealLabMount";
 import { HeroLabMount } from "@/components/home/HeroLabMount";
@@ -15,7 +16,7 @@ import { NumbersStrip } from "@/components/metrics/NumbersStrip";
 import { MarkCardSource } from "@/components/mark/MarkCardSource";
 
 // The canonical is the bare origin; /quick sets its own (lib/pageShare.ts).
-export const metadata: Metadata = { alternates: { canonical: "/" } };
+export const metadata: Metadata = { alternates: { canonical: "/", types: LLMS_ALTERNATE } };
 
 // The contribution figures refresh once a day (lib/metrics/github.ts); a
 // literal, because Next reads segment config statically.

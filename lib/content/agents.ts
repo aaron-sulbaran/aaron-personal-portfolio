@@ -9,7 +9,8 @@ export const agentsCopy = {
   nextLead: "What I'm looking for next:",
   // The role the structured data names; the first sentence of the home page.
   jobTitle: "Product-focused engineer",
-  alumniOf: "The University of Texas at Austin",
+  // Where I study now; affiliation, not alumniOf, until I graduate.
+  university: "The University of Texas at Austin",
   pages: {
     heading: "Pages",
     home: "The home page: who I am, my cards (the experience below), proof of work, and how to reach me.",

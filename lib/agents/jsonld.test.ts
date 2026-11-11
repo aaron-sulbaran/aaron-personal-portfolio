@@ -13,7 +13,8 @@ describe("person JSON-LD", () => {
   it("names the person, the role and the university", () => {
     expect(person.name).toBe("Aaron Sulbaran");
     expect(person.jobTitle).toBe("Product-focused engineer");
-    expect(person.alumniOf).toMatchObject({ name: "The University of Texas at Austin" });
+    expect(person.affiliation).toMatchObject({ name: "The University of Texas at Austin" });
+    expect(person.alumniOf).toBeUndefined();
     expect(person.url).toBe("https://aaronsulbaran.com");
   });
 
