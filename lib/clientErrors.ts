@@ -6,37 +6,18 @@ import { isPrivatePath } from "@/lib/analytics";
 
 export const CLIENT_ERROR_EVENT = "client_error";
 export const MAX_ERROR_REPORTS = 3;
-const MESSAGE_MAX = 120;
 
 type ErrorLike = { name?: unknown; message?: unknown; digest?: unknown };
 
-// Anything glued to a token with "?" or "#" loses the rest of that token (URLs, paths, bracketed
-// or uppercase-scheme forms alike), and so does a token that starts with one. Prose like
-// "fail? Unknown" and "React error #418" has a space on one side and is untouched. A stack is never read.
-const stripUrlQueries = (text: string) => text.replace(/(\S)[?#]\S+/g, "$1").replace(/^[?#]\S*/, "");
-
-const EMAIL = /[^\s@<>()[\]]+@[^\s@<>()[\]]+\.[^\s@<>()[\]]+/g;
-const KEY_VALUE = /([A-Za-z0-9_.-]+)=[^\s&]+/g;
-const LOCAL_PATH = /(?:\/(?:Users|home)\/[^/\s]+\/|[A-Za-z]:\\Users\\[^\\\s]+\\)\S*/gi;
-const OPAQUE_TOKEN = /[A-Za-z0-9_+/=-]{24,}/g;
 const IDENTIFIER = /^[A-Za-z][A-Za-z0-9_]{0,39}$/;
 const DIGEST = /^[A-Za-z0-9_-]{1,32}$/;
-
-// Browser-generated and library text can still hold an address, a secret in a key=value pair, a
-// local path or a long opaque id. Order matters: the email goes first so "email=a@example.com" ends as "email=<v>".
-const maskMessage = (text: string) =>
-  stripUrlQueries(text)
-    .replace(EMAIL, "<email>")
-    .replace(KEY_VALUE, "$1=<v>")
-    .replace(LOCAL_PATH, "<path>")
-    .replace(OPAQUE_TOKEN, "<token>")
-    .slice(0, MESSAGE_MAX);
 
 const isErrorLike = (value: unknown): value is ErrorLike =>
   typeof value === "object" && value !== null && typeof (value as ErrorLike).message === "string";
 
-// "Name: message (digest d)": enough to tell errors apart, nothing that identifies a visitor.
-// A thrown value that is not error-like contributes only its type, never its content.
+// Contract: detail carries only the error's class name and Next's digest. Message text can hold
+// anything a page or a visitor put into it, so it never leaves the browser; it is only type-checked.
+// A thrown value that is not error-like contributes only its type.
 export function errorDetail(value: unknown): string {
   if (!isErrorLike(value)) {
     const kind = value === null || value === undefined ? "unknown" : typeof value;
@@ -44,11 +25,12 @@ export function errorDetail(value: unknown): string {
   }
   const name = typeof value.name === "string" && IDENTIFIER.test(value.name) ? value.name : "Error";
   const digest = typeof value.digest === "string" && DIGEST.test(value.digest) ? value.digest : "";
-  return `${name}: ${maskMessage(value.message as string)}${digest ? ` (digest ${digest})` : ""}`;
+  return `${name}${digest ? ` (digest ${digest})` : ""}`;
 }
 
 // A cross-origin script failure reaches window.onerror as a bare "Script error."
-// with no error object; it says nothing, so it is dropped. So is the browser's
+// with no error object; it says nothing, so it is dropped. The message is read here only to
+// drop noise; none of it is sent. So is the browser's
 // benign "ResizeObserver loop ..." notice, which also arrives with no error object
 // and would use up the report budget on every load.
 export function windowErrorValue(event: { error?: unknown; message?: string }): unknown {
@@ -76,8 +58,10 @@ export function createClientErrorReporter({ send, pathname, isPrivate = isPrivat
       if (!sawPrivate && isPrivate(pathname())) sawPrivate = true;
       if (sawPrivate || sent >= limit) return;
       const detail = errorDetail(value);
-      if (seen.has(detail)) return;
-      seen.add(detail);
+      // Names are coarse, so the same name at a different place is a different report.
+      const key = `${where}\n${detail}`;
+      if (seen.has(key)) return;
+      seen.add(key);
       sent += 1;
       send(CLIENT_ERROR_EVENT, { where, detail });
     } catch {

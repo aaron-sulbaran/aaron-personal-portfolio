@@ -8,100 +8,45 @@ import {
 } from "./clientErrors";
 
 describe("errorDetail", () => {
-  it("names the error and its message, with no stack", () => {
-    const error = new TypeError("x is not a function");
-    error.stack = "TypeError: x is not a function\n    at secret (/app/chunk.js:1:2)";
-    expect(errorDetail(error)).toBe("TypeError: x is not a function");
-  });
-
-  it("cuts the message to 120 characters", () => {
-    const detail = errorDetail(new Error("word ".repeat(100)));
-    expect(detail).toBe(`Error: ${"word ".repeat(100).slice(0, 120)}`);
-  });
-
-  it("adds the Next digest when there is one", () => {
-    const error = Object.assign(new Error("boom"), { digest: "1234567890" });
-    expect(errorDetail(error)).toBe("Error: boom (digest 1234567890)");
-  });
-
-  it("drops the query string and fragment from any URL in the message", () => {
-    const detail = errorDetail(new Error("Failed to fetch https://example.com/api/x?token=abc&b=2#frag now"));
-    expect(detail).toBe("Error: Failed to fetch https://example.com/api/x now");
-    expect(detail).not.toContain("token");
-  });
-
-  it("drops the query string and fragment from a relative path in the message", () => {
-    const detail = errorDetail(new Error("Failed to load /some/path?key=abc#x now"));
-    expect(detail).toBe("Error: Failed to load /some/path now");
-    expect(detail).not.toContain("key");
-  });
-
+  const named = (name: unknown, digest?: unknown) => ({ message: "marker words here", name, digest });
   it.each([
-    ["a dot-relative path", "Failed ./private/open?key=SECRET now", "Error: Failed ./private/open now"],
-    ["a bracketed path", "Failed [/private/open?key=SECRET] now", "Error: Failed [/private/open now"],
-    ["an uppercase scheme", "Failed HTTPS://example.com/?key=SECRET now", "Error: Failed HTTPS://example.com/ now"],
-    ["a bare query at the start", "?key=SECRET", "Error: "],
-    ["a bare fragment at the start", "#PRIVATE", "Error: "],
-  ])("drops the secret from %s", (_label, message, expected) => {
-    const detail = errorDetail(new Error(message));
-    expect(detail).toBe(expected);
-    expect(detail).not.toContain("SECRET");
-    expect(detail).not.toContain("PRIVATE");
+    ["a plain Error", new Error("marker words here"), "Error"],
+    ["a TypeError", new TypeError("marker words here"), "TypeError"],
+    ["a custom valid name", named("WindowError"), "WindowError"],
+    ["a 40 character name", named("n".repeat(40)), "n".repeat(40)],
+    ["a name of 41 characters", named("n".repeat(41)), "Error"],
+    ["a name with a space", named("Type Error"), "Error"],
+    ["a name starting with a digit", named("1Error"), "Error"],
+    ["a name with a slash", named("Odd/Name"), "Error"],
+    ["a name with a colon", named("Odd:Name"), "Error"],
+    ["a name that is not a string", named(42), "Error"],
+    ["a valid digest", Object.assign(new Error("marker words here"), { digest: "1234567890" }), "Error (digest 1234567890)"],
+    ["a named error with a digest", named("TypeError", "d1-x_Y"), "TypeError (digest d1-x_Y)"],
+    ["a 32 character digest", named("TypeError", "d".repeat(32)), `TypeError (digest ${"d".repeat(32)})`],
+    ["a digest of 33 characters", named("TypeError", "d".repeat(33)), "TypeError"],
+    ["a digest with a semicolon", named("TypeError", "ab;cd"), "TypeError"],
+    ["a digest with a space", named("TypeError", "ab cd"), "TypeError"],
+    ["a digest that is not a string", named("TypeError", 7), "TypeError"],
+    ["a thrown string", "plain text", "Thrown: string"],
+    ["a thrown number", 42, "Thrown: number"],
+    ["a plain object with a non-string message", { message: 5, digest: "d1" }, "Thrown: object"],
+    ["an object with no message", { name: "TypeError" }, "Thrown: object"],
+    ["undefined", undefined, "Thrown: unknown"],
+    ["null", null, "Thrown: unknown"],
+    ["a boolean", true, "Thrown: unknown"],
+    ["an error-like object", { message: "from an object", digest: "d1" }, "Error (digest d1)"],
+  ])("reports %s as its name and digest only", (_label, value, expected) => {
+    expect(errorDetail(value)).toBe(expected);
   });
 
-  it("accepts only identifier-like names and short token-like digests", () => {
-    const named = (name: unknown, digest?: unknown) => errorDetail({ message: "boom", name, digest });
-    expect(named("n".repeat(40))).toBe(`${"n".repeat(40)}: boom`);
-    expect(named("n".repeat(41))).toBe("Error: boom");
-    expect(named("Odd/path?key=SECRET")).toBe("Error: boom");
-    expect(named("TypeError", "d".repeat(32))).toBe(`TypeError: boom (digest ${"d".repeat(32)})`);
-    expect(named("TypeError", "d".repeat(33))).toBe("TypeError: boom");
-    expect(named("TypeError", "abc?key=SECRET")).toBe("TypeError: boom");
-    expect(named(42, 7)).toBe("Error: boom");
-  });
-
-  it("keeps a hash-numbered React error and prose with a question mark", () => {
-    expect(errorDetail(new Error("React error #418"))).toBe("Error: React error #418");
-  });
-
-  it("leaves ordinary prose with a question mark alone", () => {
-    expect(errorDetail(new Error("Why did this fail? Unknown"))).toBe("Error: Why did this fail? Unknown");
-  });
-
-  it("names only the type of a value that is not error-like", () => {
-    expect(errorDetail("plain text")).toBe("Thrown: string");
-    expect(errorDetail(42)).toBe("Thrown: number");
-    expect(errorDetail({ message: 5, digest: "d1" })).toBe("Thrown: object");
-    expect(errorDetail({ message: "from an object", digest: "d1" })).toBe("Error: from an object (digest d1)");
-    expect(errorDetail(undefined)).toBe("Thrown: unknown");
-    expect(errorDetail(null)).toBe("Thrown: unknown");
-    expect(errorDetail(true)).toBe("Thrown: unknown");
-  });
-
-  // One battery of hostile inputs. Add a row for every new leak a review finds.
-  const prefixed = (name: string, message: string, digest?: string) => ({ name, message, digest });
-  it.each([
-    ["a thrown string with an email and key", "email=alice@example.com key=SECRET", "Thrown: string", []],
-    ["an email in a message", new Error("contact alice@example.com now"), "Error: contact <email> now", ["alice", "example.com"]],
-    ["a local macOS path", new Error("at f (/Users/x/private.txt:1:2)"), "Error: at f (<path>", ["private.txt"]],
-    ["a local linux path", new Error("open /home/bob/notes/a.txt failed"), "Error: open <path> failed", ["bob"]],
-    ["a local windows path", new Error("open C:\\Users\\Carol\\a.txt failed"), "Error: open <path> failed", ["Carol"]],
-    ["a bare question-mark query", new Error("Bad request ?key=SECRET"), "Error: Bad request ?key=<v>", ["SECRET"]],
-    ["a key=value pair", new Error("retry with token=abc123 please"), "Error: retry with token=<v> please", ["abc123"]],
-    ["an ampersand pair", new Error("sent a=1&b=SECRET2 twice"), "Error: sent a=<v>&b=<v> twice", ["SECRET2"]],
-    ["a 40 character opaque token", new Error(`bad id ${"Ab1_".repeat(10)} here`), "Error: bad id <token> here", ["Ab1_"]],
-    ["a url with a query", new Error("Failed https://example.com/a?token=SECRET now"), "Error: Failed https://example.com/a now", ["SECRET"]],
-    ["a hostile name and digest", prefixed("?key=SECRET", "boom", "#PRIVATE"), "Error: boom", ["SECRET", "PRIVATE"]],
-    ["a window error as an error-like", { name: "WindowError", message: "Unexpected token '<'" }, "WindowError: Unexpected token '<'", []],
-    ["an unmasked prose message", new Error("x is not a function"), "Error: x is not a function", []],
-    ["a property read", new Error("Cannot read properties of undefined (reading 'map')"), "Error: Cannot read properties of undefined (reading 'map')", []],
-    ["prose with a question mark", new Error("Why did this fail? Unknown"), "Error: Why did this fail? Unknown", []],
-    ["a minified react error", new Error("Minified React error #418"), "Error: Minified React error #418", []],
-  ])("masks %s", (_label, value, expected, forbidden) => {
-    const detail = errorDetail(value);
-    expect(detail).toBe(expected);
-    for (const word of forbidden as string[]) expect(detail).not.toContain(word);
-  });
+  // Pins decision D25: message text never leaves the browser. Fails if value.message is added back.
+  it.each(["alpha bravo charlie", "Cannot read properties of undefined", "React error number four eighteen"])(
+    "never includes the message text: %s",
+    (message) => {
+      expect(errorDetail(new Error(message))).toBe("Error");
+      expect(errorDetail(new TypeError(message))).toBe("TypeError");
+    },
+  );
 });
 
 describe("windowErrorValue", () => {
@@ -141,7 +86,7 @@ describe("createClientErrorReporter", () => {
     const { send, report } = reporter();
     report("error-page", new Error("boom"));
     expect(send).toHaveBeenCalledTimes(1);
-    expect(send).toHaveBeenCalledWith(CLIENT_ERROR_EVENT, { where: "error-page", detail: "Error: boom" });
+    expect(send).toHaveBeenCalledWith(CLIENT_ERROR_EVENT, { where: "error-page", detail: "Error" });
     expect(CLIENT_ERROR_EVENT).toBe("client_error");
   });
 
@@ -172,17 +117,36 @@ describe("createClientErrorReporter", () => {
     expect(send).toHaveBeenCalledTimes(1);
   });
 
-  it("sends an identical detail once", () => {
+  it("never puts message text in anything it sends", () => {
     const { send, report } = reporter();
-    report("window", new Error("same"));
-    report("error-page", new Error("same"));
-    report("window", new Error("different"));
+    report("window", new Error("zebra marker words here"));
+    report("error-page", Object.assign(new TypeError("zebra marker words here"), { digest: "d1" }));
+    report("layout", { name: "WindowError", message: "zebra marker words here" });
+    expect(send).toHaveBeenCalledTimes(3);
+    expect(JSON.stringify(send.mock.calls)).not.toContain("zebra");
+  });
+
+  it("sends the same where and detail once", () => {
+    const { send, report } = reporter();
+    report("window", new TypeError("first"));
+    report("window", new TypeError("second"));
+    expect(send).toHaveBeenCalledTimes(1);
+  });
+
+  it("sends the same detail again from a different where", () => {
+    const { send, report } = reporter();
+    report("window", new TypeError("first"));
+    report("layout", new TypeError("second"));
     expect(send).toHaveBeenCalledTimes(2);
   });
 
-  it("stops after three reports a page load", () => {
+  it("stops after three reports a page load, across wheres and names", () => {
     const { send, report } = reporter();
-    for (let i = 0; i < 10; i += 1) report("window", new Error(`e${i}`));
+    report("window", new TypeError("a"));
+    report("layout", new TypeError("b"));
+    report("error-page", new TypeError("c"));
+    report("global-error", new TypeError("d"));
+    report("window", new RangeError("e"));
     expect(MAX_ERROR_REPORTS).toBe(3);
     expect(send).toHaveBeenCalledTimes(3);
   });
