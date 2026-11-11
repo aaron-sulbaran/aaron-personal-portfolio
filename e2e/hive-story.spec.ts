@@ -1,5 +1,6 @@
 import { test, expect } from "./support/fixtures";
 import { hiveStoryCopy } from "@/lib/content/hive-story";
+import { LAYOUTS, checkCenter } from "@/lib/hive-story/flow";
 
 // /hive-visual, FH08 Hive's public story: every word in the server HTML, a
 // phone's first screen that says what it is, bees that fly only when they
@@ -433,6 +434,12 @@ test.describe("the diagram on a phone", () => {
     });
     expect(sizes.length).toBeGreaterThan(10);
     expect(sizes.filter(([, px]) => px < 12)).toEqual([]);
+    // Bigger words still clear the author's check drawn inside Beekeeper's part.
+    const c = checkCenter(LAYOUTS.tall), half = LAYOUTS.tall.size.checkSize / 2;
+    const touching = await page.locator('.hive-stage svg[viewBox="0 0 358 428"]').evaluate((svg, box) => [...svg.querySelectorAll("text")]
+      .filter((text) => { const b = (text as SVGGraphicsElement).getBBox(); return b.x < box.x2 && b.x + b.width > box.x1 && b.y < box.y2 && b.y + b.height > box.y1; })
+      .map((text) => text.textContent), { x1: c.x - half, x2: c.x + half, y1: c.y - half, y2: c.y + half });
+    expect(touching).toEqual([]);
   });
 });
 

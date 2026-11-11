@@ -126,10 +126,10 @@ function tall(): FlowLayout {
 
 export const LAYOUTS: Record<LayoutName, FlowLayout> = { wide: wide(), tall: tall() };
 
-/** Where Beekeeper's check sits: the author's tap, drawn inside the Beekeeper node. */
+/** Where Beekeeper's check sits: the author's tap, drawn inside the Beekeeper node; on the phone, beside its short sub-label, clear of the name. */
 export function checkCenter(l: FlowLayout): Point {
   const b = l.nodes.bee;
-  return l.name === "wide" ? { x: b.x + b.w - 26, y: b.y + 22 } : { x: b.x + b.w - 15, y: b.y + 17 };
+  return l.name === "wide" ? { x: b.x + b.w - 26, y: b.y + 22 } : { x: b.x + b.w - 13, y: b.y + 32 };
 }
 
 export type StaticDots = {
