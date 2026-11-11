@@ -59,6 +59,7 @@ export interface WaveView {
   active(): boolean;
   countVisible(f: WaveFrame): number;
   rippleOrigin?(): number; // the arc s an answer's ripple starts at, measured at layout
+  busy?(): boolean; // still moving something of its own (the band's sweep), so the loop runs on
 }
 export interface PathGeometry { runLen: number; length: number; train: number | null; runFlat: number }
 export interface WaveConductor {
@@ -151,7 +152,7 @@ function createInstance(still: boolean): Instance {
     const changed = { head: moving || frame.state.head !== before, music, breath, plucks, ripple };
     for (const v of views) if (v.active()) v.paint(frame, changed);
     if (probe) probe.ticks++;
-    return moving || (!frozen && frame.ripple.live) || (views.some((v) => v.active()) && (music || breath || plucks));
+    return moving || (!frozen && frame.ripple.live) || (views.some((v) => v.active()) && (music || breath || plucks)) || views.some((v) => v.busy?.() === true);
   };
 
   const tick = (t: number) => {

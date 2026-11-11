@@ -81,6 +81,13 @@ export const IDLE = { amp: 0.12, height: 0.09, wavelength: 330, speed: 52, envel
 // read against the viewport, never a page offset.
 export const RELEASE_LINE = 0.4;
 
+// The band's run leaves with the scroll (Aaron, 2026-11-10, idea I9, picked in the band lab): whole while the band's bottom edge is at
+// or below the release line, swept off to the right as the band scrolls on, gone once that edge reaches the viewport's top, and swept
+// back in from the right as it returns (lib/wavepath/bandSweep). It used to stay whole whenever the band showed, so on the way back up
+// the line retreated to the right while the band's wave just sat there. A sweep takes at least BAND_SWEEP_S seconds, so a quick
+// flick back up still shows the run trail in; a steady scroll is slower than that and the sweep tracks it exactly.
+export const BAND_SWEEP_S = 0.5;
+
 // How far below the band's box the line's return keeps (px beyond the dots' own reach), so the path never crosses the band.
 export const BAND_CLEAR_EXTRA = 14;
 // The soft edge, px, over which the path's dots thin out above that clearance, so no dot of the path lands in the band.
