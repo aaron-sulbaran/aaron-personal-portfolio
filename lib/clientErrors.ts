@@ -51,7 +51,8 @@ export function windowErrorValue(event: { error?: unknown; message?: string }): 
 }
 
 // Every place a report can come from is a source literal, so none can carry visitor text.
-export type BoundaryName = "player" | "cursor" | "inline" | "quests" | "transition";
+export const BOUNDARY_NAMES = ["player", "cursor", "inline", "quests", "transition"] as const;
+export type BoundaryName = (typeof BOUNDARY_NAMES)[number];
 export type ErrorWhere = "window" | "unhandledrejection" | "error-page" | "global-error" | `boundary:${BoundaryName}`;
 
 type ReporterOptions = {
