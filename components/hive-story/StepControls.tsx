@@ -24,9 +24,10 @@ export function StepControls({ step, count, playing, canPlay = true, onBack, onN
         <ChevronLeft aria-hidden="true" size={18} strokeWidth={2.25} />
       </button>
       {canPlay && (
-        <button type="button" className="hive-control hive-control-wide" onClick={onToggle} aria-label={`${playing ? controls.pause : controls.play}, ${label}`}>
+        // A toggle: its name stays "Pause" and aria-pressed says whether it is paused, so the name never contradicts the state.
+        <button type="button" className="hive-control hive-control-wide" onClick={onToggle} aria-pressed={!playing} aria-label={`${controls.pause}, ${label}`}>
           {playing ? <Pause aria-hidden="true" size={16} strokeWidth={2.25} /> : <Play aria-hidden="true" size={16} strokeWidth={2.25} />}
-          <span aria-hidden="true">{playing ? controls.pause : controls.play}</span>
+          <span aria-hidden="true">{controls.pause}</span>
         </button>
       )}
       <button type="button" className="hive-control" onClick={onNext} disabled={step >= count - 1} aria-label={`${controls.next}, ${label}`}>

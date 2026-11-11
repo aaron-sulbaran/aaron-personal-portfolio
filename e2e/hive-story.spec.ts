@@ -98,12 +98,110 @@ test("hive story: every animation can be stepped by hand, and a step holds until
     await (forward ? next : back).click();
     await page.waitForTimeout(300);
     const held = await count.textContent();
-    await expect(group.getByRole("button", { name: /^Play,/ })).toBeVisible();
+    await expect(group.getByRole("button", { name: /^Pause,/ })).toHaveAttribute("aria-pressed", "true");
+    await expect(count).toHaveText(/^Step \d of \d$/);
+    await expect(count).toHaveAttribute("aria-live", "polite");
     await page.waitForTimeout(2_600);
     expect(await count.textContent()).toBe(held);
     await (forward ? back : next).click();
     await expect(count).not.toHaveText(held ?? "");
   }
+});
+
+// A canvas's pixels, hashed, so a frozen piece can be told from a moving one.
+const canvasHash = (page: import("@playwright/test").Page, selector: string) =>
+  page.locator(selector).evaluate((canvas: HTMLCanvasElement) => {
+    const data = canvas.getContext("2d")!.getImageData(0, 0, canvas.width, canvas.height).data;
+    let h = 0;
+    for (let i = 0; i < data.length; i += 97) h = (h * 31 + data[i]) | 0;
+    return h;
+  });
+
+test("hive story: Pause stops all motion in its piece", async ({ page }) => {
+  await page.goto(PATH);
+  for (const [group, canvas] of [["How information moves", ".hive-stage canvas"], ["Aside: the exhibit itself", ".hive-exhibit canvas"]] as const) {
+    const controls = page.locator(`[role="group"][aria-label^="${group}"]`);
+    await controls.scrollIntoViewIfNeeded();
+    await page.waitForTimeout(600);
+    await controls.getByRole("button", { name: /^Pause,/ }).click();
+    await expect(controls.getByRole("button", { name: /^Pause,/ })).toHaveAttribute("aria-pressed", "true");
+    await page.waitForTimeout(200);
+    const still = await canvasHash(page, canvas);
+    await page.waitForTimeout(1_200);
+    expect(await canvasHash(page, canvas)).toBe(still);
+  }
+  for (const [group, marker] of [["How one fact gets in", ".hive-trip"], ["From a teammate", ".hive-loop"]] as const) {
+    const controls = page.locator(`[role="group"][aria-label^="${group}"]`);
+    await controls.scrollIntoViewIfNeeded();
+    await controls.getByRole("button", { name: /^Pause,/ }).click();
+    const count = controls.locator(".hive-control-count");
+    const held = await count.textContent();
+    await page.waitForTimeout(2_800);
+    expect(await count.textContent(), marker).toBe(held);
+  }
+});
+
+test("hive story: the step controls show a keyboard ring on the honey", async ({ page }) => {
+  await page.goto(PATH);
+  const next = page.locator('[role="group"][aria-label^="How information moves"]').getByRole("button", { name: /^Next,/ });
+  await next.focus();
+  await page.keyboard.press("Shift+Tab");
+  await page.keyboard.press("Tab");
+  await expect(next).toBeFocused();
+  const ring = await next.evaluate((el) => { const s = getComputedStyle(el); return [s.outlineStyle, parseFloat(s.outlineWidth), s.outlineColor]; });
+  expect(ring[0]).toBe("solid");
+  expect(ring[1]).toBeGreaterThanOrEqual(2);
+  expect(ring[2]).toBe("rgb(27, 58, 92)");
+});
+
+// WCAG contrast of an element's text against the first opaque background behind it.
+async function contrastOf(page: import("@playwright/test").Page, selector: string) {
+  return page.locator(selector).first().evaluate((el) => {
+    const parse = (c: string) => {
+      const m = c.match(/rgba?\(([^)]+)\)/);
+      if (m) { const [r, g, b, a = "1"] = m[1].split(/[ ,/]+/).filter(Boolean); return [Number(r) / 255, Number(g) / 255, Number(b) / 255, Number(a)]; }
+      const k = c.match(/color\(srgb ([^)]+)\)/);
+      if (k) { const [r, g, b, , a] = k[1].split(/\s+/); return [Number(r), Number(g), Number(b), a ? Number(a) : 1]; }
+      return [0, 0, 0, 0];
+    };
+    const lum = ([r, g, b]: number[]) => [r, g, b].map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)).reduce((sum, v, i) => sum + v * [0.2126, 0.7152, 0.0722][i], 0);
+    let node: Element | null = el, bg = [0, 0, 0, 0];
+    while (node && bg[3] < 1) { bg = parse(getComputedStyle(node).backgroundColor); node = node.parentElement; }
+    if (bg[3] < 1) bg = parse(getComputedStyle(document.documentElement).backgroundColor);
+    const fg = parse(getComputedStyle(el).color);
+    const [a, b] = [lum(fg), lum(bg)].sort((x, y) => y - x);
+    return (a + 0.05) / (b + 0.05);
+  });
+}
+
+test("hive story: the new text on honey meets contrast: 4.5 for body text, 3 for the controls", async ({ page }) => {
+  await page.goto(PATH);
+  for (const selector of [".hive-exhibit figcaption", ".hive-exhibit .text-muted", ".hive-loop .text-muted", ".hive-loop-step", "#hive-calls ~ * .text-muted", ".hive-step p", ".hive-caption"]) {
+    if (!(await page.locator(selector).count())) continue;
+    expect(await contrastOf(page, selector), selector).toBeGreaterThanOrEqual(4.5);
+  }
+  for (const selector of [".hive-control", ".hive-control-count", ".hive-aside-tag"]) expect(await contrastOf(page, selector), selector).toBeGreaterThanOrEqual(3);
+});
+
+test.describe("the controls on a phone", () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test("hive story: every set of step controls fits at 390 with no sideways scroll", async ({ page }) => {
+    await page.goto(PATH);
+    for (const group of await page.locator('[role="group"][aria-label$="step through"]').all()) {
+      await group.scrollIntoViewIfNeeded();
+      const box = await group.boundingBox();
+      expect(box!.x).toBeGreaterThanOrEqual(0);
+      expect(box!.x + box!.width).toBeLessThanOrEqual(390);
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
+  });
+});
+
+test("hive story: the Beekeeper demo says it is a mock-up, and the exhibit says it is an illustration, in visible text", async ({ page }) => {
+  await page.goto(PATH);
+  await expect(page.getByText(hiveStoryCopy.calls.loop.note)).toBeVisible();
+  await expect(page.getByText(hiveStoryCopy.why.exhibit.note)).toBeVisible();
 });
 
 test.describe("under reduced motion", () => {

@@ -133,6 +133,7 @@ export function HiveLoopDemo() {
       <div className="mt-3">
         <StepControls step={step} count={STEPS} playing={auto && !reduced} canPlay={!reduced} onBack={() => api.current?.goTo(Math.max(0, step - 1))} onNext={() => api.current?.goTo(Math.min(STEPS - 1, step + 1))} onToggle={() => api.current?.setAuto(!auto)} label={loop.label} />
       </div>
+      <p className="mt-3 text-sm text-muted">{loop.note}</p>
       <figcaption className="sr-only">{loop.description}</figcaption>
     </figure>
   );

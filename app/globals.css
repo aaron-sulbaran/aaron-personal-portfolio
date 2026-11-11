@@ -1772,6 +1772,8 @@ html:has(main[data-page="hive-visual"][data-logo-edge]) [data-menu-pill]:not([ro
 .hive-control { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 36px; min-width: 36px; padding: 0 10px; border-radius: 999px; color: var(--hive-bee); background: transparent; box-shadow: inset 0 0 0 1.5px var(--hive-bee); font: 600 14px/1 var(--font-sans), system-ui, sans-serif; cursor: pointer; transition: background-color 160ms var(--ease-out), color 160ms var(--ease-out); }
 .hive-control-wide { padding: 0 14px; }
 .hive-control:disabled { opacity: 0.35; cursor: default; }
+.hive-control[aria-pressed="true"] { background: var(--hive-bee); color: var(--hive-light); }
+.hive-control:focus-visible { outline: 3px solid var(--color-accent); outline-offset: 3px; }
 .hive-control-count { margin-left: 4px; font-size: 14px; font-weight: 600; }
 @media (hover: hover) and (pointer: fine) {
   .hive-control:not(:disabled):hover { background: var(--hive-bee); color: var(--hive-light); }

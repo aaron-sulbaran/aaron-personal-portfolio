@@ -147,6 +147,7 @@ export const hiveStoryCopy = {
         "A tap confirms.",
         "Or a reply corrects, and the correction wins.",
       ],
+      note: "A mock-up with a made-up teammate and made-up messages. Only Beekeeper's avatar is real.",
       description: "A demo: an AI assistant calls hive_add_note to save a finding; within minutes Beekeeper posts once in #beekeeper, mentioning only the author, with a pending react already placed; the author's tap turns it to confirmed, or the author's reply corrects the fact.",
     },
     toolsLabel: "Built for the Hive",
@@ -210,5 +211,5 @@ export const hiveStoryCopy = {
   // Under the hero, so the way back to the portfolio is on the first screen too.
   backLink: { label: "See the rest of my portfolio", href: "/" },
   // Every animation on the page can be stepped by hand.
-  controls: { group: "step through", back: "Back", next: "Next", pause: "Pause", play: "Play", count: (n: number, total: number) => `${n} of ${total}` },
+  controls: { group: "step through", back: "Back", next: "Next", pause: "Pause", count: (n: number, total: number) => `Step ${n} of ${total}` },
 } as const;
