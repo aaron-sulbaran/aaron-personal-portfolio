@@ -7,17 +7,17 @@ import { isPrivatePath } from "@/lib/analytics";
 export const CLIENT_ERROR_EVENT = "client_error";
 export const MAX_ERROR_REPORTS = 3;
 const MESSAGE_MAX = 120;
+const NAME_MAX = 40;
+const DIGEST_MAX = 32;
 
 type ErrorLike = { name?: unknown; message?: unknown; digest?: unknown };
 
 const asText = (value: unknown) => (typeof value === "string" ? value : "");
 
-// A URL or a relative path inside a message loses its query string and fragment; a stack is never read.
-// A path starts at a word boundary with "/", so prose like "fail? Unknown" is untouched.
-const stripUrlQueries = (text: string) =>
-  text
-    .replace(/(https?:\/\/[^\s?#]+)[?#]\S*/g, "$1")
-    .replace(/(^|[\s("'=])(\/[^\s?#"')]*)[?#]\S*/g, "$1$2");
+// Anything glued to a token with "?" or "#" loses the rest of that token (URLs, paths, bracketed
+// or uppercase-scheme forms alike), and so does a token that starts with one. Prose like
+// "fail? Unknown" and "React error #418" has a space on one side and is untouched. A stack is never read.
+const stripUrlQueries = (text: string) => text.replace(/(\S)[?#]\S+/g, "$1").replace(/^[?#]\S*/, "");
 
 // "Name: message (digest d)": enough to tell errors apart, nothing that identifies a visitor.
 export function errorDetail(value: unknown): string {
@@ -29,10 +29,10 @@ export function errorDetail(value: unknown): string {
   } else if (value && typeof value === "object") {
     const like = value as ErrorLike;
     if (typeof like.message === "string") {
-      name = asText(like.name) || "Error";
+      name = stripUrlQueries(asText(like.name)).slice(0, NAME_MAX) || "Error";
       message = like.message;
     }
-    digest = asText(like.digest);
+    digest = stripUrlQueries(asText(like.digest)).slice(0, DIGEST_MAX);
   }
   const cut = stripUrlQueries(message).slice(0, MESSAGE_MAX);
   return `${name}: ${cut}${digest ? ` (digest ${digest})` : ""}`;

@@ -36,6 +36,39 @@ describe("errorDetail", () => {
     expect(detail).not.toContain("key");
   });
 
+  it.each([
+    ["a dot-relative path", "Failed ./private/open?key=SECRET now", "Error: Failed ./private/open now"],
+    ["a bracketed path", "Failed [/private/open?key=SECRET] now", "Error: Failed [/private/open now"],
+    ["an uppercase scheme", "Failed HTTPS://example.com/?key=SECRET now", "Error: Failed HTTPS://example.com/ now"],
+    ["a bare query at the start", "?key=SECRET", "Error: "],
+    ["a bare fragment at the start", "#PRIVATE", "Error: "],
+  ])("drops the secret from %s", (_label, message, expected) => {
+    const detail = errorDetail(new Error(message));
+    expect(detail).toBe(expected);
+    expect(detail).not.toContain("SECRET");
+    expect(detail).not.toContain("PRIVATE");
+  });
+
+  it("strips queries and fragments from the name and the digest too", () => {
+    const nameLeak = Object.assign(new Error("boom"), { name: "?key=SECRET" });
+    expect(errorDetail(nameLeak)).toBe("Error: boom");
+    const nameTail = Object.assign(new Error("boom"), { name: "Odd/path?key=SECRET" });
+    expect(errorDetail(nameTail)).toBe("Odd/path: boom");
+    const digestLeak = Object.assign(new Error("boom"), { digest: "#PRIVATE" });
+    expect(errorDetail(digestLeak)).toBe("Error: boom");
+    const digestTail = Object.assign(new Error("boom"), { digest: "abc?key=SECRET" });
+    expect(errorDetail(digestTail)).toBe("Error: boom (digest abc)");
+  });
+
+  it("caps the name at 40 characters and the digest at 32", () => {
+    const error = Object.assign(new Error("boom"), { name: "n".repeat(100), digest: "d".repeat(100) });
+    expect(errorDetail(error)).toBe(`${"n".repeat(40)}: boom (digest ${"d".repeat(32)})`);
+  });
+
+  it("keeps a hash-numbered React error and prose with a question mark", () => {
+    expect(errorDetail(new Error("React error #418"))).toBe("Error: React error #418");
+  });
+
   it("leaves ordinary prose with a question mark alone", () => {
     expect(errorDetail(new Error("Why did this fail? Unknown"))).toBe("Error: Why did this fail? Unknown");
   });
