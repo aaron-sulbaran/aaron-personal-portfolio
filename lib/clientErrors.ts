@@ -35,12 +35,19 @@ export function errorDetail(value: unknown): string {
 // with no error object; it says nothing, so it is dropped. So is the browser's
 // benign "ResizeObserver loop ..." notice, which also arrives with no error object
 // and would use up the report budget on every load. The message is read here only
-// to drop that noise; none of it is sent.
+// to drop that noise; none of it is sent. This runs in the window listener, outside
+// the reporter's try, so each field is read once and nothing in here may throw.
 export function windowErrorValue(event: { error?: unknown; message?: string }): unknown {
-  if (event.error != null) return event.error;
-  const message = typeof event.message === "string" ? event.message : "";
-  if (message === "" || message === "Script error." || message.startsWith("ResizeObserver loop")) return null;
-  return { name: "WindowError", message };
+  try {
+    const error = event.error;
+    if (error != null) return error;
+    const rawMessage = event.message;
+    const message = typeof rawMessage === "string" ? rawMessage : "";
+    if (message === "" || message === "Script error." || message.startsWith("ResizeObserver loop")) return null;
+    return { name: "WindowError", message };
+  } catch {
+    return null;
+  }
 }
 
 // Every place a report can come from is a source literal, so none can carry visitor text.

@@ -78,6 +78,29 @@ describe("windowErrorValue", () => {
     expect(windowErrorValue({ error: null, message: 42 as unknown as string })).toBeNull();
   });
 
+  it("returns null instead of throwing when an accessor throws", () => {
+    const event = {
+      get error(): unknown {
+        throw new Error("getter");
+      },
+    };
+    expect(() => windowErrorValue(event)).not.toThrow();
+    expect(windowErrorValue(event)).toBeNull();
+  });
+
+  it("reads the error field once", () => {
+    const error = new Error("real");
+    let reads = 0;
+    const event = {
+      get error(): unknown {
+        reads += 1;
+        return reads === 1 ? error : null;
+      },
+    };
+    expect(windowErrorValue(event)).toBe(error);
+    expect(reads).toBe(1);
+  });
+
   it("keeps a message-only event that says something", () => {
     expect(windowErrorValue({ error: null, message: "Unexpected token '<'" })).toEqual({ name: "WindowError", message: "Unexpected token '<'" });
   });
