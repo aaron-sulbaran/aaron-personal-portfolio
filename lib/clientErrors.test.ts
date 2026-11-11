@@ -145,13 +145,30 @@ describe("createClientErrorReporter", () => {
     expect(CLIENT_ERROR_EVENT).toBe("client_error");
   });
 
-  it("sends nothing from a private path, and does not spend the budget on it", () => {
+  it("sends nothing from a private path, or afterwards on a public one", () => {
     let path = "/private/area";
     const { send, report } = reporter({ pathname: () => path, isPrivate: (p) => p.startsWith("/private") });
     report("window", new Error("hidden"));
     expect(send).not.toHaveBeenCalled();
     path = "/";
-    report("window", new Error("hidden"));
+    report("window", new Error("later"));
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it("sends nothing after a visit to a private path, even for a public error", () => {
+    const { send, report } = reporter({ isPrivate: (p) => p.startsWith("/private") });
+    report("window", new Error("before"));
+    report.visit("/private/area");
+    report.visit("/");
+    report("window", new Error("after"));
+    expect(send).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps reporting after visits to public paths only", () => {
+    const { send, report } = reporter({ isPrivate: (p) => p.startsWith("/private") });
+    report.visit("/");
+    report.visit("/quick");
+    report("window", new Error("fine"));
     expect(send).toHaveBeenCalledTimes(1);
   });
 

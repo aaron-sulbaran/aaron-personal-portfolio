@@ -1,11 +1,16 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 import { reportClientError } from "@/components/SiteAnalytics";
 import { windowErrorValue } from "@/lib/clientErrors";
 
 // Errors no boundary sees: a handler, a timer, a rejected promise.
 export function ClientErrorListener() {
+  const pathname = usePathname();
+  useEffect(() => {
+    reportClientError.visit(pathname ?? window.location.pathname);
+  }, [pathname]);
   useEffect(() => {
     const onError = (event: ErrorEvent) => {
       const value = windowErrorValue(event);

@@ -68,9 +68,13 @@ type ReporterOptions = {
 export function createClientErrorReporter({ send, pathname, isPrivate = isPrivatePath, limit = MAX_ERROR_REPORTS }: ReporterOptions) {
   const seen = new Set<string>();
   let sent = 0;
+  // Once a private path has been seen, nothing is sent for the rest of the page load, even
+  // from work that started there and fails after the reader moved on.
+  let sawPrivate = false;
   function report(where: string, value: unknown) {
     try {
-      if (sent >= limit || isPrivate(pathname())) return;
+      if (!sawPrivate && isPrivate(pathname())) sawPrivate = true;
+      if (sawPrivate || sent >= limit) return;
       const detail = errorDetail(value);
       if (seen.has(detail)) return;
       seen.add(detail);
@@ -80,5 +84,12 @@ export function createClientErrorReporter({ send, pathname, isPrivate = isPrivat
       // Reporting must never be the next error.
     }
   }
+  report.visit = (path: string) => {
+    try {
+      if (isPrivate(path)) sawPrivate = true;
+    } catch {
+      // Same rule as report.
+    }
+  };
   return report;
 }
