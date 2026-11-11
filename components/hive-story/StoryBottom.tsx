@@ -43,11 +43,11 @@ export function NumbersSection() {
   return (
     <section aria-labelledby="hive-numbers" className="hive-section hive-wrap">
       <SectionHeading id="hive-numbers">{numbers.heading}</SectionHeading>
-      <dl className="mt-8 grid grid-cols-1 gap-y-5 sm:grid-cols-5 sm:gap-x-6">
+      <dl className="mt-8 grid grid-cols-2 gap-x-6 gap-y-6 md:grid-cols-4">
         {numbers.items.map((item) => (
-          <div key={item.label} className="flex items-baseline gap-4 sm:flex-col sm:gap-1">
-            <dt className="order-2 text-muted sm:order-none">{item.label}</dt>
-            <dd className="order-1 m-0 font-dot hive-number sm:order-none">{item.value}</dd>
+          <div key={item.label} className="flex flex-col-reverse gap-1">
+            <dt className="text-muted">{item.label}</dt>
+            <dd className="m-0 font-dot hive-number">{item.value}</dd>
           </div>
         ))}
       </dl>

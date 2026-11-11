@@ -103,7 +103,7 @@ export function FlowSwarm({ children }: { children: ReactNode }) {
   return (
     <div className="hive-stage rounded-[22px] lg:rounded-[30px]">
       <div ref={headRef} className="hive-stage-head" aria-hidden="true">
-        <span ref={clockRef} className="hive-clock font-dot" />
+        <span ref={clockRef} className="hive-clock font-dot">13:17</span>
         <p ref={captionRef} className="hive-caption">{flow.rest}</p>
         <p className="hive-legend">
           <span><svg width="20" height="6" aria-hidden="true"><g fill="currentColor"><circle cx="3" cy="3" r="2" /><circle cx="10" cy="3" r="2" /><circle cx="17" cy="3" r="2" /></g></svg>{flow.legend.now}</span>

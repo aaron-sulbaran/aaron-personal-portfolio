@@ -32,7 +32,8 @@ function quote(): Point[] {
 }
 
 function judge(): Point[] {
-  return [...checkDots(33, 50, 34), ...checkDots(67, 50, 34)];
+  // A second, stronger check: the check mark sealed inside a ring.
+  return [...arcDots(50, 50, 33, 0, Math.PI * 2, 13.5).slice(1), ...checkDots(50, 51, 30)];
 }
 
 function link(): Point[] {

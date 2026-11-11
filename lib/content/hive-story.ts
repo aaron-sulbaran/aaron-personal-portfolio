@@ -69,7 +69,6 @@ export const hiveStoryCopy = {
       items: [
         { title: "The hourly copy", body: "Beekeeper, a read-only bot, and a Drive reader copy new messages and doc changes into a private archive every hour. Only teammates who said yes are stored.", why: "Nobody changes how they work." },
         { title: "The nightly check", body: "Every night the archive becomes cited facts, checked the way above.", why: "Facts I can put in a report with a link next to them." },
-        { title: "Runs on its own", body: "Schedules, not servers, on free tiers, with 339 automated tests behind it.", why: "Nothing to keep alive, and it costs $0." },
       ],
     },
     next: {
@@ -110,7 +109,6 @@ export const hiveStoryCopy = {
     items: [
       { value: "675", label: "Discord messages read" },
       { value: "24", label: "Drive files read" },
-      { value: "0 of 15", label: "wrong on a hand check" },
       { value: "339", label: "automated tests" },
       { value: "$0", label: "to run each month" },
     ],

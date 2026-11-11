@@ -22,7 +22,8 @@ describe("the Hive story's copy", () => {
   });
 
   it("only uses the numbers the Hive's own docs publish", () => {
-    expect(hiveStoryCopy.numbers.items.map((item) => item.value)).toEqual(["675", "24", "0 of 15", "339", "$0"]);
+    expect(hiveStoryCopy.numbers.items.map((item) => item.value)).toEqual(["675", "24", "339", "$0"]);
+    expect(hiveStoryCopy.steps.proof).toContain("15 random facts found none wrong");
   });
 
   it("has a caption for every moment on the clock", () => {
