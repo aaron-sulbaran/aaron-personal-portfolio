@@ -118,7 +118,7 @@ export function drawSwarm(ctx: CanvasRenderingContext2D, model: SwarmModel, t: n
     const u = (t - REJECT.start - i * REJECT.stagger) / REJECT.duration;
     if (u < 0 || u > 1) return;
     const e = easeOut(u);
-    ctx.globalAlpha = (1 - u) * out;
+    ctx.globalAlpha = Math.min(1, u / 0.15) * (1 - u) * out;
     ring(ctx, lerp(rj.from.x, rj.to.x, e), lerp(rj.from.y, rj.to.y, e), r * 0.85);
   });
 
@@ -126,7 +126,7 @@ export function drawSwarm(ctx: CanvasRenderingContext2D, model: SwarmModel, t: n
   if (tap > 0) {
     const c = checkCenter(l);
     ctx.globalAlpha = tap * 0.6;
-    ring(ctx, c.x, c.y, (tall ? 10 : 14) + tap * 4);
+    ring(ctx, c.x, c.y, (tall ? 12 : 17) + tap * 4);
   }
   ctx.globalAlpha = 1;
 }

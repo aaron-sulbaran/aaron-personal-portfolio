@@ -83,7 +83,7 @@ function wide(): FlowLayout {
     size: {
       label: 15, sub: 12.5, nodePad: 16, labelY: 26, subY: 44,
       nodeDot: 1.7, nodeStep: 7, nextDot: 1.9, nextStep: 9, traceDot: 1.3, traceStep: 9,
-      combDot: 2.6, combStep: 8.6, glyphDot: 2.4, checkSize: 17, checkDot: 2, bee: 3.4,
+      combDot: 2.6, combStep: 8.6, glyphDot: 2.4, checkSize: 24, checkDot: 2, bee: 3.4,
     },
   };
 }
@@ -118,7 +118,7 @@ function tall(): FlowLayout {
     size: {
       label: 12, sub: 10.5, nodePad: 10, labelY: 20, subY: 35,
       nodeDot: 1.3, nodeStep: 5.5, nextDot: 1.45, nextStep: 7, traceDot: 1.05, traceStep: 7,
-      combDot: 1.9, combStep: 6.4, glyphDot: 1.8, checkSize: 12, checkDot: 1.5, bee: 2.6,
+      combDot: 1.9, combStep: 6.4, glyphDot: 1.8, checkSize: 16, checkDot: 1.4, bee: 2.6,
     },
   };
 }
@@ -128,7 +128,7 @@ export const LAYOUTS: Record<LayoutName, FlowLayout> = { wide: wide(), tall: tal
 /** Where Beekeeper's check sits: the author's tap, drawn inside the Beekeeper node. */
 export function checkCenter(l: FlowLayout): Point {
   const b = l.nodes.bee;
-  return { x: b.x + b.w - (l.name === "wide" ? 26 : 14), y: b.y + b.h / 2 };
+  return l.name === "wide" ? { x: b.x + b.w - 26, y: b.y + 22 } : { x: b.x + b.w - 15, y: b.y + 17 };
 }
 
 export type StaticDots = {
@@ -202,10 +202,10 @@ export function clockAt(t: number) {
   return CLOCK.reduce((current, entry) => (t >= entry.at ? entry : current), CLOCK[0]);
 }
 
-/** A glow's strength t seconds after it fires: a quick rise, a hold, a slow fall. */
+/** A glow's strength t seconds after it fires: a soft rise, a hold, a slow fall. */
 export function envelope(t: number): number {
   if (t < 0 || t > 1.1) return 0;
-  if (t < 0.15) return t / 0.15;
+  if (t < 0.25) return t / 0.25;
   if (t < 0.5) return 1;
   return 1 - (t - 0.5) / 0.6;
 }

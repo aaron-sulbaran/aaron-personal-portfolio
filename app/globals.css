@@ -1707,7 +1707,9 @@ html[data-intro-loader="on"] #intro-heading {
 .hive-marker { display: inline-block; flex: none; width: 0.6rem; height: 0.6rem; border-radius: 999px; background: currentColor; }
 .hive-marker-next { background: transparent; box-shadow: inset 0 0 0 2px currentColor; }
 .hive-link { color: var(--color-accent); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 4px; }
-.hive-link:hover { color: var(--color-accent-hover); }
+@media (hover: hover) and (pointer: fine) {
+  .hive-link:hover { color: var(--color-accent-hover); }
+}
 @media (min-width: 768px) {
   .hive-wrap { padding-inline: 2rem; }
   .hive-caption { min-height: 30px; }
