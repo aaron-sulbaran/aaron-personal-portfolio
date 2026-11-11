@@ -24,6 +24,6 @@ describe("security.txt", () => {
   });
 
   it("uses no em dash", () => {
-    expect(file).not.toContain("—");
+    expect(file).not.toContain(String.fromCharCode(0x2014));
   });
 });

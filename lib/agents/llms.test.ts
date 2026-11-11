@@ -66,7 +66,7 @@ describe("both files", () => {
   });
 
   it("use no em dash", () => {
-    for (const text of [llms, full]) expect(text).not.toContain("—");
+    for (const text of [llms, full]) expect(text).not.toContain(String.fromCharCode(0x2014));
   });
 
   it("name only the published aaronsulbaran.com URLs", () => {

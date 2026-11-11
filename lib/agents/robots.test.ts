@@ -22,6 +22,6 @@ describe("robots.txt", () => {
   it("points at the sitemap and the agent guide, and uses no em dash", () => {
     expect(robots).toContain("\nSitemap: https://aaronsulbaran.com/sitemap.xml\n");
     expect(robots).toContain("https://aaronsulbaran.com/llms.txt");
-    expect(robots).not.toContain("—");
+    expect(robots).not.toContain(String.fromCharCode(0x2014));
   });
 });
