@@ -15,8 +15,8 @@ describe("errorDetail", () => {
   });
 
   it("cuts the message to 120 characters", () => {
-    const detail = errorDetail(new Error("a".repeat(500)));
-    expect(detail).toBe(`Error: ${"a".repeat(120)}`);
+    const detail = errorDetail(new Error("word ".repeat(100)));
+    expect(detail).toBe(`Error: ${"word ".repeat(100).slice(0, 120)}`);
   });
 
   it("adds the Next digest when there is one", () => {
@@ -49,20 +49,15 @@ describe("errorDetail", () => {
     expect(detail).not.toContain("PRIVATE");
   });
 
-  it("strips queries and fragments from the name and the digest too", () => {
-    const nameLeak = Object.assign(new Error("boom"), { name: "?key=SECRET" });
-    expect(errorDetail(nameLeak)).toBe("Error: boom");
-    const nameTail = Object.assign(new Error("boom"), { name: "Odd/path?key=SECRET" });
-    expect(errorDetail(nameTail)).toBe("Odd/path: boom");
-    const digestLeak = Object.assign(new Error("boom"), { digest: "#PRIVATE" });
-    expect(errorDetail(digestLeak)).toBe("Error: boom");
-    const digestTail = Object.assign(new Error("boom"), { digest: "abc?key=SECRET" });
-    expect(errorDetail(digestTail)).toBe("Error: boom (digest abc)");
-  });
-
-  it("caps the name at 40 characters and the digest at 32", () => {
-    const error = Object.assign(new Error("boom"), { name: "n".repeat(100), digest: "d".repeat(100) });
-    expect(errorDetail(error)).toBe(`${"n".repeat(40)}: boom (digest ${"d".repeat(32)})`);
+  it("accepts only identifier-like names and short token-like digests", () => {
+    const named = (name: unknown, digest?: unknown) => errorDetail({ message: "boom", name, digest });
+    expect(named("n".repeat(40))).toBe(`${"n".repeat(40)}: boom`);
+    expect(named("n".repeat(41))).toBe("Error: boom");
+    expect(named("Odd/path?key=SECRET")).toBe("Error: boom");
+    expect(named("TypeError", "d".repeat(32))).toBe(`TypeError: boom (digest ${"d".repeat(32)})`);
+    expect(named("TypeError", "d".repeat(33))).toBe("TypeError: boom");
+    expect(named("TypeError", "abc?key=SECRET")).toBe("TypeError: boom");
+    expect(named(42, 7)).toBe("Error: boom");
   });
 
   it("keeps a hash-numbered React error and prose with a question mark", () => {
@@ -73,11 +68,39 @@ describe("errorDetail", () => {
     expect(errorDetail(new Error("Why did this fail? Unknown"))).toBe("Error: Why did this fail? Unknown");
   });
 
-  it("describes a thrown string, an object and nothing", () => {
-    expect(errorDetail("plain text")).toBe("Thrown: plain text");
+  it("names only the type of a value that is not error-like", () => {
+    expect(errorDetail("plain text")).toBe("Thrown: string");
+    expect(errorDetail(42)).toBe("Thrown: number");
+    expect(errorDetail({ message: 5, digest: "d1" })).toBe("Thrown: object");
     expect(errorDetail({ message: "from an object", digest: "d1" })).toBe("Error: from an object (digest d1)");
     expect(errorDetail(undefined)).toBe("Thrown: unknown");
-    expect(errorDetail(42)).toBe("Thrown: unknown");
+    expect(errorDetail(null)).toBe("Thrown: unknown");
+    expect(errorDetail(true)).toBe("Thrown: unknown");
+  });
+
+  // One battery of hostile inputs. Add a row for every new leak a review finds.
+  const prefixed = (name: string, message: string, digest?: string) => ({ name, message, digest });
+  it.each([
+    ["a thrown string with an email and key", "email=alice@example.com key=SECRET", "Thrown: string", []],
+    ["an email in a message", new Error("contact alice@example.com now"), "Error: contact <email> now", ["alice", "example.com"]],
+    ["a local macOS path", new Error("at f (/Users/x/private.txt:1:2)"), "Error: at f (<path>", ["private.txt"]],
+    ["a local linux path", new Error("open /home/bob/notes/a.txt failed"), "Error: open <path> failed", ["bob"]],
+    ["a local windows path", new Error("open C:\\Users\\Carol\\a.txt failed"), "Error: open <path> failed", ["Carol"]],
+    ["a bare question-mark query", new Error("Bad request ?key=SECRET"), "Error: Bad request ?key=<v>", ["SECRET"]],
+    ["a key=value pair", new Error("retry with token=abc123 please"), "Error: retry with token=<v> please", ["abc123"]],
+    ["an ampersand pair", new Error("sent a=1&b=SECRET2 twice"), "Error: sent a=<v>&b=<v> twice", ["SECRET2"]],
+    ["a 40 character opaque token", new Error(`bad id ${"Ab1_".repeat(10)} here`), "Error: bad id <token> here", ["Ab1_"]],
+    ["a url with a query", new Error("Failed https://example.com/a?token=SECRET now"), "Error: Failed https://example.com/a now", ["SECRET"]],
+    ["a hostile name and digest", prefixed("?key=SECRET", "boom", "#PRIVATE"), "Error: boom", ["SECRET", "PRIVATE"]],
+    ["a window error as an error-like", { name: "WindowError", message: "Unexpected token '<'" }, "WindowError: Unexpected token '<'", []],
+    ["an unmasked prose message", new Error("x is not a function"), "Error: x is not a function", []],
+    ["a property read", new Error("Cannot read properties of undefined (reading 'map')"), "Error: Cannot read properties of undefined (reading 'map')", []],
+    ["prose with a question mark", new Error("Why did this fail? Unknown"), "Error: Why did this fail? Unknown", []],
+    ["a minified react error", new Error("Minified React error #418"), "Error: Minified React error #418", []],
+  ])("masks %s", (_label, value, expected, forbidden) => {
+    const detail = errorDetail(value);
+    expect(detail).toBe(expected);
+    for (const word of forbidden as string[]) expect(detail).not.toContain(word);
   });
 });
 
@@ -93,7 +116,7 @@ describe("windowErrorValue", () => {
   });
 
   it("keeps a message-only event that says something", () => {
-    expect(windowErrorValue({ error: null, message: "Unexpected token '<'" })).toBe("Unexpected token '<'");
+    expect(windowErrorValue({ error: null, message: "Unexpected token '<'" })).toEqual({ name: "WindowError", message: "Unexpected token '<'" });
   });
 
   it("drops the benign ResizeObserver notices when they carry no error object", () => {
