@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { JsonLd } from "@/components/JsonLd";
 import { ExpressLane } from "@/components/quick/ExpressLane";
 import { HOLDING_MODE } from "@/lib/holding";
 import { siteContent } from "@/lib/content";
@@ -27,6 +28,7 @@ export default function QuickPage() {
           nav, footer, a.skip-link, [data-pill], [data-rush], [data-trip-bar] { display: none !important; }
         }
       `}</style>
+      <JsonLd />
       <ExpressLane visit />
     </main>
   );

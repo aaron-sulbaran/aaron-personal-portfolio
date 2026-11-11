@@ -3,6 +3,7 @@ import { Connect } from "@/components/Connect";
 import { Footer } from "@/components/Footer";
 import { PathLayer } from "@/components/soundtrack/path/PathLayer";
 import { Holding } from "@/components/Holding";
+import { JsonLd } from "@/components/JsonLd";
 import { HOLDING_MODE } from "@/lib/holding";
 import { DealLabMount } from "@/components/home/DealLabMount";
 import { HeroLabMount } from "@/components/home/HeroLabMount";
@@ -50,6 +51,7 @@ export default function Home() {
 
   return (
     <>
+      <JsonLd />
       <IntroLoader />
       <div className="relative z-10">
         <PathLayer />
