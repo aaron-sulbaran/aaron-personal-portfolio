@@ -381,20 +381,23 @@ test("hive story: the AI pane and Beekeeper's channel share an edge side by side
   const loop = page.locator(".hive-loop");
   await loop.scrollIntoViewIfNeeded();
   const controls = page.locator('[role="group"][aria-label^="From a teammate"]');
+  // The channel's height changes with the step, so check two steps, stepping whichever way is open.
   for (let i = 0; i < 2; i++) {
     const [ai, channel] = await Promise.all([page.locator(".hive-ai").boundingBox(), page.locator(".hive-discord").boundingBox()]);
     expect(Math.abs(ai!.y - channel!.y)).toBeLessThan(1);
     expect(Math.abs(ai!.height - channel!.height), `step ${await controls.locator(".hive-control-count").textContent()}`).toBeLessThan(1);
-    await controls.getByRole("button", { name: /^Back,/ }).click();
+    const back = controls.getByRole("button", { name: /^Back,/ });
+    await ((await back.isEnabled()) ? back : controls.getByRole("button", { name: /^Next,/ })).click();
   }
 });
 
-// Whether a 44 by 44 square around an element's center lands on it: its hit area, pseudo-elements included.
+// Whether an element's hit area, pseudo-elements included, reaches 44 px across and 44 px down
+// through its center. Hit testing follows border-radius, so a round target is measured on its axes.
 const hitsAll44 = (locator: import("@playwright/test").Locator) =>
   locator.evaluate((el) => {
     const r = el.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
     const lands = (x: number, y: number) => { const hit = document.elementFromPoint(x, y); return !!hit && (hit === el || el.contains(hit)); };
-    return [-21.5, 21.5].every((dx) => [-21.5, 21.5].every((dy) => lands(cx + dx, cy + dy)));
+    return [[-21.5, 0], [21.5, 0], [0, -21.5], [0, 21.5]].every(([dx, dy]) => lands(cx + dx, cy + dy));
   });
 
 for (const width of [390, 1440]) {
