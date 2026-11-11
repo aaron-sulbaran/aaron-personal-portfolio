@@ -18,10 +18,14 @@ export const metadata: Metadata = {
   openGraph: { title: hiveStoryCopy.title, description: hiveStoryCopy.description, url: "/hive-visual" },
 };
 
+// Aaron asked for the AS logo white on honey (about 1.7:1). true rims it, and
+// the Menu pill, in bee ink so it reads at 3:1 or better; his call.
+const LOGO_EDGE = false;
+
 export default function HiveStoryPage() {
   if (HOLDING_MODE) redirect("/");
   return (
-    <main id="main" data-page="hive-story" className={`${doto.variable} hive-story`}>
+    <main id="main" data-page="hive-visual" data-logo-edge={LOGO_EDGE || undefined} className={`${doto.variable} hive-story`}>
       <StoryHero />
       <StepsSection />
       <WhySection />

@@ -126,6 +126,58 @@ test("hive story: links back to every part of the portfolio, from the first scre
   for (const link of hiveStoryCopy.more.site) await expect(page.locator(`#main a[href="${link.href}"]`)).toHaveText(link.label);
 });
 
+const HONEY = "rgb(242, 190, 58)";
+const bg = (page: import("@playwright/test").Page) => page.evaluate(() => getComputedStyle(document.documentElement).backgroundColor);
+
+test("hive story: the page is honey and the logo light, and the logo stays light and shown on hover and keyboard focus", async ({ page }) => {
+  await page.goto(PATH);
+  expect(await bg(page)).toBe(HONEY);
+  const logo = page.locator("[data-mark-trigger]");
+  const look = () => logo.evaluate((el) => [getComputedStyle(el).color, getComputedStyle(el).opacity, getComputedStyle(el).visibility]);
+  expect(await look()).toEqual(["rgb(250, 250, 247)", "1", "visible"]);
+  await logo.hover();
+  expect(await look()).toEqual(["rgb(250, 250, 247)", "1", "visible"]);
+  await page.mouse.move(700, 600);
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Tab");
+  await expect(logo).toBeFocused();
+  expect(await look()).toEqual(["rgb(250, 250, 247)", "1", "visible"]);
+});
+
+for (const [label, target, selector] of [["the MVP", "/quick", 'a[href="/quick"]'], ["the home", "/", 'header a[href="/"]']] as const) {
+  test(`hive story: leaving for ${label} by a link shows the normal background, with no honey on the new page`, async ({ page }) => {
+    await page.goto(PATH);
+    expect(await bg(page)).toBe(HONEY);
+    // Sample every frame: once the new page's content is in, the background must never be honey.
+    await page.evaluate(() => {
+      const w = window as unknown as { __bg: [boolean, string][] };
+      w.__bg = [];
+      const tick = () => {
+        w.__bg.push([!document.querySelector('main[data-page="hive-visual"]'), getComputedStyle(document.documentElement).backgroundColor]);
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    });
+    await page.locator(`#main ${selector}`).first().click();
+    await page.waitForURL((url) => url.pathname === target);
+    await page.waitForTimeout(600);
+    const samples = await page.evaluate(() => (window as unknown as { __bg?: [boolean, string][] }).__bg ?? []);
+    expect(samples.filter(([gone, color]) => gone && color === HONEY)).toEqual([]);
+    expect(await bg(page)).not.toBe(HONEY);
+  });
+}
+
+test.describe("dark mode elsewhere", () => {
+  test.use({ colorScheme: "dark" });
+
+  test("hive story: the honey stays on its page; the MVP keeps the dark theme", async ({ page }) => {
+    await page.goto(PATH);
+    expect(await bg(page)).toBe(HONEY);
+    await page.goto("/quick");
+    expect(await bg(page)).toBe("rgb(14, 20, 25)");
+  });
+});
+
 test("hive story: links out open in a new tab without an opener", async ({ page }) => {
   await page.goto(PATH);
   const external = page.locator('#main a[href^="https://"]');
