@@ -90,7 +90,7 @@ export function FlowSwarm({ children }: { children: ReactNode }) {
         setStep(s);
         if (reduce.matches) { elapsed = stillAt(s); holdAt = elapsed; paint(); return; }
         elapsed = FLOW_STEPS[s].start;
-        holdAt = FLOW_STEPS[s].end;
+        holdAt = FLOW_STEPS[s].end - 0.01;
         start();
       },
       setAuto: (on) => {

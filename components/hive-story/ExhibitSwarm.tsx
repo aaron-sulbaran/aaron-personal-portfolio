@@ -74,7 +74,7 @@ export function ExhibitSwarm() {
         setStep(s);
         if (reduce.matches) { elapsed = EXHIBIT_STEPS[s].still; holdAt = elapsed; paint(); return; }
         elapsed = EXHIBIT_STEPS[s].start;
-        holdAt = EXHIBIT_STEPS[s].end;
+        holdAt = EXHIBIT_STEPS[s].end - 0.01; // just inside the step: its end is the next step's start
         start();
       },
       setAuto: (on) => { if (reduce.matches) return; isAuto = on; setAutoState(on); holdAt = null; if (on) start(); else stop(); },
