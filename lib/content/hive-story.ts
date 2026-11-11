@@ -62,6 +62,16 @@ export const hiveStoryCopy = {
     proof: "After the first round of fixes, a hand check of 15 random facts found none wrong.",
   },
 
+  team: {
+    heading: "What my team sees",
+    body: "The team page lives at aaronsulbaran.com/hive behind a private link, drawn in the same bees. Each day of the week is a column of comb: honey cells are due, capped cells are decided, a dashed cell is an AI session waiting on its author, and open questions sit beside the week.",
+    note: "Shown with a made-up team and made-up facts. The real page is being built now and stays private.",
+    shots: {
+      desktop: { src: "/hive-story/team-page-desktop.jpg", width: 2880, height: 1580, alt: "The team page's This week view on a laptop: a dark page with a honeycomb calendar, honey cells on the days something is due, and three open questions beside the week." },
+      phone: { src: "/hive-story/team-page-phone.jpg", width: 780, height: 1688, alt: "The same view on a phone, with the week's comb above the open questions and a Copy for your AI button." },
+    },
+  },
+
   status: {
     heading: "Running now, and next",
     now: {

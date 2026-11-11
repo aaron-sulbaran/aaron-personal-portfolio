@@ -39,6 +39,26 @@ test.describe("on a phone", () => {
   });
 });
 
+test("hive story: the team page shows as a laptop shot beside a phone shot, each loaded and described", async ({ page }) => {
+  await page.goto(PATH);
+  for (const shot of Object.values(hiveStoryCopy.team.shots)) {
+    const img = page.getByAltText(shot.alt);
+    await img.scrollIntoViewIfNeeded();
+    await expect(img).toBeVisible();
+    await expect.poll(() => img.evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth > 0)).toBe(true);
+  }
+});
+
+test.describe("the team page on a phone", () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test("hive story: only the phone shot shows, so nothing is shrunk past reading", async ({ page }) => {
+    await page.goto(PATH);
+    await expect(page.getByAltText(hiveStoryCopy.team.shots.desktop.alt)).toBeHidden();
+    await expect(page.getByAltText(hiveStoryCopy.team.shots.phone.alt)).toBeVisible();
+  });
+});
+
 test("hive story: the clock runs while the stage is on screen", async ({ page }) => {
   await page.goto(PATH);
   const head = page.locator(".hive-stage-head");

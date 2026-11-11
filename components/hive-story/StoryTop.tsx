@@ -1,8 +1,10 @@
+import Image from "next/image";
 import type { ReactNode } from "react";
 import { hiveStoryCopy } from "@/lib/content/hive-story";
+import { HIVE_SHOT_SIZES } from "@/lib/photoSizes";
 import { DotGlyph, HiveFlow } from "./Drawings";
 
-const { title, lede, framing, why, steps, status } = hiveStoryCopy;
+const { title, lede, framing, why, steps, team, status } = hiveStoryCopy;
 
 export function SectionHeading({ id, children }: { id: string; children: ReactNode }) {
   return <h2 id={id} className="font-display text-[clamp(2rem,4.5vw,3.25rem)] leading-[1.05] tracking-[-0.02em] text-balance">{children}</h2>;
@@ -51,6 +53,26 @@ export function StepsSection() {
         ))}
       </ol>
       <p className="mt-10 max-w-[40rem] text-[1.0625rem]">{steps.proof}</p>
+    </section>
+  );
+}
+
+/** The team page's chosen look, as screenshots with a made-up team: the laptop view from 768 px up, and the phone view. */
+export function TeamSection() {
+  const { desktop, phone } = team.shots;
+  return (
+    <section aria-labelledby="hive-team" className="hive-section hive-wrap">
+      <SectionHeading id="hive-team">{team.heading}</SectionHeading>
+      <p className="mt-6 max-w-[44rem] text-[1.0625rem] leading-[1.6] lg:text-[1.15rem]">{team.body}</p>
+      <div className="mt-10 flex items-end gap-6 lg:gap-8">
+        <div className="hidden min-w-0 flex-1 md:block">
+          <Image src={desktop.src} width={desktop.width} height={desktop.height} alt={desktop.alt} sizes={HIVE_SHOT_SIZES.desktop} className="hive-shot h-auto w-full rounded-[14px]" />
+        </div>
+        <div className="mx-auto w-full max-w-[320px] md:mx-0 md:w-[260px] md:flex-none">
+          <Image src={phone.src} width={phone.width} height={phone.height} alt={phone.alt} sizes={HIVE_SHOT_SIZES.phone} className="hive-shot h-auto w-full rounded-[22px]" />
+        </div>
+      </div>
+      <p className="mt-4 max-w-[40rem] text-sm text-muted">{team.note}</p>
     </section>
   );
 }

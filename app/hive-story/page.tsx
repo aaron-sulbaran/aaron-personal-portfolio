@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { doto } from "@/components/hive-story/font";
 import { CallsSection, MoreSection, NumbersSection, ScenariosSection } from "@/components/hive-story/StoryBottom";
-import { StatusSection, StepsSection, StoryHero, WhySection } from "@/components/hive-story/StoryTop";
+import { StatusSection, StepsSection, StoryHero, TeamSection, WhySection } from "@/components/hive-story/StoryTop";
 import { hiveStoryCopy } from "@/lib/content/hive-story";
 import { HOLDING_MODE } from "@/lib/holding";
 
@@ -25,6 +25,7 @@ export default function HiveStoryPage() {
       <StoryHero />
       <WhySection />
       <StepsSection />
+      <TeamSection />
       <StatusSection />
       <ScenariosSection />
       <CallsSection />

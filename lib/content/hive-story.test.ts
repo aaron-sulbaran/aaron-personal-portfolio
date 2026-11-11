@@ -26,6 +26,12 @@ describe("the Hive story's copy", () => {
     expect(hiveStoryCopy.steps.proof).toContain("15 random facts found none wrong");
   });
 
+  it("says the team page screenshots use a made-up team, and stays private", () => {
+    expect(hiveStoryCopy.team.note).toMatch(/made-up team and made-up facts/);
+    expect(hiveStoryCopy.team.note).toMatch(/private/);
+    for (const shot of Object.values(hiveStoryCopy.team.shots)) expect(shot.src.startsWith("/hive-story/")).toBe(true);
+  });
+
   it("has a caption for every moment on the clock", () => {
     for (const entry of CLOCK) expect(hiveStoryCopy.flow.captions[entry.caption]).toBeTruthy();
   });
