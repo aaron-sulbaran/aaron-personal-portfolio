@@ -32,6 +32,7 @@ describe("site analytics", () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.doUnmock("@/lib/analytics");
   });
 
   describe("ensureAnalytics", () => {
@@ -66,6 +67,23 @@ describe("site analytics", () => {
       expect(queue[1][1]).toMatchObject({ name: "client_error", data: { where: "window", detail: "Error" } });
       expect(created).toHaveLength(0);
       expect(appended).toHaveLength(0);
+    });
+
+    it.each([
+      ["rejects", false, null],
+      ["allows", true, "event"],
+    ])("queues a filter that really consults allowAnalyticsEvent (%s)", async (_label, allowed, outcome) => {
+      const allow = vi.fn(() => allowed);
+      vi.doMock("@/lib/analytics", async (importOriginal) => ({
+        ...(await importOriginal<typeof import("@/lib/analytics")>()),
+        allowAnalyticsEvent: allow,
+      }));
+      const { reportClientError } = await load();
+      reportClientError("window", new Error("x"));
+      const filter = (win().vaq ?? [])[0][1] as (event: unknown) => unknown;
+      const event = { type: "event", url: "https://example.com/somewhere" };
+      expect(filter(event)).toBe(outcome === "event" ? event : null);
+      expect(allow).toHaveBeenCalledWith(event.url);
     });
 
     it("uses the existing window.va without making a second queue", async () => {

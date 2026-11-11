@@ -14,7 +14,7 @@ function beforeSend(event: BeforeSendEvent): BeforeSendEvent | null {
 //
 // A first-render crash reports before <Analytics> has run its effects, so window.va does not exist
 // yet and track() would drop the event after the reporter spent its budget. The queue is made the
-// way the vendor's initQueue makes it, with the filter first, and <Analytics> drains it on mount.
+// way the vendor's initQueue makes it, with the filter first. <Analytics> then adds the script, which drains the queue once it loads.
 // inject() is not called here: it would add the script with default settings, and <Analytics>
 // would then skip its own, which carries the framework settings and sends page views itself.
 export const reportClientError = createClientErrorReporter({

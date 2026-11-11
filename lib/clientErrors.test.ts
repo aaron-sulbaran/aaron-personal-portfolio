@@ -21,6 +21,9 @@ describe("errorDetail", () => {
     ["a name with a slash", named("Odd/Name"), "Error"],
     ["a name with a colon", named("Odd:Name"), "Error"],
     ["a name that is not a string", named(42), "Error"],
+    ["a name that is an array", named(["TypeError"]), "Error"],
+    ["a name that is a String object", named(new String("TypeError")), "Error"],
+    ["a name that is an object printing an identifier", named({ toString: () => "TypeError" }), "Error"],
     ["a valid digest", Object.assign(new Error("marker words here"), { digest: "1234567890" }), "Error (digest 1234567890)"],
     ["a named error with a digest", named("TypeError", "d1-x_Y"), "TypeError (digest d1-x_Y)"],
     ["a 32 character digest", named("TypeError", "d".repeat(32)), `TypeError (digest ${"d".repeat(32)})`],
@@ -204,7 +207,7 @@ describe("createClientErrorReporter", () => {
     for (let i = 0; i < 3; i += 1) report("window", new Error("same"));
     report("window", new TypeError("one"));
     report("window", new RangeError("two"));
-    expect(send).toHaveBeenCalledTimes(3);
+    expect(send.mock.calls.map(([, properties]) => properties.detail)).toEqual(["Error", "TypeError", "RangeError"]);
   });
 
   it("holds the cap when a getter reports again while the detail is built", () => {
@@ -232,12 +235,52 @@ describe("createClientErrorReporter", () => {
   });
 
   it.each([
-    ["send", { send: () => { throw new Error("analytics blocked"); } }],
-    ["pathname", { pathname: () => { throw new Error("no location"); } }],
-    ["isPrivate", { isPrivate: () => { throw new Error("bad check"); } }],
-  ])("never throws, even when %s does", (_label, overrides) => {
-    const { report } = reporter(overrides);
+    ["send", { send: () => { throw new Error("analytics blocked"); } }, false],
+    ["pathname", { pathname: () => { throw new Error("no location"); } }, true],
+    ["isPrivate", { isPrivate: () => { throw new Error("bad check"); } }, true],
+  ])("never throws, even when %s does", (_label, overrides, failsClosed) => {
+    const { send, report } = reporter(overrides);
     expect(() => report("window", new Error("boom"))).not.toThrow();
+    if (failsClosed) expect(send).not.toHaveBeenCalled();
+  });
+
+  it("holds the cap when send itself reports again", () => {
+    const wheres: ErrorWhere[] = ["unhandledrejection", "error-page", "global-error", "boundary:player", "boundary:cursor"];
+    let next = 0;
+    const send = vi.fn(() => {
+      const where = wheres[next];
+      next += 1;
+      if (where) report(where, new RangeError("again"));
+    });
+    const report = createClientErrorReporter({ send, pathname: () => "/", isPrivate: () => false });
+    report("window", new TypeError("first"));
+    expect(send).toHaveBeenCalledTimes(3);
+  });
+
+  it("sends nothing when a getter visits a private path while the detail is built", () => {
+    const { send, report } = reporter({ isPrivate: (path) => path.startsWith("/private") });
+    const visiting = {
+      get message() {
+        report.visit("/private/x");
+        return "text";
+      },
+    };
+    report("window", visiting);
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it("holds the cap when a name getter reports again", () => {
+    const { send, report } = reporter();
+    const wheres: ErrorWhere[] = ["unhandledrejection", "error-page", "global-error"];
+    const reentrant = {
+      message: "text",
+      get name() {
+        for (const where of wheres) report(where, new TypeError("inner"));
+        return "RangeError";
+      },
+    };
+    report("window", reentrant);
+    expect(send).toHaveBeenCalledTimes(3);
   });
 
   it("never throws from visit, even when isPrivate does", () => {
