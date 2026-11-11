@@ -53,13 +53,24 @@ describe("the Hive story's copy", () => {
     const steps = hiveStoryCopy.calls.loop.steps;
     expect(steps[3]).toMatch(/one reaction/);
     expect(steps[4]).toMatch(/replies to correct/);
-    // Today an hourly watcher copies the notes in; minutes is designed, so it stays under Next.
-    expect(lane).toMatch(/hour/);
-    expect(lane).toMatch(/minutes/);
+    // The Hive lead's fact check: the hourly read covers Discord and Drive only, so an AI session's
+    // notes get in when someone posts them there; sending them straight, in minutes, is next.
+    expect(lane).toBe("Today the Hive reads the team's Discord and Drive folder every hour, so an AI session's notes get in only when someone posts them there. Sending notes straight from an AI session, checked within minutes, is designed and next to build.");
+    expect(leaves.filter((leaf) => /copies session notes/.test(leaf.text)).map((leaf) => leaf.path)).toEqual([]);
     // Teammates have the final say on what goes into the Hive.
     expect(scenarios.intro).toMatch(/final say/);
     // No "X, not Y" contrast in any of them.
     expect([...beekeeper, lane, scenarios.intro].filter((line) => /, not /.test(line))).toEqual([]);
+  });
+
+  it("marks the Beekeeper demo as planned, since the connector and the author's confirm and correct posts are not built", () => {
+    const { loop } = hiveStoryCopy.calls;
+    expect(loop.tag.startsWith("Next")).toBe(true);
+    expect(loop.note).toMatch(/planned/);
+    expect(loop.note).toMatch(/next to build/);
+    expect(loop.note).toMatch(/made up/);
+    // The AI sessions part stays next too.
+    expect(hiveStoryCopy.flow.nodes.notes.sub).toMatch(/next/);
   });
 
   it("has a caption for every moment on the clock", () => {

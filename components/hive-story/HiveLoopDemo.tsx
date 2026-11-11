@@ -81,6 +81,7 @@ export function HiveLoopDemo() {
   const d = loop.discord;
   return (
     <figure ref={ref} className="hive-loop m-0">
+      <p className="mb-4 flex items-center gap-3 font-semibold"><span aria-hidden="true" className="hive-marker hive-marker-next" />{loop.tag}</p>
       <div className="hive-loop-panes">
         <div className="hive-ai" {...at({ in: 0 })}>
           <p className="hive-pane-title">{loop.ai.title}</p>
