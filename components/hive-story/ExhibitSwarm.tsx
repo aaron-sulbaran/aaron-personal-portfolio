@@ -70,6 +70,8 @@ export function ExhibitSwarm() {
         isAuto = false;
         setAutoState(false);
         stop();
+        shownStep = s;
+        setStep(s);
         if (reduce.matches) { elapsed = EXHIBIT_STEPS[s].still; holdAt = elapsed; paint(); return; }
         elapsed = EXHIBIT_STEPS[s].start;
         holdAt = EXHIBIT_STEPS[s].end;

@@ -86,6 +86,8 @@ export function FlowSwarm({ children }: { children: ReactNode }) {
         isAuto = false;
         setAutoState(false);
         stop();
+        stepShown = s;
+        setStep(s);
         if (reduce.matches) { elapsed = stillAt(s); holdAt = elapsed; paint(); return; }
         elapsed = FLOW_STEPS[s].start;
         holdAt = FLOW_STEPS[s].end;

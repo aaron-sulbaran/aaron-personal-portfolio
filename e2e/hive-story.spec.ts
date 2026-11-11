@@ -30,7 +30,7 @@ test.describe("on a phone", () => {
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(hiveStoryCopy.title);
     const widths = await page.evaluate(() => [document.documentElement.scrollWidth, window.innerWidth]);
     expect(widths[0]).toBe(widths[1]);
-    const stage = await page.locator(".hive-stage svg").filter({ visible: true }).boundingBox();
+    const stage = await page.locator(".hive-stage-box > svg").filter({ visible: true }).boundingBox();
     expect(stage).not.toBeNull();
     // The diagram starts on the first screen, and the phone gets the column, not the shrunken row.
     expect(stage!.y).toBeLessThan(844);
@@ -91,12 +91,17 @@ test("hive story: every animation can be stepped by hand, and a step holds until
   for (const group of await groups.all()) {
     await group.scrollIntoViewIfNeeded();
     const count = group.locator(".hive-control-count");
-    await group.getByRole("button", { name: /^Next,/ }).click();
+    const next = group.getByRole("button", { name: /^Next,/ });
+    const back = group.getByRole("button", { name: /^Back,/ });
+    // Step whichever way is open (the loop may sit on its last step), then the other way.
+    const forward = await next.isEnabled();
+    await (forward ? next : back).click();
+    await page.waitForTimeout(300);
     const held = await count.textContent();
     await expect(group.getByRole("button", { name: /^Play,/ })).toBeVisible();
     await page.waitForTimeout(2_600);
     expect(await count.textContent()).toBe(held);
-    await group.getByRole("button", { name: /^Back,/ }).click();
+    await (forward ? back : next).click();
     await expect(count).not.toHaveText(held ?? "");
   }
 });
