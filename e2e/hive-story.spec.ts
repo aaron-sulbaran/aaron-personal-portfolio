@@ -98,7 +98,11 @@ test("hive story: every animation can be stepped by hand, and a step holds until
     await (forward ? next : back).click();
     await page.waitForTimeout(300);
     const held = await count.textContent();
-    await expect(group.getByRole("button", { name: /^Pause,/ })).toHaveAttribute("aria-pressed", "true");
+    // Held, the toggle offers Play, with its word and icon to match, and no Pause left to contradict it.
+    await expect(group.getByRole("button", { name: /^Play,/ })).toBeVisible();
+    await expect(group.getByRole("button", { name: /^Play,/ })).toHaveText("Play");
+    await expect(group.getByRole("button", { name: /^Play,/ }).locator("svg.lucide-play")).toHaveCount(1);
+    await expect(group.getByRole("button", { name: /^Pause,/ })).toHaveCount(0);
     await expect(count).toHaveText(/^Step \d of \d$/);
     await expect(count).toHaveAttribute("aria-live", "polite");
     await page.waitForTimeout(2_600);
@@ -123,8 +127,9 @@ test("hive story: Pause stops all motion in its piece", async ({ page }) => {
     const controls = page.locator(`[role="group"][aria-label^="${group}"]`);
     await controls.scrollIntoViewIfNeeded();
     await page.waitForTimeout(600);
+    await expect(controls.getByRole("button", { name: /^Pause,/ })).toHaveText("Pause");
     await controls.getByRole("button", { name: /^Pause,/ }).click();
-    await expect(controls.getByRole("button", { name: /^Pause,/ })).toHaveAttribute("aria-pressed", "true");
+    await expect(controls.getByRole("button", { name: /^Play,/ })).toHaveText("Play");
     await page.waitForTimeout(200);
     const still = await canvasHash(page, canvas);
     await page.waitForTimeout(1_200);

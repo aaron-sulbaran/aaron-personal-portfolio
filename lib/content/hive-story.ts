@@ -211,5 +211,5 @@ export const hiveStoryCopy = {
   // Under the hero, so the way back to the portfolio is on the first screen too.
   backLink: { label: "See the rest of my portfolio", href: "/" },
   // Every animation on the page can be stepped by hand.
-  controls: { group: "step through", back: "Back", next: "Next", pause: "Pause", count: (n: number, total: number) => `Step ${n} of ${total}` },
+  controls: { group: "step through", back: "Back", next: "Next", pause: "Pause", play: "Play", count: (n: number, total: number) => `Step ${n} of ${total}` },
 } as const;
