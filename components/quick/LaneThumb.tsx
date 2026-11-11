@@ -54,20 +54,23 @@ function LogoThumb({ logo, tile }: { logo: LogoRef; tile: "plain" | "talos" }) {
 // An SVG is already vector and tiny, so it stays a plain img; any raster goes
 // through the optimizer (the IEEE square is a 1382 px JPEG shown at about 70 px).
 // The width and height are the file's own, so the box is the one the raw img had.
-function LogoPicture({ src, logo, className }: { src: string; logo: LogoRef; className: string }) {
+//
+// A light and dark pair loads both halves up front: the hidden half is display: none, and a hidden
+// lazy image is not fetched until it shows, which left the tile empty on the first theme toggle.
+function LogoPicture({ src, logo, className, eager }: { src: string; logo: LogoRef; className: string; eager: boolean }) {
   if (src.toLowerCase().endsWith(".svg")) {
     // eslint-disable-next-line @next/next/no-img-element
     return <img src={src} alt="" className={className} />;
   }
-  return <Image src={src} alt="" width={logo.width} height={logo.height} sizes={THUMB_SIZES} quality={90} className={className} />;
+  return <Image src={src} alt="" width={logo.width} height={logo.height} sizes={THUMB_SIZES} quality={90} loading={eager ? "eager" : undefined} className={className} />;
 }
 
 function LogoImage({ logo }: { logo: LogoRef }) {
   const frame = "max-h-full max-w-full object-contain";
   return (
     <>
-      <LogoPicture src={logo.src} logo={logo} className={`${frame} ${logo.srcDark ? "dark:hidden" : ""}`} />
-      {logo.srcDark && <LogoPicture src={logo.srcDark} logo={logo} className={`${frame} hidden dark:block`} />}
+      <LogoPicture src={logo.src} logo={logo} eager={Boolean(logo.srcDark)} className={`${frame} ${logo.srcDark ? "dark:hidden" : ""}`} />
+      {logo.srcDark && <LogoPicture src={logo.srcDark} logo={logo} eager className={`${frame} hidden dark:block`} />}
     </>
   );
 }
