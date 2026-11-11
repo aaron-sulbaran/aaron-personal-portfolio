@@ -23,7 +23,7 @@ export const hiveStoryCopy = {
       "Every night, facts are checked against their sources. Disagreements become open questions.",
       "Next: in a sprint, AI session notes land in minutes.",
       "Every teammate's AI can read them right away.",
-      "Beekeeper asks the author. A tap confirms, a reply corrects.",
+      "Beekeeper asks the author, who confirms with one reaction or replies to correct it.",
     ],
     legend: { now: "running now", next: "next" },
     nodes: {
@@ -99,15 +99,15 @@ export const hiveStoryCopy = {
       label: "Next",
       items: [
         { title: "An MCP connector for everyone's AI", body: "Search the Hive, add notes from a session." },
-        { title: "The fast lane", body: "Notes checked in minutes, not overnight." },
-        { title: "Beekeeper asks the author", body: "A tap confirms, a reply corrects." },
+        { title: "The fast lane", body: "Today an hourly watcher copies session notes in. Sharing them within minutes is designed and next to build." },
+        { title: "Beekeeper asks the author", body: "The author confirms the note with one reaction or replies to correct it." },
       ],
     },
   },
 
   scenarios: {
     heading: "Several people at once",
-    intro: "Trying things in parallel pays off, and people still decide what's true.",
+    intro: "Teammates have the final say on what goes into the Hive.",
     items: [
       { key: "prototypes", title: "Three prototypes of one part", body: "Each session's notes land side by side, unconfirmed, ready to compare." },
       { key: "ideas", title: "Two ideas in parallel", body: "Findings stay apart until a person decides." },
