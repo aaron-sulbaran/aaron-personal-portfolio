@@ -12,7 +12,7 @@ export function HiveFlow() {
     <figure className="m-0">
       <FlowSwarm>
         <FlowSvg layout={LAYOUTS.tall} className="relative block w-full lg:hidden" />
-        <FlowSvg layout={LAYOUTS.wide} className="relative hidden w-full lg:block" />
+        <FlowSvg layout={LAYOUTS.wide} className="hive-flow-wide relative hidden w-full lg:block" />
       </FlowSwarm>
       <figcaption className="sr-only">{hiveStoryCopy.flow.description}</figcaption>
     </figure>

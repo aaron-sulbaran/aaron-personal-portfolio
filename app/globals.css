@@ -1751,6 +1751,20 @@ html:has(main[data-page="hive-visual"][data-logo-edge]) [data-menu-pill]:not([ro
 }
 .hive-legend { display: none; }
 .hive-stage-box { position: relative; }
+/* The desktop row scales with the stage, 928 px across at 1024 and 1312 from
+   1440, so its words are set per band in the drawing's units to stay 12 px or
+   more on screen (13 for names). From 1024 to 1279 the long sub-labels can't
+   fit at that size, so the parts use the phone's short ones. */
+.hive-sub-short { display: none; }
+@media (min-width: 1024px) and (max-width: 1279.98px) {
+  .hive-flow-wide .hive-flow-label { font-size: 18.5px; }
+  .hive-flow-wide .hive-flow-sub { font-size: 17px; }
+  .hive-flow-wide .hive-sub-long { display: none; }
+  .hive-flow-wide .hive-sub-short { display: inline; }
+}
+@media (min-width: 1280px) and (max-width: 1439.98px) {
+  .hive-flow-wide .hive-flow-sub { font-size: 13.7px; }
+}
 /* The fact's trip: drawing parts after the playing step dim, the step's
    number is marked, and a bee carries each quote. At rest nothing is dimmed
    and no bee shows. */

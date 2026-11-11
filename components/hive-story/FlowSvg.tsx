@@ -1,8 +1,22 @@
+import type { SVGProps } from "react";
 import { hiveStoryCopy } from "@/lib/content/hive-story";
 import { NEXT_NODES, staticDots, type FlowLayout, type NodeKey } from "@/lib/hive-story/flow";
 
 const { flow } = hiveStoryCopy;
 const r2 = (n: number) => Math.round(n * 100) / 100;
+
+type SubProps = { wide: boolean; long: string; short: string } & Omit<SVGProps<SVGTextElement>, "children">;
+
+/** A sub-label. The phone column draws the short one; the desktop row draws both, and app/globals.css shows the short one where the row is too narrow for the long one at 12 px. */
+function SubLabel({ wide, long, short, ...text }: SubProps) {
+  if (!wide) return <text className="hive-flow-sub" {...text}>{short}</text>;
+  return (
+    <>
+      <text className="hive-flow-sub hive-sub-long" {...text}>{long}</text>
+      <text className="hive-flow-sub hive-sub-short" {...text}>{short}</text>
+    </>
+  );
+}
 
 // The Hive's flow at rest: every part, every trace, the comb, the open question
 // and the author's check, in dots. Server-rendered, so the whole diagram is in
@@ -43,16 +57,16 @@ export function FlowSvg({ layout, className }: { layout: FlowLayout; className?:
         const copy = flow.nodes[key];
         return (
           <g key={key} data-next={NEXT_NODES.has(key) || undefined}>
-            <text x={b.x + s.nodePad} y={b.y + s.labelY} fontSize={s.label} fontWeight={650}>{copy.label}</text>
-            <text x={b.x + s.nodePad} y={b.y + s.subY} fontSize={s.sub} fontWeight={500} fillOpacity={0.72}>{wide ? copy.sub : copy.subShort}</text>
+            <text className="hive-flow-label" x={b.x + s.nodePad} y={b.y + s.labelY} fontSize={s.label} fontWeight={650}>{copy.label}</text>
+            <SubLabel wide={wide} x={b.x + s.nodePad} y={b.y + s.subY} long={copy.sub} short={copy.subShort} fontSize={s.sub} fontWeight={500} fillOpacity={0.72} />
           </g>
         );
       })}
-      <text x={L.hive.x} y={L.hive.y} textAnchor={L.hive.anchor} fontSize={s.label} fontWeight={650}>{flow.hive.label}</text>
+      <text className="hive-flow-label" x={L.hive.x} y={L.hive.y} textAnchor={L.hive.anchor} fontSize={s.label} fontWeight={650}>{flow.hive.label}</text>
       <g fontSize={s.sub} fontWeight={500} fillOpacity={0.72}>
-        <text x={L.hiveSub.x} y={L.hiveSub.y} textAnchor={L.hiveSub.anchor}>{wide ? flow.hive.sub : flow.hive.subShort}</text>
-        <text x={L.question.x} y={L.question.y} textAnchor={L.question.anchor}>{flow.question}</text>
-        <text x={L.lane.x} y={L.lane.y} textAnchor={L.lane.anchor}>{flow.lane[layout.name]}</text>
+        <SubLabel wide={wide} x={L.hiveSub.x} y={L.hiveSub.y} textAnchor={L.hiveSub.anchor} long={flow.hive.sub} short={flow.hive.subShort} />
+        <text className="hive-flow-sub" x={L.question.x} y={L.question.y} textAnchor={L.question.anchor}>{flow.question}</text>
+        <text className="hive-flow-sub" x={L.lane.x} y={L.lane.y} textAnchor={L.lane.anchor}>{flow.lane[layout.name]}</text>
       </g>
     </svg>
   );

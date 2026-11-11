@@ -453,6 +453,38 @@ test.describe("the diagram on a phone", () => {
   });
 });
 
+// The desktop row scales with the stage (928 px across at 1024, 1312 at 1440), so every width it shows at is checked.
+for (const width of [1024, 1280, 1440]) {
+  test.describe(`the desktop diagram at ${width}`, () => {
+    test.use({ viewport: { width, height: 900 } });
+
+    test(`hive story: every word in the desktop diagram is 12 px or more at ${width}, and each part's words stay inside it`, async ({ page }) => {
+      await page.goto(PATH);
+      const nodes = Object.fromEntries((Object.keys(LAYOUTS.wide.nodes) as (keyof typeof LAYOUTS.wide.nodes)[]).map((key) => [hiveStoryCopy.flow.nodes[key].label, LAYOUTS.wide.nodes[key]]));
+      const report = await page.locator('.hive-stage svg[viewBox="0 0 1312 424"]').evaluate((svg, parts) => {
+        const scale = svg.getBoundingClientRect().width / 1312;
+        const shown = [...svg.querySelectorAll("text")].filter((text) => getComputedStyle(text).display !== "none");
+        const small = shown.map((text) => [text.textContent ?? "", Math.round(parseFloat(getComputedStyle(text).fontSize) * scale * 10) / 10] as const).filter(([, px]) => px < 12);
+        const spill: string[] = [];
+        for (const group of svg.querySelectorAll("g")) {
+          const name = group.querySelector(":scope > text")?.textContent ?? "";
+          const box = parts[name];
+          if (!box) continue;
+          for (const text of group.querySelectorAll(":scope > text")) {
+            if (getComputedStyle(text).display === "none") continue;
+            const b = (text as SVGGraphicsElement).getBBox();
+            if (b.x < box.x || b.x + b.width > box.x + box.w - 6 || b.y < box.y || b.y + b.height > box.y + box.h) spill.push(text.textContent ?? "");
+          }
+        }
+        return { count: shown.length, small, spill };
+      }, nodes);
+      expect(report.count).toBeGreaterThan(15);
+      expect(report.small).toEqual([]);
+      expect(report.spill).toEqual([]);
+    });
+  });
+}
+
 test("hive story: links out open in a new tab without an opener", async ({ page }) => {
   await page.goto(PATH);
   const external = page.locator('#main a[href^="https://"]');
