@@ -170,7 +170,8 @@ type Group = { path: PathKey; start: number; count: number; stagger: number; dur
 // Paced for reading (Aaron, 2026-11-10: "easy to see and view in 30 seconds"):
 // every caption stays up for at least about three seconds, longer ones longer.
 export const LOOP_SECONDS = 22.5;
-export const SUMMARY_HOLD = 0;
+/** The stage's first beat: the one-line summary holds this long once the scene starts, then step 1 crossfades in (design pass, 2026-11-11). */
+export const SUMMARY_HOLD = 3;
 export const FADE_OUT: readonly [number, number] = [21.6, 22.3];
 
 const HOURS = [0.25, 1.65, 3.05];

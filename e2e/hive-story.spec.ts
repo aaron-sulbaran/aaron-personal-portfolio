@@ -221,7 +221,7 @@ async function contrastOf(page: import("@playwright/test").Page, selector: strin
 
 test("hive story: the new text on honey meets contrast: 4.5 for body text, 3 for the controls", async ({ page }) => {
   await page.goto(PATH);
-  for (const selector of [".hive-exhibit figcaption", ".hive-exhibit .text-muted", ".hive-loop .text-muted", ".hive-loop-step", "#hive-calls ~ * .text-muted", ".hive-step p", ".hive-caption"]) {
+  for (const selector of [".hive-exhibit figcaption", ".hive-exhibit .text-muted", ".hive-loop .text-muted", ".hive-loop-step", "#hive-calls ~ * .text-muted", ".hive-step p", ".hive-summary", ".hive-caption"]) {
     if (!(await page.locator(selector).count())) continue;
     expect(await contrastOf(page, selector), selector).toBeGreaterThanOrEqual(4.5);
   }

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { hiveStoryCopy } from "@/lib/content/hive-story";
-import { FLOW_STEPS, LAYOUTS, LOOP_SECONDS, clockAt, flowStepAt, stillAt } from "@/lib/hive-story/flow";
+import { FLOW_STEPS, LAYOUTS, LOOP_SECONDS, SUMMARY_HOLD, clockAt, flowStepAt, stillAt } from "@/lib/hive-story/flow";
 import { buildSwarm, drawSwarm, type SwarmColors, type SwarmModel } from "./drawSwarm";
 import { StepControls } from "./StepControls";
 
@@ -13,8 +13,10 @@ const REDUCED = "(prefers-reduced-motion: reduce)";
 // The honey stage: the clock and caption on top, the static diagram (children,
 // server-rendered) over a canvas of flying bees, and the step controls. It plays
 // on its own while on screen; Back and Next play one step and hold, Play goes
-// back to the loop. Under reduced motion nothing plays: the stage rests on its
-// summary and Back and Next show each step as a still frame.
+// back to the loop. The summary is the first beat: the scene's clock starts
+// SUMMARY_HOLD seconds early, and when it reaches 0 the head goes live and CSS
+// crossfades step 1 and the clock in. Under reduced motion nothing plays: the
+// stage rests on its summary and Back and Next show each step as a still frame.
 export function FlowSwarm({ children }: { children: ReactNode }) {
   const headRef = useRef<HTMLDivElement>(null);
   const clockRef = useRef<HTMLSpanElement>(null);
@@ -35,7 +37,7 @@ export function FlowSwarm({ children }: { children: ReactNode }) {
     const style = getComputedStyle(box);
     const colors: SwarmColors = { bee: style.getPropertyValue("--hive-bee").trim(), glow: style.getPropertyValue("--hive-glow").trim() };
     let model: SwarmModel = buildSwarm(LAYOUTS[wide.matches ? "wide" : "tall"]);
-    let raf = 0, onScreen = false, elapsed = 0, last = 0, shown = "", isAuto = !reduce.matches, holdAt: number | null = null, stepShown = 0;
+    let raf = 0, onScreen = false, elapsed = -SUMMARY_HOLD, last = 0, shown = "", isAuto = !reduce.matches, holdAt: number | null = null, stepShown = 0;
 
     const fit = () => {
       const dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -46,6 +48,7 @@ export function FlowSwarm({ children }: { children: ReactNode }) {
     };
     const paint = () => {
       ctx.clearRect(0, 0, model.layout.width, model.layout.height);
+      if (elapsed < 0) return; // the summary's beat: nothing flies yet
       const t = elapsed % LOOP_SECONDS;
       drawSwarm(ctx, model, t, colors);
       const entry = clockAt(t);
@@ -72,7 +75,6 @@ export function FlowSwarm({ children }: { children: ReactNode }) {
       stop();
       delete head.dataset.live;
       shown = "";
-      caption.textContent = flow.rest;
       ctx.clearRect(0, 0, model.layout.width, model.layout.height);
     };
     const update = () => {
@@ -130,7 +132,10 @@ export function FlowSwarm({ children }: { children: ReactNode }) {
     <div className="hive-stage rounded-[22px] lg:rounded-[30px]">
       <div ref={headRef} className="hive-stage-head" aria-hidden="true">
         <span ref={clockRef} className="hive-clock font-dot">13:17</span>
-        <p ref={captionRef} className="hive-caption">{flow.rest}</p>
+        <div className="hive-captions">
+          <p className="hive-summary">{flow.rest}</p>
+          <p ref={captionRef} className="hive-caption">{flow.captions[0]}</p>
+        </div>
         <p className="hive-legend">
           <span><svg width="20" height="6" aria-hidden="true"><g fill="currentColor"><circle cx="3" cy="3" r="2" /><circle cx="10" cy="3" r="2" /><circle cx="17" cy="3" r="2" /></g></svg>{flow.legend.now}</span>
           <span><svg width="24" height="6" aria-hidden="true"><g fill="none" stroke="currentColor"><circle cx="3" cy="3" r="2" /><circle cx="12" cy="3" r="2" /><circle cx="21" cy="3" r="2" /></g></svg>{flow.legend.next}</span>
