@@ -1667,3 +1667,62 @@ html[data-intro-loader="on"] #intro-heading {
   }
 }
 /* ---- end page 1 ---- */
+
+/* ---- /hive-story (FH08 Hive's public story) ----
+   The Hive's honey is an exception to the one-accent rule, scoped to this page
+   (Aaron picked the swarm direction on 2026-11-10). Honey is only ever a ground
+   behind dark ink, never text, so the stage reads the same in both themes;
+   links stay the site's accent. The canvas reads these once on mount. */
+[data-page="hive-story"] {
+  --hive-honey: #F2BE3A;
+  --hive-bee: #22160F;
+  --hive-glow: #E2A41F;
+}
+.hive-story .font-dot {
+  font-family: var(--font-dot), ui-monospace, monospace;
+  font-variation-settings: "ROND" 100;
+  font-weight: 800;
+}
+.hive-wrap {
+  margin-inline: auto;
+  max-width: 1440px;
+  padding-inline: 1rem;
+}
+.hive-section { padding-top: 5rem; }
+.hive-title { font-size: clamp(3rem, 12vw, 6.75rem); line-height: 0.9; letter-spacing: 0; }
+.hive-number { font-size: clamp(2.25rem, 5vw, 3.25rem); line-height: 1; letter-spacing: 0; }
+.hive-stage {
+  margin-inline: auto;
+  max-width: 560px;
+  overflow: hidden;
+  background: var(--hive-honey);
+  color: var(--hive-bee);
+}
+.hive-stage-head { display: flex; flex-direction: column; gap: 4px; padding: 12px 16px 0; }
+.hive-clock { visibility: hidden; font-size: 24px; line-height: 1; font-variant-numeric: tabular-nums; }
+.hive-stage-head[data-live] .hive-clock { visibility: visible; }
+.hive-caption { margin: 0; min-height: 45px; font-size: 12px; line-height: 15px; font-weight: 500; }
+.hive-legend { display: none; }
+.hive-stage-box { position: relative; }
+.hive-marker { display: inline-block; flex: none; width: 0.6rem; height: 0.6rem; border-radius: 999px; background: currentColor; }
+.hive-marker-next { background: transparent; box-shadow: inset 0 0 0 2px currentColor; }
+.hive-link { color: var(--color-accent); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 4px; }
+.hive-link:hover { color: var(--color-accent-hover); }
+@media (min-width: 768px) {
+  .hive-wrap { padding-inline: 2rem; }
+  .hive-caption { min-height: 30px; }
+}
+@media (min-width: 1024px) {
+  .hive-wrap { padding-inline: 3rem; }
+  .hive-section { padding-top: 7rem; }
+  .hive-stage { max-width: none; }
+  .hive-stage-head { flex-direction: row; align-items: baseline; gap: 22px; padding: 24px 40px 0; }
+  .hive-clock { font-size: 36px; }
+  .hive-caption { min-height: 0; font-size: 15px; line-height: 1.4; }
+  .hive-legend { display: flex; flex: none; gap: 16px; margin: 0 0 0 auto; font-size: 13px; font-weight: 500; white-space: nowrap; }
+  .hive-legend span { display: inline-flex; align-items: center; gap: 6px; }
+}
+@media (min-width: 1280px) {
+  .hive-wrap { padding-inline: 4rem; }
+}
+/* ---- end /hive-story ---- */
