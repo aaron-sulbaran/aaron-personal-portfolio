@@ -45,11 +45,14 @@ describe("the Hive story's copy", () => {
     const body = (title: string) => status.next.items.find((item) => item.title === title)?.body ?? "";
     const beekeeper = [flow.captions[4], body("Beekeeper asks the author")];
     const lane = body("The fast lane");
-    for (const old of ["A tap confirms, a reply corrects", "not overnight", "pays off"]) {
+    for (const old of ["A tap confirms", "a reply corrects", "the correction wins", "not overnight", "pays off"]) {
       expect(leaves.filter((leaf) => leaf.text.includes(old)).map((leaf) => leaf.path), old).toEqual([]);
     }
-    // The author confirms a note with one reaction, or replies to correct it.
+    // The author confirms a note with one reaction, or replies to correct it; the demo's steps say it too.
     for (const line of beekeeper) expect(line).toMatch(/one reaction/);
+    const steps = hiveStoryCopy.calls.loop.steps;
+    expect(steps[3]).toMatch(/one reaction/);
+    expect(steps[4]).toMatch(/replies to correct/);
     // Today an hourly watcher copies the notes in; minutes is designed, so it stays under Next.
     expect(lane).toMatch(/hour/);
     expect(lane).toMatch(/minutes/);
