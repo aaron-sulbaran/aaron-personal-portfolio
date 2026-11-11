@@ -1788,8 +1788,10 @@ html:has(main[data-page="hive-visual"][data-logo-edge]) [data-menu-pill]:not([ro
 @media (min-width: 1280px) {
   .hive-wrap { padding-inline: 4rem; }
 }
-/* Step controls: every animation on the page can be stepped by hand. */
+/* Step controls: every animation on the page can be stepped by hand. Without
+   JavaScript they would do nothing, so they don't show. */
 .hive-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+@media (scripting: none) { .hive-controls { display: none; } }
 .hive-control { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 36px; min-width: 36px; padding: 0 10px; border-radius: 999px; color: var(--hive-bee); background: transparent; box-shadow: inset 0 0 0 1.5px var(--hive-bee); font: 600 14px/1 var(--font-sans), system-ui, sans-serif; cursor: pointer; transition: background-color 160ms var(--ease-out), color 160ms var(--ease-out); }
 .hive-control-wide { padding: 0 14px; }
 .hive-control:disabled { opacity: 0.35; cursor: default; }

@@ -109,6 +109,13 @@ test.describe("with JavaScript off", () => {
     await expect(head.getByText(hiveStoryCopy.flow.captions[0])).toBeHidden();
     await expect(page.locator(".hive-clock")).toBeHidden();
   });
+
+  test("hive story: no step controls show, since they do nothing without JavaScript", async ({ page }) => {
+    await page.goto(PATH);
+    const groups = page.locator('[role="group"][aria-label$="step through"]');
+    await expect(groups).toHaveCount(4);
+    for (const group of await groups.all()) await expect(group).toBeHidden();
+  });
 });
 
 test("hive story: the fact's trip plays step by step once it is on screen", async ({ page }) => {
