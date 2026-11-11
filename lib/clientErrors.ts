@@ -29,10 +29,10 @@ export function errorDetail(value: unknown): string {
 }
 
 // A cross-origin script failure reaches window.onerror as a bare "Script error."
-// with no error object; it says nothing, so it is dropped. The message is read here only to
-// drop noise; none of it is sent. So is the browser's
+// with no error object; it says nothing, so it is dropped. So is the browser's
 // benign "ResizeObserver loop ..." notice, which also arrives with no error object
-// and would use up the report budget on every load.
+// and would use up the report budget on every load. The message is read here only
+// to drop that noise; none of it is sent.
 export function windowErrorValue(event: { error?: unknown; message?: string }): unknown {
   if (event.error != null) return event.error;
   const message = event.message ?? "";

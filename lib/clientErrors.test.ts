@@ -151,12 +151,21 @@ describe("createClientErrorReporter", () => {
     expect(send).toHaveBeenCalledTimes(3);
   });
 
-  it("never throws, even when the sender does", () => {
+  it.each([
+    ["send", { send: () => { throw new Error("analytics blocked"); } }],
+    ["pathname", { pathname: () => { throw new Error("no location"); } }],
+    ["isPrivate", { isPrivate: () => { throw new Error("bad check"); } }],
+  ])("never throws, even when %s does", (_label, overrides) => {
+    const { report } = reporter(overrides);
+    expect(() => report("window", new Error("boom"))).not.toThrow();
+  });
+
+  it("never throws from visit, even when isPrivate does", () => {
     const { report } = reporter({
-      send: () => {
-        throw new Error("analytics blocked");
+      isPrivate: () => {
+        throw new Error("bad check");
       },
     });
-    expect(() => report("window", new Error("boom"))).not.toThrow();
+    expect(() => report.visit("/")).not.toThrow();
   });
 });
