@@ -67,7 +67,47 @@ test("hive story: the clock runs while the stage is on screen", async ({ page })
   const first = await clock.textContent();
   // The clock moves on within the first hourly beats (13:17, 14:17, 15:17, 02:30).
   await expect(clock).not.toHaveText(first ?? "", { timeout: 4_000 });
-  await expect(page.locator(".hive-caption")).not.toHaveText(hiveStoryCopy.flow.rest);
+  await expect(page.locator(".hive-stage-head").getByText(hiveStoryCopy.flow.rest)).toBeHidden();
+});
+
+test("hive story: the stage opens on its summary, holds it, then crossfades to step 1", async ({ page }) => {
+  await page.goto(PATH);
+  const head = page.locator(".hive-stage-head");
+  // Held well past hydration: the summary is still the stage's line, with no clock and no step caption yet.
+  await page.waitForTimeout(1_500);
+  await expect(head.getByText(hiveStoryCopy.flow.rest)).toBeVisible();
+  await expect(head).not.toHaveAttribute("data-live", "true");
+  await expect(page.locator(".hive-clock")).toBeHidden();
+  // Then step 1 fades in as the summary fades out, never a cut: sample every frame until it settles.
+  const frames = await page.evaluate(() => new Promise<number[][]>((resolve) => {
+    const summary = document.querySelector(".hive-summary"), caption = document.querySelector(".hive-caption");
+    if (!summary || !caption) return resolve([]);
+    const out: number[][] = [];
+    const tick = () => {
+      out.push([Number(getComputedStyle(summary).opacity), Number(getComputedStyle(caption).opacity)]);
+      const [s, c] = out[out.length - 1];
+      if (out.length > 900 || (s === 0 && c === 1)) resolve(out);
+      else requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }));
+  expect(frames.at(-1)).toEqual([0, 1]);
+  expect(frames.some(([s]) => s > 0 && s < 1), "the summary fades out").toBe(true);
+  expect(frames.some(([, c]) => c > 0 && c < 1), "step 1 fades in").toBe(true);
+  await expect(page.locator(".hive-caption")).toHaveText(hiveStoryCopy.flow.captions[0]);
+  await expect(page.locator(".hive-clock")).toBeVisible();
+});
+
+test.describe("with JavaScript off", () => {
+  test.use({ javaScriptEnabled: false });
+
+  test("hive story: the stage rests on its summary, with no clock and no step caption", async ({ page }) => {
+    await page.goto(PATH);
+    const head = page.locator(".hive-stage-head");
+    await expect(head.getByText(hiveStoryCopy.flow.rest)).toBeVisible();
+    await expect(head.getByText(hiveStoryCopy.flow.captions[0])).toBeHidden();
+    await expect(page.locator(".hive-clock")).toBeHidden();
+  });
 });
 
 test("hive story: the fact's trip plays step by step once it is on screen", async ({ page }) => {
@@ -240,7 +280,8 @@ test.describe("under reduced motion", () => {
     await page.goto(PATH);
     await page.waitForTimeout(1_500);
     await expect(page.locator(".hive-stage-head")).not.toHaveAttribute("data-live", "true");
-    await expect(page.locator(".hive-caption")).toHaveText(hiveStoryCopy.flow.rest);
+    await expect(page.locator(".hive-stage-head").getByText(hiveStoryCopy.flow.rest)).toBeVisible();
+    await expect(page.locator(".hive-stage-head").getByText(hiveStoryCopy.flow.captions[0])).toBeHidden();
     const inked = await page.locator(".hive-stage canvas").evaluate((canvas: HTMLCanvasElement) => {
       const data = canvas.getContext("2d")!.getImageData(0, 0, canvas.width, canvas.height).data;
       let sum = 0;
@@ -319,6 +360,76 @@ test.describe("dark mode elsewhere", () => {
     expect(await bg(page)).toBe(HONEY);
     await page.goto("/quick");
     expect(await bg(page)).toBe("rgb(14, 20, 25)");
+  });
+});
+
+test("hive story: the team page is listed as running now, and its part of the diagram is drawn as live", async ({ page }) => {
+  await page.goto(PATH);
+  const column = (label: string) => page.locator('section[aria-labelledby="hive-status"] h3', { hasText: new RegExp(`^${label}$`) }).locator("xpath=..");
+  await expect(column("Running now")).toContainText("The team page");
+  await expect(column("Next")).not.toContainText("The team page");
+  const nodes = page.locator(".hive-stage svg g", { has: page.locator(`text=${hiveStoryCopy.flow.nodes.page.label}`) });
+  await expect(nodes).toHaveCount(2);
+  for (const node of await nodes.all()) {
+    await expect(node).not.toHaveAttribute("data-next", /.*/);
+    await expect(node).not.toContainText("next");
+  }
+});
+
+test("hive story: the AI pane and Beekeeper's channel share an edge side by side", async ({ page }) => {
+  await page.goto(PATH);
+  const loop = page.locator(".hive-loop");
+  await loop.scrollIntoViewIfNeeded();
+  const controls = page.locator('[role="group"][aria-label^="From a teammate"]');
+  for (let i = 0; i < 2; i++) {
+    const [ai, channel] = await Promise.all([page.locator(".hive-ai").boundingBox(), page.locator(".hive-discord").boundingBox()]);
+    expect(Math.abs(ai!.y - channel!.y)).toBeLessThan(1);
+    expect(Math.abs(ai!.height - channel!.height), `step ${await controls.locator(".hive-control-count").textContent()}`).toBeLessThan(1);
+    await controls.getByRole("button", { name: /^Back,/ }).click();
+  }
+});
+
+// Whether a 44 by 44 square around an element's center lands on it: its hit area, pseudo-elements included.
+const hitsAll44 = (locator: import("@playwright/test").Locator) =>
+  locator.evaluate((el) => {
+    const r = el.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    const lands = (x: number, y: number) => { const hit = document.elementFromPoint(x, y); return !!hit && (hit === el || el.contains(hit)); };
+    return [-21.5, 21.5].every((dx) => [-21.5, 21.5].every((dy) => lands(cx + dx, cy + dy)));
+  });
+
+for (const width of [390, 1440]) {
+  test.describe(`tap targets at ${width}`, () => {
+    test.use({ viewport: { width, height: width === 390 ? 844 : 900 } });
+
+    test(`hive story: the step controls, the logo back to the top, and the portfolio links are 44 px targets at ${width}`, async ({ page }) => {
+      await page.goto(PATH);
+      await page.waitForTimeout(300);
+      expect(await hitsAll44(page.getByRole("button", { name: "Back to top" })), "the logo").toBe(true);
+      for (const control of await page.locator(".hive-control").all()) {
+        await control.scrollIntoViewIfNeeded();
+        expect(await hitsAll44(control), (await control.getAttribute("aria-label")) ?? "control").toBe(true);
+      }
+      for (const link of await page.locator('section[aria-labelledby="hive-more"] a').all()) {
+        await link.scrollIntoViewIfNeeded();
+        const box = await link.boundingBox();
+        expect(box!.height, (await link.textContent()) ?? "link").toBeGreaterThanOrEqual(44);
+        expect(box!.width, (await link.textContent()) ?? "link").toBeGreaterThanOrEqual(44);
+      }
+    });
+  });
+}
+
+test.describe("the diagram on a phone", () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test("hive story: every word in the phone diagram is 12 px or more", async ({ page }) => {
+    await page.goto(PATH);
+    const sizes = await page.locator('.hive-stage svg[viewBox="0 0 358 428"]').evaluate((svg) => {
+      const scale = svg.getBoundingClientRect().width / 358;
+      return [...svg.querySelectorAll("text")].map((text) => [text.textContent ?? "", Math.round(parseFloat(getComputedStyle(text).fontSize) * scale * 10) / 10] as const);
+    });
+    expect(sizes.length).toBeGreaterThan(10);
+    expect(sizes.filter(([, px]) => px < 12)).toEqual([]);
   });
 });
 

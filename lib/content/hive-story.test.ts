@@ -32,6 +32,33 @@ describe("the Hive story's copy", () => {
     for (const shot of Object.values(hiveStoryCopy.team.shots)) expect(shot.src.startsWith("/hive-story/")).toBe(true);
   });
 
+  it("lists the team page under Running now, and its diagram part says nothing about next, since it is live", () => {
+    const titles = (items: readonly { title: string }[]) => items.map((item) => item.title);
+    expect(titles(hiveStoryCopy.status.now.items)).toContain("The team page");
+    expect(titles(hiveStoryCopy.status.next.items)).not.toContain("The team page");
+    const { page } = hiveStoryCopy.flow.nodes;
+    expect(`${page.sub} ${page.subShort}`).not.toMatch(/next/i);
+  });
+
+  it("states the author's check, the fast lane and who decides as plain facts, with no tagline shape", () => {
+    const { flow, status, scenarios } = hiveStoryCopy;
+    const body = (title: string) => status.next.items.find((item) => item.title === title)?.body ?? "";
+    const beekeeper = [flow.captions[4], body("Beekeeper asks the author")];
+    const lane = body("The fast lane");
+    for (const old of ["A tap confirms, a reply corrects", "not overnight", "pays off"]) {
+      expect(leaves.filter((leaf) => leaf.text.includes(old)).map((leaf) => leaf.path), old).toEqual([]);
+    }
+    // The author confirms a note with one reaction, or replies to correct it.
+    for (const line of beekeeper) expect(line).toMatch(/one reaction/);
+    // Today an hourly watcher copies the notes in; minutes is designed, so it stays under Next.
+    expect(lane).toMatch(/hour/);
+    expect(lane).toMatch(/minutes/);
+    // Teammates have the final say on what goes into the Hive.
+    expect(scenarios.intro).toMatch(/final say/);
+    // No "X, not Y" contrast in any of them.
+    expect([...beekeeper, lane, scenarios.intro].filter((line) => /, not /.test(line))).toEqual([]);
+  });
+
   it("has a caption for every moment on the clock", () => {
     for (const entry of CLOCK) expect(hiveStoryCopy.flow.captions[entry.caption]).toBeTruthy();
   });

@@ -10,6 +10,7 @@ import {
   LOOP_SECONDS,
   NEXT_NODES,
   NEXT_PATHS,
+  SUMMARY_HOLD,
   beesFor,
   clockAt,
   envelope,
@@ -78,9 +79,18 @@ describe.each(layouts)("the $name layout", (l) => {
 });
 
 describe("what runs now and what is next", () => {
-  it("draws the archive, the fact check and the sources in solid dots, and the planned parts in open ones", () => {
-    expect([...NEXT_NODES].sort()).toEqual(["ai", "bee", "notes", "page"]);
-    expect([...NEXT_PATHS].sort()).toEqual(["h2b", "h2i", "h2p", "n2h"]);
+  it("draws the sources, the archive, the fact check and the live team page in solid dots, and the planned parts in open ones", () => {
+    expect([...NEXT_NODES].sort()).toEqual(["ai", "bee", "notes"]);
+    expect([...NEXT_PATHS].sort()).toEqual(["h2b", "h2i", "n2h"]);
+  });
+});
+
+describe("the phone column's words", () => {
+  // At 390 the stage is 358 px wide (1rem each side), so the column draws at its own size.
+  const scale = (390 - 32) / LAYOUTS.tall.width;
+  it("are 12 px or more at 390, and the part names 13 px or more", () => {
+    expect(LAYOUTS.tall.size.sub * scale).toBeGreaterThanOrEqual(12);
+    expect(LAYOUTS.tall.size.label * scale).toBeGreaterThanOrEqual(13);
   });
 });
 
@@ -106,6 +116,10 @@ describe("the timeline", () => {
       const shown = (next ? next.at : FADE_OUT[0]) - entry.at;
       expect(shown, `caption ${entry.caption}`).toBeGreaterThanOrEqual(Math.max(3, hiveStoryCopy.flow.captions[entry.caption].length / 18));
     });
+  });
+
+  it("holds the summary as the scene's first beat for at least three seconds before step 1", () => {
+    expect(SUMMARY_HOLD).toBeGreaterThanOrEqual(3);
   });
 
   it("rises, holds and falls back to nothing", () => {
