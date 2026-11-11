@@ -97,13 +97,13 @@ export function MoreSection() {
   return (
     <section aria-labelledby="hive-more" className="hive-section hive-wrap pb-32">
       <SectionHeading id="hive-more">{more.heading}</SectionHeading>
-      <ul className="mt-6 flex flex-wrap gap-x-8 gap-y-3 text-[1.0625rem]">
+      <ul className="hive-links mt-4 flex flex-wrap gap-x-8 text-[1.0625rem]">
         {more.site.map((link) => (
           <li key={link.href}><SiteLink href={link.href}>{link.href === "/quick" ? <MvpLabel text={link.label} /> : link.label}</SiteLink></li>
         ))}
       </ul>
-      <h3 className="mt-8 font-label text-label">{more.productsLabel}</h3>
-      <ul className="mt-3 flex flex-wrap gap-x-8 gap-y-3 text-[1.0625rem]">
+      <h3 className="mt-6 font-label text-label">{more.productsLabel}</h3>
+      <ul className="hive-links mt-1 flex flex-wrap gap-x-8 text-[1.0625rem]">
         {more.products.map((link) => (
           <li key={link.href}>
             <a href={link.href} target="_blank" rel="noopener noreferrer" className="hive-link">{link.label}</a>

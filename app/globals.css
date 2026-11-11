@@ -1698,6 +1698,12 @@ html:has(main[data-page="hive-visual"]) {
   color-scheme: light;
 }
 html:has(main[data-page="hive-visual"]) [data-mark-trigger] { color: var(--hive-light); }
+/* The logo (back to the top) draws at 32 px on a phone and 40 from 640 up; a
+   clear ring makes it a 44 px target on this page. */
+html:has(main[data-page="hive-visual"]) [data-mark-trigger]::after { content: ""; position: absolute; inset: -6px; }
+@media (min-width: 640px) {
+  html:has(main[data-page="hive-visual"]) [data-mark-trigger]::after { inset: -2px; }
+}
 /* Aaron's white logo is about 1.7:1 on honey. The edge (data-logo-edge on the
    page's main, his pick) rims the logo and the closed Menu pill in bee ink, so
    their edges meet honey at over 10:1 and the logo stays white. */
@@ -1750,6 +1756,8 @@ html:has(main[data-page="hive-visual"][data-logo-edge]) [data-menu-pill]:not([ro
 @media (hover: hover) and (pointer: fine) {
   .hive-link:hover { color: var(--color-accent-hover); }
 }
+/* The portfolio links at the end stand alone, so each is a 44 px target. */
+.hive-links a { display: inline-flex; align-items: center; min-height: 44px; min-width: 44px; }
 @media (min-width: 768px) {
   .hive-wrap { padding-inline: 2rem; }
   .hive-caption { min-height: 30px; }
@@ -1773,6 +1781,12 @@ html:has(main[data-page="hive-visual"][data-logo-edge]) [data-menu-pill]:not([ro
 .hive-control-wide { padding: 0 14px; }
 .hive-control:disabled { opacity: 0.35; cursor: default; }
 @media (max-width: 639.98px) { .hive-control { height: 44px; min-width: 44px; } }
+/* From 640 px up a control draws at 36 px; a clear ring makes it a 44 px
+   target, and the 8 px gap keeps neighbors' rings from overlapping. */
+@media (min-width: 640px) {
+  .hive-control { position: relative; }
+  .hive-control::before { content: ""; position: absolute; inset: -4px; border-radius: inherit; }
+}
 .hive-control:focus-visible { outline: 3px solid var(--color-accent); outline-offset: 3px; }
 .hive-control-count { margin-left: 4px; font-size: 14px; font-weight: 600; }
 @media (hover: hover) and (pointer: fine) {
