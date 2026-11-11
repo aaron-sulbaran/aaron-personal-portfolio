@@ -76,6 +76,10 @@ test("hive story: the fact's trip plays step by step once it is on screen", asyn
   await trip.scrollIntoViewIfNeeded();
   await expect(trip).toHaveAttribute("data-playing", "true");
   await expect(trip.locator(".hive-step[data-now]")).toHaveCount(1);
+  // The playing step is marked, and no step's text is faded: every line keeps
+  // its full contrast on honey (WCAG 1.4.3), playing or not.
+  expect(await trip.locator(".hive-step").evaluateAll((items) => items.map((el) => getComputedStyle(el).opacity))).toEqual(Array(6).fill("1"));
+  await expect(trip.locator(".hive-step[data-now] .hive-step-n")).toHaveCSS("background-color", "rgb(34, 22, 15)");
   // Early in the trip the Drive doc (step 6) is dimmed, not gone.
   expect(await trip.locator("[data-at][data-off]").count()).toBeGreaterThan(0);
 });

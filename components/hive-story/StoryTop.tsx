@@ -55,7 +55,7 @@ export function StepsSection() {
           <ol className="grid gap-6 lg:order-1">
             {steps.items.map((step, i) => (
               <li key={step.title} data-step-item className="hive-step grid grid-cols-[1.75rem_minmax(0,1fr)] gap-x-3">
-                <span aria-hidden="true" className="font-label text-label-lg tabular-nums">{i + 1}</span>
+                <span aria-hidden="true" className="hive-step-n font-label text-label tabular-nums">{i + 1}</span>
                 <div className="min-w-0">
                   <h3 className="text-[1.0625rem] font-semibold leading-snug">{step.title}</h3>
                   <p className="mt-1 leading-[1.55] text-muted">{step.body}</p>
