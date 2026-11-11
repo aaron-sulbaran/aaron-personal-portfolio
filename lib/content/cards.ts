@@ -10,7 +10,7 @@ const POST_HREF = "https://lnkd.in/p/g3mXFGcY";
 export const cards: Cards = {
   mentorship: {
     short: "Mentorship", visual: { kind: "photo", flipX: false, photo: pictures.mentorship },
-    book: { title: "Mentorship", meta: "Coach, tutor and speaker, ongoing" },
+    book: { title: "Mentorship", meta: "Coach, tutor and speaker, 2023 to now" },
     modal: { kind: "logo", title: "Mentorship", picture: { caption: "Me speaking at my first HSF STEM Summit." }, links: [{ label: "Grab some time with me", href: "https://cal.com/aaron-sulbaran" }], photos: modalPhotos.mentorship, blocks: [
       "I wouldn't be where I am now without the mentors who have shaped me. People made time for me, so I make time back. I've coached first-year scholars, worked as a student mentor on campus, and been an official mentor to Hispanic Scholarship Fund (HSF) scholars at the annual STEM Summit.",
       "I take coffee chats in both directions. If I'm asking people for their time, I should be willing to give mine, and I lose track of time in them.",
@@ -54,7 +54,7 @@ export const cards: Cards = {
   },
   talos: {
     short: "Talos", visual: { kind: "logo", logo: logos.talos, tile: "talos" },
-    book: { title: "Talos", meta: "Builder, 2026" },
+    book: { title: "Talos", meta: "Builder, 2026 to now" },
     modal: { kind: "logo", title: "Talos", links: [{ label: "See the Talos brand kit", href: "https://claude.ai/artifact/YX8BJc8uetSyL7WPD7aEhX" }], photos: [], blocks: [
       "Talos is my executive assistant. Every day it builds my itinerary, reads all my inboxes, my messages, and tells me what needs me first. I'm currently training it to take action autonomously, with lots of safeguards in place. Its limits are written in code, not in prompts.",
       "I built it because I wanted a use of AI in my life that did something real. It started at a one-day Vercel hackathon in New York and saves me hours every week. I plan to open source it.",
@@ -179,7 +179,7 @@ export const cards: Cards = {
   },
   "this-site": {
     short: "This site", visual: { kind: "mark" },
-    book: { title: "This site", meta: "Portfolio (design playground), 2026" },
+    book: { title: "This site", meta: "Portfolio (design playground), 2026 to now" },
     modal: { kind: "logo", title: "This site", meta: "Portfolio, 2026", links: [{ label: "The repo on GitHub", href: "https://github.com/aaron-sulbaran/aaron-personal-portfolio" }], photos: [], blocks: [
       "I'm building this site and continuing to update it as I grow. I [design](tip:this-site-playground) it, write the specs, and manage a team of AI agents that help me build it, which is a good test of how I'd run a product team. The repo is public.",
     ], easterEgg: { line: "I've hidden a few easter eggs on this site.", control: "Show me one" } },
@@ -194,7 +194,7 @@ export const cards: Cards = {
   },
   "building-in-public": {
     short: "Building in public", visual: { kind: "photo", flipX: false, photo: pictures["building-in-public"] },
-    book: { title: "Building in public", meta: "LinkedIn and X, ongoing" },
+    book: { title: "Building in public", meta: "LinkedIn and X, 2026 to now" },
     modal: { kind: "logo", title: "Building in public", picture: { caption: "Me at Vercel Ship in New York City, one door LinkedIn opened this summer." }, links: [{ label: "LinkedIn", href: "https://www.linkedin.com/in/aaron-sulbaran/" }, { label: "X (@imaaronsulbaran)", href: "https://x.com/imaaronsulbaran" }], photos: modalPhotos["building-in-public"], blocks: [
       "I'm trying to build in public (tbh, I fell off for a couple of months and I'm easing back in). So far: 2,500+ people follow me on LinkedIn, and my posts have had 450,000 impressions in three months. Being active on LinkedIn opened doors in Toronto and NYC this summer and got me a few brand deals. After talking to enough founders and investors, I know I have to get on X next.",
       "While I love building, I also love creating and sharing. So why not share what works and what doesn't, with no polish on the parts that didn't. I'd rather be useful than look flawless.",

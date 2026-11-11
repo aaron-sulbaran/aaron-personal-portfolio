@@ -86,7 +86,7 @@ describe("the fourteen cards", () => {
   it("hold the approved words (spot checks)", () => {
     expect(cards.ieee.book.meta).toBe("President, Corporate Director, and [AO](tip:ieee-ao), 2023 to 2026");
     expect(cards["min-max"].visual).toEqual({ kind: "logo", logo: { src: "/work/logos/min-max/mark.svg", srcDark: "/work/logos/min-max/mark-on-dark.svg", width: 548, height: 497 }, tile: "plain", subtitle: "minimize spend. Maximize rewards" });
-    expect(cards["this-site"].book.meta).toBe("Portfolio (design playground), 2026");
+    expect(cards["this-site"].book.meta).toBe("Portfolio (design playground), 2026 to now");
     expect(cards.jobs.book).toEqual({ title: "\"unflattering\" jobs that paid for school", meta: "Popeyes to Aritzia, 2021 to 2026" });
     expect(cards.band.modal.blocks[1]).toContain("an invitational I *know* it had been chasing");
     expect(cards["capital-one"].modal.blocks[1].startsWith("**2024, business analyst.** My first look")).toBe(true);

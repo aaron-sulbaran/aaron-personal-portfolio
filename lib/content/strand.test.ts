@@ -30,19 +30,19 @@ describe("the unwound list's rows", () => {
     const rows = Object.fromEntries(siteContent.strand.order.map((key) => [key, [bookRow(key).title, bookRow(key).meta]]));
     expect(rows).toEqual({
       "min-max": ["min/Max", "Founder, 2025 to now"],
-      talos: ["Talos", "Builder, 2026"],
+      talos: ["Talos", "Builder, 2026 to now"],
       "capital-one": ["Capital One", "Intern, 2024 to 2026"],
       anthropic: ["Anthropic", "Claude Campus Ambassador, 2026"],
       ieee: ["IEEE UT Austin", "President, Corporate Director, and AO, 2023 to 2026"],
       hackathons: ["Hackathons", "Builder, 2025 to now"],
-      "this-site": ["This site", "Portfolio (design playground), 2026"],
-      mentorship: ["Mentorship", "Coach, tutor and speaker, ongoing"],
+      "this-site": ["This site", "Portfolio (design playground), 2026 to now"],
+      mentorship: ["Mentorship", "Coach, tutor and speaker, 2023 to now"],
       band: ["Jordan High School band", "Section leader to drum major, 2021 to 2023"],
       jobs: ["\"unflattering\" jobs that paid for school", "Popeyes to Aritzia, 2021 to 2026"],
       fsdatalink: ["The family business", "Assistant Manager & SWE, 2022 to now"],
       misuki: ["Misuki", "2001 Mazda Miata, five-speed"],
       travel: ["Travel", "Yosemite, Mt. Fuji and more"],
-      "building-in-public": ["Building in public", "LinkedIn and X, ongoing"],
+      "building-in-public": ["Building in public", "LinkedIn and X, 2026 to now"],
     });
   });
 });
