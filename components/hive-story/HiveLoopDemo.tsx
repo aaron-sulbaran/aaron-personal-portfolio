@@ -86,6 +86,7 @@ export function HiveLoopDemo() {
           <p className="hive-pane-title">{loop.ai.title}</p>
           <p className="hive-ai-ask">{loop.ai.ask}</p>
           <div className="hive-ai-tool">
+            <span className="hive-ai-server">{loop.ai.server}</span>
             <code>{loop.ai.tool}</code>
             <span className="hive-ai-arg">{loop.ai.args}</span>
           </div>

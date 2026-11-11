@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { hiveStoryCopy } from "@/lib/content/hive-story";
 import { hexHalfWidth, type Point } from "./dots";
 import {
   CLOCK,
@@ -95,7 +96,16 @@ describe("the timeline", () => {
     expect(CLOCK.filter((c) => c.caption === 0).every((c) => c.time.endsWith(":17"))).toBe(true);
     expect(CLOCK.find((c) => c.caption === 1)?.time).toBe("02:30");
     expect(clockAt(0).time).toBe("13:17");
-    expect(clockAt(9.6).time).toBe("21:05");
+    expect(clockAt(14.5).time).toBe("21:05");
+  });
+
+  it("keeps every caption up long enough to read: three seconds at least, and about 18 characters a second", () => {
+    CLOCK.forEach((entry, i) => {
+      const next = CLOCK.slice(i + 1).find((c) => c.caption !== entry.caption);
+      if (CLOCK.findIndex((c) => c.caption === entry.caption) !== i) return;
+      const shown = (next ? next.at : FADE_OUT[0]) - entry.at;
+      expect(shown, `caption ${entry.caption}`).toBeGreaterThanOrEqual(Math.max(3, hiveStoryCopy.flow.captions[entry.caption].length / 18));
+    });
   });
 
   it("rises, holds and falls back to nothing", () => {

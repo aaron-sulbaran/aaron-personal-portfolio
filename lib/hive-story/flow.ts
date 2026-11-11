@@ -166,41 +166,47 @@ export function staticDots(l: FlowLayout): StaticDots {
 export type Ending = "absorb" | "hive" | "question";
 type Group = { path: PathKey; start: number; count: number; stagger: number; duration: number; ending: Ending };
 
-export const LOOP_SECONDS = 15;
-export const FADE_OUT: readonly [number, number] = [14.2, 14.9];
+// Paced for reading (Aaron, 2026-11-10: "easy to see and view in 30 seconds"):
+// every caption stays up for at least about three seconds, longer ones longer.
+export const LOOP_SECONDS = 22.5;
+export const FADE_OUT: readonly [number, number] = [21.6, 22.3];
 
-const HOURS = [0.25, 1.45, 2.65];
+const HOURS = [0.25, 1.65, 3.05];
 export const GROUPS: readonly Group[] = [
   ...HOURS.flatMap((t): Group[] => [
     { path: "d2a", start: t, count: 4, stagger: 0.1, duration: 0.85, ending: "absorb" },
     { path: "r2a", start: t + 0.05, count: 2, stagger: 0.12, duration: 0.85, ending: "absorb" },
   ]),
-  { path: "a2c", start: 4.0, count: 12, stagger: 0.07, duration: 0.6, ending: "absorb" },
-  { path: "c2h", start: 5.4, count: 8, stagger: 0.09, duration: 0.95, ending: "hive" },
-  { path: "cq", start: 5.5, count: 2, stagger: 0.15, duration: 1.1, ending: "question" },
-  { path: "n2h", start: 7.3, count: 3, stagger: 0.25, duration: 1.15, ending: "hive" },
-  { path: "h2p", start: 9.1, count: 2, stagger: 0.12, duration: 0.8, ending: "absorb" },
-  { path: "h2i", start: 9.1, count: 2, stagger: 0.12, duration: 0.8, ending: "absorb" },
-  { path: "h2b", start: 10.4, count: 1, stagger: 0, duration: 0.8, ending: "absorb" },
+  { path: "a2c", start: 4.6, count: 12, stagger: 0.07, duration: 0.6, ending: "absorb" },
+  { path: "c2h", start: 6.1, count: 8, stagger: 0.09, duration: 0.95, ending: "hive" },
+  { path: "cq", start: 6.2, count: 2, stagger: 0.15, duration: 1.1, ending: "question" },
+  { path: "n2h", start: 10.2, count: 3, stagger: 0.25, duration: 1.15, ending: "hive" },
+  { path: "h2p", start: 13.9, count: 2, stagger: 0.12, duration: 0.8, ending: "absorb" },
+  { path: "h2i", start: 13.9, count: 2, stagger: 0.12, duration: 0.8, ending: "absorb" },
+  { path: "h2b", start: 17.1, count: 1, stagger: 0, duration: 0.8, ending: "absorb" },
 ];
-export const REJECT = { start: 5.4, stagger: 0.12, duration: 0.75 };
+export const REJECT = { start: 6.1, stagger: 0.12, duration: 0.75 };
 /** When each part lights up as bees reach it. */
 export const GLOWS: readonly [NodeKey | "hive", number][] = [
-  ["archive", 1.1], ["archive", 2.3], ["archive", 3.5], ["check", 4.5], ["check", 4.95],
-  ["hive", 6.4], ["hive", 8.6], ["page", 9.9], ["ai", 9.9], ["bee", 11.2],
+  ["archive", 1.1], ["archive", 2.5], ["archive", 3.9], ["check", 5.1], ["check", 5.6],
+  ["hive", 7.1], ["hive", 11.5], ["page", 14.7], ["ai", 14.7], ["bee", 17.9],
 ];
-export const CHECK_TICKS: readonly [number, number] = [4.6, 5.3];
-export const TAP_AT = 11.2;
+export const CHECK_TICKS: readonly [number, number] = [5.2, 5.9];
+export const TAP_AT = 17.9;
 /** The clock: the real schedule (:17 past each hour, 2:30 at night), then minutes in a sprint. */
 export const CLOCK: readonly { at: number; time: string; caption: number }[] = [
-  { at: 0, time: "13:17", caption: 0 }, { at: 1.2, time: "14:17", caption: 0 }, { at: 2.4, time: "15:17", caption: 0 },
-  { at: 3.8, time: "02:30", caption: 1 }, { at: 7.0, time: "21:04", caption: 2 }, { at: 8.9, time: "21:05", caption: 3 },
-  { at: 10.2, time: "21:06", caption: 4 },
+  { at: 0, time: "13:17", caption: 0 }, { at: 1.4, time: "14:17", caption: 0 }, { at: 2.8, time: "15:17", caption: 0 },
+  { at: 4.4, time: "02:30", caption: 1 }, { at: 9.9, time: "21:04", caption: 2 }, { at: 13.7, time: "21:05", caption: 3 },
+  { at: 16.9, time: "21:06", caption: 4 },
 ];
 
-/** The flow's steps for reading it by hand, one per caption: the hours, the night, the fast lane, the read, the tap. */
-export const FLOW_STEPS: readonly { start: number; end: number }[] = [
-  { start: 0, end: 3.7 }, { start: 3.8, end: 6.95 }, { start: 7.0, end: 8.85 }, { start: 8.9, end: 10.15 }, { start: 10.2, end: 12.6 },
+/** The flow's steps for reading it by hand, one per caption: the hours, the night, the fast lane, the read, the tap. still is the frame reduced motion shows: its bees caught mid-way. */
+export const FLOW_STEPS: readonly { start: number; end: number; still: number }[] = [
+  { start: 0, end: 4.2, still: 0.7 },
+  { start: 4.4, end: 9.8, still: 6.6 },
+  { start: 9.9, end: 13.6, still: 10.9 },
+  { start: 13.7, end: 16.8, still: 14.3 },
+  { start: 16.9, end: 21.5, still: 17.5 },
 ];
 
 export function flowStepAt(t: number): number {
@@ -209,8 +215,7 @@ export function flowStepAt(t: number): number {
   return index;
 }
 
-/** The still frame a step shows under reduced motion: its bees caught mid-way. */
-export const stillAt = (step: number) => FLOW_STEPS[step].start + 0.55 * (FLOW_STEPS[step].end - FLOW_STEPS[step].start);
+export const stillAt = (step: number) => FLOW_STEPS[step].still;
 
 export function clockAt(t: number) {
   return CLOCK.reduce((current, entry) => (t >= entry.at ? entry : current), CLOCK[0]);

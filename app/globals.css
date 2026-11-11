@@ -1799,6 +1799,7 @@ html:has(main[data-page="hive-visual"][data-logo-edge]) [data-menu-pill]:not([ro
 .hive-ai-ask { margin: 0 0 12px auto; width: fit-content; max-width: 90%; padding: 8px 12px; border-radius: 14px 14px 4px 14px; background: var(--hive-panel); font-size: 15px; }
 .hive-ai-tool { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 12px; box-shadow: inset 0 0 0 1.5px var(--hive-bee); }
 .hive-ai-tool code, .hive-tool-name { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 14px; font-weight: 600; }
+.hive-ai-server { flex-basis: 100%; font-size: 12px; font-weight: 600; color: var(--color-muted); }
 .hive-ai-arg { font-size: 13px; padding: 2px 8px; border-radius: 999px; background: var(--hive-panel); }
 .hive-ai-result { display: flex; align-items: center; gap: 8px; margin: 10px 0 0; font-size: 14px; }
 .hive-discord { --dc-bg: #313338; --dc-text: #DBDEE1; --dc-muted: #949BA4; --dc-name: #F2F3F5; --dc-blurple: #5865F2; border-radius: 18px; padding: 14px 16px 16px; background: var(--dc-bg); color: var(--dc-text); font-size: 15px; }

@@ -16,12 +16,12 @@ export const hiveStoryCopy = {
     label: "How information moves through the Hive",
     // The diagram, said in words for screen readers.
     description:
-      "Every hour, new Discord messages and Drive changes are copied into an archive. Every night, a fact check turns the archive into cited facts in the Hive, and disagreements become open questions. Next: notes from teammates' AI sessions take a fast lane into the Hive within minutes, and the Hive feeds the team page, each teammate's AI, and Beekeeper, which asks the author to confirm.",
+      "Every hour, new Discord messages and Drive changes are copied into an archive. Every night, a fact check turns the archive into cited facts in the Hive, and disagreements become open questions. Next: notes from teammates' AI sessions take a fast lane into the Hive within minutes, and the Hive feeds the team page, each teammate's AI through an MCP connector, and Beekeeper, which asks the author to confirm.",
     rest: "Copied every hour, checked every night, and next, shared within minutes.",
     captions: [
       "Every hour, Beekeeper copies new Discord messages and Drive changes.",
-      "Every night, facts are pulled out and checked against their sources. Disagreements become open questions.",
-      "Next: in a sprint, notes from teammates' AI sessions land in minutes.",
+      "Every night, facts are checked against their sources. Disagreements become open questions.",
+      "Next: in a sprint, AI session notes land in minutes.",
       "Every teammate's AI can read them right away.",
       "Beekeeper asks the author. A tap confirms, a reply corrects.",
     ],
@@ -33,7 +33,7 @@ export const hiveStoryCopy = {
       archive: { label: "Archive", sub: "copied every hour", subShort: "every hour" },
       check: { label: "Fact check", sub: "every night", subShort: "every night" },
       page: { label: "Team page", sub: "next", subShort: "next" },
-      ai: { label: "Your AI", sub: "connector, next", subShort: "next" },
+      ai: { label: "Your AI", sub: "MCP connector, next", subShort: "next" },
       bee: { label: "Beekeeper", sub: "tap to confirm, next", subShort: "next" },
     } satisfies Record<NodeKey, { label: string; sub: string; subShort: string }>,
     hive: { label: "The Hive", sub: "every fact cited", subShort: "cited facts" },
@@ -98,7 +98,7 @@ export const hiveStoryCopy = {
       label: "Next",
       items: [
         { title: "The team page", body: "What's due, who owns it, what's open." },
-        { title: "A connector for everyone's AI", body: "Search the Hive, add notes from a session." },
+        { title: "An MCP connector for everyone's AI", body: "Search the Hive, add notes from a session." },
         { title: "The fast lane", body: "Notes checked in minutes, not overnight." },
         { title: "Beekeeper asks the author", body: "A tap confirms, a reply corrects." },
       ],
@@ -123,6 +123,7 @@ export const hiveStoryCopy = {
       ai: {
         title: "Any AI assistant",
         ask: "Save this benchmark to the Hive.",
+        server: "Hive MCP connector",
         tool: "hive_add_note",
         args: "kind: finding",
         result: "Saved. Just in, not yet checked.",
@@ -141,19 +142,19 @@ export const hiveStoryCopy = {
       },
       reacts: { pending: "Waiting on the author", confirmed: "Confirmed", corrected: "Corrected" },
       steps: [
-        "A teammate's AI saves a note with the Hive's own tool.",
+        "A teammate's AI saves a note through the Hive's MCP connector.",
         "Beekeeper posts once, tagging only the author.",
         "A react is already waiting.",
         "A tap confirms.",
         "Or a reply corrects, and the correction wins.",
       ],
       note: "A mock-up with a made-up teammate and made-up messages. Only Beekeeper's avatar is real.",
-      description: "A demo: an AI assistant calls hive_add_note to save a finding; within minutes Beekeeper posts once in #beekeeper, mentioning only the author, with a pending react already placed; the author's tap turns it to confirmed, or the author's reply corrects the fact.",
+      description: "A demo: an AI assistant calls hive_add_note on the Hive's MCP connector to save a finding; within minutes Beekeeper posts once in #beekeeper, mentioning only the author, with a pending react already placed; the author's tap turns it to confirmed, or the author's reply corrects the fact.",
     },
     toolsLabel: "Built for the Hive",
     tools: {
       connector: {
-        label: "The connector, for any AI assistant",
+        label: "The MCP connector, for any AI assistant",
         items: [
           { name: "hive_now", body: "What's due, who owns it, what just landed" },
           { name: "hive_search", body: "Facts, each with its source" },
