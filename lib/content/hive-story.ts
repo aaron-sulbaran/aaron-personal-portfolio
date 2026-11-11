@@ -16,7 +16,7 @@ export const hiveStoryCopy = {
     label: "How information moves through the Hive",
     // The diagram, said in words for screen readers.
     description:
-      "Every hour, new Discord messages and Drive changes are copied into an archive. Every night, a fact check turns the archive into cited facts in the Hive, and disagreements become open questions. Next: notes from teammates' AI sessions take a fast lane into the Hive within minutes, and the Hive feeds the team page, each teammate's AI through an MCP connector, and Beekeeper, which asks the author to confirm.",
+      "Every hour, new Discord messages and Drive changes are copied into an archive. Every night, a fact check turns the archive into cited facts in the Hive, and disagreements become open questions. The team page shows the team what's in the Hive. Next: notes from teammates' AI sessions take a fast lane into the Hive within minutes, and the Hive feeds each teammate's AI through an MCP connector, and Beekeeper, which asks the author to confirm.",
     rest: "Copied every hour, checked every night, and next, shared within minutes.",
     captions: [
       "Every hour, Beekeeper copies new Discord messages and Drive changes.",
@@ -32,7 +32,7 @@ export const hiveStoryCopy = {
       notes: { label: "AI sessions", sub: "notes, next", subShort: "next" },
       archive: { label: "Archive", sub: "copied every hour", subShort: "every hour" },
       check: { label: "Fact check", sub: "every night", subShort: "every night" },
-      page: { label: "Team page", sub: "next", subShort: "next" },
+      page: { label: "Team page", sub: "what's due and open", subShort: "what's due" },
       ai: { label: "Your AI", sub: "MCP connector, next", subShort: "next" },
       bee: { label: "Beekeeper", sub: "tap to confirm, next", subShort: "next" },
     } satisfies Record<NodeKey, { label: string; sub: string; subShort: string }>,
@@ -92,12 +92,12 @@ export const hiveStoryCopy = {
       items: [
         { title: "The hourly copy", body: "Discord and Drive, from teammates who said yes." },
         { title: "The nightly check", body: "Cited facts I can put in a report." },
+        { title: "The team page", body: "What's due, who owns it, what's open." },
       ],
     },
     next: {
       label: "Next",
       items: [
-        { title: "The team page", body: "What's due, who owns it, what's open." },
         { title: "An MCP connector for everyone's AI", body: "Search the Hive, add notes from a session." },
         { title: "The fast lane", body: "Notes checked in minutes, not overnight." },
         { title: "Beekeeper asks the author", body: "A tap confirms, a reply corrects." },

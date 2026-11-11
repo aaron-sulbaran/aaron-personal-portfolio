@@ -13,8 +13,8 @@ import {
 } from "./dots";
 
 // The Hive's flow, drawn in bees: Discord and Drive into the archive every hour,
-// the nightly fact check into the Hive, and, next, AI session notes down the
-// fast lane and out to the team page, everyone's AI, and Beekeeper. Two layouts
+// the nightly fact check into the Hive and out to the team page, and, next, AI
+// session notes down the fast lane and out to everyone's AI and Beekeeper. Two layouts
 // share one timeline: "wide" (a row, desktops) and "tall" (a column, phones).
 
 export type NodeKey = "discord" | "drive" | "notes" | "archive" | "check" | "page" | "ai" | "bee";
@@ -43,8 +43,8 @@ export type FlowLayout = {
 };
 
 /** What runs today versus what is next; next parts are drawn in open dots. */
-export const NEXT_NODES: ReadonlySet<NodeKey> = new Set(["notes", "page", "ai", "bee"]);
-export const NEXT_PATHS: ReadonlySet<PathKey> = new Set(["n2h", "h2p", "h2i", "h2b"]);
+export const NEXT_NODES: ReadonlySet<NodeKey> = new Set(["notes", "ai", "bee"]);
+export const NEXT_PATHS: ReadonlySet<PathKey> = new Set(["n2h", "h2i", "h2b"]);
 
 const right = (b: Box) => ({ x: b.x + b.w, y: b.y + b.h / 2 });
 const left = (b: Box) => ({ x: b.x, y: b.y + b.h / 2 });
