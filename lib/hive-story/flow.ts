@@ -116,7 +116,8 @@ function tall(): FlowLayout {
     },
     rejects: [{ from: { x: 171, y: 164 }, to: { x: 146, y: 146 } }, { from: { x: 171, y: 164 }, to: { x: 196, y: 146 } }],
     size: {
-      label: 12, sub: 10.5, nodePad: 10, labelY: 20, subY: 35,
+      // At 390 the column draws at its own size, so these are the phone's px: 12 or more (design pass, 2026-11-11).
+      label: 13.5, sub: 12.5, nodePad: 10, labelY: 20, subY: 36,
       nodeDot: 1.3, nodeStep: 5.5, nextDot: 1.45, nextStep: 7, traceDot: 1.05, traceStep: 7,
       combDot: 1.9, combStep: 6.4, glyphDot: 1.8, checkSize: 16, checkDot: 1.4, bee: 2.6,
     },
