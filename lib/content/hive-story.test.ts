@@ -73,6 +73,10 @@ describe("the Hive story's copy", () => {
     expect(hiveStoryCopy.flow.nodes.notes.sub).toMatch(/next/);
   });
 
+  it("heads the tools list neutrally, since its groups' markers carry what's built and what's next", () => {
+    expect(hiveStoryCopy.calls.toolsLabel).not.toMatch(/built/i);
+  });
+
   it("has a caption for every moment on the clock", () => {
     for (const entry of CLOCK) expect(hiveStoryCopy.flow.captions[entry.caption]).toBeTruthy();
   });

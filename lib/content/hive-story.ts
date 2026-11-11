@@ -153,7 +153,8 @@ export const hiveStoryCopy = {
       note: "A mock-up of a planned step: the connector and Beekeeper's confirm and correct posts are designed and next to build. The teammate and messages are made up, and only Beekeeper's avatar is real.",
       description: "A demo: an AI assistant calls hive_add_note on the Hive's MCP connector to save a finding; within minutes Beekeeper posts once in #beekeeper, mentioning only the author, with a pending react already placed; the author's tap turns it to confirmed, or the author's reply corrects the fact.",
     },
-    toolsLabel: "Built for the Hive",
+    // Neutral on purpose: each group's own marker says whether it runs now or is next.
+    toolsLabel: "Tools for the Hive",
     tools: {
       connector: {
         label: "The MCP connector, for any AI assistant",

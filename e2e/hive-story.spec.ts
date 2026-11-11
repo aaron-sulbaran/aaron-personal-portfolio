@@ -251,6 +251,19 @@ test.describe("the controls on a phone", () => {
   });
 });
 
+test("hive story: the tools list's heading claims nothing, and every group under it shows its running now or next marker", async ({ page }) => {
+  await page.goto(PATH);
+  const heading = page.getByRole("heading", { name: hiveStoryCopy.calls.toolsLabel });
+  await heading.scrollIntoViewIfNeeded();
+  await expect(heading).toBeVisible();
+  await expect(heading).not.toContainText(/built/i);
+  for (const group of [hiveStoryCopy.calls.tools.connector, hiveStoryCopy.calls.tools.beekeeper]) {
+    const label = page.locator("#main p", { hasText: group.label });
+    await expect(label).toBeVisible();
+    await expect(label.locator(".hive-marker")).toBeVisible();
+  }
+});
+
 test("hive story: the Beekeeper demo says it is a mock-up, and the exhibit says it is an illustration, in visible text", async ({ page }) => {
   await page.goto(PATH);
   await expect(page.getByText(hiveStoryCopy.calls.loop.note)).toBeVisible();
