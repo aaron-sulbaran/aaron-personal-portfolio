@@ -77,7 +77,7 @@ export const hiveStoryCopy = {
 
   team: {
     heading: "What my team sees",
-    body: "A private page in the same bees: honey cells are due, capped cells are decided, dashed cells wait on their author.",
+    body: "A private page in the same bees: honey cells are due, capped cells are decided, and next, dashed cells wait on their author.",
     note: "Shown with a made-up team and made-up facts. The real page stays private.",
     shots: {
       desktop: { src: "/hive-story/team-page-desktop.jpg", width: 2880, height: 1580, alt: "The team page's This week view on a laptop: a dark page with a honeycomb calendar, honey cells on the days something is due, and three open questions beside the week." },
