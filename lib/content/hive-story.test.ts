@@ -53,9 +53,8 @@ describe("the Hive story's copy", () => {
     const steps = hiveStoryCopy.calls.loop.steps;
     expect(steps[3]).toMatch(/one reaction/);
     expect(steps[4]).toMatch(/replies to correct/);
-    // The Hive lead's fact check: the hourly read covers Discord and Drive only, so an AI session's
-    // notes get in when someone posts them there; sending them straight, in minutes, is next.
-    expect(lane).toBe("Today the Hive reads the team's Discord and Drive folder every hour, so an AI session's notes get in only when someone posts them there. Sending notes straight from an AI session, checked within minutes, is designed and next to build.");
+    // Under Next, the fast lane says where it's going: AI session notes in within minutes.
+    expect(lane).toMatch(/minutes/);
     expect(leaves.filter((leaf) => /copies session notes/.test(leaf.text)).map((leaf) => leaf.path)).toEqual([]);
     // Teammates have the final say on what goes into the Hive.
     expect(scenarios.intro).toMatch(/final say/);
@@ -63,18 +62,25 @@ describe("the Hive story's copy", () => {
     expect([...beekeeper, lane, scenarios.intro].filter((line) => /, not /.test(line))).toEqual([]);
   });
 
-  it("marks the Beekeeper demo as planned, since the connector and the author's confirm and correct posts are not built", () => {
+  it("marks the Beekeeper demo as what's next, once, and says its people and messages are made up", () => {
     const { loop } = hiveStoryCopy.calls;
     expect(loop.tag.startsWith("Next")).toBe(true);
-    expect(loop.note).toMatch(/planned/);
-    expect(loop.note).toMatch(/next to build/);
-    expect(loop.note).toMatch(/made up/);
+    expect(loop.note).toMatch(/what's next/);
+    expect(loop.note).toMatch(/made-up/);
     // The AI sessions part stays next too.
     expect(hiveStoryCopy.flow.nodes.notes.sub).toMatch(/next/);
   });
 
   it("heads the tools list neutrally, since its groups' markers carry what's built and what's next", () => {
     expect(hiveStoryCopy.calls.toolsLabel).not.toMatch(/built/i);
+  });
+
+  // The page shows where the Hive is going (Aaron, 2026-11-11): the Next column and the demo's
+  // markers carry what's not built yet, so the lines under them state the direction plainly.
+  it("states what's next as direction, with no hedging about what isn't built", () => {
+    const { status, calls } = hiveStoryCopy;
+    const lines = [...status.next.items.map((item) => item.body), calls.loop.tag, calls.loop.note];
+    expect(lines.filter((line) => /designed|still to build|next to build|only when/.test(line))).toEqual([]);
   });
 
   it("has a caption for every moment on the clock", () => {

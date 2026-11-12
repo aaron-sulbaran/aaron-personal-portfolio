@@ -99,7 +99,7 @@ export const hiveStoryCopy = {
       label: "Next",
       items: [
         { title: "An MCP connector for everyone's AI", body: "Search the Hive, add notes from a session." },
-        { title: "The fast lane", body: "Today the Hive reads the team's Discord and Drive folder every hour, so an AI session's notes get in only when someone posts them there. Sending notes straight from an AI session, checked within minutes, is designed and next to build." },
+        { title: "The fast lane", body: "Notes from an AI session go straight into the Hive, checked within minutes." },
         { title: "Beekeeper asks the author", body: "The author confirms the note with one reaction or replies to correct it." },
       ],
     },
@@ -120,8 +120,8 @@ export const hiveStoryCopy = {
     // The demo: a teammate's AI uses the Hive's own tool, then Beekeeper asks the author.
     loop: {
       label: "From a teammate's AI to the author's tap",
-      // Planned, not live: the connector and Beekeeper's confirm and correct posts are designed, not built (Hive lead, 2026-11-11).
-      tag: "Next: designed and still to build",
+      // The demo shows where the Hive is going; the tag and the page's open marker say it is next.
+      tag: "Next",
       ai: {
         title: "Any AI assistant",
         ask: "Save this benchmark to the Hive.",
@@ -150,7 +150,7 @@ export const hiveStoryCopy = {
         "The author confirms with one reaction.",
         "Or the author replies to correct it.",
       ],
-      note: "A mock-up of a planned step: the connector and Beekeeper's confirm and correct posts are designed and next to build. The teammate and messages are made up, and only Beekeeper's avatar is real.",
+      note: "A mock-up of what's next, with a made-up teammate and made-up messages. Only Beekeeper's avatar is real.",
       description: "A demo: an AI assistant calls hive_add_note on the Hive's MCP connector to save a finding; within minutes Beekeeper posts once in #beekeeper, mentioning only the author, with a pending react already placed; the author's tap turns it to confirmed, or the author's reply corrects the fact.",
     },
     // Neutral on purpose: each group's own marker says whether it runs now or is next.

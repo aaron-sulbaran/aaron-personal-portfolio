@@ -268,7 +268,7 @@ test("hive story: the Beekeeper demo says it is a mock-up, and the exhibit says 
   await page.goto(PATH);
   await expect(page.getByText(hiveStoryCopy.calls.loop.note)).toBeVisible();
   // Planned, not live: the demo opens with a Next tag and the page's open "next" marker, above its panes.
-  const tag = page.locator(".hive-loop").getByText(hiveStoryCopy.calls.loop.tag);
+  const tag = page.locator(".hive-loop").getByText(hiveStoryCopy.calls.loop.tag, { exact: true });
   await expect(tag).toBeVisible();
   await expect(tag.locator(".hive-marker-next")).toHaveCount(1);
   expect((await tag.boundingBox())!.y).toBeLessThan((await page.locator(".hive-loop-panes").boundingBox())!.y);
