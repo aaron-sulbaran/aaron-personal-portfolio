@@ -66,8 +66,30 @@ export const TRIP: TripPart[] = [
   { at: 6, kind: "dots", points: dotsAlong(preparePath([{ x: DOC.x + DOC.w + 4, y: 236 }, { x: QUESTION_AT.x - 14, y: 236 }]), 6), r: 1.05, opacity: 0.6 },
   { at: 6, kind: "dots", points: dotsAlong(preparePath([{ x: FACT_SLOT.x - 6, y: FACT_SLOT.y + 8 }, { x: QUESTION_AT.x + 12, y: QUESTION_AT.y - 14 }]), 6), r: 1.05, opacity: 0.6 },
   { at: 6, kind: "dots", points: questionDots(QUESTION_AT.x, QUESTION_AT.y - 4, 7, 4.6), r: 1.7 },
-  { at: 6, kind: "label", x: QUESTION_AT.x, y: 264, text: "question", anchor: "middle", size: 10.5 },
+  // Starts just past the doc, so when a phone lifts its size it never runs under the doc's corner.
+  { at: 6, kind: "label", x: DOC.x + DOC.w + 6, y: 264, text: "question", anchor: "start", size: 10.5 },
 ];
+
+// Labels stay 12 px or more on screen. The drawing fills its column, W px
+// across, so a label of size s draws at s * W / 360 px. W drops under 360 only
+// on a phone, to 264 on a 320 px screen, so there a label's size lifts to a
+// line in container units (the figure is the container, so 100cqi is W). The
+// line runs from what 264 needs to the width where the smallest label makes
+// 12 px on its own; the curve it replaces, 12 * 360 / W, bends upward, so a
+// straight line between two of its points never dips under it. Past that
+// width every label's own size wins, so desktop sizes are unchanged.
+export const LABEL_FLOOR_PX = 12;
+export const NARROWEST_TRIP_PX = 264;
+const neededAt = (width: number) => (LABEL_FLOOR_PX * TRIP_BOX.width) / width;
+const smallestLabel = Math.min(...TRIP.flatMap((part) => (part.kind === "label" ? [part.size] : [])));
+const liftEnd = (LABEL_FLOOR_PX * TRIP_BOX.width) / smallestLabel;
+const slope = (neededAt(NARROWEST_TRIP_PX) - neededAt(liftEnd)) / (liftEnd - NARROWEST_TRIP_PX);
+// Rounded so the line only ever sits higher.
+export const TRIP_LABEL_LIFT = {
+  px: Math.ceil((neededAt(NARROWEST_TRIP_PX) + slope * NARROWEST_TRIP_PX) * 100) / 100,
+  cqi: Math.floor(slope * 100 * 100) / 100,
+};
+export const tripLabelSize = (size: number) => `max(${size}px, ${TRIP_LABEL_LIFT.px}px - ${TRIP_LABEL_LIFT.cqi}cqi)`;
 
 // Where the two travelling bees go: the quote to its seat in the Hive (step 5),
 // and the doc's quote to the question (step 6). The player animates along these.

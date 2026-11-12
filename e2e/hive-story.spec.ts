@@ -1,6 +1,7 @@
 import { test, expect } from "./support/fixtures";
 import { hiveStoryCopy } from "@/lib/content/hive-story";
 import { LAYOUTS, checkCenter } from "@/lib/hive-story/flow";
+import { COMB, DOC, MESSAGE, TRIP_BOX } from "@/lib/hive-story/trip";
 
 // /hive-visual, FH08 Hive's public story: every word in the server HTML, a
 // phone's first screen that says what it is, bees that fly only when they
@@ -499,6 +500,41 @@ for (const width of [1024, 1280, 1440]) {
       expect(report.count).toBeGreaterThan(15);
       expect(report.small).toEqual([]);
       expect(report.spill).toEqual([]);
+    });
+  });
+}
+
+// The trip drawing fills its column, under 360 px across on a phone, so its
+// labels lift there to stay 12 px; lifted or not, each stays in its part.
+for (const width of [320, 375, 390, 430, 1024, 1440]) {
+  test.describe(`the trip at ${width}`, () => {
+    test.use({ viewport: { width, height: 900 } });
+
+    test(`hive story: the trip's words are 12 px or more at ${width}, each in its part`, async ({ page }) => {
+      await page.goto(PATH);
+      const labels = await page.locator(`.hive-trip figure svg[viewBox="0 0 ${TRIP_BOX.width} ${TRIP_BOX.height}"]`).evaluate((svg, boxWidth) => {
+        const scale = svg.getBoundingClientRect().width / boxWidth;
+        return Object.fromEntries([...svg.querySelectorAll("text")].map((text) => {
+          const b = (text as SVGGraphicsElement).getBBox();
+          return [text.textContent ?? "", { px: parseFloat(getComputedStyle(text).fontSize) * scale, x: b.x, y: b.y, right: b.x + b.width, bottom: b.y + b.height }];
+        }));
+      }, TRIP_BOX.width);
+      const { discord, drive, hive, question } = hiveStoryCopy.steps.trip.labels;
+      expect(Object.keys(labels).sort()).toEqual([discord, drive, hive, question].sort());
+      expect(Object.entries(labels).filter(([, l]) => l.px < 12).map(([name]) => name)).toEqual([]);
+      for (const l of Object.values(labels)) {
+        expect(l.x).toBeGreaterThanOrEqual(0);
+        expect(l.y).toBeGreaterThanOrEqual(0);
+        expect(l.right).toBeLessThanOrEqual(TRIP_BOX.width);
+        expect(l.bottom).toBeLessThanOrEqual(TRIP_BOX.height);
+      }
+      expect(labels[discord].x).toBeGreaterThan(MESSAGE.x);
+      expect(labels[discord].y).toBeGreaterThan(MESSAGE.y);
+      expect(labels[discord].right).toBeLessThan(MESSAGE.x + MESSAGE.w);
+      expect(labels[drive].y).toBeGreaterThan(DOC.y);
+      expect(labels[drive].right).toBeLessThan(DOC.x + DOC.w - 14);
+      expect(labels[hive].bottom).toBeLessThanOrEqual(COMB.cy - COMB.R);
+      expect(labels[question].x).toBeGreaterThan(DOC.x + DOC.w);
     });
   });
 }

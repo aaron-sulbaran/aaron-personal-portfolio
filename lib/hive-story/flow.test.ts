@@ -21,7 +21,7 @@ import {
   type PathKey,
 } from "./flow";
 import { SCENARIOS, SCENARIO_BOX } from "./glyphs";
-import { TRIP, TRIP_BOX, TRIP_ROUTES, TRIP_STEPS } from "./trip";
+import { LABEL_FLOOR_PX, NARROWEST_TRIP_PX, TRIP, TRIP_BOX, TRIP_LABEL_LIFT, TRIP_ROUTES, TRIP_STEPS, tripLabelSize } from "./trip";
 
 const layouts = Object.values(LAYOUTS);
 const near = (a: number, b: number) => Math.abs(a - b) < 0.5;
@@ -144,6 +144,19 @@ describe("the small drawings", () => {
     }
     for (const route of Object.values(TRIP_ROUTES)) for (const p of route) expect(p.x).toBeLessThan(TRIP_BOX.width);
     expect(new Set(TRIP.map((part) => part.at))).toEqual(new Set([0, 1, 2, 3, 4, 5, 6]));
+  });
+
+  it("lifts the trip's labels so each draws at 12 px or more at every width the drawing takes, and leaves wide ones alone", () => {
+    const sizes = TRIP.flatMap((part) => (part.kind === "label" ? [part.size] : []));
+    expect(sizes.length).toBe(4);
+    for (const size of sizes) {
+      expect(tripLabelSize(size)).toBe(`max(${size}px, ${TRIP_LABEL_LIFT.px}px - ${TRIP_LABEL_LIFT.cqi}cqi)`);
+      for (let width = NARROWEST_TRIP_PX; width <= 1400; width += 0.5) {
+        const units = Math.max(size, TRIP_LABEL_LIFT.px - (TRIP_LABEL_LIFT.cqi * width) / 100);
+        expect((units * width) / TRIP_BOX.width).toBeGreaterThanOrEqual(LABEL_FLOOR_PX);
+        if (width >= TRIP_BOX.width * 1.15) expect(units).toBe(size);
+      }
+    }
   });
 
   it("keeps every scenario inside its box", () => {
