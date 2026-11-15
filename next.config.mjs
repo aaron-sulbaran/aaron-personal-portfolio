@@ -42,6 +42,15 @@ const nextConfig = {
       { source: "/express", destination: "/quick", permanent: false },
       { source: "/simple", destination: "/quick", permanent: false },
       { source: "/recruiter", destination: "/quick", permanent: false },
+      // X cached /speedrun's link preview before it had its new card and keys
+      // that cache on the final URL. X's crawler reads app/splits (a 200 page
+      // with the card); everyone else lands on /speedrun.
+      {
+        source: "/splits",
+        missing: [{ type: "header", key: "user-agent", value: ".*Twitterbot.*" }],
+        destination: "/speedrun",
+        permanent: false,
+      },
     ];
   },
   // Each zone's path goes to its own project (lib/zones.mjs). None are listed
