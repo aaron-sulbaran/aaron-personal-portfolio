@@ -1400,6 +1400,31 @@ html[data-slot="closed"] .intro-foot,
 .intro-foot__cta-pin > * {
   pointer-events: auto;
 }
+/* The cards section comes later in the page and is opaque while the deal is closed,
+   and the stuck stage's range runs on from the stick to where a scroll starts the
+   deal (0.18 of it). So over that stretch the section's top rises behind the pinned
+   block: it passes the block's bottom a few percent into the range, and by the
+   trigger it is at the button's top. The pin paints over the section (the content
+   layer of the Z scale) while the deal waits for the reader, and, once the deal
+   starts, for as long as the deal takes to fade the block out (--cta-out, the
+   teaser's fade, set by useStageLead), so the block leaves by its fade rather than
+   under the section's edge. Nothing in the section takes a pointer then (the stage
+   waits for "unfurled", the titles for "dealt", the columns take it only beside the
+   Coil or under its band), and after the fade the section is on top again, so the block, faded but
+   still in place, never takes the pointer over the Coil. A load or a jump that finds
+   the section in view goes from closed to dealt and plays no fade. */
+html:is([data-deal="pending"], [data-deal="closed"]) .intro-foot__cta-pin {
+  z-index: 10;
+}
+html[data-deal="dealing"] .intro-foot__cta-pin {
+  animation: cta-over-section var(--cta-out, 0ms) step-end;
+}
+@keyframes cta-over-section {
+  from,
+  to {
+    z-index: 10;
+  }
+}
 .intro-foot__cta-room {
   height: var(--cta-room, 0px);
 }

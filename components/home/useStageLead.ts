@@ -3,6 +3,7 @@
 import { useEffect, useRef, type RefObject } from "react";
 import type { HeroScene } from "@/lib/coil/heroStill";
 import { getDeal, subscribeDeal } from "@/lib/home/deal";
+import { getKnobs, subscribeKnobs } from "@/lib/home/dealKnobs";
 import { gsap } from "@/lib/gsap";
 import { ctaStickPx, stageLeadPx } from "@/lib/home/stageLead";
 
@@ -27,6 +28,10 @@ import { ctaStickPx, stageLeadPx } from "@/lib/home/stageLead";
 // measure puts the button's pin where the button is when the stage sticks, for as
 // long as the stage's range (--cta-stick and --cta-room on page 1's foot), so the
 // page scrolling on from the stick never lifts the button into the ribbon above it.
+// The pin paints over the cards section, which rises behind it on the way to the
+// trigger, while the deal waits and for as long as the deal's fade of it once the
+// deal starts (app/globals.css); --cta-out is that fade's length, the lab's knob
+// included.
 
 // The stage's glide down to the section once the deal has let go of it.
 const GLIDE_S = 0.55;
@@ -107,4 +112,13 @@ export function useStageLead(sectionRef: RefObject<HTMLElement | null>, scene: H
       if (stage) gsap.killTweensOf(stage);
     };
   }, [sectionRef, scene, reducedMotion]);
+
+  // The deal's fade of the teaser (lib/home/dealOpen.ts), which the pin stays over the cards section for.
+  useEffect(() => {
+    const foot = document.querySelector<HTMLElement>("[data-intro-foot]");
+    if (!foot) return;
+    const write = () => foot.style.setProperty("--cta-out", `${getKnobs().textOutMs}ms`);
+    write();
+    return subscribeKnobs(write);
+  }, []);
 }
