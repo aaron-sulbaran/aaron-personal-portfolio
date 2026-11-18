@@ -8,13 +8,12 @@ import type { HeroScene } from "@/lib/coil/heroStill";
 import { claimDealMirror, dealTrigger, dispatchDeal, getDeal, subscribeDeal, type DealSource } from "@/lib/home/deal";
 import { setDealStarter } from "@/lib/home/dealFlow";
 import { entranceTuningOf, getKnobs } from "@/lib/home/dealKnobs";
-import { takeDealLock, type DealLock } from "@/lib/home/dealLock";
+import type { DealLock } from "@/lib/home/dealLock";
 import { createDealMaster, type DealMaster } from "@/lib/home/dealMaster";
-import { scrollVelocity, type ScrollSample } from "@/lib/home/handScroll";
-import { attachReaderInput, type ReaderInput } from "@/lib/home/readerInput";
 import { finishIntroArrival } from "@/lib/home/introArrivalEnd";
 import { clearOpen, openParts, prepareOpen, type OpenParts } from "@/lib/home/dealOpen";
 import { stageGone, stickyProgress } from "@/lib/home/stickyRange";
+import { useDealCutscene } from "@/components/home/useDealCutscene";
 import { useDealPrompt } from "@/components/home/useDealPrompt";
 import { attachTriggerGuard, type TriggerGuard } from "@/lib/home/triggerGuard";
 import { guardArmed, triggerScrollY } from "@/lib/home/triggerGuardRules";
@@ -28,22 +27,9 @@ import { guardArmed, triggerScrollY } from "@/lib/home/triggerGuardRules";
 // clock, the teaser's text, the page's scroll and the columns. It says when the
 // deal is over.
 //
-// With the scene drawing, the deal is a cutscene (docs/coil-input-model.md,
-// docs/superpowers/specs/2026-10-22-wheel-deal-motion.md section 4): from the
-// moment it starts, by a click or by the reader's own scroll past the trigger, to
-// the Coil's unfurl, the page takes the reader's wheel, touch and scroll keys
-// (lib/home/dealLock.ts) and its own eased scroll brings the page to page 2's top,
-// which nothing the reader does can kill or add to. On the reader's scroll it
-// takes over at the page's own speed and direction (lib/home/handScroll.ts), so
-// there is no stop and no start. The lock lets go after the unfurl, once the
-// reader's input has been quiet for a moment (the tail of the fling that started
-// it never reaches the page) or sooner when the input is the reader's own and not
-// a tail dying away (a wheel kept turning, a fresh swipe, a new touch), and at the
-// latest a few seconds after it took input, whatever happened. It is for the
-// reader's scroll and the click only: a page's own scroll that crosses the trigger
-// (a Menu link, an anchor) plays the deal as it always did, and so does a deal
-// with no scene (the still path), whose click scroll the reader's wheel, touch or
-// key still takes back.
+// With the scene drawing, the deal is a cutscene: the page takes the reader's
+// wheel, touch and scroll keys until the Coil is unfurled, and its own eased
+// scroll brings the page to page 2's top (useDealCutscene.ts has the rules).
 //
 // The reader's scroll starts it on the input itself where it can: within about a
 // viewport above the trigger the trigger's guard (lib/home/triggerGuard.ts) reads
@@ -91,18 +77,13 @@ export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance,
   const sceneWait = useRef<{ timer: number; over: boolean } | null>(null);
   const evaluateRef = useRef<() => void>(() => {});
   const beginRef = useRef<(source: DealSource, input?: ReaderCross) => boolean>(() => false);
-  // The cutscene's lock (it outlives the session by its tail), what the reader's input
-  // has been, the page's recent scroll positions (the speed the hand leg starts at),
-  // and the trigger's guard.
-  const lockRef = useRef<DealLock | null>(null);
-  const readerRef = useRef<ReaderInput | null>(null);
-  const samples = useRef<ScrollSample[]>([]);
+  const cutscene = useDealCutscene();
   const guardRef = useRef<TriggerGuard | null>(null);
   // A first open that retires the big line also ends the lock's wait for it, so the modal can scroll; so
   // does a line landed early (an input while it shows, a resize), and the columns that were waiting for
   // the line come in now.
   const prompt = useDealPrompt(() => {
-    lockRef.current?.endHold();
+    cutscene.current()?.endHold();
     session.current?.master?.bringColumns();
   });
 
@@ -126,12 +107,7 @@ export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance,
     session.current = null;
   }, []);
 
-  // The cutscene's lock lets go now (a deal that ends some way other than its own end).
-  const dropLock = useCallback(() => {
-    const lock = lockRef.current;
-    lockRef.current = null;
-    lock?.release();
-  }, []);
+  const dropLock = cutscene.drop;
 
   // The deal is over: the Coil's clock has run out (or there is no scene) and
   // the columns are in. Interactivity (opening a card, the wheel) starts here.
@@ -140,9 +116,9 @@ export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance,
     if (!current || !current.domDone || (current.needsScene && !current.sceneDone)) return;
     endSession();
     // The deal ran its course: the lock keeps the reader's input out only until it has been quiet.
-    lockRef.current?.unfurled();
+    cutscene.current()?.unfurled();
     dispatchDeal({ type: "finish" });
-  }, [endSession]);
+  }, [cutscene, endSession]);
 
   // Everything at once, whatever is running: a title chosen before the deal is
   // over, the stage leaving the screen mid-deal, reduced motion coming on, the
@@ -203,18 +179,15 @@ export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance,
       // a page's own, which plays the deal as it always did) holds the reader's input
       // until the Coil is unfurled. Taken before anything else of the deal runs.
       const now = performance.now();
-      const readers = source === "scroll" && (input !== undefined || (readerRef.current?.driving(now) ?? false));
-      const cutscene = mode === "scene" && (source === "click" || readers);
-      const velocity = cutscene && source === "scroll" ? (input?.velocity ?? scrollVelocity(samples.current, now)) : 0;
+      const readers = source === "scroll" && (input !== undefined || cutscene.readersScroll(now));
+      const locked = mode === "scene" && (source === "click" || readers);
+      const velocity = locked && source === "scroll" ? (input?.velocity ?? cutscene.scrollSpeed(now)) : 0;
       let lock: DealLock | null = null;
-      if (cutscene) {
-        dropLock();
-        lock = takeDealLock((why) => {
-          if (lockRef.current === lock) lockRef.current = null;
+      if (locked) {
+        lock = cutscene.take((why) => {
           // A lock that let go early (the cap, a hidden tab) leaves the page to the reader: the deal's scroll stops where it is.
           if (why === "cap" || why === "hidden") session.current?.master?.stopScroll();
         });
-        lockRef.current = lock;
         lock.onSwallow(() => prompt.fastForward());
       }
       const parts = openParts(section);
@@ -229,7 +202,7 @@ export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance,
         knobs,
         prompt: big?.run ?? null,
         columnsAtMs: big ? big.plan.columnsAtMs : null,
-        scroll: source === "click" ? { kind: "click", holds: cutscene } : cutscene ? { kind: "hand", velocity } : null,
+        scroll: source === "click" ? { kind: "click", holds: locked } : locked ? { kind: "hand", velocity } : null,
         onDone: () => {
           next.domDone = true;
           maybeFinish();
@@ -244,7 +217,7 @@ export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance,
       evaluateRef.current();
       return true;
     },
-    [dropLock, maybeFinish, prompt, sectionRef, setEntrance, settle],
+    [cutscene, maybeFinish, prompt, sectionRef, setEntrance, settle],
   );
   useEffect(() => {
     beginRef.current = begin;
@@ -293,37 +266,24 @@ export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance,
     maybeFinish();
   }, [maybeFinish]);
 
-  // The reader's own input, read (never written): whose scroll a scroll is.
-  useEffect(() => {
-    const { input, detach } = attachReaderInput();
-    readerRef.current = input;
-    return () => {
-      detach();
-      readerRef.current = null;
-    };
-  }, []);
-
   // The trigger's guard: the reader's input that would carry the page past the
   // trigger starts the deal, and is the cutscene's when the cutscene took the page.
   useEffect(() => {
-    const guard = attachTriggerGuard((velocity) => beginRef.current("scroll", { velocity }) && lockRef.current !== null);
+    const guard = attachTriggerGuard((velocity) => beginRef.current("scroll", { velocity }) && cutscene.current() !== null);
     guardRef.current = guard;
     evaluateRef.current();
     return () => {
       guard.detach();
       guardRef.current = null;
     };
-  }, []);
+  }, [cutscene]);
 
-  // The page's scroll, read (never written here): which way it goes and how fast.
+  // The page's scroll, read (never written here): which way it goes.
   useEffect(() => {
     direction.current.y = window.scrollY;
     let frame = 0;
     const onScroll = () => {
       const y = window.scrollY;
-      const rows = samples.current;
-      rows.push({ t: performance.now(), y });
-      if (rows.length > 8) rows.shift();
       if (y !== direction.current.y) direction.current = { y, down: y > direction.current.y };
       if (!frame) {
         frame = requestAnimationFrame(() => {
@@ -349,7 +309,7 @@ export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance,
     return subscribeDeal(() => {
       const state = getDeal();
       // The Coil is unfurled: the lock's quiet gap starts (it lets go once the reader's input has been quiet).
-      if (state.unfurled || state.phase === "dealt") lockRef.current?.unfurled();
+      if (state.unfurled || state.phase === "dealt") cutscene.current()?.unfurled();
       if (state.phase === "dealt" && session.current) {
         // Skipped from outside while dealing: put everything in its end state.
         const current = session.current;
@@ -373,7 +333,7 @@ export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance,
       }
       evaluateRef.current();
     });
-  }, [dropLock, endSession, prompt, sectionRef, setEntrance]);
+  }, [cutscene, dropLock, endSession, prompt, sectionRef, setEntrance]);
 
   useEffect(() => {
     evaluateRef.current();
