@@ -1916,3 +1916,9 @@ html:has(main[data-page="hive-visual"][data-logo-edge]) [data-menu-pill]:not([ro
   position: fixed;
   inset: 0;
 }
+/* A reader who asked for less transparency or more contrast gets no shade over the page: the line still plays, undimmed. */
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  [data-prompt-dim] {
+    display: none;
+  }
+}
