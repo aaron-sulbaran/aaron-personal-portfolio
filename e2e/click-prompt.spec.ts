@@ -61,7 +61,7 @@ async function watchPrompt(page: Page) {
       const host = Array.from(document.querySelectorAll<HTMLElement>("#work [data-prompt-host]")).find((h) => h.getClientRects().length > 0);
       const dimEl = document.querySelector<HTMLElement>("[data-prompt-dim]");
       const dimStyle = dimEl ? getComputedStyle(dimEl) : null;
-      const dim = dimStyle && dimStyle.visibility !== "hidden" ? Number(dimStyle.opacity) : 0;
+      const dim = dimStyle && dimStyle.display !== "none" && dimStyle.visibility !== "hidden" ? Number(dimStyle.opacity) : 0;
       log.frames.push({ t: performance.now(), opacity, box, host: host?.dataset.prompt ?? "", dim });
       requestAnimationFrame(sample);
     };
@@ -97,7 +97,7 @@ const overlayOpacity = (page: Page) =>
 const dimState = (page: Page) =>
   page.evaluate(() => {
     const cs = getComputedStyle(document.querySelector("[data-prompt-dim]")!);
-    return { opacity: cs.visibility === "hidden" ? 0 : Number(cs.opacity), pointer: cs.pointerEvents, image: cs.backgroundImage, filter: cs.backdropFilter || "none", z: Number(cs.zIndex) };
+    return { opacity: cs.display === "none" || cs.visibility === "hidden" ? 0 : Number(cs.opacity), pointer: cs.pointerEvents, image: cs.backgroundImage, filter: cs.backdropFilter || "none", z: Number(cs.zIndex) };
   });
 
 async function expectLineShown(page: Page, text: string) {
@@ -235,7 +235,7 @@ const measureHold = (page: Page) =>
           textPx: parseFloat(getComputedStyle(text).fontSize),
           linePx: parseFloat(getComputedStyle(line).fontSize),
           titlePx: parseFloat(getComputedStyle(title).fontSize),
-          dim: dim.visibility === "hidden" ? 0 : Number(dim.opacity),
+          dim: dim.display === "none" || dim.visibility === "hidden" ? 0 : Number(dim.opacity),
           dimPointer: dim.pointerEvents,
           dimZ: Number(dim.zIndex),
           dimImage: dim.backgroundImage,
@@ -397,6 +397,40 @@ for (const input of ["Escape", "a wheel"] as const) {
   });
 }
 
+// On main the Coil takes a wheel the frame it unfurls. On a first visit the lock holds that wheel for the
+// line: the first notch lands it, and a reader who keeps turning the wheel has the Coil from there. The
+// page itself never moves under them.
+test("a reader who keeps wheeling from the unfurl lands the line with the first notch, then the Coil takes the wheel, and the page never moves", async ({ page }) => {
+  await dealFromFoot(page);
+  await waitForFull(page);
+  await page.waitForFunction(() => Math.abs(document.getElementById("work")!.getBoundingClientRect().top) < 2, null, { timeout: 8000 });
+  // The pointer goes to a card of the lit Coil, as a reader's would.
+  const at = (await cardNearMiddle(page))!;
+  await page.mouse.move(at.x, at.y, { steps: 4 });
+  const coil = () =>
+    page.evaluate(({ x, y }) => {
+      const scene = (window as unknown as { __coil: { captured: number; owner: () => string; offset: () => number; captureAt: (x: number, y: number) => { onCard: boolean } } }).__coil;
+      return { captured: scene.captured, owner: scene.owner(), offset: scene.offset(), onCard: scene.captureAt(x, y).onCard, y: window.scrollY };
+    }, at);
+  const before = await coil();
+  expect(before.onCard, "the pointer is over a card").toBe(true);
+  expect(before.captured, "nothing captured while the line is read").toBe(0);
+  await stamp(page);
+  for (let i = 0; i < 20; i++) {
+    await page.mouse.wheel(0, 40);
+    await page.waitForTimeout(40);
+  }
+  await waitForLanded(page);
+  const log = await readLog(page);
+  expect(rel(log, log.stampAt!), "the wheel began while the line was read").toBeLessThan(PLAN.shrinkStartMs);
+  expect(log.frames.find((f) => f.host === "landed")!.t - log.stampAt!, "the line lands within 450 ms of the first notch").toBeLessThanOrEqual(450);
+  const after = await coil();
+  expect(after.captured, "wheels the Coil took once the line had landed").toBeGreaterThan(0);
+  expect(after.offset, "the Coil turned under the wheel").not.toBeCloseTo(before.offset, 1);
+  expect(Math.abs(after.y - before.y), "how far the page moved under the wheel, px").toBeLessThanOrEqual(2);
+  await expectPageIn(page);
+});
+
 // 5. A card pressed while the line is read opens (review focus 3).
 const cardNearMiddle = (page: Page) =>
   page.evaluate(() => {
@@ -456,6 +490,25 @@ test("the first open writes the once-ever key, and after it the spot reads 1 of 
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(restingLine(page)).toHaveText(OPENED_ONE, { timeout: 5000 });
+});
+
+test("a first open after the line has landed leaves it landed: the spot never blinks out, and reads 1 of 14 opened", async ({ page }) => {
+  await dealFromFoot(page);
+  await waitForLanded(page);
+  const row = cardRow(page, "ieee");
+  await expect(row).toBeVisible();
+  // As soon as the titles take the pointer: on a first visit the line lands before the deal is over.
+  await expect.poll(() => row.evaluate((el) => getComputedStyle(el.closest("[data-deal-title]") ?? el).pointerEvents), { timeout: 5000 }).not.toBe("none");
+  await row.click();
+  await expect(dialog(page)).toBeVisible({ timeout: 3000 });
+  await expect(restingHost(page)).toHaveAttribute("data-prompt", "landed");
+  await page.keyboard.press("Escape");
+  await expect(dialog(page)).toHaveCount(0);
+  await expect(restingHost(page)).toHaveAttribute("data-prompt", "landed");
+  await expect(countLine(page)).toHaveText(OPENED_ONE, { timeout: 5000 });
+  const log = await readLog(page);
+  const after = log.frames.filter((f) => f.t > log.frames.find((g) => g.host === "landed")!.t);
+  expect(after.filter((f) => f.host !== "landed").length, "frames after the landing in which the host was not landed").toBe(0);
 });
 
 // 7. Nothing of this moves for a visitor who has opened a card before (review focus 2).
@@ -714,4 +767,146 @@ test("the tab hidden while the line is read lets the lock go, and on return the 
   await waitForLanded(page);
   await expectLineShown(page, prompt.fine);
   await expectPageIn(page);
+});
+
+// 14. A face that arrives late, during the deal (review focus 1). The line is sized as it shows, not at
+// the click, so it is measured in the face it is drawn in. Holding the real display face's request
+// would hold the page's load event, so the late face is played here: the big line is given a family that
+// does not exist yet and draws in a stand-in a fifth narrower (Arial, size-adjusted), and the display
+// face's own file is added under that name 700 ms before the Coil lands.
+test.describe("a late face, 1280x720", () => {
+  test.use({ viewport: { width: 1280, height: 720 } });
+
+  test("a face that arrives during the deal is the one the line is sized in: it keeps its air from every card", async ({ page }) => {
+    await watchPrompt(page);
+    await openHome(page, { debug: DEBUG, at: "foot" });
+    await page.addStyleTag({
+      content: '@font-face { font-family: "StandIn"; src: local("Arial"); size-adjust: 80%; } [data-prompt-text] { font-family: "LateFace", "StandIn", sans-serif !important; }',
+    });
+    await dealLink(page).click();
+    await expect(html(page)).toHaveAttribute("data-deal", "dealing", { timeout: 5000 });
+    const widthPerPx = () =>
+      page.evaluate(() => {
+        const text = document.querySelector<HTMLElement>("[data-prompt-text]")!;
+        return text.getBoundingClientRect().width / parseFloat(getComputedStyle(text).fontSize);
+      });
+    await page.waitForFunction((at) => performance.now() - (window as unknown as PromptWindow).__prompt.marks.dealing >= at, PLAN.startMs - 700, { polling: "raf" });
+    const before = await widthPerPx();
+    await page.evaluate(async () => {
+      const file = performance.getEntriesByType("resource").find((entry) => /ProfaTrial_Black/.test(entry.name))!.name;
+      const face = new FontFace("LateFace", `url(${file})`);
+      document.fonts.add(face);
+      await face.load();
+    });
+    const log = await readLog(page);
+    expect(log.frames.filter((f) => f.opacity > 0).length, "the face arrived before the line showed").toBe(0);
+    await waitForFull(page);
+    const after = await widthPerPx();
+    expect(after, "the late face is wider than the stand-in").toBeGreaterThan(before * 1.15);
+    const hold = await measureHold(page);
+    test.info().annotations.push({ type: "face", description: `the line's width per px of font size: ${before.toFixed(2)} in the stand-in, ${after.toFixed(2)} in the face; ${hold.frames} frames, least air ${hold.minAir} px, ${hold.textPx.toFixed(1)} px` });
+    expect(hold.frames, "frames of the line alone").toBeGreaterThan(HOLD_FRAMES);
+    expect(hold.touching, "frames in which the big line meets a card").toBe(0);
+    expect(hold.minAir, "the least air between the line and a card, px").toBeGreaterThanOrEqual(P.textAirPx);
+    expect(hold.box.right, "inside the screen's gutter").toBeLessThanOrEqual(hold.vw - 15);
+    await waitForLanded(page);
+    await expectLineShown(page, prompt.fine);
+    await expectPageIn(page);
+  });
+});
+
+// 15. Nothing of the run touches the page before the Coil lands: no style written, so no layout read
+// for it either, through the 2.6 s of the deal's own motion.
+test("the run writes nothing on the overlay, its text or the dim before the Coil lands", async ({ page }) => {
+  await dealFromFoot(page);
+  const written = await page.evaluate(
+    (untilMs) =>
+      new Promise<string[]>((resolve) => {
+        const log = (window as unknown as PromptWindow).__prompt;
+        const seen = new Set<string>();
+        const tick = () => {
+          if (performance.now() - log.marks.dealing >= untilMs) return resolve([...seen]);
+          for (const selector of ["[data-prompt-stage]", "[data-prompt-text]", "[data-prompt-dim]"]) {
+            const style = document.querySelector(selector)?.getAttribute("style");
+            if (style) seen.add(`${selector}: ${style}`);
+          }
+          requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      }),
+    PLAN.startMs - 200,
+  );
+  expect(written, "inline styles written before the landing").toEqual([]);
+  await waitForLanded(page);
+  await expectLineShown(page, prompt.fine);
+});
+
+// 16. No shade over the page for a reader who asked for more contrast or less transparency: the line
+// still plays, read alone, with no dim.
+async function expectPlaysUndimmed(page: Page) {
+  await waitForFull(page);
+  const hold = await measureHold(page);
+  expect(hold.frames, "frames of the line alone").toBeGreaterThan(HOLD_FRAMES);
+  expect(hold.dim, "no dim").toBe(0);
+  expect(hold.pageShown, "the page waits for the line").toBe(0);
+  await waitForLanded(page);
+  const log = await readLog(page);
+  expect(log.frames.filter((f) => f.dim > 0).length, "frames with the dim up").toBe(0);
+  await expectLineShown(page, prompt.fine);
+  await expectPageIn(page);
+}
+
+test.describe("more contrast", () => {
+  test.use({ contrast: "more" });
+
+  test("a reader who asked for more contrast gets the line with no dim", async ({ page }) => {
+    await dealFromFoot(page);
+    expect(await page.evaluate(() => matchMedia("(prefers-contrast: more)").matches), "the preference is on").toBe(true);
+    await expectPlaysUndimmed(page);
+  });
+});
+
+test("a reader who asked for less transparency gets the line with no dim", async ({ page, cdp }) => {
+  await watchPrompt(page);
+  await openHome(page, { debug: DEBUG, at: "foot" });
+  // Playwright has no switch for this one: the browser's own emulation, set once the page has loaded.
+  await cdp.send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-transparency", value: "reduce" }] });
+  expect(await page.evaluate(() => matchMedia("(prefers-reduced-transparency: reduce)").matches), "the preference is on").toBe(true);
+  await dealLink(page).click();
+  await expectPlaysUndimmed(page);
+});
+
+// 17. What assistive tech is given: the resting line, in place, and nothing of the big copy or the dim.
+// (What a screen reader says aloud is not checked here: see the plan's notes.)
+test("assistive tech is given the resting line only, and after the first open the count is the one thing it is given next", async ({ page }) => {
+  await dealFromFoot(page);
+  await waitForFull(page);
+  await expect(page.locator("[data-prompt-stage]")).toHaveAttribute("aria-hidden", "true");
+  await expect(page.locator("[data-prompt-dim]")).toHaveAttribute("aria-hidden", "true");
+  const host = restingHost(page);
+  await expect(host).not.toHaveAttribute("aria-hidden");
+  const live = host.locator("p");
+  await expect(live).toHaveAttribute("aria-live", "polite");
+  const tree = await page.locator("body").ariaSnapshot();
+  expect(tree.split(prompt.fine).length - 1, "times the prompt is in the accessibility tree while the big line plays").toBe(1);
+  await waitForLanded(page);
+  // Every state of the line that is given to assistive tech from here on (its host is aria-hidden while the
+  // spot is empty: the moment between the first open and the first close).
+  await live.evaluate((p) => {
+    const w = window as unknown as { __live: string[] };
+    const host = p.closest("[data-prompt-host]")!;
+    w.__live = [];
+    new MutationObserver(() => {
+      const text = p.textContent ?? "";
+      if (host.getAttribute("aria-hidden") !== "true" && w.__live.at(-1) !== text) w.__live.push(text);
+    }).observe(host, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ["aria-hidden"] });
+  });
+  const row = cardRow(page, "ieee");
+  await expect.poll(() => row.evaluate((el) => getComputedStyle(el.closest("[data-deal-title]") ?? el).pointerEvents), { timeout: 5000 }).not.toBe("none");
+  await row.click();
+  await expect(dialog(page)).toBeVisible({ timeout: 3000 });
+  await page.keyboard.press("Escape");
+  await expect(dialog(page)).toHaveCount(0);
+  await expect(live).toHaveText(OPENED_ONE, { timeout: 5000 });
+  expect(await page.evaluate(() => (window as unknown as { __live: string[] }).__live), "what assistive tech was given after the prompt, in order").toEqual([OPENED_ONE]);
 });

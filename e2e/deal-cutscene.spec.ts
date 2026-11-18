@@ -4,6 +4,7 @@ import { openHome, waitForScene } from "./support/coil";
 import { noWebgl2Api } from "./support/webgl";
 import { COIL } from "@/lib/coil/constants";
 import { siteContent } from "@/lib/content";
+import { CARD_OPENED_KEY } from "@/lib/home/firstOpen";
 import { coverage, dealFacts, flick, flingStream, readBlue, rowAt, startCast, startRecording, stopRecording, wheelGesture, wheelStream, type Frame } from "./support/cutscene";
 import { decodePng } from "./support/pixels";
 
@@ -616,6 +617,9 @@ for (const size of SIZES) {
         test.setTimeout(120_000);
         const { width, height } = size.viewport;
         const openStart = COIL.deal.timeline.openStartMs;
+        // The bloom is the field's, so it is read on a visit with no click prompt: a first visit's dim shades the whole
+        // page around the lit Coil once it has landed (navy in the light theme), the viewport's last rows with it.
+        await page.addInitScript((key) => localStorage.setItem(key, "1"), CARD_OPENED_KEY);
         await openHome(page, { debug: "flight", at: "top" });
         const facts = await dealFacts(page);
         await fromLastParagraph(page);

@@ -73,20 +73,26 @@ test("touch: a tap on a card opens its modal with no flight", async ({ page }) =
   await expect(page.locator("[data-flying-tile]")).toHaveCount(0);
 });
 
-test("touch: the first visit shows no hint line, \"Tap a card\" or any other", async ({ page }) => {
+// The Coil's own hint line stays empty on touch (2026-10-30). What a first visit does show since 2026-11-18
+// is the click prompt's resting line under page 2's title, once, until a card has been opened
+// (e2e/click-prompt.spec.ts).
+test("touch: the first visit shows no hint line under the Coil, and Tap a card to open it once, as the click prompt's resting line", async ({ page }) => {
   await openHome(page);
   // The line would be set in the effect that runs once the hero is ready.
   await nextFrames(page, 10);
   const lines = page.locator("section[data-scene] p[data-hint-line]");
   await expect(lines).toHaveCount(1);
   await expect(lines).toHaveText("");
-  await expect(page.locator("section[data-scene] p", { hasText: "Tap a card" })).toHaveCount(0);
+  const prompts = page.locator("section[data-scene] p:visible", { hasText: "Tap a card" });
+  await expect(prompts).toHaveCount(1);
+  await expect(prompts).toHaveText(siteContent.columns.prompt.coarse);
+  await expect(page.locator("section[data-scene] [data-prompt-host]:visible p", { hasText: "Tap a card" })).toHaveCount(1);
   expect(await page.evaluate(() => localStorage.getItem("aaron-hint-tap"))).toBeNull();
 
   // A touch screen's later visits are the same.
   await openHome(page);
   await nextFrames(page, 10);
-  await expect(page.locator("section[data-scene] p", { hasText: "Tap a card" })).toHaveCount(0);
+  await expect(page.locator("section[data-scene] p:visible", { hasText: "Tap a card" })).toHaveCount(1);
   await expect(page.locator("section[data-scene] p[data-hint-line]")).toHaveText("");
 });
 
