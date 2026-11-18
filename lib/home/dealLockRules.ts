@@ -45,7 +45,7 @@ export type LockReason = "quiet" | "gesture" | "cap";
 
 // The reader's inputs the lock watches: a wheel event's travel in px (down positive),
 // a finger coming down, a touch move, a scroll key.
-export type LockInput = { kind: "wheel"; px: number } | { kind: "touchStart" } | { kind: "touchMove" } | { kind: "key" };
+export type LockInput = { kind: "wheel"; px: number } | { kind: "touchStart" } | { kind: "touchMove" } | { kind: "key"; repeat?: boolean };
 
 export function createLockClock(takenAtMs: number): LockClock {
   return { takenAtMs, unfurledAtMs: null, lastInputMs: takenAtMs, wheels: [], touchedAtMs: null, holdUntilMs: null };
@@ -77,6 +77,17 @@ export function noteInput(clock: LockClock, input: LockInput, nowMs: number, c: 
     }
   }
   return releaseDue(clock, nowMs, c);
+}
+
+// Is this input the reader acting now, or the rest of what they were already doing: a fling's momentum
+// tail, a held key's repeats, a finger that was down before the lock was taken? The click prompt lands
+// its line on the first only, so the scroll that started the deal cannot wipe the line as it shows.
+// Call after noteInput: a wheel is read with this event in its stream.
+export function actsNow(clock: LockClock, input: LockInput, nowMs: number, c: CoilConstants = COIL): boolean {
+  if (input.kind === "wheel") return isReadersScroll(clock.wheels, nowMs, c);
+  if (input.kind === "key") return !input.repeat;
+  if (input.kind === "touchMove") return clock.touchedAtMs !== null;
+  return true;
 }
 
 // The Coil is unfurled (or the deal ended without one) at nowMs.

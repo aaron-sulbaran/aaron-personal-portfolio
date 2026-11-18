@@ -142,8 +142,9 @@ export function columnBand(args: { line: Edges; aboveBottom: number; footTop: nu
 // 768 px wide) and what is below has room, and is cut to fit that band, the screen and, given `quads`,
 // to keep COIL.deal.prompt.cardGapPx of air from every card. Never smaller than the line.
 // clear: the place can be vouched for. False when the band or the screen has no room for even the
-// line's own size, the line itself sits outside the band, or a card is in the way at that size: the
-// big line then does not play.
+// line's own size, the line itself sits outside the band, a card is in the way at that size, or the
+// cards were asked for and none could be measured (the scene is not drawing yet): the big line then
+// does not play. Leave `quads` out where no card can reach the place (a phone's line, under the canvas).
 export function titleInPlace(args: {
   line: Edges;
   aboveBottom: number; // the bottom of what sits above the line
@@ -154,7 +155,7 @@ export function titleInPlace(args: {
   linePx: number;
   quads?: readonly (readonly Point[])[];
 }): { px: number; left: number; top: number; clear: boolean } {
-  const { line, aboveBottom, belowTop, rightEdge, perPx, wantPx, linePx, quads = [] } = args;
+  const { line, aboveBottom, belowTop, rightEdge, perPx, wantPx, linePx, quads } = args;
   const air = P.textAirPx;
   const fitPx = Math.min((belowTop - aboveBottom - 2 * air) / perPx.height, (rightEdge - line.left) / perPx.width);
   const placeAt = (px: number) => {
@@ -167,8 +168,9 @@ export function titleInPlace(args: {
   const clearAt = (px: number) => {
     const at = placeAt(px);
     const aired = cornersOf(grown({ left: at.left, top: at.top, right: at.left + perPx.width * px, bottom: at.top + perPx.height * px }, P.cardGapPx, P.cardGapPx));
-    return !quads.some((quad) => convexMeet(aired, quad));
+    return !(quads ?? []).some((quad) => convexMeet(aired, quad));
   };
+  if (quads?.length === 0) return { ...placeAt(linePx), clear: false };
   // Room for at least the line's own size, around the line itself.
   const fits = fitPx >= linePx && line.top >= aboveBottom && line.bottom <= belowTop;
   if (clearAt(roomPx)) return { ...placeAt(roomPx), clear: fits };

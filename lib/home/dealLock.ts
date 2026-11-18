@@ -1,7 +1,7 @@
 "use client";
 
 import { wheelPixels } from "@/lib/coil/motion";
-import { clearHold, createLockClock, holdLock, markUnfurled, msUntilDue, noteInput, releaseDue, swallowsKey, type LockInput, type LockReason } from "@/lib/home/dealLockRules";
+import { actsNow, clearHold, createLockClock, holdLock, markUnfurled, msUntilDue, noteInput, releaseDue, swallowsKey, type LockInput, type LockReason } from "@/lib/home/dealLockRules";
 
 // The cutscene's lock: from the moment the deal starts (the reader's scroll
 // past the trigger, or "Deal me in") until the Coil is unfurled, the page takes
@@ -46,8 +46,9 @@ export type DealLock = {
   holdFor: (msFromTaking: number) => void;
   // Ends that wait at once (the run it waited for landed early or was retired); the other rules still apply.
   endHold: () => void;
-  // Called when the lock swallows an input, which no listener added after it will ever see
-  // (the click prompt lands its line on it). Null clears it.
+  // Called when the lock swallows an input that is the reader acting now (not a fling's tail, a held
+  // key's repeats or a finger already down), which no listener added after it will ever see: the
+  // click prompt lands its line on it. Null clears it.
   onSwallow: (hook: (() => void) | null) => void;
 };
 
@@ -102,7 +103,7 @@ export function takeDealLock(onEnd?: (why: LockEnd) => void): DealLock {
     if (!note(input)) return;
     event.preventDefault();
     event.stopImmediatePropagation();
-    swallowHook?.();
+    if (actsNow(clock, input, performance.now())) swallowHook?.();
   };
   const onWheel = (event: WheelEvent) => {
     // A pinch is the browser's zoom, and a purely sideways swipe scrolls nothing here (and is the history's).
@@ -118,7 +119,7 @@ export function takeDealLock(onEnd?: (why: LockEnd) => void): DealLock {
     else note({ kind: "touchMove" });
   };
   const onKey = (event: KeyboardEvent) => {
-    if (swallowsKey(event) && !typesText(event.target)) swallow(event, { kind: "key" });
+    if (swallowsKey(event) && !typesText(event.target)) swallow(event, { kind: "key", repeat: event.repeat });
   };
   const onVisibility = () => {
     if (document.visibilityState === "hidden") end("hidden");

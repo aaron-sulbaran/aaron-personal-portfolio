@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { COIL } from "@/lib/coil/constants";
-import { clearHold, createLockClock, holdLock, markUnfurled, msUntilDue, noteInput, releaseDue, swallowsKey, type LockClock } from "@/lib/home/dealLockRules";
+import { burstAndSlowTail, fingerDrag, mouseWheel, UNFURL_MS, type TimedInput } from "@/lib/home/dealLock.fixtures";
+import { actsNow, clearHold, createLockClock, holdLock, markUnfurled, msUntilDue, noteInput, releaseDue, swallowsKey, type LockClock } from "@/lib/home/dealLockRules";
 
 const { quietMs, capMs, handoverMs } = COIL.deal.cutscene;
 
@@ -190,5 +191,40 @@ describe("the click prompt's hold", () => {
     holdLock(c, Number.NaN);
     expect(c.holdUntilMs).toBe(3900);
     expect(msUntilDue(c, 3000)).toBe(900);
+  });
+});
+
+describe("what lands the click prompt's line: the reader acting now, not what they were already doing", () => {
+  // The lock from its take with the prompt's hold on, replayed to the first input after the unfurl that acts now.
+  const firstActAfterUnfurl = (inputs: readonly (TimedInput & { repeat?: boolean })[]) => {
+    const c = createLockClock(0);
+    holdLock(c, UNFURL_MS + 1280);
+    let unfurled = false;
+    for (const input of [...inputs].sort((a, b) => a.t - b.t)) {
+      if (!unfurled && input.t >= UNFURL_MS) {
+        markUnfurled(c, UNFURL_MS);
+        unfurled = true;
+      }
+      if (noteInput(c, input, input.t)) return null;
+      if (input.t >= UNFURL_MS && actsNow(c, input, input.t)) return input.t;
+    }
+    return null;
+  };
+  const key = (t: number, repeat: boolean) => ({ t, kind: "key" as const, from: "key", repeat });
+
+  it("a fling's momentum tail still arriving as the line shows does not land it", () => {
+    expect(firstActAfterUnfurl(burstAndSlowTail(400, UNFURL_MS + 1200, { timeConstantMs: 900 }))).toBeNull();
+  });
+  it("a fresh notch lands it, straight away or once a tail has died", () => {
+    expect(firstActAfterUnfurl(mouseWheel(UNFURL_MS + 200, UNFURL_MS + 600))).toBe(UNFURL_MS + 200);
+    expect(firstActAfterUnfurl([...burstAndSlowTail(400, 1800), ...mouseWheel(UNFURL_MS + 300, UNFURL_MS + 500)])).toBe(UNFURL_MS + 300);
+  });
+  it("a held key's repeats do not land it; a new press does", () => {
+    expect(firstActAfterUnfurl([key(2000, false), ...[2033, 2600, 2660, 2700, 2900].map((t) => key(t, true))])).toBeNull();
+    expect(firstActAfterUnfurl([key(UNFURL_MS + 100, false)])).toBe(UNFURL_MS + 100);
+  });
+  it("a finger that was already down does not land it; a new touch does", () => {
+    expect(firstActAfterUnfurl(fingerDrag(2000, UNFURL_MS + 400))).toBeNull();
+    expect(firstActAfterUnfurl(fingerDrag(UNFURL_MS + 100, UNFURL_MS + 400, { down: true }))).toBe(UNFURL_MS + 100);
   });
 });

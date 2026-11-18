@@ -250,6 +250,11 @@ describe("the big line in the Work column, from 768 px wide", () => {
     expect(at.px).toBe(12.72);
     expect(at.clear).toBe(false);
   });
+  it("vouches for no place when the cards were asked for and none could be measured (the scene is not drawing yet)", () => {
+    const at = titleInPlace({ ...base, quads: [] });
+    expect(at.clear).toBe(false);
+    expect(at.px).toBe(12.72);
+  });
   it("vouches for a place it cut to keep clear of a card", () => {
     expect(titleInPlace({ ...base, quads: [card(525, 520, 700, 800)] }).clear).toBe(true);
     expect(titleInPlace({ ...base, quads: [card(300, 560, 500, 760)] }).clear).toBe(true);

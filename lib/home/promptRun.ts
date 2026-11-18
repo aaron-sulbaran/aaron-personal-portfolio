@@ -208,7 +208,7 @@ export function createPromptRun(parts: PromptParts, plan: PromptPlan, onEarlyEnd
   const listen = () => {
     const onInput = () => void fastForwardNow();
     const onKey = (event: KeyboardEvent) => {
-      if (fastForwardsOnKey(event.key)) fastForwardNow();
+      if (!event.repeat && fastForwardsOnKey(event.key)) fastForwardNow();
     };
     const onResize = () => {
       if (over) return;
