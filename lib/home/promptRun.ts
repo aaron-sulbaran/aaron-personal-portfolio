@@ -43,6 +43,8 @@ export type PromptRun = {
   kill: () => void;
   // Lands the line within COIL.deal.prompt.fastForwardMs. True when it acted (the line was showing).
   fastForward: () => boolean;
+  // Nothing of it is playing: the line has landed, or the run was killed.
+  over: () => boolean;
 };
 
 const s = (ms: number) => ms / 1000;
@@ -65,7 +67,6 @@ export function createPromptRun(parts: PromptParts, plan: PromptPlan, onEarlyEnd
   const progress = { inP: 0, shrinkP: 0, handoffP: 0 };
   const timeline = gsap.timeline({ paused: true });
   let over = false;
-  let sized = false;
   let colors: { from: string; to: string } | null = null;
   let showing = false;
   let dimShape = "";
@@ -122,7 +123,8 @@ export function createPromptRun(parts: PromptParts, plan: PromptPlan, onEarlyEnd
   };
 
   // The big line's size (in page titles, cut to its place) and the two token colors the shrink tweens
-  // between. Returns its place, or null when there is no line on the page to play on.
+  // between, read as the line shows: against the landed cards, in the face and the theme it is drawn in
+  // then. Returns its place, or null when there is no line on the page to play on.
   const size = () => {
     if (!text) return null;
     const phone = isPhone();
@@ -141,7 +143,6 @@ export function createPromptRun(parts: PromptParts, plan: PromptPlan, onEarlyEnd
     if (at) text.style.fontSize = `${at.px}px`;
     const root = getComputedStyle(document.documentElement);
     colors = { from: root.getPropertyValue("--color-foreground").trim(), to: root.getPropertyValue("--color-accent").trim() };
-    sized = true;
     return line && at ? { ...at, line: edgesOf(line) } : null;
   };
 
@@ -164,13 +165,12 @@ export function createPromptRun(parts: PromptParts, plan: PromptPlan, onEarlyEnd
     dim.style.opacity = String(opacity * plan.dimStrength);
   };
 
+  // Nothing is read or written before the line shows: the deal's own 2.6 s are left alone.
   const render = () => {
-    if (over || !overlay || !text) return;
+    if (over || !showing || !overlay || !text) return;
     const line = visibleLine();
-    if (!line) return;
-    if (!sized) size();
     // promptFrame divides by the text's width: an unmeasured text skips the frame.
-    if (text.offsetWidth === 0) return;
+    if (!line || text.offsetWidth === 0) return;
     const origin = placeInLine(line);
     if (!origin) return;
     const frame = promptFrame(progress, { left: origin.left, top: origin.top, width: text.offsetWidth, height: text.offsetHeight }, line.getBoundingClientRect());
@@ -231,7 +231,6 @@ export function createPromptRun(parts: PromptParts, plan: PromptPlan, onEarlyEnd
 
   const show = () => {
     if (over || !overlay || showing) return;
-    // Measured against the landed cards, not the ribbon the first tick saw.
     const at = size();
     // No place to vouch for (a window too short or too narrow, the Music pill or a card over the
     // line's spot, the line off screen): no big moment. The line rests and the page comes in now.
@@ -268,6 +267,7 @@ export function createPromptRun(parts: PromptParts, plan: PromptPlan, onEarlyEnd
       if (!over) land();
     },
     fastForward: fastForwardNow,
+    over: () => over,
     // Also resets a landed run (the lab's replay).
     kill() {
       over = true;
