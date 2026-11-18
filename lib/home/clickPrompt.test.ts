@@ -3,7 +3,7 @@ import { COIL } from "@/lib/coil/constants";
 import type { InputDriver } from "@/lib/coil/drivers";
 import { siteContent } from "@/lib/content";
 import { DEFAULT_KNOBS } from "@/lib/home/dealKnobs";
-import { fastForward, fastForwardsOnKey, fasterScale, litArea, openedCardCount, progressLine, promptDue, promptFrame, promptPlan, promptStartPx, titleInPlace } from "@/lib/home/clickPrompt";
+import { columnBand, fastForward, fastForwardsOnKey, fasterScale, litArea, openedCardCount, progressLine, promptDue, promptFrame, promptPlan, promptStartPx, titleInPlace } from "@/lib/home/clickPrompt";
 
 describe("the big moment's plan, in ms from the click", () => {
   it("plans the one moment from the landing: in 200, alone 600, shrink 340, hand-off 140", () => {
@@ -190,6 +190,14 @@ describe("the big line on a phone, in place under the page title", () => {
   it("is never smaller than the line it grows from", () => {
     expect(titleInPlace({ ...base, aboveBottom: 560, belowTop: 576, wantPx: 24 }).px).toBe(12.72);
   });
+  it("vouches for its place when the band and the screen have room for at least the line's own size", () => {
+    expect(titleInPlace({ ...base, wantPx: 20 }).clear).toBe(true);
+    expect(titleInPlace({ ...base, wantPx: 40 }).clear).toBe(true);
+  });
+  it("vouches for no place when the band is too shallow or the screen too narrow for even the line's own size", () => {
+    expect(titleInPlace({ ...base, aboveBottom: 560, belowTop: 576, wantPx: 24 }).clear).toBe(false);
+    expect(titleInPlace({ ...base, rightEdge: 120, wantPx: 24 }).clear).toBe(false);
+  });
 });
 
 describe("the big line in the Work column, from 768 px wide", () => {
@@ -237,7 +245,44 @@ describe("the big line in the Work column, from 768 px wide", () => {
     expect(at.px).toBeLessThan(36.72);
     expect(at.px).toBeGreaterThan(12.72);
   });
-  it("keeps the line's own size when even that would meet a card", () => {
-    expect(titleInPlace({ ...base, quads: [card(100, 600, 400, 700)] }).px).toBe(12.72);
+  it("keeps the line's own size when even that would meet a card, and vouches for no place", () => {
+    const at = titleInPlace({ ...base, quads: [card(100, 600, 400, 700)] });
+    expect(at.px).toBe(12.72);
+    expect(at.clear).toBe(false);
+  });
+  it("vouches for a place it cut to keep clear of a card", () => {
+    expect(titleInPlace({ ...base, quads: [card(525, 520, 700, 800)] }).clear).toBe(true);
+    expect(titleInPlace({ ...base, quads: [card(300, 560, 500, 760)] }).clear).toBe(true);
+  });
+});
+
+describe("the band the big line may use in the Work column", () => {
+  // 768 px wide: the Work list ends at 408, the line rests at 426 to 440, the screen's foot is `foot` px down.
+  const line = { left: 32, top: 426, right: 160, bottom: 440 };
+  const gap = COIL.deal.prompt.chromeGapPx;
+  it("runs from the Work list's foot to the screen's foot when no Music pill is in the way", () => {
+    expect(columnBand({ line, aboveBottom: 408, footTop: 584, pill: null })).toEqual({ aboveBottom: 408, belowTop: 584 });
+  });
+  it("stops its air above a Music pill that sits below the line", () => {
+    expect(columnBand({ line, aboveBottom: 408, footTop: 584, pill: { left: 0, top: 510, right: 768, bottom: 546 } })).toEqual({ aboveBottom: 408, belowTop: 510 - gap });
+  });
+  it("starts its air below a Music pill that sits above the line (a phone on its side)", () => {
+    const low = { left: 32, top: 371, right: 155, bottom: 385 };
+    expect(columnBand({ line: low, aboveBottom: 353, footTop: 374, pill: { left: 0, top: 300, right: 844, bottom: 336 } })).toEqual({ aboveBottom: 353, belowTop: 374 });
+    expect(columnBand({ line: low, aboveBottom: 320, footTop: 374, pill: { left: 0, top: 300, right: 844, bottom: 336 } })).toEqual({ aboveBottom: 336 + gap, belowTop: 374 });
+  });
+  it("vouches for no place when the resting line itself sits outside the band (a phone on its side: the line is in the screen's foot gutter)", () => {
+    const low = { left: 32, top: 371, right: 155, bottom: 385 };
+    const perPx = { width: 10.1, height: 1.1 };
+    const at = titleInPlace({ line: low, aboveBottom: 353, belowTop: 374, rightEdge: 828, perPx, linePx: 12.72, wantPx: 36.72 });
+    expect(at.clear).toBe(false);
+    // With the same room and the line inside it, the place stands.
+    expect(titleInPlace({ line: { ...low, top: 356, bottom: 370 }, aboveBottom: 353, belowTop: 374, rightEdge: 828, perPx, linePx: 12.72, wantPx: 36.72 }).clear).toBe(true);
+  });
+  it("is empty when the Music pill is over the line itself (a short window): no place for the big line", () => {
+    const band = columnBand({ line, aboveBottom: 408, footTop: 484, pill: { left: 0, top: 410, right: 768, bottom: 446 } });
+    expect(band.belowTop).toBeLessThanOrEqual(band.aboveBottom);
+    const perPx = { width: 10.1, height: 1.1 };
+    expect(titleInPlace({ line, ...band, rightEdge: 752, perPx, linePx: 12.72, wantPx: 36.72 }).clear).toBe(false);
   });
 });

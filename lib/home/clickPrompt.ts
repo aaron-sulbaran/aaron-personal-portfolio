@@ -126,10 +126,24 @@ function convexMeet(a: readonly Point[], b: readonly Point[]): boolean {
 
 const grown = (box: Edges, x: number, y: number): Edges => ({ left: box.left - x, top: box.top - y, right: box.right + x, bottom: box.bottom + y });
 
+// The band the big line may use in the Work column: from the Work list's foot to the screen's foot, kept
+// COIL.deal.prompt.chromeGapPx clear of the Music pill's row on the side of the line the row is on. Empty
+// when the row is over the line itself (a short window), so nothing can be vouched for there.
+export function columnBand(args: { line: Edges; aboveBottom: number; footTop: number; pill: Edges | null }): { aboveBottom: number; belowTop: number } {
+  const { line, aboveBottom, footTop, pill } = args;
+  if (!pill) return { aboveBottom, belowTop: footTop };
+  if (pill.bottom <= line.top) return { aboveBottom: Math.max(aboveBottom, pill.bottom + P.chromeGapPx), belowTop: footTop };
+  if (pill.top >= line.bottom) return { aboveBottom, belowTop: Math.min(footTop, pill.top - P.chromeGapPx) };
+  return { aboveBottom, belowTop: aboveBottom };
+}
+
 // The big moment plays on the resting line itself. The text keeps the line's left edge, sits on the
 // line's middle when the band between what is above (the page title on a phone, the Work list from
 // 768 px wide) and what is below has room, and is cut to fit that band, the screen and, given `quads`,
 // to keep COIL.deal.prompt.cardGapPx of air from every card. Never smaller than the line.
+// clear: the place can be vouched for. False when the band or the screen has no room for even the
+// line's own size, the line itself sits outside the band, or a card is in the way at that size: the
+// big line then does not play.
 export function titleInPlace(args: {
   line: Edges;
   aboveBottom: number; // the bottom of what sits above the line
@@ -139,23 +153,26 @@ export function titleInPlace(args: {
   wantPx: number;
   linePx: number;
   quads?: readonly (readonly Point[])[];
-}): { px: number; left: number; top: number } {
+}): { px: number; left: number; top: number; clear: boolean } {
   const { line, aboveBottom, belowTop, rightEdge, perPx, wantPx, linePx, quads = [] } = args;
   const air = P.textAirPx;
-  const band = belowTop - aboveBottom - 2 * air;
+  const fitPx = Math.min((belowTop - aboveBottom - 2 * air) / perPx.height, (rightEdge - line.left) / perPx.width);
   const placeAt = (px: number) => {
     const height = perPx.height * px;
     const middle = (line.top + line.bottom) / 2;
     const lowest = belowTop - air - height;
     return { px, left: line.left, top: Math.max(aboveBottom + air, Math.min(lowest, middle - height / 2)) };
   };
-  const roomPx = Math.max(linePx, Math.min(wantPx, band / perPx.height, (rightEdge - line.left) / perPx.width));
+  const roomPx = Math.max(linePx, Math.min(wantPx, fitPx));
   const clearAt = (px: number) => {
     const at = placeAt(px);
     const aired = cornersOf(grown({ left: at.left, top: at.top, right: at.left + perPx.width * px, bottom: at.top + perPx.height * px }, P.cardGapPx, P.cardGapPx));
     return !quads.some((quad) => convexMeet(aired, quad));
   };
-  if (clearAt(roomPx) || !clearAt(linePx)) return placeAt(clearAt(roomPx) ? roomPx : linePx);
+  // Room for at least the line's own size, around the line itself.
+  const fits = fitPx >= linePx && line.top >= aboveBottom && line.bottom <= belowTop;
+  if (clearAt(roomPx)) return { ...placeAt(roomPx), clear: fits };
+  if (!clearAt(linePx)) return { ...placeAt(linePx), clear: false };
   // A smaller text sits inside a bigger one (same left edge, held in the same band), so the fit is monotone: bisect it.
   let [low, high] = [linePx, roomPx];
   for (let step = 0; step < 12; step++) {
@@ -163,7 +180,7 @@ export function titleInPlace(args: {
     if (clearAt(mid)) low = mid;
     else high = mid;
   }
-  return placeAt(low);
+  return { ...placeAt(low), clear: fits };
 }
 
 export type PromptProgress = { inP: number; shrinkP: number; handoffP: number };

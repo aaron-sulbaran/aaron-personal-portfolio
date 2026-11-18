@@ -3,7 +3,7 @@
 import { gsap } from "@/lib/gsap";
 import { COIL } from "@/lib/coil/constants";
 import type { Quad } from "@/lib/coil/geometry";
-import { fastForward, fastForwardsOnKey, fasterScale, litArea, promptFrame, promptStartPx, titleInPlace, type Edges, type PromptPlan } from "@/lib/home/clickPrompt";
+import { columnBand, fastForward, fastForwardsOnKey, fasterScale, litArea, promptFrame, promptStartPx, titleInPlace, type Edges, type PromptPlan } from "@/lib/home/clickPrompt";
 
 // The big "click a card to open it" moment's per-frame run. It is a paused GSAP
 // timeline of its own, on the same seconds-from-the-click clock as the deal's
@@ -95,7 +95,7 @@ export function createPromptRun(parts: PromptParts, plan: PromptPlan, onEarlyEnd
 
   // The big line's size and corner against the live line. On a phone, between the page title above and
   // the columns below (the line's block ends a margin short of them); in the Work column, between the
-  // Work list above and the screen's foot (or the Music pill) below, clear of every card.
+  // Work list above and the screen's foot below, clear of the Music pill's row and of every card.
   const placeInLine = (line: HTMLElement) => {
     if (!place) return null;
     const lineBox = edgesOf(line);
@@ -104,14 +104,13 @@ export function createPromptRun(parts: PromptParts, plan: PromptPlan, onEarlyEnd
     if (place.column) {
       const above = host?.previousElementSibling ?? null;
       const pill = document.querySelector<HTMLElement>("[data-pill]");
-      const pillBox = pill && pill.getClientRects().length > 0 ? edgesOf(pill) : null;
-      const pillBelow = pillBox && pillBox.right > lineBox.left && pillBox.top > lineBox.bottom ? pillBox.top - P.chromeGapPx : Infinity;
-      return titleInPlace({
-        ...shared,
+      const band = columnBand({
+        line: lineBox,
         aboveBottom: above ? above.getBoundingClientRect().bottom : lineBox.top,
-        belowTop: Math.min(window.innerHeight - P.gutterPx, pillBelow),
-        quads: place.quads,
+        footTop: window.innerHeight - P.gutterPx,
+        pill: pill && pill.getClientRects().length > 0 ? edgesOf(pill) : null,
       });
+      return titleInPlace({ ...shared, ...band, quads: place.quads });
     }
     const title = titles.find((element) => element.getClientRects().length > 0);
     const block = host?.parentElement ?? null;
@@ -122,9 +121,10 @@ export function createPromptRun(parts: PromptParts, plan: PromptPlan, onEarlyEnd
     });
   };
 
-  // The big line's size (in page titles, cut to its place) and the two token colors the shrink tweens between.
+  // The big line's size (in page titles, cut to its place) and the two token colors the shrink tweens
+  // between. Returns its place, or null when there is no line on the page to play on.
   const size = () => {
-    if (!text) return;
+    if (!text) return null;
     const phone = isPhone();
     const title = titles.find((element) => element.getClientRects().length > 0);
     const wantPx = promptStartPx({
@@ -142,6 +142,7 @@ export function createPromptRun(parts: PromptParts, plan: PromptPlan, onEarlyEnd
     const root = getComputedStyle(document.documentElement);
     colors = { from: root.getPropertyValue("--color-foreground").trim(), to: root.getPropertyValue("--color-accent").trim() };
     sized = true;
+    return line && at ? { ...at, line: edgesOf(line) } : null;
   };
 
   // The dim: an oval of light over the stage's part on screen, redrawn only when that part moves. A phone
@@ -230,9 +231,16 @@ export function createPromptRun(parts: PromptParts, plan: PromptPlan, onEarlyEnd
 
   const show = () => {
     if (over || !overlay || showing) return;
-    showing = true;
     // Measured against the landed cards, not the ribbon the first tick saw.
-    sized = false;
+    const at = size();
+    // No place to vouch for (a window too short or too narrow, the Music pill or a card over the
+    // line's spot, the line off screen): no big moment. The line rests and the page comes in now.
+    if (!at?.clear || at.line.top < 0 || at.line.bottom > window.innerHeight) {
+      land();
+      onEarlyEnd?.();
+      return;
+    }
+    showing = true;
     overlay.style.visibility = "visible";
     overlay.style.willChange = "transform, opacity";
     if (dim) {

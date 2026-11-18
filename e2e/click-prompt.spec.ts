@@ -28,7 +28,7 @@ const DEBUG = "flight";
 
 type Box = { left: number; top: number; width: number; height: number };
 type Point = { x: number; y: number };
-type PromptFrame = { t: number; opacity: number; box: Box | null; host: string };
+type PromptFrame = { t: number; opacity: number; box: Box | null; host: string; dim: number };
 type PromptLog = { frames: PromptFrame[]; marks: Record<string, number>; lockOff: number | null; stampAt: number | null };
 type PromptWindow = Window & { __prompt: PromptLog; __coil?: { visibleQuads?: () => Point[][] } };
 
@@ -59,7 +59,10 @@ async function watchPrompt(page: Page) {
         box = { left: r.left, top: r.top, width: r.width, height: r.height };
       }
       const host = Array.from(document.querySelectorAll<HTMLElement>("#work [data-prompt-host]")).find((h) => h.getClientRects().length > 0);
-      log.frames.push({ t: performance.now(), opacity, box, host: host?.dataset.prompt ?? "" });
+      const dimEl = document.querySelector<HTMLElement>("[data-prompt-dim]");
+      const dimStyle = dimEl ? getComputedStyle(dimEl) : null;
+      const dim = dimStyle && dimStyle.visibility !== "hidden" ? Number(dimStyle.opacity) : 0;
+      log.frames.push({ t: performance.now(), opacity, box, host: host?.dataset.prompt ?? "", dim });
       requestAnimationFrame(sample);
     };
     requestAnimationFrame(sample);
@@ -137,6 +140,7 @@ async function dealFromFoot(page: Page) {
 
 function expectNeverShown(log: PromptLog) {
   expect(log.frames.filter((f) => f.opacity > 0).length, "frames with the big line showing").toBe(0);
+  expect(log.frames.filter((f) => f.dim > 0).length, "frames with the dim up").toBe(0);
 }
 
 // When the first of the page's labels is first seen, on the page's clock.
@@ -152,8 +156,12 @@ const firstLabelSeenAt = (page: Page) =>
 
 type Hold = {
   frames: number;
-  touching: number; // frames in which the big line's box met a card
-  minAir: number; // the least air between them, px (60: none within 60)
+  // Frames in which the big line's box met a card's projected corners, and the least air between them
+  // (60: none within 60). The corners are the scene's, not clipped to its canvas: on a phone the band's
+  // last cards project past the canvas's foot, where nothing is drawn, so a phone asserts the canvas's
+  // foot instead (stageBottom).
+  touching: number;
+  minAir: number;
   box: { left: number; top: number; right: number; bottom: number };
   line: { left: number; top: number; bottom: number };
   listBottom: number; // the Work list's foot (0 on a phone, whose line sits under the page title)
@@ -303,7 +311,6 @@ test.describe("a first visit on a phone, 390x844", () => {
     await waitForFull(page);
     const hold = await measureHold(page);
     expect(hold.frames, "frames of the line alone").toBeGreaterThan(HOLD_FRAMES);
-    expect(hold.touching, "frames in which the big line meets a card").toBe(0);
     expect(Math.abs(hold.box.left - hold.line.left), "it grows from the resting line's left edge").toBeLessThanOrEqual(1);
     expect(hold.box.top, "under the Coil's canvas, where no card is ever drawn").toBeGreaterThanOrEqual(hold.stageBottom);
     expect(hold.box.top, "clear of the page title above").toBeGreaterThanOrEqual(hold.titleBottom + 2);
@@ -612,30 +619,51 @@ test("a resize mid-run lands the line where it rests and the lists arrive", asyn
 });
 
 // 12. Windows too short or too narrow for the place (review focus 4).
-for (const viewport of [
-  { width: 1024, height: 600 },
-  { width: 768, height: 500 },
-]) {
-  test.describe(`a short window, ${viewport.width}x${viewport.height}`, () => {
-    test.use({ viewport });
+test.describe("a short window with room, 1024x600", () => {
+  test.use({ viewport: { width: 1024, height: 600 } });
 
-    test(`the big line meets no card, the Work list or the Music pill, and is never smaller than the line at ${viewport.width}x${viewport.height}`, async ({ page }) => {
+  test("the big line plays clear of every card, the Work list and the Music pill at 1024x600", async ({ page }) => {
+    await dealFromFoot(page);
+    await waitForFull(page);
+    const hold = await measureHold(page);
+    expect(hold.frames, "frames of the line alone").toBeGreaterThan(HOLD_FRAMES);
+    expect(hold.touching, "frames in which the big line meets a card").toBe(0);
+    expect(hold.minAir, "the least air between the line and a card, px").toBeGreaterThanOrEqual(P.textAirPx);
+    expect(hold.box.top, "clear of the Work list above").toBeGreaterThanOrEqual(hold.listBottom + 2);
+    expect(hold.pill, "the Music pill's row is on the page").toBeTruthy();
+    expect(hold.box.bottom, "clear of the Music pill's row below").toBeLessThanOrEqual(hold.pill!.top - 2);
+    expect(hold.box.right, "inside the screen's gutter").toBeLessThanOrEqual(hold.vw - 15);
+    expect(hold.textPx, "bigger than the line it rests as").toBeGreaterThan(hold.linePx);
+    expect(hold.textPx / hold.titlePx, "the start size in page titles").toBeLessThanOrEqual(P.titleRatio + 0.01);
+    expect(hold.pageShown, "the page waits for the line").toBe(0);
+    test.info().annotations.push({ type: "hold", description: `${hold.frames} frames, ${hold.textPx.toFixed(1)} px (the line ${hold.linePx.toFixed(1)} px), least air ${hold.minAir} px` });
+    await waitForLanded(page);
+    await expectLineShown(page, prompt.fine);
+    await expectPageIn(page);
+  });
+});
+
+// Where the line's own spot is not clear on screen there is nothing to play on: no big line, no dim, no
+// wait. The line rests and the page comes in as the Coil lands.
+for (const size of [
+  { name: "768x500, the Music pill over the line's spot", viewport: { width: 768, height: 500 }, phone: false },
+  { name: "a phone on its side, 844x390, the line in the screen's foot", viewport: { width: 844, height: 390 }, phone: true },
+]) {
+  test.describe(`no place for the big line: ${size.name}`, () => {
+    test.use({ viewport: size.viewport, isMobile: size.phone, hasTouch: size.phone });
+
+    test(`no big line and no dim, and the page comes in as the Coil lands: ${size.name}`, async ({ page }) => {
       await dealFromFoot(page);
-      await waitForFull(page);
-      const hold = await measureHold(page);
-      expect(hold.frames, "frames of the line alone").toBeGreaterThan(HOLD_FRAMES);
-      expect(hold.touching, "frames in which the big line meets a card").toBe(0);
-      expect(hold.box.top, "clear of the Work list above").toBeGreaterThanOrEqual(hold.listBottom);
-      expect(hold.box.right, "inside the screen's gutter").toBeLessThanOrEqual(hold.vw - 15);
-      // The text's box against the Music pill's, when the pill is shown.
-      const meetsPill = hold.pill !== null && hold.box.left < hold.pill.right && hold.pill.left < hold.box.right && hold.box.top < hold.pill.bottom && hold.pill.top < hold.box.bottom;
-      expect(meetsPill, "the big line over the Music pill").toBe(false);
-      expect(hold.textPx, "never smaller than the line it rests as").toBeGreaterThanOrEqual(hold.linePx - 0.01);
-      expect(hold.textPx / hold.titlePx, "the start size in page titles").toBeLessThanOrEqual(P.titleRatio + 0.01);
-      expect(hold.pageShown, "the page waits for the line").toBe(0);
-      test.info().annotations.push({ type: "hold", description: `${hold.frames} frames, ${hold.textPx.toFixed(1)} px (the line ${hold.linePx.toFixed(1)} px), top ${hold.box.top.toFixed(0)} of ${hold.vh}, least air ${hold.minAir} px` });
+      const labelAt = await firstLabelSeenAt(page);
       await waitForLanded(page);
-      await expectLineShown(page, prompt.fine);
+      await waitForLockOff(page);
+      const log = await readLog(page);
+      expectNeverShown(log);
+      const landed = log.frames.find((f) => f.host === "landed")!;
+      expect(rel(log, landed.t), "the line rests as the Coil lands").toBeLessThanOrEqual(PLAN.startMs + 300);
+      expect(rel(log, labelAt), "the first label shows as the Coil lands, not after a wait for a line that never played").toBeLessThanOrEqual(PLAN.startMs + 300);
+      expect(rel(log, log.lockOff!), "the lock does not wait for a line that never played").toBeLessThan(PLAN.lockUntilMs - 400);
+      await expectLineShown(page, size.phone ? prompt.coarse : prompt.fine);
       await expectPageIn(page);
     });
   });
@@ -644,17 +672,19 @@ for (const viewport of [
 test.describe("the narrowest phone, 320x640", () => {
   test.use({ viewport: { width: 320, height: 640 }, isMobile: true, hasTouch: true });
 
-  test("the big line stays inside the gutters and clear of the page title and the columns at 320x640", async ({ page }) => {
+  test("the big line stays inside the gutters, under the Coil's canvas and clear of the page title and the columns at 320x640", async ({ page }) => {
     await dealFromFoot(page);
     await waitForFull(page);
     const hold = await measureHold(page);
     expect(hold.frames, "frames of the line alone").toBeGreaterThan(HOLD_FRAMES);
     expect(hold.box.left, "the left gutter").toBeGreaterThanOrEqual(15);
     expect(hold.box.right, "the right gutter").toBeLessThanOrEqual(hold.vw - 15);
+    expect(hold.box.top, "under the Coil's canvas, where no card is ever drawn").toBeGreaterThanOrEqual(hold.stageBottom);
     expect(hold.box.top, "clear of the page title above").toBeGreaterThanOrEqual(hold.titleBottom + 2);
     expect(hold.box.bottom, "clear of the columns below").toBeLessThanOrEqual(hold.columnsTop - 2);
-    expect(hold.touching, "frames in which the big line meets a card").toBe(0);
-    expect(hold.textPx, "never smaller than the line it rests as").toBeGreaterThanOrEqual(hold.linePx - 0.01);
+    expect(hold.box.bottom, "inside the screen").toBeLessThanOrEqual(hold.vh);
+    expect(hold.textPx, "bigger than the line it rests as").toBeGreaterThan(hold.linePx);
+    expect(hold.pageShown, "the page waits for the line").toBe(0);
     await waitForLanded(page);
     await expectLineShown(page, prompt.coarse);
     await expectPageIn(page);
