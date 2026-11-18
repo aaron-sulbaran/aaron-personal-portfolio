@@ -179,4 +179,16 @@ describe("the click prompt's hold", () => {
     expect(msUntilDue(c, 3700)).toBe(quietMs - 100);
   });
   it("is no wait at all unless asked", () => expect(createLockClock(0).holdUntilMs).toBeNull());
+  it("ignores a hold that is not a finite time: a plan gone wrong neither stalls the lock nor spins its timer", () => {
+    const c = clock({ unfurledAtMs: 2400, lastInputMs: 1000 });
+    holdLock(c, Number.NaN);
+    expect(c.holdUntilMs).toBeNull();
+    holdLock(c, Number.POSITIVE_INFINITY);
+    expect(c.holdUntilMs).toBeNull();
+    expect(releaseDue(c, 2400)).toBe("quiet");
+    holdLock(c, 3900);
+    holdLock(c, Number.NaN);
+    expect(c.holdUntilMs).toBe(3900);
+    expect(msUntilDue(c, 3000)).toBe(900);
+  });
 });

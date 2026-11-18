@@ -99,6 +99,24 @@ describe("hint store forget", () => {
     expect(heard).toHaveBeenCalledTimes(1);
   });
 
+  it("forget reads as not opened even when only removeItem is blocked and the stored 1 stays", () => {
+    const storage = {
+      ...memoryStorage(),
+      removeItem: () => {
+        throw new Error("SecurityError");
+      },
+    };
+    storage.setItem(HINT_OPENED_KEY, "1");
+    const store = createHintStore(storage);
+    expect(store.opened()).toBe(true);
+    store.forget();
+    expect(store.opened()).toBe(false);
+    expect(storage.getItem(HINT_OPENED_KEY)).toBe("1");
+    // And a later first open is still recorded over it.
+    store.markOpened();
+    expect(store.opened()).toBe(true);
+  });
+
   it("forget on blocked storage still clears this page's memory and never throws", () => {
     const no = () => {
       throw new Error("blocked");

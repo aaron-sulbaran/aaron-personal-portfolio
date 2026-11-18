@@ -98,7 +98,8 @@ export function createHintStore(storage: HintStorage | null): HintStore {
       try {
         storage?.removeItem(HINT_OPENED_KEY);
       } catch {
-        // Blocked storage: the memory copy is already gone.
+        // The stored "1" could not be removed: this page's memory answers for it, not opened.
+        memory.set(HINT_OPENED_KEY, "");
       }
       hintListeners.forEach((listener) => listener());
     },

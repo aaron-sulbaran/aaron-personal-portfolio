@@ -51,8 +51,10 @@ export function createLockClock(takenAtMs: number): LockClock {
   return { takenAtMs, unfurledAtMs: null, lastInputMs: takenAtMs, wheels: [], touchedAtMs: null, holdUntilMs: null };
 }
 
-// Hold the quiet and gesture releases until untilMs; a later hold wins, an earlier one is ignored.
+// Hold the quiet and gesture releases until untilMs; a later hold wins, an earlier one is ignored, and
+// so is a time that is not finite (it would stall the lock to its cap, or spin its timer on NaN).
 export function holdLock(clock: LockClock, untilMs: number): void {
+  if (!Number.isFinite(untilMs)) return;
   clock.holdUntilMs = Math.max(clock.holdUntilMs ?? untilMs, untilMs);
 }
 
