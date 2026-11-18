@@ -18,9 +18,9 @@ import { isReadersScroll, type WheelSample } from "@/lib/home/wheelTail";
 //   - cap: capMs after the lock took input, whatever else happened.
 // With no input at all the quiet gap is already met, so the lock lets go at the unfurl.
 //
-// A fourth thing, Hold's wait (the click prompt lab): holdUntilMs delays the quiet and
-// gesture releases until the prompt's shrink has ended. It never delays the cap, which
-// stays the wall, so the lock still always lets go. Null unless a mode asks for it.
+// A fourth thing, a first visit's hold (the click prompt): holdUntilMs delays the quiet and
+// gesture releases until the prompt's line has landed. It never delays the cap, which
+// stays the wall, so the lock still always lets go. Null when no prompt is due.
 //
 // The whole decision is here, as a clock the DOM half feeds (createLockClock,
 // noteInput, markUnfurled) and asks (releaseDue, msUntilDue), so a recorded wheel
@@ -37,7 +37,7 @@ export type LockClock = {
   // When a finger came down after the lock was taken: a new touch, not the one that
   // started the deal (that began before the lock). Null until one does.
   touchedAtMs: number | null;
-  // Hold mode's wait: no quiet or gesture release before this moment. Null for no wait.
+  // The click prompt's hold: no quiet or gesture release before this moment. Null for no wait.
   holdUntilMs: number | null;
 };
 
@@ -56,7 +56,7 @@ export function holdLock(clock: LockClock, untilMs: number): void {
   clock.holdUntilMs = Math.max(clock.holdUntilMs ?? untilMs, untilMs);
 }
 
-// Hold's wait is over now (the run it waited for was retired): the quiet, gesture and cap rules apply alone.
+// The hold is over now (the run it waited for landed early or was retired): the quiet, gesture and cap rules apply alone.
 export function clearHold(clock: LockClock): void {
   clock.holdUntilMs = null;
 }
@@ -94,7 +94,7 @@ export function releaseDue(clock: LockClock, nowMs: number, c: CoilConstants = C
 }
 
 // How long until the lock may next be due, ms (never negative): the cap, or the quiet
-// gap (or Hold's wait, if later) once unfurled, whichever is sooner. What the DOM half sets its timer to. (The
+// gap (or the prompt's hold, if later) once unfurled, whichever is sooner. What the DOM half sets its timer to. (The
 // reader's own scroll is judged as its events arrive, not on a timer.)
 export function msUntilDue(clock: LockClock, nowMs: number, c: CoilConstants = COIL): number {
   const { quietMs, capMs } = c.deal.cutscene;

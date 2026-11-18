@@ -9,23 +9,6 @@ import type { EntranceTuning } from "@/lib/coil/entrance";
 
 const D = COIL.deal;
 
-export const PROMPT_VERSIONS = ["plate", "calm", "outline", "spotlight", "quiet", "lit", "title"] as const;
-export type PromptVersion = (typeof PROMPT_VERSIONS)[number];
-export const PROMPT_TITLE_PLACES = ["row", "bare", "column"] as const;
-export type PromptTitlePlace = (typeof PROMPT_TITLE_PLACES)[number];
-export const PROMPT_MODES = ["early", "hold", "after"] as const;
-export type PromptMode = (typeof PROMPT_MODES)[number];
-
-// D, F and G light the rested Coil, so they never start before the landing.
-export function startsOnLanding(version: PromptVersion): boolean {
-  return version === "spotlight" || version === "lit" || version === "title";
-}
-
-// D, F and G always start on the landing, so their Early is Hold; everything else is as chosen.
-export function modeForVersion(version: PromptVersion, mode: PromptMode): PromptMode {
-  return startsOnLanding(version) && mode === "early" ? "hold" : mode;
-}
-
 export type DealKnobs = {
   // The ribbon (COIL.deal.ribbon): the first screen's drifting row.
   ribbonCardHeightPx: number;
@@ -72,25 +55,13 @@ export type DealKnobs = {
   columnsDelayMs: number;
   columnsStaggerMs: number;
   // The click-a-card prompt (COIL.deal.prompt).
-  promptVersion: PromptVersion;
-  promptMode: PromptMode;
-  promptEarlyStartMs: number; // from the lift
-  promptHoldStartMs: number; // from the landing
-  promptAfterStartMs: number; // from the landing
-  promptHoldMs: number; // the readable hold, never under COIL.deal.prompt.minHoldMs
-  promptAloneMs: number; // G, line first: the line's hold at full size with the page still waiting, in place of promptHoldMs
-  promptShrinkMs: number;
-  promptSizeVwDesktop: number;
-  promptSizeVwPhone: number;
-  promptTitleRatio: number; // E, F and G: the start size in page titles
-  promptDimStrength: number; // F and G: the dim, as a share of its token (0: none)
-  promptTitlePlace: PromptTitlePlace; // G from 768 px wide: where its big line plays
+  promptAloneMs: number; // the line at full size with the page still waiting
+  promptShrinkMs: number; // into the resting line, its hand-off included
+  promptDimStrength: number; // the dim around the lit Coil, as a share of its token (0: none)
+  promptTitleRatio: number; // the start size in page titles, from 768 px wide
 };
 
-// The knobs that are a plain number on a slider.
-export type NumericKnob = {
-  [K in keyof DealKnobs]: DealKnobs[K] extends number ? K : never;
-}[keyof DealKnobs];
+export type NumericKnob = keyof DealKnobs;
 
 export type KnobSpec = { label: string; group: string; min: number; max: number; step: number; unit?: string };
 
@@ -133,27 +104,11 @@ export const KNOB_SPEC: Record<NumericKnob, KnobSpec> = {
   openMs: { label: "Opening duration", group: "Field", min: 300, max: 4000, step: 50, unit: "ms" },
   columnsDelayMs: { label: "Columns delay", group: "Columns", min: 0, max: 3000, step: 50, unit: "ms" },
   columnsStaggerMs: { label: "Columns stagger", group: "Columns", min: 0, max: 120, step: 2, unit: "ms" },
-  promptEarlyStartMs: { label: "Early: starts (from the lift)", group: "Prompt", min: -800, max: 800, step: 10, unit: "ms" },
-  promptHoldStartMs: { label: "Hold: starts (from the landing)", group: "Prompt", min: -800, max: 800, step: 10, unit: "ms" },
-  promptAfterStartMs: { label: "After: starts (from the landing)", group: "Prompt", min: -800, max: 800, step: 10, unit: "ms" },
-  promptHoldMs: { label: "Readable hold", group: "Prompt", min: D.prompt.minHoldMs, max: 2500, step: 50, unit: "ms" },
-  promptAloneMs: { label: "G, line first: the line alone", group: "Prompt", min: 300, max: 1500, step: 50, unit: "ms" },
+  promptAloneMs: { label: "The line alone", group: "Prompt", min: 300, max: 1500, step: 50, unit: "ms" },
   promptShrinkMs: { label: "Shrink into the spot", group: "Prompt", min: 200, max: 1500, step: 10, unit: "ms" },
-  promptSizeVwDesktop: { label: "Start size, desktop", group: "Prompt", min: 2, max: 8, step: 0.1, unit: "vw" },
-  promptSizeVwPhone: { label: "Start size, phone", group: "Prompt", min: 4, max: 12, step: 0.1, unit: "vw" },
-  promptDimStrength: { label: "F and G: dim strength", group: "Prompt", min: 0, max: 1, step: 0.05 },
-  promptTitleRatio: { label: "E, F and G: start size", group: "Prompt", min: 0.8, max: 3, step: 0.05, unit: "x title" },
+  promptDimStrength: { label: "Dim strength", group: "Prompt", min: 0, max: 1, step: 0.05 },
+  promptTitleRatio: { label: "Start size", group: "Prompt", min: 0.8, max: 3, step: 0.05, unit: "x title" },
 };
-
-export const DEAL_CHOICE_SPEC = {
-  promptVersion: { label: "Version", group: "Prompt", options: PROMPT_VERSIONS, names: { plate: "A, on a plate", calm: "B, in a calm place", outline: "C, outlined", spotlight: "D, spotlight", quiet: "E, quieter", lit: "F, lit cards", title: "G, lit title" } },
-  promptMode: { label: "Timing", group: "Prompt", options: PROMPT_MODES, names: { early: "Early", hold: "Hold", after: "After" } },
-  promptTitlePlace: { label: "G: where", group: "Prompt", options: PROMPT_TITLE_PLACES, names: { row: "Top, on a plate", bare: "Top, words only", column: "In the column" } },
-} as const;
-
-// G's two timings, named in the lab by what the reader sees: Hold has the page's title and columns wait
-// for the line (they come in as it shrinks), After brings them in first, as the deal times them.
-export const TITLE_MODE_NAMES: Record<PromptMode, string> = { early: "Early", hold: "Line first", after: "Columns first" };
 
 export const DEFAULT_KNOBS: DealKnobs = {
   ribbonCardHeightPx: D.ribbon.cardHeightPx,
@@ -194,27 +149,18 @@ export const DEFAULT_KNOBS: DealKnobs = {
   openMs: D.open.ms,
   columnsDelayMs: D.columns.delayMs,
   columnsStaggerMs: D.columns.staggerMs,
-  promptVersion: D.prompt.version,
-  promptMode: D.prompt.mode,
-  promptEarlyStartMs: D.prompt.startMs.early,
-  promptHoldStartMs: D.prompt.startMs.hold,
-  promptAfterStartMs: D.prompt.startMs.after,
-  promptHoldMs: D.prompt.holdMs,
-  promptAloneMs: D.prompt.title.aloneMs,
+  promptAloneMs: D.prompt.aloneMs,
   promptShrinkMs: D.prompt.shrinkMs,
-  promptSizeVwDesktop: D.prompt.sizeVw.desktop,
-  promptSizeVwPhone: D.prompt.sizeVw.phone,
-  promptTitleRatio: D.prompt.titleRatio,
   promptDimStrength: D.prompt.dimStrength,
-  promptTitlePlace: D.prompt.titlePlace,
+  promptTitleRatio: D.prompt.titleRatio,
 };
 
 const NUMERIC = Object.keys(KNOB_SPEC) as NumericKnob[];
 
 // Every knob held to its range. A value that is not a finite number falls back
 // to the base, and keys that are not knobs (the retired deck, riffle, glow and
-// settle among them) are dropped, so a stale or hand-edited saved record cannot
-// break the page.
+// settle, and the click-prompt lab's versions and timings, among them) are
+// dropped, so a stale or hand-edited saved record cannot break the page.
 export function clampKnobs(input: Partial<Record<string, unknown>>, base: DealKnobs = DEFAULT_KNOBS): DealKnobs {
   const out: DealKnobs = { ...base };
   for (const key of NUMERIC) {
@@ -222,14 +168,7 @@ export function clampKnobs(input: Partial<Record<string, unknown>>, base: DealKn
     const spec = KNOB_SPEC[key];
     out[key] = typeof value === "number" && Number.isFinite(value) ? Math.min(spec.max, Math.max(spec.min, value)) : base[key];
   }
-  out.promptVersion = pick(PROMPT_VERSIONS, input.promptVersion, base.promptVersion);
-  out.promptMode = pick(PROMPT_MODES, input.promptMode, base.promptMode);
-  out.promptTitlePlace = pick(PROMPT_TITLE_PLACES, input.promptTitlePlace, base.promptTitlePlace);
   return out;
-}
-
-function pick<T extends string>(list: readonly T[], value: unknown, fallback: T): T {
-  return list.find((item) => item === value) ?? fallback;
 }
 
 // The tuning handed to the Coil's entrance (lib/coil/entrance.ts tunedConstants):

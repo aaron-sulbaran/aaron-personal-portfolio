@@ -134,7 +134,7 @@ describe("the keys the lock swallows", () => {
   });
 });
 
-describe("Hold mode's wait", () => {
+describe("the click prompt's hold", () => {
   it("holds a quiet reader past the unfurl until the shrink ends, then lets go", () => {
     const c = clock({ unfurledAtMs: 3640, lastInputMs: 1000 });
     holdLock(c, 4500);

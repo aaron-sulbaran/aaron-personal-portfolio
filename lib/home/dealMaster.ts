@@ -53,12 +53,13 @@ type Args = {
   scroll: { kind: "click"; holds: boolean } | { kind: "hand"; velocity: number } | null;
   // The click prompt's own timeline, started with the master and nothing else of it.
   prompt: PromptRun | null;
-  // The prompt's plan has the columns wait for its line: when they come in, ms from the click (null: the deal's own time).
-  columnsAtMs?: number | null;
+  // A first visit's columns wait for the prompt's line: when they come in, ms from the click. Null when
+  // no prompt is due: the deal's own time.
+  columnsAtMs: number | null;
   onDone: () => void;
 };
 
-export function createDealMaster({ parts, mode, knobs, scroll, prompt, columnsAtMs = null, onDone }: Args): DealMaster {
+export function createDealMaster({ parts, mode, knobs, scroll, prompt, columnsAtMs, onDone }: Args): DealMaster {
   const master = gsap.timeline({ paused: true });
   const top = scroll ? cardsTop() : null;
   const y0 = window.scrollY;

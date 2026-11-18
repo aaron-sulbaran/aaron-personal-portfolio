@@ -27,7 +27,6 @@ import {
 import { COIL } from "@/lib/coil/constants";
 import { coilIsTheirs, dispatchDeal, getDeal, subscribeDeal, useDeal } from "@/lib/home/deal";
 import { createHoverArm, disarmHover, moveHover } from "@/lib/home/hoverArm";
-import { useSpotlightUp } from "@/lib/home/spotlight";
 import { useDealDirector } from "./useDealDirector";
 import { StageRail } from "./StageRail";
 import { QUERIES, useCapabilities } from "./useCapabilities";
@@ -147,9 +146,7 @@ export function HomeController({ children }: Props) {
   const [entrance, setEntrance] = useState<CoilEntrance | null>(null);
   const sectionRef = useRef<HTMLElement>(null);
   const deal = useDeal();
-  // Version D's scrim holds the scene still, but only once the entrance has ended (the deal's unfurl), so `dealt` never waits on a frozen frame loop.
-  const spotlight = useSpotlightUp();
-  // The click prompt's title keeps clear of the cards: as drawn now, or `aheadMs` on at the idle drift
+  // The click prompt's big line keeps clear of the cards: as drawn now, or `aheadMs` on at the idle drift
   // (there as big as a hover would make them, where there is a pointer to hover with).
   const hovers = drivers.input === "fine";
   const cardQuads = useCallback(
@@ -468,7 +465,7 @@ export function HomeController({ children }: Props) {
         <StageRail
           sectionRef={sectionRef}
           reducedMotion={reducedMotion}
-          frozen={modalOpen || flight !== null || (spotlight && coilIsTheirs(deal))}
+          frozen={modalOpen || flight !== null}
           interactive={phase === "ready" && coilIsTheirs(deal)}
           input={drivers.input}
           scene={heroScene}

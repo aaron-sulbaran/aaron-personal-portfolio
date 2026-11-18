@@ -29,8 +29,8 @@ import { clearHold, createLockClock, holdLock, markUnfurled, msUntilDue, noteInp
 // reader who keeps scrolling is not made to wait for the cap; and, whatever else
 // happened, capMs after the lock took input. The cap is a wall-clock timer of its
 // own, not the deal's clock, so a scene that never starts, a stalled master, an
-// error or a hidden tab cannot keep it. Hold mode (holdFor) delays the quiet and gesture
-// releases until the click prompt's shrink ends, never the cap. A tab that goes hidden lets go at once. One
+// error or a hidden tab cannot keep it. A first visit's hold (holdFor) delays the quiet and gesture
+// releases until the click prompt's line has landed, never the cap. A tab that goes hidden lets go at once. One
 // lock at a time: a second take lets the first go. The input that ends the lock
 // goes on unswallowed: the Coil's first of a fresh gesture.
 
@@ -41,13 +41,13 @@ export type DealLock = {
   unfurled: () => void;
   // Lets go now, whatever is going on. Idempotent.
   release: () => void;
-  // Hold mode: keep the lock until msFromTaking after it was taken (the click prompt's
-  // shrink), never past the cap. The later of two holds wins.
+  // Keeps the lock until msFromTaking after it was taken (the click prompt's line has
+  // landed), never past the cap. The later of two holds wins.
   holdFor: (msFromTaking: number) => void;
-  // Ends Hold's wait at once (the run it waited for was retired); the other rules still apply.
+  // Ends that wait at once (the run it waited for landed early or was retired); the other rules still apply.
   endHold: () => void;
   // Called when the lock swallows an input, which no listener added after it will ever see
-  // (the spotlight's fast-forward). Null clears it.
+  // (the click prompt lands its line on it). Null clears it.
   onSwallow: (hook: (() => void) | null) => void;
 };
 

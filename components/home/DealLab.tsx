@@ -3,10 +3,9 @@
 import { useEffect, useState } from "react";
 import { dispatchDeal } from "@/lib/home/deal";
 import { KNOB_SPEC, getKnobs, resetKnobs, setKnobs, useKnobs, type NumericKnob } from "@/lib/home/dealKnobs";
-import { DEAL_LAB_GROUPS, DEAL_LAB_KNOBS, applyStoredDealKnobs, dealLabCopy, dealLabValues, writeStoredDealKnobs } from "@/lib/home/dealLab";
+import { DEAL_LAB_GROUPS, DEAL_LAB_KNOBS, applyStoredDealKnobs, dealLabValues, writeStoredDealKnobs } from "@/lib/home/dealLab";
 import { firstOpenStore } from "@/lib/home/firstOpen";
 import { forgetSeen } from "@/lib/home/seen";
-import DealLabPrompt from "@/components/home/DealLabPrompt";
 
 // The deal's lab panel, dev only (DealLabMount never loads it in production, so
 // the build holds none of it): a collapsed chip at the bottom right that opens
@@ -28,7 +27,7 @@ export default function DealLab() {
   };
 
   const copy = async () => {
-    const json = JSON.stringify(dealLabCopy(getKnobs()), null, 2);
+    const json = JSON.stringify({ lab: "deal", round: 1, ...dealLabValues(getKnobs()) }, null, 2);
     try {
       await navigator.clipboard.writeText(json);
       setCopied(true);
@@ -59,7 +58,6 @@ export default function DealLab() {
             </button>
           </div>
           <div className="max-h-[60vh] space-y-4 overflow-y-auto pr-1">
-            <DealLabPrompt />
             {groups.map(({ group, keys }) => (
               <fieldset key={group} className="space-y-2">
                 <legend className="mb-1 text-muted">{group}</legend>
@@ -96,7 +94,7 @@ export default function DealLab() {
             <button
               type="button"
               onClick={() => {
-                // Back to a first visit: no opened card, nothing seen, so the next deal plays the big moment again.
+                // Back to a first visit: no opened card, nothing seen, so the next deal plays the click prompt again.
                 firstOpenStore().forget();
                 forgetSeen();
               }}

@@ -81,7 +81,7 @@ type Args = {
   scene: HeroScene;
   reducedMotion: boolean;
   setEntrance: (entrance: CoilEntrance | null) => void;
-  cardQuads: (aheadMs?: number) => readonly Quad[]; // the scene's cards now or ahead, for the click prompt's title
+  cardQuads: (aheadMs?: number) => readonly Quad[]; // the scene's cards now or ahead, which the click prompt's big line keeps clear of
 };
 
 export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance, cardQuads }: Args) {
@@ -98,8 +98,9 @@ export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance,
   const readerRef = useRef<ReaderInput | null>(null);
   const samples = useRef<ScrollSample[]>([]);
   const guardRef = useRef<TriggerGuard | null>(null);
-  // A first open that retires the big text also ends Hold's wait, so the modal can scroll; so does a line
-  // landed early (an input under the dim, a resize), and columns that were waiting for the line come in now.
+  // A first open that retires the big line also ends the lock's wait for it, so the modal can scroll; so
+  // does a line landed early (an input while it shows, a resize), and the columns that were waiting for
+  // the line come in now.
   const prompt = useDealPrompt(() => {
     lockRef.current?.endHold();
     session.current?.master?.bringColumns();
@@ -219,7 +220,7 @@ export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance,
       const parts = openParts(section);
       prepareOpen(parts, mode);
       const big = mode === "scene" ? prompt.start(section, knobs, live.current.cardQuads) : null;
-      if (lock && big && big.plan.lockUntilMs !== null) lock.holdFor(big.plan.lockUntilMs);
+      if (lock && big) lock.holdFor(big.plan.lockUntilMs);
       const next: Session = { master: null, parts, needsScene: mode === "scene", sceneDone: false, domDone: false, stageSeen: false, safety: 0 };
       session.current = next;
       const master = createDealMaster({
@@ -227,7 +228,7 @@ export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance,
         mode,
         knobs,
         prompt: big?.run ?? null,
-        columnsAtMs: big?.plan.columnsAtMs ?? null,
+        columnsAtMs: big ? big.plan.columnsAtMs : null,
         scroll: source === "click" ? { kind: "click", holds: cutscene } : cutscene ? { kind: "hand", velocity } : null,
         onDone: () => {
           next.domDone = true;
@@ -394,7 +395,7 @@ export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance,
     endSession();
     dropLock();
     current?.master?.finish();
-    // The big text outlives the session (Early's tail, Hold, After run past `dealt`).
+    // The big line can outlive the session: it rests in its spot now.
     prompt.finish();
     setEntrance(AT_REST);
     dispatchDeal({ type: "reduced" });

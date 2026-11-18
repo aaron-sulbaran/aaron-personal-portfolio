@@ -84,7 +84,6 @@ export type DebugStats = {
   // Slice 7: every visible card's bent corners in viewport px (for the
   // header and greeting overlap checks).
   visibleQuads?: () => Quad[];
-  restQuadsAfter?: (ms: number, lifted?: boolean) => Quad[];
   // Every slot's pose as last rendered and the camera they were drawn with (the
   // canvas's own px): the cards' separation (e2e/deal-separation.spec.ts,
   // lib/coil/separation.ts).
@@ -230,7 +229,6 @@ export function installSceneHooks(ctx: SceneCtx, parts: HookParts) {
     };
   };
   debug.visibleQuads = cards.visibleQuads;
-  debug.restQuadsAfter = cards.restQuadsAfter;
   debug.renderedPoses = () => ({
     camera: st.geoCamera,
     poses: st.rendered

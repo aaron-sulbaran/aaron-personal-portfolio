@@ -92,10 +92,7 @@
   --loader-name: #F5F2EC;
   --loader-fill: #7FA8C9;
   --loader-muted: #8A8A8A;
-  /* The spotlight's scrim and ink, the same in both themes (docs/superpowers/plans/2026-11-13-click-a-card-spotlight-d.md). */
-  --spotlight-scrim: rgba(10, 14, 20, 0.62);
-  --spotlight-ink: #F5F2EC;
-  /* F's and G's dim around the lit Coil: dark in both themes, tinted with the page's own navy in light mode so the dimmed columns read as shade, not as greyed out (docs/superpowers/plans/2026-11-16-click-a-card-g-lit-title.md). */
+  /* The click prompt's dim around the lit Coil: dark in both themes, tinted with the page's own navy in light mode so the dimmed page reads as shade, not as greyed out. */
   --lit-dim: rgba(14, 34, 54, 0.4);
 }
 
@@ -1907,69 +1904,15 @@ html:has(main[data-page="hive-visual"][data-logo-edge]) [data-menu-pill]:not([ro
 .hive-loop-step span { display: inline-grid; place-items: center; width: 1.6rem; height: 1.6rem; margin-right: 8px; border-radius: 999px; background: var(--hive-bee); color: var(--hive-light); font-size: 14px; }
 /* ---- end /hive-visual ---- */
 
-/* click prompt (lab): the big text of a first visit's deal (components/cards/PromptStage.tsx, lib/home/promptRun.ts). The run writes opacity, visibility and transform inline and clears them when it lands. */
+/* The click prompt: the big line of a first visit's deal and the dim around the lit Coil (components/cards/PromptStage.tsx, lib/home/promptRun.ts). The run writes their opacity, visibility, transform and the oval's gradient inline and clears them when the line lands. Both sit at the scrim's level, under the logo and the Menu pill (40), which stay lit and usable; the line is later in the DOM, so it paints above the dim. No blur, and neither ever takes the pointer. */
+[data-prompt-dim],
 [data-prompt-stage] {
-  opacity: 0;
-  visibility: hidden;
-}
-[data-prompt-plate] {
-  display: none;
-  position: absolute;
-  inset: -0.45em -0.75em; /* the 0.75em side is COIL.deal.prompt.plateOverhangEm, which promptFitPx keeps inside the stage */
-  z-index: -1;
-  border-radius: 9999px;
-  background: var(--color-background);
-  border: 1px solid var(--color-border);
-}
-[data-prompt-stage]:is([data-version="plate"], [data-version="quiet"]) [data-prompt-plate] {
-  display: block;
-}
-[data-prompt-stage][data-version="outline"] [data-prompt-text] {
-  -webkit-text-stroke: 0.16em var(--color-background);
-  paint-order: stroke fill;
-}
-
-/* Version D, the spotlight: a dim, blurred scrim over the whole page and the text above it, both at the modal level (z 50). The run writes the scrim's opacity, visibility and pointer events inline and clears them. */
-[data-prompt-scrim] {
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-  background: var(--spotlight-scrim);
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
+  z-index: 35;
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
 }
-[data-prompt-stage][data-version="spotlight"] {
-  z-index: 50; /* later in the DOM than the scrim, so it paints above it */
-}
-[data-prompt-stage][data-version="spotlight"] [data-prompt-text] {
-  color: var(--spotlight-ink);
-}
-
-/* Version F, lit cards: a dim around the Coil with an oval of light over it, no blur, never taking the pointer. The run draws the oval and writes the opacity and visibility inline, and clears them. */
 [data-prompt-dim] {
   position: fixed;
   inset: 0;
-  z-index: 35; /* a scrim's level: under the logo and the Menu pill (40), which stay lit and usable */
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-}
-[data-prompt-stage]:is([data-version="lit"], [data-version="title"]) {
-  z-index: 50; /* later in the DOM than the dim, so it paints above it */
-}
-
-/* Version G, the lit title: E's plate as a pill in the chrome's row, over F's dim. The insets are COIL.deal.prompt.title's plateYEm and plateXEm, which lib/home/clickPrompt.ts titlePlace keeps clear of every card. */
-[data-prompt-stage][data-version="title"] [data-prompt-plate] {
-  display: block;
-  inset: -0.3em -0.7em;
-}
-[data-prompt-stage][data-version="title"]:is([data-place="line"], [data-place="bare"]) [data-prompt-plate] {
-  display: none; /* in the column (and on a phone) the big moment plays on the page itself; "words only" drops the pill: no plate */
-}
-[data-prompt-stage][data-version="title"] [data-prompt-text] {
-  display: block; /* an inline box under 24 px would hang low in the stage's own line box, off the measured place */
-  line-height: 1.1; /* one line in a pill: a shallower box leaves a phone's top row more type */
 }
