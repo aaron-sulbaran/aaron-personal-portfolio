@@ -166,6 +166,9 @@ for (const size of SIZES) {
     });
 
     test("the tail of the fling is swallowed past the unfurl: the lock lets go only once the input has been quiet", async ({ page, cdp }) => {
+      // The lock's own rule, so with no click prompt due: on a first visit the lock also waits for the
+      // prompt's line, which a fling's tail does not land (lib/home/dealLockRules.ts actsNow).
+      await page.addInitScript((key) => localStorage.setItem(key, "1"), CARD_OPENED_KEY);
       await openHome(page, { debug: "flight", at: "top" });
       await fromLastParagraph(page);
       const at = middle(size);
