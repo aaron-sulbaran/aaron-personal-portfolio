@@ -6,6 +6,7 @@ import { decodePng } from "./support/pixels";
 import type { HookWindow } from "./support/hooks";
 import { COIL } from "@/lib/coil/constants";
 import { siteContent } from "@/lib/content";
+import { CARD_OPENED_KEY } from "@/lib/home/firstOpen";
 import { SEEN_STORAGE_KEY } from "@/lib/home/seen";
 import { PROFA_CAP_HEIGHT_EM, PROFA_X_HEIGHT_EM } from "@/lib/home/seenDot";
 
@@ -172,12 +173,14 @@ test("cards section: the Menu marks Work in the cards and Proof of work below th
 // The seen store the dots, the Coil's rings and the progress line read, seeded before the page loads.
 const seed = (page: import("@playwright/test").Page, keys: string[]) => page.addInitScript(([key, value]) => sessionStorage.setItem(key, value), [SEEN_STORAGE_KEY, JSON.stringify(keys)] as const);
 
-test("cards section: the progress line is hidden at none opened, then reads N of 14 with a thin accent bar under the Work column", async ({ page }) => {
+test("cards section: a first visit's line reads Click a card to open it under the Work column, then N of 14 with a thin accent bar", async ({ page }) => {
   await openHome(page);
   const progress = page.locator("#work [data-card-progress]:visible");
   await expect(progress).toHaveCount(1);
-  await expect(progress).toHaveAttribute("aria-hidden", "true");
-  expect(await progress.evaluate((el) => getComputedStyle(el).opacity)).toBe("0");
+  await expect(progress).toHaveAttribute("data-prompt", "landed", { timeout: 8000 });
+  await expect(progress.locator("p")).toHaveText(columns.prompt.fine);
+  await expect.poll(() => progress.evaluate((el) => getComputedStyle(el).opacity)).toBe("1");
+  await expect(progress).not.toHaveAttribute("aria-hidden");
   const title = page.locator('#work button[data-card="ieee"]');
   await title.click();
   await expect(cardDialog(page, "ieee")).toBeVisible();
@@ -196,6 +199,14 @@ test("cards section: the progress line is hidden at none opened, then reads N of
   expect(await bar.evaluate((el) => new DOMMatrix(getComputedStyle(el).transform).a)).toBeCloseTo(1 / 14, 2);
   expect(await bar.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe(await accentColor(page));
   expect((await progress.locator('[role="presentation"]').boundingBox())!.height).toBeLessThanOrEqual(4);
+});
+
+test("cards section: a visitor who opened a card before sees no line at none opened", async ({ page }) => {
+  await page.addInitScript((key) => localStorage.setItem(key, "1"), CARD_OPENED_KEY);
+  await openHome(page);
+  const progress = page.locator("#work [data-card-progress]:visible");
+  await expect(progress).toHaveAttribute("aria-hidden", "true");
+  expect(await progress.evaluate((el) => getComputedStyle(el).opacity)).toBe("0");
 });
 
 test("cards section: the seen dot is centered on its title's last word, to half a pixel: the x-height middle, and the capitals' middle for IEEE", async ({ page }) => {

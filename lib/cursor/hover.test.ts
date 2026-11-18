@@ -23,6 +23,7 @@ function memoryStorage() {
   return {
     getItem: (key: string) => map.get(key) ?? null,
     setItem: (key: string, value: string) => void map.set(key, value),
+    removeItem: (key: string) => void map.delete(key),
   };
 }
 const blockedStorage = {
@@ -31,6 +32,9 @@ const blockedStorage = {
   },
   setItem: () => {
     throw new Error("QuotaExceededError");
+  },
+  removeItem: () => {
+    throw new Error("SecurityError");
   },
 };
 
@@ -79,5 +83,29 @@ describe("the mark's hold", () => {
     setMarkHold(MARK_HOLD_IDLE);
     expect(listener).toHaveBeenCalledTimes(2);
     unsubscribe();
+  });
+});
+
+describe("hint store forget", () => {
+  it("forget clears the first open and tells the hint listeners (the lab's First visit again)", () => {
+    const storage = memoryStorage();
+    storage.setItem(HINT_OPENED_KEY, "1");
+    const store = createHintStore(storage);
+    const heard = vi.fn();
+    store.subscribe(heard);
+    store.forget();
+    expect(store.opened()).toBe(false);
+    expect(storage.getItem(HINT_OPENED_KEY)).toBeNull();
+    expect(heard).toHaveBeenCalledTimes(1);
+  });
+
+  it("forget on blocked storage still clears this page's memory and never throws", () => {
+    const no = () => {
+      throw new Error("blocked");
+    };
+    const store = createHintStore({ getItem: no, setItem: no, removeItem: no });
+    store.markOpened();
+    expect(() => store.forget()).not.toThrow();
+    expect(store.opened()).toBe(false);
   });
 });

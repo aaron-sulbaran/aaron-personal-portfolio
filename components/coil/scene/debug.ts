@@ -4,7 +4,6 @@ import { parseDebugFlags, type DebugFlags } from "@/lib/coil/debugFlags";
 import {
   cardDistancesPx,
   insideSilhouette,
-  projectQuad,
   seamMarginPx,
   type Camera,
   type CoilGeometry,
@@ -85,6 +84,7 @@ export type DebugStats = {
   // Slice 7: every visible card's bent corners in viewport px (for the
   // header and greeting overlap checks).
   visibleQuads?: () => Quad[];
+  restQuadsAfter?: (ms: number, lifted?: boolean) => Quad[];
   // Every slot's pose as last rendered and the camera they were drawn with (the
   // canvas's own px): the cards' separation (e2e/deal-separation.spec.ts,
   // lib/coil/separation.ts).
@@ -229,13 +229,8 @@ export function installSceneHooks(ctx: SceneCtx, parts: HookParts) {
       cards: tileCount,
     };
   };
-  debug.visibleQuads = () => {
-    if (!st.geoCamera) return [];
-    const rect = host.getBoundingClientRect();
-    return st.rendered
-      .filter((pose) => pose && pose.alpha > 0.01)
-      .map((pose) => projectQuad(pose, st.geoCamera as Camera, { left: rect.left, top: rect.top }));
-  };
+  debug.visibleQuads = cards.visibleQuads;
+  debug.restQuadsAfter = cards.restQuadsAfter;
   debug.renderedPoses = () => ({
     camera: st.geoCamera,
     poses: st.rendered

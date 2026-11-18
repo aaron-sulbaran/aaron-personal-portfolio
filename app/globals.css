@@ -92,9 +92,15 @@
   --loader-name: #F5F2EC;
   --loader-fill: #7FA8C9;
   --loader-muted: #8A8A8A;
+  /* The spotlight's scrim and ink, the same in both themes (docs/superpowers/plans/2026-11-13-click-a-card-spotlight-d.md). */
+  --spotlight-scrim: rgba(10, 14, 20, 0.62);
+  --spotlight-ink: #F5F2EC;
+  /* F's and G's dim around the lit Coil: dark in both themes, tinted with the page's own navy in light mode so the dimmed columns read as shade, not as greyed out (docs/superpowers/plans/2026-11-16-click-a-card-g-lit-title.md). */
+  --lit-dim: rgba(14, 34, 54, 0.4);
 }
 
 [data-theme="dark"] {
+  --lit-dim: rgba(10, 14, 20, 0.55);
   --color-background: #0E1419;
   --color-foreground: #F5F2EC;
   --color-muted: #8A8A8A;
@@ -1047,9 +1053,14 @@ html[data-deal="closed"] [data-deal-title]:focus-within {
 html:is([data-deal="pending"], [data-deal="closed"], [data-deal="dealing"], [data-deal="unfurled"]) [data-deal-title] {
   pointer-events: none;
 }
-/* The progress line (components/cards/CardProgress.tsx) waits for the deal like the titles. */
-html:is([data-deal="pending"], [data-deal="closed"], [data-deal="dealing"], [data-deal="unfurled"]) [data-card-progress] {
+/* The resting lines (components/cards/CardProgress.tsx, PromptLine.tsx) wait for the deal like the titles; a landed prompt shows even before it is dealt. */
+html:is([data-deal="pending"], [data-deal="closed"], [data-deal="dealing"], [data-deal="unfurled"]) :is([data-card-progress], [data-prompt-host]):not([data-prompt="landed"]) {
   opacity: 0;
+}
+/* The run hides the resting line until the big text hands over. */
+[data-prompt-host][data-prompt="playing"] {
+  opacity: 0;
+  transition: none;
 }
 html[data-deal="pending"] [data-coil-poster],
 html[data-deal="pending"] [data-deal-label],
@@ -1895,3 +1906,70 @@ html:has(main[data-page="hive-visual"][data-logo-edge]) [data-menu-pill]:not([ro
 .hive-loop-step { margin: 14px 0 0; font-weight: 600; font-size: 1.0625rem; }
 .hive-loop-step span { display: inline-grid; place-items: center; width: 1.6rem; height: 1.6rem; margin-right: 8px; border-radius: 999px; background: var(--hive-bee); color: var(--hive-light); font-size: 14px; }
 /* ---- end /hive-visual ---- */
+
+/* click prompt (lab): the big text of a first visit's deal (components/cards/PromptStage.tsx, lib/home/promptRun.ts). The run writes opacity, visibility and transform inline and clears them when it lands. */
+[data-prompt-stage] {
+  opacity: 0;
+  visibility: hidden;
+}
+[data-prompt-plate] {
+  display: none;
+  position: absolute;
+  inset: -0.45em -0.75em; /* the 0.75em side is COIL.deal.prompt.plateOverhangEm, which promptFitPx keeps inside the stage */
+  z-index: -1;
+  border-radius: 9999px;
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+}
+[data-prompt-stage]:is([data-version="plate"], [data-version="quiet"]) [data-prompt-plate] {
+  display: block;
+}
+[data-prompt-stage][data-version="outline"] [data-prompt-text] {
+  -webkit-text-stroke: 0.16em var(--color-background);
+  paint-order: stroke fill;
+}
+
+/* Version D, the spotlight: a dim, blurred scrim over the whole page and the text above it, both at the modal level (z 50). The run writes the scrim's opacity, visibility and pointer events inline and clears them. */
+[data-prompt-scrim] {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: var(--spotlight-scrim);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+[data-prompt-stage][data-version="spotlight"] {
+  z-index: 50; /* later in the DOM than the scrim, so it paints above it */
+}
+[data-prompt-stage][data-version="spotlight"] [data-prompt-text] {
+  color: var(--spotlight-ink);
+}
+
+/* Version F, lit cards: a dim around the Coil with an oval of light over it, no blur, never taking the pointer. The run draws the oval and writes the opacity and visibility inline, and clears them. */
+[data-prompt-dim] {
+  position: fixed;
+  inset: 0;
+  z-index: 35; /* a scrim's level: under the logo and the Menu pill (40), which stay lit and usable */
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+[data-prompt-stage]:is([data-version="lit"], [data-version="title"]) {
+  z-index: 50; /* later in the DOM than the dim, so it paints above it */
+}
+
+/* Version G, the lit title: E's plate as a pill in the chrome's row, over F's dim. The insets are COIL.deal.prompt.title's plateYEm and plateXEm, which lib/home/clickPrompt.ts titlePlace keeps clear of every card. */
+[data-prompt-stage][data-version="title"] [data-prompt-plate] {
+  display: block;
+  inset: -0.3em -0.7em;
+}
+[data-prompt-stage][data-version="title"]:is([data-place="line"], [data-place="bare"]) [data-prompt-plate] {
+  display: none; /* in the column (and on a phone) the big moment plays on the page itself; "words only" drops the pill: no plate */
+}
+[data-prompt-stage][data-version="title"] [data-prompt-text] {
+  display: block; /* an inline box under 24 px would hang low in the stage's own line box, off the measured place */
+  line-height: 1.1; /* one line in a pill: a shallower box leaves a phone's top row more type */
+}

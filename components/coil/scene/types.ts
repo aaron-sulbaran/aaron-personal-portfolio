@@ -78,6 +78,11 @@ export type CoilSceneApi = CoilFlightApi &
   cardAt: (clientX: number, clientY: number) => CoilCardRef | null;
   // A slot's four bent corners in viewport px, as last rendered (lift included).
   quadOf: (slot: number) => Quad | null;
+  // Every card on screen as last rendered, in viewport px (the click prompt's title keeps clear of them).
+  visibleQuads: () => Quad[];
+  // The same cards `ms` from now, if the rested Coil only idles until then (its slow drift);
+  // lifted: each as big as a hover would make it. Only good once the deal has landed.
+  restQuadsAfter: (ms: number, lifted?: boolean) => Quad[];
   // Hides one slot's mesh (the flown card) or none.
   hideSlot: (slot: number | null) => void;
 };

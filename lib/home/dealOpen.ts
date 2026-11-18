@@ -53,14 +53,16 @@ const s = (ms: number) => ms / 1000;
 
 // Adds the DOM half to the master, at its times from the click: the first
 // screen's text out, then the columns (columns.delayMs after the end of the
-// condense) or the stage's cross-fade.
-export function addOpen(master: ReturnType<typeof Gsap.timeline>, parts: OpenParts, mode: OpenMode, knobs: DealKnobs) {
+// condense, or `columnsAtMs` from the click when the click prompt has them wait
+// for its line) or the stage's cross-fade. Returns when the columns start, ms.
+export function addOpen(master: ReturnType<typeof Gsap.timeline>, parts: OpenParts, mode: OpenMode, knobs: DealKnobs, columnsAtMs: number | null = null): number {
   const { columns, open } = COIL.deal;
   if (parts.teaser.length) master.to(parts.teaser, { opacity: 0, duration: s(knobs.textOutMs), ease: "power2.out" }, 0);
-  const at = mode === "scene" ? s(knobs.condenseMs + knobs.columnsDelayMs) : s(open.fadeMs) * 0.35;
+  const at = mode === "scene" ? s(columnsAtMs ?? knobs.condenseMs + knobs.columnsDelayMs) : s(open.fadeMs) * 0.35;
   if (parts.stage && mode === "fade") master.to(parts.stage, { opacity: 1, duration: s(open.fadeMs), ease: "power1.out" }, 0);
   const labelStagger = s(columns.labelStaggerMs);
   master.to(parts.labels, { opacity: 1, y: 0, duration: s(columns.fadeMs), ease: "power2.out", stagger: labelStagger }, at);
   const labelsSpan = Math.max(0, parts.labels.length - 1) * labelStagger;
   master.to(parts.titles, { opacity: 1, y: 0, duration: s(columns.fadeMs), ease: "power2.out", stagger: s(knobs.columnsStaggerMs) }, at + labelsSpan * 0.6);
+  return at * 1000;
 }

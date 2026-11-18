@@ -66,6 +66,18 @@ export function markSeen(key: string) {
   listeners.forEach((listener) => listener());
 }
 
+// The lab's "First visit again": empties this tab's set and its stored key.
+export function forgetSeen() {
+  hydrated = true;
+  snapshot = EMPTY;
+  try {
+    storage()?.removeItem(SEEN_STORAGE_KEY);
+  } catch {
+    // Private mode or disabled storage: the in-page set is already empty.
+  }
+  listeners.forEach((listener) => listener());
+}
+
 export function subscribeSeen(listener: () => void): () => void {
   listeners.add(listener);
   return () => {

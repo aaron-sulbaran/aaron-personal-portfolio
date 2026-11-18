@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, type RefObject } from "react";
 import type { CoilEntrance } from "@/components/coil/CoilScene";
+import type { Quad } from "@/lib/coil/geometry";
 import { COIL } from "@/lib/coil/constants";
 import type { HeroScene } from "@/lib/coil/heroStill";
 import { claimDealMirror, dealTrigger, dispatchDeal, getDeal, subscribeDeal, type DealSource } from "@/lib/home/deal";
@@ -14,6 +15,7 @@ import { attachReaderInput, type ReaderInput } from "@/lib/home/readerInput";
 import { finishIntroArrival } from "@/lib/home/introArrivalEnd";
 import { clearOpen, openParts, prepareOpen, type OpenParts } from "@/lib/home/dealOpen";
 import { stageGone, stickyProgress } from "@/lib/home/stickyRange";
+import { useDealPrompt } from "@/components/home/useDealPrompt";
 import { attachTriggerGuard, type TriggerGuard } from "@/lib/home/triggerGuard";
 import { guardArmed, triggerScrollY } from "@/lib/home/triggerGuardRules";
 
@@ -79,10 +81,11 @@ type Args = {
   scene: HeroScene;
   reducedMotion: boolean;
   setEntrance: (entrance: CoilEntrance | null) => void;
+  cardQuads: (aheadMs?: number) => readonly Quad[]; // the scene's cards now or ahead, for the click prompt's title
 };
 
-export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance }: Args) {
-  const live = useRef({ scene, reducedMotion });
+export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance, cardQuads }: Args) {
+  const live = useRef({ scene, reducedMotion, cardQuads });
   const session = useRef<Session | null>(null);
   const direction = useRef({ y: 0, down: false });
   const sceneWait = useRef<{ timer: number; over: boolean } | null>(null);
@@ -95,10 +98,16 @@ export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance 
   const readerRef = useRef<ReaderInput | null>(null);
   const samples = useRef<ScrollSample[]>([]);
   const guardRef = useRef<TriggerGuard | null>(null);
+  // A first open that retires the big text also ends Hold's wait, so the modal can scroll; so does a line
+  // landed early (an input under the dim, a resize), and columns that were waiting for the line come in now.
+  const prompt = useDealPrompt(() => {
+    lockRef.current?.endHold();
+    session.current?.master?.bringColumns();
+  });
 
   useEffect(() => {
-    live.current = { scene, reducedMotion };
-  }, [scene, reducedMotion]);
+    live.current = { scene, reducedMotion, cardQuads };
+  }, [scene, reducedMotion, cardQuads]);
 
   // Before the first paint the home's own state takes over <html data-deal>
   // from the head script's "pending", and a deal that is already done (reduced
@@ -143,9 +152,10 @@ export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance 
     endSession();
     dropLock();
     current?.master?.finish();
+    prompt.finish();
     setEntrance(AT_REST);
     dispatchDeal({ type: "skip" });
-  }, [dropLock, endSession, setEntrance]);
+  }, [dropLock, endSession, prompt, setEntrance]);
 
   // Starts the deal; false when it cannot yet (the scene is on its way, so the
   // cards section stays closed meanwhile). `input`: the trigger's guard starts it
@@ -195,23 +205,29 @@ export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance 
       const readers = source === "scroll" && (input !== undefined || (readerRef.current?.driving(now) ?? false));
       const cutscene = mode === "scene" && (source === "click" || readers);
       const velocity = cutscene && source === "scroll" ? (input?.velocity ?? scrollVelocity(samples.current, now)) : 0;
+      let lock: DealLock | null = null;
       if (cutscene) {
         dropLock();
-        const lock = takeDealLock((why) => {
+        lock = takeDealLock((why) => {
           if (lockRef.current === lock) lockRef.current = null;
           // A lock that let go early (the cap, a hidden tab) leaves the page to the reader: the deal's scroll stops where it is.
           if (why === "cap" || why === "hidden") session.current?.master?.stopScroll();
         });
         lockRef.current = lock;
+        lock.onSwallow(() => prompt.fastForward());
       }
       const parts = openParts(section);
       prepareOpen(parts, mode);
+      const big = mode === "scene" ? prompt.start(section, knobs, live.current.cardQuads) : null;
+      if (lock && big && big.plan.lockUntilMs !== null) lock.holdFor(big.plan.lockUntilMs);
       const next: Session = { master: null, parts, needsScene: mode === "scene", sceneDone: false, domDone: false, stageSeen: false, safety: 0 };
       session.current = next;
       const master = createDealMaster({
         parts,
         mode,
         knobs,
+        prompt: big?.run ?? null,
+        columnsAtMs: big?.plan.columnsAtMs ?? null,
         scroll: source === "click" ? { kind: "click", holds: cutscene } : cutscene ? { kind: "hand", velocity } : null,
         onDone: () => {
           next.domDone = true;
@@ -227,7 +243,7 @@ export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance 
       evaluateRef.current();
       return true;
     },
-    [dropLock, maybeFinish, sectionRef, setEntrance, settle],
+    [dropLock, maybeFinish, prompt, sectionRef, setEntrance, settle],
   );
   useEffect(() => {
     beginRef.current = begin;
@@ -339,6 +355,7 @@ export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance 
         endSession();
         dropLock();
         current.master?.finish();
+        prompt.finish();
         setEntrance(AT_REST);
       } else if (state.phase === "dealt" && state.entrances === 0) {
         setEntrance(AT_REST);
@@ -348,13 +365,14 @@ export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance 
         endSession();
         dropLock();
         current?.master?.kill();
+        prompt.stop();
         const section = sectionRef.current;
         if (section) clearOpen(openParts(section));
         setEntrance(null);
       }
       evaluateRef.current();
     });
-  }, [dropLock, endSession, sectionRef, setEntrance]);
+  }, [dropLock, endSession, prompt, sectionRef, setEntrance]);
 
   useEffect(() => {
     evaluateRef.current();
@@ -376,9 +394,11 @@ export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance 
     endSession();
     dropLock();
     current?.master?.finish();
+    // The big text outlives the session (Early's tail, Hold, After run past `dealt`).
+    prompt.finish();
     setEntrance(AT_REST);
     dispatchDeal({ type: "reduced" });
-  }, [reducedMotion, dropLock, endSession, setEntrance]);
+  }, [reducedMotion, dropLock, endSession, prompt, setEntrance]);
 
   useEffect(
     () => () => {

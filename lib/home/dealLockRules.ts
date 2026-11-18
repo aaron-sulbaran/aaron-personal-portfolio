@@ -18,6 +18,10 @@ import { isReadersScroll, type WheelSample } from "@/lib/home/wheelTail";
 //   - cap: capMs after the lock took input, whatever else happened.
 // With no input at all the quiet gap is already met, so the lock lets go at the unfurl.
 //
+// A fourth thing, Hold's wait (the click prompt lab): holdUntilMs delays the quiet and
+// gesture releases until the prompt's shrink has ended. It never delays the cap, which
+// stays the wall, so the lock still always lets go. Null unless a mode asks for it.
+//
 // The whole decision is here, as a clock the DOM half feeds (createLockClock,
 // noteInput, markUnfurled) and asks (releaseDue, msUntilDue), so a recorded wheel
 // stream can be replayed through the very rules the page runs (dealLock.fixtures.ts).
@@ -33,6 +37,8 @@ export type LockClock = {
   // When a finger came down after the lock was taken: a new touch, not the one that
   // started the deal (that began before the lock). Null until one does.
   touchedAtMs: number | null;
+  // Hold mode's wait: no quiet or gesture release before this moment. Null for no wait.
+  holdUntilMs: number | null;
 };
 
 export type LockReason = "quiet" | "gesture" | "cap";
@@ -42,7 +48,17 @@ export type LockReason = "quiet" | "gesture" | "cap";
 export type LockInput = { kind: "wheel"; px: number } | { kind: "touchStart" } | { kind: "touchMove" } | { kind: "key" };
 
 export function createLockClock(takenAtMs: number): LockClock {
-  return { takenAtMs, unfurledAtMs: null, lastInputMs: takenAtMs, wheels: [], touchedAtMs: null };
+  return { takenAtMs, unfurledAtMs: null, lastInputMs: takenAtMs, wheels: [], touchedAtMs: null, holdUntilMs: null };
+}
+
+// Hold the quiet and gesture releases until untilMs; a later hold wins, an earlier one is ignored.
+export function holdLock(clock: LockClock, untilMs: number): void {
+  clock.holdUntilMs = Math.max(clock.holdUntilMs ?? untilMs, untilMs);
+}
+
+// Hold's wait is over now (the run it waited for was retired): the quiet, gesture and cap rules apply alone.
+export function clearHold(clock: LockClock): void {
+  clock.holdUntilMs = null;
 }
 
 // The reader's input arrived at nowMs. Returns why the lock must let go now, if it
@@ -71,18 +87,19 @@ export function releaseDue(clock: LockClock, nowMs: number, c: CoilConstants = C
   const { quietMs, capMs, handoverMs } = c.deal.cutscene;
   if (nowMs - clock.takenAtMs >= capMs) return "cap";
   if (clock.unfurledAtMs === null) return null;
+  if (clock.holdUntilMs !== null && nowMs < clock.holdUntilMs) return null;
   if (nowMs - clock.lastInputMs >= quietMs) return "quiet";
   if (nowMs - clock.unfurledAtMs >= handoverMs && (clock.touchedAtMs !== null || isReadersScroll(clock.wheels, nowMs, c))) return "gesture";
   return null;
 }
 
 // How long until the lock may next be due, ms (never negative): the cap, or the quiet
-// gap once unfurled, whichever is sooner. What the DOM half sets its timer to. (The
+// gap (or Hold's wait, if later) once unfurled, whichever is sooner. What the DOM half sets its timer to. (The
 // reader's own scroll is judged as its events arrive, not on a timer.)
 export function msUntilDue(clock: LockClock, nowMs: number, c: CoilConstants = COIL): number {
   const { quietMs, capMs } = c.deal.cutscene;
   const cap = clock.takenAtMs + capMs - nowMs;
-  const quiet = clock.unfurledAtMs === null ? Number.POSITIVE_INFINITY : clock.lastInputMs + quietMs - nowMs;
+  const quiet = clock.unfurledAtMs === null ? Number.POSITIVE_INFINITY : Math.max(clock.lastInputMs + quietMs, clock.holdUntilMs ?? Number.NEGATIVE_INFINITY) - nowMs;
   return Math.max(0, Math.min(cap, quiet));
 }
 

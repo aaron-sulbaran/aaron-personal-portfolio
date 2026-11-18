@@ -1,7 +1,7 @@
 "use client";
 
 import { wheelPixels } from "@/lib/coil/motion";
-import { createLockClock, markUnfurled, msUntilDue, noteInput, releaseDue, swallowsKey, type LockInput, type LockReason } from "@/lib/home/dealLockRules";
+import { clearHold, createLockClock, holdLock, markUnfurled, msUntilDue, noteInput, releaseDue, swallowsKey, type LockInput, type LockReason } from "@/lib/home/dealLockRules";
 
 // The cutscene's lock: from the moment the deal starts (the reader's scroll
 // past the trigger, or "Deal me in") until the Coil is unfurled, the page takes
@@ -29,7 +29,8 @@ import { createLockClock, markUnfurled, msUntilDue, noteInput, releaseDue, swall
 // reader who keeps scrolling is not made to wait for the cap; and, whatever else
 // happened, capMs after the lock took input. The cap is a wall-clock timer of its
 // own, not the deal's clock, so a scene that never starts, a stalled master, an
-// error or a hidden tab cannot keep it. A tab that goes hidden lets go at once. One
+// error or a hidden tab cannot keep it. Hold mode (holdFor) delays the quiet and gesture
+// releases until the click prompt's shrink ends, never the cap. A tab that goes hidden lets go at once. One
 // lock at a time: a second take lets the first go. The input that ends the lock
 // goes on unswallowed: the Coil's first of a fresh gesture.
 
@@ -40,6 +41,14 @@ export type DealLock = {
   unfurled: () => void;
   // Lets go now, whatever is going on. Idempotent.
   release: () => void;
+  // Hold mode: keep the lock until msFromTaking after it was taken (the click prompt's
+  // shrink), never past the cap. The later of two holds wins.
+  holdFor: (msFromTaking: number) => void;
+  // Ends Hold's wait at once (the run it waited for was retired); the other rules still apply.
+  endHold: () => void;
+  // Called when the lock swallows an input, which no listener added after it will ever see
+  // (the spotlight's fast-forward). Null clears it.
+  onSwallow: (hook: (() => void) | null) => void;
 };
 
 const ATTRIBUTE = "data-deal-lock";
@@ -56,6 +65,7 @@ export function takeDealLock(onEnd?: (why: LockEnd) => void): DealLock {
   const clock = createLockClock(performance.now());
   let timer = 0;
   let over = false;
+  let swallowHook: (() => void) | null = null;
 
   const end = (why: LockEnd) => {
     if (over) return;
@@ -92,6 +102,7 @@ export function takeDealLock(onEnd?: (why: LockEnd) => void): DealLock {
     if (!note(input)) return;
     event.preventDefault();
     event.stopImmediatePropagation();
+    swallowHook?.();
   };
   const onWheel = (event: WheelEvent) => {
     // A pinch is the browser's zoom, and a purely sideways swipe scrolls nothing here (and is the history's).
@@ -121,6 +132,19 @@ export function takeDealLock(onEnd?: (why: LockEnd) => void): DealLock {
       else arm();
     },
     release: () => end("forced"),
+    holdFor(msFromTaking) {
+      if (over) return;
+      holdLock(clock, clock.takenAtMs + msFromTaking);
+      arm();
+    },
+    endHold() {
+      if (over) return;
+      clearHold(clock);
+      arm();
+    },
+    onSwallow(hook) {
+      swallowHook = hook;
+    },
   };
   window.addEventListener("wheel", onWheel, { capture: true, passive: false });
   window.addEventListener("touchstart", onTouchStart, { capture: true, passive: true });

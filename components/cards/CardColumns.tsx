@@ -3,6 +3,8 @@ import { PAGE_NUMBERS, siteContent, type ColumnView } from "@/lib/content";
 import { SectionNumber } from "@/components/sections/SectionNumber";
 import { TitleFill } from "@/components/sections/TitleFill";
 import { CardProgress } from "./CardProgress";
+import { PromptLine } from "./PromptLine";
+import { PromptStage } from "./PromptStage";
 import { CardTitle } from "./CardTitle";
 
 // The two columns of titles beside the Coil, over the shader field. Below md
@@ -23,21 +25,24 @@ import { CardTitle } from "./CardTitle";
 export function CardColumns() {
   const [work, builds] = siteContent.columns.order;
   return (
-    <div className="pointer-events-none relative z-10 grid grid-cols-2 gap-x-4 px-5 pb-6 pt-1 md:absolute md:inset-0 md:grid-cols-[var(--coil-gutter)_minmax(0,1fr)_var(--coil-gutter)] md:content-center md:gap-x-0 md:px-0 md:py-0 [--coil-gutter:clamp(12.5rem,16.5vw,17.5rem)]">
-      <PageTitle className="col-span-2 mb-4 md:hidden" />
-      <div className="pointer-events-auto md:col-start-1 md:pl-8 md:pr-2">
-        <PageTitle className="mb-6 hidden md:block" />
-        <Column column={work} />
-        <CardProgress className="mt-4 hidden md:block" />
+    <>
+      <div className="pointer-events-none relative z-10 grid grid-cols-2 gap-x-4 px-5 pb-6 pt-1 md:absolute md:inset-0 md:grid-cols-[var(--coil-gutter)_minmax(0,1fr)_var(--coil-gutter)] md:content-center md:gap-x-0 md:px-0 md:py-0 [--coil-gutter:clamp(12.5rem,16.5vw,17.5rem)]">
+        <PageTitle prompt className="col-span-2 mb-4 md:hidden" />
+        <div className="pointer-events-auto md:col-start-1 md:pl-8 md:pr-2">
+          <PageTitle className="mb-6 hidden md:block" />
+          <Column column={work} />
+          <CardProgress className="mt-4 hidden md:block" />
+        </div>
+        <div aria-hidden="true" data-coil-pane="" className="hidden md:col-start-2 md:block" />
+        <Column column={builds} className="pointer-events-auto md:col-start-3 md:pl-8 md:pr-2" />
+        <CardProgress withPrompt={false} className="col-span-2 mt-5 md:hidden" />
       </div>
-      <div aria-hidden="true" data-coil-pane="" className="hidden md:col-start-2 md:block" />
-      <Column column={builds} className="pointer-events-auto md:col-start-3 md:pl-8 md:pr-2" />
-      <CardProgress className="col-span-2 mt-5 md:hidden" />
-    </div>
+      <PromptStage />
+    </>
   );
 }
 
-function PageTitle({ className }: { className: string }) {
+function PageTitle({ className, prompt = false }: { className: string; prompt?: boolean }) {
   return (
     <div data-deal-label="" data-logo-clear="" className={className}>
       <SectionNumber value={PAGE_NUMBERS.work} className="mb-1.5" />
@@ -46,6 +51,7 @@ function PageTitle({ className }: { className: string }) {
           {siteContent.columns.title}
         </h2>
       </TitleFill>
+      {prompt && <PromptLine className="mt-2" />}
     </div>
   );
 }

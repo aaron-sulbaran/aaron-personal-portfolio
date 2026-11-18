@@ -7,6 +7,7 @@ import { addOpen, clearOpen, type OpenMode, type OpenParts } from "@/lib/home/de
 import { addDealScroll, addHandScroll, cardsTop, type ScrollChild } from "@/lib/home/dealScroll";
 import { planHandScroll } from "@/lib/home/handScroll";
 import { gsap } from "@/lib/gsap";
+import type { PromptRun } from "@/lib/home/promptRun";
 
 // The deal's one clock: a paused GSAP timeline per deal, whose first child is a
 // proxy tween { ms: 0 to TOTAL } on ease "none", at position 0. The Coil's
@@ -30,6 +31,9 @@ export type DealMaster = {
   play: () => void;
   // Stops the page's own scroll where it is; the master carries on.
   stopScroll: () => void;
+  // The columns were waiting for the click prompt's line and it has landed early (an input, a first
+  // open, a resize): they start now. Nothing to do once they have started.
+  bringColumns: () => void;
   // Everything at once: the scroll child stopped where it is, the rest at its
   // end state (onDone runs).
   finish: () => void;
@@ -47,10 +51,14 @@ type Args = {
   //     reader's wheel, touch or key cannot take it back;
   //   hand: the cutscene's, taking over at the page's own speed (px/s down the page).
   scroll: { kind: "click"; holds: boolean } | { kind: "hand"; velocity: number } | null;
+  // The click prompt's own timeline, started with the master and nothing else of it.
+  prompt: PromptRun | null;
+  // The prompt's plan has the columns wait for its line: when they come in, ms from the click (null: the deal's own time).
+  columnsAtMs?: number | null;
   onDone: () => void;
 };
 
-export function createDealMaster({ parts, mode, knobs, scroll, onDone }: Args): DealMaster {
+export function createDealMaster({ parts, mode, knobs, scroll, prompt, columnsAtMs = null, onDone }: Args): DealMaster {
   const master = gsap.timeline({ paused: true });
   const top = scroll ? cardsTop() : null;
   const y0 = window.scrollY;
@@ -62,7 +70,7 @@ export function createDealMaster({ parts, mode, knobs, scroll, onDone }: Args): 
     clearOpen(parts);
     onDone();
   };
-  addOpen(master, parts, mode, knobs);
+  const columnsStartMs = addOpen(master, parts, mode, knobs, columnsAtMs);
   const clickLegStartMs = knobs.condenseMs + knobs.scrollStartMs;
   if (scroll && top !== null && Math.abs(top - y0) > 1) {
     if (scroll.kind === "click") {
@@ -83,8 +91,15 @@ export function createDealMaster({ parts, mode, knobs, scroll, onDone }: Args): 
     totalMs,
     play: () => {
       master.play(0);
+      prompt?.play();
     },
     stopScroll: () => scrollChild?.kill(),
+    bringColumns() {
+      // Only ever forward, and only a wait the prompt asked for: by then the scene's clock has run out
+      // (the line starts as the Coil lands), so the jump moves nothing but the columns.
+      if (ended || columnsAtMs === null || master.time() * 1000 >= columnsStartMs) return;
+      master.time(columnsStartMs / 1000);
+    },
     finish() {
       if (ended) return;
       scrollChild?.kill();

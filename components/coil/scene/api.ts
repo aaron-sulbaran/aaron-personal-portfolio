@@ -23,6 +23,8 @@ export function createApi({ cards, hover, unwinder, flyer }: ApiParts): CoilScen
     freeze: flyer.freeze,
     cardAt: hover.cardAt,
     quadOf: cards.quadOf,
+    visibleQuads: cards.visibleQuads,
+    restQuadsAfter: cards.restQuadsAfter,
     hideSlot: flyer.hideSlot,
   };
 }

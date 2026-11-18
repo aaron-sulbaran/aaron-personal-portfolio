@@ -55,11 +55,13 @@ export function subscribeSceneHoverKey(listener: () => void): () => void {
 // for the visit and never throws.
 export const HINT_OPENED_KEY = "aaron-hint-opened";
 
-type HintStorage = Pick<Storage, "getItem" | "setItem">;
+type HintStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 
 export type HintStore = {
   opened: () => boolean;
   markOpened: () => void;
+  // Drops the first open from memory and storage and tells the hint listeners (the lab's "First visit again").
+  forget: () => void;
   subscribe: (listener: () => void) => () => void;
   // True the first time a once-ever line asks, false forever after.
   takeOnce: (key: string) => boolean;
@@ -89,6 +91,15 @@ export function createHintStore(storage: HintStorage | null): HintStore {
     markOpened() {
       if (read(HINT_OPENED_KEY) === "1") return;
       write(HINT_OPENED_KEY);
+      hintListeners.forEach((listener) => listener());
+    },
+    forget() {
+      memory.delete(HINT_OPENED_KEY);
+      try {
+        storage?.removeItem(HINT_OPENED_KEY);
+      } catch {
+        // Blocked storage: the memory copy is already gone.
+      }
       hintListeners.forEach((listener) => listener());
     },
     subscribe(listener) {

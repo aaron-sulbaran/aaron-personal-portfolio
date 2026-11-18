@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { COIL } from "@/lib/coil/constants";
 import { tunedConstants } from "@/lib/coil/entrance";
-import { DEFAULT_KNOBS, KNOB_SPEC, clampKnobs, entranceTuningOf, getKnobs, resetKnobs, setKnobs, type NumericKnob } from "@/lib/home/dealKnobs";
+import { DEAL_CHOICE_SPEC, DEFAULT_KNOBS, KNOB_SPEC, PROMPT_MODES, PROMPT_TITLE_PLACES, PROMPT_VERSIONS, clampKnobs, modeForVersion, entranceTuningOf, getKnobs, resetKnobs, setKnobs, type NumericKnob } from "@/lib/home/dealKnobs";
 
 describe("the deal's knobs", () => {
   it("default to the constants' deal block", () => {
@@ -82,5 +82,67 @@ describe("the knobs' store", () => {
     } finally {
       env.NODE_ENV = before;
     }
+  });
+});
+
+describe("the prompt's knobs", () => {
+  it("default to the constants: plate, Early, a 1,000 ms hold that never goes under 900 ms, a 480 ms shrink", () => {
+    expect(DEFAULT_KNOBS).toMatchObject({ promptVersion: "plate", promptMode: "early", promptEarlyStartMs: 0, promptHoldStartMs: 0, promptAfterStartMs: 0, promptHoldMs: 1000, promptShrinkMs: 480, promptSizeVwDesktop: 4, promptSizeVwPhone: 7 });
+    expect(COIL.deal.prompt.minHoldMs).toBe(900);
+    expect(KNOB_SPEC.promptHoldMs.min).toBe(COIL.deal.prompt.minHoldMs);
+  });
+  it("keeps a version or a timing mode only from its list, and the hold at its floor", () => {
+    expect(clampKnobs({ promptVersion: "outline", promptMode: "hold" })).toMatchObject({ promptVersion: "outline", promptMode: "hold" });
+    expect(clampKnobs({ promptVersion: "spotlight" }).promptVersion).toBe("spotlight");
+    expect(clampKnobs({ promptVersion: "neon", promptMode: 2 })).toMatchObject({ promptVersion: "plate", promptMode: "early" });
+    expect(clampKnobs({ promptHoldMs: 100 }).promptHoldMs).toBe(900);
+  });
+  it("gives G's line first its own time alone: 600 ms by default, from 300 to 1,500", () => {
+    expect(DEFAULT_KNOBS.promptAloneMs).toBe(600);
+    expect(DEFAULT_KNOBS.promptAloneMs).toBe(COIL.deal.prompt.title.aloneMs);
+    expect(clampKnobs({ promptAloneMs: 50 }).promptAloneMs).toBe(300);
+    expect(clampKnobs({ promptAloneMs: 9000 }).promptAloneMs).toBe(1500);
+  });
+  it("offers the lab's seven versions and three modes", () => {
+    expect(PROMPT_VERSIONS).toEqual(["plate", "calm", "outline", "spotlight", "quiet", "lit", "title"]);
+    expect(DEAL_CHOICE_SPEC.promptVersion.names.title).toBe("G, lit title");
+    expect(modeForVersion("title", "early")).toBe("hold");
+    expect(DEAL_CHOICE_SPEC.promptVersion.names.spotlight).toBe("D, spotlight");
+    expect(DEAL_CHOICE_SPEC.promptVersion.names.quiet).toBe("E, quieter");
+    expect(DEAL_CHOICE_SPEC.promptVersion.names.lit).toBe("F, lit cards");
+    expect(PROMPT_MODES).toEqual(["early", "hold", "after"]);
+    expect(Object.keys(DEAL_CHOICE_SPEC)).toEqual(["promptVersion", "promptMode", "promptTitlePlace"]);
+  });
+  it("puts G in the column by default, and keeps a place only from its list", () => {
+    expect(PROMPT_TITLE_PLACES).toEqual(["row", "bare", "column"]);
+    expect(DEFAULT_KNOBS.promptTitlePlace).toBe("column");
+    expect(DEAL_CHOICE_SPEC.promptTitlePlace.names).toEqual({ row: "Top, on a plate", bare: "Top, words only", column: "In the column" });
+    expect(clampKnobs({ promptTitlePlace: "column" }).promptTitlePlace).toBe("column");
+    expect(clampKnobs({ promptTitlePlace: "row" }).promptTitlePlace).toBe("row");
+    expect(clampKnobs({ promptTitlePlace: "corner" }).promptTitlePlace).toBe("column");
+  });
+});
+
+describe("the timing a version can use", () => {
+  it("gives F's Early as Hold too, and leaves E's as chosen", () => {
+    expect(modeForVersion("lit", "early")).toBe("hold");
+    expect(modeForVersion("lit", "after")).toBe("after");
+    expect(modeForVersion("quiet", "early")).toBe("early");
+  });
+  it("gives F and G a full dim by default, held between none and full", () => {
+    expect(DEFAULT_KNOBS.promptDimStrength).toBe(1);
+    expect(clampKnobs({ promptDimStrength: 3 }).promptDimStrength).toBe(1);
+    expect(clampKnobs({ promptDimStrength: -1 }).promptDimStrength).toBe(0);
+  });
+  it("starts E and F at 1.5 page titles by default, held to its range", () => {
+    expect(DEFAULT_KNOBS.promptTitleRatio).toBe(1.5);
+    expect(clampKnobs({ promptTitleRatio: 9 }).promptTitleRatio).toBe(3);
+    expect(clampKnobs({ promptTitleRatio: 0.1 }).promptTitleRatio).toBe(0.8);
+  });
+  it("gives D's Early as Hold and leaves everything else as chosen", () => {
+    expect(modeForVersion("spotlight", "early")).toBe("hold");
+    expect(modeForVersion("spotlight", "hold")).toBe("hold");
+    expect(modeForVersion("spotlight", "after")).toBe("after");
+    for (const version of ["plate", "calm", "outline"] as const) expect(modeForVersion(version, "early")).toBe("early");
   });
 });

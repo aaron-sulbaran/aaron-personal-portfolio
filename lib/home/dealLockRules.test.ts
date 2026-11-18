@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { COIL } from "@/lib/coil/constants";
-import { createLockClock, markUnfurled, msUntilDue, noteInput, releaseDue, swallowsKey, type LockClock } from "@/lib/home/dealLockRules";
+import { clearHold, createLockClock, holdLock, markUnfurled, msUntilDue, noteInput, releaseDue, swallowsKey, type LockClock } from "@/lib/home/dealLockRules";
 
 const { quietMs, capMs, handoverMs } = COIL.deal.cutscene;
 
@@ -132,4 +132,51 @@ describe("the keys the lock swallows", () => {
   it("leave Alt with a key alone: the browser's own", () => {
     expect(press("ArrowDown", true)).toBe(false);
   });
+});
+
+describe("Hold mode's wait", () => {
+  it("holds a quiet reader past the unfurl until the shrink ends, then lets go", () => {
+    const c = clock({ unfurledAtMs: 3640, lastInputMs: 1000 });
+    holdLock(c, 4500);
+    expect(releaseDue(c, 3640)).toBeNull();
+    expect(releaseDue(c, 4499)).toBeNull();
+    expect(releaseDue(c, 4500)).toBe("quiet");
+  });
+  it("holds a wheel kept turning through the wait too", () => {
+    const c = clock();
+    holdLock(c, 4500);
+    markUnfurled(c, 3640);
+    let due = null;
+    let at = 0;
+    for (let t = 3650; t <= 4700 && !due; t += 50) {
+      due = noteInput(c, { kind: "wheel", px: 100 }, t);
+      at = t;
+    }
+    expect({ at, due }).toEqual({ at: 4500, due: "gesture" });
+  });
+  it("never passes the cap", () => {
+    const c = clock({ unfurledAtMs: 3640 });
+    holdLock(c, 1000 + capMs + 2000);
+    expect(releaseDue(c, 1000 + capMs)).toBe("cap");
+  });
+  it("schedules the wait's end", () => {
+    const c = clock({ unfurledAtMs: 3640, lastInputMs: 3600 });
+    holdLock(c, 4500);
+    expect(msUntilDue(c, 3700)).toBe(800);
+  });
+  it("ends at once when asked: the normal quiet rule then applies", () => {
+    const c = clock({ unfurledAtMs: 3640, lastInputMs: 1000 });
+    holdLock(c, 4500);
+    clearHold(c);
+    expect(c.holdUntilMs).toBeNull();
+    expect(releaseDue(c, 3640)).toBe("quiet");
+  });
+  it("still keeps the cap and the quiet gap once cleared", () => {
+    const c = clock({ unfurledAtMs: 3640, lastInputMs: 3600 });
+    holdLock(c, 4500);
+    clearHold(c);
+    expect(releaseDue(c, 3600 + quietMs - 1)).toBeNull();
+    expect(msUntilDue(c, 3700)).toBe(quietMs - 100);
+  });
+  it("is no wait at all unless asked", () => expect(createLockClock(0).holdUntilMs).toBeNull());
 });

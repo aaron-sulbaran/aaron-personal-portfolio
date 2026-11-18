@@ -331,6 +331,70 @@ const values = {
     // The two columns arrive last: group labels, then titles; delayMs counts
     // from the end of the condense (the scene clock's zero).
     columns: { delayMs: 1700, staggerMs: 22, labelStaggerMs: 50, fadeMs: 420, riseY: 14 },
+    // The click-a-card prompt (docs/superpowers/specs/2026-11-13-click-a-card-prompt-design.md):
+    // a lab's defaults, every one a knob in lib/home/dealKnobs.ts.
+    prompt: {
+      version: "plate" as "plate" | "calm" | "outline" | "spotlight" | "quiet" | "lit" | "title",
+      mode: "early" as "early" | "hold" | "after",
+      startMs: { early: 0, hold: 0, after: 0 }, // from the mode's anchor: the lift (early) or the landing (hold, after)
+      inMs: 200,
+      holdMs: 1000,
+      minHoldMs: 900, // the readable hold's floor under every preset and knob
+      shrinkMs: 480,
+      handoffMs: 140, // the crossfade into the resting line, the shrink's last 140 ms
+      sizeVw: { desktop: 4, phone: 7 },
+      // Versions E and F (docs/superpowers/plans/2026-11-14-click-a-card-e-and-f.md) start at this many
+      // times the visible page title, never bigger than sizeVw at that width.
+      titleRatio: 1.5,
+      dimStrength: 1, // F and G: the dim's strength as a share of the --lit-dim token (0: no dim)
+      // G from 768 px wide: the top row on its plate, the top row as words only, or in the column where the line rests.
+      // Aaron's pick, 2026-11-17: in the column (lab notes section 11).
+      titlePlace: "column" as "row" | "bare" | "column",
+      // Version B's middle as a share of the stage's height, measured 2026-11-13 (lab notes section 2):
+      // Early uses the band under the lifting band, Hold and After the field above the rested Coil;
+      // a phone at rest has no card-free place (44% at best).
+      calm: { early: { desktopY: 0.92, phoneY: 0.87 }, rest: { desktopY: 0.12, phoneY: 0.93 } },
+      clearTopPx: 72, // the logo and the Menu pill: COIL.narrow.headerClearPx plus 8
+      gutterPx: 16,
+      // Version D (docs/superpowers/plans/2026-11-13-click-a-card-spotlight-d.md): a pointer, wheel, touch or
+      // any key but a modifier while the scrim is up lands the line this many ms later; a press that began
+      // while the scrim was up still cannot click through for clickGraceMs after the landing.
+      spotlight: { fastForwardMs: 250, clickGraceMs: 300 },
+      // Version F's oval of light over the Coil, from the stage's visible box: its radii as shares of that
+      // box's width and height, and the share of the radius that stays fully clear before the dim ramps in.
+      // A phone's oval is wider than the screen and reaches the band's foot, so only what is under the band dims.
+      lit: { desktop: { rx: 0.43, ry: 0.8, clear: 0.6 }, phone: { rx: 2.2, ry: 0.72, clear: 0.7 } },
+      // Version G (docs/superpowers/plans/2026-11-16-click-a-card-g-lit-title.md), E and F together: the
+      // line as a title pill hanging in the top row between the logo and the Menu pill, over F's dim. Its
+      // place is measured from the rested cards so the pill never meets one: plateXEm and plateYEm are its
+      // reach past the text (app/globals.css insets by the same), cardGapPx the air kept from every card,
+      // chromeGapPx the air kept beside the logo and the Menu pill, gutterPx from the screen's sides,
+      // rowTopPx the row when no Menu pill is found, and floorOfLine the smallest it goes, in resting lines:
+      // where even that cannot keep clear (a very short window) the pill is not shown, and the lit cards
+      // and the resting line carry the moment.
+      // A phone's card-free top row is only 27 to 39 px tall (measured 2026-11-16), too shallow for a title, so
+      // there the big moment plays where the line rests, under the page title: inPlaceTitles is its size in
+      // page titles, textAirPx the air kept from the title above and the columns below.
+      // Line first (G in Hold, 2026-11-18): the page's title and lists wait for the line, so it is read with
+      // nothing else on the page and stays readable where it rests. aloneMs is how long it holds its full
+      // size before it shrinks, its own knob in place of holdMs (and under minHoldMs, which is the floor
+      // for a line read over a page of lists): Aaron kept the order and asked for the lists sooner.
+      title: { plateXEm: 0.7, plateYEm: 0.3, cardGapPx: 4, chromeGapPx: 12, gutterPx: 12, rowTopPx: 16, floorOfLine: 1.2, inPlaceTitles: 1.15, textAirPx: 3, aloneMs: 600 },
+      plateOverhangEm: 0.75, // the plate's reach past each side of the text; app/globals.css [data-prompt-plate] insets by the same
+    },
+    // The lab's speed presets (docs/superpowers/plans/2026-11-13-click-a-card-prompt-lab.md):
+    // the deal's own knobs at two quicker settings, "today" being the defaults
+    // above. Keys are lib/home/dealKnobs.ts names: upMs, flattenStartMs,
+    // flattenMs, slowStartMs, slowMs, pullStartMs, pullMs, windRampMs,
+    // openStartMs, scrollMs are timeline.*, openMs is open.ms and columnsDelayMs
+    // is columns.delayMs. Aaron allowed openMs to shorten in the lab on
+    // 2026-11-13; the ruling on open.ms (never retimed) changes only if he ships
+    // such a preset. windRampMs stays near 0.62 of pullMs, the ramp the onset
+    // bound was set with.
+    speedPresets: {
+      faster: { upMs: 700, flattenStartMs: 400, flattenMs: 800, slowStartMs: 900, slowMs: 600, pullStartMs: 1050, pullMs: 850, windRampMs: 530, openStartMs: 950, openMs: 950, columnsDelayMs: 1450, scrollMs: 1100 },
+      fastest: { upMs: 600, flattenStartMs: 350, flattenMs: 700, slowStartMs: 750, slowMs: 500, pullStartMs: 900, pullMs: 750, windRampMs: 465, openStartMs: 800, openMs: 850, columnsDelayMs: 1200, scrollMs: 1000 },
+    },
   },
 
   // Page 1, who I am (hero rework, slices 3 and 4d;

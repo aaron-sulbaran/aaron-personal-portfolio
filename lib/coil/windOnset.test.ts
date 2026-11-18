@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { COIL } from "@/lib/coil/constants";
 import { dealOffsetAt, dealSpeedOf, integrateDealSpeed, sceneMs } from "@/lib/coil/dealSpeed";
-import { entranceClock, entranceHelix, pullPhases, pullProgress, tunedConstants } from "@/lib/coil/entrance";
+import { entranceClock, entranceHelix, pullPhases, pullProgress, tunedConstants, type EntranceTuning } from "@/lib/coil/entrance";
 import { poseAt, projectPoint, restHelix, solveGeometry, type CoilGeometry } from "@/lib/coil/geometry";
 import { ribbonCardsPerSecond } from "@/lib/coil/ribbon";
 import { strandCards } from "@/lib/content";
+import { DEFAULT_KNOBS, entranceTuningOf } from "@/lib/home/dealKnobs";
+import { presetPatch, SPEED_PRESETS } from "@/lib/home/dealPresets";
 import { stageReachAbove } from "@/lib/home/stageLead";
 
 // The winding's onset (the motion review's P2): a card's projected center, a frame
@@ -18,9 +20,10 @@ import { stageReachAbove } from "@/lib/home/stageLead";
 const FRAME_MS = 1000 / 60;
 const ONSET_BOUND_PX = 12;
 
-// Every card's second difference, frame by frame (click time), for a geometry and a ramp.
-function secondDifferences(geo: CoilGeometry, windRampMs: number, only?: readonly number[]): { onsetMs: number; worstOnset: number; worstElsewhere: number } {
-  const c = tunedConstants({ timeline: { windRampMs } });
+// Every card's second difference, frame by frame (click time), for a geometry and a tuning;
+// worstStepPx is the largest per-frame step of a card's center over the whole deal.
+function secondDifferences(geo: CoilGeometry, tuning: EntranceTuning, only?: readonly number[]): { onsetMs: number; worstOnset: number; worstElsewhere: number; worstStepPx: number } {
+  const c = tunedConstants(tuning);
   const lead = c.deal.timeline.condenseMs;
   const total = lead + sceneMs(c);
   const table = integrateDealSpeed(dealSpeedOf(ribbonCardsPerSecond(geo, c), c, false), sceneMs(c));
@@ -47,12 +50,14 @@ function secondDifferences(geo: CoilGeometry, windRampMs: number, only?: readonl
   }
   let worstOnset = 0;
   let worstElsewhere = 0;
+  let worstStepPx = 0;
   for (const p of cards) {
     let a = center(0, p);
     let b = center(FRAME_MS, p);
     for (let ms = 2 * FRAME_MS; ms <= total; ms += FRAME_MS) {
       const d = center(ms, p);
       const second = Math.hypot(d.x - 2 * b.x + a.x, d.y - 2 * b.y + a.y);
+      worstStepPx = Math.max(worstStepPx, Math.hypot(d.x - b.x, d.y - b.y));
       const at = ms - FRAME_MS;
       if (at >= onsetMs - 2 * FRAME_MS && at <= onsetMs + 3 * FRAME_MS) worstOnset = Math.max(worstOnset, second);
       else worstElsewhere = Math.max(worstElsewhere, second);
@@ -60,7 +65,7 @@ function secondDifferences(geo: CoilGeometry, windRampMs: number, only?: readonl
       b = d;
     }
   }
-  return { onsetMs, worstOnset, worstElsewhere };
+  return { onsetMs, worstOnset, worstElsewhere, worstStepPx };
 }
 
 // The stage as the page makes it: its frame's size, the ribbon's slot as far down as the wheel needs room above it.
@@ -77,12 +82,12 @@ const followed = ["ieee", "talos", "anthropic"].map((key) => wrap(strandCards.fi
 
 describe("the winding's onset ramp, measured on the poses", () => {
   it.each(geos)("is a kick without a ramp at %s", (_name, geo) => {
-    expect(secondDifferences(geo, 0, followed).worstOnset, "without a ramp").toBeGreaterThan(ONSET_BOUND_PX);
+    expect(secondDifferences(geo, { timeline: { windRampMs: 0 } }, followed).worstOnset, "without a ramp").toBeGreaterThan(ONSET_BOUND_PX);
   });
 
   it.each(geos)("takes the kick down to the deal's own acceleration at %s with the default ramp", (_name, geo) => {
-    const none = secondDifferences(geo, 0, followed);
-    const eased = secondDifferences(geo, COIL.deal.timeline.windRampMs, followed);
+    const none = secondDifferences(geo, { timeline: { windRampMs: 0 } }, followed);
+    const eased = secondDifferences(geo, { timeline: { windRampMs: COIL.deal.timeline.windRampMs } }, followed);
     // The poses read about a fifth higher than the drawn frames do (34 px measured there, 41 here, without a ramp).
     expect(eased.worstOnset).toBeLessThan(ONSET_BOUND_PX * 1.25);
     expect(eased.worstOnset).toBeLessThan(none.worstOnset / 2.5);
@@ -94,11 +99,26 @@ describe("the winding's onset ramp, measured on the poses", () => {
     const [, geo] = geos[1];
     let last = Number.POSITIVE_INFINITY;
     for (const ramp of [200, 300, 400, 480, 590]) {
-      const now = secondDifferences(geo, ramp, followed).worstOnset;
+      const now = secondDifferences(geo, { timeline: { windRampMs: ramp } }, followed).worstOnset;
       expect(now).toBeLessThanOrEqual(last);
       last = now;
     }
   });
+});
+
+const FRAME_STEP_BOUND_PX = 40; // e2e/deal-jank.spec.ts; the poses read about a fifth higher, so the sweep allows 1.25 times it
+// Filled from the first run (Step 4): "<preset> <size>" for a case that breaks a rule, with the rule; the lab notes say it plainly.
+const KNOWN_BREAKS: Record<string, string> = {};
+describe("the speed presets, measured on the poses", () => {
+  for (const p of SPEED_PRESETS) for (const [name, geo] of geos) {
+    const run = KNOWN_BREAKS[`${p} ${name}`] ? it.fails : it;
+    run(`${p} at ${name}: no frame step over 40 px, and the onset and the rest of the deal inside today's bounds`, () => {
+      const r = secondDifferences(geo, entranceTuningOf({ ...DEFAULT_KNOBS, ...presetPatch(p) }), followed);
+      expect(r.worstStepPx).toBeLessThanOrEqual(FRAME_STEP_BOUND_PX * 1.25);
+      expect(r.worstOnset).toBeLessThan(ONSET_BOUND_PX * 1.25);
+      expect(r.worstElsewhere).toBeLessThan(14 * 1.25);
+    });
+  }
 });
 
 export { secondDifferences };

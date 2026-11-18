@@ -55,4 +55,15 @@ describe("seen store", () => {
     seen.markSeen("misuki");
     expect(seen.isSeen("misuki")).toBe(true);
   });
+
+  it("forgetSeen empties the tab's set, drops its key and tells listeners", async () => {
+    const storage = fakeStorage({ "aaron-explored-tiles": JSON.stringify(["ieee"]) });
+    const seen = await load(storage);
+    const heard = vi.fn();
+    seen.subscribeSeen(heard);
+    seen.forgetSeen();
+    expect(seen.getSeen().size).toBe(0);
+    expect(storage.data.has("aaron-explored-tiles")).toBe(false);
+    expect(heard).toHaveBeenCalledTimes(1);
+  });
 });

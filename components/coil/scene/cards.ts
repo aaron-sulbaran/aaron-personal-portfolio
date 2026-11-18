@@ -273,6 +273,35 @@ export function createCards(ctx: SceneCtx, gl: Gl) {
     return projectQuad(pose, st.geoCamera, origin());
   }
 
+  // Every card on screen, as last rendered: its four bent corners in viewport px.
+  function visibleQuads(): Quad[] {
+    const camera = st.geoCamera;
+    if (!camera) return [];
+    const at = origin();
+    return rendered.filter((pose) => pose && pose.alpha > 0.01).map((pose) => projectQuad(pose, camera, at));
+  }
+
+  // Where the cards will be `ms` from now if the rested Coil only idles (its drift at
+  // COIL.idleCardsPerSecond): the frame helix() builds, at the offset the drift will have reached.
+  // It assumes the entrance and the unwind are over by then (poseSlots' other steps), so it is only
+  // good from the deal's landing on. lifted: each card as big as a hover would make it.
+  function restQuadsAfter(ms: number, lifted = false): Quad[] {
+    const camera = st.geoCamera;
+    if (!camera || !st.geo) return [];
+    const rest = restHelix(st.geo, st.theme.card.recede);
+    const frame = { ...rest, dy: stretchedDy(rest.dy, st.envelope) };
+    const offset = conveyor.offset + (COIL.idleCardsPerSecond * ms) / 1000;
+    const at = origin();
+    const quads: Quad[] = [];
+    for (let j = 0; j < st.geo.slotCount; j++) {
+      const pose = coilPose(frame, j, offset);
+      // The narrow pane fades a card out of its clear top band, as poseSlots does.
+      const clear = st.geo.clearTopPx > 0 ? headerClearance(pose, st.geo, camera) : 1;
+      if (pose.alpha * clear > 0.01) quads.push(projectQuad(lifted ? { ...pose, scale: pose.scale * (1 + HOVER_SCALE) } : pose, camera, at));
+    }
+    return quads;
+  }
+
   // The flight's source: the bent corners, or the flat card's when a card
   // nearly edge on folds them concave.
   function flightQuadOf(slot: number): Quad | null {
@@ -351,6 +380,8 @@ export function createCards(ctx: SceneCtx, gl: Gl) {
     repaint,
     draw,
     quadOf,
+    visibleQuads,
+    restQuadsAfter,
     flightQuadOf,
     facesOf,
     slotOfKey,
