@@ -66,7 +66,7 @@ describe("the inline link tokens", () => {
     expect(block.replace(/\/\*[\s\S]*?\*\//g, "")).not.toMatch(/repeating-linear-gradient|--inline-dot|data-inline="def"\]::before|data-inline="tip"\]::before|dotted|inline-glyph/);
     expect(block).toContain("--inline-line-lift: 0px;");
     expect(block).toContain("+ var(--inline-line-lift)); height: var(--inline-line-width);");
-    expect(block).toContain(".font-label .inline-link, .inline-link.font-label { --inline-line-lift: calc(0.273em - 2.3px); }");
+    expect(block).toContain(".font-label .inline-link, .inline-link.font-label { --inline-line-lift: calc(0.273em - 2.3px); font-weight: 700; }");
     expect(block).toContain("transform: scaleX(var(--inline-p)); transform-origin: 50% 50%;");
     expect(block).toContain("background-size: calc(var(--inline-p) * 100%) 100%, 100% 100%;");
     expect(block).toContain("linear-gradient(var(--color-accent-hover), var(--color-accent-hover)), linear-gradient(var(--color-accent), var(--color-accent))");
