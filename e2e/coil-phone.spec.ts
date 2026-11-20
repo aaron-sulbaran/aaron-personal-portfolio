@@ -104,17 +104,26 @@ test.describe("page 2 on a phone", () => {
     expect(Math.abs(rest.offset - Math.round(rest.offset))).toBeLessThan(0.01);
   });
 
-  test("a clearly vertical swipe that starts on a card scrolls the page down past the Coil to the list", async ({ page, cdp }) => {
+  // Aaron, 2026-11-18: on the band an upright swipe is the band's, as the wheel over a card is on a desktop;
+  // away from it the page scrolls as before (e2e/touch.spec.ts has each rule on its own).
+  test("a clearly vertical swipe that starts on a card turns the band and the page holds; the same swipe from under the Coil scrolls the page down to the list", async ({ page, cdp }) => {
     await openHome(page);
     const card = await cardPoint(page);
     const pageY = await scrollY(page);
-    const before = await page.evaluate(() => ({ offset: (window as HookWindow).__coil!.offset(), t: performance.now() }));
-    await swipe(cdp, card, { x: card.x + 6, y: card.y - 320 });
+    const start = await offset(page);
+    await swipe(cdp, card, { x: card.x + 6, y: Math.max(8, card.y - 160) }, 10);
+    const released = await page.evaluate(() => (window as HookWindow).__coil!.drag());
+    expect(released.coast, "a coast target after the release").not.toBeNull();
+    expect(released.target - start, "cards the band went on by").toBeGreaterThan(0.5);
+    expect(await scrollY(page), "page scroll").toBe(pageY);
+    // Off the band, under the stage: the page is the finger's, and the band keeps to itself.
+    const stage = (await page.locator("[data-coil-stage]").boundingBox())!;
+    const height = page.viewportSize()!.height;
+    const stageBottom = stage.y + stage.height;
+    const under = { x: card.x, y: Math.min(height - 40, stageBottom + (height - stageBottom) * 0.6) };
+    await swipe(cdp, under, { x: under.x + 6, y: under.y - 320 });
     await expect.poll(() => scrollY(page)).toBeGreaterThan(pageY + 150);
     expect(await page.evaluate(() => (window as HookWindow).__coil!.drag().dragging)).toBe(false);
-    const after = await page.evaluate(() => ({ offset: (window as HookWindow).__coil!.offset(), t: performance.now() }));
-    const idleTravel = (COIL.idleCardsPerSecond * (after.t - before.t)) / 1000;
-    expect(Math.abs(after.offset - before.offset), "coil travel, cards").toBeLessThan(idleTravel + 0.02);
     // The list has come up into view.
     await expect(page.locator('#work button[data-card="travel"]')).toBeInViewport();
   });

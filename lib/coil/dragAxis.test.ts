@@ -2,16 +2,19 @@ import { describe, expect, it } from "vitest";
 import { DRAG_TRACK, moveDrag, pressDrag, releaseVelocity, type DragTrack } from "@/lib/coil/dragAxis";
 
 // A press at (x, y) at t 0, then moves to each point a frame (16 ms) apart:
-// the final track and the sideways steps the moves gave.
-function drag(from: { x: number; y: number }, points: { x: number; y: number }[], frameMs = 16) {
-  let track: DragTrack = pressDrag(from.x, from.y, 0);
+// the final track and the sideways steps the moves gave (and the upright ones).
+// onBand: the press went down on a card, so its upright travel is the band's too.
+function drag(from: { x: number; y: number }, points: { x: number; y: number }[], frameMs = 16, onBand = false) {
+  let track: DragTrack = pressDrag(from.x, from.y, 0, onBand);
   const steps: number[] = [];
+  const upright: number[] = [];
   points.forEach((point, i) => {
     const next = moveDrag(track, point.x, point.y, (i + 1) * frameMs);
     track = next.track;
     steps.push(next.dx);
+    upright.push(next.dy);
   });
-  return { track, steps, endMs: points.length * frameMs };
+  return { track, steps, upright, endMs: points.length * frameMs };
 }
 
 const line = (from: { x: number; y: number }, to: { x: number; y: number }, n: number) =>
@@ -27,11 +30,42 @@ describe("dragAxis", () => {
     expect(steps[2]).toBe(-6);
   });
 
-  it("a press that starts upright stays upright and gives no sideways step", () => {
-    const { track, steps } = drag({ x: 100, y: 100 }, [{ x: 101, y: 92 }, { x: 140, y: 80 }, { x: 200, y: 70 }]);
+  it("a press off the band that stays upright is the page's: no lock, no step, no throw", () => {
+    const { track, steps, upright } = drag({ x: 100, y: 100 }, [{ x: 101, y: 92 }, { x: 103, y: 60 }, { x: 104, y: 20 }]);
+    expect(track.axis).toBeNull();
+    expect(steps.every((step) => step === 0)).toBe(true);
+    expect(upright.every((step) => step === 0)).toBe(true);
+    expect(releaseVelocity(track, 64)).toBe(0);
+  });
+
+  it("a thumb's arc off the band, a little upright and then across, becomes a spin once its sideways travel is the larger", () => {
+    const { track, steps } = drag({ x: 200, y: 300 }, [{ x: 200, y: 295 }, { x: 196, y: 290 }, { x: 185, y: 289 }, { x: 150, y: 286 }]);
+    expect(steps.slice(0, 2)).toEqual([0, 0]);
+    expect(track.axis).toBe("x");
+    expect(steps[2]).toBe(-11);
+    expect(steps[3]).toBe(-35);
+  });
+
+  it("a press on the band locks to its first axis, upright included, and gives the upright steps", () => {
+    const { track, steps, upright } = drag({ x: 100, y: 300 }, [{ x: 101, y: 292 }, { x: 140, y: 250 }, { x: 200, y: 200 }], 16, true);
     expect(track.axis).toBe("y");
     expect(steps.every((step) => step === 0)).toBe(true);
-    expect(releaseVelocity(track, 64)).toBe(0);
+    expect(upright).toEqual([-8, -42, -50]);
+  });
+
+  it("a press on the band that goes sideways is a sideways spin, as off the band", () => {
+    const { track, steps, upright } = drag({ x: 300, y: 400 }, line({ x: 300, y: 400 }, { x: 120, y: 404 }, 10), 16, true);
+    expect(track.axis).toBe("x");
+    expect(steps.reduce((a, b) => a + b, 0)).toBeCloseTo(-180, 6);
+    expect(upright.every((step) => step === 0)).toBe(true);
+  });
+
+  it("an upright press on the band throws at its upright speed", () => {
+    // 180 px up in 10 frames of 16 ms: about 1125 px/s.
+    const { track, endMs } = drag({ x: 200, y: 400 }, line({ x: 200, y: 400 }, { x: 200, y: 220 }, 10), 16, true);
+    const v = releaseVelocity(track, endMs);
+    expect(v).toBeLessThan(-1000);
+    expect(v).toBeGreaterThan(-1200);
   });
 
   it("the sideways steps add up to the travel after the lock", () => {

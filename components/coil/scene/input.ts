@@ -242,23 +242,32 @@ export function createInput(ctx: SceneCtx, cards: Cards, hover: Hover, loop: Loo
   }
 
   // ---- slice 7: the drag-to-spin ----
-  // The hero is touch-action: pan-y, so the browser keeps every vertical swipe
-  // (a swipe starting on a card scrolls the page, never hijacked; the browser
-  // cancels the pointer when it takes the pan) and hands horizontal ones to
-  // these pointer listeners, which lock each press to its first axis
-  // (lib/coil/dragAxis.ts). A horizontal drag moves the conveyor's target
-  // under the finger (the front card follows it); the release throws it, and
-  // the throw coasts through the same smoothing stage and speed cap and
+  // Three rules for a finger on page 2 (Aaron, 2026-11-18):
+  // - A sideways swipe anywhere in the section turns the band, never the page:
+  //   on a card, between the cards, on the title or the lists under the stage.
+  //   The section is touch-action: pan-y, so the browser pans nothing sideways
+  //   there and these listeners are the only taker.
+  // - An upright swipe that starts on a card turns the band too, as the wheel
+  //   does over a card on a desktop, and the page stays.
+  // - An upright swipe that starts anywhere else is the page's: the browser
+  //   pans, and cancels the pointer when it does.
+  // Each press is locked to an axis (lib/coil/dragAxis.ts). A sideways drag
+  // moves the conveyor's target under the finger (the front card follows it),
+  // an upright one turns it at the same rate, up for on; the release throws it,
+  // and the throw coasts through the same smoothing stage and speed cap and
   // settles on a card. A new press catches a coasting coil. Nothing before the
   // entrance ends, while frozen or unwound. The drag is the coarse pointer's,
   // and any pointer's in page 2's phone layout (a mouse in a phone-width
-  // window, a tablet's trackpad): plain pointer events, never touch events,
+  // window, a tablet's trackpad): the press is tracked by plain pointer events,
   // since a browser decides at load whether it has touch (Chrome's device
   // toolbar switched on after load sends touches as pointer events only), and
-  // a trackpad's press is no touch at all. On a desktop the fine pointer's
-  // wheel and hover do the work.
+  // a trackpad's press is no touch at all. The one touch listener (onTouchMove)
+  // only tells the browser that a press these listeners took is not a pan. On
+  // a desktop the fine pointer's wheel and hover do the work.
+  const zone: HTMLElement = host.closest<HTMLElement>("section") ?? host;
   let pressScrollY = 0;
   let press: { id: number; track: DragTrack } | null = null;
+  let draggedAtMs = -Infinity;
   function dragDriver() {
     return live.current.input === "coarse" || st.phoneStage;
   }
@@ -275,7 +284,9 @@ export function createInput(ctx: SceneCtx, cards: Cards, hover: Hover, loop: Loo
   const onDragPress = (event: PointerEvent) => {
     // One press at a time (a second finger is a pinch, not a drag), the main button only.
     if (press || (event.pointerType === "mouse" && event.button !== 0) || !dragDriver()) return;
-    press = { id: event.pointerId, track: pressDrag(event.clientX, event.clientY, performance.now()) };
+    // On the band: the press went down on a card of the canvas itself (never through a control over it).
+    const onBand = canDrag() && event.target instanceof Node && host.contains(event.target) && hover.cardAt(event.clientX, event.clientY) !== null;
+    press = { id: event.pointerId, track: pressDrag(event.clientX, event.clientY, performance.now(), onBand) };
     pressScrollY = window.scrollY;
     st.pressCaughtCoil = st.coast !== null;
     if (st.coast) {
@@ -288,11 +299,25 @@ export function createInput(ctx: SceneCtx, cards: Cards, hover: Hover, loop: Loo
     const next = moveDrag(press.track, event.clientX, event.clientY, performance.now());
     press.track = next.track;
     // The page moved: the browser took this press as a vertical pan.
-    if (next.track.axis !== "x" || Math.abs(window.scrollY - pressScrollY) > 2 || !canDrag()) return;
+    if (next.track.axis === null || Math.abs(window.scrollY - pressScrollY) > 2 || !canDrag()) return;
     st.dragging = true;
     conveyor.glide = null;
-    conveyor.target += next.dx * dragCardsPerPx();
+    // Sideways, the card follows the finger; upright, a finger going up turns the band on, as a wheel going down does.
+    conveyor.target += (next.dx - next.dy) * dragCardsPerPx();
     loop.wake();
+  };
+  // A press these listeners own is not the browser's to pan: a finger that went down on a card (from its
+  // first move, so the page never starts), and any press once it has locked to an axis. One finger only:
+  // a second one makes a pinch, which stays the browser's.
+  const onTouchMove = (event: TouchEvent) => {
+    if (!press || !event.cancelable || event.touches.length !== 1 || !canDrag()) return;
+    if (press.track.onBand || press.track.axis !== null) event.preventDefault();
+  };
+  // A mouse's drag that ends where it began (a list row in a phone-width window) is not a click on it.
+  const onClickCapture = (event: MouseEvent) => {
+    if (performance.now() - draggedAtMs > 350) return;
+    event.stopPropagation();
+    event.preventDefault();
   };
   const onDragRelease = (event: PointerEvent) => {
     if (!press || event.pointerId !== press.id) return;
@@ -300,22 +325,28 @@ export function createInput(ctx: SceneCtx, cards: Cards, hover: Hover, loop: Loo
     press = null;
     if (!st.dragging) return;
     st.dragging = false;
+    if (event.pointerType === "mouse") draggedAtMs = performance.now();
     if (!canDrag()) return;
     const cap = COIL.spinCapCardsPerSecond;
-    const velocity = Math.min(cap, Math.max(-cap, releaseVelocity(track, performance.now()) * dragCardsPerPx()));
+    const along = (track.axis === "y" ? -1 : 1) * releaseVelocity(track, performance.now());
+    const velocity = Math.min(cap, Math.max(-cap, along * dragCardsPerPx()));
     st.coast = { rest: Math.round(conveyor.target + velocity * COAST_TAU_S) };
     loop.wake();
   };
   function listenDrag() {
-    // The press on the canvas; the moves and the release wherever the pointer
-    // goes, after the hero's own tap listeners (bubbling), so a drag's release
-    // is still a drag when the tap check reads it.
-    host.addEventListener("pointerdown", onDragPress);
+    // The press anywhere in the section; the moves and the release wherever the
+    // pointer goes, after the hero's own tap listeners (bubbling), so a drag's
+    // release is still a drag when the tap check reads it.
+    zone.addEventListener("pointerdown", onDragPress);
+    zone.addEventListener("touchmove", onTouchMove, { passive: false });
+    zone.addEventListener("click", onClickCapture, true);
     window.addEventListener("pointermove", onDragMove, { passive: true });
     window.addEventListener("pointerup", onDragRelease);
     window.addEventListener("pointercancel", onDragRelease);
     return () => {
-      host.removeEventListener("pointerdown", onDragPress);
+      zone.removeEventListener("pointerdown", onDragPress);
+      zone.removeEventListener("touchmove", onTouchMove);
+      zone.removeEventListener("click", onClickCapture, true);
       window.removeEventListener("pointermove", onDragMove);
       window.removeEventListener("pointerup", onDragRelease);
       window.removeEventListener("pointercancel", onDragRelease);
