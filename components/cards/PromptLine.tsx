@@ -3,19 +3,20 @@
 import { siteContent } from "@/lib/content";
 import { useHomeController } from "@/components/home/HomeController";
 import { progressLine } from "@/lib/home/clickPrompt";
-import { useOpenedBefore } from "@/lib/home/firstOpen";
+import { useSeenRead } from "@/lib/home/seen";
 import { TOTAL, useOpenedCount } from "./CardProgress";
 
 // The phone's resting line, under the page title (the phone foot is below the
 // screen, so its CardProgress has no prompt). It shows the click-a-card prompt
-// on a first visit and nothing otherwise; its line of room is always kept, so
-// nothing moves when it appears or goes. Same host contract as CardProgress:
+// until a card has been opened in this tab, on every visit, and nothing after
+// (the foot has the count); its line of room is always kept, so nothing moves
+// when it appears or goes. Same host contract as CardProgress:
 // data-prompt-host, the text in <span data-prompt-line>.
 export function PromptLine({ className = "" }: { className?: string }) {
   const opened = useOpenedCount();
-  const openedBefore = useOpenedBefore();
+  const seenRead = useSeenRead();
   const input = useHomeController()?.drivers.input ?? "fine";
-  const line = progressLine({ opened, total: TOTAL, openedBefore, input });
+  const line = progressLine({ opened, total: TOTAL, prompt: seenRead, input });
   const shown = line.kind === "prompt";
   return (
     <div

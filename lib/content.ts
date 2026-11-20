@@ -181,7 +181,7 @@ export const siteContent = {
     // The count under the Work column (a line under the columns on a phone), shown from the first card opened.
     progress: (opened: number, total: number) => `${opened} of ${total} opened`,
     externalLabel: "opens in a new tab",
-    // The big prompt on a first visit only; the count above replaces it after a card is opened.
+    // The prompt, on every visit until a card is opened in the tab; the count above replaces it then.
     prompt: { fine: "Click a card to open it", coarse: "Tap a card to open it" },
     order: cardColumns,
   },

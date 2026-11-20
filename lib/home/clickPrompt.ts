@@ -58,10 +58,12 @@ export function promptStartPx(args: { vwPx: number; titlePx: number | null; titl
   return Math.min(vwPx, titleRatio * titlePx);
 }
 
-// One rule for who is shown the prompt, big and resting: no card opened in this
-// tab and none opened on an earlier visit. The big moment and the resting line both ask it.
-export function promptDue(args: { opened: number; openedBefore: boolean }): boolean {
-  return args.opened === 0 && !args.openedBefore;
+// One rule for who is shown the prompt, big and resting: every visit with no card opened in this tab,
+// whatever was opened on an earlier one (a visitor who comes back may not remember the cards open). The
+// big moment and the resting line both ask it, so the spot under the list is never empty: it reads the
+// prompt until a card has been opened and left, then the count.
+export function promptDue(opened: number): boolean {
+  return opened === 0;
 }
 
 const CARD_KEYS: ReadonlySet<string> = new Set(siteContent.columns.order.flatMap((column) => column.groups.flatMap((group) => group.titles.map((title) => title.key))));
@@ -77,11 +79,13 @@ export function openedCardCount(seen: ReadonlySet<string>): number {
 
 export type ProgressLine = { kind: "prompt" | "count" | "none"; text: string };
 
-export function progressLine(args: { opened: number; total: number; openedBefore: boolean; input: InputDriver }): ProgressLine {
-  const { opened, total, openedBefore, input } = args;
+// prompt: this spot may read the prompt now. False before the page has read the tab's opened cards (the
+// server's HTML and the first client render, where an empty set says nothing yet) and in the phone's foot.
+export function progressLine(args: { opened: number; total: number; prompt: boolean; input: InputDriver }): ProgressLine {
+  const { opened, total, prompt, input } = args;
   const count = siteContent.columns.progress(opened, total);
-  if (opened > 0) return { kind: "count", text: count };
-  if (promptDue({ opened, openedBefore })) return { kind: "prompt", text: siteContent.columns.prompt[input] };
+  if (!promptDue(opened)) return { kind: "count", text: count };
+  if (prompt) return { kind: "prompt", text: siteContent.columns.prompt[input] };
   return { kind: "none", text: count };
 }
 

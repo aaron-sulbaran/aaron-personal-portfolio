@@ -201,12 +201,14 @@ test("cards section: a first visit's line reads Click a card to open it under th
   expect((await progress.locator('[role="presentation"]').boundingBox())!.height).toBeLessThanOrEqual(4);
 });
 
-test("cards section: a visitor who opened a card before sees no line at none opened", async ({ page }) => {
+test("cards section: a visitor who opened a card on an earlier visit reads Click a card to open it again at none opened", async ({ page }) => {
   await page.addInitScript((key) => localStorage.setItem(key, "1"), CARD_OPENED_KEY);
   await openHome(page);
   const progress = page.locator("#work [data-card-progress]:visible");
-  await expect(progress).toHaveAttribute("aria-hidden", "true");
-  expect(await progress.evaluate((el) => getComputedStyle(el).opacity)).toBe("0");
+  await expect(progress).toHaveAttribute("data-prompt", "landed", { timeout: 8000 });
+  await expect(progress.locator("p")).toHaveText(columns.prompt.fine);
+  await expect(progress).not.toHaveAttribute("aria-hidden");
+  await expect.poll(() => progress.evaluate((el) => getComputedStyle(el).opacity)).toBe("1");
 });
 
 test("cards section: the seen dot is centered on its title's last word, to half a pixel: the x-height middle, and the capitals' middle for IEEE", async ({ page }) => {

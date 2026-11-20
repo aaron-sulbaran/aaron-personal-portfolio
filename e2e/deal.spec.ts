@@ -1,8 +1,8 @@
 import type { Page } from "@playwright/test";
 import { test, expect } from "./support/fixtures";
 import { openHome, scrollToFoot, waitForScene } from "./support/coil";
+import { noPromptDue } from "./support/cards";
 import { siteContent } from "@/lib/content";
-import { CARD_OPENED_KEY } from "@/lib/home/firstOpen";
 
 // The deal (hero rework, slices 2, 4a, 4c and 4d): the cards section is closed
 // until the reader deals, by the button or by scrolling, once per page load; then
@@ -177,10 +177,9 @@ test("deal: a load with the cards section already in view opens at once, with no
   expect(await dealLog(page)).not.toContain("dealing");
 });
 
-// These two read the deal's own clock and hand-over, so they run with no click prompt due (a card opened on
-// an earlier visit). On a first visit the lists wait for the prompt's line and the lock holds the wheel until
-// it lands; e2e/click-prompt.spec.ts has that deal's times and what the first wheel does.
-const noPromptDue = (page: Page) => page.addInitScript((key) => localStorage.setItem(key, "1"), CARD_OPENED_KEY);
+// These two read the deal's own clock and hand-over, so they run with no click prompt due (noPromptDue: a card
+// already opened in the tab). With none opened the lists wait for the prompt's line and the lock holds the
+// wheel until it lands; e2e/click-prompt.spec.ts has that deal's times and what the first wheel does.
 
 test("deal: nothing opens and no wheel is captured before the Coil unfurls, and from the unfurl the Coil takes a fresh wheel gesture at once, no pointer move needed", async ({ page }) => {
   await noPromptDue(page);

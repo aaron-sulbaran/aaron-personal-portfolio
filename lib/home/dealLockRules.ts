@@ -18,7 +18,7 @@ import { isReadersScroll, type WheelSample } from "@/lib/home/wheelTail";
 //   - cap: capMs after the lock took input, whatever else happened.
 // With no input at all the quiet gap is already met, so the lock lets go at the unfurl.
 //
-// A fourth thing, a first visit's hold (the click prompt): holdUntilMs delays the quiet and
+// A fourth thing, the click prompt's hold: holdUntilMs delays the quiet and
 // gesture releases until the prompt's line has landed. It never delays the cap, which
 // stays the wall, so the lock still always lets go. Null when no prompt is due.
 //

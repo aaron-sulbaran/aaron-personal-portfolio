@@ -91,6 +91,19 @@ export function useSeen(): ReadonlySet<string> {
   return useSyncExternalStore(subscribeSeen, getSeen, serverSeen);
 }
 
+// False on the server and on the first client render (hydration), true once the
+// page reads the tab's own set: until then an empty set says nothing about this
+// visitor, so the click prompt's line stays hidden instead of guessing.
+const never = () => () => {};
+
+export function useSeenRead(): boolean {
+  return useSyncExternalStore(
+    never,
+    () => true,
+    () => false,
+  );
+}
+
 const serverIsSeen = () => false;
 
 export function useIsSeen(key: string): boolean {

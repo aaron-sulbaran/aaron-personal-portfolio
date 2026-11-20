@@ -4,6 +4,15 @@ import { expect } from "./fixtures";
 import { openHome } from "./coil";
 import type { HookWindow } from "./hooks";
 import { pointerTo } from "./input";
+import { SEEN_STORAGE_KEY } from "@/lib/home/seen";
+
+// A tab in which one card has already been opened and left, seeded before the page loads: no click prompt
+// is due there (lib/home/clickPrompt.ts, promptDue), so the deal keeps its own clock and the spot under
+// the Work list reads 1 of 14 opened. The last card of the last list, the one furthest from the titles
+// and the lists most specs read.
+const OPENED_CARD = siteContent.columns.order.at(-1)!.groups.at(-1)!.titles.at(-1)!.key;
+export const noPromptDue = (page: Page) =>
+  page.addInitScript(([key, value]) => sessionStorage.setItem(key, value), [SEEN_STORAGE_KEY, JSON.stringify([OPENED_CARD])] as const);
 
 export const cardRow = (page: Page, key: CardKey) => page.locator(`#work button[data-card="${key}"]`);
 export const cardDialog = (page: Page, key: CardKey) => page.locator(`[role="dialog"][data-card-modal="${key}"]`);
