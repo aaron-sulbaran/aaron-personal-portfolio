@@ -1,4 +1,4 @@
-import type { CDPSession } from "@playwright/test";
+import type { CDPSession, Page } from "@playwright/test";
 import { COIL } from "@/lib/coil/constants";
 import { siteContent } from "@/lib/content";
 import { quickCopy } from "@/lib/content/quick";
@@ -7,22 +7,65 @@ import { coilPoints, nextFrames, openHome, type Point } from "./support/coil";
 import type { HookWindow } from "./support/hooks";
 
 // A phone (the touch project: a Pixel 7 with touch and a coarse pointer).
-// The hero is touch-action: pan-y, so a vertical swipe that starts on a card
-// scrolls the page; a horizontal drag spins the coil and the release coasts
-// it onto a card; a tap opens the card's modal directly, with no flight.
+// A finger on page 2 (Aaron, 2026-11-18): a sideways swipe anywhere in the
+// section turns the band and never the page, the release coasting it onto a
+// card; an upright swipe that starts on a card turns the band too; an upright
+// swipe that starts anywhere else scrolls the page. A tap opens the card's
+// modal directly, with no flight.
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// One finger from `from` to `to` in `steps` moves a frame apart, as a hand swipes.
-async function swipe(cdp: CDPSession, from: Point, to: Point, steps = 12) {
+// One finger down at `from`, then through each point a frame apart, as a hand swipes.
+async function swipePath(cdp: CDPSession, from: Point, points: Point[]) {
   await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: from.x, y: from.y }] });
-  for (let i = 1; i <= steps; i++) {
+  for (const point of points) {
     await sleep(16);
-    const x = from.x + ((to.x - from.x) * i) / steps;
-    const y = from.y + ((to.y - from.y) * i) / steps;
-    await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x, y }] });
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: point.x, y: point.y }] });
   }
   await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+}
+
+const line = (from: Point, to: Point, steps: number) =>
+  Array.from({ length: steps }, (_, i) => ({ x: from.x + ((to.x - from.x) * (i + 1)) / steps, y: from.y + ((to.y - from.y) * (i + 1)) / steps }));
+
+// One finger from `from` to `to` in `steps` moves.
+const swipe = (cdp: CDPSession, from: Point, to: Point, steps = 12) => swipePath(cdp, from, line(from, to, steps));
+
+const coilNow = (page: Page) => page.evaluate(() => ({ ...(window as HookWindow).__coil!.drag(), t: performance.now(), pageY: window.scrollY }));
+
+// The middle of the first card title in the lists under the Coil.
+const listRow = (page: Page) =>
+  page.evaluate(() => {
+    const box = [...document.querySelectorAll<HTMLElement>("#work [data-deal-title]")].find((row) => row.getClientRects().length > 0)!.getBoundingClientRect();
+    return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+  });
+
+// A spot of the stage with no card under it or within 20 px of it, nearest the stage's middle: off the
+// band, between its cards (coilPoints' "outside" is a desktop stage's; a phone's has no room for one).
+const offBand = (page: Page) =>
+  page.evaluate(() => {
+    const coil = (window as HookWindow).__coil!;
+    const stage = document.querySelector("[data-coil-stage]")!.getBoundingClientRect();
+    const top = Math.max(stage.top, 0) + 30;
+    const bottom = Math.min(stage.bottom, window.innerHeight) - 30;
+    const middle = { x: window.innerWidth / 2, y: (top + bottom) / 2 };
+    const around = [[0, 0], [-20, 0], [20, 0], [0, -20], [0, 20], [-14, -14], [14, 14], [-14, 14], [14, -14]];
+    let best: { x: number; y: number; d: number } | null = null;
+    for (let y = top; y < bottom; y += 10) {
+      for (let x = 30; x < window.innerWidth - 30; x += 10) {
+        if (!around.every(([dx, dy]) => !coil.api.cardAt(x + dx, y + dy))) continue;
+        const d = Math.hypot(x - middle.x, y - middle.y);
+        if (!best || d < best.d) best = { x, y, d };
+      }
+    }
+    if (!best) throw new Error("no spot of the stage is clear of the cards");
+    return { x: best.x, y: best.y };
+  });
+
+// The band kept its idle pace between two reads: nothing spun it.
+function expectIdle(before: { offset: number; t: number }, after: { offset: number; t: number }) {
+  const idleTravel = (COIL.idleCardsPerSecond * (after.t - before.t)) / 1000;
+  expect(Math.abs(after.offset - before.offset), "coil travel, cards").toBeLessThan(idleTravel + 0.02);
 }
 
 test("touch: the phone gets the coarse driver", async ({ page }) => {
@@ -30,19 +73,72 @@ test("touch: the phone gets the coarse driver", async ({ page }) => {
   await expect(page.locator("section[data-scene]")).toHaveAttribute("data-input", "coarse");
 });
 
-test("touch: a vertical swipe that starts on a card scrolls the page", async ({ page, cdp }) => {
+test("touch: an upright swipe that starts on a card turns the band, up for on as the wheel does, and the page stays", async ({ page, cdp }) => {
   await openHome(page);
   const { card } = await coilPoints(page);
-  const before = await page.evaluate(() => ({ offset: (window as HookWindow).__coil!.offset(), t: performance.now() }));
+  const before = await coilNow(page);
 
-  await swipe(cdp, card, { x: card.x, y: card.y - 300 });
+  await swipe(cdp, card, { x: card.x + 4, y: card.y - 160 }, 10);
 
-  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(150);
-  expect(await page.evaluate(() => (window as HookWindow).__coil!.drag().dragging)).toBe(false);
-  // No spin from the swipe, and none from the page scroll it caused: the coil kept its idle pace.
-  const after = await page.evaluate(() => ({ offset: (window as HookWindow).__coil!.offset(), t: performance.now() }));
-  const idleTravel = (COIL.idleCardsPerSecond * (after.t - before.t)) / 1000;
-  expect(Math.abs(after.offset - before.offset), "coil travel, cards").toBeLessThan(idleTravel + 0.02);
+  const released = await coilNow(page);
+  expect(released.coast, "a coast target after the release").not.toBeNull();
+  expect(released.target - before.offset, "cards the band went on by").toBeGreaterThan(0.5);
+  expect(released.pageY, "page scroll").toBe(before.pageY);
+  // The coast settles exactly on a whole card, as a sideways throw does.
+  await page.waitForFunction(() => (window as HookWindow).__coil!.drag().coast === null, null, { timeout: 5000 });
+  const rest = await coilNow(page);
+  expect(Math.abs(rest.offset - Math.round(rest.offset))).toBeLessThan(0.01);
+  expect(rest.pageY, "page scroll at rest").toBe(before.pageY);
+});
+
+for (const where of ["between the cards", "on the lists"] as const) {
+  test(`touch: an upright swipe that starts ${where} scrolls the page and leaves the band alone`, async ({ page, cdp }) => {
+    await openHome(page);
+    const from = where === "between the cards" ? await offBand(page) : await listRow(page);
+    expect(await page.evaluate(({ x, y }) => (window as HookWindow).__coil!.api.cardAt(x, y), from), "a card under the finger").toBeNull();
+    const before = await coilNow(page);
+    // Toward the far edge of the screen, so the finger has room: up from the lower half, down from the upper.
+    const height = page.viewportSize()!.height;
+    const travel = from.y > height / 2 ? -260 : 260;
+
+    await swipe(cdp, from, { x: from.x, y: from.y + travel });
+
+    await expect.poll(async () => Math.abs((await coilNow(page)).pageY - before.pageY)).toBeGreaterThan(120);
+    const after = await coilNow(page);
+    expect(after.dragging).toBe(false);
+    expectIdle(before, after);
+  });
+}
+
+test("touch: a sideways swipe on the lists under the Coil turns the band, and the page does not move", async ({ page, cdp }) => {
+  await openHome(page);
+  const from = await listRow(page);
+  const before = await coilNow(page);
+
+  await swipe(cdp, from, { x: from.x + 180, y: from.y + 4 }, 10);
+
+  const released = await coilNow(page);
+  expect(released.coast, "a coast target after the release").not.toBeNull();
+  expect(Math.abs(released.target - before.offset), "cards moved by the drag").toBeGreaterThan(0.5);
+  expect(released.pageY, "page scroll").toBe(before.pageY);
+  await expect(page.locator('[role="dialog"]'), "no card opened by the swipe").toHaveCount(0);
+});
+
+test("touch: a thumb's arc off the band, a little upright and then across, still turns the band", async ({ page, cdp }) => {
+  await openHome(page);
+  const from = await offBand(page);
+  const before = await coilNow(page);
+  // Across toward the far side of the screen, and upright toward its middle, so the finger has room.
+  const across = from.x > page.viewportSize()!.width / 2 ? -1 : 1;
+  const up = from.y > 60 ? -1 : 1;
+  const turn = { x: from.x + across * 4, y: from.y + up * 10 };
+
+  await swipePath(cdp, from, [{ x: from.x, y: from.y + up * 5 }, turn, ...line(turn, { x: from.x + across * 180, y: from.y + up * 20 }, 10)]);
+
+  const released = await coilNow(page);
+  expect(released.coast, "a coast target after the release").not.toBeNull();
+  expect(Math.abs(released.target - before.offset), "cards moved by the drag").toBeGreaterThan(0.5);
+  expect(released.pageY, "page scroll").toBe(before.pageY);
 });
 
 test("touch: a horizontal drag spins the coil, and the release coasts onto a card", async ({ page, cdp }) => {
