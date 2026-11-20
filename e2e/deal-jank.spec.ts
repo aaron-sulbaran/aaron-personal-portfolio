@@ -5,6 +5,7 @@ import { decodePng } from "./support/pixels";
 import { COIL } from "@/lib/coil/constants";
 import { dealMs } from "@/lib/coil/dealSpeed";
 import { entranceClock, fieldMask, pullPhases, pullProgress } from "@/lib/coil/entrance";
+import { FIELD } from "@/lib/coil/field.glsl";
 
 // Where the deal could look janky (the motion spec's section 6), tested from
 // frames the deal draws on its own clock: ?coildebug stepEntrance(ms) holds the
@@ -349,7 +350,7 @@ for (const colorScheme of ["light", "dark"] as const) {
       }
       expect(edgeFrames, "frames with the opening's edge on the canvas").toBeGreaterThanOrEqual(2);
       // The open field rises from the page down its top edge with no step.
-      const fade = COIL.deal.open.topFadePx;
+      const fade = Math.round(FIELD.seamFade * rect.height);
       for (let x = 20; x < open.image.width - 20; x += 60) {
         if (open.boxes.some((b) => x >= b.x0 && x <= b.x1 && b.y0 <= fade + 12)) continue;
         expect(Math.max(...pixel(open.image, x, 0).map((v, c) => Math.abs(v - paper[c]))), `${colorScheme}: the top row at x ${x} is the page's`).toBeLessThanOrEqual(4);

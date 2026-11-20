@@ -25,6 +25,7 @@ import {
   pullPhases,
   pinKnee,
   pullProgress,
+  topSeamIn,
   quatToBasis,
   slerpBasis,
   tunedConstants,
@@ -408,7 +409,21 @@ describe("the field's mask", () => {
     const late = fieldMask(entranceClock(TL.openStartMs + 900), canvas);
     expect(early.feather).toBeLessThan(late.feather);
     expect(late.feather).toBeGreaterThan(late.radius * 0.1);
-    expect(COIL.deal.open.topFadePx).toBeGreaterThan(0);
+  });
+
+  it("brings the cards' top seam in with the Coil: none for the ribbon or the wheel, whole at rest", () => {
+    const { pullStartMs, pullMs } = TL;
+    expect(topSeamIn(entranceClock(Number.NEGATIVE_INFINITY))).toBe(0);
+    expect(topSeamIn(entranceClock(-200))).toBe(0);
+    expect(topSeamIn(entranceClock(pullStartMs))).toBe(0);
+    let last = 0;
+    for (let ms = pullStartMs; ms <= pullStartMs + pullMs; ms += 40) {
+      const k = topSeamIn(entranceClock(ms));
+      expect(k).toBeGreaterThanOrEqual(last);
+      last = k;
+    }
+    expect(topSeamIn(entranceClock(sceneMs(COIL)))).toBe(1);
+    expect(topSeamIn(entranceClock(Number.POSITIVE_INFINITY))).toBe(1);
   });
 
   it("grows from another origin when it is given one, and clears the farthest corner from it", () => {

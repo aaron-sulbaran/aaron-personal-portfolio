@@ -1,5 +1,4 @@
 import { Color, Mesh, ShaderMaterial, Vector2, Vector4, type IUniform, type Texture } from "three";
-import { COIL } from "@/lib/coil/constants";
 import { heldFieldS, nameCompositeInk } from "@/lib/coil/debugFlags";
 import { DRIFT_PRESETS, fieldClocks, parseDriftPreset, type DriftPreset } from "@/lib/coil/drift";
 import { COMPOSITE_FRAG, COMPOSITE_VERT, FIELD, FIELD_FRAG, FULLSCREEN_VERT, NAME, nameComposite } from "@/lib/coil/field.glsl";
@@ -74,8 +73,10 @@ export function createField(ctx: SceneCtx, gl: Gl, init: CompositeInit, fragment
       uGrain: { value: FIELD.grain },
       uDpr: { value: 1 },
       uSeam: { value: FIELD.seamFade },
-      // A pinned frame (a still or poster being baked) has no page edge to fade into.
-      uTopFade: { value: ctx.flags.pinned ? 0 : COIL.deal.open.topFadePx },
+      // The top edge fades over the bottom seam's share of the canvas (resizePasses
+      // sets it in px). A pinned frame (a still or poster being baked) has no page
+      // edge to fade into.
+      uTopFade: { value: 0 },
       // ---- the greeting, the name's surface and its wake ----
       uNameSpan: { value: new Vector2(0, 1) },
       uGreetSplit: { value: 0 },
@@ -155,6 +156,7 @@ export function createField(ctx: SceneCtx, gl: Gl, init: CompositeInit, fragment
   function resizePasses(buffer: Vector2) {
     fieldMaterial.uniforms.uAspect.value = view.width / view.height;
     compMaterial.uniforms.uFull.value.set(view.width, view.height);
+    compMaterial.uniforms.uTopFade.value = flags.pinned ? 0 : FIELD.seamFade * view.height;
     compMaterial.uniforms.uDpr.value = buffer.y / view.height;
   }
 

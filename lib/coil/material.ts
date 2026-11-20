@@ -17,7 +17,9 @@ import { COIL } from "./constants";
 // hero's bottom edge on the field's own seam curve (smoothstep(0, uSeam, y) in
 // canvas uv, the canvas being the hero): it blends toward what the composite
 // shows behind it there, the field faded to paper, so a card crossing the
-// hero's edge fades out with the field instead of clipping on a hard line.
+// hero's edge fades out with the field instead of clipping on a hard line. The
+// top edge mirrors it (smoothstep(0, uSeamTop, 1 - y), the composite's own top
+// fade), taken at uSeamTopIn: 0 while the ribbon and the wheel play, 1 at rest.
 //
 // Two uniforms exist for the flight (the scene draws the flown card with this
 // same shader above the modal): uSeamMix releases the seam dissolve as the card
@@ -63,7 +65,7 @@ export const CARD_FRAG = /* glsl */ `
   uniform vec4 uView;
   uniform vec3 uInk, uPaper;
   uniform vec2 uSize;
-  uniform float uFade, uBright, uAlpha, uSeen, uShade, uSheen, uSeam, uSeamMix, uSoft;
+  uniform float uFade, uBright, uAlpha, uSeen, uShade, uSheen, uSeam, uSeamTop, uSeamTopIn, uSeamMix, uSoft;
   uniform float uSeenDpr; // fx-hero
   varying vec2 vUv; varying vec3 vN; varying vec3 vViewPos;
   void main() {
@@ -120,7 +122,8 @@ export const CARD_FRAG = /* glsl */ `
     vec2 fuv = gl_FragCoord.xy * uView.zw + uView.xy;
     vec3 fc = texture2D(uField, clamp(fuv, 0.0, 1.0)).rgb;
     c = mix(c, fc, clamp(uFade, 0.0, 1.0));
-    float seam = mix(1.0, smoothstep(0.0, uSeam, fuv.y), uSeamMix);
+    float top = mix(1.0, smoothstep(0.0, max(uSeamTop, 1e-4), 1.0 - fuv.y), uSeamTopIn);
+    float seam = mix(1.0, smoothstep(0.0, uSeam, fuv.y) * top, uSeamMix);
     c = mix(mix(uPaper, fc, seam), c, seam);
     gl_FragColor = vec4(c, uAlpha * edge);
   }
@@ -128,7 +131,7 @@ export const CARD_FRAG = /* glsl */ `
 
 // Uniforms every card shares (one object each, so a theme or resize update
 // is one write): the field texture, the view mapping, ink, paper, sheen and
-// the seam fade.
+// the seam fades (the top one's share of the canvas and how much of it the cards take).
 export type SharedCardUniforms = {
   uField: IUniform<Texture | null>;
   uView: IUniform;
@@ -136,6 +139,8 @@ export type SharedCardUniforms = {
   uPaper: IUniform;
   uSheen: IUniform<number>;
   uSeam: IUniform<number>;
+  uSeamTop: IUniform<number>;
+  uSeamTopIn: IUniform<number>;
 };
 
 export type CardUniforms = SharedCardUniforms & {

@@ -123,6 +123,8 @@ export function createFlightOverlay(ctx: SceneCtx, gl: Gl, cards: Cards) {
         uPaper: { value: new Color() },
         uSheen: { value: 0 },
         uSeam: { value: FIELD.seamFade },
+        uSeamTop: { value: FIELD.seamFade },
+        uSeamTopIn: { value: 1 },
       };
       const geometry = cardGeometry;
       // The card: blended, so its soft edge and its alpha show over the modal;

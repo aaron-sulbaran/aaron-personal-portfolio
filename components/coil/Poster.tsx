@@ -1,6 +1,6 @@
 import Image from "next/image";
 import type { StillTheme } from "@/lib/coil/heroStill";
-import { COIL } from "@/lib/coil/constants";
+import { FIELD } from "@/lib/coil/field.glsl";
 import { stillPicture } from "@/lib/coil/stillPicture";
 import type { StillView } from "@/lib/home/stillReadiness";
 
@@ -13,12 +13,12 @@ import type { StillView } from "@/lib/home/stillReadiness";
 // eagerly, so a theme toggle finds the other one in. data-still-ready marks the
 // current theme's still decoded (useHeroStill.ts): the still waits at opacity 0
 // until then.
-// The stage's top edge fades into the page, as the scene's composite does (its
-// topFadePx), so a poster or a still meets page 1's foot with no line.
-const TOP_FADE = {
-  maskImage: `linear-gradient(to bottom, transparent, black ${COIL.deal.open.topFadePx}px)`,
-  WebkitMaskImage: `linear-gradient(to bottom, transparent, black ${COIL.deal.open.topFadePx}px)`,
-};
+// The stage's top edge fades into the page, as the scene's composite does (the
+// bottom seam's share of its height, on its smoothstep), so a poster or a still
+// meets page 1's foot with no line.
+const SEAM_PCT = FIELD.seamFade * 100;
+const TOP_FADE_GRADIENT = `linear-gradient(to bottom, transparent, rgb(0 0 0 / 0.156) ${SEAM_PCT * 0.25}%, rgb(0 0 0 / 0.5) ${SEAM_PCT * 0.5}%, rgb(0 0 0 / 0.844) ${SEAM_PCT * 0.75}%, black ${SEAM_PCT}%)`;
+const TOP_FADE = { maskImage: TOP_FADE_GRADIENT, WebkitMaskImage: TOP_FADE_GRADIENT };
 
 export function Poster({ still }: { still: StillView }) {
   return (

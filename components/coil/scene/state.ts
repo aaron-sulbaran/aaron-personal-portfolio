@@ -64,6 +64,10 @@ export type SceneState = {
   // field and the cards fade into the page there (the entrance step writes it:
   // none while the stage is stuck at the top of the screen, whole once it lets go).
   seam: number;
+  // How much of the top seam (FIELD.seamFade of the canvas, as the bottom one) the
+  // cards take: none while the ribbon and the wheel play, whole once the Coil rests
+  // (lib/coil/entrance.ts topSeamIn; the entrance step writes it).
+  seamTopIn: number;
   // ---- the loop ----
   lastFieldTime: number;
   lastTime: number;
@@ -148,6 +152,7 @@ export function createSceneState(theme: CoilTheme, budget: RenderBudget, conveyo
     open: { cx: 0, cy: 0, radius: 0, feather: 0 },
     ribbon: NO_RIBBON,
     seam: FIELD.seamFade,
+    seamTopIn: 0,
     lastFieldTime: Number.NaN,
     lastTime: performance.now(),
     raf: 0,

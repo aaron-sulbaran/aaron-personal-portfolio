@@ -32,7 +32,8 @@ export const FIELD = {
   secondScale: [0.7, 1.45] as const, // lobe falloff, x (times aspect) and y
   // The static grain inside the letters: plus or minus 4/255, one device px.
   grain: 0.016,
-  // The field fades to paper over the last 14 percent of the hero (item 8).
+  // The field fades to paper over the last 14 percent of the hero (item 8), and
+  // fades in over the first 14 percent the same way, cards included.
   seamFade: 0.14,
 } as const;
 
@@ -488,7 +489,8 @@ export const NAME_COMPOSITE_GLSL = /* glsl */ `
 // radius and the feather's width; the output is premultiplied by it, so the
 // page shows through wherever it is not yet open (a radius of 1e5 or more is
 // open everywhere). uTopFade fades the canvas's top edge in over that many CSS
-// px. While the radius is 0 the scene skips this pass.
+// px (FIELD.seamFade of the canvas: the bottom seam's height and curve). While
+// the radius is 0 the scene skips this pass.
 export const COMPOSITE_FRAG = /* glsl */ `
   uniform sampler2D uField, uName;
   uniform vec4 uView, uNameRect, uOpen;

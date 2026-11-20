@@ -69,6 +69,8 @@ export function createCards(ctx: SceneCtx, gl: Gl) {
     uPaper: { value: new Color() },
     uSheen: { value: st.theme.card.sheen },
     uSeam: { value: FIELD.seamFade },
+    uSeamTop: { value: FIELD.seamFade },
+    uSeamTopIn: { value: st.seamTopIn },
   };
   const cardGeometry = createCardGeometry();
   const slots: Slot[] = [];
@@ -238,6 +240,7 @@ export function createCards(ctx: SceneCtx, gl: Gl) {
   // Render step: the cards over the composite, on a fresh depth buffer.
   function draw() {
     shared.uSeam.value = st.seam;
+    shared.uSeamTopIn.value = st.seamTopIn;
     renderer.clearDepth();
     renderer.render(cardScene, camera);
   }

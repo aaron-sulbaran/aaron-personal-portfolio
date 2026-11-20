@@ -1,5 +1,5 @@
 import { dealOffsetAt, dealOmega, dealSpeedOf, integrateDealSpeed, sceneMs } from "@/lib/coil/dealSpeed";
-import { entranceClock, entranceHelix, fieldMask, kneeLead, tunedConstants, type EntranceTuning } from "@/lib/coil/entrance";
+import { entranceClock, entranceHelix, fieldMask, kneeLead, topSeamIn, tunedConstants, type EntranceTuning } from "@/lib/coil/entrance";
 import { FIELD } from "@/lib/coil/field.glsl";
 import { clamp01, type HelixFrame } from "@/lib/coil/geometry";
 import { siteEase } from "@/lib/coil/motion";
@@ -208,6 +208,7 @@ export function createEntrance(ctx: SceneCtx) {
     });
     f.clock = clock;
     st.seam = seam();
+    st.seamTopIn = pinned ? 0 : topSeamIn(clock);
     st.open = fieldMask(clock, view, c);
     f.helix = entranceHelix(f.helix as HelixFrame, f.geo, clock);
     const entrance = props.entrance;

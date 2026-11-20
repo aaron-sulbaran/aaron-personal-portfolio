@@ -318,10 +318,11 @@ const values = {
     // featherPx wide at first and featherShare of that distance wide once the
     // circle is open (a crisp rim on a big disc reads as a halo, so the edge
     // widens with it), and falls off on a smoother curve than smoothstep
-    // (lib/coil/field.glsl.ts). topFadePx: the stage's top edge fades in over
-    // this many px, so the open field meets page 1's foot with no line, in the
-    // scene and in the posters. fadeMs: the still path's crossfade.
-    open: { reach: 1, ms: 1050, fromPx: 36, featherPx: 28, featherShare: 0.3, topFadePx: 72, fadeMs: 600 },
+    // (lib/coil/field.glsl.ts). The stage's top edge fades in over the bottom
+    // seam's share of its height (FIELD.seamFade), so the open field meets page
+    // 1's foot with no line, in the scene and in the posters. fadeMs: the still
+    // path's crossfade.
+    open: { reach: 1, ms: 1050, fromPx: 36, featherPx: 28, featherShare: 0.3, fadeMs: 600 },
     // The two columns arrive last: group labels, then titles; delayMs counts
     // from the end of the condense (the scene clock's zero).
     columns: { delayMs: 1700, staggerMs: 22, labelStaggerMs: 50, fadeMs: 420, riseY: 14 },

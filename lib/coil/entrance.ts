@@ -294,6 +294,14 @@ export function outOfBandAlpha(pull: number) {
   return smooth(seg(pull, 0.35, 0.9));
 }
 
+// How much of the top seam the cards take (0 to 1): none for the ribbon and the
+// wheel, which sit near the canvas's top on a phone and on a short desktop, and
+// rising with the copies beyond the band, as the Coil opens past the top edge;
+// whole once it rests, as the bottom seam is then.
+export function topSeamIn(clock: EntranceClock, c: CoilConstants = clock.c ?? COIL) {
+  return outOfBandAlpha(pullProgress(clock, c));
+}
+
 export type EntranceCard = {
   cardCount: number; // N
   // The ribbon's faded edges (lib/coil/ribbon.ts ribbonEdge); absent: no fade.
