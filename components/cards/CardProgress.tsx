@@ -2,20 +2,20 @@
 
 import { siteContent } from "@/lib/content";
 import { useHomeController } from "@/components/home/HomeController";
-import { useOpenedBefore } from "@/lib/home/firstOpen";
 import { openedCardCount, progressLine } from "@/lib/home/clickPrompt";
-import { useSeen } from "@/lib/home/seen";
+import { useSeen, useSeenRead } from "@/lib/home/seen";
 
 // "N of 14 opened" and a thin accent bar, read from the seen store (the same
 // set the dots and the Coil's rings read). Under the Work column on a desktop,
 // under the two columns on a phone (CardColumns places the one for each).
-// On a first visit the same spot reads the click-a-card prompt (lib/home/
-// clickPrompt.ts, progressLine); a returning visitor sees nothing until a card
-// is opened. Hidden until then: its room is kept, so nothing moves when
-// it appears, and it is out of the accessibility tree while it is hidden (and,
-// hidden, it does not move the logo aside: components/SiteLogo.tsx). The
-// bar grows by transform only. A card counts once, when the visitor leaves it
-// (a close, or a step from its modal to the card before or after).
+// Until a card has been opened in this tab the same spot reads the click-a-card
+// prompt (lib/home/clickPrompt.ts, progressLine), on every visit. It is hidden
+// only before the page has read the tab's cards, and in the phone's foot until
+// there is a count: its room is kept, so nothing moves when it appears, and it
+// is out of the accessibility tree while it is hidden (and, hidden, it does
+// not move the logo aside: components/SiteLogo.tsx). The bar grows by transform
+// only. A card counts once, when the visitor leaves it (a close, or a step
+// from its modal to the card before or after).
 export const TOTAL = siteContent.columns.order.reduce((sum, column) => sum + column.groups.reduce((n, group) => n + group.titles.length, 0), 0);
 
 export function useOpenedCount(): number {
@@ -26,9 +26,9 @@ export function useOpenedCount(): number {
 // (PromptLine under the page title is); it is then not a prompt host.
 export function CardProgress({ className = "", withPrompt = true }: { className?: string; withPrompt?: boolean }) {
   const opened = useOpenedCount();
-  const openedBefore = useOpenedBefore();
+  const seenRead = useSeenRead();
   const input = useHomeController()?.drivers.input ?? "fine";
-  const line = progressLine({ opened, total: TOTAL, openedBefore: withPrompt ? openedBefore : true, input });
+  const line = progressLine({ opened, total: TOTAL, prompt: withPrompt && seenRead, input });
   const shown = line.kind !== "none";
   return (
     <div

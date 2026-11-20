@@ -68,9 +68,10 @@ type Args = {
   reducedMotion: boolean;
   setEntrance: (entrance: CoilEntrance | null) => void;
   cardQuads: (aheadMs?: number) => readonly Quad[]; // the scene's cards now or ahead, which the click prompt's big line keeps clear of
+  cardOpen: boolean; // a card's modal is open: it retires a big line that is still playing
 };
 
-export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance, cardQuads }: Args) {
+export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance, cardQuads, cardOpen }: Args) {
   const live = useRef({ scene, reducedMotion, cardQuads });
   const session = useRef<Session | null>(null);
   const direction = useRef({ y: 0, down: false });
@@ -79,10 +80,10 @@ export function useDealDirector({ sectionRef, scene, reducedMotion, setEntrance,
   const beginRef = useRef<(source: DealSource, input?: ReaderCross) => boolean>(() => false);
   const cutscene = useDealCutscene();
   const guardRef = useRef<TriggerGuard | null>(null);
-  // A first open that retires the big line also ends the lock's wait for it, so the modal can scroll; so
+  // An open that retires the big line also ends the lock's wait for it, so the modal can scroll; so
   // does a line landed early (an input while it shows, a resize), and the columns that were waiting for
   // the line come in now.
-  const prompt = useDealPrompt(() => {
+  const prompt = useDealPrompt(cardOpen, () => {
     cutscene.current()?.endHold();
     session.current?.master?.bringColumns();
   });

@@ -4,7 +4,7 @@ import { Portal } from "@/components/Portal";
 import { useHomeController } from "@/components/home/HomeController";
 import { siteContent } from "@/lib/content";
 
-// The big "click a card to open it" line of a first visit's deal and the dim
+// The big "click a card to open it" line of a deal with no card opened yet, and the dim
 // around the lit Coil: fixed layers at the body, so no transformed ancestor
 // moves them. Both rest hidden (app/globals.css); lib/home/promptRun.ts shows
 // them, places the line where the resting line is and lands it there.

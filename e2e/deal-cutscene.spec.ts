@@ -1,10 +1,10 @@
 import type { CDPSession, Page } from "@playwright/test";
 import { test, expect } from "./support/fixtures";
 import { openHome, waitForScene } from "./support/coil";
+import { noPromptDue } from "./support/cards";
 import { noWebgl2Api } from "./support/webgl";
 import { COIL } from "@/lib/coil/constants";
 import { siteContent } from "@/lib/content";
-import { CARD_OPENED_KEY } from "@/lib/home/firstOpen";
 import { coverage, dealFacts, flick, flingStream, readBlue, rowAt, startCast, startRecording, stopRecording, wheelGesture, wheelStream, type Frame } from "./support/cutscene";
 import { decodePng } from "./support/pixels";
 
@@ -166,9 +166,9 @@ for (const size of SIZES) {
     });
 
     test("the tail of the fling is swallowed past the unfurl: the lock lets go only once the input has been quiet", async ({ page, cdp }) => {
-      // The lock's own rule, so with no click prompt due: on a first visit the lock also waits for the
+      // The lock's own rule, so with no click prompt due: with no card opened the lock also waits for the
       // prompt's line, which a fling's tail does not land (lib/home/dealLockRules.ts actsNow).
-      await page.addInitScript((key) => localStorage.setItem(key, "1"), CARD_OPENED_KEY);
+      await noPromptDue(page);
       await openHome(page, { debug: "flight", at: "top" });
       await fromLastParagraph(page);
       const at = middle(size);
@@ -620,9 +620,9 @@ for (const size of SIZES) {
         test.setTimeout(120_000);
         const { width, height } = size.viewport;
         const openStart = COIL.deal.timeline.openStartMs;
-        // The bloom is the field's, so it is read on a visit with no click prompt: a first visit's dim shades the whole
+        // The bloom is the field's, so it is read with no click prompt due: the prompt's dim shades the whole
         // page around the lit Coil once it has landed (navy in the light theme), the viewport's last rows with it.
-        await page.addInitScript((key) => localStorage.setItem(key, "1"), CARD_OPENED_KEY);
+        await noPromptDue(page);
         await openHome(page, { debug: "flight", at: "top" });
         const facts = await dealFacts(page);
         await fromLastParagraph(page);

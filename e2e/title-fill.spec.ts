@@ -1,10 +1,10 @@
 import type { Page } from "@playwright/test";
 import { test, expect } from "./support/fixtures";
 import { openHome, scrollToFoot, waitForScene } from "./support/coil";
+import { noPromptDue } from "./support/cards";
 import { noWebgl2Api, noWebglContext } from "./support/webgl";
 import { TITLE_KEYS, fillMotion, showTitle, titleContrastNow, titleState, titleStats } from "./support/titles";
 import { FILL_HELD_IN_INK } from "@/lib/coil/fillPool";
-import { CARD_OPENED_KEY } from "@/lib/home/firstOpen";
 
 // Every numbered page's title wears page 1's name's fill (Aaron, 2026-10-29):
 // the same field, motion and sheen, from the name's engine (components/coil/
@@ -119,8 +119,8 @@ for (const size of SIZES) {
       test(`each title reads at 3:1 or better against what is really behind it, in ${colorScheme}${pinned}, or is reported as left in ink`, async ({ page }) => {
         await page.emulateMedia({ colorScheme });
         // Read on the deal's own clock (no click prompt due): the field under page 2's title drifts, and the
-        // three reads below are timed from the deal's end. A first visit's deal ends about 1.4 s later.
-        await page.addInitScript((key) => localStorage.setItem(key, "1"), CARD_OPENED_KEY);
+        // three reads below are timed from the deal's end. With the prompt the deal ends about 1.4 s later.
+        await noPromptDue(page);
         // fill-all: a held title draws too, so its numbers are read for the decision.
         await openHome(page, { debug: "1,fill-all" });
         const report: string[] = [];

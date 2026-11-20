@@ -17,7 +17,7 @@ import { attachReaderInput, type ReaderInput } from "@/lib/home/readerInput";
 // reader's input has been quiet for a moment (the tail of the fling that started
 // it never reaches the page) or sooner when the input is the reader's own and not
 // a tail dying away (a wheel kept turning, a fresh swipe, a new touch), and at the
-// latest a few seconds after it took input, whatever happened. On a first visit
+// latest a few seconds after it took input, whatever happened. With a click prompt due
 // it also waits for the click prompt's line to land (holdFor), never past its cap.
 // It is for the reader's scroll and the click only: a page's own scroll that
 // crosses the trigger (a Menu link, an anchor) plays the deal as it always did,

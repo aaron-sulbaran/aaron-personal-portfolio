@@ -33,17 +33,17 @@ describe("the big moment's plan, in ms from the click", () => {
 });
 
 describe("the line under the Work column", () => {
-  const line = (opened: number, openedBefore: boolean, input: InputDriver = "fine") => progressLine({ opened, total: 14, openedBefore, input });
-  it("asks a first visitor to click a card, or tap one on touch", () => {
-    expect(line(0, false)).toEqual({ kind: "prompt", text: "Click a card to open it" });
-    expect(line(0, false, "coarse")).toEqual({ kind: "prompt", text: "Tap a card to open it" });
+  const line = (opened: number, prompt = true, input: InputDriver = "fine") => progressLine({ opened, total: 14, prompt, input });
+  it("asks a visitor with no card opened in the tab to click a card, or tap one on touch", () => {
+    expect(line(0)).toEqual({ kind: "prompt", text: "Click a card to open it" });
+    expect(line(0, true, "coarse")).toEqual({ kind: "prompt", text: "Tap a card to open it" });
   });
   it("turns into 1 of 14 opened once a card has been opened in the tab", () => {
-    expect(line(1, true)).toEqual({ kind: "count", text: "1 of 14 opened" });
-    expect(line(1, false)).toEqual({ kind: "count", text: "1 of 14 opened" }); // blocked storage still counts the tab
+    expect(line(1)).toEqual({ kind: "count", text: "1 of 14 opened" });
+    expect(line(1, false)).toEqual({ kind: "count", text: "1 of 14 opened" }); // the phone's foot still counts
   });
-  it("shows a returning visitor nothing until they open a card, as today", () => {
-    expect(line(0, true)).toEqual({ kind: "none", text: "0 of 14 opened" });
+  it("is empty where the prompt has no place: before the page has read the tab's cards, and in the phone's foot", () => {
+    expect(line(0, false)).toEqual({ kind: "none", text: "0 of 14 opened" });
   });
   it("keeps the copy in sentence case, with no em dash and no full stop", () => {
     for (const text of Object.values(siteContent.columns.prompt)) expect(text).toMatch(/^[A-Z][a-z ]+[a-z]$/);
@@ -51,11 +51,10 @@ describe("the line under the Work column", () => {
 });
 
 describe("who is due the prompt", () => {
-  it("is due only when no card is opened in this tab and none was opened before", () => {
-    expect(promptDue({ opened: 0, openedBefore: false })).toBe(true);
-    expect(promptDue({ opened: 1, openedBefore: false })).toBe(false);
-    expect(promptDue({ opened: 0, openedBefore: true })).toBe(false);
-    expect(promptDue({ opened: 3, openedBefore: true })).toBe(false);
+  it("is due on every visit with no card opened in this tab, whatever was opened on an earlier one", () => {
+    expect(promptDue(0)).toBe(true);
+    expect(promptDue(1)).toBe(false);
+    expect(promptDue(3)).toBe(false);
   });
   it("counts only the cards' keys in the seen set", () => {
     const keys = siteContent.columns.order.flatMap((column) => column.groups.flatMap((group) => group.titles.map((title) => title.key)));

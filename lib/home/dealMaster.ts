@@ -53,7 +53,7 @@ type Args = {
   scroll: { kind: "click"; holds: boolean } | { kind: "hand"; velocity: number } | null;
   // The click prompt's own timeline, started with the master and nothing else of it.
   prompt: PromptRun | null;
-  // A first visit's columns wait for the prompt's line: when they come in, ms from the click. Null when
+  // With the click prompt due the columns wait for its line: when they come in, ms from the click. Null when
   // no prompt is due: the deal's own time.
   columnsAtMs: number | null;
   onDone: () => void;

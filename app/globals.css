@@ -1905,7 +1905,7 @@ html:has(main[data-page="hive-visual"][data-logo-edge]) [data-menu-pill]:not([ro
 .hive-loop-step span { display: inline-grid; place-items: center; width: 1.6rem; height: 1.6rem; margin-right: 8px; border-radius: 999px; background: var(--hive-bee); color: var(--hive-light); font-size: 14px; }
 /* ---- end /hive-visual ---- */
 
-/* The click prompt: the big line of a first visit's deal and the dim around the lit Coil (components/cards/PromptStage.tsx, lib/home/promptRun.ts). The run writes their opacity, visibility, transform and the oval's gradient inline and clears them when the line lands. Both sit at the scrim's level, under the logo and the Menu pill (40), which stay lit and usable; the line is later in the DOM, so it paints above the dim. No blur, and neither ever takes the pointer. */
+/* The click prompt: the big line of a deal with no card opened yet and the dim around the lit Coil (components/cards/PromptStage.tsx, lib/home/promptRun.ts). The run writes their opacity, visibility, transform and the oval's gradient inline and clears them when the line lands. Both sit at the scrim's level, under the logo and the Menu pill (40), which stay lit and usable; the line is later in the DOM, so it paints above the dim. No blur, and neither ever takes the pointer. */
 [data-prompt-dim],
 [data-prompt-stage] {
   z-index: 35;

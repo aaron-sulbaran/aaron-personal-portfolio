@@ -153,7 +153,7 @@ export function HomeController({ children }: Props) {
     (aheadMs?: number) => (aheadMs === undefined ? sceneApiRef.current?.visibleQuads() : sceneApiRef.current?.restQuadsAfter(aheadMs, hovers)) ?? [],
     [hovers],
   );
-  const director = useDealDirector({ sectionRef, scene: heroScene, reducedMotion, setEntrance, cardQuads });
+  const director = useDealDirector({ sectionRef, scene: heroScene, reducedMotion, setEntrance, cardQuads, cardOpen: selection !== null });
 
   // Before paint, once per load: own the readiness store, take manual scroll
   // restoration, decide whether this load lands deep, land it, and pick the

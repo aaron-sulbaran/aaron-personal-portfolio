@@ -29,7 +29,7 @@ import { actsNow, clearHold, createLockClock, holdLock, markUnfurled, msUntilDue
 // reader who keeps scrolling is not made to wait for the cap; and, whatever else
 // happened, capMs after the lock took input. The cap is a wall-clock timer of its
 // own, not the deal's clock, so a scene that never starts, a stalled master, an
-// error or a hidden tab cannot keep it. A first visit's hold (holdFor) delays the quiet and gesture
+// error or a hidden tab cannot keep it. The click prompt's hold (holdFor) delays the quiet and gesture
 // releases until the click prompt's line has landed, never the cap. A tab that goes hidden lets go at once. One
 // lock at a time: a second take lets the first go. The input that ends the lock
 // goes on unswallowed: the Coil's first of a fresh gesture.

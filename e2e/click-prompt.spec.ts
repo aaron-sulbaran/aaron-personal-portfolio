@@ -1,7 +1,7 @@
 import type { Locator, Page } from "@playwright/test";
 import { test, expect } from "./support/fixtures";
 import { nextFrames, openHome, waitForScene } from "./support/coil";
-import { cardRow } from "./support/cards";
+import { cardRow, noPromptDue } from "./support/cards";
 import { noWebgl2Api } from "./support/webgl";
 import { COIL } from "@/lib/coil/constants";
 import { siteContent } from "@/lib/content";
@@ -10,10 +10,11 @@ import { promptPlan } from "@/lib/home/clickPrompt";
 import { CARD_OPENED_KEY } from "@/lib/home/firstOpen";
 
 // The "Click a card to open it" moment (docs/superpowers/plans/2026-11-18-click-a-card-production.md).
-// On a first visit's deal the resting line plays big where it rests (under the Work list from 768 px
-// wide, under the page title on a phone) as the Coil lands. It is read alone beside the lit Coil: the
-// page's title, labels and lists wait and come in half way through its shrink. It then rests as the
-// line, and a card opened once, ever, ends the prompt for good.
+// On the deal of any visit with no card opened in the tab, the resting line plays big where it rests
+// (under the Work list from 768 px wide, under the page title on a phone) as the Coil lands. It is read
+// alone beside the lit Coil: the page's title, labels and lists wait and come in half way through its
+// shrink. It then rests as the line, until a card has been opened and left: the spot reads the count from
+// then on, for that tab. "A first visit" below is a visit with nothing stored, the commonest such tab.
 //
 // The page's own sampler (watchPrompt) records one row per animation frame from before the page's
 // scripts run, so every time below is what the visitor saw, measured from the moment the deal began
@@ -479,7 +480,7 @@ for (const size of [
   });
 }
 
-// 6. The first open ends the prompt for good.
+// 6. A card opened and left ends the prompt for this tab: the spot reads the count from then on.
 test("the first open writes the once-ever key, and after it the spot reads 1 of 14 opened", async ({ page }) => {
   await openHome(page);
   const row = cardRow(page, "ieee");
@@ -511,9 +512,21 @@ test("a first open after the line has landed leaves it landed: the spot never bl
   expect(after.filter((f) => f.host !== "landed").length, "frames after the landing in which the host was not landed").toBe(0);
 });
 
-// 7. Nothing of this moves for a visitor who has opened a card before (review focus 2).
-test("a visitor who opened a card before gets no big moment, the columns at the deal's own time, and an empty spot until they open one", async ({ page }) => {
+// 7. The prompt is every visit's, until a card has been opened in the tab (Aaron, 2026-11-20: a visitor who
+// comes back may not remember the cards open, so a card opened on an earlier visit no longer ends it).
+test("a visitor who opened a card on an earlier visit gets the big moment again, and the spot rests as Click a card to open it", async ({ page }) => {
   await page.addInitScript((key) => localStorage.setItem(key, "1"), CARD_OPENED_KEY);
+  await dealFromFoot(page);
+  await waitForFull(page);
+  expect((await dimState(page)).opacity, "the dim is up with the big line").toBeGreaterThan(0);
+  await waitForLanded(page);
+  await expectDealt(page);
+  await expectLineShown(page, prompt.fine);
+  await expect(restingHost(page)).not.toHaveAttribute("aria-hidden");
+});
+
+test("a tab with a card already opened gets no big moment, the columns at the deal's own time, and the count in the spot", async ({ page }) => {
+  await noPromptDue(page);
   await dealFromFoot(page);
   const titleAt = await page.evaluate(
     () =>
@@ -531,9 +544,8 @@ test("a visitor who opened a card before gets no big moment, the columns at the 
   expect(log.marks.dealt - log.marks.dealing, "today's bound for the deal").toBeLessThan(3200);
   expect((await dimState(page)).opacity, "no dim").toBe(0);
   expect(await page.evaluate(() => document.querySelectorAll("[data-prompt-host][data-prompt]").length), "hosts marked by a run").toBe(0);
-  const host = restingHost(page);
-  expect(await seenOpacity(host)).toBe(0);
-  await expect(host).toHaveAttribute("aria-hidden", "true");
+  await expect(countLine(page)).toHaveText(OPENED_ONE);
+  expect(await seenOpacity(countLine(page))).toBe(1);
 });
 
 // 8. No deal, no big moment: the line is simply in its spot.
