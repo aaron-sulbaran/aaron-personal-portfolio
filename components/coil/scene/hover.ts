@@ -89,7 +89,7 @@ export function createHover(ctx: SceneCtx, cards: Cards, loop: LoopLink) {
   }
   function frontAt() {
     const rect = host.getBoundingClientRect();
-    const top = Math.max(0, -rect.top, st.geo?.clearTopPx ?? 0);
+    const top = Math.max(0, -rect.top);
     const bottom = Math.min(view.height, window.innerHeight - rect.top);
     return bottom > top ? pickAt(view.width / 2, (top + bottom) / 2) : -1;
   }
@@ -119,7 +119,7 @@ export function createHover(ctx: SceneCtx, cards: Cards, loop: LoopLink) {
 
   // The row's card to the part of the helix still on screen: the copy whose
   // projected center lands inside the hero's visible rows (clear of the
-  // narrow header band and the bottom seam fade), or the nearest that will
+  // bottom seam fade), or the nearest that will
   // be once the hero scrolls back. Nothing while unwound.
   function hoverJump(key: string) {
     const props = live.current;
@@ -130,7 +130,7 @@ export function createHover(ctx: SceneCtx, cards: Cards, loop: LoopLink) {
     const inset = JUMP_INSET_CARDS * st.geo.cardPx;
     const gutter = paneGutter(view.width, st.geo.viewport);
     const band: JumpBand = {
-      top: Math.max(0, -rect.top, st.geo.clearTopPx) + inset,
+      top: Math.max(0, -rect.top) + inset,
       bottom: Math.min(view.height, window.innerHeight - rect.top, view.height * (1 - FIELD.seamFade)) - inset,
       left: gutter + inset,
       right: view.width - gutter - inset,

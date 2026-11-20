@@ -137,11 +137,9 @@ export type CoilGeometry = {
   readonly ribbon: { readonly anchorY: number; readonly cardPx: number; readonly gapPx: number; readonly cardWorld: number };
   readonly axisDir: Vec2; // the axis on screen, toward the top left (y down)
   readonly axisPerp: Vec2;
-  // Narrow panes keep a band at the top free of cards (the header and the
-  // greeting's line): CSS px from the pane's top, 0 when wide. The coil is
-  // centered in the pane below it, so its center sits half the band lower.
-  readonly clearTopPx: number;
-  readonly center: Vec3; // the helix center in world units
+  // The helix center in world units: the pane's middle, narrow or wide, so the
+  // strand leaves through the pane's top edge as it does through its bottom.
+  readonly center: Vec3;
 };
 
 // Distance from the pane center to its edge along (dx, dy).
@@ -153,12 +151,6 @@ function chord(dx: number, dy: number, w: number, h: number) {
 
 export function isNarrow(viewport: Viewport, c: CoilConstants = COIL) {
   return viewport.width / viewport.height < c.narrow.aspectBelow;
-}
-
-// The card-free band at the top of a narrow pane: the header, then the
-// greeting's line.
-export function clearTopFor(viewport: Viewport, c: CoilConstants = COIL) {
-  return isNarrow(viewport, c) ? c.narrow.headerClearPx + c.narrow.introBandPx : 0;
 }
 
 // The height the deal's wheel is sized from (COIL.deal.wheel.diameterOfHeight
@@ -196,9 +188,6 @@ export function solveGeometry(viewport: Viewport, cardCount: number, c: CoilCons
   // On a narrow pane the diagonal relaxes toward vertical with fewer cards per turn.
   const axisDeg = narrow ? c.axisDeg * c.narrow.axisFactor : c.axisDeg;
   const strandFit = narrow ? c.narrow.strandFit : c.strandFit;
-  const clearTopPx = narrow ? clearTopFor(region, c) : 0;
-  // The region the coil spans: the pane under the clear band.
-  const regionCenterY = clearTopPx + (H - clearTopPx) / 2;
   const cardsPerTurn = narrow ? Math.min(c.cardsPerTurn, c.narrow.maxCardsPerTurn) : c.cardsPerTurn;
   const axisRad = axisDeg * DEG;
   const leanRad = c.camera.leanDeg * DEG;
@@ -225,8 +214,8 @@ export function solveGeometry(viewport: Viewport, cardCount: number, c: CoilCons
         for (let i = 0; i <= 10; i++) {
           const s = -half + (2 * half * i) / 10;
           const x = W / 2 + sign * (t - inner) * axisDir.x + s * axisPerp.x;
-          const y = regionCenterY + sign * (t - inner) * axisDir.y + s * axisPerp.y;
-          if (x > -margin && x < W + margin && y > clearTopPx - margin && y < H + margin) return false;
+          const y = H / 2 + sign * (t - inner) * axisDir.y + s * axisPerp.y;
+          if (x > -margin && x < W + margin && y > -margin && y < H + margin) return false;
         }
       }
       return true;
@@ -328,8 +317,7 @@ export function solveGeometry(viewport: Viewport, cardCount: number, c: CoilCons
     ribbon: { anchorY: ribbonAnchorY, cardPx: ribbonCardPx, gapPx: ribbonGapPx, cardWorld: ribbonCardPx * camera.worldPerPx },
     axisDir,
     axisPerp,
-    clearTopPx,
-    center: [0, (H / 2 - regionCenterY) * camera.worldPerPx, 0],
+    center: [0, 0, 0],
   };
 }
 

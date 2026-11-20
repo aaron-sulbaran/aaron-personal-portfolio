@@ -45,12 +45,6 @@ const values = {
     // both ends of a phone and tablet-portrait cards keep the table's height.
     // Twenty real cards would span a phone with fewer repeats on their own.
     strandFit: "repeat" as "repeat" | "exact",
-    // The phone header: the mark and the Menu pill sit in the top 64px, and no
-    // card may cross them (design review of lab 2, item 14).
-    headerClearPx: 64,
-    // The greeting and its control take one line under the header (a card
-    // never passes behind them); the coil lives below this band.
-    introBandPx: 40,
   },
 
   // Page 2 on a phone (below md, where the columns sit under the Coil rather

@@ -4,13 +4,11 @@ import { curlProgress, entrancePose, type EntranceClock } from "@/lib/coil/entra
 import { FIELD } from "@/lib/coil/field.glsl";
 import { isConvex } from "@/lib/coil/flight";
 import {
-  clamp01,
   coilPose,
   mod,
   projectQuad,
   restHelix,
   silhouette,
-  smoothstep01,
   type Camera,
   type CardPose,
   type CoilGeometry,
@@ -41,18 +39,6 @@ const HOVER_BRIGHT = 0.05;
 const HOVER_UNFADE = 0.6;
 // A theme repaint starts no new card past this much of a frame (at most 4).
 const REPAINT_BUDGET_MS = 6;
-
-// Slice 7: how much of a card may show under a narrow pane's clear top band:
-// 1 while its projected top edge stays a quarter card below the band, fading
-// to 0 as that edge reaches it, so no card ever crosses the mark, the Menu
-// pill or the greeting's line. Faded cards are never picked.
-const HEADER_FADE_CARDS = 0.25;
-function headerClearance(pose: CardPose, geo: CoilGeometry, camera: Camera) {
-  if (pose.alpha <= 0.001) return 1;
-  const quad = projectQuad(pose, camera);
-  const top = Math.min(quad[0].y, quad[1].y, quad[2].y, quad[3].y);
-  return smoothstep01(clamp01((top - geo.clearTopPx) / (HEADER_FADE_CARDS * geo.cardPx)));
-}
 
 export type Slot = { mesh: Mesh; uniforms: CardUniforms; tile: number; hover: number };
 
@@ -215,13 +201,8 @@ export function createCards(ctx: SceneCtx, gl: Gl) {
       bindTile(slot, tile);
       pose = entrancePose(pose, { cardCount: tileCount, edge }, clock);
       if (listProgress > 0) pose = unwindPose(pose, tile, unwind, now, null);
-      // ---- slice 7: the narrow pane's clear top band (header and greeting) ----
-      if (geo.clearTopPx > 0 && listProgress < 1) {
-        const clear = headerClearance(pose, geo, f.camera);
-        if (clear < 1) pose = { ...pose, alpha: pose.alpha * (clear + (1 - clear) * listProgress) };
-      }
+      // A new composition fades in rather than jumps (renderer.ts rebuildAt).
       if (rebuilt < 1) pose = { ...pose, alpha: pose.alpha * rebuilt };
-      // ---- end slice 7 ----
       if (posterMode || j === st.hiddenSlot) pose = { ...pose, alpha: 0 };
       poses[j] = pose;
 
@@ -295,9 +276,7 @@ export function createCards(ctx: SceneCtx, gl: Gl) {
     const quads: Quad[] = [];
     for (let j = 0; j < st.geo.slotCount; j++) {
       const pose = coilPose(frame, j, offset);
-      // The narrow pane fades a card out of its clear top band, as poseSlots does.
-      const clear = st.geo.clearTopPx > 0 ? headerClearance(pose, st.geo, camera) : 1;
-      if (pose.alpha * clear > 0.01) quads.push(projectQuad(lifted ? { ...pose, scale: pose.scale * (1 + HOVER_SCALE) } : pose, camera, at));
+      if (pose.alpha > 0.01) quads.push(projectQuad(lifted ? { ...pose, scale: pose.scale * (1 + HOVER_SCALE) } : pose, camera, at));
     }
     return quads;
   }

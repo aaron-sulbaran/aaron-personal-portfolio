@@ -5,7 +5,6 @@ import {
   cardDistancePx,
   cardDistancesPx,
   cardHit,
-  clearTopFor,
   isNarrow,
   coilPose,
   nearCard,
@@ -120,20 +119,23 @@ describe("solveGeometry", () => {
     }
   });
 
-  it("keeps the header and the greeting's line clear on a narrow pane", () => {
-    const geo = solveGeometry(PHONE, STRAND);
-    const clear = COIL.narrow.headerClearPx + COIL.narrow.introBandPx;
-    expect(clearTopFor(PHONE)).toBe(clear);
-    expect(geo.clearTopPx).toBe(clear);
-    // The helix centers in the pane under the band: half the band lower.
-    const center = projectPoint(geo.camera, geo.center);
-    expect(center.y).toBeCloseTo(PHONE.height / 2 + clear / 2, 6);
-    expect(center.x).toBeCloseTo(PHONE.width / 2, 6);
-    expect(restHelix(geo).center).toEqual(geo.center);
-    // Wide panes keep the pane's center and no band.
-    const wide = solveGeometry(DESKTOP, STRAND);
-    expect(wide.clearTopPx).toBe(0);
-    expect(projectPoint(wide.camera, wide.center).y).toBeCloseTo(DESKTOP.height / 2, 6);
+  it("runs the strand off a narrow pane's top edge as off its bottom, centered on the pane", () => {
+    // Tall desktop windows (the pane between page 2's columns) and tablet portrait compose narrow.
+    for (const pane of [{ width: 641, height: 1282 }, { width: 769, height: 1282 }, { width: 768, height: 1024 }, PHONE, DESKTOP]) {
+      const geo = solveGeometry(pane, STRAND);
+      const center = projectPoint(geo.camera, geo.center);
+      expect(center.x).toBeCloseTo(pane.width / 2, 6);
+      expect(center.y).toBeCloseTo(pane.height / 2, 6);
+      expect(restHelix(geo).center).toEqual(geo.center);
+      // At any point of the idle turn, a solid card crosses the top edge and one crosses the bottom.
+      for (const offset of [0, 0.25, 0.5, 0.75]) {
+        const ys = Array.from({ length: geo.slotCount }, (_, j) => coilPose(restHelix(geo), j, offset))
+          .filter((pose) => pose.alpha > 0.5)
+          .flatMap((pose) => projectQuad(pose, geo.camera).map((corner) => corner.y));
+        expect(Math.min(...ys), `${pane.width}x${pane.height} at ${offset}: the top`).toBeLessThan(0);
+        expect(Math.max(...ys), `${pane.width}x${pane.height} at ${offset}: the bottom`).toBeGreaterThan(pane.height);
+      }
+    }
   });
 
   it("uses the picked wide composition on a desktop pane", () => {
@@ -160,7 +162,6 @@ describe("solveGeometry", () => {
     for (const band of [{ width: 390, height: 490 }, { width: 375, height: 387 }, { width: 430, height: 541 }]) {
       const geo = solveGeometry(band, STRAND, COIL, { phone: true });
       expect(geo.narrow, `${band.width}x${band.height}`).toBe(false);
-      expect(geo.clearTopPx).toBe(0);
       expect(geo.axisRad).toBeCloseTo((COIL.axisDeg * Math.PI) / 180, 12);
       expect(geo.cardPx).toBeLessThanOrEqual(band.height * COIL.phone.cardHeightFrac + 1e-9);
       expect(geo.cardPx, "larger than the table's share would make it").toBeGreaterThan(band.height * COIL.cardHeightFrac);

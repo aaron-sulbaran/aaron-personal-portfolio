@@ -65,7 +65,6 @@ describe("drivers", () => {
       expect(geo.cardPx).toBeLessThanOrEqual(viewport.height * COIL.cardHeightFrac + 1e-9);
       expect(geo.cardsPerTurn).toBeLessThanOrEqual(COIL.narrow.maxCardsPerTurn);
       expect(geo.axisRad).toBeCloseTo((COIL.axisDeg * COIL.narrow.axisFactor * Math.PI) / 180, 12);
-      expect(geo.clearTopPx).toBe(COIL.narrow.headerClearPx + COIL.narrow.introBandPx);
     }
   });
 
@@ -74,7 +73,6 @@ describe("drivers", () => {
       expect(compositionFor(viewport)).toBe("wide");
       const geo = solveGeometry(viewport, 14);
       expect(geo.slotCount).toBeGreaterThanOrEqual(14);
-      expect(geo.clearTopPx).toBe(0);
     }
   });
 
